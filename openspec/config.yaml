@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Bun + Vue 3 (Vite) + arckode-framework + SQLite + Tailwind
+  Architecture: Clean architecture (RepositoryAdapter<T>), composition-root entry
+  Testing: bun test (backend), vue-tsc typecheck (frontend)
+  Style: <script setup lang="ts">, <style scoped>, kebab-case pages, PascalCase components
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+    - Every new feature MUST reference the MisterPlan equivalent being replicated
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Every spec MUST include: Database changes, API endpoints, UI requirements
+    - Spanish for UI text, English for DB/API/code
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - External API integrations MUST document auth flow
+  tasks:
+    - Group by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+    - Each task MUST have acceptance criteria
+  apply:
+    - Follow arckode-framework patterns (make:module, RepositoryAdapter<T>)
+    - NEVER use raw SQL in services — use ORM
+    - Frontend: <script setup lang="ts">, <style scoped> ALWAYS
+    - DB schema in English, UI text in Spanish
+  verify:
+    - Run: bun run typecheck && npx vue-tsc --noEmit (frontend)
+    - Run: bun run node_modules/arckode-framework/bin/arckode.js analyze (backend, 0 violations)
+    - Check: every endpoint has auth.authenticate() middleware
+  archive:
+    - Warn before merging destructive deltas

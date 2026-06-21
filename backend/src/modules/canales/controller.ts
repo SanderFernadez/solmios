@@ -1,0 +1,137 @@
+// canales/controller.ts — Adaptador HTTP del módulo
+// Responsabilidad ÚNICA: traducir request → service → response.
+// SIN lógica de negocio. SIN llamadas directas al ORM. (REGLA #12)
+// Toda mutación (POST/PUT/PATCH) DEBE pasar por validateSchema(). (REGLA #11)
+//
+// La sincronización (POST /api/channels/sync) se cablea en index.ts porque
+// necesita datos del módulo habitaciones (cross-module → route en el root del módulo).
+
+import type { HttpRequest, Logger } from 'arckode-framework'
+import { validateSchema } from 'arckode-framework'
+import type { CanalesService } from './service'
+import { CreateCanalesSchema, UpdateCanalesSchema } from './validators/schema'
+
+export class CanalesController {
+  constructor(
+    private readonly service: CanalesService,
+    private readonly logger: Logger,
+  ) {}
+
+  // GET /api/channels?hotelId= — canales conectados (Channex real + fallback).
+  async channels(req: HttpRequest) {
+    this.logger.info('GET /api/channels', { hotelId: (req.query as any)?.hotelId })
+    const hotelId = (req.query as any)?.hotelId
+    const result = await this.service.listChannels(hotelId)
+    return { status: 200, body: result }
+  }
+
+  // GET /api/channels/feed — reservas pendientes del feed de Channex.
+  async feed() {
+    this.logger.info('GET /api/channels/feed')
+    return { status: 200, body: await this.service.getFeed() }
+  }
+
+  // POST /api/channels/test-connection — prueba conexión con una OTA.
+  async testConnection(req: HttpRequest) {
+    const { hotelId, channel, hotel_id } = req.body as any
+    this.logger.info('POST /api/channels/test-connection', { channel, hotel_id })
+    const result = await this.service.testConnection(hotelId, channel, hotel_id)
+    return { status: result.success ? 200 : 422, body: result }
+  }
+
+  // GET /api/channels/mapping-details — obtiene rooms/rates de la OTA para mapear.
+  async mappingDetails(req: HttpRequest) {
+    const q = req.query as any
+    const { channel, hotel_id } = q
+    this.logger.info('GET /api/channels/mapping-details', { channel, hotel_id })
+    const result = await this.service.getMappingDetails(q.hotelId, channel, hotel_id)
+    return { status: result.success ? 200 : 422, body: result }
+  }
+
+  // GET /api/channels/groups — lista grupos del account Channex.
+  async groups(req: HttpRequest) {
+    const hotelId = (req.query as any)?.hotelId
+    this.logger.info('GET /api/channels/groups')
+    return { status: 200, body: await this.service.listGroups(hotelId) }
+  }
+
+  // POST /api/channels/connect — crea y activa un canal OTA.
+  async connectOTA(req: HttpRequest) {
+    const dto = req.body as any
+    this.logger.info('POST /api/channels/connect', { channel: dto.channel })
+    const result = await this.service.createOTAChannel(dto.hotelId, dto)
+    return { status: result.success ? 200 : 422, body: result }
+  }
+
+  // POST /api/channels/:id/deactivate — desactiva un canal OTA.
+  async deactivate(req: HttpRequest) {
+    const hotelId = (req.body as any)?.hotelId || (req.query as any)?.hotelId
+    this.logger.info('POST /api/channels/:id/deactivate', { id: req.params.id })
+    const result = await this.service.deactivateChannel(hotelId, req.params.id)
+    return { status: result.success ? 200 : 422, body: result }
+  }
+
+  // GET /api/channels/bookings — lista bookings pendientes del feed.
+  async bookings(req: HttpRequest) {
+    const hotelId = (req.query as any)?.hotelId
+    this.logger.info('GET /api/channels/bookings', { hotelId })
+    const data = await this.service.getBookings(hotelId)
+    return { status: 200, body: { data, total: data.length } }
+  }
+
+  // POST /api/channels/bookings/ingest — ingesta bookings → reservas + ack.
+  async ingestBookings(req: HttpRequest) {
+    const hotelId = (req.body as any)?.hotelId || (req.query as any)?.hotelId
+    this.logger.info('POST /api/channels/bookings/ingest', { hotelId })
+    const result = await this.service.ingestBookings(hotelId)
+    return { status: result.success ? 200 : 422, body: result }
+  }
+
+  // GET /api/channels/iframe-token — token para embed de Channex.
+  async iframeToken(req: HttpRequest) {
+    const hotelId = (req.query as any)?.hotelId
+    const username = (req.query as any)?.username || 'Hotel Admin'
+    this.logger.info('GET /api/channels/iframe-token', { hotelId, username })
+    const token = await this.service.getIframeToken(hotelId, username)
+    if (!token) return { status: 422, body: { error: 'No se pudo generar el token. Verifica que la propiedad esté configurada.' } }
+    const propertyId = await this.service.getPropertyId(hotelId)
+    if (!propertyId) return { status: 422, body: { error: 'La propiedad no está sincronizada con Channex. Ejecutá la sincronización primero.' } }
+    return { status: 200, body: { token, iframeUrl: `https://staging.channex.io/auth/exchange?oauth_session_key=${token}&app_mode=headless&redirect_to=/channels&property_id=${propertyId}&lng=es` } }
+  }
+
+  // GET /api/channels/:id/detail — detalle completo del canal con tarifas y mapping.
+  async channelDetail(req: HttpRequest) {
+    const hotelId = (req.query as any)?.hotelId
+    this.logger.info('GET /api/channels/:id/detail', { id: req.params.id, hotelId })
+    const result = await this.service.getChannelDetail(hotelId, req.params.id)
+    return { status: result ? 200 : 404, body: result || { error: 'Canal no encontrado' } }
+  }
+
+  // ─── CRUD admin sobre la config ──────────────────────────────────────
+  async index(req: HttpRequest) {
+    const result = await this.service.list(req.query as any)
+    return { status: 200, body: result }
+  }
+
+  async show(req: HttpRequest) {
+    const item = await this.service.getById(req.params.id)
+    return { status: 200, body: item }
+  }
+
+  async store(req: HttpRequest) {
+    const data = validateSchema(CreateCanalesSchema, req.body)
+    const item = await this.service.create(data as any)
+    return { status: 201, body: item }
+  }
+
+  async update(req: HttpRequest) {
+    const data = validateSchema(UpdateCanalesSchema, req.body)
+    const item = await this.service.update(req.params.id, data as any)
+    return { status: 200, body: item }
+  }
+
+  async destroy(req: HttpRequest) {
+    await this.service.delete(req.params.id)
+    return { status: 204, body: null }
+  }
+}

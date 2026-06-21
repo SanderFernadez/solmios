@@ -1,0 +1,106 @@
+# SDD DAG State: match-misterplan
+
+change_name: match-misterplan
+created: 2026-06-20
+status: specs_complete
+current_phase: ready-to-implement
+
+phases:
+  phase-1-foundation:
+    status: ready
+    depends_on: []
+    tasks_total: 24
+    tasks_done: 0
+  
+  phase-2-settings:
+    status: ready
+    depends_on: [phase-1-foundation]
+    tasks_total: 16
+    tasks_done: 0
+  
+  phase-3-reservation-modal:
+    status: ready
+    depends_on: [phase-1-foundation]
+    tasks_total: 18
+    tasks_done: 0
+  
+  phase-4-planning:
+    status: ready
+    depends_on: [phase-3-reservation-modal]
+    tasks_total: 25
+    tasks_done: 0
+  
+  phase-5-ttlock:
+    status: ready
+    depends_on: [phase-4-planning]
+    tasks_total: 12
+    tasks_done: 0
+  
+  phase-6-auto-messages:
+    status: ready
+    depends_on: [phase-5-ttlock]
+    tasks_total: 8
+    tasks_done: 0
+  
+  phase-7-whatsapp:
+    status: ready
+    depends_on: [phase-6-auto-messages]
+    tasks_total: 5
+    tasks_done: 0
+  
+  phase-8-pre-checkin:
+    status: ready
+    depends_on: [phase-5-ttlock]
+    tasks_total: 6
+    tasks_done: 0
+  
+  phase-9-payments:
+    status: ready
+    depends_on: [phase-3-reservation-modal]
+    tasks_total: 4
+    tasks_done: 0
+  
+  phase-10-reports:
+    status: ready
+    depends_on: [phase-1-foundation]
+    tasks_total: 8
+    tasks_done: 0
+
+artifacts:
+  proposal: true
+  specs:
+    - foundation     ✅ 7 REQs (DB tables, columns, modules)
+    - planning       ✅ 15 REQs (drag-drop, multi-select, bulk-block, groups)
+    - reservation-modal ✅ 12 REQs (2-panel, OTA, payments, companions)
+    - ttlock         ✅ 7 REQs (OAuth, sync, passcodes, auto-send)
+    - auto-messages  ✅ 7 REQs (editor, variables, triggers, multilingual)
+    - settings       ✅ 7 REQs (5-step wizard, amenities, rates, integrations)
+    - whatsapp       ✅ 7 REQs (wa.me links, templates, Business API)
+    - pre-checkin    ✅ 8 REQs (public form, QR, QScanPro, status)
+    - payments       ✅ 9 REQs (Stripe, webhook, receipts, currency)
+    - reports        ✅ 10 REQs (6 report types, export, print)
+  design: false
+  tasks: true
+  verify-report: false
+
+total_specs: 10
+total_requirements: 89
+total_tasks: 126
+
+external_dependencies:
+  ttlock:
+    status: not_configured
+    required_for: [phase-5-ttlock]
+    docs: https://open.ttlock.com/document/doc?url=english/description.md
+  stripe:
+    status: not_configured
+    required_for: [phase-9-payments]
+    docs: https://stripe.com/docs/api
+  whatsapp_business:
+    status: not_configured
+    required_for: [phase-7-whatsapp]
+    docs: https://developers.facebook.com/docs/whatsapp
+  qscanpro:
+    status: not_configured
+    required_for: [phase-8-pre-checkin]
+    docs: https://qscanpro.com

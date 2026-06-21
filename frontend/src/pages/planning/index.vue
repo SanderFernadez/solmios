@@ -1,0 +1,731 @@
+<template>
+  <div class="min-h-screen bg-surface">
+    <div class="bg-white border-b border-border px-6 py-4">
+      <div class="max-w-full mx-auto flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-black text-navy">Planning</h1>
+          <p class="text-xs text-text-muted">Arrastrá sobre las celdas para seleccionar fechas</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 bg-white rounded-xl border border-border px-2">
+            <button @click="prevWeek" class="p-1.5 rounded-lg hover:bg-surface cursor-pointer">◀</button>
+            <span class="text-sm font-bold text-navy min-w-[200px] text-center">{{ weekLabel }}</span>
+            <button @click="nextWeek" class="p-1.5 rounded-lg hover:bg-surface cursor-pointer">▶</button>
+          </div>
+          <button @click="goToday" class="px-3 py-1.5 bg-navy text-white text-xs font-bold rounded-lg cursor-pointer">Hoy</button>
+          <select v-model="viewDays" class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy bg-white cursor-pointer">
+            <option :value="7">7 días</option><option :value="14">14 días</option><option :value="30">30 días</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="px-6 py-3 flex items-center gap-3 text-[10px] font-bold flex-wrap">
+      <span class="text-text-muted uppercase">Canales:</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-teal"></span><span class="text-teal">Directa</span></span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-cyan"></span><span class="text-cyan">Booking</span></span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gold"></span><span class="text-gold">Expedia</span></span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-coral"></span><span class="text-coral">Airbnb</span></span>
+      <span class="text-text-muted">|</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gray-300"></span> Bloqueo</span>
+      <span class="text-text-muted">|</span>
+      <span class="text-text-muted uppercase">Tipos:</span>
+      <button v-for="rt in roomTypes" :key="rt.type" @click="toggleTypeFilter(rt.type)"
+        class="px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer"
+        :class="typeFilter.has(rt.type) ? 'border-navy bg-navy/10 text-navy' : 'border-border text-text-muted line-through'">
+        {{ rt.type }} ({{ rt.rooms.length }})
+      </button>
+    </div>
+
+    <!-- Grid -->
+    <div class="px-6 pb-6" @mouseup="onMouseUp" @mousemove="onMouseMove" @mouseleave="onMouseUp">
+      <div class="bg-white rounded-2xl border border-border overflow-hidden">
+        <div class="overflow-x-auto">
+          <div class="min-w-max select-none">
+            <!-- Header -->
+            <div class="flex border-b border-border bg-surface/50 sticky top-0 z-10">
+              <div class="w-56 flex-shrink-0 px-4 py-3 border-r border-border">
+                <span class="text-[10px] font-bold text-text-muted uppercase">Habitaciones</span>
+              </div>
+              <div v-for="day in visibleDays" :key="day.dateStr"
+                class="flex-1 min-w-[68px] px-2 py-3 text-center border-r border-border/50 shrink-0"
+                :class="day.isToday ? 'bg-cyan/5' : day.isWeekend ? 'bg-surface/80' : ''">
+                <div class="text-[10px] font-bold" :class="day.isToday ? 'text-cyan' : 'text-text-muted'">{{ day.dayName }}</div>
+                <div class="text-xs font-black mt-0.5" :class="day.isToday ? 'text-cyan' : 'text-navy'">{{ day.dayNum }}</div>
+                <div class="text-[9px] text-text-muted mt-0.5">{{ day.monthShort }}</div>
+              </div>
+            </div>
+
+            <!-- Room groups -->
+            <template v-for="rt in filteredRoomTypes" :key="rt.type">
+              <div class="flex border-b border-border bg-navy/5">
+                <div class="w-56 flex-shrink-0 px-4 py-2.5 border-r border-border flex items-center gap-2">
+                  <div class="w-3 h-3 rounded" :class="rt.dot"></div>
+                  <span class="text-sm font-black text-navy">{{ rt.type }}</span>
+                  <span class="text-[10px] text-text-muted">({{ rt.rooms.length }})</span>
+                </div>
+                <div class="flex-1 px-4 py-2.5 flex items-center gap-4">
+                  <span class="text-[10px] font-bold text-teal">{{ rt.occupied }} ocupadas</span>
+                  <span class="text-[10px] text-text-muted">{{ rt.rooms.length - rt.occupied }} libres</span>
+                </div>
+              </div>
+
+              <div v-for="room in rt.rooms" :key="room.id" class="flex border-b border-border/30 hover:bg-surface/30">
+                <div class="w-56 flex-shrink-0 px-4 py-3 border-r border-border flex items-center gap-3">
+                  <span class="font-bold text-sm text-navy">{{ room.number }}</span>
+                  <span class="text-[10px] text-text-muted truncate">{{ room.type }}</span>
+                  <span class="w-2 h-2 rounded-full ml-auto" :class="room.status === 'occupied' ? 'bg-coral' : 'bg-teal'"></span>
+                </div>
+
+                <div v-for="day in visibleDays" :key="day.dateStr + room.id"
+                  :data-rid="room.id" :data-date="day.dateStr"
+                  class="flex-1 min-w-[68px] h-12 border-r border-border/30 relative cursor-pointer shrink-0"
+                  :class="[
+                    day.isToday ? 'bg-cyan/[0.04]' : '',
+                    day.isWeekend ? 'bg-surface/40' : '',
+                    isInRange(room.id, day.dateStr) ? 'bg-cyan/20 ring-1 ring-cyan/50 ring-inset' : '',
+                    dragRoom?.id === room.id && !isInRange(room.id, day.dateStr) ? 'hover:bg-cyan/5' : '',
+                  ]"
+                  @mousedown.prevent="onMouseDown(room, day, $event)"
+                  @dragover.prevent
+                  @drop="onResDrop(room)">
+
+                  <!-- Reservation -->
+                  <div v-if="gRes(room.id, day.dateStr) && isResFirst(room.id, day.dateStr)"
+                    class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-grab active:cursor-grabbing hover:brightness-90"
+                    :class="gRes(room.id, day.dateStr)!.bg"
+                    :style="{ width: resSpan(room.id, day) + 'px', minWidth: '60px' }"
+                    draggable="true"
+                    @dragstart="onResDrag($event, gRes(room.id, day.dateStr)!)"
+                    @click.stop="viewResDetail(gRes(room.id, day.dateStr)!)">
+                    <span class="text-[8px] font-black text-white/80 bg-white/20 rounded px-1 py-0.5 mr-1.5 shrink-0">{{ gRes(room.id, day.dateStr)!.ch }}</span>
+                    <span class="text-[9px] font-extrabold truncate text-white">{{ gRes(room.id, day.dateStr)!.name }}</span>
+                    <span class="text-[8px] text-white/70 ml-auto shrink-0">${{ gRes(room.id, day.dateStr)!.amt }}</span>
+                  </div>
+
+                  <!-- Block -->
+                  <div v-if="gBlk(room.id, day.dateStr) && isBlkFirst(room.id, day.dateStr)"
+                    class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 bg-gray-300/80 cursor-pointer hover:bg-gray-400/80"
+                    :style="{ width: blkSpan(room.id, day) + 'px' }"
+                    @mousedown.stop @click.stop="confirmUnblock(gBlk(room.id, day.dateStr)!)">
+                    <span class="text-[9px] font-bold text-gray-600 truncate">🚫 {{ gBlk(room.id, day.dateStr)!.reason || 'Bloqueo' }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Occupancy -->
+            <div class="flex border-t-2 border-border bg-surface">
+              <div class="w-56 flex-shrink-0 px-4 py-3 border-r border-border"><span class="text-xs font-black text-navy">Ocupación</span></div>
+              <div v-for="day in visibleDays" :key="day.dateStr" class="flex-1 min-w-[68px] px-2 py-3 text-center border-r border-border/50">
+                <span class="text-xs font-black" :class="dayOcc(day.dateStr) > 80 ? 'text-coral' : dayOcc(day.dateStr) > 50 ? 'text-gold' : 'text-teal'">{{ dayOcc(day.dateStr) }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Popup (MisterPlan style: appears next to cell) -->
+    <Teleport to="body">
+      <div v-if="popup.show" class="fixed z-[100] bg-white rounded-xl border border-border shadow-xl py-1 min-w-[190px]"
+        :style="{ left: popup.x + 'px', top: popup.y + 'px' }">
+        <div class="px-3 py-2 text-[10px] font-bold text-text-muted uppercase border-b border-border flex items-center justify-between">
+          <span>{{ popup.room?.number }} · {{ popup.fromDate }}{{ popup.fromDate !== popup.toDate ? ' → ' + popup.toDate : '' }}
+            <span v-if="popup.nights > 0" class="text-navy ml-1">({{ popup.nights }}n)</span>
+          </span>
+          <button @click="closePopup" class="text-text-muted hover:text-coral font-bold text-sm cursor-pointer ml-3">✕</button>
+        </div>
+        <button v-if="!popup.res && !popup.blk" @click="popupNewRes" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
+          <span class="text-teal text-base">+</span> Nueva Reserva
+        </button>
+        <button v-if="!popup.res && !popup.blk" @click="popupBlock" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
+          <span class="text-coral">🚫</span> Bloquear
+        </button>
+        <button v-if="!popup.res && !popup.blk" @click="popupQuote" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
+          <span class="text-gold">📄</span> Cotización
+        </button>
+        <button v-if="popup.res" @click="popupViewRes" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
+          <span>📋</span> Ver Reserva
+        </button>
+        <button v-if="popup.blk" @click="popupUnblock" class="w-full text-left px-4 py-2.5 text-sm font-bold text-coral hover:bg-surface cursor-pointer flex items-center gap-2">
+          <span>🗑️</span> Eliminar Bloqueo
+        </button>
+      </div>
+    </Teleport>
+
+    <!-- Block dialog -->
+    <Teleport to="body">
+      <div v-if="blockDlg.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="blockDlg.show = false">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6">
+          <h3 class="text-lg font-black text-navy mb-4">🚫 Bloquear</h3>
+          <div class="space-y-4">
+            <div class="bg-surface rounded-xl p-3 text-sm font-bold text-navy">{{ blockDlg.room }} · {{ blockDlg.from }} → {{ blockDlg.to }}</div>
+            <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Motivo</label>
+              <select v-model="blockDlg.reason" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer mb-2">
+                <option value="">Personalizado...</option><option value="Mantenimiento">Mantenimiento</option><option value="Reforma">Reforma</option><option value="Inventario">Inventario</option><option value="Reservado">Reservado</option>
+              </select>
+              <input v-if="blockDlg.reason === '' || blockDlg.reason === 'Personalizado...'" v-model="blockDlg.customReason" type="text" placeholder="Escribe el motivo..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" />
+            </div>
+          </div>
+          <div class="flex gap-3 mt-6">
+            <button @click="blockDlg.show = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
+            <button @click="saveBlock" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer">Bloquear</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Unblock confirm -->
+    <Teleport to="body">
+      <div v-if="unblock.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="unblock.show = false">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
+          <div class="text-3xl mb-3">🚫</div>
+          <h3 class="text-lg font-black text-navy mb-2">¿Desbloquear?</h3>
+          <p class="text-sm text-text-secondary">{{ unblock.room }} — {{ unblock.reason }}</p>
+          <p class="text-xs text-text-muted">{{ unblock.from }} → {{ unblock.to }}</p>
+          <div class="flex gap-3 mt-6">
+            <button @click="unblock.show = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
+            <button @click="doUnblock" class="flex-1 py-2.5 bg-coral text-white rounded-xl text-sm font-bold cursor-pointer">Desbloquear</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- New reservation -->
+    <Teleport to="body">
+      <div v-if="newRes.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="newRes.show = false">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6">
+          <h3 class="text-lg font-black text-navy mb-4">Nueva Reserva</h3>
+          <div class="space-y-4">
+            <div class="bg-surface rounded-xl p-3 text-sm font-bold text-navy">{{ newRes.room?.number }} · {{ newRes.cin }} → {{ newRes.cout }} ({{ newResNights }}n)</div>
+            <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Huésped *</label><input v-model="newRes.name" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Canal</label>
+                <select v-model="newRes.ch" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer">
+                  <option value="direct">Directa</option><option value="booking">Booking.com</option><option value="expedia">Expedia</option><option value="airbnb">Airbnb</option><option value="google">Google</option><option value="whatsapp">WhatsApp</option>
+                </select>
+              </div>
+              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Total $</label><input v-model.number="newRes.amt" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy" /></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Adultos</label><input v-model.number="newRes.adults" type="number" min="1" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Niños</label><input v-model.number="newRes.kids" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+            </div>
+          </div>
+          <div class="flex gap-3 mt-6">
+            <button @click="newRes.show = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
+            <button @click="saveNewRes" class="flex-1 py-2.5 bg-teal text-white rounded-xl text-sm font-bold cursor-pointer">Crear</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Quote / Cotización Modal -->
+    <Teleport to="body">
+      <div v-if="quote.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="quote.show = false">
+        <div class="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between mb-4 no-print">
+            <h3 class="text-lg font-black text-navy">📄 Cotización</h3>
+            <button @click="quote.show = false" class="text-text-muted hover:text-coral font-bold cursor-pointer">✕</button>
+          </div>
+
+          <!-- PRINT VIEW -->
+          <div class="print-only">
+            <div class="text-center mb-6">
+              <h2 class="text-2xl font-black" style="color:#1a2b4c">{{ quote.hotel }}</h2>
+              <p class="text-sm" style="color:#6b7280">{{ quote.hotelAddress }}</p>
+              <p class="text-sm" style="color:#6b7280">{{ quote.hotelPhone }} · {{ quote.hotelEmail }}</p>
+              <div style="border-bottom:2px solid #1a2b4c;width:120px;margin:16px auto 0"></div>
+              <h3 class="text-lg font-black mt-4" style="color:#1a2b4c">COTIZACIÓN / PROFORMA</h3>
+              <p class="text-xs" style="color:#6b7280">Nº {{ quote.id }} · {{ quote.today }}</p>
+            </div>
+            <div class="mb-4">
+              <h4 class="text-xs font-bold uppercase mb-2" style="color:#1a2b4c">Datos del Cliente</h4>
+              <p class="text-sm font-bold" style="color:#1a2b4c">{{ quote.guest || '—' }}</p>
+              <p class="text-xs" style="color:#6b7280" v-if="quote.email || quote.phone">{{ quote.email }}{{ quote.email && quote.phone ? ' · ' : '' }}{{ quote.phone }}</p>
+            </div>
+            <table style="width:100%;font-size:12px;margin-bottom:16px;border-collapse:collapse">
+              <thead><tr style="border-bottom:2px solid #1a2b4c"><th style="text-align:left;padding:8px 0;font-size:10px;text-transform:uppercase;color:#6b7280">Habitación</th><th style="text-align:center;padding:8px 0;font-size:10px;text-transform:uppercase;color:#6b7280">Cant.</th><th style="text-align:right;padding:8px 0;font-size:10px;text-transform:uppercase;color:#6b7280">Precio/n</th><th style="text-align:right;padding:8px 0;font-size:10px;text-transform:uppercase;color:#6b7280">Subtotal</th></tr></thead>
+              <tbody>
+                <tr v-for="(item, i) in quote.rooms" :key="i" style="border-bottom:1px solid #e5e7eb">
+                  <td style="padding:8px 0;font-weight:700;color:#1a2b4c">{{ item.type }}</td><td style="padding:8px 0;text-align:center">{{ item.qty }}</td><td style="padding:8px 0;text-align:right">${{ item.price }}</td><td style="padding:8px 0;text-align:right;font-weight:700">${{ item.qty * item.price * quote.nights }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px">
+              <div><span style="color:#6b7280">Check-in:</span> <strong>{{ quote.checkIn }}</strong></div>
+              <div><span style="color:#6b7280">Check-out:</span> <strong>{{ quote.checkOut }}</strong></div>
+              <div><span style="color:#6b7280">Noches:</span> <strong>{{ quote.nights }}</strong></div>
+              <div><span style="color:#6b7280">Huéspedes:</span> <strong>{{ quote.adults }} adultos, {{ quote.kids }} niños</strong></div>
+            </div>
+            <div style="border-top:2px solid #1a2b4c;padding-top:12px;font-size:12px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Subtotal</span><strong>${{ quoteSubtotal }}</strong></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>{{ quote.taxName }} ({{ quote.taxRate }}%)</span><strong>${{ Math.round(quoteSubtotal * quote.taxRate / 100) }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:900;border-top:2px solid #1a2b4c;padding-top:8px;margin-top:8px"><span>TOTAL</span><span>${{ quoteSubtotal + Math.round(quoteSubtotal * quote.taxRate / 100) }}</span></div>
+            </div>
+            <div v-if="quote.notes" style="margin-top:16px;font-size:10px;color:#6b7280;border-top:1px solid #e5e7eb;padding-top:12px">
+              <p style="font-weight:700;color:#1a2b4c;margin-bottom:4px">Notas:</p>
+              <p>{{ quote.notes }}</p>
+            </div>
+            <p style="font-size:9px;color:#9ca3af;text-align:center;margin-top:24px">Documento informativo · No válido como factura fiscal</p>
+          </div>
+
+          <!-- EDIT FORM -->
+          <div class="screen-only">
+          <!-- Datos del Cliente -->
+          <div class="mb-4">
+            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Datos del Cliente</label>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="col-span-2">
+                <input v-model="quote.guest" type="text" placeholder="Nombre completo" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" />
+              </div>
+              <div>
+                <input v-model="quote.email" type="email" placeholder="Email" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" />
+              </div>
+              <div>
+                <input v-model="quote.phone" type="tel" placeholder="Teléfono" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" />
+              </div>
+            </div>
+          </div>
+          <!-- Detalle de Reserva -->
+          <div class="mb-4">
+            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Habitaciones</label>
+            <div class="bg-surface rounded-xl p-4 space-y-2 text-sm">
+              <div v-for="(item, i) in quote.rooms" :key="i" class="flex items-center gap-2">
+                <select v-model="item.type" @change="onQuoteRoomTypeChange(i)" class="flex-1 px-3 py-2 rounded-lg border border-border text-xs cursor-pointer">
+                  <option v-for="rt in quoteRoomTypes" :key="rt" :value="rt">{{ rt }}</option>
+                </select>
+                <div class="flex items-center gap-1">
+                  <span class="text-xs text-text-muted">×</span>
+                  <input v-model.number="item.qty" type="number" min="1" max="20" class="w-12 px-2 py-2 rounded-lg border border-border text-xs font-bold text-navy text-center" />
+                </div>
+                <div class="flex items-center gap-1">
+                  <span class="text-xs text-text-muted">$</span>
+                  <input v-model.number="item.price" type="number" min="0" class="w-20 px-2 py-2 rounded-lg border border-border text-xs font-bold text-navy text-right" />
+                  <span class="text-[10px] text-text-muted">/n</span>
+                </div>
+                <button @click="quote.rooms.splice(i, 1)" v-if="quote.rooms.length > 1" class="text-coral text-xs font-bold cursor-pointer hover:underline">✕</button>
+              </div>
+              <button @click="addQuoteRoom"
+                class="text-xs font-bold text-teal hover:underline cursor-pointer">+ Agregar habitación</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
+              <div class="bg-surface rounded-xl p-3 flex justify-between"><span class="text-text-secondary">Check-in</span><span class="font-bold">{{ quote.checkIn }}</span></div>
+              <div class="bg-surface rounded-xl p-3 flex justify-between"><span class="text-text-secondary">Check-out</span><span class="font-bold">{{ quote.checkOut }}</span></div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-2 text-sm">
+              <div class="bg-surface rounded-xl p-3 flex justify-between"><span class="text-text-secondary">Noches</span><span class="font-bold">{{ quote.nights }}</span></div>
+              <div class="bg-surface rounded-xl p-3 flex justify-between items-center"><span class="text-text-secondary">Adultos</span><input v-model.number="quote.adults" type="number" min="1" max="10" class="w-12 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy text-right" /></div>
+              <div class="bg-surface rounded-xl p-3 flex justify-between items-center"><span class="text-text-secondary">Niños</span><input v-model.number="quote.kids" type="number" min="0" max="10" class="w-12 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy text-right" /></div>
+            </div>
+          </div>
+          <!-- Precios -->
+          <div class="mb-4">
+            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Precios</label>
+            <div class="bg-surface rounded-xl p-4 space-y-2 text-sm">
+              <div v-for="(item, i) in quote.rooms" :key="'p'+i" class="flex justify-between">
+                <span class="text-text-secondary">{{ item.type }} ×{{ item.qty }} ({{ quote.nights }}n × ${{ item.price }})</span>
+                <span class="font-bold">${{ item.qty * item.price * quote.nights }}</span>
+              </div>
+              <div class="flex justify-between border-t border-border pt-2">
+                <span class="text-text-secondary">Subtotal</span>
+                <span class="font-bold">${{ quoteSubtotal }}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-text-secondary">Impuesto</span>
+                <div class="flex items-center gap-1">
+                  <input v-model="quote.taxName" type="text" class="w-12 px-2 py-1 rounded-lg border border-border text-[10px] font-bold text-navy" />
+                  <input v-model.number="quote.taxRate" type="number" min="0" max="100" class="w-12 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy text-right" />
+                  <span class="text-xs">%</span>
+                </div>
+              </div>
+              <div class="flex justify-between"><span class="text-text-secondary">Impuesto calculado</span><span class="font-bold">${{ Math.round(quoteSubtotal * quote.taxRate / 100) }}</span></div>
+              <div class="border-t border-border pt-2 flex justify-between">
+                <span class="font-extrabold text-navy">Total</span>
+                <span class="font-extrabold text-navy text-lg">${{ quoteSubtotal + Math.round(quoteSubtotal * quote.taxRate / 100) }}</span>
+              </div>
+            </div>
+          </div>
+          <!-- Notas -->
+          <div class="mb-4">
+            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Notas</label>
+            <textarea v-model="quote.notes" rows="2" placeholder="Condiciones, políticas de cancelación..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm resize-none"></textarea>
+          </div>
+          </div><!-- end screen-only -->
+          <div class="flex gap-3">
+            <button @click="quote.show = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer no-print">Cerrar</button>
+            <button @click="printQuote" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer no-print">🖨️ Imprimir</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Reservation detail -->
+    <Teleport to="body">
+      <div v-if="detail.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="detail.show = false">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6">
+          <h3 class="text-lg font-black text-navy mb-4">{{ detail.name }}</h3>
+          <div class="flex gap-2 mb-3">
+            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.chBadge">{{ detail.chLabel }}</span>
+            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.stBadge">{{ detail.stLabel }}</span>
+          </div>
+          <div class="bg-surface rounded-xl p-3 space-y-2 text-xs">
+            <div class="flex justify-between"><span class="text-text-muted">Hab.</span><span class="font-bold text-navy">{{ detail.room }}</span></div>
+            <div class="flex justify-between"><span class="text-text-muted">Check-in</span><span class="font-bold text-navy">{{ detail.cin }}</span></div>
+            <div class="flex justify-between"><span class="text-text-muted">Check-out</span><span class="font-bold text-navy">{{ detail.cout }}</span></div>
+            <div class="flex justify-between"><span class="text-text-muted">Total</span><span class="font-bold text-teal">${{ detail.amt }}</span></div>
+          </div>
+          <button @click="detail.show = false" class="w-full mt-4 py-2.5 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer">Cerrar</button>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { OperationsService } from '@/services/Operations.service'
+import { ReservationService } from '@/services/Reservation.service'
+import { HotelService } from '@/services/Hotel.service'
+import { useAuthStore } from '@/stores/auth.store'
+import { useToast } from '@/composables/useToast'
+
+const auth = useAuthStore()
+const toast = useToast()
+const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
+
+type DI = { dateStr: string; dayName: string; dayNum: number; monthShort: string; isToday: boolean; isWeekend: boolean; date: Date }
+
+const viewDays = ref(14)
+const weekOffset = ref(0)
+const planRooms = ref<any[]>([])
+const planReservas = ref<any[]>([])
+const planBlocks = ref<any[]>([])
+const typeFilter = ref<Set<string>>(new Set())
+const hotelInfo = ref<{ name: string; address: string; phone: string; email: string }>({ name: '', address: '', phone: '', email: '' })
+
+// Drag state
+const isDragging = ref(false)
+const dragRoom = ref<any>(null)
+const dragStart = ref('')
+const dragEnd = ref('')
+let dragStarted = false
+
+// Last selection (persists until dismissed)
+const lastSel = ref<{ room: any; from: string; to: string } | null>(null)
+
+// Popups
+const popup = ref<{ show: boolean; x: number; y: number; room: any; fromDate: string; toDate: string; nights: number; res: any; blk: any }>({ show: false, x: 0, y: 0, room: null, fromDate: '', toDate: '', nights: 0, res: null, blk: null })
+const blockDlg = ref<{ show: boolean; room: string; from: string; to: string; reason: string; customReason: string; rid: string }>({ show: false, room: '', from: '', to: '', reason: '', customReason: '', rid: '' })
+const unblock = ref<{ show: boolean; id: string; room: string; reason: string; from: string; to: string }>({ show: false, id: '', room: '', reason: '', from: '', to: '' })
+const detail = ref<{ show: boolean; name: string; room: string; cin: string; cout: string; amt: number; chLabel: string; chBadge: string; stLabel: string; stBadge: string }>({ show: false, name: '', room: '', cin: '', cout: '', amt: 0, chLabel: '', chBadge: '', stLabel: '', stBadge: '' })
+const newRes = ref<{ show: boolean; room: any; cin: string; cout: string; name: string; adults: number; kids: number; amt: number; ch: string }>({ show: false, room: null, cin: '', cout: '', name: '', adults: 2, kids: 0, amt: 0, ch: 'direct' })
+const quote = ref<{ show: boolean; id: string; today: string; hotel: string; hotelAddress: string; hotelPhone: string; hotelEmail: string; rooms: { type: string; qty: number; price: number }[]; checkIn: string; checkOut: string; nights: number; guest: string; email: string; phone: string; adults: number; kids: number; taxName: string; taxRate: number; notes: string }>({ show: false, id: '', today: '', hotel: '', hotelAddress: '', hotelPhone: '', hotelEmail: '', rooms: [{ type: 'Standard', qty: 1, price: 100 }], checkIn: '', checkOut: '', nights: 0, guest: '', email: '', phone: '', adults: 1, kids: 0, taxName: 'ITBIS', taxRate: 18, notes: '' })
+const quoteSubtotal = computed(() => quote.value.rooms.reduce((s, r) => s + r.qty * r.price * quote.value.nights, 0))
+const quoteRoomTypes = computed(() => {
+  const types = new Set<string>()
+  for (const r of planRooms.value) types.add((r.type || 'double').charAt(0).toUpperCase() + (r.type || 'double').slice(1))
+  if (types.size === 0) return ['Standard', 'Double', 'Suite', 'Family']
+  return Array.from(types)
+})
+
+const newResNights = computed(() => {
+  if (!newRes.value.cin || !newRes.value.cout) return 0
+  return Math.max(1, Math.round((new Date(newRes.value.cout).getTime() - new Date(newRes.value.cin).getTime()) / 86400000))
+})
+
+// Channels
+const CH: Record<string, any> = {
+  direct: { l: 'Directa', bg: 'bg-teal', b: 'bg-teal/10 text-teal' }, directa: { l: 'Directa', bg: 'bg-teal', b: 'bg-teal/10 text-teal' },
+  booking: { l: 'Booking', bg: 'bg-cyan', b: 'bg-cyan/10 text-cyan' }, 'booking.com': { l: 'Booking', bg: 'bg-cyan', b: 'bg-cyan/10 text-cyan' },
+  expedia: { l: 'Expedia', bg: 'bg-gold', b: 'bg-gold/10 text-gold' }, airbnb: { l: 'Airbnb', bg: 'bg-coral', b: 'bg-coral/10 text-coral' },
+  google: { l: 'Google', bg: 'bg-blue-500', b: 'bg-blue-100 text-blue-700' },
+  whatsapp: { l: 'WhatsApp', bg: 'bg-emerald-500', b: 'bg-emerald-100 text-emerald-700' },
+  phone: { l: 'Teléfono', bg: 'bg-gray-500', b: 'bg-gray-100 text-gray-600' },
+}
+const ST: Record<string, any> = {
+  pending: { l: 'Pendiente', b: 'bg-gold/10 text-gold' }, confirmed: { l: 'Confirmada', b: 'bg-teal/10 text-teal' },
+  checked_in: { l: 'Check-in', b: 'bg-cyan/10 text-cyan' }, checked_out: { l: 'Check-out', b: 'bg-gray-100 text-gray-500' },
+  cancelled: { l: 'Cancelada', b: 'bg-coral/10 text-coral' },
+}
+const detectedChannels = computed(() => {
+  const s = new Set<string>(); const l: any[] = []
+  for (const r of planReservas.value) { const k = (r.channel || 'direct').toLowerCase(); if (!s.has(k)) { s.add(k); const c = CH[k] || { l: r.channel, bg: 'bg-gray-400' }; l.push({ ...c, key: k, text: c.bg.replace('bg-', 'text-') }) } }
+  return l
+})
+
+// Calendar
+const baseDate = new Date()
+const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+function fDate(d: Date) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+const visibleDays = computed<DI[]>(() => {
+  const r: DI[] = []; const s = new Date(baseDate); s.setDate(s.getDate() + weekOffset.value * 7); const ts = fDate(new Date())
+  for (let i = 0; i < viewDays.value; i++) { const d = new Date(s); d.setDate(d.getDate() + i); const ds = fDate(d); const dw = d.getDay(); r.push({ dateStr: ds, dayName: days[dw], dayNum: d.getDate(), monthShort: months[d.getMonth()], isToday: ds === ts, isWeekend: dw === 0 || dw === 6, date: d }) }
+  return r
+})
+const weekLabel = computed(() => { if (!visibleDays.value.length) return ''; const f = visibleDays.value[0], l = visibleDays.value[visibleDays.value.length - 1]; return `${f.dayNum} ${f.monthShort} — ${l.dayNum} ${l.monthShort}, ${l.date.getFullYear()}` })
+
+// Rooms
+const DOT: Record<string, string> = { single: 'bg-teal', simple: 'bg-teal', double: 'bg-cyan', doble: 'bg-cyan', suite: 'bg-gold', family: 'bg-purple', familiar: 'bg-purple' }
+const roomTypes = computed(() => {
+  const g: Record<string, any[]> = {}
+  for (const r of planRooms.value) { const t = r.type ?? 'double'; if (!g[t]) g[t] = []; g[t].push({ id: r.id, number: r.number, type: r.type, status: r.status }) }
+  return Object.entries(g).map(([t, rooms]) => ({ type: t.charAt(0).toUpperCase() + t.slice(1), dot: DOT[t.toLowerCase()] ?? 'bg-cyan', occupied: rooms.filter((r: any) => r.status === 'occupied').length, rooms }))
+})
+const filteredRoomTypes = computed(() => {
+  if (typeFilter.value.size === 0) return roomTypes.value
+  return roomTypes.value.filter(rt => typeFilter.value.has(rt.type))
+})
+function toggleTypeFilter(type: string) {
+  const s = new Set(typeFilter.value)
+  s.has(type) ? s.delete(type) : s.add(type)
+  typeFilter.value = s
+}
+
+// Data access
+function gRes(rid: any, ds: string) {
+  const r = planReservas.value.find((b: any) => String(b.roomId) === String(rid) && ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10))
+  if (!r) return null
+  const ch = (r.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: r.channel || 'Directa', bg: 'bg-gray-400' }
+  return { id: r.id, name: r.guestName || 'Guest', ch: cc.l, bg: cc.bg, amt: r.totalAmount || 0 }
+}
+function isResFirst(rid: any, ds: string) {
+  // Find the reservation for this room and date
+  const res = gRes(rid, ds)
+  if (!res) return false
+  // The block renders on the earliest VISIBLE date that falls within the reservation
+  const orig = planReservas.value.find((b: any) => b.id === res.id)
+  if (!orig) return false
+  const ci = String(orig.checkIn || '').slice(0, 10)
+  const firstVisible = visibleDays.value[0]?.dateStr
+  // Use the later of checkIn date and first visible date
+  const renderDate = ci > (firstVisible || '') ? ci : (firstVisible || ci)
+  return ds === renderDate
+}
+function resSpan(rid: any, day: DI) {
+  const res = gRes(rid, day.dateStr)
+  if (!res) return 68
+  const orig = planReservas.value.find((b: any) => b.id === res.id)
+  if (!orig) return 68
+  const ci = String(orig.checkIn || '').slice(0, 10)
+  const co = String(orig.checkOut || '').slice(0, 10)
+  const firstVisible = visibleDays.value[0]?.dateStr
+  const startDate = ci > (firstVisible || '') ? ci : (firstVisible || ci)
+  const si = visibleDays.value.findIndex(d => d.dateStr === startDate)
+  const ei = visibleDays.value.findIndex(d => d.dateStr === co)
+  return Math.max(1, (ei >= 0 ? ei : viewDays.value) - (si >= 0 ? si : 0)) * 68
+}
+function gBlk(rid: any, ds: string) { return planBlocks.value.find((b: any) => String(b.roomId) === String(rid) && ds >= b.startDate && ds <= b.endDate) || null }
+function isBlkFirst(rid: any, ds: string) { return planBlocks.value.some((b: any) => String(b.roomId) === String(rid) && b.startDate === ds) }
+function blkSpan(rid: any, day: DI) {
+  const b = planBlocks.value.find((b: any) => String(b.roomId) === String(rid) && b.startDate === day.dateStr)
+  if (!b) return 68; const si = visibleDays.value.findIndex(d => d.dateStr === b.startDate); const ei = visibleDays.value.findIndex(d => d.dateStr === b.endDate)
+  return Math.max(1, (ei >= 0 ? ei : viewDays.value) - (si >= 0 ? si : 0) + 1) * 68
+}
+function dayOcc(ds: string) {
+  const n = planRooms.value.length; if (!n) return 0; const o = new Set<string>()
+  planReservas.value.forEach((b: any) => { if (ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10)) o.add(String(b.roomId)) })
+  planBlocks.value.forEach((b: any) => { if (ds >= b.startDate && ds <= b.endDate) o.add(String(b.roomId)) })
+  return Math.round((o.size / n) * 100)
+}
+
+// Drag range check
+function isInRange(rid: string, ds: string) {
+  // During active drag
+  if (isDragging.value && String(dragRoom.value?.id) === rid) {
+    const s = dragStart.value; const e = dragEnd.value
+    return ds >= (s < e ? s : e) && ds <= (s < e ? e : s)
+  }
+  // Persisted selection
+  if (lastSel.value && String(lastSel.value.room?.id) === rid) {
+    const s = lastSel.value.from; const e = lastSel.value.to
+    return ds >= (s < e ? s : e) && ds <= (s < e ? e : s)
+  }
+  return false
+}
+
+// Mouse events
+function onMouseDown(room: any, day: DI, e: MouseEvent) {
+  popup.value.show = false
+  lastSel.value = null
+  const res = gRes(room.id, day.dateStr)
+  const blk = gBlk(room.id, day.dateStr)
+  if (res || blk) { showPopup(e, room, day, res, blk); return }
+
+  isDragging.value = true
+  dragStarted = false
+  dragRoom.value = room
+  dragStart.value = day.dateStr
+  dragEnd.value = day.dateStr
+}
+
+function onMouseMove(e: MouseEvent) {
+  if (!isDragging.value) return
+  const el = document.elementFromPoint(e.clientX, e.clientY)
+  if (!el) return
+  const cell = (el as HTMLElement).closest('[data-rid]') as HTMLElement | null
+  if (!cell) return
+  const rid = cell.dataset.rid; const date = cell.dataset.date
+  if (!rid || !date || String(rid) !== String(dragRoom.value?.id)) return
+
+  if (date !== dragStart.value) dragStarted = true
+  dragEnd.value = date
+}
+
+function onMouseUp(ev: MouseEvent) {
+  if (!isDragging.value) return
+  isDragging.value = false
+
+  const room = dragRoom.value
+  const s = dragStart.value; const end = dragEnd.value
+  const [from, to] = s <= end ? [s, end] : [end, s]
+
+  dragRoom.value = null; dragStart.value = ''; dragEnd.value = ''
+
+  if (room && (dragStarted || from !== to)) {
+    // Keep selection visible
+    lastSel.value = { room, from, to }
+    const nights = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000))
+    popup.value = { show: true, x: Math.min(ev.clientX, window.innerWidth - 210), y: Math.min(ev.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: to, nights, res: null, blk: null }
+  } else if (room && !dragStarted) {
+    lastSel.value = { room, from, to }
+    popup.value = { show: true, x: Math.min(ev.clientX, window.innerWidth - 210), y: Math.min(ev.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: from, nights: 1, res: null, blk: null }
+  }
+}
+
+function showPopup(e: MouseEvent, room: any, day: DI, res: any, blk: any) {
+  lastSel.value = null
+  const from = day.dateStr; const to = day.dateStr
+  popup.value = { show: true, x: Math.min(e.clientX, window.innerWidth - 210), y: Math.min(e.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: to, nights: 1, res, blk }
+}
+
+function viewResDetail(rb: any) {
+  const orig = planReservas.value.find((b: any) => b.id === rb.id)
+  if (!orig) return
+  const ch = (orig.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: orig.channel, b: 'bg-gray-100 text-gray-500' }
+  const st = (orig.status || 'pending').toLowerCase(); const sc = ST[st] || { l: orig.status, b: 'bg-gold/10 text-gold' }
+  detail.value = { show: true, name: orig.guestName || 'Guest', room: orig.roomNumber || '?', cin: String(orig.checkIn||'').slice(0,10), cout: String(orig.checkOut||'').slice(0,10), amt: orig.totalAmount || 0, chLabel: cc.l, chBadge: cc.b, stLabel: sc.l, stBadge: sc.b }
+}
+let draggedResId: string | null = null
+function onResDrag(e: DragEvent, rb: any) { draggedResId = rb.id; e.dataTransfer!.effectAllowed = 'move' }
+async function onResDrop(room: any) {
+  if (!draggedResId) return
+  const r = planReservas.value.find((x: any) => x.id === draggedResId)
+  if (!r || String(r.roomId) === String(room.id)) { draggedResId = null; return }
+  try { await ReservationService.update(draggedResId, { roomId: room.id } as any); r.roomId = room.id; r.roomNumber = room.number; toast.success(`Movida a Hab. ${room.number}`) }
+  catch { toast.error('Error') }
+  draggedResId = null
+}
+
+// Popup actions
+function closePopup() { popup.value.show = false; lastSel.value = null }
+function popupNewRes() {
+  const p = popup.value
+  lastSel.value = null
+  newRes.value = { show: true, room: p.room, cin: p.fromDate, cout: p.toDate, name: '', adults: 2, kids: 0, amt: 0, ch: 'direct' }
+  popup.value.show = false
+}
+function popupQuote() {
+  const p = popup.value
+  lastSel.value = null
+  const room = p.room
+  const roomData = planRooms.value.find((r: any) => r.id === room?.id)
+  const roomType = (roomData?.type || 'Standard').charAt(0).toUpperCase() + (roomData?.type || 'Standard').slice(1)
+  const today = new Date().toLocaleDateString('es-DO')
+  const id = Date.now().toString().slice(-6)
+  quote.value = {
+    show: true, id, today,
+    hotel: hotelInfo.value.name || 'ManagerHotel',
+    hotelAddress: hotelInfo.value.address,
+    hotelPhone: hotelInfo.value.phone,
+    hotelEmail: hotelInfo.value.email,
+    rooms: [{ type: roomType, qty: 1, price: roomData?.basePrice || 100 }],
+    checkIn: p.fromDate, checkOut: p.toDate, nights: p.nights,
+    guest: '', email: '', phone: '', adults: 1, kids: 0,
+    taxName: 'ITBIS', taxRate: 18, notes: '',
+  }
+  popup.value.show = false
+}
+function popupBlock() {
+  const p = popup.value
+  lastSel.value = null
+  blockDlg.value = { show: true, room: `${p.room?.number} - ${p.room?.type}`, from: p.fromDate, to: p.toDate, reason: '', customReason: '', rid: p.room?.id }
+  popup.value.show = false
+}
+function printQuote() { window.print() }
+function onQuoteRoomTypeChange(i: number) {
+  const item = quote.value.rooms[i]
+  if (!item) return
+  const typeLower = item.type.toLowerCase()
+  const match = planRooms.value.find((r: any) => (r.type || '').toLowerCase() === typeLower)
+  if (match?.basePrice) item.price = match.basePrice
+}
+function addQuoteRoom() {
+  const type = quoteRoomTypes.value[0] || 'Standard'
+  const typeLower = type.toLowerCase()
+  const match = planRooms.value.find((r: any) => (r.type || '').toLowerCase() === typeLower)
+  const price = match?.basePrice || 100
+  quote.value.rooms.push({ type, qty: 1, price })
+}
+function popupViewRes() {
+  lastSel.value = null
+  const r = popup.value.res; if (!r) return
+  const orig = planReservas.value.find((b: any) => b.id === r.id)
+  if (!orig) return
+  const ch = (orig.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: orig.channel, b: 'bg-gray-100 text-gray-500' }
+  const st = (orig.status || 'pending').toLowerCase(); const sc = ST[st] || { l: orig.status, b: 'bg-gold/10 text-gold' }
+  detail.value = { show: true, name: orig.guestName || 'Guest', room: orig.roomNumber || '?', cin: String(orig.checkIn||'').slice(0,10), cout: String(orig.checkOut||'').slice(0,10), amt: orig.totalAmount || 0, chLabel: cc.l, chBadge: cc.b, stLabel: sc.l, stBadge: sc.b }
+  popup.value.show = false
+}
+function popupUnblock() { const b = popup.value.blk; if (b) { lastSel.value = null; popup.value.show = false; confirmUnblock(b) } }
+
+// Block / Unblock
+async function saveBlock() {
+  const { from, to, reason, customReason, rid } = blockDlg.value
+  if (!rid || !from || !to) return
+  const finalReason = reason || customReason || ''
+  try { const r = await HotelService.createBlock({ roomIds: [rid], reason: finalReason, startDate: from, endDate: to }); if ((r as any).data) planBlocks.value.push(...(r as any).data); toast.success('Bloqueado'); blockDlg.value.show = false } catch { toast.error('Error') }
+}
+function confirmUnblock(b: any) {
+  const room = planRooms.value.find((r: any) => r.id === b.roomId)
+  unblock.value = { show: true, id: b.id, room: room?.number || '?', reason: b.reason, from: b.startDate, to: b.endDate }
+}
+async function doUnblock() {
+  try { await HotelService.deleteBlock(unblock.value.id); planBlocks.value = planBlocks.value.filter((b: any) => b.id !== unblock.value.id); toast.success('Desbloqueado') } catch { toast.error('Error') }
+  unblock.value.show = false
+}
+
+// New reservation
+async function saveNewRes() {
+  const n = newRes.value
+  if (!n.room || !n.name) { toast.error('Falta huésped'); return }
+  try {
+    const r = await ReservationService.create({ hotelId: hid.value || planRooms.value[0]?.hotelId, roomId: n.room.id, checkIn: n.cin, checkOut: n.cout, totalAmount: n.amt, channel: n.ch, status: 'confirmed' })
+    planReservas.value.push({ id: r.id, roomId: n.room.id, guestName: n.name, checkIn: n.cin, checkOut: n.cout, totalAmount: n.amt, status: 'confirmed', channel: n.ch, adults: n.adults, children: n.kids, roomNumber: n.room.number, guestEmail: '' })
+    toast.success('Reserva creada')
+    newRes.value.show = false
+  } catch { toast.error('Error') }
+}
+
+// Load
+onMounted(async () => {
+  try { const d = await OperationsService.planning(hid.value); planRooms.value = d.rooms ?? []; planReservas.value = d.reservas ?? [] } catch {}
+  try { const b = await HotelService.blocks(); planBlocks.value = (b.data ?? []) as any[] } catch {}
+  try {
+    const s = await HotelService.settings(hid.value)
+    const h = (s as any).hotel || {}
+    hotelInfo.value = { name: h.nombre || h.name || auth.user?.hotelName || '', address: h.address || '', phone: h.telefono || h.phone || '', email: h.email || '' }
+  } catch {}
+})
+function prevWeek() { weekOffset.value--; lastSel.value = null; popup.value.show = false }
+function nextWeek() { weekOffset.value++; lastSel.value = null; popup.value.show = false }
+function goToday() { weekOffset.value = 0; lastSel.value = null; popup.value.show = false }
+</script>
+
+<style>
+@media screen { .print-only { display: none !important; } }
+@media print { .no-print, .screen-only { display: none !important; } .print-only { display: block !important; } body { background: white !important; } }
+</style>

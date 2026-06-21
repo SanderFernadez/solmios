@@ -1,0 +1,16 @@
+# Secrets — NUNCA commitear
+.env
+.env.*
+!.env.example
+
+# Base de datos con datos reales
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# Node/Bun
+node_modules/

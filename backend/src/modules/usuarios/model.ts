@@ -1,0 +1,23 @@
+// usuarios/model.ts — Schema de base de datos
+import type { ModelDefinition, ORM } from 'arckode-framework'
+
+export const UsuariosModel: ModelDefinition = {
+  table: 'users',
+  fields: {
+    id: { type: 'string', required: true },
+    name: { type: 'string', required: true },
+    email: { type: 'string', required: true, unique: true, indexed: true },
+    password: { type: 'string', required: true },
+    role: { type: 'string', default: "hotel_admin" },
+    hotelId: { type: 'string', indexed: true },
+    active: { type: 'number', default: 1 },
+    token: { type: 'string' },
+    avatar: { type: 'string' },
+    phone: { type: 'string' },
+  },
+  timestamps: true,
+}
+
+export function registerUsuariosModels(orm: ORM): void {
+  orm.define('Users', UsuariosModel)
+}
