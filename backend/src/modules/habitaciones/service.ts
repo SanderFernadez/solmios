@@ -42,7 +42,7 @@ export class HabitacionesService {
     const offset = (page - 1) * limit
 
     // Cache check
-    const cacheKey = `habitaciones:list:${currentUser.hotelId || 'all'}:${JSON.stringify(query)}`
+    const cacheKey = `habitaciones:list:${currentUser.hotelId || 'all'}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as HabitacionesPaginated
 
