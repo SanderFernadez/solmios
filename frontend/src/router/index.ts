@@ -41,6 +41,12 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      path: '/change-password',
+      name: 'change-password',
+      component: () => import('@/pages/auth/change-password.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/admin',
       component: () => import('@/layouts/SuperAdminLayout.vue'),
       meta: { requiresSuperAdmin: true },

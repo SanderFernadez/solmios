@@ -356,16 +356,22 @@ router.get('/api/planning', [auth.authenticate('hotel_admin', 'receptionist', 's
   const rooms = await orm.findMany('Rooms', { hotelId: id })
   const reservas = await orm.findMany('Reservations', { hotelId: id })
   const guests = await orm.findMany('Guests', { hotelId: id })
+  const lockCodes = await orm.findMany('LockCodes', { reservationId: reservas.map((r: any) => r.id).filter(Boolean) }) as any[]
   const guestMap = new Map((guests as any[]).map(g => [g.id, g]))
   const roomMap = new Map((rooms as any[]).map(r => [r.id, r]))
+  const lockByRes = new Map(lockCodes.filter(c => c.status === 'active').map(c => [c.reservationId, c.code]))
   const enriched = reservas.map((r: any) => {
     const guest = guestMap.get(r.guestId)
     const room = roomMap.get(r.roomId)
+    const deposit = Number(r.deposit) || 0
+    const total = Number(r.totalAmount) || 0
     return {
       ...r,
       guestName: guest?.name || 'Guest',
       guestEmail: guest?.email || '',
       roomNumber: room?.number || '',
+      lockCode: lockByRes.get(r.id) || '',
+      paymentStatus: deposit >= total && total > 0 ? 'paid' : deposit > 0 ? 'partial' : 'pending',
     }
   })
   return { status: 200, body: { rooms, reservas: enriched } }
@@ -604,13 +610,13 @@ router.get('/api/admin/monitoring', [auth.authenticate('super_admin')], async ()
 
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
 
-// Endpoint público para login (sin auth)
+// Endpoint público — demo accounts para login (sin auth, sin query a DB)
 router.get('/api/public/users', async () => {
-  try {
-    const users = await orm.findMany('Users', {})
-    const safe = (users as any[]).map((u: any) => ({ name: u.name, email: u.email, role: u.role }))
-    return { status: 200, body: safe }
-  } catch { return { status: 200, body: [] } }
+  return { status: 200, body: [
+    { name: 'Admin', email: 'admin@managerhotel.com', role: 'hotel_admin' },
+    { name: 'Admin Caribe', email: 'admin@caribeparadise.com', role: 'hotel_admin' },
+    { name: 'Maria Caribe', email: 'maria@caribeparadise.com', role: 'hotel_admin' },
+  ] }
 })
 
 // ─── Public booking widget (sin auth) ─────────────────────────────────────
