@@ -39,24 +39,26 @@ export class GastosService {
     }
   }
 
-  async list(query?: GastosQuery): Promise<GastosPaginated> {
+  async list(query?: GastosQuery, user?: CurrentUser): Promise<GastosPaginated> {
     this.logger.info('Listando gastos', { query })
 
     const filters: Record<string, unknown> = {}
-
-    if (query?.hotelId !== undefined) filters.hotelId = query.hotelId
-    if (query?.status !== undefined) filters.status = query.status
-    if (query?.type !== undefined) filters.type = query.type
+    if (user && user.role !== 'super_admin') {
+      const me = await this.userRepo.findById(user.id)
+      filters.hotelId = me?.hotelId ?? '__none__'
+    } else if (query?.hotelId) {
+      filters.hotelId = query.hotelId
+    }
     if (query?.category !== undefined) filters.category = query.category
 
-    const rows = await this.repo.findMany(filters)
-    let data = rows
-    if (query?.search) {
-      const q = String(query.search).toLowerCase()
-      data = rows.filter((r: any) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(q)))
-    }
+    const cacheKey = `gastos:list:${user?.hotelId || 'all'}:${JSON.stringify(query || {})}`
+    const cached = await this.cache.get(cacheKey)
+    if (cached) return cached as GastosPaginated
 
-    return { data, total: data.length }
+    const rows = await this.repo.findMany(filters)
+    const result = { data: rows, total: rows.length }
+    await this.cache.set(cacheKey, result, 300)
+    return result
   }
 
   async getById(id: string, user: CurrentUser): Promise<GastosDTO> {

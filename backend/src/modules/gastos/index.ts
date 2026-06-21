@@ -25,12 +25,13 @@ export function GastosModule() {
       description: 'Módulo de gastos',
       actions: ["list","getById","create","update","delete"],
       events: ["onGastosCreated","onGastosUpdated","onGastosDeleted"],
-      tables: ['gastos'],
+      tables: ['expenses'],
       dependencies: [],
       rules: ['No importar de otros módulos'],
     },
 
     create({ logger, orm, cache, router, auth }) {
+      if (!auth) throw new Error('gastos: auth dependency required')
       // Registrar modelo(s) — delegado a model.ts
       registerGastosModels(orm)
 

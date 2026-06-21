@@ -9,7 +9,7 @@ import type { GastosDTO, CurrentUser } from '../types'
 
 // silentLogger es una factory function — SIEMPRE llamarla con ()
 const log = silentLogger()
-const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, clear: async () => {}, flush: async () => {} }
+const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
 
 // auth mock: assertOwnership no-op (permite todo). En tests de IDOR se puede override para forzar throw.
 const passAuth: Auth = { assertOwnership: () => {}, authenticate: (() => []) as any } as unknown as Auth
