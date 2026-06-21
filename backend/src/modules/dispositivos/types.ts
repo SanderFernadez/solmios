@@ -1,6 +1,3 @@
-// dispositivos/types.ts — DTOs y tipos de queries (generado desde model.ts).
-// Responsabilidad ÚNICA: contrato TypeScript del módulo. El schema de DB vive en ./model.ts.
-
 export interface DispositivosDTO {
   id: string
   hotelId?: string
@@ -31,7 +28,7 @@ export interface CreateDispositivosDTO {
 }
 
 export interface UpdateDispositivosDTO {
-  hotelId?: string
+  // NOTE: hotelId intentionally NOT here
   userId?: string
   userName?: string
   device?: string
@@ -43,12 +40,10 @@ export interface UpdateDispositivosDTO {
   lastActivity?: string
 }
 
-// ─── Consultas ─────────────────────────────────────────
 export interface DispositivosQuery {
   hotelId?: string
-  status?: string
-  type?: string
-  category?: string
+  userId?: string
+  device?: string
   search?: string
   page?: number
   limit?: number
@@ -57,4 +52,7 @@ export interface DispositivosQuery {
 export interface DispositivosPaginated {
   data: DispositivosDTO[]
   total: number
+  page?: number
+  limit?: number
+  pages?: number
 }
