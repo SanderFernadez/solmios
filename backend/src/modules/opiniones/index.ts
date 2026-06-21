@@ -1,7 +1,3 @@
-// opiniones/index.ts — PUERTA PÚBLICA
-// Solo esto es visible para otros módulos y conectores.
-// ⚠ REGLA: Append-only. No sacar ni modificar exports existentes.
-
 import { createModule, OrmRepository } from 'arckode-framework'
 import { registerOpinionesModels } from './model'
 import { OpinionesService } from './service'
@@ -16,37 +12,33 @@ export { OpinionesValidator, CreateOpinionesSchema, UpdateOpinionesSchema } from
 export function OpinionesModule() {
   return createModule({
     name: 'opiniones',
-    version: '1.0.0',
-    description: 'Módulo de opiniones',
-
+    version: '2.0.0',
+    description: 'Módulo de opiniones — reseñas de huéspedes',
     contract: {
       name: 'opiniones',
-      version: '1.0.0',
-      description: 'Módulo de opiniones',
-      actions: ["list","getById","create","update","delete"],
-      events: ["onOpinionesCreated","onOpinionesUpdated","onOpinionesDeleted"],
-      tables: ['opiniones'],
+      version: '2.0.0',
+      description: 'Reviews with ownership and pagination',
+      actions: ['list', 'getById', 'create', 'update', 'delete'],
+      events: ['onOpinionesCreated', 'onOpinionesUpdated', 'onOpinionesDeleted'],
+      tables: ['reviews'],
       dependencies: [],
-      rules: ['No importar de otros módulos'],
+      rules: ['Ownership check required', 'hotelId not updatable'],
     },
-
     create({ logger, orm, cache, router, auth }) {
-      // Registrar modelo(s) — delegado a model.ts
+      if (!auth) throw new Error('opiniones: auth dependency required')
       registerOpinionesModels(orm)
-
       const repo = new OrmRepository<OpinionesDTO>(orm, 'Reviews')
       const log = logger.child('opiniones')
-      const service = new OpinionesService(repo, log, cache)
+      const service = new OpinionesService(repo, log, cache, auth)
       const controller = new OpinionesController(service, log)
 
-      // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger
       router.get('/api/opiniones', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
       router.get('/api/opiniones/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
       router.post('/api/opiniones', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
       router.put('/api/opiniones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
       router.delete('/api/opiniones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
 
-      log.info('Módulo opiniones listo')
+      log.info('Módulo opiniones v2 listo')
       return service
     },
   })

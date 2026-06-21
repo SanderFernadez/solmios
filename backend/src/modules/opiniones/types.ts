@@ -1,5 +1,4 @@
-// opiniones/types.ts — DTOs y tipos de queries (generado desde model.ts).
-// Responsabilidad ÚNICA: contrato TypeScript del módulo. El schema de DB vive en ./model.ts.
+export type ReviewChannel = 'direct' | 'booking' | 'airbnb' | 'expedia' | 'google' | 'other'
 
 export interface OpinionesDTO {
   id: string
@@ -12,7 +11,7 @@ export interface OpinionesDTO {
   response?: string
   date?: string
   visible?: number
-  channel?: string
+  channel?: ReviewChannel
   createdAt: string
   updatedAt: string
 }
@@ -27,11 +26,11 @@ export interface CreateOpinionesDTO {
   response?: string
   date?: string
   visible?: number
-  channel?: string
+  channel?: ReviewChannel
 }
 
 export interface UpdateOpinionesDTO {
-  hotelId?: string
+  // NOTE: hotelId intentionally NOT here
   guestId?: string
   reservationId?: string
   rating?: number
@@ -40,15 +39,15 @@ export interface UpdateOpinionesDTO {
   response?: string
   date?: string
   visible?: number
-  channel?: string
+  channel?: ReviewChannel
 }
 
-// ─── Consultas ─────────────────────────────────────────
 export interface OpinionesQuery {
   hotelId?: string
-  status?: string
-  type?: string
-  category?: string
+  channel?: ReviewChannel
+  visible?: number
+  minRating?: number
+  maxRating?: number
   search?: string
   page?: number
   limit?: number
@@ -57,4 +56,7 @@ export interface OpinionesQuery {
 export interface OpinionesPaginated {
   data: OpinionesDTO[]
   total: number
+  page?: number
+  limit?: number
+  pages?: number
 }
