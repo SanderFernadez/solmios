@@ -1,23 +1,29 @@
 import type { ValidationRule } from 'arckode-framework'
 
+const TYPE_ENUM = ['info', 'warning', 'urgent', 'maintenance']
+const PRIORITY_ENUM = ['low', 'medium', 'high']
+const MAX_MESSAGE_LENGTH = 5000
+const MIN_TITLE_LENGTH = 2
+const MAX_TITLE_LENGTH = 200
+
 export const CreateAnunciosSchema: Record<string, ValidationRule> = {
-    title: { type: 'string' as const, required: true },
   hotelId: { type: 'string' as const },
-    authorId: { type: 'string' as const },
-    message: { type: 'text' as any },
-    type: { type: 'string' as const },
-    priority: { type: 'string' as const },
-    active: { type: 'number' as const },
+  authorId: { type: 'string' as const },
+  title: { type: 'string' as const, required: true, min: MIN_TITLE_LENGTH, max: MAX_TITLE_LENGTH },
+  message: { type: 'string' as const, max: MAX_MESSAGE_LENGTH },
+  type: { type: 'string' as const, enum: TYPE_ENUM },
+  priority: { type: 'string' as const, enum: PRIORITY_ENUM },
+  active: { type: 'number' as const },
   date: { type: 'string' as const },
 }
 
 export const UpdateAnunciosSchema: Record<string, ValidationRule> = {
-    title: { type: 'string' as const },
-    authorId: { type: 'string' as const },
-    message: { type: 'text' as any },
-    type: { type: 'string' as const },
-    priority: { type: 'string' as const },
-    active: { type: 'number' as const },
+  authorId: { type: 'string' as const },
+  title: { type: 'string' as const, min: MIN_TITLE_LENGTH, max: MAX_TITLE_LENGTH },
+  message: { type: 'string' as const, max: MAX_MESSAGE_LENGTH },
+  type: { type: 'string' as const, enum: TYPE_ENUM },
+  priority: { type: 'string' as const, enum: PRIORITY_ENUM },
+  active: { type: 'number' as const },
   date: { type: 'string' as const },
 }
 

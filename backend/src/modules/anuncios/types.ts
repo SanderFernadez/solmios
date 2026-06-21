@@ -1,5 +1,5 @@
-// anuncios/types.ts — DTOs y tipos de queries (generado desde model.ts).
-// Responsabilidad ÚNICA: contrato TypeScript del módulo. El schema de DB vive en ./model.ts.
+export type AnnouncementType = 'info' | 'warning' | 'urgent' | 'maintenance'
+export type AnnouncementPriority = 'low' | 'medium' | 'high'
 
 export interface AnunciosDTO {
   id: string
@@ -7,8 +7,8 @@ export interface AnunciosDTO {
   authorId?: string
   title: string
   message?: string
-  type?: string
-  priority?: string
+  type?: AnnouncementType
+  priority?: AnnouncementPriority
   active?: number
   date?: string
   createdAt: string
@@ -20,29 +20,28 @@ export interface CreateAnunciosDTO {
   authorId?: string
   title: string
   message?: string
-  type?: string
-  priority?: string
+  type?: AnnouncementType
+  priority?: AnnouncementPriority
   active?: number
   date?: string
 }
 
 export interface UpdateAnunciosDTO {
-  hotelId?: string
+  // NOTE: hotelId intentionally NOT here
   authorId?: string
   title?: string
   message?: string
-  type?: string
-  priority?: string
+  type?: AnnouncementType
+  priority?: AnnouncementPriority
   active?: number
   date?: string
 }
 
-// ─── Consultas ─────────────────────────────────────────
 export interface AnunciosQuery {
   hotelId?: string
-  status?: string
-  type?: string
-  category?: string
+  type?: AnnouncementType
+  priority?: AnnouncementPriority
+  active?: number
   search?: string
   page?: number
   limit?: number
@@ -51,4 +50,7 @@ export interface AnunciosQuery {
 export interface AnunciosPaginated {
   data: AnunciosDTO[]
   total: number
+  page?: number
+  limit?: number
+  pages?: number
 }

@@ -1,18 +1,9 @@
-// anuncios/service.ts — Facade pública del módulo
-// Responsabilidad ÚNICA: casos de uso del módulo.
-// NO sabe de HTTP. NO importa de otros módulos.
-// Recibe dependencias por constructor (Dependency Inversion).
-//
-// Si este archivo supera 200 líneas → extraer casos de uso a ./usecases/{caso}.ts
-// y dejar acá solo el orquestador que delega.
-//
-// IMPORTANTE: depende de RepositoryAdapter<AnunciosDTO>, no del ORM directamente.
-// Esto permite swapear SQL → MongoDB → Prisma en composition-root.ts sin tocar este archivo.
-
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
+import { NotFoundError, AuthError } from 'arckode-framework'
 import type { AnunciosDTO, CreateAnunciosDTO, UpdateAnunciosDTO, AnunciosQuery, AnunciosPaginated } from './types'
 import type { AnunciosSockets } from './sockets'
+
+const CACHE_TTL = 300
 
 export class AnunciosService {
   private sockets: AnunciosSockets = {}
@@ -21,11 +12,9 @@ export class AnunciosService {
     private readonly repo: RepositoryAdapter<AnunciosDTO>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
+    private readonly auth: Auth,
   ) {}
 
-  // ACUMULA handlers — nunca pisa el anterior.
-  // Si dos conectores registran el mismo evento, ambos corren en cadena (secuencial).
-  // Para ejecución paralela independiente → usar EventBus en composition-root.ts.
   setSockets(s: Partial<AnunciosSockets>): void {
     const next = s as Record<string, any>
     const cur = this.sockets as Record<string, any>
@@ -37,57 +26,74 @@ export class AnunciosService {
     }
   }
 
-  async list(query?: AnunciosQuery): Promise<AnunciosPaginated> {
-    this.logger.info('Listando anuncios', { query })
-
+  async list(query: AnunciosQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<AnunciosPaginated> {
     const filters: Record<string, unknown> = {}
+    if (query.type) filters.type = query.type
+    if (query.priority) filters.priority = query.priority
+    if (query.active !== undefined) filters.active = query.active
 
-    if (query?.hotelId !== undefined) filters.hotelId = query.hotelId
-    if (query?.status !== undefined) filters.status = query.status
-    if (query?.type !== undefined) filters.type = query.type
-    if (query?.category !== undefined) filters.category = query.category
-
-    const rows = await this.repo.findMany(filters)
-    let data = rows
-    if (query?.search) {
-      const q = String(query.search).toLowerCase()
-      data = rows.filter((r: any) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(q)))
+    if (currentUser.role !== 'super_admin') {
+      if (!currentUser.hotelId) throw new AuthError('No hotel assigned')
+      filters.hotelId = currentUser.hotelId
+    } else if (query.hotelId) {
+      filters.hotelId = query.hotelId
     }
 
-    return { data, total: data.length }
+    const page = Math.max(query.page || 1, 1)
+    const limit = Math.min(Math.max(query.limit || 20, 1), 100)
+    const offset = (page - 1) * limit
+
+    const cacheKey = `anuncios:list:${currentUser.hotelId || 'all'}`
+    const cached = await this.cache.get(cacheKey)
+    if (cached) return cached as AnunciosPaginated
+
+    const result = await this.repo.paginate({ filters, offset, limit })
+    const response = { data: result.data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
+    await this.cache.set(cacheKey, response, CACHE_TTL)
+    return response
   }
 
-  async getById(id: string): Promise<AnunciosDTO> {
-    this.logger.info('Obteniendo anuncios', { id })
+  async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<AnunciosDTO> {
     const item = await this.repo.findById(id)
-    if (!item) throw new NotFoundError('Anuncios no encontrado')
-    // IDOR: si el recurso tiene userId u ownerId, descomentar y adaptar:
-    // auth.assertOwnership(item.userId as string, currentUser.id, currentUser.role)
+    if (!item) throw new NotFoundError('Anuncio no encontrado')
+    if (currentUser.role !== 'super_admin' && item.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
     return item
   }
 
-  async create(dto: CreateAnunciosDTO): Promise<AnunciosDTO> {
-    this.logger.info('Creando anuncios')
-    const item = await this.repo.create(dto as Omit<AnunciosDTO, 'id'>)
+  async create(dto: CreateAnunciosDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<AnunciosDTO> {
+    if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado para crear en otro hotel')
+    }
+    const item = await this.repo.create(dto as any)
     await this.sockets.onAnunciosCreated?.(item)
-    await this.cache.delete('anuncios:list')
+    await this.cache.delete(`anuncios:list:${dto.hotelId}`)
     return item
   }
 
-  async update(id: string, dto: UpdateAnunciosDTO): Promise<AnunciosDTO> {
-    this.logger.info('Actualizando anuncios', { id })
-    const item = await this.repo.update(id, dto as Partial<Omit<AnunciosDTO, 'id'>>)
-    if (!item) throw new NotFoundError('Anuncios no encontrado')
+  async update(id: string, dto: UpdateAnunciosDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<AnunciosDTO> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Anuncio no encontrado')
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
+    const item = await this.repo.update(id, dto as any)
+    if (!item) throw new NotFoundError('Anuncio no encontrado')
     await this.sockets.onAnunciosUpdated?.(item)
-    await this.cache.delete('anuncios:list')
+    await this.cache.delete(`anuncios:list:${existing.hotelId}`)
     return item
   }
 
-  async delete(id: string): Promise<void> {
-    this.logger.info('Eliminando anuncios', { id })
+  async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Anuncio no encontrado')
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
     const deleted = await this.repo.delete(id)
-    if (!deleted) throw new NotFoundError('Anuncios no encontrado')
+    if (!deleted) throw new NotFoundError('Anuncio no encontrado')
     await this.sockets.onAnunciosDeleted?.(id)
-    await this.cache.delete('anuncios:list')
+    await this.cache.delete(`anuncios:list:${existing.hotelId}`)
   }
 }
