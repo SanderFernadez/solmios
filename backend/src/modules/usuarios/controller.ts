@@ -1,5 +1,7 @@
 // usuarios/controller.ts — Adaptador HTTP
 import type { HttpRequest, Logger } from 'arckode-framework'
+import { validateSchema } from 'arckode-framework'
+import { CreateUsuarioSchema, UpdateUsuarioSchema } from './validators/schema'
 import type { UsuariosService } from './service'
 
 export class UsuariosController {
@@ -22,22 +24,38 @@ export class UsuariosController {
   }
 
   async index(req: HttpRequest) {
-    const hotelId = req.query.hotelId || ''
+    const hotelId = (req.user as any).hotelId
     const data = await this.service.list(hotelId)
     return { status: 200, body: { data, total: data.length } }
   }
 
   async store(req: HttpRequest) {
-    const item = await this.service.create(req.body)
+    const data = validateSchema(CreateUsuarioSchema, req.body)
+    data.hotelId = (req.user as any).hotelId
+    if (data.role && (req.user as any).role !== 'super_admin') {
+      delete data.role
+    }
+    const item = await this.service.create(data)
     return { status: 201, body: item }
   }
 
   async update(req: HttpRequest) {
-    const item = await this.service.update(req.params.id, req.body)
+    const existing = await this.service.me(req.params.id)
+    const isSuperAdmin = (req.user as any).role === 'super_admin'
+    if (!isSuperAdmin && existing.hotelId !== (req.user as any).hotelId) {
+      return { status: 403, body: { error: 'No autorizado' } }
+    }
+    const data = validateSchema(UpdateUsuarioSchema, req.body)
+    const item = await this.service.update(req.params.id, data)
     return { status: 200, body: item }
   }
 
   async destroy(req: HttpRequest) {
+    const existing = await this.service.me(req.params.id)
+    const isSuperAdmin = (req.user as any).role === 'super_admin'
+    if (!isSuperAdmin && existing.hotelId !== (req.user as any).hotelId) {
+      return { status: 403, body: { error: 'No autorizado' } }
+    }
     await this.service.delete(req.params.id)
     return { status: 204, body: null }
   }

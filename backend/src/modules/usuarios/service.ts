@@ -2,7 +2,8 @@
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, AuthError } from 'arckode-framework'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'managerhotel-dev-secret-change'
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required')
 
 export class UsuariosService {
   constructor(
@@ -13,7 +14,8 @@ export class UsuariosService {
   ) {}
 
   async login(email: string, password: string): Promise<{ token: string; user: any }> {
-    const user = await this.repo.findOne({ email })
+    const normalizedEmail = email.trim().toLowerCase()
+    const user = await this.repo.findOne({ email: normalizedEmail })
     if (!user || user.active === 0) throw new AuthError('Credenciales inválidas')
     const valid = await this.verifyPassword(password, user.password)
     if (!valid) throw new AuthError('Credenciales inválidas')
@@ -34,17 +36,20 @@ export class UsuariosService {
   }
 
   async list(hotelId: string): Promise<any[]> {
-    return this.repo.findMany({ hotelId })
+    const users = await this.repo.findMany({ hotelId })
+    return users.map(({ password, token, ...rest }) => rest)
   }
 
   async create(data: any): Promise<any> {
-    const password = await this.hashPassword(data.password || 'demo123')
-    return this.repo.create({ ...data, id: crypto.randomUUID(), password, activo: 1 })
+    if (!data.password) throw new Error('Password is required')
+    const password = await this.hashPassword(data.password)
+    return this.repo.create({ ...data, id: crypto.randomUUID(), password, active: 1 })
   }
 
   async update(id: string, data: any): Promise<any> {
-    if (data.password) data.password = await this.hashPassword(data.password)
-    return this.repo.update(id, data)
+    const allowed = (({ name, email, password, phone, avatar }) => ({ name, email, password, phone, avatar }))(data)
+    if (allowed.password) allowed.password = await this.hashPassword(allowed.password)
+    return this.repo.update(id, allowed)
   }
 
   async delete(id: string): Promise<boolean> {
