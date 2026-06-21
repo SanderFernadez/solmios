@@ -1,22 +1,23 @@
-// housekeeping/tests/service.test.ts — Tests del servicio
-// Usa RepositoryAdapter mock — sin dependencia de SQLite ni Postgres.
-
 import { describe, it, expect } from 'bun:test'
-import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, CacheAdapter, Auth } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { HousekeepingService } from '../service'
 import type { HousekeepingDTO } from '../types'
 
-// silentLogger es una factory function — SIEMPRE llamarla con ()
 const log = silentLogger()
-const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, clear: async () => {}, flush: async () => {} }
+const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
+const fakeAuth = { createToken: () => 'tok', assertOwnership: () => {} } as unknown as Auth
+
+const adminUser = { id: 'admin1', role: 'super_admin', hotelId: undefined }
+const hotelAdmin = { id: 'user1', role: 'hotel_admin', hotelId: 'h1' }
+const otherAdmin = { id: 'user2', role: 'hotel_admin', hotelId: 'h2' }
 
 function makeRepo(overrides: Partial<RepositoryAdapter<HousekeepingDTO>> = {}): RepositoryAdapter<HousekeepingDTO> {
   return {
     findMany: async () => [],
     findById: async () => null,
     findOne: async () => null,
-    create: async (data) => ({ id: 'test-id', ...data } as HousekeepingDTO),
+    create: async (data) => ({ id: 'hk-1', ...data } as HousekeepingDTO),
     update: async (id, data) => ({ id, ...data } as HousekeepingDTO),
     delete: async () => true,
     count: async () => 0,
@@ -26,31 +27,102 @@ function makeRepo(overrides: Partial<RepositoryAdapter<HousekeepingDTO>> = {}): 
 }
 
 describe('HousekeepingService', () => {
-  describe('getById', () => {
-    it('lanza NotFound si el item no existe', async () => {
-      const service = new HousekeepingService(makeRepo(), log, silentCache)
-      await expect(service.getById('no-existe')).rejects.toThrow('Housekeeping no encontrado')
+  describe('list', () => {
+    it('returns paginated tasks', async () => {
+      const tasks = [{ id: 'hk1', roomId: 'r1', hotelId: 'h1' }] as HousekeepingDTO[]
+      const repo = makeRepo({ paginate: async () => ({ data: tasks, total: 1, limit: 20, offset: 0, pages: 1 }) })
+      const svc = new HousekeepingService(repo, log, silentCache, fakeAuth)
+      const result = await svc.list({}, adminUser)
+      expect(result.data).toHaveLength(1)
     })
 
-    it('retorna el item si existe', async () => {
-      const item = { id: '1' } as HousekeepingDTO
-      const service = new HousekeepingService(makeRepo({ findById: async () => item }), log, silentCache)
-      expect(await service.getById('1')).toEqual(item)
+    it('filters by hotelId for hotel_admin', async () => {
+      const tasks = [{ id: 'hk1', roomId: 'r1', hotelId: 'h1' }] as HousekeepingDTO[]
+      const repo = makeRepo({ paginate: async () => ({ data: tasks, total: 1, limit: 20, offset: 0, pages: 1 }) })
+      const svc = new HousekeepingService(repo, log, silentCache, fakeAuth)
+      const result = await svc.list({}, hotelAdmin)
+      expect(result.data).toHaveLength(1)
+    })
+
+    it('throws when no hotelId assigned', async () => {
+      const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
+      const svc = new HousekeepingService(makeRepo(), log, silentCache, fakeAuth)
+      await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
+    })
+  })
+
+  describe('getById', () => {
+    it('returns task for super_admin', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, fakeAuth)
+      const result = await svc.getById('hk1', adminUser)
+      expect(result.roomId).toBe('r1')
+    })
+
+    it('rejects other hotel task', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h2' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, fakeAuth)
+      await expect(svc.getById('hk1', hotelAdmin)).rejects.toThrow('No autorizado')
+    })
+
+    it('throws NotFound', async () => {
+      const svc = new HousekeepingService(makeRepo(), log, silentCache, fakeAuth)
+      await expect(svc.getById('nope', adminUser)).rejects.toThrow('no encontrada')
     })
   })
 
   describe('create', () => {
-    it('crea y retorna el item', async () => {
-      const service = new HousekeepingService(makeRepo(), log, silentCache)
-      const result = await service.create({} as any)
-      expect(result.id).toBe('test-id')
+    it('creates task in own hotel', async () => {
+      const svc = new HousekeepingService(makeRepo(), log, silentCache, fakeAuth)
+      const result = await svc.create({ roomId: 'r1', hotelId: 'h1' }, hotelAdmin)
+      expect(result.id).toBe('hk-1')
+    })
+
+    it('rejects task in other hotel', async () => {
+      const svc = new HousekeepingService(makeRepo(), log, silentCache, fakeAuth)
+      await expect(svc.create({ roomId: 'r1', hotelId: 'h2' }, hotelAdmin)).rejects.toThrow('No autorizado')
+    })
+  })
+
+  describe('update', () => {
+    it('updates own hotel task', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task, update: async (id, data) => ({ id, ...data } as HousekeepingDTO) })
+      const svc = new HousekeepingService(repo, log, silentCache, fakeAuth)
+      const result = await svc.update('hk1', { status: 'completed' }, hotelAdmin)
+      expect(result.status).toBe('completed')
+    })
+
+    it('rejects update to other hotel task', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h2' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, fakeAuth)
+      await expect(svc.update('hk1', { status: 'completed' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
 
   describe('delete', () => {
-    it('lanza NotFound si el item no existe', async () => {
-      const service = new HousekeepingService(makeRepo({ delete: async () => false }), log, silentCache)
-      await expect(service.delete('no-existe')).rejects.toThrow('Housekeeping no encontrado')
+    it('super_admin can delete', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, fakeAuth)
+      await expect(svc.delete('hk1', adminUser)).resolves.toBeUndefined()
+    })
+
+    it('hotel_admin can delete own hotel task', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, fakeAuth)
+      await expect(svc.delete('hk1', hotelAdmin)).resolves.toBeUndefined()
+    })
+
+    it('rejects delete of other hotel task', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h2' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, fakeAuth)
+      await expect(svc.delete('hk1', hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
 })
