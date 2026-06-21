@@ -6,7 +6,7 @@
 // dto.amount se interpreta como SUBTOTAL (base neta) y el service calcula el impuesto.
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import { NotFoundError, AuthError } from 'arckode-framework'
 import type {
   FacturasDTO, CreateFacturasDTO, UpdateFacturasDTO, PayFacturasDTO,
   FacturasQuery, FacturasListResult, CurrentUser,
@@ -42,25 +42,45 @@ export class FacturasService {
   }
 
   // ─── Lectura ──────────────────────────────────────────────────
-  async list(query?: FacturasQuery): Promise<FacturasListResult> {
+  async list(query?: FacturasQuery, user?: CurrentUser): Promise<FacturasListResult> {
     this.logger.info('Listando facturas', { query })
     const filters: Record<string, unknown> = {}
-    if (query?.hotelId) filters.hotelId = query.hotelId
     if (query?.type) filters.type = query.type
     if (query?.status) filters.status = query.status
 
-    const rows = await this.repo.findMany(filters)
-    const data = await Promise.all(rows.map((r) => enrichInvoice(r, this.enrichDeps)))
-    let result = data
+    // Multi-tenancy
+    if (user && user.role !== 'super_admin') {
+      if (!user.hotelId) throw new AuthError('No hotel assigned')
+      filters.hotelId = user.hotelId
+    } else if (query?.hotelId) {
+      filters.hotelId = query.hotelId
+    }
+
+    const page = Math.max(query?.page || 1, 1)
+    const limit = Math.min(Math.max(query?.limit || 20, 1), 100)
+    const offset = (page - 1) * limit
+
+    const cacheKey = `facturas:list:${user?.hotelId || 'all'}`
+    const cached = await this.cache.get(cacheKey)
+    if (cached) return cached as FacturasListResult
+
+    const result = await this.repo.paginate({ filters, offset, limit })
+    const data = await Promise.all(result.data.map((r) => enrichInvoice(r, this.enrichDeps)))
+    const response = { data, total: result.total }
+
+    let finalResult = response
     if (query?.search) {
       const q = String(query.search).toLowerCase()
-      result = data.filter((d) =>
+      const filtered = data.filter((d) =>
         (d.invoiceNumber || '').toLowerCase().includes(q) ||
         (d.guest || '').toLowerCase().includes(q) ||
         (d.notes || '').toLowerCase().includes(q),
       )
+      finalResult = { data: filtered, total: response.total }
     }
-    return { data: result, total: result.length }
+
+    await this.cache.set(cacheKey, finalResult, 300)
+    return finalResult
   }
 
   async getById(id: string, user: CurrentUser): Promise<FacturasDTO> {
@@ -101,7 +121,7 @@ export class FacturasService {
 
     const item = await this.repo.create(record as any)
     await this.sockets.onFacturasCreated?.(item)
-    await this.cache.delete('facturas:list')
+    await this.cache.delete('facturas:list:' + (item.hotelId || 'all'))
     return enrichInvoice(item, this.enrichDeps)
   }
 
@@ -132,7 +152,7 @@ export class FacturasService {
     const item = await this.repo.update(id, dto as Partial<Omit<FacturasDTO, 'id'>>)
     if (!item) throw new NotFoundError('Factura no encontrada')
     await this.sockets.onFacturasUpdated?.(item)
-    await this.cache.delete('facturas:list')
+    await this.cache.delete('facturas:list:' + (existing.hotelId || 'all'))
     return enrichInvoice(item, this.enrichDeps)
   }
 
@@ -174,7 +194,7 @@ export class FacturasService {
     }
 
     await this.sockets.onFacturasUpdated?.(updated)
-    await this.cache.delete('facturas:list')
+    await this.cache.delete('facturas:list:' + (inv.hotelId || 'all'))
     return enrichInvoice(updated, this.enrichDeps)
   }
 
@@ -187,6 +207,6 @@ export class FacturasService {
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Factura no encontrada')
     await this.sockets.onFacturasDeleted?.(id)
-    await this.cache.delete('facturas:list')
+    await this.cache.delete('facturas:list:' + (existing.hotelId || 'all'))
   }
 }

@@ -8,7 +8,7 @@ import { FacturasService } from '../service'
 import type { FacturasDTO, CurrentUser } from '../types'
 
 const log = silentLogger()
-const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, clear: async () => {}, flush: async () => {} }
+const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
 
 // Auth mock: replica la lógica real de assertOwnership (lanza si no es dueño ni admin).
 const mockAuth = {
@@ -57,6 +57,24 @@ describe('FacturasService', () => {
     })
   })
 
+  describe('list', () => {
+    it('returns paginated invoices for super_admin', async () => {
+      const invoices = [{ id: 'i1', hotelId: 'h1', amount: 100, taxes: 0 }] as FacturasDTO[]
+      const repo = makeRepo({ paginate: async () => ({ data: invoices, total: 1, limit: 20, offset: 0, pages: 1 }) })
+      const svc = new FacturasService(repo, emptyRepo(), enrichDeps, userRepo, log, silentCache, mockAuth)
+      const result = await svc.list({}, { id: 'admin', role: 'super_admin' })
+      expect(result.data).toHaveLength(1)
+    })
+
+    it('filters by hotelId for hotel_admin', async () => {
+      const invoices = [{ id: 'i1', hotelId: 'h1', amount: 100, taxes: 0 }] as FacturasDTO[]
+      const repo = makeRepo({ paginate: async () => ({ data: invoices, total: 1, limit: 20, offset: 0, pages: 1 }) })
+      const svc = new FacturasService(repo, emptyRepo(), enrichDeps, userRepo, log, silentCache, mockAuth)
+      const result = await svc.list({}, user)
+      expect(result.data).toHaveLength(1)
+    })
+  })
+
   describe('create', () => {
     it('crea una factura calculando impuestos desde la config', async () => {
       const configRepo = { ...emptyRepo(), findOne: async () => ({ value: [{ tasa: 18, activo: true }] }) }
@@ -75,6 +93,23 @@ describe('FacturasService', () => {
       const service = new FacturasService(makeRepo({ findById: async () => inv }), emptyRepo(), enrichDeps, userRepo, log, silentCache, mockAuth)
       const result = await service.pay('i1', { method: 'card' }, user)
       expect(result.status).toBe('paid')
+    })
+  })
+
+  describe('update', () => {
+    it('updates own hotel invoice', async () => {
+      const inv = { id: 'i1', hotelId: 'h1', amount: 100, taxes: 0 } as FacturasDTO
+      const repo = makeRepo({ findById: async () => inv, update: async (id, data) => ({ id, ...data } as FacturasDTO) })
+      const svc = new FacturasService(repo, emptyRepo(), enrichDeps, userRepo, log, silentCache, mockAuth)
+      const result = await svc.update('i1', { amount: 200 }, user)
+      expect(result.amount).toBe(200)
+    })
+
+    it('rejects update to other hotel invoice', async () => {
+      const inv = { id: 'i1', hotelId: 'otro-hotel', amount: 100, taxes: 0 } as FacturasDTO
+      const repo = makeRepo({ findById: async () => inv })
+      const svc = new FacturasService(repo, emptyRepo(), enrichDeps, userRepo, log, silentCache, mockAuth)
+      await expect(svc.update('i1', { amount: 200 }, user)).rejects.toThrow()
     })
   })
 

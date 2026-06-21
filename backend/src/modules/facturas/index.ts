@@ -16,21 +16,22 @@ export { FacturasValidator, CreateFacturasSchema, UpdateFacturasSchema } from '.
 export function FacturasModule() {
   return createModule({
     name: 'facturas',
-    version: '1.0.0',
-    description: 'Módulo de facturas',
+    version: '2.0.0',
+    description: 'Facturas con ownership, paginacion y validacion',
 
     contract: {
       name: 'facturas',
-      version: '1.0.0',
-      description: 'Módulo de facturas',
-      actions: ["list","getById","create","update","delete"],
+      version: '2.0.0',
+      description: 'Facturas con ownership, paginacion y validacion',
+      actions: ["list","getById","create","pay","update","delete"],
       events: ["onFacturasCreated","onFacturasUpdated","onFacturasDeleted"],
-      tables: ['facturas'],
+      tables: ['invoices'],
       dependencies: [],
-      rules: ['No importar de otros módulos'],
+      rules: ['Ownership check required', 'hotelId not updatable'],
     },
 
     create({ logger, orm, cache, router, auth }) {
+      if (!auth) throw new Error('facturas: auth dependency required')
       // Registrar modelo(s) — delegado a model.ts
       registerFacturasModels(orm)
 

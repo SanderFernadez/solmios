@@ -16,7 +16,7 @@ export class FacturasController {
 
   async index(req: HttpRequest) {
     this.logger.info('GET /facturas')
-    const result = await this.service.list(req.query as any)
+    const result = await this.service.list(req.query as any, req.user as any)
     return { status: 200, body: result }
   }
 
