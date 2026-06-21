@@ -1,4 +1,3 @@
-// habitaciones/model.ts — Schema de base de datos
 import type { ModelDefinition, ORM } from 'arckode-framework'
 
 export const HabitacionesModel: ModelDefinition = {
@@ -13,9 +12,7 @@ export const HabitacionesModel: ModelDefinition = {
     hotelId: { type: 'string', required: true, indexed: true },
     description: { type: 'text' },
     capacity: { type: 'number', default: 2 },
-    amenities: { type: 'json' },
     floor: { type: 'number' },
-    // Campos nuevos (Fase 1)
     surfaceArea: { type: 'number', default: 0 },
     bathrooms: { type: 'number', default: 1 },
     motorPosition: { type: 'number', default: 0 },

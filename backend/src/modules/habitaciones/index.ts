@@ -1,7 +1,3 @@
-// habitaciones/index.ts — PUERTA PÚBLICA
-// Solo esto es visible para otros módulos y conectores.
-// ⚠ REGLA: Append-only. No sacar ni modificar exports existentes.
-
 import { createModule, OrmRepository } from 'arckode-framework'
 import { registerHabitacionesModels } from './model'
 import { HabitacionesService } from './service'
@@ -16,37 +12,35 @@ export { HabitacionesValidator, CreateHabitacionesSchema, UpdateHabitacionesSche
 export function HabitacionesModule() {
   return createModule({
     name: 'habitaciones',
-    version: '1.0.0',
-    description: 'Módulo de habitaciones',
+    version: '2.0.0',
+    description: 'Modulo de habitaciones - rooms inventory with multi-tenancy',
 
     contract: {
       name: 'habitaciones',
-      version: '1.0.0',
-      description: 'Módulo de habitaciones',
-      actions: ["list","getById","create","update","delete"],
-      events: ["onHabitacionesCreated","onHabitacionesUpdated","onHabitacionesDeleted"],
-      tables: ['habitaciones'],
+      version: '2.0.0',
+      description: 'Rooms with ownership, pagination, and validation',
+      actions: ['list', 'getById', 'create', 'update', 'delete'],
+      events: ['onHabitacionesCreated', 'onHabitacionesUpdated', 'onHabitacionesDeleted'],
+      tables: ['rooms'],
       dependencies: [],
-      rules: ['No importar de otros módulos'],
+      rules: ['Ownership check required', 'hotelId not updatable'],
     },
 
     create({ logger, orm, cache, router, auth }) {
-      // Registrar modelo(s) — delegado a model.ts
+      if (!auth) throw new Error('habitaciones: auth dependency required')
       registerHabitacionesModels(orm)
-
       const repo = new OrmRepository<HabitacionesDTO>(orm, 'Rooms')
       const log = logger.child('habitaciones')
-      const service = new HabitacionesService(repo, log, cache)
+      const service = new HabitacionesService(repo, log, cache, auth)
       const controller = new HabitacionesController(service, log)
 
-      // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger
       router.get('/api/habitaciones', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
       router.get('/api/habitaciones/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
       router.post('/api/habitaciones', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
       router.put('/api/habitaciones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
       router.delete('/api/habitaciones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
 
-      log.info('Módulo habitaciones listo')
+      log.info('Modulo habitaciones v2 listo')
       return service
     },
   })

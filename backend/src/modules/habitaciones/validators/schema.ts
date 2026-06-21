@@ -1,28 +1,41 @@
 import type { ValidationRule } from 'arckode-framework'
 
+const ROOM_TYPE_ENUM = ['single', 'double', 'twin', 'triple', 'quad', 'suite', 'deluxe', 'presidential']
+const ROOM_STATUS_ENUM = ['available', 'occupied', 'maintenance', 'cleaning', 'out_of_order', 'reserved']
+
 export const CreateHabitacionesSchema: Record<string, ValidationRule> = {
-    number: { type: 'string' as const, required: true },
-    type: { type: 'string' as const },
-    basePrice: { type: 'number' as const, required: true },
+  number: { type: 'string' as const, required: true, min: 1, max: 20 },
+  name: { type: 'string' as const, max: 100 },
+  type: { type: 'string' as const, enum: ROOM_TYPE_ENUM },
+  basePrice: { type: 'number' as const, required: true, min: 0 },
+  status: { type: 'string' as const, enum: ROOM_STATUS_ENUM },
   hotelId: { type: 'string' as const, required: true },
-    name: { type: 'string' as const },
-    status: { type: 'string' as const },
-    description: { type: 'text' as any },
-    capacity: { type: 'number' as const },
-  amenities: { type: 'json' as any },
-    floor: { type: 'number' as const },
+  description: { type: 'string' as const, max: 1000 },
+  capacity: { type: 'number' as const, min: 1, max: 20 },
+  floor: { type: 'number' as const, min: 0 },
+  surfaceArea: { type: 'number' as const, min: 0 },
+  bathrooms: { type: 'number' as const, min: 0 },
+  motorPosition: { type: 'number' as const, min: 0 },
+  onlineBookingEnabled: { type: 'boolean' as const },
+  excludeFromReports: { type: 'boolean' as const },
+  descriptionJson: { type: 'string' as const },
 }
 
 export const UpdateHabitacionesSchema: Record<string, ValidationRule> = {
-    number: { type: 'string' as const },
-    type: { type: 'string' as const },
-    basePrice: { type: 'number' as const },
-    name: { type: 'string' as const },
-    status: { type: 'string' as const },
-    description: { type: 'text' as any },
-    capacity: { type: 'number' as const },
-  amenities: { type: 'json' as any },
-    floor: { type: 'number' as const },
+  number: { type: 'string' as const, min: 1, max: 20 },
+  name: { type: 'string' as const, max: 100 },
+  type: { type: 'string' as const, enum: ROOM_TYPE_ENUM },
+  basePrice: { type: 'number' as const, min: 0 },
+  status: { type: 'string' as const, enum: ROOM_STATUS_ENUM },
+  description: { type: 'string' as const, max: 1000 },
+  capacity: { type: 'number' as const, min: 1, max: 20 },
+  floor: { type: 'number' as const, min: 0 },
+  surfaceArea: { type: 'number' as const, min: 0 },
+  bathrooms: { type: 'number' as const, min: 0 },
+  motorPosition: { type: 'number' as const, min: 0 },
+  onlineBookingEnabled: { type: 'boolean' as const },
+  excludeFromReports: { type: 'boolean' as const },
+  descriptionJson: { type: 'string' as const },
 }
 
 export const HabitacionesValidator = { create: CreateHabitacionesSchema, update: UpdateHabitacionesSchema }
