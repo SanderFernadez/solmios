@@ -51,6 +51,12 @@ describe('HotelesService', () => {
       expect(result.data).toHaveLength(1)
     })
 
+    it('throws when non-super_admin has no hotelId', async () => {
+      const noHotelUser = { id: 'user4', role: 'hotel_admin', hotelId: undefined }
+      const svc = new HotelesService(makeRepo(), log, silentCache, fakeAuth)
+      await expect(svc.list({}, noHotelUser)).rejects.toThrow('No hotel assigned')
+    })
+
     it('search filters by name', async () => {
       const hotels = [{ id: 'h1', name: 'Beach Resort' }, { id: 'h2', name: 'Mountain Lodge' }] as HotelesDTO[]
       const repo = makeRepo({ findMany: async () => hotels })
