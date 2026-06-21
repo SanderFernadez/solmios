@@ -16,8 +16,8 @@ export { AuditlogValidator, CreateAuditlogSchema, UpdateAuditlogSchema } from '.
 export function AuditlogModule() {
   return createModule({
     name: 'auditlog',
-    version: '1.0.0',
-    description: 'Módulo de auditlog',
+    version: '2.0.0',
+    description: 'Módulo de audit log — append-only',
 
     contract: {
       name: 'auditlog',
@@ -25,12 +25,13 @@ export function AuditlogModule() {
       description: 'Módulo de auditlog',
       actions: ["list","getById","create"],
       events: ["onAuditlogCreated"],
-      tables: ['auditlog'],
+      tables: ['audit_log'],
       dependencies: [],
       rules: ['No importar de otros módulos', 'Append-only: sin update ni delete'],
     },
 
     create({ logger, orm, cache, router, auth }) {
+      if (!auth) throw new Error('auditlog: auth dependency required')
       // Registrar modelo(s) — delegado a model.ts
       registerAuditlogModels(orm)
 
