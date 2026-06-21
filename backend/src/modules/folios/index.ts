@@ -25,6 +25,7 @@ export function FoliosModule() {
       rules: ['No importar de otros módulos', 'Usar RepositoryAdapter<T>'],
     },
     create({ logger, orm, cache, router, auth }) {
+      if (!auth) throw new Error('folios: auth dependency required')
       registerFoliosModels(orm)
       const folioRepo = new OrmRepository<FolioDTO>(orm, 'Folios')
       const chargeRepo = new OrmRepository<FolioChargeDTO>(orm, 'FolioCharges')

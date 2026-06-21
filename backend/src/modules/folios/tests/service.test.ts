@@ -6,7 +6,7 @@ import { FoliosService } from '../service'
 import type { FolioDTO, FolioChargeDTO, CurrentUser } from '../types'
 
 const log = silentLogger()
-const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, clear: async () => {}, flush: async () => {} }
+const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
 const mockAuth = {
   assertOwnership: (rid: string, uid: string, role?: string, admin = 'admin') => {
     if (rid === uid) return; if (role === admin) return; throw new Error('Forbidden')

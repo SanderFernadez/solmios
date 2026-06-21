@@ -63,9 +63,17 @@ export class FoliosService {
     }
     if (query?.status) filters.status = query.status
     if (query?.reservationId) filters.reservationId = query.reservationId
+
+    // Cache check
+    const cacheKey = `folios:list:${user?.hotelId || 'all'}:${JSON.stringify(query || {})}`
+    const cached = await this.cache.get(cacheKey)
+    if (cached) return cached as FolioListResult
+
     const folios = await this.folioRepo.findMany(filters)
     const data = await Promise.all(folios.map((f) => this.enrich(f)))
-    return { data, total: data.length }
+    const result = { data, total: data.length }
+    await this.cache.set(cacheKey, result, 300)
+    return result
   }
 
   async getById(id: string, user: CurrentUser): Promise<FolioDTO> {
@@ -108,7 +116,7 @@ export class FoliosService {
       openedAt: now(), closedAt: null,
     } as any)
     await this.sockets.onFolioOpened?.(folio)
-    await this.cache.delete('folios:list')
+    await this.cache.delete(`folios:list:${folio.hotelId || 'all'}:*`)
     return this.enrich(folio)
   }
 
@@ -131,7 +139,7 @@ export class FoliosService {
       amount: base, taxes: tax, total, source: dto.source ?? 'manual', postedAt: now(),
     } as any)
     await this.sockets.onFolioCharged?.(folio, charge)
-    await this.cache.delete('folios:list')
+    await this.cache.delete(`folios:list:${folio.hotelId || 'all'}:*`)
     return charge as FolioChargeDTO
   }
 
@@ -153,7 +161,7 @@ export class FoliosService {
       total: -amount, source: dto.method ?? 'manual', postedAt: now(),
     } as any)
     await this.sockets.onFolioPaid?.(folio, charge)
-    await this.cache.delete('folios:list')
+    await this.cache.delete(`folios:list:${folio.hotelId || 'all'}:*`)
     return charge as FolioChargeDTO
   }
 
@@ -167,7 +175,7 @@ export class FoliosService {
 
     const closed = await this.folioRepo.update(folioId, { status: 'closed', closedAt: now() } as any)
     await this.sockets.onFolioClosed?.(closed)
-    await this.cache.delete('folios:list')
+    await this.cache.delete(`folios:list:${folio.hotelId || 'all'}:*`)
     return this.enrich(closed as FolioDTO, true)
   }
 
