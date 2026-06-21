@@ -64,7 +64,12 @@ export const useAuthStore = defineStore('auth', () => {
     impersonating.value = false
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await AuthService.logout()
+    } catch {
+      // ignore — clear local state regardless
+    }
     token.value = null
     user.value = null
     originalUser.value = null

@@ -195,6 +195,20 @@ describe('UsuariosService', () => {
       await expect(svc.forgotPassword('fantasma@test.com')).resolves.toBeUndefined()
       expect(updates).toHaveLength(0)
     })
+
+    it('forgotPassword sets resetToken and resetExpires when user exists', async () => {
+      let updatedData: any = null
+      const mockUser = { id: 'u1', email: 'test@test.com', resetToken: null, resetExpires: null }
+      const repo = makeRepo({
+        findOne: async () => mockUser,
+        update: async (id: string, data: any) => { updatedData = data; return { ...mockUser, ...data } }
+      })
+      const svc = new UsuariosService(repo, log, cache, makeAuth())
+      await svc.forgotPassword('test@test.com')
+      expect(updatedData).not.toBeNull()
+      expect(updatedData.resetToken).toBeDefined()
+      expect(updatedData.resetExpires).toBeGreaterThan(Date.now())
+    })
   })
 
   // ── RESET PASSWORD ────────────────────────────────────────────

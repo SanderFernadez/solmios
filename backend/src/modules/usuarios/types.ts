@@ -1,29 +1,36 @@
 // usuarios/types.ts — DTOs de autenticación
 
-// DTO interno — incluye passwordHash para operaciones de autenticación.
-// NUNCA exponer este DTO directamente en responses HTTP.
+// Roles disponibles en el sistema
+export type UserRole = 'super_admin' | 'hotel_admin' | 'receptionist'
+
+// DTO interno — incluye campos sensibles. NUNCA exponer en responses HTTP.
 export interface UsuarioDTO {
   id: string
-    name: string
+  name: string
   email: string
-  passwordHash: string  // campo interno, nunca exponer en response
-  rol: 'admin' | 'usuario'
-    active: boolean
-  emailVerificado: boolean
-  ultimoAcceso?: string
+  password: string       // campo interno, nunca exponer
+  role: UserRole
+  hotelId: string
+  active: number         // 0 | 1
+  token?: string         // JWT actual, nunca exponer
+  resetToken?: string    // token de recuperación, nunca exponer
+  resetExpires?: number  // expiración del reset token
+  avatar?: string
+  phone?: string
   createdAt: string
   updatedAt: string
 }
 
-// DTO público — sin passwordHash. Usar este en responses HTTP.
+// DTO público — sin campos sensibles. Usar en responses HTTP.
 export interface UsuarioPublicDTO {
   id: string
-    name: string
+  name: string
   email: string
-  rol: 'admin' | 'usuario'
-    active: boolean
-  emailVerificado: boolean
-  ultimoAcceso?: string
+  role: UserRole
+  hotelId: string
+  active: number
+  avatar?: string
+  phone?: string
   createdAt: string
 }
 
@@ -32,19 +39,36 @@ export interface LoginDTO {
   password: string
 }
 
-export interface RegisterDTO {
-    name: string
+export interface CreateUsuarioDTO {
+  name: string
   email: string
   password: string
-  passwordConfirm: string
+  role?: UserRole
+  hotelId?: string
+  phone?: string
+  avatar?: string
 }
 
-export interface AuthResponse {
-  usuario: UsuarioPublicDTO
-  token: string
+export interface UpdateUsuarioDTO {
+  name?: string
+  email?: string
+  password?: string
+  phone?: string
+  avatar?: string
 }
 
 export interface ChangePasswordDTO {
-  passwordActual: string
-  passwordNuevo: string
+  currentPassword: string
+  newPassword: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: {
+    id: string
+    nombre: string
+    email: string
+    role: UserRole
+    hotelId: string
+  }
 }
