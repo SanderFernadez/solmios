@@ -23,6 +23,38 @@ export class UsuariosController {
     return { status: 200, body: user }
   }
 
+  async logout(req: HttpRequest) {
+    await this.service.logout((req.user as any).id)
+    return { status: 200, body: { message: 'Sesión cerrada' } }
+  }
+
+  async changePassword(req: HttpRequest) {
+    const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string }
+    if (!currentPassword || !newPassword) {
+      return { status: 400, body: { error: 'Contraseña actual y nueva requeridas' } }
+    }
+    if (newPassword.length < 6) {
+      return { status: 400, body: { error: 'La nueva contraseña debe tener al menos 6 caracteres' } }
+    }
+    await this.service.changePassword((req.user as any).id, currentPassword, newPassword)
+    return { status: 200, body: { message: 'Contraseña actualizada' } }
+  }
+
+  async forgotPassword(req: HttpRequest) {
+    const { email } = req.body as { email: string }
+    if (!email) return { status: 400, body: { error: 'Email requerido' } }
+    const result = await this.service.forgotPassword(email)
+    return { status: 200, body: { message: 'Si el email existe, recibirás un enlace de recuperación', resetToken: result.resetToken } }
+  }
+
+  async resetPassword(req: HttpRequest) {
+    const { token, newPassword } = req.body as { token: string; newPassword: string }
+    if (!token || !newPassword) return { status: 400, body: { error: 'Token y nueva contraseña requeridos' } }
+    if (newPassword.length < 6) return { status: 400, body: { error: 'La contraseña debe tener al menos 6 caracteres' } }
+    await this.service.resetPassword(token, newPassword)
+    return { status: 200, body: { message: 'Contraseña restablecida' } }
+  }
+
   async index(req: HttpRequest) {
     const hotelId = (req.user as any).hotelId
     const data = await this.service.list(hotelId)

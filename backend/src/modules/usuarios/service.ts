@@ -56,6 +56,39 @@ export class UsuariosService {
     return this.repo.delete(id)
   }
 
+  async logout(id: string): Promise<void> {
+    await this.repo.update(id, { token: null })
+  }
+
+  async forgotPassword(email: string): Promise<{ resetToken: string }> {
+    const normalizedEmail = email.trim().toLowerCase()
+    const user = await this.repo.findOne({ email: normalizedEmail })
+    // Always return success to prevent email enumeration
+    if (!user) return { resetToken: 'dummy' }
+    const resetToken = crypto.randomUUID()
+    const resetExpires = Date.now() + 60 * 60 * 1000 // 1 hour
+    await this.repo.update(user.id, { resetToken, resetExpires })
+    // TODO: Send email with reset link containing resetToken
+    return { resetToken }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const users = await this.repo.findMany({})
+    const user = users.find((u: any) => u.resetToken === token && u.resetExpires > Date.now())
+    if (!user) throw new AuthError('Token inválido o expirado')
+    const hashed = await this.hashPassword(newPassword)
+    await this.repo.update(user.id, { password: hashed, resetToken: null, resetExpires: null })
+  }
+
+  async changePassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.repo.findById(id)
+    if (!user) throw new NotFoundError('Usuario no encontrado')
+    const valid = await this.verifyPassword(currentPassword, user.password)
+    if (!valid) throw new AuthError('Contraseña actual incorrecta')
+    const hashed = await this.hashPassword(newPassword)
+    await this.repo.update(id, { password: hashed })
+  }
+
   private async hashPassword(p: string): Promise<string> {
     return Bun.password.hash(p, 'bcrypt')
   }
