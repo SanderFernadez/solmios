@@ -4,40 +4,349 @@ import type { RepositoryAdapter, CacheAdapter, Auth, Logger } from 'arckode-fram
 import { silentLogger } from 'arckode-framework/testing'
 import { UsuariosService } from '../service'
 
+/* ---------- helpers ---------- */
+
 const log: Logger = silentLogger()
-const cache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, clear: async () => {}, flush: async () => {} }
-const fakeAuth = { createToken: () => 'tok', assertOwnership: () => {} } as unknown as Auth
+const cache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
+
+function makeAuth(overrides: Partial<Auth> = {}): Auth {
+  return {
+    createToken: () => 'jwt-token-fake',
+    assertOwnership: () => {},
+    authenticate: () => [],
+    hashPassword: async (p: string) => p,
+    verifyPassword: async () => true,
+    ...overrides,
+  } as unknown as Auth
+}
 
 function makeRepo(overrides: Partial<RepositoryAdapter<any>> = {}): RepositoryAdapter<any> {
   return {
-    findMany: async () => [], findById: async () => null, findOne: async () => null,
-    create: async (d: any) => ({ id: 'u1', ...d }), update: async (id: string, d: any) => ({ id, ...d }),
-    delete: async () => true, count: async () => 0,
+    findMany: async () => [],
+    findById: async () => null,
+    findOne: async () => null,
+    create: async (d: any) => ({ ...d, id: 'u1' }),
+    update: async (id: string, d: any) => ({ ...d, id }),
+    delete: async () => true,
+    count: async () => 0,
     paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
     ...overrides,
   }
 }
 
+/** Pre-computed bcrypt hash for 'secreto'. Evita llamar Bun.password.hash en cada test. */
+const HASH_SECRETO = '$2b$10$nT4qXtfUE5ghTmmDBYyYS.JR.cA6Nbvvyhetyw1OzkEYxnezyUmhi'
+
+function mockUser(overrides: Record<string, any> = {}) {
+  return {
+    id: 'u1',
+    name: 'Ana',
+    email: 'ana@test.com',
+    password: HASH_SECRETO,
+    role: 'hotel_admin',
+    hotelId: 'h1',
+    token: null,
+    resetToken: null,
+    resetExpires: null,
+    active: 1,
+    ...overrides,
+  }
+}
+
+/* ================================================================
+   Tests
+   ================================================================ */
+
 describe('UsuariosService', () => {
-  it('login lanza si no existe el usuario', async () => {
-    const svc = new UsuariosService(makeRepo(), log, cache, fakeAuth)
-    await expect(svc.login('no@x.com', 'p')).rejects.toThrow()
+
+  // ── LOGIN ─────────────────────────────────────────────────────
+
+  describe('login', () => {
+    it('exitoso: usuario existe, password correcto, retorna token', async () => {
+      const svc = new UsuariosService(
+        makeRepo({ findOne: async () => mockUser() }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      const u = await svc.login('ana@test.com', 'secreto')
+      expect(u.token).toBe('jwt-token-fake')
+      expect(u.user.id).toBe('u1')
+      expect(u.user.email).toBe('ana@test.com')
+    })
+
+    it('falla si el usuario no existe', async () => {
+      const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
+      await expect(svc.login('noexiste@test.com', 'p')).rejects.toThrow()
+    })
+
+    it('falla si la password es incorrecta', async () => {
+      const svc = new UsuariosService(
+        makeRepo({ findOne: async () => mockUser() }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await expect(svc.login('ana@test.com', 'wrong')).rejects.toThrow()
+    })
+
+    it('falla si el usuario está inactivo (active === 0)', async () => {
+      const svc = new UsuariosService(
+        makeRepo({ findOne: async () => mockUser({ active: 0 }) }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await expect(svc.login('ana@test.com', 'secreto')).rejects.toThrow()
+    })
+
+    it('normaliza el email: trim + lowercase', async () => {
+      const emails: string[] = []
+      const svc = new UsuariosService(
+        makeRepo({
+          findOne: async (q: any) => {
+            emails.push(q.email)
+            return mockUser()
+          },
+        }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await svc.login('  ANA@Test.COM  ', 'secreto')
+      expect(emails[0]).toBe('ana@test.com')
+    })
   })
 
-  it('me lanza NotFound si no existe', async () => {
-    const svc = new UsuariosService(makeRepo(), log, cache, fakeAuth)
-    await expect(svc.me('no-existe')).rejects.toThrow('Usuario no encontrado')
+  // ── LOGOUT ────────────────────────────────────────────────────
+
+  describe('logout', () => {
+    it('limpia el token del usuario', async () => {
+      let captured: any = null
+      const svc = new UsuariosService(
+        makeRepo({
+          update: async (id: string, data: any) => { captured = { id, ...data }; return data },
+        }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await svc.logout('u1')
+      expect(captured.id).toBe('u1')
+      expect(captured.token).toBeNull()
+    })
   })
 
-  it('create hashea el password y retorna el usuario', async () => {
-    const svc = new UsuariosService(makeRepo(), log, cache, fakeAuth)
-    const u = await svc.create({ nombre: 'Ana', email: 'a@x.com', password: 'secreto', hotelId: 'h1' })
-    expect(u.id).toBe('u1')
-    expect(u.password).not.toBe('secreto')
+  // ── CHANGE PASSWORD ───────────────────────────────────────────
+
+  describe('changePassword', () => {
+    it('exitoso: hashea nueva password y limpia token', async () => {
+      let captured: any = null
+      const svc = new UsuariosService(
+        makeRepo({
+          findById: async () => mockUser(),
+          update: async (id: string, data: any) => { captured = { id, ...data }; return data },
+        }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await svc.changePassword('u1', 'secreto', 'nueva')
+      expect(captured.id).toBe('u1')
+      expect(captured.token).toBeNull()
+      expect(captured.password).not.toBe('nueva') // hasheado
+    })
+
+    it('falla si la password actual es incorrecta', async () => {
+      const svc = new UsuariosService(
+        makeRepo({ findById: async () => mockUser() }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await expect(svc.changePassword('u1', 'wrong', 'nueva')).rejects.toThrow()
+    })
+
+    it('lanza NotFound si el usuario no existe', async () => {
+      const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
+      await expect(svc.changePassword('no-id', 'secreto', 'nueva')).rejects.toThrow('Usuario no encontrado')
+    })
   })
 
-  it('delete retorna true', async () => {
-    const svc = new UsuariosService(makeRepo(), log, cache, fakeAuth)
-    expect(await svc.delete('x')).toBe(true)
+  // ── FORGOT PASSWORD ───────────────────────────────────────────
+
+  describe('forgotPassword', () => {
+    it('retorna void sin importar si el usuario existe', async () => {
+      const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
+      const result = await svc.forgotPassword('noexiste@test.com')
+      expect(result).toBeUndefined()
+    })
+
+    it('no lanza error para usuario inexistente (evita enumeración)', async () => {
+      const updates: any[] = []
+      const svc = new UsuariosService(
+        makeRepo({
+          update: async (id: string, data: any) => { updates.push({ id, ...data }); return data },
+        }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await expect(svc.forgotPassword('fantasma@test.com')).resolves.toBeUndefined()
+      expect(updates).toHaveLength(0)
+    })
+  })
+
+  // ── RESET PASSWORD ────────────────────────────────────────────
+
+  describe('resetPassword', () => {
+    it('exitoso: hashea password y limpia token, resetToken y resetExpires', async () => {
+      let captured: any = null
+      const svc = new UsuariosService(
+        makeRepo({
+          findOne: async () => mockUser({ resetToken: 'valid-token', resetExpires: Date.now() + 3600_000 }),
+          update: async (id: string, data: any) => { captured = { id, ...data }; return data },
+        }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await svc.resetPassword('valid-token', 'nuevaPass123')
+      expect(captured.id).toBe('u1')
+      expect(captured.password).not.toBe('nuevaPass123') // hasheado
+      expect(captured.token).toBeNull()
+      expect(captured.resetToken).toBeNull()
+      expect(captured.resetExpires).toBeNull()
+    })
+
+    it('falla si el token está expirado', async () => {
+      const svc = new UsuariosService(
+        makeRepo({
+          findOne: async () => mockUser({ resetToken: 'expired', resetExpires: Date.now() - 1000 }),
+        }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await expect(svc.resetPassword('expired', 'nuevaPass')).rejects.toThrow('Token inválido o expirado')
+    })
+
+    it('falla si el token es inválido (usuario no encontrado)', async () => {
+      const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
+      await expect(svc.resetPassword('invalid-token', 'nuevaPass')).rejects.toThrow('Token inválido o expirado')
+    })
+  })
+
+  // ── LIST ──────────────────────────────────────────────────────
+
+  describe('list', () => {
+    it('filtra password, token, resetToken y resetExpires de los resultados', async () => {
+      const svc = new UsuariosService(
+        makeRepo({
+          findMany: async () => [
+            mockUser({ password: HASH_SECRETO, token: 'tok1', resetToken: 'rt1', resetExpires: 999 }),
+          ],
+        }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      const users = await svc.list('h1')
+      expect(users).toHaveLength(1)
+      expect(users[0]).not.toHaveProperty('password')
+      expect(users[0]).not.toHaveProperty('token')
+      expect(users[0]).not.toHaveProperty('resetToken')
+      expect(users[0]).not.toHaveProperty('resetExpires')
+      expect(users[0].id).toBe('u1')
+      expect(users[0].name).toBe('Ana')
+    })
+  })
+
+  // ── CREATE ────────────────────────────────────────────────────
+
+  describe('create', () => {
+    it('hashea el password y retorna usuario sin campos sensibles', async () => {
+      const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
+      const u = await svc.create({ nombre: 'Ana', email: 'ana@test.com', password: 'secreto', hotelId: 'h1' })
+      expect(u.id).toBe('u1')
+      expect(u.password).toBeUndefined()
+      expect(u.token).toBeUndefined()
+    })
+
+    it('lanza error si no se provee password', async () => {
+      const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
+      await expect(svc.create({ nombre: 'Ana', email: 'ana@test.com' })).rejects.toThrow('Password is required')
+    })
+  })
+
+  // ── UPDATE ────────────────────────────────────────────────────
+
+  describe('update', () => {
+    it('whitelist filtra role y hotelId del update', async () => {
+      let capturedData: any = null
+      const svc = new UsuariosService(
+        makeRepo({
+          update: async (id: string, data: any) => { capturedData = data; return { ...data, id } },
+        }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await svc.update('u1', { name: 'Ana Updated', email: 'nuevo@test.com', role: 'super_admin', hotelId: 'h2' })
+      expect(capturedData.name).toBe('Ana Updated')
+      expect(capturedData.email).toBe('nuevo@test.com')
+      expect(capturedData).not.toHaveProperty('role')
+      expect(capturedData).not.toHaveProperty('hotelId')
+    })
+
+    it('filtra campos sensibles de la respuesta', async () => {
+      const svc = new UsuariosService(
+        makeRepo({
+          update: async (id: string, data: any) => ({
+            ...data, id, token: 'tok', resetToken: 'rt', resetExpires: 999,
+          }),
+        }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      const result = await svc.update('u1', { name: 'Ana' })
+      expect(result).not.toHaveProperty('password')
+      expect(result).not.toHaveProperty('token')
+      expect(result).not.toHaveProperty('resetToken')
+      expect(result).not.toHaveProperty('resetExpires')
+      expect(result.id).toBe('u1')
+    })
+  })
+
+  // ── ME ────────────────────────────────────────────────────────
+
+  describe('me', () => {
+    it('retorna datos del usuario existente', async () => {
+      const svc = new UsuariosService(
+        makeRepo({ findById: async () => mockUser() }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      const u = await svc.me('u1')
+      expect(u.id).toBe('u1')
+      expect(u.nombre).toBe('Ana')
+      expect(u.email).toBe('ana@test.com')
+    })
+
+    it('lananza NotFound si el usuario no existe', async () => {
+      const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
+      await expect(svc.me('no-existe')).rejects.toThrow('Usuario no encontrado')
+    })
+  })
+
+  // ── DELETE ────────────────────────────────────────────────────
+
+  describe('delete', () => {
+    it('retorna true', async () => {
+      const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
+      expect(await svc.delete('x')).toBe(true)
+    })
   })
 })

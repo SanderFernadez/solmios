@@ -29,6 +29,18 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/pages/auth/forgot-password.vue'),
+      meta: { layout: 'none' },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/pages/auth/reset-password.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/admin',
       component: () => import('@/layouts/SuperAdminLayout.vue'),
       meta: { requiresSuperAdmin: true },

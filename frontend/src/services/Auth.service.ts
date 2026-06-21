@@ -27,7 +27,7 @@ function mapUser(raw: LoginResponse['user'] | MeResponse): User {
   return {
     id: raw.id,
     email: raw.email,
-    name: raw.nombre,
+    name: raw.name,
     role,
     hotelId: raw.hotelId || '',
     hotelName: raw.hotelName || '',
@@ -47,5 +47,21 @@ export const AuthService = {
   async me(): Promise<User> {
     const data = await http.get<MeResponse>('/auth/me')
     return mapUser(data)
+  },
+
+  async logout() {
+    return http.post('/auth/logout')
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    return http.post('/auth/change-password', { currentPassword, newPassword })
+  },
+
+  async forgotPassword(email: string) {
+    return http.post('/auth/forgot-password', { email })
+  },
+
+  async resetPassword(token: string, newPassword: string) {
+    return http.post('/auth/reset-password', { token, newPassword })
   },
 }

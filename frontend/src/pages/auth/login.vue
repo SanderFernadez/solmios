@@ -19,7 +19,10 @@
           </div>
 
           <div>
-            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Contraseña</label>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide">Contraseña</label>
+              <router-link to="/forgot-password" class="text-[11px] font-bold text-cyan hover:text-navy transition-colors">¿Olvidaste tu contraseña?</router-link>
+            </div>
             <input v-model="password" type="password" placeholder="••••••••" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
           </div>
 
@@ -55,6 +58,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { AuthService } from '@/services/Auth.service'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -72,6 +76,7 @@ const demoAccounts = ref<any[]>([])
 
 onMounted(async () => {
   try {
+    // Raw fetch justified: public endpoint no auth required, AuthService has no method for this
     const r = await fetch('/api/public/users')
     const json = await r.json()
     const list = Array.isArray(json) ? json : (json.data || [])
@@ -107,7 +112,7 @@ async function handleLogin() {
   }
 }
 
-function loginAs(account: typeof demoAccounts[0]) {
+function loginAs(account: { email: string; password: string; name: string; role: string }) {
   email.value = account.email
   password.value = account.password
   handleLogin()

@@ -7,7 +7,7 @@
     "migrate": "bun run migrate-db.ts",
     "doctor": "bun run doctor.ts",
     "analyze": "bun run node_modules/arckode-framework/bin/arckode.js analyze",
-    "test": "bun test",
+    "test": "bun test --env-file .env.test",
     "typecheck": "bun run tsc --noEmit",
     "lint": "echo 'No linter configured — add eslint to package.json'"
   },
