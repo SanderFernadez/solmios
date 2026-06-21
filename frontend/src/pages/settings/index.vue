@@ -1,5 +1,46 @@
 <template>
   <div>
+    <!-- Loading skeleton -->
+    <div v-if="loading" class="space-y-6">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <div class="h-6 w-48 bg-surface rounded-lg animate-pulse"></div>
+          <div class="h-4 w-72 bg-surface rounded mt-2 animate-pulse"></div>
+        </div>
+        <div class="h-10 w-32 bg-surface rounded-xl animate-pulse"></div>
+      </div>
+      <div class="grid lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+          <div class="card p-6">
+            <div class="h-5 w-40 bg-surface rounded mb-4 animate-pulse"></div>
+            <div class="grid grid-cols-2 gap-4">
+              <div v-for="i in 6" :key="i">
+                <div class="h-3 w-20 bg-surface rounded mb-2 animate-pulse"></div>
+                <div class="h-10 w-full bg-surface rounded-xl animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card p-6">
+            <div class="h-5 w-28 bg-surface rounded mb-4 animate-pulse"></div>
+            <div class="grid grid-cols-2 gap-4">
+              <div v-for="i in 4" :key="i">
+                <div class="h-3 w-20 bg-surface rounded mb-2 animate-pulse"></div>
+                <div class="h-10 w-full bg-surface rounded-xl animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-6">
+          <div class="card p-6">
+            <div class="h-5 w-16 bg-surface rounded mb-4 animate-pulse"></div>
+            <div class="h-24 w-full bg-surface rounded-xl animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page content -->
+    <div v-else>
     <div class="flex items-center justify-between mb-6">
       <div>
         <h2 class="text-xl font-black text-navy">Configuración</h2>
@@ -447,7 +488,7 @@
           </div>
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Contraseña</label>
-            <input v-model="form.wifiPassword" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+            <input v-model="form.wifiPassword" type="password" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
           </div>
         </div>
       </div>
@@ -508,12 +549,14 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { HotelService } from '@/services/Hotel.service'
+import { SettingsService, type HotelFull } from '@/services/Settings.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import type { AmenityCatalog } from '@/services/Hotel.service'
@@ -549,7 +592,9 @@ const tabs = [
   { value: 'integrations', label: 'Integraciones', icon: '🔗' },
 ]
 
-const form = ref<any>({
+type HotelForm = Partial<HotelFull> & { cancellationType?: string; freeCancellation?: boolean }
+
+const form = ref<HotelForm>({
   name: '', country: '', address: '', phone: '', email: '',
   timezone: 'America/Santo_Domingo', currency: 'USD',
   checkIn: '15:00', checkOut: '12:00', plan: 'Professional',
@@ -566,7 +611,7 @@ const form = ref<any>({
   taxName: 'ITBIS', taxRate: 18,
   wifiNetwork: '', wifiPassword: '',
   descriptionJson: '',
-  _id: '',
+  id: '',
 })
 
 const planPrice = computed(() => {
@@ -654,8 +699,8 @@ onMounted(async () => {
 
   try {
     // Hotel settings
-    const s = await HotelService.settings(hotelId.value)
-    const h = s.hotel as any
+    const s = await SettingsService.get()
+    const h = s.hotel as HotelFull & Record<string, unknown>
     form.value = {
       name: h.name ?? '', country: h.country ?? '', address: h.address ?? '',
       phone: h.phone ?? '', email: h.email ?? '',
@@ -685,7 +730,7 @@ onMounted(async () => {
       taxName: h.taxName ?? 'ITBIS', taxRate: h.taxRate ?? 18,
       wifiNetwork: h.wifiNetwork ?? '', wifiPassword: h.wifiPassword ?? '',
       descriptionJson: h.descriptionJson ?? '',
-      _id: h.id || h._id,
+      id: h.id || (h as any)._id,
     }
 
     // Cargar descripciones multilingües (JSON string → objeto)
@@ -728,7 +773,7 @@ onMounted(async () => {
       roomMap.get(k)!.add(r.occupancy)
     }
     if (roomMap.size === 0) {
-      const baseTypes = (s as any).baseRates || []
+      const baseTypes = s.baseRates || []
       for (const br of baseTypes) {
         for (const occ of [1, 2, 3, 4]) {
           if (!roomMap.has(br.type)) roomMap.set(br.type, new Set())
@@ -757,6 +802,16 @@ onMounted(async () => {
 
 async function saveAll() {
   if (saving.value) return
+
+  // Client-side validation
+  const validationErrors: string[] = []
+  if (!form.value.name?.trim()) validationErrors.push('Nombre del hotel es obligatorio')
+  if (!form.value.country?.trim()) validationErrors.push('País es obligatorio')
+  if (validationErrors.length) {
+    toast.error(validationErrors.join('. '))
+    return
+  }
+
   saving.value = true
   const errors: string[] = []
 
@@ -771,14 +826,14 @@ async function saveAll() {
     'requestReviews','publishReviewScore','taxName','taxRate',
     'wifiNetwork','wifiPassword','descriptionJson']
   for (const k of keys) {
-    const v = saveField(k, form.value[k])
-    if (v !== undefined) patch[k] = typeof v === 'boolean' ? (v ? 1 : 0) : v
+    const v = saveField(k, (form.value as Record<string, unknown>)[k])
+    if (v !== undefined) (patch as Record<string, unknown>)[k] = typeof v === 'boolean' ? (v ? 1 : 0) : v
   }
   // Serializar descripciones multilingües como JSON
   patch.descriptionJson = JSON.stringify(descriptions.value)
 
   try {
-    await HotelService.updateSettings(form.value._id, patch)
+    await SettingsService.patchHotel(patch)
   } catch { errors.push('hotel') }
 
   try {
