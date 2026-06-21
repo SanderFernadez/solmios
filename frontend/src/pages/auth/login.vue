@@ -76,8 +76,12 @@ const demoAccounts = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    // Raw fetch justified: public endpoint no auth required, AuthService has no method for this
+    // Raw fetch justified: public endpoint, no auth required, AuthService has no method for this.
+    // Matches http.ts behavior: check response.ok, parse JSON, handle errors.
     const r = await fetch('/api/public/users')
+    if (!r.ok) {
+      throw new Error(`HTTP ${r.status}: ${r.statusText}`)
+    }
     const json = await r.json()
     const list = Array.isArray(json) ? json : (json.data || [])
     if (Array.isArray(list)) {
@@ -91,7 +95,10 @@ onMounted(async () => {
         roleClass: ROLE_CLASS[u.role] || '',
       }))
     }
-  } catch { /* fallback */ }
+  } catch (e) {
+    // Silently degrade — demo accounts are a convenience, not critical. Log for debugging.
+    console.warn('Failed to load demo accounts:', e)
+  }
 })
 
 async function handleLogin() {

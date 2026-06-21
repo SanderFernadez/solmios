@@ -48,21 +48,24 @@ export interface HotelFull {
   advanceAmount?: number
   releaseHours?: number
   defaultPaymentMethod?: string
-  freeCancellation?: string
+  freeCancellation?: string | boolean
   depositRequired?: boolean
   depositPercent?: number
   weekendSurcharge?: number
-  // Reseñas
-  requestReviews?: boolean
-  publishReviewScore?: boolean
-  publishReviewComments?: boolean
+  // Reseñas (pueden venir como 0/1 desde la DB o boolean desde UI)
+  requestReviews?: boolean | number
+  publishReviewScore?: boolean | number
+  publishReviewComments?: boolean | number
   // Impuestos
   taxName?: string
   taxRate?: number
-  // Multilingüe + WiFi
-  descriptionJson?: Record<string, string>
+  // Multilingüe + WiFi — permitimos string vacío inicial y Record cuando se carga
+  descriptionJson?: string | Record<string, string>
   wifiNetwork?: string
   wifiPassword?: string
+  // Condiciones opcionales (algunos son string libre)
+  freeCancellationType?: string
+  cancellationType?: string
 }
 
 export interface SettingsFull {

@@ -53,11 +53,13 @@ interface RoomsResponse {
 }
 
 export const RoomService = {
-  async list(params?: { hotelId?: string; tipo?: string; estado?: string }): Promise<{ rooms: Room[]; total: number }> {
+  async list(params?: { hotelId?: string; tipo?: string; estado?: string; type?: string; status?: RoomStatus }): Promise<{ rooms: Room[]; total: number }> {
     const qs = new URLSearchParams()
     if (params?.hotelId) qs.set('hotelId', params.hotelId)
     if (params?.type) qs.set('tipo', params.type)
+    else if (params?.tipo) qs.set('tipo', params.tipo)
     if (params?.status) qs.set('estado', params.status)
+    else if (params?.estado) qs.set('estado', params.estado)
     const query = qs.toString()
     const data = await http.get<RoomsResponse>(`/habitaciones${query ? `?${query}` : ''}`)
     return { rooms: data.data.map(mapRoom), total: data.total }

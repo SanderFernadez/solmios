@@ -64,4 +64,15 @@ export const AuthService = {
   async resetPassword(token: string, newPassword: string) {
     return http.post('/auth/reset-password', { token, newPassword })
   },
+
+  // PC-2 Multi-property
+  async getHotels(): Promise<any[]> {
+    const data = await http.get<{ data: any[] }>('/auth/hotels')
+    return data.data || []
+  },
+
+  async switchHotel(hotelId: string): Promise<{ token: string; user: LoginResponse['user'] }> {
+    const data = await http.post<{ token: string; user: LoginResponse['user'] }>(`/auth/switch-hotel/${hotelId}`)
+    return data
+  },
 }

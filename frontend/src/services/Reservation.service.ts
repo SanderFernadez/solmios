@@ -11,6 +11,7 @@ interface RawReservation {
   channel: string
   totalAmount: number
   status: string
+  adults?: number
   children?: number
   currency?: string
   deposit?: number

@@ -12,6 +12,8 @@ export interface PaymentRequest {
   sentTo?: string
   sentVia?: 'email' | 'whatsapp' | 'sms'
   paidAt?: string
+  createdAt?: string
+  guestName?: string
 }
 
 export const PaymentsService = {
@@ -22,4 +24,9 @@ export const PaymentsService = {
   update: (id: string, data: Partial<PaymentRequest>) =>
     http.put<PaymentRequest>(`/payment-requests/${id}`, data),
   remove: (id: string) => http.delete<{ success: boolean }>(`/payment-requests/${id}`),
+  /** Crea una Checkout Session de Stripe y actualiza el PaymentRequest con la URL */
+  createStripeCheckout: (paymentRequestId: string) =>
+    http.post<{ url: string; sessionId: string }>(`/payment-requests/${paymentRequestId}/create-checkout`),
+  /** Estado de configuración de Stripe (para mostrar/ocultar botones) */
+  status: () => http.get<{ configured: boolean; publishableKey: string }>('/stripe/status'),
 }
