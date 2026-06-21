@@ -1,6 +1,10 @@
 // mantenimiento/types.ts — DTOs y tipos de queries (generado desde model.ts).
 // Responsabilidad ÚNICA: contrato TypeScript del módulo. El schema de DB vive en ./model.ts.
 
+export type MaintenanceCategory = 'general' | 'plumbing' | 'electrical' | 'hvac' | 'furniture' | 'appliance' | 'structural' | 'pest_control'
+export type MaintenancePriority = 'low' | 'medium' | 'high' | 'urgent'
+export type MaintenanceStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
+
 export interface MantenimientoDTO {
   id: string
   hotelId: string
@@ -8,9 +12,9 @@ export interface MantenimientoDTO {
   roomNumber?: string
   title: string
   description?: string
-  category?: string
-  priority?: string
-  status?: string
+  category?: MaintenanceCategory
+  priority?: MaintenancePriority
+  status?: MaintenanceStatus
   assignedTo?: string
   estimatedCost?: number
   reportedDate?: string
@@ -25,9 +29,9 @@ export interface CreateMantenimientoDTO {
   roomNumber?: string
   title: string
   description?: string
-  category?: string
-  priority?: string
-  status?: string
+  category?: MaintenanceCategory
+  priority?: MaintenancePriority
+  status?: MaintenanceStatus
   assignedTo?: string
   estimatedCost?: number
   reportedDate?: string
@@ -35,26 +39,26 @@ export interface CreateMantenimientoDTO {
 }
 
 export interface UpdateMantenimientoDTO {
-  hotelId?: string
+  // NOTE: hotelId intentionally NOT here — cannot move ticket between hotels
   roomId?: string
   roomNumber?: string
   title?: string
   description?: string
-  category?: string
-  priority?: string
-  status?: string
+  category?: MaintenanceCategory
+  priority?: MaintenancePriority
+  status?: MaintenanceStatus
   assignedTo?: string
   estimatedCost?: number
   reportedDate?: string
   resolvedDate?: string
 }
 
-// ─── Consultas ─────────────────────────────────────────
 export interface MantenimientoQuery {
   hotelId?: string
-  status?: string
-  type?: string
-  category?: string
+  status?: MaintenanceStatus
+  category?: MaintenanceCategory
+  priority?: MaintenancePriority
+  roomId?: string
   search?: string
   page?: number
   limit?: number
@@ -63,4 +67,7 @@ export interface MantenimientoQuery {
 export interface MantenimientoPaginated {
   data: MantenimientoDTO[]
   total: number
+  page?: number
+  limit?: number
+  pages?: number
 }

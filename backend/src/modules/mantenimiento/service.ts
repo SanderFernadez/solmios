@@ -1,18 +1,9 @@
-// mantenimiento/service.ts — Facade pública del módulo
-// Responsabilidad ÚNICA: casos de uso del módulo.
-// NO sabe de HTTP. NO importa de otros módulos.
-// Recibe dependencias por constructor (Dependency Inversion).
-//
-// Si este archivo supera 200 líneas → extraer casos de uso a ./usecases/{caso}.ts
-// y dejar acá solo el orquestador que delega.
-//
-// IMPORTANTE: depende de RepositoryAdapter<MantenimientoDTO>, no del ORM directamente.
-// Esto permite swapear SQL → MongoDB → Prisma en composition-root.ts sin tocar este archivo.
-
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
+import { NotFoundError, AuthError } from 'arckode-framework'
 import type { MantenimientoDTO, CreateMantenimientoDTO, UpdateMantenimientoDTO, MantenimientoQuery, MantenimientoPaginated } from './types'
 import type { MantenimientoSockets } from './sockets'
+
+const CACHE_TTL = 300
 
 export class MantenimientoService {
   private sockets: MantenimientoSockets = {}
@@ -21,11 +12,9 @@ export class MantenimientoService {
     private readonly repo: RepositoryAdapter<MantenimientoDTO>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
+    private readonly auth: Auth,
   ) {}
 
-  // ACUMULA handlers — nunca pisa el anterior.
-  // Si dos conectores registran el mismo evento, ambos corren en cadena (secuencial).
-  // Para ejecución paralela independiente → usar EventBus en composition-root.ts.
   setSockets(s: Partial<MantenimientoSockets>): void {
     const next = s as Record<string, any>
     const cur = this.sockets as Record<string, any>
@@ -37,57 +26,75 @@ export class MantenimientoService {
     }
   }
 
-  async list(query?: MantenimientoQuery): Promise<MantenimientoPaginated> {
-    this.logger.info('Listando mantenimiento', { query })
-
+  async list(query: MantenimientoQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoPaginated> {
     const filters: Record<string, unknown> = {}
+    if (query.status) filters.status = query.status
+    if (query.category) filters.category = query.category
+    if (query.priority) filters.priority = query.priority
+    if (query.roomId) filters.roomId = query.roomId
 
-    if (query?.hotelId !== undefined) filters.hotelId = query.hotelId
-    if (query?.status !== undefined) filters.status = query.status
-    if (query?.type !== undefined) filters.type = query.type
-    if (query?.category !== undefined) filters.category = query.category
-
-    const rows = await this.repo.findMany(filters)
-    let data = rows
-    if (query?.search) {
-      const q = String(query.search).toLowerCase()
-      data = rows.filter((r: any) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(q)))
+    if (currentUser.role !== 'super_admin') {
+      if (!currentUser.hotelId) throw new AuthError('No hotel assigned')
+      filters.hotelId = currentUser.hotelId
+    } else if (query.hotelId) {
+      filters.hotelId = query.hotelId
     }
 
-    return { data, total: data.length }
+    const page = Math.max(query.page || 1, 1)
+    const limit = Math.min(Math.max(query.limit || 20, 1), 100)
+    const offset = (page - 1) * limit
+
+    const cacheKey = `mantenimiento:list:${currentUser.hotelId || 'all'}`
+    const cached = await this.cache.get(cacheKey)
+    if (cached) return cached as MantenimientoPaginated
+
+    const result = await this.repo.paginate({ filters, offset, limit })
+    const response = { data: result.data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
+    await this.cache.set(cacheKey, response, CACHE_TTL)
+    return response
   }
 
-  async getById(id: string): Promise<MantenimientoDTO> {
-    this.logger.info('Obteniendo mantenimiento', { id })
+  async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
     const item = await this.repo.findById(id)
-    if (!item) throw new NotFoundError('Mantenimiento no encontrado')
-    // IDOR: si el recurso tiene userId u ownerId, descomentar y adaptar:
-    // auth.assertOwnership(item.userId as string, currentUser.id, currentUser.role)
+    if (!item) throw new NotFoundError('Ticket de mantenimiento no encontrado')
+    if (currentUser.role !== 'super_admin' && item.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
     return item
   }
 
-  async create(dto: CreateMantenimientoDTO): Promise<MantenimientoDTO> {
-    this.logger.info('Creando mantenimiento')
-    const item = await this.repo.create(dto as Omit<MantenimientoDTO, 'id'>)
+  async create(dto: CreateMantenimientoDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
+    if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado para crear en otro hotel')
+    }
+    const item = await this.repo.create(dto as any)
     await this.sockets.onMantenimientoCreated?.(item)
-    await this.cache.delete('mantenimiento:list')
+    await this.cache.delete(`mantenimiento:list:${dto.hotelId}`)
     return item
   }
 
-  async update(id: string, dto: UpdateMantenimientoDTO): Promise<MantenimientoDTO> {
-    this.logger.info('Actualizando mantenimiento', { id })
-    const item = await this.repo.update(id, dto as Partial<Omit<MantenimientoDTO, 'id'>>)
-    if (!item) throw new NotFoundError('Mantenimiento no encontrado')
+  async update(id: string, dto: UpdateMantenimientoDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Ticket de mantenimiento no encontrado')
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
+    const item = await this.repo.update(id, dto as any)
+    if (!item) throw new NotFoundError('Ticket de mantenimiento no encontrado')
     await this.sockets.onMantenimientoUpdated?.(item)
-    await this.cache.delete('mantenimiento:list')
+    await this.cache.delete(`mantenimiento:list:${existing.hotelId}`)
     return item
   }
 
-  async delete(id: string): Promise<void> {
-    this.logger.info('Eliminando mantenimiento', { id })
+  async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Ticket de mantenimiento no encontrado')
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
     const deleted = await this.repo.delete(id)
-    if (!deleted) throw new NotFoundError('Mantenimiento no encontrado')
+    if (!deleted) throw new NotFoundError('Ticket de mantenimiento no encontrado')
     await this.sockets.onMantenimientoDeleted?.(id)
-    await this.cache.delete('mantenimiento:list')
+    await this.cache.delete(`mantenimiento:list:${existing.hotelId}`)
   }
 }
