@@ -12,8 +12,8 @@ export const CreateHousekeepingSchema: Record<string, ValidationRule> = {
   priority: { type: 'string' as const, enum: PRIORITY_ENUM },
   status: { type: 'string' as const, enum: STATUS_ENUM },
   notes: { type: 'string' as const, max: 2000 },
-  assignedDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
-  completedDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+  assignedDate: { type: 'string' as const },
+  completedDate: { type: 'string' as const },
   cleaningItems: { type: 'array' as any },
 }
 
@@ -24,8 +24,8 @@ export const UpdateHousekeepingSchema: Record<string, ValidationRule> = {
   priority: { type: 'string' as const, enum: PRIORITY_ENUM },
   status: { type: 'string' as const, enum: STATUS_ENUM },
   notes: { type: 'string' as const, max: 2000 },
-  assignedDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
-  completedDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+  assignedDate: { type: 'string' as const },
+  completedDate: { type: 'string' as const },
   cleaningItems: { type: 'array' as any },
 }
 
