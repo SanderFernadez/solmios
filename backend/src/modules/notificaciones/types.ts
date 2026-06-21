@@ -1,18 +1,22 @@
-// notificaciones/types.ts — DTOs y tipos de queries (generado desde model.ts).
-// Responsabilidad ÚNICA: contrato TypeScript del módulo. El schema de DB vive en ./model.ts.
+export type NotificationType = 'system' | 'reservation' | 'payment' | 'housekeeping' | 'maintenance' | 'announcement'
+export type NotificationChannel = 'in_app' | 'email' | 'sms' | 'whatsapp'
+
+export interface NotificationMetadata {
+  [key: string]: unknown
+}
 
 export interface NotificacionesDTO {
   id: string
   hotelId: string
   userId?: string
-  type?: string
+  type?: NotificationType
   title: string
   message?: string
   read?: number
   sent?: number
   date?: string
-  channel?: string
-  metadata?: any
+  channel?: NotificationChannel
+  metadata?: NotificationMetadata
   createdAt: string
   updatedAt: string
 }
@@ -20,35 +24,35 @@ export interface NotificacionesDTO {
 export interface CreateNotificacionesDTO {
   hotelId: string
   userId?: string
-  type?: string
+  type?: NotificationType
   title: string
   message?: string
   read?: number
   sent?: number
   date?: string
-  channel?: string
-  metadata?: any
+  channel?: NotificationChannel
+  metadata?: NotificationMetadata
 }
 
 export interface UpdateNotificacionesDTO {
-  hotelId?: string
+  // NOTE: hotelId intentionally NOT here
   userId?: string
-  type?: string
+  type?: NotificationType
   title?: string
   message?: string
   read?: number
   sent?: number
   date?: string
-  channel?: string
-  metadata?: any
+  channel?: NotificationChannel
+  metadata?: NotificationMetadata
 }
 
-// ─── Consultas ─────────────────────────────────────────
 export interface NotificacionesQuery {
   hotelId?: string
-  status?: string
-  type?: string
-  category?: string
+  type?: NotificationType
+  channel?: NotificationChannel
+  userId?: string
+  read?: number
   search?: string
   page?: number
   limit?: number
@@ -57,4 +61,7 @@ export interface NotificacionesQuery {
 export interface NotificacionesPaginated {
   data: NotificacionesDTO[]
   total: number
+  page?: number
+  limit?: number
+  pages?: number
 }
