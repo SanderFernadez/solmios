@@ -1,6 +1,3 @@
-// apikeys/types.ts — DTOs y tipos de queries (generado desde model.ts).
-// Responsabilidad ÚNICA: contrato TypeScript del módulo. El schema de DB vive en ./model.ts.
-
 export interface ApikeysDTO {
   id: string
   hotelId?: string
@@ -27,7 +24,7 @@ export interface CreateApikeysDTO {
 }
 
 export interface UpdateApikeysDTO {
-  hotelId?: string
+  // NOTE: hotelId intentionally NOT here — cannot move key between hotels
   name?: string
   scope?: string
   masked?: string
@@ -37,12 +34,9 @@ export interface UpdateApikeysDTO {
   lastUsed?: string
 }
 
-// ─── Consultas ─────────────────────────────────────────
 export interface ApikeysQuery {
   hotelId?: string
-  status?: string
-  type?: string
-  category?: string
+  active?: number
   search?: string
   page?: number
   limit?: number
@@ -51,4 +45,7 @@ export interface ApikeysQuery {
 export interface ApikeysPaginated {
   data: ApikeysDTO[]
   total: number
+  page?: number
+  limit?: number
+  pages?: number
 }
