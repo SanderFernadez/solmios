@@ -12,6 +12,8 @@ export const UsuariosModel: ModelDefinition = {
     hotelId: { type: 'string', indexed: true },
     active: { type: 'number', default: 1 },
     token: { type: 'string' },
+    resetToken: { type: 'string', indexed: true },
+    resetExpires: { type: 'number' },
     avatar: { type: 'string' },
     phone: { type: 'string' },
   },
