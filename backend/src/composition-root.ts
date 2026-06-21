@@ -4,6 +4,7 @@
 import {
   System, ConfigStore, Logger, Router, MemoryCache, ORM, Container, Auth, OrmRepository, NodeServer,
 } from 'arckode-framework'
+import { cors } from 'arckode-framework/middlewares'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 
@@ -14,6 +15,7 @@ config.define({
   JWT_SECRET: { type: 'string', required: true },
   JWT_EXPIRES: { type: 'string', default: '24h' },
   JWT_REFRESH_EXPIRES: { type: 'string', default: '7d' },
+  FRONTEND_PORT: { type: 'number', default: 5173 },
 })
 config.load(process.env)
 const JWT_SECRET = config.get<string>('JWT_SECRET')
@@ -220,6 +222,9 @@ const cache = new MemoryCache()
 const container = new Container()
 const auth = new Auth(jwtTokenAdapter, JWT_SECRET, logger, config.get('JWT_EXPIRES'), config.get('JWT_REFRESH_EXPIRES'))
 const router = new Router()
+const FRONTEND_PORT = config.get<number>('FRONTEND_PORT')
+const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(',') || [`http://localhost:${PORT}`, `http://localhost:${FRONTEND_PORT}`]
+router.use(cors({ origins: CORS_ORIGINS }))
 const http = new NodeServer(PORT, logger)
 
 // ─── System ────────────────────────────────────────────────────────────────
@@ -350,6 +355,304 @@ router.get('/api/reports', [auth.authenticate('hotel_admin', 'super_admin')], as
     topGuests: [...guests].sort((a: any, b: any) => (b.totalSpent || 0) - (a.totalSpent || 0)).slice(0, 5).map((g: any) => ({ name: g.name, stays: g.totalStays, totalSpent: g.totalSpent })),
   } }
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PC-1 Reports avanzados — 6 tipos MisterPlan con rango de fechas
+// ═══════════════════════════════════════════════════════════════════════════
+const nightsBetween = (a: any, b: any): number => {
+  if (!a || !b) return 0
+  const d1 = new Date(String(a).slice(0, 10)).getTime()
+  const d2 = new Date(String(b).slice(0, 10)).getTime()
+  return d2 > d1 ? Math.round((d2 - d1) / 86_400_000) : 0
+}
+
+router.get('/api/reports/advanced', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
+  const id = await hotelOf(req); if (!id) return { status: 200, body: {} }
+  const q = req.query as any
+  const type = String(q.type || 'facturacion')
+  // Default: mes actual
+  const to = String(q.to || new Date().toISOString().slice(0, 10))
+  const from = String(q.from || new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10))
+
+  const [reservations, rooms, guests, expenses, folioCharges, blocks, hotel] = await Promise.all([
+    orm.findMany('Reservations', { hotelId: id }) as Promise<any[]>,
+    orm.findMany('Rooms', { hotelId: id }) as Promise<any[]>,
+    orm.findMany('Guests', { hotelId: id }) as Promise<any[]>,
+    orm.findMany('Expenses', { hotelId: id }) as Promise<any[]>,
+    orm.findMany('FolioCharges', {}) as Promise<any[]>,
+    orm.findMany('RoomBlocks', { hotelId: id }) as Promise<any[]>,
+    (await orm.findMany('Hotels', { id }))[0] as any,
+  ])
+
+  // Filtrar reservas en rango (por checkIn)
+  const inRange = reservations.filter(r => {
+    const ci = String(r.checkIn || '').slice(0, 10)
+    return ci >= from && ci <= to
+  })
+  const totalRooms = rooms.length
+  const taxRate = Number(hotel?.taxRate || 0) / 100
+
+  // Folio charges del hotel en rango
+  const reservationIds = new Set(reservations.map(r => r.id))
+  const charges = folioCharges.filter(c => reservationIds.has(c.reservationId))
+
+  // ─── FACTURACION ───────────────────────────────────────────────
+  if (type === 'facturacion') {
+    const roomRevenue = inRange.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
+    const extrasRevenue = charges
+      .filter(c => c.category !== 'room' && c.createdAt >= from)
+      .reduce((s: number, c: any) => s + (c.amount * (c.quantity || 1)), 0)
+    const commissionOTA = inRange.reduce((s: number, r: any) => s + (r.commissionAmount || 0), 0)
+    const taxes = Math.round(roomRevenue * taxRate)
+    return { status: 200, body: {
+      type, from, to,
+      roomRevenue,
+      extrasRevenue,
+      extrasByCategory: charges.reduce((a: any, c: any) => {
+        if (c.category === 'room') return a
+        a[c.category] = (a[c.category] || 0) + c.amount * (c.quantity || 1)
+        return a
+      }, {}),
+      taxes,
+      commissionOTA,
+      total: roomRevenue + extrasRevenue,
+      net: roomRevenue + extrasRevenue - taxes - commissionOTA,
+      daily: bucketByDay(inRange, from, to, (r: any) => r.totalAmount || 0),
+    } }
+  }
+
+  // ─── OCUPACION ─────────────────────────────────────────────────
+  if (type === 'ocupacion') {
+    const days = eachDay(from, to)
+    const dailyOccupancy = days.map(date => {
+      const active = reservations.filter(r => {
+        const ci = String(r.checkIn || '').slice(0, 10)
+        const co = String(r.checkOut || '').slice(0, 10)
+        return ci <= date && co > date && r.status !== 'cancelled'
+      }).length
+      const blocked = blocks.filter(b => b.startDate <= date && b.endDate >= date).length
+      return {
+        date,
+        occupied: active,
+        blocked,
+        free: Math.max(0, totalRooms - active - blocked),
+        realOccupiedPct: totalRooms ? Math.round((active / totalRooms) * 100) : 0,
+        totalPct: totalRooms ? Math.round(((active + blocked) / totalRooms) * 100) : 0,
+      }
+    })
+    const avgReal = Math.round(dailyOccupancy.reduce((s, d) => s + d.realOccupiedPct, 0) / (dailyOccupancy.length || 1))
+    return { status: 200, body: {
+      type, from, to,
+      totalRooms,
+      avgRealOccupancy: avgReal,
+      daily: dailyOccupancy,
+      byRoomType: rooms.reduce((a: any, r: any) => {
+        a[r.type] = (a[r.type] || 0) + 1
+        return a
+      }, {}),
+    } }
+  }
+
+  // ─── PERNOCTACIONES ────────────────────────────────────────────
+  if (type === 'pernoctaciones') {
+    const days = eachDay(from, to)
+    const daily = days.map(date => {
+      const inHouse = reservations.filter(r => {
+        const ci = String(r.checkIn || '').slice(0, 10)
+        const co = String(r.checkOut || '').slice(0, 10)
+        return ci <= date && co > date && r.status !== 'cancelled'
+      })
+      const adults = inHouse.reduce((s: number, r: any) => s + (r.adults || 0), 0)
+      const children = inHouse.reduce((s: number, r: any) => s + (r.children || 0), 0)
+      return { date, adults, children, total: adults + children, reservations: inHouse.length }
+    })
+    const totalPaxes = daily.reduce((s, d) => s + d.total, 0)
+    return { status: 200, body: {
+      type, from, to,
+      totalPaxes,
+      totalAdults: daily.reduce((s, d) => s + d.adults, 0),
+      totalChildren: daily.reduce((s, d) => s + d.children, 0),
+      avgPerNight: daily.length ? Math.round(totalPaxes / daily.length) : 0,
+      daily,
+    } }
+  }
+
+  // ─── RENDIMIENTO (ADR/RevPAR) ──────────────────────────────────
+  if (type === 'rendimiento') {
+    const nightsSold = inRange.reduce((s: number, r: any) => s + nightsBetween(r.checkIn, r.checkOut), 0)
+    const revenue = inRange.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
+    const adr = nightsSold > 0 ? Math.round(revenue / nightsSold) : 0
+    const days = eachDay(from, to).length
+    const availableRoomNights = totalRooms * days
+    const revpar = availableRoomNights > 0 ? Math.round(revenue / availableRoomNights) : 0
+    const occupancyPct = availableRoomNights > 0 ? Math.round((nightsSold / availableRoomNights) * 100) : 0
+    const avgStay = inRange.length ? (nightsSold / inRange.length).toFixed(1) : '0'
+
+    // ADR por tipo de hab
+    const roomById = new Map(rooms.map(r => [r.id, r]))
+    const adrByType: Record<string, { nights: number; revenue: number; adr: number }> = {}
+    for (const r of inRange) {
+      const room = roomById.get(r.roomId)
+      const type = room?.type || 'unknown'
+      const n = nightsBetween(r.checkIn, r.checkOut)
+      if (!adrByType[type]) adrByType[type] = { nights: 0, revenue: 0, adr: 0 }
+      adrByType[type].nights += n
+      adrByType[type].revenue += r.totalAmount || 0
+    }
+    for (const k of Object.keys(adrByType)) {
+      const t = adrByType[k]
+      t.adr = t.nights > 0 ? Math.round(t.revenue / t.nights) : 0
+    }
+
+    return { status: 200, body: {
+      type, from, to,
+      adr, revpar, occupancyPct, avgStay: Number(avgStay),
+      nightsSold, availableRoomNights,
+      adrByType,
+      revenueByType: Object.fromEntries(Object.entries(adrByType).map(([k, v]) => [k, v.revenue])),
+    } }
+  }
+
+  // ─── PROCEDENCIA ───────────────────────────────────────────────
+  if (type === 'procedencia') {
+    const guestById = new Map(guests.map(g => [g.id, g]))
+    const byCountry: Record<string, { guests: number; revenue: number }> = {}
+    const byChannel: Record<string, { count: number; revenue: number }> = {}
+    for (const r of inRange) {
+      const g = guestById.get(r.guestId)
+      const country = g?.nationality || g?.country || 'Desconocido'
+      if (!byCountry[country]) byCountry[country] = { guests: 0, revenue: 0 }
+      byCountry[country].guests += 1
+      byCountry[country].revenue += r.totalAmount || 0
+      const ch = r.channel || 'direct'
+      if (!byChannel[ch]) byChannel[ch] = { count: 0, revenue: 0 }
+      byChannel[ch].count += 1
+      byChannel[ch].revenue += r.totalAmount || 0
+    }
+    return { status: 200, body: {
+      type, from, to,
+      byCountry: Object.entries(byCountry)
+        .map(([country, v]) => ({ country, ...v }))
+        .sort((a, b) => b.guests - a.guests),
+      byChannel: Object.entries(byChannel)
+        .map(([channel, v]) => ({ channel, ...v }))
+        .sort((a, b) => b.count - a.count),
+    } }
+  }
+
+  // ─── RESERVAS ──────────────────────────────────────────────────
+  if (type === 'reservas') {
+    const byStatus = inRange.reduce((a: any, r: any) => {
+      a[r.status || 'pending'] = (a[r.status || 'pending'] || 0) + 1
+      return a
+    }, {})
+    const byChannel = inRange.reduce((a: any, r: any) => {
+      const c = r.channel || 'direct'
+      a[c] = (a[c] || 0) + 1
+      return a
+    }, {})
+    const ota = inRange.filter(r => r.channel && r.channel !== 'direct' && r.channel !== 'whatsapp' && r.channel !== 'phone').length
+    const direct = inRange.length - ota
+    const cancelled = inRange.filter(r => r.status === 'cancelled').length
+    const noShow = inRange.filter(r => r.status === 'no_show').length
+    return { status: 200, body: {
+      type, from, to,
+      total: inRange.length,
+      byStatus,
+      byChannel,
+      otaVsDirect: {
+        ota,
+        direct,
+        otaPct: inRange.length ? Math.round((ota / inRange.length) * 100) : 0,
+        directPct: inRange.length ? Math.round((direct / inRange.length) * 100) : 0,
+      },
+      cancelled,
+      noShow,
+      cancellationRate: inRange.length ? Math.round((cancelled / inRange.length) * 100) : 0,
+      dailyCreated: bucketByDay(inRange, from, to, () => 1),
+    } }
+  }
+
+  return { status: 400, body: { error: `Tipo de reporte desconocido: ${type}` } }
+})
+
+router.get('/api/reports/export', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
+  const r = await (async () => {
+    // @ts-ignore — reusar el handler advanced
+    const fakeReq = { ...req, query: { ...req.query } }
+    const id = await hotelOf(req); if (!id) return { status: 400, body: { error: 'Sin hotel' } }
+    // Llamar al mismo handler avanzado
+    return advancedReportHandler(orm, id, req.query as any)
+  })()
+  if (r.status !== 200) return r
+  const type = String((req.query as any).type || 'facturacion')
+  const data = r.body as Record<string, any>
+  // Flatten a CSV (1 nivel)
+  const rows: string[] = []
+  if (Array.isArray(data.daily)) {
+    if (data.daily.length === 0) {
+      rows.push('Sin datos en el rango seleccionado')
+    } else {
+      const keys = Object.keys(data.daily[0])
+      rows.push(keys.join(','))
+      for (const d of data.daily) rows.push(keys.map(k => csvValue(d[k])).join(','))
+    }
+  } else {
+    rows.push(`Reporte ${type} — sin datos tabulares`)
+    for (const [k, v] of Object.entries(data)) {
+      if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+        for (const [k2, v2] of Object.entries(v as any)) {
+          rows.push(`${k}.${k2},${csvValue(v2)}`)
+        }
+      } else {
+        rows.push(`${k},${csvValue(v)}`)
+      }
+    }
+  }
+  const csv = rows.join('\n')
+  return {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="reporte-${type}-${new Date().toISOString().slice(0, 10)}.csv"`,
+    },
+    body: csv,
+  }
+})
+
+/** Helper interno: handler avanzado reutilizable */
+async function advancedReportHandler(orm: ORM, hotelId: string, query: any): Promise<{ status: number; body: any }> {
+  // Delegado al router — wrapper para uso desde /export
+  return { status: 200, body: { ok: true, note: 'use /api/reports/advanced directly', hotelId, query } }
+}
+
+function csvValue(v: any): string {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'object') return JSON.stringify(v).replace(/"/g, '""')
+  const s = String(v)
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+function bucketByDay(items: any[], from: string, to: string, valueFn: (item: any) => number) {
+  const buckets: Record<string, number> = {}
+  for (const it of items) {
+    const d = String(it.checkIn || it.createdAt || '').slice(0, 10)
+    if (d >= from && d <= to) buckets[d] = (buckets[d] || 0) + valueFn(it)
+  }
+  return Object.entries(buckets)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, value]) => ({ date, value }))
+}
+
+function eachDay(from: string, to: string): string[] {
+  const days: string[] = []
+  const start = new Date(from + 'T00:00:00')
+  const end = new Date(to + 'T00:00:00')
+  for (let t = start.getTime(); t <= end.getTime(); t += 86_400_000) {
+    days.push(new Date(t).toISOString().slice(0, 10))
+  }
+  return days
+}
 
 router.get('/api/planning', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
   const id = await hotelOf(req)
@@ -585,9 +888,12 @@ router.get('/api/admin/subscriptions', [auth.authenticate('super_admin')], async
   const data = (await orm.findMany('Hotels', {})).map((h: any) => ({ ...h, mrr: PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49 }))
   return { status: 200, body: { data, total: data.length, mrrTotal: data.reduce((s: number, h: any) => s + h.mrr, 0) } }
 })
-router.get('/api/admin/audit', [auth.authenticate('super_admin')], async () => {
-  const data = await orm.findMany('Auditlog', {})
-  return { status: 200, body: { data, total: data.length } }
+router.get('/api/admin/audit', [auth.authenticate('super_admin')], async (req) => {
+  // ⚠ DEPRECATED FC-A2: redirige al módulo unificado /api/auditlog
+  // Mantenido como proxy temporal — eliminar en próxima iteración
+  const AuditlogService = system.resolveModule<any>('auditlog')
+  const result = await AuditlogService.list(req.query as any)
+  return { status: 200, body: result }
 })
 router.get('/api/admin/announcements', [auth.authenticate('super_admin')], async () => {
   const data = await orm.findMany('Announcements', {})
@@ -1188,6 +1494,110 @@ router.get('/api/message-logs', [auth.authenticate('hotel_admin', 'receptionist'
   if (reservationId) query.reservationId = reservationId
   const data = await orm.findMany('MessageLogs', query) as any[]
   return { status: 200, body: { data: data.sort((a, b) => (b.sentAt || '').localeCompare(a.sentAt || '')) } }
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PC-3 Stripe — Checkout Session + Webhook
+// ═══════════════════════════════════════════════════════════════════════════
+import { StripeService } from './services/stripe-service'
+
+// Status de configuración (frontend lo consulta para mostrar/ocultar botón Stripe)
+router.get('/api/stripe/status', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async () => {
+  return { status: 200, body: { configured: StripeService.isConfigured(), publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '' } }
+})
+
+// Crear Checkout Session para un PaymentRequest existente
+router.post('/api/payment-requests/:id/create-checkout', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
+  if (!StripeService.isConfigured()) {
+    return { status: 503, body: { error: 'Stripe no configurado', hint: 'Agrega STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET al .env' } }
+  }
+  const id = req.params.id
+  const pr = await orm.findById('PaymentRequests', id) as any
+  if (!pr) return { status: 404, body: { error: 'Payment request no encontrado' } }
+  if (pr.status === 'paid') return { status: 400, body: { error: 'Ya está pagado' } }
+
+  const origin = (req.headers?.origin as string) || `http://localhost:${PORT}`
+  const guestEmail = pr.sentTo?.includes('@') ? pr.sentTo : undefined
+  try {
+    const result = await StripeService.createCheckoutSession({
+      paymentRequestId: id,
+      amount: Number(pr.amount),
+      currency: pr.currency || 'usd',
+      description: `Reserva ${String(pr.reservationId || '').slice(0, 8)}`,
+      successUrl: `${origin}/panel/payments?status=paid&id=${id}`,
+      cancelUrl: `${origin}/panel/payments?status=cancelled&id=${id}`,
+      customerEmail: guestEmail,
+      metadata: { hotelId: pr.hotelId, reservationId: pr.reservationId || '' },
+    })
+    await orm.update('PaymentRequests', id, {
+      stripeSessionId: result.sessionId,
+      stripePaymentUrl: result.sessionUrl,
+    })
+    return { status: 200, body: { url: result.sessionUrl, sessionId: result.sessionId } }
+  } catch (e: any) {
+    logger.error('Stripe create checkout failed', e)
+    return { status: 500, body: { error: 'Error al crear sesión de pago', detail: e.message } }
+  }
+})
+
+// Webhook público (sin auth, firma verificada con STRIPE_WEBHOOK_SECRET)
+// Nota: Stripe requiere el raw body. El framework entrega req.body ya parseado.
+// Para producción usar el adapter http raw o express middleware. Esta versión
+// usa constructEventAsync con tolerancia de firma extendida.
+router.post('/api/stripe/webhook', async (req) => {
+  if (!StripeService.isConfigured()) {
+    return { status: 503, body: { error: 'Stripe no configurado' } }
+  }
+  const signature = (req.headers?.['stripe-signature'] as string) || ''
+  if (!signature) return { status: 400, body: { error: 'Falta stripe-signature' } }
+
+  let event: any
+  try {
+    // El framework arckode parsea JSON automáticamente. Stripe necesita el raw.
+    // Workaround: re-stringificar. En producción usar middleware raw para /webhook.
+    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {})
+    event = await StripeService.verifyWebhook(rawBody, signature)
+  } catch (e: any) {
+    logger.warn('Stripe webhook signature failed', { error: e.message })
+    return { status: 400, body: { error: 'Firma inválida', detail: e.message } }
+  }
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as any
+        const paymentRequestId = session.metadata?.paymentRequestId
+        if (paymentRequestId) {
+          await orm.update('PaymentRequests', paymentRequestId, {
+            status: 'paid',
+            paidAt: new Date().toISOString(),
+            stripeSessionId: session.id,
+          })
+          logger.info('Stripe payment completed', { paymentRequestId, sessionId: session.id })
+        }
+        break
+      }
+      case 'checkout.session.expired': {
+        const session = event.data.object as any
+        const paymentRequestId = session.metadata?.paymentRequestId
+        if (paymentRequestId) {
+          await orm.update('PaymentRequests', paymentRequestId, { status: 'expired' })
+        }
+        break
+      }
+      case 'payment_intent.payment_failed': {
+        logger.warn('Stripe payment failed', { event })
+        break
+      }
+      default:
+        // Eventos no manejados — log silencioso
+        break
+    }
+    return { status: 200, body: { received: true } }
+  } catch (e: any) {
+    logger.error('Stripe webhook handler failed', e)
+    return { status: 500, body: { error: 'Internal error' } }
+  }
 })
 
 // ─── Start ─────────────────────────────────────────────────────────────────

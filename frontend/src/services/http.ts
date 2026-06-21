@@ -25,8 +25,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   })
 
   if (res.status === 401) {
+    // Only logout if user was previously authenticated (avoids clearing token during login flow)
     const auth = useAuthStore()
-    auth.logout()
+    if (auth.isAuthenticated) {
+      auth.logout()
+    }
     throw new ApiError(401, 'Sesión expirada')
   }
 
