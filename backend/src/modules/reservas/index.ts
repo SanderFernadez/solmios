@@ -1,7 +1,3 @@
-// reservas/index.ts — PUERTA PÚBLICA
-// Solo esto es visible para otros módulos y conectores.
-// ⚠ REGLA: Append-only. No sacar ni modificar exports existentes.
-
 import { createModule, OrmRepository } from 'arckode-framework'
 import { registerReservasModels } from './model'
 import { ReservasService } from './service'
@@ -16,37 +12,33 @@ export { ReservasValidator, CreateReservasSchema, UpdateReservasSchema } from '.
 export function ReservasModule() {
   return createModule({
     name: 'reservas',
-    version: '1.0.0',
-    description: 'Módulo de reservas',
-
+    version: '2.0.0',
+    description: 'Módulo de reservas — bookings with availability check',
     contract: {
       name: 'reservas',
-      version: '1.0.0',
-      description: 'Módulo de reservas',
-      actions: ["list","getById","create","update","delete"],
-      events: ["onReservasCreated","onReservasUpdated","onReservasDeleted"],
-      tables: ['reservas'],
+      version: '2.0.0',
+      description: 'Reservations with ownership, availability, and validation',
+      actions: ['list', 'getById', 'create', 'update', 'delete'],
+      events: ['onReservasCreated', 'onReservasUpdated', 'onReservasDeleted'],
+      tables: ['reservations'],
       dependencies: [],
-      rules: ['No importar de otros módulos'],
+      rules: ['Ownership check required', 'hotelId not updatable', 'Availability check on create/update'],
     },
-
     create({ logger, orm, cache, router, auth }) {
-      // Registrar modelo(s) — delegado a model.ts
+      if (!auth) throw new Error('reservas: auth dependency required')
       registerReservasModels(orm)
-
       const repo = new OrmRepository<ReservasDTO>(orm, 'Reservations')
       const log = logger.child('reservas')
-      const service = new ReservasService(repo, log, cache)
+      const service = new ReservasService(repo, log, cache, auth)
       const controller = new ReservasController(service, log)
 
-      // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger
       router.get('/api/reservas', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
       router.get('/api/reservas/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/reservas', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
+      router.post('/api/reservas', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.store(req))
       router.put('/api/reservas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
       router.delete('/api/reservas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
 
-      log.info('Módulo reservas listo')
+      log.info('Módulo reservas v2 listo')
       return service
     },
   })

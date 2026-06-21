@@ -1,18 +1,22 @@
-// reservas/service.ts — Facade pública del módulo
-// Responsabilidad ÚNICA: casos de uso del módulo.
-// NO sabe de HTTP. NO importa de otros módulos.
+// reservas/service.ts — Facade publica del modulo
+// Responsabilidad UNICA: casos de uso del modulo.
+// NO sabe de HTTP. NO importa de otros modulos.
 // Recibe dependencias por constructor (Dependency Inversion).
 //
-// Si este archivo supera 200 líneas → extraer casos de uso a ./usecases/{caso}.ts
+// Si este archivo supera 200 lineas -> extraer casos de uso a ./usecases/{caso}.ts
 // y dejar acá solo el orquestador que delega.
 //
 // IMPORTANTE: depende de RepositoryAdapter<ReservasDTO>, no del ORM directamente.
-// Esto permite swapear SQL → MongoDB → Prisma en composition-root.ts sin tocar este archivo.
+// Esto permite swapear SQL -> MongoDB -> Prisma en composition-root.ts sin tocar este archivo.
 
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
+import { NotFoundError, AuthError } from 'arckode-framework'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 import type { ReservasSockets } from './sockets'
+
+const CACHE_TTL = 300 // seconds
+const DEFAULT_LIMIT = 20
+const MAX_LIMIT = 100
 
 export class ReservasService {
   private sockets: ReservasSockets = {}
@@ -21,11 +25,12 @@ export class ReservasService {
     private readonly repo: RepositoryAdapter<ReservasDTO>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
+    private readonly auth: Auth,
   ) {}
 
   // ACUMULA handlers — nunca pisa el anterior.
   // Si dos conectores registran el mismo evento, ambos corren en cadena (secuencial).
-  // Para ejecución paralela independiente → usar EventBus en composition-root.ts.
+  // Para ejecucion paralela independiente -> usar EventBus en composition-root.ts.
   setSockets(s: Partial<ReservasSockets>): void {
     const next = s as Record<string, any>
     const cur = this.sockets as Record<string, any>
@@ -37,57 +42,166 @@ export class ReservasService {
     }
   }
 
-  async list(query?: ReservasQuery): Promise<ReservasPaginated> {
-    this.logger.info('Listando reservas', { query })
+  // ─────────────────────────────────────────────
+  //  LIST — paginado con cache
+  // ─────────────────────────────────────────────
+  async list(query: ReservasQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasPaginated> {
+    this.logger.info('Listando reservas', { query, userId: currentUser.id })
 
     const filters: Record<string, unknown> = {}
+    if (query.status) filters.status = query.status
+    if (query.channel) filters.channel = query.channel
+    if (query.roomId) filters.roomId = query.roomId
+    if (query.guestId) filters.guestId = query.guestId
 
-    if (query?.hotelId !== undefined) filters.hotelId = query.hotelId
-    if (query?.status !== undefined) filters.status = query.status
-    if (query?.type !== undefined) filters.type = query.type
-    if (query?.category !== undefined) filters.category = query.category
-
-    const rows = await this.repo.findMany(filters)
-    let data = rows
-    if (query?.search) {
-      const q = String(query.search).toLowerCase()
-      data = rows.filter((r: any) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(q)))
+    // Multi-tenancy
+    if (currentUser.role !== 'super_admin') {
+      if (!currentUser.hotelId) throw new AuthError('No hotel assigned')
+      filters.hotelId = currentUser.hotelId
+    } else if (query.hotelId) {
+      filters.hotelId = query.hotelId
     }
 
-    return { data, total: data.length }
+    const page = Math.max(query.page || 1, 1)
+    const limit = Math.min(Math.max(query.limit || DEFAULT_LIMIT, 1), MAX_LIMIT)
+    const offset = (page - 1) * limit
+
+    // Cache key includes hotel scope + query params for correctness
+    const cacheKey = `reservas:list:${currentUser.hotelId || 'all'}:${JSON.stringify(filters)}:${page}:${limit}`
+    const cached = await this.cache.get(cacheKey)
+    if (cached) return cached as ReservasPaginated
+
+    let result
+    if (query.search) {
+      // Search by guestId or externalLocator
+      filters.externalLocator = { $like: `%${query.search}%` }
+      result = await this.repo.paginate({ filters, offset, limit })
+    } else {
+      result = await this.repo.paginate({ filters, offset, limit })
+    }
+
+    const response: ReservasPaginated = {
+      data: result.data,
+      total: result.total,
+      page,
+      limit,
+      pages: Math.ceil(result.total / limit),
+    }
+    await this.cache.set(cacheKey, response, CACHE_TTL)
+    return response
   }
 
-  async getById(id: string): Promise<ReservasDTO> {
-    this.logger.info('Obteniendo reservas', { id })
+  // ─────────────────────────────────────────────
+  //  GET BY ID — ownership check
+  // ─────────────────────────────────────────────
+  async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
+    this.logger.info('Obteniendo reserva', { id, userId: currentUser.id })
+
     const item = await this.repo.findById(id)
-    if (!item) throw new NotFoundError('Reservas no encontrado')
-    // IDOR: si el recurso tiene userId u ownerId, descomentar y adaptar:
-    // auth.assertOwnership(item.userId as string, currentUser.id, currentUser.role)
+    if (!item) throw new NotFoundError('Reserva no encontrada')
+
+    // Multi-tenancy: super_admin sees all, others only their hotel
+    if (currentUser.role !== 'super_admin' && item.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
     return item
   }
 
-  async create(dto: CreateReservasDTO): Promise<ReservasDTO> {
-    this.logger.info('Creando reservas')
-    const item = await this.repo.create(dto as Omit<ReservasDTO, 'id'>)
+  // ─────────────────────────────────────────────
+  //  CREATE — date validation + availability + ownership
+  // ─────────────────────────────────────────────
+  async create(dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
+    this.logger.info('Creando reserva', { userId: currentUser.id, roomId: dto.roomId })
+
+    // Multi-tenancy: cannot create in another hotel
+    if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado para crear en otro hotel')
+    }
+
+    // Date validation: checkIn must be before checkOut
+    if (dto.checkIn >= dto.checkOut) {
+      throw new AuthError('checkIn debe ser anterior a checkOut')
+    }
+
+    // Availability check — no overlap with active reservations
+    const overlapping = await this.repo.findMany({
+      roomId: dto.roomId,
+      status: { $nin: ['cancelled', 'no_show'] },
+    })
+    const hasOverlap = overlapping.some((r: any) =>
+      r.checkIn < dto.checkOut && r.checkOut > dto.checkIn,
+    )
+    if (hasOverlap) {
+      throw new AuthError('Habitacion no disponible en esas fechas')
+    }
+
+    const item = await this.repo.create(dto as any)
     await this.sockets.onReservasCreated?.(item)
-    await this.cache.delete('reservas:list')
+    await this.cache.delete(`reservas:list:${dto.hotelId}`)
     return item
   }
 
-  async update(id: string, dto: UpdateReservasDTO): Promise<ReservasDTO> {
-    this.logger.info('Actualizando reservas', { id })
-    const item = await this.repo.update(id, dto as Partial<Omit<ReservasDTO, 'id'>>)
-    if (!item) throw new NotFoundError('Reservas no encontrado')
+  // ─────────────────────────────────────────────
+  //  UPDATE — ownership + date validation + availability
+  // ─────────────────────────────────────────────
+  async update(id: string, dto: UpdateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
+    this.logger.info('Actualizando reserva', { id, userId: currentUser.id })
+
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Reserva no encontrada')
+
+    // Multi-tenancy
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
+
+    // Date validation if changing dates
+    const newCheckIn = dto.checkIn || existing.checkIn
+    const newCheckOut = dto.checkOut || existing.checkOut
+    if (newCheckIn >= newCheckOut) {
+      throw new AuthError('checkIn debe ser anterior a checkOut')
+    }
+
+    // Availability check if changing room or dates
+    if (dto.roomId || dto.checkIn || dto.checkOut) {
+      const overlapping = await this.repo.findMany({
+        roomId: dto.roomId || existing.roomId,
+        status: { $nin: ['cancelled', 'no_show'] },
+      })
+      const hasOverlap = overlapping.some((r: any) =>
+        r.id !== id && r.checkIn < newCheckOut && r.checkOut > newCheckIn,
+      )
+      if (hasOverlap) {
+        throw new AuthError('Habitacion no disponible en esas fechas')
+      }
+    }
+
+    const item = await this.repo.update(id, dto as any)
+    if (!item) throw new NotFoundError('Reserva no encontrada')
+
     await this.sockets.onReservasUpdated?.(item)
-    await this.cache.delete('reservas:list')
+    await this.cache.delete(`reservas:list:${existing.hotelId}`)
     return item
   }
 
-  async delete(id: string): Promise<void> {
-    this.logger.info('Eliminando reservas', { id })
+  // ─────────────────────────────────────────────
+  //  DELETE — ownership check
+  // ─────────────────────────────────────────────
+  async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
+    this.logger.info('Eliminando reserva', { id, userId: currentUser.id })
+
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Reserva no encontrada')
+
+    // Multi-tenancy
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
+
     const deleted = await this.repo.delete(id)
-    if (!deleted) throw new NotFoundError('Reservas no encontrado')
+    if (!deleted) throw new NotFoundError('Reserva no encontrada')
+
     await this.sockets.onReservasDeleted?.(id)
-    await this.cache.delete('reservas:list')
+    await this.cache.delete(`reservas:list:${existing.hotelId}`)
   }
 }
