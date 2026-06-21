@@ -37,19 +37,23 @@ export class UsuariosService {
 
   async list(hotelId: string): Promise<any[]> {
     const users = await this.repo.findMany({ hotelId })
-    return users.map(({ password, token, ...rest }) => rest)
+    return users.map(({ password, token, resetToken, resetExpires, ...rest }) => rest)
   }
 
   async create(data: any): Promise<any> {
     if (!data.password) throw new Error('Password is required')
     const password = await this.hashPassword(data.password)
-    return this.repo.create({ ...data, id: crypto.randomUUID(), password, active: 1 })
+    const created = await this.repo.create({ ...data, id: crypto.randomUUID(), password, active: 1 })
+    const { password: _, token: __, resetToken: ___, resetExpires: ____, ...rest } = created
+    return rest
   }
 
   async update(id: string, data: any): Promise<any> {
     const allowed = (({ name, email, password, phone, avatar }) => ({ name, email, password, phone, avatar }))(data)
     if (allowed.password) allowed.password = await this.hashPassword(allowed.password)
-    return this.repo.update(id, allowed)
+    const updated = await this.repo.update(id, allowed)
+    const { password: _, token: __, resetToken: ___, resetExpires: ____, ...rest } = updated
+    return rest
   }
 
   async delete(id: string): Promise<boolean> {
@@ -73,9 +77,8 @@ export class UsuariosService {
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    const users = await this.repo.findMany({})
-    const user = users.find((u: any) => u.resetToken === token && u.resetExpires > Date.now())
-    if (!user) throw new AuthError('Token inválido o expirado')
+    const user = await this.repo.findOne({ resetToken: token })
+    if (!user || user.resetExpires < Date.now()) throw new AuthError('Token inválido o expirado')
     const hashed = await this.hashPassword(newPassword)
     await this.repo.update(user.id, { password: hashed, resetToken: null, resetExpires: null })
   }

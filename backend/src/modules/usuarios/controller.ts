@@ -43,8 +43,8 @@ export class UsuariosController {
   async forgotPassword(req: HttpRequest) {
     const { email } = req.body as { email: string }
     if (!email) return { status: 400, body: { error: 'Email requerido' } }
-    const result = await this.service.forgotPassword(email)
-    return { status: 200, body: { message: 'Si el email existe, recibirás un enlace de recuperación', resetToken: result.resetToken } }
+    await this.service.forgotPassword(email)
+    return { status: 200, body: { message: 'Si el email existe, recibirás un enlace de recuperación' } }
   }
 
   async resetPassword(req: HttpRequest) {
