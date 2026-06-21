@@ -1,18 +1,9 @@
-// tickets/service.ts — Facade pública del módulo
-// Responsabilidad ÚNICA: casos de uso del módulo.
-// NO sabe de HTTP. NO importa de otros módulos.
-// Recibe dependencias por constructor (Dependency Inversion).
-//
-// Si este archivo supera 200 líneas → extraer casos de uso a ./usecases/{caso}.ts
-// y dejar acá solo el orquestador que delega.
-//
-// IMPORTANTE: depende de RepositoryAdapter<TicketsDTO>, no del ORM directamente.
-// Esto permite swapear SQL → MongoDB → Prisma en composition-root.ts sin tocar este archivo.
-
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
+import { NotFoundError, AuthError } from 'arckode-framework'
 import type { TicketsDTO, CreateTicketsDTO, UpdateTicketsDTO, TicketsQuery, TicketsPaginated } from './types'
 import type { TicketsSockets } from './sockets'
+
+const CACHE_TTL = 300
 
 export class TicketsService {
   private sockets: TicketsSockets = {}
@@ -21,11 +12,9 @@ export class TicketsService {
     private readonly repo: RepositoryAdapter<TicketsDTO>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
+    private readonly auth: Auth,
   ) {}
 
-  // ACUMULA handlers — nunca pisa el anterior.
-  // Si dos conectores registran el mismo evento, ambos corren en cadena (secuencial).
-  // Para ejecución paralela independiente → usar EventBus en composition-root.ts.
   setSockets(s: Partial<TicketsSockets>): void {
     const next = s as Record<string, any>
     const cur = this.sockets as Record<string, any>
@@ -37,57 +26,76 @@ export class TicketsService {
     }
   }
 
-  async list(query?: TicketsQuery): Promise<TicketsPaginated> {
-    this.logger.info('Listando tickets', { query })
-
+  async list(query: TicketsQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<TicketsPaginated> {
     const filters: Record<string, unknown> = {}
+    if (query.status) filters.status = query.status
+    if (query.category) filters.category = query.category
+    if (query.priority) filters.priority = query.priority
+    if (query.userId) filters.userId = query.userId
+    if (query.assignedTo) filters.assignedTo = query.assignedTo
 
-    if (query?.hotelId !== undefined) filters.hotelId = query.hotelId
-    if (query?.status !== undefined) filters.status = query.status
-    if (query?.type !== undefined) filters.type = query.type
-    if (query?.category !== undefined) filters.category = query.category
-
-    const rows = await this.repo.findMany(filters)
-    let data = rows
-    if (query?.search) {
-      const q = String(query.search).toLowerCase()
-      data = rows.filter((r: any) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(q)))
+    if (currentUser.role !== 'super_admin') {
+      if (!currentUser.hotelId) throw new AuthError('No hotel assigned')
+      filters.hotelId = currentUser.hotelId
+    } else if (query.hotelId) {
+      filters.hotelId = query.hotelId
     }
 
-    return { data, total: data.length }
+    const page = Math.max(query.page || 1, 1)
+    const limit = Math.min(Math.max(query.limit || 20, 1), 100)
+    const offset = (page - 1) * limit
+
+    const cacheKey = `tickets:list:${currentUser.hotelId || 'all'}`
+    const cached = await this.cache.get(cacheKey)
+    if (cached) return cached as TicketsPaginated
+
+    const result = await this.repo.paginate({ filters, offset, limit })
+    const response = { data: result.data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
+    await this.cache.set(cacheKey, response, CACHE_TTL)
+    return response
   }
 
-  async getById(id: string): Promise<TicketsDTO> {
-    this.logger.info('Obteniendo tickets', { id })
+  async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<TicketsDTO> {
     const item = await this.repo.findById(id)
-    if (!item) throw new NotFoundError('Tickets no encontrado')
-    // IDOR: si el recurso tiene userId u ownerId, descomentar y adaptar:
-    // auth.assertOwnership(item.userId as string, currentUser.id, currentUser.role)
+    if (!item) throw new NotFoundError('Ticket no encontrado')
+    if (currentUser.role !== 'super_admin' && item.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
     return item
   }
 
-  async create(dto: CreateTicketsDTO): Promise<TicketsDTO> {
-    this.logger.info('Creando tickets')
-    const item = await this.repo.create(dto as Omit<TicketsDTO, 'id'>)
+  async create(dto: CreateTicketsDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<TicketsDTO> {
+    if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado para crear en otro hotel')
+    }
+    const item = await this.repo.create(dto as any)
     await this.sockets.onTicketsCreated?.(item)
-    await this.cache.delete('tickets:list')
+    await this.cache.delete(`tickets:list:${dto.hotelId}`)
     return item
   }
 
-  async update(id: string, dto: UpdateTicketsDTO): Promise<TicketsDTO> {
-    this.logger.info('Actualizando tickets', { id })
-    const item = await this.repo.update(id, dto as Partial<Omit<TicketsDTO, 'id'>>)
-    if (!item) throw new NotFoundError('Tickets no encontrado')
+  async update(id: string, dto: UpdateTicketsDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<TicketsDTO> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Ticket no encontrado')
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
+    const item = await this.repo.update(id, dto as any)
+    if (!item) throw new NotFoundError('Ticket no encontrado')
     await this.sockets.onTicketsUpdated?.(item)
-    await this.cache.delete('tickets:list')
+    await this.cache.delete(`tickets:list:${existing.hotelId}`)
     return item
   }
 
-  async delete(id: string): Promise<void> {
-    this.logger.info('Eliminando tickets', { id })
+  async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Ticket no encontrado')
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
     const deleted = await this.repo.delete(id)
-    if (!deleted) throw new NotFoundError('Tickets no encontrado')
+    if (!deleted) throw new NotFoundError('Ticket no encontrado')
     await this.sockets.onTicketsDeleted?.(id)
-    await this.cache.delete('tickets:list')
+    await this.cache.delete(`tickets:list:${existing.hotelId}`)
   }
 }

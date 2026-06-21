@@ -1,7 +1,3 @@
-// tickets/index.ts — PUERTA PÚBLICA
-// Solo esto es visible para otros módulos y conectores.
-// ⚠ REGLA: Append-only. No sacar ni modificar exports existentes.
-
 import { createModule, OrmRepository } from 'arckode-framework'
 import { registerTicketsModels } from './model'
 import { TicketsService } from './service'
@@ -16,37 +12,33 @@ export { TicketsValidator, CreateTicketsSchema, UpdateTicketsSchema } from './va
 export function TicketsModule() {
   return createModule({
     name: 'tickets',
-    version: '1.0.0',
-    description: 'Módulo de tickets',
-
+    version: '2.0.0',
+    description: 'Módulo de tickets — soporte y incidencias',
     contract: {
       name: 'tickets',
-      version: '1.0.0',
-      description: 'Módulo de tickets',
-      actions: ["list","getById","create","update","delete"],
-      events: ["onTicketsCreated","onTicketsUpdated","onTicketsDeleted"],
+      version: '2.0.0',
+      description: 'Support tickets with ownership and pagination',
+      actions: ['list', 'getById', 'create', 'update', 'delete'],
+      events: ['onTicketsCreated', 'onTicketsUpdated', 'onTicketsDeleted'],
       tables: ['tickets'],
       dependencies: [],
-      rules: ['No importar de otros módulos'],
+      rules: ['Ownership check required', 'hotelId/userId not updatable'],
     },
-
     create({ logger, orm, cache, router, auth }) {
-      // Registrar modelo(s) — delegado a model.ts
+      if (!auth) throw new Error('tickets: auth dependency required')
       registerTicketsModels(orm)
-
       const repo = new OrmRepository<TicketsDTO>(orm, 'Tickets')
       const log = logger.child('tickets')
-      const service = new TicketsService(repo, log, cache)
+      const service = new TicketsService(repo, log, cache, auth)
       const controller = new TicketsController(service, log)
 
-      // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger
       router.get('/api/tickets', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
       router.get('/api/tickets/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/tickets', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
+      router.post('/api/tickets', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.store(req))
       router.put('/api/tickets/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
       router.delete('/api/tickets/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
 
-      log.info('Módulo tickets listo')
+      log.info('Módulo tickets v2 listo')
       return service
     },
   })
