@@ -16,13 +16,15 @@ export class HotelesController {
 
   async index(req: HttpRequest) {
     this.logger.info('GET /hoteles')
-    const result = await this.service.list(req.query as any)
+    const currentUser = req.user as any
+    const result = await this.service.list(req.query as any, currentUser)
     return { status: 200, body: result }
   }
 
   async show(req: HttpRequest) {
     this.logger.info('GET /hoteles/:id', { id: req.params.id })
-    const item = await this.service.getById(req.params.id)
+    const currentUser = req.user as any
+    const item = await this.service.getById(req.params.id, currentUser)
     return { status: 200, body: item }
   }
 
@@ -35,14 +37,16 @@ export class HotelesController {
 
   async update(req: HttpRequest) {
     this.logger.info('PUT /hoteles/:id', { id: req.params.id })
+    const currentUser = req.user as any
     const data = validateSchema(UpdateHotelesSchema, req.body)
-    const item = await this.service.update(req.params.id, data as any)
+    const item = await this.service.update(req.params.id, data as any, currentUser)
     return { status: 200, body: item }
   }
 
   async destroy(req: HttpRequest) {
     this.logger.info('DELETE /hoteles/:id', { id: req.params.id })
-    await this.service.delete(req.params.id)
+    const currentUser = req.user as any
+    await this.service.delete(req.params.id, currentUser)
     return { status: 204, body: null }
   }
 }

@@ -9,8 +9,8 @@
 // IMPORTANTE: depende de RepositoryAdapter<HotelesDTO>, no del ORM directamente.
 // Esto permite swapear SQL → MongoDB → Prisma en composition-root.ts sin tocar este archivo.
 
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
+import { NotFoundError, AuthError } from 'arckode-framework'
 import type { HotelesDTO, CreateHotelesDTO, UpdateHotelesDTO, HotelesQuery, HotelesPaginated } from './types'
 import type { HotelesSockets } from './sockets'
 
@@ -21,6 +21,7 @@ export class HotelesService {
     private readonly repo: RepositoryAdapter<HotelesDTO>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
+    private readonly auth: Auth,
   ) {}
 
   // ACUMULA handlers — nunca pisa el anterior.
@@ -37,56 +38,86 @@ export class HotelesService {
     }
   }
 
-  async list(query?: HotelesQuery): Promise<HotelesPaginated> {
-    this.logger.info('Listando hoteles', { query })
-
+  async list(query: HotelesQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<HotelesPaginated> {
     const filters: Record<string, unknown> = {}
+    if (query.status) filters.status = query.status
 
-    if (query?.hotelId !== undefined) filters.hotelId = query.hotelId
-    if (query?.status !== undefined) filters.status = query.status
-    if (query?.type !== undefined) filters.type = query.type
-    if (query?.category !== undefined) filters.category = query.category
-
-    const rows = await this.repo.findMany(filters)
-    let data = rows
-    if (query?.search) {
-      const q = String(query.search).toLowerCase()
-      data = rows.filter((r: any) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(q)))
+    // Multi-tenancy: non-super_admin only sees their hotel
+    if (currentUser.role !== 'super_admin') {
+      if (!currentUser.hotelId) throw new AuthError('No hotel assigned')
+      filters.id = currentUser.hotelId
     }
 
-    return { data, total: data.length }
+    const page = query.page || 1
+    const limit = query.limit || 20
+    const offset = (page - 1) * limit
+
+    // When searching, fetch all matching then paginate in memory
+    if (query.search) {
+      const all = await this.repo.findMany(filters)
+      const q = query.search.toLowerCase()
+      const filtered = all.filter((r: any) =>
+        r.name?.toLowerCase().includes(q) ||
+        r.email?.toLowerCase().includes(q)
+      )
+      const paged = filtered.slice(offset, offset + limit)
+      const safe = paged.map(({ wifiPassword, ownerTaxId, ...rest }) => rest as HotelesDTO)
+      return { data: safe, total: filtered.length, page, limit, pages: Math.ceil(filtered.length / limit) }
+    }
+
+    const result = await this.repo.paginate({ filters, offset, limit })
+    const safe = result.data.map(({ wifiPassword, ownerTaxId, ...rest }) => rest as HotelesDTO)
+
+    return { data: safe, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
   }
 
-  async getById(id: string): Promise<HotelesDTO> {
-    this.logger.info('Obteniendo hoteles', { id })
+  async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<HotelesDTO> {
     const item = await this.repo.findById(id)
-    if (!item) throw new NotFoundError('Hoteles no encontrado')
-    // IDOR: si el recurso tiene userId u ownerId, descomentar y adaptar:
-    // auth.assertOwnership(item.userId as string, currentUser.id, currentUser.role)
-    return item
+    if (!item) throw new NotFoundError('Hotel no encontrado')
+
+    // Ownership check
+    if (currentUser.role !== 'super_admin' && item.id !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
+
+    // Filter sensitive fields
+    const { wifiPassword, ownerTaxId, ...safe } = item as any
+    return safe
   }
 
   async create(dto: CreateHotelesDTO): Promise<HotelesDTO> {
-    this.logger.info('Creando hoteles')
-    const item = await this.repo.create(dto as Omit<HotelesDTO, 'id'>)
-    await this.sockets.onHotelesCreated?.(item)
+    this.logger.info('Creando hotel', { name: dto.name })
+    const item = await this.repo.create(dto as any)
+    const { wifiPassword, ownerTaxId, ...safe } = item as any
+    await this.sockets.onHotelesCreated?.(safe)
     await this.cache.delete('hoteles:list')
-    return item
+    return safe
   }
 
-  async update(id: string, dto: UpdateHotelesDTO): Promise<HotelesDTO> {
-    this.logger.info('Actualizando hoteles', { id })
-    const item = await this.repo.update(id, dto as Partial<Omit<HotelesDTO, 'id'>>)
-    if (!item) throw new NotFoundError('Hoteles no encontrado')
-    await this.sockets.onHotelesUpdated?.(item)
+  async update(id: string, dto: UpdateHotelesDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<HotelesDTO> {
+    // Ownership check
+    if (currentUser.role !== 'super_admin') {
+      const existing = await this.repo.findById(id)
+      if (!existing) throw new NotFoundError('Hotel no encontrado')
+      if (existing.id !== currentUser.hotelId) throw new AuthError('No autorizado')
+    }
+
+    const item = await this.repo.update(id, dto as any)
+    if (!item) throw new NotFoundError('Hotel no encontrado')
+    const { wifiPassword, ownerTaxId, ...safe } = item as any
+    await this.sockets.onHotelesUpdated?.(safe)
     await this.cache.delete('hoteles:list')
-    return item
+    return safe
   }
 
-  async delete(id: string): Promise<void> {
-    this.logger.info('Eliminando hoteles', { id })
+  async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
+    // Only super_admin can delete hotels
+    if (currentUser.role !== 'super_admin') {
+      throw new AuthError('Solo super_admin puede eliminar hoteles')
+    }
+
     const deleted = await this.repo.delete(id)
-    if (!deleted) throw new NotFoundError('Hoteles no encontrado')
+    if (!deleted) throw new NotFoundError('Hotel no encontrado')
     await this.sockets.onHotelesDeleted?.(id)
     await this.cache.delete('hoteles:list')
   }
