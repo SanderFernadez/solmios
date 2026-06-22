@@ -19,9 +19,6 @@ export default defineConfig({
         secure: false,
       },
     },
-    hmr: {
-      protocol: 'ws',
-      host: '127.0.0.1',
-    },
+    hmr: false,
   },
 })
