@@ -164,7 +164,7 @@ export class ChannexUseCase {
     const targetRt = rtList.find(rt => String(rt.attributes?.title || '').toLowerCase() === roomType.toLowerCase())
     const rps = await this.channexReq(key, 'GET', `/rate_plans?filter[property_id]=${cfg.channexPropertyId}`)
     const rpList: any[] = rps.data?.data || []
-    const targetRp = rpList.find(rp => rp.attributes?.room_type_id === targetRt?.id)
+    const targetRp = rpList.find(rp => (rp.attributes?.room_type_id || rp.relationships?.room_type?.data?.id) === targetRt?.id)
     if (!targetRp) return { pushed: false }
     const today = new Date().toISOString().split('T')[0]
     const future = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]

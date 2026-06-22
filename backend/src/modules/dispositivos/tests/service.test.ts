@@ -59,8 +59,8 @@ describe('DispositivosService', () => {
     it('filters by hotelId for hotel_admin', async () => {
       const devices = [makeDevice({ hotelId: 'h1' })]
       const repo = makeRepo({
-        paginate: async (opts) => {
-          expect(opts.filters).toHaveProperty('hotelId', 'h1')
+        paginate: async (filters) => {
+          expect(filters).toHaveProperty('hotelId', 'h1')
           return { data: devices, total: 1, limit: 20, offset: 0, pages: 1 }
         },
       })
@@ -78,7 +78,7 @@ describe('DispositivosService', () => {
     it('applies pagination limits', async () => {
       const devices = Array.from({ length: 5 }, (_, i) => makeDevice({ id: `d${i}` }))
       const repo = makeRepo({
-        paginate: async (opts) => {
+        paginate: async (filters, opts) => {
           expect(opts.limit).toBe(10)
           expect(opts.offset).toBe(0)
           return { data: devices, total: 5, limit: 10, offset: 0, pages: 1 }
@@ -92,7 +92,7 @@ describe('DispositivosService', () => {
 
     it('clamps limit to max 100', async () => {
       const repo = makeRepo({
-        paginate: async (opts) => {
+        paginate: async (filters, opts) => {
           expect(opts.limit).toBe(100)
           return { data: [], total: 0, limit: 100, offset: 0, pages: 0 }
         },
@@ -103,8 +103,7 @@ describe('DispositivosService', () => {
 
     it('defaults to 20 when limit is 0 (falsy fallback)', async () => {
       const repo = makeRepo({
-        paginate: async (opts) => {
-          // 0 is falsy, so `query.limit || 20` yields 20
+        paginate: async (filters, opts) => {
           expect(opts.limit).toBe(20)
           return { data: [], total: 0, limit: 20, offset: 0, pages: 0 }
         },
@@ -115,8 +114,8 @@ describe('DispositivosService', () => {
 
     it('super_admin can filter by any hotelId', async () => {
       const repo = makeRepo({
-        paginate: async (opts) => {
-          expect(opts.filters).toHaveProperty('hotelId', 'h99')
+        paginate: async (filters) => {
+          expect(filters).toHaveProperty('hotelId', 'h99')
           return { data: [], total: 0, limit: 20, offset: 0, pages: 0 }
         },
       })

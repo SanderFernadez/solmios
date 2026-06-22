@@ -64,7 +64,7 @@ export class FacturasService {
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as FacturasListResult
 
-    const result = await this.repo.paginate({ filters, offset, limit })
+    const result = await this.repo.paginate(filters, { offset, limit })
     const data = await Promise.all(result.data.map((r) => enrichInvoice(r, this.enrichDeps)))
     const response = { data, total: result.total }
 

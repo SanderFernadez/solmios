@@ -260,5 +260,9 @@ Antes de completar el Google Form de Channex (`forms.gle/xA8F3eSYBPBd8apYA`):
   - POST `/restrictions` sobre rate plan "doble Standard" (`a2496ad8`), `$150.00`, 2026-06-22→25 → **HTTP 200**, task_id `93966d04-e9bb-4690-86df-c8308a87d466`.
   - Readback confirma `doble Standard` = $150.00 en los 4 días; los demás rate plans en $100.00 intactos.
   - **Validado:** conexión de escritura a staging OK + propertyId correcto + formato `{values:[...]}` OK + `filter[restrictions]=rate` obligatorio en readback.
-- _(pendiente)_ — Paso 2 Capa 2 (push de tarifa vía flujo PMS: editar habitación → connector `habitaciones-canales` → Channex).
-- _(pendiente)_ — Paso 3 (ingesta de booking).
+- _2026-06-22_ — **Paso 2 Capa 2 (flujo PMS completo) ✅ + BUG FIX aplicado**
+  - PUT `/api/habitaciones/113` suite (`$155→$165`) → connector `habitaciones-canales` disparó → pushRate → Channex → readback suite Standard = **`$165.00`** ✅.
+  - **BUG encontrado y arreglado (`channex.ts:167`):** `pushRate` buscaba `room_type_id` en `rp.attributes` (no existe) → `targetRp` siempre `undefined` → retornaba `pushed:false` en silencio. La API de Channex (JSON:API) devuelve `room_type_id` en `rp.relationships.room_type.data.id`. Fix: `(rp.attributes?.room_type_id || rp.relationships?.room_type?.data?.id)`. Mismo patrón riesgoso aún presente en `syncProperty:149` y `getChannelDetail:296` (pendiente revisar).
+  - **Hallazgo previo (resuelto por re-sync 04:05):** room types estaban en español (`doble/familiar/simple`) vs habitaciones en inglés (`double/family/single`) → mismatch de mapeo por título. El re-sync alineó a inglés. Confirma la fragilidad del match por título (gap R1: falta mapeo persistente).
+  - **Validado end-to-end:** editar habitación en el PMS → tarifa llega a Channex staging. La conexión de escritura + el flujo del connector funcionan.
+- _(pendiente)_ — Paso 3 (ingesta de booking OTA).

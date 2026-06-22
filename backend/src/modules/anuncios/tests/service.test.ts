@@ -72,7 +72,7 @@ describe('AnunciosService', () => {
       let capturedFilters: any = {}
       const items = [makeAnuncio()]
       const repo = makeRepo({
-        paginate: async (opts) => { capturedFilters = opts.filters; return { data: items, total: 1, limit: 20, offset: 0, pages: 1 } },
+        paginate: async (filters) => { capturedFilters = filters; return { data: items, total: 1, limit: 20, offset: 0, pages: 1 } },
       })
       const svc = new AnunciosService(repo, log, makeCache(), fakeAuth)
       await svc.list({}, hotelAdmin)
@@ -88,7 +88,7 @@ describe('AnunciosService', () => {
     it('applies pagination bounds correctly', async () => {
       let capturedOpts: any = {}
       const repo = makeRepo({
-        paginate: async (opts) => { capturedOpts = opts; return { data: [], total: 50, limit: 10, offset: 20, pages: 5 } },
+        paginate: async (filters, opts) => { capturedOpts = opts; return { data: [], total: 50, limit: 10, offset: 20, pages: 5 } },
       })
       const svc = new AnunciosService(repo, log, makeCache(), fakeAuth)
       const result = await svc.list({ page: 3, limit: 10 }, adminUser)
@@ -100,7 +100,7 @@ describe('AnunciosService', () => {
     it('clamps limit between 1 and 100', async () => {
       let capturedOpts: any = {}
       const repo = makeRepo({
-        paginate: async (opts) => { capturedOpts = opts; return { data: [], total: 0, limit: opts.limit, offset: 0, pages: 0 } },
+        paginate: async (filters, opts) => { capturedOpts = opts; return { data: [], total: 0, limit: opts.limit, offset: 0, pages: 0 } },
       })
       const svc = new AnunciosService(repo, log, makeCache(), fakeAuth)
       await svc.list({ limit: 999 }, adminUser)
@@ -123,7 +123,7 @@ describe('AnunciosService', () => {
     it('super_admin can filter by hotelId', async () => {
       let capturedFilters: any = {}
       const repo = makeRepo({
-        paginate: async (opts) => { capturedFilters = opts.filters; return { data: [], total: 0, limit: 20, offset: 0, pages: 0 } },
+        paginate: async (filters) => { capturedFilters = filters; return { data: [], total: 0, limit: 20, offset: 0, pages: 0 } },
       })
       const svc = new AnunciosService(repo, log, makeCache(), fakeAuth)
       await svc.list({ hotelId: 'h5' }, adminUser)

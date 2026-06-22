@@ -83,9 +83,9 @@ export class ReservasService {
     if (query.search) {
       // Search by guestId or externalLocator
       filters.externalLocator = { $like: `%${query.search}%` }
-      result = await this.repo.paginate({ filters, offset, limit })
+      result = await this.repo.paginate(filters, { offset, limit })
     } else {
-      result = await this.repo.paginate({ filters, offset, limit })
+      result = await this.repo.paginate(filters, { offset, limit })
     }
 
     const response: ReservasPaginated = {

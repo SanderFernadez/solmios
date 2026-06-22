@@ -65,7 +65,7 @@ export class HotelesService {
       return { data: safe, total: filtered.length, page, limit, pages: Math.ceil(filtered.length / limit) }
     }
 
-    const result = await this.repo.paginate({ filters, offset, limit })
+    const result = await this.repo.paginate(filters, { offset, limit })
     const safe = result.data.map(({ wifiPassword, ownerTaxId, ...rest }) => rest as HotelesDTO)
 
     return { data: safe, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }

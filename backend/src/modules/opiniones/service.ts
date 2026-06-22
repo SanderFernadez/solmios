@@ -54,7 +54,7 @@ export class OpinionesService {
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as OpinionesPaginated
 
-    const result = await this.repo.paginate({ filters, offset, limit })
+    const result = await this.repo.paginate(filters, { offset, limit })
     const response = { data: result.data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
     await this.cache.set(cacheKey, response, CACHE_TTL)
     return response

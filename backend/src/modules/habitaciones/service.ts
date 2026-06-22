@@ -58,9 +58,9 @@ export class HabitacionesService {
     if (query.search) {
       // For search, add number filter and use paginate
       filters.number = { $like: `%${query.search}%` }
-      result = await this.repo.paginate({ filters, offset, limit })
+      result = await this.repo.paginate(filters, { offset, limit })
     } else {
-      result = await this.repo.paginate({ filters, offset, limit })
+      result = await this.repo.paginate(filters, { offset, limit })
     }
 
     const response = { data: result.data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
