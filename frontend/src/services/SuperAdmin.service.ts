@@ -34,7 +34,7 @@ export const SuperAdminService = {
     return {
       hotels: data.data.map((h: any) => ({
         ...h,
-        name: h.nombre,
+        name: h.name,
         location: h.address || h.ciudad,
         roomCount: h.roomCount ?? 0,
       })),
@@ -45,7 +45,7 @@ export const SuperAdminService = {
   async users(): Promise<{ users: AdminUser[]; total: number }> {
     const data = await http.get<{ data: any[]; total: number }>('/admin/users')
     return {
-      users: data.data.map((u: any) => ({ ...u, name: u.nombre, hotelName: u.hotelName })),
+      users: data.data.map((u: any) => ({ ...u, name: u.name, hotelName: u.hotelName })),
       total: data.total,
     }
   },
