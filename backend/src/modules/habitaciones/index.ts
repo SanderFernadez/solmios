@@ -31,7 +31,8 @@ export function HabitacionesModule() {
       registerHabitacionesModels(orm)
       const repo = new OrmRepository<HabitacionesDTO>(orm, 'Rooms')
       const log = logger.child('habitaciones')
-      const service = new HabitacionesService(repo, log, cache, auth)
+      const userRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new HabitacionesService(repo, log, cache, userRepo, auth)
       const controller = new HabitacionesController(service, log)
 
       router.get('/api/habitaciones', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))

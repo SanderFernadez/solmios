@@ -25,6 +25,7 @@ export class ReservasService {
     private readonly repo: RepositoryAdapter<ReservasDTO>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
+    private readonly userRepo: RepositoryAdapter<any>,
     private readonly auth: Auth,
   ) {}
 
@@ -55,9 +56,16 @@ export class ReservasService {
     if (query.guestId) filters.guestId = query.guestId
 
     // Multi-tenancy
+    // Resolve hotelId from DB if not provided in token
+    let hotelId = currentUser.hotelId
+    if (!hotelId && currentUser.role !== 'super_admin') {
+      const user = await this.userRepo.findById(currentUser.id)
+      hotelId = user?.hotelId
+    }
+
     if (currentUser.role !== 'super_admin') {
-      if (!currentUser.hotelId) throw new AuthError('No hotel assigned')
-      filters.hotelId = currentUser.hotelId
+      if (!hotelId) throw new AuthError('No hotel assigned')
+      filters.hotelId = hotelId
     } else if (query.hotelId) {
       filters.hotelId = query.hotelId
     }
@@ -67,7 +75,7 @@ export class ReservasService {
     const offset = (page - 1) * limit
 
     // Cache key includes hotel scope + query params for correctness
-    const cacheKey = `reservas:list:${currentUser.hotelId || 'all'}:${JSON.stringify(filters)}:${page}:${limit}`
+    const cacheKey = `reservas:list:${hotelId || 'all'}:${JSON.stringify(filters)}:${page}:${limit}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as ReservasPaginated
 

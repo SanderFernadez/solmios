@@ -46,7 +46,7 @@ describe('HabitacionesService', () => {
 
     it('throws when no hotelId assigned', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new HabitacionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new HabitacionesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
 
