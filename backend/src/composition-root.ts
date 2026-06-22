@@ -2,11 +2,12 @@
 // Entry point con arckode-framework. Estructura canónica: System → módulos → start.
 
 import {
-  System, ConfigStore, Logger, Router, MemoryCache, ORM, Container, Auth, OrmRepository, NodeServer,
+  System, ConfigStore, Logger, Router, MemoryCache, ORM, Container, OrmRepository, NodeServer,
 } from 'arckode-framework'
 import { cors } from 'arckode-framework/middlewares'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
+import { HotelAuth } from './infrastructure/auth/hotel-auth'
 
 // ─── Config (todo desde .env) ──────────────────────────────────────────────
 const config = new ConfigStore()
@@ -220,7 +221,7 @@ orm.define('RoomBlocks', {
 // ─── Auth / Router / HTTP ──────────────────────────────────────────────────
 const cache = new MemoryCache()
 const container = new Container()
-const auth = new Auth(jwtTokenAdapter, JWT_SECRET, logger, config.get('JWT_EXPIRES'), config.get('JWT_REFRESH_EXPIRES'))
+const auth = new HotelAuth(jwtTokenAdapter, JWT_SECRET, logger, config.get('JWT_EXPIRES'), config.get('JWT_REFRESH_EXPIRES'))
 const router = new Router()
 const FRONTEND_PORT = config.get<number>('FRONTEND_PORT')
 const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(',') || [`http://localhost:${PORT}`, `http://localhost:${FRONTEND_PORT}`]
@@ -283,6 +284,15 @@ const hotelOf = async (req: any): Promise<string | undefined> => {
   if (q.hotelId) return q.hotelId as string
   const userHotel = req?.user?.hotelId
   if (userHotel && userHotel !== 'platform') return userHotel as string
+  // Blindaje para tokens legacy (pre-deploy, sin hotelId) y cualquier hotel_admin cuyo token
+  // no traiga hotelId: resolver desde la DB del usuario antes de caer al fallback "primer hotel"
+  // (que devolvería datos de otro hotel).
+  if (req?.user?.id && req?.user?.role !== 'super_admin') {
+    const uRows = await orm.findMany('Users', { id: req.user.id })
+    const u: any = (uRows as any[])?.[0]
+    if (u?.hotelId && u.hotelId !== 'platform') return u.hotelId as string
+  }
+  // Fallback final: super_admin sin hotel asignado (vista de plataforma) → primer hotel.
   return ((await orm.findMany('Hotels', {}))[0] as any)?.id
 }
 const today = () => new Date().toISOString().split('T')[0]

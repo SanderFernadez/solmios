@@ -63,10 +63,11 @@ export class UsuariosController {
 
   async store(req: HttpRequest) {
     const data = validateSchema(CreateUsuarioSchema, req.body)
-    data.hotelId = (req.user as any).hotelId
-    if (data.role && (req.user as any).role !== 'super_admin') {
-      delete data.role
-    }
+    const isSuperAdmin = (req.user as any).role === 'super_admin'
+    // super_admin crea usuarios para cualquier hotel → respeta hotelId del body (onboarding de nuevos hoteles).
+    // hotel_admin/recepcionista se anclan a su propio hotel (multi-tenant seguro, leído del token).
+    if (!isSuperAdmin) data.hotelId = (req.user as any).hotelId
+    if (data.role && !isSuperAdmin) delete data.role
     const item = await this.service.create(data)
     return { status: 201, body: item }
   }
