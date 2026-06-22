@@ -13,6 +13,7 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 import type { ReservasSockets } from './sockets'
+import { assertRoomAvailable } from './usecases/availability'
 
 const CACHE_TTL = 300 // seconds
 const DEFAULT_LIMIT = 20
@@ -132,16 +133,7 @@ export class ReservasService {
     }
 
     // Availability check — no overlap with active reservations
-    const overlapping = await this.repo.findMany({
-      roomId: dto.roomId,
-      status: { $nin: ['cancelled', 'no_show'] },
-    })
-    const hasOverlap = overlapping.some((r: any) =>
-      r.checkIn < dto.checkOut && r.checkOut > dto.checkIn,
-    )
-    if (hasOverlap) {
-      throw new AuthError('Habitacion no disponible en esas fechas')
-    }
+    await assertRoomAvailable(this.repo, dto.roomId, dto.checkIn, dto.checkOut)
 
     const item = await this.repo.create(dto as any)
     await this.sockets.onReservasCreated?.(item)
@@ -172,16 +164,7 @@ export class ReservasService {
 
     // Availability check if changing room or dates
     if (dto.roomId || dto.checkIn || dto.checkOut) {
-      const overlapping = await this.repo.findMany({
-        roomId: dto.roomId || existing.roomId,
-        status: { $nin: ['cancelled', 'no_show'] },
-      })
-      const hasOverlap = overlapping.some((r: any) =>
-        r.id !== id && r.checkIn < newCheckOut && r.checkOut > newCheckIn,
-      )
-      if (hasOverlap) {
-        throw new AuthError('Habitacion no disponible en esas fechas')
-      }
+      await assertRoomAvailable(this.repo, dto.roomId || existing.roomId, newCheckIn, newCheckOut, id)
     }
 
     const item = await this.repo.update(id, dto as any)

@@ -36,8 +36,9 @@ export function GruposModule() {
       registerGruposModels(orm)
 
       const repo = new OrmRepository<GruposDTO>(orm, 'Groups')
+      const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('grupos')
-      const service = new GruposService(repo, log, cache)
+      const service = new GruposService(repo, userRepo, log, cache, auth)
       const controller = new GruposController(service, log)
 
       // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger

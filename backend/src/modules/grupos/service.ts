@@ -9,9 +9,9 @@
 // IMPORTANTE: depende de RepositoryAdapter<GruposDTO>, no del ORM directamente.
 // Esto permite swapear SQL → MongoDB → Prisma en composition-root.ts sin tocar este archivo.
 
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError } from 'arckode-framework'
-import type { GruposDTO, CreateGruposDTO, UpdateGruposDTO, GruposQuery, GruposPaginated } from './types'
+import type { GruposDTO, CreateGruposDTO, UpdateGruposDTO, GruposQuery, GruposPaginated, CurrentUser } from './types'
 import type { GruposSockets } from './sockets'
 
 export class GruposService {
@@ -19,8 +19,10 @@ export class GruposService {
 
   constructor(
     private readonly repo: RepositoryAdapter<GruposDTO>,
+    private readonly userRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
+    private readonly auth: Auth,
   ) {}
 
   // ACUMULA handlers — nunca pisa el anterior.
@@ -37,12 +39,17 @@ export class GruposService {
     }
   }
 
-  async list(query?: GruposQuery): Promise<GruposPaginated> {
+  async list(query?: GruposQuery, user?: CurrentUser): Promise<GruposPaginated> {
     this.logger.info('Listando grupos', { query })
 
     const filters: Record<string, unknown> = {}
 
-    if (query?.hotelId !== undefined) filters.hotelId = query.hotelId
+    if (user && user.role !== 'super_admin') {
+      // hotelId llega en el JWT (HotelAuth). Sin findById: tokens legacy sin hotelId → '__none__' (lista vacía, sin fuga).
+      filters.hotelId = user.hotelId ?? '__none__'
+    } else if (query?.hotelId !== undefined) {
+      filters.hotelId = query.hotelId
+    }
     if (query?.status !== undefined) filters.status = query.status
     if (query?.type !== undefined) filters.type = query.type
     if (query?.category !== undefined) filters.category = query.category
@@ -57,12 +64,12 @@ export class GruposService {
     return { data, total: data.length }
   }
 
-  async getById(id: string): Promise<GruposDTO> {
+  async getById(id: string, user: CurrentUser): Promise<GruposDTO> {
     this.logger.info('Obteniendo grupos', { id })
     const item = await this.repo.findById(id)
     if (!item) throw new NotFoundError('Grupos no encontrado')
-    // IDOR: si el recurso tiene userId u ownerId, descomentar y adaptar:
-    // auth.assertOwnership(item.userId as string, currentUser.id, currentUser.role)
+    const me = await this.userRepo.findById(user.id)
+    this.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
     return item
   }
 
@@ -74,8 +81,12 @@ export class GruposService {
     return item
   }
 
-  async update(id: string, dto: UpdateGruposDTO): Promise<GruposDTO> {
+  async update(id: string, dto: UpdateGruposDTO, user: CurrentUser): Promise<GruposDTO> {
     this.logger.info('Actualizando grupos', { id })
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Grupos no encontrado')
+    const me = await this.userRepo.findById(user.id)
+    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
     const item = await this.repo.update(id, dto as Partial<Omit<GruposDTO, 'id'>>)
     if (!item) throw new NotFoundError('Grupos no encontrado')
     await this.sockets.onGruposUpdated?.(item)
@@ -83,8 +94,12 @@ export class GruposService {
     return item
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, user: CurrentUser): Promise<void> {
     this.logger.info('Eliminando grupos', { id })
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Grupos no encontrado')
+    const me = await this.userRepo.findById(user.id)
+    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Grupos no encontrado')
     await this.sockets.onGruposDeleted?.(id)

@@ -193,3 +193,9 @@ export interface CanalesPaginated {
     hasPrev: boolean
   }
 }
+
+export interface CurrentUser {
+  id: string
+  hotelId?: string | null
+  role?: string
+}

@@ -36,8 +36,9 @@ export function PaquetesModule() {
       registerPaquetesModels(orm)
 
       const repo = new OrmRepository<PaquetesDTO>(orm, 'Packages')
+      const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('paquetes')
-      const service = new PaquetesService(repo, log, cache)
+      const service = new PaquetesService(repo, userRepo, log, cache, auth)
       const controller = new PaquetesController(service, log)
 
       // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger

@@ -109,12 +109,12 @@ export class CanalesController {
 
   // ─── CRUD admin sobre la config ──────────────────────────────────────
   async index(req: HttpRequest) {
-    const result = await this.service.list(req.query as any)
+    const result = await this.service.list(req.query as any, req.user as any)
     return { status: 200, body: result }
   }
 
   async show(req: HttpRequest) {
-    const item = await this.service.getById(req.params.id)
+    const item = await this.service.getById(req.params.id, req.user as any)
     return { status: 200, body: item }
   }
 
@@ -126,12 +126,12 @@ export class CanalesController {
 
   async update(req: HttpRequest) {
     const data = validateSchema(UpdateCanalesSchema, req.body)
-    const item = await this.service.update(req.params.id, data as any)
+    const item = await this.service.update(req.params.id, data as any, req.user as any)
     return { status: 200, body: item }
   }
 
   async destroy(req: HttpRequest) {
-    await this.service.delete(req.params.id)
+    await this.service.delete(req.params.id, req.user as any)
     return { status: 204, body: null }
   }
 }

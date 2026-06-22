@@ -16,13 +16,13 @@ export class GruposController {
 
   async index(req: HttpRequest) {
     this.logger.info('GET /grupos')
-    const result = await this.service.list(req.query as any)
+    const result = await this.service.list(req.query as any, req.user as any)
     return { status: 200, body: result }
   }
 
   async show(req: HttpRequest) {
     this.logger.info('GET /grupos/:id', { id: req.params.id })
-    const item = await this.service.getById(req.params.id)
+    const item = await this.service.getById(req.params.id, req.user as any)
     return { status: 200, body: item }
   }
 
@@ -36,13 +36,13 @@ export class GruposController {
   async update(req: HttpRequest) {
     this.logger.info('PUT /grupos/:id', { id: req.params.id })
     const data = validateSchema(UpdateGruposSchema, req.body)
-    const item = await this.service.update(req.params.id, data as any)
+    const item = await this.service.update(req.params.id, data as any, req.user as any)
     return { status: 200, body: item }
   }
 
   async destroy(req: HttpRequest) {
     this.logger.info('DELETE /grupos/:id', { id: req.params.id })
-    await this.service.delete(req.params.id)
+    await this.service.delete(req.params.id, req.user as any)
     return { status: 204, body: null }
   }
 }

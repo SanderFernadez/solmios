@@ -36,8 +36,9 @@ export function HuespedesModule() {
       registerHuespedesModels(orm)
 
       const repo = new OrmRepository<HuespedesDTO>(orm, 'Guests')
+      const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('huespedes')
-      const service = new HuespedesService(repo, log, cache)
+      const service = new HuespedesService(repo, userRepo, log, cache, auth)
       const controller = new HuespedesController(service, log)
 
       // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger

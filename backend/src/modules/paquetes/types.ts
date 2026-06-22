@@ -49,3 +49,9 @@ export interface PaquetesPaginated {
   data: PaquetesDTO[]
   total: number
 }
+
+export interface CurrentUser {
+  id: string
+  hotelId?: string | null
+  role?: string
+}

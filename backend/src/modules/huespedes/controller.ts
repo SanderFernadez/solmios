@@ -16,13 +16,13 @@ export class HuespedesController {
 
   async index(req: HttpRequest) {
     this.logger.info('GET /huespedes')
-    const result = await this.service.list(req.query as any)
+    const result = await this.service.list(req.query as any, req.user as any)
     return { status: 200, body: result }
   }
 
   async show(req: HttpRequest) {
     this.logger.info('GET /huespedes/:id', { id: req.params.id })
-    const item = await this.service.getById(req.params.id)
+    const item = await this.service.getById(req.params.id, req.user as any)
     return { status: 200, body: item }
   }
 
@@ -36,13 +36,13 @@ export class HuespedesController {
   async update(req: HttpRequest) {
     this.logger.info('PUT /huespedes/:id', { id: req.params.id })
     const data = validateSchema(UpdateHuespedesSchema, req.body)
-    const item = await this.service.update(req.params.id, data as any)
+    const item = await this.service.update(req.params.id, data as any, req.user as any)
     return { status: 200, body: item }
   }
 
   async destroy(req: HttpRequest) {
     this.logger.info('DELETE /huespedes/:id', { id: req.params.id })
-    await this.service.delete(req.params.id)
+    await this.service.delete(req.params.id, req.user as any)
     return { status: 204, body: null }
   }
 }

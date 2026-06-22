@@ -36,8 +36,9 @@ export function CanalesModule() {
       registerCanalesModels(orm)
 
       const repo = new OrmRepository<CanalesDTO>(orm, 'Canales')
+      const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('canales')
-      const service = new CanalesService(repo, log, cache, orm)
+      const service = new CanalesService(repo, userRepo, log, cache, auth, orm)
       const controller = new CanalesController(service, log)
 
       const resolveHotelId = async (q: any, body: any) =>

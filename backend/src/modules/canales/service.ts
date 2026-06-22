@@ -3,16 +3,17 @@
 // Aquí vive solo: config por hotel + CRUD sobre la config + orquestación.
 // NO sabe de HTTP. NO importa de otros módulos. Recibe dependencias por constructor.
 
-import type { RepositoryAdapter, Logger, CacheAdapter, ORM } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, ORM, Auth } from 'arckode-framework'
 import { NotFoundError } from 'arckode-framework'
 import type {
   CanalesDTO, CreateCanalesDTO, UpdateCanalesDTO, CanalesQuery, CanalesPaginated,
   ChannelsResultDTO, RoomTypeSummary, SyncResultDTO,
   TestConnectionResultDTO, MappingDetailDTO, GroupDTO, OTAChannelCreateDTO, OTAChannelResultDTO,
-  OTAChannelMeta, BookingRevisionDTO, BookingIngestionResult,
+  OTAChannelMeta, BookingRevisionDTO, BookingIngestionResult, CurrentUser,
 } from './types'
 import type { CanalesSockets } from './sockets'
 import { ChannexUseCase } from './usecases/channex'
+import { applyBookingRevision } from './usecases/booking-ingestion'
 
 export class CanalesService {
   private sockets: CanalesSockets = {}
@@ -20,8 +21,10 @@ export class CanalesService {
 
   constructor(
     private readonly repo: RepositoryAdapter<CanalesDTO>,
+    private readonly userRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
+    private readonly auth: Auth,
     private readonly orm?: ORM,
   ) {
     this.channex = new ChannexUseCase(logger)
@@ -118,33 +121,11 @@ export class CanalesService {
   async ingestBookings(hotelId: string): Promise<BookingIngestionResult> {
     const cfg = await this.getConfig(hotelId)
     const key = cfg?.channexApiKey || process.env.CHANNEX_API_KEY || ''
+    if (!this.orm) throw new Error('ORM no disponible')
+    const orm = this.orm
+    // Dedupe por locator, resolución de roomId y persistencia viven en usecases/booking-ingestion.ts.
     return this.channex.ingestBookings(cfg, async (dto: any) => {
-      if (!this.orm) throw new Error('ORM no disponible')
-      // Dedupe por locator externo (ota reservation code / unique id de Channex)
-      if (dto.externalLocator) {
-        const existing = await this.orm.findMany('Reservations', { hotelId, externalLocator: dto.externalLocator })
-        if (existing && existing.length > 0) return
-      }
-      // Resolver roomId: Channex referencia roomTypeId (tipo), el PMS exige habitación individual.
-      const { channexRoomTypeId, channexRevisionId, channexBookingId, ...payload } = dto
-      let roomId: string | null = null
-      if (channexRoomTypeId) {
-        const rt = await this.channex.getRoomTypeById(key, channexRoomTypeId)
-        if (rt?.title) {
-          const rooms = await this.orm.findMany('Rooms', { hotelId, type: rt.title })
-          roomId = rooms?.[0]?.id || null
-        }
-      }
-      if (!roomId) {
-        // Fallback: cualquier habitación del hotel + flag de auto-asignación (nunca dropear un OTA booking).
-        const any = await this.orm.findMany('Rooms', { hotelId })
-        roomId = any?.[0]?.id || null
-        if (roomId && payload.notes) payload.notes = `${payload.notes} | ⚠ AUTO-ASSIGNED ROOM (no type match)`
-      }
-      if (!roomId) throw new Error(`Sin habitaciones para el hotel ${hotelId}`)
-      payload.id = crypto.randomUUID()
-      payload.roomId = roomId
-      await this.orm.create('Reservations', payload)
+      await applyBookingRevision({ orm, channex: this.channex, hotelId, apiKey: key }, dto)
     })
   }
 
@@ -166,20 +147,26 @@ export class CanalesService {
   }
 
   // ─── CRUD estándar sobre la config (admin) ───────────────────────────
-  async list(query?: CanalesQuery): Promise<CanalesPaginated> {
+  async list(query?: CanalesQuery, user?: CurrentUser): Promise<CanalesPaginated> {
     const page = query?.page ?? 1
     const limit = query?.limit ?? 20
     const offset = (page - 1) * limit
     const filters: Record<string, unknown> = {}
-    if (query?.hotelId !== undefined) filters.hotelId = query.hotelId
+    if (user && user.role !== 'super_admin') {
+      // hotelId llega en el JWT (HotelAuth). Sin findById: tokens legacy sin hotelId → '__none__' (lista vacía, sin fuga).
+      filters.hotelId = user.hotelId ?? '__none__'
+    } else if (query?.hotelId !== undefined) {
+      filters.hotelId = query.hotelId
+    }
     const result = await this.repo.paginate(filters, { limit, offset })
     return { data: result.data, pagination: { page, limit, total: result.total, totalPages: result.pages, hasNext: offset + limit < result.total, hasPrev: page > 1 } }
   }
 
-  async getById(id: string): Promise<CanalesDTO> {
-    // @ignore IDOR_RISK — config del channel manager admin-only (rutas con super_admin); lookup por id de config no expone datos de otro usuario.
+  async getById(id: string, user: CurrentUser): Promise<CanalesDTO> {
     const item = await this.repo.findById(id)
     if (!item) throw new NotFoundError('Canales no encontrado')
+    const me = await this.userRepo.findById(user.id)
+    this.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
     return item
   }
 
@@ -189,14 +176,22 @@ export class CanalesService {
     return item
   }
 
-  async update(id: string, dto: UpdateCanalesDTO): Promise<CanalesDTO> {
+  async update(id: string, dto: UpdateCanalesDTO, user: CurrentUser): Promise<CanalesDTO> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Canales no encontrado')
+    const me = await this.userRepo.findById(user.id)
+    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
     const item = await this.repo.update(id, dto as Partial<Omit<CanalesDTO, 'id'>>)
     if (!item) throw new NotFoundError('Canales no encontrado')
     await this.cache.delete('canales:list')
     return item
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, user: CurrentUser): Promise<void> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Canales no encontrado')
+    const me = await this.userRepo.findById(user.id)
+    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Canales no encontrado')
     await this.cache.delete('canales:list')

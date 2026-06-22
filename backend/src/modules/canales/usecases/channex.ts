@@ -127,7 +127,6 @@ export class ChannexUseCase {
     const today = new Date().toISOString().split('T')[0]
     const future = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
     const rtList = (await this.channexReq(key, 'GET', `/room_types?filter[property_id]=${channexPId}`)).data?.data || []
-    const rpList = (await this.channexReq(key, 'GET', `/rate_plans?filter[property_id]=${channexPId}`)).data?.data || []
 
     // Batch rate plan creation
     const rpCreated = await Promise.all(createdRTs.map(rt => {
@@ -137,6 +136,9 @@ export class ChannexUseCase {
       const occ = roomData?.capacity || 2
       return this.channexReq(key, 'POST', '/rate_plans', { rate_plan: { property_id: channexPId, room_type_id: rt.id, title: `${title} Standard`, currency: hotel.currency || 'USD', sell_mode: 'per_room', rate_mode: 'manual', options: [{ occupancy: occ, is_primary: true, rate: price }] } })
     }))
+    // Rate plans: releer DESPUÉS de crear (rpList alimenta el push de restrictions y el reporte).
+    // Antes se leía antes de crear → siempre 0 y sin restrictions iniciales.
+    const rpList = (await this.channexReq(key, 'GET', `/rate_plans?filter[property_id]=${channexPId}`)).data?.data || []
 
     // Batch availability push
     await Promise.all(rtList.map((rt: any) => {
@@ -144,9 +146,9 @@ export class ChannexUseCase {
       return this.channexReq(key, 'POST', '/availability', { values: [{ property_id: channexPId, room_type_id: rt.id, date_from: today, date_to: future, availability: rData?.cnt || rt.attributes?.count_of_rooms || 1 }] })
     }))
 
-    // Batch restrictions push
+    // Batch restrictions push (room_type_id viene en relationships, no attributes — mismo patrón que pushRate)
     await Promise.all(rpList.map((rp: any) => {
-      const rt = rtList.find((r: any) => r.id === rp.attributes?.room_type_id)
+      const rt = rtList.find((r: any) => r.id === (rp.attributes?.room_type_id || rp.relationships?.room_type?.data?.id))
       const rData = rooms.find(rm => rm.type === (rt?.attributes?.title || rt?.title))
       return this.channexReq(key, 'POST', '/restrictions', { values: [{ property_id: channexPId, rate_plan_id: rp.id, date_from: today, date_to: future, rate: Math.round(rData?.basePrice || 100) }] })
     }))

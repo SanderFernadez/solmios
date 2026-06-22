@@ -44,8 +44,8 @@ export class GastosService {
 
     const filters: Record<string, unknown> = {}
     if (user && user.role !== 'super_admin') {
-      const me = await this.userRepo.findById(user.id)
-      filters.hotelId = me?.hotelId ?? '__none__'
+      // hotelId llega en el JWT (HotelAuth). Sin findById: tokens legacy sin hotelId → '__none__' (lista vacía, sin fuga).
+      filters.hotelId = user.hotelId ?? '__none__'
     } else if (query?.hotelId) {
       filters.hotelId = query.hotelId
     }

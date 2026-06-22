@@ -13,6 +13,7 @@ import type {
 } from './types'
 import type { FacturasSockets } from './sockets'
 import { taxRateFor, applyTax, buildInvoiceRecord, enrichInvoice, type EnrichDeps } from './usecases/billing'
+import { nextInvoiceNumber } from './usecases/invoice-number'
 
 export class FacturasService {
   private sockets: FacturasSockets = {}
@@ -110,7 +111,7 @@ export class FacturasService {
       const t = applyTax(base, rate)
       taxes = t.tax
       amount = t.total
-      if (!invoiceNumber) invoiceNumber = await this.nextNumber(hotelId, 'INV')
+      if (!invoiceNumber) invoiceNumber = await nextInvoiceNumber(this.repo, hotelId, 'INV')
       if (!ncf) ncf = `NCF-${invoiceNumber}`
     } else if (!invoiceNumber) {
       const prefix = type === 'payment' ? 'PAY' : type === 'folio' ? 'CHG' : 'DOC'
@@ -123,24 +124,6 @@ export class FacturasService {
     await this.sockets.onFacturasCreated?.(item)
     await this.cache.delete('facturas:list:' + (item.hotelId || 'all'))
     return enrichInvoice(item, this.enrichDeps)
-  }
-
-  private async nextNumber(hotelId: string, prefix: string): Promise<string> {
-    const year = new Date().getFullYear()
-    try {
-      // Solo contar facturas reales (no pagos ni folios que comparten la tabla).
-      const invoices = await this.repo.findMany({ hotelId, type: 'invoice' })
-      // Extraer el sufijo numérico más alto del formato "{prefix}-{year}-{NNNN}".
-      const safePrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const re = new RegExp(`^${safePrefix}-${year}-(\\d+)$`)
-      const maxSeq = invoices.reduce((max, inv: any) => {
-        const m = re.exec(String(inv.invoiceNumber || ''))
-        return m ? Math.max(max, Number(m[1])) : max
-      }, 0)
-      return `${prefix}-${year}-${(maxSeq + 1).toString().padStart(4, '0')}`
-    } catch {
-      return `${prefix}-${year}-${Date.now()}`
-    }
   }
 
   async update(id: string, dto: UpdateFacturasDTO, user: CurrentUser): Promise<FacturasDTO> {

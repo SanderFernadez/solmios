@@ -11,6 +11,7 @@ import type {
 } from './types'
 import type { FoliosSockets } from './sockets'
 import { taxRateFor, applyTax, computeTotals } from './usecases/folio-math'
+import { folioSummary } from './usecases/folio-summary'
 
 export interface LookupDeps {
   guest: RepositoryAdapter<any>
@@ -181,17 +182,7 @@ export class FoliosService {
 
   /** Resumen para generar factura (lo usa la orquestación en composition-root). */
   async summary(folioId: string, user?: CurrentUser): Promise<{ folio: FolioDTO; subtotal: number; taxes: number; total: number } | null> {
-    const folio = await this.folioRepo.findById(folioId)
-    if (!folio) return null
-    if (user) {
-      const me = await this.deps.user.findById(user.id)
-      this.auth.assertOwnership(folio.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
-    }
-    const charges = (await this.chargeRepo.findMany({ folioId })) as FolioChargeDTO[]
-    const t = computeTotals(charges)
-    const cargoCharges = charges.filter((c) => c.kind === 'charge')
-    const taxes = cargoCharges.reduce((s, c) => s + Number(c.taxes || 0), 0)
-    return { folio: { ...folio, ...t }, subtotal: t.chargesTotal - taxes, taxes, total: t.chargesTotal }
+    return folioSummary({ folioRepo: this.folioRepo, chargeRepo: this.chargeRepo, userRepo: this.deps.user, auth: this.auth }, folioId, user)
   }
 
   /** Vincula la factura generada al folio (lo llama la orquestación close → invoice). */
