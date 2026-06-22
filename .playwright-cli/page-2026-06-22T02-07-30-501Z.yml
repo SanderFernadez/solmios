@@ -1,0 +1,117 @@
+- generic [ref=e45]:
+  - complementary [ref=e46]:
+    - generic [ref=e47]:
+      - generic [ref=e48]: M
+      - generic [ref=e49]:
+        - generic [ref=e50]: ManagerHotel
+        - generic [ref=e51]: Panel Hotel
+    - navigation [ref=e52]:
+      - link "📊 Dashboard" [ref=e53] [cursor=pointer]:
+        - /url: /panel
+        - generic [ref=e54]: 📊
+        - generic [ref=e55]: Dashboard
+      - button "📅 Planificación ▾" [active] [ref=e178] [cursor=pointer]:
+        - generic [ref=e57]: 📅
+        - generic [ref=e58]: Planificación
+        - generic [ref=e59]: ▾
+      - link "Planning" [ref=e179] [cursor=pointer]:
+        - /url: /panel/planning
+        - generic [ref=e180]: Planning
+      - link "Reservas" [ref=e181] [cursor=pointer]:
+        - /url: /panel/reservations
+        - generic [ref=e182]: Reservas
+      - link "Check-in/out" [ref=e183] [cursor=pointer]:
+        - /url: /panel/checkin
+        - generic [ref=e184]: Check-in/out
+      - button "🚪 Habitaciones ▸" [ref=e60] [cursor=pointer]:
+        - generic [ref=e61]: 🚪
+        - generic [ref=e62]: Habitaciones
+        - generic [ref=e63]: ▸
+      - link "👤 Huéspedes" [ref=e64] [cursor=pointer]:
+        - /url: /panel/guests
+        - generic [ref=e65]: 👤
+        - generic [ref=e66]: Huéspedes
+      - button "💰 Finanzas ▸" [ref=e67] [cursor=pointer]:
+        - generic [ref=e68]: 💰
+        - generic [ref=e69]: Finanzas
+        - generic [ref=e70]: ▸
+      - button "🔗 Ventas ▸" [ref=e71] [cursor=pointer]:
+        - generic [ref=e72]: 🔗
+        - generic [ref=e73]: Ventas
+        - generic [ref=e74]: ▸
+      - button "⚙️ Configuración ▸" [ref=e75] [cursor=pointer]:
+        - generic [ref=e76]: ⚙️
+        - generic [ref=e77]: Configuración
+        - generic [ref=e78]: ▸
+    - generic [ref=e81]:
+      - generic [ref=e82]: A
+      - generic [ref=e83]:
+        - generic [ref=e84]: Admin
+        - generic [ref=e85]: Hotel Boutique Palma
+      - button [ref=e86] [cursor=pointer]:
+        - img [ref=e87]
+  - generic [ref=e89]:
+    - banner [ref=e90]:
+      - heading "Dashboard" [level=1] [ref=e92]
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - textbox "Buscar..." [ref=e95]
+          - img [ref=e96]
+        - button "Notificaciones" [ref=e99] [cursor=pointer]: 🔔
+        - generic [ref=e100]:
+          - generic [ref=e101]: 🏨
+          - generic [ref=e102]: Hotel Boutique Palma
+    - main [ref=e103]:
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - generic [ref=e106]:
+            - generic [ref=e107]:
+              - generic [ref=e108]: 🏨
+              - generic [ref=e109]: →
+            - generic [ref=e110]: 22%
+            - generic [ref=e111]: Ocupación
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - generic [ref=e114]: 📅
+              - generic [ref=e115]: →
+            - generic [ref=e116]: "1"
+            - generic [ref=e117]: Llegadas Hoy
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - generic [ref=e120]: 🚪
+              - generic [ref=e121]: →
+            - generic [ref=e122]: "1"
+            - generic [ref=e123]: Salidas Hoy
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: 💰
+              - generic [ref=e127]: ↓
+            - generic [ref=e128]: $520
+            - generic [ref=e129]: Ingresos Hoy
+        - generic [ref=e130]:
+          - generic [ref=e131]:
+            - generic [ref=e133]:
+              - generic [ref=e134]:
+                - heading "Rack de Habitaciones" [level=2] [ref=e135]
+                - paragraph [ref=e136]: Estado en tiempo real
+              - generic [ref=e137]:
+                - button "Todas" [ref=e138] [cursor=pointer]
+                - button "Libres" [ref=e139] [cursor=pointer]
+                - button "Ocupadas" [ref=e140] [cursor=pointer]
+                - button "Limpieza" [ref=e141] [cursor=pointer]
+            - generic [ref=e143]:
+              - generic [ref=e146]: Disponible
+              - generic [ref=e149]: Ocupada
+              - generic [ref=e152]: Pendiente
+              - generic [ref=e155]: En limpieza
+              - generic [ref=e158]: F/S
+          - generic [ref=e159]:
+            - generic [ref=e162]:
+              - heading "Llegadas Hoy" [level=3] [ref=e163]
+              - generic [ref=e164]: "0"
+            - generic [ref=e168]:
+              - heading "Salidas Hoy" [level=3] [ref=e169]
+              - generic [ref=e170]: "0"
+            - generic [ref=e174]:
+              - heading "Incidencias" [level=3] [ref=e175]
+              - generic [ref=e176]: "0"

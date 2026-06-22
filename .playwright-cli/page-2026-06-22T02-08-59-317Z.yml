@@ -1,0 +1,170 @@
+- generic [ref=e45]:
+  - complementary [ref=e46]:
+    - generic [ref=e47]:
+      - generic [ref=e48]: M
+      - generic [ref=e49]:
+        - generic [ref=e50]: ManagerHotel
+        - generic [ref=e51]: Panel Hotel
+    - navigation [ref=e52]:
+      - link "📊 Dashboard" [ref=e53] [cursor=pointer]:
+        - /url: /panel
+        - generic [ref=e54]: 📊
+        - generic [ref=e55]: Dashboard
+      - button "📅 Planificación ▾" [ref=e178] [cursor=pointer]:
+        - generic [ref=e57]: 📅
+        - generic [ref=e58]: Planificación
+        - generic [ref=e59]: ▾
+      - link "Planning" [active] [ref=e179] [cursor=pointer]:
+        - /url: /panel/planning
+        - generic [ref=e180]: Planning
+      - link "Reservas" [ref=e181] [cursor=pointer]:
+        - /url: /panel/reservations
+        - generic [ref=e182]: Reservas
+      - link "Check-in/out" [ref=e183] [cursor=pointer]:
+        - /url: /panel/checkin
+        - generic [ref=e184]: Check-in/out
+      - button "🚪 Habitaciones ▸" [ref=e60] [cursor=pointer]:
+        - generic [ref=e61]: 🚪
+        - generic [ref=e62]: Habitaciones
+        - generic [ref=e63]: ▸
+      - link "👤 Huéspedes" [ref=e64] [cursor=pointer]:
+        - /url: /panel/guests
+        - generic [ref=e65]: 👤
+        - generic [ref=e66]: Huéspedes
+      - button "💰 Finanzas ▸" [ref=e67] [cursor=pointer]:
+        - generic [ref=e68]: 💰
+        - generic [ref=e69]: Finanzas
+        - generic [ref=e70]: ▸
+      - button "🔗 Ventas ▸" [ref=e71] [cursor=pointer]:
+        - generic [ref=e72]: 🔗
+        - generic [ref=e73]: Ventas
+        - generic [ref=e74]: ▸
+      - button "⚙️ Configuración ▸" [ref=e75] [cursor=pointer]:
+        - generic [ref=e76]: ⚙️
+        - generic [ref=e77]: Configuración
+        - generic [ref=e78]: ▸
+    - generic [ref=e81]:
+      - generic [ref=e82]: A
+      - generic [ref=e83]:
+        - generic [ref=e84]: Admin
+        - generic [ref=e85]: Hotel Boutique Palma
+      - button [ref=e86] [cursor=pointer]:
+        - img [ref=e87]
+  - generic [ref=e89]:
+    - banner [ref=e90]:
+      - heading "Planificación" [level=1] [ref=e185]
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - textbox "Buscar..." [ref=e95]
+          - img [ref=e96]
+        - button "Notificaciones" [ref=e99] [cursor=pointer]: 🔔
+        - generic [ref=e100]:
+          - generic [ref=e101]: 🏨
+          - generic [ref=e102]: Hotel Boutique Palma
+    - main [ref=e103]:
+      - generic [ref=e186]:
+        - generic [ref=e188]:
+          - generic [ref=e189]:
+            - heading "Planning" [level=1] [ref=e190]
+            - paragraph [ref=e191]: Arrastrá sobre las celdas para seleccionar fechas
+          - generic [ref=e192]:
+            - generic [ref=e193]:
+              - button "◀" [ref=e194] [cursor=pointer]
+              - generic [ref=e195]: 21 Jun — 4 Jul, 2026
+              - button "▶" [ref=e196] [cursor=pointer]
+            - button "Hoy" [ref=e197] [cursor=pointer]
+            - combobox [ref=e198] [cursor=pointer]:
+              - option "7 días"
+              - option "14 días" [selected]
+              - option "30 días"
+        - generic [ref=e199]:
+          - generic [ref=e200]:
+            - button "Por Canal" [ref=e201] [cursor=pointer]
+            - button "Por Estado" [ref=e202] [cursor=pointer]
+          - generic [ref=e205]: Directa
+          - generic [ref=e208]: Booking
+          - generic [ref=e211]: Expedia
+          - generic [ref=e214]: Airbnb
+          - generic [ref=e215]: "|"
+          - generic [ref=e216]: Bloqueo
+          - generic [ref=e218]: "|"
+          - generic [ref=e219]: 🟡 Pago parcial
+          - generic [ref=e220]: ✅ Pagada
+          - generic [ref=e221]: 🔐 Con cerradura
+          - generic [ref=e222]: "|"
+          - generic [ref=e223]: "Tipos:"
+        - generic [ref=e227]:
+          - generic [ref=e228]:
+            - generic [ref=e229]: Habitaciones
+            - generic [ref=e230]:
+              - generic [ref=e231]: Dom
+              - generic [ref=e232]: "21"
+              - generic [ref=e233]: Jun
+            - generic [ref=e234]:
+              - generic [ref=e235]: Lun
+              - generic [ref=e236]: "22"
+              - generic [ref=e237]: Jun
+            - generic [ref=e238]:
+              - generic [ref=e239]: Mar
+              - generic [ref=e240]: "23"
+              - generic [ref=e241]: Jun
+            - generic [ref=e242]:
+              - generic [ref=e243]: Mié
+              - generic [ref=e244]: "24"
+              - generic [ref=e245]: Jun
+            - generic [ref=e246]:
+              - generic [ref=e247]: Jue
+              - generic [ref=e248]: "25"
+              - generic [ref=e249]: Jun
+            - generic [ref=e250]:
+              - generic [ref=e251]: Vie
+              - generic [ref=e252]: "26"
+              - generic [ref=e253]: Jun
+            - generic [ref=e254]:
+              - generic [ref=e255]: Sáb
+              - generic [ref=e256]: "27"
+              - generic [ref=e257]: Jun
+            - generic [ref=e258]:
+              - generic [ref=e259]: Dom
+              - generic [ref=e260]: "28"
+              - generic [ref=e261]: Jun
+            - generic [ref=e262]:
+              - generic [ref=e263]: Lun
+              - generic [ref=e264]: "29"
+              - generic [ref=e265]: Jun
+            - generic [ref=e266]:
+              - generic [ref=e267]: Mar
+              - generic [ref=e268]: "30"
+              - generic [ref=e269]: Jun
+            - generic [ref=e270]:
+              - generic [ref=e271]: Mié
+              - generic [ref=e272]: "1"
+              - generic [ref=e273]: Jul
+            - generic [ref=e274]:
+              - generic [ref=e275]: Jue
+              - generic [ref=e276]: "2"
+              - generic [ref=e277]: Jul
+            - generic [ref=e278]:
+              - generic [ref=e279]: Vie
+              - generic [ref=e280]: "3"
+              - generic [ref=e281]: Jul
+            - generic [ref=e282]:
+              - generic [ref=e283]: Sáb
+              - generic [ref=e284]: "4"
+              - generic [ref=e285]: Jul
+          - generic [ref=e286]:
+            - generic [ref=e287]: Ocupación
+            - generic [ref=e288]: 0%
+            - generic [ref=e289]: 0%
+            - generic [ref=e290]: 0%
+            - generic [ref=e291]: 0%
+            - generic [ref=e292]: 0%
+            - generic [ref=e293]: 0%
+            - generic [ref=e294]: 0%
+            - generic [ref=e295]: 0%
+            - generic [ref=e296]: 0%
+            - generic [ref=e297]: 0%
+            - generic [ref=e298]: 0%
+            - generic [ref=e299]: 0%
+            - generic [ref=e300]: 0%
+            - generic [ref=e301]: 0%

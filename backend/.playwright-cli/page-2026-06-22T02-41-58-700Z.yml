@@ -1,0 +1,19 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: M
+    - heading "ManagerHotel" [level=1] [ref=e7]
+    - paragraph [ref=e8]: Hospitality OS · LATAM
+  - generic [ref=e9]:
+    - heading "Iniciar Sesión" [level=2] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: Email
+        - textbox "admin@hotel.com" [ref=e14]: admin@managerhotel.com
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: Contraseña
+          - link "¿Olvidaste tu contraseña?" [ref=e18] [cursor=pointer]:
+            - /url: /forgot-password
+        - textbox "••••••••" [ref=e19]: demo123
+      - button "Entrar" [ref=e20] [cursor=pointer]
+    - generic [ref=e22]: Cuentas Demo

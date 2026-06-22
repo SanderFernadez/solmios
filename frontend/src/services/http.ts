@@ -25,12 +25,6 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   })
 
   if (res.status === 401) {
-    // Only logout if the request HAD a token (meaning the token is invalid/expired)
-    // Don't logout if no token was sent (login flow, public endpoints)
-    if (headers['Authorization']) {
-      const auth = useAuthStore()
-      auth.logout()
-    }
     throw new ApiError(401, 'Sesión expirada')
   }
 

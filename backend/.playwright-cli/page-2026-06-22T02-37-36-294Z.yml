@@ -1,0 +1,174 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: M
+      - generic [ref=e7]:
+        - generic [ref=e8]: ManagerHotel
+        - generic [ref=e9]: Panel Hotel
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /panel
+        - generic [ref=e12]: 📊
+        - generic [ref=e13]: Dashboard
+      - button "📅 Planificación ▾" [ref=e14] [cursor=pointer]:
+        - generic [ref=e15]: 📅
+        - generic [ref=e16]: Planificación
+        - generic [ref=e17]: ▾
+      - link "Planning" [ref=e18] [cursor=pointer]:
+        - /url: /panel/planning
+        - generic [ref=e19]: Planning
+      - link "Reservas" [ref=e20] [cursor=pointer]:
+        - /url: /panel/reservations
+        - generic [ref=e21]: Reservas
+      - link "Check-in/out" [ref=e22] [cursor=pointer]:
+        - /url: /panel/checkin
+        - generic [ref=e23]: Check-in/out
+      - button "🚪 Habitaciones ▾" [ref=e24] [cursor=pointer]:
+        - generic [ref=e25]: 🚪
+        - generic [ref=e26]: Habitaciones
+        - generic [ref=e27]: ▾
+      - link "Habitaciones" [ref=e28] [cursor=pointer]:
+        - /url: /panel/rooms
+        - generic [ref=e29]: Habitaciones
+      - link "Housekeeping" [ref=e30] [cursor=pointer]:
+        - /url: /panel/housekeeping
+        - generic [ref=e31]: Housekeeping
+      - link "Mantenimiento" [ref=e32] [cursor=pointer]:
+        - /url: /panel/maintenance
+        - generic [ref=e33]: Mantenimiento
+      - link "👤 Huéspedes" [ref=e34] [cursor=pointer]:
+        - /url: /panel/guests
+        - generic [ref=e35]: 👤
+        - generic [ref=e36]: Huéspedes
+      - button "💰 Finanzas ▾" [ref=e37] [cursor=pointer]:
+        - generic [ref=e38]: 💰
+        - generic [ref=e39]: Finanzas
+        - generic [ref=e40]: ▾
+      - link "Facturación" [ref=e41] [cursor=pointer]:
+        - /url: /panel/billing
+        - generic [ref=e42]: Facturación
+      - link "Folios In-House" [ref=e43] [cursor=pointer]:
+        - /url: /panel/folios
+        - generic [ref=e44]: Folios In-House
+      - link "Links de Pago" [ref=e45] [cursor=pointer]:
+        - /url: /panel/payments
+        - generic [ref=e46]: Links de Pago
+      - link "Caja" [ref=e47] [cursor=pointer]:
+        - /url: /panel/caja
+        - generic [ref=e48]: Caja
+      - link "Gastos" [ref=e49] [cursor=pointer]:
+        - /url: /panel/gastos
+        - generic [ref=e50]: Gastos
+      - link "Reportes" [ref=e51] [cursor=pointer]:
+        - /url: /panel/reports
+        - generic [ref=e52]: Reportes
+      - link "Night Audit" [ref=e53] [cursor=pointer]:
+        - /url: /panel/night-audit
+        - generic [ref=e54]: Night Audit
+      - link "Registro Viajeros" [ref=e55] [cursor=pointer]:
+        - /url: /panel/registro-viajeros
+        - generic [ref=e56]: Registro Viajeros
+      - button "🔗 Ventas ▾" [ref=e57] [cursor=pointer]:
+        - generic [ref=e58]: 🔗
+        - generic [ref=e59]: Ventas
+        - generic [ref=e60]: ▾
+      - link "Channel Manager" [ref=e61] [cursor=pointer]:
+        - /url: /panel/channel-manager
+        - generic [ref=e62]: Channel Manager
+      - link "Grupos" [ref=e63] [cursor=pointer]:
+        - /url: /panel/groups
+        - generic [ref=e64]: Grupos
+      - link "Paquetes" [ref=e65] [cursor=pointer]:
+        - /url: /panel/packages
+        - generic [ref=e66]: Paquetes
+      - link "Opiniones" [ref=e67] [cursor=pointer]:
+        - /url: /panel/opiniones
+        - generic [ref=e68]: Opiniones
+      - button "⚙️ Configuración ▾" [ref=e69] [cursor=pointer]:
+        - generic [ref=e70]: ⚙️
+        - generic [ref=e71]: Configuración
+        - generic [ref=e72]: ▾
+      - link "Configuración" [ref=e73] [cursor=pointer]:
+        - /url: /panel/settings
+        - generic [ref=e74]: Configuración
+      - link "Equipo" [ref=e75] [cursor=pointer]:
+        - /url: /panel/team
+        - generic [ref=e76]: Equipo
+      - link "Envíos Auto" [ref=e77] [cursor=pointer]:
+        - /url: /panel/auto-messages
+        - generic [ref=e78]: Envíos Auto
+      - link "Historial Envíos" [ref=e79] [cursor=pointer]:
+        - /url: /panel/message-logs
+        - generic [ref=e80]: Historial Envíos
+      - link "Plantillas WhatsApp" [ref=e81] [cursor=pointer]:
+        - /url: /panel/whatsapp-templates
+        - generic [ref=e82]: Plantillas WhatsApp
+      - link "Cerraduras" [ref=e83] [cursor=pointer]:
+        - /url: /panel/cerraduras
+        - generic [ref=e84]: Cerraduras
+      - link "Dispositivos" [ref=e85] [cursor=pointer]:
+        - /url: /panel/devices
+        - generic [ref=e86]: Dispositivos
+      - link "Soporte" [ref=e87] [cursor=pointer]:
+        - /url: /panel/support
+        - generic [ref=e88]: Soporte
+    - generic [ref=e91]:
+      - generic [ref=e92]: A
+      - generic [ref=e94]: Admin
+      - button [ref=e95] [cursor=pointer]:
+        - img [ref=e96]
+  - generic [ref=e98]:
+    - banner [ref=e99]:
+      - heading "Facturación" [level=1] [ref=e101]
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - textbox "Buscar..." [ref=e104]
+          - img [ref=e105]
+        - button "Notificaciones" [ref=e108] [cursor=pointer]: 🔔
+        - generic [ref=e110]: 🏨
+    - main [ref=e111]:
+      - generic [ref=e112]:
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - heading "Facturación" [level=2] [ref=e115]
+            - paragraph [ref=e116]: Pagos, facturación electrónica LATAM y folios
+          - generic [ref=e117]:
+            - button "Exportar" [ref=e118] [cursor=pointer]
+            - button "+ Nuevo Pago" [ref=e119] [cursor=pointer]
+        - generic [ref=e120]:
+          - generic [ref=e121]:
+            - generic [ref=e122]: $0
+            - generic [ref=e123]: Ingresos del Mes
+          - generic [ref=e124]:
+            - generic [ref=e125]: $0
+            - generic [ref=e126]: Cobrado Hoy
+          - generic [ref=e127]:
+            - generic [ref=e128]: $0
+            - generic [ref=e129]: Pendiente
+          - generic [ref=e130]:
+            - generic [ref=e131]: "0"
+            - generic [ref=e132]: Facturas Emitidas
+        - generic [ref=e133]:
+          - button "📄 Facturas" [ref=e134] [cursor=pointer]
+          - button "💳 Pagos" [ref=e135] [cursor=pointer]
+          - button "🏨 Folios" [ref=e136] [cursor=pointer]
+        - generic [ref=e137]:
+          - generic [ref=e139]:
+            - heading "Facturas" [level=3] [ref=e140]
+            - combobox [ref=e142] [cursor=pointer]:
+              - option "Todas" [selected]
+              - option "Pagadas"
+              - option "Pendientes"
+              - option "Vencidas"
+          - table [ref=e143]:
+            - rowgroup [ref=e144]:
+              - row "Factura Huésped Hab Concepto Estado Fecha Total Acciones" [ref=e145]:
+                - columnheader "Factura" [ref=e146]
+                - columnheader "Huésped" [ref=e147]
+                - columnheader "Hab" [ref=e148]
+                - columnheader "Concepto" [ref=e149]
+                - columnheader "Estado" [ref=e150]
+                - columnheader "Fecha" [ref=e151]
+                - columnheader "Total" [ref=e152]
+                - columnheader "Acciones" [ref=e153]
+            - rowgroup

@@ -1,0 +1,104 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: M
+      - generic [ref=e7]:
+        - generic [ref=e8]: ManagerHotel
+        - generic [ref=e9]: Super Admin
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /admin
+        - generic [ref=e12]: 📊
+        - generic [ref=e13]: Dashboard
+      - link "🏨 Hoteles" [ref=e14] [cursor=pointer]:
+        - /url: /admin/hotels
+        - generic [ref=e15]: 🏨
+        - generic [ref=e16]: Hoteles
+      - link "💳 Suscripciones" [ref=e17] [cursor=pointer]:
+        - /url: /admin/subscriptions
+        - generic [ref=e18]: 💳
+        - generic [ref=e19]: Suscripciones
+      - link "🎫 Soporte" [ref=e20] [cursor=pointer]:
+        - /url: /admin/support
+        - generic [ref=e21]: 🎫
+        - generic [ref=e22]: Soporte
+      - link "💰 Facturación" [ref=e23] [cursor=pointer]:
+        - /url: /admin/billing
+        - generic [ref=e24]: 💰
+        - generic [ref=e25]: Facturación
+      - link "📈 Analytics" [ref=e26] [cursor=pointer]:
+        - /url: /admin/analytics
+        - generic [ref=e27]: 📈
+        - generic [ref=e28]: Analytics
+      - link "👤 Usuarios" [ref=e29] [cursor=pointer]:
+        - /url: /admin/users
+        - generic [ref=e30]: 👤
+        - generic [ref=e31]: Usuarios
+      - link "🖥️ Monitoreo" [ref=e32] [cursor=pointer]:
+        - /url: /admin/monitoring
+        - generic [ref=e33]: 🖥️
+        - generic [ref=e34]: Monitoreo
+      - link "📋 Auditoría" [ref=e35] [cursor=pointer]:
+        - /url: /admin/audit
+        - generic [ref=e36]: 📋
+        - generic [ref=e37]: Auditoría
+      - link "📢 Anuncios" [ref=e38] [cursor=pointer]:
+        - /url: /admin/announcements
+        - generic [ref=e39]: 📢
+        - generic [ref=e40]: Anuncios
+      - link "🔑 API & Webhooks" [ref=e41] [cursor=pointer]:
+        - /url: /admin/api-keys
+        - generic [ref=e42]: 🔑
+        - generic [ref=e43]: API & Webhooks
+      - link "🔐 Roles & Permisos" [ref=e44] [cursor=pointer]:
+        - /url: /admin/roles
+        - generic [ref=e45]: 🔐
+        - generic [ref=e46]: Roles & Permisos
+      - link "⚙️ Configuración" [ref=e47] [cursor=pointer]:
+        - /url: /admin/settings
+        - generic [ref=e48]: ⚙️
+        - generic [ref=e49]: Configuración
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e53]: Plataforma
+        - generic [ref=e55]: "Hoteles: 1 activos"
+      - generic [ref=e56]:
+        - generic [ref=e57]: SA
+        - generic [ref=e58]:
+          - generic [ref=e59]: Super Admin
+          - generic [ref=e60]: Plataforma ManagerHotel
+        - button [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+  - generic [ref=e64]:
+    - banner [ref=e65]:
+      - heading "Roles & Permisos" [level=1] [ref=e67]
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - textbox "Buscar hoteles, usuarios..." [ref=e70]
+          - img [ref=e71]
+        - button [ref=e73] [cursor=pointer]:
+          - img [ref=e74]
+        - button "+ Nuevo Hotel" [ref=e77] [cursor=pointer]
+    - main [ref=e78]:
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - generic [ref=e81]:
+            - heading "Roles & Permisos" [level=2] [ref=e82]
+            - paragraph [ref=e83]: Define qué puede hacer cada rol en la plataforma
+          - button "+ Crear Rol" [ref=e84] [cursor=pointer]
+        - button "+ Crear Nuevo Rol" [ref=e86] [cursor=pointer]:
+          - generic [ref=e87]: +
+          - generic [ref=e88]: Crear Nuevo Rol
+        - generic [ref=e89]:
+          - generic [ref=e90]:
+            - heading "Control de Features por Plan" [level=3] [ref=e91]
+            - generic [ref=e92]: Define qué módulos están disponibles en cada plan
+          - table [ref=e94]:
+            - rowgroup [ref=e95]:
+              - row "Feature / Módulo Starter ($49) Professional ($99) Enterprise ($199)" [ref=e96]:
+                - columnheader "Feature / Módulo" [ref=e97]
+                - columnheader "Starter ($49)" [ref=e98]
+                - columnheader "Professional ($99)" [ref=e99]
+                - columnheader "Enterprise ($199)" [ref=e100]
+            - rowgroup
+          - button "Guardar Features" [ref=e101] [cursor=pointer]

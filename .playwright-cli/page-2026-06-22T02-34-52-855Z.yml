@@ -1,0 +1,42 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: M
+    - heading "ManagerHotel" [level=1] [ref=e7]
+    - paragraph [ref=e8]: Hospitality OS · LATAM
+  - generic [ref=e9]:
+    - heading "Iniciar Sesión" [level=2] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: Email
+        - textbox "admin@hotel.com" [ref=e14]: admin@managerhotel.com
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: Contraseña
+          - link "¿Olvidaste tu contraseña?" [ref=e18] [cursor=pointer]:
+            - /url: /forgot-password
+        - textbox "••••••••" [ref=e19]: demo123
+      - button "Entrar" [ref=e20] [cursor=pointer]
+    - generic [ref=e21]:
+      - generic [ref=e22]: Cuentas Demo
+      - generic [ref=e23]:
+        - button "A Admin admin@managerhotel.com Hotel Admin" [ref=e24] [cursor=pointer]:
+          - generic [ref=e25]:
+            - generic [ref=e26]: A
+            - generic [ref=e27]:
+              - generic [ref=e28]: Admin
+              - generic [ref=e29]: admin@managerhotel.com
+            - generic [ref=e30]: Hotel Admin
+        - button "AC Admin Caribe admin@caribeparadise.com Hotel Admin" [ref=e31] [cursor=pointer]:
+          - generic [ref=e32]:
+            - generic [ref=e33]: AC
+            - generic [ref=e34]:
+              - generic [ref=e35]: Admin Caribe
+              - generic [ref=e36]: admin@caribeparadise.com
+            - generic [ref=e37]: Hotel Admin
+        - button "MC Maria Caribe maria@caribeparadise.com Hotel Admin" [ref=e38] [cursor=pointer]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: MC
+            - generic [ref=e41]:
+              - generic [ref=e42]: Maria Caribe
+              - generic [ref=e43]: maria@caribeparadise.com
+            - generic [ref=e44]: Hotel Admin

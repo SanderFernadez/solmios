@@ -1,0 +1,92 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: M
+      - generic [ref=e7]:
+        - generic [ref=e8]: ManagerHotel
+        - generic [ref=e9]: Panel Hotel
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /panel
+        - generic [ref=e12]: 📊
+        - generic [ref=e13]: Dashboard
+      - button "📅 Planificación ▸" [ref=e14] [cursor=pointer]:
+        - generic [ref=e15]: 📅
+        - generic [ref=e16]: Planificación
+        - generic [ref=e17]: ▸
+      - button "🚪 Habitaciones ▸" [ref=e18] [cursor=pointer]:
+        - generic [ref=e19]: 🚪
+        - generic [ref=e20]: Habitaciones
+        - generic [ref=e21]: ▸
+      - link "👤 Huéspedes" [ref=e22] [cursor=pointer]:
+        - /url: /panel/guests
+        - generic [ref=e23]: 👤
+        - generic [ref=e24]: Huéspedes
+      - button "💰 Finanzas ▸" [ref=e25] [cursor=pointer]:
+        - generic [ref=e26]: 💰
+        - generic [ref=e27]: Finanzas
+        - generic [ref=e28]: ▸
+      - button "🔗 Ventas ▸" [ref=e29] [cursor=pointer]:
+        - generic [ref=e30]: 🔗
+        - generic [ref=e31]: Ventas
+        - generic [ref=e32]: ▸
+      - button "⚙️ Configuración ▸" [ref=e33] [cursor=pointer]:
+        - generic [ref=e34]: ⚙️
+        - generic [ref=e35]: Configuración
+        - generic [ref=e36]: ▸
+    - generic [ref=e39]:
+      - generic [ref=e40]: A
+      - generic [ref=e42]: Admin
+      - button [ref=e43] [cursor=pointer]:
+        - img [ref=e44]
+  - generic [ref=e46]:
+    - banner [ref=e47]:
+      - heading "Housekeeping" [level=1] [ref=e49]
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - textbox "Buscar..." [ref=e52]
+          - img [ref=e53]
+        - button "Notificaciones" [ref=e56] [cursor=pointer]: 🔔
+        - generic [ref=e58]: 🏨
+    - main [ref=e59]:
+      - generic [ref=e60]:
+        - heading "Housekeeping" [level=2] [ref=e61]
+        - generic [ref=e62]:
+          - generic [ref=e63]:
+            - button "Lista" [ref=e64] [cursor=pointer]
+            - button "Tablero" [ref=e65] [cursor=pointer]
+            - button "Todas" [ref=e67] [cursor=pointer]
+            - button "Pendientes" [ref=e68] [cursor=pointer]
+            - button "En Progreso" [ref=e69] [cursor=pointer]
+            - button "Completadas" [ref=e70] [cursor=pointer]
+          - generic [ref=e71]:
+            - button "+ Asignar Tarea" [ref=e72] [cursor=pointer]
+            - button "+ Nueva Tarea" [ref=e73] [cursor=pointer]
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - generic [ref=e76]: "0"
+            - generic [ref=e77]: Pendientes
+          - generic [ref=e78]:
+            - generic [ref=e79]: "0"
+            - generic [ref=e80]: En Progreso
+          - generic [ref=e81]:
+            - generic [ref=e82]: "0"
+            - generic [ref=e83]: Completadas
+          - generic [ref=e84]:
+            - generic [ref=e85]: "0"
+            - generic [ref=e86]: Inspeccionadas
+          - generic [ref=e87]:
+            - generic [ref=e88]: "0"
+            - generic [ref=e89]: Total
+        - table [ref=e91]:
+          - rowgroup [ref=e92]:
+            - row "Hab Tipo Piso Estado Prioridad Asignado Tiempo Acciones" [ref=e93]:
+              - columnheader "Hab" [ref=e94]
+              - columnheader "Tipo" [ref=e95]
+              - columnheader "Piso" [ref=e96]
+              - columnheader "Estado" [ref=e97]
+              - columnheader "Prioridad" [ref=e98]
+              - columnheader "Asignado" [ref=e99]
+              - columnheader "Tiempo" [ref=e100]
+              - columnheader "Acciones" [ref=e101]
+          - rowgroup

@@ -1,0 +1,183 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: M
+      - generic [ref=e7]:
+        - generic [ref=e8]: ManagerHotel
+        - generic [ref=e9]: Super Admin
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /admin
+        - generic [ref=e12]: 📊
+        - generic [ref=e13]: Dashboard
+      - link "🏨 Hoteles 1" [ref=e14] [cursor=pointer]:
+        - /url: /admin/hotels
+        - generic [ref=e15]: 🏨
+        - generic [ref=e16]: Hoteles
+        - generic [ref=e17]: "1"
+      - link "💳 Suscripciones" [ref=e18] [cursor=pointer]:
+        - /url: /admin/subscriptions
+        - generic [ref=e19]: 💳
+        - generic [ref=e20]: Suscripciones
+      - link "🎫 Soporte" [ref=e21] [cursor=pointer]:
+        - /url: /admin/support
+        - generic [ref=e22]: 🎫
+        - generic [ref=e23]: Soporte
+      - link "💰 Facturación" [ref=e24] [cursor=pointer]:
+        - /url: /admin/billing
+        - generic [ref=e25]: 💰
+        - generic [ref=e26]: Facturación
+      - link "📈 Analytics" [ref=e27] [cursor=pointer]:
+        - /url: /admin/analytics
+        - generic [ref=e28]: 📈
+        - generic [ref=e29]: Analytics
+      - link "👤 Usuarios" [ref=e30] [cursor=pointer]:
+        - /url: /admin/users
+        - generic [ref=e31]: 👤
+        - generic [ref=e32]: Usuarios
+      - link "🖥️ Monitoreo" [ref=e33] [cursor=pointer]:
+        - /url: /admin/monitoring
+        - generic [ref=e34]: 🖥️
+        - generic [ref=e35]: Monitoreo
+      - link "📋 Auditoría" [ref=e36] [cursor=pointer]:
+        - /url: /admin/audit
+        - generic [ref=e37]: 📋
+        - generic [ref=e38]: Auditoría
+      - link "📢 Anuncios" [ref=e39] [cursor=pointer]:
+        - /url: /admin/announcements
+        - generic [ref=e40]: 📢
+        - generic [ref=e41]: Anuncios
+      - link "🔑 API & Webhooks" [ref=e42] [cursor=pointer]:
+        - /url: /admin/api-keys
+        - generic [ref=e43]: 🔑
+        - generic [ref=e44]: API & Webhooks
+      - link "🔐 Roles & Permisos" [ref=e45] [cursor=pointer]:
+        - /url: /admin/roles
+        - generic [ref=e46]: 🔐
+        - generic [ref=e47]: Roles & Permisos
+      - link "⚙️ Configuración" [ref=e48] [cursor=pointer]:
+        - /url: /admin/settings
+        - generic [ref=e49]: ⚙️
+        - generic [ref=e50]: Configuración
+    - generic [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e54]: Plataforma
+        - generic [ref=e56]: "Hoteles: 1 activos"
+      - generic [ref=e57]:
+        - generic [ref=e58]: SA
+        - generic [ref=e59]:
+          - generic [ref=e60]: Super Admin
+          - generic [ref=e61]: Plataforma ManagerHotel
+        - button [ref=e62] [cursor=pointer]:
+          - img [ref=e63]
+  - generic [ref=e65]:
+    - banner [ref=e66]:
+      - heading "Dashboard" [level=1] [ref=e68]
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - textbox "Buscar hoteles, usuarios..." [ref=e71]
+          - img [ref=e72]
+        - button [ref=e74] [cursor=pointer]:
+          - img [ref=e75]
+        - button "+ Nuevo Hotel" [ref=e78] [cursor=pointer]
+    - main [ref=e79]:
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - generic [ref=e82]:
+            - generic [ref=e83]:
+              - generic [ref=e84]: 🏨
+              - generic [ref=e85]: 0%
+            - generic [ref=e86]: "1"
+            - generic [ref=e87]: Hoteles Activos
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - generic [ref=e90]: 💰
+              - generic [ref=e91]: 0%
+            - generic [ref=e92]: $99
+            - generic [ref=e93]: MRR Total
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - generic [ref=e96]: 👤
+              - generic [ref=e97]: 0%
+            - generic [ref=e98]: "5"
+            - generic [ref=e99]: Usuarios Totales
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - generic [ref=e102]: 📋
+              - generic [ref=e103]: 0%
+            - generic [ref=e104]: "8"
+            - generic [ref=e105]: Reservas
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - generic [ref=e109]:
+              - heading "Ingresos Mensuales (MRR)" [level=3] [ref=e110]
+              - generic [ref=e111]:
+                - button "6 meses" [ref=e112] [cursor=pointer]
+                - button "12 meses" [ref=e113] [cursor=pointer]
+            - generic [ref=e116]:
+              - generic [ref=e117]: "Total últimos 6 meses:"
+              - generic [ref=e118]: $0
+          - generic [ref=e119]:
+            - heading "Distribución por Plan" [level=3] [ref=e121]
+            - generic [ref=e124]:
+              - generic [ref=e125]:
+                - generic [ref=e128]: Professional
+                - generic [ref=e129]: "1"
+              - generic [ref=e132]:
+                - generic [ref=e133]: 100% del total
+                - generic [ref=e134]: $0/mes
+        - generic [ref=e135]:
+          - generic [ref=e138]:
+            - heading "Top Hoteles por Ingresos" [level=3] [ref=e139]
+            - link "Ver todos →" [ref=e140] [cursor=pointer]:
+              - /url: /admin/hotels
+          - heading "Actividad Reciente de la Plataforma" [level=3] [ref=e144]
+        - generic [ref=e146]:
+          - generic [ref=e147]:
+            - generic [ref=e149]:
+              - heading "Tickets de Soporte" [level=3] [ref=e150]
+              - link "Ver todos →" [ref=e151] [cursor=pointer]:
+                - /url: /admin/support
+            - generic [ref=e153]:
+              - generic [ref=e154]:
+                - generic [ref=e157]: Urgentes
+                - generic [ref=e158]: "1"
+              - generic [ref=e159]:
+                - generic [ref=e162]: Abiertos
+                - generic [ref=e163]: "3"
+              - generic [ref=e164]:
+                - generic [ref=e167]: En Progreso
+                - generic [ref=e168]: "1"
+              - generic [ref=e169]:
+                - generic [ref=e172]: Resueltos (hoy)
+                - generic [ref=e173]: "0"
+          - generic [ref=e174]:
+            - heading "Salud del Sistema" [level=3] [ref=e176]
+            - generic [ref=e178]:
+              - generic [ref=e180]:
+                - generic [ref=e181]: Uptime
+                - generic [ref=e182]: 99.9%
+              - generic [ref=e186]:
+                - generic [ref=e187]: API Response
+                - generic [ref=e188]: 142ms
+              - generic [ref=e192]:
+                - generic [ref=e193]: DB Performance
+                - generic [ref=e194]: OK
+              - generic [ref=e198]:
+                - generic [ref=e199]: Storage
+                - generic [ref=e200]: 67%
+          - generic [ref=e203]:
+            - heading "Acciones Rápidas" [level=3] [ref=e205]
+            - generic [ref=e207]:
+              - button "🏨 Nuevo Hotel" [ref=e208] [cursor=pointer]:
+                - generic [ref=e209]: 🏨
+                - generic [ref=e210]: Nuevo Hotel
+              - button "💳 Crear Plan" [ref=e211] [cursor=pointer]:
+                - generic [ref=e212]: 💳
+                - generic [ref=e213]: Crear Plan
+              - button "📧 Enviar Newsletter" [ref=e214] [cursor=pointer]:
+                - generic [ref=e215]: 📧
+                - generic [ref=e216]: Enviar Newsletter
+              - button "📊 Ver Reportes" [ref=e217] [cursor=pointer]:
+                - generic [ref=e218]: 📊
+                - generic [ref=e219]: Ver Reportes

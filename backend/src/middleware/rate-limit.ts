@@ -1,8 +1,8 @@
 // Simple in-memory rate limiter for login attempts
 const attempts = new Map<string, { count: number; resetAt: number }>()
 
-const MAX_ATTEMPTS = 5
-const WINDOW_MS = 15 * 60 * 1000 // 15 minutes
+const MAX_ATTEMPTS = 20
+const WINDOW_MS = 5 * 60 * 1000 // 5 minutes
 const MS_TO_SEC = 1000
 const SWEEP_INTERVAL_MS = 5 * 60 * 1000 // cleanup every 5 min
 

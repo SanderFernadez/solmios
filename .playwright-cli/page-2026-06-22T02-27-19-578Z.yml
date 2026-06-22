@@ -1,0 +1,387 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]: M
+        - generic [ref=e9]: ManagerHotel
+      - generic [ref=e10]:
+        - link "Funciones" [ref=e11] [cursor=pointer]:
+          - /url: "#features"
+        - link "Cómo Funciona" [ref=e12] [cursor=pointer]:
+          - /url: "#how"
+        - link "Integraciones" [ref=e13] [cursor=pointer]:
+          - /url: "#integrations"
+        - link "Precios" [ref=e14] [cursor=pointer]:
+          - /url: "#pricing"
+        - link "Testimonios" [ref=e15] [cursor=pointer]:
+          - /url: "#testimonials"
+      - generic [ref=e16]:
+        - link "Iniciar Sesión" [ref=e17] [cursor=pointer]:
+          - /url: /login
+        - link "Prueba Gratis" [ref=e18] [cursor=pointer]:
+          - /url: /login
+  - generic [ref=e24]:
+    - generic [ref=e25]:
+      - generic [ref=e28]: "Hospitality OS #1 en LATAM"
+      - heading "Gestiona tu hotel sin complejidad" [level=1] [ref=e29]:
+        - text: Gestiona tu hotel
+        - text: sin complejidad
+      - paragraph [ref=e30]: La plataforma todo-en-uno que conecta reservas, housekeeping, facturación y channel manager en un solo lugar. Diseñada para hotelesLATAM.
+      - generic [ref=e31]:
+        - link "Comenzar Gratis" [ref=e32] [cursor=pointer]:
+          - /url: /login
+          - text: Comenzar Gratis
+          - img [ref=e33]
+        - link "Ver Demo" [ref=e35] [cursor=pointer]:
+          - /url: "#how"
+          - img [ref=e36]
+          - text: Ver Demo
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - generic [ref=e40]: JG
+          - generic [ref=e41]: ML
+          - generic [ref=e42]: RS
+          - generic [ref=e43]: +
+        - generic [ref=e44]:
+          - generic [ref=e45]: 24+ hoteles activos
+          - generic [ref=e46]: Confían en ManagerHotel
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - generic [ref=e51]: Dashboard
+        - generic [ref=e52]: +12% vs ayer
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - generic [ref=e55]: 84%
+          - generic [ref=e56]: Ocupación
+        - generic [ref=e57]:
+          - generic [ref=e58]: "7"
+          - generic [ref=e59]: Check-ins
+        - generic [ref=e60]:
+          - generic [ref=e61]: $1.2k
+          - generic [ref=e62]: Ingresos
+      - generic [ref=e63]:
+        - generic [ref=e64]: Habitaciones
+        - generic [ref=e65]:
+          - generic [ref=e66]: "101"
+          - generic [ref=e67]: "102"
+          - generic [ref=e68]: "103"
+          - generic [ref=e69]: "104"
+          - generic [ref=e70]: "105"
+          - generic [ref=e71]: "106"
+          - generic [ref=e72]: "107"
+          - generic [ref=e73]: "108"
+  - generic [ref=e75]:
+    - generic [ref=e76]: Hoteles que confían en nosotros
+    - generic [ref=e77]:
+      - generic [ref=e78]: Hotel Caribe
+      - generic [ref=e79]: Gran Hotel SD
+      - generic [ref=e80]: Resort Playa
+      - generic [ref=e81]: Boutique Colonial
+      - generic [ref=e82]: Eco Lodge
+  - generic [ref=e84]:
+    - generic [ref=e85]:
+      - text: Funciones
+      - heading "Todo lo que tu hotel necesita" [level=2] [ref=e86]
+      - paragraph [ref=e87]: Una plataforma completa que reemplaza 5+ herramientas. Gestiona reservas, habitaciones, huéspedes, facturación y más desde un solo lugar.
+    - generic [ref=e88]:
+      - generic [ref=e89]:
+        - generic [ref=e90]:
+          - generic [ref=e91]: 📅
+          - generic [ref=e92]:
+            - heading "Channel Manager" [level=3] [ref=e93]
+            - paragraph [ref=e94]: Sincronización en tiempo real
+        - paragraph [ref=e95]: Conecta con Booking.com, Expedia, Airbnb y más de 50 OTAs. Sincronización automática de disponibilidad y precios cada 15 minutos.
+        - generic [ref=e97]:
+          - generic [ref=e98]:
+            - generic [ref=e99]: B.com
+            - generic [ref=e100]: EXP
+            - generic [ref=e101]: Air
+            - generic [ref=e102]: Ag
+          - generic [ref=e103]:
+            - generic [ref=e106]: "Última sync: hace 2 min"
+            - generic [ref=e107]: 22 hoteles conectados
+      - generic [ref=e108]:
+        - generic [ref=e109]: 🧹
+        - heading "Housekeeping" [level=3] [ref=e110]
+        - paragraph [ref=e111]: Gestión de limpieza en tiempo real con tablero Kanban.
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - generic [ref=e114]: Pendientes
+            - generic [ref=e115]: "8"
+          - generic [ref=e116]:
+            - generic [ref=e117]: En progreso
+            - generic [ref=e118]: "3"
+          - generic [ref=e119]:
+            - generic [ref=e120]: Completadas
+            - generic [ref=e121]: "12"
+      - generic [ref=e122]:
+        - generic [ref=e123]: 💰
+        - heading "Facturación Electrónica" [level=3] [ref=e124]
+        - paragraph [ref=e125]: DGII, DIAN, SAT y más. Cumple con la normativa de 6 países LATAM.
+        - generic [ref=e126]:
+          - generic [ref=e127]: 🇩🇴 DGII
+          - generic [ref=e128]: 🇨🇴 DIAN
+          - generic [ref=e129]: 🇲🇽 SAT
+      - generic [ref=e130]:
+        - generic [ref=e131]: 📊
+        - heading "Analytics & Reportes" [level=3] [ref=e132]
+        - paragraph [ref=e133]: "KPIs en tiempo real: ADR, RevPAR, ocupación, revenue."
+      - generic [ref=e142]:
+        - generic [ref=e143]: 🌙
+        - heading "Night Audit" [level=3] [ref=e144]
+        - paragraph [ref=e145]: Automatización del cierre diario con reporte de movimientos y alertas.
+      - generic [ref=e146]:
+        - generic [ref=e147]: 🔧
+        - heading "Mantenimiento" [level=3] [ref=e148]
+        - paragraph [ref=e149]: Órdenes de trabajo, categorías, prioridades y seguimiento de costos.
+  - generic [ref=e151]:
+    - generic [ref=e152]:
+      - text: Cómo Funciona
+      - heading "3 pasos para empezar" [level=2] [ref=e153]
+      - paragraph [ref=e154]: Configura tu hotel en minutos, no en semanas. Sin instalaciones, sin contratos largos.
+    - generic [ref=e155]:
+      - generic [ref=e156]:
+        - generic [ref=e157]: "1"
+        - heading "Registra tu hotel" [level=3] [ref=e158]
+        - paragraph [ref=e159]: Crea tu cuenta en 2 minutos. Configura nombre, habitaciones y tarifas básicas.
+      - generic [ref=e160]:
+        - generic [ref=e161]: "2"
+        - heading "Conecta tus canales" [level=3] [ref=e162]
+        - paragraph [ref=e163]: Vincula Booking.com, Expedia y OTAs con el Channel Manager en un clic.
+      - generic [ref=e164]:
+        - generic [ref=e165]: "3"
+        - heading "Gestiona todo" [level=3] [ref=e166]
+        - paragraph [ref=e167]: Reservas, check-in, housekeeping, facturación. Todo desde un solo dashboard.
+  - generic [ref=e169]:
+    - generic [ref=e170]:
+      - text: Integraciones
+      - heading "Conecta con las mejores herramientas" [level=2] [ref=e171]
+      - paragraph [ref=e172]: APIs abiertas que se conectan con el ecosistema que ya usas.
+    - generic [ref=e173]:
+      - generic [ref=e174] [cursor=pointer]:
+        - generic [ref=e175]: 🟦
+        - generic [ref=e176]: Booking.com
+        - generic [ref=e177]: Channel Manager
+      - generic [ref=e178] [cursor=pointer]:
+        - generic [ref=e179]: 🟡
+        - generic [ref=e180]: Expedia
+        - generic [ref=e181]: Channel Manager
+      - generic [ref=e182] [cursor=pointer]:
+        - generic [ref=e183]: 🩷
+        - generic [ref=e184]: Airbnb
+        - generic [ref=e185]: Channel Manager
+      - generic [ref=e186] [cursor=pointer]:
+        - generic [ref=e187]: 💳
+        - generic [ref=e188]: Stripe
+        - generic [ref=e189]: Pagos
+      - generic [ref=e190] [cursor=pointer]:
+        - generic [ref=e191]: 📧
+        - generic [ref=e192]: SendGrid
+        - generic [ref=e193]: Emails
+      - generic [ref=e194] [cursor=pointer]:
+        - generic [ref=e195]: 📊
+        - generic [ref=e196]: DataDog
+        - generic [ref=e197]: Monitoreo
+      - generic [ref=e198] [cursor=pointer]:
+        - generic [ref=e199]: ☁️
+        - generic [ref=e200]: S3
+        - generic [ref=e201]: Almacenamiento
+      - generic [ref=e202] [cursor=pointer]:
+        - generic [ref=e203]: 🔗
+        - generic [ref=e204]: API
+        - generic [ref=e205]: Personalizada
+  - generic [ref=e207]:
+    - generic [ref=e208]:
+      - text: Precios
+      - heading "Planes para cada hotel" [level=2] [ref=e209]
+      - paragraph [ref=e210]: Sin contratos largos. Cancela cuando quieras. Soporte incluido en todos los planes.
+    - generic [ref=e211]:
+      - generic [ref=e212]:
+        - generic [ref=e213]: Starter
+        - generic [ref=e214]:
+          - generic [ref=e215]: $49
+          - generic [ref=e216]: /mes
+        - paragraph [ref=e217]: Para hoteles pequeños que empiezan a digitalizar.
+        - link "Empezar Gratis" [ref=e218] [cursor=pointer]:
+          - /url: /login
+        - generic [ref=e219]:
+          - generic [ref=e220]:
+            - generic [ref=e221]: ✓
+            - text: Hasta 30 habitaciones
+          - generic [ref=e222]:
+            - generic [ref=e223]: ✓
+            - text: 2 usuarios
+          - generic [ref=e224]:
+            - generic [ref=e225]: ✓
+            - text: Channel Manager básico
+          - generic [ref=e226]:
+            - generic [ref=e227]: ✓
+            - text: Reservas & Check-in
+          - generic [ref=e228]:
+            - generic [ref=e229]: ✓
+            - text: Soporte por email
+      - generic [ref=e230]:
+        - generic [ref=e231]: Más Popular
+        - generic [ref=e232]: Professional
+        - generic [ref=e233]:
+          - generic [ref=e234]: $99
+          - generic [ref=e235]: /mes
+        - paragraph [ref=e236]: Para hoteles en crecimiento que necesitan más control.
+        - link "Empezar Gratis" [ref=e237] [cursor=pointer]:
+          - /url: /login
+        - generic [ref=e238]:
+          - generic [ref=e239]:
+            - generic [ref=e240]: ✓
+            - text: Hasta 100 habitaciones
+          - generic [ref=e241]:
+            - generic [ref=e242]: ✓
+            - text: 6 usuarios
+          - generic [ref=e243]:
+            - generic [ref=e244]: ✓
+            - text: Channel Manager completo
+          - generic [ref=e245]:
+            - generic [ref=e246]: ✓
+            - text: Housekeeping & Mantenimiento
+          - generic [ref=e247]:
+            - generic [ref=e248]: ✓
+            - text: Facturación electrónica
+          - generic [ref=e249]:
+            - generic [ref=e250]: ✓
+            - text: Reportes avanzados
+          - generic [ref=e251]:
+            - generic [ref=e252]: ✓
+            - text: Soporte prioritario
+      - generic [ref=e253]:
+        - generic [ref=e254]: Enterprise
+        - generic [ref=e255]:
+          - generic [ref=e256]: $199
+          - generic [ref=e257]: /mes
+        - paragraph [ref=e258]: Para hoteles grandes y cadenas multi-propiedad.
+        - link "Contactar Ventas" [ref=e259] [cursor=pointer]:
+          - /url: /login
+        - generic [ref=e260]:
+          - generic [ref=e261]:
+            - generic [ref=e262]: ✓
+            - text: Habitaciones ilimitadas
+          - generic [ref=e263]:
+            - generic [ref=e264]: ✓
+            - text: Usuarios ilimitados
+          - generic [ref=e265]:
+            - generic [ref=e266]: ✓
+            - text: Multi-propiedad
+          - generic [ref=e267]:
+            - generic [ref=e268]: ✓
+            - text: AI & Automatizaciones
+          - generic [ref=e269]:
+            - generic [ref=e270]: ✓
+            - text: API personalizada
+          - generic [ref=e271]:
+            - generic [ref=e272]: ✓
+            - text: Soporte 24/7 telefónico
+          - generic [ref=e273]:
+            - generic [ref=e274]: ✓
+            - text: Account Manager dedicado
+  - generic [ref=e276]:
+    - generic [ref=e277]:
+      - text: Testimonios
+      - heading "Lo que dicen nuestros clientes" [level=2] [ref=e278]
+    - generic [ref=e279]:
+      - generic [ref=e280]:
+        - generic [ref=e281]:
+          - generic [ref=e282]: ★
+          - generic [ref=e283]: ★
+          - generic [ref=e284]: ★
+          - generic [ref=e285]: ★
+          - generic [ref=e286]: ★
+        - paragraph [ref=e287]: "\"Passamos de usar 4 herramientas diferentes a solo ManagerHotel. El Channel Manager nos ahorró 3 horas diarias de trabajo manual.\""
+        - generic [ref=e288]:
+          - generic [ref=e289]: JG
+          - generic [ref=e290]:
+            - generic [ref=e291]: Juan García
+            - generic [ref=e292]: Hotel Caribe Paradise
+      - generic [ref=e293]:
+        - generic [ref=e294]:
+          - generic [ref=e295]: ★
+          - generic [ref=e296]: ★
+          - generic [ref=e297]: ★
+          - generic [ref=e298]: ★
+          - generic [ref=e299]: ★
+        - paragraph [ref=e300]: "\"La facturación electrónica para DGII era un dolor de cabeza. Ahora se genera automático. Soporte excepcional.\""
+        - generic [ref=e301]:
+          - generic [ref=e302]: RS
+          - generic [ref=e303]:
+            - generic [ref=e304]: Roberto Suárez
+            - generic [ref=e305]: Gran Hotel Santo Domingo
+      - generic [ref=e306]:
+        - generic [ref=e307]:
+          - generic [ref=e308]: ★
+          - generic [ref=e309]: ★
+          - generic [ref=e310]: ★
+          - generic [ref=e311]: ★
+          - generic [ref=e312]: ★
+        - paragraph [ref=e313]: "\"Como recepcionista, todo es muy intuitivo. El check-in toma 30 segundos. Los huéspedes quedan impresionados con la velocidad.\""
+        - generic [ref=e314]:
+          - generic [ref=e315]: ML
+          - generic [ref=e316]:
+            - generic [ref=e317]: María López
+            - generic [ref=e318]: Hotel Caribe Paradise
+  - generic [ref=e323]:
+    - heading "¿Listo para transformar tu hotel?" [level=2] [ref=e324]
+    - paragraph [ref=e325]: Únete a 24+ hoteles que ya gestionan todo desde ManagerHotel. Prueba gratis por 14 días, sin tarjeta de crédito.
+    - generic [ref=e326]:
+      - link "Comenzar Gratis" [ref=e327] [cursor=pointer]:
+        - /url: /login
+        - text: Comenzar Gratis
+        - img [ref=e328]
+      - link "Hablar con Ventas" [ref=e330] [cursor=pointer]:
+        - /url: "#"
+  - contentinfo [ref=e331]:
+    - generic [ref=e332]:
+      - generic [ref=e333]:
+        - generic [ref=e334]:
+          - generic [ref=e335]:
+            - generic [ref=e336]: M
+            - generic [ref=e337]: ManagerHotel
+          - paragraph [ref=e338]: Hospitality OS para hotelesLATAM. Gestión completa sin complejidad.
+        - generic [ref=e339]:
+          - heading "Producto" [level=4] [ref=e340]
+          - generic [ref=e341]:
+            - link "Funciones" [ref=e342] [cursor=pointer]:
+              - /url: "#features"
+            - link "Precios" [ref=e343] [cursor=pointer]:
+              - /url: "#pricing"
+            - link "Integraciones" [ref=e344] [cursor=pointer]:
+              - /url: "#integrations"
+            - link "API" [ref=e345] [cursor=pointer]:
+              - /url: "#"
+        - generic [ref=e346]:
+          - heading "Empresa" [level=4] [ref=e347]
+          - generic [ref=e348]:
+            - link "Sobre Nosotros" [ref=e349] [cursor=pointer]:
+              - /url: "#"
+            - link "Blog" [ref=e350] [cursor=pointer]:
+              - /url: "#"
+            - link "Carreras" [ref=e351] [cursor=pointer]:
+              - /url: "#"
+            - link "Contacto" [ref=e352] [cursor=pointer]:
+              - /url: "#"
+        - generic [ref=e353]:
+          - heading "Soporte" [level=4] [ref=e354]
+          - generic [ref=e355]:
+            - link "Centro de Ayuda" [ref=e356] [cursor=pointer]:
+              - /url: "#"
+            - link "Documentación" [ref=e357] [cursor=pointer]:
+              - /url: "#"
+            - link "Estado del Sistema" [ref=e358] [cursor=pointer]:
+              - /url: "#"
+            - link "Comunidad" [ref=e359] [cursor=pointer]:
+              - /url: "#"
+      - generic [ref=e360]:
+        - generic [ref=e361]: © 2026 ManagerHotel. Todos los derechos reservados.
+        - generic [ref=e362]:
+          - link "Privacidad" [ref=e363] [cursor=pointer]:
+            - /url: "#"
+          - link "Términos" [ref=e364] [cursor=pointer]:
+            - /url: "#"
+          - link "Cookies" [ref=e365] [cursor=pointer]:
+            - /url: "#"
