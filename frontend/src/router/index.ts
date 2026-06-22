@@ -312,56 +312,36 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   const auth = useAuthStore()
 
   if (to.path === '/login') {
     if (auth.isAuthenticated) {
       if (auth.isSuperAdmin && !auth.impersonating) {
-        next('/admin')
+        return '/admin'
       } else {
-        next('/panel')
+        return '/panel'
       }
-    } else {
-      next()
     }
-    return
+    return true
   }
 
   if (to.meta.requiresSuperAdmin) {
-    if (!auth.isAuthenticated) {
-      next('/login')
-      return
-    }
-    if (!auth.isSuperAdmin && !auth.impersonating) {
-      next('/panel')
-      return
-    }
+    if (!auth.isAuthenticated) return '/login'
+    if (!auth.isSuperAdmin && !auth.impersonating) return '/panel'
   }
 
   if (to.meta.requiresHotelAuth) {
-    if (!auth.isAuthenticated) {
-      next('/login')
-      return
-    }
-    if (auth.isSuperAdmin && !auth.impersonating) {
-      next('/admin')
-      return
-    }
+    if (!auth.isAuthenticated) return '/login'
+    if (auth.isSuperAdmin && !auth.impersonating) return '/admin'
   }
 
   if (to.meta.requiresHotelAdmin) {
-    if (!auth.isAuthenticated) {
-      next('/login')
-      return
-    }
-    if (!auth.isSuperAdmin && !auth.isHotelAdmin) {
-      next('/panel')
-      return
-    }
+    if (!auth.isAuthenticated) return '/login'
+    if (!auth.isSuperAdmin && !auth.isHotelAdmin) return '/panel'
   }
 
-  next()
+  return true
 })
 
 export default router

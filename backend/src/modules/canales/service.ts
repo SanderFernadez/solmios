@@ -117,15 +117,34 @@ export class CanalesService {
 
   async ingestBookings(hotelId: string): Promise<BookingIngestionResult> {
     const cfg = await this.getConfig(hotelId)
+    const key = cfg?.channexApiKey || process.env.CHANNEX_API_KEY || ''
     return this.channex.ingestBookings(cfg, async (dto: any) => {
       if (!this.orm) throw new Error('ORM no disponible')
-      // Dedupe: si ya existe una reserva con el mismo otaReservationCode, no duplicar.
-      if (dto.otaReservationCode) {
-        const existing = await this.orm.findMany('Reservations', { hotelId, otaReservationCode: dto.otaReservationCode })
+      // Dedupe por locator externo (ota reservation code / unique id de Channex)
+      if (dto.externalLocator) {
+        const existing = await this.orm.findMany('Reservations', { hotelId, externalLocator: dto.externalLocator })
         if (existing && existing.length > 0) return
       }
-      dto.id = crypto.randomUUID()
-      await this.orm.create('Reservations', dto)
+      // Resolver roomId: Channex referencia roomTypeId (tipo), el PMS exige habitación individual.
+      const { channexRoomTypeId, channexRevisionId, channexBookingId, ...payload } = dto
+      let roomId: string | null = null
+      if (channexRoomTypeId) {
+        const rt = await this.channex.getRoomTypeById(key, channexRoomTypeId)
+        if (rt?.title) {
+          const rooms = await this.orm.findMany('Rooms', { hotelId, type: rt.title })
+          roomId = rooms?.[0]?.id || null
+        }
+      }
+      if (!roomId) {
+        // Fallback: cualquier habitación del hotel + flag de auto-asignación (nunca dropear un OTA booking).
+        const any = await this.orm.findMany('Rooms', { hotelId })
+        roomId = any?.[0]?.id || null
+        if (roomId && payload.notes) payload.notes = `${payload.notes} | ⚠ AUTO-ASSIGNED ROOM (no type match)`
+      }
+      if (!roomId) throw new Error(`Sin habitaciones para el hotel ${hotelId}`)
+      payload.id = crypto.randomUUID()
+      payload.roomId = roomId
+      await this.orm.create('Reservations', payload)
     })
   }
 

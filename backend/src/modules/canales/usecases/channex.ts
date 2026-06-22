@@ -369,6 +369,17 @@ export class ChannexUseCase {
     return res.ok
   }
 
+  // Resolve el title de un room type de Channex por su UUID.
+  // Necesario para mapear bookings OTA (que referencian roomTypeId) a habitaciones locales.
+  async getRoomTypeById(key: string, roomTypeId: string): Promise<{ id: string; title: string } | null> {
+    try {
+      const res = await this.channexReq(key, 'GET', `/room_types/${roomTypeId}`)
+      const rt = res.data?.data
+      if (!rt) return null
+      return { id: rt.id, title: String(rt.attributes?.title || rt.title || '') }
+    } catch { return null }
+  }
+
   async ingestBookings(cfg: CanalesDTO | undefined, createReserva: (dto: any) => Promise<any>): Promise<BookingIngestionResult> {
     const key = this.resolveKey(cfg)
     const result: BookingIngestionResult = { success: true, message: '', ingested: 0, acknowledged: 0, errors: [] }
@@ -382,20 +393,29 @@ export class ChannexUseCase {
 
       for (const booking of bookings) {
         try {
+          const guestName = [booking.customer?.name, booking.customer?.surname].filter(Boolean).join(' ') || 'OTA Guest'
+          const guestEmail = booking.customer?.mail || ''
+          const guestPhone = booking.customer?.phone || ''
+          const firstRoom = (booking.rooms || [])[0] || {}
+          const adults = firstRoom.occupancy?.adults ?? 2
+          const children = (firstRoom.occupancy?.children || 0) + (firstRoom.occupancy?.infants || 0)
           const reserva = {
             hotelId: cfg?.hotelId,
-            canal: booking.otaName,
-            otaReservationCode: booking.otaReservationCode,
+            channel: booking.otaName,
+            source: 'ota',
+            externalLocator: booking.otaReservationCode || booking.uniqueId,
             checkIn: booking.arrivalDate,
             checkOut: booking.departureDate,
-            montoTotal: parseFloat(booking.amount) || 0,
-            moneda: booking.currency,
-            estado: booking.status === 'cancelled' ? 'cancelada' : 'confirmada',
-            huespedNombre: [booking.customer?.name, booking.customer?.surname].filter(Boolean).join(' ') || 'OTA Guest',
-            huespedEmail: booking.customer?.mail || '',
-            huespedTelefono: booking.customer?.phone || '',
-            notas: `OTA: ${booking.otaName} | ${booking.uniqueId}`,
-            metadata: JSON.stringify({ channexRevisionId: booking.id, channexBookingId: booking.bookingId, rooms: booking.rooms }),
+            totalAmount: parseFloat(booking.amount) || 0,
+            currency: booking.currency,
+            status: booking.status === 'cancelled' ? 'cancelled' : 'confirmed',
+            adults,
+            children,
+            notes: `OTA: ${booking.otaName} | Ref: ${booking.uniqueId}`,
+            otaNotes: `Guest: ${guestName} <${guestEmail}> ${guestPhone} | revision ${booking.id} | booking ${booking.bookingId}`,
+            channexRevisionId: booking.id,
+            channexBookingId: booking.bookingId,
+            channexRoomTypeId: firstRoom.roomTypeId || null,
           }
           await createReserva(reserva)
           result.ingested++
