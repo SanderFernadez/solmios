@@ -666,14 +666,15 @@ function eachDay(from: string, to: string): string[] {
 
 router.get('/api/planning', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
   const id = await hotelOf(req)
-  const rooms = await orm.findMany('Rooms', { hotelId: id })
-  const reservas = await orm.findMany('Reservations', { hotelId: id })
-  const guests = await orm.findMany('Guests', { hotelId: id })
-  const lockCodes = await orm.findMany('LockCodes', { reservationId: reservas.map((r: any) => r.id).filter(Boolean) }) as any[]
-  const guestMap = new Map((guests as any[]).map(g => [g.id, g]))
-  const roomMap = new Map((rooms as any[]).map(r => [r.id, r]))
-  const lockByRes = new Map(lockCodes.filter(c => c.status === 'active').map(c => [c.reservationId, c.code]))
-  const enriched = reservas.map((r: any) => {
+  if (!id) return { status: 200, body: { rooms: [], reservas: [] } }
+  const [rooms, reservas, guests] = await Promise.all([
+    orm.findMany('Rooms', { hotelId: id }),
+    orm.findMany('Reservations', { hotelId: id }),
+    orm.findMany('Guests', { hotelId: id }),
+  ])
+  const guestMap = new Map((guests as any[]).map((g: any) => [g.id, g]))
+  const roomMap = new Map((rooms as any[]).map((r: any) => [r.id, r]))
+  const enriched = (reservas as any[]).map((r: any) => {
     const guest = guestMap.get(r.guestId)
     const room = roomMap.get(r.roomId)
     const deposit = Number(r.deposit) || 0
@@ -683,7 +684,6 @@ router.get('/api/planning', [auth.authenticate('hotel_admin', 'receptionist', 's
       guestName: guest?.name || 'Guest',
       guestEmail: guest?.email || '',
       roomNumber: room?.number || '',
-      lockCode: lockByRes.get(r.id) || '',
       paymentStatus: deposit >= total && total > 0 ? 'paid' : deposit > 0 ? 'partial' : 'pending',
     }
   })
