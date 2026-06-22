@@ -41,7 +41,7 @@ for (const t of tables) {
     for (const [es, en] of Object.entries(VAL)) {
       const r = db.query(`SELECT COUNT(*) c FROM "${t}" WHERE "${c}"=?`).get(es) as any
       if (r.c > 0) {
-        db.exec(`UPDATE "${t}" SET "${c}"=? WHERE "${c}"=?`, en, es)
+        db.prepare(`UPDATE "${t}" SET "${c}"=? WHERE "${c}"=?`).run(en, es)
         dataFixed += r.c
         console.log(`  ${t}.${c}: ${r.c}× '${es}' → '${en}'`)
       }
