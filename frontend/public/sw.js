@@ -34,8 +34,8 @@ self.addEventListener('fetch', (event) => {
   const req = event.request
   const url = new URL(req.url)
 
-  // Nunca cachear el endpoint de auth (token fresco siempre)
-  if (url.pathname.startsWith('/api/auth') || url.pathname.startsWith('/api/stripe/webhook')) {
+  // Nunca cachear auth ni archivos JavaScript (para desarrollo)
+  if (url.pathname.startsWith('/api/auth') || url.pathname.startsWith('/api/stripe/webhook') || url.pathname.endsWith('.js') || url.pathname.endsWith('.ts')) {
     return
   }
 
