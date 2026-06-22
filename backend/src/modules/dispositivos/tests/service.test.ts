@@ -71,7 +71,7 @@ describe('DispositivosService', () => {
 
     it('throws when hotel_admin has no hotelId', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new DispositivosService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new DispositivosService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
 
@@ -152,7 +152,7 @@ describe('DispositivosService', () => {
     })
 
     it('throws NotFound when device does not exist', async () => {
-      const svc = new DispositivosService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new DispositivosService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.getById('nonexistent', adminUser)).rejects.toThrow('Dispositivo no encontrado')
     })
   })
@@ -161,19 +161,19 @@ describe('DispositivosService', () => {
 
   describe('create', () => {
     it('creates device in own hotel', async () => {
-      const svc = new DispositivosService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new DispositivosService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.create({ hotelId: 'h1', device: 'Safari' }, hotelAdmin)
       expect(result.id).toBe('dev-1')
     })
 
     it('super_admin can create in any hotel', async () => {
-      const svc = new DispositivosService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new DispositivosService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.create({ hotelId: 'h99', device: 'Firefox' }, adminUser)
       expect(result.id).toBe('dev-1')
     })
 
     it('rejects creation in other hotel', async () => {
-      const svc = new DispositivosService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new DispositivosService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.create({ hotelId: 'h2', device: 'Edge' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
@@ -197,7 +197,7 @@ describe('DispositivosService', () => {
     })
 
     it('throws NotFound when device does not exist', async () => {
-      const svc = new DispositivosService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new DispositivosService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.update('nonexistent', {}, adminUser)).rejects.toThrow('Dispositivo no encontrado')
     })
 
@@ -235,7 +235,7 @@ describe('DispositivosService', () => {
     })
 
     it('throws NotFound when device does not exist', async () => {
-      const svc = new DispositivosService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new DispositivosService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.delete('nonexistent', adminUser)).rejects.toThrow('Dispositivo no encontrado')
     })
   })

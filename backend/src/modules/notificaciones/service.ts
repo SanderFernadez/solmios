@@ -10,6 +10,7 @@ export class NotificacionesService {
 
   constructor(
     private readonly repo: RepositoryAdapter<NotificacionesDTO>,
+    private readonly userRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
@@ -33,9 +34,16 @@ export class NotificacionesService {
     if (query.userId) filters.userId = query.userId
     if (query.read !== undefined) filters.read = query.read
 
+    // Resolve hotelId from DB if not provided in token
+    let hotelId = currentUser.hotelId
+    if (!hotelId && currentUser.role !== 'super_admin') {
+      const user = await this.userRepo.findById(currentUser.id)
+      hotelId = user?.hotelId
+    }
+
     if (currentUser.role !== 'super_admin') {
-      if (!currentUser.hotelId) throw new AuthError('No hotel assigned')
-      filters.hotelId = currentUser.hotelId
+      if (!hotelId) throw new AuthError('No hotel assigned')
+      filters.hotelId = hotelId
     } else if (query.hotelId) {
       filters.hotelId = query.hotelId
     }

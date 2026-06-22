@@ -83,7 +83,7 @@
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { http } from '@/services/http'
+import { AutoMessagesService } from '@/services/AutoMessages.service'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -109,7 +109,7 @@ function insertVariable(v: string) {
 }
 
 async function load() {
-  try { const r = await http.get<{data:any[]}>('/auto-messages'); messages.value = r.data||[] } catch {}
+  try { const r = await AutoMessagesService.list(); messages.value = r.data||[] } catch {}
 }
 function openNew() {
   editId.value=''; modal.value={ show:true, edit:false }
@@ -123,16 +123,16 @@ async function save() {
   if(!form.value.title){ toast.error('Falta título'); return }
   saving.value=true
   try {
-    const data: any = { ...form.value }
-    if(editId.value) { await http.put(`/auto-messages/${editId.value}`, data) }
-    else { await http.post('/auto-messages', data) }
+    const data = { ...form.value }
+    if(editId.value) { await AutoMessagesService.update(editId.value, data) }
+    else { await AutoMessagesService.create(data) }
     toast.success(editId.value?'Actualizado':'Creado')
   } catch { toast.error('Error') }
   saving.value=false; modal.value.show=false; await load()
 }
 async function deleteMsg() {
   if(!confirm('¿Eliminar este mensaje?')) return
-  try { await http.delete(`/auto-messages/${editId.value}`); toast.success('Eliminado'); modal.value.show=false; await load() } catch { toast.error('Error') }
+  try { await AutoMessagesService.remove(editId.value); toast.success('Eliminado'); modal.value.show=false; await load() } catch { toast.error('Error') }
 }
 
 onMounted(load)

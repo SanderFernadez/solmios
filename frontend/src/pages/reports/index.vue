@@ -1,500 +1,307 @@
 <template>
   <div>
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
       <div>
         <h2 class="text-xl font-black text-navy">Reportes</h2>
-        <p class="text-sm text-text-muted mt-0.5">Business Intelligence y analítica del hotel</p>
+        <p class="text-xs text-text-muted mt-0.5">Análisis de rendimiento del hotel</p>
       </div>
-      <div class="flex gap-2">
-        <select v-model="dateRange" class="px-4 py-2 rounded-xl border border-border text-sm font-bold focus:outline-none focus:border-navy cursor-pointer">
-          <option value="today">Hoy</option>
-          <option value="week">Esta Semana</option>
-          <option value="month">Este Mes</option>
-          <option value="quarter">Trimestre</option>
-          <option value="year">Este Año</option>
+      <div class="flex items-center gap-2 flex-wrap">
+        <select v-model="range" @change="onRangeChange" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer">
+          <option value="thisMonth">📅 Este mes</option>
+          <option value="lastMonth">📅 Mes pasado</option>
+          <option value="thisQuarter">📅 Este trimestre</option>
+          <option value="thisYear">📅 Este año</option>
+          <option value="custom">⚙️ Personalizado</option>
         </select>
-        <button @click="exportPDF" class="px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">📄 PDF</button>
-        <button @click="exportCSV" class="px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">📊 Excel</button>
+        <template v-if="range === 'custom'">
+          <input v-model="from" type="date" class="px-3 py-2 rounded-xl border border-border text-xs" @change="load" />
+          <span class="text-text-muted text-xs">→</span>
+          <input v-model="to" type="date" class="px-3 py-2 rounded-xl border border-border text-xs" @change="load" />
+        </template>
+        <button @click="exportCsv" :disabled="!data" class="px-3 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50">
+          ⬇ Exportar CSV
+        </button>
       </div>
     </div>
 
-    <!-- Main KPIs -->
-    <div class="grid grid-cols-5 gap-4 mb-6">
-      <div v-for="kpi in mainKPIs" :key="kpi.label" class="card p-4">
-        <div class="text-[10px] text-text-muted font-bold uppercase mb-1">{{ kpi.label }}</div>
-        <div class="text-2xl font-black" :class="kpi.color">{{ kpi.value }}</div>
-        <div class="text-[10px] font-bold mt-1" :class="kpi.trend > 0 ? 'text-teal' : 'text-coral'">
-          {{ kpi.trend > 0 ? '↑' : '↓' }} {{ kpi.trend > 0 ? '+' : '' }}{{ kpi.trend }}% vs anterior
-        </div>
-      </div>
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6 overflow-x-auto">
+      <button v-for="(meta, key) in REPORT_META" :key="key" @click="changeTab(key as ReportType)"
+        class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-2"
+        :class="activeTab === key ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
+        <span>{{ meta.icon }}</span>
+        <span>{{ meta.label }}</span>
+      </button>
     </div>
 
-    <!-- Revenue Chart -->
-    <div class="card p-6 mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-extrabold text-navy">Ingresos — {{ dateRangeLabel }}</h3>
-        <div class="flex gap-2">
-          <button
-            v-for="period in revenuePeriods"
-            :key="period.value"
-            @click="revenuePeriod = period.value"
-            class="px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-            :class="revenuePeriod === period.value ? 'bg-navy text-white' : 'bg-surface text-text-secondary'"
-          >
-            {{ period.label }}
-          </button>
-        </div>
-      </div>
-      <div class="flex items-end gap-1 h-48">
-        <div v-for="(bar, i) in chartBars" :key="i" class="flex-1 flex flex-col items-center gap-1">
-          <span class="text-[8px] font-bold text-text-muted">${{ bar.value }}</span>
-          <div
-            class="w-full rounded-t-lg transition-all duration-300 cursor-pointer hover:opacity-80"
-            :class="bar.isToday ? 'bg-cyan' : 'bg-navy/20'"
-            :style="{ height: bar.height + '%' }"
-          ></div>
-          <span class="text-[8px] font-bold" :class="bar.isToday ? 'text-cyan' : 'text-text-muted'">{{ bar.day }}</span>
-        </div>
-      </div>
-    </div>
+    <p class="text-xs text-text-muted mb-4">{{ REPORT_META[activeTab].description }}</p>
 
-    <!-- Two Column Layout -->
-    <div class="grid lg:grid-cols-2 gap-6 mb-6">
-      <!-- Occupancy Chart -->
-      <div class="card p-6">
-        <h3 class="font-extrabold text-navy mb-4">Ocupación por Tipo de Habitación</h3>
-        <div class="space-y-4">
-          <div v-for="roomType in roomTypes" :key="roomType.name" class="space-y-1">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-bold text-navy">{{ roomType.name }}</span>
-              <span class="text-sm font-extrabold" :class="roomType.percentage >= 80 ? 'text-teal' : roomType.percentage >= 50 ? 'text-gold' : 'text-coral'">
-                {{ roomType.percentage }}%
-              </span>
-            </div>
-            <div class="h-3 bg-surface-dark rounded-full overflow-hidden">
-              <div class="h-full rounded-full transition-all duration-500" :class="roomType.color" :style="{ width: roomType.percentage + '%' }"></div>
-            </div>
-            <div class="flex justify-between text-[10px] text-text-muted">
-              <span>{{ roomType.occupied }}/{{ roomType.total }} ocupadas</span>
-              <span>${{ roomType.avgRate }}/noche prom.</span>
-            </div>
+    <!-- Loading -->
+    <div v-if="loading" class="card p-12 text-center text-sm text-text-muted">Cargando reporte...</div>
+
+    <!-- Facturación -->
+    <div v-else-if="activeTab === 'facturacion' && data" class="space-y-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="Habitaciones" :value="formatMoney((data as FacturacionReport).roomRevenue)" />
+        <KpiCard label="Extras" :value="formatMoney((data as FacturacionReport).extrasRevenue)" />
+        <KpiCard label="Impuestos" :value="formatMoney((data as FacturacionReport).taxes)" />
+        <KpiCard label="Comisiones OTA" :value="formatMoney((data as FacturacionReport).commissionOTA)" />
+        <KpiCard label="Total bruto" :value="formatMoney((data as FacturacionReport).total)" class="text-navy" />
+        <KpiCard label="Neto" :value="formatMoney((data as FacturacionReport).net)" class="text-teal" />
+      </div>
+      <div class="card p-5">
+        <h4 class="text-xs font-black text-navy uppercase mb-3">Extras por categoría</h4>
+        <div v-if="Object.keys((data as FacturacionReport).extrasByCategory).length === 0" class="text-xs text-text-muted">Sin extras facturados en el período.</div>
+        <div v-else class="space-y-2">
+          <div v-for="(val, cat) in (data as FacturacionReport).extrasByCategory" :key="cat" class="flex items-center justify-between text-xs">
+            <span class="text-navy font-bold capitalize">{{ cat }}</span>
+            <span class="text-text-secondary">{{ formatMoney(val as number) }}</span>
           </div>
         </div>
       </div>
-
-      <!-- Channels Performance -->
-      <div class="card p-6">
-        <h3 class="font-extrabold text-navy mb-4">Rendimiento por Canal</h3>
-        <div class="space-y-3">
-          <div v-for="channel in channels" :key="channel.name" class="bg-surface rounded-xl p-3">
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <span class="text-lg">{{ channel.icon }}</span>
-                <span class="text-sm font-bold text-navy">{{ channel.name }}</span>
-              </div>
-              <span class="text-sm font-extrabold text-navy">${{ channel.revenue.toLocaleString() }}</span>
-            </div>
-            <div class="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <div class="text-lg font-black text-navy">{{ channel.bookings }}</div>
-                <div class="text-[9px] text-text-muted">Reservas</div>
-              </div>
-              <div>
-                <div class="text-lg font-black text-cyan">{{ channel.adr }}</div>
-                <div class="text-[9px] text-text-muted">ADR</div>
-              </div>
-              <div>
-                <div class="text-lg font-black" :class="channel.commission > 0 ? 'text-coral' : 'text-teal'">
-                  {{ channel.commission > 0 ? '-' + channel.commission + '%' : '0%' }}
-                </div>
-                <div class="text-[9px] text-text-muted">Comisión</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <BarChart :data="(data as FacturacionReport).daily" :format="formatMoney" label="Ingresos diarios" />
     </div>
 
-    <!-- Detailed Occupancy Report -->
-    <div class="card p-6 mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-extrabold text-navy">Reporte Detallado de Ocupación por Día</h3>
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] text-text-muted">{{ occupancyMonth }}</span>
-          <button class="text-[10px] font-bold text-cyan hover:underline cursor-pointer">Exportar</button>
+    <!-- Ocupación -->
+    <div v-else-if="activeTab === 'ocupacion' && data" class="space-y-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="Hab. totales" :value="String((data as OcupacionReport).totalRooms)" />
+        <KpiCard label="Ocup. media real" :value="`${(data as OcupacionReport).avgRealOccupancy}%`" class="text-cyan" />
+      </div>
+      <div class="card p-5">
+        <h4 class="text-xs font-black text-navy uppercase mb-3">Hab. por tipo</h4>
+        <div class="flex flex-wrap gap-2">
+          <span v-for="(cnt, type) in (data as OcupacionReport).byRoomType" :key="type"
+            class="px-3 py-1.5 bg-navy/5 text-navy rounded-full text-xs font-bold">
+            {{ type }}: {{ cnt }}
+          </span>
         </div>
       </div>
-      <!-- Occupancy Bar Chart -->
-      <div class="flex items-end gap-0.5 h-32 mb-6">
-        <div v-for="(day, idx) in dailyOccupancy" :key="idx" class="flex-1 flex flex-col items-center gap-1 group cursor-pointer">
-          <div class="text-[7px] font-bold text-text-muted opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{{ day.occupied }}/{{ day.total }} hab</div>
-          <div class="w-full rounded-t transition-all hover:opacity-80"
-            :class="day.percentage > 90 ? 'bg-coral' : day.percentage > 70 ? 'bg-gold' : day.percentage > 40 ? 'bg-cyan' : 'bg-teal'"
-            :style="{ height: day.percentage + '%' }"
-            :title="day.date + ': ' + day.percentage + '% (' + day.occupied + '/' + day.total + ')'"
-          ></div>
-          <span class="text-[7px] font-bold text-text-muted">{{ day.day }}</span>
-        </div>
-      </div>
-      <!-- Legend -->
-      <div class="flex items-center gap-4 mb-4">
-        <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded bg-coral"></div><span class="text-[9px] font-bold text-text-muted">90-100%</span></div>
-        <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded bg-gold"></div><span class="text-[9px] font-bold text-text-muted">70-89%</span></div>
-        <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded bg-cyan"></div><span class="text-[9px] font-bold text-text-muted">40-69%</span></div>
-        <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded bg-teal"></div><span class="text-[9px] font-bold text-text-muted">0-39%</span></div>
-      </div>
-      <!-- Occupancy Table -->
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="border-b border-border bg-surface/50">
-              <th class="text-left py-3 px-4 text-[10px] font-bold text-text-muted uppercase rounded-tl-xl">Tipo Habitación</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Total</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Ocupadas</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Libres</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Ocupación</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold text-text-muted uppercase">ADR</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold text-text-muted uppercase rounded-tr-xl">RevPAR</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="type in occupancyByType" :key="type.name" class="border-b border-border/50 hover:bg-surface/30 transition-colors">
-              <td class="py-3 px-4">
-                <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 rounded" :class="type.color"></div>
-                  <span class="text-sm font-bold text-navy">{{ type.name }}</span>
-                </div>
-              </td>
-              <td class="py-3 px-3 text-center text-sm font-bold text-navy">{{ type.total }}</td>
-              <td class="py-3 px-3 text-center text-sm text-teal">{{ type.occupied }}</td>
-              <td class="py-3 px-3 text-center text-sm text-text-muted">{{ type.free }}</td>
-              <td class="py-3 px-3 text-center">
-                <div class="flex items-center justify-center gap-2">
-                  <div class="w-16 h-1.5 bg-surface-dark rounded-full overflow-hidden">
-                    <div class="h-full rounded-full" :class="type.color" :style="{ width: type.percentage + '%' }"></div>
-                  </div>
-                  <span class="text-xs font-extrabold" :class="type.percentage >= 80 ? 'text-teal' : type.percentage >= 50 ? 'text-gold' : 'text-coral'">
-                    {{ type.percentage }}%
-                  </span>
-                </div>
-              </td>
-              <td class="py-3 px-3 text-center text-sm font-bold text-navy">${{ type.adr }}</td>
-              <td class="py-3 px-3 text-center text-sm font-bold text-cyan">${{ type.revpar }}</td>
-            </tr>
-            <!-- Totals -->
-            <tr class="bg-navy/5 font-bold">
-              <td class="py-3 px-4 text-sm font-black text-navy">Total</td>
-              <td class="py-3 px-3 text-center text-sm font-black text-navy">{{ totalRooms }}</td>
-              <td class="py-3 px-3 text-center text-sm text-teal font-black">{{ totalOccupied }}</td>
-              <td class="py-3 px-3 text-center text-sm text-text-muted font-black">{{ totalFree }}</td>
-              <td class="py-3 px-3 text-center">
-                <div class="flex items-center justify-center gap-2">
-                  <div class="w-16 h-1.5 bg-surface-dark rounded-full overflow-hidden">
-                    <div class="h-full rounded-full bg-navy" :style="{ width: avgOccupancy + '%' }"></div>
-                  </div>
-                  <span class="text-xs font-extrabold text-navy">{{ avgOccupancy }}%</span>
-                </div>
-              </td>
-              <td class="py-3 px-3 text-center text-sm font-black text-navy">${{ avgADR }}</td>
-              <td class="py-3 px-3 text-center text-sm font-black text-cyan">${{ avgRevPAR }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Second Row -->
-    <div class="grid lg:grid-cols-3 gap-6 mb-6">
-      <!-- Top Guests -->
-      <div class="card">
-        <div class="p-4 border-b border-border">
-          <h3 class="font-extrabold text-navy text-sm">Huéspedes Top (por gasto)</h3>
-        </div>
-        <div class="p-3 space-y-2">
-          <div v-for="(guest, i) in topGuests" :key="guest.id" class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface transition-colors cursor-pointer">
-            <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black" :class="i === 0 ? 'bg-gold/20 text-gold' : i === 1 ? 'bg-gray-200 text-gray-500' : 'bg-orange-100 text-orange-500'">
-              {{ i + 1 }}
-            </span>
-            <div class="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center text-[10px] font-bold text-navy">
-              {{ guest.initials }}
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm font-bold text-navy truncate">{{ guest.name }}</div>
-              <div class="text-[10px] text-text-muted">{{ guest.stays }} estadías</div>
-            </div>
-            <span class="text-sm font-extrabold text-navy">${{ guest.totalSpent.toLocaleString() }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Top Countries -->
-      <div class="card">
-        <div class="p-4 border-b border-border">
-          <h3 class="font-extrabold text-navy text-sm">Huéspedes por País</h3>
-        </div>
-        <div class="p-3 space-y-2">
-          <div v-for="country in topCountries" :key="country.name" class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface transition-colors">
-            <span class="text-xl">{{ country.flag }}</span>
-            <div class="flex-1">
-              <div class="flex items-center justify-between">
-                <span class="text-sm font-bold text-navy">{{ country.name }}</span>
-                <span class="text-sm font-extrabold text-navy">{{ country.percentage }}%</span>
-              </div>
-              <div class="h-2 bg-surface-dark rounded-full overflow-hidden mt-1">
-                <div class="h-full rounded-full bg-navy/30" :style="{ width: country.percentage + '%' }"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Upcoming Arrivals -->
-      <div class="card">
-        <div class="p-4 border-b border-border">
-          <h3 class="font-extrabold text-navy text-sm">Próximas Llegadas (3 días)</h3>
-        </div>
-        <div class="p-3 space-y-2">
-          <div v-for="arrival in upcomingArrivals" :key="arrival.id" class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface transition-colors cursor-pointer">
-            <div class="w-10 h-10 rounded-lg bg-cyan/10 flex items-center justify-center text-sm font-bold text-cyan">
-              {{ arrival.date.split(' ')[0] }}
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm font-bold text-navy truncate">{{ arrival.guest }}</div>
-              <div class="text-[10px] text-text-muted">Hab {{ arrival.room }} · {{ arrival.nights }} noches</div>
-            </div>
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="arrival.source === 'direct' ? 'bg-teal/10 text-teal' : 'bg-blue-100 text-blue-700'">
-              {{ arrival.source === 'direct' ? 'Directa' : 'Booking' }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Revenue Breakdown -->
-    <div class="card p-6">
-      <h3 class="font-extrabold text-navy mb-4">Desglose de Ingresos</h3>
-      <div class="grid grid-cols-4 gap-4">
-        <div v-for="rev in revenueBreakdown" :key="rev.category" class="bg-surface rounded-xl p-4 text-center">
-          <div class="text-lg mb-2">{{ rev.icon }}</div>
-          <div class="text-xl font-black" :class="rev.color">${{ rev.amount.toLocaleString() }}</div>
-          <div class="text-[10px] text-text-muted font-bold uppercase mt-1">{{ rev.category }}</div>
-          <div class="text-[10px] font-bold mt-1" :class="rev.trend > 0 ? 'text-teal' : 'text-coral'">
-            {{ rev.trend > 0 ? '↑' : '↓' }} {{ Math.abs(rev.trend) }}%
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Daily Occupancy (MisterPlan style) -->
-    <div class="card p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-extrabold text-navy">Ocupación Diaria — {{ dateRangeLabel }}</h3>
-        <div class="flex gap-2 text-[10px] font-bold">
-          <span class="text-teal">■ Ocupada</span>
-          <span class="text-gray-300">■ Libre</span>
-          <span class="text-coral">■ Bloqueada</span>
-        </div>
-      </div>
-      <div class="overflow-x-auto">
+      <BarChart :data="(data as OcupacionReport).daily.map(d => ({ date: d.date, value: d.realOccupiedPct }))" :format="(v: number) => `${v}%`" label="Ocupación diaria (%)" />
+      <div class="card p-5 overflow-x-auto">
         <table class="w-full text-xs">
-          <thead>
-            <tr class="border-b-2 border-navy">
-              <th class="text-left py-2 px-3 uppercase text-[10px] text-text-muted">Día</th>
-              <th class="text-center py-2 px-3 uppercase text-[10px] text-text-muted">Ocupadas</th>
-              <th class="text-center py-2 px-3 uppercase text-[10px] text-text-muted">Libres</th>
-              <th class="text-center py-2 px-3 uppercase text-[10px] text-text-muted">Bloqueos</th>
-              <th class="text-center py-2 px-3 uppercase text-[10px] text-text-muted">% Ocupación</th>
-              <th class="text-center py-2 px-3 uppercase text-[10px] text-text-muted">Ingresos</th>
-              <th class="text-right py-2 px-3 uppercase text-[10px] text-text-muted">Barra</th>
-            </tr>
-          </thead>
+          <thead><tr class="border-b border-border">
+            <th class="text-left p-2 text-text-muted uppercase">Fecha</th>
+            <th class="text-right p-2 text-text-muted uppercase">Ocupadas</th>
+            <th class="text-right p-2 text-text-muted uppercase">Bloqueadas</th>
+            <th class="text-right p-2 text-text-muted uppercase">Libres</th>
+            <th class="text-right p-2 text-text-muted uppercase">Ocup. %</th>
+          </tr></thead>
           <tbody>
-            <tr v-for="d in dailyOccupancy" :key="d.date" class="border-b border-border hover:bg-surface/30">
-              <td class="py-2 px-3 font-bold text-navy">{{ d.dayName }} {{ d.dayNum }}</td>
-              <td class="py-2 px-3 text-center font-bold text-teal">{{ d.occupied }}</td>
-              <td class="py-2 px-3 text-center text-text-secondary">{{ d.free }}</td>
-              <td class="py-2 px-3 text-center text-text-secondary">{{ d.blocked }}</td>
-              <td class="py-2 px-3 text-center">
-                <span class="font-bold" :class="d.pct >= 80 ? 'text-coral' : d.pct >= 50 ? 'text-gold' : 'text-teal'">{{ d.pct }}%</span>
-              </td>
-              <td class="py-2 px-3 text-center font-bold">${{ d.revenue }}</td>
-              <td class="py-2 px-3">
-                <div class="h-3 bg-surface rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all" :class="d.pct >= 80 ? 'bg-coral' : d.pct >= 50 ? 'bg-gold' : 'bg-teal'" :style="{ width: d.pct + '%' }"></div>
-                </div>
-              </td>
+            <tr v-for="d in (data as OcupacionReport).daily" :key="d.date" class="border-b border-border/30">
+              <td class="p-2 text-navy">{{ formatDate(d.date) }}</td>
+              <td class="p-2 text-right">{{ d.occupied }}</td>
+              <td class="p-2 text-right text-text-muted">{{ d.blocked }}</td>
+              <td class="p-2 text-right text-teal">{{ d.free }}</td>
+              <td class="p-2 text-right font-bold" :class="d.realOccupiedPct > 80 ? 'text-coral' : d.realOccupiedPct > 50 ? 'text-gold' : 'text-teal'">{{ d.realOccupiedPct }}%</td>
             </tr>
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- Pernoctaciones -->
+    <div v-else-if="activeTab === 'pernoctaciones' && data" class="space-y-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="Total paxes" :value="String((data as PernotacionesReport).totalPaxes)" />
+        <KpiCard label="Adultos" :value="String((data as PernotacionesReport).totalAdults)" />
+        <KpiCard label="Niños" :value="String((data as PernotacionesReport).totalChildren)" />
+        <KpiCard label="Media/noche" :value="String((data as PernotacionesReport).avgPerNight)" />
+      </div>
+      <BarChart :data="(data as PernotacionesReport).daily.map(d => ({ date: d.date, value: d.total }))" :format="String" label="Paxes por noche" />
+    </div>
+
+    <!-- Rendimiento -->
+    <div v-else-if="activeTab === 'rendimiento' && data" class="space-y-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="ADR" :value="formatMoney((data as RendimientoReport).adr)" class="text-navy" />
+        <KpiCard label="RevPAR" :value="formatMoney((data as RendimientoReport).revpar)" class="text-cyan" />
+        <KpiCard label="Ocupación" :value="`${(data as RendimientoReport).occupancyPct}%`" />
+        <KpiCard label="Estancia media" :value="`${(data as RendimientoReport).avgStay} noches`" />
+        <KpiCard label="Noches vendidas" :value="String((data as RendimientoReport).nightsSold)" />
+        <KpiCard label="Hab-disponibles" :value="String((data as RendimientoReport).availableRoomNights)" />
+      </div>
+      <div class="card p-5 overflow-x-auto">
+        <h4 class="text-xs font-black text-navy uppercase mb-3">ADR por tipo de habitación</h4>
+        <table class="w-full text-xs">
+          <thead><tr class="border-b border-border">
+            <th class="text-left p-2 text-text-muted uppercase">Tipo</th>
+            <th class="text-right p-2 text-text-muted uppercase">Noches vendidas</th>
+            <th class="text-right p-2 text-text-muted uppercase">Revenue</th>
+            <th class="text-right p-2 text-text-muted uppercase">ADR</th>
+          </tr></thead>
+          <tbody>
+            <tr v-for="(v, type) in (data as RendimientoReport).adrByType" :key="type" class="border-b border-border/30">
+              <td class="p-2 text-navy font-bold">{{ type }}</td>
+              <td class="p-2 text-right">{{ v.nights }}</td>
+              <td class="p-2 text-right">{{ formatMoney(v.revenue) }}</td>
+              <td class="p-2 text-right font-bold text-cyan">{{ formatMoney(v.adr) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Procedencia -->
+    <div v-else-if="activeTab === 'procedencia' && data" class="space-y-4">
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="card p-5">
+          <h4 class="text-xs font-black text-navy uppercase mb-3">Por país</h4>
+          <div v-if="(data as ProcedenciaReport).byCountry.length === 0" class="text-xs text-text-muted">Sin datos.</div>
+          <table v-else class="w-full text-xs">
+            <thead><tr class="border-b border-border">
+              <th class="text-left p-2 text-text-muted uppercase">País</th>
+              <th class="text-right p-2 text-text-muted uppercase">Huéspedes</th>
+              <th class="text-right p-2 text-text-muted uppercase">Revenue</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="c in (data as ProcedenciaReport).byCountry" :key="c.country" class="border-b border-border/30">
+                <td class="p-2 text-navy font-bold">{{ c.country }}</td>
+                <td class="p-2 text-right">{{ c.guests }}</td>
+                <td class="p-2 text-right">{{ formatMoney(c.revenue) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card p-5">
+          <h4 class="text-xs font-black text-navy uppercase mb-3">Por canal</h4>
+          <div v-if="(data as ProcedenciaReport).byChannel.length === 0" class="text-xs text-text-muted">Sin datos.</div>
+          <table v-else class="w-full text-xs">
+            <thead><tr class="border-b border-border">
+              <th class="text-left p-2 text-text-muted uppercase">Canal</th>
+              <th class="text-right p-2 text-text-muted uppercase">Reservas</th>
+              <th class="text-right p-2 text-text-muted uppercase">Revenue</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="c in (data as ProcedenciaReport).byChannel" :key="c.channel" class="border-b border-border/30">
+                <td class="p-2 text-navy font-bold capitalize">{{ c.channel }}</td>
+                <td class="p-2 text-right">{{ c.count }}</td>
+                <td class="p-2 text-right">{{ formatMoney(c.revenue) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reservas -->
+    <div v-else-if="activeTab === 'reservas' && data" class="space-y-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="Total" :value="String((data as ReservasReport).total)" />
+        <KpiCard label="OTA" :value="`${(data as ReservasReport).otaVsDirect.ota} (${(data as ReservasReport).otaVsDirect.otaPct}%)`" class="text-cyan" />
+        <KpiCard label="Directas" :value="`${(data as ReservasReport).otaVsDirect.direct} (${(data as ReservasReport).otaVsDirect.directPct}%)`" class="text-teal" />
+        <KpiCard label="Canceladas" :value="`${(data as ReservasReport).cancelled} (${(data as ReservasReport).cancellationRate}%)`" class="text-coral" />
+      </div>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="card p-5">
+          <h4 class="text-xs font-black text-navy uppercase mb-3">Por estado</h4>
+          <div class="space-y-2">
+            <div v-for="(cnt, status) in (data as ReservasReport).byStatus" :key="status" class="flex items-center justify-between text-xs">
+              <span class="text-navy font-bold capitalize">{{ status }}</span>
+              <span class="text-text-secondary">{{ cnt }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="card p-5">
+          <h4 class="text-xs font-black text-navy uppercase mb-3">Por canal</h4>
+          <div class="space-y-2">
+            <div v-for="(cnt, ch) in (data as ReservasReport).byChannel" :key="ch" class="flex items-center justify-between text-xs">
+              <span class="text-navy font-bold capitalize">{{ ch }}</span>
+              <span class="text-text-secondary">{{ cnt }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <BarChart :data="(data as ReservasReport).dailyCreated" :format="String" label="Reservas creadas por día" />
+    </div>
+
+    <div v-else-if="!loading && !data" class="card p-12 text-center text-sm text-text-muted">
+      Sin datos para el período seleccionado
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ReportService } from '@/services/Report.service'
-import { useAuthStore } from '@/stores/auth.store'
+import { ReportsService, REPORT_META } from '@/services/Reports.service'
+import type { ReportType, FacturacionReport, OcupacionReport, PernotacionesReport, RendimientoReport, ProcedenciaReport, ReservasReport, AnyReport } from '@/services/Reports.service'
 import { useToast } from '@/composables/useToast'
+import KpiCard from '@/components/features/core-pms/KpiCard.vue'
+import BarChart from '@/components/features/core-pms/BarChart.vue'
 
-const auth = useAuthStore()
 const toast = useToast()
-const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
-const report = ref<Awaited<ReturnType<typeof ReportService.get>> | null>(null)
+const activeTab = ref<ReportType>('facturacion')
+const data = ref<AnyReport | null>(null)
+const loading = ref(false)
+const range = ref<'thisMonth' | 'lastMonth' | 'thisQuarter' | 'thisYear' | 'custom'>('thisMonth')
+const from = ref('')
+const to = ref('')
 
-const dateRange = ref('month')
-const revenuePeriod = ref('daily')
-
-const dateRangeLabel = computed(() => {
-  const labels: Record<string, string> = { today: 'Hoy', week: 'Esta Semana', month: 'Junio 2026', quarter: 'Q2 2026', year: '2026' }
-  return labels[dateRange.value] ?? ''
-})
-
-const revenuePeriods = [
-  { value: 'daily', label: 'Diario' },
-  { value: 'weekly', label: 'Semanal' },
-  { value: 'monthly', label: 'Mensual' },
-]
-
-const mainKPIs = computed(() => {
-  const r = report.value
-  const total = r?.totalReservations ?? 0
-  const canceled = r?.canceledReservations ?? 0
-  return [
-    { label: 'Ingresos Totales', value: `$${(r?.totalRevenue ?? 0).toLocaleString()}`, color: 'text-navy', trend: 0 },
-    { label: 'Reservas', value: String(total), color: 'text-cyan', trend: 0 },
-    { label: 'Canceladas', value: String(canceled), color: 'text-teal', trend: 0 },
-    { label: 'Tasa Cancelación', value: total > 0 ? `${Math.round((canceled / total) * 100)}%` : '0%', color: 'text-gold', trend: 0 },
-    { label: 'Tipos de Hab.', value: String(r?.occupancyByType?.length ?? 0), color: 'text-coral', trend: 0 },
-  ]
-})
-
-const chartBars = computed(() => {
-  const series = report.value?.dailyRevenue ?? []
-  const max = Math.max(...series.map((d: any) => d.value), 1)
-  const today = new Date().toISOString().slice(0, 10)
-  return series.map((d: any) => ({
-    day: String(d.date).slice(8, 10),
-    value: d.value.toLocaleString(),
-    height: Math.round((d.value / max) * 100),
-    isToday: d.date === today,
-  }))
-})
-
-const CHANNEL_META: Record<string, { icon: string; commission: number }> = {
-  direct: { icon: '🏨', commission: 0 }, directa: { icon: '🏨', commission: 0 },
-  booking: { icon: '🌐', commission: 15 }, 'booking.com': { icon: '🌐', commission: 15 },
-  expedia: { icon: '✈️', commission: 18 }, airbnb: { icon: '🏠', commission: 3 },
-  whatsapp: { icon: '💬', commission: 0 }, phone: { icon: '📞', commission: 0 },
+function computeRange() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth()
+  if (range.value === 'thisMonth') {
+    from.value = new Date(y, m, 1).toISOString().slice(0, 10)
+    to.value = new Date(y, m + 1, 0).toISOString().slice(0, 10)
+  } else if (range.value === 'lastMonth') {
+    from.value = new Date(y, m - 1, 1).toISOString().slice(0, 10)
+    to.value = new Date(y, m, 0).toISOString().slice(0, 10)
+  } else if (range.value === 'thisQuarter') {
+    const q = Math.floor(m / 3)
+    from.value = new Date(y, q * 3, 1).toISOString().slice(0, 10)
+    to.value = new Date(y, q * 3 + 3, 0).toISOString().slice(0, 10)
+  } else if (range.value === 'thisYear') {
+    from.value = new Date(y, 0, 1).toISOString().slice(0, 10)
+    to.value = new Date(y, 11, 31).toISOString().slice(0, 10)
+  }
 }
 
-const roomTypes = computed(() =>
-  (report.value?.occupancyByType ?? []).map(t => ({
-    name: t.type, occupied: t.occupied, total: t.total, percentage: t.percentage,
-    color: 'bg-cyan', avgRate: 0,
-  }))
-)
-
-const channels = computed(() =>
-  Object.entries(report.value?.byChannel ?? {}).map(([name, revenue]) => ({
-    name, icon: CHANNEL_META[name.toLowerCase()]?.icon ?? '🔗',
-    revenue: revenue as number, bookings: 0, adr: 0,
-    commission: CHANNEL_META[name.toLowerCase()]?.commission ?? 0,
-  }))
-)
-
-onMounted(async () => {
-  try { report.value = await ReportService.get(hotelId.value) } catch { toast.error("Error al cargar datos") }
-})
-
-const topGuests = computed(() =>
-  (report.value?.topGuests ?? []).map((g: any) => ({
-    id: g.name, name: g.name,
-    initials: (g.name || '').split(' ').map((p: string) => p[0]).slice(0, 2).join(''),
-    stays: g.stays, totalSpent: g.totalSpent,
-  })),
-)
-
-const topCountries = computed(() =>
-  (report.value?.topCountries ?? []).map((c: any) => ({ name: c.name, flag: '🏳️', percentage: c.percentage })),
-)
-
-const upcomingArrivals = computed(() =>
-  (report.value?.upcomingArrivals ?? []).map((a: any) => ({ id: a.id, guest: '—', room: '', date: String(a.date).slice(5, 10), nights: 0, source: a.source })),
-)
-
-const revenueBreakdown = computed(() =>
-  (report.value?.revenueBreakdown ?? []).map((r: any, i: number) => ({
-    category: r.category, icon: ['🏨','🍽️','💆','📦'][i % 4],
-    amount: r.amount, color: ['text-navy','text-cyan','text-teal','text-gold'][i % 4], trend: 0,
-  })),
-)
-
-const occupancyMonth = ref('Junio 2026')
-
-const TYPE_COLOR: Record<string, string> = { simple: 'bg-teal', doble: 'bg-cyan', double: 'bg-cyan', suite: 'bg-gold', familiar: 'bg-purple' }
-
-const occupancyByType = computed(() =>
-  (report.value?.occupancyByType ?? []).map((t: any) => ({
-    name: t.type, color: TYPE_COLOR[String(t.type).toLowerCase()] ?? 'bg-cyan',
-    total: t.total, occupied: t.occupied, free: t.total - t.occupied,
-    percentage: t.percentage, adr: 0, revpar: 0,
-  })),
-)
-
-const dailyOccupancy = computed(() => {
-  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
-  const total = totalRooms.value
-  return (report.value?.dailyRevenue ?? []).map((d: any, i: number) => {
-    const date = d.date
-    const dt = new Date(date + 'T12:00:00')
-    const dayNum = dt.getDate()
-    const dayName = days[dt.getDay()]
-    const occ = occupancyByType.value.reduce((s: number, t: any) => s + (t.occupied || 0), 0)
-    return { date, dayName, dayNum, occupied: occ, free: total - occ, blocked: 0, pct: total ? Math.round(occ / total * 100) : 0, revenue: d.value || 0 }
-  })
-})
-
-const totalRooms = computed(() => occupancyByType.value.reduce((sum: number, t: any) => sum + t.total, 0))
-const totalOccupied = computed(() => occupancyByType.value.reduce((sum, t) => sum + t.occupied, 0))
-const totalFree = computed(() => occupancyByType.value.reduce((sum, t) => sum + t.free, 0))
-const avgOccupancy = computed(() => Math.round(totalOccupied.value / totalRooms.value * 100))
-const avgADR = computed(() => Math.round(occupancyByType.value.reduce((sum, t) => sum + t.adr * t.total, 0) / totalRooms.value))
-const avgRevPAR = computed(() => Math.round(occupancyByType.value.reduce((sum, t) => sum + t.revpar * t.total, 0) / totalRooms.value))
-
-function exportPDF() {
-  window.print()
+function onRangeChange() {
+  if (range.value !== 'custom') {
+    computeRange()
+    load()
+  }
 }
 
-function exportCSV() {
-  const r = report.value
-  if (!r) return
-  const rows: string[][] = [
-    ['REPORTE — ' + dateRangeLabel.value],
-    [],
-    ['MÉTRICA', 'VALOR'],
-    ['Ingresos Totales', `$${r.totalRevenue ?? 0}`],
-    ['Reservas', String(r.totalReservations ?? 0)],
-    ['Canceladas', String(r.canceledReservations ?? 0)],
-    [],
-    ['OCUPACIÓN POR TIPO'],
-    ['Tipo', 'Total', 'Ocupadas', 'Ocupación %'],
-    ...(r.occupancyByType ?? []).map((t: any) => [t.type, String(t.total), String(t.occupied), `${t.percentage}%`]),
-    [],
-    ['CANALES'],
-    ['Canal', 'Ingresos'],
-    ...Object.entries(r.byChannel ?? {}).map(([k, v]) => [k, `$${v}`]),
-    [],
-    ['DESGLOSE INGRESOS'],
-    ['Categoría', 'Monto'],
-    ...(r.revenueBreakdown ?? []).map((b: any) => [b.category, `$${b.amount}`]),
-  ]
-  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = `reporte-${dateRange.value}.csv`; a.click()
-  URL.revokeObjectURL(url)
+async function load() {
+  if (!from.value || !to.value) computeRange()
+  loading.value = true
+  data.value = null
+  try {
+    data.value = await ReportsService.get<AnyReport>(activeTab.value, { from: from.value, to: to.value })
+  } catch (e: any) {
+    toast.error(e.message || 'Error al cargar reporte')
+  } finally {
+    loading.value = false
+  }
 }
+
+async function changeTab(t: ReportType) {
+  activeTab.value = t
+  await load()
+}
+
+async function exportCsv() {
+  try {
+    await ReportsService.exportCsv(activeTab.value, { from: from.value, to: to.value })
+    toast.success('CSV exportado')
+  } catch (e: any) {
+    toast.error(e.message || 'Error al exportar')
+  }
+}
+
+function formatMoney(n: number): string {
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n || 0)
+}
+
+function formatDate(d: string): string {
+  return new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
+}
+
+onMounted(() => {
+  computeRange()
+  load()
+})
 </script>

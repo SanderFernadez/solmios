@@ -29,7 +29,8 @@ export function RolesModule() {
       registerRolesModels(orm)
       const repo = new OrmRepository<RolesDTO>(orm, 'Roles')
       const log = logger.child('roles')
-      const service = new RolesService(repo, log, cache, auth)
+      const userRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new RolesService(repo, log, cache, userRepo, auth)
       const controller = new RolesController(service, log)
 
       router.get('/api/roles', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.index(req))

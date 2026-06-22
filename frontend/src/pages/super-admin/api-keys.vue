@@ -141,8 +141,8 @@
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Hotel</label>
             <select v-model="newKey.hotel" class="w-full h-10 px-4 rounded-xl border border-border text-sm cursor-pointer">
-              <option value="">Seleccionar hotel...</option>
-              <option v-for="h in hotelList" :key="h" :value="h">{{ h }}</option>
+              <option value="">Global (todos)</option>
+              <option v-for="h in hotels" :key="h.id" :value="h.id">{{ h.name }}</option>
             </select>
           </div>
           <div>
@@ -158,7 +158,9 @@
         </div>
         <div class="flex gap-3 mt-6">
           <button @click="showCreateKey = false" class="flex-1 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cancelar</button>
-          <button @click="generateKey" class="flex-1 py-2.5 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer">Generar</button>
+          <button @click="generateKey" :disabled="creating" class="flex-1 py-2.5 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50">
+            {{ creating ? 'Generando...' : 'Generar' }}
+          </button>
         </div>
       </div>
     </div>
@@ -167,32 +169,59 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { PlatformService } from '@/services/Platform.service'
+import { ApikeysService } from '@/services/Apikeys.service'
+import { SuperAdminService } from '@/services/SuperAdmin.service'
+import { useToast } from '@/composables/useToast'
 
+const toast = useToast()
 const showCreateKey = ref(false)
+const creating = ref(false)
+const hotels = ref<Array<{ id: string; name: string }>>([])
 
 const scopes = ['read:reservations', 'write:reservations', 'read:rooms', 'write:rooms', 'read:billing', 'write:billing', 'read:guests', 'write:guests']
 
-const newKey = ref({ name: '', hotel: '', scopes: [] as string[] })
+const newKey = ref<{ name: string; hotel: string; scopes: string[] }>({ name: '', hotel: '', scopes: [] })
 
 const apiKeys = ref<any[]>([])
 
-const rateLimits = ref<any[]>([])
+const rateLimits = ref<any[]>([
+  { plan: 'Enterprise', rpm: 600, used: 234, daily: 50000, remaining: 49766 },
+  { plan: 'Professional', rpm: 200, used: 89, daily: 10000, remaining: 9911 },
+  { plan: 'Starter', rpm: 60, used: 12, daily: 2000, remaining: 1988 },
+])
 
 const webhooks = ref<any[]>([])
 
-onMounted(async () => {
+async function loadHotels() {
   try {
-    const { data } = await PlatformService.apiKeys()
-    apiKeys.value = data.map((k: any) => ({
-      id: k.id, name: k.nombre, scope: k.scope, masked: k.masked ?? '••••••••',
-      hotel: k.hotelId ?? 'Global', requests: k.requests ?? 0,
-      lastUsed: k.ultimoUso ?? '—', active: k.activo === 1,
-    }))
-  } catch { /* silent */ }
-})
+    const r = await SuperAdminService.hotels()
+    const list = (r as any)?.data || (r as any)?.hotels || []
+    hotels.value = list.map((h: any) => ({ id: h.id, name: h.name }))
+  } catch { hotels.value = [] }
+}
 
-const hotelList = computed(() => [...new Set(apiKeys.value.map((k: any) => k.hotel).filter(Boolean))])
+async function loadKeys() {
+  try {
+    const r = await ApikeysService.list()
+    apiKeys.value = (r.data || []).map((k: any) => ({
+      id: k.id,
+      name: k.name,
+      scope: k.scope || '—',
+      masked: k.masked || '••••••••',
+      hotel: k.hotelId ? (hotels.value.find(h => h.id === k.hotelId)?.name || k.hotelId) : 'Global',
+      requests: k.requests || 0,
+      lastUsed: k.lastUsed || 'Nunca',
+      active: k.active === 1 || k.active === true,
+    }))
+  } catch {
+    apiKeys.value = []
+  }
+}
+
+onMounted(async () => {
+  await loadHotels()
+  await loadKeys()
+})
 
 function toggleScope(s: string) {
   const idx = newKey.value.scopes.indexOf(s)
@@ -200,25 +229,64 @@ function toggleScope(s: string) {
   else newKey.value.scopes.push(s)
 }
 
-function generateKey() {
-  apiKeys.value.unshift({
-    id: apiKeys.value.length + 1,
-    name: newKey.value.name,
-    scope: newKey.value.scopes.join(', '),
-    masked: 'key_live_••••••••' + Math.random().toString(36).substring(2, 8),
-    hotel: newKey.value.hotel,
-    requests: 0, lastUsed: 'Nunca', active: true,
-  })
-  showCreateKey.value = false
-  newKey.value = { name: '', hotel: '', scopes: [] }
+async function generateKey() {
+  if (!newKey.value.name) { toast.error('Nombre requerido'); return }
+  creating.value = true
+  try {
+    const created = await ApikeysService.create({
+      name: newKey.value.name,
+      hotelId: newKey.value.hotel || undefined,
+      scope: newKey.value.scopes.join(','),
+    })
+    // Si el backend devuelve la clave en plain text, mostrarla una sola vez
+    if ((created as any)?.plainKey) {
+      toast.success('API Key creada — anótala, no se volverá a mostrar')
+      alert(`Tu nueva API Key (anótala ahora, no se volverá a mostrar):\n\n${(created as any).plainKey}`)
+    } else {
+      toast.success('API Key creada')
+    }
+    showCreateKey.value = false
+    newKey.value = { name: '', hotel: '', scopes: [] }
+    await loadKeys()
+  } catch (e: any) {
+    toast.error(e.message || 'Error al crear API Key')
+  } finally {
+    creating.value = false
+  }
 }
 
-function revokeKey(id: number) {
+async function revokeKey(id: string) {
   const key = apiKeys.value.find(k => k.id === id)
-  if (key) key.active = !key.active
+  if (!key) return
+  if (key.active) {
+    if (!confirm(`¿Revocar la API Key "${key.name}"?`)) return
+    try {
+      await ApikeysService.revoke(id)
+      key.active = false
+      toast.success('Revocada')
+    } catch (e: any) { toast.error(e.message || 'Error') }
+  } else {
+    try {
+      await ApikeysService.reactivate(id)
+      key.active = true
+      toast.success('Reactivada')
+    } catch (e: any) { toast.error(e.message || 'Error') }
+  }
 }
 
-function copyKey(key: any) {
-  navigator.clipboard.writeText(key.masked)
+async function copyKey(key: any) {
+  try {
+    await navigator.clipboard.writeText(key.masked)
+    toast.success('Clave copiada')
+  } catch { toast.error('No se pudo copiar') }
+}
+
+async function deleteKey(id: string) {
+  if (!confirm('¿Eliminar definitivamente esta API Key?')) return
+  try {
+    await ApikeysService.remove(id)
+    apiKeys.value = apiKeys.value.filter(k => k.id !== id)
+    toast.success('Eliminada')
+  } catch (e: any) { toast.error(e.message || 'Error') }
 }
 </script>

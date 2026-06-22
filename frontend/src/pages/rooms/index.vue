@@ -195,7 +195,7 @@ async function save() {
   saving.value=true
   try {
     const { RoomService } = await import('@/services/Room.service')
-    const patch: any = { number:form.value.number, type:form.value.type, floor:form.value.floor, maxGuests:form.value.maxGuests||form.value.capacity, basePrice:form.value.basePrice, status:form.value.status, amenities:form.value.amenities, surfaceArea:form.value.surfaceArea, bathrooms:form.value.bathrooms, onlineBookingEnabled:form.value.onlineBooking }
+    const patch: any = { number:form.value.number, type:form.value.type, floor:form.value.floor, maxGuests:form.value.maxGuests, basePrice:form.value.basePrice, status:form.value.status, amenities:form.value.amenities, surfaceArea:form.value.surfaceArea, bathrooms:form.value.bathrooms, onlineBookingEnabled:form.value.onlineBooking }
     if(editId.value) { await RoomService.update(editId.value, patch) }
     else { await RoomService.create({ ...patch, hotelId: hid.value! }) }
     toast.success(editId.value?'Actualizada':'Creada')

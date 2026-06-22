@@ -71,11 +71,11 @@ export class CanalesService {
     return this.channex.getFeed()
   }
 
-  async syncProperty(hotelId: string, hotel: { nombre: string; moneda?: string; email?: string; direccion?: string; zonaHoraria?: string }, rooms: RoomTypeSummary[]): Promise<SyncResultDTO> {
+  async syncProperty(hotelId: string, hotel: { name: string; currency?: string; email?: string; address?: string; timezone?: string }, rooms: RoomTypeSummary[]): Promise<SyncResultDTO> {
     const cfg = await this.getConfig(hotelId)
     const { result, newPropertyId } = await this.channex.syncProperty(hotel, rooms, cfg)
-    if (newPropertyId) await this.upsertConfig(hotelId, { channexPropertyId: newPropertyId, syncEnabled: 1, ultimaSync: new Date().toISOString() })
-    else await this.upsertConfig(hotelId, { ultimaSync: new Date().toISOString() })
+    if (newPropertyId) await this.upsertConfig(hotelId, { channexPropertyId: newPropertyId, syncEnabled: 1, lastSync: new Date().toISOString() })
+    else await this.upsertConfig(hotelId, { lastSync: new Date().toISOString() })
     return result
   }
 

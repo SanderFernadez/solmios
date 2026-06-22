@@ -29,7 +29,8 @@ export function HousekeepingModule() {
       registerHousekeepingModels(orm)
       const repo = new OrmRepository<HousekeepingDTO>(orm, 'Housekeeping')
       const log = logger.child('housekeeping')
-      const service = new HousekeepingService(repo, log, cache, auth)
+      const userRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new HousekeepingService(repo, log, cache, userRepo, auth)
       const controller = new HousekeepingController(service, log)
 
       router.get('/api/housekeeping', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))

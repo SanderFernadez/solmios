@@ -51,10 +51,10 @@ export class ChannexUseCase {
           const name = a.title || a.name || otaCode || 'OTA'
           const meta = matchCatalog(otaCode, name)
           channels.push({
-            id: ch.id, nombre: meta?.name || name, tipo: meta?.type || 'ota',
-            conectado: true, bookings: a.bookings_count || 0, ultimaSync: a.updated_at || cfg.lastSync || null,
-            otaCode: meta?.channexCode || otaCode, activo: a.is_active || false,
-            icono: meta?.icon, color: meta?.color, descripcion: meta?.description,
+            id: ch.id, name: meta?.name || name, type: meta?.type || 'ota',
+            conectado: true, bookings: a.bookings_count || 0, lastSync: a.updated_at || cfg.lastSync || null,
+            otaCode: meta?.channexCode || otaCode, active: a.is_active || false,
+            icon: meta?.icon, color: meta?.color, description: meta?.description,
           })
         }
         connectedCount = channels.filter(c => c.conectado).length
@@ -68,8 +68,8 @@ export class ChannexUseCase {
       )
       if (!alreadyExists) {
         channels.push({
-          nombre: item.name, tipo: item.type, otaCode: item.channexCode, conectado: false,
-          icono: item.icon, color: item.color, descripcion: item.description,
+          name: item.name, type: item.type, otaCode: item.channexCode, conectado: false,
+          icon: item.icon, color: item.color, description: item.description,
         })
       }
     }
@@ -80,7 +80,7 @@ export class ChannexUseCase {
       pendingBookings = feed.data?.meta?.total || 0
     } catch { /* feed opcional */ }
 
-    return { data: channels, connectedCount, pendingBookings, syncEnabled: (cfg?.syncEnabled ?? 1) === 1, ultimaSync: cfg?.lastSync || null, channexPropertyId: cfg?.channexPropertyId || null }
+    return { data: channels, connectedCount, pendingBookings, syncEnabled: (cfg?.syncEnabled ?? 1) === 1, lastSync: cfg?.lastSync || null, channexPropertyId: cfg?.channexPropertyId || null }
   }
 
   async getFeed(): Promise<{ pendingBookings: number }> {
@@ -92,10 +92,10 @@ export class ChannexUseCase {
 
   // ─── Sincronización: crea propiedad + room types + rate plans + ARI ──
   // Si ya existe channexPropertyId → limpia datos viejos y resincroniza.
-  async syncProperty(hotel: { nombre: string; moneda?: string; email?: string; direccion?: string; zonaHoraria?: string }, rooms: RoomTypeSummary[], cfg: CanalesDTO | undefined): Promise<{ result: SyncResultDTO; newPropertyId: string | null }> {
+  async syncProperty(hotel: { name: string; currency?: string; email?: string; address?: string; timezone?: string }, rooms: RoomTypeSummary[], cfg: CanalesDTO | undefined): Promise<{ result: SyncResultDTO; newPropertyId: string | null }> {
     const key = this.resolveKey(cfg)
 
-    let channexPId = cfg?.channexPropertyId
+    let channexPId: string | undefined = cfg?.channexPropertyId || undefined
 
     if (!channexPId) {
       const propRes = await this.channexReq(key, 'POST', '/properties', {
@@ -119,7 +119,7 @@ export class ChannexUseCase {
     }
 
     const createdRTs: any[] = []
-    const rtResults = await Promise.all(rooms.map(rt =>
+    const rtResults = await Promise.all(rooms.map((rt: RoomTypeSummary) =>
       this.channexReq(key, 'POST', '/room_types', { room_type: { property_id: channexPId, title: rt.type, count_of_rooms: rt.cnt, occ_adults: rt.capacity, occ_children: 1, occ_infants: 1 } })
     ))
     rtResults.filter(r => r.ok && r.data?.data).forEach(r => createdRTs.push(r.data.data))
@@ -139,20 +139,20 @@ export class ChannexUseCase {
     }))
 
     // Batch availability push
-    await Promise.all(rtList.map(rt => {
+    await Promise.all(rtList.map((rt: any) => {
       const rData = rooms.find(rm => rm.type === (rt.attributes?.title || rt.title))
       return this.channexReq(key, 'POST', '/availability', { values: [{ property_id: channexPId, room_type_id: rt.id, date_from: today, date_to: future, availability: rData?.cnt || rt.attributes?.count_of_rooms || 1 }] })
     }))
 
     // Batch restrictions push
-    await Promise.all(rpList.map(rp => {
+    await Promise.all(rpList.map((rp: any) => {
       const rt = rtList.find((r: any) => r.id === rp.attributes?.room_type_id)
       const rData = rooms.find(rm => rm.type === (rt?.attributes?.title || rt?.title))
       return this.channexReq(key, 'POST', '/restrictions', { values: [{ property_id: channexPId, rate_plan_id: rp.id, date_from: today, date_to: future, rate: Math.round(rData?.basePrice || 100) }] })
     }))
 
     this.logger.info('Sync Channex OK', { channexPropertyId: channexPId, roomTypes: rtList.length, ratePlans: rpList.length })
-    return { result: { success: true, message: `Sincronización completa: ${rtList.length} room types, ${rpList.length} rate plans`, channexPropertyId: channexPId, roomTypes: rtList.length, ratePlans: rpList.length }, newPropertyId: channexPId }
+    return { result: { success: true, message: `Sincronización completa: ${rtList.length} room types, ${rpList.length} rate plans`, channexPropertyId: channexPId || '', roomTypes: rtList.length, ratePlans: rpList.length }, newPropertyId: channexPId || null }
   }
 
   // ─── Push de tarifa (cuando cambia precioBase de una habitación) ─────

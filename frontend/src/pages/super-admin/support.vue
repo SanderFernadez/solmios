@@ -185,7 +185,7 @@ const supportMetrics = computed(() => {
 
 onMounted(async () => {
   try {
-    const { data } = await OperationsService.tickets()
+    const { data } = await OperationsService.tickets.list()
     tickets.value = data.map((t: any) => ({
       id: t.id, hotel: '', subject: t.subject, description: t.description ?? '',
       priority: PRI_EN[t.priority] ?? 'Normal', status: EST_EN[t.status] ?? 'Abierto',

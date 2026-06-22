@@ -39,7 +39,7 @@ describe('TicketsService', () => {
     })
 
     it('returns empty list when no tickets exist', async () => {
-      const svc = new TicketsService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new TicketsService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.list({}, adminUser)
       expect(result.data).toHaveLength(0)
       expect(result.total).toBe(0)
@@ -55,7 +55,7 @@ describe('TicketsService', () => {
 
     it('throws when no hotelId assigned', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new TicketsService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new TicketsService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
 
@@ -94,26 +94,26 @@ describe('TicketsService', () => {
     })
 
     it('throws when ticket not found', async () => {
-      const svc = new TicketsService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new TicketsService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.getById('nonexistent', adminUser)).rejects.toThrow('Ticket no encontrado')
     })
   })
 
   describe('create', () => {
     it('creates ticket in own hotel', async () => {
-      const svc = new TicketsService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new TicketsService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.create({ hotelId: 'h1', userId: 'u1', subject: 'Issue' }, hotelAdmin)
       expect(result.id).toBe('ticket-1')
     })
 
     it('super_admin can create ticket in any hotel', async () => {
-      const svc = new TicketsService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new TicketsService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.create({ hotelId: 'h99', userId: 'u1', subject: 'Admin issue' }, adminUser)
       expect(result.id).toBe('ticket-1')
     })
 
     it('rejects ticket in other hotel', async () => {
-      const svc = new TicketsService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new TicketsService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.create({ hotelId: 'h2', userId: 'u1', subject: 'Issue' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })

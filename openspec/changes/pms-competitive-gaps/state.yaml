@@ -1,0 +1,60 @@
+# SDD State: pms-competitive-gaps
+
+change_name: pms-competitive-gaps
+created: 2026-06-21
+status: done
+current_phase: completed
+parent_changes: [match-misterplan, frontend-coverage-gaps]
+
+sprints:
+  pc-1-reports:
+    title: Reports avanzados 6 tipos MisterPlan
+    status: done
+    tasks_total: 7
+    tasks_done: 7
+    priority: critical
+
+  pc-2-multi-property:
+    title: Multi-property UI (switcher + consolidados)
+    status: done
+    tasks_total: 7
+    tasks_done: 7
+    priority: high
+
+  pc-3-stripe:
+    title: Stripe real (webhook + checkout)
+    status: done
+    tasks_total: 9
+    tasks_done: 9
+    priority: critical
+    deps: [npm install stripe]
+
+  pc-4-pwa:
+    title: PWA + offline
+    status: done
+    tasks_total: 8
+    tasks_done: 8
+    priority: medium
+
+total_tasks: 31
+tasks_done: 31
+
+execution_order:
+  - pc-1-reports
+  - pc-3-stripe
+  - pc-4-pwa
+  - pc-2-multi-property
+
+artifacts:
+  proposal: true
+  tasks: true
+  state: true
+  specs: false
+
+gate:
+  arckode_analyze: "✅ VÁLIDO — sin violaciones"
+  backend_typecheck: "4 pre-existing (0 from changes)"
+  backend_tests: "131 pass / 0 fail"
+  frontend_typecheck: "0 errors"
+  frontend_build: "✓ built in 532ms"
+  completed_at: 2026-06-21

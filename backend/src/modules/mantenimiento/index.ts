@@ -29,7 +29,8 @@ export function MantenimientoModule() {
       registerMantenimientoModels(orm)
       const repo = new OrmRepository<MantenimientoDTO>(orm, 'Maintenance')
       const log = logger.child('mantenimiento')
-      const service = new MantenimientoService(repo, log, cache, auth)
+      const userRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new MantenimientoService(repo, log, cache, userRepo, auth)
       const controller = new MantenimientoController(service, log)
 
       router.get('/api/mantenimiento', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))

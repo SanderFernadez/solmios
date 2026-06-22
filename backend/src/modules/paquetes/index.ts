@@ -31,6 +31,7 @@ export function PaquetesModule() {
     },
 
     create({ logger, orm, cache, router, auth }) {
+      if (!auth) throw new Error('paquetes: auth dependency required')
       // Registrar modelo(s) — delegado a model.ts
       registerPaquetesModels(orm)
 

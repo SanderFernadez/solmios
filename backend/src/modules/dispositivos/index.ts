@@ -29,7 +29,8 @@ export function DispositivosModule() {
       registerDispositivosModels(orm)
       const repo = new OrmRepository<DispositivosDTO>(orm, 'Devices')
       const log = logger.child('dispositivos')
-      const service = new DispositivosService(repo, log, cache, auth)
+      const userRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new DispositivosService(repo, log, cache, userRepo, auth)
       const controller = new DispositivosController(service, log)
 
       router.get('/api/dispositivos', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))

@@ -79,7 +79,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { http } from '@/services/http'
+import { OpinionesService } from '@/services/Opiniones.service'
+import { ConfigService } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -100,12 +101,12 @@ function channelBadge(c: string) {
 
 async function load() {
   try {
-    const r = await http.get<any>('/opiniones')
+    const r = await OpinionesService.list()
     reviews.value = Array.isArray(r) ? r : (r?.data || [])
   } catch { reviews.value = [] }
   try {
-    const c = await http.get<any>('/configuracion/opiniones_config')
-    if (c?.valor) config.value = typeof c.valor === 'string' ? JSON.parse(c.valor) : c.valor
+    const c = await ConfigService.get('opiniones_config')
+    if (c) config.value = typeof c === 'string' ? JSON.parse(c) : c
   } catch {}
 }
 
@@ -115,7 +116,7 @@ function openRespond(r: any) {
 
 async function saveResponse() {
   try {
-    await http.put(`/opiniones/${respondModal.value.id}`, { response: respondModal.value.text })
+    await OpinionesService.update(respondModal.value.id, { reply: respondModal.value.text } as any)
     const rev = reviews.value.find(r => r.id === respondModal.value.id)
     if (rev) rev.response = respondModal.value.text
     toast.success('Respuesta publicada')
@@ -124,7 +125,7 @@ async function saveResponse() {
 }
 
 async function saveConfig() {
-  try { await http.post('/configuracion', { clave: 'opiniones_config', valor: JSON.stringify(config.value), hotelId: '' }) } catch {}
+  try { await ConfigService.set('opiniones_config', JSON.stringify(config.value)) } catch {}
 }
 
 function requestReviews() {

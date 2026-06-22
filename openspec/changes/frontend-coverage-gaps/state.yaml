@@ -1,0 +1,160 @@
+# SDD State: frontend-coverage-gaps
+
+change_name: frontend-coverage-gaps
+created: 2026-06-21
+status: done
+current_phase: completed
+parent_change: match-misterplan
+completed_at: 2026-06-21
+
+# ✅ TODOS LOS 12 GAPS CERRADOS — 66/66 TASKS COMPLETAS
+
+gaps:
+  fc-a1-apikeys:
+    title: Página gestión API Keys (super_admin)
+    status: done
+    tasks_total: 5
+    tasks_done: 5
+    notes: "Página super-admin/api-keys.vue reconectada con Apikeys.service real. Antes era mock. Crea/revoca/reactiva/elimina via backend /api/apikeys."
+  
+  fc-a2-auditlog:
+    title: Unificar audit bajo módulo /api/auditlog
+    status: done
+    tasks_total: 4
+    tasks_done: 4
+    notes: "Platform.service.audit() ahora usa /api/auditlog. Endpoint /api/admin/audit quedó como proxy deprecado al módulo. Frontend super-admin/audit.vue funciona sin cambios."
+  
+  fc-b1-anuncios:
+    title: Banner anuncios hotel-admin
+    status: done
+    tasks_total: 4
+    tasks_done: 4
+    notes: "AnnouncementBanner.vue integrado en AdminLayout. Dismissible y persistente (Configuration KV). 5 tipos visuales (info/success/warning/critical/maintenance)."
+  
+  fc-b2-roles:
+    title: Página equipo + gestión roles
+    status: done
+    tasks_total: 6
+    tasks_done: 6
+    notes: "Página /panel/team (hotel_admin). Lista miembros via /api/users (multi-tenant seguro). Cambio rol via /api/usuarios/:id. Backend extendedido: whitelist ahora permite 'role'. Security guard: hotel_admin NO puede asignar super_admin (privilege escalation)."
+  
+  fc-c1-folios:
+    title: Vista propia Folios Abiertos / In-House
+    status: done
+    tasks_total: 7
+    tasks_done: 7
+  
+  fc-c2-notifications:
+    title: Centro de notificaciones (bell + bandeja)
+    status: done
+    tasks_total: 8
+    tasks_done: 8
+  
+  fc-d1-message-logs:
+    title: Historial de envíos
+    status: done
+    tasks_total: 6
+    tasks_done: 6
+    notes: "Página /panel/message-logs con stats, filtros (tipo/estado/fecha), tabla, modal detalle con response del proveedor, export CSV."
+  
+  fc-d2-payment-requests:
+    title: Gestión de links de pago
+    status: done
+    tasks_total: 7
+    tasks_done: 7
+  
+  fc-d3-whatsapp-templates:
+    title: CRUD plantillas WhatsApp
+    status: done
+    tasks_total: 6
+    tasks_done: 6
+  
+  fc-e1-refactor-auto-messages:
+    title: Refactor auto-messages
+    status: done
+    tasks_total: 3
+    tasks_done: 3
+  
+  fc-e2-refactor-cerraduras:
+    title: Refactor cerraduras
+    status: done
+    tasks_total: 3
+    tasks_done: 3
+  
+  fc-e3-services-faltantes:
+    title: Services Gastos/Opiniones/Caja
+    status: done
+    tasks_total: 7
+    tasks_done: 7
+
+# ✅ RESUMEN FINAL
+total_gaps: 12
+gaps_done: 12
+total_tasks: 66
+tasks_done: 66
+tasks_blocked: 0
+
+sprint_status:
+  sprint_1_quick_wins: DONE (FC-E1, FC-E2, FC-E3, FC-D3)
+  sprint_2_ux_critical: DONE (FC-C2, FC-C1, FC-D2)
+  sprint_3_decisions: DONE (FC-A1, FC-A2, FC-B1, FC-B2)
+  sprint_4_cierre: DONE (FC-D1 + GATE final)
+
+artifacts:
+  proposal: true
+  tasks: true
+  state: true
+  specs: false
+
+# ✅ GATE FINAL — TODO VERDE
+gate_final:
+  - arckode_analyze: "✅ VÁLIDO — sin violaciones"
+  - backend_typecheck: "0 errores propios"
+  - backend_tests: "130 pass / 0 fail (175 expects)"
+  - frontend_typecheck_strict: "0 errores (vue-tsc -b)"
+  - frontend_build: "vite build success (574ms)"
+  - antipattern_http_direct: "0 en páginas internas ✅"
+  - module_coverage_100_percent: "12/12 gaps cerrados — 100% cobertura"
+
+delivered:
+  services_created:
+    - frontend/src/services/Notifications.service.ts
+    - frontend/src/services/Gastos.service.ts
+    - frontend/src/services/Opiniones.service.ts
+    - frontend/src/services/Caja.service.ts
+    - frontend/src/services/Apikeys.service.ts
+    - frontend/src/services/Announcements.service.ts
+    - frontend/src/services/Team.service.ts
+    - frontend/src/services/MessageLogs.service.ts
+  components_created:
+    - frontend/src/components/features/core-pms/NotificationBell.vue
+    - frontend/src/components/features/core-pms/AnnouncementBanner.vue
+  pages_created:
+    - frontend/src/pages/whatsapp-templates/index.vue
+    - frontend/src/pages/notifications/index.vue
+    - frontend/src/pages/folios/index.vue
+    - frontend/src/pages/payments/index.vue
+    - frontend/src/pages/team/index.vue
+    - frontend/src/pages/message-logs/index.vue
+  pages_refactored:
+    - frontend/src/pages/super-admin/api-keys.vue (mock → ApikeysService real)
+    - frontend/src/pages/auto-messages/index.vue (4 http → AutoMessagesService)
+    - frontend/src/pages/cerraduras/index.vue (7 http → TTLockService)
+    - frontend/src/pages/gastos/index.vue (2 http → GastosService)
+    - frontend/src/pages/opiniones/index.vue (4 http → OpinionesService + ConfigService)
+    - frontend/src/pages/caja/index.vue (3 http → CajaService)
+  layouts_refactored:
+    - frontend/src/layouts/AdminLayout.vue (-70 líneas bell inline, +NotificationBell, +AnnouncementBanner, +6 nav entries)
+  services_refactored:
+    - frontend/src/services/Platform.service.ts (audit() ahora usa /auditlog unificado)
+  backend_changes:
+    - modules/usuarios/service.ts (whitelist permite 'role')
+    - modules/usuarios/controller.ts (guard anti-privilege-escalation super_admin)
+    - composition-root.ts (/api/admin/audit ahora proxy deprecado al módulo)
+  routes_added:
+    - "/panel/whatsapp-templates"
+    - "/panel/notifications"
+    - "/panel/folios"
+    - "/panel/payments"
+    - "/panel/team"
+    - "/panel/message-logs"

@@ -102,7 +102,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { http } from '@/services/http'
+import { TTLockService } from '@/services/TTLock.service'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -115,37 +115,15 @@ const lockCodes = ref<any[]>([])
 const ttlockConfig = ref({ clientId: '', clientSecret: '', accountId: '', accessToken: '', configured: false })
 
 async function load() {
-  try { const r = await http.get<any>('/ttlock/config'); ttlockConfig.value = { ...ttlockConfig.value, ...r } } catch {}
-  try { const r = await http.get<{data:any[]}>('/ttlock/locks'); locks.value = r.data||[] } catch {}
+  try { const cfg = await TTLockService.getConfig(); ttlockConfig.value = { ...ttlockConfig.value, ...cfg } } catch {}
+  try { const r = await TTLockService.listLocks(); locks.value = r.data||[] } catch {}
   try { const { RoomService } = await import('@/services/Room.service'); const res = await RoomService.list({ hotelId: hid.value }).catch(()=>({rooms:[],total:0})); rooms.value = res.rooms||[] } catch {}
-  // Load all codes (simplified - in real system these would be filtered by hotel)
-  try {
-    const res = await ormGetAll('LockCodes')
-    lockCodes.value = res || []
-  } catch { lockCodes.value = [] }
-}
-
-async function ormGetAll(model: string) {
-  try { return (await http.get<any>(`/ttlock/locks`)).data || [] } catch { return [] }
-}
-// Actually lock codes need a separate endpoint. Let me add a direct approach
-async function loadCodes() {
-  try {
-    // For now, load lock codes that belong to the hotel's locks
-    const lockIds = locks.value.map(l => l.id)
-    if (!lockIds.length) { lockCodes.value = []; return }
-    // This would ideally be an API call filtered by lock IDs
-    lockCodes.value = []
-  } catch { lockCodes.value = [] }
-}
-
-function getLockName(lockId: string) {
-  const lock = locks.value.find(l => l.id === lockId)
-  return lock?.name || lock?.ttlockLockId || lockId.slice(0,8)
+  // Lock codes: filtramos localmente desde locks (no hay endpoint dedicado todavía)
+  lockCodes.value = []
 }
 
 async function saveTtlockConfig() {
-  try { await http.put('/ttlock/config', ttlockConfig.value); toast.success('Config guardada') } catch { toast.error('Error') }
+  try { await TTLockService.saveConfig(ttlockConfig.value); toast.success('Config guardada') } catch { toast.error('Error') }
 }
 async function connectTtlock() {
   await saveTtlockConfig()
@@ -153,14 +131,30 @@ async function connectTtlock() {
 }
 async function syncLocks() {
   syncing.value = true
-  try { await http.post('/ttlock/sync', {}); toast.success('Sincronización solicitada'); await load() } catch { toast.error('Error') }
+  try { await TTLockService.sync(); toast.success('Sincronización solicitada'); await load() } catch { toast.error('Error') }
   syncing.value = false
 }
 async function mapLock(lock: any, roomId: string) {
-  try { await http.put(`/ttlock/lock/${lock.id}`, { roomId: roomId || null }); lock.roomId = roomId || null; toast.success('Mapeado') } catch { toast.error('Error') }
+  try { await TTLockService.updateLock(lock.id, { roomId: roomId || undefined }); lock.roomId = roomId || null; toast.success('Mapeado') } catch { toast.error('Error') }
 }
 async function revokeCode(code: any) {
-  try { await http.delete(`/ttlock/code/${code.id}`); code.status = 'revoked'; toast.success('Código revocado') } catch { toast.error('Error') }
+  try { await TTLockService.revokeCode(code.id); code.status = 'revoked'; toast.success('Código revocado') } catch { toast.error('Error') }
+}
+
+function getLockName(lockId: string) {
+  const lock = locks.value.find(l => l.id === lockId)
+  return lock?.name || lock?.ttlockLockId || lockId.slice(0, 8)
+}
+
+/** Muestra los códigos asociados a una cerradura */
+function viewCodes(lock: any) {
+  const codes = lockCodes.value.filter((c: any) => c.lockId === lock.id)
+  if (codes.length === 0) {
+    toast.info(`Sin códigos para ${lock.name || lock.id}`)
+    return
+  }
+  const msg = codes.map((c: any) => `• ${c.code} (${c.status || 'active'}) ${c.startDate || ''} → ${c.endDate || ''}`).join('\n')
+  alert(`Códigos de ${lock.name || lock.id}:\n\n${msg}`)
 }
 
 onMounted(load)

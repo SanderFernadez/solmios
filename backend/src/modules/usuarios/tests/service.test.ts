@@ -296,7 +296,7 @@ describe('UsuariosService', () => {
   // ── UPDATE ────────────────────────────────────────────────────
 
   describe('update', () => {
-    it('whitelist filtra role y hotelId del update', async () => {
+    it('whitelist filtra hotelId del update pero permite role (FC-B2 gestión de equipo)', async () => {
       let capturedData: any = null
       const svc = new UsuariosService(
         makeRepo({
@@ -306,10 +306,11 @@ describe('UsuariosService', () => {
         cache,
         makeAuth(),
       )
-      await svc.update('u1', { name: 'Ana Updated', email: 'nuevo@test.com', role: 'super_admin', hotelId: 'h2' })
+      await svc.update('u1', { name: 'Ana Updated', email: 'nuevo@test.com', role: 'receptionist', hotelId: 'h2' })
       expect(capturedData.name).toBe('Ana Updated')
       expect(capturedData.email).toBe('nuevo@test.com')
-      expect(capturedData).not.toHaveProperty('role')
+      expect(capturedData.role).toBe('receptionist')
+      // hotelId nunca debe poder cambiarse desde el service.update (multi-tenant protection)
       expect(capturedData).not.toHaveProperty('hotelId')
     })
 

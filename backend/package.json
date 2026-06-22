@@ -16,6 +16,7 @@
     "typescript": "^5.5.0"
   },
   "dependencies": {
-    "arckode-framework": "^1.4.3"
+    "arckode-framework": "^1.4.3",
+    "stripe": "^22.2.2"
   }
 }

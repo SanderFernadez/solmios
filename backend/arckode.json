@@ -1,10 +1,10 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-06-21T15:39:50.495Z",
+  "_generated": "2026-06-21T21:03:28.544Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
-    "healthy": true,
-    "violations": 0,
+    "healthy": false,
+    "violations": 2,
     "warnings": 0
   },
   "modules": [
@@ -286,7 +286,18 @@
     "habitaciones-canales.ts",
     "reservas-housekeeping.ts"
   ],
-  "violations": [],
+  "violations": [
+    {
+      "module": "facturas",
+      "type": "GOD_SERVICE",
+      "message": "\"facturas/service.ts\" tiene 213 líneas. Un service > 200 líneas es un God Object — extraer a usecases/."
+    },
+    {
+      "module": "reservas",
+      "type": "GOD_SERVICE",
+      "message": "\"reservas/service.ts\" tiene 208 líneas. Un service > 200 líneas es un God Object — extraer a usecases/."
+    }
+  ],
   "warnings": [],
   "rules_summary": [
     "REGLA 1: Módulos NO importan de otros módulos. Usar conectores.",

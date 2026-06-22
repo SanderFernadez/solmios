@@ -49,12 +49,12 @@ describe('OpinionesService', () => {
 
     it('throws AuthError when hotel_admin has no hotelId', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new OpinionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new OpinionesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
 
     it('returns empty when no reviews match', async () => {
-      const svc = new OpinionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new OpinionesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.list({}, adminUser)
       expect(result.data).toHaveLength(0)
       expect(result.total).toBe(0)
@@ -98,7 +98,7 @@ describe('OpinionesService', () => {
     })
 
     it('throws NotFound when review does not exist', async () => {
-      const svc = new OpinionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new OpinionesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.getById('nonexistent', adminUser)).rejects.toThrow('no encontrada')
     })
   })
@@ -107,20 +107,20 @@ describe('OpinionesService', () => {
 
   describe('create', () => {
     it('creates review in own hotel for hotel_admin', async () => {
-      const svc = new OpinionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new OpinionesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.create({ hotelId: 'h1', rating: 5 }, hotelAdmin)
       expect(result.id).toBe('rev-1')
       expect(result.hotelId).toBe('h1')
     })
 
     it('creates review in any hotel for super_admin', async () => {
-      const svc = new OpinionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new OpinionesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.create({ hotelId: 'h99', rating: 3 }, adminUser)
       expect(result.hotelId).toBe('h99')
     })
 
     it('rejects review creation in another hotel for hotel_admin', async () => {
-      const svc = new OpinionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new OpinionesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.create({ hotelId: 'h2', rating: 5 }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
@@ -152,7 +152,7 @@ describe('OpinionesService', () => {
     })
 
     it('throws NotFound when updating non-existent review', async () => {
-      const svc = new OpinionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new OpinionesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.update('nonexistent', { rating: 4 }, adminUser)).rejects.toThrow('no encontrada')
     })
   })
@@ -182,7 +182,7 @@ describe('OpinionesService', () => {
     })
 
     it('throws NotFound when deleting non-existent review', async () => {
-      const svc = new OpinionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new OpinionesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.delete('nonexistent', adminUser)).rejects.toThrow('no encontrada')
     })
 

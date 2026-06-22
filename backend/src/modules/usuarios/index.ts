@@ -17,7 +17,7 @@ export function UsuariosModule() {
     contract: {
       name: 'usuarios', version: '1.0.0',
       description: 'Login JWT + CRUD de empleados del hotel',
-      actions: ['login', 'me', 'logout', 'list', 'create', 'update', 'delete', 'changePassword'],
+      actions: ['login', 'me', 'logout', 'list', 'create', 'update', 'delete', 'changePassword', 'getHotels', 'switchHotel'],
       events: ['user.created', 'user.disabled'],
       tables: ['users'],
       dependencies: [],
@@ -51,6 +51,10 @@ export function UsuariosModule() {
       router.post('/api/auth/change-password', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.changePassword(req))
       router.post('/api/auth/forgot-password', (req) => controller.forgotPassword(req))
       router.post('/api/auth/reset-password', (req) => controller.resetPassword(req))
+
+      // PC-2 Multi-property: listar hoteles + cambiar de hotel
+      router.get('/api/auth/hotels', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.hotels(req))
+      router.post('/api/auth/switch-hotel/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.switchHotel(req))
 
       // Gestión de usuarios (hotel_admin + super_admin)
       router.get('/api/usuarios', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.index(req))

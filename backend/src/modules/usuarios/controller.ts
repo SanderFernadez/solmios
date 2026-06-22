@@ -78,6 +78,10 @@ export class UsuariosController {
       return { status: 403, body: { error: 'No autorizado' } }
     }
     const data = validateSchema(UpdateUsuarioSchema, req.body)
+    // FC-B2 Seguridad: hotel_admin no puede asignar ni quitar rol super_admin (privilege escalation)
+    if (!isSuperAdmin && data.role === 'super_admin') {
+      return { status: 403, body: { error: 'No autorizado para asignar rol super_admin' } }
+    }
     const item = await this.service.update(req.params.id, data)
     return { status: 200, body: item }
   }
@@ -90,5 +94,29 @@ export class UsuariosController {
     }
     await this.service.delete(req.params.id)
     return { status: 204, body: null }
+  }
+
+  // PC-2 Multi-property
+  async hotels(req: HttpRequest) {
+    try {
+      const data = await this.service.getHotels((req.user as any).id, (req.user as any).role)
+      return { status: 200, body: { data } }
+    } catch (e: any) {
+      return { status: 500, body: { error: e.message } }
+    }
+  }
+
+  async switchHotel(req: HttpRequest) {
+    try {
+      const result = await this.service.switchHotel(
+        (req.user as any).id,
+        req.params.id,
+        (req.user as any).role,
+      )
+      return { status: 200, body: result }
+    } catch (e: any) {
+      if (e.message.includes('No autorizado')) return { status: 403, body: { error: e.message } }
+      return { status: 404, body: { error: e.message } }
+    }
   }
 }

@@ -22,13 +22,29 @@
 
     <!-- Legend -->
     <div class="px-6 py-3 flex items-center gap-3 text-[10px] font-bold flex-wrap">
-      <span class="text-text-muted uppercase">Canales:</span>
-      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-teal"></span><span class="text-teal">Directa</span></span>
-      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-cyan"></span><span class="text-cyan">Booking</span></span>
-      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gold"></span><span class="text-gold">Expedia</span></span>
-      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-coral"></span><span class="text-coral">Airbnb</span></span>
+      <div class="flex items-center gap-2 bg-white border border-border rounded-lg p-1">
+        <button @click="colorMode = 'channel'" class="px-2 py-0.5 rounded text-[10px] cursor-pointer" :class="colorMode === 'channel' ? 'bg-navy text-white' : 'text-text-muted'">Por Canal</button>
+        <button @click="colorMode = 'status'" class="px-2 py-0.5 rounded text-[10px] cursor-pointer" :class="colorMode === 'status' ? 'bg-navy text-white' : 'text-text-muted'">Por Estado</button>
+      </div>
+      <template v-if="colorMode === 'channel'">
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-teal"></span><span class="text-teal">Directa</span></span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-cyan"></span><span class="text-cyan">Booking</span></span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gold"></span><span class="text-gold">Expedia</span></span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-coral"></span><span class="text-coral">Airbnb</span></span>
+      </template>
+      <template v-else>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span>Pendiente</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-cyan"></span>Confirmada</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-teal"></span>Check-in</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gray-400"></span>Check-out</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-coral"></span>Cancelada</span>
+      </template>
       <span class="text-text-muted">|</span>
       <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gray-300"></span> Bloqueo</span>
+      <span class="text-text-muted">|</span>
+      <span class="text-text-muted">🟡 Pago parcial</span>
+      <span class="text-text-muted">✅ Pagada</span>
+      <span class="text-text-muted">🔐 Con cerradura</span>
       <span class="text-text-muted">|</span>
       <span class="text-text-muted uppercase">Tipos:</span>
       <button v-for="rt in roomTypes" :key="rt.type" @click="toggleTypeFilter(rt.type)"
@@ -98,10 +114,15 @@
                     :style="{ width: resSpan(room.id, day) + 'px', minWidth: '60px' }"
                     draggable="true"
                     @dragstart="onResDrag($event, gRes(room.id, day.dateStr)!)"
-                    @click.stop="viewResDetail(gRes(room.id, day.dateStr)!)">
+                    @click.stop="viewResDetail(gRes(room.id, day.dateStr)!)"
+                    @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
                     <span class="text-[8px] font-black text-white/80 bg-white/20 rounded px-1 py-0.5 mr-1.5 shrink-0">{{ gRes(room.id, day.dateStr)!.ch }}</span>
                     <span class="text-[9px] font-extrabold truncate text-white">{{ gRes(room.id, day.dateStr)!.name }}</span>
-                    <span class="text-[8px] text-white/70 ml-auto shrink-0">${{ gRes(room.id, day.dateStr)!.amt }}</span>
+                    <span class="text-[8px] text-white/70 ml-auto shrink-0 flex items-center gap-0.5">
+                      <span v-if="gRes(room.id, day.dateStr)!.lockCode" :title="`Cerradura: ${gRes(room.id, day.dateStr)!.lockCode}`">🔐</span>
+                      <span :title="`Pago: ${gRes(room.id, day.dateStr)!.paymentStatus}`">{{ PAY_ICON[gRes(room.id, day.dateStr)!.paymentStatus] }}</span>
+                      <span>${{ gRes(room.id, day.dateStr)!.amt }}</span>
+                    </span>
                   </div>
 
                   <!-- Block -->
@@ -148,6 +169,12 @@
         </button>
         <button v-if="popup.res" @click="popupViewRes" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
           <span>📋</span> Ver Reserva
+        </button>
+        <button v-if="popup.res" @click="popupCheckin" class="w-full text-left px-4 py-2.5 text-sm font-bold text-teal hover:bg-surface cursor-pointer flex items-center gap-2">
+          <span>🛎️</span> Hacer Check-in
+        </button>
+        <button v-if="popup.res" @click="popupCancel" class="w-full text-left px-4 py-2.5 text-sm font-bold text-coral hover:bg-surface cursor-pointer flex items-center gap-2">
+          <span>✕</span> Cancelar Reserva
         </button>
         <button v-if="popup.blk" @click="popupUnblock" class="w-full text-left px-4 py-2.5 text-sm font-bold text-coral hover:bg-surface cursor-pointer flex items-center gap-2">
           <span>🗑️</span> Eliminar Bloqueo
@@ -486,11 +513,26 @@ function toggleTypeFilter(type: string) {
 }
 
 // Data access
+const colorMode = ref<'channel' | 'status'>('channel')
+const ST_COLOR: Record<string, string> = {
+  pending: 'bg-amber-500', confirmed: 'bg-cyan', checked_in: 'bg-teal',
+  checked_out: 'bg-gray-400', cancelled: 'bg-coral',
+}
+const PAY_ICON: Record<string, string> = { paid: '✅', partial: '🟡', pending: '🔴' }
+
 function gRes(rid: any, ds: string) {
   const r = planReservas.value.find((b: any) => String(b.roomId) === String(rid) && ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10))
   if (!r) return null
   const ch = (r.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: r.channel || 'Directa', bg: 'bg-gray-400' }
-  return { id: r.id, name: r.guestName || 'Guest', ch: cc.l, bg: cc.bg, amt: r.totalAmount || 0 }
+  const status = r.status || 'pending'
+  return {
+    id: r.id, name: r.guestName || 'Guest', ch: cc.l,
+    bg: colorMode.value === 'status' ? (ST_COLOR[status] || 'bg-gray-400') : cc.bg,
+    amt: r.totalAmount || 0,
+    status,
+    lockCode: r.lockCode || '',
+    paymentStatus: r.paymentStatus || 'pending',
+  }
 }
 function isResFirst(rid: any, ds: string) {
   // Find the reservation for this room and date
@@ -609,6 +651,22 @@ function viewResDetail(rb: any) {
   const st = (orig.status || 'pending').toLowerCase(); const sc = ST[st] || { l: orig.status, b: 'bg-gold/10 text-gold' }
   detail.value = { show: true, name: orig.guestName || 'Guest', room: orig.roomNumber || '?', cin: String(orig.checkIn||'').slice(0,10), cout: String(orig.checkOut||'').slice(0,10), amt: orig.totalAmount || 0, chLabel: cc.l, chBadge: cc.b, stLabel: sc.l, stBadge: sc.b }
 }
+
+/** Context menu (right-click) sobre una reserva existente */
+function openContext(ev: MouseEvent, rb: any, room: any) {
+  const orig = planReservas.value.find((b: any) => b.id === rb.id)
+  if (!orig) return
+  const ci = String(orig.checkIn || '').slice(0, 10)
+  const co = String(orig.checkOut || '').slice(0, 10)
+  popup.value = {
+    show: true,
+    x: Math.min(ev.clientX, window.innerWidth - 210),
+    y: Math.min(ev.clientY, window.innerHeight - 220),
+    room,
+    fromDate: ci, toDate: co, nights: Math.max(1, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / 86400000)),
+    res: orig, blk: null,
+  }
+}
 let draggedResId: string | null = null
 function onResDrag(e: DragEvent, rb: any) { draggedResId = rb.id; e.dataTransfer!.effectAllowed = 'move' }
 async function onResDrop(room: any) {
@@ -622,6 +680,27 @@ async function onResDrop(room: any) {
 
 // Popup actions
 function closePopup() { popup.value.show = false; lastSel.value = null }
+async function popupCheckin() {
+  const res = popup.value.res
+  if (!res) return
+  try {
+    await ReservationService.update(res.id, { status: 'checked_in' } as any)
+    res.status = 'checked_in'
+    toast.success(`Check-in: ${res.guestName}`)
+    closePopup()
+  } catch { toast.error('Error') }
+}
+async function popupCancel() {
+  const res = popup.value.res
+  if (!res) return
+  try {
+    await ReservationService.update(res.id, { status: 'cancelled' } as any)
+    res.status = 'cancelled'
+    planReservas.value = planReservas.value.filter((r: any) => r.id !== res.id)
+    toast.success(`Reserva cancelada`)
+    closePopup()
+  } catch { toast.error('Error') }
+}
 function popupNewRes() {
   const p = popup.value
   lastSel.value = null

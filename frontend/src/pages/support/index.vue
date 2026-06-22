@@ -248,7 +248,7 @@ onMounted(loadData)
 async function loadData() {
   loading.value = true
   try {
-    const { data } = await OperationsService.tickets(hotelId.value)
+    const { data } = await OperationsService.tickets.list(hotelId.value)
     tickets.value = data.map((t: any) => {
       const msgs = (() => { try { return JSON.parse(t.mensajes || '[]') } catch { return [] } })()
       return {

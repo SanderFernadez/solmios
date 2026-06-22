@@ -296,7 +296,7 @@ onMounted(async () => {
   try { monitoring.value = await PlatformService.monitoring() } catch { /* silent */ }
   try {
     const h = await SuperAdminService.hotels()
-    const data = h?.data || h || []
+    const data = (h as any)?.data || (h as any)?.hotels || h || []
     topHotels.value = (Array.isArray(data) ? data : []).slice(0, 5)
   } catch { /* silent */ }
   try {

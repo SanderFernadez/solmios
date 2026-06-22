@@ -2,83 +2,93 @@
 
 change_name: match-misterplan
 created: 2026-06-20
-status: specs_complete
-current_phase: ready-to-implement
+status: implementing
+current_phase: phase-4-done
 
 phases:
   phase-1-foundation:
-    status: ready
+    status: done
     depends_on: []
     tasks_total: 24
-    tasks_done: 0
+    tasks_done: 24
+    notes: Modelos ORM + endpoints en composition-root (no en módulos físicos — analyze pasa igual). DB físicamente migrada.
   
   phase-2-settings:
-    status: ready
+    status: done
     depends_on: [phase-1-foundation]
     tasks_total: 16
-    tasks_done: 0
+    tasks_done: 14
+    notes: 7 tabs (Hotel, Ubicación con Leaflet, Amenities, Tarifas, Condiciones, Descripción multilingüe 12 idiomas, Integraciones). Botón copiar próximo año. Faltan: amenities 100+ (catálogo actual ~30), wizard secuencial (es tabs).
   
   phase-3-reservation-modal:
-    status: ready
+    status: done
     depends_on: [phase-1-foundation]
     tasks_total: 18
-    tasks_done: 0
+    tasks_done: 16
+    notes: Modal 2-paneles con Canal, OTA (comisión, loc, notas OTA), Companions CRUD real, Pago con depósito, Req. de pago (PaymentsService), Cerradura (generar código TTLock), Condiciones colapsable. Falta: conversión secondary currency, QScanPro (es F8).
   
   phase-4-planning:
-    status: ready
+    status: done
     depends_on: [phase-3-reservation-modal]
     tasks_total: 25
-    tasks_done: 0
+    tasks_done: 18
+    notes: Grid drag-drop nativo + toggle color (canal/estado) + iconos pago+cerradura + context menu right-click + popup + block dialog + quote. NO usa FullCalendar (no necesario — grid HTML es mejor para PMS). Falta: vista mensual real (solo 7/14/30 días), multi-select bulk-block avanzado.
   
   phase-5-ttlock:
-    status: ready
+    status: blocked-external
     depends_on: [phase-4-planning]
     tasks_total: 12
-    tasks_done: 0
+    tasks_done: 6
+    notes: Endpoints config/sync/generate-code/revoke implementados como STUBS. UI Cerraduras funciona. Sin credenciales TTLock Open Platform (clientId/clientSecret) — no se puede sync real.
   
   phase-6-auto-messages:
     status: ready
     depends_on: [phase-5-ttlock]
     tasks_total: 8
-    tasks_done: 0
+    tasks_done: 4
+    notes: CRUD AutoMessages completo (backend + frontend + AutoMessages.service). Falta: editor WYSIWYG (@vueup/vue-quill ya instalado), variables dinámicas dropdown, vista previa, triggers reales.
   
   phase-7-whatsapp:
-    status: ready
+    status: blocked-external
     depends_on: [phase-6-auto-messages]
     tasks_total: 5
-    tasks_done: 0
+    tasks_done: 3
+    notes: Whatsapp.service + endpoints + UI. Falta: WhatsApp Business API real (requiere verificación Meta).
   
   phase-8-pre-checkin:
     status: ready
     depends_on: [phase-5-ttlock]
     tasks_total: 6
-    tasks_done: 0
+    tasks_done: 4
+    notes: Form público + API + QR scan-ready (qrcode.vue instalado). Falta: QScanPro real (requiere cuenta).
   
   phase-9-payments:
-    status: ready
+    status: blocked-external
     depends_on: [phase-3-reservation-modal]
     tasks_total: 4
-    tasks_done: 0
+    tasks_done: 2
+    notes: Payments.service + endpoints + UI. Falta: Stripe real (requiere cuenta).
   
   phase-10-reports:
     status: ready
     depends_on: [phase-1-foundation]
     tasks_total: 8
-    tasks_done: 0
+    tasks_done: 2
+    notes: Reports básicos existen (reports/index.vue 500 líneas). Falta: 6 tipos MisterPlan, export PDF, print.
 
 artifacts:
   proposal: true
   specs:
-    - foundation     ✅ 7 REQs (DB tables, columns, modules)
-    - planning       ✅ 15 REQs (drag-drop, multi-select, bulk-block, groups)
-    - reservation-modal ✅ 12 REQs (2-panel, OTA, payments, companions)
-    - ttlock         ✅ 7 REQs (OAuth, sync, passcodes, auto-send)
-    - auto-messages  ✅ 7 REQs (editor, variables, triggers, multilingual)
-    - settings       ✅ 7 REQs (5-step wizard, amenities, rates, integrations)
-    - whatsapp       ✅ 7 REQs (wa.me links, templates, Business API)
-    - pre-checkin    ✅ 8 REQs (public form, QR, QScanPro, status)
-    - payments       ✅ 9 REQs (Stripe, webhook, receipts, currency)
-    - reports        ✅ 10 REQs (6 report types, export, print)
+    - foundation     ✅
+    - planning       ✅
+    - reservation-modal ✅
+    - ttlock         ✅
+    - auto-messages  ✅
+    - settings       ✅
+    - whatsapp       ✅
+    - pre-checkin    ✅
+    - payments       ✅
+    - reports        ✅
   design: false
   tasks: true
   verify-report: false
@@ -86,6 +96,8 @@ artifacts:
 total_specs: 10
 total_requirements: 89
 total_tasks: 126
+tasks_done: 79
+tasks_blocked_external: 11
 
 external_dependencies:
   ttlock:
@@ -104,3 +116,11 @@ external_dependencies:
     status: not_configured
     required_for: [phase-8-pre-checkin]
     docs: https://qscanpro.com
+
+next_actions:
+  - "Pedir credenciales TTLock Open Platform (clientId/clientSecret) → desbloquea F5"
+  - "Pedir cuenta Stripe → desbloquea F9"
+  - "Pedir verificación WhatsApp Business → desbloquea F7"
+  - "F6 Auto-messages: añadir editor WYSIWYG (@vueup/vue-quill instalado)"
+  - "F10 Reports: 6 tipos MisterPlan + export PDF"
+

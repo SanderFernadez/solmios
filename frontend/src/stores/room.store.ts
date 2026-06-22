@@ -8,7 +8,7 @@ export const useRoomStore = defineStore('rooms', () => {
   const loading = ref(false)
   const error = ref('')
 
-  async function fetchRooms(filters?: { hotelId?: string; status?: RoomStatus; tipo?: string }) {
+  async function fetchRooms(filters?: { hotelId?: string; status?: RoomStatus; tipo?: string; type?: string }) {
     loading.value = true
     error.value = ''
     try {
@@ -18,7 +18,7 @@ export const useRoomStore = defineStore('rooms', () => {
         : filters?.status === 'pending' ? 'pendiente'
         : filters?.status === 'out_of_service' ? 'fuera de servicio'
         : undefined
-      const { rooms: data } = await RoomService.list({ hotelId: filters?.hotelId, estado, type: filters?.type })
+      const { rooms: data } = await RoomService.list({ hotelId: filters?.hotelId, estado, tipo: filters?.tipo ?? filters?.type })
       rooms.value = filters?.status ? data.filter(r => r.status === filters.status) : data
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Error al cargar habitaciones'

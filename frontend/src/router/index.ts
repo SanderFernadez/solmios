@@ -266,6 +266,42 @@ const router = createRouter({
           component: () => import('@/pages/registro-viajeros/index.vue'),
           meta: { requiresHotelAdmin: true },
         },
+        {
+          path: 'whatsapp-templates',
+          name: 'whatsapp-templates',
+          component: () => import('@/pages/whatsapp-templates/index.vue'),
+          meta: { requiresHotelAuth: true },
+        },
+        {
+          path: 'notifications',
+          name: 'notifications',
+          component: () => import('@/pages/notifications/index.vue'),
+          meta: { requiresHotelAuth: true },
+        },
+        {
+          path: 'folios',
+          name: 'folios',
+          component: () => import('@/pages/folios/index.vue'),
+          meta: { requiresHotelAuth: true },
+        },
+        {
+          path: 'payments',
+          name: 'payments',
+          component: () => import('@/pages/payments/index.vue'),
+          meta: { requiresHotelAuth: true },
+        },
+        {
+          path: 'team',
+          name: 'team',
+          component: () => import('@/pages/team/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'message-logs',
+          name: 'message-logs',
+          component: () => import('@/pages/message-logs/index.vue'),
+          meta: { requiresHotelAuth: true },
+        },
       ],
     },
     {

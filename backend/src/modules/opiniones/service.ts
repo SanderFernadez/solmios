@@ -12,6 +12,7 @@ export class OpinionesService {
     private readonly repo: RepositoryAdapter<OpinionesDTO>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
+    private readonly userRepo: RepositoryAdapter<any>,
     private readonly auth: Auth,
   ) {}
 
@@ -31,9 +32,16 @@ export class OpinionesService {
     if (query.channel) filters.channel = query.channel
     if (query.visible !== undefined) filters.visible = query.visible
 
+    // Resolve hotelId from DB if not provided in token
+    let hotelId = currentUser.hotelId
+    if (!hotelId && currentUser.role !== 'super_admin') {
+      const user = await this.userRepo.findById(currentUser.id)
+      hotelId = user?.hotelId
+    }
+
     if (currentUser.role !== 'super_admin') {
-      if (!currentUser.hotelId) throw new AuthError('No hotel assigned')
-      filters.hotelId = currentUser.hotelId
+      if (!hotelId) throw new AuthError('No hotel assigned')
+      filters.hotelId = hotelId
     } else if (query.hotelId) {
       filters.hotelId = query.hotelId
     }
@@ -42,7 +50,7 @@ export class OpinionesService {
     const limit = Math.min(Math.max(query.limit || 20, 1), 100)
     const offset = (page - 1) * limit
 
-    const cacheKey = `opiniones:list:${currentUser.hotelId || 'all'}`
+    const cacheKey = `opiniones:list:${hotelId || 'all'}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as OpinionesPaginated
 

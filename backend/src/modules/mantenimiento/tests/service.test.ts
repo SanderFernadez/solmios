@@ -46,7 +46,7 @@ describe('MantenimientoService', () => {
 
     it('throws when no hotelId assigned', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new MantenimientoService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new MantenimientoService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
   })
@@ -70,13 +70,13 @@ describe('MantenimientoService', () => {
 
   describe('create', () => {
     it('creates ticket in own hotel', async () => {
-      const svc = new MantenimientoService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new MantenimientoService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.create({ hotelId: 'h1', title: 'Leak' }, hotelAdmin)
       expect(result.id).toBe('maint-1')
     })
 
     it('rejects ticket in other hotel', async () => {
-      const svc = new MantenimientoService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new MantenimientoService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.create({ hotelId: 'h2', title: 'Leak' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })

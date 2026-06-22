@@ -83,7 +83,7 @@ describe('RolesService', () => {
 
     it('throws AuthError when hotel_admin has no hotelId', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.list({ page: 1 }, noHotel)).rejects.toThrow('No hotel assigned')
     })
 
@@ -96,7 +96,7 @@ describe('RolesService', () => {
     })
 
     it('returns empty when no roles match', async () => {
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.list({ page: 1, limit: 20 }, superAdmin)
       expect(result.data).toEqual([])
       expect(result.total).toBe(0)
@@ -145,7 +145,7 @@ describe('RolesService', () => {
     })
 
     it('throws NotFoundError when role does not exist', async () => {
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.getById('nonexistent', superAdmin)).rejects.toThrow('Rol no encontrado')
     })
 
@@ -161,20 +161,20 @@ describe('RolesService', () => {
 
   describe('create', () => {
     it('creates role in own hotel', async () => {
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.create({ name: 'Staff', hotelId: 'h1' }, hotelAdmin)
       expect(result.id).toBe('role-new')
       expect(result.name).toBe('Staff')
     })
 
     it('super_admin can create in any hotel', async () => {
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       const result = await svc.create({ name: 'Manager', hotelId: 'h99' }, superAdmin)
       expect(result.name).toBe('Manager')
     })
 
     it('rejects role creation in other hotel', async () => {
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(
         svc.create({ name: 'Staff', hotelId: 'h2' }, hotelAdmin),
       ).rejects.toThrow('No autorizado para crear en otro hotel')
@@ -189,7 +189,7 @@ describe('RolesService', () => {
 
     it('fires onRolesCreated socket event', async () => {
       let firedWith: RolesDTO | undefined
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       svc.setSockets({ onRolesCreated: async (role) => { firedWith = role } })
       await svc.create({ name: 'Socket Role', hotelId: 'h1' }, hotelAdmin)
       expect(firedWith?.name).toBe('Socket Role')
@@ -230,7 +230,7 @@ describe('RolesService', () => {
     })
 
     it('throws NotFoundError when role does not exist', async () => {
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.update('nonexistent', { name: 'X' }, superAdmin)).rejects.toThrow('Rol no encontrado')
     })
 
@@ -287,7 +287,7 @@ describe('RolesService', () => {
     })
 
     it('throws NotFoundError when role does not exist', async () => {
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.delete('nonexistent', superAdmin)).rejects.toThrow('Rol no encontrado')
     })
 
@@ -348,12 +348,12 @@ describe('RolesService', () => {
     })
 
     it('does not crash when setting null handler', () => {
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       expect(() => svc.setSockets({ onRolesCreated: null as any })).not.toThrow()
     })
 
     it('does not crash when setting empty sockets', () => {
-      const svc = new RolesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new RolesService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       expect(() => svc.setSockets({})).not.toThrow()
     })
   })

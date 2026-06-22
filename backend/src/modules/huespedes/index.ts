@@ -31,6 +31,7 @@ export function HuespedesModule() {
     },
 
     create({ logger, orm, cache, router, auth }) {
+      if (!auth) throw new Error('huespedes: auth dependency required')
       // Registrar modelo(s) — delegado a model.ts
       registerHuespedesModels(orm)
 

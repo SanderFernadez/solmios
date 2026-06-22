@@ -378,7 +378,7 @@ async function save() {
       await ReservationService.update(editId.value, payload as any)
       // Sincronizar companions (diff simple)
       const existing = await CompanionsService.listByReservation(editId.value)
-      const existingIds = new Set(existing.data.map(c => c.id))
+      const existingIds = new Set(existing.data.map(c => c.id).filter((id): id is string => Boolean(id)))
       for (const c of form.value.companions) {
         if (c.id && existingIds.has(c.id)) {
           await CompanionsService.update(c.id, {

@@ -79,7 +79,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { http } from '@/services/http'
+import { CajaService } from '@/services/Caja.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 
@@ -106,7 +106,7 @@ const stats = computed(() => {
 
 async function load() {
   try {
-    const r = await http.get<any>('/caja')
+    const r = await CajaService.list()
     movimientos.value = Array.isArray(r) ? r : (r?.data || [])
   } catch { movimientos.value = [] }
 }
@@ -119,8 +119,8 @@ function openNew() {
 async function save() {
   saving.value = true
   try {
-    const r = await http.post('/caja', { ...form.value, hotelId: hid.value })
-    movimientos.value.push(r || { id: Date.now(), ...form.value })
+    const r = await CajaService.create({ ...form.value, method: form.value.method.toLowerCase() as any } as any)
+    movimientos.value.push(r || { id: Date.now().toString(), ...form.value })
     toast.success('Cobro registrado')
     modal.value.show = false
   } catch { toast.error('Error') }
@@ -128,7 +128,7 @@ async function save() {
 }
 
 async function deleteMovement(m: any) {
-  try { await http.delete(`/caja/${m.id}`); movimientos.value = movimientos.value.filter(x => x.id !== m.id); toast.success('Eliminado') }
+  try { await CajaService.remove(m.id); movimientos.value = movimientos.value.filter(x => x.id !== m.id); toast.success('Eliminado') }
   catch { toast.error('Error') }
 }
 

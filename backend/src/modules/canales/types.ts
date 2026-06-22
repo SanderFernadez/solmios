@@ -27,7 +27,6 @@ export interface UpdateCanalesDTO {
   syncEnabled?: number
     lastSync?: string
 }
-
 // ─── Entidades Channex ─────────────────────────────────
 export interface ChannelDTO {
   id?: string

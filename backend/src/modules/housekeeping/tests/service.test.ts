@@ -46,7 +46,7 @@ describe('HousekeepingService', () => {
 
     it('throws when no hotelId assigned', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new HousekeepingService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new HousekeepingService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
   })
@@ -68,20 +68,20 @@ describe('HousekeepingService', () => {
     })
 
     it('throws NotFound', async () => {
-      const svc = new HousekeepingService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new HousekeepingService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({ hotelId: "h1" }) }), fakeAuth)
       await expect(svc.getById('nope', adminUser)).rejects.toThrow('no encontrada')
     })
   })
 
   describe('create', () => {
     it('creates task in own hotel', async () => {
-      const svc = new HousekeepingService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new HousekeepingService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({ hotelId: "h1" }) }), fakeAuth)
       const result = await svc.create({ roomId: 'r1', hotelId: 'h1' }, hotelAdmin)
       expect(result.id).toBe('hk-1')
     })
 
     it('rejects task in other hotel', async () => {
-      const svc = new HousekeepingService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new HousekeepingService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({ hotelId: "h1" }) }), fakeAuth)
       await expect(svc.create({ roomId: 'r1', hotelId: 'h2' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })

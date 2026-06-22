@@ -13,6 +13,48 @@ export class UsuariosService {
     private readonly auth: Auth,
   ) {}
 
+  async getHotels(userId: string, role: string): Promise<any[]> {
+    const orm = (this.repo as any).orm
+    if (!orm) return []
+    const hotels = await orm.findMany('Hotels', {}) as any[]
+    // super_admin ve todos los hoteles; hotel_admin solo el suyo
+    if (role === 'super_admin') {
+      return hotels.map(({ ...rest }: any) => rest)
+    }
+    const user = await this.repo.findById(userId)
+    if (!user) return []
+    return hotels.filter((h: any) => h.id === user.hotelId)
+  }
+
+  async switchHotel(userId: string, targetHotelId: string, currentRole: string): Promise<{ token: string; user: any }> {
+    const orm = (this.repo as any).orm
+    if (!orm) throw new AuthError('ORM no disponible')
+    const hotels = await orm.findMany('Hotels', {}) as any[]
+    const hotel = hotels.find((h: any) => h.id === targetHotelId)
+    if (!hotel) throw new NotFoundError('Hotel no encontrado')
+    const user = await this.repo.findById(userId)
+    if (!user) throw new NotFoundError('Usuario no encontrado')
+    // hotel_admin solo puede cambiar a su propio hotel
+    if (currentRole !== 'super_admin' && user.hotelId !== targetHotelId) {
+      throw new AuthError('No autorizado para este hotel')
+    }
+    // Mantener rol original; si es super_admin y cambia a otro hotel, queda super_admin
+    // Si es hotel_admin, ya validamos que targetHotelId === user.hotelId
+    const token = (this.auth as any).createToken({ id: userId, role: currentRole, hotelId: targetHotelId })
+    await this.repo.update(userId, { token })
+    return {
+      token,
+      user: {
+        id: user.id,
+        nombre: user.name,
+        email: user.email,
+        role: currentRole,
+        hotelId: targetHotelId,
+        hotelName: hotel.name,
+      },
+    }
+  }
+
   async login(email: string, password: string): Promise<{ token: string; user: any }> {
     const normalizedEmail = email.trim().toLowerCase()
     const user = await this.repo.findOne({ email: normalizedEmail })
@@ -23,9 +65,17 @@ export class UsuariosService {
     if (!String(user.password).startsWith('$2') && !String(user.password).startsWith('$argon2') && !String(user.password).includes(':')) {
       await this.repo.update(user.id, { password: await this.hashPassword(password) })
     }
-    const token = this.auth.createToken({ id: user.id, role: user.role })
+    const token = (this.auth as any).createToken({ id: user.id, role: user.role, hotelId: user.hotelId })
     await this.repo.update(user.id, { token })
-    return { token, user: { id: user.id, nombre: user.name, email: user.email, role: user.role, hotelId: user.hotelId } }
+    let hotelName = ''
+    if (user.hotelId) {
+      try {
+        const orm = (this.repo as any).orm
+        const hotel = await orm?.findOne?.('Hotels', { id: user.hotelId })
+        hotelName = hotel?.name || ''
+      } catch { /* graceful */ }
+    }
+    return { token, user: { id: user.id, nombre: user.name, email: user.email, role: user.role, hotelId: user.hotelId, hotelName } }
   }
 
   async me(id: string): Promise<any> {
@@ -49,7 +99,7 @@ export class UsuariosService {
   }
 
   async update(id: string, data: any): Promise<any> {
-    const allowed = (({ name, email, password, phone, avatar }) => ({ name, email, password, phone, avatar }))(data)
+    const allowed = (({ name, email, password, phone, avatar, role }) => ({ name, email, password, phone, avatar, role }))(data)
     if (allowed.password) allowed.password = await this.hashPassword(allowed.password)
     const updated = await this.repo.update(id, allowed)
     const { password: _, token: __, resetToken: ___, resetExpires: ____, ...rest } = updated
@@ -81,6 +131,9 @@ export class UsuariosService {
   }
 
   async changePassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
+    // Ownership: callerUserId === id se valida en el controller vía auth.assertOwnership(req.user.userId, id).
+    // Aquí además se verifica con currentPassword (re-autenticación implícita).
+    if (!id) throw new AuthError('userId requerido')
     const user = await this.repo.findById(id)
     if (!user) throw new NotFoundError('Usuario no encontrado')
     const valid = await this.verifyPassword(currentPassword, user.password)

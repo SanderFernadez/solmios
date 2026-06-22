@@ -29,7 +29,8 @@ export function OpinionesModule() {
       registerOpinionesModels(orm)
       const repo = new OrmRepository<OpinionesDTO>(orm, 'Reviews')
       const log = logger.child('opiniones')
-      const service = new OpinionesService(repo, log, cache, auth)
+      const userRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new OpinionesService(repo, log, cache, userRepo, auth)
       const controller = new OpinionesController(service, log)
 
       router.get('/api/opiniones', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))

@@ -9,7 +9,7 @@ import type { PaquetesDTO } from '../types'
 
 // silentLogger es una factory function — SIEMPRE llamarla con ()
 const log = silentLogger()
-const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, clear: async () => {}, flush: async () => {} }
+const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
 
 function makeRepo(overrides: Partial<RepositoryAdapter<PaquetesDTO>> = {}): RepositoryAdapter<PaquetesDTO> {
   return {

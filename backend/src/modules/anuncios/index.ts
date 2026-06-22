@@ -29,7 +29,8 @@ export function AnunciosModule() {
       registerAnunciosModels(orm)
       const repo = new OrmRepository<AnunciosDTO>(orm, 'Announcements')
       const log = logger.child('anuncios')
-      const service = new AnunciosService(repo, log, cache, auth)
+      const userRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new AnunciosService(repo, log, cache, userRepo, auth)
       const controller = new AnunciosController(service, log)
 
       router.get('/api/anuncios', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))

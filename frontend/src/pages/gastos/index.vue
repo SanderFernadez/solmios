@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { http } from '@/services/http'
+import { GastosService } from '@/services/Gastos.service'
 import { useAuthStore } from '@/stores/auth.store'
 
 const auth = useAuthStore()
@@ -26,7 +26,7 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const r = await http.get<any>('/gastos?hotelId=' + (hotelId.value ?? ''))
+    const r = await GastosService.list(hotelId.value)
     gastos.value = r.data || []
   } catch (e: any) {
     error.value = e?.message || 'No se pudieron cargar los gastos'
@@ -45,7 +45,7 @@ async function saveGasto() {
   submitting.value = true
   error.value = ''
   try {
-    await http.post('/gastos', { ...form.value, hotelId: hotelId.value })
+    await GastosService.create({ ...form.value, hotelId: hotelId.value } as any)
     showNew.value = false
     form.value = { concept: '', amount: 0, category: 'general', provider: '', date: new Date().toISOString().split('T')[0], notes: '' }
     await loadData()

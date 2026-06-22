@@ -81,7 +81,7 @@ describe('AnunciosService', () => {
 
     it('throws AuthError when hotel_admin has no hotelId', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new AnunciosService(makeRepo(), log, makeCache(), fakeAuth)
+      const svc = new AnunciosService(makeRepo(), log, makeCache(), makeRepo({ findById: async () => ({}) }), fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
 

@@ -450,7 +450,7 @@ const newTask = ref({
 })
 
 const availableRooms = computed(() =>
-  roomStore.rooms.map(r => ({ number: r.number, type: r.type || 'Standard' }))
+  roomStore.rooms.map(r => ({ id: r.id, number: r.number, type: r.type || 'Standard' }))
 )
 
 const filteredTasks = computed(() => {
@@ -543,7 +543,7 @@ const createTask = async () => {
   if (!newTask.value.roomNumber || !newTask.value.type) return
   try {
     await OperationsService.housekeeping.create({
-      roomId: availableRooms.find(r => r.number === newTask.value.roomNumber)?.id || newTask.value.roomNumber,
+      roomId: availableRooms.value.find((r: { number: string; type: string }) => r.number === newTask.value.roomNumber)?.id || newTask.value.roomNumber,
       roomNumber: newTask.value.roomNumber,
       hotelId: hotelId.value,
       type: newTask.value.type,

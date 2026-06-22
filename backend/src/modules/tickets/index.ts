@@ -29,7 +29,8 @@ export function TicketsModule() {
       registerTicketsModels(orm)
       const repo = new OrmRepository<TicketsDTO>(orm, 'Tickets')
       const log = logger.child('tickets')
-      const service = new TicketsService(repo, log, cache, auth)
+      const userRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new TicketsService(repo, log, cache, userRepo, auth)
       const controller = new TicketsController(service, log)
 
       router.get('/api/tickets', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))

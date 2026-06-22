@@ -30,7 +30,7 @@ describe('NotificacionesService', () => {
     it('returns paginated notifications', async () => {
       const notifs = [{ id: 'n1', hotelId: 'h1', title: 'Alert' }] as NotificacionesDTO[]
       const repo = makeRepo({ paginate: async () => ({ data: notifs, total: 1, limit: 20, offset: 0, pages: 1 }) })
-      const svc = new NotificacionesService(repo, log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(repo, makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       const result = await svc.list({}, adminUser)
       expect(result.data).toHaveLength(1)
     })
@@ -38,14 +38,14 @@ describe('NotificacionesService', () => {
     it('filters by hotelId for hotel_admin', async () => {
       const notifs = [{ id: 'n1', hotelId: 'h1', title: 'Alert' }] as NotificacionesDTO[]
       const repo = makeRepo({ paginate: async () => ({ data: notifs, total: 1, limit: 20, offset: 0, pages: 1 }) })
-      const svc = new NotificacionesService(repo, log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(repo, makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       const result = await svc.list({}, hotelAdmin)
       expect(result.data).toHaveLength(1)
     })
 
     it('throws when no hotelId assigned', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new NotificacionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(makeRepo(), makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
   })
@@ -54,7 +54,7 @@ describe('NotificacionesService', () => {
     it('returns notification for super_admin', async () => {
       const notif = { id: 'n1', hotelId: 'h1', title: 'Alert' } as NotificacionesDTO
       const repo = makeRepo({ findById: async () => notif })
-      const svc = new NotificacionesService(repo, log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(repo, makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       const result = await svc.getById('n1', adminUser)
       expect(result.title).toBe('Alert')
     })
@@ -62,20 +62,20 @@ describe('NotificacionesService', () => {
     it('rejects other hotel notification', async () => {
       const notif = { id: 'n1', hotelId: 'h2', title: 'Alert' } as NotificacionesDTO
       const repo = makeRepo({ findById: async () => notif })
-      const svc = new NotificacionesService(repo, log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(repo, makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       await expect(svc.getById('n1', hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
 
   describe('create', () => {
     it('creates notification in own hotel', async () => {
-      const svc = new NotificacionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(makeRepo(), makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       const result = await svc.create({ hotelId: 'h1', title: 'Alert' }, hotelAdmin)
       expect(result.id).toBe('notif-1')
     })
 
     it('rejects notification in other hotel', async () => {
-      const svc = new NotificacionesService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(makeRepo(), makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       await expect(svc.create({ hotelId: 'h2', title: 'Alert' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
@@ -84,7 +84,7 @@ describe('NotificacionesService', () => {
     it('updates own hotel notification', async () => {
       const notif = { id: 'n1', hotelId: 'h1', title: 'Alert' } as NotificacionesDTO
       const repo = makeRepo({ findById: async () => notif, update: async (id, data) => ({ id, ...data } as NotificacionesDTO) })
-      const svc = new NotificacionesService(repo, log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(repo, makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       const result = await svc.update('n1', { read: 1 }, hotelAdmin)
       expect(result.read).toBe(1)
     })
@@ -92,7 +92,7 @@ describe('NotificacionesService', () => {
     it('rejects update to other hotel notification', async () => {
       const notif = { id: 'n1', hotelId: 'h2', title: 'Alert' } as NotificacionesDTO
       const repo = makeRepo({ findById: async () => notif })
-      const svc = new NotificacionesService(repo, log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(repo, makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       await expect(svc.update('n1', { read: 1 }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
@@ -101,21 +101,21 @@ describe('NotificacionesService', () => {
     it('super_admin can delete', async () => {
       const notif = { id: 'n1', hotelId: 'h1', title: 'Alert' } as NotificacionesDTO
       const repo = makeRepo({ findById: async () => notif })
-      const svc = new NotificacionesService(repo, log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(repo, makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       await expect(svc.delete('n1', adminUser)).resolves.toBeUndefined()
     })
 
     it('hotel_admin can delete own hotel notification', async () => {
       const notif = { id: 'n1', hotelId: 'h1', title: 'Alert' } as NotificacionesDTO
       const repo = makeRepo({ findById: async () => notif })
-      const svc = new NotificacionesService(repo, log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(repo, makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       await expect(svc.delete('n1', hotelAdmin)).resolves.toBeUndefined()
     })
 
     it('rejects delete of other hotel notification', async () => {
       const notif = { id: 'n1', hotelId: 'h2', title: 'Alert' } as NotificacionesDTO
       const repo = makeRepo({ findById: async () => notif })
-      const svc = new NotificacionesService(repo, log, silentCache, fakeAuth)
+      const svc = new NotificacionesService(repo, makeRepo({ findById: async () => ({}) }), log, silentCache, fakeAuth)
       await expect(svc.delete('n1', hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })

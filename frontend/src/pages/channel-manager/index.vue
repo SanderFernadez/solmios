@@ -55,7 +55,7 @@
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 mx-4">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-black text-navy">{{ configDialog.name }}</h2>
-          <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full', configDialog.activo ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral']">{{ configDialog.activo ? 'Activo' : 'Inactivo' }}</span>
+          <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full', configDialog.active ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral']">{{ configDialog.active ? 'Activo' : 'Inactivo' }}</span>
         </div>
         <div class="space-y-3">
           <div>
@@ -236,6 +236,8 @@ const connecting = ref(false)
 const ingesting = ref(false)
 const connectError = ref('')
 const connectResult = ref('')
+const showIframe = ref(false)
+const iframeUrl = ref('')
 
 async function loadStatus() {
   try {
@@ -336,7 +338,7 @@ function configChannel(channel: any) {
     id: channel.id,
     name: channel.name,
     otaCode: channel.otaCode || channel.name,
-    active: channel.activo === undefined ? channel.connected : channel.activo,
+    active: channel.active === undefined ? channel.connected : channel.active,
     bookings: channel.bookings || 0,
     lastSync: channel.lastSync || '—',
     connected: channel.connected,

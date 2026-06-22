@@ -3,49 +3,49 @@
 ## Phase 1: Foundation (Database + Backend)
 
 ### 1.1 Database Migrations
-- [ ] 1.1.1 Add 30+ columns to `hotels` table (ALTER TABLE with DEFAULTs)
-- [ ] 1.1.2 Add 9 columns to `reservations` table
-- [ ] 1.1.3 Create `hotel_amenities` table
-- [ ] 1.1.4 Create `room_amenities` table
-- [ ] 1.1.5 Create `seasons` table
-- [ ] 1.1.6 Create `room_rates` table
-- [ ] 1.1.7 Create `lock_devices` table
-- [ ] 1.1.8 Create `lock_codes` table
-- [ ] 1.1.9 Create `auto_messages` table
-- [ ] 1.1.10 Create `companions` table
-- [ ] 1.1.11 Create `message_logs` table
-- [ ] 1.1.12 Create `payment_requests` table
-- [ ] 1.1.13 Create `whatsapp_templates` table
-- [ ] 1.1.14 Create `room_blocks` table (for planning bloqueos)
+- [x] 1.1.1 Add 30+ columns to `hotels` table (ALTER TABLE with DEFAULTs)
+- [x] 1.1.2 Add 9 columns to `reservations` table
+- [x] 1.1.3 Create `hotel_amenities` table
+- [x] 1.1.4 Create `room_amenities` table
+- [x] 1.1.5 Create `seasons` table
+- [x] 1.1.6 Create `room_rates` table
+- [x] 1.1.7 Create `lock_devices` table
+- [x] 1.1.8 Create `lock_codes` table
+- [x] 1.1.9 Create `auto_messages` table
+- [x] 1.1.10 Create `companions` table
+- [x] 1.1.11 Create `message_logs` table
+- [x] 1.1.12 Create `payment_requests` table
+- [x] 1.1.13 Create `whatsapp_templates` table
+- [x] 1.1.14 Create `room_blocks` table (for planning bloqueos)
 
 **Acceptance:** `sqlite3 .dump` shows all tables + columns. No data loss.
 
 ### 1.2 ORM Models (hoteles/model.ts + new modules)
-- [ ] 1.2.1 Update HotelesModel with all new fields
-- [ ] 1.2.2 Create `cerraduras` module (model, service, controller, types, validators)
-- [ ] 1.2.3 Create `temporadas` module
-- [ ] 1.2.4 Create `amenities` module
-- [ ] 1.2.5 Create `auto-messages` module
-- [ ] 1.2.6 Create `companions` module
-- [ ] 1.2.7 Create `payment-links` module
-- [ ] 1.2.8 Create `blocks` module (room bloqueos)
-- [ ] 1.2.9 Register all modules in composition-root.ts
-- [ ] 1.2.10 Run `arckode analyze` → MUST be 0 violations
+- [x] 1.2.1 Update HotelesModel with all new fields
+- [x] 1.2.2 Create `cerraduras` module (model, service, controller, types, validators)
+- [x] 1.2.3 Create `temporadas` module
+- [x] 1.2.4 Create `amenities` module
+- [x] 1.2.5 Create `auto-messages` module
+- [x] 1.2.6 Create `companions` module
+- [x] 1.2.7 Create `payment-links` module
+- [x] 1.2.8 Create `blocks` module (room bloqueos)
+- [x] 1.2.9 Register all modules in composition-root.ts
+- [x] 1.2.10 Run `arckode analyze` → MUST be 0 violations
 
 **Acceptance:** Backend starts cleanly, `arckode analyze` = ✅ VÁLIDO
 
 ### 1.3 API Endpoints
-- [ ] 1.3.1 GET /api/settings/full (all hotel data in one call)
-- [ ] 1.3.2 PUT /api/settings/hotel (extended with 30+ fields)
-- [ ] 1.3.3 GET/PUT /api/amenities/hotel
-- [ ] 1.3.4 GET/PUT /api/amenities/room/:id
-- [ ] 1.3.5 GET /api/amenities/catalog
-- [ ] 1.3.6 GET/POST/PUT/DELETE /api/seasons
-- [ ] 1.3.7 GET/PUT /api/rates
-- [ ] 1.3.8 POST /api/rates/copy-next-year
-- [ ] 1.3.9 GET/POST/PUT/DELETE /api/blocks
-- [ ] 1.3.10 GET/POST/PUT/DELETE /api/companions
-- [ ] 1.3.11 GET /api/reservations/:id (extended with OTA fields, companions)
+- [x] 1.3.1 GET /api/settings/full (all hotel data in one call)
+- [x] 1.3.2 PUT /api/settings/hotel (extended with 30+ fields)
+- [x] 1.3.3 GET/PUT /api/amenities/hotel
+- [x] 1.3.4 GET/PUT /api/amenities/room/:id
+- [x] 1.3.5 GET /api/amenities/catalog
+- [x] 1.3.6 GET/POST/PUT/DELETE /api/seasons
+- [x] 1.3.7 GET/PUT /api/rates
+- [x] 1.3.8 POST /api/rates/copy-next-year
+- [x] 1.3.9 GET/POST/PUT/DELETE /api/blocks
+- [x] 1.3.10 GET/POST/PUT/DELETE /api/companions
+- [x] 1.3.11 GET /api/reservations/:id (extended with OTA fields, companions)
 
 **Acceptance:** All endpoints return proper JSON envelope, auth required.
 
@@ -54,17 +54,17 @@
 ## Phase 2: Complete Settings Page
 
 ### 2.1 Datos Básicos (5-tab wizard)
-- [ ] 2.1.1 Tab 1: Propietario form (ownerName, taxId, deviceEmail)
-- [ ] 2.1.2 Tab 2: Alojamiento form (type select 54 options, website, motor link, currencies, starRating)
-- [ ] 2.1.3 Tab 3: Características (100+ amenity checkboxes grouped by category)
-- [ ] 2.1.4 Tab 4: Localización (Leaflet map, lat/lng, address, province/municipality)
-- [ ] 2.1.5 Tab 5: Descripción (multilingual textarea)
+- [x] 2.1.1 Tab 1: Propietario form (ownerName, taxId, deviceEmail)
+- [x] 2.1.2 Tab 2: Alojamiento form (type select 54 options, website, motor link, currencies, starRating)
+- [x] 2.1.3 Tab 3: Características (100+ amenity checkboxes grouped by category)
+- [x] 2.1.4 Tab 4: Localización (Leaflet map, lat/lng, address, province/municipality)
+- [x] 2.1.5 Tab 5: Descripción (multilingual textarea)
 
 ### 2.2 Condiciones (extend current)
-- [ ] 2.2.1 Add: cleaningType, depositType, depositFixed, advanceType, advanceAmount
-- [ ] 2.2.2 Add: releaseHours, defaultPaymentMethod
-- [ ] 2.2.3 Add: taxName, taxRate
-- [ ] 2.2.4 Add: requestReviews, publishReviewScore, publishReviewComments
+- [x] 2.2.1 Add: cleaningType, depositType, depositFixed, advanceType, advanceAmount
+- [x] 2.2.2 Add: releaseHours, defaultPaymentMethod
+- [x] 2.2.3 Add: taxName, taxRate
+- [x] 2.2.4 Add: requestReviews, publishReviewScore, publishReviewComments
 
 ### 2.3 Tarifas (new tab: matrix)
 - [ ] 2.3.1 Grid: rows = roomType × occupancy, columns = 4 seasons
@@ -83,31 +83,31 @@
 ## Phase 3: Reservation Modal (Complete)
 
 ### 3.1 Modal Structure
-- [ ] 3.1.1 Create ReservationModal.vue with two-panel layout
-- [ ] 3.1.2 Header with locator, action buttons (Confirmar, Anular, Imprimir, Editar)
-- [ ] 3.1.3 Left panel with 5 collapsible sections
-- [ ] 3.1.4 Right panel with 6 sections
+- [x] 3.1.1 Create ReservationModal.vue with two-panel layout
+- [x] 3.1.2 Header with locator, action buttons (Confirmar, Anular, Imprimir, Editar)
+- [x] 3.1.3 Left panel with 5 collapsible sections
+- [x] 3.1.4 Right panel with 6 sections
 
 ### 3.2 Left Panel Sections
-- [ ] 3.2.1 Datos Reserva (source, commission, locators, dates, OTA notes)
-- [ ] 3.2.2 Condiciones (3 checkboxes)
-- [ ] 3.2.3 Comunicaciones (bono PDF, autocheckin links)
-- [ ] 3.2.4 Comunicación Cliente (auto-message toggles per reservation)
-- [ ] 3.2.5 Plantillas WhatsApp (send buttons)
+- [x] 3.2.1 Datos Reserva (source, commission, locators, dates, OTA notes)
+- [x] 3.2.2 Condiciones (3 checkboxes)
+- [x] 3.2.3 Comunicaciones (bono PDF, autocheckin links)
+- [x] 3.2.4 Comunicación Cliente (auto-message toggles per reservation)
+- [x] 3.2.5 Plantillas WhatsApp (send buttons)
 
 ### 3.3 Right Panel Sections
-- [ ] 3.3.1 Datos Cliente (name, email, phone, WhatsApp links)
-- [ ] 3.3.2 Importe y Pago (total, deposit, pending, currency conversion, payment request)
-- [ ] 3.3.3 Elementos Reserva (room, config, pricing breakdown)
-- [ ] 3.3.4 Otros Servicios (collapsible add-ons)
-- [ ] 3.3.5 Acompañantes (list + add form)
-- [ ] 3.3.6 QScanPro (connection code display)
+- [x] 3.3.1 Datos Cliente (name, email, phone, WhatsApp links)
+- [x] 3.3.2 Importe y Pago (total, deposit, pending, currency conversion, payment request)
+- [x] 3.3.3 Elementos Reserva (room, config, pricing breakdown)
+- [x] 3.3.4 Otros Servicios (collapsible add-ons)
+- [x] 3.3.5 Acompañantes (list + add form)
+- [x] 3.3.6 QScanPro (connection code display)
 
 ### 3.4 Actions
-- [ ] 3.4.1 Confirmar reserva (status → confirmed)
-- [ ] 3.4.2 Anular reserva (status → cancelled, confirmation dialog)
-- [ ] 3.4.3 Generate voucher PDF (window.print with styled template)
-- [ ] 3.4.4 Send payment request (generate Stripe link, send email)
+- [x] 3.4.1 Confirmar reserva (status → confirmed)
+- [x] 3.4.2 Anular reserva (status → cancelled, confirmation dialog)
+- [x] 3.4.3 Generate voucher PDF (window.print with styled template)
+- [x] 3.4.4 Send payment request (generate Stripe link, send email)
 
 **Acceptance:** Modal opens from planning click, shows ALL data, all actions work.
 
@@ -116,23 +116,23 @@
 ## Phase 4: Planning Visual (Drag & Drop)
 
 ### 4.1 Setup
-- [ ] 4.1.1 Install @fullcalendar/vue3 + resource + interaction plugins
-- [ ] 4.1.2 Create PlanningCalendar.vue wrapper
-- [ ] 4.1.3 Fetch rooms + reservations + blocks from API
+- [x] 4.1.1 Install @fullcalendar/vue3 + resource + interaction plugins
+- [x] 4.1.2 Create PlanningCalendar.vue wrapper
+- [x] 4.1.3 Fetch rooms + reservations + blocks from API
 
 ### 4.2 Calendar Features
-- [ ] 4.2.1 Resource timeline view (rooms as rows)
-- [ ] 4.2.2 Render reservations as colored blocks
-- [ ] 4.2.3 Render blocks (bloqueos) as gray blocks
-- [ ] 4.2.4 Drag to create new reservation
-- [ ] 4.2.5 Drag to move reservation between rooms
-- [ ] 4.2.6 Resize to extend/shorten reservation
-- [ ] 4.2.7 Click reservation → open ReservationModal
-- [ ] 4.2.8 Right-click → context menu (Abrir, Bloquear, Cancelar)
-- [ ] 4.2.9 Lock icons on reservations (🔒/🔓)
-- [ ] 4.2.10 Month/Week/Day view toggle
-- [ ] 4.2.11 Prev/Next navigation
-- [ ] 4.2.12 Filters: room type, status, source
+- [x] 4.2.1 Resource timeline view (rooms as rows)
+- [x] 4.2.2 Render reservations as colored blocks
+- [x] 4.2.3 Render blocks (bloqueos) as gray blocks
+- [x] 4.2.4 Drag to create new reservation
+- [x] 4.2.5 Drag to move reservation between rooms
+- [x] 4.2.6 Resize to extend/shorten reservation
+- [x] 4.2.7 Click reservation → open ReservationModal
+- [x] 4.2.8 Right-click → context menu (Abrir, Bloquear, Cancelar)
+- [x] 4.2.9 Lock icons on reservations (🔒/🔓)
+- [x] 4.2.10 Month/Week/Day view toggle
+- [x] 4.2.11 Prev/Next navigation
+- [x] 4.2.12 Filters: room type, status, source
 
 ### 4.3 Room Blocks (Bloqueos)
 - [ ] 4.3.1 Create block dialog (reason, dates)

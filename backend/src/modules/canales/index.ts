@@ -31,6 +31,7 @@ export function CanalesModule() {
     },
 
     create({ logger, orm, cache, router, auth }) {
+      if (!auth) throw new Error('canales: auth dependency required')
       // Registrar modelo(s) — delegado a model.ts
       registerCanalesModels(orm)
 
@@ -80,7 +81,7 @@ export function CanalesModule() {
         for (const r of rooms) {
           const cur = seen.get(r.type)
           if (cur) cur.cnt++
-          else seen.set(r.type, { tipo: r.type, precioBase: r.basePrice, capacidad: r.capacity, cnt: 1 })
+          else seen.set(r.type, { type: r.type, basePrice: r.basePrice, capacity: r.capacity, cnt: 1 })
         }
         const result = await service.syncProperty(hotelId, hotel, [...seen.values()])
         return { status: 200, body: result }
