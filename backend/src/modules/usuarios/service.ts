@@ -85,8 +85,9 @@ export class UsuariosService {
     return { id: u.id, nombre: u.name, email: u.email, role: u.role, hotelId: u.hotelId }
   }
 
-  async list(hotelId: string): Promise<any[]> {
-    const users = await this.repo.findMany({ hotelId })
+  async list(hotelId?: string): Promise<any[]> {
+    // sin hotelId (super_admin) → todos los usuarios; con hotelId → solo ese hotel.
+    const users = await this.repo.findMany(hotelId ? { hotelId } : {})
     return users.map(({ password, token, resetToken, resetExpires, ...rest }) => rest)
   }
 
