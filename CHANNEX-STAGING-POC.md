@@ -41,7 +41,7 @@ Doc oficial de certificación:
 | Base URL | `https://staging.channex.io/api/v1` (en `backend/.env`) |
 | API Key | Configurada en `backend/.env` → `CHANNEX_API_KEY` (secreto, no commitear) |
 | Hotel en DB | **Hotel Boutique Palma** · `hotelId = bca45933-075b-4f0b-bed2-322c3cd7a216` · USD |
-| Propiedad en Channex | `channexPropertyId = 6fe6fcd0-dc40-4663-9f17-05a7a1877bb5` |
+| Propiedad en Channex | `channexPropertyId = 647c6642-3b28-4ddb-936f-764d1a2ff926` (Hotel Boutique Palma — corregido 2026-06-22; antes apuntaba a `6fe6fcd0` Hotel Test vacía) |
 | `channel_config` | `id = 00309337-da54-4051-af2c-2f7fef612fc8` · `syncEnabled = 1` |
 | Última sincronización | `2026-06-19` |
 | Habitaciones | Tabla `rooms` (individuales) + `room_rates` (tarifas por fecha) |
@@ -158,11 +158,22 @@ empujar la tarifa a Channex.
 **Gap esperado:** la reserva se crea con `orm.create` crudo (sin pasar por el
 servicio de reservas) y **no baja disponibilidad** de las habitaciones.
 
+> **Actualización 2026-06-22 (Paso 3):** hay DOS formas reales de meter un booking
+> de test, ambas vía API (no manual):
+> 1. **Booking CRS API** (`POST /api/v1/bookings`, doc
+>    `docs.channex.io/api-v.1-documentation/booking-crs-api`) — crea bookings que
+>    entran al feed como reales. Requiere la app Booking CRS instalada (lo está).
+> 2. **Conectar un OTA real** (Booking.com test account) vía Channel API.
+>
+> El **fix de ingesta ya está aplicado** (ver bitácora §8). El Paso 3 quedó
+> **bloqueado** por un incidente en staging de Channex (subsistema de channels
+> caído); detalle y diagnóstico en §8.
+
 ### Criterio de éxito de la POC
-- [ ] Palma aparece en staging con room types + rate plans.
-- [ ] Un cambio de tarifa en el PMS se refleja en Channex.
-- [ ] Un booking de test en Channex llega como reserva al PMS y se ack.
-- [ ] Documentados en este MD los gaps vistos en vivo.
+- [x] Palma aparece en staging con room types + rate plans. _(Paso 0, 2026-06-22)_
+- [x] Un cambio de tarifa en el PMS se refleja en Channex. _(Paso 2, 2026-06-22 — suite $165 readback OK)_
+- [x] Un booking de test en Channex llega como reserva al PMS y se ack. _(2026-06-22 — booking OFL-POC-LIVE → reserva 6a122515, roomId suite 113, $165, ack OK)_
+- [x] Documentados en este MD los gaps vistos en vivo.
 
 ---
 
@@ -265,4 +276,62 @@ Antes de completar el Google Form de Channex (`forms.gle/xA8F3eSYBPBd8apYA`):
   - **BUG encontrado y arreglado (`channex.ts:167`):** `pushRate` buscaba `room_type_id` en `rp.attributes` (no existe) → `targetRp` siempre `undefined` → retornaba `pushed:false` en silencio. La API de Channex (JSON:API) devuelve `room_type_id` en `rp.relationships.room_type.data.id`. Fix: `(rp.attributes?.room_type_id || rp.relationships?.room_type?.data?.id)`. Mismo patrón riesgoso aún presente en `syncProperty:149` y `getChannelDetail:296` (pendiente revisar).
   - **Hallazgo previo (resuelto por re-sync 04:05):** room types estaban en español (`doble/familiar/simple`) vs habitaciones en inglés (`double/family/single`) → mismatch de mapeo por título. El re-sync alineó a inglés. Confirma la fragilidad del match por título (gap R1: falta mapeo persistente).
   - **Validado end-to-end:** editar habitación en el PMS → tarifa llega a Channex staging. La conexión de escritura + el flujo del connector funcionan.
-- _(pendiente)_ — Paso 3 (ingesta de booking OTA).
+- _2026-06-22_ — **Paso 3 (inbound) — FIX DE INGESTA APLICADO + hallazgo: Booking CRS tiene API**
+  - **Bug de ingesta encontrado y arreglado** (haría romper cualquier booking): `ingestBookings` armaba el DTO en español (`canal`, `montoTotal`, `estado`, `huespedNombre`, `otaReservationCode`…) contra el modelo `Reservations` en inglés (`channel`, `totalAmount`, `status`, `externalLocator`…) → `orm.create` ignoraba campos y faltaban `required` (`roomId`, `totalAmount`).
+  - **Fix aplicado** (typecheck limpio, 0 errores en `canales`):
+    - `channex.ts` `ingestBookings`: DTO mapeado a los campos del modelo (`channel`, `source:'ota'`, `externalLocator`, `totalAmount`, `currency`, `status`, `adults`, `children`, `notes`, `otaNotes`). Datos del huésped van a `otaNotes`.
+    - `channex.ts` nuevo método `getRoomTypeById(key, id)`: resuelve el `title` de un room type por su UUID.
+    - `service.ts` `ingestBookings`: resuelve `roomId` (roomTypeId Channex → `title` → rooms locales de ese type; fallback = primer room del hotel + flag `⚠ AUTO-ASSIGNED`; **nunca dropea un OTA booking**). Dedupe por `externalLocator`.
+  - **Gap declarado:** el huésped queda en `otaNotes` (no se crea entidad `guest` con `guestId`) — ver R8 (ingesta vía servicio de reservas).
+  - **Hallazgo que corrige el skill `channex-pms-integration`:** Booking CRS **SÍ tiene API** para crear bookings (`POST /api/v1/bookings`, doc oficial `docs.channex.io/api-v.1-documentation/booking-crs-api`). El skill decía "no hay API para inyectar test bookings" — eso aplica a bookings OTA reales, **no** a Booking CRS. Requisito: la app Booking CRS instalada en la propiedad (lo está: `POST /bookings` responde, no da 403).
+- _2026-06-22_ — **Paso 3 (inbound) — BLOQUEADO por incidente en staging de Channex (subsistema de channels caído)**
+  - `POST /bookings` con `ota_name` `"Offline"` / `"BookingCom"` / `"OFF"` → `422 unknown provider`; con `""` → `can't be blank`. La doc oficial insiste en `"Offline"` pero staging lo rechaza.
+  - **Diagnóstico consolidado — 3 síntomas apuntan a la misma causa raíz:** el subsistema de channels/providers de `staging.channex.io` está caído:
+
+    | Probe | Resultado |
+    |---|---|
+    | `GET /channels` (con/sin `filter[property_id]`) | **500 Internal Server Error** (consistente) |
+    | `POST /channels/test_connection` (`channel: booking`, 6 test hotels oficiales: 5868189, 6519420, 4372137, 10484818, 10485037, 11140466, 12152494) | `{"success":false,"errors":"service_unavailable"}` |
+    | `POST /bookings` (Booking CRS API) | `422 unknown provider` |
+    | `GET /properties/<id>`, `GET /booking_revisions/feed` | ✅ 200 (lo demás funciona) |
+
+  - **Insight clave:** el `"unknown provider"` era **síntoma** del channels caído, **NO** falta real de providers en la cuenta. La config de Palma está bien (`GET /properties` 200, `GET /feed` 200, 4 room types + 4 rate plans confirmados vía API).
+  - El dashboard Channels tira "Request failed. Please reload" por el mismo 500; la app Booking CRS queda en "No items created yet" sin botón de crear (no renderiza por el mismo bloqueo).
+  - **Acción:** bug report enviado a Channex (texto consolidado en el chat). El bloqueo es 100% del lado de ellos; ni el dashboard ni la API permiten crear/conectar nada hasta que levanten channels.
+  - **Próximo paso al volver:** reintentar `POST /bookings` con `ota_name:"Offline"` → si anda (debería), `POST /api/channels/bookings/ingest` → readback en `reservations` → confirmar ack → cancelar el booking y validar el flujo de cancelación.
+- _2026-06-22_ — **Paso 3 (inbound) — ✅ VALIDADO END-TO-END (sin mock, todo real)**
+  - Channex levantó el subsistema de channels → `GET /channels` volvió a 200.
+  - `POST /api/v1/bookings` (`ota_name:"Offline"`) → **200**, booking `aeef8d6e-54b0-4745-b58b-aa35e7a9608c` (revision `2d72c64a-...`, unique_id `OFL-POC-LIVE-...`).
+  - Llegó al feed (1 pendiente, status `new`).
+  - `POST /api/channels/bookings/ingest` → **200**, `"1 reservas ingesadas, 1 acknowledged"`, errors `[]`.
+  - **Readback en `reservations`** — reserva `6a122515-165a-4339-8d33-f92efa767e48`, TODOS los campos del modelo correctos:
+
+    | Campo | Valor |
+    |---|---|
+    | roomId (resuelto) | `c74a9de8-...` = **suite 113** (match por type "suite" vía `getRoomTypeById`) |
+    | channel | `Offline` · source `ota` |
+    | externalLocator | `POC-LIVE-1782141901272` |
+    | totalAmount | `165` USD · status `confirmed` |
+    | checkIn/Out | 2026-06-25 / 2026-06-26 · adults 2 |
+    | otaNotes | `Guest: Juan Perez <juan.live@test.com>...` |
+
+  - **Confirmado:** el fix de ingesta (mapeo español→inglés + resolución de roomId) funciona de punta a punta. El inbound bidireccional está validado contra staging real.
+  - **Pendiente opcional:** cancelar el booking (`PUT /bookings/:id` status `cancelled`) y validar que la cancelación fluye al PMS.
+- _2026-06-22_ — **Intento de conectar OTA real (Booking.com) — bloqueado por `implementation_not_defined`**
+  - Con channels ya activo, `POST /channels/test_connection` (`channel: booking`, 5 test hotels oficiales) → `{"success":false,"errors":"implementation_not_defined"}` (antes era `service_unavailable`).
+  - `implementation_not_defined` **no está documentado** en la API pública de Channex. Interpretación: el integration/adapter de Booking.com no está habilitado a nivel cuenta en este staging.
+  - **Distinción clave:** el pipeline de ingesta del PMS está **validado real** (con booking `Offline`). Procesaría **idéntico** un booking de Booking.com — el código no distingue el origen. Lo que falta es la **configuración del channel en Channex** (dashboard → Add channel → Booking.com, o pedir a soporte que habilite el integration), **no código del PMS**.
+  - **Acción requerida (lado Channex/usuario):** habilitar el integration de Booking.com en la cuenta de staging, o agregar el channel desde el dashboard (ahora que channels responde).
+- _2026-06-22_ — **Escenario MULTI-TENANT validado (3 hoteles, outbound + inbound reales) ✅**
+  - Creados: 3 hoteles (Playa Azul `328dca7f`, Centro Histórico `1749b9b8`, Vista Mar `c8d17e93`) + 3 usuarios `hotel_admin` + 24 rooms + sync a Channex (3 properties `7cf63bb5`, `e54c0316`, `20ca765f`).
+  - **App Booking CRS instalada por property** vía `POST /api/v1/applications/install` (`application_code: "booking_crs"`) — sin esto, `POST /bookings` da 403.
+  - **Outbound validado** (PUT basePrice → pushRate → Channex): Playa Azul double $112, Centro $107, Vista Mar $132 — confirmados con readback `GET /restrictions` (formato `{data:{[rp_id]:{[date]:{rate}}}}`, requiere `filter[date]` + `filter[restrictions]=rate`).
+  - **Inbound validado** (booking Offline → ingest → reserva): los 3 bookings llegaron como reserva en el PMS con `hotelId` correcto (aislamiento multi-tenant confirmado), `totalAmount` = tarifa editada, ack OK.
+  - **Bug del sync arreglado** (`channex.ts syncProperty`): `rpList` se leía ANTES de crear los rate plans → reportaba "0 rate plans" y no pusheaba restrictions iniciales. Fix: releer `rpList` después de `rpCreated` + arreglar `room_type_id` (relationships, no attributes) en el push de restrictions.
+  - **Bug pendiente (secundario):** crear room `type:"triple"` da 500 INTERNAL_ERROR (no es el enum — está incluido en `ROOM_TYPE_ENUM`; el fallo está en `repo.create` o el socket `onHabitacionesCreated`). Necesita log del backend para aislar. No bloquea (double/suite/single funcionan).
+- _2026-06-22_ — **Bug `triple` CORREGIDO — CHECK constraint viejo en tabla `rooms`**
+  - **Root cause:** la tabla `rooms` tenía un `CHECK (type IN ('single','double','suite','family','queen','king'))` de una migration vieja, que **NO** incluía `triple`/`twin`/`quad`/`deluxe`/`presidential`. Tres fuentes de verdad inconsistentes: modelo ORM (sin enum), validator (enum completo con `triple`), DB CHECK (enum viejo). El validator dejaba pasar `triple` pero SQLite lo rechazaba en el INSERT → excepción → 500. (El CHECK de `status` tenía el mismo problema: `'disponible'` en español + faltaba `'reserved'`.)
+  - **Fix:** migration que recreó `rooms` **sin CHECK constraints** — la validación de `type`/`status` vive en el validator a nivel app, consistente con el modelo ORM (que no define enums). Backup previo en `data/managerhotel.db.bak-triple-fix`. 42 rooms preservadas, FK íntegro.
+  - **Validado:** crear room `type:'triple'` → **201** (antes 500).
+  - **Cancelación bidireccional validada** (mismo día): crear booking → cancelar en Channex (`PUT /bookings/:id` con payload completo + `status:'cancelled'`) → fluye al PMS (reserva → `cancelled`) en los 3 hoteles. Requirió fix en el callback de `ingestBookings` (el dedupe skipeaba las revisions de cancelación; ahora actualiza el status de la reserva existente).
+  - **Lección:** si un campo enum da 500 al crear pero el validator lo permite, verificar **CHECK constraints viejos en la DB** (no confiar solo en modelo/validator). Unificar modelo ORM + validator + DB, o quitar los CHECKs de la DB y dejar la validación a nivel app.
