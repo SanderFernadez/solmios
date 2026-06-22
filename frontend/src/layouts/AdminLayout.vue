@@ -133,14 +133,6 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const dashboard = useDashboardStore()
-// All nested sections start collapsed
-const collapsedSections = ref(new Set<string>())
-
-function toggleSection(section: string) {
-  const s = new Set(collapsedSections.value)
-  s.has(section) ? s.delete(section) : s.add(section)
-  collapsedSections.value = s
-}
 const roomStore = useRoomStore()
 
 const nonavItems = [
@@ -199,6 +191,15 @@ const nonavItems = [
     ]
   },
 ]
+
+// All nested sections start collapsed
+const collapsedSections = ref(new Set(nonavItems.filter(i => i.children).map(i => i.label)))
+
+function toggleSection(section: string) {
+  const s = new Set(collapsedSections.value)
+  s.has(section) ? s.delete(section) : s.add(section)
+  collapsedSections.value = s
+}
 
 const visibleItems = computed(() => {
   const role = auth.userRole
@@ -279,8 +280,8 @@ function isActive(path: string) {
   return route.path.startsWith(path)
 }
 
-function handleLogout() {
-  auth.logout()
+async function handleLogout() {
+  await auth.logout()
   router.push('/login')
 }
 </script>

@@ -94,7 +94,7 @@
                 <div class="text-[10px] text-text-muted">{{ hotel.location }}</div>
               </div>
               <div class="text-right">
-                <div class="text-sm font-black text-teal">${{ hotel.mrr.toLocaleString() }}</div>
+                <div class="text-sm font-black text-teal">${{ (hotel.mrr ?? 0).toLocaleString() }}</div>
                 <div class="text-[10px] text-text-muted">{{ hotel.plan }}</div>
               </div>
             </div>
