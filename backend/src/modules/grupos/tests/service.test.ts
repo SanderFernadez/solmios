@@ -2,7 +2,7 @@
 // Usa RepositoryAdapter mock — sin dependencia de SQLite ni Postgres.
 
 import { describe, it, expect } from 'bun:test'
-import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, CacheAdapter, Auth } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { GruposService } from '../service'
 import type { GruposDTO } from '../types'
@@ -10,6 +10,7 @@ import type { GruposDTO } from '../types'
 // silentLogger es una factory function — SIEMPRE llamarla con ()
 const log = silentLogger()
 const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
+const mockAuth = { assertOwnership: () => {} } as unknown as Auth
 
 function makeRepo(overrides: Partial<RepositoryAdapter<GruposDTO>> = {}): RepositoryAdapter<GruposDTO> {
   return {
@@ -25,23 +26,29 @@ function makeRepo(overrides: Partial<RepositoryAdapter<GruposDTO>> = {}): Reposi
   }
 }
 
+function makeUserRepo() {
+  return { findById: async () => ({ id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }) } as unknown as RepositoryAdapter<any>
+}
+
+const mockUser = { id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }
+
 describe('GruposService', () => {
   describe('getById', () => {
     it('lanza NotFound si el item no existe', async () => {
-      const service = new GruposService(makeRepo(), log, silentCache)
-      await expect(service.getById('no-existe')).rejects.toThrow('Grupos no encontrado')
+      const service = new GruposService(makeRepo(), makeUserRepo(), log, silentCache, mockAuth)
+      await expect(service.getById('no-existe', mockUser)).rejects.toThrow('Grupos no encontrado')
     })
 
     it('retorna el item si existe', async () => {
-      const item = { id: '1' } as GruposDTO
-      const service = new GruposService(makeRepo({ findById: async () => item }), log, silentCache)
-      expect(await service.getById('1')).toEqual(item)
+      const item = { id: '1', hotelId: 'hotel-1' } as GruposDTO
+      const service = new GruposService(makeRepo({ findById: async () => item }), makeUserRepo(), log, silentCache, mockAuth)
+      expect(await service.getById('1', mockUser)).toEqual(item)
     })
   })
 
   describe('create', () => {
     it('crea y retorna el item', async () => {
-      const service = new GruposService(makeRepo(), log, silentCache)
+      const service = new GruposService(makeRepo(), makeUserRepo(), log, silentCache, mockAuth)
       const result = await service.create({} as any)
       expect(result.id).toBe('test-id')
     })
@@ -49,8 +56,8 @@ describe('GruposService', () => {
 
   describe('delete', () => {
     it('lanza NotFound si el item no existe', async () => {
-      const service = new GruposService(makeRepo({ delete: async () => false }), log, silentCache)
-      await expect(service.delete('no-existe')).rejects.toThrow('Grupos no encontrado')
+      const service = new GruposService(makeRepo({ delete: async () => false }), makeUserRepo(), log, silentCache, mockAuth)
+      await expect(service.delete('no-existe', mockUser)).rejects.toThrow('Grupos no encontrado')
     })
   })
 })

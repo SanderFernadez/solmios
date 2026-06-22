@@ -9,6 +9,7 @@ import type { ReservasDTO } from '../types'
 
 const log = silentLogger()
 const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
+const mockAuth = { assertOwnership: () => {} } as unknown as Auth
 const fakeAuth = { createToken: () => 'tok', assertOwnership: () => {} } as unknown as Auth
 
 const adminUser = { id: 'admin1', role: 'super_admin', hotelId: undefined }
@@ -29,12 +30,18 @@ function makeRepo(overrides: Partial<RepositoryAdapter<ReservasDTO>> = {}): Repo
   }
 }
 
+function makeUserRepo() {
+  return { findById: async () => ({ id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }) } as unknown as RepositoryAdapter<any>
+}
+
+const mockUser = { id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }
+
 describe('ReservasService', () => {
   describe('list', () => {
     it('returns paginated reservations', async () => {
       const reservations = [{ id: 'r1', roomId: 'room1', hotelId: 'h1' }] as ReservasDTO[]
       const repo = makeRepo({ paginate: async () => ({ data: reservations, total: 1, limit: 20, offset: 0, pages: 1 }) })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.list({}, adminUser)
       expect(result.data).toHaveLength(1)
     })
@@ -42,14 +49,15 @@ describe('ReservasService', () => {
     it('filters by hotelId for hotel_admin', async () => {
       const reservations = [{ id: 'r1', roomId: 'room1', hotelId: 'h1' }] as ReservasDTO[]
       const repo = makeRepo({ paginate: async () => ({ data: reservations, total: 1, limit: 20, offset: 0, pages: 1 }) })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.list({}, hotelAdmin)
       expect(result.data).toHaveLength(1)
     })
 
     it('throws when no hotelId assigned', async () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
-      const svc = new ReservasService(makeRepo(), log, silentCache, makeRepo({ findById: async () => ({}) }), fakeAuth)
+      const noHotelUserRepo = { findById: async () => ({ id: 'u1', hotelId: undefined }) } as unknown as RepositoryAdapter<any>
+      const svc = new ReservasService(makeRepo(), log, silentCache, noHotelUserRepo, fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
   })
@@ -58,7 +66,7 @@ describe('ReservasService', () => {
     it('returns reservation for super_admin', async () => {
       const res = { id: 'r1', roomId: 'room1', hotelId: 'h1' } as ReservasDTO
       const repo = makeRepo({ findById: async () => res })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.getById('r1', adminUser)
       expect(result.roomId).toBe('room1')
     })
@@ -66,14 +74,14 @@ describe('ReservasService', () => {
     it('rejects other hotel reservation', async () => {
       const res = { id: 'r1', roomId: 'room1', hotelId: 'h2' } as ReservasDTO
       const repo = makeRepo({ findById: async () => res })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.getById('r1', hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
 
   describe('create', () => {
     it('creates reservation with valid dates', async () => {
-      const svc = new ReservasService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new ReservasService(makeRepo(), log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.create({
         roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-01', checkOut: '2026-07-05', totalAmount: 400
       }, hotelAdmin)
@@ -81,7 +89,7 @@ describe('ReservasService', () => {
     })
 
     it('rejects if checkIn >= checkOut', async () => {
-      const svc = new ReservasService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new ReservasService(makeRepo(), log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.create({
         roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-05', checkOut: '2026-07-01', totalAmount: 400
       }, hotelAdmin)).rejects.toThrow('checkIn debe ser anterior')
@@ -90,7 +98,7 @@ describe('ReservasService', () => {
     it('rejects if room is occupied', async () => {
       const existing = [{ id: 'r1', roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-02', checkOut: '2026-07-04', status: 'confirmed' }] as ReservasDTO[]
       const repo = makeRepo({ findMany: async () => existing })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.create({
         roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-03', checkOut: '2026-07-06', totalAmount: 400
       }, hotelAdmin)).rejects.toThrow('no disponible')
@@ -99,7 +107,7 @@ describe('ReservasService', () => {
     it('allows booking if existing is cancelled', async () => {
       // Mock returns empty because cancelled reservations are filtered out by status query
       const repo = makeRepo({ findMany: async () => [] })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.create({
         roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-03', checkOut: '2026-07-06', totalAmount: 400
       }, hotelAdmin)
@@ -107,7 +115,7 @@ describe('ReservasService', () => {
     })
 
     it('rejects reservation in other hotel', async () => {
-      const svc = new ReservasService(makeRepo(), log, silentCache, fakeAuth)
+      const svc = new ReservasService(makeRepo(), log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.create({
         roomId: 'room1', hotelId: 'h2', checkIn: '2026-07-01', checkOut: '2026-07-05', totalAmount: 400
       }, hotelAdmin)).rejects.toThrow('No autorizado')
@@ -118,7 +126,7 @@ describe('ReservasService', () => {
     it('updates own hotel reservation', async () => {
       const res = { id: 'r1', roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-01', checkOut: '2026-07-05' } as ReservasDTO
       const repo = makeRepo({ findById: async () => res, update: async (id, data) => ({ id, ...data } as ReservasDTO) })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.update('r1', { status: 'confirmed' }, hotelAdmin)
       expect(result.status).toBe('confirmed')
     })
@@ -126,7 +134,7 @@ describe('ReservasService', () => {
     it('rejects update to other hotel reservation', async () => {
       const res = { id: 'r1', roomId: 'room1', hotelId: 'h2' } as ReservasDTO
       const repo = makeRepo({ findById: async () => res })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.update('r1', { status: 'confirmed' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
@@ -135,21 +143,21 @@ describe('ReservasService', () => {
     it('super_admin can delete', async () => {
       const res = { id: 'r1', roomId: 'room1', hotelId: 'h1' } as ReservasDTO
       const repo = makeRepo({ findById: async () => res })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.delete('r1', adminUser)).resolves.toBeUndefined()
     })
 
     it('hotel_admin can delete own hotel reservation', async () => {
       const res = { id: 'r1', roomId: 'room1', hotelId: 'h1' } as ReservasDTO
       const repo = makeRepo({ findById: async () => res })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.delete('r1', hotelAdmin)).resolves.toBeUndefined()
     })
 
     it('rejects delete of other hotel reservation', async () => {
       const res = { id: 'r1', roomId: 'room1', hotelId: 'h2' } as ReservasDTO
       const repo = makeRepo({ findById: async () => res })
-      const svc = new ReservasService(repo, log, silentCache, fakeAuth)
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.delete('r1', hotelAdmin)).rejects.toThrow('No autorizado')
     })
   })
