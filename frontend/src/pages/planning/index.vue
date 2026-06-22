@@ -796,7 +796,7 @@ onMounted(async () => {
   try {
     const s = await HotelService.settings(hid.value)
     const h = (s as any).hotel || {}
-    hotelInfo.value = { name: h.nombre || h.name || auth.user?.hotelName || '', address: h.address || '', phone: h.telefono || h.phone || '', email: h.email || '' }
+    hotelInfo.value = { name: h.name || auth.user?.hotelName || '', address: h.address || '', phone: h.phone || '', email: h.email || '' }
   } catch {}
 })
 function prevWeek() { weekOffset.value--; lastSel.value = null; popup.value.show = false }

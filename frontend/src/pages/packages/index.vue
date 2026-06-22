@@ -29,11 +29,11 @@
         </div>
         <div class="bg-white rounded-xl p-4 border border-border">
           <div class="text-[10px] font-bold text-text-muted uppercase">Precio Promedio</div>
-          <div class="text-2xl font-black text-teal mt-1">\${{ packages.length ? Math.round(packages.reduce((s: number, p: any) => s + (p.precio || 0), 0) / packages.length) : 0 }}</div>
+          <div class="text-2xl font-black text-teal mt-1">\${{ packages.length ? Math.round(packages.reduce((s: number, p: any) => s + (p.price || 0), 0) / packages.length) : 0 }}</div>
         </div>
         <div class="bg-white rounded-xl p-4 border border-border">
           <div class="text-[10px] font-bold text-text-muted uppercase">Valor Total Catálogo</div>
-          <div class="text-2xl font-black text-navy mt-1">\${{ packages.reduce((s: number, p: any) => s + (p.precio || 0), 0).toLocaleString() }}</div>
+          <div class="text-2xl font-black text-navy mt-1">\${{ packages.reduce((s: number, p: any) => s + (p.price || 0), 0).toLocaleString() }}</div>
         </div>
       </div>
 
@@ -279,8 +279,8 @@ onMounted(async () => {
   try {
     const { data } = await OperationsService.paquetes(hotelId.value)
     const all = data.map((p: any, i: number) => ({
-      id: p.id, name: p.nombre, description: p.description ?? '',
-      price: p.precio, unit: 'noche', sold: 0, active: p.activo === 1,
+      id: p.id, name: p.name, description: p.description ?? '',
+      price: p.price, unit: 'noche', sold: 0, active: p.active === 1,
       gradient: ['from-pink-400 to-rose-500','from-cyan to-teal','from-navy to-navy-light','from-blue to-cyan','from-purple to-indigo'][i % 5],
       type: p.type,
     }))

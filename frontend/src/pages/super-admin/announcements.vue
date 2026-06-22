@@ -192,7 +192,7 @@ onMounted(async () => {
       audience: a.hotelId ? 'Hotel específico' : 'Todos los hoteles',
       date: a.fecha ? String(a.fecha).slice(0, 10) : '',
       views: 0, reads: 0,
-      status: a.activo === 1 ? 'Enviado' : 'Borrador',
+      status: a.active === 1 ? 'Enviado' : 'Borrador',
     }))
   } catch { /* silent */ }
 })

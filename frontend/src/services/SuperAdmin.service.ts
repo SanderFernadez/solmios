@@ -35,7 +35,7 @@ export const SuperAdminService = {
       hotels: data.data.map((h: any) => ({
         ...h,
         name: h.name,
-        location: h.address || h.ciudad,
+        location: h.address || h.location,
         roomCount: h.roomCount ?? 0,
       })),
       total: data.total,

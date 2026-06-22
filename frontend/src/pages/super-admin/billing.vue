@@ -245,7 +245,7 @@ onMounted(async () => {
       const estado = h.status === 'pendiente' ? 'Pendiente' : h.status === 'suspendido' ? 'Vencido' : 'Pagado'
       return {
         id: `INV-${String(i + 1).padStart(3, '0')}`,
-        hotel: h.nombre,
+        hotel: h.name,
         plan: plan.charAt(0).toUpperCase() + plan.slice(1),
         concept: `Plan ${plan} — Junio 2026`,
         amount: price, method: 'Tarjeta', status: estado,

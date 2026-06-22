@@ -238,7 +238,7 @@ onMounted(async () => {
     const { data } = await http.get<{ data: any[]; total: number }>('/roles')
     roles.value = data.map((r: any) => ({
       id: r.id,
-      name: r.nombre,
+      name: r.name,
       icon: r.icon ?? '👤',
       color: r.color ?? 'bg-cyan/20 text-cyan',
       system: r.system === 1,

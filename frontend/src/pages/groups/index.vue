@@ -342,7 +342,7 @@ async function loadData() {
       const nights = ci && co ? Math.ceil((new Date(g.checkOut).getTime() - new Date(g.checkIn).getTime()) / 86400000) : 0
       const rate = g.totalRooms ? Math.round(g.totalAmount / Math.max(g.totalRooms, 1) / Math.max(nights, 1)) : 0
       return {
-        id: g.id, name: g.name || g.nombre, contact: '', company: '', phone: '', email: '',
+        id: g.id, name: g.name, contact: '', company: '', phone: '', email: '',
         checkIn: ci, checkOut: co, nights, rooms: g.totalRooms, guests: (g.totalRooms ?? 0) * 2,
         rate, total: g.totalAmount, deposit: 0, status: g.status || 'pending',
         tags: [], notes: g.notes || '',

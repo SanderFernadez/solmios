@@ -37,7 +37,7 @@ export function mapGuest(g: RawGuest): Guest {
     lastName: last,
     name: fullName,
     email: g.email,
-    phone: g.phone || g.telefono,
+    phone: g.phone,
     documentType: g.documentType || g.tipoDocumento || '',
     documentNumber: g.document || '',
     nationality: g.nationality || g.nacionalidad || '',

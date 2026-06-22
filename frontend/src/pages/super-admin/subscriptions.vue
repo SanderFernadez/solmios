@@ -125,7 +125,7 @@ onMounted(async () => {
     const d = await PlatformService.subscriptions()
     payments.value = (d.data ?? []).map((h: any) => ({
       id: h.id,
-      hotel: h.nombre,
+      hotel: h.name,
       plan: h.plan ? (h.plan.charAt(0).toUpperCase() + h.plan.slice(1)) : 'Starter',
       amount: PLAN_DEF[String(h.plan).toLowerCase()]?.price ?? 49,
       date: h.createdAt ? String(h.createdAt).slice(0, 10) : '',

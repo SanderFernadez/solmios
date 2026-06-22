@@ -331,10 +331,10 @@ onMounted(async () => {
     const { hotels: data } = await SuperAdminService.hotels()
     hotels.value = data.map((h: any) => ({
       id: h.id,
-      name: h.nombre ?? h.name,
-      location: h.address ?? h.ciudad ?? h.location ?? '',
+      name: h.name,
+      location: h.address ?? h.location ?? '',
       email: h.email ?? '',
-      phone: h.telefono ?? '',
+      phone: h.phone ?? '',
       plan: h.plan ? (h.plan.charAt(0).toUpperCase() + h.plan.slice(1)) : 'Starter',
       rooms: h.roomCount ?? 0,
       occupancy: 0,

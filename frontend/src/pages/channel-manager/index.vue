@@ -243,13 +243,13 @@ async function loadStatus() {
   try {
     status.value = await ChannelService.status(hotelId.value)
     connectedChannels.value = status.value.data.map((c: any) => ({
-      id: c.id ?? c.name ?? c.nombre,
-      name: c.name || c.nombre || 'OTA',
-      icon: c.icon || c.icono || '🔗',
+      id: c.id ?? c.name,
+      name: c.name || 'OTA',
+      icon: c.icon || '🔗',
       bgColor: c.color || 'bg-gray-50',
       description: c.description || c.descripcion || '',
       connected: !!(c.connected ?? c.conectado),
-      active: c.active ?? c.activo,
+      active: c.active,
       bookings: c.bookings ?? 0,
       lastSync: c.lastSync || c.ultimaSync || status.value?.lastSync || '—',
       otaCode: c.otaCode || c.channexCode,

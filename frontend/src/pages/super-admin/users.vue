@@ -282,17 +282,17 @@ onMounted(async () => {
       const role = ROLE_LABEL[u.role] ?? { label: u.role, avatar: 'bg-surface text-text-muted' }
       return {
         id: u.id,
-        name: u.nombre ?? u.name ?? u.email,
+        name: u.name ?? u.email,
         email: u.email,
-        phone: u.telefono ?? '',
+        phone: u.phone ?? '',
         hotel: u.hotelName ?? 'Plataforma',
         rooms: 0,
         role: role.label,
         plan: '',
-        status: u.activo === 0 ? 'Inactivo' : 'Activo',
+        status: u.active === 0 ? 'Inactivo' : 'Activo',
         lastActivity: u.updatedAt ? String(u.updatedAt).slice(0, 10) : '',
         registered: u.createdAt ? String(u.createdAt).slice(0, 10) : '',
-        initials: initialsOf(u.nombre ?? u.name),
+        initials: initialsOf(u.name),
         avatarClass: role.avatar,
         permissionsList: [],
       }
