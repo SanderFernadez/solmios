@@ -134,7 +134,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const dashboard = useDashboardStore()
 // All nested sections start collapsed
-const collapsedSections = ref(new Set(['Planificación', 'Habitaciones', 'Finanzas', 'Ventas', 'Configuración']))
+const collapsedSections = ref(new Set<string>())
 
 function toggleSection(section: string) {
   const s = new Set(collapsedSections.value)
