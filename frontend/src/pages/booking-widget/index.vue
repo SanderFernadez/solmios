@@ -65,10 +65,9 @@
                 <div class="text-sm text-text-muted mb-3">
                   Habitación con cama {{ rt.type === 'suite' ? 'king size' : rt.type === 'single' ? 'individual' : 'doble' }}, baño privado, aire acondicionado, WiFi gratuito.
                 </div>
-                <div class="flex items-center gap-4 text-[10px] text-text-muted">
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-text-muted">
                   <span>👥 Hasta {{ rt.rooms[0]?.capacity || 2 }} huéspedes</span>
-                  <span>🍳 Desayuno incluido</span>
-                  <span>📶 WiFi gratis</span>
+                  <span v-for="a in (rt.amenities||[]).slice(0,5)" :key="a">· {{ amenityLabel(a) }}</span>
                 </div>
               </div>
               <div class="text-right ml-6">
@@ -191,6 +190,13 @@ const bookingConfirmed = ref(false)
 
 const form = ref({ name: '', email: '', phone: '', notes: '' })
 
+const AMENITY_LABELS: Record<string, string> = {
+  ac: 'A/C', heating: 'Calefacción', wifi: 'WiFi', tv: 'TV', safe: 'Caja fuerte', minibar: 'Minibar',
+  kitchen: 'Cocina', fridge: 'Nevera', microwave: 'Microondas', coffee_maker: 'Cafetera', washer: 'Lavadora',
+  dishwasher: 'Lavavajillas', hair_dryer: 'Secador', iron: 'Plancha', balcony: 'Balcón', bathtub: 'Bañera', work_desk: 'Escritorio',
+}
+function amenityLabel(key: string) { return AMENITY_LABELS[key] || key }
+
 const nights = computed(() => {
   if (!checkIn.value || !checkOut.value) return 0
   return Math.max(1, Math.round((new Date(checkOut.value).getTime() - new Date(checkIn.value).getTime()) / 86400000))
@@ -211,7 +217,8 @@ async function searchAvailability() {
   searching.value = true
   searched.value = false
   try {
-    const data = await http.get<any>(`/public/booking/${slug.value}`)
+    // Se envían checkIn/checkOut al backend para que filtre rooms con reserva solapada (sin overbooking).
+    const data = await http.get<any>(`/public/booking/${slug.value}?checkIn=${checkIn.value}&checkOut=${checkOut.value}`)
     hotelId.value = data.hotel?.id || ''
     hotelName.value = data.hotel?.name || hotelName.value
     results.value = (data.roomTypes || []).filter((rt: any) => rt.count > 0)

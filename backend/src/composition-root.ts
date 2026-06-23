@@ -1009,11 +1009,31 @@ router.get('/api/public/users', async () => {
 // ─── Public booking widget (sin auth) ─────────────────────────────────────
 router.get('/api/public/booking/:slug', async (req) => {
   const slug = req.params.slug
+  const q = (req.query || {}) as any
   const hotels = await orm.findMany('Hotels', {}) as any[]
   const hotel = hotels.find((h: any) => h.name?.toLowerCase().replace(/\s+/g, '-') === slug || h.id === slug)
   if (!hotel) return { status: 404, body: { error: 'Hotel no encontrado' } }
   const rooms = await orm.findMany('Rooms', { hotelId: hotel.id }) as any[]
-  const available = rooms.filter((r: any) => r.status === 'disponible' || r.status === 'available')
+  let available = rooms.filter((r: any) => r.status === 'disponible' || r.status === 'available')
+
+  // Disponibilidad real por fechas: excluir rooms con reserva solapada (evita overbooking).
+  if (q.checkIn && q.checkOut) {
+    const hotelRes = await orm.findMany('Reservations', { hotelId: hotel.id }) as any[]
+    const overlap = new Set(hotelRes
+      .filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show' && r.checkIn < q.checkOut && r.checkOut > q.checkIn)
+      .map((r: any) => r.roomId))
+    available = available.filter((r: any) => !overlap.has(r.id))
+  }
+
+  // Amenidades por room (de room_amenities) para mostrarlas en el motor.
+  const roomIds = new Set(rooms.map((r: any) => r.id))
+  const amsRaw = ((await orm.findMany('RoomAmenities', {})) as any[]).filter((a) => roomIds.has(a.roomId) && a.isActive !== false)
+  const amsByRoom = new Map<string, string[]>()
+  for (const a of amsRaw) {
+    if (!amsByRoom.has(a.roomId)) amsByRoom.set(a.roomId, [])
+    amsByRoom.get(a.roomId)!.push(a.amenityKey)
+  }
+
   const byType = new Map<string, any[]>()
   for (const r of available) {
     const key = r.type || 'standard'
@@ -1022,6 +1042,7 @@ router.get('/api/public/booking/:slug', async (req) => {
   }
   const roomTypes = Array.from(byType.entries()).map(([type, items]) => ({
     type, count: items.length, price: items[0].basePrice, rooms: items,
+    amenities: amsByRoom.get(items[0].id) || [],
   }))
   return { status: 200, body: { hotel: { id: hotel.id, name: hotel.name, slug: hotel.name?.toLowerCase().replace(/\s+/g, '-') }, roomTypes } }
 })
@@ -1031,8 +1052,16 @@ router.post('/api/public/booking', async (req) => {
   if (!hotelId || !roomId || !guestName || !guestEmail || !checkIn || !checkOut) {
     return { status: 400, body: { error: 'Campos requeridos: hotelId, roomId, guestName, guestEmail, checkIn, checkOut' } }
   }
+  if (checkIn >= checkOut) return { status: 400, body: { error: 'checkIn debe ser anterior a checkOut' } }
   const room = await orm.findById('Rooms', roomId) as any
   if (!room) return { status: 404, body: { error: 'Habitación no encontrada' } }
+
+  // Validar disponibilidad real: rechazar si hay reserva solapada (evita overbooking).
+  const overlapping = (await orm.findMany('Reservations', { roomId })) as any[]
+  const hasOverlap = overlapping.some((r: any) =>
+    r.status !== 'cancelled' && r.status !== 'no_show' && r.checkIn < checkOut && r.checkOut > checkIn)
+  if (hasOverlap) return { status: 409, body: { error: 'Habitación no disponible en esas fechas' } }
+
   const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
   const totalAmount = (room.basePrice || 0) * nights
   const guest = await orm.create('Guests', {
