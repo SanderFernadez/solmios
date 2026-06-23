@@ -17,11 +17,9 @@ export async function assertRoomAvailable(
   checkOut: string,
   excludeId?: string,
 ): Promise<void> {
-  const overlapping = await repo.findMany({
-    roomId,
-    status: { $nin: ['cancelled', 'no_show'] },
-  })
-  const hasOverlap = overlapping.some((r: any) =>
+  const overlapping = await repo.findMany({ roomId } as any)
+  const active = overlapping.filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show')
+  const hasOverlap = active.some((r: any) =>
     r.id !== excludeId && r.checkIn < checkOut && r.checkOut > checkIn,
   )
   if (hasOverlap) {
