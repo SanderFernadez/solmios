@@ -29,6 +29,9 @@ export interface ReservasDTO {
   preCheckinHash?: string
   groupId?: string
   otaNotes?: string
+  checkedInAt?: string
+  checkedOutAt?: string
+  folioId?: string
   createdAt: string
   updatedAt: string
 }
@@ -85,6 +88,9 @@ export interface UpdateReservasDTO {
   preCheckinHash?: string
   groupId?: string
   otaNotes?: string
+  checkedInAt?: string
+  checkedOutAt?: string
+  folioId?: string
 }
 
 export interface ReservasQuery {

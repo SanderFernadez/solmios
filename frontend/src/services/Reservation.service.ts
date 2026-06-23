@@ -97,4 +97,15 @@ export const ReservationService = {
     const data = await http.put<RawReservation>(`/reservas/${id}`, patch)
     return mapReservation(data)
   },
+
+  /** Check-in real: reserva → checked_in + habitación occupied + folio abierto + huésped. */
+  async checkin(id: string): Promise<{ folioId: string; guestId: string }> {
+    const data = await http.post<{ ok: boolean; folioId: string; guestId: string }>(`/reservas/${id}/checkin`, {})
+    return { folioId: data.folioId, guestId: data.guestId }
+  },
+
+  /** Check-out real: reserva → checked_out + habitación cleaning + tarea de limpieza. */
+  async checkout(id: string): Promise<void> {
+    await http.post(`/reservas/${id}/checkout`, {})
+  },
 }

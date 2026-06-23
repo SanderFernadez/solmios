@@ -30,6 +30,10 @@ export const ReservasModel: ModelDefinition = {
     preCheckinHash: { type: 'string' },
     groupId: { type: 'string' },
     otaNotes: { type: 'text' },
+    // Check-in / check-out real (folio + auditoría)
+    checkedInAt: { type: 'string' },
+    checkedOutAt: { type: 'string' },
+    folioId: { type: 'string' },
   },
   timestamps: true,
 }

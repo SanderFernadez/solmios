@@ -216,7 +216,8 @@ const todayFormatted = today.toLocaleDateString('es-ES', { weekday: 'long', day:
 const channelLabels: Record<string, string> = { direct: 'Direct', booking: 'Booking.com', expedia: 'Expedia', airbnb: 'Airbnb', google: 'Google' }
 const channelColors: Record<string, string> = { direct: 'bg-teal/10 text-teal', booking: 'bg-cyan/10 text-cyan', expedia: 'bg-gold/10 text-gold', airbnb: 'bg-coral/10 text-coral', google: 'bg-blue/10 text-blue' }
 
-onMounted(async () => {
+async function loadData() {
+  loading.value = true
   try {
     const [roomsResult, planningResult] = await Promise.all([
       RoomService.list({ hotelId: hotelId.value }),
@@ -262,7 +263,9 @@ onMounted(async () => {
     console.error('Error loading checkin data', e)
   }
   loading.value = false
-})
+}
+
+onMounted(loadData)
 
 const arrivals = computed(() =>
   allReservations.value
@@ -375,12 +378,10 @@ function closeCheckoutModal() {
 
 async function doCheckin(guest: any) {
   try {
-    await ReservationService.update(guest.id, { status: 'checked_in' })
+    await ReservationService.checkin(guest.id)
     checkedIn.value.add(guest.id)
     closeCheckinModal()
-    // Update room status
-    const room = rooms.value.find(r => r.id === guest.roomId)
-    if (room) room.status = 'occupied'
+    await loadData()
     toast.success('Check-in confirmado', `Hab ${guest.roomNumber}`)
   } catch (e) {
     toast.error('No se pudo hacer el check-in', 'Reintentá en unos segundos')
@@ -394,12 +395,10 @@ async function confirmCheckin() {
 
 async function doCheckout(guest: any) {
   try {
-    await ReservationService.update(guest.id, { status: 'checked_out' })
+    await ReservationService.checkout(guest.id)
     checkedOut.value.add(guest.id)
-    // Mark room as dirty
-    const room = rooms.value.find(r => r.id === guest.roomId)
-    if (room) room.status = 'dirty'
     closeCheckoutModal()
+    await loadData()
     toast.success('Check-out listo', `${guest.guestName} · Hab ${guest.roomNumber} marcada para limpieza`)
   } catch (e) {
     toast.error('No se pudo hacer el check-out', 'Reintentá en unos segundos')

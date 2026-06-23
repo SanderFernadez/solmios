@@ -796,6 +796,77 @@ router.get('/api/checkin', [auth.authenticate('hotel_admin', 'receptionist', 'su
   })
   return { status: 200, body: { checkins: enrich(checkins), checkouts: enrich(checkouts), pendingCheckins: checkins.length, todayCheckouts: checkouts.length } }
 })
+
+// ─── Check-in / Check-out REALES de reserva ───────────────────────────
+// Orquesta: reserva (status + timestamps) + habitación + folio + huésped.
+router.post('/api/reservas/:id/checkin', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
+  const hotelId = await hotelOf(req)
+  const r = (await orm.findMany('Reservations', { id: req.params.id }))[0] as any
+  if (!r) return { status: 404, body: { error: 'Reserva no encontrada' } }
+  if ((req.user as any).role !== 'super_admin' && r.hotelId !== hotelId) {
+    return { status: 403, body: { error: 'No autorizado' } }
+  }
+  if (r.status === 'checked_in') return { status: 409, body: { error: 'La reserva ya tiene check-in' } }
+  if (!['confirmed', 'pending'].includes(r.status)) {
+    return { status: 409, body: { error: `No se puede hacer check-in de una reserva ${r.status}` } }
+  }
+
+  const nowIso = new Date().toISOString()
+
+  // 1) Huésped: si la reserva no tiene (OTA), crear walk-in; si tiene, +1 estadía.
+  let guestId = r.guestId
+  if (!guestId) {
+    const guestName = r.externalLocator ? `Pasajero ${r.externalLocator}` : 'Pasajero walk-in'
+    const guest = await orm.create('Guests', {
+      id: crypto.randomUUID(), name: guestName, hotelId: r.hotelId, active: 1,
+      totalStays: 1, totalSpent: 0, tier: 'bronze', notes: r.otaNotes || null,
+    }) as any
+    guestId = guest.id
+  } else {
+    const g = (await orm.findMany('Guests', { id: guestId }))[0] as any
+    if (g) await orm.update('Guests', guestId, { totalStays: (Number(g.totalStays) || 0) + 1 })
+  }
+
+  // 2) Folio abierto vinculado a la reserva.
+  const folio = await orm.create('Folios', {
+    id: crypto.randomUUID(), hotelId: r.hotelId, reservationId: r.id, guestId, roomId: r.roomId,
+    status: 'open', currency: r.currency || 'USD', invoiceId: null, openedAt: nowIso, closedAt: null,
+  }) as any
+
+  // 3) Reserva → checked_in + auditoría + folio + guest.
+  await orm.update('Reservations', r.id, {
+    status: 'checked_in', checkedInAt: nowIso, folioId: folio.id, guestId,
+  })
+
+  // 4) Habitación → occupied.
+  await orm.update('Rooms', r.roomId, { status: 'occupied' })
+
+  return { status: 200, body: { ok: true, reservationId: r.id, status: 'checked_in', folioId: folio.id, guestId } }
+})
+
+router.post('/api/reservas/:id/checkout', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
+  const hotelId = await hotelOf(req)
+  const r = (await orm.findMany('Reservations', { id: req.params.id }))[0] as any
+  if (!r) return { status: 404, body: { error: 'Reserva no encontrada' } }
+  if ((req.user as any).role !== 'super_admin' && r.hotelId !== hotelId) {
+    return { status: 403, body: { error: 'No autorizado' } }
+  }
+  if (r.status !== 'checked_in') {
+    return { status: 409, body: { error: `Solo se puede hacer check-out de una reserva con check-in (actual: ${r.status})` } }
+  }
+
+  const nowIso = new Date().toISOString()
+  await orm.update('Reservations', r.id, { status: 'checked_out', checkedOutAt: nowIso })
+  await orm.update('Rooms', r.roomId, { status: 'cleaning' })
+
+  // Tarea de limpieza (mismo efecto que el conector reservas-housekeeping al detectar checked_out).
+  await orm.create('Housekeeping', {
+    id: crypto.randomUUID(), roomId: r.roomId, hotelId: r.hotelId,
+    type: 'full_cleaning', priority: 'high', status: 'pending',
+  })
+
+  return { status: 200, body: { ok: true, reservationId: r.id, status: 'checked_out' } }
+})
 router.get('/api/booking-engine', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
   const id = await hotelOf(req)
   const hotel = (await orm.findMany('Hotels', { id }))[0] as any
