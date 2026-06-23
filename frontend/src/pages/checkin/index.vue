@@ -269,7 +269,7 @@ onMounted(loadData)
 
 const arrivals = computed(() =>
   allReservations.value
-    .filter((r: any) => String(r.checkIn).slice(0, 10) === todayStr)
+    .filter((r: any) => String(r.checkIn).slice(0, 10) === todayStr && !['checked_in', 'checked_out'].includes(r.status))
     .map(mapGuest)
 )
 
@@ -278,14 +278,14 @@ const inHouseList = computed(() =>
     .filter((r: any) => {
       const ci = String(r.checkIn).slice(0, 10)
       const co = String(r.checkOut).slice(0, 10)
-      return ci < todayStr && co >= todayStr
+      return ci <= todayStr && co >= todayStr && r.status === 'checked_in'
     })
     .map(mapGuest)
 )
 
 const departures = computed(() =>
   allReservations.value
-    .filter((r: any) => String(r.checkOut).slice(0, 10) === todayStr)
+    .filter((r: any) => String(r.checkOut).slice(0, 10) === todayStr && r.status === 'checked_in')
     .map(mapGuest)
 )
 
@@ -309,8 +309,8 @@ function mapGuest(r: any) {
     totalAmount: r.totalAmount || 0,
     adults: r.adults || 2,
     children: r.children || 0,
-    checkedIn: checkedIn.value.has(r.id),
-    checkedOut: checkedOut.value.has(r.id),
+    checkedIn: r.status === 'checked_in',
+    checkedOut: r.status === 'checked_out',
   }
 }
 
