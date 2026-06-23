@@ -175,6 +175,40 @@ export class ChannexUseCase {
     return { pushed: true }
   }
 
+  // ─── Push de availability (reservas/checkin/checkout/bloqueos) ───────
+  // Recibe los rangos YA calculados y comprimidos por el service (que lee DB).
+  // El usecase solo resuelve el room_type_id de Channex (por title) y empuja.
+  // Nunca fechas pasadas: el service acota el rango desde hoy.
+  async pushAvailability(
+    cfg: CanalesDTO | undefined,
+    roomType: string,
+    ranges: { dateFrom: string; dateTo: string; availability: number }[],
+  ): Promise<{ pushed: boolean }> {
+    if (!cfg?.channexPropertyId || ranges.length === 0) return { pushed: false }
+    const key = this.resolveKey(cfg)
+    const rtId = await this.resolveChannexRoomTypeId(key, cfg.channexPropertyId, roomType)
+    if (!rtId) return { pushed: false }
+    const values = ranges.map(r => ({
+      property_id: cfg.channexPropertyId,
+      room_type_id: rtId,
+      date_from: r.dateFrom,
+      date_to: r.dateTo,
+      availability: r.availability,
+    }))
+    await this.channexReq(key, 'POST', '/availability', { values })
+    this.logger.info('Availability Channex actualizada', { roomType, rangos: ranges.length })
+    return { pushed: true }
+  }
+
+  // Resuelve el room_type_id de Channex por title (rt.type == room_type title).
+  // Mismo criterio que pushRate/sync usan para matchear tipo local → Channex.
+  private async resolveChannexRoomTypeId(apiKey: string, propertyId: string, roomType: string): Promise<string | null> {
+    const rts = await this.channexReq(apiKey, 'GET', `/room_types?filter[property_id]=${propertyId}`)
+    const rtList: any[] = rts.data?.data || []
+    const target = rtList.find(rt => String(rt.attributes?.title || '').toLowerCase() === roomType.toLowerCase())
+    return target?.id || null
+  }
+
   // ─── Channel API (conexión OTA) ──────────────────────────────────────
   async testConnection(cfg: CanalesDTO | undefined, dto: TestConnectionDTO): Promise<TestConnectionResultDTO> {
     const key = this.resolveKey(cfg)

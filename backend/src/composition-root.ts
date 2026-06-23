@@ -275,6 +275,21 @@ system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 import { habitacionesCanalesConnector } from './connectors/habitaciones-canales'
 system.addConnector('habitaciones-canales', habitacionesCanalesConnector)
 
+// ─── Conector: reservas → canales (crear/cancelar reserva vía módulo → push availability Channex)
+import { reservasCanalesConnector } from './connectors/reservas-canales'
+system.addConnector('reservas-canales', reservasCanalesConnector)
+
+// Helper: dispara recálculo de availability en Channex (fire-and-forget; no bloquea la respuesta HTTP).
+// Lo usan los handlers custom (check-in/checkout/booking público/bloqueos) que bypassan el módulo
+// reservas y por tanto no disparan el conector reservas-canales (sockets).
+const pushAvailabilityToChannex = (hotelId: string, roomId: string): void => {
+  const canales = system.resolveModule<{ pushAvailabilityByRoom: (h: string, r: string) => Promise<{ pushed: boolean }> }>('canales')
+  if (!canales?.pushAvailabilityByRoom) return
+  void canales.pushAvailabilityByRoom(hotelId, roomId).catch((e: unknown) =>
+    logger.warn('pushAvailability Channex falló', { hotelId, roomId, error: String(e) }),
+  )
+}
+
 // ─── Endpoints de agregación (cross-module, registrados en el root) ────────
 // Estos leen de varios módulos vía ORM (read-only) — no pertenecen a un solo módulo.
 // hotelOf resuelve el hotel del scope multi-tenant: query explícita > hotel del usuario autenticado > fallback.
@@ -841,6 +856,9 @@ router.post('/api/reservas/:id/checkin', [auth.authenticate('hotel_admin', 'rece
   // 4) Habitación → occupied.
   await orm.update('Rooms', r.roomId, { status: 'occupied' })
 
+  // 5) Recalcular availability en Channex (la room pasa a ocupada sus noches).
+  pushAvailabilityToChannex(r.hotelId, r.roomId)
+
   return { status: 200, body: { ok: true, reservationId: r.id, status: 'checked_in', folioId: folio.id, guestId } }
 })
 
@@ -864,6 +882,9 @@ router.post('/api/reservas/:id/checkout', [auth.authenticate('hotel_admin', 'rec
     id: crypto.randomUUID(), roomId: r.roomId, hotelId: r.hotelId,
     type: 'full_cleaning', priority: 'high', status: 'pending',
   })
+
+  // Recalcular availability en Channex (la reserva deja de contar al pasar a checked_out).
+  pushAvailabilityToChannex(r.hotelId, r.roomId)
 
   return { status: 200, body: { ok: true, reservationId: r.id, status: 'checked_out' } }
 })
@@ -1074,6 +1095,10 @@ router.post('/api/public/booking', async (req) => {
     adults: adults || 1, children: kids || 0, totalAmount, deposit: 0,
     notes: 'Reserva desde widget público',
   })
+
+  // Recalcular availability en Channex (la room pasa a tener una reserva vigente).
+  pushAvailabilityToChannex(hotelId, roomId)
+
   return { status: 201, body: { reservation, guest } }
 })
 
@@ -1231,11 +1256,18 @@ router.post('/api/blocks', [auth.authenticate('hotel_admin', 'super_admin')], as
     })
     created.push(block)
   }
+
+  // Recalcular availability en Channex (los bloqueos reducen disponibilidad esos días).
+  if (id) for (const roomId of roomIds) pushAvailabilityToChannex(id, String(roomId))
+
   return { status: 201, body: { data: created, count: created.length } }
 })
 
 router.delete('/api/blocks/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
+  const block = (await orm.findMany('RoomBlocks', { id: req.params.id }))[0] as any
   await orm.delete('RoomBlocks', req.params.id)
+  // Recalcular availability en Channex (el bloqueo liberaba noches — vuelven a venderse).
+  if (block) pushAvailabilityToChannex(block.hotelId, block.roomId)
   return { status: 200, body: { success: true } }
 })
 

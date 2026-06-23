@@ -14,6 +14,7 @@ import type {
 import type { CanalesSockets } from './sockets'
 import { ChannexUseCase } from './usecases/channex'
 import { applyBookingRevision } from './usecases/booking-ingestion'
+import { pushAvailabilityForRoomType, pushAvailabilityForRoom, type AvailabilityDeps } from './usecases/availability'
 
 export class CanalesService {
   private sockets: CanalesSockets = {}
@@ -86,30 +87,36 @@ export class CanalesService {
     return this.channex.pushRate(await this.getConfig(hotelId), roomType, precioBase)
   }
 
+  // Push de availability: recálculo + push. Disparado por reservas/checkin/checkout/bloqueos. Lógica en usecases/availability.ts.
+  private availDeps(): AvailabilityDeps {
+    return {
+      findMany: (m, q) => this.orm!.findMany(m, q),
+      getConfig: h => this.getConfig(h),
+      pushToChannex: (c, rt, r) => this.channex.pushAvailability(c, rt, r),
+    }
+  }
+  async pushAvailability(hotelId: string, roomType: string): Promise<{ pushed: boolean }> {
+    return this.orm ? pushAvailabilityForRoomType(this.availDeps(), hotelId, roomType) : { pushed: false }
+  }
+  async pushAvailabilityByRoom(hotelId: string, roomId: string): Promise<{ pushed: boolean }> {
+    return this.orm ? pushAvailabilityForRoom(this.availDeps(), hotelId, roomId) : { pushed: false }
+  }
+
   // ─── Channel API ─────────────────────────────────────────────────────
   async testConnection(hotelId: string, channel: string, otaHotelId: string): Promise<TestConnectionResultDTO> {
-    const cfg = await this.getConfig(hotelId)
-    return this.channex.testConnection(cfg, { channel, hotel_id: otaHotelId })
+    return this.channex.testConnection(await this.getConfig(hotelId), { channel, hotel_id: otaHotelId })
   }
-
   async getMappingDetails(hotelId: string, channel: string, otaHotelId: string): Promise<{ success: boolean; rooms: MappingDetailDTO[]; error?: string }> {
-    const cfg = await this.getConfig(hotelId)
-    return this.channex.getMappingDetails(cfg, channel, otaHotelId)
+    return this.channex.getMappingDetails(await this.getConfig(hotelId), channel, otaHotelId)
   }
-
   async listGroups(hotelId: string): Promise<GroupDTO[]> {
-    const cfg = await this.getConfig(hotelId)
-    return this.channex.listGroups(cfg)
+    return this.channex.listGroups(await this.getConfig(hotelId))
   }
-
   async createOTAChannel(hotelId: string, dto: OTAChannelCreateDTO): Promise<OTAChannelResultDTO> {
-    const cfg = await this.getConfig(hotelId)
-    return this.channex.createOTAChannel(cfg, dto)
+    return this.channex.createOTAChannel(await this.getConfig(hotelId), dto)
   }
-
   async deactivateChannel(hotelId: string, channelId: string): Promise<{ success: boolean; message: string }> {
-    const cfg = await this.getConfig(hotelId)
-    return this.channex.deactivateChannel(cfg, channelId)
+    return this.channex.deactivateChannel(await this.getConfig(hotelId), channelId)
   }
 
   // ─── Bookings ──────────────────────────────────────────────────────
@@ -117,13 +124,11 @@ export class CanalesService {
     const cfg = await this.getConfig(hotelId)
     return this.channex.fetchBookingFeed(cfg?.channexApiKey || process.env.CHANNEX_API_KEY || '')
   }
-
   async ingestBookings(hotelId: string): Promise<BookingIngestionResult> {
     const cfg = await this.getConfig(hotelId)
     const key = cfg?.channexApiKey || process.env.CHANNEX_API_KEY || ''
     if (!this.orm) throw new Error('ORM no disponible')
     const orm = this.orm
-    // Dedupe por locator, resolución de roomId y persistencia viven en usecases/booking-ingestion.ts.
     return this.channex.ingestBookings(cfg, async (dto: any) => {
       await applyBookingRevision({ orm, channex: this.channex, hotelId, apiKey: key }, dto)
     })
@@ -131,19 +136,14 @@ export class CanalesService {
 
   // ─── iFrame ────────────────────────────────────────────────────────
   async getIframeToken(hotelId: string, username: string): Promise<string | null> {
-    const cfg = await this.getConfig(hotelId)
-    return this.channex.generateIframeToken(cfg, username)
+    return this.channex.generateIframeToken(await this.getConfig(hotelId), username)
   }
-
   /** Devuelve el channexPropertyId configurado para el hotel (null si no sincronizó). */
   async getPropertyId(hotelId: string): Promise<string | null> {
-    const cfg = await this.getConfig(hotelId)
-    return cfg?.channexPropertyId || null
+    return (await this.getConfig(hotelId))?.channexPropertyId || null
   }
-
   async getChannelDetail(hotelId: string, channelId: string): Promise<any | null> {
-    const cfg = await this.getConfig(hotelId)
-    return this.channex.getChannelDetail(cfg, channelId)
+    return this.channex.getChannelDetail(await this.getConfig(hotelId), channelId)
   }
 
   // ─── CRUD estándar sobre la config (admin) ───────────────────────────
