@@ -1612,14 +1612,17 @@ router.get('/api/message-logs', [auth.authenticate('hotel_admin', 'receptionist'
 import { StripeService } from './services/stripe-service'
 
 // Status de configuración (frontend lo consulta para mostrar/ocultar botón Stripe)
-router.get('/api/stripe/status', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async () => {
-  return { status: 200, body: { configured: StripeService.isConfigured(), publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '' } }
+router.get('/api/stripe/status', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
+  const hotelId = await hotelOf(req)
+  const cfg = await StripeService.getConfig(hotelId)
+  return { status: 200, body: { configured: !!cfg.secretKey, publishableKey: cfg.publishableKey || '', currency: cfg.currency || 'usd' } }
 })
 
 // Crear Checkout Session para un PaymentRequest existente
 router.post('/api/payment-requests/:id/create-checkout', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  if (!StripeService.isConfigured()) {
-    return { status: 503, body: { error: 'Stripe no configurado', hint: 'Agrega STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET al .env' } }
+  const hotelId = await hotelOf(req)
+  if (!(await StripeService.isConfigured(hotelId))) {
+    return { status: 503, body: { error: 'Stripe no configurado', hint: 'Configurá las keys en Settings > Conectar Stripe o en .env' } }
   }
   const id = req.params.id
   const pr = await orm.findById('PaymentRequests', id) as any
@@ -1630,6 +1633,7 @@ router.post('/api/payment-requests/:id/create-checkout', [auth.authenticate('hot
   const guestEmail = pr.sentTo?.includes('@') ? pr.sentTo : undefined
   try {
     const result = await StripeService.createCheckoutSession({
+      hotelId,
       paymentRequestId: id,
       amount: Number(pr.amount),
       currency: pr.currency || 'usd',
@@ -1678,12 +1682,47 @@ router.post('/api/stripe/webhook', async (req) => {
         const session = event.data.object as any
         const paymentRequestId = session.metadata?.paymentRequestId
         if (paymentRequestId) {
-          await orm.update('PaymentRequests', paymentRequestId, {
-            status: 'paid',
-            paidAt: new Date().toISOString(),
-            stripeSessionId: session.id,
-          })
-          logger.info('Stripe payment completed', { paymentRequestId, sessionId: session.id })
+          // Idempotente: solo procesar si no estaba ya paid (reintentos de webhook).
+          const pr = await orm.findById('PaymentRequests', paymentRequestId) as any
+          if (pr && pr.status !== 'paid') {
+            await orm.update('PaymentRequests', paymentRequestId, {
+              status: 'paid',
+              paidAt: new Date().toISOString(),
+              stripeSessionId: session.id,
+            })
+            // Bridge: aplicar el pago al folio + actualizar la reserva.
+            const amountPaid = Math.abs(Number(session.amount_total ?? pr.amount ?? 0)) / 100
+            const reservationId = session.metadata?.reservationId || pr.reservationId
+            const hotelId = session.metadata?.hotelId || pr.hotelId
+            if (reservationId) {
+              const resRows = await orm.findMany('Reservations', { id: reservationId }) as any[]
+              const res = resRows[0]
+              if (res) {
+                const newDeposit = Number(res.deposit || 0) + amountPaid
+                const total = Number(res.totalAmount || 0)
+                const update: any = {
+                  deposit: newDeposit,
+                  paymentMethod: 'stripe',
+                  pendingAmount: Math.max(0, total - newDeposit),
+                }
+                if (res.status === 'pending' && newDeposit >= total) update.status = 'confirmed'
+                await orm.update('Reservations', reservationId, update)
+              }
+              // Folio abierto de la reserva → registrar el pago como cargo tipo payment.
+              const folios = await orm.findMany('Folios', { reservationId }) as any[]
+              const openFolio = folios.find((f: any) => f.status === 'open')
+              if (openFolio && amountPaid > 0) {
+                await orm.create('FolioCharges', {
+                  id: crypto.randomUUID(), folioId: openFolio.id, hotelId,
+                  description: `Pago Stripe · Ref ${session.payment_intent || session.id}`,
+                  category: 'payment', kind: 'payment', quantity: 1,
+                  amount: -amountPaid, taxes: 0, total: -amountPaid, source: 'stripe',
+                  postedAt: new Date().toISOString(),
+                } as any)
+              }
+            }
+            logger.info('Stripe payment completed + applied', { paymentRequestId, reservationId, amountPaid })
+          }
         }
         break
       }
@@ -1708,6 +1747,16 @@ router.post('/api/stripe/webhook', async (req) => {
     logger.error('Stripe webhook handler failed', e)
     return { status: 500, body: { error: 'Internal error' } }
   }
+})
+
+// Inyectar resolver de config Stripe por hotel (configuration['stripe_config'] + fallback a env).
+StripeService.setConfigResolver(async (hotelId) => {
+  if (!hotelId) return null
+  const rows = await orm.findMany('Configuration', { hotelId, key: 'stripe_config' }) as any[]
+  const v = rows[0]?.value
+  let cfg: any = v
+  if (typeof v === 'string') { try { cfg = JSON.parse(v) } catch { cfg = null } }
+  return cfg || null
 })
 
 // ─── Start ─────────────────────────────────────────────────────────────────

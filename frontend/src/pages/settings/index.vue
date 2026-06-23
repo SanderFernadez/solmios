@@ -513,14 +513,37 @@
       <div class="card p-6">
         <h3 class="font-extrabold text-navy mb-4">Pasarela de Pagos</h3>
         <div class="p-4 bg-surface rounded-xl">
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
               <span class="text-xl">💳</span>
               <div><div class="text-sm font-bold text-navy">Stripe</div><div class="text-[10px] text-text-muted">Pagos con tarjeta</div></div>
             </div>
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">No configurado</span>
+            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="stripeConnected ? 'bg-teal/10 text-teal' : 'bg-yellow-100 text-yellow-700'">{{ stripeConnected ? 'Conectado' : 'No configurado' }}</span>
           </div>
-          <p class="text-xs text-text-muted mb-3">Configura tus API keys de Stripe para recibir pagos.</p>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Secret Key</label>
+              <input v-model="stripeConfig.secretKey" type="password" class="w-full px-3 py-2 rounded-lg border border-border text-xs" placeholder="sk_live_... o sk_test_..." autocomplete="off" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Publishable Key</label>
+                <input v-model="stripeConfig.publishableKey" type="password" class="w-full px-3 py-2 rounded-lg border border-border text-xs" placeholder="pk_live_... o pk_test_..." autocomplete="off" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Moneda</label>
+                <select v-model="stripeConfig.currency" class="w-full px-3 py-2 rounded-lg border border-border text-xs cursor-pointer">
+                  <option value="usd">USD</option><option value="eur">EUR</option><option value="mxn">MXN</option><option value="ars">ARS</option><option value="cop">COP</option><option value="clp">CLP</option><option value="uyu">UYU</option><option value="dop">DOP</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Webhook Secret</label>
+              <input v-model="stripeConfig.webhookSecret" type="password" class="w-full px-3 py-2 rounded-lg border border-border text-xs" placeholder="whsec_..." autocomplete="off" />
+            </div>
+            <p class="text-[10px] text-text-muted">Las keys se guardan por hotel. Sin configurar, los botones de pago Stripe quedan ocultos. Obtené tus keys en dashboard.stripe.com → Developers → API keys.</p>
+            <button @click="saveStripe" :disabled="stripeSaving" class="w-full px-4 py-2 bg-navy text-white rounded-xl text-sm font-bold hover:shadow-lg cursor-pointer disabled:opacity-50">{{ stripeSaving ? 'Guardando...' : 'Guardar configuración Stripe' }}</button>
+          </div>
         </div>
       </div>
 
@@ -554,7 +577,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, reactive } from 'vue'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
 import { useAuthStore } from '@/stores/auth.store'
@@ -577,6 +600,35 @@ leaflet.Icon.Default.mergeOptions({
 const auth = useAuthStore()
 const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
+
+// Stripe — config por hotel (configuration['stripe_config'])
+const stripeConfig = reactive({ secretKey: '', publishableKey: '', webhookSecret: '', currency: 'usd' })
+const stripeConnected = ref(false)
+const stripeSaving = ref(false)
+async function loadStripe() {
+  try {
+    const { ConfigService } = await import('@/services/Platform.service')
+    const saved = await ConfigService.get('stripe_config', hotelId.value)
+    if (saved) {
+      stripeConfig.secretKey = saved.secretKey || ''
+      stripeConfig.publishableKey = saved.publishableKey || ''
+      stripeConfig.webhookSecret = saved.webhookSecret || ''
+      stripeConfig.currency = saved.currency || 'usd'
+    }
+    stripeConnected.value = !!stripeConfig.secretKey
+  } catch { /* sin config aún */ }
+}
+async function saveStripe() {
+  stripeSaving.value = true
+  try {
+    const { ConfigService } = await import('@/services/Platform.service')
+    await ConfigService.set('stripe_config', { ...stripeConfig }, hotelId.value)
+    stripeConnected.value = !!stripeConfig.secretKey
+    toast.success('Configuración de Stripe guardada')
+  } catch { toast.error('No se pudo guardar la configuración de Stripe') }
+  stripeSaving.value = false
+}
+onMounted(loadStripe)
 
 const activeTab = ref('hotel')
 const saving = ref(false)
