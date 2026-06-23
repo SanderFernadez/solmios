@@ -13,7 +13,7 @@
         <div class="flex items-center gap-3">
           <span class="text-xs font-bold px-3 py-1 rounded-full bg-teal/10 text-teal">● Activo</span>
           <button @click="saveConfig" class="px-4 py-2 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer">💾 Guardar</button>
-          <button class="px-4 py-2 bg-cyan text-navy text-sm font-bold rounded-xl cursor-pointer">
+          <button @click="verWidget" class="px-4 py-2 bg-cyan text-navy text-sm font-bold rounded-xl cursor-pointer">
             Ver Widget
           </button>
         </div>
@@ -286,6 +286,12 @@ async function saveConfig() {
     await ConfigService.set('booking_engine_config', { selectedTheme: selectedTheme.value, widgetPosition: widgetPosition.value, currency: currency.value, language: language.value, options: { ...options } }, hotelId.value)
     toast.success('Configuración guardada')
   } catch { toast.error('Error al guardar') }
+}
+
+function verWidget() {
+  // Abre el motor de reservas público (/book/:slug). El backend matchea por id o por slug del nombre.
+  if (hotelId.value) window.open(`/book/${hotelId.value}`, '_blank')
+  else toast.error('Hotel no identificado')
 }
 
 onMounted(async () => {
