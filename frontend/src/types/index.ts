@@ -25,6 +25,9 @@ export interface Room {
   amenities: string[]
   maxGuests: number
   basePrice: number
+  surfaceArea?: number
+  bathrooms?: number
+  onlineBookingEnabled?: boolean
 }
 
 // === GUEST ===

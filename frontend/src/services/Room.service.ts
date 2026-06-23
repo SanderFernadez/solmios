@@ -11,6 +11,9 @@ interface RawRoom {
   status: string
   capacity: number
   floor: number
+  surfaceArea?: number
+  bathrooms?: number
+  onlineBookingEnabled?: boolean
 }
 
 const ROOM_TYPE_MAP: Record<string, RoomType> = {
@@ -28,6 +31,7 @@ const ROOM_STATUS_MAP: Record<string, RoomStatus> = {
   pendiente: 'pending', pending: 'pending',
   limpieza: 'cleaning', cleaning: 'cleaning', 'en limpieza': 'cleaning',
   'fuera de servicio': 'out_of_service', out_of_service: 'out_of_service', 'mantenimiento': 'out_of_service',
+  out_of_order: 'out_of_service', maintenance: 'out_of_service',
 }
 
 export function mapRoom(r: RawRoom): Room {
@@ -42,6 +46,9 @@ export function mapRoom(r: RawRoom): Room {
     amenities: [],
     maxGuests: r.capacity,
     basePrice: r.basePrice,
+    surfaceArea: r.surfaceArea,
+    bathrooms: r.bathrooms,
+    onlineBookingEnabled: r.onlineBookingEnabled !== false,
   }
 }
 
@@ -87,12 +94,15 @@ export const RoomService = {
     if (patch.basePrice !== undefined) body.basePrice = patch.basePrice
     if (patch.maxGuests !== undefined) body.capacity = patch.maxGuests
     if (patch.floor !== undefined) body.floor = patch.floor
+    if (patch.surfaceArea !== undefined) body.surfaceArea = patch.surfaceArea
+    if (patch.bathrooms !== undefined) body.bathrooms = patch.bathrooms
+    if (patch.onlineBookingEnabled !== undefined) body.onlineBookingEnabled = patch.onlineBookingEnabled
     if (patch.status !== undefined) {
-      body.status = patch.status === 'available' ? 'disponible'
-        : patch.status === 'occupied' ? 'ocupada'
-        : patch.status === 'cleaning' ? 'limpieza'
-        : patch.status === 'pending' ? 'pendiente'
-        : 'fuera de servicio'
+      // El backend exige status en inglés (enum): available, occupied, maintenance, cleaning, out_of_order, reserved.
+      // La UI usa 'dirty' (→cleaning) y 'out_of_service' (→out_of_order); el resto pasa igual (ya es inglés).
+      body.status = patch.status === 'dirty' ? 'cleaning'
+        : patch.status === 'out_of_service' ? 'out_of_order'
+        : patch.status
     }
     const data = await http.put<RawRoom>(`/habitaciones/${id}`, body)
     return mapRoom(data)

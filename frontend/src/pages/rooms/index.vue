@@ -172,13 +172,19 @@ function statusLabel(s:string) { const m:any={ available:'Disponible', occupied:
 async function load() {
   try {
     const { RoomService } = await import('@/services/Room.service')
+    const { AmenitiesService } = await import('@/services/Amenities.service')
     const res = await RoomService.list({ hotelId: hid.value }).catch(()=>({ rooms:[], total:0 }))
-    rooms.value = (res.rooms||[]).map((r:any)=>({
+    const mapped = (res.rooms||[]).map((r:any)=>({
       id:r.id, number:r.number, type:r.type, floor:r.floor||1, status:r.status||'available',
       maxGuests:r.maxGuests||r.capacity||2, basePrice:r.basePrice||0,
-      amenities:(r.amenities||[]), surfaceArea:r.surfaceArea||0, bathrooms:r.bathrooms||1,
+      amenities:[] as string[], surfaceArea:r.surfaceArea||0, bathrooms:r.bathrooms||1,
       onlineBooking:r.onlineBookingEnabled!==false,
     }))
+    // Cargar amenidades reales de cada habitación (chips en la lista)
+    await Promise.all(mapped.map(async (r:any) => {
+      try { const am = await AmenitiesService.listRoom(r.id); r.amenities = (am.data||[]).map((a:any)=>a.amenityKey) } catch {}
+    }))
+    rooms.value = mapped
   } catch {}
 }
 
@@ -186,18 +192,30 @@ function openNew() {
   editId.value=''; modal.value={show:true,edit:false}
   form.value={ number:'',type:'double',floor:1,maxGuests:2,basePrice:80,status:'available',amenities:[],surfaceArea:0,bathrooms:1,onlineBooking:true }
 }
-function openEdit(room:any) {
+async function openEdit(room:any) {
   editId.value=room.id; modal.value={show:true,edit:true}
-  form.value={ number:room.number,type:room.type,floor:room.floor||1,maxGuests:room.maxGuests||2,basePrice:room.basePrice||0,status:room.status||'available',amenities:[...((room.amenities||[]))],surfaceArea:room.surfaceArea||0,bathrooms:room.bathrooms||1,onlineBooking:room.onlineBooking!==false }
+  // Cargar amenidades reales de la habitación desde room_amenities
+  let amenities = [...(room.amenities||[])]
+  try {
+    const { AmenitiesService } = await import('@/services/Amenities.service')
+    const res = await AmenitiesService.listRoom(room.id)
+    amenities = (res.data||[]).map((a:any)=>a.amenityKey)
+  } catch {}
+  form.value={ number:room.number,type:room.type,floor:room.floor||1,maxGuests:room.maxGuests||2,basePrice:room.basePrice||0,status:room.status||'available',amenities,surfaceArea:room.surfaceArea||0,bathrooms:room.bathrooms||1,onlineBooking:room.onlineBooking!==false }
 }
 async function save() {
   if(!form.value.number){ toast.error('Falta número'); return }
   saving.value=true
   try {
     const { RoomService } = await import('@/services/Room.service')
-    const patch: any = { number:form.value.number, type:form.value.type, floor:form.value.floor, maxGuests:form.value.maxGuests, basePrice:form.value.basePrice, status:form.value.status, amenities:form.value.amenities, surfaceArea:form.value.surfaceArea, bathrooms:form.value.bathrooms, onlineBookingEnabled:form.value.onlineBooking }
-    if(editId.value) { await RoomService.update(editId.value, patch) }
-    else { await RoomService.create({ ...patch, hotelId: hid.value! }) }
+    const { AmenitiesService } = await import('@/services/Amenities.service')
+    // Patch de la habitación (SIN amenities — van a room_amenities vía AmenitiesService)
+    const patch: any = { number:form.value.number, type:form.value.type, floor:form.value.floor, maxGuests:form.value.maxGuests, basePrice:form.value.basePrice, status:form.value.status, surfaceArea:form.value.surfaceArea, bathrooms:form.value.bathrooms, onlineBookingEnabled:form.value.onlineBooking }
+    let roomId = editId.value
+    if(roomId) { await RoomService.update(roomId, patch) }
+    else { const created = await RoomService.create({ ...patch, hotelId: hid.value! }); roomId = created.id }
+    // Persistir amenidades en room_amenities (endpoint dedicado)
+    await AmenitiesService.saveRoom(roomId, form.value.amenities)
     toast.success(editId.value?'Actualizada':'Creada')
   } catch { toast.error('Error') }
   saving.value=false; modal.value.show=false; await load()
