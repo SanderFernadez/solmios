@@ -42,7 +42,11 @@ Bun.serve({
       })
     }
 
-    // SPA fallback — serve index.html for any unmatched route
+    // SPA fallback — only for routes without file extension (navigation)
+    const hasExt = /\.\w+$/.test(url.pathname)
+    if (hasExt) {
+      return new Response('Not found', { status: 404 })
+    }
     const index = file(join(DIST, 'index.html'))
     return new Response(index, {
       headers: { 'Content-Type': 'text/html' },

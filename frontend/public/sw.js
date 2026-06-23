@@ -1,7 +1,7 @@
 // ManagerHotel Service Worker
 // Estrategia: app-shell (cache first para shell, network first para API).
 
-const CACHE_VERSION = 'mh-v1'
+const CACHE_VERSION = 'mh-v3'
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -39,23 +39,8 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // API: network first, fallback a cache (datos offline)
+  // API: network only — never cache API responses
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
-          // Solo cachear respuestas exitosas (no errores 4xx/5xx)
-          if (res.ok && req.method === 'GET') {
-            const clone = res.clone()
-            caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone)).catch(() => {})
-          }
-          return res
-        })
-        .catch(() => caches.match(req).then((cached) => cached || new Response(
-          JSON.stringify({ error: 'offline', message: 'Sin conexión' }),
-          { status: 503, headers: { 'Content-Type': 'application/json' } }
-        )))
-    )
     return
   }
 

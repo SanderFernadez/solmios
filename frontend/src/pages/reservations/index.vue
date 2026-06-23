@@ -63,7 +63,7 @@
 
     <!-- Modal -->
     <Teleport to="body">
-      <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="modal.show=false">
+      <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <div class="p-5 border-b border-border flex items-center justify-between shrink-0">
@@ -368,7 +368,7 @@ async function save() {
       externalLocator: form.value.extLocator,
       paymentMethod: form.value.payMethod,
       deposit: form.value.deposit,
-      autoSendEnabled: form.value.autoSendEnabled ? 1 : 0,
+      autoSendEnabled: !!form.value.autoSendEnabled,
       adults: form.value.adults,
       children: form.value.children,
     }

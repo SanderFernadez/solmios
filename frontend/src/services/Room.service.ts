@@ -100,8 +100,9 @@ export const RoomService = {
     if (patch.status !== undefined) {
       // El backend exige status en inglés (enum): available, occupied, maintenance, cleaning, out_of_order, reserved.
       // La UI usa 'dirty' (→cleaning) y 'out_of_service' (→out_of_order); el resto pasa igual (ya es inglés).
-      body.status = patch.status === 'dirty' ? 'cleaning'
-        : patch.status === 'out_of_service' ? 'out_of_order'
+      const s = patch.status as string
+      body.status = s === 'dirty' ? 'cleaning'
+        : s === 'out_of_service' ? 'out_of_order'
         : patch.status
     }
     const data = await http.put<RawRoom>(`/habitaciones/${id}`, body)
