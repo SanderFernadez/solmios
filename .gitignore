@@ -37,3 +37,9 @@ npm-debug.log*
 tmp/
 temp/
 .playwright-cli
+
+# Playwright/screenshots scratch sueltos en raíz (anclado a raíz: no recursivo, no toca subdirs legítimos)
+/backend/*.png
+/backend/*.yml
+/frontend/*.png
+/frontend/*.yml
