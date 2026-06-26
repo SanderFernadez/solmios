@@ -45,8 +45,14 @@
       </button>
     </div>
 
+    <!-- Loading -->
+    <div v-if="loading" class="flex items-center justify-center py-20">
+      <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
+      <span class="ml-3 text-sm text-text-muted font-bold">Cargando datos...</span>
+    </div>
+
     <!-- Invoices Tab -->
-    <div v-if="activeTab === 'invoices'" class="card overflow-hidden">
+    <div v-if="activeTab === 'invoices' && !loading" class="card overflow-hidden">
       <div class="p-4 border-b border-border">
         <div class="flex items-center justify-between">
           <h3 class="font-extrabold text-navy text-sm">Facturas</h3>
@@ -100,10 +106,14 @@
           </tr>
         </tbody>
       </table>
+      <div v-if="filteredInvoices.length === 0" class="p-8 text-center">
+        <div class="text-3xl mb-2">📄</div>
+        <p class="text-sm text-text-muted font-bold">No hay facturas {{ invoiceFilter !== 'all' ? 'con este filtro' : 'registradas' }}</p>
+      </div>
     </div>
 
     <!-- Payments Tab -->
-    <div v-if="activeTab === 'payments'" class="card overflow-hidden">
+    <div v-if="activeTab === 'payments' && !loading" class="card overflow-hidden">
       <div class="p-4 border-b border-border">
         <h3 class="font-extrabold text-navy text-sm">Pagos Recientes</h3>
       </div>
@@ -137,10 +147,14 @@
           </tr>
         </tbody>
       </table>
+      <div v-if="payments.length === 0" class="p-8 text-center">
+        <div class="text-3xl mb-2">💳</div>
+        <p class="text-sm text-text-muted font-bold">No hay pagos registrados</p>
+      </div>
     </div>
 
     <!-- Folios Tab -->
-    <div v-if="activeTab === 'folios'" class="card overflow-hidden">
+    <div v-if="activeTab === 'folios' && !loading" class="card overflow-hidden">
       <div class="p-4 border-b border-border">
         <h3 class="font-extrabold text-navy text-sm">Folios de Habitación</h3>
         <p class="text-[10px] text-text-muted mt-0.5">Cargos pendientes por habitación</p>
@@ -423,6 +437,7 @@ const chargeForm = ref({ description: '', amount: 0, notes: '' })
 const invoices = ref<any[]>([])
 const payments = ref<any[]>([])
 const folios = ref<Folio[]>([])
+const loading = ref(true)
 const paymentTargetId = ref<string | null>(null)
 const paymentTargetKind = ref<'invoice' | 'folio'>('invoice')
 const chargeFolioId = ref<string | null>(null)
@@ -433,6 +448,7 @@ const conceptFor = (inv: any) => {
 }
 
 async function loadData() {
+  loading.value = true
   try {
     const { invoices: data } = await BillingService.list(hotelId.value)
     const view = data.map(d => ({
@@ -462,6 +478,7 @@ async function loadData() {
     }))
     await loadFolios()
   } catch { toast.error("Error al cargar datos") }
+  finally { loading.value = false }
 }
 
 async function loadFolios() {

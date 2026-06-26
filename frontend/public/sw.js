@@ -1,10 +1,8 @@
 // ManagerHotel Service Worker
 // Estrategia: app-shell (cache first para shell, network first para API).
 
-const CACHE_VERSION = 'mh-v3'
+const CACHE_VERSION = 'mh-v4'
 const APP_SHELL = [
-  '/',
-  '/index.html',
   '/manifest.webmanifest',
   '/favicon.svg',
   '/icons/icon-192.png',

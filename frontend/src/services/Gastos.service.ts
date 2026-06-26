@@ -1,16 +1,17 @@
+// services/Gastos.service.ts — API client for expenses
 import { http } from './http'
 
 export interface Gasto {
   id?: string
-  hotelId?: string
-  date?: string
-  category?: string
-  description?: string
+  hotelId: string
+  concept: string
   amount: number
-  currency?: string
-  supplier?: string
-  status?: 'pending' | 'approved' | 'paid' | 'rejected'
-  createdBy?: string
+  category?: string
+  date?: string
+  provider?: string
+  invoiceNumber?: string
+  notes?: string
+  paid?: number
 }
 
 export const GastosService = {

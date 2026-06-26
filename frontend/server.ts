@@ -2,7 +2,7 @@ import { file, sleep } from 'bun'
 import { join } from 'path'
 
 const DIST = join(import.meta.dir, 'dist')
-const BACKEND = process.env.BACKEND_URL || 'http://localhost:3001'
+const BACKEND = process.env.BACKEND_URL || 'http://localhost:3000'
 const PORT = parseInt(process.env.PORT || '5173')
 
 const MIME: Record<string, string> = {

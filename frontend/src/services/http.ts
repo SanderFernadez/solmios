@@ -18,7 +18,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const token = getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`/api${path}`, {
+  const url = path.startsWith('/api') ? path : `/api${path}`
+  const res = await fetch(url, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -29,6 +30,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 
   const text = await res.text()
+
+  // Detect HTML response (backend error page / redirect)
+  if (text && text.trimStart().startsWith('<')) {
+    throw new ApiError(res.status, `El servidor respondió HTML en vez de JSON (HTTP ${res.status}). Verificá que el backend esté corriendo en el puerto correcto.`)
+  }
+
   const raw = text ? JSON.parse(text) : null
 
   if (!res.ok) {

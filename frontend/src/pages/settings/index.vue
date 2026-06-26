@@ -308,35 +308,74 @@
         </div>
       </div>
 
-      <div class="card p-6 overflow-x-auto">
-        <div class="flex items-center justify-between mb-4">
+      <!-- Tarifas estilo MisterPlan: precio base + % por temporada -->
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-6">
           <h3 class="font-extrabold text-navy">Matriz de Tarifas</h3>
-          <button @click="copyRatesNextYear" :disabled="copying"
-            class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
-            {{ copying ? 'Copiando...' : '📅 Copiar al próximo año' }}
-          </button>
+          <div class="flex gap-2">
+            <button @click="copyRatesNextYear" :disabled="copying"
+              class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
+              {{ copying ? 'Copiando...' : '📅 Copiar al próximo año' }}
+            </button>
+            <button @click="saveRates" :disabled="savingRates"
+              class="px-4 py-2 bg-cyan text-navy rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
+              {{ savingRates ? 'Guardando...' : '💾 Guardar' }}
+            </button>
+          </div>
         </div>
-        <table class="w-full text-sm">
-          <thead>
-            <tr>
-              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase bg-surface rounded-l-xl">Habitación</th>
-              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase bg-surface">Ocup.</th>
-              <th v-for="s in seasonsList" :key="s.name" class="text-right p-3 text-[10px] font-bold text-text-muted uppercase bg-surface" :class="s === seasonsList[seasonsList.length - 1] ? 'rounded-r-xl' : ''">
-                {{ s.label || s.name }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in ratesMatrix" :key="`${row.roomType}-${row.occupancy}`" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
-              <td class="p-3 font-bold text-navy">{{ row.roomType }}</td>
-              <td class="p-3 text-text-secondary">{{ row.occupancy }}p</td>
-              <td v-for="s in seasonsList" :key="s.name" class="p-3">
-                <input v-model.number="row.prices[s.name]" type="number" min="0"
-                  class="w-20 px-3 py-2 rounded-lg border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-cyan" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+
+        <div v-for="roomType in roomTypes" :key="roomType" class="mb-8 last:mb-0">
+          <!-- Header de tipo de habitación -->
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-sm font-bold">
+              {{ roomType.charAt(0).toUpperCase() }}
+            </div>
+            <div>
+              <div class="text-sm font-extrabold text-navy capitalize">{{ roomType }}</div>
+              <div class="text-[10px] text-text-muted">Base: ${{ getBasePrice(roomType) }}/noche</div>
+            </div>
+          </div>
+
+          <!-- Precio base editable -->
+          <div class="mb-3 flex items-center gap-2">
+            <label class="text-[10px] font-bold text-text-muted uppercase">Precio Base $</label>
+            <input :value="getBasePrice(roomType)" @input="setBasePrice(roomType, $event)" type="number" min="0"
+              class="w-24 px-3 py-1.5 rounded-lg border border-border text-sm font-bold text-navy focus:outline-none focus:border-cyan" />
+          </div>
+
+          <!-- Grid de temporadas -->
+          <div class="grid gap-2" :style="{ gridTemplateColumns: `repeat(${seasonsList.length}, 1fr)` }">
+            <div v-for="s in seasonsList" :key="s.name" class="rounded-xl p-3 border-2 transition-all"
+              :class="isCellClosed(roomType, s.name) ? 'border-red-300 bg-red-50 opacity-70' : 'border-border bg-white'"
+              :style="!isCellClosed(roomType, s.name) ? { borderColor: s.color + '40', backgroundColor: s.color + '08' } : {}">
+              <!-- Temporada label -->
+              <div class="flex items-center gap-1.5 mb-2">
+                <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: s.color }"></div>
+                <span class="text-[10px] font-bold uppercase" :style="{ color: s.color }">{{ s.label || s.name }}</span>
+              </div>
+              <!-- % de incremento -->
+              <div class="flex items-center gap-1 mb-1">
+                <span class="text-lg font-black text-navy">+</span>
+                <input :value="getPercentage(roomType, s.name)" @input="setPercentage(roomType, s.name, $event)"
+                  type="number" min="0" max="500" step="0.5"
+                  class="w-14 px-2 py-1 rounded-lg border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-cyan" />
+                <span class="text-sm font-bold text-text-muted">%</span>
+              </div>
+              <!-- Precio calculado -->
+              <div class="text-xs font-extrabold text-navy mb-2">
+                = ${{ getCalculatedPrice(roomType, s.name) }}
+              </div>
+              <!-- Botón cerrar ventas -->
+              <button @click="toggleClosed(roomType, s.name)"
+                class="w-full py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                :class="isCellClosed(roomType, s.name)
+                  ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                  : 'bg-surface text-text-muted hover:bg-surface-dark'">
+                {{ isCellClosed(roomType, s.name) ? '🔒 Cerrado' : '✓ Abierto' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -818,33 +857,7 @@ onMounted(async () => {
 
     // Rates
     const rt = await HotelService.rates().catch(() => ({ data: [] }))
-    const roomMap = new Map<string, Set<number>>()
-    for (const r of rt.data) {
-      const k = r.roomType
-      if (!roomMap.has(k)) roomMap.set(k, new Set())
-      roomMap.get(k)!.add(r.occupancy)
-    }
-    if (roomMap.size === 0) {
-      const baseTypes = s.baseRates || []
-      for (const br of baseTypes) {
-        for (const occ of [1, 2, 3, 4]) {
-          if (!roomMap.has(br.type)) roomMap.set(br.type, new Set())
-          roomMap.get(br.type)!.add(occ)
-        }
-      }
-    }
-    const matrix: any[] = []
-    for (const [roomType, occs] of roomMap) {
-      for (const occ of [...occs].sort()) {
-        const prices: Record<string, number> = {}
-        for (const s of seasonsList.value) {
-          const existing = rt.data.find((r: any) => r.roomType === roomType && r.occupancy === occ && r.season === s.name)
-          prices[s.name] = existing ? existing.price : 0
-        }
-        matrix.push({ roomType, occupancy: occ, prices })
-      }
-    }
-    ratesMatrix.value = matrix
+    rebuildMatrix(rt.data || [])
   } catch (e) {
     toast.error('Error al cargar datos')
   } finally {
@@ -1033,13 +1046,110 @@ function rebuildMatrix(ratesData: any[]) {
   for (const [roomType, occs] of roomMap) {
     for (const occ of [...occs].sort()) {
       const prices: Record<string, number> = {}
+      const basePrices: Record<string, number> = {}
+      const percentages: Record<string, number> = {}
+      const closedCells: Record<string, boolean> = {}
       for (const s of seasonsList.value) {
         const existing = ratesData.find((r: any) => r.roomType === roomType && r.occupancy === occ && r.season === s.name)
         prices[s.name] = existing ? existing.price : 0
+        basePrices[s.name] = existing?.basePrice ?? 0
+        percentages[s.name] = existing?.percentage ?? 0
+        closedCells[s.name] = existing?.closed === 1 || existing?.closed === true
       }
-      matrix.push({ roomType, occupancy: occ, prices })
+      matrix.push({ roomType, occupancy: occ, prices, basePrices, percentages, closedCells })
     }
   }
   ratesMatrix.value = matrix
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Tarifas estilo MisterPlan — precio base + % por temporada
+// ════════════════════════════════════════════════════════════════════════════
+const savingRates = ref(false)
+const roomTypes = computed(() => [...new Set(ratesMatrix.value.map(r => r.roomType))])
+
+function getBasePrice(roomType: string): number {
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+  return row?.basePrices?.[seasonsList.value[0]?.name] ?? 0
+}
+
+function setBasePrice(roomType: string, event: Event) {
+  const val = Number((event.target as HTMLInputElement).value) || 0
+  for (const row of ratesMatrix.value) {
+    if (row.roomType === roomType) {
+      for (const s of seasonsList.value) {
+        row.basePrices[s.name] = val
+        const pct = row.percentages[s.name] ?? 0
+        row.prices[s.name] = Math.round(val * (1 + pct / 100) * 100) / 100
+      }
+    }
+  }
+}
+
+function getPercentage(roomType: string, season: string): number {
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+  return row?.percentages?.[season] ?? 0
+}
+
+function setPercentage(roomType: string, season: string, event: Event) {
+  const val = Number((event.target as HTMLInputElement).value) || 0
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+  if (row) {
+    row.percentages[season] = val
+    const base = row.basePrices[season] ?? 0
+    row.prices[season] = Math.round(base * (1 + val / 100) * 100) / 100
+  }
+}
+
+function getCalculatedPrice(roomType: string, season: string): number {
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+  return row?.prices?.[season] ?? 0
+}
+
+function isCellClosed(roomType: string, season: string): boolean {
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+  return row?.closedCells?.[season] ?? false
+}
+
+function toggleClosed(roomType: string, season: string) {
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+  if (row) {
+    row.closedCells[season] = !row.closedCells[season]
+  }
+}
+
+async function saveRates() {
+  if (savingRates.value) return
+  savingRates.value = true
+  try {
+    // Save seasons
+    const seasons = seasonsList.value.map((s, i) => ({
+      name: s.name, label: s.label, startDate: s.startDate, endDate: s.endDate,
+      color: s.color, sortOrder: i,
+    }))
+    await HotelService.saveSeasons(seasons)
+
+    // Save rates with new fields
+    const rates: any[] = []
+    for (const row of ratesMatrix.value) {
+      for (const s of seasonsList.value) {
+        rates.push({
+          roomType: row.roomType,
+          occupancy: row.occupancy,
+          season: s.name,
+          basePrice: row.basePrices?.[s.name] ?? 0,
+          percentage: row.percentages?.[s.name] ?? 0,
+          price: row.prices?.[s.name] ?? 0,
+          closed: row.closedCells?.[s.name] ?? false,
+        })
+      }
+    }
+    await HotelService.saveRates(rates)
+    toast.success('Tarifas guardadas')
+  } catch {
+    toast.error('Error al guardar tarifas')
+  } finally {
+    savingRates.value = false
+  }
 }
 </script>

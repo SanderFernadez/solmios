@@ -164,14 +164,17 @@
       <div class="bg-white rounded-2xl border border-border p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-black text-navy">Historial de Sincronización</h2>
-          <button class="text-xs font-bold text-cyan hover:underline cursor-pointer">Ver Todo</button>
+          <span class="text-[10px] text-text-muted">{{ syncLog.length }} registros</span>
         </div>
-        <div class="overflow-x-auto">
+        <div v-if="syncLog.length === 0" class="text-center py-8 text-text-muted text-sm">
+          Sin sincronizaciones registradas
+        </div>
+        <div v-else class="overflow-x-auto">
           <table class="w-full">
             <thead>
               <tr class="border-b border-border">
+                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Acción</th>
                 <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Canal</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Tipo</th>
                 <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
                 <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Estado</th>
                 <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Detalle</th>
@@ -179,17 +182,13 @@
             </thead>
             <tbody>
               <tr v-for="log in syncLog" :key="log.id" class="border-b border-border/50 hover:bg-surface/50 transition-colors">
+                <td class="py-3 text-sm font-bold text-navy">{{ log.action }}</td>
+                <td class="py-3 text-xs text-text-muted">{{ log.channel || '—' }}</td>
+                <td class="py-3 text-xs text-text-muted">{{ log.createdAt?.slice(0, 16)?.replace('T', ' ') }}</td>
                 <td class="py-3">
-                  <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 rounded flex items-center justify-center text-xs" :class="log.bgColor">{{ log.icon }}</div>
-                    <span class="text-sm font-bold text-navy">{{ log.channel }}</span>
-                  </div>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="log.status === 'success' ? 'bg-teal/10 text-teal' : 'bg-red/10 text-red'">{{ log.status === 'success' ? 'Exitoso' : 'Error' }}</span>
                 </td>
-                <td class="py-3 text-xs text-navy">{{ log.type }}</td>
-                <td class="py-3 text-xs text-text-muted">{{ log.date }}</td>
-                <td class="py-3">
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="log.status === 'Exitoso' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ log.status }}</span>
-                </td>
+                <td class="py-3 text-xs text-text-muted max-w-xs truncate">{{ log.details }}</td>
                 <td class="py-3 text-xs text-text-muted">{{ log.detail }}</td>
               </tr>
             </tbody>
@@ -206,6 +205,7 @@ import { useRouter } from 'vue-router'
 import { ChannelService } from '@/services/Channel.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { http } from '@/services/http'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -265,6 +265,11 @@ async function loadStatus() {
       availableChannels.value = DEFAULT_OTA_CATALOG
     }
   } catch { availableChannels.value = DEFAULT_OTA_CATALOG }
+  // Load sync history from DB
+  try {
+    const logData = await http.get<any>('/sync-log?hotelId=' + hotelId.value)
+    syncLog.value = (logData?.data || []).slice(0, 20)
+  } catch {}
 }
 
 async function syncNow() {

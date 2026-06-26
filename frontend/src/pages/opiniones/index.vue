@@ -102,7 +102,7 @@ function channelBadge(c: string) {
 async function load() {
   try {
     const r = await OpinionesService.list()
-    reviews.value = Array.isArray(r) ? r : (r?.data || [])
+    reviews.value = Array.isArray(r) ? r : []
   } catch { reviews.value = [] }
   try {
     const c = await ConfigService.get('opiniones_config')
@@ -116,7 +116,7 @@ function openRespond(r: any) {
 
 async function saveResponse() {
   try {
-    await OpinionesService.update(respondModal.value.id, { reply: respondModal.value.text } as any)
+    await OpinionesService.respond(respondModal.value.id, respondModal.value.text)
     const rev = reviews.value.find(r => r.id === respondModal.value.id)
     if (rev) rev.response = respondModal.value.text
     toast.success('Respuesta publicada')

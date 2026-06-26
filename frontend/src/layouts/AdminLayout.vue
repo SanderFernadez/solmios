@@ -178,10 +178,31 @@ const nonavItems = [
     ]
   },
   {
+    label: 'IA', icon: '🤖', roles: ['hotel_admin', 'receptionist'],
+    children: [
+      { label: 'Recepcionista', path: '/panel/ai-receptionist', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Configuración IA', path: '/panel/ai-receptionist/config', roles: ['hotel_admin'] },
+    ]
+  },
+  {
+    label: 'CRM', icon: '💎', roles: ['hotel_admin'],
+    children: [
+      { label: 'Fidelización', path: '/panel/crm', roles: ['hotel_admin'] },
+    ]
+  },
+  {
+    label: 'RRHH', icon: '👥', roles: ['hotel_admin', 'receptionist'],
+    children: [
+      { label: 'Empleados', path: '/panel/empleados', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Asistencia', path: '/panel/attendance', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Nómina', path: '/panel/payroll', roles: ['hotel_admin'] },
+      { label: 'Equipo', path: '/panel/team', roles: ['hotel_admin'] },
+    ]
+  },
+  {
     label: 'Configuración', icon: '⚙️', roles: ['hotel_admin'],
     children: [
       { label: 'Configuración', path: '/panel/settings', roles: ['hotel_admin'] },
-      { label: 'Equipo', path: '/panel/team', roles: ['hotel_admin'] },
       { label: 'Envíos Auto', path: '/panel/auto-messages', roles: ['hotel_admin'] },
       { label: 'Historial Envíos', path: '/panel/message-logs', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Plantillas WhatsApp', path: '/panel/whatsapp-templates', roles: ['hotel_admin', 'receptionist'] },
@@ -271,6 +292,10 @@ const pageTitle = computed(() => {
     support: 'Soporte',
     settings: 'Configuración',
     team: 'Equipo',
+    empleados: 'Empleados',
+    payroll: 'Nómina',
+    attendance: 'Asistencia',
+    crm: 'CRM y Fidelización',
   }
   return titles[route.name as string] ?? 'Panel'
 })

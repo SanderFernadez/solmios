@@ -107,6 +107,16 @@ const router = createRouter({
           component: () => import('@/pages/super-admin/announcements.vue'),
         },
         {
+          path: 'plans',
+          name: 'super-admin-plans',
+          component: () => import('@/pages/super-admin/plans.vue'),
+        },
+        {
+          path: 'amenities',
+          name: 'super-admin-amenities',
+          component: () => import('@/pages/super-admin/amenities.vue'),
+        },
+        {
           path: 'api-keys',
           name: 'super-admin-api-keys',
           component: () => import('@/pages/super-admin/api-keys.vue'),
@@ -115,6 +125,11 @@ const router = createRouter({
           path: 'roles',
           name: 'super-admin-roles',
           component: () => import('@/pages/super-admin/roles.vue'),
+        },
+        {
+          path: 'empleados',
+          name: 'super-admin-empleados',
+          component: () => import('@/pages/empleados/index.vue'),
         },
       ],
     },
@@ -216,6 +231,41 @@ const router = createRouter({
           path: 'packages',
           name: 'packages',
           component: () => import('@/pages/packages/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'ai-receptionist',
+          name: 'ai-receptionist',
+          component: () => import('@/pages/ai-receptionist/chat.vue'),
+        },
+        {
+          path: 'ai-receptionist/config',
+          name: 'ai-receptionist-config',
+          component: () => import('@/pages/ai-receptionist/config.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'empleados',
+          name: 'empleados',
+          component: () => import('@/pages/empleados/index.vue'),
+          meta: { requiresHotelAuth: true },
+        },
+        {
+          path: 'payroll',
+          name: 'payroll',
+          component: () => import('@/pages/payroll/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'attendance',
+          name: 'attendance',
+          component: () => import('@/pages/attendance/index.vue'),
+          meta: { requiresHotelAuth: true },
+        },
+        {
+          path: 'crm',
+          name: 'crm',
+          component: () => import('@/pages/crm/index.vue'),
           meta: { requiresHotelAdmin: true },
         },
         {
