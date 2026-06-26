@@ -455,6 +455,81 @@ exec(`CREATE TABLE IF NOT EXISTS attendance_config (
   lateThreshold INTEGER DEFAULT 15, overtimeEnabled INTEGER DEFAULT 1,
   biometricEnabled INTEGER DEFAULT 0, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
 
+// ─── Seed DEMO: Talento, Nómina, Pagos, Gastos, CRM (Hotel Boutique Palma) ──
+// hotelId EXPLÍCITO (no HID) → garantiza el hotel demo donde viven IA/WhatsApp/Stripe.
+function seedDemoTalentoFinanzas() {
+  const DEMO_HOTEL = (db.prepare('SELECT id FROM hotels WHERE name=?').get('Hotel Boutique Palma') as any)?.id
+  if (!DEMO_HOTEL) return console.log('demo talento/finanzas: Hotel Boutique Palma no encontrado, skip')
+  const cnt = (t: string) => { try { return (db.prepare(`SELECT COUNT(*) c FROM ${t} WHERE hotelId=?`).get(DEMO_HOTEL) as any).c } catch { return 0 } }
+
+  // Departamentos + perfiles: idempotente (recuperar si ya existen del run anterior)
+  let depts = (db.prepare('SELECT id FROM departments WHERE hotelId=?').all(DEMO_HOTEL) as any[]).map((r) => r.id)
+  if (depts.length === 0) {
+    depts = [
+      ['Recepción', 'Front desk y atención al huésped'],
+      ['Housekeeping', 'Limpieza y preparación de habitaciones'],
+      ['Mantenimiento', 'Conservación y reparaciones'],
+    ].map(([name, desc]) => {
+      const id = uuid()
+      run('INSERT INTO departments (id, hotelId, name, description, active) VALUES (?,?,?,?,1)', [id, DEMO_HOTEL, name, desc])
+      return id
+    })
+  }
+  let emps = (db.prepare('SELECT id, salary FROM employee_profiles WHERE hotelId=?').all(DEMO_HOTEL) as any[])
+  if (emps.length === 0) {
+    emps = [
+      [USERS[0]?.id ?? uuid(), depts[0], 'Recepcionista', 1850, 'full_time'],
+      [USERS[1]?.id ?? uuid(), depts[0], 'Supervisor de Recepción', 2400, 'full_time'],
+      [USERS[2]?.id ?? uuid(), depts[1], 'Camarera de piso', 950, 'part_time'],
+      [USERS[3]?.id ?? uuid(), depts[2], 'Técnico de mantenimiento', 1500, 'full_time'],
+    ].map(([userId, deptId, position, salary, contract]) => {
+      const id = uuid()
+      run('INSERT INTO employee_profiles (id, userId, hotelId, departmentId, position, hireDate, salary, contractType, active) VALUES (?,?,?,?,?,?,?,?,1)',
+        [id, userId, DEMO_HOTEL, deptId, position, '2025-03-01', salary, contract])
+      return { id, salary: salary as number }
+    })
+  }
+
+  if (cnt('payroll_runs') === 0) {
+    const runId = uuid()
+    run('INSERT INTO payroll_runs (id, hotelId, period, startDate, endDate, paymentDate, status) VALUES (?,?,?,?,?,?,?)',
+      [runId, DEMO_HOTEL, '2026-06', '2026-06-01', '2026-06-30', '2026-06-30', 'processed'])
+    for (const e of emps)
+      run('INSERT INTO payroll_run_details (id, runId, employeeId, baseSalary, additions, deductions, netPay, hoursWorked) VALUES (?,?,?,?,?,?,?,?)',
+        [uuid(), runId, e.id, e.salary ?? 0, 0, 0, Math.round((e.salary ?? 0) * 0.9), 160])
+  }
+  if (cnt('attendance_records') === 0)
+    for (const e of emps)
+      run('INSERT INTO attendance_records (id, hotelId, employeeId, date, clockIn, clockOut, status, method) VALUES (?,?,?,?,?,?,?,?)',
+        [uuid(), DEMO_HOTEL, e.id, '2026-06-26', '08:00', '16:00', 'present', 'pin'])
+  if (cnt('payments') === 0)
+    for (const [type, method, status, amount, desc] of [
+      ['charge', 'card', 'completed', 320, 'Reserva fin de semana'],
+      ['charge', 'transfer', 'completed', 480, 'Pago grupo corporativo'],
+      ['deposit', 'link', 'pending', 150, 'Anticipo reserva'],
+    ] as const)
+      run('INSERT INTO payments (id, hotelId, type, method, status, amount, currency, description, processedAt) VALUES (?,?,?,?,?,?,?,?,?)',
+        [uuid(), DEMO_HOTEL, type, method, status, amount, 'USD', desc, status === 'pending' ? null : '2026-06-26'])
+  if (cnt('expenses') === 0)
+    for (const [cat, concept, amount, provider, paid] of [
+      ['supplies', 'Insumos de limpieza', 180, 'CleanCo', true],
+      ['utilities', 'Electricidad', 540, 'Edenor', true],
+      ['maintenance', 'Repuestos A/C', 95, 'RefriShop', false],
+    ] as const)
+      run('INSERT INTO expenses (id, hotelId, category, concept, amount, date, provider, paid) VALUES (?,?,?,?,?,?,?,?)',
+        [uuid(), DEMO_HOTEL, cat, concept, amount, '2026-06-25', provider, paid ? 1 : 0])
+  if (cnt('coupons') === 0)
+    for (const [code, type, value, minP, maxU, start, end] of [
+      ['VERANO10', 'percent', 10, 0, 100, '2026-06-01', '2026-09-30'],
+      ['FIESTA50', 'fixed', 50, 300, 50, '2026-06-01', '2026-12-31'],
+      ['FINDE15', 'percent', 15, 0, 200, '2026-06-01', '2026-08-31'],
+    ] as const)
+      run('INSERT INTO coupons (id, hotelId, code, type, value, minPurchase, maxUses, startsAt, expiresAt, active) VALUES (?,?,?,?,?,?,?,?,?,1)',
+        [uuid(), DEMO_HOTEL, code, type, value, minP, maxU, start, end])
+
+  console.log('demo talento/finanzas: seed completo (idempotente)')
+}
+
 // ─── CRM ───────────────────────────────────────────────────────────────
 exec(`CREATE TABLE IF NOT EXISTS loyalty_transactions (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, guestId TEXT NOT NULL,
@@ -487,6 +562,8 @@ exec(`CREATE TABLE IF NOT EXISTS whatsapp_templates (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL,
   language TEXT DEFAULT 'es', templateId TEXT, body TEXT NOT NULL,
   createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+try { seedDemoTalentoFinanzas() } catch (e: any) { console.log('demo talento/finanzas: parcial —', String(e?.message || e).slice(0, 90)) }
 
 console.log("\n✅ Migración completa")
 db.close()
