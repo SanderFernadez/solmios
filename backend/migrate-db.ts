@@ -426,6 +426,30 @@ exec(`CREATE TABLE IF NOT EXISTS attendance_schedules (
   dayOfWeek INTEGER NOT NULL, startTime TEXT NOT NULL, endTime TEXT NOT NULL,
   active INTEGER DEFAULT 1, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
 
+// ─── Payments (módulo payments: transacciones, links de pago, depósitos) ──
+exec(`CREATE TABLE IF NOT EXISTS payments (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, folioId TEXT, invoiceId TEXT, guestId TEXT,
+  type TEXT NOT NULL, method TEXT NOT NULL, status TEXT DEFAULT 'pending',
+  amount REAL NOT NULL, currency TEXT DEFAULT 'USD', description TEXT DEFAULT '',
+  reference TEXT DEFAULT '', stripePaymentId TEXT DEFAULT '', stripeSessionId TEXT DEFAULT '',
+  metadata TEXT, processedAt TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS payment_links (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, guestId TEXT, folioId TEXT,
+  amount REAL NOT NULL, currency TEXT DEFAULT 'USD', description TEXT DEFAULT '',
+  status TEXT DEFAULT 'active', token TEXT NOT NULL, expiresAt TEXT,
+  maxUses INTEGER DEFAULT 1, useCount INTEGER DEFAULT 0, paymentId TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS deposits (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, reservationId TEXT, guestId TEXT, roomId TEXT,
+  amount REAL NOT NULL, currency TEXT DEFAULT 'USD', status TEXT DEFAULT 'held',
+  paymentMethod TEXT DEFAULT 'card', stripePaymentId TEXT DEFAULT '',
+  holdReason TEXT DEFAULT 'reservation_guarantee', releasedAt TEXT,
+  refundAmount REAL DEFAULT 0, notes TEXT DEFAULT '',
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
 exec(`CREATE TABLE IF NOT EXISTS attendance_config (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL,
   lateThreshold INTEGER DEFAULT 15, overtimeEnabled INTEGER DEFAULT 1,
