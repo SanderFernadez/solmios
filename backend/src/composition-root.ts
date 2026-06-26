@@ -39,6 +39,68 @@ orm.define('Configuration', {
   },
 })
 
+// Planes de suscripción (SaaS)
+orm.define('Plans', {
+  table: 'plans', timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    name: { type: 'string', required: true },
+    slug: { type: 'string', required: true, indexed: true },
+    price: { type: 'number', required: true },
+    currency: { type: 'string', default: 'USD' },
+    description: { type: 'string', default: '' },
+    features: { type: 'json', default: [] },
+    limits: { type: 'json', default: { rooms: 30, users: 2, properties: 1 } },
+    isActive: { type: 'number', default: 1 },
+    sortOrder: { type: 'number', default: 0 },
+  },
+})
+
+// Catálogo global de amenities
+orm.define('AmenitiesCatalog', {
+  table: 'amenities_catalog', timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    key: { type: 'string', required: true, indexed: true },
+    label: { type: 'string', required: true },
+    category: { type: 'string', default: 'interior' },
+    icon: { type: 'string', default: '' },
+    isActive: { type: 'number', default: 1 },
+    sortOrder: { type: 'number', default: 0 },
+  },
+})
+
+// Historial de sincronización con Channex
+orm.define('SyncLog', {
+  table: 'sync_log', timestamps: false,
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    channel: { type: 'string' },
+    action: { type: 'string', required: true },
+    status: { type: 'string', default: 'success' },
+    details: { type: 'json', default: {} },
+    createdAt: { type: 'string' },
+  },
+})
+
+// Restricciones de tarifas (min_stay, max_stay, cta, ctd)
+orm.define('RateRestrictions', {
+  table: 'rate_restrictions', timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    roomType: { type: 'string', required: true },
+    season: { type: 'string', required: true },
+    minStay: { type: 'number', default: 0 },
+    maxStay: { type: 'number', default: 0 },
+    cta: { type: 'number', default: 0 },
+    ctd: { type: 'number', default: 0 },
+    closedToArrival: { type: 'number', default: 0 },
+    closedToDeparture: { type: 'number', default: 0 },
+  },
+})
+
 // ─── Modelos ORM Fase 1 (Foundation) ───────────────────────────────────────
 // Amenities del hotel y de habitaciones
 orm.define('HotelAmenities', {
@@ -123,24 +185,8 @@ orm.define('LockCodes', {
   },
 })
 
-// Auto-mensajes programados
-orm.define('AutoMessages', {
-  table: 'auto_messages', timestamps: true,
-  fields: {
-    id: { type: 'string', required: true },
-    hotelId: { type: 'string', required: true, indexed: true },
-    title: { type: 'string', required: true },
-    color: { type: 'string', default: '#3b82f6' },
-    emailSubject: { type: 'string' },
-    emailBody: { type: 'string' },
-    whatsappBody: { type: 'string' },
-    channel: { type: 'string', default: 'email' },
-    triggerEvent: { type: 'string', required: true, default: 'checkin_day' },
-    triggerOffset: { type: 'number', default: 0 },
-    variables: { type: 'json', default: [] },
-    isActive: { type: 'boolean', default: true },
-  },
-})
+// Auto-mensajes programados → extraído a modules/marketing/
+// orm.define('AutoMessages', ...) — ahora en registerMarketingModels(orm)
 
 // Acompañantes de reservas
 orm.define('Companions', {
@@ -157,21 +203,7 @@ orm.define('Companions', {
   },
 })
 
-// Logs de mensajes enviados
-orm.define('MessageLogs', {
-  table: 'message_logs', timestamps: true,
-  fields: {
-    id: { type: 'string', required: true },
-    hotelId: { type: 'string', required: true, indexed: true },
-    reservationId: { type: 'string' },
-    messageId: { type: 'string' },
-    messageType: { type: 'string', default: 'email' },
-    status: { type: 'string', default: 'pending' },
-    recipient: { type: 'string' },
-    response: { type: 'string' },
-    sentAt: { type: 'string' },
-  },
-})
+
 
 // Requerimientos de pago (Stripe)
 orm.define('PaymentRequests', {
@@ -191,18 +223,7 @@ orm.define('PaymentRequests', {
   },
 })
 
-// Plantillas de WhatsApp
-orm.define('WhatsappTemplates', {
-  table: 'whatsapp_templates', timestamps: true,
-  fields: {
-    id: { type: 'string', required: true },
-    hotelId: { type: 'string', required: true, indexed: true },
-    name: { type: 'string', required: true },
-    body: { type: 'string' },
-    category: { type: 'string', default: 'general' },
-    isActive: { type: 'boolean', default: true },
-  },
-})
+
 
 // Bloqueos de habitaciones (Planning)
 orm.define('RoomBlocks', {
@@ -224,7 +245,7 @@ const container = new Container()
 const auth = new HotelAuth(jwtTokenAdapter, JWT_SECRET, logger, config.get('JWT_EXPIRES'), config.get('JWT_REFRESH_EXPIRES'))
 const router = new Router()
 const FRONTEND_PORT = config.get<number>('FRONTEND_PORT')
-const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(',') || [`http://localhost:${PORT}`, `http://localhost:${FRONTEND_PORT}`]
+const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(',') || [`http://localhost:${PORT}`, 'http://localhost:3000', `http://localhost:${FRONTEND_PORT}`]
 router.use(cors({ origins: CORS_ORIGINS }))
 const http = new NodeServer(PORT, logger)
 
@@ -253,6 +274,14 @@ import { CanalesModule } from './modules/canales'
 import { OpinionesModule } from './modules/opiniones'
 import { GastosModule } from './modules/gastos'
 import { FoliosModule } from './modules/folios'
+import { PaymentsModule } from './modules/payments'
+import { EmpleadosModule } from './modules/empleados'
+import { PayrollModule } from './modules/payroll'
+import { AttendanceModule } from './modules/attendance'
+import { CrmModule } from './modules/crm'
+import { MarketingModule } from './modules/marketing'
+import { AiRecepcionistaModule } from './modules/ai-recepcionista'
+import { BookingengineModule } from './modules/bookingengine'
 import type { FoliosService } from './modules/folios'
 import { taxRateFor } from './modules/folios/usecases/folio-math'
 import type { FacturasService } from './modules/facturas'
@@ -263,7 +292,7 @@ const mods = [
   GruposModule(), HotelesModule(), RolesModule(), DispositivosModule(),
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),
   CanalesModule(),
-  OpinionesModule(), GastosModule(), FoliosModule(),
+  OpinionesModule(), GastosModule(), FoliosModule(), PaymentsModule(), EmpleadosModule(), PayrollModule(), AttendanceModule(), CrmModule(), MarketingModule(), AiRecepcionistaModule(), BookingengineModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -275,9 +304,23 @@ system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 import { habitacionesCanalesConnector } from './connectors/habitaciones-canales'
 system.addConnector('habitaciones-canales', habitacionesCanalesConnector)
 
+// ─── Register extracted routes ───────────────────────────────────────────
+registerAdminRoutes(router, orm, auth, logger)
+registerReportRoutes(router, orm, auth)
+registerSettingsRoutes(router, orm, auth)
+
+
 // ─── Conector: reservas → canales (crear/cancelar reserva vía módulo → push availability Channex)
 import { reservasCanalesConnector } from './connectors/reservas-canales'
 system.addConnector('reservas-canales', reservasCanalesConnector)
+
+// ─── Conector: booking-engine → canales (sync availability después de reserva directa)
+import { bookingChannexConnector } from './connectors/booking-channex'
+system.addConnector('booking-channex', bookingChannexConnector)
+
+// ─── Conector: reservas → huéspedes (check-out actualiza stats + puntos) ────
+import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
+system.addConnector('reservas-huespedes', reservasHuespedesConnector)
 
 // Helper: dispara recálculo de availability en Channex (fire-and-forget; no bloquea la respuesta HTTP).
 // Lo usan los handlers custom (check-in/checkout/booking público/bloqueos) que bypassan el módulo
@@ -353,331 +396,6 @@ router.get('/api/dashboard', [auth.authenticate('hotel_admin', 'receptionist', '
     },
   } }
 })
-
-router.get('/api/reports', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const id = await hotelOf(req); if (!id) return { status: 200, body: {} }
-  const res = await orm.findMany('Reservations', { hotelId: id }) as any[]
-  const rooms = await orm.findMany('Rooms', { hotelId: id }) as any[]
-  const guests = await orm.findMany('Guests', { hotelId: id }) as any[]
-  const totalRevenue = res.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
-  const byChannel = res.reduce((a: any, r: any) => { const c = r.channel || 'direct'; a[c] = (a[c] || 0) + r.totalAmount; return a }, {})
-  const channelBookings = res.reduce((a: any, r: any) => { const c = r.channel || 'direct'; a[c] = (a[c] || 0) + 1; return a }, {})
-  const dailyRevenue = Object.entries(res.reduce((a: any, r: any) => { const d = String(r.checkIn).slice(0, 10); if (d) a[d] = (a[d] || 0) + r.totalAmount; return a }, {})).map(([date, value]) => ({ date, value }))
-  const occupancyByType = (() => {
-    const types: Record<string, { total: number; occupied: number }> = {}
-    for (const r of rooms) { if (!types[r.type]) types[r.type] = { total: 0, occupied: 0 }; types[r.type].total++; if (r.status === 'occupied') types[r.type].occupied++ }
-    return Object.entries(types).map(([type, d]) => ({ type, ...d, percentage: d.total ? Math.round((d.occupied / d.total) * 100) : 0 }))
-  })()
-  const channelADRs: Record<string, number> = {}
-  for (const [ch, cnt] of Object.entries(channelBookings)) { const rev = (byChannel as any)[ch] || 0; channelADRs[ch] = (cnt as number) > 0 ? Math.round(rev / (cnt as number)) : 0 }
-  const today = new Date().toISOString().split('T')[0]
-  const todayCheckins = res.filter((r: any) => r.checkIn && String(r.checkIn).slice(0, 10) === today && (r.status === 'confirmed' || r.status === 'checked_in')).length
-  const todayCheckouts = res.filter((r: any) => r.checkOut && String(r.checkOut).slice(0, 10) === today && (r.status === 'checked_in' || r.status === 'checked_out')).length
-  return { status: 200, body: {
-    totalRevenue, byChannel, channelBookings, channelADRs,
-    totalReservations: res.length, canceledReservations: res.filter((r: any) => r.status === 'cancelled').length,
-    dailyRevenue, occupancyByType, todayCheckins, todayCheckouts,
-    topGuests: [...guests].sort((a: any, b: any) => (b.totalSpent || 0) - (a.totalSpent || 0)).slice(0, 5).map((g: any) => ({ name: g.name, stays: g.totalStays, totalSpent: g.totalSpent })),
-  } }
-})
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PC-1 Reports avanzados — 6 tipos MisterPlan con rango de fechas
-// ═══════════════════════════════════════════════════════════════════════════
-const nightsBetween = (a: any, b: any): number => {
-  if (!a || !b) return 0
-  const d1 = new Date(String(a).slice(0, 10)).getTime()
-  const d2 = new Date(String(b).slice(0, 10)).getTime()
-  return d2 > d1 ? Math.round((d2 - d1) / 86_400_000) : 0
-}
-
-router.get('/api/reports/advanced', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const id = await hotelOf(req); if (!id) return { status: 200, body: {} }
-  const q = req.query as any
-  const type = String(q.type || 'facturacion')
-  // Default: mes actual
-  const to = String(q.to || new Date().toISOString().slice(0, 10))
-  const from = String(q.from || new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10))
-
-  const [reservations, rooms, guests, expenses, folioCharges, blocks, hotel] = await Promise.all([
-    orm.findMany('Reservations', { hotelId: id }) as Promise<any[]>,
-    orm.findMany('Rooms', { hotelId: id }) as Promise<any[]>,
-    orm.findMany('Guests', { hotelId: id }) as Promise<any[]>,
-    orm.findMany('Expenses', { hotelId: id }) as Promise<any[]>,
-    orm.findMany('FolioCharges', {}) as Promise<any[]>,
-    orm.findMany('RoomBlocks', { hotelId: id }) as Promise<any[]>,
-    (await orm.findMany('Hotels', { id }))[0] as any,
-  ])
-
-  // Filtrar reservas en rango (por checkIn)
-  const inRange = reservations.filter(r => {
-    const ci = String(r.checkIn || '').slice(0, 10)
-    return ci >= from && ci <= to
-  })
-  const totalRooms = rooms.length
-  const taxRate = Number(hotel?.taxRate || 0) / 100
-
-  // Folio charges del hotel en rango
-  const reservationIds = new Set(reservations.map(r => r.id))
-  const charges = folioCharges.filter(c => reservationIds.has(c.reservationId))
-
-  // ─── FACTURACION ───────────────────────────────────────────────
-  if (type === 'facturacion') {
-    const roomRevenue = inRange.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
-    const extrasRevenue = charges
-      .filter(c => c.category !== 'room' && c.createdAt >= from)
-      .reduce((s: number, c: any) => s + (c.amount * (c.quantity || 1)), 0)
-    const commissionOTA = inRange.reduce((s: number, r: any) => s + (r.commissionAmount || 0), 0)
-    const taxes = Math.round(roomRevenue * taxRate)
-    return { status: 200, body: {
-      type, from, to,
-      roomRevenue,
-      extrasRevenue,
-      extrasByCategory: charges.reduce((a: any, c: any) => {
-        if (c.category === 'room') return a
-        a[c.category] = (a[c.category] || 0) + c.amount * (c.quantity || 1)
-        return a
-      }, {}),
-      taxes,
-      commissionOTA,
-      total: roomRevenue + extrasRevenue,
-      net: roomRevenue + extrasRevenue - taxes - commissionOTA,
-      daily: bucketByDay(inRange, from, to, (r: any) => r.totalAmount || 0),
-    } }
-  }
-
-  // ─── OCUPACION ─────────────────────────────────────────────────
-  if (type === 'ocupacion') {
-    const days = eachDay(from, to)
-    const dailyOccupancy = days.map(date => {
-      const active = reservations.filter(r => {
-        const ci = String(r.checkIn || '').slice(0, 10)
-        const co = String(r.checkOut || '').slice(0, 10)
-        return ci <= date && co > date && r.status !== 'cancelled'
-      }).length
-      const blocked = blocks.filter(b => b.startDate <= date && b.endDate >= date).length
-      return {
-        date,
-        occupied: active,
-        blocked,
-        free: Math.max(0, totalRooms - active - blocked),
-        realOccupiedPct: totalRooms ? Math.round((active / totalRooms) * 100) : 0,
-        totalPct: totalRooms ? Math.round(((active + blocked) / totalRooms) * 100) : 0,
-      }
-    })
-    const avgReal = Math.round(dailyOccupancy.reduce((s, d) => s + d.realOccupiedPct, 0) / (dailyOccupancy.length || 1))
-    return { status: 200, body: {
-      type, from, to,
-      totalRooms,
-      avgRealOccupancy: avgReal,
-      daily: dailyOccupancy,
-      byRoomType: rooms.reduce((a: any, r: any) => {
-        a[r.type] = (a[r.type] || 0) + 1
-        return a
-      }, {}),
-    } }
-  }
-
-  // ─── PERNOCTACIONES ────────────────────────────────────────────
-  if (type === 'pernoctaciones') {
-    const days = eachDay(from, to)
-    const daily = days.map(date => {
-      const inHouse = reservations.filter(r => {
-        const ci = String(r.checkIn || '').slice(0, 10)
-        const co = String(r.checkOut || '').slice(0, 10)
-        return ci <= date && co > date && r.status !== 'cancelled'
-      })
-      const adults = inHouse.reduce((s: number, r: any) => s + (r.adults || 0), 0)
-      const children = inHouse.reduce((s: number, r: any) => s + (r.children || 0), 0)
-      return { date, adults, children, total: adults + children, reservations: inHouse.length }
-    })
-    const totalPaxes = daily.reduce((s, d) => s + d.total, 0)
-    return { status: 200, body: {
-      type, from, to,
-      totalPaxes,
-      totalAdults: daily.reduce((s, d) => s + d.adults, 0),
-      totalChildren: daily.reduce((s, d) => s + d.children, 0),
-      avgPerNight: daily.length ? Math.round(totalPaxes / daily.length) : 0,
-      daily,
-    } }
-  }
-
-  // ─── RENDIMIENTO (ADR/RevPAR) ──────────────────────────────────
-  if (type === 'rendimiento') {
-    const nightsSold = inRange.reduce((s: number, r: any) => s + nightsBetween(r.checkIn, r.checkOut), 0)
-    const revenue = inRange.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
-    const adr = nightsSold > 0 ? Math.round(revenue / nightsSold) : 0
-    const days = eachDay(from, to).length
-    const availableRoomNights = totalRooms * days
-    const revpar = availableRoomNights > 0 ? Math.round(revenue / availableRoomNights) : 0
-    const occupancyPct = availableRoomNights > 0 ? Math.round((nightsSold / availableRoomNights) * 100) : 0
-    const avgStay = inRange.length ? (nightsSold / inRange.length).toFixed(1) : '0'
-
-    // ADR por tipo de hab
-    const roomById = new Map(rooms.map(r => [r.id, r]))
-    const adrByType: Record<string, { nights: number; revenue: number; adr: number }> = {}
-    for (const r of inRange) {
-      const room = roomById.get(r.roomId)
-      const type = room?.type || 'unknown'
-      const n = nightsBetween(r.checkIn, r.checkOut)
-      if (!adrByType[type]) adrByType[type] = { nights: 0, revenue: 0, adr: 0 }
-      adrByType[type].nights += n
-      adrByType[type].revenue += r.totalAmount || 0
-    }
-    for (const k of Object.keys(adrByType)) {
-      const t = adrByType[k]
-      t.adr = t.nights > 0 ? Math.round(t.revenue / t.nights) : 0
-    }
-
-    return { status: 200, body: {
-      type, from, to,
-      adr, revpar, occupancyPct, avgStay: Number(avgStay),
-      nightsSold, availableRoomNights,
-      adrByType,
-      revenueByType: Object.fromEntries(Object.entries(adrByType).map(([k, v]) => [k, v.revenue])),
-    } }
-  }
-
-  // ─── PROCEDENCIA ───────────────────────────────────────────────
-  if (type === 'procedencia') {
-    const guestById = new Map(guests.map(g => [g.id, g]))
-    const byCountry: Record<string, { guests: number; revenue: number }> = {}
-    const byChannel: Record<string, { count: number; revenue: number }> = {}
-    for (const r of inRange) {
-      const g = guestById.get(r.guestId)
-      const country = g?.nationality || g?.country || 'Desconocido'
-      if (!byCountry[country]) byCountry[country] = { guests: 0, revenue: 0 }
-      byCountry[country].guests += 1
-      byCountry[country].revenue += r.totalAmount || 0
-      const ch = r.channel || 'direct'
-      if (!byChannel[ch]) byChannel[ch] = { count: 0, revenue: 0 }
-      byChannel[ch].count += 1
-      byChannel[ch].revenue += r.totalAmount || 0
-    }
-    return { status: 200, body: {
-      type, from, to,
-      byCountry: Object.entries(byCountry)
-        .map(([country, v]) => ({ country, ...v }))
-        .sort((a, b) => b.guests - a.guests),
-      byChannel: Object.entries(byChannel)
-        .map(([channel, v]) => ({ channel, ...v }))
-        .sort((a, b) => b.count - a.count),
-    } }
-  }
-
-  // ─── RESERVAS ──────────────────────────────────────────────────
-  if (type === 'reservas') {
-    const byStatus = inRange.reduce((a: any, r: any) => {
-      a[r.status || 'pending'] = (a[r.status || 'pending'] || 0) + 1
-      return a
-    }, {})
-    const byChannel = inRange.reduce((a: any, r: any) => {
-      const c = r.channel || 'direct'
-      a[c] = (a[c] || 0) + 1
-      return a
-    }, {})
-    const ota = inRange.filter(r => r.channel && r.channel !== 'direct' && r.channel !== 'whatsapp' && r.channel !== 'phone').length
-    const direct = inRange.length - ota
-    const cancelled = inRange.filter(r => r.status === 'cancelled').length
-    const noShow = inRange.filter(r => r.status === 'no_show').length
-    return { status: 200, body: {
-      type, from, to,
-      total: inRange.length,
-      byStatus,
-      byChannel,
-      otaVsDirect: {
-        ota,
-        direct,
-        otaPct: inRange.length ? Math.round((ota / inRange.length) * 100) : 0,
-        directPct: inRange.length ? Math.round((direct / inRange.length) * 100) : 0,
-      },
-      cancelled,
-      noShow,
-      cancellationRate: inRange.length ? Math.round((cancelled / inRange.length) * 100) : 0,
-      dailyCreated: bucketByDay(inRange, from, to, () => 1),
-    } }
-  }
-
-  return { status: 400, body: { error: `Tipo de reporte desconocido: ${type}` } }
-})
-
-router.get('/api/reports/export', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const r = await (async () => {
-    // @ts-ignore — reusar el handler advanced
-    const fakeReq = { ...req, query: { ...req.query } }
-    const id = await hotelOf(req); if (!id) return { status: 400, body: { error: 'Sin hotel' } }
-    // Llamar al mismo handler avanzado
-    return advancedReportHandler(orm, id, req.query as any)
-  })()
-  if (r.status !== 200) return r
-  const type = String((req.query as any).type || 'facturacion')
-  const data = r.body as Record<string, any>
-  // Flatten a CSV (1 nivel)
-  const rows: string[] = []
-  if (Array.isArray(data.daily)) {
-    if (data.daily.length === 0) {
-      rows.push('Sin datos en el rango seleccionado')
-    } else {
-      const keys = Object.keys(data.daily[0])
-      rows.push(keys.join(','))
-      for (const d of data.daily) rows.push(keys.map(k => csvValue(d[k])).join(','))
-    }
-  } else {
-    rows.push(`Reporte ${type} — sin datos tabulares`)
-    for (const [k, v] of Object.entries(data)) {
-      if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
-        for (const [k2, v2] of Object.entries(v as any)) {
-          rows.push(`${k}.${k2},${csvValue(v2)}`)
-        }
-      } else {
-        rows.push(`${k},${csvValue(v)}`)
-      }
-    }
-  }
-  const csv = rows.join('\n')
-  return {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="reporte-${type}-${new Date().toISOString().slice(0, 10)}.csv"`,
-    },
-    body: csv,
-  }
-})
-
-/** Helper interno: handler avanzado reutilizable */
-async function advancedReportHandler(orm: ORM, hotelId: string, query: any): Promise<{ status: number; body: any }> {
-  // Delegado al router — wrapper para uso desde /export
-  return { status: 200, body: { ok: true, note: 'use /api/reports/advanced directly', hotelId, query } }
-}
-
-function csvValue(v: any): string {
-  if (v === null || v === undefined) return ''
-  if (typeof v === 'object') return JSON.stringify(v).replace(/"/g, '""')
-  const s = String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-
-function bucketByDay(items: any[], from: string, to: string, valueFn: (item: any) => number) {
-  const buckets: Record<string, number> = {}
-  for (const it of items) {
-    const d = String(it.checkIn || it.createdAt || '').slice(0, 10)
-    if (d >= from && d <= to) buckets[d] = (buckets[d] || 0) + valueFn(it)
-  }
-  return Object.entries(buckets)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, value]) => ({ date, value }))
-}
-
-function eachDay(from: string, to: string): string[] {
-  const days: string[] = []
-  const start = new Date(from + 'T00:00:00')
-  const end = new Date(to + 'T00:00:00')
-  for (let t = start.getTime(); t <= end.getTime(); t += 86_400_000) {
-    days.push(new Date(t).toISOString().slice(0, 10))
-  }
-  return days
-}
 
 router.get('/api/planning', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
   const id = await hotelOf(req)
@@ -957,65 +675,6 @@ router.post('/api/configuracion', [auth.authenticate('hotel_admin', 'super_admin
   return { status: 200, body: { success: true } }
 })
 
-// ─── Super-admin (plataforma) ──────────────────────────────────────────────
-const PLAN_PRICE: Record<string, number> = { enterprise: 199, professional: 99, starter: 49, essential: 49 }
-const requireSuper = (req: any) => req.user?.role === 'super_admin'
-
-router.get('/api/admin/hoteles', [auth.authenticate('super_admin')], async () => {
-  const data = await orm.findMany('Hotels', {})
-  return { status: 200, body: { data, total: data.length } }
-})
-router.get('/api/admin/users', [auth.authenticate('super_admin')], async () => {
-  const data = await orm.findMany('Users', {})
-  return { status: 200, body: { data: data.map((u: any) => ({ ...u, password: undefined })), total: data.length } }
-})
-router.get('/api/users', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  const id = await hotelOf(req)
-  const data = await orm.findMany('Users', id ? { hotelId: id } : {})
-  return { status: 200, body: { data: data.map((u: any) => ({ ...u, password: undefined })), total: data.length } }
-})
-router.get('/api/admin/analytics', [auth.authenticate('super_admin')], async () => {
-  const hs = await orm.findMany('Hotels', {})
-  const us = await orm.findMany('Users', {})
-  const rs = await orm.findMany('Reservations', {})
-  return { status: 200, body: {
-    mrr: hs.reduce((s: number, h: any) => s + (PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49), 0),
-    totalHoteles: hs.length, totalUsuarios: us.length, totalReservas: rs.length,
-    activeHotels: hs.filter((h: any) => h.status === 'active').length,
-    byPlan: hs.reduce((a: any, h: any) => ((a[h.plan] = (a[h.plan] || 0) + 1), a), {}),
-    avgOccupancy: 0, npsScore: 0, ticketPromedio: 0, monthlyRevenue: [],
-  } }
-})
-router.get('/api/admin/subscriptions', [auth.authenticate('super_admin')], async () => {
-  const data = (await orm.findMany('Hotels', {})).map((h: any) => ({ ...h, mrr: PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49 }))
-  return { status: 200, body: { data, total: data.length, mrrTotal: data.reduce((s: number, h: any) => s + h.mrr, 0) } }
-})
-router.get('/api/admin/audit', [auth.authenticate('super_admin')], async (req) => {
-  // ⚠ DEPRECATED FC-A2: redirige al módulo unificado /api/auditlog
-  // Mantenido como proxy temporal — eliminar en próxima iteración
-  const AuditlogService = system.resolveModule<any>('auditlog')
-  const result = await AuditlogService.list(req.query as any)
-  return { status: 200, body: result }
-})
-router.get('/api/admin/announcements', [auth.authenticate('super_admin')], async () => {
-  const data = await orm.findMany('Announcements', {})
-  return { status: 200, body: { data, total: data.length } }
-})
-router.get('/api/admin/monitoring', [auth.authenticate('super_admin')], async () => {
-  const tickets = await orm.findMany('Tickets', {}) as any[]
-  return { status: 200, body: {
-    hoteles: await orm.count('Hotels'),
-    usuarios: await orm.count('Users'),
-    reservas: await orm.count('Reservations'),
-    ticketsAbiertos: tickets.filter((t: any) => t.status === 'open').length,
-    ticketsEnProgreso: tickets.filter((t: any) => t.status === 'in_progress').length,
-    ticketsUrgentes: tickets.filter((t: any) => t.priority === 'high' || t.priority === 'urgent').length,
-    ticketsResueltos: tickets.filter((t: any) => t.status === 'closed').length,
-    uptime: process.uptime(),
-    memoria: Math.round(process.memoryUsage().rss / 1024 / 1024),
-  } }
-})
-
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
 
 // Endpoint público — demo accounts para login (sin auth, sin query a DB)
@@ -1271,41 +930,6 @@ router.delete('/api/blocks/:id', [auth.authenticate('hotel_admin', 'super_admin'
   return { status: 200, body: { success: true } }
 })
 
-// ─── Auto-messages CRUD ────────────────────────────────────────────────
-router.get('/api/auto-messages', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  const id = await hotelOf(req)
-  const data = await orm.findMany('AutoMessages', { hotelId: id })
-  return { status: 200, body: { data } }
-})
-
-router.post('/api/auto-messages', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const id = await hotelOf(req)
-  const body = req.body as any
-  const msg = await orm.create('AutoMessages', {
-    id: crypto.randomUUID(), hotelId: id,
-    title: body.title || '', color: body.color || '#3b82f6',
-    emailSubject: body.emailSubject || '', emailBody: body.emailBody || '',
-    whatsappBody: body.whatsappBody || '', channel: body.channel || 'email',
-    triggerEvent: body.triggerEvent || 'checkin_day', triggerOffset: body.triggerOffset || 0,
-    variables: body.variables || [], isActive: body.isActive !== false,
-  })
-  return { status: 201, body: msg }
-})
-
-router.put('/api/auto-messages/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const body = req.body as any
-  const patch: Record<string, any> = {}
-  const fields = ['title','color','emailSubject','emailBody','whatsappBody','channel','triggerEvent','triggerOffset','variables','isActive']
-  for (const k of fields) if (body[k] !== undefined) patch[k] = body[k]
-  await orm.update('AutoMessages', req.params.id, patch)
-  return { status: 200, body: await orm.findById('AutoMessages', req.params.id) }
-})
-
-router.delete('/api/auto-messages/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  await orm.delete('AutoMessages', req.params.id)
-  return { status: 200, body: { success: true } }
-})
-
 // ─── Pre-checkin público (sin auth) ──────────────────────────────────────
 router.get('/api/public/pre-checkin/:hash', async (req) => {
   const hash = req.params.hash
@@ -1466,7 +1090,7 @@ router.get('/api/settings/full', [auth.authenticate('hotel_admin', 'super_admin'
     orm.findMany('Seasons', { hotelId: id }) as Promise<any[]>,
     orm.findMany('RoomRates', { hotelId: id }) as Promise<any[]>,
     orm.findMany('RoomBlocks', { hotelId: id }) as Promise<any[]>,
-    orm.findMany('AutoMessages', { hotelId: id }) as Promise<any[]>,
+    system.resolveModule<{ listAutoMessages: (h: string) => Promise<any[]> }>('marketing')?.listAutoMessages(id) ?? Promise.resolve([]),
   ])
   const rooms = await orm.findMany('Rooms', { hotelId: id }) as any[]
   const roomTypes = [...new Set(rooms.map((r: any) => r.type || 'standard'))]
@@ -1544,7 +1168,7 @@ router.get('/api/reservations/:id', [auth.authenticate('hotel_admin', 'reception
     orm.findMany('Companions', { reservationId: r.id }) as Promise<any[]>,
     orm.findMany('LockCodes', { reservationId: r.id }) as Promise<any[]>,
     orm.findMany('PaymentRequests', { reservationId: r.id }) as Promise<any[]>,
-    orm.findMany('MessageLogs', { reservationId: r.id }) as Promise<any[]>,
+    system.resolveModule<{ listMessageLogs: (h: string, rid?: string) => Promise<any[]> }>('marketing')?.listMessageLogs(r.hotelId, r.id) ?? Promise.resolve([]),
   ])
   return { status: 200, body: {
     ...r,
@@ -1595,53 +1219,15 @@ router.delete('/api/payment-requests/:id', [auth.authenticate('hotel_admin', 'su
   return { status: 200, body: { success: true } }
 })
 
-// ─── WhatsApp Templates — CRUD ──────────────────────────────────────────────
-router.get('/api/whatsapp-templates', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  const id = await hotelOf(req)
-  const data = await orm.findMany('WhatsappTemplates', { hotelId: id }) as any[]
-  return { status: 200, body: { data } }
-})
-
-router.post('/api/whatsapp-templates', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const id = await hotelOf(req)
-  const body = req.body as any
-  if (!body?.name) return { status: 400, body: { error: 'name requerido' } }
-  const t = await orm.create('WhatsappTemplates', {
-    id: crypto.randomUUID(), hotelId: id,
-    name: body.name, body: body.body || '', category: body.category || 'general',
-    isActive: body.isActive !== false ? 1 : 0,
-  })
-  return { status: 201, body: t }
-})
-
-router.put('/api/whatsapp-templates/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const body = req.body as any
-  const patch: Record<string, any> = {}
-  for (const k of ['name','body','category']) { if (body[k] !== undefined) patch[k] = body[k] }
-  if (body.isActive !== undefined) patch.isActive = body.isActive ? 1 : 0
-  await orm.update('WhatsappTemplates', req.params.id, patch)
-  return { status: 200, body: await orm.findById('WhatsappTemplates', req.params.id) }
-})
-
-router.delete('/api/whatsapp-templates/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  await orm.delete('WhatsappTemplates', req.params.id)
-  return { status: 200, body: { success: true } }
-})
-
-// ─── Message Logs — Listado (para historial de envíos) ──────────────────────
-router.get('/api/message-logs', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  const id = await hotelOf(req)
-  const { reservationId } = req.query as any
-  const query: any = { hotelId: id }
-  if (reservationId) query.reservationId = reservationId
-  const data = await orm.findMany('MessageLogs', query) as any[]
-  return { status: 200, body: { data: data.sort((a, b) => (b.sentAt || '').localeCompare(a.sentAt || '')) } }
-})
-
 // ═══════════════════════════════════════════════════════════════════════════
 // PC-3 Stripe — Checkout Session + Webhook
 // ═══════════════════════════════════════════════════════════════════════════
 import { StripeService } from './services/stripe-service'
+
+// ─── Routes extraídos ─────────────────────────────────────────────────────
+import { registerAdminRoutes } from './routes/admin'
+import { registerReportRoutes } from './routes/reports'
+import { registerSettingsRoutes } from './routes/settings'
 
 // Status de configuración (frontend lo consulta para mostrar/ocultar botón Stripe)
 router.get('/api/stripe/status', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
@@ -1793,5 +1379,11 @@ StripeService.setConfigResolver(async (hotelId) => {
 
 // ─── Start ─────────────────────────────────────────────────────────────────
 await system.start()
+
+// Post-init: las reservas creadas por la IA bypassan el módulo reservas (no emiten sockets).
+// Inyectamos el mismo pusher en ai-recepcionista para que la availability en Channex quede sincronizada.
+const aiRecepcionista = system.resolveModule<{ channexPusher: ((hotelId: string, roomId: string) => void) | null }>('ai-recepcionista')
+if (aiRecepcionista) aiRecepcionista.channexPusher = pushAvailabilityToChannex
+
 process.on('SIGINT', async () => { await system.stop(); process.exit(0) })
 process.on('SIGTERM', async () => { await system.stop(); process.exit(0) })

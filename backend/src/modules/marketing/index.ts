@@ -1,0 +1,56 @@
+// marketing/index.ts — PUERTA PÚBLICA
+import { createModule, OrmRepository } from 'arckode-framework'
+import { registerMarketingModels } from './model'
+import { MarketingService } from './service'
+import { MarketingController } from './controller'
+import type { AutoMessageDTO, MessageLogDTO, WhatsappTemplateDTO } from './types'
+
+export { MarketingService }
+export type { AutoMessageDTO, MessageLogDTO, WhatsappTemplateDTO, CreateAutoMessageDTO, CreateMessageLogDTO, CreateWhatsappTemplateDTO } from './types'
+export type { MarketingSockets } from './sockets'
+
+export function MarketingModule() {
+  return createModule({
+    name: 'marketing', version: '1.0.0',
+    description: 'Marketing Automatizado — auto-mensajes, logs, plantillas WhatsApp',
+
+    contract: {
+      name: 'marketing', version: '1.0.0', description: 'Auto-messages + WhatsApp templates + delivery logs',
+      actions: ['listAutoMessages','createAutoMessage','updateAutoMessage','deleteAutoMessage','listMessageLogs','listTemplates','createTemplate','updateTemplate','deleteTemplate'],
+      events: ['onAutoMessageSent'],
+      tables: ['auto_messages','message_logs','whatsapp_templates'],
+      dependencies: [],
+      rules: ['No importar de otros módulos'],
+    },
+
+    create({ logger, orm, cache, router, auth }) {
+      if (!auth) throw new Error('marketing: auth dependency required')
+      registerMarketingModels(orm)
+
+      const autoMsgRepo = new OrmRepository<AutoMessageDTO>(orm, 'AutoMessages')
+      const logRepo = new OrmRepository<MessageLogDTO>(orm, 'MessageLogs')
+      const templateRepo = new OrmRepository<WhatsappTemplateDTO>(orm, 'WhatsappTemplates')
+
+      const log = logger.child('marketing')
+      const service = new MarketingService(autoMsgRepo, logRepo, templateRepo, log, cache)
+      const controller = new MarketingController(service, log)
+
+      const a = (roles: string[]) => [auth.authenticate(...roles)]
+
+      router.get('/api/auto-messages', a(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.listAutoMessages(req))
+      router.post('/api/auto-messages', a(['hotel_admin', 'super_admin']), (req) => controller.createAutoMessage(req))
+      router.put('/api/auto-messages/:id', a(['hotel_admin', 'super_admin']), (req) => controller.updateAutoMessage(req))
+      router.delete('/api/auto-messages/:id', a(['hotel_admin', 'super_admin']), (req) => controller.deleteAutoMessage(req))
+
+      router.get('/api/whatsapp-templates', a(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.listTemplates(req))
+      router.post('/api/whatsapp-templates', a(['hotel_admin', 'super_admin']), (req) => controller.createTemplate(req))
+      router.put('/api/whatsapp-templates/:id', a(['hotel_admin', 'super_admin']), (req) => controller.updateTemplate(req))
+      router.delete('/api/whatsapp-templates/:id', a(['hotel_admin', 'super_admin']), (req) => controller.deleteTemplate(req))
+
+      router.get('/api/message-logs', a(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.listMessageLogs(req))
+
+      log.info('Módulo marketing listo — 3 tablas, 9 endpoints')
+      return service
+    },
+  })
+}

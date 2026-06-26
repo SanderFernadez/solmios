@@ -73,6 +73,78 @@ exec(`CREATE TABLE IF NOT EXISTS notifications (
   date TEXT, channel TEXT, metadata TEXT,
   createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
 
+// ─── AI Receptionist tables ─────────────────────────────────────
+exec(`CREATE TABLE IF NOT EXISTS ai_conversations (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, guestId TEXT, reservationId TEXT,
+  channel TEXT NOT NULL, channelConversationId TEXT, guestPhone TEXT, guestName TEXT,
+  language TEXT DEFAULT 'es', status TEXT DEFAULT 'active', resolvedBy TEXT,
+  assignedAgentId TEXT, satisfactionScore REAL, startedAt TEXT NOT NULL,
+  endedAt TEXT, lastMessageAt TEXT, intentSummary TEXT, tags TEXT DEFAULT '[]',
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS ai_messages (
+  id TEXT PRIMARY KEY, conversationId TEXT NOT NULL, hotelId TEXT NOT NULL,
+  sender TEXT NOT NULL, content TEXT NOT NULL, contentType TEXT DEFAULT 'text',
+  mediaUrl TEXT, intentDetected TEXT, confidence REAL,
+  actionTaken TEXT, actionResult TEXT, metadata TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS ai_intents (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL,
+  category TEXT DEFAULT 'general', triggerPhrases TEXT NOT NULL,
+  responseTemplate TEXT NOT NULL, action TEXT, actionPayload TEXT,
+  fallbackResponse TEXT, priority INTEGER DEFAULT 0, confidenceThreshold REAL DEFAULT 0.65,
+  requiresAuth INTEGER DEFAULT 0, isSystem INTEGER DEFAULT 0, isActive INTEGER DEFAULT 1,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS ai_templates (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL,
+  category TEXT NOT NULL, trigger TEXT, responseEs TEXT NOT NULL,
+  responseEn TEXT, responsePt TEXT, channel TEXT DEFAULT 'all',
+  variables TEXT DEFAULT '[]', buttons TEXT, isSystem INTEGER DEFAULT 0, isActive INTEGER DEFAULT 1,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS ai_whatsapp_config (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL UNIQUE,
+  connectionMode TEXT DEFAULT 'baileys', connectionStatus TEXT DEFAULT 'disconnected',
+  phoneNumberId TEXT, wabaId TEXT, accessToken TEXT, verifyToken TEXT,
+  baileysCredentials TEXT, webhookUrl TEXT, isActive INTEGER DEFAULT 0,
+  businessHoursStart TEXT DEFAULT '08:00', businessHoursEnd TEXT DEFAULT '22:00',
+  businessDays TEXT DEFAULT '[1,2,3,4,5,6,7]', outsideHoursMessage TEXT,
+  autoReplyDelay INTEGER DEFAULT 1000, maxAutoRetries INTEGER DEFAULT 3,
+  transferAgentPhone TEXT, dailyMessageLimit INTEGER DEFAULT 1000,
+  llmProvider TEXT DEFAULT 'deepseek', llmModel TEXT, llmApiKey TEXT, botName TEXT DEFAULT 'Sofía',
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS ai_metrics_daily (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, date TEXT NOT NULL,
+  totalConversations INTEGER DEFAULT 0, totalMessages INTEGER DEFAULT 0,
+  botResolved INTEGER DEFAULT 0, hybridResolved INTEGER DEFAULT 0, agentResolved INTEGER DEFAULT 0,
+  escalatedToHuman INTEGER DEFAULT 0, avgConfidence REAL DEFAULT 0, avgResponseTimeMs REAL DEFAULT 0,
+  avgSatisfaction REAL DEFAULT 0, topIntents TEXT, topCategories TEXT, messagesByChannel TEXT,
+  bookingsGenerated INTEGER DEFAULT 0, upsellsAccepted INTEGER DEFAULT 0, complaintsResolved INTEGER DEFAULT 0)`)
+
+exec(`CREATE TABLE IF NOT EXISTS ai_booking_flows (
+  id TEXT PRIMARY KEY, conversationId TEXT NOT NULL, hotelId TEXT NOT NULL,
+  step TEXT DEFAULT 'init', checkIn TEXT, checkOut TEXT,
+  adults INTEGER DEFAULT 1, children INTEGER DEFAULT 0,
+  preferredRoomType TEXT, selectedRoomId TEXT, selectedRoomType TEXT,
+  totalAmount REAL DEFAULT 0, currency TEXT DEFAULT 'USD',
+  guestName TEXT, guestEmail TEXT, guestPhone TEXT,
+  reservationId TEXT, paymentLinkId TEXT, paymentStatus TEXT DEFAULT 'pending',
+  upsellsOffered TEXT, completedAt TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS ai_voice_config (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL UNIQUE,
+  provider TEXT DEFAULT 'lowcost', phoneNumber TEXT, sipEndpoint TEXT,
+  voiceId TEXT DEFAULT 'es-MX-DaliaNeural', welcomeMessage TEXT,
+  transferNumber TEXT, maxCallDuration INTEGER DEFAULT 600, isActive INTEGER DEFAULT 0,
+  sttModel TEXT DEFAULT 'whisper-large-v3', llmModel TEXT DEFAULT 'deepseek-chat',
+  ttsModel TEXT DEFAULT 'edge-tts-es-MX-Dalia',
+  openaiApiKey TEXT, livekitUrl TEXT, livekitApiKey TEXT, deepseekApiKey TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
 // ─── Seed: PACKAGES ─────────────────────────────────────────────
 function seedPaquetes() {
   const c = (db.query("SELECT COUNT(*) as c FROM packages").get() as any).c
@@ -264,6 +336,133 @@ function seedConfig() {
 
 seedPaquetes(); seedDispositivos(); seedAnuncios(); seedApiKeys(); seedAudit()
 seedGrupos(); seedMantenimiento(); seedTickets(); seedNotif(); seedConfig()
+
+// ─── RRHH: Empleados, Payroll, Attendance ──────────────────────────────
+exec(`CREATE TABLE IF NOT EXISTS departments (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL, description TEXT,
+  managerId TEXT, parentId TEXT, active INTEGER DEFAULT 1,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS employee_profiles (
+  id TEXT PRIMARY KEY, userId TEXT NOT NULL, hotelId TEXT NOT NULL,
+  departmentId TEXT, position TEXT, managerId TEXT, hireDate TEXT,
+  salary REAL, contractType TEXT, documentNumber TEXT, documentType TEXT,
+  documentExpiry TEXT, address TEXT, city TEXT, country TEXT,
+  emergencyContactName TEXT, emergencyContactPhone TEXT, emergencyContactRelation TEXT,
+  bankName TEXT, bankAccount TEXT, vacationDaysTotal INTEGER DEFAULT 15,
+  vacationDaysUsed INTEGER DEFAULT 0, notes TEXT, active INTEGER DEFAULT 1,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS employee_contracts (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, employeeId TEXT NOT NULL,
+  type TEXT NOT NULL, startDate TEXT NOT NULL, endDate TEXT,
+  salary REAL NOT NULL, currency TEXT DEFAULT 'USD', position TEXT,
+  departmentId TEXT, status TEXT DEFAULT 'active', signedAt TEXT, notes TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS employee_documents (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, employeeId TEXT NOT NULL,
+  type TEXT NOT NULL, name TEXT NOT NULL, fileUrl TEXT,
+  expiryDate TEXT, issuedBy TEXT, notes TEXT, alertSent INTEGER DEFAULT 0,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS leave_requests (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, employeeId TEXT NOT NULL,
+  type TEXT NOT NULL, startDate TEXT NOT NULL, endDate TEXT NOT NULL,
+  days REAL NOT NULL, reason TEXT, status TEXT DEFAULT 'pending',
+  approvedBy TEXT, approvedAt TEXT, notes TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS performance_reviews (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, employeeId TEXT NOT NULL,
+  reviewerId TEXT NOT NULL, period TEXT, reviewDate TEXT NOT NULL,
+  score REAL, strengths TEXT, improvements TEXT, goals TEXT, notes TEXT,
+  status TEXT DEFAULT 'draft',
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+// ─── Payroll ───────────────────────────────────────────────────────────
+exec(`CREATE TABLE IF NOT EXISTS payroll_config (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL,
+  payrollFrequency TEXT DEFAULT 'monthly', payDay INTEGER DEFAULT 30,
+  currency TEXT DEFAULT 'USD', createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS payroll_concepts (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL,
+  type TEXT NOT NULL, taxable INTEGER DEFAULT 1, active INTEGER DEFAULT 1,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS payroll_runs (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, period TEXT NOT NULL,
+  startDate TEXT NOT NULL, endDate TEXT NOT NULL, status TEXT DEFAULT 'draft',
+  processedAt TEXT, processedBy TEXT, notes TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS payroll_run_details (
+  id TEXT PRIMARY KEY, runId TEXT NOT NULL, employeeId TEXT NOT NULL,
+  baseSalary REAL NOT NULL, additions REAL DEFAULT 0, deductions REAL DEFAULT 0,
+  netPay REAL NOT NULL, hoursWorked REAL DEFAULT 0, overtimeHours REAL DEFAULT 0,
+  notes TEXT, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS payroll_payslips (
+  id TEXT PRIMARY KEY, runId TEXT NOT NULL, employeeId TEXT NOT NULL,
+  hotelId TEXT NOT NULL, period TEXT, issueDate TEXT,
+  fileUrl TEXT, sent INTEGER DEFAULT 0, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS payroll_payment_history (
+  id TEXT PRIMARY KEY, runId TEXT NOT NULL, employeeId TEXT NOT NULL,
+  hotelId TEXT NOT NULL, amount REAL NOT NULL, method TEXT DEFAULT 'bank_transfer',
+  reference TEXT, paidAt TEXT, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+// ─── Attendance ────────────────────────────────────────────────────────
+exec(`CREATE TABLE IF NOT EXISTS attendance_records (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, employeeId TEXT NOT NULL,
+  date TEXT NOT NULL, clockIn TEXT, clockOut TEXT,
+  breakStart TEXT, breakEnd TEXT, status TEXT DEFAULT 'present',
+  method TEXT DEFAULT 'pin', notes TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS attendance_schedules (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, employeeId TEXT NOT NULL,
+  dayOfWeek INTEGER NOT NULL, startTime TEXT NOT NULL, endTime TEXT NOT NULL,
+  active INTEGER DEFAULT 1, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS attendance_config (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL,
+  lateThreshold INTEGER DEFAULT 15, overtimeEnabled INTEGER DEFAULT 1,
+  biometricEnabled INTEGER DEFAULT 0, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+// ─── CRM ───────────────────────────────────────────────────────────────
+exec(`CREATE TABLE IF NOT EXISTS loyalty_transactions (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, guestId TEXT NOT NULL,
+  type TEXT NOT NULL, points INTEGER NOT NULL, description TEXT,
+  reservationId TEXT, createdAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS coupons (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, code TEXT NOT NULL UNIQUE,
+  type TEXT NOT NULL, value REAL NOT NULL, minPurchase REAL DEFAULT 0,
+  maxUses INTEGER DEFAULT 100, usedCount INTEGER DEFAULT 0,
+  startsAt TEXT, expiresAt TEXT, active INTEGER DEFAULT 1,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS guest_segments (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL,
+  criteria TEXT, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+// ─── Marketing ─────────────────────────────────────────────────────────
+exec(`CREATE TABLE IF NOT EXISTS auto_messages (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL,
+  trigger TEXT NOT NULL, channel TEXT NOT NULL, template TEXT,
+  active INTEGER DEFAULT 1, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS message_logs (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, reservationId TEXT,
+  guestId TEXT, channel TEXT NOT NULL, content TEXT, status TEXT,
+  sentAt TEXT, createdAt TEXT DEFAULT (datetime('now')))`)
+
+exec(`CREATE TABLE IF NOT EXISTS whatsapp_templates (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL,
+  language TEXT DEFAULT 'es', templateId TEXT, body TEXT NOT NULL,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
 
 console.log("\n✅ Migración completa")
 db.close()

@@ -1,0 +1,53 @@
+// marketing/model.ts — 3 tablas de marketing automatizado
+import type { ModelDefinition, ORM } from 'arckode-framework'
+
+const AutoMessageModel: ModelDefinition = {
+  table: 'auto_messages',
+  fields: {
+    hotelId: { type: 'string', required: true, indexed: true },
+    title: { type: 'string', required: true },
+    color: { type: 'string', default: '#3b82f6' },
+    emailSubject: { type: 'string' },
+    emailBody: { type: 'string' },
+    whatsappBody: { type: 'string' },
+    channel: { type: 'string', default: 'email' },
+    triggerEvent: { type: 'string', required: true, default: 'checkin_day' },
+    triggerOffset: { type: 'number', default: 0 },
+    variables: { type: 'json', default: '[]' },
+    isActive: { type: 'boolean', default: 1 },
+  },
+  timestamps: true,
+}
+
+const MessageLogModel: ModelDefinition = {
+  table: 'message_logs',
+  fields: {
+    hotelId: { type: 'string', required: true, indexed: true },
+    reservationId: { type: 'string' },
+    messageId: { type: 'string' },
+    messageType: { type: 'string', default: 'email' },
+    status: { type: 'string', default: 'pending' },
+    recipient: { type: 'string' },
+    response: { type: 'string' },
+    sentAt: { type: 'string' },
+  },
+  timestamps: true,
+}
+
+const WhatsappTemplateModel: ModelDefinition = {
+  table: 'whatsapp_templates',
+  fields: {
+    hotelId: { type: 'string', required: true, indexed: true },
+    name: { type: 'string', required: true },
+    body: { type: 'string' },
+    category: { type: 'string', default: 'general' },
+    isActive: { type: 'boolean', default: 1 },
+  },
+  timestamps: true,
+}
+
+export function registerMarketingModels(orm: ORM): void {
+  orm.define('AutoMessages', AutoMessageModel)
+  orm.define('MessageLogs', MessageLogModel)
+  orm.define('WhatsappTemplates', WhatsappTemplateModel)
+}

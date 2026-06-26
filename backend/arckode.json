@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-06-23T05:28:53.549Z",
+  "_generated": "2026-06-26T14:38:50.646Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -61,6 +61,19 @@
       "complete": true
     },
     {
+      "name": "bookingengine",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "mantenimiento",
       "structure": {
         "index": true,
@@ -87,7 +100,33 @@
       "complete": true
     },
     {
+      "name": "empleados",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "anuncios",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "attendance",
       "structure": {
         "index": true,
         "types": true,
@@ -165,7 +204,33 @@
       "complete": true
     },
     {
+      "name": "payments",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "reservas",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "marketing",
       "structure": {
         "index": true,
         "types": true,
@@ -192,6 +257,19 @@
     },
     {
       "name": "hoteles",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "payroll",
       "structure": {
         "index": true,
         "types": true,
@@ -243,6 +321,19 @@
       "complete": true
     },
     {
+      "name": "ai-recepcionista",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "canales",
       "structure": {
         "index": true,
@@ -280,12 +371,27 @@
         "tests": true
       },
       "complete": true
+    },
+    {
+      "name": "crm",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
     }
   ],
   "connectors": [
     "reservas-canales.ts",
+    "reservas-huespedes.ts",
     "habitaciones-canales.ts",
-    "reservas-housekeeping.ts"
+    "reservas-housekeeping.ts",
+    "booking-channex.ts"
   ],
   "violations": [],
   "warnings": [],
