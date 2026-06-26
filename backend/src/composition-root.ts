@@ -281,6 +281,7 @@ import { AttendanceModule } from './modules/attendance'
 import { CrmModule } from './modules/crm'
 import { MarketingModule } from './modules/marketing'
 import { AiRecepcionistaModule } from './modules/ai-recepcionista'
+import { AiGerenteModule } from './modules/ai-gerente'
 import { BookingengineModule } from './modules/bookingengine'
 import type { FoliosService } from './modules/folios'
 import { taxRateFor } from './modules/folios/usecases/folio-math'
@@ -292,7 +293,7 @@ const mods = [
   GruposModule(), HotelesModule(), RolesModule(), DispositivosModule(),
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),
   CanalesModule(),
-  OpinionesModule(), GastosModule(), FoliosModule(), PaymentsModule(), EmpleadosModule(), PayrollModule(), AttendanceModule(), CrmModule(), MarketingModule(), AiRecepcionistaModule(), BookingengineModule(),
+  OpinionesModule(), GastosModule(), FoliosModule(), PaymentsModule(), EmpleadosModule(), PayrollModule(), AttendanceModule(), CrmModule(), MarketingModule(), AiRecepcionistaModule(), AiGerenteModule(), BookingengineModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 

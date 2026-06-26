@@ -572,6 +572,13 @@ exec(`CREATE TABLE IF NOT EXISTS whatsapp_templates (
   language TEXT DEFAULT 'es', templateId TEXT, body TEXT NOT NULL,
   createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
 
+// ─── M17 Gerente IA: historial de interacciones del gerente ──────────────
+exec(`CREATE TABLE IF NOT EXISTS ai_manager_interactions (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, userId TEXT NOT NULL,
+  query TEXT NOT NULL, response TEXT NOT NULL, queryType TEXT,
+  dataSourcesUsed TEXT, confidence REAL, feedback TEXT, responseTimeMs INTEGER,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
 try { seedDemoTalentoFinanzas() } catch (e: any) { console.log('demo talento/finanzas: parcial —', String(e?.message || e).slice(0, 90)) }
 
 console.log("\n✅ Migración completa")
