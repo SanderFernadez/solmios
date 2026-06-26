@@ -25,7 +25,7 @@ export class EmpleadosController {
   async createDepartment(req: HttpRequest) {
     this.logger.info('POST /api/departments')
     const data = validateSchema(CreateDepartmentSchema, req.body) as unknown as CreateDepartmentDTO
-    data.hotelId = (req as any).hotelId ?? data.hotelId
+    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
     const dept = await this.service.createDepartment(data)
     return { status: 201, body: dept }
   }
@@ -38,7 +38,7 @@ export class EmpleadosController {
 
   async listDepartments(req: HttpRequest) {
     this.logger.info('GET /api/departments')
-    const hotelId = (req as any).hotelId ?? (req.query as any).hotelId
+    const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
     const depts = await this.service.listDepartments(hotelId)
     return { status: 200, body: depts }
   }
@@ -61,7 +61,7 @@ export class EmpleadosController {
   async createProfile(req: HttpRequest) {
     this.logger.info('POST /api/employee-profiles')
     const data = validateSchema(CreateProfileSchema, req.body) as unknown as CreateEmployeeProfileDTO
-    data.hotelId = (req as any).hotelId ?? data.hotelId
+    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
     const profile = await this.service.createProfile(data)
     return { status: 201, body: profile }
   }
@@ -75,7 +75,7 @@ export class EmpleadosController {
   async listProfiles(req: HttpRequest) {
     this.logger.info('GET /api/employee-profiles')
     const query = req.query as any
-    query.hotelId = (req as any).hotelId ?? query.hotelId
+    query.hotelId = (req as any).user?.hotelId ?? query.hotelId
     const result = await this.service.listProfiles(query)
     return { status: 200, body: result }
   }
@@ -98,7 +98,7 @@ export class EmpleadosController {
   async createContract(req: HttpRequest) {
     this.logger.info('POST /api/employee-contracts')
     const data = validateSchema(CreateContractSchema, req.body) as unknown as CreateContractDTO
-    data.hotelId = (req as any).hotelId ?? data.hotelId
+    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
     const contract = await this.service.createContract(data)
     return { status: 201, body: contract }
   }
@@ -111,7 +111,7 @@ export class EmpleadosController {
 
   async listContracts(req: HttpRequest) {
     this.logger.info('GET /api/employee-contracts')
-    const hotelId = (req as any).hotelId ?? (req.query as any).hotelId
+    const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
     const employeeId = (req.query as any).employeeId
     const contracts = await this.service.listContracts(hotelId, employeeId)
     return { status: 200, body: contracts }
@@ -128,7 +128,7 @@ export class EmpleadosController {
   async createDocument(req: HttpRequest) {
     this.logger.info('POST /api/employee-documents')
     const data = validateSchema(CreateDocumentSchema, req.body) as unknown as CreateDocumentDTO
-    data.hotelId = (req as any).hotelId ?? data.hotelId
+    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
     const doc = await this.service.createDocument(data)
     return { status: 201, body: doc }
   }
@@ -141,7 +141,7 @@ export class EmpleadosController {
 
   async listDocuments(req: HttpRequest) {
     this.logger.info('GET /api/employee-documents')
-    const hotelId = (req as any).hotelId ?? (req.query as any).hotelId
+    const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
     const employeeId = (req.query as any).employeeId
     const docs = await this.service.listDocuments(hotelId, employeeId)
     return { status: 200, body: docs }
@@ -158,7 +158,7 @@ export class EmpleadosController {
   async createLeaveRequest(req: HttpRequest) {
     this.logger.info('POST /api/leave-requests')
     const data = validateSchema(CreateLeaveRequestSchema, req.body) as unknown as CreateLeaveRequestDTO
-    data.hotelId = (req as any).hotelId ?? data.hotelId
+    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
     const request = await this.service.createLeaveRequest(data)
     return { status: 201, body: request }
   }
@@ -171,7 +171,7 @@ export class EmpleadosController {
 
   async listLeaveRequests(req: HttpRequest) {
     this.logger.info('GET /api/leave-requests')
-    const hotelId = (req as any).hotelId ?? (req.query as any).hotelId
+    const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
     const employeeId = (req.query as any).employeeId
     const status = (req.query as any).status
     const requests = await this.service.listLeaveRequests(hotelId, employeeId, status)
@@ -198,7 +198,7 @@ export class EmpleadosController {
   async createReview(req: HttpRequest) {
     this.logger.info('POST /api/performance-reviews')
     const data = validateSchema(CreateReviewSchema, req.body) as unknown as CreatePerformanceReviewDTO
-    data.hotelId = (req as any).hotelId ?? data.hotelId
+    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
     const review = await this.service.createReview(data)
     return { status: 201, body: review }
   }
@@ -211,7 +211,7 @@ export class EmpleadosController {
 
   async listReviews(req: HttpRequest) {
     this.logger.info('GET /api/performance-reviews')
-    const hotelId = (req as any).hotelId ?? (req.query as any).hotelId
+    const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
     const employeeId = (req.query as any).employeeId
     const reviews = await this.service.listReviews(hotelId, employeeId)
     return { status: 200, body: reviews }
@@ -227,7 +227,7 @@ export class EmpleadosController {
 
   async getExpiringDocuments(req: HttpRequest) {
     this.logger.info('GET /api/employee-documents/expiring')
-    const hotelId = (req as any).hotelId ?? (req.query as any).hotelId
+    const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
     const days = parseInt((req.query as any).days ?? '30')
     const alerts = await this.service.getExpiringDocuments(hotelId, days)
     return { status: 200, body: alerts }
@@ -235,7 +235,7 @@ export class EmpleadosController {
 
   async getOrgChart(req: HttpRequest) {
     this.logger.info('GET /api/org-chart')
-    const hotelId = (req as any).hotelId ?? (req.query as any).hotelId
+    const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
     const chart = await this.service.getOrgChart(hotelId)
     return { status: 200, body: chart }
   }

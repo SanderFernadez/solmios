@@ -527,6 +527,15 @@ function seedDemoTalentoFinanzas() {
       run('INSERT INTO coupons (id, hotelId, code, type, value, minPurchase, maxUses, startsAt, expiresAt, active) VALUES (?,?,?,?,?,?,?,?,?,1)',
         [uuid(), DEMO_HOTEL, code, type, value, minP, maxU, start, end])
 
+  if (cnt('roles') === 0)
+    for (const [name, icon, color, perms] of [
+      ['Recepcionista', '🔑', 'bg-blue/20 text-blue', '["reservations.admin","guests.admin","checkin.admin"]'],
+      ['Gerente', '👔', 'bg-violet/20 text-violet', '["reservations.admin","rooms.admin","billing.admin","reports.admin"]'],
+      ['Housekeeping', '🧹', 'bg-green/20 text-green', '["housekeeping.admin"]'],
+    ] as const)
+      run('INSERT INTO roles (id, hotelId, name, icon, color, system, permissions, users) VALUES (?,?,?,?,?,?,?,0)',
+        [uuid(), DEMO_HOTEL, name, icon, color, 0, perms])
+
   console.log('demo talento/finanzas: seed completo (idempotente)')
 }
 

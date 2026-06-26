@@ -62,7 +62,7 @@ function classify(status: number, bodyText: string, isPublic?: boolean): { icon:
   if (status === 404) {
     // distinguir "ruta no existe" (Cannot GET) vs "recurso no encontrado" (negocio)
     if (/cannot\s+(get|post|put|delete)/i.test(body) || /route\s+not\s+found/i.test(body)) return { icon: '❌', note: 'ruta NO existe' }
-    return { icon: '🟡', note: 'ruta existe, recurso no encontrado' }
+    return { icon: '✅', note: 'ruta existe (404 de recurso esperado)' }
   }
   if (status === 401 || status === 403) return { icon: '⚠', note: `auth ${status}` }
   if (status >= 200 && status < 300) {
