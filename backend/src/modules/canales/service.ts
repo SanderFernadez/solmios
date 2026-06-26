@@ -15,10 +15,18 @@ import type { CanalesSockets } from './sockets'
 import { ChannexUseCase } from './usecases/channex'
 import { applyBookingRevision } from './usecases/booking-ingestion'
 import { pushAvailabilityForRoomType, pushAvailabilityForRoom, type AvailabilityDeps } from './usecases/availability'
+import { CanalesCrudUseCase } from './usecases/crud'
+import { ChannelApiUseCase } from './usecases/channel-api'
+import { BookingsUseCase } from './usecases/bookings'
+import { ConfigUseCase } from './usecases/config'
 
 export class CanalesService {
   private sockets: CanalesSockets = {}
   private readonly channex: ChannexUseCase
+  private readonly crud: CanalesCrudUseCase
+  private readonly channelApi: ChannelApiUseCase
+  private readonly bookings: BookingsUseCase
+  private readonly config: ConfigUseCase
 
   constructor(
     private readonly repo: RepositoryAdapter<CanalesDTO>,
@@ -29,6 +37,10 @@ export class CanalesService {
     private readonly orm?: ORM,
   ) {
     this.channex = new ChannexUseCase(logger)
+    this.crud = new CanalesCrudUseCase(repo, userRepo, auth)
+    this.channelApi = new ChannelApiUseCase(this.channex)
+    this.bookings = new BookingsUseCase(this.channex, orm!)
+    this.config = new ConfigUseCase(repo, orm)
   }
 
   setSockets(s: Partial<CanalesSockets>): void {
@@ -42,33 +54,19 @@ export class CanalesService {
     }
   }
 
-  // ─── Config por hotel ────────────────────────────────────────────────
+  // ─── Config delegado a usecase ───────────────────────────────────────
   async getConfig(hotelId: string): Promise<CanalesDTO | undefined> {
-    const cfg = await this.repo.findOne({ hotelId } as any)
-    return cfg ?? undefined
+    return this.config.getConfig(hotelId)
   }
 
   private async upsertConfig(hotelId: string, patch: Partial<CanalesDTO>): Promise<CanalesDTO> {
-    const cfg = await this.getConfig(hotelId)
-    if (!cfg) return (await this.repo.create({ id: crypto.randomUUID(), hotelId, syncEnabled: 1, ...patch } as any))!
-    return (await this.repo.update(cfg.id, patch as any))!
+    return this.config.upsertConfig(hotelId, patch)
   }
 
   // ─── Operaciones Channex (delegan al usecase) ────────────────────────
   async listChannels(hotelId: string): Promise<ChannelsResultDTO> {
-    const catalog = await this.getOTACatalog()
+    const catalog = await this.config.getOTACatalog()
     return this.channex.listChannels(await this.getConfig(hotelId), catalog)
-  }
-
-  private async getOTACatalog(): Promise<OTAChannelMeta[]> {
-    try {
-      if (!this.orm) return []
-      const rows = await this.orm.findMany('Configuration', { hotelId: 'platform', clave: 'canales_ota' })
-      const cfg = (rows as any[])?.[0]
-      if (!cfg) return []
-      const val = typeof cfg.value === 'string' ? JSON.parse(cfg.value) : cfg.value
-      return Array.isArray(val) ? val : []
-    } catch { return [] }
   }
 
   async getFeed(): Promise<{ pendingBookings: number }> {
@@ -80,6 +78,19 @@ export class CanalesService {
     const { result, newPropertyId } = await this.channex.syncProperty(hotel, rooms, cfg)
     if (newPropertyId) await this.upsertConfig(hotelId, { channexPropertyId: newPropertyId, syncEnabled: 1, lastSync: new Date().toISOString() })
     else await this.upsertConfig(hotelId, { lastSync: new Date().toISOString() })
+
+    // Log sync operation to DB
+    if (this.orm) {
+      try {
+        await this.orm.create('SyncLog', {
+          id: crypto.randomUUID(), hotelId, channel: 'channex', action: 'sync_property',
+          status: result.success ? 'success' : 'error',
+          details: { roomTypes: result.roomTypes, ratePlans: result.ratePlans, newPropertyId },
+          createdAt: new Date().toISOString(),
+        })
+      } catch {}
+    }
+
     return result
   }
 
@@ -102,36 +113,44 @@ export class CanalesService {
     return this.orm ? pushAvailabilityForRoom(this.availDeps(), hotelId, roomId) : { pushed: false }
   }
 
-  // ─── Channel API ─────────────────────────────────────────────────────
+  // ─── Channel API delegado a usecase ──────────────────────────────────
   async testConnection(hotelId: string, channel: string, otaHotelId: string): Promise<TestConnectionResultDTO> {
-    return this.channex.testConnection(await this.getConfig(hotelId), { channel, hotel_id: otaHotelId })
+    return this.channelApi.testConnection(await this.getConfig(hotelId), channel, otaHotelId)
   }
   async getMappingDetails(hotelId: string, channel: string, otaHotelId: string): Promise<{ success: boolean; rooms: MappingDetailDTO[]; error?: string }> {
-    return this.channex.getMappingDetails(await this.getConfig(hotelId), channel, otaHotelId)
+    return this.channelApi.getMappingDetails(await this.getConfig(hotelId), channel, otaHotelId)
   }
   async listGroups(hotelId: string): Promise<GroupDTO[]> {
-    return this.channex.listGroups(await this.getConfig(hotelId))
+    return this.channelApi.listGroups(await this.getConfig(hotelId))
   }
   async createOTAChannel(hotelId: string, dto: OTAChannelCreateDTO): Promise<OTAChannelResultDTO> {
-    return this.channex.createOTAChannel(await this.getConfig(hotelId), dto)
+    return this.channelApi.createOTAChannel(await this.getConfig(hotelId), dto)
   }
   async deactivateChannel(hotelId: string, channelId: string): Promise<{ success: boolean; message: string }> {
-    return this.channex.deactivateChannel(await this.getConfig(hotelId), channelId)
+    return this.channelApi.deactivateChannel(await this.getConfig(hotelId), channelId)
   }
 
-  // ─── Bookings ──────────────────────────────────────────────────────
+  // ─── Bookings delegado a usecase ─────────────────────────────────────
   async getBookings(hotelId: string): Promise<BookingRevisionDTO[]> {
-    const cfg = await this.getConfig(hotelId)
-    return this.channex.fetchBookingFeed(cfg?.channexApiKey || process.env.CHANNEX_API_KEY || '')
+    return this.bookings.getBookings(await this.getConfig(hotelId))
   }
   async ingestBookings(hotelId: string): Promise<BookingIngestionResult> {
     const cfg = await this.getConfig(hotelId)
-    const key = cfg?.channexApiKey || process.env.CHANNEX_API_KEY || ''
-    if (!this.orm) throw new Error('ORM no disponible')
-    const orm = this.orm
-    return this.channex.ingestBookings(cfg, async (dto: any) => {
-      await applyBookingRevision({ orm, channex: this.channex, hotelId, apiKey: key }, dto)
-    })
+    const result = await this.bookings.ingestBookings(hotelId, cfg)
+
+    // Log ingest operation
+    if (this.orm) {
+      try {
+        await this.orm.create('SyncLog', {
+          id: crypto.randomUUID(), hotelId, channel: 'channex', action: 'ingest_bookings',
+          status: result.success ? 'success' : 'error',
+          details: { ingested: result.ingested, acknowledged: result.acknowledged, errors: result.errors },
+          createdAt: new Date().toISOString(),
+        })
+      } catch {}
+    }
+
+    return result
   }
 
   // ─── iFrame ────────────────────────────────────────────────────────
@@ -143,57 +162,32 @@ export class CanalesService {
     return (await this.getConfig(hotelId))?.channexPropertyId || null
   }
   async getChannelDetail(hotelId: string, channelId: string): Promise<any | null> {
-    return this.channex.getChannelDetail(await this.getConfig(hotelId), channelId)
+    return this.channelApi.getChannelDetail(await this.getConfig(hotelId), channelId)
   }
 
-  // ─── CRUD estándar sobre la config (admin) ───────────────────────────
+  // ─── CRUD delegado a usecase ─────────────────────────────────────────
   async list(query?: CanalesQuery, user?: CurrentUser): Promise<CanalesPaginated> {
-    const page = query?.page ?? 1
-    const limit = query?.limit ?? 20
-    const offset = (page - 1) * limit
-    const filters: Record<string, unknown> = {}
-    if (user && user.role !== 'super_admin') {
-      // hotelId llega en el JWT (HotelAuth). Sin findById: tokens legacy sin hotelId → '__none__' (lista vacía, sin fuga).
-      filters.hotelId = user.hotelId ?? '__none__'
-    } else if (query?.hotelId !== undefined) {
-      filters.hotelId = query.hotelId
-    }
-    const result = await this.repo.paginate(filters, { limit, offset })
-    return { data: result.data, pagination: { page, limit, total: result.total, totalPages: result.pages, hasNext: offset + limit < result.total, hasPrev: page > 1 } }
+    return this.crud.list(query, user as any)
   }
 
   async getById(id: string, user: CurrentUser): Promise<CanalesDTO> {
-    const item = await this.repo.findById(id)
-    if (!item) throw new NotFoundError('Canales no encontrado')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    return item
+    return this.crud.getById(id, user as any)
   }
 
   async create(dto: CreateCanalesDTO): Promise<CanalesDTO> {
-    const item = await this.repo.create(dto as Omit<CanalesDTO, 'id'>)
+    const item = await this.crud.create(dto)
     await this.cache.delete('canales:list')
     return item
   }
 
   async update(id: string, dto: UpdateCanalesDTO, user: CurrentUser): Promise<CanalesDTO> {
-    const existing = await this.repo.findById(id)
-    if (!existing) throw new NotFoundError('Canales no encontrado')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    const item = await this.repo.update(id, dto as Partial<Omit<CanalesDTO, 'id'>>)
-    if (!item) throw new NotFoundError('Canales no encontrado')
+    const item = await this.crud.update(id, dto, user as any)
     await this.cache.delete('canales:list')
     return item
   }
 
   async delete(id: string, user: CurrentUser): Promise<void> {
-    const existing = await this.repo.findById(id)
-    if (!existing) throw new NotFoundError('Canales no encontrado')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    const deleted = await this.repo.delete(id)
-    if (!deleted) throw new NotFoundError('Canales no encontrado')
+    await this.crud.delete(id, user as any)
     await this.cache.delete('canales:list')
   }
 }

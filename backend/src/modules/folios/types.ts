@@ -63,9 +63,11 @@ export interface PostChargeDTO {
   source?: string
 }
 
+export type PaymentMethod = 'card' | 'cash' | 'transfer' | 'link' | 'deposit' | 'other'
+
 export interface ApplyPaymentDTO {
   amount: number
-  method?: string
+  method?: PaymentMethod
   reference?: string
 }
 

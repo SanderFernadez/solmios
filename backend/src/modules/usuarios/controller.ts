@@ -57,8 +57,10 @@ export class UsuariosController {
 
   async index(req: HttpRequest) {
     const user = req.user as any
-    // super_admin ve TODOS los usuarios; hotel_admin solo los de su hotel (multi-tenant).
-    const hotelId = user.role === 'super_admin' ? undefined : user.hotelId
+    const hotelId = user.role === 'super_admin' ? undefined : (user.hotelId || undefined)
+    if (user.role !== 'super_admin' && !user.hotelId) {
+      return { status: 403, body: { error: 'Sin hotel asignado' } }
+    }
     const data = await this.service.list(hotelId)
     return { status: 200, body: { data, total: data.length } }
   }

@@ -70,7 +70,7 @@ describe('FoliosService', () => {
     const { svc } = makeService()
     const f = await svc.open({ hotelId: 'h1' }, user)
     await svc.postCharge(f.id, { description: 'Habitación', amount: 200, category: 'room' }, user)
-    await svc.applyPayment(f.id, { amount: 100, method: 'Efectivo' }, user)
+    await svc.applyPayment(f.id, { amount: 100, method: 'cash' }, user)
     const detail = await svc.getById(f.id, user)
     expect(detail.chargesTotal).toBe(236) // 200 + 18%
     expect(detail.paymentsTotal).toBe(100)
