@@ -3,6 +3,8 @@
 > **Módulo mayoritariamente PENDIENTE.** Hoy existe una sola pantalla de **configuración/admin** del motor (`/panel/booking-engine`) y un endpoint de agregación de KPIs (`/api/booking-engine`). **NO existe** el motor público de reservas (búsqueda de disponibilidad, selección de habitación, pago en línea, confirmación), ni la integración real con Google Hotel Ads, ni comparación de tarifas, ni seguimiento de conversiones.
 >
 > Todo lo marcado `[REAL]` está extraído del código. Todo lo marcado `[PENDIENTE]` es el target de producto según `modules.md` y **no debe asumirse implementado**.
+>
+> **Plan de implementación:** Ver `FRD/M03-TRD-Motor-Reservas.md` (TRD con 5 fases, tablas de decisiones, flujos y matriz MoSCoW).
 
 **Módulo:** M03 — Motor de Reservas & Google Hotel Ads
 **Pantallas cubiertas (hoy):** Configuración del Widget + KPIs de reservas directas (`/panel/booking-engine`)

@@ -136,6 +136,7 @@
 - Generación de enlaces de pago personalizados
 - Gestión de depósitos y garantías
 - Integración futura nativa con SulusPay
+- Exportación contable CSV/Excel para integración con QuickBooks, Sage, software fiscal local
 
 ---
 

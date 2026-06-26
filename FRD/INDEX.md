@@ -37,7 +37,7 @@
 
 | ID | Módulo | FRD | Impl BE | Impl FE | Prioridad | Archivo |
 |----|--------|-----|---------|---------|-----------|---------|
-| M06 | Recepcionista Virtual con IA | 🟢 | ⚪ | ⚪ (chat placeholder) | 4 | `M06-IA-Recepcionista.md` |
+| M06 | Recepcionista Virtual con IA | 🟢 | ⚪ | ⚪ (chat placeholder) | 4 | `M06-IA-Recepcionista.md`, `M06-TRD-IA-Recepcionista.md`, `M06-FLOW-Integracion.md` |
 | M12 | Revenue Manager con IA | 🟢 | ⚪ | ⚪ | 4 | `M12-IA-Revenue.md` |
 | M17 | Gerente Virtual con IA ⭐ | 🟢 | ⚪ | ⚪ | 4 | `M17-IA-Gerente.md` |
 
