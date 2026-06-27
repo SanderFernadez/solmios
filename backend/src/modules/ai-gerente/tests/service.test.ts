@@ -30,7 +30,7 @@ describe('AiGerenteService', () => {
     ] })
     const roomRepo = mockRepo({ findMany: async () => [{ id: 'rm1' }, { id: 'rm2' }, { id: 'rm3' }] })
     const hotelRepo = mockRepo({ findById: async () => ({ id: 'h1', name: 'Hotel Test' }) })
-    const service = new AiGerenteService(mockRepo(), reservationRepo, roomRepo, hotelRepo, mockRepo(), log, silentCache)
+    const service = new AiGerenteService(mockRepo(), reservationRepo, roomRepo, hotelRepo, mockRepo(), mockRepo(), log, silentCache)
 
     const interaction = await service.ask('¿Cómo va la ocupación?', USER)
     expect(interaction).toBeDefined()
@@ -40,13 +40,13 @@ describe('AiGerenteService', () => {
   })
 
   it('ask: lanza si el user no tiene hotel asignado', async () => {
-    const service = new AiGerenteService(mockRepo(), mockRepo(), mockRepo(), mockRepo(), mockRepo(), log, silentCache)
+    const service = new AiGerenteService(mockRepo(), mockRepo(), mockRepo(), mockRepo(), mockRepo(), mockRepo(), log, silentCache)
     await expect(service.ask('algo', { id: 'u', role: 'receptionist' } as any)).rejects.toThrow('No hotel assigned')
   })
 
   it('list: devuelve estructura paginada', async () => {
     const interactionRepo = mockRepo({ paginate: async () => ({ data: [{ id: 'i1' }], total: 1, pages: 1 }) })
-    const service = new AiGerenteService(interactionRepo, mockRepo(), mockRepo(), mockRepo(), mockRepo(), log, silentCache)
+    const service = new AiGerenteService(interactionRepo, mockRepo(), mockRepo(), mockRepo(), mockRepo(), mockRepo(), log, silentCache)
     const result = await service.list({ hotelId: 'h1', page: 1, limit: 10 })
     expect(result.data.length).toBe(1)
     expect(result.pagination.total).toBe(1)
@@ -54,7 +54,7 @@ describe('AiGerenteService', () => {
 
   it('feedback: delega al repo', async () => {
     const interactionRepo = mockRepo({ update: async (_id: string, d: any) => ({ id: 'i1', ...d }) })
-    const service = new AiGerenteService(interactionRepo, mockRepo(), mockRepo(), mockRepo(), mockRepo(), log, silentCache)
+    const service = new AiGerenteService(interactionRepo, mockRepo(), mockRepo(), mockRepo(), mockRepo(), mockRepo(), log, silentCache)
     const updated = await service.feedback('i1', 'helpful')
     expect(updated).toMatchObject({ feedback: 'helpful' })
   })

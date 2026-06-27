@@ -33,9 +33,10 @@ export function AiGerenteModule() {
       const roomRepo = new OrmRepository<any>(orm, 'Rooms')
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
+      const guestRepo = new OrmRepository<any>(orm, 'Guests')
 
       const log = logger.child('ai-gerente')
-      const service = new AiGerenteService(interactionRepo, reservationRepo, roomRepo, hotelRepo, configRepo, log, cache)
+      const service = new AiGerenteService(interactionRepo, reservationRepo, roomRepo, hotelRepo, configRepo, guestRepo, log, cache)
       const controller = new AiGerenteController(service, log)
 
       const roles = ['hotel_admin', 'super_admin'] as const

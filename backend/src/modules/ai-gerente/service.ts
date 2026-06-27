@@ -14,6 +14,7 @@ export class AiGerenteService {
     private readonly roomRepo: any,
     private readonly hotelRepo: any,
     private readonly configRepo: any,
+    private readonly guestRepo: any,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
   ) {}
@@ -38,12 +39,18 @@ export class AiGerenteService {
     const hotelName = hotel?.name || 'el hotel'
 
     const apiKey = process.env.DEEPSEEK_API_KEY || process.env.LLM_API_KEY || ''
-    const { response, confidence } = await askGerente(query, kpis, hotelName, apiKey)
+    const { response, confidence, actions } = await askGerente(
+      query, kpis, hotelName, apiKey,
+      { reservationRepo: this.reservationRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, guestRepo: this.guestRepo },
+      hotelId,
+    )
 
     const interaction = await this.interactionRepo.create({
       id: crypto.randomUUID(), hotelId, userId: user.id,
-      query, response, queryType: 'question',
-      dataSourcesUsed: ['reservations', 'rooms'], confidence,
+      query, response,
+      queryType: actions?.length ? 'action_request' : 'question',
+      dataSourcesUsed: actions?.length ? actions.map((a) => a.tool) : ['reservations', 'rooms'],
+      confidence,
       responseTimeMs: Date.now() - t0,
     } as any)
     return interaction

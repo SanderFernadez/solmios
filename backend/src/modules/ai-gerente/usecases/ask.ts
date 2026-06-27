@@ -1,5 +1,5 @@
-// ai-gerente/usecases/ask.ts — Agregación de KPIs reales del hotel + llamada al LLM.
-// Es el núcleo de M17: convierte datos operativos en contexto para el gerente IA.
+// ai-gerente/usecases/ask.ts — Núcleo del Gerente IA: KPIs + loop function-calling con tools administrativas.
+import { MANAGER_TOOLS, executeManagerTool, type ToolRepos } from './tools'
 
 const DAY_MS = 86_400_000
 
@@ -12,10 +12,10 @@ export async function getHotelKpis(reservationRepo: any, roomRepo: any, hotelId:
     roomRepo.findMany({ hotelId }).catch(() => []),
   ])
   const activeToday = reservations.filter((r: any) =>
-    r.checkIn && r.checkOut && r.checkIn <= today && r.checkOut > today && r.status !== 'cancelled',
+    r.checkIn && r.checkOut && r.checkIn <= today && r.checkOut > today && r.status !== 'cancelled' && r.status !== 'blocked',
   ).length
   const revenueMonth = reservations
-    .filter((r: any) => (r.createdAt || r.checkIn || '').startsWith(monthPrefix) && r.status !== 'cancelled')
+    .filter((r: any) => (r.createdAt || r.checkIn || '').startsWith(monthPrefix) && r.status !== 'cancelled' && r.status !== 'blocked')
     .reduce((s: number, r: any) => s + (Number(r.totalAmount) || 0), 0)
   const cancelled = reservations.filter((r: any) => r.status === 'cancelled').length
   const nights = reservations.reduce((s: number, r: any) => {
@@ -28,57 +28,80 @@ export async function getHotelKpis(reservationRepo: any, roomRepo: any, hotelId:
     reservas_totales: reservations.length,
     ocupacion_hoy: `${activeToday}/${rooms.length}`,
     revenue_mes: revenueMonth,
-    cancelaciones: cancelled.length === 0 ? reservations.filter((r: any) => r.status === 'cancelled').length : cancelled,
+    cancelaciones: cancelled,
     adr: nights ? Math.round(revenueMonth / nights) : 0,
     noches_totales: nights,
   }
 }
 
-/** Llama al LLM (DeepSeek, OpenAI-compatible). Devuelve '' si no hay API key. */
-async function callLlm(systemPrompt: string, userQuery: string, apiKey: string): Promise<string> {
-  if (!apiKey) return ''
+/** Llama al LLM (OpenAI-compatible) con tools. Devuelve {content, tool_calls}. '' si no hay API key. */
+async function callLlmRaw(messages: any[], apiKey: string, tools?: any[]): Promise<{ content: string; tool_calls?: any[] }> {
+  if (!apiKey) return { content: '' }
   const endpoint = process.env.LLM_ENDPOINT || 'https://api.deepseek.com/v1/chat/completions'
   const model = process.env.LLM_MODEL || 'deepseek-chat'
+  const body: any = { model, messages, temperature: 0.4, max_tokens: 800 }
+  if (tools?.length) { body.tools = tools; body.tool_choice = 'auto' }
   const r = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userQuery },
-      ],
-      temperature: 0.4,
-      max_tokens: 600,
-    }),
-    signal: AbortSignal.timeout(20_000),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(25_000),
   })
-  if (!r.ok) return ''
+  if (!r.ok) return { content: '' }
   const j = (await r.json()) as any
-  return j?.choices?.[0]?.message?.content ?? ''
+  const msg = j?.choices?.[0]?.message
+  return { content: msg?.content ?? '', tool_calls: msg?.tool_calls }
 }
 
-/** Genera la respuesta del gerente IA. Si no hay LLM, devuelve los KPIs crudos como fallback. */
+const SYSTEM_BASE = (hotelName: string, kpis: Record<string, unknown>) =>
+  `Sos el gerente IA del hotel "${hotelName}". Respondé en español rioplatense, conciso y accionable. ` +
+  `Tenés tools para EJECUTAR acciones reales sobre el sistema (crear/cancelar reservas, bloquear habitaciones, cambiar precios, check-in/out, consultar disponibilidad y movimientos). ` +
+  `Usá ÚNICAMENTE estos datos reales (no inventes números):\n${JSON.stringify(kpis, null, 2)}\n\n` +
+  `REGLA DE CONFIRMACIÓN: antes de cancelar una reserva, bloquear una habitación o cambiar precios, SIEMPRE pedí confirmación al gerente mostrando el preview, y solo llamá la tool con confirmed:true cuando él confirme explícitamente. ` +
+  `Para crear reservas, check-in/out y consultas, ejecutá directamente. Si una acción falla, informalo y sugerí alternativas.`
+
+/** Loop function-calling: el LLM decide tools, el backend las ejecuta, itera hasta respuesta final. */
 export async function askGerente(
   query: string,
   kpis: Record<string, unknown>,
   hotelName: string,
   apiKey: string,
-): Promise<{ response: string; confidence: number }> {
-  const system = `Sos el gerente IA del hotel "${hotelName}". Respondé en español rioplatense, conciso y accionable, usando ÚNICAMENTE estos datos reales del sistema (no inventes números):\n${JSON.stringify(kpis, null, 2)}\n\nSi la pregunta no se puede responder con los datos disponibles, decilo claramente y sugerí qué información falta. Sé directo, como un gerente experimentado hablando con el dueño.`
-  const text = await callLlm(system, query, apiKey)
-  if (!text) {
+  repos: ToolRepos,
+  hotelId: string,
+): Promise<{ response: string; confidence: number; actions: { tool: string; result: any }[] }> {
+  const actions: { tool: string; result: any }[] = []
+  const messages: any[] = [
+    { role: 'system', content: SYSTEM_BASE(hotelName, kpis) },
+    { role: 'user', content: query },
+  ]
+
+  for (let i = 0; i < 4; i++) {
+    const res = await callLlmRaw(messages, apiKey, MANAGER_TOOLS)
+    if (!res.tool_calls || res.tool_calls.length === 0) {
+      if (!res.content) break
+      return { response: res.content, confidence: 0.9, actions }
+    }
+    messages.push({ role: 'assistant', content: res.content || '', tool_calls: res.tool_calls })
+    for (const tc of res.tool_calls) {
+      const rawArgs = tc.function?.arguments
+      const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : (rawArgs || {})
+      const result = await executeManagerTool(tc.function?.name, args, hotelId, repos).catch((e: any) => ({ error: String(e?.message || e) }))
+      actions.push({ tool: tc.function?.name, result })
+      messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) })
+    }
+  }
+  // última pasada sin tools para forzar respuesta textual
+  const final = await callLlmRaw(messages, apiKey)
+  if (!apiKey) {
     return {
       response:
         `📊 ${hotelName} — ${kpis.fecha}\n` +
-        `• Ocupación hoy: ${kpis.ocupacion_hoy} habitaciones\n` +
-        `• Reservas totales: ${kpis.reservas_totales}\n` +
-        `• Revenue del mes: $${kpis.revenue_mes}\n` +
-        `• Cancelaciones: ${kpis.cancelaciones}\n` +
-        `• ADR: $${kpis.adr}\n\n` +
-        `_(LLM no configurado — mostrando KPIs crudos. Configurá DEEPSEEK_API_KEY o LLM_API_KEY en .env para respuestas con IA.)_`,
+        `• Ocupación hoy: ${kpis.ocupacion_hoy}\n• Reservas totales: ${kpis.reservas_totales}\n` +
+        `• Revenue del mes: $${kpis.revenue_mes}\n• Cancelaciones: ${kpis.cancelaciones}\n• ADR: $${kpis.adr}\n\n` +
+        `_(LLM no configurado — tools administrativas requieren DEEPSEEK_API_KEY/LLM_API_KEY en .env)_`,
       confidence: 0.5,
+      actions,
     }
   }
-  return { response: text, confidence: 0.85 }
+  return { response: final.content || '(no pude completar la acción — reformulá la consulta)', confidence: 0.6, actions }
 }
