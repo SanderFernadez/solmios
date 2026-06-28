@@ -8,6 +8,8 @@ import { cors } from 'arckode-framework/middlewares'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { HotelAuth } from './infrastructure/auth/hotel-auth'
+import { EmailService } from './services/email-service'
+import type { EmailQueueDTO } from './services/email-service'
 
 // ─── Config (todo desde .env) ──────────────────────────────────────────────
 const config = new ConfigStore()
@@ -98,6 +100,26 @@ orm.define('RateRestrictions', {
     ctd: { type: 'number', default: 0 },
     closedToArrival: { type: 'number', default: 0 },
     closedToDeparture: { type: 'number', default: 0 },
+  },
+})
+
+// Cola de envíos de email transaccional — cross-module (consumido por EmailService)
+orm.define('EmailQueue', {
+  table: 'email_queue', timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    recipient: { type: 'string', required: true },
+    subject: { type: 'string', required: true },
+    html: { type: 'text', required: true },
+    status: { type: 'string', default: 'pending' },
+    attempts: { type: 'number', default: 0 },
+    maxAttempts: { type: 'number', default: 3 },
+    lastError: { type: 'string' },
+    nextRetryAt: { type: 'string' },
+    provider: { type: 'string' },
+    relatedType: { type: 'string' },
+    relatedId: { type: 'string' },
   },
 })
 
@@ -1385,6 +1407,23 @@ await system.start()
 // Inyectamos el mismo pusher en ai-recepcionista para que la availability en Channex quede sincronizada.
 const aiRecepcionista = system.resolveModule<{ channexPusher: ((hotelId: string, roomId: string) => void) | null }>('ai-recepcionista')
 if (aiRecepcionista) aiRecepcionista.channexPusher = pushAvailabilityToChannex
+
+// ─── EmailService transversal (SMTP/Resend + cola con reintentos) ───────────
+const EMAIL_WORKER_TICK_MS = 30_000
+const emailConfigRepo = new OrmRepository<Record<string, unknown>>(orm, 'Configuration')
+const emailQueueRepo = new OrmRepository<EmailQueueDTO>(orm, 'EmailQueue')
+const emailService = new EmailService(emailConfigRepo, emailQueueRepo, logger)
+const reservasForEmail = system.resolveModule<{ setEmailService(es: EmailService): void }>('reservas')
+if (reservasForEmail && typeof reservasForEmail.setEmailService === 'function') {
+  reservasForEmail.setEmailService(emailService)
+}
+await emailService.reclaimStale()
+setInterval(() => {
+  emailService.processQueue().catch((e) => logger.error('email worker tick', { error: (e as Error).message }))
+  // Recupera filas 'processing' de workers muertos en runtime (no solo al arranque).
+  emailService.reclaimStale().catch((e) => logger.error('email worker reclaim', { error: (e as Error).message }))
+}, EMAIL_WORKER_TICK_MS)
+logger.info('EmailService worker listo', { tickMs: EMAIL_WORKER_TICK_MS })
 
 process.on('SIGINT', async () => { await system.stop(); process.exit(0) })
 process.on('SIGTERM', async () => { await system.stop(); process.exit(0) })

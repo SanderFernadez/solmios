@@ -42,9 +42,36 @@ export interface Guest {
   documentType: string
   documentNumber: string
   nationality: string
+  language?: string
+  country?: string
+  sex?: 'male' | 'female' | 'non_binary' | 'other'
+  dateOfBirth?: string
+  address?: string
+  city?: string
+  province?: string
+  documentIssueDate?: string
+  observations?: string
+  communicateClient?: 'none' | 'email_confirmation' | 'email_presaless'
   totalStays: number
   totalSpent: number
   loyaltyPoints: number
+}
+
+export interface EmergencyContact {
+  name: string
+  phone: string
+  relation: string
+  email?: string
+}
+
+// === CREDIT CARD ( reservation form only ) ===
+export interface CreditCardInfo {
+  holderName: string
+  brand: 'visa' | 'mastercard' | 'amex' | 'discover' | 'other'
+  number: string
+  cvv: string
+  expMonth: string
+  expYear: string
 }
 
 // === RESERVATION ===
@@ -66,14 +93,22 @@ export interface Reservation {
   source: ReservationSource
   channelReservationId?: string
   notes?: string
+  ownerNotes?: string
   totalAmount: number
   depositAmount: number
+  depositPercentage?: number
+  depositStatus?: 'unpaid' | 'partial' | 'paid'
+  paymentMethod?: string
   paymentStatus: 'pending' | 'partial' | 'paid' | 'refunded'
+  promoCode?: string
+  regime?: string
   createdAt: Date
   roomNumber?: string
   roomType?: string
   guestName?: string
   guestEmail?: string
+  emergencyContact?: EmergencyContact
+  creditCard?: CreditCardInfo
 }
 
 // === FOLIO ===

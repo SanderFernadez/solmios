@@ -48,6 +48,14 @@ exec(`CREATE TABLE IF NOT EXISTS configuration (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, key TEXT NOT NULL, value TEXT DEFAULT '{}',
   updatedAt TEXT DEFAULT (datetime('now')), UNIQUE(hotelId, key))`)
 
+exec(`CREATE TABLE IF NOT EXISTS email_queue (
+  id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, recipient TEXT NOT NULL, subject TEXT NOT NULL,
+  html TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+  maxAttempts INTEGER NOT NULL DEFAULT 3, lastError TEXT, nextRetryAt TEXT, provider TEXT,
+  relatedType TEXT, relatedId TEXT,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+exec(`CREATE INDEX IF NOT EXISTS idx_email_queue_status_retry ON email_queue (status, nextRetryAt)`)
+
 exec(`CREATE TABLE IF NOT EXISTS groups (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL, leadGuestId TEXT,
   totalRooms INTEGER DEFAULT 1, checkIn TEXT, checkOut TEXT, status TEXT DEFAULT 'pendiente',
@@ -326,6 +334,9 @@ function seedConfig() {
       { nombre: "Service", icono: "🍽️", etiqueta: "Service Charge", tasa: 10, activo: false },
     ],
     catalogo_amenities: ["WiFi","TV","A/C","Minibar","Caja fuerte","Plancha","Secador","Bata","Toallas extra","Vista al mar","Balcón"],
+    // Configuración de email transaccional (vacía — el admin la completa desde Settings; sin secretos en el repo).
+    email_config: {},
+    resend_api_key: "",
   }
   for (const [key, value] of Object.entries(cfg)) {
     run("INSERT INTO configuration (id, hotelId, key, value) VALUES (?,?,?,?) ON CONFLICT(hotelId, key) DO UPDATE SET value=excluded.value",

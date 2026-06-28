@@ -5,14 +5,27 @@ interface RawGuest {
   id: string
   hotelId: string
   name: string
+  firstName?: string
+  lastName?: string
   email?: string
   phone?: string
   telefono?: string
   document?: string
   documentType?: string
   tipoDocumento?: string
+  documentNumber?: string
+  documentIssueDate?: string
   nationality?: string
   nacionalidad?: string
+  language?: string
+  country?: string
+  sex?: string
+  dateOfBirth?: string
+  address?: string
+  city?: string
+  province?: string
+  observations?: string
+  communicateClient?: string
   totalStays?: number
   totalEstancias?: number
   totalSpent?: number

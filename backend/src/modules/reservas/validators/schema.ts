@@ -28,6 +28,12 @@ export const CreateReservasSchema: Record<string, ValidationRule> = {
   preCheckinStatus: { type: 'string' as const, enum: PRECHECKIN_ENUM },
   groupId: { type: 'string' as const },
   otaNotes: { type: 'string' as const, max: 2000 },
+  depositPercentage: { type: 'number' as const, min: 0, max: 100 },
+  depositStatus: { type: 'string' as const },
+  ownerNotes: { type: 'string' as const, max: 2000 },
+  regime: { type: 'string' as const },
+  promoCode: { type: 'string' as const, max: 50 },
+  communicateClient: { type: 'string' as const },
 }
 
 export const UpdateReservasSchema: Record<string, ValidationRule> = {

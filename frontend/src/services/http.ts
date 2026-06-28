@@ -13,6 +13,18 @@ function getToken(): string | null {
   return localStorage.getItem('token')
 }
 
+let _redirecting = false
+function forceLogout() {
+  if (_redirecting) return
+  _redirecting = true
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  // Evitar loop: no redirigir si ya estamos en /login
+  if (!location.pathname.startsWith('/login')) {
+    location.href = '/login'
+  }
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   const token = getToken()
@@ -26,6 +38,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   })
 
   if (res.status === 401) {
+    forceLogout()
     throw new ApiError(401, 'Sesión expirada')
   }
 

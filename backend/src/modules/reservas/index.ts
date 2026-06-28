@@ -30,7 +30,10 @@ export function ReservasModule() {
       const repo = new OrmRepository<ReservasDTO>(orm, 'Reservations')
       const log = logger.child('reservas')
       const userRepo = new OrmRepository<any>(orm, 'Users')
-      const service = new ReservasService(repo, log, cache, userRepo, auth)
+      const guestRepo = new OrmRepository<any>(orm, 'Guests')
+      const roomRepo = new OrmRepository<any>(orm, 'Rooms')
+      const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
+      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo)
       const controller = new ReservasController(service, log)
 
       router.get('/api/reservas', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))

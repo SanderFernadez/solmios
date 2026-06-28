@@ -30,6 +30,13 @@ export const ReservasModel: ModelDefinition = {
     preCheckinHash: { type: 'string' },
     groupId: { type: 'string' },
     otaNotes: { type: 'text' },
+    // Campos nuevos del modal
+    depositPercentage: { type: 'number', default: 100 },
+    depositStatus: { type: 'string', default: 'unpaid' },
+    ownerNotes: { type: 'text' },
+    regime: { type: 'string', default: 'room_only' },
+    promoCode: { type: 'string' },
+    communicateClient: { type: 'string', default: 'none' },
     // Check-in / check-out real (folio + auditoría)
     checkedInAt: { type: 'string' },
     checkedOutAt: { type: 'string' },

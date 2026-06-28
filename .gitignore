@@ -43,3 +43,10 @@ temp/
 /backend/*.yml
 /frontend/*.png
 /frontend/*.yml
+
+# Basura local (cache playwright, screenshots sueltos en raíz)
+/.playwright-mcp/
+/*.png
+
+# GitLab sync state (cada dev tiene su propio estado)
+openspec/.gitlab-sync.json

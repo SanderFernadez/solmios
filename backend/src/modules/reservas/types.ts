@@ -46,10 +46,13 @@ export interface CreateReservasDTO {
   channel?: ReservationChannel
   totalAmount: number
   deposit?: number
+  depositPercentage?: number
+  depositStatus?: string
   currency?: string
   adults?: number
   children?: number
   notes?: string
+  ownerNotes?: string
   source?: string
   externalLocator?: string
   commission?: number
@@ -61,6 +64,9 @@ export interface CreateReservasDTO {
   preCheckinHash?: string
   groupId?: string
   otaNotes?: string
+  regime?: string
+  promoCode?: string
+  communicateClient?: string
 }
 
 export interface UpdateReservasDTO {

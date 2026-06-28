@@ -1,0 +1,239 @@
+public/widget/index.html:33:          <label class="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
+public/widget/index.html:37:          <label class="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+public/widget/index.html:41:          <label class="block text-sm font-medium text-gray-700 mb-1">Huéspedes</label>
+public/widget/index.html:82:          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+public/widget/index.html:86:          <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+public/widget/index.html:90:          <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
+public/widget/index.html:94:          <label class="block text-sm font-medium text-gray-700 mb-1">Niños</label>
+src/pages/crm/index.vue:37:        <div class="text-xl mb-1">{{ tierIcon(tier) }}</div>
+src/pages/crm/index.vue:124:          <div class="font-extrabold text-navy text-sm mb-1">{{ s.name }}</div>
+src/pages/support/index.vue:57:              <div class="flex items-center gap-2 mb-1">
+src/pages/support/index.vue:63:              <div class="text-sm font-bold text-navy mb-1">{{ ticket.subject }}</div>
+src/pages/support/index.vue:110:                  <div class="flex items-center gap-2 mb-1" :class="reply.author === 'Soporte Arckode' ? 'justify-end' : ''">
+src/pages/message-logs/index.vue:61:      <h3 class="font-bold text-navy mb-1">Sin envíos registrados</h3>
+src/pages/message-logs/index.vue:145:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Asunto</div>
+src/pages/message-logs/index.vue:149:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Cuerpo</div>
+src/pages/message-logs/index.vue:153:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Respuesta del proveedor</div>
+public/landing.html:161:      <div class="text-center mb-16">
+public/landing.html:188:                <div class="flex items-center gap-2 mb-1">
+public/landing.html:259:      <div class="text-center mb-16">
+public/landing.html:288:      <div class="text-center mb-16">
+public/landing.html:342:      <div class="text-center mb-16">
+public/landing.html:354:            <span class="text-sm text-gray-400 mb-1">/mes</span>
+public/landing.html:373:            <span class="text-sm text-white/50 mb-1">/mes</span>
+public/landing.html:393:            <span class="text-sm text-gray-400 mb-1">/mes</span>
+public/landing.html:414:      <div class="text-center mb-16">
+public/landing.html:487:      <div class="grid md:grid-cols-4 gap-12 mb-12">
+src/pages/auth/forgot-password.vue:19:              <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Email</label>
+src/pages/notifications/index.vue:36:      <h3 class="font-bold text-navy mb-1">Sin notificaciones</h3>
+src/pages/auth/change-password.vue:18:            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Contraseña Actual</label>
+src/pages/auth/change-password.vue:30:            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Nueva Contraseña</label>
+src/pages/auth/change-password.vue:42:            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Confirmar Nueva Contraseña</label>
+src/pages/checkin/index.vue:34:            <div class="flex items-center justify-between mb-1">
+src/pages/auth/reset-password.vue:43:              <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Nueva Contraseña</label>
+src/pages/auth/reset-password.vue:48:              <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Confirmar Contraseña</label>
+src/pages/auth/login.vue:17:            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Email</label>
+src/pages/auth/login.vue:22:            <div class="flex items-center justify-between mb-1.5">
+src/pages/booking-engine/index.vue:71:                    <div class="w-6 h-6 rounded-full mx-auto mb-1" :class="theme.color"></div>
+src/pages/opiniones/index.vue:56:          <span class="text-[10px] font-bold text-cyan block mb-1">Respuesta del hotel:</span>
+src/pages/super-admin/analytics.vue:51:              <div class="text-[9px] font-bold text-navy mb-1 opacity-0 group-hover:opacity-100 transition-opacity">${{ month.total }}k</div>
+src/pages/super-admin/analytics.vue:71:              <div class="flex items-center justify-between mb-1.5">
+src/pages/super-admin/analytics.vue:99:              <div class="text-[8px] font-bold text-navy mb-1 opacity-0 group-hover:opacity-100 transition-opacity">{{ m.value }}</div>
+src/pages/super-admin/analytics.vue:118:                <div class="flex items-center justify-between mb-1">
+src/pages/ai-receptionist/config.vue:165:        <div class="flex items-center gap-3 mb-1">
+src/pages/ai-receptionist/config.vue:186:          <h2 class="text-lg font-extrabold text-navy mb-1">Conectar WhatsApp</h2>
+src/pages/ai-receptionist/config.vue:227:          <h2 class="text-lg font-extrabold text-navy mb-1">Cerebro de la IA</h2>
+src/pages/ai-receptionist/config.vue:232:              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Proveedor</label>
+src/pages/ai-receptionist/config.vue:239:              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Modelo</label>
+src/pages/ai-receptionist/config.vue:244:              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">API Key</label>
+src/pages/ai-receptionist/config.vue:249:              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Nombre del Bot</label>
+src/pages/ai-receptionist/config.vue:254:              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Horario Inicio</label>
+src/pages/ai-receptionist/config.vue:259:              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Horario Fin</label>
+src/pages/ai-receptionist/config.vue:283:              <div class="flex items-center gap-2 mb-1">
+src/pages/ai-receptionist/config.vue:302:          <h3 class="text-lg font-extrabold text-navy mb-1">Plantillas de Respuesta</h3>
+src/pages/attendance/index.vue:36:              <div class="text-xl mb-1">{{ m.icon }}</div>
+src/pages/super-admin/billing.vue:131:            <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Concepto</div>
+src/pages/super-admin/billing.vue:135:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Monto</div><div class="text-2xl font-black text-navy">${{ selectedInvoice.amount }}</div></div>
+src/pages/super-admin/billing.vue:136:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Método de Pago</div><div class="text-sm font-bold">{{ selectedInvoice.method }}</div></div>
+src/pages/super-admin/billing.vue:139:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Fecha de Emisión</div><div class="text-sm">{{ selectedInvoice.date }}</div></div>
+src/pages/super-admin/billing.vue:140:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Fecha de Vencimiento</div><div class="text-sm">{{ selectedInvoice.dueDate }}</div></div>
+src/pages/super-admin/billing.vue:143:            <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Notas</div>
+src/pages/super-admin/billing.vue:194:          <div class="text-sm font-bold text-navy mb-1">¿Marcar como pagado?</div>
+src/pages/payroll/index.vue:77:        <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Frecuencia</label><input v-model="config.paymentFrequency" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm"></div>
+src/pages/payroll/index.vue:78:        <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Día de Pago</label><input v-model.number="config.paymentDay" type="number" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm"></div>
+src/pages/payroll/index.vue:79:        <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Horas Extra (x)</label><input v-model.number="config.overtimeMultiplier" type="number" step="0.1" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm"></div>
+src/pages/payroll/index.vue:80:        <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Seguridad Social (%)</label><input v-model.number="config.socialSecurityRate" type="number" step="0.01" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm"></div>
+src/pages/payroll/index.vue:81:        <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Seguro Salud (%)</label><input v-model.number="config.healthInsuranceRate" type="number" step="0.01" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm"></div>
+src/pages/payroll/index.vue:82:        <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Moneda</label><input v-model="config.currency" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm"></div>
+src/pages/super-admin/plans.vue:51:              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre *</label>
+src/pages/super-admin/plans.vue:56:                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Precio $ *</label>
+src/pages/super-admin/plans.vue:60:                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Moneda</label>
+src/pages/super-admin/plans.vue:65:              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Descripción</label>
+src/pages/super-admin/plans.vue:69:              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Features (una por línea)</label>
+src/pages/super-admin/plans.vue:74:                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Máx. Hab.</label>
+src/pages/super-admin/plans.vue:78:                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Máx. Usuarios</label>
+src/pages/super-admin/plans.vue:82:                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Máx. Propiedades</label>
+src/pages/team/index.vue:45:      <h3 class="font-bold text-navy mb-1">Sin miembros</h3>
+src/pages/team/index.vue:146:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
+src/pages/team/index.vue:150:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Email</label>
+src/pages/team/index.vue:154:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Rol inicial</label>
+src/pages/team/index.vue:161:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Contraseña temporal</label>
+src/pages/super-admin/hotels.vue:218:            <div><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Plan Actual</div><span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="planClass(selectedHotel.plan)">{{ selectedHotel.plan }}</span></div>
+src/pages/super-admin/hotels.vue:219:            <div><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Usuarios</div><div class="text-sm font-bold">{{ selectedHotel.users }}</div></div>
+src/pages/super-admin/hotels.vue:220:            <div><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Teléfono</div><div class="text-sm">{{ selectedHotel.phone }}</div></div>
+src/pages/super-admin/hotels.vue:221:            <div><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Registro</div><div class="text-sm">{{ selectedHotel.registered }}</div></div>
+src/pages/settings/index.vue:197:            <div class="text-[10px] font-bold text-teal uppercase mb-1">Activo</div>
+src/pages/settings/index.vue:222:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Latitud</label>
+src/pages/settings/index.vue:227:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Longitud</label>
+src/pages/settings/index.vue:240:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Localidad</label>
+src/pages/settings/index.vue:244:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Código Postal</label>
+src/pages/settings/index.vue:357:              <div class="flex items-center gap-1 mb-1">
+src/pages/settings/index.vue:431:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
+src/pages/settings/index.vue:435:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tasa (%)</label>
+src/pages/settings/index.vue:446:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tipo de Fianza</label>
+src/pages/settings/index.vue:454:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Valor</label>
+src/pages/settings/index.vue:462:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Forma de Pago por Defecto</label>
+src/pages/settings/index.vue:525:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Red</label>
+src/pages/settings/index.vue:529:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Contraseña</label>
+src/pages/settings/index.vue:564:              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Secret Key</label>
+src/pages/settings/index.vue:569:                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Publishable Key</label>
+src/pages/settings/index.vue:573:                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Moneda</label>
+src/pages/settings/index.vue:580:              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Webhook Secret</label>
+src/pages/super-admin/monitoring.vue:123:            <div class="flex items-center justify-between mb-1">
+src/pages/super-admin/monitoring.vue:147:            <div class="flex justify-between text-xs mb-1">
+src/pages/super-admin/monitoring.vue:156:            <div class="flex justify-between text-xs mb-1">
+src/pages/super-admin/monitoring.vue:165:            <div class="flex justify-between text-xs mb-1">
+src/pages/super-admin/monitoring.vue:187:            <div class="flex items-center justify-between mb-1">
+src/pages/folios/index.vue:43:      <h3 class="font-bold text-navy mb-1">Sin folios abiertos</h3>
+src/pages/folios/index.vue:137:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Categoría</label>
+src/pages/folios/index.vue:149:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Descripción</label>
+src/pages/folios/index.vue:154:                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Monto unitario</label>
+src/pages/folios/index.vue:158:                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Cantidad</label>
+src/pages/folios/index.vue:184:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Método</label>
+src/pages/folios/index.vue:193:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Monto</label>
+src/pages/folios/index.vue:200:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Referencia (opcional)</label>
+src/pages/cerraduras/index.vue:20:        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client ID</label><input v-model="ttlockConfig.clientId" type="text" placeholder="De open.ttlock.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+src/pages/cerraduras/index.vue:21:        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client Secret</label><input v-model="ttlockConfig.clientSecret" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+src/pages/cerraduras/index.vue:22:        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Account ID / Email</label><input v-model="ttlockConfig.accountId" type="text" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+src/pages/super-admin/users.vue:139:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Rol</div><span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="roleClass(selectedUser.role)">{{ selectedUser.role }}</span></div>
+src/pages/super-admin/users.vue:140:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Plan</div><span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="planClass(selectedUser.plan)">{{ selectedUser.plan }}</span></div>
+src/pages/super-admin/users.vue:141:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Hotel</div><div class="text-sm font-bold">{{ selectedUser.hotel }}</div></div>
+src/pages/super-admin/users.vue:142:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Habitaciones</div><div class="text-sm font-bold">{{ selectedUser.rooms }}</div></div>
+src/pages/super-admin/users.vue:143:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Última Actividad</div><div class="text-sm">{{ selectedUser.lastActivity }}</div></div>
+src/pages/super-admin/users.vue:144:            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Registro</div><div class="text-sm">{{ selectedUser.registered }}</div></div>
+src/pages/reservations/index.vue:101:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre *</label>
+src/pages/reservations/index.vue:105:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Apellidos *</label>
+src/pages/reservations/index.vue:112:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Email</label>
+src/pages/reservations/index.vue:116:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Idioma</label>
+src/pages/reservations/index.vue:125:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">País</label>
+src/pages/reservations/index.vue:131:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nacionalidad</label>
+src/pages/reservations/index.vue:137:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Teléfono</label>
+src/pages/reservations/index.vue:144:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Dirección</label>
+src/pages/reservations/index.vue:148:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Ciudad</label>
+src/pages/reservations/index.vue:154:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Provincia / Estado</label>
+src/pages/reservations/index.vue:162:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Sexo</label>
+src/pages/reservations/index.vue:172:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha de nacimiento</label>
+src/pages/reservations/index.vue:179:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Tipo de documento</label>
+src/pages/reservations/index.vue:185:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">N° documento</label>
+src/pages/reservations/index.vue:189:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha expedición</label>
+src/pages/reservations/index.vue:195:                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Comunicar al cliente</label>
+src/pages/reservations/index.vue:204:                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Observaciones al propietario</label>
+src/pages/reservations/index.vue:218:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre completo</label>
+src/pages/reservations/index.vue:222:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Teléfono</label>
+src/pages/reservations/index.vue:226:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Parentesco</label>
+src/pages/reservations/index.vue:234:                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Email (opcional)</label>
+src/pages/reservations/index.vue:245:                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Comisión (%)</label>
+src/pages/reservations/index.vue:249:                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Loc. OTA</label>
+src/pages/reservations/index.vue:253:                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Notas del Canal</label>
+src/pages/reservations/index.vue:270:                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Titular de la tarjeta</label>
+src/pages/reservations/index.vue:275:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Tipo tarjeta</label>
+src/pages/reservations/index.vue:285:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">N° tarjeta</label>
+src/pages/reservations/index.vue:291:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">CVV</label>
+src/pages/reservations/index.vue:295:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Mes</label>
+src/pages/reservations/index.vue:302:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Año</label>
+src/pages/reservations/index.vue:321:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha entrada *</label>
+src/pages/reservations/index.vue:325:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha salida *</label>
+src/pages/reservations/index.vue:332:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Habitación</label>
+src/pages/reservations/index.vue:339:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Régimen</label>
+src/pages/reservations/index.vue:352:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Adultos</label>
+src/pages/reservations/index.vue:356:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Niños</label>
+src/pages/reservations/index.vue:360:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Noches</label>
+src/pages/reservations/index.vue:366:                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Código promocional</label>
+src/pages/reservations/index.vue:388:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Anticipo requerido (%)</label>
+src/pages/reservations/index.vue:392:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Monto del anticipo ($)</label>
+src/pages/reservations/index.vue:399:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Estado del anticipo</label>
+src/pages/reservations/index.vue:407:                        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Pago con</label>
+src/pages/super-admin/amenities.vue:70:                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Key *</label>
+src/pages/super-admin/amenities.vue:74:                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Icono</label>
+src/pages/super-admin/amenities.vue:79:              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Label *</label>
+src/pages/super-admin/amenities.vue:83:              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Categoría</label>
+src/pages/whatsapp-templates/index.vue:31:      <h3 class="font-bold text-navy mb-1">Sin plantillas</h3>
+src/pages/super-admin/api-keys.vue:138:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
+src/pages/super-admin/api-keys.vue:142:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Hotel</label>
+src/pages/super-admin/api-keys.vue:149:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Scope / Permisos</label>
+src/pages/super-admin/roles.vue:37:        <span class="text-2xl text-text-muted mb-1">+</span>
+src/pages/super-admin/roles.vue:164:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
+src/pages/super-admin/roles.vue:168:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Icono</label>
+src/pages/super-admin/roles.vue:176:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Color</label>
+src/pages/packages/index.vue:161:              <div class="flex items-center justify-between mb-1">
+src/pages/packages/index.vue:170:              <div class="flex items-center justify-between mb-1">
+src/pages/packages/index.vue:179:              <div class="flex items-center justify-between mb-1">
+src/pages/packages/index.vue:188:              <div class="flex items-center justify-between mb-1">
+src/pages/packages/index.vue:207:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
+src/pages/packages/index.vue:211:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Descripción</label>
+src/pages/packages/index.vue:216:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Precio</label>
+src/pages/packages/index.vue:220:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Unidad</label>
+src/pages/payments/index.vue:48:      <h3 class="font-bold text-navy mb-1">Sin links de pago</h3>
+src/pages/payments/index.vue:112:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Reserva *</label>
+src/pages/payments/index.vue:121:              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Monto *</label>
+src/pages/payments/index.vue:130:                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Enviar a</label>
+src/pages/payments/index.vue:134:                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Vía</label>
+src/pages/super-admin/announcements.vue:119:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Título</label>
+src/pages/super-admin/announcements.vue:123:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tipo</label>
+src/pages/super-admin/announcements.vue:133:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Audiencia</label>
+src/pages/super-admin/announcements.vue:146:            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Mensaje</label>
+src/pages/channel-manager/index.vue:32:            <label class="block text-xs font-bold text-text-muted mb-1">Código OTA</label>
+src/pages/channel-manager/index.vue:36:            <label class="block text-xs font-bold text-text-muted mb-1">Título del canal</label>
+src/pages/channel-manager/index.vue:115:            <h3 class="text-sm font-black text-navy mb-1">{{ channel.name }}</h3>
+src/pages/maintenance/index.vue:76:            <div class="text-sm font-black text-navy mb-1">{{ order.title }}</div>
+src/pages/maintenance/index.vue:167:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Ubicación</div>
+src/pages/maintenance/index.vue:171:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Categoría</div>
+src/pages/maintenance/index.vue:177:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Asignado a</div>
+src/pages/maintenance/index.vue:181:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Fecha Reporte</div>
+src/pages/maintenance/index.vue:185:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Costo Estimado</div>
+src/pages/maintenance/index.vue:189:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Tiempo Estimado</div>
+src/pages/maintenance/index.vue:295:            <div class="text-sm text-text-muted mb-1">#{{ selectedOrder.id }}</div>
+src/pages/guests/index.vue:147:                  <div class="text-[10px] text-text-muted uppercase mb-1">Email</div>
+src/pages/guests/index.vue:151:                  <div class="text-[10px] text-text-muted uppercase mb-1">Teléfono</div>
+src/pages/guests/index.vue:155:                  <div class="text-[10px] text-text-muted uppercase mb-1">Documento</div>
+src/pages/guests/index.vue:159:                  <div class="text-[10px] text-text-muted uppercase mb-1">Fecha de Nacimiento</div>
+src/pages/dashboard/index.vue:15:        <div class="text-2xl font-black text-navy mb-1">{{ kpi.value }}</div>
+src/pages/billing/index.vue:225:                <div class="text-[10px] text-text-muted uppercase mb-1">Huésped</div>
+src/pages/billing/index.vue:229:                <div class="text-[10px] text-text-muted uppercase mb-1">Habitación</div>
+src/pages/billing/index.vue:324:                  <span class="text-xl block mb-1">{{ method.icon }}</span>
+src/pages/landing/index.vue:120:        <div class="text-center mb-16">
+src/pages/landing/index.vue:147:                  <div class="flex items-center gap-2 mb-1">
+src/pages/landing/index.vue:218:        <div class="text-center mb-16">
+src/pages/landing/index.vue:247:        <div class="text-center mb-16">
+src/pages/landing/index.vue:301:        <div class="text-center mb-16">
+src/pages/landing/index.vue:313:              <span class="text-sm text-gray-400 mb-1">/mes</span>
+src/pages/landing/index.vue:332:              <span class="text-sm text-white/50 mb-1">/mes</span>
+src/pages/landing/index.vue:352:              <span class="text-sm text-gray-400 mb-1">/mes</span>
+src/pages/landing/index.vue:373:        <div class="text-center mb-16">
+src/pages/landing/index.vue:446:        <div class="grid md:grid-cols-4 gap-12 mb-12">
+src/pages/super-admin/support.vue:88:            <div class="flex items-center gap-2 mb-1">
+src/pages/super-admin/support.vue:105:            <div class="flex items-center gap-2 mb-1" :class="reply.author === 'Soporte Arckode' ? 'justify-end' : ''">
+src/pages/super-admin/index.vue:33:              <div class="text-[10px] font-bold text-navy mb-1 opacity-0 group-hover:opacity-100 transition-opacity">${{ month.value.toLocaleString() }}</div>
+src/pages/super-admin/index.vue:179:              <div class="flex items-center justify-between mb-1">
+src/pages/super-admin/index.vue:188:              <div class="flex items-center justify-between mb-1">
+src/pages/super-admin/index.vue:197:              <div class="flex items-center justify-between mb-1">
+src/pages/super-admin/index.vue:206:              <div class="flex items-center justify-between mb-1">
+src/pages/housekeeping/index.vue:159:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Habitación</div>
+src/pages/housekeeping/index.vue:163:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Tipo de Tarea</div>
+src/pages/housekeeping/index.vue:167:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Piso</div>
+src/pages/housekeeping/index.vue:171:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Estado</div>
+src/pages/housekeeping/index.vue:177:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Prioridad</div>
+src/pages/housekeeping/index.vue:183:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Asignado a</div>
+src/pages/housekeeping/index.vue:187:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Tiempo Estimado</div>
+src/pages/housekeeping/index.vue:191:              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Inicio</div>
+src/pages/housekeeping/index.vue:315:            <div class="text-2xl font-black text-navy mb-1">{{ selectedTask.roomNumber }}</div>

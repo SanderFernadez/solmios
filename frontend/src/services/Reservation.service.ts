@@ -86,8 +86,26 @@ export const ReservationService = {
     checkIn: string
     checkOut: string
     channel?: string
+    source?: string
     totalAmount: number
     status?: string
+    deposit?: number
+    depositPercentage?: number
+    depositStatus?: string
+    paymentMethod?: string
+    adults?: number
+    children?: number
+    notes?: string
+    ownerNotes?: string
+    commission?: number
+    commissionAmount?: number
+    externalLocator?: string
+    otaNotes?: string
+    regime?: string
+    promoCode?: string
+    autoSendEnabled?: boolean
+    emergencyContact?: { name: string; phone: string; relation: string; email?: string }
+    creditCard?: { holderName: string; brand: string; number: string; cvv: string; expMonth: string; expYear: string }
   }): Promise<Reservation> {
     const data = await http.post<RawReservation>('/reservas', input)
     return mapReservation(data)

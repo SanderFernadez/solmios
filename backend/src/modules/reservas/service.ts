@@ -1,26 +1,25 @@
-// reservas/service.ts — Facade publica del modulo
-// Responsabilidad UNICA: casos de uso del modulo.
-// NO sabe de HTTP. NO importa de otros modulos.
-// Recibe dependencias por constructor (Dependency Inversion).
-//
-// Si este archivo supera 200 lineas -> extraer casos de uso a ./usecases/{caso}.ts
-// y dejar acá solo el orquestador que delega.
-//
-// IMPORTANTE: depende de RepositoryAdapter<ReservasDTO>, no del ORM directamente.
-// Esto permite swapear SQL -> MongoDB -> Prisma en composition-root.ts sin tocar este archivo.
+// reservas/service.ts — Facade publica del modulo. Casos de uso, sin HTTP ni imports de otros módulos.
+// Depende de RepositoryAdapter<ReservasDTO> (no del ORM directo) — swapeable en composition-root.ts.
+// Si supera 200 líneas -> extraer casos de uso a ./usecases/{caso}.ts.
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 import type { ReservasSockets } from './sockets'
 import { assertRoomAvailable } from './usecases/availability'
+import type { EmailService } from '../../services/email-service'
+import { enqueueReservationEmail } from './usecases/reservation-email'
 
 const CACHE_TTL = 300 // seconds
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
+const MS_PER_DAY = 86_400_000
 
 export class ReservasService {
   private sockets: ReservasSockets = {}
+  // EmailService transversal inyectado post-construcción (patrón setSockets).
+  private emailService: EmailService | null = null
+  setEmailService(es: EmailService): void { this.emailService = es }
 
   constructor(
     private readonly repo: RepositoryAdapter<ReservasDTO>,
@@ -28,6 +27,9 @@ export class ReservasService {
     private readonly cache: CacheAdapter,
     private readonly userRepo: RepositoryAdapter<any>,
     private readonly auth: Auth,
+    private readonly guestRepo: RepositoryAdapter<any>,
+    private readonly roomRepo: RepositoryAdapter<any>,
+    private readonly hotelRepo: RepositoryAdapter<any>,
   ) {}
 
   // ACUMULA handlers — nunca pisa el anterior.
@@ -44,9 +46,7 @@ export class ReservasService {
     }
   }
 
-  // ─────────────────────────────────────────────
-  //  LIST — paginado con cache
-  // ─────────────────────────────────────────────
+  // LIST — paginado con cache
   async list(query: ReservasQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasPaginated> {
     this.logger.info('Listando reservas', { query, userId: currentUser.id })
 
@@ -100,9 +100,7 @@ export class ReservasService {
     return response
   }
 
-  // ─────────────────────────────────────────────
-  //  GET BY ID — ownership check
-  // ─────────────────────────────────────────────
+  // GET BY ID — ownership check
   async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Obteniendo reserva', { id, userId: currentUser.id })
 
@@ -116,9 +114,7 @@ export class ReservasService {
     return item
   }
 
-  // ─────────────────────────────────────────────
-  //  CREATE — date validation + availability + ownership
-  // ─────────────────────────────────────────────
+  // CREATE — date validation + availability + ownership
   async create(dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Creando reserva', { userId: currentUser.id, roomId: dto.roomId })
 
@@ -138,12 +134,18 @@ export class ReservasService {
     const item = await this.repo.create(dto as any)
     await this.sockets.onReservasCreated?.(item)
     await this.cache.delete(`reservas:list:${dto.hotelId}`)
+
+    // ── Encolar email según communicateClient (envío asíncrono con reintentos) ──
+    await enqueueReservationEmail(
+      { emailService: this.emailService, guestRepo: this.guestRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, logger: this.logger },
+      dto,
+      item,
+    ).catch((e) => this.logger.warn('Error encolando email de reserva', { error: (e as Error).message }))
+
     return item
   }
 
-  // ─────────────────────────────────────────────
-  //  UPDATE — ownership + date validation + availability
-  // ─────────────────────────────────────────────
+  // UPDATE — ownership + date validation + availability
   async update(id: string, dto: UpdateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Actualizando reserva', { id, userId: currentUser.id })
 
@@ -175,9 +177,7 @@ export class ReservasService {
     return item
   }
 
-  // ─────────────────────────────────────────────
-  //  DELETE — ownership check
-  // ─────────────────────────────────────────────
+  // DELETE — ownership check
   async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
     this.logger.info('Eliminando reserva', { id, userId: currentUser.id })
 

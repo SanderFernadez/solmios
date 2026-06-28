@@ -13,6 +13,25 @@
     <meta name="apple-mobile-web-app-title" content="ManagerHotel" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>ManagerHotel — Hospitality OS</title>
+    <!-- HMR crash recovery: /__alive solo existe cuando Vite está corriendo -->
+    <script>
+      (function() {
+        var POLL_INTERVAL_MS = 2000;
+        var wasDown = false;
+        setInterval(function() {
+          fetch('/__alive', { method: 'HEAD', cache: 'no-store' })
+            .then(function(res) {
+              if (wasDown && res.ok) {
+                wasDown = false;
+                location.reload();
+              }
+            })
+            .catch(function() {
+              wasDown = true;
+            });
+        }, POLL_INTERVAL_MS);
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">

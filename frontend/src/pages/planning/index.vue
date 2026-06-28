@@ -220,30 +220,150 @@
       </div>
     </Teleport>
 
-    <!-- New reservation -->
+    <!-- New reservation — modal completo -->
     <Teleport to="body">
-      <div v-if="newRes.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="newRes.show = false">
-        <div class="bg-white rounded-2xl w-full max-w-md p-6">
-          <h3 class="text-lg font-black text-navy mb-4">Nueva Reserva</h3>
-          <div class="space-y-4">
-            <div class="bg-surface rounded-xl p-3 text-sm font-bold text-navy">{{ newRes.room?.number }} · {{ newRes.cin }} → {{ newRes.cout }} ({{ newResNights }}n)</div>
-            <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Huésped *</label><input v-model="newRes.name" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-            <div class="grid grid-cols-2 gap-3">
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Canal</label>
-                <select v-model="newRes.ch" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer">
-                  <option value="direct">Directa</option><option value="booking">Booking.com</option><option value="expedia">Expedia</option><option value="airbnb">Airbnb</option><option value="google">Google</option><option value="whatsapp">WhatsApp</option>
-                </select>
-              </div>
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Total $</label><input v-model.number="newRes.amt" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy" /></div>
+      <div v-if="newRes.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
+          <!-- Header -->
+          <div class="p-5 border-b border-border flex items-center justify-between shrink-0 bg-gradient-to-r from-navy to-navy/90">
+            <div class="flex items-center gap-3">
+              <h3 class="text-lg font-black text-white">Nueva Reserva</h3>
+              <span class="text-xs text-white/60">🏨 {{ newRes.room?.number }} — {{ newRes.room?.type }} · ${{ newRes.room?.basePrice }}/n</span>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Adultos</label><input v-model.number="newRes.adults" type="number" min="1" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Niños</label><input v-model.number="newRes.kids" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+            <button @click="newRes.show=false" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20">✕</button>
+          </div>
+          <!-- Body -->
+          <div class="flex-1 overflow-y-auto">
+            <div class="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
+              <!-- IZQUIERDA: Cliente + Emergencia -->
+              <div class="p-5 space-y-5">
+                <div>
+                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-[10px]">👤</span> Cliente</h4>
+                  <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre <span class="text-coral">*</span></label><input v-model="newRes.firstName" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Apellidos <span class="text-coral">*</span></label><input v-model="newRes.lastName" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" /></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                      <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Email</label><input v-model="newRes.email" type="email" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Idioma</label><select v-model="newRes.language" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option>Español</option><option>English</option><option>Français</option><option>Português</option><option>Deutsch</option></select></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">País</label><input v-model="newRes.country" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nacionalidad</label><input v-model="newRes.nationality" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Teléfono</label><input v-model="newRes.phone" type="tel" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                      <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Dirección</label><input v-model="newRes.address" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Ciudad</label><input v-model="newRes.city" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Provincia</label><input v-model="newRes.province" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Sexo</label><select v-model="newRes.sex" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="">Seleccionar</option><option value="male">Masculino</option><option value="female">Femenino</option><option value="non_binary">No binario</option><option value="other">Otro</option></select></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha nacimiento</label><input v-model="newRes.dateOfBirth" type="date" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Tipo documento</label><select v-model="newRes.docType" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="dni">DNI / NIF</option><option value="passport">Pasaporte</option><option value="cedula">Cédula</option><option value="rif">RIF</option><option value="other">Otro</option></select></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">N° documento</label><input v-model="newRes.documentNumber" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha expedición</label><input v-model="newRes.documentIssueDate" type="date" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                    </div>
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Comunicar al cliente</label><select v-model="newRes.communicateClient" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="none">No enviar bono</option><option value="email_confirmation">Enviar email confirmación</option><option value="email_presaless">Enviar email preventa</option></select></div>
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Observaciones</label><textarea v-model="newRes.ownerNotes" rows="2" class="w-full px-3 py-2 rounded-xl border border-border text-sm resize-none"></textarea></div>
+                  </div>
+                </div>
+                <!-- Emergencia -->
+                <div class="border border-coral/20 rounded-xl p-4 bg-coral/5">
+                  <h4 class="text-xs font-black text-coral uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-coral/20 flex items-center justify-center text-[10px]">🚨</span> Contacto de Emergencia</h4>
+                  <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre completo</label><input v-model="newRes.emergencyName" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Teléfono</label><input v-model="newRes.emergencyPhone" type="tel" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Parentesco</label><select v-model="newRes.emergencyRelation" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="">Seleccionar</option><option>Familiar</option><option>Amigo/a</option><option>Empleado/a</option><option>Agente de viajes</option><option>Otro</option></select></div>
+                    </div>
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Email</label><input v-model="newRes.emergencyEmail" type="email" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                  </div>
+                </div>
+                <!-- OTA -->
+                <div v-if="newRes.ch!=='direct'" class="border border-border rounded-xl p-4 bg-surface/50">
+                  <h4 class="text-xs font-black text-navy uppercase mb-3">🌐 Datos del Canal</h4>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Comisión (%)</label><input v-model.number="newRes.commission" type="number" min="0" max="50" class="w-full px-3 py-2 rounded-lg border border-border text-sm" /></div>
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Locator OTA</label><input v-model="newRes.extLocator" type="text" class="w-full px-3 py-2 rounded-lg border border-border text-sm" /></div>
+                  </div>
+                </div>
+              </div>
+              <!-- DERECHA: Tarjeta + Alojamiento + Anticipo -->
+              <div class="p-5 space-y-5">
+                <!-- Tarjeta -->
+                <div class="border border-purple/20 rounded-xl p-4 bg-purple/5">
+                  <h4 class="text-xs font-black text-purple uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-purple/20 flex items-center justify-center text-[10px]">💳</span> Tarjeta de Crédito/Débito</h4>
+                  <div class="space-y-3">
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Titular</label><input v-model="newRes.cardHolder" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                    <div class="grid grid-cols-3 gap-3">
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Tipo</label><select v-model="newRes.cardBrand" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="visa">Visa</option><option value="mastercard">Mastercard</option><option value="amex">Amex</option><option value="other">Otra</option></select></div>
+                      <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">N° tarjeta</label><input v-model="newRes.cardNumber" type="text" maxlength="19" placeholder="XXXX XXXX XXXX XXXX" class="w-full px-3 py-2 rounded-xl border border-border text-sm font-mono" /></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">CVV</label><input v-model="newRes.cardCvv" type="text" maxlength="4" class="w-full px-3 py-2 rounded-xl border border-border text-sm font-mono" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Mes</label><select v-model="newRes.cardExpMonth" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="">Mes</option><option v-for="m in ['01','02','03','04','05','06','07','08','09','10','11','12']" :key="m" :value="m">{{ m }}</option></select></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Año</label><select v-model="newRes.cardExpYear" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="">Año</option><option v-for="y in 10" :key="y" :value="new Date().getFullYear()+y-1">{{ new Date().getFullYear()+y-1 }}</option></select></div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Alojamiento -->
+                <div>
+                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-[10px]">🏨</span> Alojamiento</h4>
+                  <div class="bg-surface rounded-xl p-3 text-sm space-y-2 mb-3">
+                    <div class="flex justify-between"><span class="text-text-secondary">Habitación</span><span class="font-bold text-navy">{{ newRes.room?.number }} — {{ newRes.room?.type }}</span></div>
+                    <div class="flex justify-between"><span class="text-text-secondary">Fecha entrada</span><span class="font-bold text-navy">{{ newRes.cin }}</span></div>
+                    <div class="flex justify-between"><span class="text-text-secondary">Fecha salida</span><span class="font-bold text-navy">{{ newRes.cout }}</span></div>
+                    <div class="flex justify-between"><span class="text-text-secondary">Noches</span><span class="font-bold text-navy">{{ newResNights }}</span></div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Adultos</label><input v-model.number="newRes.adults" type="number" min="1" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Niños</label><input v-model.number="newRes.kids" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3 mt-3">
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Régimen</label><select v-model="newRes.regime" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="room_only">Solo alojamiento</option><option value="breakfast">Desayuno incluido</option><option value="half_board">Media pensión</option><option value="full_board">Pensión completa</option><option value="all_inclusive">Todo incluido</option></select></div>
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Canal</label><select v-model="newRes.ch" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="direct">Directa</option><option value="booking">Booking</option><option value="expedia">Expedia</option><option value="airbnb">Airbnb</option><option value="google">Google</option><option value="whatsapp">WhatsApp</option></select></div>
+                  </div>
+                  <div v-if="newRes.room" class="bg-white rounded-xl p-3 mt-3 space-y-1.5 border border-border text-sm">
+                    <div class="flex justify-between"><span class="text-text-secondary">{{ newResNights }}n × ${{ newRes.room.basePrice }}</span><span class="font-bold">${{ newRes.room.basePrice * newResNights }}</span></div>
+                    <div class="flex justify-between"><span class="text-text-secondary">Impuestos (10%)</span><span class="font-bold">${{ Math.round(newRes.room.basePrice * newResNights * 0.1) }}</span></div>
+                  </div>
+                </div>
+                <!-- Anticipo -->
+                <div class="border border-teal/20 rounded-xl p-4 bg-teal/5">
+                  <h4 class="text-xs font-black text-teal uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-teal/20 flex items-center justify-center text-[10px]">💰</span> Anticipo y Total</h4>
+                  <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Anticipo (%)</label><input v-model.number="newRes.depositPercentage" type="number" min="0" max="100" @input="newRes.deposit = Math.round(newRes.amt * (newRes.depositPercentage||0) / 100)" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Monto ($)</label><input v-model.number="newRes.deposit" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm font-bold text-navy" /></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Estado</label><select v-model="newRes.depositStatus" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="unpaid">Sin pagar</option><option value="partial">Parcial</option><option value="paid">Pagado</option></select></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Pago con</label><select v-model="newRes.payMethod" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="transfer">Transferencia</option><option value="card">Tarjeta</option><option value="cash">Efectivo</option><option value="link">Link de pago</option></select></div>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 space-y-1.5 border border-border">
+                      <div class="flex justify-between text-sm"><span class="text-text-secondary">Precio final</span><span class="font-extrabold text-navy text-lg">${{ newRes.amt }}</span></div>
+                      <div v-if="newRes.amt > 0" class="flex justify-between text-sm"><span class="text-text-secondary">Pendiente</span><span class="font-black" :class="newRes.amt - newRes.deposit > 0 ? 'text-coral' : 'text-teal'">${{ newRes.amt - newRes.deposit }}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="flex gap-3 mt-6">
-            <button @click="newRes.show = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="saveNewRes" class="flex-1 py-2.5 bg-teal text-white rounded-xl text-sm font-bold cursor-pointer">Crear</button>
+          <!-- Footer -->
+          <div class="p-4 border-t border-border bg-surface/80 shrink-0 flex items-center justify-between">
+            <div class="text-sm font-extrabold text-navy">Total: <span class="text-lg">${{ newRes.amt }}</span></div>
+            <div class="flex gap-3">
+              <button @click="newRes.show=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
+              <button @click="saveNewRes" class="px-6 py-2.5 bg-teal text-white rounded-xl text-sm font-black cursor-pointer hover:opacity-90">Crear Reserva</button>
+            </div>
           </div>
         </div>
       </div>
@@ -389,22 +509,89 @@
       </div>
     </Teleport>
 
-    <!-- Reservation detail -->
+    <!-- Reservation detail — completo -->
     <Teleport to="body">
-      <div v-if="detail.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="detail.show = false">
-        <div class="bg-white rounded-2xl w-full max-w-sm p-6">
-          <h3 class="text-lg font-black text-navy mb-4">{{ detail.name }}</h3>
-          <div class="flex gap-2 mb-3">
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.chBadge">{{ detail.chLabel }}</span>
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.stBadge">{{ detail.stLabel }}</span>
+      <div v-if="detail.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="detail.show = false">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <!-- Header -->
+          <div class="p-5 border-b border-border shrink-0">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-black text-navy">{{ detail.firstName }} {{ detail.lastName }}</h3>
+              <button @click="detail.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center cursor-pointer">✕</button>
+            </div>
+            <div class="flex gap-2 mt-2">
+              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.chBadge">{{ detail.chLabel }}</span>
+              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.stBadge">{{ detail.stLabel }}</span>
+              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.payBadge">{{ detail.payLabel }}</span>
+            </div>
           </div>
-          <div class="bg-surface rounded-xl p-3 space-y-2 text-xs">
-            <div class="flex justify-between"><span class="text-text-muted">Hab.</span><span class="font-bold text-navy">{{ detail.room }}</span></div>
-            <div class="flex justify-between"><span class="text-text-muted">Check-in</span><span class="font-bold text-navy">{{ detail.cin }}</span></div>
-            <div class="flex justify-between"><span class="text-text-muted">Check-out</span><span class="font-bold text-navy">{{ detail.cout }}</span></div>
-            <div class="flex justify-between"><span class="text-text-muted">Total</span><span class="font-bold text-teal">${{ detail.amt }}</span></div>
+          <!-- Body -->
+          <div class="flex-1 overflow-y-auto p-5 space-y-4">
+            <!-- Cliente -->
+            <div>
+              <h4 class="text-[10px] font-black text-navy uppercase mb-2">👤 Datos del Cliente</h4>
+              <div class="bg-surface rounded-xl p-3 grid grid-cols-2 gap-2 text-xs">
+                <div><span class="text-text-muted">Email:</span> <span class="font-bold text-navy">{{ detail.email || '—' }}</span></div>
+                <div><span class="text-text-muted">Teléfono:</span> <span class="font-bold text-navy">{{ detail.phone || '—' }}</span></div>
+                <div><span class="text-text-muted">Idioma:</span> <span class="font-bold text-navy">{{ detail.language || '—' }}</span></div>
+                <div><span class="text-text-muted">Nacionalidad:</span> <span class="font-bold text-navy">{{ detail.nationality || '—' }}</span></div>
+                <div><span class="text-text-muted">Documento:</span> <span class="font-bold text-navy">{{ detail.docType || '—' }} {{ detail.docNumber || '' }}</span></div>
+                <div><span class="text-text-muted">Sexo:</span> <span class="font-bold text-navy">{{ detail.sex || '—' }}</span></div>
+                <div v-if="detail.address"><span class="text-text-muted">Dirección:</span> <span class="font-bold text-navy">{{ detail.address }}</span></div>
+                <div v-if="detail.city"><span class="text-text-muted">Ciudad:</span> <span class="font-bold text-navy">{{ detail.city }}</span></div>
+              </div>
+            </div>
+            <!-- Alojamiento -->
+            <div>
+              <h4 class="text-[10px] font-black text-navy uppercase mb-2">🏨 Alojamiento</h4>
+              <div class="bg-surface rounded-xl p-3 grid grid-cols-2 gap-2 text-xs">
+                <div><span class="text-text-muted">Habitación:</span> <span class="font-bold text-navy">{{ detail.room }}</span></div>
+                <div><span class="text-text-muted">Régimen:</span> <span class="font-bold text-navy">{{ detail.regime || 'Solo alojamiento' }}</span></div>
+                <div><span class="text-text-muted">Check-in:</span> <span class="font-bold text-navy">{{ detail.cin }}</span></div>
+                <div><span class="text-text-muted">Check-out:</span> <span class="font-bold text-navy">{{ detail.cout }}</span></div>
+                <div><span class="text-text-muted">Noches:</span> <span class="font-bold text-navy">{{ detail.nights }}</span></div>
+                <div><span class="text-text-muted">Huéspedes:</span> <span class="font-bold text-navy">{{ detail.adults }}A {{ detail.children }}N</span></div>
+              </div>
+            </div>
+            <!-- Pago -->
+            <div>
+              <h4 class="text-[10px] font-black text-navy uppercase mb-2">💰 Pago</h4>
+              <div class="bg-surface rounded-xl p-3 space-y-1.5 text-xs">
+                <div class="flex justify-between"><span class="text-text-muted">Total reserva</span><span class="font-extrabold text-navy text-sm">${{ detail.amt }}</span></div>
+                <div class="flex justify-between"><span class="text-text-muted">Anticipo</span><span class="font-bold text-teal">${{ detail.deposit }}</span></div>
+                <div class="flex justify-between"><span class="text-text-muted">Pendiente</span><span class="font-black" :class="detail.amt - detail.deposit > 0 ? 'text-coral' : 'text-teal'">${{ detail.amt - detail.deposit }}</span></div>
+                <div class="flex justify-between"><span class="text-text-muted">Método</span><span class="font-bold text-navy">{{ detail.payMethod }}</span></div>
+              </div>
+            </div>
+            <!-- Contacto emergencia -->
+            <div v-if="detail.emergencyName">
+              <h4 class="text-[10px] font-black text-coral uppercase mb-2">🚨 Contacto de Emergencia</h4>
+              <div class="bg-coral/5 rounded-xl p-3 border border-coral/20 text-xs space-y-1">
+                <div><span class="text-text-muted">Nombre:</span> <span class="font-bold text-navy">{{ detail.emergencyName }}</span></div>
+                <div><span class="text-text-muted">Teléfono:</span> <span class="font-bold text-navy">{{ detail.emergencyPhone }}</span></div>
+                <div><span class="text-text-muted">Parentesco:</span> <span class="font-bold text-navy">{{ detail.emergencyRelation }}</span></div>
+                <div v-if="detail.emergencyEmail"><span class="text-text-muted">Email:</span> <span class="font-bold text-navy">{{ detail.emergencyEmail }}</span></div>
+              </div>
+            </div>
+            <!-- Tarjeta -->
+            <div v-if="detail.cardBrand">
+              <h4 class="text-[10px] font-black text-purple uppercase mb-2">💳 Tarjeta</h4>
+              <div class="bg-purple/5 rounded-xl p-3 border border-purple/20 text-xs">
+                <span class="text-text-muted">{{ detail.cardBrand }}</span> •••• {{ detail.cardLast4 }} — {{ detail.cardHolder }}
+              </div>
+            </div>
+            <!-- Notas -->
+            <div v-if="detail.notes">
+              <h4 class="text-[10px] font-black text-navy uppercase mb-2">📝 Notas</h4>
+              <div class="bg-surface rounded-xl p-3 text-xs text-text-secondary">{{ detail.notes }}</div>
+            </div>
           </div>
-          <button @click="detail.show = false" class="w-full mt-4 py-2.5 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer">Cerrar</button>
+          <!-- Footer -->
+          <div class="p-4 border-t border-border shrink-0 flex gap-3">
+            <button @click="detail.show=false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cerrar</button>
+            <button @click="detail.show=false; $router.push('/panel/reservations')" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer">Ir a Reservas</button>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -415,7 +602,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
 import { ReservationService } from '@/services/Reservation.service'
+import { GuestService } from '@/services/Guest.service'
 import { HotelService } from '@/services/Hotel.service'
+import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 
@@ -424,6 +613,8 @@ const toast = useToast()
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 type DI = { dateStr: string; dayName: string; dayNum: number; monthShort: string; isToday: boolean; isWeekend: boolean; date: Date }
+
+const MS_PER_DAY = 86_400_000
 
 const viewDays = ref(14)
 const weekOffset = ref(0)
@@ -447,8 +638,39 @@ const lastSel = ref<{ room: any; from: string; to: string } | null>(null)
 const popup = ref<{ show: boolean; x: number; y: number; room: any; fromDate: string; toDate: string; nights: number; res: any; blk: any }>({ show: false, x: 0, y: 0, room: null, fromDate: '', toDate: '', nights: 0, res: null, blk: null })
 const blockDlg = ref<{ show: boolean; room: string; from: string; to: string; reason: string; customReason: string; rid: string }>({ show: false, room: '', from: '', to: '', reason: '', customReason: '', rid: '' })
 const unblock = ref<{ show: boolean; id: string; room: string; reason: string; from: string; to: string }>({ show: false, id: '', room: '', reason: '', from: '', to: '' })
-const detail = ref<{ show: boolean; name: string; room: string; cin: string; cout: string; amt: number; chLabel: string; chBadge: string; stLabel: string; stBadge: string }>({ show: false, name: '', room: '', cin: '', cout: '', amt: 0, chLabel: '', chBadge: '', stLabel: '', stBadge: '' })
-const newRes = ref<{ show: boolean; room: any; cin: string; cout: string; name: string; adults: number; kids: number; amt: number; ch: string }>({ show: false, room: null, cin: '', cout: '', name: '', adults: 2, kids: 0, amt: 0, ch: 'direct' })
+const detail = ref({
+  show: false,
+  firstName: '', lastName: '', email: '', phone: '', language: '', nationality: '',
+  docType: '', docNumber: '', sex: '', address: '', city: '',
+  room: '', regime: '', cin: '', cout: '', nights: 0, adults: 2, children: 0,
+  amt: 0, deposit: 0, payMethod: '',
+  chLabel: '', chBadge: '', stLabel: '', stBadge: '', payLabel: '', payBadge: '',
+  emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
+  cardBrand: '', cardLast4: '', cardHolder: '',
+  notes: '',
+})
+const newRes = ref({
+  show: false, room: null as any, cin: '', cout: '',
+  // Cliente
+  firstName: '', lastName: '', email: '', phone: '',
+  language: 'Español', country: 'República Dominicana', nationality: 'Dominicana',
+  address: '', city: '', province: '',
+  sex: '', dateOfBirth: '',
+  docType: 'dni', documentNumber: '', documentIssueDate: '',
+  communicateClient: 'none', ownerNotes: '',
+  // Contacto emergencia
+  emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
+  // Alojamiento
+  adults: 2, kids: 0, regime: 'room_only', promoCode: '',
+  // Canal
+  ch: 'direct', commission: 0, extLocator: '', otaNotes: '',
+  // Tarjeta
+  cardHolder: '', cardBrand: 'visa', cardNumber: '', cardCvv: '', cardExpMonth: '', cardExpYear: '',
+  // Pago
+  payMethod: 'transfer', deposit: 0, depositPercentage: 100, depositStatus: 'unpaid',
+  // Total
+  amt: 0,
+})
 const quote = ref<{ show: boolean; id: string; today: string; hotel: string; hotelAddress: string; hotelPhone: string; hotelEmail: string; rooms: { type: string; qty: number; price: number }[]; checkIn: string; checkOut: string; nights: number; guest: string; email: string; phone: string; adults: number; kids: number; taxName: string; taxRate: number; notes: string }>({ show: false, id: '', today: '', hotel: '', hotelAddress: '', hotelPhone: '', hotelEmail: '', rooms: [{ type: 'Standard', qty: 1, price: 100 }], checkIn: '', checkOut: '', nights: 0, guest: '', email: '', phone: '', adults: 1, kids: 0, taxName: 'ITBIS', taxRate: 18, notes: '' })
 const quoteSubtotal = computed(() => quote.value.rooms.reduce((s, r) => s + r.qty * r.price * quote.value.nights, 0))
 const quoteRoomTypes = computed(() => {
@@ -460,7 +682,7 @@ const quoteRoomTypes = computed(() => {
 
 const newResNights = computed(() => {
   if (!newRes.value.cin || !newRes.value.cout) return 0
-  return Math.max(1, Math.round((new Date(newRes.value.cout).getTime() - new Date(newRes.value.cin).getTime()) / 86400000))
+  return Math.max(1, Math.round((new Date(newRes.value.cout).getTime() - new Date(newRes.value.cin).getTime()) / MS_PER_DAY))
 })
 
 // Channels
@@ -519,6 +741,12 @@ const ST_COLOR: Record<string, string> = {
   checked_out: 'bg-gray-400', cancelled: 'bg-coral',
 }
 const PAY_ICON: Record<string, string> = { paid: '✅', partial: '🟡', pending: '🔴' }
+const PAY_METHODS: readonly { v: string; l: string }[] = [
+  { v: 'cash', l: 'Efectivo' },
+  { v: 'card', l: 'Tarjeta' },
+  { v: 'transfer', l: 'Transferencia' },
+  { v: 'payment_link', l: 'Link de pago' },
+]
 
 function gRes(rid: any, ds: string) {
   const r = planReservas.value.find((b: any) => String(b.roomId) === String(rid) && ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10))
@@ -630,7 +858,7 @@ function onMouseUp(ev: MouseEvent) {
   if (room && (dragStarted || from !== to)) {
     // Keep selection visible
     lastSel.value = { room, from, to }
-    const nights = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000))
+    const nights = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / MS_PER_DAY))
     popup.value = { show: true, x: Math.min(ev.clientX, window.innerWidth - 210), y: Math.min(ev.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: to, nights, res: null, blk: null }
   } else if (room && !dragStarted) {
     lastSel.value = { room, from, to }
@@ -644,12 +872,69 @@ function showPopup(e: MouseEvent, room: any, day: DI, res: any, blk: any) {
   popup.value = { show: true, x: Math.min(e.clientX, window.innerWidth - 210), y: Math.min(e.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: to, nights: 1, res, blk }
 }
 
-function viewResDetail(rb: any) {
+async function viewResDetail(rb: any) {
   const orig = planReservas.value.find((b: any) => b.id === rb.id)
   if (!orig) return
   const ch = (orig.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: orig.channel, b: 'bg-gray-100 text-gray-500' }
   const st = (orig.status || 'pending').toLowerCase(); const sc = ST[st] || { l: orig.status, b: 'bg-gold/10 text-gold' }
-  detail.value = { show: true, name: orig.guestName || 'Guest', room: orig.roomNumber || '?', cin: String(orig.checkIn||'').slice(0,10), cout: String(orig.checkOut||'').slice(0,10), amt: orig.totalAmount || 0, chLabel: cc.l, chBadge: cc.b, stLabel: sc.l, stBadge: sc.b }
+  const ci = String(orig.checkIn || '').slice(0, 10)
+  const co = String(orig.checkOut || '').slice(0, 10)
+  const nights = Math.max(1, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / MS_PER_DAY))
+  const dep = orig.deposit || 0
+  const amt = orig.totalAmount || 0
+  const ps = amt > 0 && dep >= amt ? 'paid' : dep > 0 ? 'partial' : 'pending'
+  const payBadge = ps === 'paid' ? 'bg-teal/10 text-teal' : ps === 'partial' ? 'bg-gold/10 text-gold' : 'bg-coral/10 text-coral'
+  const payLabel = ps === 'paid' ? 'Pagada' : ps === 'partial' ? 'Parcial' : 'Pendiente'
+
+  // Base con datos locales
+  detail.value = {
+    show: true,
+    firstName: orig.guestName?.split(' ')[0] || '',
+    lastName: orig.guestName?.split(' ').slice(1).join(' ') || '',
+    email: orig.guestEmail || '', phone: '', language: '', nationality: '',
+    docType: '', docNumber: '', sex: '', address: '', city: '',
+    room: orig.roomNumber || '?', regime: '', cin: ci, cout: co, nights,
+    adults: orig.adults || 2, children: orig.children || 0,
+    amt, deposit: dep, payMethod: orig.paymentMethod || '',
+    chLabel: cc.l, chBadge: cc.b, stLabel: sc.l, stBadge: sc.b,
+    payLabel, payBadge,
+    emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
+    cardBrand: '', cardLast4: '', cardHolder: '',
+    notes: orig.notes || '',
+  }
+
+  // Cargar datos extendidos desde API
+  try {
+    const ext = await http.get<any>(`/reservations/${orig.id}`)
+    if (ext.guest) {
+      const g = ext.guest
+      detail.value.firstName = g.firstName || detail.value.firstName
+      detail.value.lastName = g.lastName || detail.value.lastName
+      detail.value.email = g.email || detail.value.email
+      detail.value.phone = g.phone || ''
+      detail.value.language = g.language || ''
+      detail.value.nationality = g.nationality || ''
+      detail.value.docType = g.documentType || ''
+      detail.value.docNumber = g.documentNumber || ''
+      detail.value.sex = g.sex || ''
+      detail.value.address = g.address || ''
+      detail.value.city = g.city || ''
+    }
+    if (ext.emergencyContact) {
+      detail.value.emergencyName = ext.emergencyContact.name || ''
+      detail.value.emergencyPhone = ext.emergencyContact.phone || ''
+      detail.value.emergencyRelation = ext.emergencyContact.relation || ''
+      detail.value.emergencyEmail = ext.emergencyContact.email || ''
+    }
+    if (ext.creditCard) {
+      detail.value.cardBrand = ext.creditCard.brand || ''
+      detail.value.cardLast4 = (ext.creditCard.number || '').slice(-4)
+      detail.value.cardHolder = ext.creditCard.holderName || ''
+    }
+    if (ext.regime) detail.value.regime = ext.regime
+    if (ext.notes) detail.value.notes = ext.notes
+    if (ext.paymentMethod) detail.value.payMethod = ext.paymentMethod
+  } catch { /* silencioso — datos base ya cargados */ }
 }
 
 /** Context menu (right-click) sobre una reserva existente */
@@ -663,7 +948,7 @@ function openContext(ev: MouseEvent, rb: any, room: any) {
     x: Math.min(ev.clientX, window.innerWidth - 210),
     y: Math.min(ev.clientY, window.innerHeight - 220),
     room,
-    fromDate: ci, toDate: co, nights: Math.max(1, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / 86400000)),
+    fromDate: ci, toDate: co, nights: Math.max(1, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / MS_PER_DAY)),
     res: orig, blk: null,
   }
 }
@@ -704,7 +989,26 @@ async function popupCancel() {
 function popupNewRes() {
   const p = popup.value
   lastSel.value = null
-  newRes.value = { show: true, room: p.room, cin: p.fromDate, cout: p.toDate, name: '', adults: 2, kids: 0, amt: 0, ch: 'direct' }
+  const roomData = planRooms.value.find((r: any) => r.id === p.room?.id)
+  const nights = Math.max(1, Math.round((new Date(p.toDate).getTime() - new Date(p.fromDate).getTime()) / MS_PER_DAY))
+  const basePrice = roomData?.basePrice || 0
+  const subtotal = basePrice * nights
+  const taxes = Math.round(subtotal * 0.1)
+  newRes.value = {
+    show: true, room: p.room, cin: p.fromDate, cout: p.toDate,
+    firstName: '', lastName: '', email: '', phone: '',
+    language: 'Español', country: 'República Dominicana', nationality: 'Dominicana',
+    address: '', city: '', province: '',
+    sex: '', dateOfBirth: '',
+    docType: 'dni', documentNumber: '', documentIssueDate: '',
+    communicateClient: 'none', ownerNotes: '',
+    emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
+    adults: 2, kids: 0, regime: 'room_only', promoCode: '',
+    ch: 'direct', commission: 0, extLocator: '', otaNotes: '',
+    cardHolder: '', cardBrand: 'visa', cardNumber: '', cardCvv: '', cardExpMonth: '', cardExpYear: '',
+    payMethod: 'transfer', deposit: 0, depositPercentage: 100, depositStatus: 'unpaid',
+    amt: subtotal + taxes,
+  }
   popup.value.show = false
 }
 function popupQuote() {
@@ -752,12 +1056,8 @@ function addQuoteRoom() {
 function popupViewRes() {
   lastSel.value = null
   const r = popup.value.res; if (!r) return
-  const orig = planReservas.value.find((b: any) => b.id === r.id)
-  if (!orig) return
-  const ch = (orig.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: orig.channel, b: 'bg-gray-100 text-gray-500' }
-  const st = (orig.status || 'pending').toLowerCase(); const sc = ST[st] || { l: orig.status, b: 'bg-gold/10 text-gold' }
-  detail.value = { show: true, name: orig.guestName || 'Guest', room: orig.roomNumber || '?', cin: String(orig.checkIn||'').slice(0,10), cout: String(orig.checkOut||'').slice(0,10), amt: orig.totalAmount || 0, chLabel: cc.l, chBadge: cc.b, stLabel: sc.l, stBadge: sc.b }
   popup.value.show = false
+  viewResDetail(r)
 }
 function popupUnblock() { const b = popup.value.blk; if (b) { lastSel.value = null; popup.value.show = false; confirmUnblock(b) } }
 
@@ -780,13 +1080,72 @@ async function doUnblock() {
 // New reservation
 async function saveNewRes() {
   const n = newRes.value
-  if (!n.room || !n.name) { toast.error('Falta huésped'); return }
+  const hotelId = hid.value || planRooms.value[0]?.hotelId
+  if (!n.room) { toast.error('Falta habitación'); return }
+  if (!n.firstName?.trim()) { toast.error('Falta nombre del huésped'); return }
+  if (!n.lastName?.trim()) { toast.error('Falta apellido del huésped'); return }
+  let cout = n.cout
+  if (!cout || cout <= n.cin) {
+    const d = new Date(n.cin + 'T00:00:00')
+    d.setDate(d.getDate() + 1)
+    cout = fDate(d)
+  }
+  const guestName = `${n.firstName.trim()} ${n.lastName.trim()}`
   try {
-    const r = await ReservationService.create({ hotelId: hid.value || planRooms.value[0]?.hotelId, roomId: n.room.id, checkIn: n.cin, checkOut: n.cout, totalAmount: n.amt, channel: n.ch, status: 'confirmed' })
-    planReservas.value.push({ id: r.id, roomId: n.room.id, guestName: n.name, checkIn: n.cin, checkOut: n.cout, totalAmount: n.amt, status: 'confirmed', channel: n.ch, adults: n.adults, children: n.kids, roomNumber: n.room.number, guestEmail: '' })
+    // 1. Crear huésped con todos los campos
+    const guest: any = await GuestService.create({
+      hotelId,
+      firstName: n.firstName.trim(),
+      lastName: n.lastName.trim(),
+      name: guestName,
+      email: n.email.trim(),
+      phone: n.phone.trim(),
+      nationality: n.nationality,
+      language: n.language,
+      country: n.country,
+      sex: n.sex,
+      dateOfBirth: n.dateOfBirth,
+      address: n.address,
+      city: n.city,
+      province: n.province,
+      documentType: n.docType,
+      documentNumber: n.documentNumber,
+      documentIssueDate: n.documentIssueDate,
+      observations: n.ownerNotes,
+      communicateClient: n.communicateClient,
+    })
+    // 2. Crear reserva
+    const r = await ReservationService.create({
+      hotelId, roomId: n.room.id, guestId: guest.id,
+      checkIn: n.cin, checkOut: cout, totalAmount: n.amt,
+      channel: n.ch, status: 'confirmed',
+      paymentMethod: n.payMethod, deposit: n.deposit || 0,
+      depositPercentage: n.depositPercentage,
+      depositStatus: n.depositStatus,
+      adults: n.adults, children: n.kids,
+      notes: n.ownerNotes,
+      regime: n.regime,
+      commission: n.commission,
+      externalLocator: n.extLocator,
+    })
+    // 3. Push local
+    const amt = n.amt || 0
+    const dep = n.deposit || 0
+    const paymentStatus = amt > 0 && dep >= amt ? 'paid' : dep > 0 ? 'partial' : 'pending'
+    planReservas.value.push({
+      id: r.id, roomId: n.room.id, guestId: guest.id,
+      guestName, guestEmail: n.email.trim(),
+      checkIn: n.cin, checkOut: cout, totalAmount: amt,
+      status: 'confirmed', channel: n.ch,
+      adults: n.adults, children: n.kids,
+      roomNumber: n.room.number, paymentMethod: n.payMethod, deposit: dep,
+      paymentStatus,
+    })
     toast.success('Reserva creada')
     newRes.value.show = false
-  } catch { toast.error('Error') }
+  } catch (e: any) {
+    toast.error(e?.message || 'Error al crear la reserva')
+  }
 }
 
 // Load

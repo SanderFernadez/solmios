@@ -13,11 +13,14 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/nodemailer": "^8.0.1",
     "typescript": "^5.5.0"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc13",
     "arckode-framework": "^1.4.3",
+    "nodemailer": "^9.0.1",
+    "resend": "^6.16.0",
     "stripe": "^22.2.2",
     "ws": "^8.21.0",
     "zod": "^4.4.3"

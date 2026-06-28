@@ -46,6 +46,7 @@ NO cargues todo de golpe. Carga SOLO lo que aplique a la tarea actual:
 | Diseño UI nuevo | Cargar antes el design system: `designs/index.html` del proyecto |
 | Arranque de sesión | Leer `ARCHITECTURE.md` + `openspec/config.yaml` |
 | Feature nueva en proyecto existente | Leer `backend/src/composition-root.ts` primero (entiende todo el sistema) |
+| **Subir/sincronizar tareas a GitLab** | `~/.claude/skills/openspec-gitlab-sync/SKILL.md` (ver sección "GitLab Sync" abajo) |
 
 ## Memoria persistente — MemoryOne
 
@@ -98,6 +99,54 @@ Reglas SDD del proyecto (de `openspec/config.yaml`):
 - Apply: `make:module` + `RepositoryAdapter<T>`, NEVER raw SQL in services
 - Verify: `bun run typecheck` + `npx vue-tsc --noEmit` + `arckode analyze` (0 violations)
 - Spanish for UI text, English for DB/API/code
+
+## GitLab Sync — openspec-gitlab-sync (WORKFLOW PRINCIPAL DE TAREAS)
+
+**Esto es con lo que se trabaja: las tareas de openspec se suben a GitLab como Issues y se delegan a otro profesional siguiendo un flujo de vida obligatorio.**
+
+- **Skill**: `openspec-gitlab-sync` v3 → `~/.claude/skills/openspec-gitlab-sync/SKILL.md` (Claude Code) / `~/.config/opencode/skills/openspec-gitlab-sync/SKILL.md` (OpenCode)
+- **CLI global**: `openspec-gitlab-sync` (instalado vía `bun link` en `~/projects/openspec-gitlab-sync`)
+- **GitLab project**: `underworf1/solmios` → https://gitlab.com/underworf1/solmios/-/issues
+- **Credenciales**: `GITLAB_TOKEN` + `GITLAB_PROJECT_ID` YA configurados en `~/.gitlab-env` (NUNCA pedir al usuario; hacer `source ~/.gitlab-env` antes de cada llamada)
+
+### Ciclo de vida OBLIGATORIO (sin estado "open")
+
+```
+🔧 EN PROCESO  →  🧪 QA-DEV  →  📦 PREIMPLEMENTACION  →  🎨 QA-UI  →  ✅ IMPLEMENTACION
+```
+
+| Label workflow | Significado | Quién lo mueve |
+|---------------|-------------|----------------|
+| `workflow:en-proceso` | Se está trabajando | Dev asignado en GitLab |
+| `workflow:qa-dev` | Dev verificó que funciona | Dev |
+| `workflow:preimplementacion` | Listo para revisión final | Dev/Lead |
+| `workflow:qa-ui` | Revisión visual/diseño | Designer/QA |
+| `workflow:implementacion` | Desplegado/completado | Automático al marcar `[x]` + push |
+
+### Flujo de delegación a otro profesional
+
+1. Las tasks se definen en `openspec/changes/*/tasks.md`
+2. `openspec-gitlab-sync push` las sube como Issues a GitLab con labels (`modulo:X`, `backend`/`frontend`, `F{fase}`, `match-misterplan`)
+3. Cada Issue lleva TODO inline: schema DB, reglas, archivos, checks → el profesional lo resuelve
+4. Al terminar, el profesional mueve el label a `workflow:qa-dev` (manual con curl, o re-sync)
+5. Avanza por el ciclo hasta `workflow:implementacion`
+6. **Prompt delegación listo** (en el SKILL.md): reemplazar `{ISSUE_NUM}` y pegar a cualquier IA/profesional
+
+### Comandos
+```bash
+source ~/.gitlab-env                                      # SIEMPRE antes
+openspec-gitlab-sync init                                 # Crea labels + milestones
+openspec-gitlab-sync board                                # Tablero Kanban (5 columnas)
+openspec-gitlab-sync push                                 # Sync tasks.md ↔ GitLab Issues
+openspec-gitlab-sync push --verify                        # Solo Issues NO implementados (auto-marca [x] los hechos)
+openspec-gitlab-sync verify                               # Analiza código vs tasks.md
+openspec-gitlab-sync status                               # Cuántas en cada workflow
+openspec-gitlab-sync pull                                 # Lista Issues agrupados por workflow
+openspec-gitlab-sync report                               # Reporte de tiempos (openedAt → implementacionAt)
+```
+
+### Time tracking
+El CLI registra `openedAt` (creación del Issue) y `implementacionAt` (marcar `[x]` + push). `report` calcula duración y promedio.
 
 ## Reglas del proyecto
 
