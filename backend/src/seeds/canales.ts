@@ -1,19 +1,5 @@
-// seeds/canales.ts — Datos de prueba
+// seeds/canales.ts — gestionado por 000-bootstrap o migrate-db.ts
 import type { SeedOrm } from 'arckode-framework/cli/commands/db-seed'
-
-export async function seedCanales(orm: SeedOrm): Promise<void> {
-  const items = [
-    {
-    nombre: 'Canales de ejemplo'
-    activo: true
-    },
-    {
-    nombre: 'Canales de ejemplo 2'
-    activo: true
-    },
-  ]
-
-  await Promise.all(items.map(item => orm.create('Canales', item)))
-
-  console.log('  ✓ Canales seeded: ' + items.length + ' items')
+export async function seedData(_orm: SeedOrm): Promise<void> {
+  console.log('  ✓ canales: skip (datos en 000-bootstrap / migrate-db.ts)')
 }

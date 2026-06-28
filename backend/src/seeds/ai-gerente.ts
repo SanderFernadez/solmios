@@ -1,19 +1,5 @@
-// seeds/ai-gerente.ts — Datos de prueba
+// seeds/ai-gerente.ts — gestionado por 000-bootstrap o migrate-db.ts
 import type { SeedOrm } from 'arckode-framework/cli/commands/db-seed'
-
-export async function seedAiGerente(orm: SeedOrm): Promise<void> {
-  const items = [
-    {
-    nombre: 'AiGerente de ejemplo'
-    activo: true
-    },
-    {
-    nombre: 'AiGerente de ejemplo 2'
-    activo: true
-    },
-  ]
-
-  await Promise.all(items.map(item => orm.create('AiGerente', item)))
-
-  console.log('  ✓ AiGerente seeded: ' + items.length + ' items')
+export async function seedData(_orm: SeedOrm): Promise<void> {
+  console.log('  ✓ ai-gerente: skip (datos en 000-bootstrap / migrate-db.ts)')
 }

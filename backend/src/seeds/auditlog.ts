@@ -1,19 +1,5 @@
-// seeds/auditlog.ts — Datos de prueba
+// seeds/auditlog.ts — gestionado por 000-bootstrap o migrate-db.ts
 import type { SeedOrm } from 'arckode-framework/cli/commands/db-seed'
-
-export async function seedAuditlog(orm: SeedOrm): Promise<void> {
-  const items = [
-    {
-    nombre: 'Auditlog de ejemplo'
-    activo: true
-    },
-    {
-    nombre: 'Auditlog de ejemplo 2'
-    activo: true
-    },
-  ]
-
-  await Promise.all(items.map(item => orm.create('Auditlog', item)))
-
-  console.log('  ✓ Auditlog seeded: ' + items.length + ' items')
+export async function seedData(_orm: SeedOrm): Promise<void> {
+  console.log('  ✓ auditlog: skip (datos en 000-bootstrap / migrate-db.ts)')
 }
