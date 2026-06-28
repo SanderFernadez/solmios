@@ -245,7 +245,7 @@
   > Si el auto-message tiene channel 'email', llamar a EmailService.send(). Si 'whatsapp', llamar a WhatsAppService.send().
   > Evitar duplicados: antes de enviar, verificar en `message_logs` si ya se envió ese messageId (auto-message.id + reservation.id).
   > Loggear cada envío en `message_logs` con status 'sent' o 'failed'.
-- [x] 6.1.4 Email sender (EmailService con nodemailer/SendGrid/Resend)
+- [ ] 6.1.4 Email sender (EmailService con nodemailer/SendGrid/Resend)
   > Crear `backend/src/services/email.service.ts` con método `send(to, subject, html)`.
   > Leer configuración SMTP de `Configuration` con key `email_config` (host, port, user, pass, from).
   > Si no hay SMTP configurado, usar Resend (API key en `Configuration` key `resend_api_key`) como fallback.
@@ -369,7 +369,7 @@
 ## Phase 11: Check-in Digital Completo (Email + Notificaciones + UX)
 
 ### 11.1 Email de Notificación — Check-in
-- [x] 11.1.1 Enviar email de confirmación al hacer check-in
+- [ ] 11.1.1 Enviar email de confirmación al hacer check-in
   > En el endpoint `POST /api/reservas/:id/checkin` (composition-root.ts:536), después de confirmar el check-in,
   > disparar el envío de email usando el EmailService (task 6.1.4). El email debe contener:
   > - Asunto: "¡Bienvenido a {hotel_name}, {guest_name}!"
