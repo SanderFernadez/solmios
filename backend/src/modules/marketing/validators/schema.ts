@@ -8,6 +8,13 @@ export const CreateAutoMessageSchema: Record<string, ValidationRule> = {
   channel: { type: 'string' as const, enum: ['email','whatsapp','both'] },
   triggerEvent: { type: 'string' as const, required: true, enum: ['on_reservation','pre_checkin','checkin_day','checkout_day','post_checkout'] },
   triggerOffset: { type: 'number' as const },
+  emailSubject: { type: 'string' as const },
+  emailBody: { type: 'string' as const },
+  whatsappBody: { type: 'string' as const },
+  // Notification templates configurable + i18n (spec 11.1.6).
+  event: { type: 'string' as const, enum: ['reservation_confirmed','reservation_presale','checkin_welcome','reminder'] },
+  language: { type: 'string' as const, enum: ['es','en','pt'] },
+  triggerType: { type: 'string' as const, enum: ['immediate','cron'] },
 }
 
 export const CreateTemplateSchema: Record<string, ValidationRule> = {

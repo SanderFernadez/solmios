@@ -3,12 +3,12 @@
 // Verifica tenacy: solo usa datos de entidades que pertenecen al hotel de la reserva.
 
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import { reservationConfirmation, reservationPreSale } from '../../../services/email-service'
 import type { EmailService } from '../../../services/email-service'
+import { resolveGuestLanguage } from '../../../services/guest-language'
 import type { CreateReservasDTO } from '../types'
 
 // Subtipos mínimos de entidades cross-module (evitan `any` sin acoplar a los módulos ajenos).
-interface GuestSummary { id: string; hotelId?: string; name?: string; firstName?: string; email?: string }
+interface GuestSummary { id: string; hotelId?: string; name?: string; firstName?: string; email?: string; nationality?: string; language?: string }
 interface RoomSummary { id: string; hotelId?: string; number?: string }
 interface HotelSummary { id: string; name?: string; phone?: string }
 
@@ -61,11 +61,12 @@ export async function enqueueReservationEmail(
   }
 
   const isConfirmation = type === 'email_confirmation'
-  const html = isConfirmation ? reservationConfirmation(variables) : reservationPreSale(variables)
-  const subject = isConfirmation
-    ? `Confirmación de reserva — ${hotelName}`
-    : `Reserva pendiente de pago — ${hotelName}`
+  const event = isConfirmation ? 'reservation_confirmed' : 'reservation_presale'
+  const language = resolveGuestLanguage(guest ?? {})
 
-  await emailService.enqueue({ to: guest.email, subject, html, hotelId: dto.hotelId, relatedType: 'reservation', relatedId: item.id })
-  logger.info('Email encolado', { to: guest.email, type, reservationId: item.id })
+  await emailService.enqueueNotification({
+    to: guest.email, hotelId: dto.hotelId, event, language, variables,
+    relatedType: 'reservation', relatedId: item.id,
+  })
+  logger.info('Email encolado', { to: guest.email, type, event, language, reservationId: item.id })
 }

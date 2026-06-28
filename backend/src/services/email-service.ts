@@ -12,6 +12,8 @@
 
 import nodemailer from 'nodemailer'
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import { getCodeDefault } from './notification-defaults'
+import type { NotificationEvent, NotificationLanguage } from './notification-defaults'
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -44,6 +46,23 @@ export interface EnqueueInput {
   /** Variables de plantilla a interpolar (placeholders {guest_name}, etc.). */
   variables?: Record<string, string | number>
   /** Origen del email para trazabilidad (ej: 'reservation'). */
+  relatedType?: string
+  relatedId?: string
+}
+
+/** Subtipo mínimo de auto_messages (override de plantilla por hotel). Evita dependencia circular con el módulo marketing. */
+interface AutoMessageTemplateRow {
+  emailSubject?: string | null
+  emailBody?: string | null
+}
+
+/** Input para enqueueNotification: resuelve plantilla por event × language (spec 11.1.6). */
+export interface NotificationInput {
+  to: string
+  hotelId: string
+  event: NotificationEvent
+  language: NotificationLanguage
+  variables: Record<string, string | number>
   relatedType?: string
   relatedId?: string
 }
@@ -101,114 +120,9 @@ export function renderTemplate(template: string, variables: Record<string, strin
   })
 }
 
-// Variables soportadas por las plantillas (spec 6.1.4):
-// {guest_name} {hotel_name} {checkin_date} {checkout_date} {room_number}
-// {total_amount} {wifi_network} {wifi_password} {lock_code} {hotel_phone} {locator}
-
-const RESERVATION_CONFIRMATION_HTML = `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
-    <h1 style="margin:0;font-size:24px;">🏨 {hotel_name}</h1>
-    <p style="margin:5px 0 0;opacity:0.8;">Confirmación de Reserva</p>
-  </div>
-  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
-    <p style="font-size:16px;">Hola <strong>{guest_name}</strong>,</p>
-    <p>Tu reserva ha sido confirmada. Aquí tienes los detalles:</p>
-    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
-      <table style="width:100%;font-size:14px;">
-        <tr><td style="padding:6px 0;color:#6b7280;">Habitación</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
-        <tr><td style="padding:6px 0;border-top:2px solid #e5e7eb;color:#1a2b4c;font-weight:bold;">Total</td><td style="padding:6px 0;border-top:2px solid #e5e7eb;font-weight:bold;text-align:right;font-size:18px;color:#1a2b4c;">{total_amount}</td></tr>
-      </table>
-    </div>
-    <p style="font-size:13px;color:#6b7280;">Localizador: <strong>{locator}</strong></p>
-    <p style="font-size:13px;color:#6b7280;">Si tenés alguna consulta, llamá al <strong>{hotel_phone}</strong>.</p>
-    <p style="font-size:13px;color:#6b7280;">¡Te esperamos!</p>
-  </div>
-</body>
-</html>`
-
-const RESERVATION_PRE_SALE_HTML = `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
-    <h1 style="margin:0;font-size:24px;">🏨 {hotel_name}</h1>
-    <p style="margin:5px 0 0;opacity:0.8;">Reserva — Pago Pendiente</p>
-  </div>
-  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
-    <p style="font-size:16px;">Hola <strong>{guest_name}</strong>,</p>
-    <p>Tenemos una reserva preparada para vos. Para confirmarla, necesitamos el pago del anticipo.</p>
-    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
-      <table style="width:100%;font-size:14px;">
-        <tr><td style="padding:6px 0;color:#6b7280;">Habitación</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Anticipo requerido</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{total_amount}</td></tr>
-      </table>
-    </div>
-    <p style="font-size:13px;color:#6b7280;">Localizador: <strong>{locator}</strong></p>
-    <p style="font-size:13px;color:#6b7280;">Si tenés alguna consulta, llamá al <strong>{hotel_phone}</strong>.</p>
-  </div>
-</body>
-</html>`
-
-/** Plantilla de confirmación de reserva renderizada con `variables`. */
-export function reservationConfirmation(variables: Record<string, string | number>): string {
-  return renderTemplate(RESERVATION_CONFIRMATION_HTML, variables)
-}
-
-/** Plantilla de reserva pendiente de pago renderizada con `variables`. */
-export function reservationPreSale(variables: Record<string, string | number>): string {
-  return renderTemplate(RESERVATION_PRE_SALE_HTML, variables)
-}
-
-// Plantilla de bienvenida al check-in (spec 11.1.1).
-// Variables: {hotel_name} {guest_name} {hotel_address} {hotel_phone} {room_number}
-// {checkin_date} {checkout_date} {wifi_network} {wifi_password} {lock_code} {pre_checkin_url}
-// NOTA: wifi/lock_code/pre_checkin dependen de config/integraciones; si están vacíos el bloque
-// se oculta condicionalmente (renderTemplate deja el placeholder, aquí lo maquillamos con CSS).
-const CHECKIN_WELCOME_HTML = `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:#1a2b4c;color:white;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
-    <div style="font-size:40px;">🏨</div>
-    <h1 style="margin:8px 0 0;font-size:24px;">{hotel_name}</h1>
-    <p style="margin:5px 0 0;opacity:0.85;">¡Bienvenido!</p>
-  </div>
-  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
-    <p style="font-size:18px;">Hola <strong>{guest_name}</strong>,</p>
-    <p style="font-size:15px;">Tu check-in está confirmado. Estos son los datos de tu estancia:</p>
-    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
-      <table style="width:100%;font-size:14px;">
-        <tr><td style="padding:6px 0;color:#6b7280;">Habitación</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
-      </table>
-    </div>
-    <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
-    <p style="font-size:13px;color:#6b7280;">📞 <a href="tel:{hotel_phone}" style="color:#1a2b4c;">{hotel_phone}</a></p>
-    <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
-      <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📶 WiFi</p>
-      <p style="margin:0;color:#6b7280;">Red: {wifi_network} · Contraseña: {wifi_password}</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Cerradura</p>
-      <p style="margin:0;color:#6b7280;">Código: {lock_code}</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">📋 Pre-checkin</p>
-      <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
-    </div>
-    <p style="font-size:14px;">¡Que disfrutes tu estancia! Si necesitas algo, estamos para ayudarte.</p>
-  </div>
-</body>
-</html>`
-
-/** Plantilla de bienvenida al hacer check-in renderizada con `variables` (spec 11.1.1). */
-export function checkinWelcome(variables: Record<string, string | number>): string {
-  return renderTemplate(CHECKIN_WELCOME_HTML, variables)
-}
+// Las plantillas HTML migraron a services/notification-defaults.ts (configurables por hotel + i18n, spec 11.1.6).
+// Variables soportadas: {guest_name} {hotel_name} {hotel_address} {hotel_phone} {checkin_date}
+// {checkout_date} {room_number} {total_amount} {wifi_network} {wifi_password} {lock_code} {locator} {pre_checkin_url}
 
 // ─── EmailService ───────────────────────────────────────────────────────────
 
@@ -222,6 +136,8 @@ export class EmailService {
     private readonly configRepo: RepositoryAdapter<Record<string, unknown>>,
     private readonly queueRepo: RepositoryAdapter<EmailQueueDTO>,
     private readonly logger: Logger,
+    /** Repo de auto_messages para override de plantillas por hotel (spec 11.1.6). null → solo defaults de código. */
+    private readonly templateRepo: RepositoryAdapter<AutoMessageTemplateRow> | null = null,
   ) {}
 
   /**
@@ -259,6 +175,46 @@ export class EmailService {
     this.processQueue().catch((e) => this.logger.error('EmailService enqueue → processQueue', { error: (e as Error).message }))
 
     return String((created as EmailQueueDTO).id ?? '')
+  }
+
+  /**
+   * Encola una notificación resolviendo la plantilla por (event, language) (spec 11.1.6).
+   * Override del hotel (auto_messages con emailSubject+emailBody e isActive) → default código (mismo idioma) → fallback 'es'.
+   * El subject va DENTRO de la plantilla (traducible). Renderiza subject+body y delega al enqueue existente.
+   */
+  async enqueueNotification(input: NotificationInput): Promise<string> {
+    const { subject, body } = await this.resolveTemplate(input.hotelId, input.event, input.language)
+    const html = renderTemplate(body, input.variables)
+    const renderedSubject = renderTemplate(subject, input.variables)
+    return this.enqueue({
+      to: input.to, subject: renderedSubject, html, hotelId: input.hotelId,
+      relatedType: input.relatedType, relatedId: input.relatedId,
+    })
+  }
+
+  /**
+   * Resuelve (subject, body) para (hotelId, event, language).
+   * Orden: override del hotel (auto_messages) → default código (language) → default código ('es').
+   * Un override parcial (falta subject o body) se descarta entero (no se mezcla con el default).
+   */
+  private async resolveTemplate(
+    hotelId: string,
+    event: NotificationEvent,
+    language: NotificationLanguage,
+  ): Promise<{ subject: string; body: string }> {
+    if (this.templateRepo) {
+      try {
+        const row = await this.templateRepo.findOne({
+          hotelId, event, channel: 'email', language, isActive: 1,
+        } as Record<string, unknown>) as AutoMessageTemplateRow | null
+        if (row && row.emailSubject && row.emailBody) {
+          return { subject: row.emailSubject, body: row.emailBody }
+        }
+      } catch (e) {
+        this.logger.warn('EmailService resolveTemplate: override lookup falló, usando default código', { event, language, error: (e as Error).message })
+      }
+    }
+    return getCodeDefault(event, language)
   }
 
   /**

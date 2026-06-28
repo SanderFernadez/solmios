@@ -5,6 +5,7 @@ export interface AutoMessageDTO {
   emailSubject: string; emailBody: string; whatsappBody: string
   channel: string; triggerEvent: string; triggerOffset: number
   variables: string | null; isActive: number
+  event: string; language: string; triggerType: string
   createdAt: string; updatedAt: string
 }
 
@@ -13,6 +14,7 @@ export interface CreateAutoMessageDTO {
   emailSubject?: string; emailBody?: string; whatsappBody?: string
   channel?: string; triggerEvent?: string; triggerOffset?: number
   variables?: string; isActive?: boolean
+  event?: string; language?: string; triggerType?: string
 }
 
 export interface MessageLogDTO {

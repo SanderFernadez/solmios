@@ -18,6 +18,7 @@
         <div class="space-y-1 text-xs text-text-secondary mb-3">
           <div class="flex justify-between"><span>Canal:</span><span class="font-bold text-navy">{{ channelLabel(msg.channel) }}</span></div>
           <div class="flex justify-between"><span>Evento:</span><span class="font-bold text-navy">{{ triggerLabel(msg.triggerEvent) }}</span></div>
+          <div class="flex justify-between"><span>Plantilla:</span><span class="font-bold text-navy">{{ eventLabel(msg.event) }} · {{ langLabel(msg.language) }}</span></div>
           <div v-if="msg.triggerOffset" class="flex justify-between"><span>Offset:</span><span class="font-bold text-navy">{{ msg.triggerOffset }} días</span></div>
         </div>
         <div class="text-[10px] text-text-muted truncate">{{ msg.emailSubject || 'Sin asunto' }}</div>
@@ -46,6 +47,16 @@
               <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Canal</label>
                 <select v-model="form.channel" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer">
                   <option value="email">Email</option><option value="whatsapp">WhatsApp</option><option value="both">Ambos</option>
+                </select>
+              </div>
+              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Plantilla (evento)</label>
+                <select v-model="form.event" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer">
+                  <option value="checkin_welcome">Bienvenida (check-in)</option><option value="reservation_confirmed">Confirmación de reserva</option><option value="reservation_presale">Reserva pendiente de pago</option><option value="reminder">Recordatorio</option>
+                </select>
+              </div>
+              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Idioma</label>
+                <select v-model="form.language" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer">
+                  <option value="es">Español</option><option value="en">English</option><option value="pt">Português</option>
                 </select>
               </div>
               <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Evento Disparador</label>
@@ -93,12 +104,14 @@ const saving = ref(false)
 const editId = ref('')
 const modal = ref({ show: false, edit: false })
 
-const form = ref({ title:'', color:'#3b82f6', emailSubject:'', emailBody:'', whatsappBody:'', channel:'email', triggerEvent:'checkin_day', triggerOffset:0, variables:[] as string[], isActive:true })
+const form = ref({ title:'', color:'#3b82f6', emailSubject:'', emailBody:'', whatsappBody:'', channel:'email', triggerEvent:'checkin_day', triggerOffset:0, variables:[] as string[], isActive:true, event:'checkin_welcome', language:'es', triggerType:'cron' })
 
 const variables = ['{hotel_name}','{hotel_address}','{hotel_phone}','{guest_name}','{checkin_date}','{checkout_date}','{room_number}','{room_type}','{nights}','{total_amount}','{pending_amount}','{locator}','{wifi_network}','{wifi_password}','{lock_codes}','{reservation_image}']
 
 function channelLabel(c: string) { const m: any = { email:'📧 Email', whatsapp:'💬 WhatsApp', both:'📧💬 Ambos' }; return m[c]||c }
 function triggerLabel(t: string) { const m: any = { on_reservation:'Al crear reserva', pre_checkin:'Antes del check-in', checkin_day:'Día del check-in', checkout_day:'Día del check-out', post_checkout:'Después del check-out' }; return m[t]||t }
+function eventLabel(e?: string) { const m: any = { checkin_welcome:'Bienvenida', reservation_confirmed:'Confirmación', reservation_presale:'Pre-venta', reminder:'Recordatorio' }; return e ? (m[e]||e) : '—' }
+function langLabel(l?: string) { const m: any = { es:'🇪🇸 ES', en:'🇬🇧 EN', pt:'🇧🇷 PT' }; return l ? (m[l]||l) : '—' }
 
 function insertVariable(v: string) {
   const el = document.activeElement as HTMLTextAreaElement | HTMLInputElement | null
@@ -113,11 +126,11 @@ async function load() {
 }
 function openNew() {
   editId.value=''; modal.value={ show:true, edit:false }
-  form.value={ title:'', color:'#3b82f6', emailSubject:'', emailBody:'', whatsappBody:'', channel:'email', triggerEvent:'checkin_day', triggerOffset:0, variables:[], isActive:true }
+  form.value={ title:'', color:'#3b82f6', emailSubject:'', emailBody:'', whatsappBody:'', channel:'email', triggerEvent:'checkin_day', triggerOffset:0, variables:[], isActive:true, event:'checkin_welcome', language:'es', triggerType:'cron' }
 }
 function openEdit(m: any) {
   editId.value=m.id; modal.value={ show:true, edit:true }
-  form.value={ title:m.title, color:m.color||'#3b82f6', emailSubject:m.emailSubject||'', emailBody:m.emailBody||'', whatsappBody:m.whatsappBody||'', channel:m.channel||'email', triggerEvent:m.triggerEvent||'checkin_day', triggerOffset:m.triggerOffset||0, variables:m.variables||[], isActive:m.isActive!==false }
+  form.value={ title:m.title, color:m.color||'#3b82f6', emailSubject:m.emailSubject||'', emailBody:m.emailBody||'', whatsappBody:m.whatsappBody||'', channel:m.channel||'email', triggerEvent:m.triggerEvent||'checkin_day', triggerOffset:m.triggerOffset||0, variables:m.variables||[], isActive:m.isActive!==false, event:m.event||'checkin_welcome', language:m.language||'es', triggerType:m.triggerType||'cron' }
 }
 async function save() {
   if(!form.value.title){ toast.error('Falta título'); return }

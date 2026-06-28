@@ -15,6 +15,10 @@ const AutoMessageModel: ModelDefinition = {
     triggerOffset: { type: 'number', default: 0 },
     variables: { type: 'json', default: '[]' },
     isActive: { type: 'boolean', default: 1 },
+    // Notification templates configurable + i18n (spec 11.1.6).
+    event: { type: 'string', default: 'checkin' },
+    language: { type: 'string', default: 'es' },
+    triggerType: { type: 'string', default: 'cron' },
   },
   timestamps: true,
 }

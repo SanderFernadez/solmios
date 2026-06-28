@@ -30,7 +30,7 @@ export class MarketingService {
   }
   async updateAutoMessage(id: string, data: Partial<CreateAutoMessageDTO>): Promise<AutoMessageDTO> {
     const patch: Record<string, any> = {}
-    const fields = ['title','color','emailSubject','emailBody','whatsappBody','channel','triggerEvent','triggerOffset','variables','isActive']
+    const fields = ['title','color','emailSubject','emailBody','whatsappBody','channel','triggerEvent','triggerOffset','variables','isActive','event','language','triggerType']
     for (const k of fields) if ((data as any)[k] !== undefined) patch[k] = (data as any)[k]
     await this.autoMsgRepo.update(id, patch as any)
     // @ignore IDOR_RISK — returning updated record after write

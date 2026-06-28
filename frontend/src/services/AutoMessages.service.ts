@@ -13,6 +13,9 @@ export interface AutoMessage {
   triggerOffset: number
   variables?: string[]
   isActive: boolean
+  event?: string
+  language?: string
+  triggerType?: string
 }
 
 export interface AutoMessageInput {
@@ -26,6 +29,9 @@ export interface AutoMessageInput {
   triggerOffset?: number
   variables?: string[]
   isActive?: boolean
+  event?: string
+  language?: string
+  triggerType?: string
 }
 
 export const AutoMessagesService = {

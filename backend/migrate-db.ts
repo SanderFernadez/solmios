@@ -570,8 +570,23 @@ exec(`CREATE TABLE IF NOT EXISTS guest_segments (
 // ─── Marketing ─────────────────────────────────────────────────────────
 exec(`CREATE TABLE IF NOT EXISTS auto_messages (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL,
-  trigger TEXT NOT NULL, channel TEXT NOT NULL, template TEXT,
-  active INTEGER DEFAULT 1, createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+  title TEXT NOT NULL, color TEXT DEFAULT '#3b82f6',
+  emailSubject TEXT, emailBody TEXT, whatsappBody TEXT,
+  channel TEXT DEFAULT 'email', triggerEvent TEXT NOT NULL DEFAULT 'checkin_day',
+  triggerOffset INTEGER DEFAULT 0, variables TEXT DEFAULT '[]',
+  isActive INTEGER DEFAULT 1,
+  event TEXT DEFAULT 'checkin', language TEXT DEFAULT 'es', triggerType TEXT DEFAULT 'cron',
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+// ALTER idempotente: auto_messages += event/language/triggerType (spec 11.1.6 — notification templates configurable + i18n).
+const amCols = db.query("PRAGMA table_info(auto_messages)").all() as any[]
+if (!amCols.some((c: any) => c.name === 'event')) exec("ALTER TABLE auto_messages ADD COLUMN event TEXT DEFAULT 'checkin'")
+if (!amCols.some((c: any) => c.name === 'language')) exec("ALTER TABLE auto_messages ADD COLUMN language TEXT DEFAULT 'es'")
+if (!amCols.some((c: any) => c.name === 'triggerType')) exec("ALTER TABLE auto_messages ADD COLUMN triggerType TEXT DEFAULT 'cron'")
+
+// ALTER idempotente: guests += language (spec 11.1.6 — idioma del huésped para resolver plantilla i18n).
+const gCols = db.query("PRAGMA table_info(guests)").all() as any[]
+if (!gCols.some((c: any) => c.name === 'language')) exec("ALTER TABLE guests ADD COLUMN language TEXT")
 
 exec(`CREATE TABLE IF NOT EXISTS message_logs (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, reservationId TEXT,

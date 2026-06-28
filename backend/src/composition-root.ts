@@ -1428,7 +1428,7 @@ if (aiRecepcionista) aiRecepcionista.channexPusher = pushAvailabilityToChannex
 const EMAIL_WORKER_TICK_MS = 30_000
 const emailConfigRepo = new OrmRepository<Record<string, unknown>>(orm, 'Configuration')
 const emailQueueRepo = new OrmRepository<EmailQueueDTO>(orm, 'EmailQueue')
-const emailService = new EmailService(emailConfigRepo, emailQueueRepo, logger)
+const emailService = new EmailService(emailConfigRepo, emailQueueRepo, logger, new OrmRepository<any>(orm, 'AutoMessages'))
 const reservasForEmail = system.resolveModule<{ setEmailDeps(es: EmailService, r: any): void }>('reservas')
 if (reservasForEmail && typeof reservasForEmail.setEmailDeps === 'function') {
   reservasForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'MessageLogs'))

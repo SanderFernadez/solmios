@@ -10,6 +10,7 @@ export const HuespedesModel: ModelDefinition = {
     phone: { type: 'string' },
     document: { type: 'string' },
     nationality: { type: 'string' },
+    language: { type: 'string' },
     preferences: { type: 'json' },
     loyaltyPoints: { type: 'number', default: 0 },
     totalStays: { type: 'number', default: 0 },

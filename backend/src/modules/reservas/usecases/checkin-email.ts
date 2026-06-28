@@ -8,11 +8,12 @@
 // message_logs usa el modelo del módulo marketing: messageType/status/recipient/response/sentAt.
 
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import { checkinWelcome } from '../../../services/email-service'
 import type { EmailService } from '../../../services/email-service'
+import { resolveGuestLanguage } from '../../../services/guest-language'
+import { getCodeDefault } from '../../../services/notification-defaults'
 
 // Subtipos mínimos de entidades cross-module (evitan `any` sin acoplar a módulos ajenos).
-interface GuestSummary { id: string; hotelId?: string; name?: string; firstName?: string; email?: string }
+interface GuestSummary { id: string; hotelId?: string; name?: string; firstName?: string; email?: string; nationality?: string; language?: string }
 interface RoomSummary { id: string; hotelId?: string; number?: string }
 interface HotelSummary { id: string; name?: string; address?: string; phone?: string }
 /** Subtipo del log de mensajes (modelo MessageLogs del módulo marketing). */
@@ -66,8 +67,7 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
   const hotel = await hotelRepo.findById(input.hotelId)
 
   const guestName = guest?.name || guest?.firstName || 'Huésped'
-  const hotelName = hotel?.name || 'Hotel'
-  const subject = `¡Bienvenido a ${hotelName}, ${guestName}!`
+  const language = resolveGuestLanguage(guest ?? {})
 
   // Walk-in sin email: no se envía, se loggea (spec 11.1.1).
   if (!guest?.email) {
@@ -84,7 +84,7 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
   // no implementadas aún (ver tasks 11.1.4 wifi_config, 11.1.5 branding, F5 TTLock, F8 pre-checkin).
   const variables: Record<string, string | number> = {
     guest_name: guestName,
-    hotel_name: hotelName,
+    hotel_name: hotel?.name || 'Hotel',
     hotel_address: hotel?.address ?? '',
     hotel_phone: hotel?.phone ?? '',
     room_number: room?.number ?? '',
@@ -95,12 +95,12 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
     lock_code: '',
     pre_checkin_url: '',
   }
-  const html = checkinWelcome(variables)
+  const subject = getCodeDefault('checkin_welcome', language).subject
 
   try {
     if (emailService) {
-      await emailService.enqueue({
-        to: guest.email, subject, html, hotelId: input.hotelId,
+      await emailService.enqueueNotification({
+        to: guest.email, hotelId: input.hotelId, event: 'checkin_welcome', language, variables,
         relatedType: 'checkin', relatedId: input.reservationId,
       })
     }
