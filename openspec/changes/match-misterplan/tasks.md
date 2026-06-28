@@ -411,6 +411,52 @@
   > Acción: agregar `logoUrl` al modelo Hotels + upload en settings + usar en plantillas de email.
   > {lock_code} real depende de TTLock (Fase F5); {pre_checkin_url} depende del pre-checkin (Fase F8).
 
+- [ ] 11.1.6 Sistema de notification templates configurable + multi-idioma (i18n)
+  > REFACTOR ARQUITECTÓNICO: reemplazar las plantillas hardcodeadas de email-service.ts
+  > (RESERVATION_CONFIRMATION_HTML, RESERVATION_PRE_SALE_HTML, CHECKIN_WELCOME_HTML) por un
+  > sistema de plantillas configurables por hotel + multi-idioma. Unifica notificaciones
+  > transaccionales (11.1.1, immediate) y automáticas (11.1.2, cron) bajo el mismo motor.
+  >
+  > DECISIÓN: OPCIÓN A — extender el módulo `auto_messages` existente (NO crear tabla nueva).
+  >
+  > DB — modelo auto_messages (modules/marketing/model.ts):
+  > - Agregar `event` ('checkin'|'checkout'|'confirmation'|'presale'|'reminder', default 'checkin').
+  > - Agregar `language` (string, default 'es') — idioma de la plantilla.
+  > - Agregar `trigger` ('immediate'|'cron', default 'cron') — disparo manual vs programado.
+  > - UNIQUE(hotelId, event, channel, language) — una plantilla por evento×canal×idioma×hotel.
+  >
+  > i18n — Guests (modules/huespedes/model.ts):
+  > - Agregar `language` (string, nullable) al modelo Guests.
+  > - Detección: si language es null, inferir de `nationality` (ES/MX/AR/CO/CL/PE/UY→es, US/UK/CA/AU→en, BR→pt).
+  > - Helper resolveGuestLanguage(guest) → 'es'|'en'|'pt'.
+  >
+  > Defaults (seed migrate-db.ts):
+  > - Seedear plantillas default (hotelId=null) por evento×idioma para: checkin, checkout, confirmation, presale.
+  > - Migrar el HTML de las 3 plantillas hardcodeadas a estos defaults (es al menos; en/pt opcionales).
+  >
+  > Refactor EmailService (services/email-service.ts):
+  > - Quitar las 3 constantes _HTML hardcodeadas + reservationConfirmation/reservationPreSale/checkinWelcome.
+  > - Nuevo método render(event, language, variables): resuelve template hotelId[event][lang] → default[event][lang] → fallback 'es'.
+  > - enqueue() recibe (event, language, variables) en vez de html crudo (breaking change controlado).
+  > - renderTemplate (placeholder {key}) queda como motor de substitución (cumple 6.1.2).
+  >
+  > Migración de call sites:
+  > - reservas/usecases/reservation-email.ts → enqueue(event='confirmation'|'presale', lang, vars).
+  > - reservas/usecases/checkin-email.ts → enqueue(event='checkin', lang, vars).
+  >
+  > Dependencias:
+  > - 6.1.2 Variable substitution engine — VERIFICAR real vs stub; si stub, implementar aquí.
+  > - 6.1.3 Cron — 11.1.6 NO lo requiere (es el motor de plantillas); el cron va en 11.1.2/6.1.3 aparte.
+  >
+  > Frontend:
+  > - Ampliar /panel/auto-messages: editor de plantillas por evento × idioma, selector de idioma, preview con vars.
+  >
+  > Reglas de negocio:
+  > - Resolución: hotel override > default global > fallback español. NUNCA fallar el envío por idioma faltante.
+  > - Walk-in sin email → skip (igual que 11.1.1).
+  >
+  > Verificación: arckode analyze 0 violaciones · typecheck · tests (render por idioma, fallback, resolución hotel>default) · E2E.
+
 ### 11.2 Email de Notificación — Check-out
 - [ ] 11.2.1 Enviar email de agradecimiento al hacer check-out
   > En el endpoint `POST /api/reservas/:id/checkout` (composition-root.ts:584), después de confirmar el check-out,
