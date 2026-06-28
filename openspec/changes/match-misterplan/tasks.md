@@ -245,7 +245,7 @@
   > Si el auto-message tiene channel 'email', llamar a EmailService.send(). Si 'whatsapp', llamar a WhatsAppService.send().
   > Evitar duplicados: antes de enviar, verificar en `message_logs` si ya se envió ese messageId (auto-message.id + reservation.id).
   > Loggear cada envío en `message_logs` con status 'sent' o 'failed'.
-- [ ] 6.1.4 Email sender (EmailService con nodemailer/SendGrid/Resend)
+- [x] 6.1.4 Email sender (EmailService con nodemailer/SendGrid/Resend)
   > Crear `backend/src/services/email.service.ts` con método `send(to, subject, html)`.
   > Leer configuración SMTP de `Configuration` con key `email_config` (host, port, user, pass, from).
   > Si no hay SMTP configurado, usar Resend (API key en `Configuration` key `resend_api_key`) como fallback.
