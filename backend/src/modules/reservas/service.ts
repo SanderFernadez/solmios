@@ -8,7 +8,7 @@ import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, 
 import type { ReservasSockets } from './sockets'
 import { assertRoomAvailable } from './usecases/availability'
 import type { EmailService } from '../../services/email-service'
-import { enqueueReservationEmail } from './usecases/reservation-email'
+import { dispatchCreateEmail, dispatchCheckinEmail } from './usecases/reservation-notifications'
 
 const CACHE_TTL = 300 // seconds
 const DEFAULT_LIMIT = 20
@@ -17,9 +17,10 @@ const MS_PER_DAY = 86_400_000
 
 export class ReservasService {
   private sockets: ReservasSockets = {}
-  // EmailService transversal inyectado post-construcción (patrón setSockets).
   private emailService: EmailService | null = null
-  setEmailService(es: EmailService): void { this.emailService = es }
+  private messageLogRepo: RepositoryAdapter<any> | null = null
+  setEmailDeps(es: EmailService, r: RepositoryAdapter<any>): void { this.emailService = es; this.messageLogRepo = r }
+  private notifyDeps = () => ({ emailService: this.emailService, messageLogRepo: this.messageLogRepo, guestRepo: this.guestRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, logger: this.logger })
 
   constructor(
     private readonly repo: RepositoryAdapter<ReservasDTO>,
@@ -135,12 +136,8 @@ export class ReservasService {
     await this.sockets.onReservasCreated?.(item)
     await this.cache.delete(`reservas:list:${dto.hotelId}`)
 
-    // ── Encolar email según communicateClient (envío asíncrono con reintentos) ──
-    await enqueueReservationEmail(
-      { emailService: this.emailService, guestRepo: this.guestRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, logger: this.logger },
-      dto,
-      item,
-    ).catch((e) => this.logger.warn('Error encolando email de reserva', { error: (e as Error).message }))
+    // ── Encolar email según communicateClient (spec 6.1.4) ──
+    dispatchCreateEmail(this.notifyDeps(), dto, item)
 
     return item
   }
@@ -174,6 +171,10 @@ export class ReservasService {
 
     await this.sockets.onReservasUpdated?.(item)
     await this.cache.delete(`reservas:list:${existing.hotelId}`)
+
+    // ── Email de bienvenida al hacer check-in (spec 11.1.1, dual path) ──
+    dispatchCheckinEmail(this.notifyDeps(), existing, dto, item)
+
     return item
   }
 

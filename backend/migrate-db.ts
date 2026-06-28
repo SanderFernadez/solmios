@@ -578,6 +578,12 @@ exec(`CREATE TABLE IF NOT EXISTS message_logs (
   guestId TEXT, channel TEXT NOT NULL, content TEXT, status TEXT,
   sentAt TEXT, createdAt TEXT DEFAULT (datetime('now')))`)
 
+// ALTER idempotente: columna recipient en message_logs (spec 11.1.1 — log de email de check-in con destinatario).
+const msgCols = db.query("PRAGMA table_info(message_logs)").all() as any[]
+if (!msgCols.some((c: any) => c.name === 'recipient')) {
+  exec("ALTER TABLE message_logs ADD COLUMN recipient TEXT")
+}
+
 exec(`CREATE TABLE IF NOT EXISTS whatsapp_templates (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL,
   language TEXT DEFAULT 'es', templateId TEXT, body TEXT NOT NULL,

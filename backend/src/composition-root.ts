@@ -10,6 +10,7 @@ import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { HotelAuth } from './infrastructure/auth/hotel-auth'
 import { EmailService } from './services/email-service'
 import type { EmailQueueDTO } from './services/email-service'
+import { sendCheckinEmail } from './modules/reservas/usecases/checkin-email'
 
 // ─── Config (todo desde .env) ──────────────────────────────────────────────
 const config = new ConfigStore()
@@ -122,6 +123,8 @@ orm.define('EmailQueue', {
     relatedId: { type: 'string' },
   },
 })
+
+// MessageLogs ya se define en modules/marketing (registerMarketingModels) — no duplicar aquí.
 
 // ─── Modelos ORM Fase 1 (Foundation) ───────────────────────────────────────
 // Amenities del hotel y de habitaciones
@@ -599,6 +602,19 @@ router.post('/api/reservas/:id/checkin', [auth.authenticate('hotel_admin', 'rece
 
   // 5) Recalcular availability en Channex (la room pasa a ocupada sus noches).
   pushAvailabilityToChannex(r.hotelId, r.roomId)
+
+  // 6) Email de bienvenida al check-in (spec 11.1.1) — vía usecase compartido con service.update.
+  await sendCheckinEmail(
+    {
+      emailService,
+      guestRepo: new OrmRepository<any>(orm, 'Guests'),
+      roomRepo: new OrmRepository<any>(orm, 'Rooms'),
+      hotelRepo: new OrmRepository<any>(orm, 'Hotels'),
+      messageLogRepo: new OrmRepository<any>(orm, 'MessageLogs'),
+      logger,
+    },
+    { reservationId: r.id, hotelId: r.hotelId, guestId, roomId: r.roomId, checkIn: r.checkIn, checkOut: r.checkOut },
+  ).catch((e) => logger.warn('check-in email', { error: (e as Error).message }))
 
   return { status: 200, body: { ok: true, reservationId: r.id, status: 'checked_in', folioId: folio.id, guestId } }
 })
@@ -1413,9 +1429,9 @@ const EMAIL_WORKER_TICK_MS = 30_000
 const emailConfigRepo = new OrmRepository<Record<string, unknown>>(orm, 'Configuration')
 const emailQueueRepo = new OrmRepository<EmailQueueDTO>(orm, 'EmailQueue')
 const emailService = new EmailService(emailConfigRepo, emailQueueRepo, logger)
-const reservasForEmail = system.resolveModule<{ setEmailService(es: EmailService): void }>('reservas')
-if (reservasForEmail && typeof reservasForEmail.setEmailService === 'function') {
-  reservasForEmail.setEmailService(emailService)
+const reservasForEmail = system.resolveModule<{ setEmailDeps(es: EmailService, r: any): void }>('reservas')
+if (reservasForEmail && typeof reservasForEmail.setEmailDeps === 'function') {
+  reservasForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'MessageLogs'))
 }
 await emailService.reclaimStale()
 setInterval(() => {

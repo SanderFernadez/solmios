@@ -875,7 +875,16 @@ function confirmAction(type: string, r: any) {
   else { cfg.value = { show: true, icon: '⚠️', title: '¿Cancelar?', msg: `${r.guestName} — Hab. ${r.roomNumber} — $${r.total}`, btn: 'bg-coral', fn: () => doCancel(r) } }
 }
 
-async function doCheckin(r: any) { try { await ReservationService.update(r.id, { status: 'checked_in' } as any); await load(); toast.success('Check-in') } catch { toast.error('Error') } }
+async function doCheckin(r: any) {
+  try {
+    await ReservationService.update(r.id, { status: 'checked_in' } as any)
+    await load()
+    toast.success('Check-in realizado')
+    // Toast de notificación de email de bienvenida (spec 11.1.1).
+    if (r.email) toast.info(`Email de bienvenida enviado a ${r.email}`)
+    else toast.info('Sin email registrado')
+  } catch { toast.error('Error') }
+}
 async function doCancel(r: any) { try { await ReservationService.update(r.id, { status: 'cancelled' } as any); await load(); toast.success('Cancelada') } catch { toast.error('Error') } }
 
 function sendPayLink(ch: string) {

@@ -369,7 +369,7 @@
 ## Phase 11: Check-in Digital Completo (Email + Notificaciones + UX)
 
 ### 11.1 Email de Notificación — Check-in
-- [ ] 11.1.1 Enviar email de confirmación al hacer check-in
+- [x] 11.1.1 Enviar email de confirmación al hacer check-in
   > En el endpoint `POST /api/reservas/:id/checkin` (composition-root.ts:536), después de confirmar el check-in,
   > disparar el envío de email usando el EmailService (task 6.1.4). El email debe contener:
   > - Asunto: "¡Bienvenido a {hotel_name}, {guest_name}!"
@@ -390,6 +390,26 @@
   > Variables disponibles: {guest_name}, {hotel_name}, {hotel_address}, {hotel_phone}, {checkin_date},
   > {checkout_date}, {room_number}, {room_type}, {nights}, {total_amount}, {wifi_network},
   > {wifi_password}, {lock_codes}, {locator}, {pre_checkin_url}.
+
+- [ ] 11.1.3 Migrar frontend `doCheckin` a endpoint `/checkin` + completar check-in real
+  > BUG del dual path: `reservations/index.vue:doCheckin` hace check-in vía `update({status:'checked_in'})`,
+  > que SOLO cambia el status. NO crea folio, NO marca room como occupied, NO crea tarea de housekeeping,
+  > NO recalcula availability en Channex. El endpoint `POST /api/reservas/:id/checkin` (composition-root.ts:558)
+  > SÍ orquesta todo eso, pero el frontend no lo usa.
+  > Acción: cambiar `doCheckin` para llamar a `POST /api/reservas/:id/checkin` (agregar método en ReservationService),
+  > eliminando el `update` parcial. El email de bienvenida (11.1.1) ya cubre ambos paths, pero el resto del check-in
+  > (folio/room/housekeeping/Channex) solo funciona por este endpoint.
+  > Prerequisito para que el check-in esté completo en producción.
+
+- [ ] 11.1.4 Gestionar config WiFi por hotel (`wifi_config` en Configuration)
+  > Crear Configuration key `wifi_config` ({network, password}) multi-tenant para que cada hotel configure su red.
+  > El usecase `checkin-email.ts` hoy envía `{wifi_network}`/`{wifi_password}` vacíos.
+  > Acción: UI de settings + lectura de `wifi_config` en `checkin-email.ts` (patrón `email_config`).
+
+- [ ] 11.1.5 Branding con logo del hotel (`Hotels.logoUrl` + upload)
+  > El email de check-in (11.1.1) usa solo colores del template y emoji 🏨 (sin logo real).
+  > Acción: agregar `logoUrl` al modelo Hotels + upload en settings + usar en plantillas de email.
+  > {lock_code} real depende de TTLock (Fase F5); {pre_checkin_url} depende del pre-checkin (Fase F8).
 
 ### 11.2 Email de Notificación — Check-out
 - [ ] 11.2.1 Enviar email de agradecimiento al hacer check-out
