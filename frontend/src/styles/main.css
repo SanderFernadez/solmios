@@ -3,7 +3,7 @@
 @theme {
   --color-navy: #0D2B4E;
   --color-navy-light: #1A3A5C;
-  --color-blue: #1A5276;
+  --color-blue: #1D67E3;
   --color-cyan: #00B4D8;
   --color-cyan-light: #48CAE4;
   --color-teal: #117A65;
@@ -24,7 +24,7 @@
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06);
   --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.1);
