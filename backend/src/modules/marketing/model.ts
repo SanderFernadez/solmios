@@ -16,7 +16,8 @@ const AutoMessageModel: ModelDefinition = {
     variables: { type: 'json', default: '[]' },
     isActive: { type: 'boolean', default: 1 },
     // Notification templates configurable + i18n (spec 11.1.6).
-    event: { type: 'string', default: 'checkin' },
+    // event: override opcional. null = no aplica a ningún evento (fix H1: 'checkin' estaba fuera del enum de validación).
+    event: { type: 'string' },
     language: { type: 'string', default: 'es' },
     triggerType: { type: 'string', default: 'cron' },
   },

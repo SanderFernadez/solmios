@@ -575,12 +575,12 @@ exec(`CREATE TABLE IF NOT EXISTS auto_messages (
   channel TEXT DEFAULT 'email', triggerEvent TEXT NOT NULL DEFAULT 'checkin_day',
   triggerOffset INTEGER DEFAULT 0, variables TEXT DEFAULT '[]',
   isActive INTEGER DEFAULT 1,
-  event TEXT DEFAULT 'checkin', language TEXT DEFAULT 'es', triggerType TEXT DEFAULT 'cron',
+  event TEXT, language TEXT DEFAULT 'es', triggerType TEXT DEFAULT 'cron',
   createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
 
 // ALTER idempotente: auto_messages += event/language/triggerType (spec 11.1.6 — notification templates configurable + i18n).
 const amCols = db.query("PRAGMA table_info(auto_messages)").all() as any[]
-if (!amCols.some((c: any) => c.name === 'event')) exec("ALTER TABLE auto_messages ADD COLUMN event TEXT DEFAULT 'checkin'")
+if (!amCols.some((c: any) => c.name === 'event')) exec("ALTER TABLE auto_messages ADD COLUMN event TEXT")
 if (!amCols.some((c: any) => c.name === 'language')) exec("ALTER TABLE auto_messages ADD COLUMN language TEXT DEFAULT 'es'")
 if (!amCols.some((c: any) => c.name === 'triggerType')) exec("ALTER TABLE auto_messages ADD COLUMN triggerType TEXT DEFAULT 'cron'")
 
@@ -598,6 +598,33 @@ const msgCols = db.query("PRAGMA table_info(message_logs)").all() as any[]
 if (!msgCols.some((c: any) => c.name === 'recipient')) {
   exec("ALTER TABLE message_logs ADD COLUMN recipient TEXT")
 }
+
+// ALTER idempotente: reservations += condiciones + otros cobros (F3 match-misterplan).
+const rCols = db.query("PRAGMA table_info(reservations)").all() as any[]
+if (!rCols.some((c: any) => c.name === 'gdprAccepted')) exec("ALTER TABLE reservations ADD COLUMN gdprAccepted INTEGER DEFAULT 0")
+if (!rCols.some((c: any) => c.name === 'marketingAccepted')) exec("ALTER TABLE reservations ADD COLUMN marketingAccepted INTEGER DEFAULT 0")
+if (!rCols.some((c: any) => c.name === 'termsAccepted')) exec("ALTER TABLE reservations ADD COLUMN termsAccepted INTEGER DEFAULT 0")
+if (!rCols.some((c: any) => c.name === 'otherCharges')) exec("ALTER TABLE reservations ADD COLUMN otherCharges REAL DEFAULT 0")
+// Tarjeta de garantía (MisterPlan): datos parciales + bandera. No se guarda número completo ni CVV.
+if (!rCols.some((c: any) => c.name === 'hasGuaranteeCard')) exec("ALTER TABLE reservations ADD COLUMN hasGuaranteeCard INTEGER DEFAULT 0")
+if (!rCols.some((c: any) => c.name === 'cardHolder')) exec("ALTER TABLE reservations ADD COLUMN cardHolder TEXT")
+if (!rCols.some((c: any) => c.name === 'cardBrand')) exec("ALTER TABLE reservations ADD COLUMN cardBrand TEXT")
+if (!rCols.some((c: any) => c.name === 'cardLast4')) exec("ALTER TABLE reservations ADD COLUMN cardLast4 TEXT")
+if (!rCols.some((c: any) => c.name === 'cardExpMonth')) exec("ALTER TABLE reservations ADD COLUMN cardExpMonth TEXT")
+if (!rCols.some((c: any) => c.name === 'cardExpYear')) exec("ALTER TABLE reservations ADD COLUMN cardExpYear TEXT")
+
+// CREATE: reservation_addons (F3 match-misterplan — otros servicios y descuentos por reserva).
+exec(`CREATE TABLE IF NOT EXISTS reservation_addons (
+  id TEXT PRIMARY KEY, reservationId TEXT NOT NULL, hotelId TEXT NOT NULL,
+  description TEXT, kind TEXT DEFAULT 'service', amount REAL DEFAULT 0, quantity INTEGER DEFAULT 1,
+  createdAt TEXT DEFAULT (datetime('now')), updatedAt TEXT DEFAULT (datetime('now')))`)
+
+// Seed idempotente: currency_config por defecto para todos los hoteles (F3 — conversión de moneda).
+// Secondary DOP @ 60. UNIQUE(hotelId,key) → no duplica. Editable desde /panel/settings.
+try {
+  db.exec(`INSERT OR IGNORE INTO configuration (id, hotelId, key, value, updatedAt)
+    SELECT lower(hex(randomblob(16))), id, 'currency_config', '{"secondaryCurrency":"DOP","exchangeRate":60}', datetime('now') FROM hotels`)
+} catch { /* hotels puede no existir en runs tempranos — seguro */ }
 
 exec(`CREATE TABLE IF NOT EXISTS whatsapp_templates (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL,

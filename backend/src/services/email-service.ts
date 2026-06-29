@@ -12,8 +12,12 @@
 
 import nodemailer from 'nodemailer'
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import { getCodeDefault } from './notification-defaults'
-import type { NotificationEvent, NotificationLanguage } from './notification-defaults'
+import { NotificationRenderer, renderTemplate } from './notification-renderer'
+import type { EmailSender, NotificationInput } from './email-sender'
+
+// Re-exports backward-compat: renderTemplate y NotificationInput migraron a módulos propios (SRP).
+export { renderTemplate } from './notification-renderer'
+export type { NotificationInput } from './email-sender'
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -50,23 +54,6 @@ export interface EnqueueInput {
   relatedId?: string
 }
 
-/** Subtipo mínimo de auto_messages (override de plantilla por hotel). Evita dependencia circular con el módulo marketing. */
-interface AutoMessageTemplateRow {
-  emailSubject?: string | null
-  emailBody?: string | null
-}
-
-/** Input para enqueueNotification: resuelve plantilla por event × language (spec 11.1.6). */
-export interface NotificationInput {
-  to: string
-  hotelId: string
-  event: NotificationEvent
-  language: NotificationLanguage
-  variables: Record<string, string | number>
-  relatedType?: string
-  relatedId?: string
-}
-
 interface SmtpConfig {
   host: string
   port: number
@@ -87,7 +74,6 @@ const MAX_HTML_BYTES = 500_000
 const STALE_MS = 5 * 60_000
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PLACEHOLDER_RE = /\{(\w+)\}/g
 
 // ─── Errores ────────────────────────────────────────────────────────────────
 
@@ -98,35 +84,11 @@ export class EmailNotConfiguredError extends Error {
   }
 }
 
-// ─── Render de plantillas ───────────────────────────────────────────────────
-
-/**
- * Reemplaza placeholders `{key}` por su valor en `variables`.
- * - Si la key ESTÁ en variables (aunque sea '') → reemplaza.
- * - Si la key NO está en variables → deja el placeholder literal (no rompe).
- */
-/** Escapa HTML en valores de plantilla (defensa XSS si el HTML se re-muestra en una vista web). */
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-}
-
-export function renderTemplate(template: string, variables: Record<string, string | number>): string {
-  return template.replace(PLACEHOLDER_RE, (match, key: string) => {
-    if (!(key in variables)) return match
-    const v = variables[key]
-    if (v === null || v === undefined) return ''
-    const str = String(v)
-    return typeof v === 'string' ? escapeHtml(str) : str
-  })
-}
-
-// Las plantillas HTML migraron a services/notification-defaults.ts (configurables por hotel + i18n, spec 11.1.6).
-// Variables soportadas: {guest_name} {hotel_name} {hotel_address} {hotel_phone} {checkin_date}
-// {checkout_date} {room_number} {total_amount} {wifi_network} {wifi_password} {lock_code} {locator} {pre_checkin_url}
+// Render de plantillas (renderTemplate / escapeHtml / resolveTemplate) → notification-renderer.ts.
 
 // ─── EmailService ───────────────────────────────────────────────────────────
 
-export class EmailService {
+export class EmailService implements EmailSender {
   /** Guard de reentrada: un solo processQueue por proceso a la vez. */
   private processing = false
   /** Cache de transporters SMTP por host:port:user (evita reconstruir por email). */
@@ -136,8 +98,8 @@ export class EmailService {
     private readonly configRepo: RepositoryAdapter<Record<string, unknown>>,
     private readonly queueRepo: RepositoryAdapter<EmailQueueDTO>,
     private readonly logger: Logger,
-    /** Repo de auto_messages para override de plantillas por hotel (spec 11.1.6). null → solo defaults de código. */
-    private readonly templateRepo: RepositoryAdapter<AutoMessageTemplateRow> | null = null,
+    /** Render de plantillas (override hotel > default código > 'es). Default: renderer sin override (solo defaults de código). */
+    private readonly renderer: NotificationRenderer = new NotificationRenderer(null, logger),
   ) {}
 
   /**
@@ -178,43 +140,17 @@ export class EmailService {
   }
 
   /**
-   * Encola una notificación resolviendo la plantilla por (event, language) (spec 11.1.6).
-   * Override del hotel (auto_messages con emailSubject+emailBody e isActive) → default código (mismo idioma) → fallback 'es'.
-   * El subject va DENTRO de la plantilla (traducible). Renderiza subject+body y delega al enqueue existente.
+   * Encola una notificación resolviendo la plantilla por (event, language) vía NotificationRenderer,
+   * y delega al enqueue existente. (spec 11.1.6 + refactor SOLID: renderer separado).
    */
   async enqueueNotification(input: NotificationInput): Promise<string> {
-    const { subject, body } = await this.resolveTemplate(input.hotelId, input.event, input.language)
-    const html = renderTemplate(body, input.variables)
-    const renderedSubject = renderTemplate(subject, input.variables)
+    const { subject, html } = await this.renderer.resolveAndRender({
+      hotelId: input.hotelId, event: input.event, language: input.language, variables: input.variables,
+    })
     return this.enqueue({
-      to: input.to, subject: renderedSubject, html, hotelId: input.hotelId,
+      to: input.to, subject, html, hotelId: input.hotelId,
       relatedType: input.relatedType, relatedId: input.relatedId,
     })
-  }
-
-  /**
-   * Resuelve (subject, body) para (hotelId, event, language).
-   * Orden: override del hotel (auto_messages) → default código (language) → default código ('es').
-   * Un override parcial (falta subject o body) se descarta entero (no se mezcla con el default).
-   */
-  private async resolveTemplate(
-    hotelId: string,
-    event: NotificationEvent,
-    language: NotificationLanguage,
-  ): Promise<{ subject: string; body: string }> {
-    if (this.templateRepo) {
-      try {
-        const row = await this.templateRepo.findOne({
-          hotelId, event, channel: 'email', language, isActive: 1,
-        } as Record<string, unknown>) as AutoMessageTemplateRow | null
-        if (row && row.emailSubject && row.emailBody) {
-          return { subject: row.emailSubject, body: row.emailBody }
-        }
-      } catch (e) {
-        this.logger.warn('EmailService resolveTemplate: override lookup falló, usando default código', { event, language, error: (e as Error).message })
-      }
-    }
-    return getCodeDefault(event, language)
   }
 
   /**

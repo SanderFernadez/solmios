@@ -37,6 +37,19 @@ export const ReservasModel: ModelDefinition = {
     regime: { type: 'string', default: 'room_only' },
     promoCode: { type: 'string' },
     communicateClient: { type: 'string', default: 'none' },
+    // F3 MisterPlan: condiciones de reserva + otros cobros
+    gdprAccepted: { type: 'boolean', default: false },
+    marketingAccepted: { type: 'boolean', default: false },
+    termsAccepted: { type: 'boolean', default: false },
+    otherCharges: { type: 'number', default: 0 },
+    // Tarjeta de garantía (MisterPlan): datos parciales + bandera.
+    // NO se guarda el número completo ni el CVV (PCI). Los datos se revelan solo tras PIN.
+    hasGuaranteeCard: { type: 'boolean', default: false },
+    cardHolder: { type: 'string' },
+    cardBrand: { type: 'string' },
+    cardLast4: { type: 'string' },
+    cardExpMonth: { type: 'string' },
+    cardExpYear: { type: 'string' },
     // Check-in / check-out real (folio + auditoría)
     checkedInAt: { type: 'string' },
     checkedOutAt: { type: 'string' },

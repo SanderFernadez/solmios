@@ -32,6 +32,11 @@ export interface ReservasDTO {
   checkedInAt?: string
   checkedOutAt?: string
   folioId?: string
+  // F3 MisterPlan: condiciones + otros cobros
+  gdprAccepted?: boolean
+  marketingAccepted?: boolean
+  termsAccepted?: boolean
+  otherCharges?: number
   createdAt: string
   updatedAt: string
 }
@@ -67,6 +72,11 @@ export interface CreateReservasDTO {
   regime?: string
   promoCode?: string
   communicateClient?: string
+  // F3 MisterPlan: condiciones + otros cobros
+  gdprAccepted?: boolean
+  marketingAccepted?: boolean
+  termsAccepted?: boolean
+  otherCharges?: number
 }
 
 export interface UpdateReservasDTO {
@@ -97,6 +107,11 @@ export interface UpdateReservasDTO {
   checkedInAt?: string
   checkedOutAt?: string
   folioId?: string
+  // F3 MisterPlan: condiciones + otros cobros
+  gdprAccepted?: boolean
+  marketingAccepted?: boolean
+  termsAccepted?: boolean
+  otherCharges?: number
 }
 
 export interface ReservasQuery {

@@ -190,6 +190,46 @@
         </div>
       </div>
 
+      <!-- Conversión de moneda (F3 match-misterplan) -->
+      <div class="card p-6">
+        <h3 class="font-extrabold text-navy mb-1">Conversión de moneda</h3>
+        <p class="text-xs text-text-muted mb-4">Moneda secundaria para mostrar totales convertidos (ej. en el detalle de reserva).</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Moneda secundaria</label>
+            <select v-model="currencyConfig.secondaryCurrency" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <option value="DOP">DOP (Pesos dominicanos)</option><option value="USD">USD</option><option value="EUR">EUR</option>
+              <option value="COP">COP</option><option value="MXN">MXN</option><option value="ARS">ARS</option><option value="CLP">CLP</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tipo de cambio</label>
+            <input v-model.number="currencyConfig.exchangeRate" type="number" min="0" step="0.01" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+          </div>
+        </div>
+        <button @click="saveCurrency" :disabled="currencySaving" class="mt-4 px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+          {{ currencySaving ? 'Guardando…' : 'Guardar conversión' }}
+        </button>
+      </div>
+
+      <!-- PIN de tarjeta de garantía (MisterPlan) -->
+      <div class="card p-6">
+        <h3 class="font-extrabold text-navy mb-1">PIN de tarjeta de garantía 🔒</h3>
+        <p class="text-xs text-text-muted mb-4">PIN requerido para ver los datos de las tarjetas de garantía en el detalle de reserva.
+          <span v-if="hasGuaranteePin" class="text-teal font-semibold">Configurado ✓</span>
+          <span v-else class="text-coral font-semibold">Sin configurar</span>
+        </p>
+        <div class="flex flex-wrap items-end gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nuevo PIN (4-8 dígitos)</label>
+            <input v-model="guaranteePinDraft" type="password" inputmode="numeric" maxlength="8" placeholder="••••" class="px-4 py-2.5 rounded-xl border border-border text-sm font-mono bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-40" />
+          </div>
+          <button @click="saveGuaranteePin" :disabled="guaranteePinSaving || !guaranteePinDraft" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+            {{ guaranteePinSaving ? 'Guardando…' : 'Guardar PIN' }}
+          </button>
+        </div>
+      </div>
+
       <div class="space-y-6">
         <div class="card p-6">
           <h3 class="font-extrabold text-navy mb-4">Plan</h3>
@@ -619,6 +659,8 @@
 import { ref, computed, onMounted, nextTick, watch, reactive } from 'vue'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
+import { ConfigService } from '@/services/Platform.service'
+import { GuaranteeService } from '@/services/Guarantee.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import type { AmenityCatalog } from '@/services/Hotel.service'
@@ -668,6 +710,52 @@ async function saveStripe() {
   stripeSaving.value = false
 }
 onMounted(loadStripe)
+
+// Conversión de moneda secundaria (F3 match-misterplan — totales convertidos en el detalle de reserva)
+const currencyConfig = reactive({ secondaryCurrency: 'DOP', exchangeRate: 60 })
+const currencySaving = ref(false)
+async function loadCurrency() {
+  try {
+    const c = await ConfigService.get('currency_config') as { secondaryCurrency?: string; exchangeRate?: number } | null
+    if (c) { currencyConfig.secondaryCurrency = c.secondaryCurrency || 'DOP'; currencyConfig.exchangeRate = c.exchangeRate ?? 60 }
+  } catch { /* default */ }
+}
+onMounted(loadCurrency)
+async function saveCurrency() {
+  currencySaving.value = true
+  try {
+    await ConfigService.set('currency_config', { secondaryCurrency: currencyConfig.secondaryCurrency, exchangeRate: Number(currencyConfig.exchangeRate) || 0 })
+    toast.success('Conversión de moneda guardada')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo guardar')
+  } finally {
+    currencySaving.value = false
+  }
+}
+
+// PIN de tarjeta de garantía del hotel (MisterPlan) — protege el acceso a las tarjetas en el detalle de reserva.
+const guaranteePinDraft = ref('')
+const guaranteePinSaving = ref(false)
+const hasGuaranteePin = ref(false)
+async function loadGuaranteePin() {
+  try { hasGuaranteePin.value = (await GuaranteeService.hasPin()).hasPin } catch { /* ignore */ }
+}
+onMounted(loadGuaranteePin)
+async function saveGuaranteePin() {
+  const pin = (guaranteePinDraft.value || '').trim()
+  if (!/^\d{4,8}$/.test(pin)) { toast.error('El PIN debe tener entre 4 y 8 dígitos'); return }
+  guaranteePinSaving.value = true
+  try {
+    await GuaranteeService.setPin(pin)
+    hasGuaranteePin.value = true
+    guaranteePinDraft.value = ''
+    toast.success('PIN de garantía guardado')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo guardar el PIN')
+  } finally {
+    guaranteePinSaving.value = false
+  }
+}
 
 const activeTab = ref('hotel')
 const saving = ref(false)

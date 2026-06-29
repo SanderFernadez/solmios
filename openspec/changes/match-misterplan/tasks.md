@@ -111,36 +111,38 @@
 
 ---
 
-## Phase 3: Reservation Modal (Complete)
+## Phase 3: Reservation Modal (REABIERTO 2026-06-28 — frontend-only)
 
-### 3.1 Modal Structure
-- [x] 3.1.1 Create ReservationModal.vue with two-panel layout
-- [x] 3.1.2 Header with locator, action buttons (Confirmar, Anular, Imprimir, Editar)
-- [x] 3.1.3 Left panel with 5 collapsible sections
-- [x] 3.1.4 Right panel with 6 sections
+> **REABIERTO**: las 19 tasks originales estaban marcadas `[x]` en **falso** — `ReservationModal.vue` NO existía (al clickear una reserva se abría el form de edición inline en `pages/reservations/index.vue`; el planning tenía un modal detalle simple sin acciones). Se consolida a scope **frontend-only** usando datos que YA existen en backend (`reservations`, `guests`, `rooms`, `companions`). La deuda que requiere backend nuevo se lista abajo como bloque separado (no entra en F3).
+> Referencia visual y de layout: `specs/reservation-modal/spec.md` (REQ-1 a REQ-12) y `ANALISIS-MRPLAN.md` §10.
 
-### 3.2 Left Panel Sections
-- [x] 3.2.1 Datos Reserva (source, commission, locators, dates, OTA notes)
-- [x] 3.2.2 Condiciones (3 checkboxes)
-- [x] 3.2.3 Comunicaciones (bono PDF, autocheckin links)
-- [x] 3.2.4 Comunicación Cliente (auto-message toggles per reservation)
-- [x] 3.2.5 Plantillas WhatsApp (send buttons)
+### 3.1 ReservationModal.vue — estructura two-panel + header + integración
+- [ ] 3.1 ReservationModal.vue: layout two-panel (izq: datos reserva; der: cliente/pago/elementos), modo **LECTURA** por defecto con toggle **Editar** que reutiliza el form de edición existente. Header con locator (`source`+`externalLocator`, fallback `id` corto), badges status/canal, action buttons **Confirmar · Anular · Imprimir · Editar · ✕**. Secciones colapsables. Conectar en `pages/reservations/index.vue` (clic fila → detalle, NO `openEdit`) y `pages/planning/index.vue` (clic bloque → detalle). Cargar vía `ReservationService.getById(id)`.
+  > Reemplaza el modal inline de `pages/reservations/index.vue` (líneas 64+) y el modal detalle simple de `pages/planning/index.vue` (líneas 512+). Ref: `specs/reservation-modal/spec.md` REQ-1, REQ-12 + `ANALISIS-MRPLAN.md` §10.
+  > Reglas: `<script setup lang="ts">` + `<style scoped>`, sin `fetch()` (usar `ReservationService`), sin Options API.
 
-### 3.3 Right Panel Sections
-- [x] 3.3.1 Datos Cliente (name, email, phone, WhatsApp links)
-- [x] 3.3.2 Importe y Pago (total, deposit, pending, currency conversion, payment request)
-- [x] 3.3.3 Elementos Reserva (room, config, pricing breakdown)
-- [x] 3.3.4 Otros Servicios (collapsible add-ons)
-- [x] 3.3.5 Acompañantes (list + add form)
-- [x] 3.3.6 QScanPro (connection code display)
+### 3.2 Left panel — Datos de la Reserva + Comunicación Cliente
+- [ ] 3.2 Left panel con 2 secciones colapsables (datos existen en `backend/src/modules/reservas/model.ts`): **(a) Datos de la Reserva** — `source` (label descriptivo), `commission`/`commissionAmount`, localizadores `id`+`externalLocator`, `createdAt` (fecha creación), `checkIn`–`checkOut`+noches calc, `notes`/`otaNotes`. **(b) Comunicación con el Cliente** — toggle `autoSendEnabled` por reserva (PATCH al cambiar, campo existe).
+  > Ref: REQ-2, REQ-5 (parcial).
 
-### 3.4 Actions
-- [x] 3.4.1 Confirmar reserva (status → confirmed)
-- [x] 3.4.2 Anular reserva (status → cancelled, confirmation dialog)
-- [x] 3.4.3 Generate voucher PDF (window.print with styled template)
-- [x] 3.4.4 Send payment request (generate Stripe link, send email)
+### 3.3 Right panel — Cliente + Importe/Pago + Elementos + Acompañantes
+- [ ] 3.3 Right panel con 4 secciones: **(a) Datos del Cliente** — nombre (link edición huésped), email `mailto:`, teléfono `tel:`, WhatsApp `wa.me/<phone>` (relación `guest`). **(b) Importe y Pago** — `totalAmount`, `depositAmount`/`depositStatus`, `pendingAmount` (calc=total−deposit), `paymentMethod`, badge `paymentStatus`. **(c) Elementos** — `room.number`+`room.name`/`type`, `regime`, `adults`/`children`, noches, precio/noche (`room.basePrice`). **(d) Acompañantes** — lista vía `CompanionsService.getByReservation(id)` (name, documentType, documentNumber, nationality, isMainGuest `*`).
+  > Ref: REQ-7, REQ-8 (sin conversión moneda=deuda), REQ-9, REQ-10.
 
-**Acceptance:** Modal opens from planning click, shows ALL data, all actions work.
+### 3.4 Actions — Confirmar + Anular + Imprimir (endpoints existen)
+- [ ] 3.4 Actions: **Confirmar** (PATCH `status:'confirmed'` + confirm dialog), **Anular** (PATCH `status:'cancelled'` + dialog "¿Anular reserva?"), **Imprimir** (`window.print()` con CSS print del detalle). Sin backend nuevo.
+  > Ref: REQ-12. (Send payment request Stripe = deuda F9).
+
+**Acceptance:** Click en reserva (desde `/panel/reservations` y `/panel/planning`) abre `ReservationModal` en modo lectura 2-paneles mostrando TODOS los datos (reserva, cliente, pago, habitación, acompañantes); Confirmar/Anular/Imprimir funcionan; toggle Editar pasa a modo edición. `cd frontend && npx vue-tsc --noEmit` = 0 errores. `ReservationModal.vue` referenciado desde ambas páginas.
+
+### Deuda backend (FUERA de scope F3 — crear tasks separadas al abordarlas)
+- **Condiciones de reserva (3 checkboxes)**: requiere tabla `reservation_conditions` (no existe).
+- **Comunicaciones (bono PDF, autocheckin)**: requiere servicio PDF + endpoint (no existe).
+- **Plantillas WhatsApp send**: depende de F7 (parcial).
+- **Conversión de moneda secundaria (RD$)**: requiere config de currency rate (no existe).
+- **Otros servicios y descuentos editables**: requiere modelo `reservation_addons` (no existe).
+- **QScanPro (código de conexión)**: integración externa (no existe).
+- **Send payment request (Stripe link + email)**: depende de F9/payments.
 
 ---
 

@@ -19,6 +19,9 @@
       <div class="grid md:grid-cols-2 gap-4">
         <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client ID</label><input v-model="ttlockConfig.clientId" type="text" placeholder="De open.ttlock.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
         <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client Secret</label><input v-model="ttlockConfig.clientSecret" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Usuario TTLock</label><input v-model="ttlockConfig.username" type="text" placeholder="Usuario de la cuenta TTLock del hotel" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Contraseña TTLock</label><input v-model="ttlockConfig.password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Región</label><select v-model="ttlockConfig.region" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer"><option value="eu">Europa (eu)</option><option value="us">EE.UU. (us)</option><option value="cn">China (cn)</option></select></div>
         <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Account ID / Email</label><input v-model="ttlockConfig.accountId" type="text" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
         <div class="flex items-end gap-2">
           <button @click="saveTtlockConfig" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy/80">💾 Guardar Config</button>
@@ -112,7 +115,8 @@ const syncing = ref(false)
 const locks = ref<any[]>([])
 const rooms = ref<any[]>([])
 const lockCodes = ref<any[]>([])
-const ttlockConfig = ref({ clientId: '', clientSecret: '', accountId: '', accessToken: '', configured: false })
+const ttlockConfig = ref({ clientId: '', clientSecret: '', username: '', password: '', region: 'eu', accountId: '', accessToken: '', configured: false, connected: false })
+const connecting = ref(false)
 
 async function load() {
   try { const cfg = await TTLockService.getConfig(); ttlockConfig.value = { ...ttlockConfig.value, ...cfg } } catch {}
@@ -127,7 +131,24 @@ async function saveTtlockConfig() {
 }
 async function connectTtlock() {
   await saveTtlockConfig()
-  toast.info('OAuth flow simulado — conecta con TTLock real para completar')
+  connecting.value = true
+  try {
+    await TTLockService.connect({
+      username: ttlockConfig.value.username,
+      password: ttlockConfig.value.password,
+      clientId: ttlockConfig.value.clientId,
+      clientSecret: ttlockConfig.value.clientSecret,
+      region: ttlockConfig.value.region,
+    })
+    ttlockConfig.value.connected = true
+    toast.success('TTLock conectado — sincronizando cerraduras…')
+    await syncLocks()
+  } catch (e) {
+    ttlockConfig.value.connected = false
+    toast.error((e as Error).message || 'No se pudo conectar con TTLock')
+  } finally {
+    connecting.value = false
+  }
 }
 async function syncLocks() {
   syncing.value = true

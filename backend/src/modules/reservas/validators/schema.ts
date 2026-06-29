@@ -34,6 +34,18 @@ export const CreateReservasSchema: Record<string, ValidationRule> = {
   regime: { type: 'string' as const },
   promoCode: { type: 'string' as const, max: 50 },
   communicateClient: { type: 'string' as const },
+  // F3 MisterPlan: condiciones + otros cobros
+  gdprAccepted: { type: 'boolean' as const },
+  marketingAccepted: { type: 'boolean' as const },
+  termsAccepted: { type: 'boolean' as const },
+  otherCharges: { type: 'number' as const, min: 0 },
+  // Tarjeta de garantía (MisterPlan): datos parciales, sin número completo ni CVV.
+  hasGuaranteeCard: { type: 'boolean' as const },
+  cardHolder: { type: 'string' as const, max: 100 },
+  cardBrand: { type: 'string' as const, max: 20 },
+  cardLast4: { type: 'string' as const, max: 4 },
+  cardExpMonth: { type: 'string' as const, max: 2 },
+  cardExpYear: { type: 'string' as const, max: 4 },
 }
 
 export const UpdateReservasSchema: Record<string, ValidationRule> = {
@@ -59,6 +71,18 @@ export const UpdateReservasSchema: Record<string, ValidationRule> = {
   preCheckinStatus: { type: 'string' as const, enum: PRECHECKIN_ENUM },
   groupId: { type: 'string' as const },
   otaNotes: { type: 'string' as const, max: 2000 },
+  // F3 MisterPlan: condiciones + otros cobros
+  gdprAccepted: { type: 'boolean' as const },
+  marketingAccepted: { type: 'boolean' as const },
+  termsAccepted: { type: 'boolean' as const },
+  otherCharges: { type: 'number' as const, min: 0 },
+  // Tarjeta de garantía (MisterPlan): datos parciales, sin número completo ni CVV.
+  hasGuaranteeCard: { type: 'boolean' as const },
+  cardHolder: { type: 'string' as const, max: 100 },
+  cardBrand: { type: 'string' as const, max: 20 },
+  cardLast4: { type: 'string' as const, max: 4 },
+  cardExpMonth: { type: 'string' as const, max: 2 },
+  cardExpYear: { type: 'string' as const, max: 4 },
 }
 
 export const ReservasValidator = { create: CreateReservasSchema, update: UpdateReservasSchema }

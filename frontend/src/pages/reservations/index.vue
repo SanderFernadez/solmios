@@ -43,7 +43,7 @@
           <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase"></th>
         </tr></thead>
         <tbody>
-          <tr v-for="r in filtered" :key="r.id" class="border-b border-border last:border-0 hover:bg-surface/50 cursor-pointer" @click="openEdit(r)">
+          <tr v-for="r in filtered" :key="r.id" class="border-b border-border last:border-0 hover:bg-surface/50 cursor-pointer" @click="openDetail(r)">
             <td class="p-4"><div class="font-bold text-sm text-navy">{{ r.guestName }}</div><div class="text-[10px] text-text-muted">{{ r.email }}</div></td>
             <td class="p-4 text-sm font-bold">{{ r.roomNumber }}</td>
             <td class="p-4 text-sm">{{ fmtDate(r.checkIn) }}</td>
@@ -122,15 +122,11 @@
                     <div class="grid grid-cols-3 gap-3">
                       <div>
                         <label class="block text-[11px] font-bold text-text-secondary mb-1">País</label>
-                        <select v-model="form.country" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
-                          <option v-for="c in countries" :key="c" :value="c">{{ c }}</option>
-                        </select>
+                        <SearchSelect v-model="form.country" :options="countries" placeholder="Buscar país..." />
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-text-secondary mb-1">Nacionalidad</label>
-                        <select v-model="form.nationality" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
-                          <option v-for="n in nationalities" :key="n" :value="n">{{ n }}</option>
-                        </select>
+                        <SearchSelect v-model="form.nationality" :options="nationalities" placeholder="Buscar nacionalidad..." />
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-text-secondary mb-1">Idioma</label>
@@ -196,18 +192,6 @@
                         <option value="email_presaless">Enviar email preventa</option>
                       </select>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
-                      <div>
-                        <label class="block text-[11px] font-bold text-text-secondary mb-1">Forma de pago</label>
-                        <select v-model="form.payMethod" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
-                          <option value="transfer">Transferencia</option>
-                          <option value="card">Tarjeta</option>
-                          <option value="cash">Efectivo</option>
-                          <option value="link">Link de pago</option>
-                        </select>
-                      </div>
-                      <div></div>
-                    </div>
                     <div>
                       <label class="block text-[11px] font-bold text-text-secondary mb-1">Observaciones</label>
                       <textarea v-model="form.ownerNotes" rows="2" placeholder="Notas para el propietario (se incluye en el bono)..." class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white resize-none focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition"></textarea>
@@ -265,12 +249,30 @@
                 </div>
               </div>
 
-              <!-- ═══ COLUMNA DERECHA: TARJETA + ALOJAMIENTO + ANTICIPO ═══ -->
+              <!-- ═══ COLUMNA DERECHA: FORMA DE PAGO + TARJETA + ALOJAMIENTO + ANTICIPO ═══ -->
               <div class="p-5 space-y-6">
 
-                <!-- ── Tarjeta de Crédito ── -->
+                <!-- ── Forma de pago (encima de datos de tarjeta) ── -->
+                <div class="bg-navy/5 border border-navy/15 rounded-xl p-4">
+                  <div class="flex items-center gap-2 mb-3 pb-2 border-b border-navy/20">
+                    <span class="w-6 h-6 rounded-lg bg-navy/10 flex items-center justify-center text-sm">💰</span>
+                    <h4 class="text-sm font-black text-navy">Forma de pago</h4>
+                  </div>
+                  <label class="block text-[11px] font-bold text-text-secondary mb-1">Método de pago</label>
+                  <select v-model="form.payMethod" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
+                    <option value="transfer">Transferencia</option>
+                    <option value="card">Tarjeta</option>
+                    <option value="cash">Efectivo</option>
+                    <option value="link">Link de pago</option>
+                  </select>
+                </div>
+
+                <!-- ── Tarjeta de garantía (siempre visible: es garantía, independiente de la forma de pago) ── -->
                 <div class="bg-purple/5 border border-purple/15 rounded-xl p-4">
-                  <h4 class="text-sm font-black text-navy mb-4">Datos de tarjeta de crédito/débito <span class="text-lg">💳</span></h4>
+                  <h4 class="text-sm font-black text-navy mb-4">Tarjeta de garantía <span class="text-lg">🔒</span></h4>
+                  <div v-if="existingGuarantee" class="mb-3 rounded-lg bg-navy/5 border border-navy/15 px-3 py-2 text-[11px] leading-relaxed text-navy">
+                    Ya hay una tarjeta de garantía cargada. Para verla abrí <strong>Ver reserva</strong> e ingresá el PIN. Ingresá una nueva tarjeta acá solo si querés <strong>reemplazarla</strong>.
+                  </div>
                   <div class="grid grid-cols-3 gap-3">
                     <div class="col-span-2">
                       <label class="block text-[11px] font-bold text-text-secondary mb-1">Titular de la tarjeta</label>
@@ -297,21 +299,9 @@
                       <input v-model="form.cardCvv" type="text" maxlength="4" placeholder="XXX" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm font-mono bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
                     </div>
                   </div>
-                  <div class="grid grid-cols-2 gap-3 mt-3">
-                    <div>
-                      <label class="block text-[11px] font-bold text-text-secondary mb-1">Caducidad Mes</label>
-                      <select v-model="form.cardExpMonth" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
-                        <option value="">Mes</option>
-                        <option v-for="m in months" :key="m" :value="m">{{ m }}</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-text-secondary mb-1">Caducidad Año</label>
-                      <select v-model="form.cardExpYear" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
-                        <option value="">Año</option>
-                        <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
-                      </select>
-                    </div>
+                  <div class="mt-3">
+                    <label class="block text-[11px] font-bold text-text-secondary mb-1">Caducidad</label>
+                    <input v-model="form.cardExpiry" @input="formatExpiry" type="text" inputmode="numeric" maxlength="7" placeholder="MM/AAAA" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm font-mono bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
                   </div>
                 </div>
 
@@ -337,10 +327,7 @@
                     <div class="grid grid-cols-2 gap-3">
                       <div>
                         <label class="block text-[11px] font-bold text-text-secondary mb-1">Habitación</label>
-                        <select v-model="form.roomId" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
-                          <option value="">Seleccionar...</option>
-                          <option v-for="r in rooms" :key="r.id" :value="r.id">{{ r.number }} — {{ r.type }} (${{ r.basePrice }}/n)</option>
-                        </select>
+                        <SearchSelect v-model="form.roomId" :options="roomOptions" placeholder="Seleccionar..." />
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-text-secondary mb-1">Régimen</label>
@@ -437,6 +424,11 @@
             </div>
           </div>
 
+          <!-- Error de validación / disponibilidad (visible para el usuario) -->
+          <div v-if="err" class="px-4 py-3 bg-coral/10 border-t border-b border-coral/30 text-sm font-bold text-coral flex items-center gap-2 shrink-0">
+            <span>⚠️</span><span>{{ err }}</span>
+          </div>
+
           <!-- Footer -->
           <div class="p-4 border-t border-border bg-surface/80 shrink-0 flex items-center justify-between">
             <div class="text-sm font-extrabold text-navy">Total: <span class="text-xl text-navy">${{ total }}</span></div>
@@ -465,6 +457,15 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- ═══ Vista de DETALLE (F3 match-misterplan) ═══ -->
+    <ReservationModal
+      v-if="detailId"
+      :reservation-id="detailId"
+      @close="detailId = ''"
+      @edit="onEditDetail"
+      @changed="load"
+    />
   </div>
 </template>
 
@@ -472,14 +473,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { ReservationService } from '@/services/Reservation.service'
 import { CompanionsService } from '@/services/Companions.service'
+import ReservationModal from '@/components/features/ReservationModal.vue'
+import SearchSelect from '@/components/ui/SearchSelect.vue'
 import { PaymentsService } from '@/services/Payments.service'
 import { TTLockService } from '@/services/TTLock.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useRoute, useRouter } from 'vue-router'
 import { http } from '@/services/http'
 
 const auth = useAuthStore()
 const toast = useToast()
+const route = useRoute()
+const router = useRouter()
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 // ── State ──
@@ -493,6 +499,11 @@ const err = ref('')
 const editId = ref('')
 const modal = ref({ show: false, edit: false })
 const lockCode = ref('')
+// Detalle (F3): clic en fila abre ReservationModal (vista lectura), no el form directo.
+const detailId = ref('')
+const lastRow = ref<Record<string, unknown> | null>(null)
+// Tarjeta de garantía existente al editar (bandera; los datos no se exponen sin PIN).
+const existingGuarantee = ref(false)
 const cfg = ref({ show: false, icon: '', title: '', msg: '', btn: '', fn: () => {} })
 
 const MS_PER_DAY = 86_400_000
@@ -514,7 +525,7 @@ const form = ref({
   // Canal / OTA
   source: 'direct', commission: 0, commissionAmount: 0, extLocator: '', otaNotes: '',
   // Tarjeta
-  cardHolder: '', cardBrand: 'visa', cardNumber: '', cardCvv: '', cardExpMonth: '', cardExpYear: '',
+  cardHolder: '', cardBrand: 'visa', cardNumber: '', cardCvv: '', cardExpMonth: '', cardExpYear: '', cardExpiry: '',
   // Anticipo / Pago
   depositPercentage: 100, deposit: 0, depositStatus: 'unpaid', payMethod: 'transfer',
   // Otros
@@ -556,10 +567,6 @@ const docTypes = [
 
 const relations = ['Familiar', 'Amigo/a', 'Empleado/a', 'Agente de viajes', 'Otro']
 
-const months = ['01','02','03','04','05','06','07','08','09','10','11','12']
-const currentYear = new Date().getFullYear()
-const years = Array.from({ length: 10 }, (_, i) => String(currentYear + i))
-
 const chList = [
   { v: 'direct', l: 'Directa', i: '🏨' }, { v: 'booking', l: 'Booking', i: '🌐' },
   { v: 'expedia', l: 'Expedia', i: '✈️' }, { v: 'airbnb', l: 'Airbnb', i: '🏠' },
@@ -594,6 +601,8 @@ const filtered = computed(() => {
 })
 
 const selRoom = computed(() => rooms.value.find((r: any) => r.id === form.value.roomId))
+// Opciones del selector de habitación (buscador dinámico): value=id, label='número — tipo ($precio/n)'.
+const roomOptions = computed(() => rooms.value.map((r: any) => ({ value: String(r.id), label: `${r.number} — ${r.type} ($${r.basePrice}/n)` })))
 const nights = computed(() => {
   if (!form.value.checkIn || !form.value.checkOut) return 0
   return Math.max(1, Math.round((new Date(form.value.checkOut).getTime() - new Date(form.value.checkIn).getTime()) / MS_PER_DAY))
@@ -622,6 +631,20 @@ function srcClass(s: string) { const m: any = { direct: 'bg-teal/10 text-teal', 
 function formatCardNumber() {
   let v = form.value.cardNumber.replace(/\D/g, '').substring(0, 16)
   form.value.cardNumber = v.replace(/(.{4})/g, '$1 ').trim()
+}
+
+// Caducidad como MM/AAAA (ej: 12/2024). Inserta la '/' automáticamente y sincroniza mes/año.
+function formatExpiry() {
+  const digits = form.value.cardExpiry.replace(/\D/g, '').slice(0, 6)
+  let month = digits.slice(0, 2)
+  if (month.length === 2) {
+    if (Number(month) === 0) month = '01'
+    else if (Number(month) > 12) month = '12'
+  }
+  const year = digits.slice(2)
+  form.value.cardExpiry = year.length ? `${month}/${year}` : month
+  form.value.cardExpMonth = month.length === 2 ? month : ''
+  form.value.cardExpYear = year.length === 4 ? year : ''
 }
 
 function calcDepositFromPercentage() {
@@ -672,10 +695,11 @@ function resetForm() {
     checkIn: '', checkOut: '', roomId: '', adults: 2, children: 0,
     regime: 'room_only', promoCode: '',
     source: 'direct', commission: 0, commissionAmount: 0, extLocator: '', otaNotes: '',
-    cardHolder: '', cardBrand: 'visa', cardNumber: '', cardCvv: '', cardExpMonth: '', cardExpYear: '',
+    cardHolder: '', cardBrand: 'visa', cardNumber: '', cardCvv: '', cardExpMonth: '', cardExpYear: '', cardExpiry: '',
     depositPercentage: 100, deposit: 0, depositStatus: 'unpaid', payMethod: 'transfer',
     status: 'pending', notes: '', autoSendEnabled: true, companions: [],
   }
+  existingGuarantee.value = false
 }
 
 function openNew() {
@@ -703,9 +727,19 @@ async function openEdit(r: any) {
   f.source = r.source || 'direct'
   f.notes = r.notes || ''
 
-  // Cargar datos extendidos (guest + companions + lock)
+  // Cargar datos extendidos (guest + companions + lock + pago/OTA)
   try {
     const ext = await http.get<any>(`/reservations/${r.id}`)
+    // Datos de pago y OTA de la reserva (bug: antes no se recordaban al editar)
+    f.payMethod = ext.paymentMethod || 'transfer'
+    existingGuarantee.value = !!ext.hasGuaranteeCard
+    f.deposit = ext.deposit || 0
+    f.depositPercentage = ext.depositPercentage ?? 100
+    f.depositStatus = ext.depositStatus || 'unpaid'
+    f.commission = ext.commission || 0
+    f.extLocator = ext.externalLocator || ''
+    f.otaNotes = ext.otaNotes || ''
+    f.autoSendEnabled = ext.autoSendEnabled ?? true
     // Guest data
     if (ext.guest) {
       const g = ext.guest
@@ -746,14 +780,35 @@ async function openEdit(r: any) {
   modal.value = { show: true, edit: true }
 }
 
+// ── Detalle (F3): abrir vista de lectura; Editar reusa el form existente ──
+function openDetail(r: any) {
+  lastRow.value = r
+  detailId.value = r.id
+}
+function onEditDetail() {
+  const r = lastRow.value
+  detailId.value = ''
+  if (r) openEdit(r)
+}
+
 // ── Save ──
 async function save() {
-  if (!form.value.firstName || !form.value.checkIn || !form.value.checkOut) {
-    err.value = 'Completa los campos obligatorios (nombre, fechas)'
+  err.value = ''
+  // Validación de campos obligatorios (igual que MisterPlan): nombre, apellido, habitación,
+  // fechas coherentes y al menos un contacto. La disponibilidad de la habitación la valida el backend.
+  const missing: string[] = []
+  if (!form.value.firstName?.trim()) missing.push('nombre')
+  if (!form.value.lastName?.trim()) missing.push('apellido')
+  if (!form.value.roomId) missing.push('habitación')
+  if (!form.value.checkIn) missing.push('check-in')
+  if (!form.value.checkOut) missing.push('check-out')
+  else if (form.value.checkIn && form.value.checkOut <= form.value.checkIn) missing.push('el check-out debe ser posterior al check-in')
+  if (!form.value.email?.trim() && !form.value.phone?.trim()) missing.push('email o teléfono')
+  if (missing.length) {
+    err.value = 'Completá los campos obligatorios: ' + missing.join(', ') + '.'
     return
   }
   saving.value = true
-  err.value = ''
   try {
     // 1. Crear/actualizar huésped
     const guestPayload = {
@@ -814,6 +869,18 @@ async function save() {
       externalLocator: form.value.extLocator,
       otaNotes: form.value.otaNotes,
       autoSendEnabled: !!form.value.autoSendEnabled,
+    }
+
+    // Tarjeta de garantía: se guarda solo si se ingresó un número válido (nueva o reemplazo).
+    // Nunca se envía el número completo ni el CVV (PCI) — solo últimos 4 + datos parciales.
+    const cardDigits = (form.value.cardNumber || '').replace(/\D/g, '')
+    if (form.value.cardHolder && cardDigits.length >= 12) {
+      reservationPayload.cardHolder = form.value.cardHolder
+      reservationPayload.cardBrand = form.value.cardBrand
+      reservationPayload.cardLast4 = cardDigits.slice(-4)
+      reservationPayload.cardExpMonth = form.value.cardExpMonth
+      reservationPayload.cardExpYear = form.value.cardExpYear
+      reservationPayload.hasGuaranteeCard = true
     }
 
     let reservationId = editId.value
@@ -895,5 +962,14 @@ function sendPayLink(ch: string) {
   else { toast.error('Falta email/teléfono') }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  // Si viene de planning con ?edit=id (botón Editar del ReservationModal), abrir el form.
+  const editQ = route.query.edit
+  if (editQ && typeof editQ === 'string') {
+    const r = (list.value as any[]).find((x) => x.id === editQ)
+    if (r) openEdit(r)
+    router.replace({ query: {} })
+  }
+})
 </script>

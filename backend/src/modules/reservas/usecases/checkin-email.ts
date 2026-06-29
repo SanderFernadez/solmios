@@ -8,29 +8,12 @@
 // message_logs usa el modelo del módulo marketing: messageType/status/recipient/response/sentAt.
 
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import type { EmailService } from '../../../services/email-service'
+import type { EmailSender } from '../../../services/email-sender'
 import { resolveGuestLanguage } from '../../../services/guest-language'
-import { getCodeDefault } from '../../../services/notification-defaults'
-
-// Subtipos mínimos de entidades cross-module (evitan `any` sin acoplar a módulos ajenos).
-interface GuestSummary { id: string; hotelId?: string; name?: string; firstName?: string; email?: string; nationality?: string; language?: string }
-interface RoomSummary { id: string; hotelId?: string; number?: string }
-interface HotelSummary { id: string; name?: string; address?: string; phone?: string }
-/** Subtipo del log de mensajes (modelo MessageLogs del módulo marketing). */
-interface MessageLogSummary {
-  id: string
-  hotelId: string
-  reservationId?: string | null
-  messageId?: string | null
-  messageType: string
-  status?: string | null
-  recipient?: string | null
-  response?: string | null
-  sentAt?: string | null
-}
+import type { GuestSummary, RoomSummary, HotelSummary, MessageLogSummary } from './types'
 
 interface CheckinEmailDeps {
-  emailService: EmailService | null
+  emailSender: EmailSender
   guestRepo: RepositoryAdapter<GuestSummary>
   roomRepo: RepositoryAdapter<RoomSummary>
   hotelRepo: RepositoryAdapter<HotelSummary>
@@ -54,7 +37,7 @@ interface CheckinEmailInput {
  * Registra cada intento en message_logs (status sent/failed/skipped, spec 11.1.1).
  */
 export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEmailInput): Promise<void> {
-  const { emailService, guestRepo, roomRepo, hotelRepo, messageLogRepo, logger } = deps
+  const { emailSender, guestRepo, roomRepo, hotelRepo, messageLogRepo, logger } = deps
   if (!input.guestId) {
     logger.info('checkin-email: sin guestId', { reservationId: input.reservationId })
     return
@@ -95,21 +78,19 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
     lock_code: '',
     pre_checkin_url: '',
   }
-  const subject = getCodeDefault('checkin_welcome', language).subject
 
   try {
-    if (emailService) {
-      await emailService.enqueueNotification({
-        to: guest.email, hotelId: input.hotelId, event: 'checkin_welcome', language, variables,
-        relatedType: 'checkin', relatedId: input.reservationId,
-      })
-    }
+    const queueId = await emailSender.enqueueNotification({
+      to: guest.email, hotelId: input.hotelId, event: 'checkin_welcome', language, variables,
+      relatedType: 'checkin', relatedId: input.reservationId,
+    })
+    // Trazabilidad: response = identificador del evento×idioma (no el subject crudo con placeholders — fix H3).
     await messageLogRepo.create({
-      hotelId: input.hotelId, reservationId: input.reservationId, messageId: null,
-      messageType: 'email', response: subject,
+      hotelId: input.hotelId, reservationId: input.reservationId, messageId: queueId || null,
+      messageType: 'email', response: `notification:checkin_welcome [${language}]`,
       status: 'sent', recipient: guest.email, sentAt: new Date().toISOString(),
     } as Omit<MessageLogSummary, 'id'>)
-    logger.info('checkin-email: enviado', { reservationId: input.reservationId, to: guest.email })
+    logger.info('checkin-email: encolado', { reservationId: input.reservationId, to: guest.email, queueId })
   } catch (e) {
     await messageLogRepo.create({
       hotelId: input.hotelId, reservationId: input.reservationId, messageId: null,

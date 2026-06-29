@@ -7,7 +7,7 @@ import { NotFoundError, AuthError } from 'arckode-framework'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 import type { ReservasSockets } from './sockets'
 import { assertRoomAvailable } from './usecases/availability'
-import type { EmailService } from '../../services/email-service'
+import { NullEmailSender, type EmailSender } from '../../services/email-sender'
 import { dispatchCreateEmail, dispatchCheckinEmail } from './usecases/reservation-notifications'
 
 const CACHE_TTL = 300 // seconds
@@ -17,10 +17,10 @@ const MS_PER_DAY = 86_400_000
 
 export class ReservasService {
   private sockets: ReservasSockets = {}
-  private emailService: EmailService | null = null
+  private emailSender: EmailSender = new NullEmailSender()
   private messageLogRepo: RepositoryAdapter<any> | null = null
-  setEmailDeps(es: EmailService, r: RepositoryAdapter<any>): void { this.emailService = es; this.messageLogRepo = r }
-  private notifyDeps = () => ({ emailService: this.emailService, messageLogRepo: this.messageLogRepo, guestRepo: this.guestRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, logger: this.logger })
+  setEmailDeps(es: EmailSender, r: RepositoryAdapter<any>): void { this.emailSender = es; this.messageLogRepo = r }
+  private notifyDeps = () => ({ emailSender: this.emailSender, messageLogRepo: this.messageLogRepo, guestRepo: this.guestRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, logger: this.logger })
 
   constructor(
     private readonly repo: RepositoryAdapter<ReservasDTO>,

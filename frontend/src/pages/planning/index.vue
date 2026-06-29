@@ -509,92 +509,13 @@
       </div>
     </Teleport>
 
-    <!-- Reservation detail — completo -->
-    <Teleport to="body">
-      <div v-if="detail.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="detail.show = false">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-          <!-- Header -->
-          <div class="p-5 border-b border-border shrink-0">
-            <div class="flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">{{ detail.firstName }} {{ detail.lastName }}</h3>
-              <button @click="detail.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center cursor-pointer">✕</button>
-            </div>
-            <div class="flex gap-2 mt-2">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.chBadge">{{ detail.chLabel }}</span>
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.stBadge">{{ detail.stLabel }}</span>
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="detail.payBadge">{{ detail.payLabel }}</span>
-            </div>
-          </div>
-          <!-- Body -->
-          <div class="flex-1 overflow-y-auto p-5 space-y-4">
-            <!-- Cliente -->
-            <div>
-              <h4 class="text-[10px] font-black text-navy uppercase mb-2">👤 Datos del Cliente</h4>
-              <div class="bg-surface rounded-xl p-3 grid grid-cols-2 gap-2 text-xs">
-                <div><span class="text-text-muted">Email:</span> <span class="font-bold text-navy">{{ detail.email || '—' }}</span></div>
-                <div><span class="text-text-muted">Teléfono:</span> <span class="font-bold text-navy">{{ detail.phone || '—' }}</span></div>
-                <div><span class="text-text-muted">Idioma:</span> <span class="font-bold text-navy">{{ detail.language || '—' }}</span></div>
-                <div><span class="text-text-muted">Nacionalidad:</span> <span class="font-bold text-navy">{{ detail.nationality || '—' }}</span></div>
-                <div><span class="text-text-muted">Documento:</span> <span class="font-bold text-navy">{{ detail.docType || '—' }} {{ detail.docNumber || '' }}</span></div>
-                <div><span class="text-text-muted">Sexo:</span> <span class="font-bold text-navy">{{ detail.sex || '—' }}</span></div>
-                <div v-if="detail.address"><span class="text-text-muted">Dirección:</span> <span class="font-bold text-navy">{{ detail.address }}</span></div>
-                <div v-if="detail.city"><span class="text-text-muted">Ciudad:</span> <span class="font-bold text-navy">{{ detail.city }}</span></div>
-              </div>
-            </div>
-            <!-- Alojamiento -->
-            <div>
-              <h4 class="text-[10px] font-black text-navy uppercase mb-2">🏨 Alojamiento</h4>
-              <div class="bg-surface rounded-xl p-3 grid grid-cols-2 gap-2 text-xs">
-                <div><span class="text-text-muted">Habitación:</span> <span class="font-bold text-navy">{{ detail.room }}</span></div>
-                <div><span class="text-text-muted">Régimen:</span> <span class="font-bold text-navy">{{ detail.regime || 'Solo alojamiento' }}</span></div>
-                <div><span class="text-text-muted">Check-in:</span> <span class="font-bold text-navy">{{ detail.cin }}</span></div>
-                <div><span class="text-text-muted">Check-out:</span> <span class="font-bold text-navy">{{ detail.cout }}</span></div>
-                <div><span class="text-text-muted">Noches:</span> <span class="font-bold text-navy">{{ detail.nights }}</span></div>
-                <div><span class="text-text-muted">Huéspedes:</span> <span class="font-bold text-navy">{{ detail.adults }}A {{ detail.children }}N</span></div>
-              </div>
-            </div>
-            <!-- Pago -->
-            <div>
-              <h4 class="text-[10px] font-black text-navy uppercase mb-2">💰 Pago</h4>
-              <div class="bg-surface rounded-xl p-3 space-y-1.5 text-xs">
-                <div class="flex justify-between"><span class="text-text-muted">Total reserva</span><span class="font-extrabold text-navy text-sm">${{ detail.amt }}</span></div>
-                <div class="flex justify-between"><span class="text-text-muted">Anticipo</span><span class="font-bold text-teal">${{ detail.deposit }}</span></div>
-                <div class="flex justify-between"><span class="text-text-muted">Pendiente</span><span class="font-black" :class="detail.amt - detail.deposit > 0 ? 'text-coral' : 'text-teal'">${{ detail.amt - detail.deposit }}</span></div>
-                <div class="flex justify-between"><span class="text-text-muted">Método</span><span class="font-bold text-navy">{{ detail.payMethod }}</span></div>
-              </div>
-            </div>
-            <!-- Contacto emergencia -->
-            <div v-if="detail.emergencyName">
-              <h4 class="text-[10px] font-black text-coral uppercase mb-2">🚨 Contacto de Emergencia</h4>
-              <div class="bg-coral/5 rounded-xl p-3 border border-coral/20 text-xs space-y-1">
-                <div><span class="text-text-muted">Nombre:</span> <span class="font-bold text-navy">{{ detail.emergencyName }}</span></div>
-                <div><span class="text-text-muted">Teléfono:</span> <span class="font-bold text-navy">{{ detail.emergencyPhone }}</span></div>
-                <div><span class="text-text-muted">Parentesco:</span> <span class="font-bold text-navy">{{ detail.emergencyRelation }}</span></div>
-                <div v-if="detail.emergencyEmail"><span class="text-text-muted">Email:</span> <span class="font-bold text-navy">{{ detail.emergencyEmail }}</span></div>
-              </div>
-            </div>
-            <!-- Tarjeta -->
-            <div v-if="detail.cardBrand">
-              <h4 class="text-[10px] font-black text-purple uppercase mb-2">💳 Tarjeta</h4>
-              <div class="bg-purple/5 rounded-xl p-3 border border-purple/20 text-xs">
-                <span class="text-text-muted">{{ detail.cardBrand }}</span> •••• {{ detail.cardLast4 }} — {{ detail.cardHolder }}
-              </div>
-            </div>
-            <!-- Notas -->
-            <div v-if="detail.notes">
-              <h4 class="text-[10px] font-black text-navy uppercase mb-2">📝 Notas</h4>
-              <div class="bg-surface rounded-xl p-3 text-xs text-text-secondary">{{ detail.notes }}</div>
-            </div>
-          </div>
-          <!-- Footer -->
-          <div class="p-4 border-t border-border shrink-0 flex gap-3">
-            <button @click="detail.show=false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cerrar</button>
-            <button @click="detail.show=false; $router.push('/panel/reservations')" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer">Ir a Reservas</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- Reservation detail — ReservationModal (F3 match-misterplan) -->
+    <ReservationModal
+      v-if="detailId"
+      :reservation-id="detailId"
+      @close="detailId = null"
+      @edit="onEditFromPlanning"
+    />
   </div>
 </template>
 
@@ -607,7 +528,10 @@ import { HotelService } from '@/services/Hotel.service'
 import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import ReservationModal from '@/components/features/ReservationModal.vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const auth = useAuthStore()
 const toast = useToast()
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
@@ -638,17 +562,7 @@ const lastSel = ref<{ room: any; from: string; to: string } | null>(null)
 const popup = ref<{ show: boolean; x: number; y: number; room: any; fromDate: string; toDate: string; nights: number; res: any; blk: any }>({ show: false, x: 0, y: 0, room: null, fromDate: '', toDate: '', nights: 0, res: null, blk: null })
 const blockDlg = ref<{ show: boolean; room: string; from: string; to: string; reason: string; customReason: string; rid: string }>({ show: false, room: '', from: '', to: '', reason: '', customReason: '', rid: '' })
 const unblock = ref<{ show: boolean; id: string; room: string; reason: string; from: string; to: string }>({ show: false, id: '', room: '', reason: '', from: '', to: '' })
-const detail = ref({
-  show: false,
-  firstName: '', lastName: '', email: '', phone: '', language: '', nationality: '',
-  docType: '', docNumber: '', sex: '', address: '', city: '',
-  room: '', regime: '', cin: '', cout: '', nights: 0, adults: 2, children: 0,
-  amt: 0, deposit: 0, payMethod: '',
-  chLabel: '', chBadge: '', stLabel: '', stBadge: '', payLabel: '', payBadge: '',
-  emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
-  cardBrand: '', cardLast4: '', cardHolder: '',
-  notes: '',
-})
+const detailId = ref<string | null>(null)
 const newRes = ref({
   show: false, room: null as any, cin: '', cout: '',
   // Cliente
@@ -872,69 +786,14 @@ function showPopup(e: MouseEvent, room: any, day: DI, res: any, blk: any) {
   popup.value = { show: true, x: Math.min(e.clientX, window.innerWidth - 210), y: Math.min(e.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: to, nights: 1, res, blk }
 }
 
-async function viewResDetail(rb: any) {
-  const orig = planReservas.value.find((b: any) => b.id === rb.id)
-  if (!orig) return
-  const ch = (orig.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: orig.channel, b: 'bg-gray-100 text-gray-500' }
-  const st = (orig.status || 'pending').toLowerCase(); const sc = ST[st] || { l: orig.status, b: 'bg-gold/10 text-gold' }
-  const ci = String(orig.checkIn || '').slice(0, 10)
-  const co = String(orig.checkOut || '').slice(0, 10)
-  const nights = Math.max(1, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / MS_PER_DAY))
-  const dep = orig.deposit || 0
-  const amt = orig.totalAmount || 0
-  const ps = amt > 0 && dep >= amt ? 'paid' : dep > 0 ? 'partial' : 'pending'
-  const payBadge = ps === 'paid' ? 'bg-teal/10 text-teal' : ps === 'partial' ? 'bg-gold/10 text-gold' : 'bg-coral/10 text-coral'
-  const payLabel = ps === 'paid' ? 'Pagada' : ps === 'partial' ? 'Parcial' : 'Pendiente'
+// Detalle (F3): clic en bloque → ReservationModal (vista lectura). Editar → reservations con ?edit=.
+function viewResDetail(rb: any) {
+  detailId.value = rb.id
+}
 
-  // Base con datos locales
-  detail.value = {
-    show: true,
-    firstName: orig.guestName?.split(' ')[0] || '',
-    lastName: orig.guestName?.split(' ').slice(1).join(' ') || '',
-    email: orig.guestEmail || '', phone: '', language: '', nationality: '',
-    docType: '', docNumber: '', sex: '', address: '', city: '',
-    room: orig.roomNumber || '?', regime: '', cin: ci, cout: co, nights,
-    adults: orig.adults || 2, children: orig.children || 0,
-    amt, deposit: dep, payMethod: orig.paymentMethod || '',
-    chLabel: cc.l, chBadge: cc.b, stLabel: sc.l, stBadge: sc.b,
-    payLabel, payBadge,
-    emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
-    cardBrand: '', cardLast4: '', cardHolder: '',
-    notes: orig.notes || '',
-  }
-
-  // Cargar datos extendidos desde API
-  try {
-    const ext = await http.get<any>(`/reservations/${orig.id}`)
-    if (ext.guest) {
-      const g = ext.guest
-      detail.value.firstName = g.firstName || detail.value.firstName
-      detail.value.lastName = g.lastName || detail.value.lastName
-      detail.value.email = g.email || detail.value.email
-      detail.value.phone = g.phone || ''
-      detail.value.language = g.language || ''
-      detail.value.nationality = g.nationality || ''
-      detail.value.docType = g.documentType || ''
-      detail.value.docNumber = g.documentNumber || ''
-      detail.value.sex = g.sex || ''
-      detail.value.address = g.address || ''
-      detail.value.city = g.city || ''
-    }
-    if (ext.emergencyContact) {
-      detail.value.emergencyName = ext.emergencyContact.name || ''
-      detail.value.emergencyPhone = ext.emergencyContact.phone || ''
-      detail.value.emergencyRelation = ext.emergencyContact.relation || ''
-      detail.value.emergencyEmail = ext.emergencyContact.email || ''
-    }
-    if (ext.creditCard) {
-      detail.value.cardBrand = ext.creditCard.brand || ''
-      detail.value.cardLast4 = (ext.creditCard.number || '').slice(-4)
-      detail.value.cardHolder = ext.creditCard.holderName || ''
-    }
-    if (ext.regime) detail.value.regime = ext.regime
-    if (ext.notes) detail.value.notes = ext.notes
-    if (ext.paymentMethod) detail.value.payMethod = ext.paymentMethod
-  } catch { /* silencioso — datos base ya cargados */ }
+function onEditFromPlanning(d: { id: string }) {
+  detailId.value = null
+  router.push({ path: '/panel/reservations', query: { edit: d.id } })
 }
 
 /** Context menu (right-click) sobre una reserva existente */

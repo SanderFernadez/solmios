@@ -3,17 +3,13 @@
 // Verifica tenacy: solo usa datos de entidades que pertenecen al hotel de la reserva.
 
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import type { EmailService } from '../../../services/email-service'
+import type { EmailSender } from '../../../services/email-sender'
 import { resolveGuestLanguage } from '../../../services/guest-language'
 import type { CreateReservasDTO } from '../types'
-
-// Subtipos mínimos de entidades cross-module (evitan `any` sin acoplar a los módulos ajenos).
-interface GuestSummary { id: string; hotelId?: string; name?: string; firstName?: string; email?: string; nationality?: string; language?: string }
-interface RoomSummary { id: string; hotelId?: string; number?: string }
-interface HotelSummary { id: string; name?: string; phone?: string }
+import type { GuestSummary, RoomSummary, HotelSummary } from './types'
 
 interface ReservationEmailDeps {
-  emailService: EmailService | null
+  emailSender: EmailSender
   guestRepo: RepositoryAdapter<GuestSummary>
   roomRepo: RepositoryAdapter<RoomSummary>
   hotelRepo: RepositoryAdapter<HotelSummary>
@@ -22,7 +18,7 @@ interface ReservationEmailDeps {
 
 /**
  * Encola el email de confirmación/pre-venta según `dto.communicateClient`.
- * No-op si no hay emailService, communicateClient, guestId o email del huésped,
+ * No-op si communicateClient no es un tipo de email, o si falta guestId/email del huésped,
  * o si el huésped/habitación no pertenece al hotel de la reserva (defensa IDOR).
  */
 export async function enqueueReservationEmail(
@@ -30,10 +26,10 @@ export async function enqueueReservationEmail(
   dto: CreateReservasDTO,
   item: { id: string; locator?: string },
 ): Promise<void> {
-  const { emailService, guestRepo, roomRepo, hotelRepo, logger } = deps
+  const { emailSender, guestRepo, roomRepo, hotelRepo, logger } = deps
   const type = dto.communicateClient
   // Solo 'email_confirmation' y 'email_presaless' disparan envío. Cualquier otro valor (incl. typos/sms/whatsapp) → no-op.
-  if (!emailService || (type !== 'email_confirmation' && type !== 'email_presaless') || !dto.guestId) return
+  if ((type !== 'email_confirmation' && type !== 'email_presaless') || !dto.guestId) return
 
   const guest = await guestRepo.findById(dto.guestId)
   if (!guest?.email) return
@@ -46,13 +42,25 @@ export async function enqueueReservationEmail(
   const hotelName = hotel?.name || 'Hotel'
 
   // Variables de plantilla del spec 6.1.4 (las no disponibles aquí van vacías).
+  const PAYMENT_LABELS: Record<string, string> = {
+    transfer: 'Transferencia', card: 'Tarjeta', cash: 'Efectivo', link: 'Link de pago',
+  }
+  const total = Number(dto.totalAmount ?? 0)
+  const deposit = Number(dto.deposit ?? 0)
+  const pending = Math.max(0, total - deposit)
   const variables: Record<string, string | number> = {
     guest_name: guest.name || guest.firstName || 'Huésped',
     hotel_name: hotelName,
     checkin_date: dto.checkIn,
     checkout_date: dto.checkOut,
     room_number: room?.number ?? '',
-    total_amount: dto.totalAmount ?? '',
+    room_type: room?.type ?? '',
+    room_capacity: room?.maxGuests ?? '',
+    room_base_price: room?.basePrice ? `$${room.basePrice}` : '',
+    total_amount: total ? `$${total}` : '',
+    payment_method: PAYMENT_LABELS[dto.paymentMethod ?? ''] || dto.paymentMethod || '—',
+    deposit_amount: deposit ? `$${deposit}` : '—',
+    pending_amount: pending ? `$${pending}` : '—',
     wifi_network: '',
     wifi_password: '',
     lock_code: '',
@@ -60,11 +68,10 @@ export async function enqueueReservationEmail(
     locator: item.locator ?? '',
   }
 
-  const isConfirmation = type === 'email_confirmation'
-  const event = isConfirmation ? 'reservation_confirmed' : 'reservation_presale'
-  const language = resolveGuestLanguage(guest ?? {})
+  const event = type === 'email_confirmation' ? 'reservation_confirmed' : 'reservation_presale'
+  const language = resolveGuestLanguage(guest)
 
-  await emailService.enqueueNotification({
+  await emailSender.enqueueNotification({
     to: guest.email, hotelId: dto.hotelId, event, language, variables,
     relatedType: 'reservation', relatedId: item.id,
   })

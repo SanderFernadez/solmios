@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Reservation, ReservationStatus, ReservationSource } from '@/types'
+import type { Reservation, ReservationStatus, ReservationSource, ReservationDetail, GuaranteeCardData } from '@/types'
 
 interface RawReservation {
   id: string
@@ -15,6 +15,11 @@ interface RawReservation {
   children?: number
   currency?: string
   deposit?: number
+  autoSendEnabled?: boolean
+  gdprAccepted?: boolean
+  marketingAccepted?: boolean
+  termsAccepted?: boolean
+  otherCharges?: number
   roomNumber?: string
   roomType?: string
   guestName?: string
@@ -114,6 +119,16 @@ export const ReservationService = {
   async update(id: string, patch: Partial<RawReservation>): Promise<Reservation> {
     const data = await http.put<RawReservation>(`/reservas/${id}`, patch)
     return mapReservation(data)
+  },
+
+  /** Detalle extendido: reserva + guest + room + companions + lockCodes + payments + messageLogs. */
+  async getById(id: string): Promise<ReservationDetail> {
+    return http.get<ReservationDetail>(`/reservations/${id}`)
+  },
+
+  /** Tarjeta de garantía: revela los datos parciales tras validar el PIN del hotel (MisterPlan). */
+  async unlockGuaranteeCard(id: string, pin: string): Promise<GuaranteeCardData> {
+    return http.post<GuaranteeCardData>(`/reservations/${id}/guarantee-card/unlock`, { pin })
   },
 
   /** Check-in real: reserva → checked_in + habitación occupied + folio abierto + huésped. */

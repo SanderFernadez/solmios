@@ -10,7 +10,11 @@ import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { HotelAuth } from './infrastructure/auth/hotel-auth'
 import { EmailService } from './services/email-service'
 import type { EmailQueueDTO } from './services/email-service'
+import { NotificationRenderer, type AutoMessageTemplateRow } from './services/notification-renderer'
+import type { EmailSender } from './services/email-sender'
 import { sendCheckinEmail } from './modules/reservas/usecases/checkin-email'
+import { hashGuaranteePin, verifyGuaranteePin } from './services/guarantee-pin'
+import { getAccessToken, listLocks, addKeyboardPassword, randomPin } from './services/ttlock-client'
 
 // ─── Config (todo desde .env) ──────────────────────────────────────────────
 const config = new ConfigStore()
@@ -225,6 +229,20 @@ orm.define('Companions', {
     nationality: { type: 'string' },
     birthDate: { type: 'string' },
     isMainGuest: { type: 'boolean', default: false },
+  },
+})
+
+// Otros servicios y descuentos por reserva (F3 match-misterplan)
+orm.define('ReservationAddons', {
+  table: 'reservation_addons', timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    reservationId: { type: 'string', required: true, indexed: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    description: { type: 'string' },
+    kind: { type: 'string', default: 'service' },
+    amount: { type: 'number', default: 0 },
+    quantity: { type: 'number', default: 1 },
   },
 })
 
@@ -606,7 +624,7 @@ router.post('/api/reservas/:id/checkin', [auth.authenticate('hotel_admin', 'rece
   // 6) Email de bienvenida al check-in (spec 11.1.1) — vía usecase compartido con service.update.
   await sendCheckinEmail(
     {
-      emailService,
+      emailSender: emailService,
       guestRepo: new OrmRepository<any>(orm, 'Guests'),
       roomRepo: new OrmRepository<any>(orm, 'Rooms'),
       hotelRepo: new OrmRepository<any>(orm, 'Hotels'),
@@ -1024,9 +1042,22 @@ router.post('/api/public/pre-checkin/:hash', async (req) => {
 // ─── TTLock: Config y sincronización ─────────────────────────────────
 router.put('/api/ttlock/config', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
   const id = await hotelOf(req)
+  if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
   const body = req.body as any
   const cfg = await orm.findMany('Configuration', { hotelId: id, key: 'ttlock_config' }) as any[]
-  const value = JSON.stringify({ clientId: body.clientId || '', clientSecret: body.clientSecret || '', accountId: body.accountId || '', accessToken: body.accessToken || '' })
+  const prev = cfg[0] ? safeParse(cfg[0].value) : {}
+  // Conserva secretos si el body los envía vacíos (no precarga secretos en el form → no los sobrescribe con '').
+  const keep = (k: string): string => (body[k] === undefined || body[k] === '') ? (prev[k] ?? '') : body[k]
+  const value = JSON.stringify({
+    clientId: keep('clientId'),
+    clientSecret: keep('clientSecret'),
+    username: keep('username'),
+    password: keep('password'),
+    region: body.region ?? prev.region ?? 'eu',
+    accountId: body.accountId ?? prev.accountId ?? '',
+    accessToken: keep('accessToken'),
+    refreshToken: keep('refreshToken'),
+  })
   if (cfg.length > 0) { await orm.update('Configuration', cfg[0].id, { value }) }
   else { await orm.create('Configuration', { id: crypto.randomUUID(), hotelId: id, key: 'ttlock_config', value }) }
   return { status: 200, body: { success: true } }
@@ -1034,9 +1065,44 @@ router.put('/api/ttlock/config', [auth.authenticate('hotel_admin', 'super_admin'
 
 router.get('/api/ttlock/config', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
   const id = await hotelOf(req)
+  if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
   const cfg = (await orm.findMany('Configuration', { hotelId: id, key: 'ttlock_config' }))[0] as any
   const parsed = cfg ? safeParse(cfg.value) : {}
-  return { status: 200, body: { ...parsed, configured: !!(parsed?.clientId && parsed?.clientSecret) } }
+  // No se exponen secretos (clientSecret, password, accessToken) al frontend.
+  return { status: 200, body: {
+    clientId: parsed?.clientId || '',
+    username: parsed?.username || '',
+    region: parsed?.region || 'eu',
+    accountId: parsed?.accountId || '',
+    configured: !!(parsed?.clientId && parsed?.clientSecret),
+    connected: !!parsed?.accessToken,
+  } }
+})
+
+// OAuth2 Resource Owner Password: clientId/clientSecret + username/password → access_token.
+router.post('/api/ttlock/connect', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
+  const id = await hotelOf(req)
+  if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+  const cfg = (await orm.findMany('Configuration', { hotelId: id, key: 'ttlock_config' }))[0] as any
+  const prev = cfg ? safeParse(cfg.value) : {}
+  const body = req.body as any
+  const creds = {
+    clientId: body.clientId || prev.clientId,
+    clientSecret: body.clientSecret || prev.clientSecret,
+    username: body.username || prev.username,
+    password: body.password || prev.password,
+    region: body.region || prev.region || 'eu',
+  }
+  let tokens: { accessToken: string; refreshToken?: string }
+  try {
+    tokens = await getAccessToken(creds)
+  } catch (e) {
+    return { status: 502, body: { error: (e as Error).message || 'No se pudo conectar con TTLock' } }
+  }
+  const value = JSON.stringify({ ...prev, ...creds, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken || prev.refreshToken })
+  if (cfg) await orm.update('Configuration', cfg.id, { value })
+  else await orm.create('Configuration', { id: crypto.randomUUID(), hotelId: id, key: 'ttlock_config', value })
+  return { status: 200, body: { success: true, connected: true } }
 })
 
 router.get('/api/ttlock/locks', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
@@ -1050,24 +1116,64 @@ router.get('/api/ttlock/locks', [auth.authenticate('hotel_admin', 'receptionist'
 
 router.post('/api/ttlock/sync', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
   const id = await hotelOf(req)
+  if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
   const cfg = (await orm.findMany('Configuration', { hotelId: id, key: 'ttlock_config' }))[0] as any
   const parsed = cfg ? safeParse(cfg.value) : {}
   if (!parsed?.clientId) return { status: 400, body: { error: 'TTLock no configurado' } }
-  // En producción: fetch de TTLock API con clientId/clientSecret/accessToken
-  return { status: 200, body: { success: true, message: 'Sincronización simulada — conecta TTLock real para sincronizar', synced: 0 } }
+  if (!parsed?.accessToken) return { status: 400, body: { error: 'TTLock no conectado (falta autorizar)' } }
+  let locks: Awaited<ReturnType<typeof listLocks>> = []
+  try {
+    locks = await listLocks({ clientId: parsed.clientId, accessToken: parsed.accessToken, region: parsed.region })
+  } catch (e) {
+    return { status: 502, body: { error: (e as Error).message || 'No se pudo sincronizar con TTLock' } }
+  }
+  const existing = (await orm.findMany('LockDevices', { hotelId: id })) as any[]
+  const byTtlock = new Map(existing.filter((l) => l.ttlockLockId).map((l) => [String(l.ttlockLockId), l]))
+  let synced = 0
+  for (const l of locks) {
+    const ttlockId = String(l.lockId)
+    const data = {
+      name: l.lockAlias || l.lockName || `Cerradura ${ttlockId}`,
+      mac: l.lockMac || '',
+      batteryLevel: Number(l.electricQuantity ?? 0),
+      status: 'online',
+    }
+    const ex = byTtlock.get(ttlockId)
+    if (ex) await orm.update('LockDevices', ex.id, data)
+    else await orm.create('LockDevices', { id: crypto.randomUUID(), hotelId: id, ttlockLockId: ttlockId, roomId: '', ...data })
+    synced++
+  }
+  return { status: 200, body: { success: true, synced, message: `${synced} cerradura(s) sincronizada(s)` } }
 })
 
 router.post('/api/ttlock/generate-code/:reservationId', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
+  const hid = await hotelOf(req)
+  if (!hid) return { status: 401, body: { error: 'Hotel no encontrado' } }
   const { reservationId } = req.params
   const res = await orm.findById('Reservations', reservationId) as any
   if (!res) return { status: 404, body: { error: 'Reserva no encontrada' } }
+  if (res.hotelId !== hid) return { status: 403, body: { error: 'Sin acceso a esta reserva' } }
   const lock = (await orm.findMany('LockDevices', { roomId: res.roomId }))[0] as any
-  if (!lock) return { status: 404, body: { error: 'Sin cerradura asignada a esta habitación' } }
-  const code = String(Math.floor(100000 + Math.random() * 900000))
+  if (!lock?.ttlockLockId) return { status: 400, body: { error: 'La habitación no tiene cerradura TTLock mapeada' } }
+  const cfg = (await orm.findMany('Configuration', { hotelId: hid, key: 'ttlock_config' }))[0] as any
+  const parsed = cfg ? safeParse(cfg.value) : {}
+  if (!parsed?.accessToken) return { status: 400, body: { error: 'TTLock no conectado (falta autorizar)' } }
+  const creds = { clientId: parsed.clientId, clientSecret: parsed.clientSecret, accessToken: parsed.accessToken, region: parsed.region }
+  const password = randomPin()
+  const startMs = new Date(res.checkIn).getTime()
+  const endMs = new Date(res.checkOut).getTime()
+  let pwdId = ''
+  try {
+    const r = await addKeyboardPassword(creds, Number(lock.ttlockLockId), password, startMs, endMs)
+    pwdId = r.keyboardPwdId || ''
+  } catch (e) {
+    return { status: 502, body: { error: (e as Error).message || 'No se pudo crear el PIN en la cerradura' } }
+  }
   const codeEntry = await orm.create('LockCodes', {
     id: crypto.randomUUID(), lockId: lock.id, reservationId,
-    code, codeType: 'time', startDate: String(res.checkIn).slice(0, 10),
-    endDate: String(res.checkOut).slice(0, 10), status: 'active', sentVia: '',
+    code: password, codeType: 'time',
+    startDate: String(res.checkIn).slice(0, 10), endDate: String(res.checkOut).slice(0, 10),
+    status: 'active', ttlockKeyboardPwdId: pwdId, sentVia: '',
   })
   return { status: 201, body: codeEntry }
 })
@@ -1197,27 +1303,105 @@ router.delete('/api/companions/:id', [auth.authenticate('hotel_admin', 'super_ad
   return { status: 200, body: { success: true } }
 })
 
+// ─── Reservation Addons — otros servicios y descuentos (F3 match-misterplan) ─
+router.get('/api/reservations/:id/addons', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
+  const data = await orm.findMany('ReservationAddons', { reservationId: req.params.id }) as unknown[]
+  return { status: 200, body: { data } }
+})
+
+router.post('/api/reservations/:id/addons', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
+  const res = await orm.findById('Reservations', req.params.id) as { hotelId?: string } | null
+  if (!res) return { status: 404, body: { error: 'Reserva no encontrada' } }
+  const body = req.body as { description?: string; kind?: string; amount?: number; quantity?: number }
+  if (!body?.description) return { status: 400, body: { error: 'description requerido' } }
+  const addon = await orm.create('ReservationAddons', {
+    id: crypto.randomUUID(), reservationId: req.params.id, hotelId: res.hotelId,
+    description: body.description, kind: body.kind === 'discount' ? 'discount' : 'service',
+    amount: Number(body.amount) || 0, quantity: Number(body.quantity) || 1,
+  })
+  return { status: 201, body: addon }
+})
+
+router.delete('/api/addons/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
+  await orm.delete('ReservationAddons', req.params.id)
+  return { status: 200, body: { success: true } }
+})
+
 // ─── GET /api/reservations/:id — Detalle extendido (OTA + companions) ───────
 router.get('/api/reservations/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
   const r = await orm.findById('Reservations', req.params.id) as any
   if (!r) return { status: 404, body: { error: 'Reserva no encontrada' } }
-  const [guest, room, companions, lockCodes, payments, messageLogs] = await Promise.all([
+  const [guest, room, companions, lockCodes, payments, messageLogs, addons] = await Promise.all([
     r.guestId ? orm.findById('Guests', r.guestId) : Promise.resolve(null),
     r.roomId ? orm.findById('Rooms', r.roomId) : Promise.resolve(null),
     orm.findMany('Companions', { reservationId: r.id }) as Promise<any[]>,
     orm.findMany('LockCodes', { reservationId: r.id }) as Promise<any[]>,
     orm.findMany('PaymentRequests', { reservationId: r.id }) as Promise<any[]>,
     system.resolveModule<{ listMessageLogs: (h: string, rid?: string) => Promise<any[]> }>('marketing')?.listMessageLogs(r.hotelId, r.id) ?? Promise.resolve([]),
+    orm.findMany('ReservationAddons', { reservationId: r.id }) as Promise<any[]>,
   ])
+  // El detalle NO expone los datos de la tarjeta de garantía (titular, marca, últimos 4, vencimiento).
+  // Solo indica si existe (hasGuaranteeCard). Los datos se revelan únicamente vía unlock con PIN.
+  const CARD_FIELDS = ['cardHolder', 'cardBrand', 'cardLast4', 'cardExpMonth', 'cardExpYear']
+  const safeReservation = Object.fromEntries(Object.entries(r).filter(([k]: [string, unknown]) => !CARD_FIELDS.includes(k)))
   return { status: 200, body: {
-    ...r,
+    ...safeReservation,
+    hasGuaranteeCard: !!(r.hasGuaranteeCard || r.cardLast4),
     guest: guest || null,
     room: room || null,
     companions,
     lockCodes,
     payments,
     messageLogs,
+    addons,
+    // Check-in digital: hash derivado del id (mapeo de QScanPro de MisterPlan — sin marca externa).
+    checkinCode: String(r.id).replace(/-/g, '').slice(0, 12),
     pendingAmount: Math.max(0, (r.totalAmount || 0) - (r.deposit || 0)),
+  } }
+})
+
+// ─── Tarjeta de garantía (MisterPlan): PIN del hotel + unlock ───────────────
+// El PIN se guarda en `configuration` (key: guarantee_pin) hasheado con SHA-256 (pepper: hotelId + JWT_SECRET).
+router.post('/api/guarantee/pin', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
+  const id = await hotelOf(req)
+  if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+  const { pin } = req.body as { pin?: string }
+  if (!pin || !/^\d{4,8}$/.test(String(pin))) {
+    return { status: 400, body: { error: 'PIN inválido (debe ser de 4 a 8 dígitos)' } }
+  }
+  const hash = hashGuaranteePin(String(pin), id)
+  const existing = (await orm.findMany('Configuration', { hotelId: id, key: 'guarantee_pin' }))[0] as any
+  if (existing) await orm.update('Configuration', existing.id, { value: hash })
+  else await orm.create('Configuration', { id: crypto.randomUUID(), hotelId: id, key: 'guarantee_pin', value: hash })
+  return { status: 200, body: { success: true } }
+})
+
+router.get('/api/guarantee/has-pin', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
+  const id = await hotelOf(req)
+  if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+  const row = (await orm.findMany('Configuration', { hotelId: id, key: 'guarantee_pin' }))[0] as any
+  return { status: 200, body: { hasPin: !!row } }
+})
+
+router.post('/api/reservations/:id/guarantee-card/unlock', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
+  const r = await orm.findById('Reservations', req.params.id) as any
+  if (!r) return { status: 404, body: { error: 'Reserva no encontrada' } }
+  const hid = await hotelOf(req)
+  if (!hid) return { status: 401, body: { error: 'Hotel no encontrado' } }
+  if (r.hotelId !== hid) return { status: 403, body: { error: 'Sin acceso a esta reserva' } }
+  if (!r.hasGuaranteeCard && !r.cardLast4) return { status: 400, body: { error: 'Esta reserva no tiene tarjeta de garantía' } }
+  const pinRow = (await orm.findMany('Configuration', { hotelId: hid, key: 'guarantee_pin' }))[0] as any
+  if (!pinRow?.value) return { status: 400, body: { error: 'No hay PIN de garantía configurado' } }
+  const { pin } = req.body as { pin?: string }
+  if (!pin || !verifyGuaranteePin(String(pin), hid, String(pinRow.value))) {
+    return { status: 403, body: { error: 'PIN incorrecto' } }
+  }
+  return { status: 200, body: {
+    cardHolder: r.cardHolder || '',
+    cardBrand: r.cardBrand || '',
+    cardLast4: r.cardLast4 || '',
+    cardExpMonth: r.cardExpMonth || '',
+    cardExpYear: r.cardExpYear || '',
   } }
 })
 
@@ -1428,8 +1612,9 @@ if (aiRecepcionista) aiRecepcionista.channexPusher = pushAvailabilityToChannex
 const EMAIL_WORKER_TICK_MS = 30_000
 const emailConfigRepo = new OrmRepository<Record<string, unknown>>(orm, 'Configuration')
 const emailQueueRepo = new OrmRepository<EmailQueueDTO>(orm, 'EmailQueue')
-const emailService = new EmailService(emailConfigRepo, emailQueueRepo, logger, new OrmRepository<any>(orm, 'AutoMessages'))
-const reservasForEmail = system.resolveModule<{ setEmailDeps(es: EmailService, r: any): void }>('reservas')
+const notificationRenderer = new NotificationRenderer(new OrmRepository<AutoMessageTemplateRow>(orm, 'AutoMessages'), logger)
+const emailService = new EmailService(emailConfigRepo, emailQueueRepo, logger, notificationRenderer)
+const reservasForEmail = system.resolveModule<{ setEmailDeps(es: EmailSender, r: any): void }>('reservas')
 if (reservasForEmail && typeof reservasForEmail.setEmailDeps === 'function') {
   reservasForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'MessageLogs'))
 }

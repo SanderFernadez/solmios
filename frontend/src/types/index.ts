@@ -111,6 +111,138 @@ export interface Reservation {
   creditCard?: CreditCardInfo
 }
 
+// === RESERVATION DETAIL (GET /reservations/:id — composition-root.ts:1202) ===
+// Sub-tipos que reflejan EXACTAMENTE el response del backend (guest usa `name`/`document`,
+// no firstName/lastName; room usa number/type/basePrice).
+export interface ReservationDetailGuest {
+  id: string
+  name: string
+  email?: string | null
+  phone?: string | null
+  document?: string | null
+  nationality?: string | null
+  language?: string | null
+  birthDate?: string | null
+  loyaltyPoints?: number
+  totalStays?: number
+  totalSpent?: number
+  tier?: string
+}
+
+export interface ReservationDetailRoom {
+  id: string
+  number: string
+  name?: string | null
+  type: string
+  basePrice: number
+  capacity?: number
+  floor?: number | null
+}
+
+export interface ReservationDetailCompanion {
+  id: string
+  name: string
+  documentType?: string | null
+  documentNumber?: string | null
+  nationality?: string | null
+  birthDate?: string | null
+  isMainGuest?: boolean
+}
+
+export interface ReservationDetailLockCode {
+  code?: string | null
+  status?: string
+  startDate?: string | null
+  endDate?: string | null
+}
+
+export interface ReservationDetailPayment {
+  amount?: number
+  currency?: string
+  status?: string
+  stripePaymentUrl?: string | null
+  sentVia?: string
+  paidAt?: string | null
+}
+
+export interface ReservationDetailMessageLog {
+  messageType?: string
+  status?: string
+  recipient?: string | null
+  response?: string | null
+  sentAt?: string | null
+}
+
+export interface ReservationDetailAddon {
+  id: string
+  description: string
+  kind?: 'service' | 'discount'
+  amount?: number
+  quantity?: number
+}
+
+export interface CurrencyConfig {
+  secondaryCurrency?: string
+  exchangeRate?: number
+}
+
+export interface GuaranteeCardData {
+  cardHolder: string
+  cardBrand: string
+  cardLast4: string
+  cardExpMonth: string
+  cardExpYear: string
+}
+
+export interface ReservationDetail {
+  id: string
+  hotelId: string
+  guestId: string | null
+  roomId: string
+  checkIn: string
+  checkOut: string
+  status: string
+  channel?: string
+  source?: string
+  externalLocator?: string | null
+  totalAmount: number
+  deposit?: number
+  pendingAmount?: number
+  currency?: string
+  commission?: number
+  commissionAmount?: number
+  paymentMethod?: string | null
+  depositPercentage?: number
+  depositStatus?: string
+  regime?: string
+  notes?: string | null
+  otaNotes?: string | null
+  ownerNotes?: string | null
+  promoCode?: string | null
+  autoSendEnabled?: boolean
+  communicateClient?: string
+  adults?: number
+  children?: number
+  createdAt?: string
+  checkedInAt?: string | null
+  checkedOutAt?: string | null
+  // F3 MisterPlan: condiciones + otros cobros + código de check-in digital
+  gdprAccepted?: boolean
+  marketingAccepted?: boolean
+  termsAccepted?: boolean
+  otherCharges?: number
+  checkinCode?: string
+  // Tarjeta de garantía (MisterPlan): bandera; los datos se revelan vía unlock con PIN.
+  hasGuaranteeCard?: boolean
+  guest?: ReservationDetailGuest | null
+  room?: ReservationDetailRoom | null
+  companions?: ReservationDetailCompanion[]
+  lockCodes?: ReservationDetailLockCode[]
+  payments?: ReservationDetailPayment[]
+  messageLogs?: ReservationDetailMessageLog[]
+  addons?: ReservationDetailAddon[]
+}
+
 // === FOLIO ===
 export interface FolioItem {
   id: string
