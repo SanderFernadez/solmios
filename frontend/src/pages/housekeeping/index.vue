@@ -87,7 +87,7 @@
     </div>
 
     <!-- Board View (Kanban) -->
-    <div v-else-if="activeView === 'board'" class="gap-4 grid" :class="kanbanColumns.length === 2 ? 'grid-cols-2' : 'grid-cols-4'">
+    <div v-else-if="activeView === 'board'" class="grid grid-cols-4 gap-4">
       <div v-for="column in kanbanColumns" :key="column.id"
         class="bg-surface rounded-xl p-4 min-h-[300px] transition-all"
         :class="dragOverColumn === column.id ? 'ring-2 ring-navy bg-navy/5' : ''"
@@ -407,8 +407,9 @@ const statsRangeDays = ref(30)
 const draggedTask = ref<HousekeepingViewTask | null>(null)
 const dragOverColumn = ref<string | null>(null)
 
-// D1/D3 — Ocultar tareas terminadas (persiste en localStorage; default true = sin ruido).
-const hideCompleted = ref(localStorage.getItem('hk:hideCompleted') !== 'false')
+// D1/D3 — Ocultar tareas terminadas en la LISTA (no en el Kanban). Default OFF: se ven
+// todas por defecto; el toggle es opt-in para reducir ruido cuando hay muchas. Persiste.
+const hideCompleted = ref(localStorage.getItem('hk:hideCompleted') === 'true')
 watch(hideCompleted, (v) => localStorage.setItem('hk:hideCompleted', String(v)))
 // C1 — Reloj reactivo (cada 60s) para mostrar el tiempo transcurrido en vivo en in_progress.
 const LIVE_TICK_MS = 60_000
@@ -431,16 +432,15 @@ const statusFilters = [
 
 const statsRanges = [7, 30, 90]
 
-const KANBAN_COLUMNS = [
+// El Kanban es un flujo de proceso: las 4 columnas representan el pipeline completo
+// (Pendiente → En Progreso → Completada → Inspeccionada). Ocultar etapas rompe la
+// representación del proceso, así que el tablero SIEMPRE muestra las 4 columnas.
+const kanbanColumns = [
   { id: 'pending', title: 'Pendiente', dotColor: 'bg-orange' },
   { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan' },
   { id: 'completed', title: 'Completada', dotColor: 'bg-teal' },
   { id: 'inspected', title: 'Inspeccionada', dotColor: 'bg-purple' },
 ]
-// D1 — El toggle colapsa las columnas terminadas del tablero (consistencia con la lista).
-const kanbanColumns = computed(() =>
-  hideCompleted.value ? KANBAN_COLUMNS.filter(c => !COMPLETED_STATUSES.includes(c.id)) : KANBAN_COLUMNS,
-)
 
 const TYPE_ICONS: Record<string, string> = { full_cleaning: '🧹', quick_cleaning: '✨', deep_cleaning: '🧼', inspection: '🔍', maintenance: '🔧' }
 const TYPE_COLORS: Record<string, string> = { full_cleaning: 'border-l-4 border-l-cyan-500', quick_cleaning: 'border-l-4 border-l-teal-500', deep_cleaning: 'border-l-4 border-l-blue-600', inspection: 'border-l-4 border-l-purple-500', maintenance: 'border-l-4 border-l-amber-500' }
@@ -547,9 +547,12 @@ function staffName(staffId: string) {
 }
 
 // Acción primaria según el estado (respeta la máquina de estados del backend).
-function primaryAction(task: HousekeepingViewTask): { label: string; fn: () => Promise<void> } | null {
+function primaryAction(task: HousekeepingViewTask): { label: string; fn: () => Promise<void>; silent?: boolean } | null {
   switch (task.status) {
-    case 'pending': return { label: 'Iniciar', fn: () => store.startTask(task.id) }
+    // Sin asignar → guiar a asignar (abre el modal de edición, sin toast). Con asignar → iniciar (arranca el cronómetro).
+    case 'pending': return task.staffId
+      ? { label: '▶ Iniciar', fn: () => store.startTask(task.id) }
+      : { label: 'Asignar', fn: async () => { openEditTask(task) }, silent: true }
     case 'in_progress': return { label: 'Finalizar', fn: () => store.completeTask(task.id) }
     case 'completed': return { label: 'Inspeccionar', fn: () => store.updateTask(task.id, { status: 'inspected' }) }
     case 'inspected': return { label: 'Reabrir', fn: () => store.updateTask(task.id, { status: 'pending' }) }
@@ -562,8 +565,11 @@ async function runPrimary(task: HousekeepingViewTask) {
   if (!action) return
   try {
     await action.fn()
-    toast.success('Acción realizada', action.label)
-    syncSelectedTask(task.id)
+    // silent = true para acciones que solo abren un modal (ej. "Asignar") → no son persistentes, no se festejan.
+    if (!action.silent) {
+      toast.success('Acción realizada', action.label)
+      syncSelectedTask(task.id)
+    }
   } catch (e: any) { toast.error('No se pudo realizar la acción', e?.message) }
 }
 
@@ -696,7 +702,13 @@ async function onDrop(_e: DragEvent, newStatus: string) {
   draggedTask.value = null
   if (!task || task.status === newStatus) return
   try {
-    await store.updateTask(task.id, { status: newStatus })
+    // La transición a in_progress ARRANCA EL CRONÓMETRO: debe ir por start (setea startTime
+    // + valida staffId asignado), no por update. Las demás transiciones van por update.
+    if (newStatus === 'in_progress') {
+      await store.startTask(task.id)
+    } else {
+      await store.updateTask(task.id, { status: newStatus })
+    }
   } catch (err: any) {
     toast.error('No se pudo mover la tarea', err?.message)
   }

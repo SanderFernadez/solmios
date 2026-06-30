@@ -48,6 +48,7 @@ export class TimingsUseCase {
     if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
     if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
     await this.assertAssignedStaff(existing, currentUser)
+    if (!existing.staffId) throw new ValidationError('Asigna un empleado antes de iniciar la tarea')
     assertTransition(existing.status, 'in_progress')
     const item = await this.repo.update(id, { status: 'in_progress', startTime: new Date().toISOString() } as any)
     if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')

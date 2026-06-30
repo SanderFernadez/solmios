@@ -145,7 +145,7 @@ describe('HousekeepingService', () => {
 
   describe('state machine (start/complete)', () => {
     it('starts a pending task → in_progress', async () => {
-      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending' } as HousekeepingDTO
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending', staffId: 'e1' } as HousekeepingDTO
       const repo = makeRepo({ findById: async () => task, update: async (id, data) => ({ ...task, ...data, id } as HousekeepingDTO) })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.start('hk1', hotelAdmin)
@@ -154,10 +154,17 @@ describe('HousekeepingService', () => {
     })
 
     it('rejects starting a completed task (invalid transition)', async () => {
-      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'completed' } as HousekeepingDTO
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'completed', staffId: 'e1' } as HousekeepingDTO
       const repo = makeRepo({ findById: async () => task })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.start('hk1', hotelAdmin)).rejects.toThrow('Transición')
+    })
+
+    it('start rejects task without staffId (must assign first)', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.start('hk1', hotelAdmin)).rejects.toThrow('empleado antes de iniciar')
     })
 
     it('update rejects invalid status transition (pending → completed)', async () => {
