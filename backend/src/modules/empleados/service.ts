@@ -40,9 +40,10 @@ export class EmpleadosService {
     reviewRepo: RepositoryAdapter<PerformanceReviewDTO>,
     private readonly logger: Logger,
     cache: CacheAdapter,
+    userRepo?: RepositoryAdapter<any>,
   ) {
     this.departments = new DepartmentUseCase(departmentRepo, logger)
-    this.profiles = new ProfileUseCase(profileRepo, logger)
+    this.profiles = new ProfileUseCase(profileRepo, logger, userRepo)
     this.contracts = new ContractUseCase(contractRepo, logger)
     this.documents = new DocumentUseCase(documentRepo, logger)
     this.leaveRequests = new LeaveRequestUseCase(leaveRepo, logger)

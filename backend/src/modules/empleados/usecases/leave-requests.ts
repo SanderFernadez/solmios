@@ -23,7 +23,8 @@ export class LeaveRequestUseCase {
   }
 
   async list(hotelId: string, employeeId?: string, status?: string): Promise<LeaveRequestDTO[]> {
-    const filters: Record<string, any> = { hotelId }
+    const filters: Record<string, any> = {}
+    if (hotelId) filters.hotelId = hotelId
     if (employeeId) filters.employeeId = employeeId
     if (status) filters.status = status
     return this.repo.findMany(filters)

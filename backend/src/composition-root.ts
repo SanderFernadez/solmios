@@ -381,7 +381,7 @@ serveStatic(router, './uploads', { prefix: '/uploads' })
 
 const mods = [
   UsuariosModule(), HabitacionesModule(), ReservasModule(), HuespedesModule(),
-  FacturasModule(), HousekeepingModule({ storage }), MantenimientoModule(), PaquetesModule(),
+  FacturasModule(), HousekeepingModule({ storage }), MantenimientoModule({ storage }), PaquetesModule(),
   GruposModule(), HotelesModule(), RolesModule(), DispositivosModule(),
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),
   CanalesModule(),
@@ -406,6 +406,14 @@ registerSettingsRoutes(router, orm, auth)
 // ─── Conector: reservas → canales (crear/cancelar reserva vía módulo → push availability Channex)
 import { reservasCanalesConnector } from './connectors/reservas-canales'
 system.addConnector('reservas-canales', reservasCanalesConnector)
+
+// ─── Conector: mantenimiento → notificaciones (crear/completar orden → notificar)
+import { mantenimientoNotificacionesConnector } from './connectors/mantenimiento-notificaciones'
+system.addConnector('mantenimiento-notificaciones', mantenimientoNotificacionesConnector)
+
+// ─── Conector: mantenimiento → habitaciones (cerrar orden → room dirty)
+import { mantenimientoHabitacionesConnector } from './connectors/mantenimiento-habitaciones'
+system.addConnector('mantenimiento-habitaciones', mantenimientoHabitacionesConnector)
 
 // ─── Conector: booking-engine → canales (sync availability después de reserva directa)
 import { bookingChannexConnector } from './connectors/booking-channex'

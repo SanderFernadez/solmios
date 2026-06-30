@@ -23,7 +23,9 @@ export class DepartmentUseCase {
   }
 
   async list(hotelId: string): Promise<DepartmentDTO[]> {
-    return this.repo.findMany({ hotelId, active: 1 })
+    const filters: Record<string, any> = { active: 1 }
+    if (hotelId) filters.hotelId = hotelId
+    return this.repo.findMany(filters)
   }
 
   async update(id: string, data: Partial<CreateDepartmentDTO>): Promise<DepartmentDTO> {

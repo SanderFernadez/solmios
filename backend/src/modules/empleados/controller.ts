@@ -75,7 +75,12 @@ export class EmpleadosController {
   async listProfiles(req: HttpRequest) {
     this.logger.info('GET /api/employee-profiles')
     const query = req.query as any
-    query.hotelId = (req as any).user?.hotelId ?? query.hotelId
+    const user = (req as any).user
+    // hotelId viene del JWT (HotelAuth) o del query param como fallback
+    query.hotelId = user?.hotelId || query.hotelId
+    if (user?.role !== 'super_admin' && !query.hotelId) {
+      return { status: 400, body: { error: 'hotelId requerido' } }
+    }
     const result = await this.service.listProfiles(query)
     return { status: 200, body: result }
   }

@@ -1,8 +1,8 @@
 import type { ValidationRule } from 'arckode-framework'
 
-const CATEGORY_ENUM = ['general', 'plumbing', 'electrical', 'hvac', 'furniture', 'appliance', 'structural', 'pest_control']
+const CATEGORY_ENUM = ['general', 'plumbing', 'electrical', 'hvac', 'furniture', 'appliance', 'structural', 'pest_control', 'carpentry', 'painting', 'electronics']
 const PRIORITY_ENUM = ['low', 'medium', 'high', 'urgent']
-const STATUS_ENUM = ['open', 'in_progress', 'resolved', 'closed']
+const STATUS_ENUM = ['open', 'in_progress', 'waiting', 'resolved', 'closed']
 
 export const CreateMantenimientoSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },

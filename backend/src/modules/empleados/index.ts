@@ -61,10 +61,11 @@ export function EmpleadosModule() {
       const reviewRepo = new OrmRepository<PerformanceReviewDTO>(orm, 'PerformanceReview')
 
       const log = logger.child('empleados')
+      const userRepo = new OrmRepository<any>(orm, 'Users')
       const service = new EmpleadosService(
         departmentRepo, profileRepo, contractRepo,
         documentRepo, leaveRepo, reviewRepo,
-        log, cache,
+        log, cache, userRepo,
       )
       const controller = new EmpleadosController(service, log)
 

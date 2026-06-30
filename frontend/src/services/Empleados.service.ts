@@ -14,6 +14,7 @@ export interface Department {
 export interface EmployeeProfile {
   id: string
   userId: string
+  userName?: string
   hotelId: string
   departmentId: string | null
   position: string
@@ -135,8 +136,11 @@ export const EmpleadosService = {
   async deactivateProfile(id: string): Promise<void> { return http.delete(`/api/employee-profiles/${id}`) },
 
   // Contracts
-  async listContracts(employeeId?: string): Promise<Contract[]> {
-    const qs = employeeId ? `?employeeId=${employeeId}` : ''
+  async listContracts(employeeId?: string, hotelId?: string): Promise<Contract[]> {
+    const params = new URLSearchParams()
+    if (employeeId) params.set('employeeId', employeeId)
+    if (hotelId) params.set('hotelId', hotelId)
+    const qs = params.toString() ? `?${params}` : ''
     return http.get(`/api/employee-contracts${qs}`)
   },
   async getContract(id: string): Promise<Contract> { return http.get(`/api/employee-contracts/${id}`) },
@@ -144,8 +148,11 @@ export const EmpleadosService = {
   async terminateContract(id: string): Promise<Contract> { return http.post(`/api/employee-contracts/${id}/terminate`) },
 
   // Documents
-  async listDocuments(employeeId?: string): Promise<EmployeeDocument[]> {
-    const qs = employeeId ? `?employeeId=${employeeId}` : ''
+  async listDocuments(employeeId?: string, hotelId?: string): Promise<EmployeeDocument[]> {
+    const params = new URLSearchParams()
+    if (employeeId) params.set('employeeId', employeeId)
+    if (hotelId) params.set('hotelId', hotelId)
+    const qs = params.toString() ? `?${params}` : ''
     return http.get(`/api/employee-documents${qs}`)
   },
   async getDocument(id: string): Promise<EmployeeDocument> { return http.get(`/api/employee-documents/${id}`) },
@@ -165,8 +172,11 @@ export const EmpleadosService = {
   async rejectLeaveRequest(id: string, reason?: string): Promise<LeaveRequest> { return http.post(`/api/leave-requests/${id}/reject`, { reason }) },
 
   // Performance Reviews
-  async listReviews(employeeId?: string): Promise<PerformanceReview[]> {
-    const qs = employeeId ? `?employeeId=${employeeId}` : ''
+  async listReviews(employeeId?: string, hotelId?: string): Promise<PerformanceReview[]> {
+    const params = new URLSearchParams()
+    if (employeeId) params.set('employeeId', employeeId)
+    if (hotelId) params.set('hotelId', hotelId)
+    const qs = params.toString() ? `?${params}` : ''
     return http.get(`/api/performance-reviews${qs}`)
   },
   async createReview(data: Partial<PerformanceReview>): Promise<PerformanceReview> { return http.post('/api/performance-reviews', data) },

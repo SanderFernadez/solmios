@@ -8,6 +8,7 @@ export class ProfileUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<EmployeeProfileDTO>,
     private readonly logger: Logger,
+    private readonly userRepo?: RepositoryAdapter<any>,
   ) {}
 
   async create(dto: CreateEmployeeProfileDTO): Promise<EmployeeProfileDTO> {
@@ -33,18 +34,28 @@ export class ProfileUseCase {
   }
 
   async list(query: EmpleadosQuery): Promise<EmpleadosPaginated> {
-    const filters: Record<string, any> = { hotelId: query.hotelId, active: 1 }
+    const filters: Record<string, any> = { active: 1 }
+    if (query.hotelId) filters.hotelId = query.hotelId
     if (query.departmentId) filters.departmentId = query.departmentId
     const page = query.page ?? 1
     const limit = query.limit ?? 20
     const offset = (page - 1) * limit
     const result = await this.repo.paginate(filters, { limit, offset })
-    return {
-      data: result.data ?? [],
-      total: result.total ?? 0,
-      page,
-      limit,
+    const data = result.data ?? []
+    if (this.userRepo && data.length) {
+      const enriched = await Promise.all(
+        data.map(async (p) => {
+          try {
+            const user = await this.userRepo!.findById(p.userId)
+            return { ...p, userName: user?.name ?? user?.email ?? p.userId }
+          } catch {
+            return { ...p, userName: p.userId }
+          }
+        })
+      )
+      return { data: enriched as EmployeeProfileDTO[], total: result.total ?? 0, page, limit }
     }
+    return { data, total: result.total ?? 0, page, limit }
   }
 
   async update(id: string, data: Partial<CreateEmployeeProfileDTO>): Promise<EmployeeProfileDTO> {

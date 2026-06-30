@@ -7,6 +7,9 @@ const makeCrud = (path: string) => ({
   create: (data: any) => http.post(`/${path}`, data),
   update: (id: string, data: any) => http.put(`/${path}/${id}`, data),
   delete: (id: string, hotelId?: string) => http.delete(`/${path}/${id}${hotelId ? `?hotelId=${hotelId}` : ''}`),
+  post: (idPath: string, data: any) => http.post(`/${path}/${idPath}`, data),
+  put: (idPath: string, data: any) => http.put(`/${path}/${idPath}`, data),
+  get: (idPath: string) => http.get(`/${path}/${idPath}`),
 })
 
 export const OperationsService = {

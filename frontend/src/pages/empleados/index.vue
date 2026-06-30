@@ -41,7 +41,7 @@
         <tbody>
           <tr v-for="emp in profiles" :key="emp.id" @click="openProfile(emp)"
             class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors cursor-pointer">
-            <td class="p-4 text-sm font-bold text-navy">{{ emp.userId }}</td>
+            <td class="p-4 text-sm font-bold text-navy">{{ emp.userName || emp.position || emp.userId }}</td>
             <td class="p-4 text-sm">{{ emp.position || '—' }}</td>
             <td class="p-4 text-sm">{{ getDeptName(emp.departmentId) }}</td>
             <td class="p-4 text-sm">{{ emp.contractType || '—' }}</td>
@@ -77,7 +77,7 @@
         </thead>
         <tbody>
           <tr v-for="c in contracts" :key="c.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
-            <td class="p-4 text-sm font-bold text-navy">{{ c.employeeId }}</td>
+            <td class="p-4 text-sm font-bold text-navy">{{ getEmployeeName(c.employeeId) }}</td>
             <td class="p-4 text-sm">{{ c.type }}</td>
             <td class="p-4 text-sm">{{ c.startDate }}</td>
             <td class="p-4 text-sm">{{ c.endDate || 'Indefinido' }}</td>
@@ -129,7 +129,7 @@
             <tr v-for="doc in documents" :key="doc.id" class="border-b border-border last:border-0 hover:bg-surface/50">
               <td class="p-4 text-sm font-bold text-navy">{{ doc.name }}</td>
               <td class="p-4 text-sm">{{ doc.type }}</td>
-              <td class="p-4 text-sm">{{ doc.employeeId }}</td>
+              <td class="p-4 text-sm">{{ getEmployeeName(doc.employeeId) }}</td>
               <td class="p-4 text-sm" :class="isExpiringSoon(doc) ? 'text-coral font-bold' : 'text-text-secondary'">{{ doc.expiryDate || '—' }}</td>
               <td class="p-4 text-right">
                 <button @click="deleteDocument(doc)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">Eliminar</button>
@@ -161,7 +161,7 @@
         </thead>
         <tbody>
           <tr v-for="l in leaveRequests" :key="l.id" class="border-b border-border last:border-0 hover:bg-surface/50">
-            <td class="p-4 text-sm font-bold text-navy">{{ l.employeeId }}</td>
+            <td class="p-4 text-sm font-bold text-navy">{{ getEmployeeName(l.employeeId) }}</td>
             <td class="p-4 text-sm">{{ leaveTypeLabel(l.type) }}</td>
             <td class="p-4 text-sm">{{ l.startDate }}</td>
             <td class="p-4 text-sm">{{ l.endDate }}</td>
@@ -200,7 +200,7 @@
         </thead>
         <tbody>
           <tr v-for="r in reviews" :key="r.id" class="border-b border-border last:border-0 hover:bg-surface/50">
-            <td class="p-4 text-sm font-bold text-navy">{{ r.employeeId }}</td>
+            <td class="p-4 text-sm font-bold text-navy">{{ getEmployeeName(r.employeeId) }}</td>
             <td class="p-4 text-sm">{{ r.period || '—' }}</td>
             <td class="p-4 text-sm">{{ r.reviewDate }}</td>
             <td class="p-4 text-sm">
@@ -221,10 +221,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert } from '@/services/Empleados.service'
+import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 
+const auth = useAuthStore()
+const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 const toast = useToast()
 const activeTab = ref('profiles')
 const loading = ref(true)
@@ -248,6 +251,12 @@ const documentAlerts = ref<DocumentExpiryAlert[]>([])
 function getDeptName(id: string | null): string {
   if (!id) return '—'
   return departments.value.find(d => d.id === id)?.name || id
+}
+
+function getEmployeeName(userId: string): string {
+  if (!userId) return '—'
+  const profile = profiles.value.find(p => p.userId === userId || p.id === userId)
+  return profile?.userName || profile?.position || userId.slice(0, 8)
 }
 
 function leaveTypeLabel(type: string) {
@@ -275,13 +284,15 @@ function isExpiringSoon(doc: EmployeeDocument): boolean {
 
 async function loadData() {
   loading.value = true
+  const hid = hotelId.value
+  const qs = hid ? { hotelId: hid } : undefined
   try {
     const [profilesRes, contractsRes, documentsRes, leavesRes, reviewsRes, alertsRes] = await Promise.all([
-      EmpleadosService.listProfiles(),
-      EmpleadosService.listContracts(),
-      EmpleadosService.listDocuments(),
-      EmpleadosService.listLeaveRequests(),
-      EmpleadosService.listReviews(),
+      EmpleadosService.listProfiles(qs),
+      EmpleadosService.listContracts(undefined, hid),
+      EmpleadosService.listDocuments(undefined, hid),
+      EmpleadosService.listLeaveRequests(qs),
+      EmpleadosService.listReviews(undefined, hid),
       EmpleadosService.getExpiringDocuments(),
     ])
     profiles.value = profilesRes.data ?? []
@@ -302,16 +313,16 @@ onMounted(loadData)
 
 function openOrgChart() { toast.info('Organigrama — use /api/org-chart para renderizar') }
 function openNewEmployee() { toast.info('Crear empleado — requiere perfil + contrato') }
-function openProfile(emp: EmployeeProfile) { toast.info(`Perfil: ${emp.position || emp.userId}`) }
+function openProfile(emp: EmployeeProfile) { toast.info(`Perfil: ${emp.userName || emp.position}`) }
 
 async function deactivateEmployee(emp: EmployeeProfile) {
-  if (!confirm(`¿Desactivar a ${emp.position || emp.userId}?`)) return
+  if (!confirm(`¿Desactivar a ${emp.userName || emp.position}?`)) return
   try { await EmpleadosService.deactivateProfile(emp.id); toast.success('Empleado desactivado'); loadData() }
   catch { toast.error('Error al desactivar') }
 }
 
 async function terminateContract(c: Contract) {
-  if (!confirm(`¿Terminar contrato de ${c.employeeId}?`)) return
+  if (!confirm(`¿Terminar contrato de ${getEmployeeName(c.employeeId)}?`)) return
   try { await EmpleadosService.terminateContract(c.id); toast.success('Contrato terminado'); loadData() }
   catch { toast.error('Error al terminar contrato') }
 }

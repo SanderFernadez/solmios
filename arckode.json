@@ -1,0 +1,31 @@
+{
+  "_arckode": "1.0.0",
+  "_generated": "2026-06-30T03:09:41.711Z",
+  "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
+  "system": {
+    "healthy": false,
+    "violations": 0,
+    "warnings": 1
+  },
+  "modules": [],
+  "connectors": [],
+  "violations": [],
+  "warnings": [
+    {
+      "type": "NO_COMPOSITION_ROOT",
+      "message": "No hay composition-root.ts en src/"
+    }
+  ],
+  "rules_summary": [
+    "REGLA 1: Módulos NO importan de otros módulos. Usar conectores.",
+    "REGLA 2: index.ts es APPEND-ONLY. No eliminar exports.",
+    "REGLA 3: Conectores NO tienen lógica de negocio. Solo delegan.",
+    "REGLA 4: Cada tabla pertenece a UN módulo.",
+    "REGLA 5: Si no está en composition-root.ts, no existe.",
+    "REGLA 6: Todo POST/PUT/PATCH requiere validateSchema().",
+    "REGLA 7: Controller NO llama al ORM. Llama al service.",
+    "REGLA 18: Service recibe RepositoryAdapter<T>, no ORM directamente.",
+    "REGLA 22: model.ts separado de types.ts. Schema DB ≠ contrato TS.",
+    "REGLA 23: Un DEFAULT por caso. Escalar SOLO cuando la condición lo justifica."
+  ]
+}

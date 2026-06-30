@@ -27,7 +27,8 @@ export class ContractUseCase {
   }
 
   async list(hotelId: string, employeeId?: string): Promise<ContractDTO[]> {
-    const filters: Record<string, any> = { hotelId }
+    const filters: Record<string, any> = {}
+    if (hotelId) filters.hotelId = hotelId
     if (employeeId) filters.employeeId = employeeId
     return this.repo.findMany(filters)
   }
