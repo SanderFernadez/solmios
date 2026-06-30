@@ -15,6 +15,11 @@ export const HousekeepingModel: ModelDefinition = {
     assignedDate: { type: 'string' },
     completedDate: { type: 'string' },
     cleaningItems: { type: 'json' },
+    // Timings + evidencia fotográfica (F2). duration NO se persiste: se calcula en runtime
+    // como endTime - startTime (D1 del plan: evitar doble fuente de verdad).
+    startTime: { type: 'string' },
+    endTime: { type: 'string' },
+    photos: { type: 'json', default: [] },
   },
   timestamps: true,
 }

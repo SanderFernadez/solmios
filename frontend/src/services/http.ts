@@ -24,7 +24,9 @@ function forceLogout() {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  // FormData (multipart): el browser setea el boundary; NO forzar Content-Type ni stringificar.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+  const headers: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
   const token = getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
 
@@ -32,7 +34,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const res = await fetch(url, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
   })
 
   if (res.status === 401) {

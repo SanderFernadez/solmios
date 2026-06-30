@@ -38,6 +38,9 @@ tmp/
 temp/
 .playwright-cli
 
+# Uploads (evidencia fotográfica de housekeeping y otros archivos servidos)
+uploads/
+
 # Playwright/screenshots scratch sueltos en raíz (anclado a raíz: no recursivo, no toca subdirs legítimos)
 /backend/*.png
 /backend/*.yml

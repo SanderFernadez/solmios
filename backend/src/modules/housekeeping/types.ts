@@ -2,9 +2,34 @@ export type CleaningType = 'full_cleaning' | 'quick_cleaning' | 'deep_cleaning' 
 export type CleaningPriority = 'low' | 'medium' | 'high' | 'urgent'
 export type CleaningStatus = 'pending' | 'in_progress' | 'completed' | 'inspected'
 
+/** Usuario autenticado derivado del JWT (HotelAuth reinyecta hotelId). */
+export type HousekeepingUser = { id: string; role: string; hotelId?: string }
+
 export interface CleaningItem {
   name: string
   done: boolean
+}
+
+export interface PhotoEvidence {
+  url: string
+  path: string
+  name: string
+  size: number
+  mimeType: string
+  uploadedAt: string
+}
+
+export interface StaffStats {
+  staffId: string
+  completed: number
+  avgDurationMs: number
+  totalDurationMs: number
+}
+
+export interface StaffStatsQuery {
+  hotelId?: string
+  from?: string
+  to?: string
 }
 
 export interface HousekeepingDTO {
@@ -19,6 +44,9 @@ export interface HousekeepingDTO {
   assignedDate?: string
   completedDate?: string
   cleaningItems?: CleaningItem[]
+  startTime?: string
+  endTime?: string
+  photos?: PhotoEvidence[]
   createdAt: string
   updatedAt: string
 }
@@ -47,6 +75,9 @@ export interface UpdateHousekeepingDTO {
   assignedDate?: string
   completedDate?: string
   cleaningItems?: CleaningItem[]
+  startTime?: string
+  endTime?: string
+  photos?: PhotoEvidence[]
 }
 
 export interface HousekeepingQuery {

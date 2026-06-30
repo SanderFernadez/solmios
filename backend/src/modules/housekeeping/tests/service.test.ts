@@ -97,7 +97,7 @@ describe('HousekeepingService', () => {
 
   describe('update', () => {
     it('updates own hotel task', async () => {
-      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1' } as HousekeepingDTO
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'in_progress' } as HousekeepingDTO
       const repo = makeRepo({ findById: async () => task, update: async (id, data) => ({ id, ...data } as HousekeepingDTO) })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.update('hk1', { status: 'completed' }, hotelAdmin)
@@ -132,6 +132,64 @@ describe('HousekeepingService', () => {
       const repo = makeRepo({ findById: async () => task })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.delete('hk1', hotelAdmin)).rejects.toThrow('No autorizado')
+    })
+  })
+
+  describe('state machine (start/complete)', () => {
+    it('starts a pending task → in_progress', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task, update: async (id, data) => ({ ...task, ...data, id } as HousekeepingDTO) })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      const result = await svc.start('hk1', hotelAdmin)
+      expect(result.status).toBe('in_progress')
+      expect(result.startTime).toBeTruthy()
+    })
+
+    it('rejects starting a completed task (invalid transition)', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'completed' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.start('hk1', hotelAdmin)).rejects.toThrow('Transición')
+    })
+
+    it('update rejects invalid status transition (pending → completed)', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.update('hk1', { status: 'completed' }, hotelAdmin)).rejects.toThrow('Transición')
+    })
+
+    it('completes an in_progress task', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'in_progress', startTime: '2026-06-01T10:00:00.000Z' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task, update: async (id, data) => ({ ...task, ...data, id } as HousekeepingDTO) })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      const result = await svc.complete('hk1', hotelAdmin)
+      expect(result.status).toBe('completed')
+      expect(result.endTime).toBeTruthy()
+    })
+
+    it('complete rejects in_progress task without startTime', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'in_progress' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => task })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.complete('hk1', hotelAdmin)).rejects.toThrow('no fue iniciada')
+    })
+  })
+
+  describe('stats', () => {
+    it('aggregates completed tasks by staff', async () => {
+      const tasks = [
+        { id: '1', hotelId: 'h1', staffId: 'e1', status: 'completed', startTime: '2026-06-01T10:00:00.000Z', endTime: '2026-06-01T10:30:00.000Z' },
+        { id: '2', hotelId: 'h1', staffId: 'e1', status: 'completed', startTime: '2026-06-01T11:00:00.000Z', endTime: '2026-06-01T11:15:00.000Z' },
+        { id: '3', hotelId: 'h1', staffId: 'e2', status: 'completed', startTime: '2026-06-01T12:00:00.000Z', endTime: '2026-06-01T12:45:00.000Z' },
+      ] as HousekeepingDTO[]
+      const repo = makeRepo({ findMany: async () => tasks })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      const result = await svc.stats({}, hotelAdmin)
+      const e1 = result.find(r => r.staffId === 'e1')
+      const e2 = result.find(r => r.staffId === 'e2')
+      expect(e1?.completed).toBe(2)
+      expect(e2?.completed).toBe(1)
     })
   })
 })

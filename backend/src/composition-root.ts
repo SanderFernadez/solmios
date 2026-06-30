@@ -368,10 +368,20 @@ import { BookingengineModule } from './modules/bookingengine'
 import type { FoliosService } from './modules/folios'
 import { taxRateFor } from './modules/folios/usecases/folio-math'
 import type { FacturasService } from './modules/facturas'
+import { StorageService } from 'arckode-framework/modules/storage'
+import { LocalStorageAdapter } from 'arckode-framework/modules/storage/local-adapter'
+import { serveStatic } from 'arckode-framework/static'
+
+// ─── Storage (uploads) ──────────────────────────────────────────────────────
+// LocalStorageAdapter guarda en ./uploads con anti-path-traversal; serveStatic
+// sirve los archivos en /uploads/*. Reutilizable: al llegar S3, se cambia el
+// adapter acá y el resto del sistema no se entera.
+const storage = new StorageService(new LocalStorageAdapter('./uploads', '/uploads'))
+serveStatic(router, './uploads', { prefix: '/uploads' })
 
 const mods = [
   UsuariosModule(), HabitacionesModule(), ReservasModule(), HuespedesModule(),
-  FacturasModule(), HousekeepingModule(), MantenimientoModule(), PaquetesModule(),
+  FacturasModule(), HousekeepingModule({ storage }), MantenimientoModule(), PaquetesModule(),
   GruposModule(), HotelesModule(), RolesModule(), DispositivosModule(),
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),
   CanalesModule(),
@@ -764,6 +774,11 @@ router.post('/api/reservas/:id/checkout', [auth.authenticate('hotel_admin', 'rec
   const nowIso = new Date().toISOString()
 
   // ── Transacción: reserva + room + housekeeping ──
+  // NOTA (F1.1): esta creación directa NO duplica la del connector reservas-housekeeping.
+  // El connector escucha `onReservasUpdated`, que solo emite reservas/service.ts (update()).
+  // Este endpoint hace tx.update directo sobre Reservations → el connector NO recibe el
+  // evento checkout → esta transacción es el ÚNICO creador de la tarea al hacer check-out.
+  // El connector cubre updates de reserva que sí pasan por el service. No eliminar de acá.
   try {
     await orm.transaction(async (tx) => {
       await tx.update('Reservations', r.id, { status: 'checked_out', checkedOutAt: nowIso })

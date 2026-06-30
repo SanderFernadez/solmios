@@ -34,6 +34,12 @@ export default defineConfig({
         secure: false,
         ws: true,
       },
+      // Evidencia fotográfica de housekeeping y otros archivos estáticos servidos por el backend.
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+      },
     },
     hmr: {
       protocol: 'ws',

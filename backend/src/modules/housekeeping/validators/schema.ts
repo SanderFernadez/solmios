@@ -27,6 +27,11 @@ export const UpdateHousekeepingSchema: Record<string, ValidationRule> = {
   assignedDate: { type: 'string' as const },
   completedDate: { type: 'string' as const },
   cleaningItems: { type: 'array' as any },
+  // Timings + fotos gestionados principalmente vía endpoints dedicados (start/complete/photos),
+  // pero se permiten en update para que el panel admin pueda corregirlos manualmente.
+  startTime: { type: 'string' as const },
+  endTime: { type: 'string' as const },
+  photos: { type: 'array' as any },
 }
 
 export const HousekeepingValidator = { create: CreateHousekeepingSchema, update: UpdateHousekeepingSchema }
