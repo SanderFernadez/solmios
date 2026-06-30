@@ -13,7 +13,11 @@ export function reservasHousekeepingConnector(ctx: ConnectorContext): void {
       // El conector traduce el evento del módulo reservas → acción del módulo housekeeping.
       // El frontend envía 'checked_out' (no 'check_out') — máquina de estados de Reservations.
       if (reserva.status === 'checked_out') {
-        const housekeeping = ctx.resolveModule<{ create: (d: any) => Promise<any> }>('housekeeping')
+        const housekeeping = ctx.resolveModule<{ create: (d: any, u: any) => Promise<any> }>('housekeeping')
+        // currentUser de sistema: el conector actúa en nombre del sistema (no hay req.user).
+        // housekeeping.create requiere currentUser para el check de multi-tenancy — sin él,
+        // lanza TypeError (era la causa del 500 al hacer check-out). role super_admin salta el
+        // check; dto.hotelId ya es el correcto (el de la reserva).
         await housekeeping.create({
           id: crypto.randomUUID(),
           roomId: reserva.roomId,
@@ -21,7 +25,7 @@ export function reservasHousekeepingConnector(ctx: ConnectorContext): void {
           type: 'full_cleaning',
           priority: 'high',
           status: 'pending',
-        } as any)
+        } as any, { id: 'system-connector', role: 'super_admin', hotelId: reserva.hotelId })
       }
     },
   })

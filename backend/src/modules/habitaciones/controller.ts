@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { HabitacionesService } from './service'
-import { CreateHabitacionesSchema, UpdateHabitacionesSchema } from './validators/schema'
+import { CreateHabitacionesSchema, UpdateHabitacionesSchema, BatchCreateSchema } from './validators/schema'
 
 export class HabitacionesController {
   constructor(
@@ -39,5 +39,12 @@ export class HabitacionesController {
     const currentUser = req.user as any
     await this.service.delete(req.params.id, currentUser)
     return { status: 204, body: null }
+  }
+
+  async batchStore(req: HttpRequest) {
+    const currentUser = req.user as any
+    const data = validateSchema(BatchCreateSchema, req.body)
+    const items = await this.service.batchCreate(data as any, currentUser)
+    return { status: 201, body: { data: items, total: items.length } }
   }
 }

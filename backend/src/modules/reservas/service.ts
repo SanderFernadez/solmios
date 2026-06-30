@@ -3,12 +3,14 @@
 // Si supera 200 líneas -> extraer casos de uso a ./usecases/{caso}.ts.
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError, AuthError } from 'arckode-framework'
+import { NotFoundError, AuthError, ConflictError } from 'arckode-framework'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 import type { ReservasSockets } from './sockets'
 import { assertRoomAvailable } from './usecases/availability'
 import { NullEmailSender, type EmailSender } from '../../services/email-sender'
-import { dispatchCreateEmail, dispatchCheckinEmail } from './usecases/reservation-notifications'
+import { dispatchCreateEmail } from './usecases/reservation-notifications'
+import { assertUpdateValidations } from './usecases/validate-update'
+import { safeEmit } from './usecases/safe-emit'
 
 const CACHE_TTL = 300 // seconds
 const DEFAULT_LIMIT = 20
@@ -124,16 +126,16 @@ export class ReservasService {
       throw new AuthError('No autorizado para crear en otro hotel')
     }
 
-    // Date validation: checkIn must be before checkOut
+    // Date validation: checkIn must be before checkOut (conflict, no auth error)
     if (dto.checkIn >= dto.checkOut) {
-      throw new AuthError('checkIn debe ser anterior a checkOut')
+      throw new ConflictError('checkIn debe ser anterior a checkOut')
     }
 
     // Availability check — no overlap with active reservations
     await assertRoomAvailable(this.repo, dto.roomId, dto.checkIn, dto.checkOut)
 
     const item = await this.repo.create(dto as any)
-    await this.sockets.onReservasCreated?.(item)
+    await safeEmit(this.logger, 'onReservasCreated', this.sockets.onReservasCreated, item)
     await this.cache.delete(`reservas:list:${dto.hotelId}`)
 
     // ── Encolar email según communicateClient (spec 6.1.4) ──
@@ -154,26 +156,14 @@ export class ReservasService {
       throw new AuthError('No autorizado')
     }
 
-    // Date validation if changing dates
-    const newCheckIn = dto.checkIn || existing.checkIn
-    const newCheckOut = dto.checkOut || existing.checkOut
-    if (newCheckIn >= newCheckOut) {
-      throw new AuthError('checkIn debe ser anterior a checkOut')
-    }
-
-    // Availability check if changing room or dates
-    if (dto.roomId || dto.checkIn || dto.checkOut) {
-      await assertRoomAvailable(this.repo, dto.roomId || existing.roomId, newCheckIn, newCheckOut, id)
-    }
+    // Validaciones de update: máquina de estados + coherencia de fechas + disponibilidad.
+    await assertUpdateValidations(this.repo, existing, dto, currentUser, id)
 
     const item = await this.repo.update(id, dto as any)
     if (!item) throw new NotFoundError('Reserva no encontrada')
 
-    await this.sockets.onReservasUpdated?.(item)
+    await safeEmit(this.logger, 'onReservasUpdated', this.sockets.onReservasUpdated, item)
     await this.cache.delete(`reservas:list:${existing.hotelId}`)
-
-    // ── Email de bienvenida al hacer check-in (spec 11.1.1, dual path) ──
-    dispatchCheckinEmail(this.notifyDeps(), existing, dto, item)
 
     return item
   }
@@ -193,7 +183,7 @@ export class ReservasService {
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Reserva no encontrada')
 
-    await this.sockets.onReservasDeleted?.(id)
+    await safeEmit(this.logger, 'onReservasDeleted', this.sockets.onReservasDeleted, id)
     await this.cache.delete(`reservas:list:${existing.hotelId}`)
   }
 }

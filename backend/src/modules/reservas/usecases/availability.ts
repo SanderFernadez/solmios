@@ -3,11 +3,12 @@
 // Extraído del service (estaba duplicado en create y update) para mantenerlo <200 líneas.
 
 import type { RepositoryAdapter } from 'arckode-framework'
-import { AuthError } from 'arckode-framework'
+import { ConflictError } from 'arckode-framework'
 import type { ReservasDTO } from '../types'
 
 /**
- * Lanza AuthError si existe solapamiento con otra reserva activa (excluye cancelled/no_show).
+ * Lanza ConflictError (HTTP 409) si existe solapamiento con otra reserva activa (excluye cancelled/no_show).
+ * Es un conflicto de recurso (la habitación ya está ocupada), no un error de autenticación.
  * @param excludeId id de la propia reserva al actualizar (para no chocar consigo misma); undefined en create.
  */
 export async function assertRoomAvailable(
@@ -23,6 +24,6 @@ export async function assertRoomAvailable(
     r.id !== excludeId && r.checkIn < checkOut && r.checkOut > checkIn,
   )
   if (hasOverlap) {
-    throw new AuthError('Habitacion no disponible en esas fechas')
+    throw new ConflictError('Habitación no disponible en esas fechas')
   }
 }

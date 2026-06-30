@@ -38,4 +38,17 @@ export const UpdateHabitacionesSchema: Record<string, ValidationRule> = {
   descriptionJson: { type: 'string' as const },
 }
 
-export const HabitacionesValidator = { create: CreateHabitacionesSchema, update: UpdateHabitacionesSchema }
+export const BatchCreateSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  type: { type: 'string' as const, required: true, enum: ROOM_TYPE_ENUM },
+  basePrice: { type: 'number' as const, required: true, min: 0 },
+  from: { type: 'number' as const, required: true, min: 1 },
+  to: { type: 'number' as const, required: true, min: 1 },
+  floor: { type: 'number' as const, min: 0 },
+  capacity: { type: 'number' as const, min: 1, max: 20 },
+  bathrooms: { type: 'number' as const, min: 0 },
+  surfaceArea: { type: 'number' as const, min: 0 },
+  onlineBookingEnabled: { type: 'boolean' as const },
+}
+
+export const HabitacionesValidator = { create: CreateHabitacionesSchema, update: UpdateHabitacionesSchema, batch: BatchCreateSchema }

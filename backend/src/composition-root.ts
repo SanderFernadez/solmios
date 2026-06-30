@@ -5,6 +5,8 @@ import {
   System, ConfigStore, Logger, Router, MemoryCache, ORM, Container, OrmRepository, NodeServer,
 } from 'arckode-framework'
 import { cors } from 'arckode-framework/middlewares'
+import { validateSchema } from 'arckode-framework'
+import type { ValidationRule } from 'arckode-framework'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { HotelAuth } from './infrastructure/auth/hotel-auth'
@@ -13,13 +15,50 @@ import type { EmailQueueDTO } from './services/email-service'
 import { NotificationRenderer, type AutoMessageTemplateRow } from './services/notification-renderer'
 import type { EmailSender } from './services/email-sender'
 import { sendCheckinEmail } from './modules/reservas/usecases/checkin-email'
+import { dispatchLifecycleEmail } from './modules/reservas/usecases/lifecycle-email'
 import { hashGuaranteePin, verifyGuaranteePin } from './services/guarantee-pin'
 import { getAccessToken, listLocks, addKeyboardPassword, randomPin } from './services/ttlock-client'
+
+// ─── Rate limiter in-memory para endpoints públicos ───────────────────────
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT_MAX = 10
+const RATE_LIMIT_WINDOW_MS = 60_000
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    return true
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false
+  entry.count++
+  return true
+}
+
+// Limpiar entradas expiradas cada 5 minutos
+setInterval(() => {
+  const now = Date.now()
+  for (const [ip, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(ip)
+  }
+}, 300_000)
+
+// ─── PreCheckin validation schema ─────────────────────────────────────────
+const PreCheckinSchema: Record<string, ValidationRule> = {
+  guestName: { type: 'string' as const, min: 2 },
+  email: { type: 'string' as const },
+  phone: { type: 'string' as const, max: 30 },
+  documentType: { type: 'string' as const, enum: ['dni', 'passport', 'other'] },
+  documentNumber: { type: 'string' as const, min: 5, max: 50 },
+  nationality: { type: 'string' as const, min: 2, max: 2 },
+  birthDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+}
 
 // ─── Config (todo desde .env) ──────────────────────────────────────────────
 const config = new ConfigStore()
 config.define({
-  PORT: { type: 'number', default: '3001' },
+  PORT: { type: 'number', default: '3000' },
   JWT_SECRET: { type: 'string', required: true },
   JWT_EXPIRES: { type: 'string', default: '24h' },
   JWT_REFRESH_EXPIRES: { type: 'string', default: '7d' },
@@ -466,6 +505,34 @@ router.get('/api/planning', [auth.authenticate('hotel_admin', 'receptionist', 's
   })
   return { status: 200, body: { rooms, reservas: enriched } }
 })
+// No-show automático: marca 'no_show' las reservas pendientes/confirmadas cuyo check-in ya pasó.
+async function markNoShows(): Promise<number> {
+  const todayStr = new Date().toISOString().split('T')[0]
+  const reservas = (await orm.findMany('Reservations', {})) as any[]
+  let count = 0
+  for (const r of reservas) {
+    const ci = String(r.checkIn || '').slice(0, 10)
+    if ((r.status === 'pending' || r.status === 'confirmed') && ci && ci < todayStr) {
+      await orm.update('Reservations', r.id, { status: 'no_show' })
+      count++
+      // D3 — email de no_show al huésped (fire-and-forget; no bloquea el job de night audit).
+      dispatchLifecycleEmail(
+        { emailSender: emailService, guestRepo: new OrmRepository<any>(orm, 'Guests'), roomRepo: new OrmRepository<any>(orm, 'Rooms'), hotelRepo: new OrmRepository<any>(orm, 'Hotels'), messageLogRepo: new OrmRepository<any>(orm, 'MessageLogs'), logger },
+        { reservationId: r.id, hotelId: r.hotelId, guestId: r.guestId, roomId: r.roomId, checkIn: r.checkIn, checkOut: r.checkOut, event: 'no_show' },
+      ).catch((e) => logger.warn('no-show email', { reservationId: r.id, error: (e as Error).message }))
+    }
+  }
+  return count
+}
+// Job diario automático (DEUDA TÉCNICA: mover a cron configurable / queue worker dedicado).
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+setInterval(() => { markNoShows().catch((e) => logger.warn('markNoShows failed', { error: (e as Error).message })) }, ONE_DAY_MS)
+
+router.post('/api/night-audit/mark-no-shows', [auth.authenticate('hotel_admin', 'super_admin')], async () => {
+  const marked = await markNoShows()
+  return { status: 200, body: { success: true, marked } }
+})
+
 router.get('/api/night-audit', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
   const id = await hotelOf(req)
   const rooms = await orm.findMany('Rooms', { hotelId: id }) as any[]
@@ -576,8 +643,12 @@ router.get('/api/checkin', [auth.authenticate('hotel_admin', 'receptionist', 'su
 
 // ─── Check-in / Check-out REALES de reserva ───────────────────────────
 // Orquesta: reserva (status + timestamps) + habitación + folio + huésped.
+// Envuelto en transacción SQLite para atomicidad (spec 12.1.1).
 router.post('/api/reservas/:id/checkin', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
   const hotelId = await hotelOf(req)
+  const userId = (req.user as any).id
+
+  // Validación pre-transacción
   const r = (await orm.findMany('Reservations', { id: req.params.id }))[0] as any
   if (!r) return { status: 404, body: { error: 'Reserva no encontrada' } }
   if ((req.user as any).role !== 'super_admin' && r.hotelId !== hotelId) {
@@ -589,39 +660,79 @@ router.post('/api/reservas/:id/checkin', [auth.authenticate('hotel_admin', 'rece
   }
 
   const nowIso = new Date().toISOString()
-
-  // 1) Huésped: si la reserva no tiene (OTA), crear walk-in; si tiene, +1 estadía.
   let guestId = r.guestId
-  if (!guestId) {
-    const guestName = r.externalLocator ? `Pasajero ${r.externalLocator}` : 'Pasajero walk-in'
-    const guest = await orm.create('Guests', {
-      id: crypto.randomUUID(), name: guestName, hotelId: r.hotelId, active: 1,
-      totalStays: 1, totalSpent: 0, tier: 'bronze', notes: r.otaNotes || null,
-    }) as any
-    guestId = guest.id
-  } else {
-    const g = (await orm.findMany('Guests', { id: guestId }))[0] as any
-    if (g) await orm.update('Guests', guestId, { totalStays: (Number(g.totalStays) || 0) + 1 })
+  let folioId = ''
+
+  // ── Transacción: guest + folio + reserva + room ──
+  try {
+    await orm.transaction(async (tx) => {
+      // 1) Huésped: walk-in o +1 estadía
+      if (!guestId) {
+        const guestName = r.externalLocator ? `Pasajero ${r.externalLocator}` : 'Pasajero walk-in'
+        const guest = await tx.create('Guests', {
+          id: crypto.randomUUID(), name: guestName, hotelId: r.hotelId, active: 1,
+          totalStays: 1, totalSpent: 0, tier: 'bronze', notes: r.otaNotes || null,
+        }) as any
+        guestId = guest.id
+      } else {
+        const g = (await tx.findMany('Guests', { id: guestId }))[0] as any
+        if (g) await tx.update('Guests', guestId, { totalStays: (Number(g.totalStays) || 0) + 1 })
+      }
+
+      // 2) Folio abierto
+      folioId = crypto.randomUUID()
+      await tx.create('Folios', {
+        id: folioId, hotelId: r.hotelId, reservationId: r.id, guestId, roomId: r.roomId,
+        status: 'open', currency: r.currency || 'USD', invoiceId: null, openedAt: nowIso, closedAt: null,
+      })
+
+      // 3) Reserva → checked_in
+      await tx.update('Reservations', r.id, {
+        status: 'checked_in', checkedInAt: nowIso, folioId, guestId,
+      })
+
+      // 4) Habitación → occupied
+      await tx.update('Rooms', r.roomId, { status: 'occupied' })
+    })
+  } catch (e) {
+    logger.error('check-in transaction failed', { reservationId: r.id, error: (e as Error).message })
+    return { status: 500, body: { error: 'Error interno al procesar check-in' } }
   }
 
-  // 2) Folio abierto vinculado a la reserva.
-  const folio = await orm.create('Folios', {
-    id: crypto.randomUUID(), hotelId: r.hotelId, reservationId: r.id, guestId, roomId: r.roomId,
-    status: 'open', currency: r.currency || 'USD', invoiceId: null, openedAt: nowIso, closedAt: null,
-  }) as any
+  // ── Fuera de transacción: side effects fire-and-forget ──
+  // 5) AuditLog
+  orm.create('Auditlog', {
+    id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id,
+    action: 'checkin', userId, hotelId: r.hotelId,
+    detail: JSON.stringify({ guestId, roomId: r.roomId, folioId, checkIn: r.checkIn, checkOut: r.checkOut }),
+    createdAt: nowIso,
+  }).catch((e) => logger.warn('auditlog checkin', { error: (e as Error).message }))
 
-  // 3) Reserva → checked_in + auditoría + folio + guest.
-  await orm.update('Reservations', r.id, {
-    status: 'checked_in', checkedInAt: nowIso, folioId: folio.id, guestId,
-  })
-
-  // 4) Habitación → occupied.
-  await orm.update('Rooms', r.roomId, { status: 'occupied' })
-
-  // 5) Recalcular availability en Channex (la room pasa a ocupada sus noches).
+  // 6) Channex availability
   pushAvailabilityToChannex(r.hotelId, r.roomId)
 
-  // 6) Email de bienvenida al check-in (spec 11.1.1) — vía usecase compartido con service.update.
+  // 6.5) TTLock: generar PIN de puerta automáticamente al check-in si está habilitado.
+  //       (DEUDA TÉCNICA: el envío del código al huésped por email/WA — hoy se guarda en LockCodes y se ve en el detalle).
+  ;(async () => {
+    try {
+      const autoCfg = (await orm.findMany('Configuration', { hotelId: r.hotelId, key: 'automation_config' }))[0] as any
+      const auto = autoCfg ? safeParse(autoCfg.value) : {}
+      if (!auto?.autoLockCode) return
+      const lock = (await orm.findMany('LockDevices', { roomId: r.roomId }))[0] as any
+      if (!lock?.ttlockLockId) return
+      const tcfg = (await orm.findMany('Configuration', { hotelId: r.hotelId, key: 'ttlock_config' }))[0] as any
+      const tp = tcfg ? safeParse(tcfg.value) : {}
+      if (!tp?.accessToken) return
+      const password = randomPin()
+      const startMs = new Date(r.checkIn).getTime()
+      const endMs = new Date(r.checkOut).getTime()
+      const { keyboardPwdId } = await addKeyboardPassword({ clientId: tp.clientId, accessToken: tp.accessToken, region: tp.region }, Number(lock.ttlockLockId), password, startMs, endMs)
+      await orm.create('LockCodes', { id: crypto.randomUUID(), lockId: lock.id, reservationId: r.id, code: password, codeType: 'time', startDate: String(r.checkIn).slice(0, 10), endDate: String(r.checkOut).slice(0, 10), status: 'active', ttlockKeyboardPwdId: keyboardPwdId || '', sentVia: 'auto-checkin' })
+      logger.info('TTLock auto-generado al check-in', { reservationId: r.id, lockId: lock.ttlockLockId })
+    } catch (e) { logger.warn('TTLock auto check-in falló (no bloquea el check-in)', { reservationId: r.id, error: (e as Error).message }) }
+  })()
+
+  // 7) Email de bienvenida
   await sendCheckinEmail(
     {
       emailSender: emailService,
@@ -634,11 +745,13 @@ router.post('/api/reservas/:id/checkin', [auth.authenticate('hotel_admin', 'rece
     { reservationId: r.id, hotelId: r.hotelId, guestId, roomId: r.roomId, checkIn: r.checkIn, checkOut: r.checkOut },
   ).catch((e) => logger.warn('check-in email', { error: (e as Error).message }))
 
-  return { status: 200, body: { ok: true, reservationId: r.id, status: 'checked_in', folioId: folio.id, guestId } }
+  return { status: 200, body: { ok: true, reservationId: r.id, status: 'checked_in', folioId, guestId } }
 })
 
 router.post('/api/reservas/:id/checkout', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
   const hotelId = await hotelOf(req)
+  const userId = (req.user as any).id
+
   const r = (await orm.findMany('Reservations', { id: req.params.id }))[0] as any
   if (!r) return { status: 404, body: { error: 'Reserva no encontrada' } }
   if ((req.user as any).role !== 'super_admin' && r.hotelId !== hotelId) {
@@ -649,17 +762,39 @@ router.post('/api/reservas/:id/checkout', [auth.authenticate('hotel_admin', 'rec
   }
 
   const nowIso = new Date().toISOString()
-  await orm.update('Reservations', r.id, { status: 'checked_out', checkedOutAt: nowIso })
-  await orm.update('Rooms', r.roomId, { status: 'cleaning' })
 
-  // Tarea de limpieza (mismo efecto que el conector reservas-housekeeping al detectar checked_out).
-  await orm.create('Housekeeping', {
-    id: crypto.randomUUID(), roomId: r.roomId, hotelId: r.hotelId,
-    type: 'full_cleaning', priority: 'high', status: 'pending',
-  })
+  // ── Transacción: reserva + room + housekeeping ──
+  try {
+    await orm.transaction(async (tx) => {
+      await tx.update('Reservations', r.id, { status: 'checked_out', checkedOutAt: nowIso })
+      await tx.update('Rooms', r.roomId, { status: 'cleaning' })
+      await tx.create('Housekeeping', {
+        id: crypto.randomUUID(), roomId: r.roomId, hotelId: r.hotelId,
+        type: 'full_cleaning', priority: 'high', status: 'pending',
+      })
+    })
+  } catch (e) {
+    logger.error('check-out transaction failed', { reservationId: r.id, error: (e as Error).message })
+    return { status: 500, body: { error: 'Error interno al procesar check-out' } }
+  }
 
-  // Recalcular availability en Channex (la reserva deja de contar al pasar a checked_out).
+  // ── Fuera de transacción ──
+  // AuditLog
+  orm.create('Auditlog', {
+    id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id,
+    action: 'checkout', userId, hotelId: r.hotelId,
+    detail: JSON.stringify({ roomId: r.roomId, guestId: r.guestId, checkIn: r.checkIn, checkOut: r.checkOut }),
+    createdAt: nowIso,
+  }).catch((e) => logger.warn('auditlog checkout', { error: (e as Error).message }))
+
+  // Channex availability
   pushAvailabilityToChannex(r.hotelId, r.roomId)
+
+  // D3 — email de checkout al huésped (fire-and-forget; no bloquea el check-out).
+  dispatchLifecycleEmail(
+    { emailSender: emailService, guestRepo: new OrmRepository<any>(orm, 'Guests'), roomRepo: new OrmRepository<any>(orm, 'Rooms'), hotelRepo: new OrmRepository<any>(orm, 'Hotels'), messageLogRepo: new OrmRepository<any>(orm, 'MessageLogs'), logger },
+    { reservationId: r.id, hotelId: r.hotelId, guestId: r.guestId, roomId: r.roomId, checkIn: r.checkIn, checkOut: r.checkOut, event: 'checkout' },
+  ).catch((e) => logger.warn('checkout email', { reservationId: r.id, error: (e as Error).message }))
 
   return { status: 200, body: { ok: true, reservationId: r.id, status: 'checked_out' } }
 })
@@ -734,13 +869,14 @@ router.post('/api/configuracion', [auth.authenticate('hotel_admin', 'super_admin
 
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
 
-// Endpoint público — demo accounts para login (sin auth, sin query a DB)
+// Endpoint público — cuentas demo dinámicas desde la DB (campo users.isDemo=1).
+// Sin lista hardcodeada: para agregar/quitar una cuenta demo, se marca isDemo en la tabla.
 router.get('/api/public/users', async () => {
-  return { status: 200, body: [
-    { name: 'Admin', email: 'admin@managerhotel.com', role: 'hotel_admin' },
-    { name: 'Admin Caribe', email: 'admin@caribeparadise.com', role: 'hotel_admin' },
-    { name: 'Maria Caribe', email: 'maria@caribeparadise.com', role: 'hotel_admin' },
-  ] }
+  const rows = (await orm.findMany('Users', { isDemo: 1, active: 1 })) as any[]
+  const body = rows
+    .filter((u) => u && u.email)
+    .map((u) => ({ name: u.name, email: u.email, role: u.role }))
+  return { status: 200, body }
 })
 
 // ─── Public booking widget (sin auth) ─────────────────────────────────────
@@ -989,6 +1125,9 @@ router.delete('/api/blocks/:id', [auth.authenticate('hotel_admin', 'super_admin'
 
 // ─── Pre-checkin público (sin auth) ──────────────────────────────────────
 router.get('/api/public/pre-checkin/:hash', async (req) => {
+  const ip = (req as any).ip || (req as any).socket?.remoteAddress || 'unknown'
+  if (!checkRateLimit(ip)) return { status: 429, body: { success: false, error: { message: 'Demasiadas solicitudes. Intente de nuevo en un minuto.' } } }
+
   const hash = req.params.hash
   const reservas = await orm.findMany('Reservations', {}) as any[]
   const reservation = reservas.find((r: any) => {
@@ -996,6 +1135,13 @@ router.get('/api/public/pre-checkin/:hash', async (req) => {
     return h === hash || r.id === hash
   })
   if (!reservation) return { status: 404, body: { success: false, error: { message: 'Reserva no encontrada' } } }
+
+  // Expiry check: no retornar reservas expiradas (12.3.3)
+  const today = new Date().toISOString().split('T')[0]
+  if (reservation.checkOut && String(reservation.checkOut).slice(0, 10) < today) {
+    return { status: 410, body: { success: false, error: { message: 'Esta reserva ya expiró' } } }
+  }
+
   const hotel = (await orm.findMany('Hotels', { id: reservation.hotelId }))[0] as any
   const room = (await orm.findMany('Rooms', { id: reservation.roomId }))[0] as any
   const guest = reservation.guestId ? (await orm.findById('Guests', reservation.guestId)) as any : null
@@ -1008,8 +1154,19 @@ router.get('/api/public/pre-checkin/:hash', async (req) => {
 })
 
 router.post('/api/public/pre-checkin/:hash', async (req) => {
+  const ip = (req as any).ip || (req as any).socket?.remoteAddress || 'unknown'
+  if (!checkRateLimit(ip)) return { status: 429, body: { success: false, error: { message: 'Demasiadas solicitudes. Intente de nuevo en un minuto.' } } }
+
   const hash = req.params.hash
   const body = req.body as any
+
+  // Validación de inputs (12.3.2)
+  try {
+    validateSchema(PreCheckinSchema, body)
+  } catch (e) {
+    return { status: 400, body: { success: false, error: { message: `Datos inválidos: ${(e as Error).message}` } } }
+  }
+
   const reservas = await orm.findMany('Reservations', {}) as any[]
   const reservation = reservas.find((r: any) => {
     const h = String(r.id).replace(/-/g, '').slice(0, 12)
@@ -1405,6 +1562,20 @@ router.post('/api/reservations/:id/guarantee-card/unlock', [auth.authenticate('h
   } }
 })
 
+// D7 — Historial de cambios (audit trail) de una reserva.
+router.get('/api/reservations/:id/audit', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
+  const hid = await hotelOf(req)
+  const role = (req.user as any).role
+  const r = await orm.findById('Reservations', req.params.id) as any
+  if (!r) return { status: 404, body: { error: 'Reserva no encontrada' } }
+  if (role !== 'super_admin' && r.hotelId !== hid) return { status: 403, body: { error: 'Sin acceso' } }
+  const logs = (await orm.findMany('Auditlog', { entity: 'Reservations', entityId: req.params.id })) as any[]
+  const sorted = logs
+    .filter((l: any) => role === 'super_admin' || l.hotelId === r.hotelId || l.hotelId === 'unknown')
+    .sort((a: any, b: any) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+  return { status: 200, body: { data: sorted } }
+})
+
 // ─── Payment Requests — CRUD ────────────────────────────────────────────────
 router.get('/api/payment-requests', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
   const id = await hotelOf(req)
@@ -1617,6 +1788,56 @@ const emailService = new EmailService(emailConfigRepo, emailQueueRepo, logger, n
 const reservasForEmail = system.resolveModule<{ setEmailDeps(es: EmailSender, r: any): void }>('reservas')
 if (reservasForEmail && typeof reservasForEmail.setEmailDeps === 'function') {
   reservasForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'MessageLogs'))
+}
+
+// ── Auto PaymentRequest al crear reserva (toggle Settings > Automatización > autoPaymentRequest) ──
+// Cross-module vía socket onReservasCreated: el módulo reservas NO importa PaymentRequests (regla
+// de arquitectura). composition-root orquesta. Fire-and-forget: si falla, NO rompe la creación.
+// Idempotente: no duplica si ya existe un PR pendiente para la reserva.
+const reservasSvc = reservasForEmail as any
+if (reservasSvc && typeof reservasSvc.setSockets === 'function') {
+  // D7 — Audit trail: registra eventos de reservas en AuditLog. Fire-and-forget (no bloquea).
+  // El actor es 'system' para el CRUD del módulo (el socket no recibe req.user); el check-in/out
+  // (handlers en composition-root) sí loguean el userId real. Mejora futura: pasar actor al socket.
+  const audit = (action: string, id: string, hotelId: string | null, snap: any) => {
+    // Modelo 'Auditlog' del módulo auditlog (campos: userId/userName/detail). No 'AuditLog'.
+    // userId SIEMPRE null: el socket actúa como 'system' (no hay req.user); la FK userId→users
+    // exige un id real o NULL → 'system' violaba la constraint. userName identifica el origen.
+    // hotelId null si no se conoce (delete físico) — la FK hotelId→hotels también exige real o NULL.
+    orm.create('Auditlog', {
+      id: crypto.randomUUID(), hotelId: hotelId || null, entity: 'Reservations', entityId: id, action,
+      userId: null, userName: 'system (auto)', detail: snap ? JSON.stringify(snap) : null,
+    }).catch((e: any) => logger.warn('audit log falló', { action, id, error: (e as Error).message }))
+  }
+
+  reservasSvc.setSockets({
+    onReservasCreated: async (r: any) => {
+      audit('create', r.id, r.hotelId, { status: r.status, totalAmount: r.totalAmount, roomId: r.roomId })
+      try {
+        const cfg = (await orm.findMany('Configuration', { hotelId: r.hotelId, key: 'automation_config' }))[0] as any
+        const auto = cfg ? safeParse(cfg.value) : {}
+        if (!auto?.autoPaymentRequest) return
+        const pending = Math.max(0, Number(r.totalAmount || 0) - Number(r.deposit || 0))
+        if (pending <= 0) return
+        const existing = await orm.findMany('PaymentRequests', { reservationId: r.id }) as any[]
+        if (existing.some((p: any) => p.status === 'pending')) return
+        await orm.create('PaymentRequests', {
+          id: crypto.randomUUID(), hotelId: r.hotelId, reservationId: r.id,
+          amount: pending, currency: r.currency || 'USD', status: 'pending', sentTo: '', sentVia: 'email',
+        })
+        logger.info('Auto PaymentRequest creado (automation_config.autoPaymentRequest)', { reservationId: r.id, amount: pending })
+      } catch (e) {
+        logger.warn('auto payment request falló (no bloquea la reserva)', { reservationId: r.id, error: (e as Error).message })
+      }
+    },
+    onReservasUpdated: async (r: any) => {
+      audit('update', r.id, r.hotelId, { status: r.status, totalAmount: r.totalAmount })
+    },
+    onReservasDeleted: async (id: string) => {
+      // onDelete solo recibe id (sin hotelId) → audit mínimo. hotelId null (FK real-o-NULL).
+      audit('delete', id, null, null)
+    },
+  })
 }
 await emailService.reclaimStale()
 setInterval(() => {

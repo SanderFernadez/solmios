@@ -46,7 +46,7 @@ export class UsuariosService {
       token,
       user: {
         id: user.id,
-        nombre: user.name,
+        name: user.name,
         email: user.email,
         role: currentRole,
         hotelId: targetHotelId,
@@ -75,14 +75,14 @@ export class UsuariosService {
         hotelName = hotel?.name || ''
       } catch { /* graceful */ }
     }
-    return { token, user: { id: user.id, nombre: user.name, email: user.email, role: user.role, hotelId: user.hotelId, hotelName } }
+    return { token, user: { id: user.id, name: user.name, email: user.email, role: user.role, hotelId: user.hotelId, hotelName } }
   }
 
   async me(id: string): Promise<any> {
     // @ignore IDOR_RISK — el id proviene del JWT del propio usuario (req.user.id), es un self-lookup.
     const u = await this.repo.findById(id)
     if (!u) throw new NotFoundError('Usuario no encontrado')
-    return { id: u.id, nombre: u.name, email: u.email, role: u.role, hotelId: u.hotelId }
+    return { id: u.id, name: u.name, email: u.email, role: u.role, hotelId: u.hotelId }
   }
 
   async list(hotelId?: string): Promise<any[]> {

@@ -5,7 +5,7 @@ import { getCodeDefault, NOTIFICATION_DEFAULTS } from './notification-defaults'
 
 describe('notification-defaults (spec 11.1.6)', () => {
   it('cada evento tiene default en es con subject y body no vacíos', () => {
-    for (const event of ['reservation_confirmed', 'reservation_presale', 'checkin_welcome'] as const) {
+    for (const event of ['reservation_confirmed', 'reservation_presale', 'checkin_welcome', 'no_show', 'checkout'] as const) {
       const d = getCodeDefault(event, 'es')
       expect(d.subject.length).toBeGreaterThan(0)
       expect(d.body.length).toBeGreaterThan(0)
@@ -33,8 +33,8 @@ describe('notification-defaults (spec 11.1.6)', () => {
     expect(() => getCodeDefault('unknown' as any, 'es')).toThrow(/evento desconocido/)
   })
 
-  it('NOTIFICATION_DEFAULTS registra los 3 eventos × 3 idiomas', () => {
-    expect(Object.keys(NOTIFICATION_DEFAULTS).sort()).toEqual(['checkin_welcome', 'reservation_confirmed', 'reservation_presale'])
+  it('NOTIFICATION_DEFAULTS registra todos los eventos × 3 idiomas', () => {
+    expect(Object.keys(NOTIFICATION_DEFAULTS).sort()).toEqual(['checkin_welcome', 'checkout', 'no_show', 'reservation_confirmed', 'reservation_presale'])
     for (const event of Object.keys(NOTIFICATION_DEFAULTS)) {
       const langs = Object.keys((NOTIFICATION_DEFAULTS as any)[event])
       expect(langs.sort()).toEqual(['en', 'es', 'pt'])

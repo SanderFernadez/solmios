@@ -1,7 +1,20 @@
-import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError, AuthError } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth, ORM } from 'arckode-framework'
+import { NotFoundError, AuthError, ValidationError, OrmRepository } from 'arckode-framework'
 import type { HabitacionesDTO, CreateHabitacionesDTO, UpdateHabitacionesDTO, HabitacionesQuery, HabitacionesPaginated } from './types'
 import type { HabitacionesSockets } from './sockets'
+
+export interface BatchCreateInput {
+  hotelId: string
+  type: string
+  basePrice: number
+  from: number
+  to: number
+  floor?: number
+  capacity?: number
+  bathrooms?: number
+  surfaceArea?: number
+  onlineBookingEnabled?: boolean
+}
 
 export class HabitacionesService {
   private sockets: HabitacionesSockets = {}
@@ -12,6 +25,7 @@ export class HabitacionesService {
     private readonly cache: CacheAdapter,
     private readonly userRepo: RepositoryAdapter<any>,
     private readonly auth: Auth,
+    private readonly orm?: ORM,
   ) {}
 
   setSockets(s: Partial<HabitacionesSockets>): void {
@@ -49,8 +63,8 @@ export class HabitacionesService {
     const limit = Math.min(Math.max(query.limit || 20, 1), 100)
     const offset = (page - 1) * limit
 
-    // Cache check
-    const cacheKey = `habitaciones:list:${hotelId || 'all'}`
+    // Cache check — key includes query params to avoid stale data
+    const cacheKey = `habitaciones:list:${hotelId || 'all'}:p${page}:l${limit}:${query.status || ''}:${query.type || ''}:${query.search || ''}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as HabitacionesPaginated
 
@@ -98,6 +112,68 @@ export class HabitacionesService {
     await this.sockets.onHabitacionesUpdated?.(item)
     await this.cache.delete(`habitaciones:list:${existing.hotelId}`)
     return item
+  }
+
+  async batchCreate(input: BatchCreateInput, currentUser: { id: string; role: string; hotelId?: string }): Promise<HabitacionesDTO[]> {
+    if (currentUser.role !== 'super_admin' && input.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado para crear en otro hotel')
+    }
+    if (input.from > input.to) {
+      throw new ValidationError('"from" debe ser menor o igual que "to"')
+    }
+    const count = input.to - input.from + 1
+    if (count > 500) {
+      throw new ValidationError('Máximo 500 habitaciones por lote')
+    }
+
+    const created: HabitacionesDTO[] = []
+
+    const doCreate = async (repo: RepositoryAdapter<HabitacionesDTO>) => {
+      const existing = await repo.findMany({ hotelId: input.hotelId })
+      const existingNumbers = new Set(existing.map(r => r.number))
+
+      for (let i = input.from; i <= input.to; i++) {
+        const number = String(i)
+        if (existingNumbers.has(number)) {
+          this.logger.warn(`batch create: skipping duplicate number ${number}`)
+          continue
+        }
+        const dto: any = {
+          number,
+          type: input.type,
+          basePrice: input.basePrice,
+          hotelId: input.hotelId,
+          status: 'available',
+          floor: input.floor ?? 1,
+          capacity: input.capacity ?? 2,
+          bathrooms: input.bathrooms ?? 1,
+          surfaceArea: input.surfaceArea ?? 0,
+          onlineBookingEnabled: input.onlineBookingEnabled !== false,
+        }
+        const item = await repo.create(dto)
+        created.push(item)
+      }
+
+      if (created.length === 0 && count > 0) {
+        throw new ValidationError('Todos los números ya existen')
+      }
+    }
+
+    if (this.orm) {
+      await this.orm.transaction(async (tx) => {
+        const txRepo = new OrmRepository<HabitacionesDTO>(tx, 'Rooms')
+        await doCreate(txRepo)
+      })
+    } else {
+      await doCreate(this.repo)
+    }
+
+    for (const item of created) {
+      await this.sockets.onHabitacionesCreated?.(item)
+    }
+
+    await this.cache.delete(`habitaciones:list:${input.hotelId}`)
+    return created
   }
 
   async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {

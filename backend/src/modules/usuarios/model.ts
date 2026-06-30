@@ -11,6 +11,7 @@ export const UsuariosModel: ModelDefinition = {
     role: { type: 'string', default: "hotel_admin" },
     hotelId: { type: 'string', indexed: true },
     active: { type: 'number', default: 1 },
+    isDemo: { type: 'number', default: 0 },
     token: { type: 'string' },
     resetToken: { type: 'string', indexed: true },
     resetExpires: { type: 'number' },

@@ -7,7 +7,7 @@ import type { HabitacionesDTO } from './types'
 export { HabitacionesService }
 export type { HabitacionesDTO, CreateHabitacionesDTO, UpdateHabitacionesDTO, HabitacionesQuery, HabitacionesPaginated } from './types'
 export type { HabitacionesSockets } from './sockets'
-export { HabitacionesValidator, CreateHabitacionesSchema, UpdateHabitacionesSchema } from './validators/schema'
+export { HabitacionesValidator, CreateHabitacionesSchema, UpdateHabitacionesSchema, BatchCreateSchema } from './validators/schema'
 
 export function HabitacionesModule() {
   return createModule({
@@ -32,7 +32,7 @@ export function HabitacionesModule() {
       const repo = new OrmRepository<HabitacionesDTO>(orm, 'Rooms')
       const log = logger.child('habitaciones')
       const userRepo = new OrmRepository<any>(orm, 'Users')
-      const service = new HabitacionesService(repo, log, cache, userRepo, auth)
+      const service = new HabitacionesService(repo, log, cache, userRepo, auth, orm)
       const controller = new HabitacionesController(service, log)
 
       router.get('/api/habitaciones', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
@@ -40,6 +40,9 @@ export function HabitacionesModule() {
       router.post('/api/habitaciones', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
       router.put('/api/habitaciones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
       router.delete('/api/habitaciones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+
+      // Batch create — multiple rooms with same config in one call
+      router.post('/api/habitaciones/batch', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.batchStore(req))
 
       log.info('Modulo habitaciones v2 listo')
       return service

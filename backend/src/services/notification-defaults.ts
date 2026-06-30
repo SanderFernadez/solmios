@@ -4,7 +4,7 @@
 // vive en auto_messages; este archivo es el fallback. Versionado con git, testeable sin DB.
 // Las variables {key} se interpolan con renderTemplate() de email-service (6.1.2).
 
-export type NotificationEvent = 'reservation_confirmed' | 'reservation_presale' | 'checkin_welcome'
+export type NotificationEvent = 'reservation_confirmed' | 'reservation_presale' | 'checkin_welcome' | 'no_show' | 'checkout'
 export type NotificationLanguage = 'es' | 'en' | 'pt'
 
 export interface NotificationDefault {
@@ -290,6 +290,97 @@ const CHECKIN_PT = `<!DOCTYPE html>
 </body>
 </html>`
 
+// ─── no_show (D3 — ciclo de vida: reserva vencida sin llegada) ──────────────
+
+const NOSHOW_ES = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Reserva no realizada</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Hola <strong>{guest_name}</strong>,</p>
+    <p>Tu reserva del <strong>{checkin_date}</strong> al <strong>{checkout_date}</strong> (Hab. {room_number}) fue marcada como <strong>no-show</strong>.</p>
+    <p style="font-size:13px;color:#6b7280;">Si creés que es un error, contactanos al <strong>{hotel_phone}</strong>.</p>
+  </div>
+</body></html>`
+
+const NOSHOW_EN = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Booking not fulfilled</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Hi <strong>{guest_name}</strong>,</p>
+    <p>Your booking from <strong>{checkin_date}</strong> to <strong>{checkout_date}</strong> (Room {room_number}) was marked as <strong>no-show</strong>.</p>
+    <p style="font-size:13px;color:#6b7280;">If you believe this is an error, please call <strong>{hotel_phone}</strong>.</p>
+  </div>
+</body></html>`
+
+const NOSHOW_PT = `<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Reserva não realizada</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Olá <strong>{guest_name}</strong>,</p>
+    <p>A sua reserva de <strong>{checkin_date}</strong> a <strong>{checkout_date}</strong> (Quarto {room_number}) foi marcada como <strong>no-show</strong>.</p>
+    <p style="font-size:13px;color:#6b7280;">Se acha que é um erro, ligue para <strong>{hotel_phone}</strong>.</p>
+  </div>
+</body></html>`
+
+// ─── checkout (D3 — ciclo de vida: cierre de estancia) ──────────────────────
+
+const CHECKOUT_ES = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">¡Gracias por tu estancia!</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Hola <strong>{guest_name}</strong>,</p>
+    <p>Esperamos que hayas disfrutado tu estancia con nosotros. ¡Gracias por elegir {hotel_name}!</p>
+    <p style="font-size:13px;color:#6b7280;">Reserva: {checkin_date} → {checkout_date} · Hab. {room_number}</p>
+    <p style="font-size:14px;">¡Te esperamos de vuelta!</p>
+  </div>
+</body></html>`
+
+const CHECKOUT_EN = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Thank you for your stay!</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Hi <strong>{guest_name}</strong>,</p>
+    <p>We hope you enjoyed your stay with us. Thank you for choosing {hotel_name}!</p>
+    <p style="font-size:13px;color:#6b7280;">Booking: {checkin_date} → {checkout_date} · Room {room_number}</p>
+    <p style="font-size:14px;">We look forward to welcoming you back!</p>
+  </div>
+</body></html>`
+
+const CHECKOUT_PT = `<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Obrigado pela sua estadia!</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Olá <strong>{guest_name}</strong>,</p>
+    <p>Esperamos que tenha desfrutado da sua estadia connosco. Obrigado por escolher {hotel_name}!</p>
+    <p style="font-size:13px;color:#6b7280;">Reserva: {checkin_date} → {checkout_date} · Quarto {room_number}</p>
+    <p style="font-size:14px;">Esperamos vê-lo de novo em breve!</p>
+  </div>
+</body></html>`
+
 // ─── Registro central ───────────────────────────────────────────────────────
 
 export const NOTIFICATION_DEFAULTS: Record<NotificationEvent, Partial<Record<NotificationLanguage, NotificationDefault>>> = {
@@ -307,6 +398,16 @@ export const NOTIFICATION_DEFAULTS: Record<NotificationEvent, Partial<Record<Not
     es: { subject: '¡Bienvenido a {hotel_name}, {guest_name}!', body: CHECKIN_ES },
     en: { subject: 'Welcome to {hotel_name}, {guest_name}!', body: CHECKIN_EN },
     pt: { subject: 'Bem-vindo a {hotel_name}, {guest_name}!', body: CHECKIN_PT },
+  },
+  no_show: {
+    es: { subject: 'Tu reserva en {hotel_name} — no realizada', body: NOSHOW_ES },
+    en: { subject: 'Your booking at {hotel_name} — no-show', body: NOSHOW_EN },
+    pt: { subject: 'A sua reserva em {hotel_name} — no-show', body: NOSHOW_PT },
+  },
+  checkout: {
+    es: { subject: '¡Gracias por tu estancia en {hotel_name}!', body: CHECKOUT_ES },
+    en: { subject: 'Thank you for your stay at {hotel_name}!', body: CHECKOUT_EN },
+    pt: { subject: 'Obrigado pela sua estadia em {hotel_name}!', body: CHECKOUT_PT },
   },
 }
 

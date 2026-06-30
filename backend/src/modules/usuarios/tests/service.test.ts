@@ -281,7 +281,7 @@ describe('UsuariosService', () => {
   describe('create', () => {
     it('hashea el password y retorna usuario sin campos sensibles', async () => {
       const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
-      const u = await svc.create({ nombre: 'Ana', email: 'ana@test.com', password: 'secreto', hotelId: 'h1' })
+      const u = await svc.create({ name: 'Ana', email: 'ana@test.com', password: 'secreto', hotelId: 'h1' })
       expect(u.id).toBe('u1')
       expect(u.password).toBeUndefined()
       expect(u.token).toBeUndefined()
@@ -289,7 +289,7 @@ describe('UsuariosService', () => {
 
     it('lanza error si no se provee password', async () => {
       const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
-      await expect(svc.create({ nombre: 'Ana', email: 'ana@test.com' })).rejects.toThrow('Password is required')
+      await expect(svc.create({ name: 'Ana', email: 'ana@test.com' })).rejects.toThrow('Password is required')
     })
   })
 
@@ -346,7 +346,7 @@ describe('UsuariosService', () => {
       )
       const u = await svc.me('u1')
       expect(u.id).toBe('u1')
-      expect(u.nombre).toBe('Ana')
+      expect(u.name).toBe('Ana')
       expect(u.email).toBe('ana@test.com')
     })
 
