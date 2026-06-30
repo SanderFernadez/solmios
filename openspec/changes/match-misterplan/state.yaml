@@ -75,6 +75,13 @@ phases:
     tasks_total: 8
     tasks_done: 2
     notes: Reports básicos existen (reports/index.vue 500 líneas). Falta: 6 tipos MisterPlan, export PDF, print.
+  
+  phase-12-production-hardening:
+    status: done
+    depends_on: [phase-1-foundation]
+    tasks_total: 13
+    tasks_done: 13
+    notes: Auditoría de producción check-in completada. 8 gaps resueltos: atomicidad (orm.transaction), doble submit (processing flag), rate limiting + validación pre-checkin, room status real, audit log, loading UX, tipos estrictos, email sin dual-path.
 
 artifacts:
   proposal: true
@@ -95,8 +102,8 @@ artifacts:
 
 total_specs: 10
 total_requirements: 89
-total_tasks: 126
-tasks_done: 79
+total_tasks: 139
+tasks_done: 92
 tasks_blocked_external: 11
 
 external_dependencies:

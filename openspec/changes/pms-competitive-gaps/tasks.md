@@ -19,7 +19,7 @@
 
 **Aceptación**:
 ```bash
-curl -H "Authorization: Bearer <token>" "http://localhost:3001/api/reports?type=rendimiento&from=2026-01-01&to=2026-06-30"
+curl -H "Authorization: Bearer <token>" "http://localhost:3000/api/reports?type=rendimiento&from=2026-01-01&to=2026-06-30"
 # → 200 JSON con adrByRoomType, revpar, avgStay, revenueByType
 ```
 

@@ -117,20 +117,45 @@
 > Referencia visual y de layout: `specs/reservation-modal/spec.md` (REQ-1 a REQ-12) y `ANALISIS-MRPLAN.md` §10.
 
 ### 3.1 ReservationModal.vue — estructura two-panel + header + integración
-- [ ] 3.1 ReservationModal.vue: layout two-panel (izq: datos reserva; der: cliente/pago/elementos), modo **LECTURA** por defecto con toggle **Editar** que reutiliza el form de edición existente. Header con locator (`source`+`externalLocator`, fallback `id` corto), badges status/canal, action buttons **Confirmar · Anular · Imprimir · Editar · ✕**. Secciones colapsables. Conectar en `pages/reservations/index.vue` (clic fila → detalle, NO `openEdit`) y `pages/planning/index.vue` (clic bloque → detalle). Cargar vía `ReservationService.getById(id)`.
-  > Reemplaza el modal inline de `pages/reservations/index.vue` (líneas 64+) y el modal detalle simple de `pages/planning/index.vue` (líneas 512+). Ref: `specs/reservation-modal/spec.md` REQ-1, REQ-12 + `ANALISIS-MRPLAN.md` §10.
+- [ ] 3.1 ReservationModal.vue: layout two-panel + header + integration
+  > Layout two-panel (izq: datos reserva; der: cliente/pago/elementos), modo **LECTURA** por defecto
+  > con toggle **Editar** que reutiliza el form de edición existente.
+  > Header con locator (`source`+`externalLocator`, fallback `id` corto), badges status/canal,
+  > action buttons **Confirmar · Anular · Imprimir · Editar · ✕**. Secciones colapsables.
+  > Conectar en `pages/reservations/index.vue` (clic fila → detalle, NO `openEdit`)
+  > y `pages/planning/index.vue` (clic bloque → detalle). Cargar vía `ReservationService.getById(id)`.
+  > Reemplaza el modal inline de `pages/reservations/index.vue` (líneas 64+) y el modal detalle simple
+  > de `pages/planning/index.vue` (líneas 512+). Ref: `specs/reservation-modal/spec.md` REQ-1, REQ-12 + `ANALISIS-MRPLAN.md` §10.
   > Reglas: `<script setup lang="ts">` + `<style scoped>`, sin `fetch()` (usar `ReservationService`), sin Options API.
 
 ### 3.2 Left panel — Datos de la Reserva + Comunicación Cliente
-- [ ] 3.2 Left panel con 2 secciones colapsables (datos existen en `backend/src/modules/reservas/model.ts`): **(a) Datos de la Reserva** — `source` (label descriptivo), `commission`/`commissionAmount`, localizadores `id`+`externalLocator`, `createdAt` (fecha creación), `checkIn`–`checkOut`+noches calc, `notes`/`otaNotes`. **(b) Comunicación con el Cliente** — toggle `autoSendEnabled` por reserva (PATCH al cambiar, campo existe).
+- [ ] 3.2 Left panel: Datos Reserva + Comunicación Cliente
+  > Left panel con 2 secciones colapsables (datos existen en `backend/src/modules/reservas/model.ts`):
+  > **(a) Datos de la Reserva** — `source` (label descriptivo), `commission`/`commissionAmount`,
+  > localizadores `id`+`externalLocator`, `createdAt` (fecha creación), `checkIn`–`checkOut`+noches calc,
+  > `notes`/`otaNotes`.
+  > **(b) Comunicación con el Cliente** — toggle `autoSendEnabled` por reserva
+  > (PATCH al cambiar, campo existe).
   > Ref: REQ-2, REQ-5 (parcial).
 
 ### 3.3 Right panel — Cliente + Importe/Pago + Elementos + Acompañantes
-- [ ] 3.3 Right panel con 4 secciones: **(a) Datos del Cliente** — nombre (link edición huésped), email `mailto:`, teléfono `tel:`, WhatsApp `wa.me/<phone>` (relación `guest`). **(b) Importe y Pago** — `totalAmount`, `depositAmount`/`depositStatus`, `pendingAmount` (calc=total−deposit), `paymentMethod`, badge `paymentStatus`. **(c) Elementos** — `room.number`+`room.name`/`type`, `regime`, `adults`/`children`, noches, precio/noche (`room.basePrice`). **(d) Acompañantes** — lista vía `CompanionsService.getByReservation(id)` (name, documentType, documentNumber, nationality, isMainGuest `*`).
+- [ ] 3.3 Right panel: Cliente + Pago + Elementos + Acompañantes
+  > Right panel con 4 secciones:
+  > **(a) Datos del Cliente** — nombre (link edición huésped), email `mailto:`, teléfono `tel:`,
+  > WhatsApp `wa.me/<phone>` (relación `guest`).
+  > **(b) Importe y Pago** — `totalAmount`, `depositAmount`/`depositStatus`,
+  > `pendingAmount` (calc=total−deposit), `paymentMethod`, badge `paymentStatus`.
+  > **(c) Elementos** — `room.number`+`room.name`/`type`, `regime`, `adults`/`children`,
+  > noches, precio/noche (`room.basePrice`).
+  > **(d) Acompañantes** — lista vía `CompanionsService.getByReservation(id)`
+  > (name, documentType, documentNumber, nationality, isMainGuest `*`).
   > Ref: REQ-7, REQ-8 (sin conversión moneda=deuda), REQ-9, REQ-10.
 
 ### 3.4 Actions — Confirmar + Anular + Imprimir (endpoints existen)
-- [ ] 3.4 Actions: **Confirmar** (PATCH `status:'confirmed'` + confirm dialog), **Anular** (PATCH `status:'cancelled'` + dialog "¿Anular reserva?"), **Imprimir** (`window.print()` con CSS print del detalle). Sin backend nuevo.
+- [ ] 3.4 Actions: Confirmar + Anular + Imprimir
+  > **Confirmar** (PATCH `status:'confirmed'` + confirm dialog),
+  > **Anular** (PATCH `status:'cancelled'` + dialog "¿Anular reserva?"),
+  > **Imprimir** (`window.print()` con CSS print del detalle). Sin backend nuevo.
   > Ref: REQ-12. (Send payment request Stripe = deuda F9).
 
 **Acceptance:** Click en reserva (desde `/panel/reservations` y `/panel/planning`) abre `ReservationModal` en modo lectura 2-paneles mostrando TODOS los datos (reserva, cliente, pago, habitación, acompañantes); Confirmar/Anular/Imprimir funcionan; toggle Editar pasa a modo edición. `cd frontend && npx vue-tsc --noEmit` = 0 errores. `ReservationModal.vue` referenciado desde ambas páginas.
@@ -538,6 +563,146 @@
 - La página de checkin se refresca automáticamente cada 30s y el header es sticky.
 - Settings tiene configuración de email funcional con botón "Probar conexión".
 - `message_logs` registra cada envío con status (sent/failed/pending).
+- `arckode analyze` → VÁLIDO. `npx vue-tsc --noEmit` → 0 errors. `bun run typecheck` → 0 errors.
+
+---
+
+---
+
+## Phase 12: Production Hardening — Check-in & Pre-checkin (Deuda Técnica)
+
+> **Contexto**: Auditoría de producción de `/panel/checkin` y `POST /api/reservas/:id/checkin`.
+> Se identificaron 8 gaps críticos que bloquean producción real. Esta fase los resuelve.
+> Prioridad: CRÍTICOS (12.1-12.3) → ALTOS (12.4-12.5) → MEDIOS (12.6-12.8).
+
+### 12.1 Atomicidad — Transacción en check-in/check-out
+- [x] 12.1.1 Envolver check-in en transacción
+  > Los 5 pasos del endpoint `POST /api/reservas/:id/checkin` (composition-root.ts:579-637)
+  > se ejecutan secuencialmente SIN transacción. Si falla el paso 3, el folio queda huérfano.
+  > Si falla el paso 4, la habitación sigue "available".
+  >
+  > Acción: envolver pasos 1-4 (guest + folio + reserva + room) en una transacción SQLite.
+  > Usar `orm.transaction()` si el framework lo soporta, o `db.exec('BEGIN/COMMIT/ROLLBACK')`.
+  > Pasos 5 (Channex) y 6 (email) quedan FUERA de la transacción (fire-and-forget).
+  >
+  > Mismo tratamiento para `POST /api/reservas/:id/checkout` (línea 640-664):
+  > pasos reserva + room + housekeeping en transacción, Channex fuera.
+  >
+  > **Acceptance**: Si cualquier paso atómico falla, NADA se persiste. Folio no queda huérfano.
+
+- [x] 12.1.2 Tests de atomicidad
+  > Test: simular fallo a mitad de check-in (ej: roomId inválido) → verificar que
+  > ni guest, ni folio, ni reserva se crearon/modificaron.
+
+### 12.2 Protección contra doble submit
+- [x] 12.2.1 Frontend: deshabilitar botón durante operación
+  > En `checkin/index.vue`, los botones "Confirmar Check-in" y "Confirmar Check-out"
+  > no se deshabilitan durante la petición. Un doble clic crea folios duplicados.
+  >
+  > Acción: agregar `ref<boolean> processing`, deshabilitar botones + mostrar spinner
+  > mientras `doCheckin()`/`doCheckout()` está en curso.
+  > Usar `finally {}` para re-habilitar aunque falle.
+
+- [x] 12.2.2 Backend: guarda de idempotencia reforzada
+  > El endpoint check-in ya tiene `if (r.status === 'checked_in') return 409`, pero
+  > esto no protege contra race conditions (dos requests simultáneos que lean status
+  > antes de que el primero actualice).
+  >
+  > Acción: la transacción de 12.1.1 resuelve esto parcialmente. Adicionalmente,
+  > verificar que el endpoint de check-out tenga la misma guarda (solo checked_in → checked_out).
+
+### 12.3 Seguridad pre-checkin público
+- [x] 12.3.1 Rate limiting en endpoints públicos
+  > `GET/POST /api/public/pre-checkin/:hash` no tienen auth ni rate limit.
+  > Cualquiera puede abusar.
+  >
+  > Acción: implementar rate limiter in-memory (Map<ip, {count, resetAt}>).
+  > Límite: 10 requests/min por IP. Retornar 429 si excede.
+  > Limpiar entradas expiradas cada 5 minutos.
+
+- [x] 12.3.2 Validación de inputs en POST pre-checkin
+  > `POST /api/public/pre-checkin/:hash` acepta cualquier dato sin validar:
+  > email, phone, documents, companions.
+  >
+  > Acción: crear `PreCheckinSchema` en `validators/schema.ts`:
+  > - guestName: string min 2
+  > - email: email válido
+  > - phone: string opcional
+  > - documentType: enum (dni/passport/other)
+  > - documentNumber: string min 5
+  > - nationality: string min 2 max 2 (ISO)
+  > - birthDate: ISO date string
+  > - companions: array de {name, documentNumber}
+  > Validar con `validateSchema()` antes de procesar.
+
+- [x] 12.3.3 Pre-checkin: verificar expiry de reserva
+  > El GET no verifica que la fecha de la reserva sea vigente. Reservas de hace 6 meses
+  > siguen siendo accesibles.
+  >
+  > Acción: solo retornar datos si `reservation.checkOut >= today()` (no expirada).
+
+### 12.4 Fix estado falso de habitaciones en frontend
+- [x] 12.4.1 No sobrescribir status real de habitación
+  > `checkin/index.vue:251`: `status: res ? 'occupied' : (r.status || 'available')`.
+  > Si no hay reserva activa, fuerza "available" ignorando cleaning/dirty/out_of_service.
+  >
+  > Acción: respetar `r.status` real de la DB. Solo override a 'occupied' si hay
+  > reserva activa con status 'checked_in'. Usar el status real para el resto.
+  > Mostrar habitaciones 'cleaning' y 'out_of_service' correctamente en el grid.
+
+### 12.5 Auditoría: AuditLog para check-in/check-out
+- [x] 12.5.1 Registrar acciones en AuditLog
+  > No se crea entrada de auditoría al hacer check-in/check-out. Solo timestamps.
+  >
+  > Acción: crear entrada en tabla `AuditLog`:
+  > - entity: 'Reservations', entityId: reservation.id
+  > - action: 'checkin' | 'checkout'
+  > - performedBy: req.user.id
+  > - hotelId: hotelId
+  > - details: { guestName, roomNumber, timestamp }
+  > Usar `orm.create('AuditLog', ...)`.
+
+### 12.6 UX: Estados de carga y feedback visual
+- [x] 12.6.1 Spinner durante carga inicial
+  > La página no muestra spinner/skeleton mientras `loadData()` está en curso.
+  > El `loading` ref existe pero no se usa en el template.
+  >
+  > Acción: mostrar skeleton/spinner en grid y listas mientras `loading === true`.
+
+- [x] 12.6.2 Deshabilitar botones durante check-in/check-out
+  > Cubierto por 12.2.1 — mismo `processing` ref deshabilita botones de acción.
+  > Adicional: botón de "Check-in" en lista de llegadas también se deshabilita.
+
+### 12.7 Tipado estricto — eliminar `any`
+- [x] 12.7.1 Definir interfaces tipadas para check-in
+  > `checkin/index.vue` usa `any` en TODAS las refs y parámetros.
+  >
+  > Acción: definir interfaces en `types/index.ts`:
+  > - `CheckinGuest`: guestName, guestEmail, roomNumber, checkIn, checkOut, channel, etc.
+  > - `CheckinRoom`: id, number, type, status, basePrice, guestName, etc.
+  > Reemplazar `ref<any[]>([])` y `ref<any>(null)`.
+
+### 12.8 Eliminar dual-path de email de check-in
+- [x] 12.8.1 Remover dispatchCheckinEmail de ReservationService.update
+  > El welcome email se dispara desde DOS lugares:
+  > 1. `POST /api/reservas/:id/checkin` (composición correcta)
+  > 2. `ReservationService.update()` cuando status pasa a 'checked_in'
+  >
+  > Acción: remover `dispatchCheckinEmail()` de `reservation-notifications.ts`
+  > y de `ReservasService.update()`. El email SOLO se envía desde el endpoint
+  > de check-in dedicado. Si el frontend quiere hacer check-in, debe usar
+  > el endpoint `/api/reservas/:id/checkin`, no el `update()` genérico.
+
+**Acceptance:**
+- Check-in atómico: si falla a mitad, nada se persiste parcialmente.
+- Check-out atómico: reserva + room + housekeeping como unidad.
+- Doble clic no crea duplicados (frontend deshabilitado + backend transaccional).
+- Pre-checkin público tiene rate limit (429) y validación de inputs.
+- Habitaciones muestran su estado REAL (cleaning/dirty/out_of_service visibles).
+- Toda acción de check-in/check-out deja registro en AuditLog.
+- UI muestra spinner durante carga y deshabilita botones durante operación.
+- Cero `any` en checkin/index.vue.
+- Email de bienvenida se envía UNA sola vez, solo desde el endpoint de check-in.
 - `arckode analyze` → VÁLIDO. `npx vue-tsc --noEmit` → 0 errors. `bun run typecheck` → 0 errors.
 
 ---

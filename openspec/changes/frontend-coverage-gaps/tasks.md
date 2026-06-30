@@ -79,7 +79,7 @@ cd backend && bun test  # 88/88 pass
 **Criterio de aceptación**:
 ```bash
 # GATE seguridad: GET /api/roles?hotelId=X no debe devolver roles de otro hotel
-curl -H "Authorization: Bearer <token-hotel-A>" http://localhost:3001/api/roles?hotelId=hotel-B
+curl -H "Authorization: Bearer <token-hotel-A>" http://localhost:3000/api/roles?hotelId=hotel-B
 # → debe devolver [] o 403
 # Manual: hotel-admin → Equipo → ver usuarios de su hotel → cambiar rol
 ```
