@@ -1,19 +1,5 @@
-// seeds/apikeys.ts — Datos de prueba
+// seeds/apikeys.ts — gestionado por 000-bootstrap o migrate-db.ts
 import type { SeedOrm } from 'arckode-framework/cli/commands/db-seed'
-
-export async function seedApikeys(orm: SeedOrm): Promise<void> {
-  const items = [
-    {
-    nombre: 'Apikeys de ejemplo'
-    activo: true
-    },
-    {
-    nombre: 'Apikeys de ejemplo 2'
-    activo: true
-    },
-  ]
-
-  await Promise.all(items.map(item => orm.create('Apikeys', item)))
-
-  console.log('  ✓ Apikeys seeded: ' + items.length + ' items')
+export async function seedData(_orm: SeedOrm): Promise<void> {
+  console.log('  ✓ apikeys: skip (datos en 000-bootstrap / migrate-db.ts)')
 }

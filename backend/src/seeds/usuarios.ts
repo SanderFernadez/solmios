@@ -1,19 +1,5 @@
-// seeds/usuarios.ts — Datos de prueba
+// seeds/usuarios.ts — gestionado por 000-bootstrap o migrate-db.ts
 import type { SeedOrm } from 'arckode-framework/cli/commands/db-seed'
-
-export async function seedUsuarios(orm: SeedOrm): Promise<void> {
-  const items = [
-    {
-    nombre: 'Usuarios de ejemplo'
-    activo: true
-    },
-    {
-    nombre: 'Usuarios de ejemplo 2'
-    activo: true
-    },
-  ]
-
-  await Promise.all(items.map(item => orm.create('Usuarios', item)))
-
-  console.log('  ✓ Usuarios seeded: ' + items.length + ' items')
+export async function seedData(_orm: SeedOrm): Promise<void> {
+  console.log('  ✓ usuarios: skip (datos en 000-bootstrap / migrate-db.ts)')
 }

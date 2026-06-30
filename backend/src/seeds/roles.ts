@@ -1,19 +1,5 @@
-// seeds/roles.ts — Datos de prueba
+// seeds/roles.ts — gestionado por 000-bootstrap o migrate-db.ts
 import type { SeedOrm } from 'arckode-framework/cli/commands/db-seed'
-
-export async function seedRoles(orm: SeedOrm): Promise<void> {
-  const items = [
-    {
-    nombre: 'Roles de ejemplo'
-    activo: true
-    },
-    {
-    nombre: 'Roles de ejemplo 2'
-    activo: true
-    },
-  ]
-
-  await Promise.all(items.map(item => orm.create('Roles', item)))
-
-  console.log('  ✓ Roles seeded: ' + items.length + ' items')
+export async function seedData(_orm: SeedOrm): Promise<void> {
+  console.log('  ✓ roles: skip (datos en 000-bootstrap / migrate-db.ts)')
 }

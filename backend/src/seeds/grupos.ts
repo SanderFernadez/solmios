@@ -1,19 +1,5 @@
-// seeds/grupos.ts — Datos de prueba
+// seeds/grupos.ts — gestionado por 000-bootstrap o migrate-db.ts
 import type { SeedOrm } from 'arckode-framework/cli/commands/db-seed'
-
-export async function seedGrupos(orm: SeedOrm): Promise<void> {
-  const items = [
-    {
-    nombre: 'Grupos de ejemplo'
-    activo: true
-    },
-    {
-    nombre: 'Grupos de ejemplo 2'
-    activo: true
-    },
-  ]
-
-  await Promise.all(items.map(item => orm.create('Grupos', item)))
-
-  console.log('  ✓ Grupos seeded: ' + items.length + ' items')
+export async function seedData(_orm: SeedOrm): Promise<void> {
+  console.log('  ✓ grupos: skip (datos en 000-bootstrap / migrate-db.ts)')
 }

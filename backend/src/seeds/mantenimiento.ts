@@ -1,19 +1,5 @@
-// seeds/mantenimiento.ts — Datos de prueba
+// seeds/mantenimiento.ts — gestionado por 000-bootstrap o migrate-db.ts
 import type { SeedOrm } from 'arckode-framework/cli/commands/db-seed'
-
-export async function seedMantenimiento(orm: SeedOrm): Promise<void> {
-  const items = [
-    {
-    nombre: 'Mantenimiento de ejemplo'
-    activo: true
-    },
-    {
-    nombre: 'Mantenimiento de ejemplo 2'
-    activo: true
-    },
-  ]
-
-  await Promise.all(items.map(item => orm.create('Mantenimiento', item)))
-
-  console.log('  ✓ Mantenimiento seeded: ' + items.length + ' items')
+export async function seedData(_orm: SeedOrm): Promise<void> {
+  console.log('  ✓ mantenimiento: skip (datos en 000-bootstrap / migrate-db.ts)')
 }

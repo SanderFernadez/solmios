@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__memoryone__mem_context",
+      "Bash(ls frontend/src/assets/)",
+      "Bash(ls frontend/public/)",
+      "Bash(wc -l designs/index.html)",
+      "Bash(find / -name \"hero-check.png\" 2>/dev/null)",
+      "Read(//c//**)",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "mcp__memoryone__mem_save",
+      "mcp__memoryone__mem_session_summary",
+      "Bash(bun run *)",
+      "Read(//tmp/**)",
+      "mcp__memoryone__mem_search",
+      "Bash(sed -E 's/\\(TOKEN=\\).*/\\\\1[REDACTED]/')"
+    ]
+  }
+}

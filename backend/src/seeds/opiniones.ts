@@ -1,19 +1,5 @@
-// seeds/opiniones.ts — Datos de prueba
+// seeds/opiniones.ts — gestionado por 000-bootstrap o migrate-db.ts
 import type { SeedOrm } from 'arckode-framework/cli/commands/db-seed'
-
-export async function seedOpiniones(orm: SeedOrm): Promise<void> {
-  const items = [
-    {
-    nombre: 'Opiniones de ejemplo'
-    activo: true
-    },
-    {
-    nombre: 'Opiniones de ejemplo 2'
-    activo: true
-    },
-  ]
-
-  await Promise.all(items.map(item => orm.create('Opiniones', item)))
-
-  console.log('  ✓ Opiniones seeded: ' + items.length + ' items')
+export async function seedData(_orm: SeedOrm): Promise<void> {
+  console.log('  ✓ opiniones: skip (datos en 000-bootstrap / migrate-db.ts)')
 }
