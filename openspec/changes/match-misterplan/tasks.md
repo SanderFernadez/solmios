@@ -261,7 +261,7 @@
 ### 6.1 Backend
 - [x] 6.1.1 Create auto_messages CRUD endpoints
 - [x] 6.1.2 Variable substitution engine
-- [ ] 6.1.3 Cron job for trigger processing (checkin_day, pre_checkin, etc.)
+- [x] 6.1.3 Cron job for trigger processing (checkin_day, pre_checkin, etc.)
   > Implementar un cron job (setInterval) que cada 5 minutos evalúa todas las reservas activas y dispara los auto-messages
   > cuyo `triggerEvent` coincida con el evento del día (checkin_day, pre_checkin, checkout_day, post_stay).
   > Para cada auto-message activo, buscar reservas que cumplan la condición:
@@ -272,7 +272,7 @@
   > Si el auto-message tiene channel 'email', llamar a EmailService.send(). Si 'whatsapp', llamar a WhatsAppService.send().
   > Evitar duplicados: antes de enviar, verificar en `message_logs` si ya se envió ese messageId (auto-message.id + reservation.id).
   > Loggear cada envío en `message_logs` con status 'sent' o 'failed'.
-- [ ] 6.1.4 Email sender (EmailService con nodemailer/SendGrid/Resend)
+- [x] 6.1.4 Email sender (EmailService con nodemailer/SendGrid/Resend)
   > Crear `backend/src/services/email.service.ts` con método `send(to, subject, html)`.
   > Leer configuración SMTP de `Configuration` con key `email_config` (host, port, user, pass, from).
   > Si no hay SMTP configurado, usar Resend (API key en `Configuration` key `resend_api_key`) como fallback.
