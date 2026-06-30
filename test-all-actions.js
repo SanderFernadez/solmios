@@ -1,4 +1,4 @@
-const { chromium } = require('playwright');
+import { chromium } from 'playwright';
 
 const BASE = 'http://localhost:5173';
 const API = 'http://localhost:3000';
