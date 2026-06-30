@@ -793,6 +793,15 @@ router.post('/api/reservas/:id/checkout', [auth.authenticate('hotel_admin', 'rec
     return { status: 500, body: { error: 'Error interno al procesar check-out' } }
   }
 
+  // B3 — Invalidar cache de lista de housekeeping: el checkout crea la tarea con tx.create
+  // directo (no pasa por el service) → el cache housekeeping:list:* quedaría stale hasta 300s.
+  const housekeepingMod = system.resolveModule<{ invalidateListCache?: (hotelId?: string) => Promise<void> }>('housekeeping')
+  if (housekeepingMod?.invalidateListCache) {
+    await housekeepingMod.invalidateListCache(r.hotelId).catch((e: unknown) =>
+      logger.warn('housekeeping list cache invalidation after checkout', { error: (e as Error).message }),
+    )
+  }
+
   // ── Fuera de transacción ──
   // AuditLog
   orm.create('Auditlog', {

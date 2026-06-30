@@ -33,6 +33,14 @@ function makeUserRepo() {
 
 const mockUser = { id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }
 
+// Storage mock + archivos de prueba para addPhoto (A3 límite, A4 whitelist mime).
+const mockStorage = {
+  upload: async () => ({ url: '/uploads/test.jpg', path: 'uploads/test.jpg', originalName: 'test.jpg', size: 100, mimeType: 'image/jpeg' }),
+  delete: async () => {},
+}
+const imageFile = { fieldName: 'file', originalName: 'test.jpg', buffer: Buffer.from('x'), mimeType: 'image/jpeg', size: 1 } as any
+const textFile = { fieldName: 'file', originalName: 't.txt', buffer: Buffer.from('x'), mimeType: 'text/plain', size: 1 } as any
+
 describe('HousekeepingService', () => {
   describe('list', () => {
     it('returns paginated tasks', async () => {
@@ -190,6 +198,50 @@ describe('HousekeepingService', () => {
       const e2 = result.find(r => r.staffId === 'e2')
       expect(e1?.completed).toBe(2)
       expect(e2?.completed).toBe(1)
+    })
+  })
+
+  describe('photos (addPhoto)', () => {
+    it('uploads an image photo', async () => {
+      const repo = makeRepo({
+        findById: async () => ({ id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'in_progress', photos: [] } as any),
+        update: async (id, data) => ({ id, roomId: 'r1', hotelId: 'h1', status: 'in_progress', photos: (data as any).photos } as HousekeepingDTO),
+      })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth, undefined, mockStorage as any)
+      const result = await svc.addPhoto('hk1', imageFile, hotelAdmin)
+      expect(result.photos).toHaveLength(1)
+    })
+
+    it('rejects non-image photo (mime whitelist A4)', async () => {
+      const svc = new HousekeepingService(makeRepo({ findById: async () => ({ id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'in_progress', photos: [] } as any) }), log, silentCache, makeUserRepo(), fakeAuth, undefined, mockStorage as any)
+      await expect(svc.addPhoto('hk1', textFile, hotelAdmin)).rejects.toThrow('Solo se permiten imágenes')
+    })
+
+    it('rejects photo beyond MAX_PHOTOS_PER_TASK limit (A3)', async () => {
+      const photos = Array.from({ length: 20 }, (_, i) => ({ url: `/u${i}.jpg`, path: `p${i}`, name: `u${i}.jpg`, size: 1, mimeType: 'image/jpeg', uploadedAt: 'x' }))
+      const svc = new HousekeepingService(makeRepo({ findById: async () => ({ id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'in_progress', photos } as any) }), log, silentCache, makeUserRepo(), fakeAuth, undefined, mockStorage as any)
+      await expect(svc.addPhoto('hk1', imageFile, hotelAdmin)).rejects.toThrow('Límite')
+    })
+  })
+
+  describe('staff ownership (A7)', () => {
+    it('non-admin user cannot start a task assigned to another', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending', staffId: 'profile-aaa' } as HousekeepingDTO
+      const employeeRepo = { findOne: async () => ({ id: 'profile-bbb', userId: 'staff1', hotelId: 'h1' }) } as any
+      const repo = makeRepo({ findById: async () => task, update: async (id, data) => ({ ...task, ...data, id } as HousekeepingDTO) })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth, employeeRepo)
+      const staffUser = { id: 'staff1', role: 'staff', hotelId: 'h1' }
+      await expect(svc.start('hk1', staffUser)).rejects.toThrow('no es la tarea asignada')
+    })
+
+    it('non-admin user can start their own assigned task', async () => {
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending', staffId: 'profile-aaa' } as HousekeepingDTO
+      const employeeRepo = { findOne: async () => ({ id: 'profile-aaa', userId: 'staff1', hotelId: 'h1' }) } as any
+      const repo = makeRepo({ findById: async () => task, update: async (id, data) => ({ ...task, ...data, id } as HousekeepingDTO) })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth, employeeRepo)
+      const staffUser = { id: 'staff1', role: 'staff', hotelId: 'h1' }
+      const result = await svc.start('hk1', staffUser)
+      expect(result.status).toBe('in_progress')
     })
   })
 })

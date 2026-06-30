@@ -24,6 +24,10 @@
         >
           {{ filter.label }}
         </button>
+        <label class="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary cursor-pointer ml-2 select-none">
+          <input type="checkbox" v-model="hideCompleted" class="accent-navy w-3.5 h-3.5 cursor-pointer" />
+          Ocultar terminadas
+        </label>
       </div>
       <div class="flex gap-2">
         <button @click="openAssignModal" class="bg-navy text-white font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
@@ -83,7 +87,7 @@
     </div>
 
     <!-- Board View (Kanban) -->
-    <div v-else-if="activeView === 'board'" class="grid grid-cols-4 gap-4">
+    <div v-else-if="activeView === 'board'" class="gap-4 grid" :class="kanbanColumns.length === 2 ? 'grid-cols-2' : 'grid-cols-4'">
       <div v-for="column in kanbanColumns" :key="column.id"
         class="bg-surface rounded-xl p-4 min-h-[300px] transition-all"
         :class="dragOverColumn === column.id ? 'ring-2 ring-navy bg-navy/5' : ''"
@@ -119,7 +123,7 @@
               </span>
             </div>
             <div class="text-[11px] text-text-secondary mb-3">{{ task.type }}</div>
-            <div v-if="task.time" class="text-[10px] text-cyan font-bold mb-2">⏱ {{ task.time }}</div>
+            <div v-if="taskTime(task)" class="text-[10px] text-cyan font-bold mb-2">⏱ {{ taskTime(task) }}</div>
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <div class="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white" :class="staffColor(task.assignedTo)">
@@ -173,7 +177,7 @@
               </div>
             </td>
             <td class="p-4 text-sm">
-              <span v-if="task.time" class="text-cyan font-bold">{{ task.time }}</span>
+              <span v-if="taskTime(task)" class="text-cyan font-bold">{{ taskTime(task) }}</span>
               <span v-else class="text-text-muted">—</span>
             </td>
             <td class="p-4 text-right">
@@ -378,10 +382,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useHousekeepingStore, humanizeMs, type HousekeepingViewTask } from '@/stores/housekeeping.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useNow } from '@/composables/useNow'
 
 const store = useHousekeepingStore()
 const auth = useAuthStore()
@@ -402,6 +407,14 @@ const statsRangeDays = ref(30)
 const draggedTask = ref<HousekeepingViewTask | null>(null)
 const dragOverColumn = ref<string | null>(null)
 
+// D1/D3 — Ocultar tareas terminadas (persiste en localStorage; default true = sin ruido).
+const hideCompleted = ref(localStorage.getItem('hk:hideCompleted') !== 'false')
+watch(hideCompleted, (v) => localStorage.setItem('hk:hideCompleted', String(v)))
+// C1 — Reloj reactivo (cada 60s) para mostrar el tiempo transcurrido en vivo en in_progress.
+const LIVE_TICK_MS = 60_000
+const { now } = useNow(LIVE_TICK_MS)
+const COMPLETED_STATUSES = ['completed', 'inspected']
+
 const views = [
   { label: 'Lista', value: 'list' },
   { label: 'Tablero', value: 'board' },
@@ -413,16 +426,21 @@ const statusFilters = [
   { label: 'Pendientes', value: 'pending' },
   { label: 'En Progreso', value: 'in_progress' },
   { label: 'Completadas', value: 'completed' },
+  { label: 'Inspeccionadas', value: 'inspected' },
 ]
 
 const statsRanges = [7, 30, 90]
 
-const kanbanColumns = [
+const KANBAN_COLUMNS = [
   { id: 'pending', title: 'Pendiente', dotColor: 'bg-orange' },
   { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan' },
   { id: 'completed', title: 'Completada', dotColor: 'bg-teal' },
   { id: 'inspected', title: 'Inspeccionada', dotColor: 'bg-purple' },
 ]
+// D1 — El toggle colapsa las columnas terminadas del tablero (consistencia con la lista).
+const kanbanColumns = computed(() =>
+  hideCompleted.value ? KANBAN_COLUMNS.filter(c => !COMPLETED_STATUSES.includes(c.id)) : KANBAN_COLUMNS,
+)
 
 const TYPE_ICONS: Record<string, string> = { full_cleaning: '🧹', quick_cleaning: '✨', deep_cleaning: '🧼', inspection: '🔍', maintenance: '🔧' }
 const TYPE_COLORS: Record<string, string> = { full_cleaning: 'border-l-4 border-l-cyan-500', quick_cleaning: 'border-l-4 border-l-teal-500', deep_cleaning: 'border-l-4 border-l-blue-600', inspection: 'border-l-4 border-l-purple-500', maintenance: 'border-l-4 border-l-amber-500' }
@@ -447,9 +465,12 @@ const availableRooms = computed(() =>
   store.rooms.map(r => ({ id: r.id, number: r.number, type: r.type || 'Standard' })),
 )
 
-const filteredTasks = computed(() =>
-  activeFilter.value === 'all' ? store.tasks : store.tasks.filter(t => t.status === activeFilter.value),
-)
+const filteredTasks = computed(() => {
+  if (activeFilter.value !== 'all') return store.tasks.filter(t => t.status === activeFilter.value)
+  // D1 — En "Todas", el toggle oculta las terminadas para reducir ruido (foco en lo que falta).
+  if (hideCompleted.value) return store.tasks.filter(t => !COMPLETED_STATUSES.includes(t.status))
+  return store.tasks
+})
 
 const getColumnTasks = (columnId: string) => store.tasks.filter(t => t.status === columnId)
 
@@ -508,6 +529,16 @@ function staffColor(name: string) {
 
 function formatTime(iso: string) {
   try { return new Date(iso).toLocaleString('es', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) } catch { return iso }
+}
+
+// C1 — Tiempo a mostrar: duración fija si ya terminó, o transcurrido en vivo si está in_progress.
+// Lee `now` (ref del composable useNow) → el render se re-evalúa cada 60s sin recargar.
+function taskTime(task: HousekeepingViewTask): string {
+  if (task.time) return task.time
+  if (task.status === 'in_progress' && task.startTime) {
+    return humanizeMs(now.value - new Date(task.startTime).getTime())
+  }
+  return ''
 }
 
 function staffName(staffId: string) {

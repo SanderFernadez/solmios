@@ -32,6 +32,7 @@ export class HousekeepingService {
       repo,
       (item) => this.sockets.onHousekeepingUpdated?.(item) ?? Promise.resolve(),
       (h) => this.invalidateCache(h),
+      this.employeeRepo,
     )
     this.photos = new PhotosUseCase(repo, logger, (h) => this.invalidateCache(h), storage)
     this.statsUc = new StatsUseCase(repo, cache, userRepo)
@@ -151,5 +152,14 @@ export class HousekeepingService {
   private async invalidateCache(hotelId?: string): Promise<void> {
     await this.cache.delete(`housekeeping:list:${hotelId}`)
     await this.statsUc.bumpVersion(hotelId)
+  }
+
+  /**
+   * B3 — Punto público de invalidación para mutaciones que ocurren FUERA del service
+   * (ej. el check-out crea la tarea con tx.create directo en composition-root). Sin esto,
+   * el cache `housekeeping:list:*` quedaría stale hasta 300s tras un check-out.
+   */
+  async invalidateListCache(hotelId?: string): Promise<void> {
+    await this.invalidateCache(hotelId)
   }
 }

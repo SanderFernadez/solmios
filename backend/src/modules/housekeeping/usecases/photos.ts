@@ -1,8 +1,13 @@
 // usecases/photos.ts — Evidencia fotográfica de limpieza (upload/remove).
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import { NotFoundError, AuthError } from 'arckode-framework'
+import { NotFoundError, AuthError, ValidationError } from 'arckode-framework'
 import type { StorageService, FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingDTO, HousekeepingUser } from '../types'
+
+/** Máximo de fotos de evidencia por tarea (evita que el JSON photos[] crezca sin tope). */
+const MAX_PHOTOS_PER_TASK = 20
+/** Las fotos de evidencia deben ser imágenes (rechaza binarios disfrazados en el data URL). */
+const ALLOWED_IMAGE_PREFIX = 'image/'
 
 export class PhotosUseCase {
   constructor(
@@ -17,6 +22,15 @@ export class PhotosUseCase {
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
     if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
+    // A4 — Whitelist de imágenes: el mimeType del FileUpload debe ser image/* (el data URL
+    // base64 puede mentir, así que se valida acá antes de persistir).
+    if (!file.mimeType?.startsWith(ALLOWED_IMAGE_PREFIX)) {
+      throw new ValidationError('Solo se permiten imágenes como evidencia')
+    }
+    // A3 — Límite de fotos por tarea para que el JSON no crezca sin tope.
+    if ((existing.photos ?? []).length >= MAX_PHOTOS_PER_TASK) {
+      throw new ValidationError(`Límite de ${MAX_PHOTOS_PER_TASK} fotos por tarea alcanzado`)
+    }
     const stored = await this.storage.upload(file, 'housekeeping')
     const photos = [...(existing.photos ?? []), {
       url: stored.url,
