@@ -399,7 +399,7 @@ const batchSaving = ref(false)
 const statusChanging = ref(false)
 const editId = ref('')
 const page = ref(1)
-const perPage = 20
+const perPage = 60
 
 const modal = ref({ show: false, edit: false })
 const detailModal = ref({ show: false })
