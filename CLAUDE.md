@@ -209,7 +209,7 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 
 ### Ejecución
 ```bash
-cd backend && bun run dev          # :3001
+cd backend && bun run dev          # :3000
 cd frontend && bun run dev         # :5173
 cd backend && bun run migrate      # seed one-off
 cd backend && bun run doctor       # health-check Channex

@@ -16,7 +16,7 @@ PMS hotelero (Property Management System) multi-tenant para hoteles independient
 │   pages/ (21 secciones) · services/ (13) · stores (4)│
 │   Router con guards por rol · Pinia · Tailwind v4    │
 └──────────────────────┬──────────────────────────────┘
-                       │ HTTP (Vite proxy → :3001)
+                       │ HTTP (Vite proxy → :3000)
 ┌──────────────────────┴──────────────────────────────┐
 │            BACKEND (arckode-framework)                │
 │   composition-root.ts → System → 12 módulos           │
@@ -38,7 +38,7 @@ PMS hotelero (Property Management System) multi-tenant para hoteles independient
 | Capa | Tecnología | Versión | Propósito |
 |------|-----------|---------|-----------|
 | UI | Vue 3 | ^3.5 | Framework reactivo (`<script setup lang="ts">`) |
-| Build | Vite | ^8.0 | Dev server + bundler (proxy `/api` → :3001) |
+| Build | Vite | ^8.0 | Dev server + bundler (proxy `/api` → :3000) |
 | Estado | Pinia | ^3.0 | Stores con setup syntax |
 | Router | Vue Router | ^5.1 | SPA con guards por rol |
 | CSS | Tailwind CSS | ^4.3 | Utility-first (`@theme` tokens) |
@@ -84,7 +84,7 @@ Manager Hotel/
 │   │   ├── router/index.ts        # guards: requiresHotelAuth / requiresHotelAdmin / requiresSuperAdmin
 │   │   ├── types/index.ts         # tipos centralizados
 │   │   └── styles/main.css        # Tailwind v4 tokens
-│   └── vite.config.ts             # proxy /api → http://localhost:3001
+│   └── vite.config.ts             # proxy /api → http://localhost:3000
 ├── PRD.md                         # producto (QUÉ)
 ├── ARCHITECTURE.md                # este archivo (CÓMO)
 ├── modules.md                     # catálogo de los 26 módulos de producto
@@ -101,7 +101,7 @@ Patrón canónico del framework: configuración → adapters → System → mód
 
 ```typescript
 const config = new ConfigStore()
-config.define({ PORT: {type:'number', default:'3001'}, JWT_SECRET: {type:'string', required:true}, ... })
+config.define({ PORT: {type:'number', default:'3000'}, JWT_SECRET: {type:'string', required:true}, ... })
 config.load(process.env)
 
 const dbAdapter = new SqliteAdapter({ path: './data/managerhotel.db', wal: true, foreignKeys: true })
@@ -248,7 +248,7 @@ Estrategia real: **single database con columna `hotelId`** por tabla. Cada query
 ## 11. Ejecución
 
 ```bash
-# Backend (arckode-framework) en :3001
+# Backend (arckode-framework) en :3000
 cd backend && bun run dev          # → composition-root.ts
 
 # Frontend (Vite) en :5173

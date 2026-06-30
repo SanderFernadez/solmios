@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 
 const BASE = 'http://localhost:5173';
-const API = 'http://localhost:3001';
+const API = 'http://localhost:3000';
 
 let passed = 0;
 let failed = 0;

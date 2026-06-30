@@ -524,7 +524,7 @@ Esta es la decisión más compleja del sistema. El bot guía al huésped por un 
 ┌──────────┐    POST /api/ai/whatsapp/webhook/:hotelId    ┌───────────────┐
 │  Meta    │ ──────────────────────────────────────────────> │  Arckode      │
 │  WhatsApp│                                               │  Backend      │
-│  Cloud   │ <────────────────────────────────────────────── │  :3001        │
+│  Cloud   │ <────────────────────────────────────────────── │  :3000        │
 │  API     │    200 OK (async, el bot responde después)     │               │
 └──────────┘                                               └───────┬───────┘
                                                                     │
