@@ -60,13 +60,14 @@ interface RoomsResponse {
 }
 
 export const RoomService = {
-  async list(params?: { hotelId?: string; tipo?: string; estado?: string; type?: string; status?: RoomStatus }): Promise<{ rooms: Room[]; total: number }> {
+  async list(params?: { hotelId?: string; tipo?: string; estado?: string; type?: string; status?: RoomStatus; limit?: number }): Promise<{ rooms: Room[]; total: number }> {
     const qs = new URLSearchParams()
     if (params?.hotelId) qs.set('hotelId', params.hotelId)
     if (params?.type) qs.set('tipo', params.type)
     else if (params?.tipo) qs.set('tipo', params.tipo)
     if (params?.status) qs.set('estado', params.status)
     else if (params?.estado) qs.set('estado', params.estado)
+    if (params?.limit) qs.set('limit', String(params.limit))
     const query = qs.toString()
     const data = await http.get<RoomsResponse>(`/habitaciones${query ? `?${query}` : ''}`)
     return { rooms: data.data.map(mapRoom), total: data.total }
@@ -81,6 +82,9 @@ export const RoomService = {
       hotelId: input.hotelId,
       capacity: input.maxGuests ?? 2,
       floor: input.floor ?? 1,
+      surfaceArea: input.surfaceArea ?? 0,
+      bathrooms: input.bathrooms ?? 1,
+      onlineBookingEnabled: input.onlineBookingEnabled !== false,
     }
     const data = await http.post<RawRoom>('/habitaciones', body)
     return mapRoom(data)
@@ -111,5 +115,20 @@ export const RoomService = {
 
   async delete(id: string): Promise<void> {
     return http.delete(`/habitaciones/${id}`)
+  },
+
+  async batchCreate(input: {
+    hotelId: string
+    type: string
+    basePrice: number
+    from: number
+    to: number
+    floor?: number
+    capacity?: number
+    bathrooms?: number
+    surfaceArea?: number
+    onlineBookingEnabled?: boolean
+  }): Promise<{ data: RawRoom[]; total: number }> {
+    return http.post('/habitaciones/batch', input)
   },
 }

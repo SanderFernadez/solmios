@@ -230,6 +230,25 @@
         </div>
       </div>
 
+      <!-- Automatización del flujo de reserva (auto/manual) -->
+      <div class="card p-6">
+        <h3 class="font-extrabold text-navy mb-1">Automatización ⚙️</h3>
+        <p class="text-xs text-text-muted mb-4">Acciones automáticas al confirmar / hacer check-in. Podés apagarlas y hacerlo manual cuando quieras.</p>
+        <div class="space-y-3">
+          <label class="flex items-center justify-between bg-surface rounded-xl p-3 cursor-pointer">
+            <span class="text-sm font-bold text-navy">Generar código de puerta al hacer check-in <span class="text-[11px] font-normal text-text-muted">(requiere TTLock conectado)</span></span>
+            <input type="checkbox" v-model="automation.autoLockCode" class="w-5 h-5 rounded text-cyan" />
+          </label>
+          <label class="flex items-center justify-between bg-surface rounded-xl p-3 cursor-pointer">
+            <span class="text-sm font-bold text-navy">Enviar requerimiento de pago al confirmar <span class="text-[11px] font-normal text-text-muted">(deuda técnica: hook backend)</span></span>
+            <input type="checkbox" v-model="automation.autoPaymentRequest" class="w-5 h-5 rounded text-cyan" />
+          </label>
+        </div>
+        <button @click="saveAutomation" :disabled="automationSaving" class="mt-4 px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+          {{ automationSaving ? 'Guardando…' : 'Guardar automatización' }}
+        </button>
+      </div>
+
       <div class="space-y-6">
         <div class="card p-6">
           <h3 class="font-extrabold text-navy mb-4">Plan</h3>
@@ -754,6 +773,28 @@ async function saveGuaranteePin() {
     toast.error((e as Error).message || 'No se pudo guardar el PIN')
   } finally {
     guaranteePinSaving.value = false
+  }
+}
+
+// Automatización del flujo de reserva (auto/manual): PIN de puerta al check-in y requerimiento de pago al confirmar.
+const automation = reactive({ autoLockCode: false, autoPaymentRequest: false })
+const automationSaving = ref(false)
+async function loadAutomation() {
+  try {
+    const c = await ConfigService.get('automation_config') as { autoLockCode?: boolean; autoPaymentRequest?: boolean } | null
+    if (c) { automation.autoLockCode = !!c.autoLockCode; automation.autoPaymentRequest = !!c.autoPaymentRequest }
+  } catch { /* default off */ }
+}
+onMounted(loadAutomation)
+async function saveAutomation() {
+  automationSaving.value = true
+  try {
+    await ConfigService.set('automation_config', { autoLockCode: automation.autoLockCode, autoPaymentRequest: automation.autoPaymentRequest })
+    toast.success('Automatización guardada')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo guardar')
+  } finally {
+    automationSaving.value = false
   }
 }
 

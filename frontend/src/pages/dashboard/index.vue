@@ -387,6 +387,7 @@ const modalHeaderClass = computed(() => {
     occupied: 'bg-coral/5',
     pending: 'bg-gold/5',
     cleaning: 'bg-cyan/5',
+    dirty: 'bg-coral/5',
     out_of_service: 'bg-gray-50',
   }
   return selectedRoom.value ? classes[selectedRoom.value.status] : ''
@@ -398,6 +399,7 @@ const modalIconClass = computed(() => {
     occupied: 'bg-coral/10 text-coral',
     pending: 'bg-gold/10 text-gold',
     cleaning: 'bg-cyan/10 text-cyan',
+    dirty: 'bg-coral/10 text-coral',
     out_of_service: 'bg-gray-100 text-gray-400',
   }
   return selectedRoom.value ? classes[selectedRoom.value.status] : ''
@@ -409,6 +411,7 @@ const modalStatusBadge = computed(() => {
     occupied: 'badge-danger',
     pending: 'badge-warning',
     cleaning: 'badge-info',
+    dirty: 'badge-danger',
     out_of_service: 'bg-gray-100 text-gray-500',
   }
   return selectedRoom.value ? classes[selectedRoom.value.status] : ''
@@ -420,6 +423,7 @@ const modalStatusLabel = computed(() => {
     occupied: 'Ocupada',
     pending: 'Pendiente',
     cleaning: 'En limpieza',
+    dirty: 'Sucia',
     out_of_service: 'Fuera de servicio',
   }
   return selectedRoom.value ? labels[selectedRoom.value.status] : ''
@@ -431,6 +435,7 @@ function roomStatusClass(status: RoomStatus) {
     occupied: 'bg-coral/10 border-coral/30 text-coral hover:bg-coral/20',
     pending: 'bg-gold/10 border-gold/30 text-gold hover:bg-gold/20',
     cleaning: 'bg-cyan/10 border-cyan/30 text-cyan hover:bg-cyan/20',
+    dirty: 'bg-coral/10 border-coral/30 text-coral hover:bg-coral/20',
     out_of_service: 'bg-gray-100 border-gray-300 text-gray-400',
   }
   return classes[status]
@@ -442,6 +447,7 @@ function roomStatusIcon(status: RoomStatus) {
     occupied: '●',
     pending: '⏳',
     cleaning: '🧹',
+    dirty: '🧽',
     out_of_service: '✕',
   }
   return icons[status]

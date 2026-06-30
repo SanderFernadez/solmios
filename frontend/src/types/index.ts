@@ -12,7 +12,7 @@ export interface Hotel {
 
 // === ROOM ===
 export type RoomType = 'single' | 'double' | 'suite' | 'villa' | 'dorm' | 'family'
-export type RoomStatus = 'available' | 'occupied' | 'pending' | 'cleaning' | 'out_of_service'
+export type RoomStatus = 'available' | 'occupied' | 'pending' | 'cleaning' | 'dirty' | 'out_of_service'
 
 export interface Room {
   id: string
@@ -194,6 +194,15 @@ export interface GuaranteeCardData {
   cardExpYear: string
 }
 
+// === AUDIT LOG (historial de cambios de una reserva) ===
+export interface AuditLogEntry {
+  id: string
+  action: string
+  performedBy?: string | null
+  details?: string | null
+  createdAt?: string
+}
+
 export interface ReservationDetail {
   id: string
   hotelId: string
@@ -307,7 +316,7 @@ export interface DashboardStats {
   revpar: number
 }
 
-// === USER ===
+ // === USER ===
 export type UserRole = 'super_admin' | 'hotel_admin' | 'receptionist'
 
 export interface User {
@@ -322,4 +331,45 @@ export interface User {
   plan?: string
   rooms?: number
   permissions?: string[]
+}
+
+// === CHECKIN ===
+export interface CheckinRoom {
+  id: string
+  number: string
+  type: string
+  status: RoomStatus
+  basePrice: number
+  floor: number
+  capacity: number
+  bathrooms: number
+  surfaceArea: number
+  guestName: string | null
+  channel: string | null
+  checkIn: string | null
+  checkOut: string | null
+  checkDates: string
+  guestEmail: string | null
+  resId: string | null
+}
+
+export interface CheckinGuest {
+  id: string
+  guestName: string
+  guestEmail: string
+  initials: string
+  roomNumber: string
+  roomId: string
+  checkIn: string
+  checkOut: string
+  nights: number
+  status: string
+  channel: string
+  channelLabel: string
+  channelColor: string
+  totalAmount: number
+  adults: number
+  children: number
+  checkedIn: boolean
+  checkedOut: boolean
 }

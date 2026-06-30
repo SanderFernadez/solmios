@@ -2,7 +2,10 @@
   <div>
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-black text-navy">Reservas</h2>
-      <button @click="openNew" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg cursor-pointer">+ Nueva Reserva</button>
+      <div class="flex gap-2">
+        <button @click="exportCSV" class="bg-white border border-border text-navy font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-surface cursor-pointer">⬇ CSV</button>
+        <button @click="openNew" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg cursor-pointer">+ Nueva Reserva</button>
+      </div>
     </div>
 
     <!-- Stats -->
@@ -54,7 +57,8 @@
             <td class="p-4 text-right text-sm font-extrabold text-navy">${{ r.total }}</td>
             <td class="p-4 text-right" @click.stop>
               <button v-if="r.status==='confirmed'" @click="confirmAction('checkin',r)" class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold cursor-pointer hover:bg-teal/20 mr-1">Check-in</button>
-              <button v-if="r.status==='pending'||r.status==='confirmed'" @click="confirmAction('cancel',r)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20">Cancelar</button>
+              <button v-if="r.status==='pending'||r.status==='confirmed'" @click="confirmAction('cancel',r)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20 mr-1">Cancelar</button>
+              <button v-if="r.status==='pending'||r.status==='cancelled'" @click="confirmAction('delete',r)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20">Eliminar</button>
             </td>
           </tr>
         </tbody>
@@ -96,6 +100,20 @@
                     <h4 class="text-sm font-black text-navy">Datos del Cliente</h4>
                   </div>
                   <div class="space-y-3">
+                    <!-- Buscador de huésped existente (evita duplicar) -->
+                    <div class="bg-teal/5 border border-teal/20 rounded-lg p-3">
+                      <label class="block text-[11px] font-bold text-teal mb-1">🔎 Buscar huésped existente</label>
+                      <div class="relative">
+                        <input :value="guestSearch" @input="onGuestSearchInput" type="text" placeholder="Nombre, documento o email…" class="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" @blur="blurGuestSearch" />
+                        <ul v-if="guestSearchOpen && guestResults.length" class="absolute z-40 mt-1 w-full max-h-48 overflow-auto bg-white border border-border rounded-lg shadow-lg">
+                          <li v-for="g in guestResults" :key="g.id" @mousedown.prevent="selectGuest(g)" class="px-3 py-2 text-sm cursor-pointer hover:bg-teal/10">
+                            <div class="font-bold text-navy">{{ g.name || (g.firstName + ' ' + g.lastName).trim() }}</div>
+                            <div class="text-[11px] text-text-muted">{{ g.documentNumber || 'Sin documento' }} · {{ g.email || g.phone || 'Sin contacto' }}</div>
+                          </li>
+                        </ul>
+                      </div>
+                      <p v-if="selectedGuestId" class="text-[11px] text-teal mt-1 font-semibold">✓ Huésped existente: se reutiliza (no se crea uno nuevo)</p>
+                    </div>
                     <!-- Nombre + Apellidos -->
                     <div class="grid grid-cols-2 gap-3">
                       <div>
@@ -245,6 +263,24 @@
                       <label class="block text-[11px] font-bold text-text-secondary mb-1">Locator OTA</label>
                       <input v-model="form.extLocator" type="text" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white" />
                     </div>
+                  </div>
+                </div>
+
+                <!-- ── Acompañantes (companions) ── -->
+                <div class="bg-surface rounded-xl p-4">
+                  <div class="flex items-center gap-2 mb-3 pb-2 border-b border-border/50">
+                    <span class="text-sm">👥</span>
+                    <h4 class="text-sm font-black text-navy">Acompañantes</h4>
+                    <button type="button" @click="addCompanion" class="ml-auto text-[11px] font-bold text-cyan hover:underline cursor-pointer">+ agregar</button>
+                  </div>
+                  <p v-if="!form.companions.length" class="text-[11px] text-text-muted italic">Sin acompañantes adicionales</p>
+                  <div v-for="(c, i) in form.companions" :key="i" class="grid grid-cols-12 gap-2 mb-2 items-center">
+                    <input v-model="c.name" type="text" placeholder="Nombre completo" class="col-span-5 px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
+                    <select v-model="c.docType" class="col-span-3 px-2 py-2 rounded-lg border border-border text-xs bg-white cursor-pointer">
+                      <option value="dni">DNI</option><option value="passport">Pasaporte</option><option value="other">Otro</option>
+                    </select>
+                    <input v-model="c.doc" type="text" placeholder="N° documento" class="col-span-3 px-2 py-2 rounded-lg border border-border text-xs bg-white" />
+                    <button type="button" @click="removeCompanion(i)" class="col-span-1 text-coral hover:bg-coral/10 rounded-lg text-sm cursor-pointer">✕</button>
                   </div>
                 </div>
               </div>
@@ -475,6 +511,7 @@ import { ReservationService } from '@/services/Reservation.service'
 import { CompanionsService } from '@/services/Companions.service'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
+import type { Guest } from '@/types'
 import { PaymentsService } from '@/services/Payments.service'
 import { TTLockService } from '@/services/TTLock.service'
 import { useAuthStore } from '@/stores/auth.store'
@@ -674,7 +711,7 @@ async function load() {
         total: r.totalAmount, adults: r.adults, children: r.children, notes: r.notes || '',
       }
     })
-  } catch (e) { console.error('[reservations/load]', e) }
+  } catch (e: any) { console.error('[reservations/load]', e); toast.error('No se pudieron cargar las reservas') }
 }
 
 function nBetween(a?: string, b?: string): number {
@@ -700,6 +737,10 @@ function resetForm() {
     status: 'pending', notes: '', autoSendEnabled: true, companions: [],
   }
   existingGuarantee.value = false
+  selectedGuestId.value = null
+  guestSearch.value = ''
+  guestResults.value = []
+  guestSearchOpen.value = false
 }
 
 function openNew() {
@@ -775,7 +816,7 @@ async function openEdit(r: any) {
     }))
     // Lock
     if (ext.lockCodes?.length) lockCode.value = ext.lockCodes[0].code || ''
-  } catch { /* silencioso */ }
+  } catch (e: any) { console.warn('[reservations/openEdit]', e); toast.info('Algunos datos de la reserva no se pudieron cargar') }
 
   modal.value = { show: true, edit: true }
 }
@@ -792,6 +833,69 @@ function onEditDetail() {
 }
 
 // ── Save ──
+// Buscador de huésped existente: evita duplicar huéspedes al crear reserva.
+const guestSearch = ref('')
+const guestResults = ref<Guest[]>([])
+const guestSearchOpen = ref(false)
+const selectedGuestId = ref<string | null>(null)
+let guestSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+async function onGuestSearchInput(e: Event) {
+  guestSearch.value = (e.target as HTMLInputElement).value
+  selectedGuestId.value = null
+  if (guestSearchTimer) clearTimeout(guestSearchTimer)
+  const q = guestSearch.value.trim()
+  if (q.length < 2) { guestResults.value = []; guestSearchOpen.value = false; return }
+  guestSearchTimer = setTimeout(async () => {
+    try {
+      const { GuestService } = await import('@/services/Guest.service')
+      const r = await GuestService.list({ hotelId: hid.value!, search: q })
+      guestResults.value = r.guests.slice(0, 8)
+      guestSearchOpen.value = true
+    } catch {
+      guestResults.value = []
+      guestSearchOpen.value = false
+    }
+  }, 300)
+}
+
+function selectGuest(g: Guest) {
+  selectedGuestId.value = g.id
+  guestSearch.value = g.name || `${g.firstName} ${g.lastName}`.trim()
+  guestSearchOpen.value = false
+  const f = form.value
+  f.firstName = g.firstName || ''
+  f.lastName = g.lastName || ''
+  f.email = g.email || ''
+  f.phone = g.phone || ''
+  f.docType = g.documentType || 'dni'
+  f.documentNumber = g.documentNumber || ''
+  f.documentIssueDate = g.documentIssueDate || ''
+  f.nationality = g.nationality || 'Dominicana'
+  f.country = g.country || g.nationality || 'República Dominicana'
+  f.language = g.language || 'Español'
+  f.sex = g.sex || ''
+  f.dateOfBirth = g.dateOfBirth || ''
+  f.address = g.address || ''
+  f.city = g.city || ''
+  f.province = g.province || ''
+  f.ownerNotes = g.observations || ''
+  f.communicateClient = (g.communicateClient as string) || 'none'
+}
+
+function blurGuestSearch() {
+  setTimeout(() => { guestSearchOpen.value = false }, 150)
+}
+
+// Acompañantes (companions): alta/edición inline en el form. La sync con el backend
+// ya existe en save() (create/update/delete diff) — estas funciones solo manejan la UI.
+function addCompanion() {
+  form.value.companions.push({ name: '', doc: '', docType: 'passport', nationality: form.value.nationality || '' })
+}
+function removeCompanion(i: number) {
+  form.value.companions.splice(i, 1)
+}
+
 async function save() {
   err.value = ''
   // Validación de campos obligatorios (igual que MisterPlan): nombre, apellido, habitación,
@@ -804,6 +908,7 @@ async function save() {
   if (!form.value.checkOut) missing.push('check-out')
   else if (form.value.checkIn && form.value.checkOut <= form.value.checkIn) missing.push('el check-out debe ser posterior al check-in')
   if (!form.value.email?.trim() && !form.value.phone?.trim()) missing.push('email o teléfono')
+  else if (form.value.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email.trim())) missing.push('email con formato válido')
   if (missing.length) {
     err.value = 'Completá los campos obligatorios: ' + missing.join(', ') + '.'
     return
@@ -842,6 +947,10 @@ async function save() {
           await GuestService.update(existing.guestId, guestPayload)
           guestId = existing.guestId
         }
+      } else if (selectedGuestId.value) {
+        // Huésped existente seleccionado del buscador: reutilizar (no crear nuevo).
+        await GuestService.update(selectedGuestId.value, guestPayload)
+        guestId = selectedGuestId.value
       } else {
         // Crear nuevo guest
         const newGuest = await GuestService.create({ hotelId: hid.value!, ...guestPayload })
@@ -939,20 +1048,46 @@ async function createPaymentRequest() {
 
 function confirmAction(type: string, r: any) {
   if (type === 'checkin') { cfg.value = { show: true, icon: '🛎️', title: '¿Check-in?', msg: `${r.guestName} — Hab. ${r.roomNumber} — ${r.checkIn}`, btn: 'bg-teal', fn: () => doCheckin(r) } }
+  else if (type === 'delete') { cfg.value = { show: true, icon: '🗑️', title: '¿Eliminar reserva?', msg: `${r.guestName} — Hab. ${r.roomNumber} — esta acción no se puede deshacer`, btn: 'bg-coral', fn: () => doDelete(r) } }
   else { cfg.value = { show: true, icon: '⚠️', title: '¿Cancelar?', msg: `${r.guestName} — Hab. ${r.roomNumber} — $${r.total}`, btn: 'bg-coral', fn: () => doCancel(r) } }
 }
 
 async function doCheckin(r: any) {
   try {
-    await ReservationService.update(r.id, { status: 'checked_in' } as any)
+    // Check-in real: abre el folio de la reserva + marca checked_in + habitación occupied.
+    // NO usar update({status:'checked_in'}) — eso NO abriría el folio y rompería el cobro posterior.
+    const res = await ReservationService.checkin(r.id)
     await load()
-    toast.success('Check-in realizado')
+    const folioTag = res?.folioId ? ` · Folio ${String(res.folioId).slice(0, 8)}` : ''
+    toast.success(`Check-in realizado${folioTag}`)
     // Toast de notificación de email de bienvenida (spec 11.1.1).
     if (r.email) toast.info(`Email de bienvenida enviado a ${r.email}`)
     else toast.info('Sin email registrado')
-  } catch { toast.error('Error') }
+  } catch (e: any) { toast.error(e.message || 'Error en check-in') }
 }
 async function doCancel(r: any) { try { await ReservationService.update(r.id, { status: 'cancelled' } as any); await load(); toast.success('Cancelada') } catch { toast.error('Error') } }
+
+async function doDelete(r: any) {
+  try { await ReservationService.remove(r.id); await load(); toast.success('Reserva eliminada') }
+  catch (e: any) { toast.error(e.message || 'Error al eliminar') }
+}
+
+// Export CSV de las reservas filtradas (BOM UTF-8 → Excel respeta tildes).
+function exportCSV() {
+  const head = ['Huésped', 'Email', 'Hab', 'CheckIn', 'CheckOut', 'Noches', 'Estado', 'Canal', 'Total']
+  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
+  const lines = [head.join(','), ...filtered.value.map((r: any) =>
+    [r.guestName, r.email, r.roomNumber, r.checkIn, r.checkOut, r.nights, r.status, r.source, r.total].map(esc).join(','),
+  )]
+  const csv = '﻿' + lines.join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `reservas-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 function sendPayLink(ch: string) {
   const g = `${form.value.firstName} ${form.value.lastName}`.trim()

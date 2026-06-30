@@ -14,7 +14,7 @@ import { AddonsService } from '@/services/Addons.service'
 import { ConfigService } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
 import { nationalityToFlag, languageToFlag } from '@/composables/useCountryFlag'
-import type { ReservationDetail, ReservationDetailAddon, CurrencyConfig, GuaranteeCardData } from '@/types'
+import type { ReservationDetail, ReservationDetailAddon, CurrencyConfig, GuaranteeCardData, AuditLogEntry } from '@/types'
 
 const props = defineProps<{ reservationId: string }>()
 const emit = defineEmits<{
@@ -38,6 +38,7 @@ const otherChargesDraft = ref('0')
 const currency = ref<CurrencyConfig | null>(null)
 const waTemplates = ref<{ id?: string; title?: string; channel?: string; whatsappBody?: string | null }[]>([])
 const addons = ref<ReservationDetailAddon[]>([])
+const auditLogs = ref<AuditLogEntry[]>([])
 const newAddon = ref({ description: '', amount: 0, kind: 'service' as 'service' | 'discount' })
 const folioCharges = ref<{ description?: string; amount?: number; kind?: string }[] | null>(null)
 type PrintMode = 'detail' | 'voucherLodging' | 'voucherClient'
@@ -92,6 +93,7 @@ async function load() {
       AutoMessagesService.list().then((r) => {
         waTemplates.value = (r.data || []).filter((m) => m.channel === 'whatsapp' || m.channel === 'both')
       }).catch(() => {}),
+      ReservationService.getAudit(props.reservationId).then((r) => { auditLogs.value = r.data || [] }).catch(() => {}),
     ]).catch(() => {})
   } catch (e) {
     toast.error((e as Error).message || 'No se pudo cargar la reserva')
@@ -99,6 +101,20 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+// D7 — Historial (audit trail): etiquetas legibles + formato de fecha.
+function auditLabel(action: string): string {
+  const m: Record<string, string> = {
+    create: '📝 Reserva creada', update: '✏️ Actualizada', delete: '🗑️ Eliminada',
+    checkin: '🛎️ Check-in', checkout: '🚪 Check-out', no_show: '⏰ No-show',
+  }
+  return m[action] || action
+}
+function fmtAuditDate(iso?: string | null): string {
+  if (!iso) return '—'
+  const dt = new Date(iso)
+  return isNaN(dt.getTime()) ? '—' : dt.toLocaleString('es', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 watch(() => props.reservationId, (id) => { if (id) load() }, { immediate: true })
@@ -616,6 +632,21 @@ function editar() { if (d.value) emit('edit', d.value) }
                       <div class="text-xl font-black text-teal tracking-wider">{{ lc.code || '—' }}</div>
                     </div>
                     <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lc.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ lc.status }}</span>
+                  </div>
+                </div>
+              </details>
+
+              <!-- Historial de cambios (D7 audit trail) -->
+              <details class="bg-surface border border-border rounded-xl overflow-hidden">
+                <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
+                  <span class="w-6 h-6 rounded-lg bg-navy/10 flex items-center justify-center text-xs">🕘</span> Historial
+                  <span class="ml-auto text-text-muted text-xs">▾</span>
+                </summary>
+                <div class="px-4 pb-4 pt-1 space-y-1">
+                  <p v-if="!auditLogs.length" class="text-xs text-text-muted italic">Sin eventos registrados</p>
+                  <div v-for="l in auditLogs" :key="l.id" class="text-xs flex justify-between gap-2 py-1 border-b border-border/40 last:border-0">
+                    <span class="font-bold text-navy">{{ auditLabel(l.action) }}</span>
+                    <span class="text-text-muted whitespace-nowrap">{{ fmtAuditDate(l.createdAt) }}</span>
                   </div>
                 </div>
               </details>

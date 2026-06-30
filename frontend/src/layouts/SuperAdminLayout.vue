@@ -31,6 +31,11 @@
         </router-link>
       </nav>
 
+      <!-- PC-2 Multi-property: Hotel Switcher (contexto de hotel activo para super_admin) -->
+      <div class="border-t border-white/10 py-2 px-3">
+        <HotelSwitcher />
+      </div>
+
       <!-- Platform Status -->
       <div class="p-4 border-t border-white/10">
         <div class="bg-white/5 rounded-xl p-3 mb-3">
@@ -99,6 +104,7 @@ import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { http } from '@/services/http'
+import HotelSwitcher from '@/components/features/core-pms/HotelSwitcher.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -1,5 +1,3 @@
-import { useAuthStore } from '@/stores/auth.store'
-
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {

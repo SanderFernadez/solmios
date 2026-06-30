@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Reservation, ReservationStatus, ReservationSource, ReservationDetail, GuaranteeCardData } from '@/types'
+import type { Reservation, ReservationStatus, ReservationSource, ReservationDetail, GuaranteeCardData, AuditLogEntry } from '@/types'
 
 interface RawReservation {
   id: string
@@ -75,10 +75,11 @@ interface ReservationsResponse {
 }
 
 export const ReservationService = {
-  async list(params?: { hotelId?: string; status?: string }): Promise<{ reservations: Reservation[]; total: number }> {
+  async list(params?: { hotelId?: string; status?: string; limit?: number }): Promise<{ reservations: Reservation[]; total: number }> {
     const qs = new URLSearchParams()
     if (params?.hotelId) qs.set('hotelId', params.hotelId)
     if (params?.status) qs.set('status', params.status)
+    if (params?.limit) qs.set('limit', String(params.limit))
     const query = qs.toString()
     const data = await http.get<ReservationsResponse>(`/reservas${query ? `?${query}` : ''}`)
     return { reservations: data.data.map(mapReservation), total: data.total }
@@ -121,7 +122,12 @@ export const ReservationService = {
     return mapReservation(data)
   },
 
-  /** Detalle extendido: reserva + guest + room + companions + lockCodes + payments + messageLogs. */
+  /**
+   * Detalle extendido: reserva + guest + room + companions + lockCodes + payments + messageLogs.
+   * Usa /reservations/:id (handler enriquecido en composition-root) — DISTINTO del CRUD del módulo
+   * (/reservas). No es inconsistencia: son dos endpoints con propósito distinto — list/create/update
+   * usan el módulo estándar; el detalle usa el handler con joins cross-module.
+   */
   async getById(id: string): Promise<ReservationDetail> {
     return http.get<ReservationDetail>(`/reservations/${id}`)
   },
@@ -129,6 +135,11 @@ export const ReservationService = {
   /** Tarjeta de garantía: revela los datos parciales tras validar el PIN del hotel (MisterPlan). */
   async unlockGuaranteeCard(id: string, pin: string): Promise<GuaranteeCardData> {
     return http.post<GuaranteeCardData>(`/reservations/${id}/guarantee-card/unlock`, { pin })
+  },
+
+  /** Historial de cambios (audit trail) de una reserva. */
+  async getAudit(id: string): Promise<{ data: AuditLogEntry[] }> {
+    return http.get<{ data: AuditLogEntry[] }>(`/reservations/${id}/audit`)
   },
 
   /** Check-in real: reserva → checked_in + habitación occupied + folio abierto + huésped. */
@@ -140,5 +151,10 @@ export const ReservationService = {
   /** Check-out real: reserva → checked_out + habitación cleaning + tarea de limpieza. */
   async checkout(id: string): Promise<void> {
     await http.post(`/reservas/${id}/checkout`, {})
+  },
+
+  /** Elimina una reserva (la UI lo limita a pendientes/canceladas). */
+  async remove(id: string): Promise<void> {
+    await http.delete(`/reservas/${id}`)
   },
 }
