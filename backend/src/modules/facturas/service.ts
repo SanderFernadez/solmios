@@ -5,17 +5,20 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { FacturasDTO, CreateFacturasDTO, UpdateFacturasDTO, PayFacturasDTO, FacturasQuery, FacturasListResult, CurrentUser, FacturasStats } from './types'
 import type { FacturasSockets } from './sockets'
-import { taxRateFor, applyTax, buildInvoiceRecord, enrichInvoice, assertOwnership, type EnrichDeps } from './usecases/billing'
+import { taxRateFor, applyTax, buildInvoiceRecord, enrichInvoice, assertOwnership, hotelFilterFor, type EnrichDeps } from './usecases/billing'
 import { nextInvoiceNumber } from './usecases/invoice-number'
-import { getFacturasStats } from './usecases/stats'
+import { getStatsForUser } from './usecases/stats'
 import { createPaymentRecord } from './usecases/payment-record'
 import { generateCreditNote, type CreditNoteResult } from './usecases/credit-note'
 import { generateTaxReport, type TaxReport } from './usecases/tax-report'
-import { persistItems, attachItems } from './usecases/invoice-items'
+import { persistItems, attachItems, assertItemsSum, deleteItems } from './usecases/invoice-items'
+import { sendInvoiceByEmail, type InvoiceEmailPort, type EmailInvoiceResult } from './usecases/email-invoice'
 
 export class FacturasService {
   private sockets: FacturasSockets = {}
   private readonly enrichDeps: EnrichDeps
+  private emailPort: InvoiceEmailPort | null = null
+  private hotelRepo: RepositoryAdapter<any> | null = null
 
   constructor(
     private readonly repo: RepositoryAdapter<FacturasDTO>,
@@ -30,11 +33,6 @@ export class FacturasService {
     this.enrichDeps = deps
   }
 
-  private hotelFilter(user: CurrentUser): Record<string, unknown> {
-    if (user.role !== 'super_admin' && user.hotelId) return { hotelId: user.hotelId }
-    return {}
-  }
-
   setSockets(s: Partial<FacturasSockets>): void {
     const cur = this.sockets as Record<string, any>
     for (const [k, h] of Object.entries(s as Record<string, any>)) {
@@ -44,7 +42,11 @@ export class FacturasService {
     }
   }
 
-  // ─── Lectura ──────────────────────────────────────────────────
+  setEmailDeps(emailPort: InvoiceEmailPort, hotelRepo: RepositoryAdapter<any>): void {
+    this.emailPort = emailPort
+    this.hotelRepo = hotelRepo
+  }
+
   async list(query?: FacturasQuery, user?: CurrentUser): Promise<FacturasListResult> {
     this.logger.info('Listando facturas', { query })
     const filters: Record<string, unknown> = {}
@@ -90,7 +92,6 @@ export class FacturasService {
     return attachItems(this.itemRepo,await enrichInvoice(item, this.enrichDeps))
   }
 
-  // ─── Emisión ──────────────────────────────────────────────────
   async create(dto: CreateFacturasDTO, user: CurrentUser): Promise<FacturasDTO> {
     const hotelId = dto.hotelId ?? user.hotelId ?? ''
     this.logger.info('Creando factura/cargo/pago', { type: dto.type, hotelId })
@@ -109,12 +110,10 @@ export class FacturasService {
       invoiceNumber = `${prefix}-${Date.now()}`
     }
 
+    if (dto.items?.length) assertItemsSum(dto.items, base)
     const record = buildInvoiceRecord({ hotelId, type, taxes, amount, invoiceNumber, ncf: ncf ?? null, dto })
-
     const item = await this.repo.create(record as any)
-    if (Array.isArray(dto.items) && dto.items.length) {
-      await persistItems(this.itemRepo, item.id, hotelId, dto.items)
-    }
+    if (dto.items?.length) await persistItems(this.itemRepo, item.id, hotelId, dto.items)
     await this.sockets.onFacturasCreated?.(item)
     await this.cache.delete('facturas:list:' + (item.hotelId || 'all'))
     return attachItems(this.itemRepo,await enrichInvoice(item, this.enrichDeps))
@@ -132,7 +131,6 @@ export class FacturasService {
     return enrichInvoice(item, this.enrichDeps)
   }
 
-  // ─── Aplicar pago a una factura ───────────────────────────────
   async pay(id: string, dto: PayFacturasDTO, user: CurrentUser): Promise<FacturasDTO> {
     this.logger.info('Aplicando pago a factura', { id, method: dto.method })
     const inv = await this.repo.findById(id)
@@ -164,13 +162,13 @@ export class FacturasService {
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Factura no encontrada')
     await assertOwnership(this.userRepo, this.auth,existing.hotelId, user.id, user.role)
+    await deleteItems(this.itemRepo, id)
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Factura no encontrada')
     await this.sockets.onFacturasDeleted?.(id)
     await this.cache.delete('facturas:list:' + (existing.hotelId || 'all'))
   }
 
-  // ─── Nota de crédito ─────────────────────────────────────
   async creditNote(id: string, reason: string, user: CurrentUser): Promise<CreditNoteResult> {
     this.logger.info('Generando nota de crédito', { id })
     const inv = await this.repo.findById(id)
@@ -183,16 +181,19 @@ export class FacturasService {
     return result
   }
 
-  // ─── Stats ─────────────────────────────────────────────
   async getStats(user: CurrentUser): Promise<FacturasStats> {
-    const cacheKey = `facturas:stats:${user.hotelId || 'all'}`
-    const cached = await this.cache.get(cacheKey)
-    if (cached) return cached as FacturasStats
-    const stats = await getFacturasStats(this.repo, this.hotelFilter(user))
-    await this.cache.set(cacheKey, stats, 120)
-    return stats
+    return getStatsForUser(this.repo, this.cache, user)
   }
   async taxReport(user: CurrentUser, from?: string, to?: string): Promise<TaxReport> {
-    return generateTaxReport(this.repo, this.hotelFilter(user), from, to)
+    return generateTaxReport(this.repo, hotelFilterFor(user), from, to)
+  }
+
+  async emailInvoice(id: string, to: string, user: CurrentUser): Promise<EmailInvoiceResult> {
+    if (!this.emailPort) throw new NotFoundError('Servicio de email no configurado')
+    const invoice = await this.getById(id, user)
+    if (!(await this.emailPort.isConfigured(invoice.hotelId))) {
+      return { sent: false, to, subject: '', messageId: '', configured: false }
+    }
+    return sendInvoiceByEmail({ invoice, to, hotelRepo: this.hotelRepo ?? undefined, emailPort: this.emailPort })
   }
 }

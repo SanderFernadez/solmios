@@ -1824,6 +1824,10 @@ const reservasForEmail = system.resolveModule<{ setEmailDeps(es: EmailSender, r:
 if (reservasForEmail && typeof reservasForEmail.setEmailDeps === 'function') {
   reservasForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'MessageLogs'))
 }
+const facturasForEmail = system.resolveModule<{ setEmailDeps(ep: any, hr: any): void }>('facturas')
+if (facturasForEmail && typeof facturasForEmail.setEmailDeps === 'function') {
+  facturasForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Hotels'))
+}
 
 // ── Auto PaymentRequest al crear reserva (toggle Settings > Automatización > autoPaymentRequest) ──
 // Cross-module vía socket onReservasCreated: el módulo reservas NO importa PaymentRequests (regla

@@ -153,6 +153,11 @@ export class EmailService implements EmailSender {
     })
   }
 
+  /** ¿El hotel tiene SMTP o Resend configurado? Pre-validación antes de encolar (no prometer envío sin config). */
+  async isConfigured(hotelId: string): Promise<boolean> {
+    return !!(await this.resolveSmtpConfig(hotelId)) || !!(await this.resolveResendKey(hotelId))
+  }
+
   /**
    * Worker de la cola. Toma filas `pending` vencidas y las envía.
    * Reentrante-safe (guard `processing`). Una sola fila por proceso a la vez.

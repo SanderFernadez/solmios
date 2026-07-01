@@ -20,6 +20,7 @@
     "@whiskeysockets/baileys": "^7.0.0-rc13",
     "arckode-framework": "^1.4.3",
     "nodemailer": "^9.0.1",
+    "puppeteer": "^25.3.0",
     "resend": "^6.16.0",
     "stripe": "^22.2.2",
     "ws": "^8.21.0",

@@ -6,8 +6,9 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { FacturasService } from './service'
-import { CreateFacturasSchema, UpdateFacturasSchema, PayFacturasSchema, CreditNoteSchema } from './validators/schema'
+import { CreateFacturasSchema, UpdateFacturasSchema, PayFacturasSchema, CreditNoteSchema, EmailInvoiceSchema } from './validators/schema'
 import { renderInvoiceHtml } from './usecases/invoice-template'
+import { htmlToPdf, checkPdfRateLimit } from './usecases/pdf'
 
 export class FacturasController {
   constructor(
@@ -73,6 +74,32 @@ export class FacturasController {
     return { status: 200, body: html, headers: { 'content-type': 'text/html; charset=utf-8' } }
   }
 
+  async pdf(req: HttpRequest) {
+    this.logger.info('GET /facturas/:id/pdf', { id: req.params.id })
+    // Rate limit por IP: puppeteer lanza un chromium por request — prevenir abuso/DoS.
+    const rawIp = (req.headers?.['x-forwarded-for'] as string) || (req.headers?.['x-real-ip'] as string) || 'unknown'
+    const ip = rawIp.split(',')[0].trim()
+    if (!checkPdfRateLimit(ip)) {
+      return { status: 429, body: { error: 'Demasiadas generaciones de PDF. Intente nuevamente en un minuto.' } }
+    }
+    const invoice = await this.service.getById(req.params.id, req.user as any)
+    let hotelName = 'Hotel'
+    if (this.hotelRepo && invoice.hotelId) {
+      const hotel = await this.hotelRepo.findById(invoice.hotelId)
+      if (hotel?.name) hotelName = hotel.name
+    }
+    const html = renderInvoiceHtml({ invoice, hotelName })
+    const pdfBuffer = await htmlToPdf(html)
+    return {
+      status: 200,
+      body: pdfBuffer,
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': `inline; filename="${invoice.invoiceNumber}.pdf"`,
+      },
+    }
+  }
+
   async creditNote(req: HttpRequest) {
     this.logger.info('POST /facturas/:id/credit-note', { id: req.params.id })
     const data = validateSchema(CreditNoteSchema, req.body) as { reason: string }
@@ -84,6 +111,16 @@ export class FacturasController {
     this.logger.info('GET /facturas/tax-report')
     const { from, to } = (req.query ?? {}) as { from?: string; to?: string }
     const result = await this.service.taxReport(req.user as any, from, to)
+    return { status: 200, body: result }
+  }
+
+  async email(req: HttpRequest) {
+    this.logger.info('POST /facturas/:id/email', { id: req.params.id })
+    const { to } = validateSchema(EmailInvoiceSchema, req.body) as { to: string }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return { status: 400, body: { error: 'Email del destinatario inválido' } }
+    }
+    const result = await this.service.emailInvoice(req.params.id, to, req.user as any)
     return { status: 200, body: result }
   }
 }

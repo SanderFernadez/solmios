@@ -46,3 +46,17 @@ export async function attachItems(
     return invoice
   }
 }
+
+/** Consistencia financiera: la suma de items debe coincidir con el monto base (tolerancia 1 por redondeo). */
+export function assertItemsSum(items: InvoiceItem[], base: number): void {
+  const sum = items.reduce((s, it) => s + (Number(it.amount) || 0), 0)
+  if (Math.abs(sum - base) > 1) {
+    throw new Error(`Inconsistencia financiera: el monto (${base}) no coincide con la suma de los items (${sum})`)
+  }
+}
+
+/** Borra las líneas de una factura (cascade manual — el FK de invoice_items no tiene ON DELETE CASCADE). */
+export async function deleteItems(itemRepo: RepositoryAdapter<any>, invoiceId: string): Promise<void> {
+  const rows = await itemRepo.findMany({ invoiceId })
+  await Promise.all((rows as any[]).map((r) => itemRepo.delete(r.id)))
+}

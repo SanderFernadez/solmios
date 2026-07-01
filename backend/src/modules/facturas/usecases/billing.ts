@@ -107,3 +107,9 @@ export async function assertOwnership(
   const me = await userRepo.findById(userId)
   auth.assertOwnership(resourceHotelId, me?.hotelId ?? '', role, 'super_admin')
 }
+
+/** Filtro multi-tenant: hotel_admin ve solo su hotel, super_admin ve todo. */
+export function hotelFilterFor(user: { role?: string; hotelId?: string | null }): Record<string, unknown> {
+  if (user.role !== 'super_admin' && user.hotelId) return { hotelId: user.hotelId }
+  return {}
+}

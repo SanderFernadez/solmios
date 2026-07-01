@@ -336,6 +336,12 @@
               <button @click="printInvoice" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
                 🖨️ Imprimir
               </button>
+              <button @click="emailInvoice" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
+                ✉️ Enviar email
+              </button>
+              <a :href="`/api/facturas/${viewInvoice.id}/pdf`" target="_blank" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
+                📄 PDF
+              </a>
               <button v-if="viewInvoice.status === 'pending' || viewInvoice.balance > 0" @click="closeViewModal(); openRecordPayment(viewInvoice)" class="flex-1 px-4 py-2.5 bg-teal text-white rounded-xl text-sm font-bold hover:bg-teal-light transition-colors cursor-pointer">
                 Registrar Pago
               </button>
@@ -779,6 +785,16 @@ async function printInvoice() {
       }
     }
   } catch { toast.error('Error al generar impresión') }
+}
+
+async function emailInvoice() {
+  if (!viewInvoice.value) return
+  const to = window.prompt('Email del destinatario:', '')
+  if (!to) return
+  try {
+    await BillingService.emailInvoice(viewInvoice.value.id, to)
+    toast.success(`Factura enviada a ${to}`)
+  } catch { toast.error('Error al enviar la factura') }
 }
 
 function openNewPayment() {

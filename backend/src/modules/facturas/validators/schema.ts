@@ -51,9 +51,14 @@ export const CreditNoteSchema: Record<string, ValidationRule> = {
   amount: { type: 'number' as const, min: 0.01 },
 }
 
+export const EmailInvoiceSchema: Record<string, ValidationRule> = {
+  to: { type: 'string' as const, required: true, max: 200 },
+}
+
 export const FacturasValidator = {
   create: CreateFacturasSchema,
   update: UpdateFacturasSchema,
   pay: PayFacturasSchema,
   creditNote: CreditNoteSchema,
+  email: EmailInvoiceSchema,
 }

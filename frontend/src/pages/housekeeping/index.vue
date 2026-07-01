@@ -140,6 +140,24 @@
 
     <!-- List View -->
     <div v-else class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+      <!-- Search & Controls -->
+      <div class="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <input v-model="listSearch" type="text" placeholder="Buscar habitación, tipo, empleado..." class="pl-9 pr-4 py-2 rounded-xl border border-border text-sm w-64 focus:outline-none focus:border-navy" />
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">🔍</span>
+          </div>
+          <select v-model="listPageSize" class="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+            <option :value="10">10 por página</option>
+            <option :value="20">20 por página</option>
+            <option :value="50">50 por página</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-3">
+          <button @click="exportCsv" class="px-4 py-2 bg-surface rounded-xl text-sm font-bold text-text-secondary hover:bg-surface-dark transition-colors cursor-pointer">📥 Exportar CSV</button>
+          <span class="text-xs text-text-muted">{{ filteredTasks.length }} tarea(s)</span>
+        </div>
+      </div>
       <table class="w-full">
         <thead>
           <tr class="border-b border-border">
@@ -154,7 +172,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="task in filteredTasks" :key="task.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
+          <tr v-for="task in paginatedTasks" :key="task.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
             <td class="p-4 text-sm font-black text-navy cursor-pointer" @click="openViewTask(task)">{{ task.roomNumber }}</td>
             <td class="p-4 text-sm cursor-pointer" @click="openViewTask(task)">{{ task.type }}</td>
             <td class="p-4 text-sm">{{ task.floor }}</td>
@@ -194,6 +212,17 @@
           </tr>
         </tbody>
       </table>
+      <!-- Pagination -->
+      <div v-if="totalListPages > 1" class="p-4 border-t border-border flex items-center justify-between">
+        <span class="text-xs text-text-muted">{{ filteredTasks.length }} tarea(s) en {{ totalListPages }} página(s)</span>
+        <div class="flex items-center gap-1">
+          <button @click="listPage = 1" :disabled="listPage <= 1" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">«</button>
+          <button @click="listPage--" :disabled="listPage <= 1" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
+          <span class="px-2 text-xs font-bold text-navy">{{ listPage }} / {{ totalListPages }}</span>
+          <button @click="listPage++" :disabled="listPage >= totalListPages" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">›</button>
+          <button @click="listPage = totalListPages" :disabled="listPage >= totalListPages" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">»</button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal: Ver Tarea -->
@@ -393,7 +422,7 @@ const auth = useAuthStore()
 const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
-const activeView = ref('list')
+const activeView = ref('board')
 const activeFilter = ref('all')
 const showViewModal = ref(false)
 const showNewModal = ref(false)
@@ -407,6 +436,11 @@ const statsRangeDays = ref(30)
 const draggedTask = ref<HousekeepingViewTask | null>(null)
 const dragOverColumn = ref<string | null>(null)
 
+// List view pagination & search
+const listPage = ref(1)
+const listPageSize = ref(20)
+const listSearch = ref('')
+
 // D1/D3 — Ocultar tareas terminadas en la LISTA (no en el Kanban). Default OFF: se ven
 // todas por defecto; el toggle es opt-in para reducir ruido cuando hay muchas. Persiste.
 const hideCompleted = ref(localStorage.getItem('hk:hideCompleted') === 'true')
@@ -417,9 +451,9 @@ const { now } = useNow(LIVE_TICK_MS)
 const COMPLETED_STATUSES = ['completed', 'inspected']
 
 const views = [
-  { label: 'Lista', value: 'list' },
-  { label: 'Tablero', value: 'board' },
-  { label: 'Estadísticas', value: 'stats' },
+  { label: '📋 Tablero', value: 'board' },
+  { label: '📝 Lista', value: 'list' },
+  { label: '📊 Estadísticas', value: 'stats' },
 ]
 
 const statusFilters = [
@@ -466,11 +500,27 @@ const availableRooms = computed(() =>
 )
 
 const filteredTasks = computed(() => {
-  if (activeFilter.value !== 'all') return store.tasks.filter(t => t.status === activeFilter.value)
-  // D1 — En "Todas", el toggle oculta las terminadas para reducir ruido (foco en lo que falta).
-  if (hideCompleted.value) return store.tasks.filter(t => !COMPLETED_STATUSES.includes(t.status))
-  return store.tasks
+  let tasks = store.tasks
+  if (activeFilter.value !== 'all') tasks = tasks.filter(t => t.status === activeFilter.value)
+  if (hideCompleted.value) tasks = tasks.filter(t => !COMPLETED_STATUSES.includes(t.status))
+  if (listSearch.value) {
+    const q = listSearch.value.toLowerCase()
+    tasks = tasks.filter(t =>
+      t.roomNumber.toLowerCase().includes(q) ||
+      t.type.toLowerCase().includes(q) ||
+      t.assignedTo.toLowerCase().includes(q) ||
+      t.notes?.toLowerCase().includes(q)
+    )
+  }
+  return tasks
 })
+
+const paginatedTasks = computed(() => {
+  const start = (listPage.value - 1) * listPageSize.value
+  return filteredTasks.value.slice(start, start + listPageSize.value)
+})
+
+const totalListPages = computed(() => Math.ceil(filteredTasks.value.length / listPageSize.value))
 
 const getColumnTasks = (columnId: string) => store.tasks.filter(t => t.status === columnId)
 
@@ -667,6 +717,32 @@ async function onRemovePhoto(url: string) {
     await store.removePhoto(selectedTask.value.id, url)
     syncSelectedTask(selectedTask.value.id)
   } catch (e: any) { toast.error('No se pudo eliminar la foto', e?.message) }
+}
+
+function exportCsv() {
+  const headers = ['Habitación', 'Tipo', 'Piso', 'Estado', 'Prioridad', 'Asignado', 'Inicio', 'Fin', 'Duración', 'Notas', 'Fotos']
+  const rows = filteredTasks.value.map(t => [
+    t.roomNumber,
+    t.type,
+    t.floor,
+    statusLabel(t.status),
+    t.priority,
+    t.assignedTo,
+    t.startTime || '',
+    t.endTime || '',
+    t.time || '',
+    (t.notes || '').replace(/,/g, ';'),
+    t.photos?.length || 0,
+  ])
+  const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `housekeeping-${new Date().toISOString().split('T')[0]}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  toast.success('CSV exportado')
 }
 
 function switchView(view: string) {

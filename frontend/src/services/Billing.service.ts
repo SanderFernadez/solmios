@@ -138,6 +138,11 @@ export const BillingService = {
     return mapInvoice(r)
   },
 
+  /** Encola el envío de una factura por email (cola persistente del backend con reintentos). */
+  async emailInvoice(invoiceId: string, to: string): Promise<{ sent: boolean; messageId: string }> {
+    return http.post(`/facturas/${invoiceId}/email`, { to })
+  },
+
   async update(id: string, data: any): Promise<Invoice> {
     const r = await http.put(`/facturas/${id}`, data)
     return mapInvoice(r)

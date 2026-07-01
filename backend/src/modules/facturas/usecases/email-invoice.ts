@@ -1,46 +1,51 @@
-// facturas/usecases/email-invoice.ts — Stub de envío de factura por email.
-// La implementación real requiere credenciales SMTP/API configuradas en el hotel.
-// Por ahora, genera el HTML y loggea la intención de envío.
+// facturas/usecases/email-invoice.ts — Envío de factura por email.
+// Delega al EmailService.transaccional (cola persistente + reintentos con backoff + SMTP/Resend).
+// Usa un puerto mínimo (InvoiceEmailPort) por duck typing — no acopla al service concreto ni
+// al puerto EmailSender (orientado a eventos). EmailService.enqueue cumple este contrato.
 
+import type { RepositoryAdapter } from 'arckode-framework'
 import type { FacturasDTO } from '../types'
-import { renderInvoiceHtml, type InvoiceTemplateData } from './invoice-template'
+import { renderInvoiceHtml } from './invoice-template'
 
 export interface EmailInvoiceResult {
   sent: boolean
   to: string
   subject: string
-  message: string
+  messageId: string
+  configured: boolean
 }
 
-/**
- * Prepara el envío de una factura por email.
- * Stub: genera el contenido pero no envía (falta configurar SMTP/API).
- * Retorna el resultado para que el frontend muestre feedback.
- */
-export async function sendInvoiceByEmail(
-  invoice: FacturasDTO,
-  recipientEmail: string,
-  templateData: Omit<InvoiceTemplateData, 'invoice'>,
-  logger: { info: (msg: string, ctx?: any) => void },
-): Promise<EmailInvoiceResult> {
-  const html = renderInvoiceHtml({ invoice, ...templateData })
-  const subject = `Factura ${invoice.invoiceNumber} — ${templateData.hotelName || 'Hotel'}`
+/** Puerto mínimo: lo único que facturas necesita del EmailService. EmailService lo cumple. */
+export interface InvoiceEmailPort {
+  enqueue(input: { to: string; subject: string; html: string; hotelId: string }): Promise<string>
+  /** ¿El hotel tiene SMTP o Resend configurado? Si no, el email se encolaría pero nunca se entregaría. */
+  isConfigured(hotelId: string): Promise<boolean>
+}
 
-  // Stub: loggear en lugar de enviar
-  logger.info('Email factura (stub)', {
-    to: recipientEmail,
-    subject,
-    invoiceNumber: invoice.invoiceNumber,
-    htmlLength: html.length,
-  })
+const TYPE_LABEL: Record<string, string> = {
+  invoice: 'Factura', credit_note: 'Nota de crédito', receipt: 'Recibo', folio: 'Cargo', payment: 'Comprobante de pago',
+}
 
-  // TODO: Integrar con servicio de email cuando el hotel configure SMTP/API
-  // await emailService.send({ to: recipientEmail, subject, html })
+/** Encola el envío de una factura por email. Resuelve el nombre del hotel para el asunto/template. */
+export async function sendInvoiceByEmail(args: {
+  invoice: FacturasDTO
+  to: string
+  hotelRepo?: RepositoryAdapter<any>
+  emailPort: InvoiceEmailPort
+}): Promise<EmailInvoiceResult> {
+  const { invoice, to, hotelRepo, emailPort } = args
 
-  return {
-    sent: false,
-    to: recipientEmail,
-    subject,
-    message: `Factura ${invoice.invoiceNumber} preparada para envío a ${recipientEmail}. Configurar SMTP/API para envío real.`,
+  let hotelName = 'Hotel'
+  if (hotelRepo && invoice.hotelId) {
+    try {
+      const hotel = await hotelRepo.findById(invoice.hotelId)
+      if (hotel?.name) hotelName = hotel.name
+    } catch { /* nombre por defecto */ }
   }
+
+  const html = renderInvoiceHtml({ invoice, hotelName })
+  const subject = `${TYPE_LABEL[invoice.type] ?? 'Documento'} ${invoice.invoiceNumber} — ${hotelName}`
+  const messageId = await emailPort.enqueue({ to, subject, html, hotelId: invoice.hotelId })
+
+  return { sent: true, to, subject, messageId, configured: true }
 }

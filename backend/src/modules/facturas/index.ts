@@ -23,7 +23,7 @@ export function FacturasModule() {
       name: 'facturas',
       version: '2.0.0',
       description: 'Facturas con ownership, paginacion y validacion',
-      actions: ["list","getById","create","pay","update","delete"],
+      actions: ["list","getById","create","pay","update","delete","email"],
       events: ["onFacturasCreated","onFacturasUpdated","onFacturasDeleted"],
       tables: ['invoices', 'invoice_items'],
       dependencies: [],
@@ -53,9 +53,11 @@ export function FacturasModule() {
       router.get('/api/facturas/tax-report', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.taxReport(req))
       router.get('/api/facturas/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
       router.get('/api/facturas/:id/print', (req) => controller.printInvoice(req))
+      router.get('/api/facturas/:id/pdf', (req) => controller.pdf(req))
       router.post('/api/facturas', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
       router.post('/api/facturas/:id/pay', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.pay(req))
       router.post('/api/facturas/:id/credit-note', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.creditNote(req))
+      router.post('/api/facturas/:id/email', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.email(req))
       router.put('/api/facturas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
       router.delete('/api/facturas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
 

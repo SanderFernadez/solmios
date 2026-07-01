@@ -1,8 +1,9 @@
 // facturas/usecases/stats.ts — Estadísticas de facturación pura (sin ORM, sin HTTP).
 // Extraída del service para mantenerlo < 200 líneas.
 
-import type { RepositoryAdapter } from 'arckode-framework'
-import type { FacturasDTO, FacturasStats } from '../types'
+import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
+import type { FacturasDTO, FacturasStats, CurrentUser } from '../types'
+import { hotelFilterFor } from './billing'
 
 export async function getFacturasStats(
   repo: RepositoryAdapter<FacturasDTO>,
@@ -33,4 +34,18 @@ export async function getFacturasStats(
   }
 
   return { total, pending, paid, overdue, cancelled, monthlyRevenue, todayRevenue, totalTax }
+}
+
+/** Stats con cache + filtro multi-tenant resuelto desde el usuario. Wrapper de getFacturasStats. */
+export async function getStatsForUser(
+  repo: RepositoryAdapter<FacturasDTO>,
+  cache: CacheAdapter,
+  user: CurrentUser,
+): Promise<FacturasStats> {
+  const cacheKey = `facturas:stats:${user.hotelId || 'all'}`
+  const cached = await cache.get(cacheKey)
+  if (cached) return cached as FacturasStats
+  const stats = await getFacturasStats(repo, hotelFilterFor(user))
+  await cache.set(cacheKey, stats, 120)
+  return stats
 }
