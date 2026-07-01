@@ -139,7 +139,7 @@ export const BillingService = {
   },
 
   /** Encola el envío de una factura por email (cola persistente del backend con reintentos). */
-  async emailInvoice(invoiceId: string, to: string): Promise<{ sent: boolean; messageId: string }> {
+  async emailInvoice(invoiceId: string, to: string): Promise<{ sent: boolean; messageId: string; configured: boolean }> {
     return http.post(`/facturas/${invoiceId}/email`, { to })
   },
 

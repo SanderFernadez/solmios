@@ -792,7 +792,8 @@ async function emailInvoice() {
   const to = window.prompt('Email del destinatario:', '')
   if (!to) return
   try {
-    await BillingService.emailInvoice(viewInvoice.value.id, to)
+    const res = await BillingService.emailInvoice(viewInvoice.value.id, to)
+    if (!res.configured) { toast.warning('El hotel no tiene email configurado (SMTP/Resend). Configurarlo en Settings.'); return }
     toast.success(`Factura enviada a ${to}`)
   } catch { toast.error('Error al enviar la factura') }
 }
