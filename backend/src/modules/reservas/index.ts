@@ -33,7 +33,8 @@ export function ReservasModule() {
       const guestRepo = new OrmRepository<any>(orm, 'Guests')
       const roomRepo = new OrmRepository<any>(orm, 'Rooms')
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
-      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo)
+      const blockRepo = new OrmRepository<any>(orm, 'RoomBlocks')
+      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, blockRepo)
       const controller = new ReservasController(service, log)
 
       router.get('/api/reservas', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))

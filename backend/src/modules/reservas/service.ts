@@ -33,6 +33,7 @@ export class ReservasService {
     private readonly guestRepo: RepositoryAdapter<any>,
     private readonly roomRepo: RepositoryAdapter<any>,
     private readonly hotelRepo: RepositoryAdapter<any>,
+    private readonly blockRepo?: RepositoryAdapter<any>,
   ) {}
 
   // ACUMULA handlers — nunca pisa el anterior.
@@ -133,6 +134,16 @@ export class ReservasService {
 
     // Availability check — no overlap with active reservations
     await assertRoomAvailable(this.repo, dto.roomId, dto.checkIn, dto.checkOut)
+
+    // Block dates check — no reservation on blocked dates
+    if (this.blockRepo) {
+      const blocks = await this.blockRepo.findMany({ roomId: dto.roomId, hotelId: dto.hotelId })
+      for (const block of blocks as any[]) {
+        if (dto.checkIn <= block.endDate && dto.checkOut >= block.startDate) {
+          throw new ConflictError(`Habitación bloqueada del ${block.startDate} al ${block.endDate}: ${block.reason || 'Sin motivo'}`)
+        }
+      }
+    }
 
     const item = await this.repo.create(dto as any)
     await safeEmit(this.logger, 'onReservasCreated', this.sockets.onReservasCreated, item)
