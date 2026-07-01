@@ -75,11 +75,12 @@ interface ReservationsResponse {
 }
 
 export const ReservationService = {
-  async list(params?: { hotelId?: string; status?: string; limit?: number }): Promise<{ reservations: Reservation[]; total: number }> {
+  async list(params?: { hotelId?: string; status?: string; limit?: number; guestId?: string }): Promise<{ reservations: Reservation[]; total: number }> {
     const qs = new URLSearchParams()
     if (params?.hotelId) qs.set('hotelId', params.hotelId)
     if (params?.status) qs.set('status', params.status)
     if (params?.limit) qs.set('limit', String(params.limit))
+    if (params?.guestId) qs.set('guestId', params.guestId)
     const query = qs.toString()
     const data = await http.get<ReservationsResponse>(`/reservas${query ? `?${query}` : ''}`)
     return { reservations: data.data.map(mapReservation), total: data.total }

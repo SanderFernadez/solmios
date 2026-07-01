@@ -511,6 +511,7 @@ import { ReservationService } from '@/services/Reservation.service'
 import { CompanionsService } from '@/services/Companions.service'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
+import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
 import type { Guest } from '@/types'
 import { PaymentsService } from '@/services/Payments.service'
 import { TTLockService } from '@/services/TTLock.service'
@@ -571,36 +572,12 @@ const form = ref({
 })
 
 // ── Datos para dropdowns ──
-const languages = [
-  { v: 'Español', l: 'Español' }, { v: 'English', l: 'English' },
-  { v: 'Français', l: 'Français' }, { v: 'Português', l: 'Português' },
-  { v: 'Deutsch', l: 'Deutsch' }, { v: 'Italiano', l: 'Italiano' },
-  { v: '中文', l: '中文' }, { v: '日本語', l: '日本語' },
-]
+const languages = LANGUAGES
 
-const countries = [
-  'República Dominicana', 'Estados Unidos', 'España', 'Colombia', 'México',
-  'Argentina', 'Venezuela', 'Puerto Rico', 'Cuba', 'Brasil', 'Chile',
-  'Perú', 'Ecuador', 'Honduras', 'Guatemala', 'El Salvador', 'Nicaragua',
-  'Costa Rica', 'Panamá', 'Uruguay', 'Paraguay', 'Bolivia', 'Canadá',
-  'Francia', 'Alemania', 'Italia', 'Reino Unido', 'China', 'Japón',
-  'Corea del Sur', 'Australia', 'Otros',
-]
+const countries = COUNTRIES
+const nationalities = NATIONALITIES
 
-const nationalities = [
-  'Dominicana', 'Estadounidense', 'Española', 'Colombiana', 'Mexicana',
-  'Argentina', 'Venezolana', 'Puertorriqueña', 'Cubana', 'Brasileña', 'Chilena',
-  'Peruana', 'Ecuatoriana', 'Hondureña', 'Guatemalteca', 'Salvadoreña', 'Nicaragüense',
-  'Costarricense', 'Panameña', 'Uruguaya', 'Paraguaya', 'Boliviana', 'Canadiense',
-  'Francesa', 'Alemana', 'Italiana', 'Británica', 'China', 'Japonesa',
-  'Coreana', 'Australiana', 'Otra',
-]
-
-const docTypes = [
-  { v: 'dni', l: 'DNI / NIF' }, { v: 'passport', l: 'Pasaporte' },
-  { v: 'cedula', l: 'Cédula' }, { v: 'rif', l: 'RIF' },
-  { v: 'driver_license', l: 'Licencia de conducir' }, { v: 'other', l: 'Otro' },
-]
+const docTypes = DOC_TYPES
 
 const relations = ['Familiar', 'Amigo/a', 'Empleado/a', 'Agente de viajes', 'Otro']
 
