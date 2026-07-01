@@ -339,7 +339,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { ApiError } from '@/services/http'
@@ -692,7 +692,20 @@ async function executeBatch() {
   batchSaving.value = false
 }
 
-onMounted(load)
+// Auto-refresh cada 30 segundos
+const AUTO_REFRESH_MS = 30_000
+let refreshInterval: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  load()
+  refreshInterval = setInterval(() => {
+    if (!loading.value) load()
+  }, AUTO_REFRESH_MS)
+})
+
+onUnmounted(() => {
+  if (refreshInterval) clearInterval(refreshInterval)
+})
 </script>
 
 <style scoped>
