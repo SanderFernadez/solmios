@@ -48,6 +48,7 @@ export function FoliosModule() {
       router.post('/api/folios/:id/charges', [auth.authenticate('hotel_admin', 'receptionist')], (req) => controller.charge(req))
       router.post('/api/folios/:id/payments', [auth.authenticate('hotel_admin', 'receptionist')], (req) => controller.payment(req))
       router.post('/api/folios/:id/close', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.close(req))
+      router.post('/api/folios/:id/invoice', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.closeAndInvoice(req))
 
       log.info('Módulo folios listo')
       return service

@@ -1,19 +1,16 @@
 // facturas/service.ts — Casos de uso de facturación del hotel.
-// Delega la lógica pura a ./usecases/billing.ts para mantenerse < 200 líneas.
-// Recibe RepositoryAdapter<T> (no ORM directo — REGLA #18). Verifica ownership (REGLA #9).
-//
-// Modelo de dinero: `amount` = TOTAL (subtotal + impuestos). Al emitir una factura,
-// dto.amount se interpreta como SUBTOTAL (base neta) y el service calcula el impuesto.
+// Delega la lógica pura a ./usecases/ para mantenerse < 200 líneas.
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, AuthError } from 'arckode-framework'
-import type {
-  FacturasDTO, CreateFacturasDTO, UpdateFacturasDTO, PayFacturasDTO,
-  FacturasQuery, FacturasListResult, CurrentUser,
-} from './types'
+import type { FacturasDTO, CreateFacturasDTO, UpdateFacturasDTO, PayFacturasDTO, FacturasQuery, FacturasListResult, CurrentUser, FacturasStats } from './types'
 import type { FacturasSockets } from './sockets'
 import { taxRateFor, applyTax, buildInvoiceRecord, enrichInvoice, type EnrichDeps } from './usecases/billing'
 import { nextInvoiceNumber } from './usecases/invoice-number'
+import { getFacturasStats } from './usecases/stats'
+import { createPaymentRecord } from './usecases/payment-record'
+import { generateCreditNote, type CreditNoteResult } from './usecases/credit-note'
+import { generateTaxReport, type TaxReport } from './usecases/tax-report'
 
 export class FacturasService {
   private sockets: FacturasSockets = {}
@@ -31,14 +28,22 @@ export class FacturasService {
     this.enrichDeps = deps
   }
 
+  private async assertOwnership(resourceHotelId: string, userId: string, role?: string): Promise<void> {
+    const me = await this.userRepo.findById(userId)
+    this.auth.assertOwnership(resourceHotelId, me?.hotelId ?? '', role, 'super_admin')
+  }
+
+  private hotelFilter(user: CurrentUser): Record<string, unknown> {
+    if (user.role !== 'super_admin' && user.hotelId) return { hotelId: user.hotelId }
+    return {}
+  }
+
   setSockets(s: Partial<FacturasSockets>): void {
-    const next = s as Record<string, any>
     const cur = this.sockets as Record<string, any>
-    for (const key of Object.keys(next)) {
-      const h = next[key]
+    for (const [k, h] of Object.entries(s as Record<string, any>)) {
       if (!h) continue
-      const prev = cur[key]
-      cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
+      const prev = cur[k]
+      cur[k] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
     }
   }
 
@@ -48,26 +53,22 @@ export class FacturasService {
     const filters: Record<string, unknown> = {}
     if (query?.type) filters.type = query.type
     if (query?.status) filters.status = query.status
-
-    // Multi-tenancy
     if (user && user.role !== 'super_admin') {
       if (!user.hotelId) throw new AuthError('No hotel assigned')
       filters.hotelId = user.hotelId
     } else if (query?.hotelId) {
       filters.hotelId = query.hotelId
     }
-
     const page = Math.max(query?.page || 1, 1)
     const limit = Math.min(Math.max(query?.limit || 20, 1), 100)
     const offset = (page - 1) * limit
-
     const cacheKey = `facturas:list:${user?.hotelId || 'all'}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as FacturasListResult
-
     const result = await this.repo.paginate(filters, { offset, limit })
     const data = await Promise.all(result.data.map((r) => enrichInvoice(r, this.enrichDeps)))
-    const response = { data, total: result.total }
+    const pages = Math.ceil(result.total / limit)
+    const response = { data, total: result.total, limit, offset, pages, hasNext: page < pages, hasPrev: page > 1 }
 
     let finalResult = response
     if (query?.search) {
@@ -77,20 +78,18 @@ export class FacturasService {
         (d.guest || '').toLowerCase().includes(q) ||
         (d.notes || '').toLowerCase().includes(q),
       )
-      finalResult = { data: filtered, total: response.total }
+      finalResult = { data: filtered, total: filtered.length, limit, offset, pages, hasNext: false, hasPrev: page > 1 }
     }
 
     await this.cache.set(cacheKey, finalResult, 300)
     return finalResult
   }
 
-  async getById(id: string, user: CurrentUser): Promise<FacturasDTO> {
+  async getById(id: string, user?: CurrentUser): Promise<FacturasDTO> {
     this.logger.info('Obteniendo factura', { id })
     const item = await this.repo.findById(id)
     if (!item) throw new NotFoundError('Factura no encontrada')
-    // IDOR (REGLA #9): la factura debe pertenecer al hotel del usuario.
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(item.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
+    if (user) await this.assertOwnership(item.hotelId, user.id, user.role)
     return enrichInvoice(item, this.enrichDeps)
   }
 
@@ -100,18 +99,13 @@ export class FacturasService {
     this.logger.info('Creando factura/cargo/pago', { type: dto.type, hotelId })
     const type = dto.type ?? 'invoice'
     const base = Number(dto.amount) || 0
-
-    let taxes = 0
-    let amount = base
-    let invoiceNumber = dto.invoiceNumber
-    let ncf = dto.ncf
-
+    let taxes = 0, amount = base, invoiceNumber = dto.invoiceNumber, ncf = dto.ncf
     if (type === 'invoice') {
       const rate = await taxRateFor(this.configRepo, hotelId)
       const t = applyTax(base, rate)
       taxes = t.tax
       amount = t.total
-      if (!invoiceNumber) invoiceNumber = await nextInvoiceNumber(this.repo, hotelId, 'INV')
+      if (!invoiceNumber) invoiceNumber = await nextInvoiceNumber(this.repo, this.configRepo, hotelId, 'INV')
       if (!ncf) ncf = `NCF-${invoiceNumber}`
     } else if (!invoiceNumber) {
       const prefix = type === 'payment' ? 'PAY' : type === 'folio' ? 'CHG' : 'DOC'
@@ -130,8 +124,7 @@ export class FacturasService {
     this.logger.info('Actualizando factura', { id })
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Factura no encontrada')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(existing.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
+    await this.assertOwnership(existing.hotelId, user.id, user.role)
     const item = await this.repo.update(id, dto as Partial<Omit<FacturasDTO, 'id'>>)
     if (!item) throw new NotFoundError('Factura no encontrada')
     await this.sockets.onFacturasUpdated?.(item)
@@ -144,37 +137,22 @@ export class FacturasService {
     this.logger.info('Aplicando pago a factura', { id, method: dto.method })
     const inv = await this.repo.findById(id)
     if (!inv) throw new NotFoundError('Factura no encontrada')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(inv.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
+    await this.assertOwnership(inv.hotelId, user.id, user.role)
+
+    // Pago parcial: acumular amountPaid y determinar status
+    const newPaid = (Number(inv.amountPaid) || 0) + (Number(dto.amount) || Number(inv.amount))
+    const newStatus = newPaid >= (Number(inv.amount) || 0) ? 'paid' : 'pending'
 
     const updated = await this.repo.update(id, {
-      status: 'paid',
+      status: newStatus,
+      amountPaid: newPaid,
       paymentMethod: dto.method ?? inv.paymentMethod ?? null,
       notes: dto.notes ? `${inv.notes ?? ''}\n${dto.notes}`.trim() : inv.notes,
       updatedAt: new Date().toISOString(),
     } as any)
     if (!updated) throw new NotFoundError('Factura no encontrada')
 
-    try {
-      await this.repo.create({
-        hotelId: inv.hotelId,
-        reservationId: inv.reservationId ?? null,
-        guestId: inv.guestId ?? null,
-        invoiceNumber: `PAY-${Date.now()}`,
-        type: 'payment',
-        amount: Number(dto.amount) || Number(inv.amount),
-        taxes: 0,
-        currency: inv.currency,
-        status: 'paid',
-        issueDate: new Date().toISOString().split('T')[0],
-        paymentMethod: dto.method ?? null,
-        notes: `Pago de ${inv.invoiceNumber}${dto.reference ? ` | Ref: ${dto.reference}` : ''}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as any)
-    } catch (e) {
-      this.logger.warn('No se pudo registrar el comprobante de pago', { error: (e as Error).message })
-    }
+    await createPaymentRecord(this.repo, inv, dto, this.logger)
 
     await this.sockets.onFacturasUpdated?.(updated)
     await this.cache.delete('facturas:list:' + (inv.hotelId || 'all'))
@@ -185,11 +163,36 @@ export class FacturasService {
     this.logger.info('Eliminando factura', { id })
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Factura no encontrada')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(existing.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
+    await this.assertOwnership(existing.hotelId, user.id, user.role)
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Factura no encontrada')
     await this.sockets.onFacturasDeleted?.(id)
     await this.cache.delete('facturas:list:' + (existing.hotelId || 'all'))
+  }
+
+  // ─── Nota de crédito ─────────────────────────────────────
+  async creditNote(id: string, reason: string, user: CurrentUser): Promise<CreditNoteResult> {
+    this.logger.info('Generando nota de crédito', { id })
+    const inv = await this.repo.findById(id)
+    if (!inv) throw new NotFoundError('Factura no encontrada')
+    await this.assertOwnership(inv.hotelId, user.id, user.role)
+    if (inv.status === 'cancelled') throw new NotFoundError('La factura ya está cancelada')
+    const result = await generateCreditNote(this.repo, inv, reason, user.id)
+    await this.sockets.onFacturasUpdated?.(result.originalInvoice)
+    await this.cache.delete('facturas:list:' + (inv.hotelId || 'all'))
+    return result
+  }
+
+  // ─── Stats ─────────────────────────────────────────────
+  async getStats(user: CurrentUser): Promise<FacturasStats> {
+    const cacheKey = `facturas:stats:${user.hotelId || 'all'}`
+    const cached = await this.cache.get(cacheKey)
+    if (cached) return cached as FacturasStats
+    const stats = await getFacturasStats(this.repo, this.hotelFilter(user))
+    await this.cache.set(cacheKey, stats, 120)
+    return stats
+  }
+  async taxReport(user: CurrentUser, from?: string, to?: string): Promise<TaxReport> {
+    return generateTaxReport(this.repo, this.hotelFilter(user), from, to)
   }
 }

@@ -62,7 +62,7 @@ export const FoliosService = {
   },
 
   /** Cierra el folio y genera la factura (con NCF). */
-  async closeAndInvoice(id: string): Promise<{ folio: Folio; invoice: any }> {
+  async closeAndInvoice(id: string): Promise<{ folio: Folio; invoiceData: any }> {
     return http.post(`/folios/${id}/invoice`, {})
   },
 }

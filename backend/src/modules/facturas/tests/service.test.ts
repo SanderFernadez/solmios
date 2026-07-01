@@ -24,7 +24,7 @@ const emptyRepo = (): RepositoryAdapter<any> => ({
   findMany: async () => [], findById: async () => null, findOne: async () => null,
   create: async (d: any) => ({ id: 'test-id', ...d }), update: async (id: string, d: any) => ({ id, ...d }),
   delete: async () => true, count: async () => 0,
-  paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
+  paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0, hasNext: false, hasPrev: false }),
 })
 
 function makeRepo(overrides: Partial<RepositoryAdapter<FacturasDTO>> = {}): RepositoryAdapter<FacturasDTO> {
@@ -60,7 +60,7 @@ describe('FacturasService', () => {
   describe('list', () => {
     it('returns paginated invoices for super_admin', async () => {
       const invoices = [{ id: 'i1', hotelId: 'h1', amount: 100, taxes: 0 }] as FacturasDTO[]
-      const repo = makeRepo({ paginate: async () => ({ data: invoices, total: 1, limit: 20, offset: 0, pages: 1 }) })
+      const repo = makeRepo({ paginate: async () => ({ data: invoices, total: 1, limit: 20, offset: 0, pages: 1, hasNext: false, hasPrev: false }) })
       const svc = new FacturasService(repo, emptyRepo(), enrichDeps, userRepo, log, silentCache, mockAuth)
       const result = await svc.list({}, { id: 'admin', role: 'super_admin' })
       expect(result.data).toHaveLength(1)
@@ -68,7 +68,7 @@ describe('FacturasService', () => {
 
     it('filters by hotelId for hotel_admin', async () => {
       const invoices = [{ id: 'i1', hotelId: 'h1', amount: 100, taxes: 0 }] as FacturasDTO[]
-      const repo = makeRepo({ paginate: async () => ({ data: invoices, total: 1, limit: 20, offset: 0, pages: 1 }) })
+      const repo = makeRepo({ paginate: async () => ({ data: invoices, total: 1, limit: 20, offset: 0, pages: 1, hasNext: false, hasPrev: false }) })
       const svc = new FacturasService(repo, emptyRepo(), enrichDeps, userRepo, log, silentCache, mockAuth)
       const result = await svc.list({}, user)
       expect(result.data).toHaveLength(1)

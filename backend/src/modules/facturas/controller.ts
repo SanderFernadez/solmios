@@ -6,12 +6,14 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { FacturasService } from './service'
-import { CreateFacturasSchema, UpdateFacturasSchema } from './validators/schema'
+import { CreateFacturasSchema, UpdateFacturasSchema, PayFacturasSchema, CreditNoteSchema } from './validators/schema'
+import { renderInvoiceHtml } from './usecases/invoice-template'
 
 export class FacturasController {
   constructor(
     private readonly service: FacturasService,
     private readonly logger: Logger,
+    private readonly hotelRepo?: any,
   ) {}
 
   async index(req: HttpRequest) {
@@ -35,7 +37,8 @@ export class FacturasController {
 
   async pay(req: HttpRequest) {
     this.logger.info('POST /facturas/:id/pay', { id: req.params.id })
-    const item = await this.service.pay(req.params.id, (req.body ?? {}) as any, req.user as any)
+    const data = validateSchema(PayFacturasSchema, req.body)
+    const item = await this.service.pay(req.params.id, data as any, req.user as any)
     return { status: 200, body: item }
   }
 
@@ -50,5 +53,37 @@ export class FacturasController {
     this.logger.info('DELETE /facturas/:id', { id: req.params.id })
     await this.service.delete(req.params.id, req.user as any)
     return { status: 204, body: null }
+  }
+
+  async stats(req: HttpRequest) {
+    this.logger.info('GET /facturas/stats')
+    const result = await this.service.getStats(req.user as any)
+    return { status: 200, body: result }
+  }
+
+  async printInvoice(req: HttpRequest) {
+    this.logger.info('GET /facturas/:id/print', { id: req.params.id })
+    const invoice = await this.service.getById(req.params.id, req.user as any)
+    let hotelName = 'Hotel'
+    if (this.hotelRepo && invoice.hotelId) {
+      const hotel = await this.hotelRepo.findById(invoice.hotelId)
+      if (hotel?.name) hotelName = hotel.name
+    }
+    const html = renderInvoiceHtml({ invoice, hotelName })
+    return { status: 200, body: html, headers: { 'content-type': 'text/html; charset=utf-8' } }
+  }
+
+  async creditNote(req: HttpRequest) {
+    this.logger.info('POST /facturas/:id/credit-note', { id: req.params.id })
+    const data = validateSchema(CreditNoteSchema, req.body) as { reason: string }
+    const result = await this.service.creditNote(req.params.id, data.reason, req.user as any)
+    return { status: 201, body: result }
+  }
+
+  async taxReport(req: HttpRequest) {
+    this.logger.info('GET /facturas/tax-report')
+    const { from, to } = (req.query ?? {}) as { from?: string; to?: string }
+    const result = await this.service.taxReport(req.user as any, from, to)
+    return { status: 200, body: result }
   }
 }

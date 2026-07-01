@@ -19,6 +19,7 @@ export const FacturasModel: ModelDefinition = {
     notes: { type: 'text' },
     ncf: { type: 'string' },
     paymentMethod: { type: 'string' },
+    amountPaid: { type: 'number', default: 0 },
     fileUrl: { type: 'string' },
   },
   timestamps: true,

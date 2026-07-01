@@ -36,4 +36,8 @@ export class FoliosController {
   async close(req: HttpRequest) {
     return { status: 200, body: await this.service.close(req.params.id, req.user as any) }
   }
+
+  async closeAndInvoice(req: HttpRequest) {
+    return { status: 200, body: await this.service.closeAndInvoice(req.params.id, req.user as any) }
+  }
 }

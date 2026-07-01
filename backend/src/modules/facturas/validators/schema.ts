@@ -38,7 +38,21 @@ export const UpdateFacturasSchema: Record<string, ValidationRule> = {
   ncf: { type: 'string' as const, max: 50 },
 }
 
+export const PayFacturasSchema: Record<string, ValidationRule> = {
+  method: { type: 'string' as const, enum: ['card', 'cash', 'transfer', 'link', 'other'], required: true },
+  amount: { type: 'number' as const, required: true, min: 0.01 },
+  reference: { type: 'string' as const, max: 200 },
+  notes: { type: 'string' as const, max: MAX_NOTES_LENGTH },
+}
+
+export const CreditNoteSchema: Record<string, ValidationRule> = {
+  reason: { type: 'string' as const, required: true, max: 500 },
+  amount: { type: 'number' as const, min: 0.01 },
+}
+
 export const FacturasValidator = {
   create: CreateFacturasSchema,
   update: UpdateFacturasSchema,
+  pay: PayFacturasSchema,
+  creditNote: CreditNoteSchema,
 }

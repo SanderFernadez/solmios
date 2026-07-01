@@ -26,6 +26,7 @@ export interface FacturasDTO {
   dueDate?: string | null
   ncf?: string | null
   paymentMethod?: string | null
+  amountPaid?: number
   notes?: string | null
   createdAt: string
   updatedAt: string
@@ -33,6 +34,7 @@ export interface FacturasDTO {
   // Campos derivados (computados al leer, no viven en la DB):
   subtotal?: number           // amount - taxes
   taxRate?: number            // % aplicado (0 si no aplica)
+  balance?: number            // amount - amountPaid (saldo pendiente)
   guest?: string              // nombre del huésped (resuelto desde guests)
   room?: string               // número de habitación (resuelto desde reservationId)
   items?: InvoiceItem[]       // desglose de líneas (desde notes si aplica)
@@ -88,6 +90,11 @@ export interface FacturasQuery {
 export interface FacturasListResult {
   data: FacturasDTO[]
   total: number
+  limit: number
+  offset: number
+  pages: number
+  hasNext: boolean
+  hasPrev: boolean
 }
 
 /** Usuario autenticado (para verificación de ownership multi-tenant). */
@@ -95,4 +102,15 @@ export interface CurrentUser {
   id: string
   hotelId?: string | null
   role?: string
+}
+
+export interface FacturasStats {
+  total: number
+  pending: number
+  paid: number
+  overdue: number
+  cancelled: number
+  monthlyRevenue: number
+  todayRevenue: number
+  totalTax: number
 }

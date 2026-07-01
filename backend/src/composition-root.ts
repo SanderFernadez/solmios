@@ -423,6 +423,9 @@ system.addConnector('booking-channex', bookingChannexConnector)
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 system.addConnector('reservas-huespedes', reservasHuespedesConnector)
 
+import { facturasReservasConnector } from './connectors/facturas-reservas'
+system.addConnector('facturas-reservas', facturasReservasConnector)
+
 // Helper: dispara recálculo de availability en Channex (fire-and-forget; no bloquea la respuesta HTTP).
 // Lo usan los handlers custom (check-in/checkout/booking público/bloqueos) que bypassan el módulo
 // reservas y por tanto no disparan el conector reservas-canales (sockets).

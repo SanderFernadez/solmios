@@ -21,6 +21,8 @@ export interface Invoice {
   taxRate: number
   tax: number
   total: number
+  amountPaid: number
+  balance: number
   currency: string
   // Datos resueltos por el backend:
   guest: string
@@ -53,8 +55,10 @@ const STATUS_MAP: Record<string, InvoiceStatus> = {
 export function mapInvoice(r: any): Invoice {
   const total = Number(r.amount ?? r.total ?? 0)
   const tax = Number(r.taxes ?? r.tax ?? 0)
+  const amountPaid = Number(r.amountPaid ?? 0)
   const subtotal = Number(r.subtotal ?? (total - tax))
   const taxRate = Number(r.taxRate ?? (subtotal > 0 ? Math.round((tax / subtotal) * 100) : 0))
+  const balance = Number(r.balance ?? (total - amountPaid))
   return {
     id: r.id,
     hotelId: r.hotelId,
@@ -67,6 +71,8 @@ export function mapInvoice(r: any): Invoice {
     taxRate,
     tax,
     total,
+    amountPaid,
+    balance,
     currency: r.currency ?? 'USD',
     guest: r.guest ?? '',
     room: r.room ?? '',
@@ -79,16 +85,46 @@ export function mapInvoice(r: any): Invoice {
   }
 }
 
-interface BillingResponse { data: any[]; total: number }
+interface BillingResponse {
+  data: any[]
+  total: number
+  limit: number
+  offset: number
+  pages: number
+  hasNext: boolean
+  hasPrev: boolean
+}
+
+export interface BillingStats {
+  total: number
+  pending: number
+  paid: number
+  overdue: number
+  cancelled: number
+  monthlyRevenue: number
+  todayRevenue: number
+  totalTax: number
+}
 
 export const BillingService = {
-  async list(hotelId?: string, type?: string): Promise<{ invoices: Invoice[]; total: number }> {
+  async list(hotelId?: string, type?: string, page = 1, limit = 20): Promise<{ invoices: Invoice[]; total: number; pages: number; hasNext: boolean; hasPrev: boolean }> {
     const params = new URLSearchParams()
     if (hotelId) params.set('hotelId', hotelId)
     if (type) params.set('type', type)
-    const qs = params.toString() ? `?${params.toString()}` : ''
-    const data = await http.get<BillingResponse>(`/facturas${qs}`)
-    return { invoices: (data.data ?? []).map(mapInvoice), total: data.total ?? 0 }
+    params.set('page', String(page))
+    params.set('limit', String(limit))
+    const data = await http.get<BillingResponse>(`/facturas?${params.toString()}`)
+    return {
+      invoices: (data.data ?? []).map(mapInvoice),
+      total: data.total ?? 0,
+      pages: data.pages ?? 1,
+      hasNext: data.hasNext ?? false,
+      hasPrev: data.hasPrev ?? false,
+    }
+  },
+
+  async stats(): Promise<BillingStats> {
+    return http.get<BillingStats>('/facturas/stats')
   },
 
   async create(data: any): Promise<Invoice> {
@@ -105,5 +141,28 @@ export const BillingService = {
   async update(id: string, data: any): Promise<Invoice> {
     const r = await http.put(`/facturas/${id}`, data)
     return mapInvoice(r)
+  },
+
+  exportCsv(invoices: Invoice[]): string {
+    const headers = ['Número', 'Huésped', 'Habitación', 'Tipo', 'Estado', 'Subtotal', 'Impuestos', 'Total', 'Pagado', 'Saldo', 'Fecha', 'Método']
+    const rows = invoices.map(inv => [
+      inv.number, inv.guest, inv.room, inv.type, inv.status,
+      inv.subtotal.toFixed(2), inv.tax.toFixed(2), inv.total.toFixed(2),
+      inv.amountPaid.toFixed(2), inv.balance.toFixed(2),
+      inv.issueDate, inv.paymentMethod || '',
+    ])
+    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n')
+    return csv
+  },
+
+  downloadCsv(invoices: Invoice[], filename = 'facturas.csv'): void {
+    const csv = this.exportCsv(invoices)
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
   },
 }

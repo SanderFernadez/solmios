@@ -79,7 +79,7 @@ async function resolveRoom(deps: EnrichDeps, reservationId?: string | null): Pro
   } catch { return '' }
 }
 
-/** Devuelve la factura con campos derivados (subtotal, taxRate) y datos resueltos (guest, room). */
+/** Devuelve la factura con campos derivados (subtotal, taxRate, balance) y datos resueltos (guest, room). */
 export async function enrichInvoice(r: FacturasDTO, deps: EnrichDeps): Promise<FacturasDTO> {
   const [guest, room] = await Promise.all([
     resolveGuest(deps.guest, r.guestId),
@@ -87,7 +87,9 @@ export async function enrichInvoice(r: FacturasDTO, deps: EnrichDeps): Promise<F
   ])
   const taxes = Number(r.taxes) || 0
   const amount = Number(r.amount) || 0
+  const amountPaid = Number(r.amountPaid) || 0
   const subtotal = round2(amount - taxes)
   const taxRate = subtotal > 0 ? round2((taxes / subtotal) * 100) : 0
-  return { ...r, taxes, amount, subtotal, taxRate, guest: guest || r.guest || '', room: room || r.room || '' }
+  const balance = round2(amount - amountPaid)
+  return { ...r, taxes, amount, amountPaid, subtotal, taxRate, balance, guest: guest || r.guest || '', room: room || r.room || '' }
 }

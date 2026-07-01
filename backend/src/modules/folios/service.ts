@@ -1,25 +1,15 @@
 // folios/service.ts — Casos de uso del dominio de folios.
 // Un folio acumula cargos y pagos. Su balance = cargos - pagos.
-// Delega matemática a ./usecases/folio-math.ts (< 200 líneas).
-// Recibe RepositoryAdapter<T> (no ORM — REGLA #18). Verifica ownership (REGLA #9).
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
-import type {
-  FolioDTO, FolioChargeDTO, OpenFolioDTO, PostChargeDTO, ApplyPaymentDTO,
-  FolioQuery, FolioListResult, CurrentUser,
-} from './types'
+import type { FolioDTO, FolioChargeDTO, OpenFolioDTO, PostChargeDTO, ApplyPaymentDTO, FolioQuery, FolioListResult, CurrentUser } from './types'
 import type { FoliosSockets } from './sockets'
 import { taxRateFor, applyTax, computeTotals } from './usecases/folio-math'
 import { folioSummary } from './usecases/folio-summary'
+import { closeAndInvoice as closeAndInvoiceUsecase, type CloseAndInvoiceResult } from './usecases/close-and-invoice'
 
-export interface LookupDeps {
-  guest: RepositoryAdapter<any>
-  reservation: RepositoryAdapter<any>
-  room: RepositoryAdapter<any>
-  user: RepositoryAdapter<any>
-}
-
+export interface LookupDeps { guest: RepositoryAdapter<any>; reservation: RepositoryAdapter<any>; room: RepositoryAdapter<any>; user: RepositoryAdapter<any> }
 const now = () => new Date().toISOString()
 
 export class FoliosService {
@@ -53,8 +43,6 @@ export class FoliosService {
 
   async list(query?: FolioQuery, user?: CurrentUser): Promise<FolioListResult> {
     this.logger.info('Listando folios', { query })
-
-    // IDOR fix: always filter by user's hotelId unless super_admin
     const filters: Record<string, unknown> = {}
     if (user && user.role !== 'super_admin') {
       const me = await this.deps.user.findById(user.id)
@@ -64,12 +52,9 @@ export class FoliosService {
     }
     if (query?.status) filters.status = query.status
     if (query?.reservationId) filters.reservationId = query.reservationId
-
-    // Cache check
     const cacheKey = `folios:list:${user?.hotelId || 'all'}:${JSON.stringify(query || {})}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as FolioListResult
-
     const folios = await this.folioRepo.findMany(filters)
     const data = await Promise.all(folios.map((f) => this.enrich(f)))
     const result = { data, total: data.length }
@@ -105,8 +90,7 @@ export class FoliosService {
   async open(dto: OpenFolioDTO, user: CurrentUser): Promise<FolioDTO> {
     const hotelId = dto.hotelId ?? (await this.hotelOf(user)) ?? ''
     this.logger.info('Abriendo folio', { hotelId, reservationId: dto.reservationId })
-    let guestId = dto.guestId ?? null
-    let roomId = dto.roomId ?? null
+    let guestId = dto.guestId ?? null, roomId = dto.roomId ?? null
     if (dto.reservationId) {
       const res = await this.deps.reservation.findById(dto.reservationId)
       if (res) { guestId = guestId ?? res.guestId ?? null; roomId = roomId ?? res.roomId ?? null }
@@ -127,13 +111,11 @@ export class FoliosService {
     const me = await this.deps.user.findById(user.id)
     this.auth.assertOwnership(folio.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
     if (folio.status !== 'open') throw new ValidationError('El folio no está abierto')
-
     const qty = Number(dto.quantity) || 1
     const base = (Number(dto.amount) || 0) * qty
     if (base <= 0) throw new ValidationError('El monto del cargo debe ser positivo')
     const rate = await taxRateFor(this.configRepo, folio.hotelId)
     const { tax, total } = applyTax(base, rate)
-
     const charge = await this.chargeRepo.create({
       folioId, hotelId: folio.hotelId, description: dto.description,
       category: dto.category ?? 'other', kind: 'charge', quantity: qty,
@@ -166,26 +148,23 @@ export class FoliosService {
     return charge as FolioChargeDTO
   }
 
-  // ─── Cerrar folio (devuelve totales para generar factura) ──────
+  // ─── Cerrar folio ──────
   async close(folioId: string, user: CurrentUser): Promise<FolioDTO> {
     const folio = await this.folioRepo.findById(folioId)
     if (!folio) throw new NotFoundError('Folio no encontrado')
     const me = await this.deps.user.findById(user.id)
     this.auth.assertOwnership(folio.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
     if (folio.status !== 'open') throw new ValidationError('El folio no está abierto')
-
     const closed = await this.folioRepo.update(folioId, { status: 'closed', closedAt: now() } as any)
     await this.sockets.onFolioClosed?.(closed)
     await this.cache.delete(`folios:list:${folio.hotelId || 'all'}:*`)
     return this.enrich(closed as FolioDTO, true)
   }
 
-  /** Resumen para generar factura (lo usa la orquestación en composition-root). */
-  async summary(folioId: string, user?: CurrentUser): Promise<{ folio: FolioDTO; subtotal: number; taxes: number; total: number } | null> {
+  async summary(folioId: string, user?: CurrentUser) {
     return folioSummary({ folioRepo: this.folioRepo, chargeRepo: this.chargeRepo, userRepo: this.deps.user, auth: this.auth }, folioId, user)
   }
 
-  /** Vincula la factura generada al folio (lo llama la orquestación close → invoice). */
   async setInvoice(folioId: string, invoiceId: string, user: CurrentUser): Promise<FolioDTO> {
     const folio = await this.folioRepo.findById(folioId)
     if (!folio) throw new NotFoundError('Folio no encontrado')
@@ -193,5 +172,25 @@ export class FoliosService {
     this.auth.assertOwnership(folio.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
     const updated = await this.folioRepo.update(folioId, { invoiceId } as any)
     return this.enrich(updated as FolioDTO, true)
+  }
+
+  /** Cierra el folio y genera la factura con los cargos como líneas de detalle. */
+  async closeAndInvoice(folioId: string, user: CurrentUser): Promise<CloseAndInvoiceResult> {
+    this.logger.info('Cerrando folio y generando factura', { folioId })
+    const result = await closeAndInvoiceUsecase(
+      {
+        folioRepo: this.folioRepo,
+        chargeRepo: this.chargeRepo,
+        guestRepo: this.deps.guest,
+        roomRepo: this.deps.room,
+        userRepo: this.deps.user,
+        auth: this.auth,
+      },
+      folioId,
+      user,
+    )
+    await this.sockets.onFolioClosed?.(result.folio)
+    await this.cache.delete(`folios:list:${result.folio.hotelId || 'all'}:*`)
+    return result
   }
 }
