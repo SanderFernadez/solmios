@@ -587,6 +587,16 @@ if (!amCols.some((c: any) => c.name === 'triggerType')) exec("ALTER TABLE auto_m
 // ALTER idempotente: guests += language (spec 11.1.6 — idioma del huésped para resolver plantilla i18n).
 const gCols = db.query("PRAGMA table_info(guests)").all() as any[]
 if (!gCols.some((c: any) => c.name === 'language')) exec("ALTER TABLE guests ADD COLUMN language TEXT")
+// ALTER idempotente: guests += campos legales/CRM del cliente (detalle completo del huésped,
+// alineado con el formulario de reservas y con el Guest type del frontend).
+if (!gCols.some((c: any) => c.name === 'sex')) exec("ALTER TABLE guests ADD COLUMN sex TEXT")
+if (!gCols.some((c: any) => c.name === 'country')) exec("ALTER TABLE guests ADD COLUMN country TEXT")
+if (!gCols.some((c: any) => c.name === 'address')) exec("ALTER TABLE guests ADD COLUMN address TEXT")
+if (!gCols.some((c: any) => c.name === 'city')) exec("ALTER TABLE guests ADD COLUMN city TEXT")
+if (!gCols.some((c: any) => c.name === 'province')) exec("ALTER TABLE guests ADD COLUMN province TEXT")
+if (!gCols.some((c: any) => c.name === 'documentType')) exec("ALTER TABLE guests ADD COLUMN documentType TEXT")
+if (!gCols.some((c: any) => c.name === 'documentIssueDate')) exec("ALTER TABLE guests ADD COLUMN documentIssueDate TEXT")
+if (!gCols.some((c: any) => c.name === 'communicateClient')) exec("ALTER TABLE guests ADD COLUMN communicateClient TEXT")
 
 exec(`CREATE TABLE IF NOT EXISTS message_logs (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, reservationId TEXT,
