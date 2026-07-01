@@ -123,7 +123,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { PayrollService, type PayrollRun, type PayrollConfig, type PayrollConcept } from '@/services/Payroll.service'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth.store'
 
+const auth = useAuthStore()
+const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 const toast = useToast()
 const activeTab = ref('runs')
 const loading = ref(true)
@@ -150,7 +153,7 @@ function runStatusLabel(s: string) {
 async function loadData() {
   loading.value = true
   try {
-    const [r, c, cn] = await Promise.all([PayrollService.listRuns(), PayrollService.getConfig(), PayrollService.listConcepts()])
+    const [r, c, cn] = await Promise.all([PayrollService.listRuns(hotelId.value), PayrollService.getConfig(hotelId.value), PayrollService.listConcepts(hotelId.value)])
     runs.value = r; config.value = c; concepts.value = cn
   } catch { toast.error('Error al cargar') }
   finally { loading.value = false }
@@ -165,7 +168,7 @@ async function openNewRun() {
   const endDate = prompt('Fin (YYYY-MM-DD):', `${period}-30`)
   const paymentDate = prompt('Fecha de pago:', new Date().toISOString().slice(0,10))
   if (!startDate || !endDate || !paymentDate) return
-  try { await PayrollService.createRun({ period, startDate, endDate, paymentDate }); toast.success('Liquidación creada'); loadData() }
+  try { await PayrollService.createRun(hotelId.value!, { period, startDate, endDate, paymentDate }); toast.success('Liquidación creada'); loadData() }
   catch { toast.error('Error al crear') }
 }
 
@@ -209,7 +212,7 @@ async function cancelRun(run: PayrollRun) {
 }
 
 function viewDetails(run: PayrollRun) { toast.info(`Detalle de ${run.period} — ${run.employeeCount} empleados, $${run.totalNet.toLocaleString()} neto`) }
-async function saveConfig() { try { await PayrollService.updateConfig(config.value!); toast.success('Configuración guardada') } catch { toast.error('Error') } }
+async function saveConfig() { try { await PayrollService.updateConfig(hotelId.value!, config.value!); toast.success('Configuración guardada') } catch { toast.error('Error') } }
 function openNewConcept() { toast.info('Nuevo concepto — formulario pendiente') }
 function deleteConcept(c: PayrollConcept) { toast.info(`Eliminar ${c.code} — pendiente`) }
 </script>

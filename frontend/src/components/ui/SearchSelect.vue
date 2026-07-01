@@ -109,3 +109,5 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
     </ul>
   </div>
 </template>
+
+<style scoped></style>

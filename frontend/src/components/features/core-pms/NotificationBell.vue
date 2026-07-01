@@ -120,7 +120,7 @@ async function handleClick(n: AppNotification) {
     } catch { /* silent */ }
   }
   // Routing según tipo
-  const meta = (n.metadata || {}) as any
+  const meta = (n.metadata || {}) as { reservationId?: string; guestId?: string; roomId?: string }
   if (meta.reservationId) router.push('/panel/reservations')
   else if (n.type === 'payment') router.push('/panel/billing')
   else if (n.type === 'housekeeping') router.push('/panel/housekeeping')

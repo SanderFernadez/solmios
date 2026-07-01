@@ -4,10 +4,13 @@ import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { MantenimientoDTO } from '../types'
 import { assertOwnership } from '../helpers'
 
+// Máquina de estados. 'resolved' ahora es alcanzable desde open/in_progress/waiting
+// (antes era zombie: figuraba en el enum pero ninguna transición llegaba a él).
+// Flujo típico: open → in_progress → resolved → closed  (resolved = arreglado, closed = confirmado).
 const STATUS_TRANSITIONS: Record<string, string[]> = {
-  open: ['in_progress', 'closed'],
-  in_progress: ['waiting', 'closed'],
-  waiting: ['in_progress', 'closed'],
+  open: ['in_progress', 'resolved', 'closed'],
+  in_progress: ['waiting', 'resolved', 'closed'],
+  waiting: ['in_progress', 'resolved', 'closed'],
   resolved: ['closed', 'open'],
   closed: ['open'],
 }

@@ -1,14 +1,9 @@
 // services/Payroll.service.ts — API client nómina
 
 import { http } from './http'
-import { useAuthStore } from '@/stores/auth.store'
 
-function hotelParam(): string {
-  try {
-    const auth = useAuthStore()
-    const hid = auth.user?.hotelId
-    return hid ? `?hotelId=${hid}` : ''
-  } catch { return '' }
+function hotelParam(hotelId?: string): string {
+  return hotelId ? `?hotelId=${hotelId}` : ''
 }
 
 export interface PayrollConfig {
@@ -53,19 +48,19 @@ export interface PayrollCalculationResult {
 }
 
 export const PayrollService = {
-  getConfig: (): Promise<PayrollConfig> => http.get(`/api/payroll/config${hotelParam()}`),
-  updateConfig: (data: Partial<PayrollConfig>): Promise<PayrollConfig> => http.put(`/api/payroll/config${hotelParam()}`, data),
+  getConfig: (hotelId?: string): Promise<PayrollConfig> => http.get(`/api/payroll/config${hotelParam(hotelId)}`),
+  updateConfig: (hotelId: string, data: Partial<PayrollConfig>): Promise<PayrollConfig> => http.put(`/api/payroll/config${hotelParam(hotelId)}`, data),
 
-  listConcepts: (): Promise<PayrollConcept[]> => http.get(`/api/payroll/concepts${hotelParam()}`),
-  createConcept: (data: Partial<PayrollConcept>): Promise<PayrollConcept> => http.post(`/api/payroll/concepts${hotelParam()}`, data),
-  deleteConcept: (id: string): Promise<void> => http.delete(`/api/payroll/concepts/${id}${hotelParam()}`),
+  listConcepts: (hotelId?: string): Promise<PayrollConcept[]> => http.get(`/api/payroll/concepts${hotelParam(hotelId)}`),
+  createConcept: (hotelId: string, data: Partial<PayrollConcept>): Promise<PayrollConcept> => http.post(`/api/payroll/concepts${hotelParam(hotelId)}`, data),
+  deleteConcept: (id: string): Promise<void> => http.delete(`/api/payroll/concepts/${id}`),
 
-  listRuns: (): Promise<PayrollRun[]> => http.get(`/api/payroll/runs${hotelParam()}`),
-  createRun: (data: Partial<PayrollRun>): Promise<PayrollRun> => http.post(`/api/payroll/runs${hotelParam()}`, data),
-  getRun: (id: string): Promise<PayrollRun> => http.get(`/api/payroll/runs/${id}${hotelParam()}`),
-  getRunDetails: (id: string): Promise<PayrollRunDetail[]> => http.get(`/api/payroll/runs/${id}/details${hotelParam()}`),
-  calculate: (id: string, employees: PayrollEmployeeInput[]): Promise<PayrollCalculationResult> => http.post(`/api/payroll/runs/${id}/calculate${hotelParam()}`, { employees }),
-  approve: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/approve${hotelParam()}`),
-  markAsPaid: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/pay${hotelParam()}`),
-  cancel: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/cancel${hotelParam()}`),
+  listRuns: (hotelId?: string): Promise<PayrollRun[]> => http.get(`/api/payroll/runs${hotelParam(hotelId)}`),
+  createRun: (hotelId: string, data: Partial<PayrollRun>): Promise<PayrollRun> => http.post(`/api/payroll/runs${hotelParam(hotelId)}`, data),
+  getRun: (id: string): Promise<PayrollRun> => http.get(`/api/payroll/runs/${id}`),
+  getRunDetails: (id: string): Promise<PayrollRunDetail[]> => http.get(`/api/payroll/runs/${id}/details`),
+  calculate: (id: string, employees: PayrollEmployeeInput[]): Promise<PayrollCalculationResult> => http.post(`/api/payroll/runs/${id}/calculate`, { employees }),
+  approve: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/approve`),
+  markAsPaid: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/pay`),
+  cancel: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/cancel`),
 }

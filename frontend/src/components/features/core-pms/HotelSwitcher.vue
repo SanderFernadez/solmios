@@ -48,16 +48,17 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { AuthService } from '@/services/Auth.service'
+import type { Hotel } from '@/types'
 
 const auth = useAuthStore()
 const router = useRouter()
 
 const open = ref(false)
-const hotels = ref<any[]>([])
+const hotels = ref<Hotel[]>([])
 const container = ref<HTMLElement | null>(null)
 
 const currentHotel = computed(() =>
-  hotels.value.find((h: any) => h.id === auth.user?.hotelId) || null
+  hotels.value.find((h) => h.id === auth.user?.hotelId) || null
 )
 
 async function loadHotels() {
@@ -66,7 +67,7 @@ async function loadHotels() {
   } catch { /* graceful */ }
 }
 
-async function switchTo(hotel: any) {
+async function switchTo(hotel: Hotel) {
   if (hotel.id === auth.user?.hotelId) {
     open.value = false
     return
