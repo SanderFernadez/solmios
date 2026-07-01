@@ -18,6 +18,8 @@ export const HuespedesModel: ModelDefinition = {
     province: { type: 'string' },
     documentType: { type: 'string' },
     documentIssueDate: { type: 'string' },
+    profession: { type: 'string' },
+    emergencyContact: { type: 'json' },
     preferences: { type: 'json' },
     loyaltyPoints: { type: 'number', default: 0 },
     totalStays: { type: 'number', default: 0 },

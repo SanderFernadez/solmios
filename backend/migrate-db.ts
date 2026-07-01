@@ -597,6 +597,8 @@ if (!gCols.some((c: any) => c.name === 'province')) exec("ALTER TABLE guests ADD
 if (!gCols.some((c: any) => c.name === 'documentType')) exec("ALTER TABLE guests ADD COLUMN documentType TEXT")
 if (!gCols.some((c: any) => c.name === 'documentIssueDate')) exec("ALTER TABLE guests ADD COLUMN documentIssueDate TEXT")
 if (!gCols.some((c: any) => c.name === 'communicateClient')) exec("ALTER TABLE guests ADD COLUMN communicateClient TEXT")
+if (!gCols.some((c: any) => c.name === 'profession')) exec("ALTER TABLE guests ADD COLUMN profession TEXT")
+if (!gCols.some((c: any) => c.name === 'emergencyContact')) exec("ALTER TABLE guests ADD COLUMN emergencyContact TEXT")
 
 exec(`CREATE TABLE IF NOT EXISTS message_logs (
   id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, reservationId TEXT,

@@ -36,6 +36,8 @@ interface RawGuest {
   preferences?: string[] | string
   notes?: string
   tier?: string
+  profession?: string
+  emergencyContact?: string | object
 }
 
 function splitName(full: string): { first: string; last: string } {
@@ -53,6 +55,22 @@ function normalizePreferences(p: string[] | string | undefined): string[] {
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
+  }
+}
+
+// emergencyContact se persiste como JSON. Normaliza string|object → objeto plano para la UI.
+function normalizeEmergency(ec: string | object | undefined | null): { name: string; phone: string; relation: string; email: string } {
+  const empty = { name: '', phone: '', relation: '', email: '' }
+  if (!ec) return empty
+  let obj: any = ec
+  if (typeof ec === 'string') {
+    try { obj = JSON.parse(ec) } catch { return empty }
+  }
+  return {
+    name: String(obj?.name ?? ''),
+    phone: String(obj?.phone ?? ''),
+    relation: String(obj?.relation ?? ''),
+    email: String(obj?.email ?? ''),
   }
 }
 
@@ -87,6 +105,8 @@ export function mapGuest(g: RawGuest): Guest {
     preferences: normalizePreferences(g.preferences),
     notes: g.notes,
     tier: g.tier,
+    profession: g.profession,
+    emergencyContact: normalizeEmergency(g.emergencyContact) as any,
   } as Guest
 }
 

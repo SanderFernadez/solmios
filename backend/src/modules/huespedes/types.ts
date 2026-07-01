@@ -1,6 +1,14 @@
 // huespedes/types.ts — DTOs y tipos de queries (generado desde model.ts).
 // Responsabilidad ÚNICA: contrato TypeScript del módulo. El schema de DB vive en ./model.ts.
 
+// Contacto de emergencia del huésped (persistido como json column).
+export interface EmergencyContact {
+  name?: string
+  phone?: string
+  relation?: string
+  email?: string
+}
+
 export interface HuespedesDTO {
   id: string
   name: string
@@ -16,6 +24,8 @@ export interface HuespedesDTO {
   province?: string
   documentType?: string
   documentIssueDate?: string
+  profession?: string
+  emergencyContact?: EmergencyContact
   preferences?: any
   loyaltyPoints?: number
   totalStays?: number
@@ -43,6 +53,8 @@ export interface CreateHuespedesDTO {
   province?: string
   documentType?: string
   documentIssueDate?: string
+  profession?: string
+  emergencyContact?: EmergencyContact
   preferences?: any
   loyaltyPoints?: number
   totalStays?: number
@@ -68,6 +80,8 @@ export interface UpdateHuespedesDTO {
   province?: string
   documentType?: string
   documentIssueDate?: string
+  profession?: string
+  emergencyContact?: EmergencyContact
   preferences?: any
   loyaltyPoints?: number
   totalStays?: number

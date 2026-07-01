@@ -59,6 +59,8 @@ export interface Guest {
   preferences?: string[]
   notes?: string
   tier?: string
+  profession?: string
+  emergencyContact?: EmergencyContact
 }
 
 export interface EmergencyContact {

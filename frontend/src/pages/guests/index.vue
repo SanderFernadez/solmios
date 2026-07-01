@@ -238,6 +238,33 @@
                   <div class="text-[10px] text-text-muted uppercase mb-1">Dirección</div>
                   <div class="text-sm font-bold text-navy">{{ [viewGuest.address, viewGuest.city, viewGuest.province].filter(Boolean).join(', ') || '—' }}</div>
                 </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Profesión</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.profession || '—' }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Contacto de emergencia -->
+            <div v-if="viewGuest.emergencyContact && (viewGuest.emergencyContact.name || viewGuest.emergencyContact.phone || viewGuest.emergencyContact.email)">
+              <h4 class="text-sm font-bold text-navy mb-3">Contacto de Emergencia</h4>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Nombre</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.emergencyContact.name || '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Teléfono</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.emergencyContact.phone || '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Relación</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.emergencyContact.relation || '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Email</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.emergencyContact.email || '—' }}</div>
+                </div>
               </div>
             </div>
 
@@ -435,6 +462,24 @@
               </div>
             </div>
 
+            <div class="grid grid-cols-3 gap-4">
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Profesión</label>
+                <input v-model="form.profession" type="text" placeholder="Médico, ingeniero..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+            </div>
+
+            <!-- Contacto de emergencia -->
+            <div>
+              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Contacto de Emergencia</label>
+              <div class="grid grid-cols-2 gap-3">
+                <input v-model="form.emergencyContact.name" type="text" placeholder="Nombre" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                <input v-model="form.emergencyContact.phone" type="text" placeholder="Teléfono" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                <input v-model="form.emergencyContact.relation" type="text" placeholder="Relación (esposa, hijo...)" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                <input v-model="form.emergencyContact.email" type="email" placeholder="Email" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+            </div>
+
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Preferencias</label>
               <div class="flex flex-wrap gap-2">
@@ -519,6 +564,8 @@ const form = ref({
   province: '',
   loyaltyPoints: 0,
   tier: '',
+  profession: '',
+  emergencyContact: { name: '', phone: '', relation: '', email: '' },
   preferences: [] as string[],
   notes: '',
 })
@@ -615,6 +662,8 @@ function mapGuestRow(g: any) {
     province: g.province ?? '',
     documentType: g.documentType ?? '',
     documentIssueDate: g.documentIssueDate ?? '',
+    profession: g.profession ?? '',
+    emergencyContact: g.emergencyContact ?? { name: '', phone: '', relation: '', email: '' },
     isActiveToday: gResv.some(isActiveNow),
     history: [],
   }
@@ -753,7 +802,7 @@ function closeViewModal() {
 
 function openNewGuest() {
   editingGuest.value = null
-  form.value = { name: '', email: '', phone: '', nationality: '', document: '', documentType: '', documentIssueDate: '', birthDate: '', sex: '', language: '', country: '', address: '', city: '', province: '', loyaltyPoints: 0, tier: '', preferences: [], notes: '' }
+  form.value = { name: '', email: '', phone: '', nationality: '', document: '', documentType: '', documentIssueDate: '', birthDate: '', sex: '', language: '', country: '', address: '', city: '', province: '', loyaltyPoints: 0, tier: '', profession: '', emergencyContact: { name: '', phone: '', relation: '', email: '' }, preferences: [], notes: '' }
   showFormModal.value = true
 }
 
@@ -776,6 +825,8 @@ function openEditGuest(guest: any) {
     province: guest.province ?? '',
     loyaltyPoints: guest.loyaltyPoints ?? 0,
     tier: guest.tier ?? '',
+    profession: guest.profession ?? '',
+    emergencyContact: { name: guest.emergencyContact?.name ?? '', phone: guest.emergencyContact?.phone ?? '', relation: guest.emergencyContact?.relation ?? '', email: guest.emergencyContact?.email ?? '' },
     preferences: [...(guest.preferences ?? [])],
     notes: guest.notes ?? '',
   }
@@ -815,6 +866,8 @@ async function saveGuest() {
         language: form.value.language,
         loyaltyPoints: Number(form.value.loyaltyPoints) || 0,
         tier: form.value.tier,
+        profession: form.value.profession,
+        emergencyContact: form.value.emergencyContact,
         preferences: form.value.preferences,
         notes: form.value.notes,
         hotelId: hotelId.value,
@@ -838,6 +891,8 @@ async function saveGuest() {
         language: form.value.language,
         loyaltyPoints: Number(form.value.loyaltyPoints) || 0,
         tier: form.value.tier,
+        profession: form.value.profession,
+        emergencyContact: form.value.emergencyContact,
         preferences: form.value.preferences,
         notes: form.value.notes,
         hotelId: hotelId.value,
