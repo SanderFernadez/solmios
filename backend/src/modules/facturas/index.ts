@@ -25,7 +25,7 @@ export function FacturasModule() {
       description: 'Facturas con ownership, paginacion y validacion',
       actions: ["list","getById","create","pay","update","delete"],
       events: ["onFacturasCreated","onFacturasUpdated","onFacturasDeleted"],
-      tables: ['invoices'],
+      tables: ['invoices', 'invoice_items'],
       dependencies: [],
       rules: ['Ownership check required', 'hotelId not updatable'],
     },
@@ -42,8 +42,9 @@ export function FacturasModule() {
       const roomRepo = new OrmRepository<any>(orm, 'Rooms')
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
+      const itemRepo = new OrmRepository<any>(orm, 'InvoiceItem')
       const log = logger.child('facturas')
-      const service = new FacturasService(repo, configRepo, { guest: guestRepo, reservation: reservationRepo, room: roomRepo }, userRepo, log, cache, auth!)
+      const service = new FacturasService(repo, configRepo, { guest: guestRepo, reservation: reservationRepo, room: roomRepo }, userRepo, log, cache, auth!, itemRepo)
       const controller = new FacturasController(service, log, hotelRepo)
 
       // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger

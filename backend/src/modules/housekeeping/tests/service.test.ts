@@ -193,10 +193,11 @@ describe('HousekeepingService', () => {
 
   describe('stats', () => {
     it('aggregates completed tasks by staff', async () => {
+      const now = new Date()
       const tasks = [
-        { id: '1', hotelId: 'h1', staffId: 'e1', status: 'completed', startTime: '2026-06-01T10:00:00.000Z', endTime: '2026-06-01T10:30:00.000Z' },
-        { id: '2', hotelId: 'h1', staffId: 'e1', status: 'completed', startTime: '2026-06-01T11:00:00.000Z', endTime: '2026-06-01T11:15:00.000Z' },
-        { id: '3', hotelId: 'h1', staffId: 'e2', status: 'completed', startTime: '2026-06-01T12:00:00.000Z', endTime: '2026-06-01T12:45:00.000Z' },
+        { id: '1', hotelId: 'h1', staffId: 'e1', status: 'completed', startTime: new Date(now.getTime() - 3600000).toISOString(), endTime: new Date(now.getTime() - 1800000).toISOString() },
+        { id: '2', hotelId: 'h1', staffId: 'e1', status: 'completed', startTime: new Date(now.getTime() - 7200000).toISOString(), endTime: new Date(now.getTime() - 5400000).toISOString() },
+        { id: '3', hotelId: 'h1', staffId: 'e2', status: 'completed', startTime: new Date(now.getTime() - 5400000).toISOString(), endTime: new Date(now.getTime() - 2700000).toISOString() },
       ] as HousekeepingDTO[]
       const repo = makeRepo({ findMany: async () => tasks })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)

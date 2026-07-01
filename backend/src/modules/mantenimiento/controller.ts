@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { MantenimientoService } from './service'
-import { CreateMantenimientoSchema, UpdateMantenimientoSchema } from './validators/schema'
+import { CreateMantenimientoSchema, UpdateMantenimientoSchema, AddNotesSchema } from './validators/schema'
 
 export class MantenimientoController {
   constructor(
@@ -58,8 +58,7 @@ export class MantenimientoController {
   // ─── Notes ────────────────────────────────────────────
   async addNotes(req: HttpRequest) {
     const currentUser = req.user as any
-    const { notes } = req.body as { notes: string }
-    if (!notes) return { status: 400, body: { error: 'notes requerido' } }
+    const { notes } = validateSchema(AddNotesSchema, req.body) as { notes: string }
     const item = await this.service.addNotes(req.params.id, notes, currentUser)
     return { status: 200, body: item }
   }
@@ -75,6 +74,14 @@ export class MantenimientoController {
     return { status: 200, body: item }
   }
 
+  async removePhoto(req: HttpRequest) {
+    const currentUser = req.user as any
+    const photoUrl = (req.query as any).url as string | undefined
+    if (!photoUrl) return { status: 400, body: { error: 'url de foto requerida (?url=...)' } }
+    const item = await this.service.removePhoto(req.params.id, photoUrl, currentUser)
+    return { status: 200, body: item }
+  }
+
   // ─── Audit ────────────────────────────────────────────
   async auditHistory(req: HttpRequest) {
     const currentUser = req.user as any
@@ -85,7 +92,9 @@ export class MantenimientoController {
   // ─── Stats ────────────────────────────────────────────
   async stats(req: HttpRequest) {
     const user = req.user as any
-    const hotelId = (req.query as any).hotelId || user.hotelId
+    // Ownership: hotel_admin/receptionist SIEMPRE usan su propio hotel (ignoran query.hotelId).
+    // Solo super_admin puede pedir stats de otro hotel vía query param.
+    const hotelId = user.role === 'super_admin' ? ((req.query as any).hotelId || user.hotelId) : user.hotelId
     if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
     const stats = await this.service.getStats(hotelId)
     return { status: 200, body: stats }

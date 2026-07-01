@@ -27,4 +27,22 @@ export const FacturasModel: ModelDefinition = {
 
 export function registerFacturasModels(orm: ORM): void {
   orm.define('Invoices', FacturasModel)
+  orm.define('InvoiceItem', InvoiceItemModel)
+}
+
+// Líneas de factura (desglose). Antes los items vivían embebidos en `invoices.notes` como
+// string y el template solo podía renderizar 1 línea con el total. Ahora son filas propias.
+export const InvoiceItemModel: ModelDefinition = {
+  table: 'invoice_items',
+  fields: {
+    id: { type: 'string', required: true },
+    invoiceId: { type: 'string', required: true, indexed: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    description: { type: 'string', required: true },
+    quantity: { type: 'number', default: 1 },
+    unitPrice: { type: 'number', default: 0 },
+    amount: { type: 'number', required: true },
+    sortOrder: { type: 'number', default: 0 },
+  },
+  timestamps: true,
 }

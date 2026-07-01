@@ -9,6 +9,9 @@ export type InvoiceStatus = 'pending' | 'paid' | 'overdue' | 'cancelled' | 'draf
 export interface InvoiceItem {
   description: string
   amount: number
+  quantity?: number
+  unitPrice?: number
+  sortOrder?: number
 }
 
 export interface FacturasDTO {
@@ -54,6 +57,7 @@ export interface CreateFacturasDTO {
   ncf?: string | null
   paymentMethod?: string | null
   notes?: string | null
+  items?: InvoiceItem[]
 }
 
 export interface UpdateFacturasDTO {

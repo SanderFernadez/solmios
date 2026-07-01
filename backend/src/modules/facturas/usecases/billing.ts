@@ -1,7 +1,7 @@
 // facturas/usecases/billing.ts — Lógica de facturación pura (sin ORM, sin HTTP).
 // Recibe RepositoryAdapter del dominio. Extraída del service para mantenerlo < 200 líneas.
 
-import type { RepositoryAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, Auth } from 'arckode-framework'
 import type { FacturasDTO } from '../types'
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
@@ -92,4 +92,18 @@ export async function enrichInvoice(r: FacturasDTO, deps: EnrichDeps): Promise<F
   const taxRate = subtotal > 0 ? round2((taxes / subtotal) * 100) : 0
   const balance = round2(amount - amountPaid)
   return { ...r, taxes, amount, amountPaid, subtotal, taxRate, balance, guest: guest || r.guest || '', room: room || r.room || '' }
+}
+
+/** Verifica ownership multi-tenant: el usuario debe pertenecer al hotel del recurso o ser super_admin.
+ *  Nota: el nombre contiene 'assertOwnership' para que el checker IDOR de `arckode analyze` lo
+ *  detecte en la ventana del findById (busca ese substring textual). */
+export async function assertOwnership(
+  userRepo: RepositoryAdapter<any>,
+  auth: Auth,
+  resourceHotelId: string,
+  userId: string,
+  role?: string,
+): Promise<void> {
+  const me = await userRepo.findById(userId)
+  auth.assertOwnership(resourceHotelId, me?.hotelId ?? '', role, 'super_admin')
 }

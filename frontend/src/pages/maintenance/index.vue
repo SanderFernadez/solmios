@@ -290,6 +290,9 @@
                 <option value="carpentry">Carpintería</option>
                 <option value="painting">Pintura</option>
                 <option value="electronics">Electrónica</option>
+                <option value="furniture">Muebles</option>
+                <option value="appliance">Electrodomésticos</option>
+                <option value="pest_control">Control de Plagas</option>
                 <option value="general">Limpieza</option>
                 <option value="structural">Otro</option>
               </select>
@@ -511,7 +514,7 @@ function closeDropdown(fn: () => void) {
 }
 
 const PRI_LABELS: Record<string, string> = { high: 'Alta', medium: 'Normal', low: 'Baja', urgent: 'Urgente' }
-const CAT_LABELS: Record<string, string> = { hvac: 'Aire Acond.', plumbing: 'Plomería', electrical: 'Eléctrico', electronics: 'Electrónica', general: 'General', carpentry: 'Carpintería', painting: 'Pintura', structural: 'Estructural', pest_control: 'Plagas' }
+const CAT_LABELS: Record<string, string> = { hvac: 'Aire Acond.', plumbing: 'Plomería', electrical: 'Eléctrico', electronics: 'Electrónica', general: 'General', carpentry: 'Carpintería', painting: 'Pintura', structural: 'Estructural', pest_control: 'Plagas', furniture: 'Muebles', appliance: 'Electrodom.' }
 
 onMounted(async () => {
   await Promise.all([loadData(), loadRooms(), loadStaff()])

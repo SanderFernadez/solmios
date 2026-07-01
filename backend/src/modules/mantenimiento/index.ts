@@ -24,7 +24,7 @@ export function MantenimientoModule(opts?: { storage?: StorageService }) {
       name: 'mantenimiento',
       version: '1.0.0',
       description: 'Maintenance tickets with timer, audit trail, photos, and notifications',
-      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'complete', 'addNotes', 'addPhoto', 'getAuditHistory', 'getStats'],
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'complete', 'addNotes', 'addPhoto', 'removePhoto', 'getAuditHistory', 'getStats'],
       events: ['onMantenimientoCreated', 'onMantenimientoUpdated', 'onMantenimientoDeleted'],
       tables: ['maintenance', 'maintenance_audit'],
       dependencies: [],
@@ -40,6 +40,9 @@ export function MantenimientoModule(opts?: { storage?: StorageService }) {
       const service = new MantenimientoService(repo, log, cache, userRepo, auth, auditRepo, opts?.storage)
       const controller = new MantenimientoController(service, log)
 
+      // Stats ANTES que /:id: el router enruta por orden de registro y /:id capturaría "stats".
+      router.get('/api/mantenimiento/stats', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.stats(req))
+
       // CRUD
       router.get('/api/mantenimiento', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
       router.get('/api/mantenimiento/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
@@ -54,14 +57,12 @@ export function MantenimientoModule(opts?: { storage?: StorageService }) {
       // Notes
       router.put('/api/mantenimiento/:id/notes', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.addNotes(req))
 
-      // Photos (upload con bodyLimit 10MB)
+      // Photos: upload (POST, bodyLimit 10MB) + remove (DELETE, ?url=...).
       router.post('/api/mantenimiento/:id/photos', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin'), bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.addPhoto(req))
+      router.delete('/api/mantenimiento/:id/photos', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.removePhoto(req))
 
       // Audit
       router.get('/api/mantenimiento/:id/audit', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.auditHistory(req))
-
-      // Stats
-      router.get('/api/mantenimiento/stats', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.stats(req))
 
       log.info('Modulo mantenimiento v1 listo — timer, audit, photos, stats')
       return service

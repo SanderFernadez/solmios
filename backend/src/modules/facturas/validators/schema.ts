@@ -20,6 +20,7 @@ export const CreateFacturasSchema: Record<string, ValidationRule> = {
   paymentMethod: { type: 'string' as const, max: 50 },
   notes: { type: 'string' as const, max: MAX_NOTES_LENGTH },
   ncf: { type: 'string' as const, max: 50 },
+  items: { type: 'array' as any },
 }
 
 export const UpdateFacturasSchema: Record<string, ValidationRule> = {

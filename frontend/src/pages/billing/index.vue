@@ -848,15 +848,18 @@ async function saveNewInvoice() {
   if (!validItems.length) { toast.warning('Agregá al menos un concepto con monto'); return }
   savingInvoice.value = true
   try {
-    const conceptSummary = validItems.map(i => i.description).join(', ')
-    const itemDetails = validItems.map(i => `${i.description}: $${i.amount}`).join(' · ')
+    // Items estructurados → se persisten en invoice_items (desglose real en template/PDF).
+    // notes queda como texto libre (huésped/hab) para el listado y search.
+    const guestTag = newInvoice.value.guestName ? `Huésped: ${newInvoice.value.guestName}` : ''
+    const roomTag = newInvoice.value.roomId ? `${guestTag ? ' · ' : ''}Hab: ${newInvoice.value.roomSearch.split('—')[0].trim()}` : ''
     await BillingService.create({
       hotelId: hotelId.value,
       guestId: newInvoice.value.guestId || null,
       reservationId: null,
       type: 'invoice',
       amount: invoiceSubtotal.value,
-      notes: `${conceptSummary}${newInvoice.value.guestName ? ` · ${newInvoice.value.guestName}` : ''}${newInvoice.value.roomId ? ` · ${newInvoice.value.roomSearch.split('—')[0].trim()}` : ''} · ${itemDetails}`,
+      items: validItems.map(i => ({ description: i.description, amount: Number(i.amount) })),
+      notes: `${guestTag}${roomTag}`.trim() || newInvoice.value.notes || null,
     })
     closeNewInvoiceModal()
     loadData()

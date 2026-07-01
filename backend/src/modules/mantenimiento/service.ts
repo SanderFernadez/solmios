@@ -12,9 +12,8 @@ import { TimingsUseCase, assertTransition } from './usecases/timings'
 import { AuditUseCase } from './usecases/audit'
 import { PhotosUseCase } from './usecases/photos'
 import { StatsUseCase } from './usecases/stats'
-import { assertOwnership, resolveHotelId } from './helpers'
-
-const CACHE_TTL = 300
+import { ListUseCase } from './usecases/list'
+import { assertOwnership } from './helpers'
 
 export class MantenimientoService {
   private sockets: MantenimientoSockets = {}
@@ -22,6 +21,7 @@ export class MantenimientoService {
   private readonly audit: AuditUseCase
   private readonly photos: PhotosUseCase
   private readonly statsUc: StatsUseCase
+  private readonly listUc: ListUseCase
 
   constructor(
     private readonly repo: RepositoryAdapter<MantenimientoDTO>,
@@ -35,15 +35,16 @@ export class MantenimientoService {
     this.timings = new TimingsUseCase(
       repo,
       (item) => this.sockets.onMantenimientoUpdated?.(item) ?? Promise.resolve(),
-      (hotelId) => this.invalidateCache(hotelId),
+      (hotelId) => this.listUc.invalidate(hotelId),
     )
     this.audit = new AuditUseCase(auditRepo, repo, logger)
     this.photos = new PhotosUseCase(
       repo, logger,
-      (hotelId) => this.invalidateCache(hotelId),
+      (hotelId) => this.listUc.invalidate(hotelId),
       storage,
     )
     this.statsUc = new StatsUseCase(repo)
+    this.listUc = new ListUseCase(repo, cache, userRepo)
   }
 
   setSockets(s: Partial<MantenimientoSockets>): void {
@@ -55,10 +56,6 @@ export class MantenimientoService {
       const prev = cur[key]
       cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
     }
-  }
-
-  private async invalidateCache(hotelId?: string): Promise<void> {
-    await this.cache.delete(`mantenimiento:list:${hotelId || 'all'}`)
   }
 
   private async assertOrderAccess(id: string, user: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
@@ -86,36 +83,7 @@ export class MantenimientoService {
 
   // ─── CRUD ─────────────────────────────────────────────
   async list(query: MantenimientoQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoPaginated> {
-    const filters: Record<string, unknown> = {}
-    if (query.status) filters.status = query.status
-    if (query.category) filters.category = query.category
-    if (query.priority) filters.priority = query.priority
-    if (query.roomId) filters.roomId = query.roomId
-    if (query.search) filters.title = { contains: query.search }
-
-    const hotelId = await resolveHotelId(currentUser, this.userRepo)
-    if (currentUser.role !== 'super_admin') {
-      if (!hotelId) throw new NotFoundError('No hotel assigned')
-      filters.hotelId = hotelId
-    } else if (query.hotelId) {
-      filters.hotelId = query.hotelId
-    }
-
-    const page = Math.max(query.page || 1, 1)
-    const limit = Math.min(Math.max(query.limit || 20, 1), 100)
-    const offset = (page - 1) * limit
-    const cacheKey = `mantenimiento:list:${hotelId || 'all'}`
-    const cached = await this.cache.get(cacheKey)
-    if (cached) return cached as MantenimientoPaginated
-
-    const result = await this.repo.paginate(filters, { offset, limit })
-    const totalPages = Math.ceil(result.total / limit)
-    const response = {
-      data: result.data,
-      pagination: { page, limit, total: result.total, totalPages, hasNext: page < totalPages, hasPrev: page > 1 },
-    }
-    await this.cache.set(cacheKey, response, CACHE_TTL)
-    return response
+    return this.listUc.list(query, currentUser)
   }
 
   async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
@@ -129,7 +97,7 @@ export class MantenimientoService {
     const item = await this.repo.create(dto as any)
     await this.audit.log(item.id, dto.hotelId, currentUser.id, 'created', null, item.title)
     await this.sockets.onMantenimientoCreated?.(item)
-    await this.invalidateCache(dto.hotelId)
+    await this.listUc.invalidate(dto.hotelId)
     return item
   }
 
@@ -139,7 +107,7 @@ export class MantenimientoService {
     const item = await this.repo.update(id, dto as any)
     if (!item) throw new NotFoundError('Ticket de mantenimiento no encontrado')
     await this.sockets.onMantenimientoUpdated?.(item)
-    await this.invalidateCache(existing.hotelId)
+    await this.listUc.invalidate(existing.hotelId)
     return item
   }
 
@@ -147,7 +115,7 @@ export class MantenimientoService {
     const existing = await this.assertOrderAccess(id, currentUser)
     await this.repo.delete(id)
     await this.sockets.onMantenimientoDeleted?.(id)
-    await this.invalidateCache(existing.hotelId)
+    await this.listUc.invalidate(existing.hotelId)
   }
 
   // ─── Timer ────────────────────────────────────────────
@@ -172,7 +140,7 @@ export class MantenimientoService {
     if (!item) throw new NotFoundError('Ticket de mantenimiento no encontrado')
     await this.audit.log(id, existing.hotelId, currentUser.id, 'notes_added', existing.notes ?? null, notes)
     await this.sockets.onMantenimientoUpdated?.(item)
-    await this.invalidateCache(existing.hotelId)
+    await this.listUc.invalidate(existing.hotelId)
     return item
   }
 
@@ -180,6 +148,12 @@ export class MantenimientoService {
   async addPhoto(id: string, file: FileUpload, type: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
     const item = await this.photos.add(id, file, type, currentUser)
     await this.audit.log(id, item.hotelId, currentUser.id, 'photo_added', null, type)
+    return item
+  }
+
+  async removePhoto(id: string, photoUrl: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
+    const item = await this.photos.remove(id, photoUrl, currentUser)
+    await this.audit.log(id, item.hotelId, currentUser.id, 'photo_removed', photoUrl, null)
     return item
   }
 

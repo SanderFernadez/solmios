@@ -95,7 +95,7 @@ export interface MantenimientoPaginated {
 }
 
 // ─── Audit Trail ───────────────────────────────────────
-export type MaintenanceAuditAction = 'created' | 'status_change' | 'assignment' | 'notes_added' | 'photo_added' | 'priority_change' | 'cost_updated'
+export type MaintenanceAuditAction = 'created' | 'status_change' | 'assignment' | 'notes_added' | 'photo_added' | 'photo_removed' | 'priority_change' | 'cost_updated'
 
 export interface MaintenanceAuditDTO {
   id: string
