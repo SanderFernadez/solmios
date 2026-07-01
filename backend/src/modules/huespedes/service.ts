@@ -10,7 +10,7 @@
 // Esto permite swapear SQL → MongoDB → Prisma en composition-root.ts sin tocar este archivo.
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import { NotFoundError, ConflictError, ValidationError } from 'arckode-framework'
 import type { HuespedesDTO, CreateHuespedesDTO, UpdateHuespedesDTO, HuespedesQuery, HuespedesPaginated, CurrentUser } from './types'
 import type { HuespedesSockets } from './sockets'
 
@@ -36,6 +36,28 @@ export class HuespedesService {
       if (!h) continue
       const prev = cur[key]
       cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
+    }
+  }
+
+  // Email: formato RFC-ish práctico. Vacío/ausente = válido (email opcional en el schema).
+  private static readonly EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  private validateEmailFormat(email: string | undefined): void {
+    const value = email?.trim()
+    if (value && !HuespedesService.EMAIL_RE.test(value)) {
+      throw new ValidationError('El email no tiene un formato válido')
+    }
+  }
+
+  // Unicidad por hotel: email y document no pueden repetirse dentro del mismo hotel.
+  // Vacío/ausente se omite (permite varios huéspedes sin email/documento). excludeId para update.
+  private async assertUniqueField(field: 'email' | 'document', value: string | undefined, hotelId: string, excludeId?: string): Promise<void> {
+    const v = value?.trim()
+    if (!v) return
+    const dup = await this.repo.findOne({ [field]: v, hotelId } as Record<string, unknown>)
+    if (dup && dup.id !== excludeId) {
+      const label = field === 'email' ? 'email' : 'documento'
+      throw new ConflictError(`Ya existe un huésped con ese ${label} en este hotel`)
     }
   }
 
@@ -75,6 +97,9 @@ export class HuespedesService {
 
   async create(dto: CreateHuespedesDTO): Promise<HuespedesDTO> {
     this.logger.info('Creando huespedes')
+    this.validateEmailFormat(dto.email)
+    await this.assertUniqueField('email', dto.email, dto.hotelId)
+    await this.assertUniqueField('document', dto.document, dto.hotelId)
     const item = await this.repo.create(dto as Omit<HuespedesDTO, 'id'>)
     await this.sockets.onHuespedesCreated?.(item)
     await this.cache.delete('huespedes:list')
@@ -87,6 +112,11 @@ export class HuespedesService {
     if (!existing) throw new NotFoundError('Huespedes no encontrado')
     const me = await this.userRepo.findById(user.id)
     this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
+    // Unicidad: si cambian email/document, que no colisionen con otro huésped del mismo hotel.
+    this.validateEmailFormat(dto.email)
+    const hotelId = (dto.hotelId ?? existing.hotelId) as string
+    await this.assertUniqueField('email', dto.email, hotelId, id)
+    await this.assertUniqueField('document', dto.document, hotelId, id)
     const item = await this.repo.update(id, dto as Partial<Omit<HuespedesDTO, 'id'>>)
     if (!item) throw new NotFoundError('Huespedes no encontrado')
     await this.sockets.onHuespedesUpdated?.(item)

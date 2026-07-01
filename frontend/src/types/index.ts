@@ -55,6 +55,10 @@ export interface Guest {
   totalStays: number
   totalSpent: number
   loyaltyPoints: number
+  birthDate?: string
+  preferences?: string[]
+  notes?: string
+  tier?: string
 }
 
 export interface EmergencyContact {

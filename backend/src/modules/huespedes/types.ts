@@ -8,10 +8,20 @@ export interface HuespedesDTO {
   phone?: string
   document?: string
   nationality?: string
+  language?: string
+  sex?: string
+  country?: string
+  address?: string
+  city?: string
+  province?: string
+  documentType?: string
+  documentIssueDate?: string
   preferences?: any
+  loyaltyPoints?: number
   totalStays?: number
   totalSpent?: number
   tier?: string
+  birthDate?: string
   hotelId: string
   notes?: string
   active?: number
@@ -25,10 +35,20 @@ export interface CreateHuespedesDTO {
   phone?: string
   document?: string
   nationality?: string
+  language?: string
+  sex?: string
+  country?: string
+  address?: string
+  city?: string
+  province?: string
+  documentType?: string
+  documentIssueDate?: string
   preferences?: any
+  loyaltyPoints?: number
   totalStays?: number
   totalSpent?: number
   tier?: string
+  birthDate?: string
   hotelId: string
   notes?: string
   active?: number
@@ -40,10 +60,20 @@ export interface UpdateHuespedesDTO {
   phone?: string
   document?: string
   nationality?: string
+  language?: string
+  sex?: string
+  country?: string
+  address?: string
+  city?: string
+  province?: string
+  documentType?: string
+  documentIssueDate?: string
   preferences?: any
+  loyaltyPoints?: number
   totalStays?: number
   totalSpent?: number
   tier?: string
+  birthDate?: string
   hotelId?: string
   notes?: string
   active?: number

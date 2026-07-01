@@ -58,7 +58,7 @@
         </thead>
         <tbody>
           <tr
-            v-for="guest in filteredGuests"
+            v-for="guest in paginatedGuests"
             :key="guest.id"
             @click="openViewGuest(guest)"
             class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors cursor-pointer"
@@ -93,6 +93,17 @@
           </tr>
         </tbody>
       </table>
+      <!-- Paginación del listado -->
+      <div v-if="totalFiltered > PAGE_SIZE" class="flex items-center justify-between px-4 py-3 border-t border-border">
+        <span class="text-[10px] text-text-muted font-bold">{{ totalFiltered }} huésped(es)</span>
+        <div class="flex items-center gap-1">
+          <button @click="goToPage(1)" :disabled="currentPage <= 1" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">«</button>
+          <button @click="goToPage(currentPage - 1)" :disabled="currentPage <= 1" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">‹</button>
+          <span class="px-2 text-xs font-bold text-navy">{{ currentPage }} / {{ totalPages }}</span>
+          <button @click="goToPage(currentPage + 1)" :disabled="currentPage >= totalPages" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">›</button>
+          <button @click="goToPage(totalPages)" :disabled="currentPage >= totalPages" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">»</button>
+        </div>
+      </div>
     </div>
 
     <!-- View Guest Profile Modal -->
@@ -139,31 +150,99 @@
               </div>
             </div>
 
+            <!-- Información de Ventas / Valor del cliente -->
+            <div>
+              <h4 class="text-sm font-bold text-navy mb-3">Información de Ventas</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Ticket Promedio</div>
+                  <div class="text-sm font-extrabold text-navy">${{ viewGuest.sales ? viewGuest.sales.avgPerStay.toLocaleString() : '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Reservas</div>
+                  <div class="text-sm font-extrabold text-navy">{{ viewGuest.sales ? viewGuest.sales.reservationsCount : '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Facturado (reservas)</div>
+                  <div class="text-sm font-extrabold text-navy">${{ viewGuest.sales ? viewGuest.sales.totalResvSpent.toLocaleString() : '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Primera visita</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.sales ? fmtDate(viewGuest.sales.firstVisit) : '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Última visita</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.sales ? fmtDate(viewGuest.sales.lastVisit) : '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Días desde última</div>
+                  <div class="text-sm font-extrabold" :class="viewGuest.sales?.daysSinceLastVisit != null && viewGuest.sales.daysSinceLastVisit <= RECENT_VISIT_DAYS ? 'text-teal' : 'text-text-secondary'">
+                    {{ viewGuest.sales?.daysSinceLastVisit != null ? viewGuest.sales.daysSinceLastVisit : '—' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Contact Info -->
             <div>
               <h4 class="text-sm font-bold text-navy mb-3">Información de Contacto</h4>
               <div class="grid grid-cols-2 gap-4">
                 <div class="bg-surface rounded-xl p-4">
                   <div class="text-[10px] text-text-muted uppercase mb-1">Email</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.email }}</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.email || '—' }}</div>
                 </div>
                 <div class="bg-surface rounded-xl p-4">
                   <div class="text-[10px] text-text-muted uppercase mb-1">Teléfono</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.phone }}</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.phone || '—' }}</div>
                 </div>
                 <div class="bg-surface rounded-xl p-4">
                   <div class="text-[10px] text-text-muted uppercase mb-1">Documento</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.document }}</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.document || '—' }}</div>
                 </div>
                 <div class="bg-surface rounded-xl p-4">
                   <div class="text-[10px] text-text-muted uppercase mb-1">Fecha de Nacimiento</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.birthDate }}</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.birthDate ? fmtDate(viewGuest.birthDate) : '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-4">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Nacionalidad</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.nationality || '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-4">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Idioma</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.language || '—' }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Datos personales y dirección -->
+            <div>
+              <h4 class="text-sm font-bold text-navy mb-3">Datos Personales y Dirección</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Sexo</div>
+                  <div class="text-sm font-bold text-navy">{{ sexLabel(viewGuest.sex) }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">País</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.country || '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Tipo Doc.</div>
+                  <div class="text-sm font-bold text-navy">{{ docTypeLabel(viewGuest.documentType) }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Exp. Doc.</div>
+                  <div class="text-sm font-bold text-navy">{{ viewGuest.documentIssueDate ? fmtDate(viewGuest.documentIssueDate) : '—' }}</div>
+                </div>
+                <div class="bg-surface rounded-xl p-3">
+                  <div class="text-[10px] text-text-muted uppercase mb-1">Dirección</div>
+                  <div class="text-sm font-bold text-navy">{{ [viewGuest.address, viewGuest.city, viewGuest.province].filter(Boolean).join(', ') || '—' }}</div>
                 </div>
               </div>
             </div>
 
             <!-- Preferences -->
-            <div>
+            <div v-if="viewGuest.preferences?.length">
               <h4 class="text-sm font-bold text-navy mb-3">Preferencias</h4>
               <div class="flex flex-wrap gap-2">
                 <span v-for="pref in viewGuest.preferences" :key="pref" class="px-3 py-1.5 bg-navy/5 rounded-lg text-[11px] font-bold text-navy">
@@ -175,19 +254,39 @@
             <!-- Stay History -->
             <div>
               <h4 class="text-sm font-bold text-navy mb-3">Historial de Estadías</h4>
-              <div class="space-y-3">
+              <div v-if="viewGuest.loadingDetail" class="text-xs text-text-muted py-3">Cargando estadías…</div>
+              <div v-else-if="!viewGuest.history?.length" class="text-xs text-text-muted py-3">Sin estadías registradas</div>
+              <div v-else class="space-y-3">
                 <div v-for="stay in viewGuest.history" :key="stay.id" class="bg-surface rounded-xl p-4 flex items-center justify-between">
                   <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-navy/10 flex items-center justify-center text-sm font-bold text-navy">
-                      {{ stay.room }}
+                    <div class="w-12 h-10 rounded-lg bg-navy/10 flex items-center justify-center text-[9px] font-bold text-navy uppercase">
+                      {{ stay.channel || '—' }}
                     </div>
                     <div>
                       <div class="text-sm font-bold text-navy">{{ stay.dates }}</div>
                       <div class="text-[10px] text-text-muted">{{ stay.nights }} noches · ${{ stay.total }}</div>
                     </div>
                   </div>
-                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="stay.status === 'completed' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">
-                    {{ stay.status === 'completed' ? 'Completada' : 'Cancelada' }}
+                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="stayBadgeClass(stay.status)">
+                    {{ stayLabel(stay.status) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Points History -->
+            <div>
+              <h4 class="text-sm font-bold text-navy mb-3">Historial de Puntos</h4>
+              <div v-if="viewGuest.loadingDetail" class="text-xs text-text-muted py-3">Cargando puntos…</div>
+              <div v-else-if="!viewGuest.pointsHistory?.length" class="text-xs text-text-muted py-3">Sin movimientos de puntos</div>
+              <div v-else class="space-y-2">
+                <div v-for="tx in viewGuest.pointsHistory" :key="tx.id" class="bg-surface rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-bold text-navy">{{ tx.description || tx.type }}</div>
+                    <div class="text-[10px] text-text-muted">{{ fmtDate(tx.createdAt) }}</div>
+                  </div>
+                  <span class="text-sm font-black" :class="tx.points >= 0 ? 'text-teal' : 'text-gold'">
+                    {{ tx.points >= 0 ? '+' : '' }}{{ tx.points }}
                   </span>
                 </div>
               </div>
@@ -196,7 +295,7 @@
             <!-- Notes -->
             <div v-if="viewGuest.notes">
               <h4 class="text-sm font-bold text-navy mb-3">Notas</h4>
-              <div class="bg-surface rounded-xl p-4 text-sm text-text-secondary">
+              <div class="bg-surface rounded-xl p-4 text-sm text-text-secondary whitespace-pre-wrap">
                 {{ viewGuest.notes }}
               </div>
             </div>
@@ -231,20 +330,21 @@
           </div>
 
           <div class="p-5 space-y-4">
+            <p class="text-[10px] text-text-muted">Los campos marcados con <span class="text-red-500 font-bold">*</span> son obligatorios.</p>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nombre Completo</label>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nombre Completo <span class="text-red-500">*</span></label>
                 <input v-model="form.name" type="text" placeholder="Nombre y apellido" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nacionalidad</label>
-                <input v-model="form.nationality" type="text" placeholder="🇩🇴 RD" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                <SearchSelect v-model="form.nationality" :options="NATIONALITIES" placeholder="Buscar nacionalidad..." />
               </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Email</label>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Email <span class="text-red-500">*</span></label>
                 <input v-model="form.email" type="email" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
               </div>
               <div>
@@ -261,6 +361,77 @@
               <div>
                 <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Fecha de Nacimiento</label>
                 <input v-model="form.birthDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Idioma</label>
+                <select v-model="form.language" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <option value="">Sin preferencia</option>
+                  <option v-for="l in LANGUAGES" :key="l.v" :value="l.v">{{ l.l }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tier (fidelización)</label>
+                <select v-model="form.tier" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <option value="">Sin tier</option>
+                  <option value="bronze">Bronce</option>
+                  <option value="silver">Plata</option>
+                  <option value="gold">Oro</option>
+                  <option value="platinum">Platino</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Puntos de Fidelización</label>
+              <input v-model.number="form.loyaltyPoints" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+            </div>
+
+            <!-- Datos personales y legales -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">País</label>
+                <SearchSelect v-model="form.country" :options="COUNTRIES" placeholder="Buscar país..." />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Sexo</label>
+                <select v-model="form.sex" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <option value="">—</option>
+                  <option value="male">Masculino</option>
+                  <option value="female">Femenino</option>
+                  <option value="other">Otro</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+              <div class="col-span-2">
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Dirección</label>
+                <input v-model="form.address" type="text" placeholder="Calle, número..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Ciudad</label>
+                <input v-model="form.city" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Provincia</label>
+                <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tipo Documento</label>
+                <select v-model="form.documentType" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <option value="">—</option>
+                  <option v-for="d in DOC_TYPES" :key="d.v" :value="d.v">{{ d.l }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Exp. Documento</label>
+                <input v-model="form.documentIssueDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
               </div>
             </div>
 
@@ -300,17 +471,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { GuestService } from '@/services/Guest.service'
+import { ReservationService } from '@/services/Reservation.service'
+import { CrmService } from '@/services/Crm.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import SearchSelect from '@/components/ui/SearchSelect.vue'
+import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
 
 const auth = useAuthStore()
 const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
+// Umbrales de segmentación de clientes (VIP por gasto, Frecuente por estadías)
+const VIP_SPEND_THRESHOLD = 5000
+const FREQUENT_STAYS_THRESHOLD = 5
+// Cliente "reciente" si volvió en los últimos N días (color del detalle)
+const RECENT_VISIT_DAYS = 90
+// Límites de fetch/display (no son de negocio: paginación + top-N en el modal)
+const RESV_FETCH_LIMIT = 100
+const DETAIL_HISTORY_LIMIT = 10
+const PAGE_SIZE = 10
+
 const searchQuery = ref('')
 const filterType = ref('all')
+const currentPage = ref(1)
 const showViewModal = ref(false)
 const showFormModal = ref(false)
 const viewGuest = ref<any>(null)
@@ -322,7 +508,17 @@ const form = ref({
   phone: '',
   nationality: '',
   document: '',
+  documentType: '',
+  documentIssueDate: '',
   birthDate: '',
+  sex: '',
+  language: '',
+  country: '',
+  address: '',
+  city: '',
+  province: '',
+  loyaltyPoints: 0,
+  tier: '',
   preferences: [] as string[],
   notes: '',
 })
@@ -335,32 +531,112 @@ function initialsOf(name?: string): string {
 }
 
 const guests = ref<any[]>([])
+const reservationsCache = ref<any[]>([])
 
-onMounted(async () => {
+const MS_PER_DAY = 86_400_000
+
+function fmtDate(iso?: string | Date): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return String(iso).slice(0, 10) // fallback: truncar ISO a YYYY-MM-DD
+  return d.toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function nightsBetween(checkIn?: string | Date, checkOut?: string | Date): number {
+  if (!checkIn || !checkOut) return 0
+  const n = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / MS_PER_DAY)
+  return n > 0 ? n : 0
+}
+
+function daysSince(iso?: string | Date): number | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return null
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / MS_PER_DAY))
+}
+
+// ¿Reserva con huésped hospedado hoy (checkIn ≤ hoy ≤ checkOut, status checked_in)?
+function isActiveNow(r: any): boolean {
+  if (r.status !== 'checked_in') return false
+  const now = Date.now()
+  const ci = new Date(r.checkIn).getTime()
+  const co = new Date(r.checkOut).getTime()
+  return now >= ci && now <= co
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pendiente', confirmed: 'Confirmada', checked_in: 'En curso',
+  checked_out: 'Completada', cancelled: 'Cancelada', no_show: 'No-show',
+}
+const STATUS_BADGES: Record<string, string> = {
+  checked_out: 'bg-teal/10 text-teal',
+  checked_in: 'bg-cyan/10 text-cyan',
+  confirmed: 'bg-navy/10 text-navy',
+  pending: 'bg-gold/10 text-gold',
+  cancelled: 'bg-gold/10 text-gold',
+  no_show: 'bg-gold/10 text-gold',
+}
+const stayLabel = (s: string): string => STATUS_LABELS[s] ?? s
+const stayBadgeClass = (s: string): string => STATUS_BADGES[s] ?? 'bg-surface text-text-secondary'
+
+// Labels de opciones de datos personales (mismos valores que el form y que reservations/index.vue).
+const SEX_LABELS: Record<string, string> = { male: 'Masculino', female: 'Femenino', other: 'Otro' }
+const sexLabel = (v?: string): string => (v && SEX_LABELS[v]) || '—'
+const docTypeLabel = (v?: string): string => DOC_TYPES.find(d => d.v === v)?.l ?? (v || '—')
+
+// Mapea un guest del backend a la fila de tabla, enriquecida con su última visita
+// y si está hospedado hoy (cruzando contra las reservas del hotel ya cargadas).
+function mapGuestRow(g: any) {
+  const gResv = reservationsCache.value.filter((r: any) => r.guestId === g.id && r.status !== 'cancelled')
+  const counted = gResv.filter((r: any) => r.status === 'checked_out' || r.status === 'checked_in')
+  const lastVisitIso = counted.length ? counted.map((r: any) => r.checkOut).filter(Boolean).sort().reverse()[0] : ''
+  return {
+    id: g.id,
+    name: g.name ?? `${g.firstName} ${g.lastName}`.trim(),
+    initials: initialsOf(g.name ?? g.firstName),
+    email: g.email ?? '',
+    phone: g.phone ?? '',
+    nationality: g.nationality ?? '',
+    document: g.documentNumber ?? '',
+    birthDate: g.birthDate ?? '',
+    stays: g.totalStays,
+    totalSpent: g.totalSpent,
+    points: g.loyaltyPoints,
+    lastVisit: lastVisitIso ? fmtDate(lastVisitIso) : '',
+    preferences: g.preferences ?? [],
+    notes: g.notes ?? '',
+    language: g.language ?? '',
+    loyaltyPoints: g.loyaltyPoints ?? 0,
+    tier: g.tier ?? '',
+    sex: g.sex ?? '',
+    country: g.country ?? '',
+    address: g.address ?? '',
+    city: g.city ?? '',
+    province: g.province ?? '',
+    documentType: g.documentType ?? '',
+    documentIssueDate: g.documentIssueDate ?? '',
+    isActiveToday: gResv.some(isActiveNow),
+    history: [],
+  }
+}
+
+// Carga guests + reservas del hotel (limit 100) en paralelo; 1 sola llamada de reservas
+// sirve para derivar lastVisit y activeToday por fila (sin N+1).
+async function loadGuests() {
   try {
-    const { guests: data } = await GuestService.list({ hotelId: hotelId.value })
-    guests.value = data.map(g => ({
-      id: g.id,
-      name: g.name ?? `${g.firstName} ${g.lastName}`.trim(),
-      initials: initialsOf(g.name ?? g.firstName),
-      email: g.email ?? '',
-      phone: g.phone ?? '',
-      nationality: g.nationality ?? '',
-      document: g.documentNumber ?? '',
-      birthDate: '',
-      stays: g.totalStays,
-      totalSpent: g.totalSpent,
-      points: g.loyaltyPoints,
-      lastVisit: '',
-      preferences: [],
-      notes: '',
-      history: [],
-    }))
+    const [{ guests: data }, resResult] = await Promise.all([
+      GuestService.list({ hotelId: hotelId.value }),
+      ReservationService.list({ hotelId: hotelId.value, limit: RESV_FETCH_LIMIT }).catch(() => ({ reservations: [], total: 0 })),
+    ])
+    reservationsCache.value = resResult.reservations
+    guests.value = data.map(mapGuestRow)
   } catch { toast.error("Error al cargar datos") }
-})
+}
 
-const activeToday = computed(() => guests.value.filter((g: any) => g.history?.some((h: any) => h.status === 'current')).length)
-const frequentGuests = computed(() => guests.value.filter((g: any) => g.stays >= 5).length)
+onMounted(loadGuests)
+
+const activeToday = computed(() => guests.value.filter((g: any) => g.isActiveToday).length)
+const frequentGuests = computed(() => guests.value.filter((g: any) => g.stays >= FREQUENT_STAYS_THRESHOLD).length)
 const totalPoints = computed(() => guests.value.reduce((sum: number, g: any) => sum + (g.points ?? 0), 0))
 
 const filteredGuests = computed(() => {
@@ -375,36 +651,99 @@ const filteredGuests = computed(() => {
     )
   }
 
-  if (filterType.value === 'frequent') result = result.filter(g => g.stays >= 5)
+  if (filterType.value === 'frequent') result = result.filter(g => g.stays >= FREQUENT_STAYS_THRESHOLD)
   else if (filterType.value === 'new') result = result.filter(g => g.stays <= 1)
-  else if (filterType.value === 'vip') result = result.filter(g => g.totalSpent >= 5000)
+  else if (filterType.value === 'vip') result = result.filter(g => g.totalSpent >= VIP_SPEND_THRESHOLD)
 
   return result
 })
 
+// Paginación de la vista (client-side) sobre el resultado filtrado.
+const totalFiltered = computed(() => filteredGuests.value.length)
+const totalPages = computed(() => Math.max(1, Math.ceil(totalFiltered.value / PAGE_SIZE)))
+const paginatedGuests = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredGuests.value.slice(start, start + PAGE_SIZE)
+})
+
+// Al buscar o cambiar de filtro, volver a la primera página; clampear si el universo se reduce (p.ej. tras borrar).
+watch([searchQuery, filterType], () => { currentPage.value = 1 })
+watch(totalPages, (tp) => { if (currentPage.value > tp) currentPage.value = tp })
+
+function goToPage(n: number) {
+  currentPage.value = Math.min(Math.max(1, n), totalPages.value)
+}
+
 function guestAvatarClass(guest: any) {
-  if (guest.totalSpent >= 5000) return 'bg-gold/10 text-gold'
-  if (guest.stays >= 5) return 'bg-teal/10 text-teal'
+  if (guest.totalSpent >= VIP_SPEND_THRESHOLD) return 'bg-gold/10 text-gold'
+  if (guest.stays >= FREQUENT_STAYS_THRESHOLD) return 'bg-teal/10 text-teal'
   return 'bg-navy/10 text-navy'
 }
 
 const viewGuestAvatarClass = computed(() => {
   if (!viewGuest.value) return ''
-  if (viewGuest.value.totalSpent >= 5000) return 'bg-gold/20 text-gold'
-  if (viewGuest.value.stays >= 5) return 'bg-teal/20 text-teal'
+  if (viewGuest.value.totalSpent >= VIP_SPEND_THRESHOLD) return 'bg-gold/20 text-gold'
+  if (viewGuest.value.stays >= FREQUENT_STAYS_THRESHOLD) return 'bg-teal/20 text-teal'
   return 'bg-navy/20 text-navy'
 })
 
+const TIER_META: Record<string, { label: string; color: string }> = {
+  bronze: { label: 'Bronce', color: 'text-text-secondary' },
+  silver: { label: 'Plata', color: 'text-text-muted' },
+  gold: { label: 'Oro', color: 'text-gold' },
+  platinum: { label: 'Platino', color: 'text-cyan' },
+}
+
 const viewGuestTier = computed(() => {
   if (!viewGuest.value) return { label: '', color: '' }
-  if (viewGuest.value.totalSpent >= 5000) return { label: 'VIP', color: 'text-gold' }
-  if (viewGuest.value.stays >= 5) return { label: 'Frecuente', color: 'text-teal' }
+  // tier real persistido en el guest; si no hay, se infiere por gasto/estadías
+  const t = viewGuest.value.tier
+  if (t && TIER_META[t]) return TIER_META[t]
+  if (viewGuest.value.totalSpent >= VIP_SPEND_THRESHOLD) return { label: 'VIP', color: 'text-gold' }
+  if (viewGuest.value.stays >= FREQUENT_STAYS_THRESHOLD) return { label: 'Frecuente', color: 'text-teal' }
   return { label: 'Regular', color: 'text-navy' }
 })
 
-function openViewGuest(guest: any) {
-  viewGuest.value = { ...guest }
+async function openViewGuest(guest: any) {
+  // Abre el modal con placeholders y carga reservas + historial de puntos en paralelo.
+  viewGuest.value = { ...guest, history: [], pointsHistory: [], sales: null, loadingDetail: true }
   showViewModal.value = true
+  try {
+    const [{ reservations }, pointsHistory] = await Promise.all([
+      ReservationService.list({ guestId: guest.id, hotelId: hotelId.value, limit: RESV_FETCH_LIMIT }),
+      CrmService.getPointsHistory(guest.id).catch(() => []),
+    ])
+    const stays = reservations
+      .filter(r => r.status !== 'cancelled')
+      .sort((a, b) => new Date(b.checkIn).getTime() - new Date(a.checkIn).getTime())
+    const counted = stays.filter(r => r.status === 'checked_out' || r.status === 'checked_in')
+    const firstVisit = stays.length ? stays[stays.length - 1].checkIn : ''
+    const lastVisit = counted.length ? counted[0].checkOut : (stays[0]?.checkOut ?? '')
+    const totalResvSpent = stays.reduce((s, r) => s + (r.totalAmount ?? 0), 0)
+    viewGuest.value = {
+      ...viewGuest.value,
+      history: stays.slice(0, DETAIL_HISTORY_LIMIT).map(r => ({
+        id: r.id,
+        dates: `${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}`,
+        nights: nightsBetween(r.checkIn, r.checkOut),
+        total: (r.totalAmount ?? 0).toLocaleString(),
+        status: r.status,
+        channel: r.source ?? '',
+      })),
+      pointsHistory: [...pointsHistory].sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, DETAIL_HISTORY_LIMIT),
+      sales: {
+        reservationsCount: reservations.length,
+        avgPerStay: counted.length > 0 ? Math.round(totalResvSpent / counted.length) : 0,
+        firstVisit,
+        lastVisit,
+        daysSinceLastVisit: daysSince(lastVisit),
+        totalResvSpent,
+      },
+      loadingDetail: false,
+    }
+  } catch {
+    viewGuest.value = { ...viewGuest.value, loadingDetail: false }
+  }
 }
 
 function closeViewModal() {
@@ -414,13 +753,32 @@ function closeViewModal() {
 
 function openNewGuest() {
   editingGuest.value = null
-  form.value = { name: '', email: '', phone: '', nationality: '', document: '', birthDate: '', preferences: [], notes: '' }
+  form.value = { name: '', email: '', phone: '', nationality: '', document: '', documentType: '', documentIssueDate: '', birthDate: '', sex: '', language: '', country: '', address: '', city: '', province: '', loyaltyPoints: 0, tier: '', preferences: [], notes: '' }
   showFormModal.value = true
 }
 
 function openEditGuest(guest: any) {
   editingGuest.value = { id: guest.id }
-  form.value = { name: guest.name, email: guest.email, phone: guest.phone, nationality: guest.nationality, document: guest.document, birthDate: '', preferences: [...guest.preferences], notes: guest.notes ?? '' }
+  form.value = {
+    name: guest.name,
+    email: guest.email,
+    phone: guest.phone,
+    nationality: guest.nationality,
+    document: guest.document,
+    documentType: guest.documentType ?? '',
+    documentIssueDate: guest.documentIssueDate ?? '',
+    birthDate: guest.birthDate ?? '',
+    sex: guest.sex ?? '',
+    language: guest.language ?? '',
+    country: guest.country ?? '',
+    address: guest.address ?? '',
+    city: guest.city ?? '',
+    province: guest.province ?? '',
+    loyaltyPoints: guest.loyaltyPoints ?? 0,
+    tier: guest.tier ?? '',
+    preferences: [...(guest.preferences ?? [])],
+    notes: guest.notes ?? '',
+  }
   showFormModal.value = true
 }
 
@@ -446,6 +804,19 @@ async function saveGuest() {
         phone: form.value.phone,
         nationality: form.value.nationality,
         document: form.value.document,
+        documentType: form.value.documentType,
+        documentIssueDate: form.value.documentIssueDate,
+        birthDate: form.value.birthDate,
+        sex: form.value.sex,
+        country: form.value.country,
+        address: form.value.address,
+        city: form.value.city,
+        province: form.value.province,
+        language: form.value.language,
+        loyaltyPoints: Number(form.value.loyaltyPoints) || 0,
+        tier: form.value.tier,
+        preferences: form.value.preferences,
+        notes: form.value.notes,
         hotelId: hotelId.value,
       })
       toast.success('Huésped actualizado')
@@ -456,28 +827,24 @@ async function saveGuest() {
         phone: form.value.phone,
         nationality: form.value.nationality,
         document: form.value.document,
+        documentType: form.value.documentType,
+        documentIssueDate: form.value.documentIssueDate,
+        birthDate: form.value.birthDate,
+        sex: form.value.sex,
+        country: form.value.country,
+        address: form.value.address,
+        city: form.value.city,
+        province: form.value.province,
+        language: form.value.language,
+        loyaltyPoints: Number(form.value.loyaltyPoints) || 0,
+        tier: form.value.tier,
+        preferences: form.value.preferences,
+        notes: form.value.notes,
         hotelId: hotelId.value,
       })
       toast.success('Huésped creado')
     }
-    const { guests: data } = await GuestService.list({ hotelId: hotelId.value })
-    guests.value = data.map(g => ({
-      id: g.id,
-      name: g.name ?? `${g.firstName} ${g.lastName}`.trim(),
-      initials: initialsOf(g.name ?? g.firstName),
-      email: g.email ?? '',
-      phone: g.phone ?? '',
-      nationality: g.nationality ?? '',
-      document: g.documentNumber ?? '',
-      birthDate: '',
-      stays: g.totalStays,
-      totalSpent: g.totalSpent,
-      points: g.loyaltyPoints,
-      lastVisit: '',
-      preferences: [],
-      notes: '',
-      history: [],
-    }))
+    await loadGuests()
     closeFormModal()
   } catch {
     toast.error('Error al guardar huésped')

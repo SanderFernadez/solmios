@@ -32,12 +32,28 @@ interface RawGuest {
   totalGastado?: number
   loyaltyPoints?: number
   puntos?: number
+  birthDate?: string
+  preferences?: string[] | string
+  notes?: string
+  tier?: string
 }
 
 function splitName(full: string): { first: string; last: string } {
   const parts = full.trim().split(/\s+/)
   if (parts.length === 1) return { first: parts[0], last: '' }
   return { first: parts[0], last: parts.slice(1).join(' ') }
+}
+
+// preferences se persiste como JSON (array). Normaliza string→array para que la UI siempre reciba string[].
+function normalizePreferences(p: string[] | string | undefined): string[] {
+  if (!p) return []
+  if (Array.isArray(p)) return p as string[]
+  try {
+    const parsed = JSON.parse(p)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
 }
 
 export function mapGuest(g: RawGuest): Guest {
@@ -67,6 +83,10 @@ export function mapGuest(g: RawGuest): Guest {
     totalStays: g.totalStays ?? g.totalEstancias ?? 0,
     totalSpent: g.totalSpent ?? g.totalGastado ?? 0,
     loyaltyPoints: g.loyaltyPoints ?? g.puntos ?? 0,
+    birthDate: g.birthDate,
+    preferences: normalizePreferences(g.preferences),
+    notes: g.notes,
+    tier: g.tier,
   } as Guest
 }
 
