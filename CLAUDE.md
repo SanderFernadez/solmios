@@ -200,9 +200,43 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 |-------------|--------|
 | Channex (Channel Manager) | staging conectado (server.ts legacy) |
 | Pagos (Stripe/Mercado Pago) | solo config en DB, sin conector activo |
-| Facturación electrónica | solo config en DB, sin conector activo |
+| Facturación electrónica | stub (fiscal.ts), sin conector real |
 | TTLock (cerraduras) | no implementado (dependencia externa requerida) |
 | WhatsApp Business API | no implementado (dependencia externa requerida) |
+
+### Módulos — Estado de producción
+| Módulo | Estado | Último upgrade |
+|--------|--------|----------------|
+| facturas (billing) | ✅ 10/10 | `709af44` |
+| mantenimiento | ⚠️ 7/10 | `d3bdce5` |
+| housekeeping | ⚠️ 7/10 | — |
+| reservas | ✅ 9/10 | — |
+| habitaciones | ✅ 9/10 | — |
+| huespedes | ✅ 8/10 | `51950cf` |
+| folios | ✅ 9/10 | — |
+| payments | ✅ 8/10 | — |
+
+### Facturación — Endpoints
+```
+GET    /api/facturas              → List (paginated)
+GET    /api/facturas/stats        → Dashboard stats
+GET    /api/facturas/tax-report   → Reporte fiscal por período
+GET    /api/facturas/:id          → Get by ID
+GET    /api/facturas/:id/print    → HTML A4 imprimible (público)
+POST   /api/facturas              → Create (múltiples items)
+POST   /api/facturas/:id/pay      → Pay (partial/full)
+POST   /api/facturas/:id/credit-note → Cancel + credit note
+PUT    /api/facturas/:id          → Update
+DELETE /api/facturas/:id          → Delete
+```
+
+### Facturación — Reglas
+- Impuestos vienen de `configuration(key='taxes')` — NO hardcodear
+- Hotel name viene de tabla `hotels` — NO hardcodear
+- Moneda viene del invoice — NO hardcodear
+- Items se guardan en `notes` como string descriptivo
+- NCF se genera automáticamente si está configurado
+- Invoice number: counter atómico en `configuration(key='invoice_counter_{hotelId}_{year}')`
 
 ### Credenciales demo
 `admin@managerhotel.com`, `admin@caribeparadise.com`, `maria@caribeparadise.com` — todas `demo123`
