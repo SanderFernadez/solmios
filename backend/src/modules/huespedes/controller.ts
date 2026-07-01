@@ -8,6 +8,21 @@ import { validateSchema } from 'arckode-framework'
 import type { HuespedesService } from './service'
 import { CreateHuespedesSchema, UpdateHuespedesSchema } from './validators/schema'
 
+// validateSchema del framework no contempla tipos json/text (los descarta del output).
+// Estos campos estructurados se recuperan del body crudo; el ORM los serializa al guardar.
+const JSON_TEXT_FIELDS = ['preferences', 'notes', 'emergencyContact'] as const
+
+function withJsonTextFields(validated: Record<string, unknown>, body: unknown): Record<string, unknown> {
+  const merged = { ...validated }
+  if (body && typeof body === 'object') {
+    const b = body as Record<string, unknown>
+    for (const f of JSON_TEXT_FIELDS) {
+      if (b[f] !== undefined) merged[f] = b[f]
+    }
+  }
+  return merged
+}
+
 export class HuespedesController {
   constructor(
     private readonly service: HuespedesService,
@@ -28,14 +43,14 @@ export class HuespedesController {
 
   async store(req: HttpRequest) {
     this.logger.info('POST /huespedes')
-    const data = validateSchema(CreateHuespedesSchema, req.body)
+    const data = withJsonTextFields(validateSchema(CreateHuespedesSchema, req.body), req.body)
     const item = await this.service.create(data as any)
     return { status: 201, body: item }
   }
 
   async update(req: HttpRequest) {
     this.logger.info('PUT /huespedes/:id', { id: req.params.id })
-    const data = validateSchema(UpdateHuespedesSchema, req.body)
+    const data = withJsonTextFields(validateSchema(UpdateHuespedesSchema, req.body), req.body)
     const item = await this.service.update(req.params.id, data as any, req.user as any)
     return { status: 200, body: item }
   }
