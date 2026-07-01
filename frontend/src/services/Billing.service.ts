@@ -143,6 +143,11 @@ export const BillingService = {
     return http.post(`/facturas/${invoiceId}/email`, { to })
   },
 
+  /** Descarga el PDF de una factura (endpoint con auth JWT). Devuelve Blob para descarga. */
+  async downloadPdf(invoiceId: string): Promise<Blob> {
+    return http.getBlob(`/facturas/${invoiceId}/pdf`)
+  },
+
   async update(id: string, data: any): Promise<Invoice> {
     const r = await http.put(`/facturas/${id}`, data)
     return mapInvoice(r)

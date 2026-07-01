@@ -1829,6 +1829,17 @@ if (facturasForEmail && typeof facturasForEmail.setEmailDeps === 'function') {
   facturasForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Hotels'))
 }
 
+// Marketing: inyectar triggerDeps para auto-messages
+const marketingSvc = system.resolveModule<{ setTriggerDeps(deps: any): void }>('marketing')
+if (marketingSvc && typeof marketingSvc.setTriggerDeps === 'function') {
+  marketingSvc.setTriggerDeps({
+    emailSender: emailService,
+    guestRepo: new OrmRepository<any>(orm, 'Guests'),
+    roomRepo: new OrmRepository<any>(orm, 'Rooms'),
+    hotelRepo: new OrmRepository<any>(orm, 'Hotels'),
+  })
+}
+
 // ── Auto PaymentRequest al crear reserva (toggle Settings > Automatización > autoPaymentRequest) ──
 // Cross-module vía socket onReservasCreated: el módulo reservas NO importa PaymentRequests (regla
 // de arquitectura). composition-root orquesta. Fire-and-forget: si falla, NO rompe la creación.

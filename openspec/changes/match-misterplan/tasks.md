@@ -758,10 +758,10 @@
 ## Verification Checklist (per phase)
 
 After each phase:
-- [ ] `npx vue-tsc --noEmit` → 0 errors (frontend)
-- [ ] `bun run typecheck` → 0 errors (backend)
-- [ ] `arckode analyze` → ✅ VÁLIDO (0 violations)
+- [x] `npx vue-tsc --noEmit` → 0 errors (frontend) ✅ verificado 2026-07-01
+- [x] `bun run typecheck` → 0 errors (backend) ✅ verificado 2026-07-01
+- [x] `arckode analyze` → ✅ VÁLIDO (0 violations) ✅ verificado 2026-07-01
 - [ ] No `alert()` calls (use toast)
-- [ ] All new endpoints have `auth.authenticate()` middleware
-- [ ] DB changes are backward-compatible (DEFAULT values)
+- [x] All new endpoints have `auth.authenticate()` middleware ✅ print/pdf/email protegidos
+- [x] DB changes are backward-compatible (DEFAULT values) ✅ invoice_items con defaults
 - [ ] New pages follow vstruct naming conventions

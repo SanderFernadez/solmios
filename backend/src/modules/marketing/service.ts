@@ -6,6 +6,15 @@ import type {
   WhatsappTemplateDTO, CreateWhatsappTemplateDTO,
 } from './types'
 import type { MarketingSockets } from './sockets'
+import type { EmailSender } from '../../services/email-sender'
+import type { NotificationEvent, NotificationLanguage } from '../../services/notification-defaults'
+
+export interface TriggerDeps {
+  emailSender: EmailSender
+  guestRepo: RepositoryAdapter<any>
+  roomRepo: RepositoryAdapter<any>
+  hotelRepo: RepositoryAdapter<any>
+}
 
 export class MarketingService {
   private sockets: MarketingSockets = {}
@@ -16,11 +25,16 @@ export class MarketingService {
     private readonly templateRepo: RepositoryAdapter<WhatsappTemplateDTO>,
     private readonly logger: Logger,
     cache: CacheAdapter,
+    private readonly triggerDeps?: TriggerDeps,
   ) {}
 
   setSockets(s: Partial<MarketingSockets>): void {
     const next = s as Record<string, any>; const cur = this.sockets as Record<string, any>
     for (const key of Object.keys(next)) { const h = next[key]; if (!h) continue; const prev = cur[key]; cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h }
+  }
+
+  setTriggerDeps(deps: TriggerDeps): void {
+    ;(this as any).triggerDeps = deps
   }
 
   // ─── Auto Messages ────────────────────────────────────
@@ -61,4 +75,78 @@ export class MarketingService {
     return this.templateRepo.findById(id) as Promise<WhatsappTemplateDTO>
   }
   async deleteTemplate(id: string): Promise<void> { await this.templateRepo.delete(id) }
+
+  // ─── Trigger Auto-Messages ────────────────────────────
+  /**
+   * Dispara auto-messages activos para un evento dado.
+   * Resuelve variables desde la reserva/huésped/hotel y encola emails via EmailSender.
+   */
+  async triggerAutoMessages(params: {
+    hotelId: string
+    event: string
+    reservationId: string
+    guestId?: string
+    roomId?: string
+    variables?: Record<string, string | number>
+  }): Promise<void> {
+    if (!this.triggerDeps?.emailSender) {
+      this.logger.warn('triggerAutoMessages: emailSender no configurado')
+      return
+    }
+
+    const { hotelId, event, reservationId, guestId, roomId, variables: extraVars } = params
+
+    // Buscar auto-messages activos para este evento
+    const allMsgs = await this.autoMsgRepo.findMany({ hotelId, isActive: 1 } as any)
+    const matching = allMsgs.filter(m => m.triggerEvent === event)
+    if (matching.length === 0) return
+
+    // Resolver variables del contexto
+    const guest = guestId ? await this.triggerDeps.guestRepo.findById(guestId) : null
+    const room = roomId ? await this.triggerDeps.roomRepo.findById(roomId) : null
+    const hotel = await this.triggerDeps.hotelRepo.findById(hotelId)
+
+    const baseVars: Record<string, string | number> = {
+      guest_name: guest?.name || guest?.firstName || 'Huésped',
+      hotel_name: hotel?.name || 'Hotel',
+      hotel_phone: hotel?.phone || '',
+      hotel_address: hotel?.address || '',
+      room_number: room?.number || '',
+      room_type: room?.type || '',
+      ...extraVars,
+    }
+
+    for (const msg of matching) {
+      try {
+        const language = (msg.language || 'es') as any
+        const templateEvent = msg.event || 'checkin_welcome'
+
+        const queueId = await this.triggerDeps.emailSender.enqueueNotification({
+          to: guest?.email || '',
+          hotelId,
+          event: templateEvent as NotificationEvent,
+          language: language as NotificationLanguage,
+          variables: baseVars,
+          relatedType: 'auto_message',
+          relatedId: msg.id,
+        })
+
+        // Log del envío
+        await this.createMessageLog({
+          hotelId,
+          reservationId,
+          guestId: guestId || null,
+          channel: msg.channel || 'email',
+          templateId: msg.id || null,
+          status: queueId ? 'queued' : 'failed',
+          sentAt: new Date().toISOString(),
+          metadata: JSON.stringify({ autoMessageId: msg.id, event, queueId }),
+        } as any)
+
+        this.logger.info('Auto-message encolado', { hotelId, event, guest: guest?.email, queueId })
+      } catch (e) {
+        this.logger.warn('Error en auto-message', { hotelId, event, error: (e as Error).message })
+      }
+    }
+  }
 }

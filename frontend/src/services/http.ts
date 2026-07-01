@@ -77,4 +77,15 @@ export const http = {
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
   delete: <T>(path: string) => request<T>('DELETE', path),
+  /** Descarga binaria (PDF, etc.) con el mismo token JWT. Devuelve Blob para descarga/preview. */
+  async getBlob(path: string): Promise<Blob> {
+    const headers: Record<string, string> = {}
+    const token = getToken()
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const url = path.startsWith('/api') ? path : `/api${path}`
+    const res = await fetch(url, { method: 'GET', headers })
+    if (res.status === 401) { forceLogout(); throw new ApiError(401, 'Sesión expirada') }
+    if (!res.ok) throw new ApiError(res.status, `Error ${res.status} al descargar`)
+    return res.blob()
+  },
 }

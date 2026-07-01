@@ -339,9 +339,9 @@
               <button @click="emailInvoice" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
                 ✉️ Enviar email
               </button>
-              <a :href="`/api/facturas/${viewInvoice.id}/pdf`" target="_blank" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
+              <button @click="downloadPdf" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
                 📄 PDF
-              </a>
+              </button>
               <button v-if="viewInvoice.status === 'pending' || viewInvoice.balance > 0" @click="closeViewModal(); openRecordPayment(viewInvoice)" class="flex-1 px-4 py-2.5 bg-teal text-white rounded-xl text-sm font-bold hover:bg-teal-light transition-colors cursor-pointer">
                 Registrar Pago
               </button>
@@ -796,6 +796,19 @@ async function emailInvoice() {
     if (!res.configured) { toast.warning('El hotel no tiene email configurado (SMTP/Resend). Configurarlo en Settings.'); return }
     toast.success(`Factura enviada a ${to}`)
   } catch { toast.error('Error al enviar la factura') }
+}
+
+async function downloadPdf() {
+  if (!viewInvoice.value) return
+  try {
+    const blob = await BillingService.downloadPdf(viewInvoice.value.id)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${viewInvoice.value.number}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch { toast.error('Error al generar el PDF') }
 }
 
 function openNewPayment() {

@@ -4,19 +4,21 @@ import { registerMarketingModels } from './model'
 import { MarketingService } from './service'
 import { MarketingController } from './controller'
 import type { AutoMessageDTO, MessageLogDTO, WhatsappTemplateDTO } from './types'
+import type { TriggerDeps } from './service'
 
 export { MarketingService }
 export type { AutoMessageDTO, MessageLogDTO, WhatsappTemplateDTO, CreateAutoMessageDTO, CreateMessageLogDTO, CreateWhatsappTemplateDTO } from './types'
 export type { MarketingSockets } from './sockets'
+export type { TriggerDeps } from './service'
 
-export function MarketingModule() {
+export function MarketingModule(opts?: { triggerDeps?: TriggerDeps }) {
   return createModule({
     name: 'marketing', version: '1.0.0',
     description: 'Marketing Automatizado — auto-mensajes, logs, plantillas WhatsApp',
 
     contract: {
       name: 'marketing', version: '1.0.0', description: 'Auto-messages + WhatsApp templates + delivery logs',
-      actions: ['listAutoMessages','createAutoMessage','updateAutoMessage','deleteAutoMessage','listMessageLogs','listTemplates','createTemplate','updateTemplate','deleteTemplate'],
+      actions: ['listAutoMessages','createAutoMessage','updateAutoMessage','deleteAutoMessage','listMessageLogs','listTemplates','createTemplate','updateTemplate','deleteTemplate','triggerAutoMessages'],
       events: ['onAutoMessageSent'],
       tables: ['auto_messages','message_logs','whatsapp_templates'],
       dependencies: [],
@@ -32,7 +34,7 @@ export function MarketingModule() {
       const templateRepo = new OrmRepository<WhatsappTemplateDTO>(orm, 'WhatsappTemplates')
 
       const log = logger.child('marketing')
-      const service = new MarketingService(autoMsgRepo, logRepo, templateRepo, log, cache)
+      const service = new MarketingService(autoMsgRepo, logRepo, templateRepo, log, cache, opts?.triggerDeps)
       const controller = new MarketingController(service, log)
 
       const a = (roles: string[]) => [auth.authenticate(...roles)]
@@ -49,7 +51,7 @@ export function MarketingModule() {
 
       router.get('/api/message-logs', a(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.listMessageLogs(req))
 
-      log.info('Módulo marketing listo — 3 tablas, 9 endpoints')
+      log.info('Módulo marketing listo — 3 tablas, 9 endpoints + trigger')
       return service
     },
   })
