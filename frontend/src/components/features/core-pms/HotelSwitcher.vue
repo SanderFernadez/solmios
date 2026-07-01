@@ -78,8 +78,8 @@ async function switchTo(hotel: Hotel) {
     auth.user = { ...auth.user!, ...user, hotelId: user.hotelId || '', hotelName: user.hotelName || '' } as typeof auth.user
     open.value = false
     router.push('/panel')
-  } catch (e: any) {
-    console.error('switchHotel failed:', e)
+  } catch (e: unknown) {
+    console.error('switchHotel failed:', e instanceof Error ? e.message : e)
   }
 }
 

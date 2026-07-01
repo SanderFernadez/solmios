@@ -80,3 +80,5 @@ async function dismiss(id: string) {
 
 onMounted(load)
 </script>
+
+<style scoped></style>

@@ -222,16 +222,28 @@ function toggleSection(section: string) {
   collapsedSections.value = s
 }
 
+interface NavItem {
+  label: string
+  icon?: string
+  path: string
+  roles: string[]
+  children?: NavItem[]
+  expanded?: boolean
+}
+
 const visibleItems = computed(() => {
-  const role = auth.userRole
-  return nonavItems
-    .filter((item: any) => {
-      if (item.children) return item.children.some((c: any) => c.roles.includes(role as any))
-      return item.roles.includes(role as any)
+  const role = auth.userRole ?? ''
+  // El literal nonavItems mezcla padres (con children, sin path) y hojas (con path);
+  // unificamos a NavItem. El template usa path/expanded solo en la rama que corresponde.
+  const items = nonavItems as unknown as NavItem[]
+  return items
+    .filter((item) => {
+      if (item.children) return item.children.some((c) => c.roles.includes(role))
+      return item.roles.includes(role)
     })
-    .map((item: any) => {
+    .map((item) => {
       if (item.children) {
-        const children = item.children.filter((c: any) => c.roles.includes(role as any))
+        const children = item.children.filter((c) => c.roles.includes(role))
         return { ...item, children, expanded: !collapsedSections.value.has(item.label) }
       }
       return item

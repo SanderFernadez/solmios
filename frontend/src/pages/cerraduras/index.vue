@@ -98,6 +98,21 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Códigos de cerradura (modal persistente — reemplaza alert) -->
+    <div v-if="codesModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="codesModal = null">
+      <div class="bg-white rounded-2xl w-full max-w-md p-6">
+        <h3 class="text-lg font-black text-navy mb-3">Códigos de {{ codesModal.lockName }}</h3>
+        <div class="space-y-2 max-h-72 overflow-y-auto">
+          <div v-for="(c, i) in codesModal.codes" :key="i" class="flex items-center gap-2 bg-surface rounded-lg px-3 py-2">
+            <code class="flex-1 text-sm font-mono font-bold text-navy">{{ c.code }}</code>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ c.status }}</span>
+            <span class="text-[10px] text-text-muted shrink-0">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
+          </div>
+        </div>
+        <button @click="codesModal = null" class="w-full mt-4 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cerrar</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -117,6 +132,8 @@ const rooms = ref<any[]>([])
 const lockCodes = ref<any[]>([])
 const ttlockConfig = ref({ clientId: '', clientSecret: '', username: '', password: '', region: 'eu', accountId: '', accessToken: '', configured: false, connected: false })
 const connecting = ref(false)
+
+const codesModal = ref<{ lockName: string; codes: { code: string; status: string; startDate: string; endDate: string }[] } | null>(null)
 
 async function load() {
   try { const cfg = await TTLockService.getConfig(); ttlockConfig.value = { ...ttlockConfig.value, ...cfg } } catch {}
@@ -174,8 +191,10 @@ function viewCodes(lock: any) {
     toast.info(`Sin códigos para ${lock.name || lock.id}`)
     return
   }
-  const msg = codes.map((c: any) => `• ${c.code} (${c.status || 'active'}) ${c.startDate || ''} → ${c.endDate || ''}`).join('\n')
-  alert(`Códigos de ${lock.name || lock.id}:\n\n${msg}`)
+  codesModal.value = {
+    lockName: lock.name || lock.id,
+    codes: codes.map((c: any) => ({ code: String(c.code), status: c.status || 'active', startDate: c.startDate || '', endDate: c.endDate || '' })),
+  }
 }
 
 onMounted(load)

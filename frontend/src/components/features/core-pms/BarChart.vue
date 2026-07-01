@@ -51,3 +51,5 @@ function shortDate(d?: string): string {
   return new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
 }
 </script>
+
+<style scoped></style>

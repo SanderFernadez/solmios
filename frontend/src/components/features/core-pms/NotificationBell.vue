@@ -163,3 +163,5 @@ onUnmounted(() => {
 import { watch } from 'vue'
 watch(open, (val) => { if (val) positionDropdown() })
 </script>
+
+<style scoped></style>

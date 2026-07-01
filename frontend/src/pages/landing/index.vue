@@ -431,7 +431,7 @@
         <div class="border-t border-white/8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div class="text-sm text-white/30">© 2026 ManagerHotel. Todos los derechos reservados.</div>
           <div class="flex gap-6">
-            <a v-for="link in legalLinks" :key="link" href="#" class="text-sm text-white/30 hover:text-blue-400 transition-colors">{{ link }}</a>
+            <span v-for="link in legalLinks" :key="link" class="text-sm text-white/30 transition-colors">{{ link }}</span>
           </div>
         </div>
       </div>

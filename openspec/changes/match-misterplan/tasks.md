@@ -716,34 +716,34 @@
 > con "Phase 12: Production Hardening" de main. Tareas 12.x → 13.x.
 
 ### 13.1 Services que importan stores (violación de arquitectura)
-- [ ] 13.1.1 `frontend/src/services/http.ts` importa `useAuthStore` directamente
+- [x] 13.1.1 `frontend/src/services/http.ts` importa `useAuthStore` directamente
   > Regla violada: "NUNCA service importa store → store orquesta el service, no al revés".
   > Mover la lectura del token/hotelId a un interceptor configurado desde el store (el store
   > inyecta el token en `http.ts` vía función `setAuthToken()`/header, en vez de que `http.ts`
   > importe el store).
-- [ ] 13.1.2 `frontend/src/services/Payroll.service.ts:4,8` importa y usa `useAuthStore` en `hotelParam()`
+- [x] 13.1.2 `frontend/src/services/Payroll.service.ts:4,8` importa y usa `useAuthStore` en `hotelParam()`
   > Mismo patrón: `hotelId` debe llegar como parámetro desde el componente/store que llama al
   > service, no resuelto internamente importando el store.
 
 ### 13.2 Componentes sin `<style scoped>`
-- [ ] 13.2.1 Agregar `<style scoped>` (aunque sea vacío o con clases mínimas) a:
+- [x] 13.2.1 Agregar `<style scoped>` (aunque sea vacío o con clases mínimas) a:
   > `components/features/CameraCapture.vue`, `components/features/core-pms/AnnouncementBanner.vue`,
   > `BarChart.vue`, `KpiCard.vue`, `NotificationBell.vue`, `OfflineBanner.vue`.
   > Verificar que no dependen de estilos globales que deban quedar explícitos como scoped.
 
 ### 13.3 Tipado `any` evitable
-- [ ] 13.3.1 Tipar `HotelSwitcher.vue` (líneas ~56,60,69,80): `hotels: any[]` → `Hotel[]`,
+- [x] 13.3.1 Tipar `HotelSwitcher.vue` (líneas ~56,60,69,80): `hotels: any[]` → `Hotel[]`,
   > `switchTo(hotel: any)` → `switchTo(hotel: Hotel)`, `catch (e: any)` → `catch (e: unknown)` + type guard.
-- [ ] 13.3.2 Tipar `NotificationBell.vue:123` `(n.metadata || {}) as any` con un tipo concreto de metadata.
-- [ ] 13.3.3 Revisar `any` en `AdminLayout.vue` (filtros/maps de items de menú, 5+ instancias) y
+- [x] 13.3.2 Tipar `NotificationBell.vue:123` `(n.metadata || {}) as any` con un tipo concreto de metadata.
+- [x] 13.3.3 Revisar `any` en `AdminLayout.vue` (filtros/maps de items de menú, 5+ instancias) y
   > tipar con la interfaz de menú existente en `types/index.ts`.
-- [ ] 13.3.4 Revisar catch blocks `e: any` en `pages/attendance/index.vue` y `pages/ai-receptionist/config.vue`
+- [x] 13.3.4 Revisar catch blocks `e: any` en `pages/attendance/index.vue` y `pages/ai-receptionist/config.vue`
   > → `unknown` + `error instanceof Error` guard.
   > Nota: `any` en `CameraCapture.vue` (`window as any).FaceDetector`, `faces: any[]`) está
   > justificado (Face Detection API sin tipos DOM) — NO tocar, dejar comentario explicando por qué.
 
 ### 13.4 Navegación interna con `<a href>` en vez de `router-link`
-- [ ] 13.4.1 `pages/landing/index.vue:341` — `<a href="#">` placeholder roto → reemplazar por
+- [x] 13.4.1 `pages/landing/index.vue:341` — `<a href="#">` placeholder roto → reemplazar por
   > `<router-link>` a la ruta real o quitar el enlace si no tiene destino aún.
 
 **Acceptance:**
@@ -761,7 +761,7 @@ After each phase:
 - [x] `npx vue-tsc --noEmit` → 0 errors (frontend) ✅ verificado 2026-07-01
 - [x] `bun run typecheck` → 0 errors (backend) ✅ verificado 2026-07-01
 - [x] `arckode analyze` → ✅ VÁLIDO (0 violations) ✅ verificado 2026-07-01
-- [ ] No `alert()` calls (use toast)
+- [x] No `alert()` calls (use toast)
 - [x] All new endpoints have `auth.authenticate()` middleware ✅ print/pdf/email protegidos
 - [x] DB changes are backward-compatible (DEFAULT values) ✅ invoice_items con defaults
-- [ ] New pages follow vstruct naming conventions
+- [x] New pages follow vstruct naming conventions

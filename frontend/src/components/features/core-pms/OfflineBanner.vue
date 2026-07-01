@@ -23,3 +23,5 @@ onUnmounted(() => {
   window.removeEventListener('offline', onOffline)
 })
 </script>
+
+<style scoped></style>

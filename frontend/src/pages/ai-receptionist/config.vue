@@ -2,9 +2,11 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { AiReceptionistService } from '@/services/AiReceptionist.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { useToast } from '@/composables/useToast'
 import QrcodeVue from 'qrcode.vue'
 
 const auth = useAuthStore()
+const toast = useToast()
 const hotelId = auth.user?.hotelId || JSON.parse(localStorage.getItem('user') || '{}').hotelId || ''
 
 function getHotelId() {
@@ -77,13 +79,13 @@ async function saveLLMConfig() {
       businessHoursStart: businessHoursStart.value,
       businessHoursEnd: businessHoursEnd.value,
     } as any)
-    alert('Configuración guardada correctamente')
+    toast.success('Configuración guardada')
   } finally { saving.value = false }
 }
 
 async function startWhatsapp() {
   const hid = getHotelId()
-  if (!hid) { alert('Error: No se detectó el hotel. Recargá la página.'); return }
+  if (!hid) { toast.error('No se detectó el hotel', 'Recargá la página'); return }
   wsLoading.value = true
   try {
     const res = await AiReceptionistService.startWhatsappSession(hid)
@@ -103,7 +105,7 @@ async function startWhatsapp() {
     const friendly = msg.includes('HTML') || msg.includes('<!')
       ? 'El backend no respondió JSON. Verificá que esté corriendo: cd backend && bun run dev'
       : msg
-    alert('Error al conectar: ' + friendly)
+    toast.error('Error al conectar', friendly)
   } finally { wsLoading.value = false }
 }
 

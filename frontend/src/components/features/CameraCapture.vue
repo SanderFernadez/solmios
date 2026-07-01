@@ -173,3 +173,5 @@ function stopCamera() {
 onMounted(startCamera)
 onUnmounted(stopCamera)
 </script>
+
+<style scoped></style>

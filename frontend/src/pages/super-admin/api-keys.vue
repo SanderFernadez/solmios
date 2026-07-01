@@ -164,6 +164,22 @@
         </div>
       </div>
     </div>
+
+    <!-- Reveal new API Key (one-time secret — persistente, no toast) -->
+    <div v-if="revealKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="revealKey = null">
+      <div class="bg-white rounded-2xl w-full max-w-md p-6">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-2xl">🔑</span>
+          <h3 class="text-lg font-black text-navy">Guardá tu API Key ahora</h3>
+        </div>
+        <p class="text-xs text-coral font-bold mb-3">⚠️ Por seguridad no se volverá a mostrar. Copiala y guardala en un lugar seguro.</p>
+        <div class="bg-surface rounded-xl p-3 mb-4 flex items-center gap-2">
+          <code class="flex-1 text-xs font-mono text-navy break-all">{{ revealKey }}</code>
+          <button @click="copyPlainKey" class="shrink-0 px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-lg cursor-pointer hover:bg-navy-light">Copiar</button>
+        </div>
+        <button @click="revealKey = null" class="w-full py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Listo, ya la guardé</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -176,6 +192,7 @@ import { useToast } from '@/composables/useToast'
 const toast = useToast()
 const showCreateKey = ref(false)
 const creating = ref(false)
+const revealKey = ref<string | null>(null)
 const hotels = ref<Array<{ id: string; name: string }>>([])
 
 const scopes = ['read:reservations', 'write:reservations', 'read:rooms', 'write:rooms', 'read:billing', 'write:billing', 'read:guests', 'write:guests']
@@ -238,18 +255,18 @@ async function generateKey() {
       hotelId: newKey.value.hotel || undefined,
       scope: newKey.value.scopes.join(','),
     })
-    // Si el backend devuelve la clave en plain text, mostrarla una sola vez
-    if ((created as any)?.plainKey) {
-      toast.success('API Key creada — anótala, no se volverá a mostrar')
-      alert(`Tu nueva API Key (anótala ahora, no se volverá a mostrar):\n\n${(created as any).plainKey}`)
+    // Si el backend devuelve la clave en plain text, mostrarla una sola vez (modal persistente — un toast auto-cerraría y perdería el secret)
+    const plainKey = (created as { plainKey?: string } | null)?.plainKey
+    if (plainKey) {
+      revealKey.value = plainKey
     } else {
       toast.success('API Key creada')
     }
     showCreateKey.value = false
     newKey.value = { name: '', hotel: '', scopes: [] }
     await loadKeys()
-  } catch (e: any) {
-    toast.error(e.message || 'Error al crear API Key')
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Error al crear API Key')
   } finally {
     creating.value = false
   }
@@ -264,13 +281,13 @@ async function revokeKey(id: string) {
       await ApikeysService.revoke(id)
       key.active = false
       toast.success('Revocada')
-    } catch (e: any) { toast.error(e.message || 'Error') }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') }
   } else {
     try {
       await ApikeysService.reactivate(id)
       key.active = true
       toast.success('Reactivada')
-    } catch (e: any) { toast.error(e.message || 'Error') }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') }
   }
 }
 
@@ -281,12 +298,19 @@ async function copyKey(key: any) {
   } catch { toast.error('No se pudo copiar') }
 }
 
+async function copyPlainKey() {
+  try {
+    await navigator.clipboard.writeText(revealKey.value || '')
+    toast.success('API Key copiada')
+  } catch { toast.error('No se pudo copiar') }
+}
+
 async function deleteKey(id: string) {
   if (!confirm('¿Eliminar definitivamente esta API Key?')) return
   try {
     await ApikeysService.remove(id)
     apiKeys.value = apiKeys.value.filter(k => k.id !== id)
     toast.success('Eliminada')
-  } catch (e: any) { toast.error(e.message || 'Error') }
+  } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') }
 }
 </script>
