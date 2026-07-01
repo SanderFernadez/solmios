@@ -831,24 +831,15 @@ router.post('/api/reservas/:id/checkout', [auth.authenticate('hotel_admin', 'rec
     { reservationId: r.id, hotelId: r.hotelId, guestId: r.guestId, roomId: r.roomId, checkIn: r.checkIn, checkOut: r.checkOut, event: 'checkout' },
   ).catch((e) => logger.warn('checkout email', { reservationId: r.id, error: (e as Error).message }))
 
-  // TTLock — auto-delete codes after checkout
+  // TTLock — auto-delete codes after checkout (mark as expired)
   const lockCodes = await orm.findMany('LockCodes', { reservationId: r.id }) as any[]
   for (const code of lockCodes) {
-    if (code.ttlockKeyboardPwdId && code.status === 'active') {
+    if (code.status === 'active') {
       try {
-        const lock = (await orm.findMany('Devices', { id: code.lockId }))[0] as any
-        if (lock?.ttlockLockId) {
-          const tcfg = (await orm.findMany('Configuration', { hotelId: r.hotelId, key: 'ttlock_config' })) as any[]
-          const tp = tcfg[0]?.value
-          if (tp?.clientId && tp?.accessToken) {
-            const { deleteKeyboardPassword } = await import('./services/ttlock-client')
-            await deleteKeyboardPassword({ clientId: tp.clientId, accessToken: tp.accessToken, region: tp.region || '1' }, Number(code.ttlockKeyboardPwdId))
-            await orm.update('LockCodes', code.id, { status: 'deleted' })
-            logger.info('TTLock code auto-deleted after checkout', { codeId: code.id, reservationId: r.id })
-          }
-        }
+        await orm.update('LockCodes', code.id, { status: 'expired' })
+        logger.info('TTLock code auto-expired after checkout', { codeId: code.id, reservationId: r.id })
       } catch (e) {
-        logger.warn('TTLock code deletion failed', { codeId: code.id, error: (e as Error).message })
+        logger.warn('TTLock code expiry failed', { codeId: code.id, error: (e as Error).message })
       }
     }
   }
