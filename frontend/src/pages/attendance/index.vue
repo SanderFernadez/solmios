@@ -198,16 +198,16 @@ onMounted(() => { updateClock(); setInterval(updateClock, 10000); loadData() })
 // Clock actions
 function getEmpId() { return JSON.parse(localStorage.getItem('user') || '{}').id || 'e1' }
 
-async function doClockIn() { try { todayRecord.value = await AttendanceService.clockIn(getEmpId(), selectedMethod.value); toast.success('✅ Entrada registrada (' + (methods.find(m => m.value === selectedMethod.value)?.label || '') + ')') } catch (e: any) { toast.error(e.message || 'Error al fichar') } }
+async function doClockIn() { try { todayRecord.value = await AttendanceService.clockIn(getEmpId(), selectedMethod.value); toast.success('✅ Entrada registrada (' + (methods.find(m => m.value === selectedMethod.value)?.label || '') + ')') } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error al fichar') } }
 
 async function onFacialVerify(success: boolean) {
   showCamera.value = false
   if (success) { await doClockIn() }
   else { toast.error('Rostro no verificado. Intentá de nuevo o usá otro método.') }
 }
-async function doClockOut() { try { todayRecord.value = await AttendanceService.clockOut(getEmpId()); toast.success('🏠 Salida registrada') } catch (e: any) { toast.error(e.message || 'Error') } }
-async function doStartBreak() { try { todayRecord.value = await AttendanceService.startBreak(getEmpId()); toast.info('☕ Descanso iniciado') } catch (e: any) { toast.error(e.message || 'Error') } }
-async function doEndBreak() { try { todayRecord.value = await AttendanceService.endBreak(getEmpId()); toast.info('☕ Descanso finalizado') } catch (e: any) { toast.error(e.message || 'Error') } }
+async function doClockOut() { try { todayRecord.value = await AttendanceService.clockOut(getEmpId()); toast.success('🏠 Salida registrada') } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') } }
+async function doStartBreak() { try { todayRecord.value = await AttendanceService.startBreak(getEmpId()); toast.info('☕ Descanso iniciado') } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') } }
+async function doEndBreak() { try { todayRecord.value = await AttendanceService.endBreak(getEmpId()); toast.info('☕ Descanso finalizado') } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') } }
 async function doManualRecord() {
   if (!manualForm.value.employeeId || !manualForm.value.clockIn) { toast.warning('ID empleado y hora entrada requeridos'); return }
   try { await AttendanceService.manualRecord(manualForm.value); toast.success('Fichaje manual registrado'); manualForm.value = { employeeId: '', clockIn: '', clockOut: '', notes: '' } }

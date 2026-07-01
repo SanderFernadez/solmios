@@ -98,8 +98,8 @@ async function startWhatsapp() {
       }
     } catch {}
     startPolling()
-  } catch(e: any) {
-    const msg = e?.message || 'Sin respuesta del servidor'
+  } catch(e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Sin respuesta del servidor'
     const friendly = msg.includes('HTML') || msg.includes('<!')
       ? 'El backend no respondió JSON. Verificá que esté corriendo: cd backend && bun run dev'
       : msg
