@@ -4,7 +4,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { PayrollService } from './service'
 import type { CreatePayrollConceptDTO, CreatePayrollRunDTO, PayrollEmployeeInput } from './types'
-import { CreateConceptSchema, CreateRunSchema, CalculateSchema } from './validators/schema'
+import { CreateConceptSchema, CreateRunSchema, CalculateSchema, UpdateConfigSchema } from './validators/schema'
 
 export class PayrollController {
   constructor(private readonly service: PayrollService, private readonly logger: Logger) {}
@@ -19,7 +19,8 @@ export class PayrollController {
 
   async updateConfig(req: HttpRequest) {
     const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
-    const config = await this.service.updateConfig(hotelId, req.body as any)
+    const data = validateSchema(UpdateConfigSchema, req.body)
+    const config = await this.service.updateConfig(hotelId, data)
     return { status: 200, body: config }
   }
 

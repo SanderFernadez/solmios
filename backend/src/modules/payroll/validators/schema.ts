@@ -22,3 +22,18 @@ export const CreateRunSchema: Record<string, ValidationRule> = {
 export const CalculateSchema: Record<string, ValidationRule> = {
   employees: { type: 'array' as any, required: true },
 }
+
+export const UpdateConfigSchema: Record<string, ValidationRule> = {
+  paymentFrequency: { type: 'string' as const },
+  paymentDay: { type: 'number' as const, min: 1, max: 31 },
+  overtimeMultiplier: { type: 'number' as const, min: 1 },
+  nightShiftMultiplier: { type: 'number' as const, min: 1 },
+  holidayMultiplier: { type: 'number' as const, min: 1 },
+  socialSecurityRate: { type: 'number' as const, min: 0, max: 100 },
+  healthInsuranceRate: { type: 'number' as const, min: 0, max: 100 },
+  minimumWage: { type: 'number' as const, min: 0 },
+  maxOvertimeHoursWeekly: { type: 'number' as const, min: 0 },
+  provisionType: { type: 'string' as const },
+  aguinaldoEnabled: { type: 'number' as const },
+  aguinaldoMonths: { type: 'number' as const, min: 1, max: 12 },
+}
