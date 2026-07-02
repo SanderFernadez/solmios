@@ -35,6 +35,7 @@ export class CanalesService {
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
     private readonly orm?: ORM,
+    private readonly syncLogRepo?: RepositoryAdapter<any>,
   ) {
     this.channex = new ChannexUseCase(logger)
     this.crud = new CanalesCrudUseCase(repo, userRepo, auth)
@@ -80,9 +81,9 @@ export class CanalesService {
     else await this.upsertConfig(hotelId, { lastSync: new Date().toISOString() })
 
     // Log sync operation to DB
-    if (this.orm) {
+    if (this.syncLogRepo) {
       try {
-        await this.orm.create('SyncLog', {
+        await this.syncLogRepo.create({
           id: crypto.randomUUID(), hotelId, channel: 'channex', action: 'sync_property',
           status: result.success ? 'success' : 'error',
           details: { roomTypes: result.roomTypes, ratePlans: result.ratePlans, newPropertyId },
@@ -139,9 +140,9 @@ export class CanalesService {
     const result = await this.bookings.ingestBookings(hotelId, cfg)
 
     // Log ingest operation
-    if (this.orm) {
+    if (this.syncLogRepo) {
       try {
-        await this.orm.create('SyncLog', {
+        await this.syncLogRepo.create({
           id: crypto.randomUUID(), hotelId, channel: 'channex', action: 'ingest_bookings',
           status: result.success ? 'success' : 'error',
           details: { ingested: result.ingested, acknowledged: result.acknowledged, errors: result.errors },
