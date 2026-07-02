@@ -68,6 +68,8 @@ export const HotelesModel: ModelDefinition = {
     // WiFi (para auto-mensajes)
     wifiNetwork: { type: 'string' },
     wifiPassword: { type: 'string' },
+    // Branding
+    logo: { type: 'string' },
   },
   timestamps: true,
 }

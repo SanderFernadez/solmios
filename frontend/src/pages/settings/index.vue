@@ -578,6 +578,23 @@
         </div>
       </div>
       <div class="card p-6">
+        <h3 class="font-extrabold text-navy mb-4">Logo del Hotel</h3>
+        <div class="flex items-center gap-4">
+          <div v-if="form.logo" class="w-20 h-20 rounded-xl border border-border overflow-hidden bg-surface flex items-center justify-center">
+            <img :src="form.logo" alt="Logo" class="w-full h-full object-contain" />
+          </div>
+          <div v-else class="w-20 h-20 rounded-xl border-2 border-dashed border-border bg-surface flex items-center justify-center">
+            <span class="text-2xl">🏨</span>
+          </div>
+          <div class="flex-1">
+            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">URL del Logo</label>
+            <input v-model="form.logo" type="url" placeholder="https://ejemplo.com/logo.png" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+            <p class="text-[10px] text-text-muted mt-1">Se muestra en facturas, pre-checkin y emails</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6">
         <h3 class="font-extrabold text-navy mb-4">WiFi (compartido en pre-checkin)</h3>
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -829,7 +846,7 @@ const form = ref<HotelForm>({
   defaultPaymentMethod: 'transfer',
   requestReviews: false, publishReviewScore: false,
   taxName: 'ITBIS', taxRate: 18,
-  wifiNetwork: '', wifiPassword: '',
+  wifiNetwork: '', wifiPassword: '', logo: '',
   descriptionJson: '',
   id: '',
 })
@@ -948,7 +965,7 @@ onMounted(async () => {
       requestReviews: h.requestReviews === 1 || h.requestReviews === true,
       publishReviewScore: h.publishReviewScore === 1 || h.publishReviewScore === true,
       taxName: h.taxName ?? 'ITBIS', taxRate: h.taxRate ?? 18,
-      wifiNetwork: h.wifiNetwork ?? '', wifiPassword: h.wifiPassword ?? '',
+      wifiNetwork: h.wifiNetwork ?? '', wifiPassword: h.wifiPassword ?? '', logo: h.logo ?? '',
       descriptionJson: h.descriptionJson ?? '',
       id: h.id || (h as any)._id,
     }
@@ -1018,7 +1035,7 @@ async function saveAll() {
     'cancellationType','cleaningType',
     'depositType','depositFixed','advanceType','advanceAmount','releaseHours','defaultPaymentMethod',
     'requestReviews','publishReviewScore','taxName','taxRate',
-    'wifiNetwork','wifiPassword','descriptionJson']
+    'wifiNetwork','wifiPassword','descriptionJson','logo']
   for (const k of keys) {
     const v = saveField(k, (form.value as Record<string, unknown>)[k])
     if (v !== undefined) (patch as Record<string, unknown>)[k] = typeof v === 'boolean' ? (v ? 1 : 0) : v
