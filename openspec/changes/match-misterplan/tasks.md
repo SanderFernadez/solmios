@@ -117,7 +117,7 @@
 > Referencia visual y de layout: `specs/reservation-modal/spec.md` (REQ-1 a REQ-12) y `ANALISIS-MRPLAN.md` §10.
 
 ### 3.1 ReservationModal.vue — estructura two-panel + header + integración
-- [ ] 3.1 ReservationModal.vue: layout two-panel + header + integration
+- [x] 3.1 ReservationModal.vue: layout two-panel + header + integration
   > Layout two-panel (izq: datos reserva; der: cliente/pago/elementos), modo **LECTURA** por defecto
   > con toggle **Editar** que reutiliza el form de edición existente.
   > Header con locator (`source`+`externalLocator`, fallback `id` corto), badges status/canal,
@@ -129,7 +129,7 @@
   > Reglas: `<script setup lang="ts">` + `<style scoped>`, sin `fetch()` (usar `ReservationService`), sin Options API.
 
 ### 3.2 Left panel — Datos de la Reserva + Comunicación Cliente
-- [ ] 3.2 Left panel: Datos Reserva + Comunicación Cliente
+- [x] 3.2 Left panel: Datos Reserva + Comunicación Cliente
   > Left panel con 2 secciones colapsables (datos existen en `backend/src/modules/reservas/model.ts`):
   > **(a) Datos de la Reserva** — `source` (label descriptivo), `commission`/`commissionAmount`,
   > localizadores `id`+`externalLocator`, `createdAt` (fecha creación), `checkIn`–`checkOut`+noches calc,
@@ -139,7 +139,7 @@
   > Ref: REQ-2, REQ-5 (parcial).
 
 ### 3.3 Right panel — Cliente + Importe/Pago + Elementos + Acompañantes
-- [ ] 3.3 Right panel: Cliente + Pago + Elementos + Acompañantes
+- [x] 3.3 Right panel: Cliente + Pago + Elementos + Acompañantes
   > Right panel con 4 secciones:
   > **(a) Datos del Cliente** — nombre (link edición huésped), email `mailto:`, teléfono `tel:`,
   > WhatsApp `wa.me/<phone>` (relación `guest`).
@@ -152,7 +152,7 @@
   > Ref: REQ-7, REQ-8 (sin conversión moneda=deuda), REQ-9, REQ-10.
 
 ### 3.4 Actions — Confirmar + Anular + Imprimir (endpoints existen)
-- [ ] 3.4 Actions: Confirmar + Anular + Imprimir
+- [x] 3.4 Actions: Confirmar + Anular + Imprimir
   > **Confirmar** (PATCH `status:'confirmed'` + confirm dialog),
   > **Anular** (PATCH `status:'cancelled'` + dialog "¿Anular reserva?"),
   > **Imprimir** (`window.print()` con CSS print del detalle). Sin backend nuevo.
