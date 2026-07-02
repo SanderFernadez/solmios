@@ -61,8 +61,19 @@ describe('GastosService', () => {
   describe('create', () => {
     it('crea y retorna el item', async () => {
       const service = new GastosService(makeRepo(), makeUserRepo(), log, silentCache, passAuth)
-      const result = await service.create({} as any)
+      const result = await service.create({ concept: 'x', amount: 10 } as any, currentUser)
       expect(result.id).toBe('test-id')
+    })
+
+    it('fuerza hotelId del JWT y ignora el del body (P0 V-01 IDOR)', async () => {
+      const created: any[] = []
+      const repo = makeRepo({
+        create: async (data: any) => { created.push(data); return { id: 'test-id', ...data } as GastosDTO },
+      })
+      const service = new GastosService(repo, makeUserRepo(), log, silentCache, passAuth)
+      // Intento de IDOR: el body pide hotelId='h2', pero el usuario es de 'h1'.
+      await service.create({ hotelId: 'h2', concept: 'x', amount: 10 } as any, currentUser)
+      expect(created[0].hotelId).toBe('h1') // forzado al del JWT, ignora 'h2' del body
     })
   })
 

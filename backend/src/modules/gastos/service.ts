@@ -16,6 +16,9 @@ import type { GastosSockets } from './sockets'
 
 export class GastosService {
   private sockets: GastosSockets = {}
+  // Versionado de cache (V-06): cada mutación bumpa → las cacheKey viejas (con query distinto)
+  // dejan de matchear y expiran solas a los 300s. CacheAdapter no tiene deletePrefix.
+  private listVersion = 0
 
   constructor(
     private readonly repo: RepositoryAdapter<GastosDTO>,
@@ -51,14 +54,26 @@ export class GastosService {
     }
     if (query?.category !== undefined) filters.category = query.category
 
-    const cacheKey = `gastos:list:${user?.hotelId || 'all'}:${JSON.stringify(query || {})}`
+    // Paginación canónica (V-07): limita el resultset (DoS por miles de registros) y respeta page/limit.
+    const page = Math.max(query?.page || 1, 1)
+    const limit = Math.min(Math.max(query?.limit || 20, 1), 100)
+    const offset = (page - 1) * limit
+
+    const cacheKey = `gastos:list:v${this.listVersion}:${user?.hotelId || 'all'}:${JSON.stringify(query || {})}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as GastosPaginated
 
-    const rows = await this.repo.findMany(filters)
-    const result = { data: rows, total: rows.length }
-    await this.cache.set(cacheKey, result, 300)
-    return result
+    const result = await this.repo.paginate(filters, { offset, limit })
+    const pages = limit > 0 ? Math.ceil(result.total / limit) : 0
+    const response: GastosPaginated = {
+      data: result.data,
+      total: result.total,
+      limit, offset, pages,
+      hasNext: page < pages,
+      hasPrev: page > 1,
+    }
+    await this.cache.set(cacheKey, response, 300)
+    return response
   }
 
   async getById(id: string, user: CurrentUser): Promise<GastosDTO> {
@@ -70,11 +85,14 @@ export class GastosService {
     return item
   }
 
-  async create(dto: CreateGastosDTO): Promise<GastosDTO> {
+  async create(dto: CreateGastosDTO, user: CurrentUser): Promise<GastosDTO> {
     this.logger.info('Creando gastos')
-    const item = await this.repo.create(dto as Omit<GastosDTO, 'id'>)
+    // P0 V-01 (IDOR): forzar hotelId del JWT — nunca confiar en dto.hotelId del body.
+    // super_admin puede especificar hotelId; el resto siempre usa el suyo.
+    const hotelId = user.role === 'super_admin' ? (dto.hotelId || user.hotelId || '') : (user.hotelId || '')
+    const item = await this.repo.create({ ...dto, hotelId } as Omit<GastosDTO, 'id'>)
     await this.sockets.onGastosCreated?.(item)
-    await this.cache.delete('gastos:list')
+    this.listVersion++ // V-06: invalida todas las variantes de cacheKey
     return item
   }
 
@@ -87,7 +105,7 @@ export class GastosService {
     const item = await this.repo.update(id, dto as Partial<Omit<GastosDTO, 'id'>>)
     if (!item) throw new NotFoundError('Gastos no encontrado')
     await this.sockets.onGastosUpdated?.(item)
-    await this.cache.delete('gastos:list')
+    this.listVersion++ // V-06: invalida todas las variantes de cacheKey
     return item
   }
 
@@ -100,6 +118,6 @@ export class GastosService {
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Gastos no encontrado')
     await this.sockets.onGastosDeleted?.(id)
-    await this.cache.delete('gastos:list')
+    this.listVersion++ // V-06: invalida todas las variantes de cacheKey
   }
 }

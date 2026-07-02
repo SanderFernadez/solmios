@@ -27,8 +27,9 @@ export function UsuariosModule() {
       if (!auth) throw new Error('usuarios: auth dependency required')
       registerUsuariosModels(orm)
       const repo = new OrmRepository<any>(orm, 'Users')
+      const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const log = logger.child('usuarios')
-      const service = new UsuariosService(repo, log, cache, auth)
+      const service = new UsuariosService(repo, log, cache, auth, hotelRepo)
       const controller = new UsuariosController(service, log)
 
       // Auth (públicas) — con rate limiting en login

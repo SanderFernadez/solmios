@@ -29,7 +29,7 @@ export class GastosController {
   async store(req: HttpRequest) {
     this.logger.info('POST /gastos')
     const data = validateSchema(CreateGastosSchema, req.body)
-    const item = await this.service.create(data as any)
+    const item = await this.service.create(data as any, req.user as any)
     return { status: 201, body: item }
   }
 

@@ -11,12 +11,12 @@ export class UsuariosService {
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
+    private readonly hotelRepo?: RepositoryAdapter<any>,
   ) {}
 
   async getHotels(userId: string, role: string): Promise<any[]> {
-    const orm = (this.repo as any).orm
-    if (!orm) return []
-    const hotels = await orm.findMany('Hotels', {}) as any[]
+    if (!this.hotelRepo) return []
+    const hotels = await this.hotelRepo.findMany({})
     // super_admin ve todos los hoteles; hotel_admin solo el suyo
     if (role === 'super_admin') {
       return hotels.map(({ ...rest }: any) => rest)
@@ -27,9 +27,8 @@ export class UsuariosService {
   }
 
   async switchHotel(userId: string, targetHotelId: string, currentRole: string): Promise<{ token: string; user: any }> {
-    const orm = (this.repo as any).orm
-    if (!orm) throw new AuthError('ORM no disponible')
-    const hotels = await orm.findMany('Hotels', {}) as any[]
+    if (!this.hotelRepo) throw new AuthError('HotelRepo no disponible')
+    const hotels = await this.hotelRepo.findMany({})
     const hotel = hotels.find((h: any) => h.id === targetHotelId)
     if (!hotel) throw new NotFoundError('Hotel no encontrado')
     const user = await this.repo.findById(userId)

@@ -3,9 +3,31 @@ import { ref, computed } from 'vue'
 import type { FeedbackPin, CreateFeedbackPayload, FeedbackPriority, FeedbackCategory } from '@/types'
 import { FeedbackService } from '@/services/Feedback.service'
 
+const STORAGE_KEY = 'managerhotel_feedback_pins'
+
+function loadStorage(): FeedbackPin[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveStorage(pins: FeedbackPin[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pins))
+  } catch { /* quota exceeded, ignore */ }
+}
+
+let seqId = Date.now()
+function nextId(): string {
+  return `fb_${++seqId}`
+}
+
 export const useFeedbackStore = defineStore('feedback', () => {
   const isFeedbackMode = ref(false)
-  const pins = ref<FeedbackPin[]>([])
+  const pins = ref<FeedbackPin[]>(loadStorage())
   const selectedPin = ref<FeedbackPin | null>(null)
   const loading = ref(false)
   const activeRoute = ref('')
@@ -15,6 +37,10 @@ export const useFeedbackStore = defineStore('feedback', () => {
   const routePins = computed(() =>
     pins.value.filter(p => p.route === activeRoute.value)
   )
+
+  function persist() {
+    saveStorage(pins.value)
+  }
 
   function enableFeedbackMode(route: string) {
     activeRoute.value = route
@@ -53,20 +79,27 @@ export const useFeedbackStore = defineStore('feedback', () => {
     if (!pendingCoordinates.value) return
     loading.value = true
     try {
-      const payload: CreateFeedbackPayload = {
+      const pin: FeedbackPin = {
+        id: nextId(),
         ...pendingCoordinates.value,
         route: activeRoute.value,
         comment: data.comment,
         priority: data.priority,
         category: data.category,
+        status: 'open',
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
         browser: getBrowser(),
+        createdAt: new Date(),
       }
-      const pin = await FeedbackService.create(payload)
       pins.value.push(pin)
+      persist()
       isModalOpen.value = false
       pendingCoordinates.value = null
+
+      FeedbackService.create(pin).catch(() => {
+        /* backend not available — localStorage fallback active */
+      })
     } finally {
       loading.value = false
     }
@@ -75,9 +108,12 @@ export const useFeedbackStore = defineStore('feedback', () => {
   async function updatePin(id: string, data: Partial<FeedbackPin>) {
     loading.value = true
     try {
-      const updated = await FeedbackService.update(id, data)
       const idx = pins.value.findIndex(p => p.id === id)
-      if (idx >= 0) pins.value[idx] = updated
+      if (idx >= 0) {
+        pins.value[idx] = { ...pins.value[idx], ...data }
+        persist()
+      }
+      FeedbackService.update(id, data).catch(() => {})
     } finally {
       loading.value = false
     }
@@ -86,8 +122,9 @@ export const useFeedbackStore = defineStore('feedback', () => {
   async function deletePin(id: string) {
     loading.value = true
     try {
-      await FeedbackService.remove(id)
       pins.value = pins.value.filter(p => p.id !== id)
+      persist()
+      FeedbackService.remove(id).catch(() => {})
     } finally {
       loading.value = false
     }
@@ -96,7 +133,18 @@ export const useFeedbackStore = defineStore('feedback', () => {
   async function loadPins(route: string) {
     loading.value = true
     try {
-      pins.value = await FeedbackService.list(route)
+      const remote = await FeedbackService.list(route)
+      const localIds = new Set(pins.value.map(p => p.id))
+      const merged = [...pins.value]
+      for (const r of remote) {
+        const i = merged.findIndex(m => m.id === r.id)
+        if (i >= 0) merged[i] = r
+        else merged.push(r)
+      }
+      pins.value = merged
+      persist()
+    } catch {
+      /* use localStorage data */
     } finally {
       loading.value = false
     }

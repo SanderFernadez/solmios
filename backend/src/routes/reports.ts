@@ -91,7 +91,7 @@ export function registerReportRoutes(router: any, orm: ORM, auth: Auth) {
       orm.findMany('Rooms', { hotelId: id }) as Promise<any[]>,
       orm.findMany('Guests', { hotelId: id }) as Promise<any[]>,
       orm.findMany('Expenses', { hotelId: id }) as Promise<any[]>,
-      orm.findMany('FolioCharges', {}) as Promise<any[]>,
+      orm.findMany('FolioCharges', { hotelId: id }) as Promise<any[]>,
       orm.findMany('RoomBlocks', { hotelId: id }) as Promise<any[]>,
       (await orm.findMany('Hotels', { id }))[0] as any,
     ])

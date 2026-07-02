@@ -54,6 +54,11 @@ export interface GastosQuery {
 export interface GastosPaginated {
   data: GastosDTO[]
   total: number
+  limit: number
+  offset: number
+  pages: number
+  hasNext: boolean
+  hasPrev: boolean
 }
 
 // Usuario autenticado extraído del JWT (req.user). Se usa para verificar ownership (IDOR).
