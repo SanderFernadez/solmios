@@ -21,14 +21,14 @@ module.exports = {
     {
       name: 'mh-backend',
       cwd: './backend',
-      script: BUN,
-      args: '--hot src/composition-root.ts',
+      script: './start.sh',
       interpreter: 'none',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
       max_restarts: 10,
       env: { NODE_ENV: 'development' },
+      watch: false,
     },
     {
       name: 'mh-frontend',

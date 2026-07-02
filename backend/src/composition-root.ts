@@ -18,6 +18,7 @@ import { sendCheckinEmail } from './modules/reservas/usecases/checkin-email'
 import { dispatchLifecycleEmail } from './modules/reservas/usecases/lifecycle-email'
 import { hashGuaranteePin, verifyGuaranteePin } from './services/guarantee-pin'
 import { getAccessToken, listLocks, addKeyboardPassword, randomPin } from './services/ttlock-client'
+import { registerSharedModels } from './shared/models'
 
 // ─── Rate limiter in-memory para endpoints públicos ───────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -75,7 +76,6 @@ await db.connect()
 const orm = new ORM(db)
 
 // Registrar modelos compartidos
-import { registerSharedModels } from './shared/models'
 registerSharedModels(orm)
 
 // ─── Infraestructura del sistema ──────────────────────────────────────────
