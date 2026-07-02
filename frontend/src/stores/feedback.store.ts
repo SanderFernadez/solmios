@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { FeedbackPin, CreateFeedbackPayload, FeedbackPriority, FeedbackCategory } from '@/types'
 import { FeedbackService } from '@/services/Feedback.service'
+import type { GitLabIssueResult } from '@/services/Feedback.service'
 
 const STORAGE_KEY = 'managerhotel_feedback_pins'
 
@@ -33,6 +34,8 @@ export const useFeedbackStore = defineStore('feedback', () => {
   const activeRoute = ref('')
   const isModalOpen = ref(false)
   const pendingCoordinates = ref<{ x: number; y: number } | null>(null)
+  const pendingScreenshot = ref<string | null>(null)
+  const lastIssueUrl = ref<string | null>(null)
 
   const routePins = computed(() =>
     pins.value.filter(p => p.route === activeRoute.value)
@@ -52,6 +55,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
     isFeedbackMode.value = false
     selectedPin.value = null
     pendingCoordinates.value = null
+    pendingScreenshot.value = null
     isModalOpen.value = false
   }
 
@@ -60,9 +64,14 @@ export const useFeedbackStore = defineStore('feedback', () => {
     isModalOpen.value = true
   }
 
+  function setScreenshot(dataUrl: string) {
+    pendingScreenshot.value = dataUrl
+  }
+
   function closeModal() {
     isModalOpen.value = false
     pendingCoordinates.value = null
+    pendingScreenshot.value = null
   }
 
   function getBrowser(): string {
@@ -78,6 +87,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
   async function savePin(data: { comment: string; priority: FeedbackPriority; category: FeedbackCategory }) {
     if (!pendingCoordinates.value) return
     loading.value = true
+    lastIssueUrl.value = null
     try {
       const pin: FeedbackPin = {
         id: nextId(),
@@ -94,12 +104,33 @@ export const useFeedbackStore = defineStore('feedback', () => {
       }
       pins.value.push(pin)
       persist()
-      isModalOpen.value = false
-      pendingCoordinates.value = null
+
+      if (pendingScreenshot.value) {
+        try {
+          const result: GitLabIssueResult = await FeedbackService.createGitLabIssue({
+            screenshot: pendingScreenshot.value,
+            filename: `feedback-${activeRoute.value.replace(/\//g, '-')}-${Date.now()}.png`,
+            comment: data.comment,
+            route: activeRoute.value,
+            x: pendingCoordinates.value.x,
+            y: pendingCoordinates.value.y,
+            browser: getBrowser(),
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+          })
+          lastIssueUrl.value = result.issueUrl
+        } catch {
+          /* GitLab not configured or unavailable */
+        }
+      }
 
       FeedbackService.create(pin).catch(() => {
         /* backend not available — localStorage fallback active */
       })
+
+      isModalOpen.value = false
+      pendingCoordinates.value = null
+      pendingScreenshot.value = null
     } finally {
       loading.value = false
     }
@@ -158,10 +189,13 @@ export const useFeedbackStore = defineStore('feedback', () => {
     activeRoute,
     isModalOpen,
     pendingCoordinates,
+    pendingScreenshot,
+    lastIssueUrl,
     routePins,
     enableFeedbackMode,
     disableFeedbackMode,
     captureClick,
+    setScreenshot,
     closeModal,
     savePin,
     updatePin,

@@ -22,17 +22,17 @@ async function handleSave() {
     priority: priority.value,
     category: category.value,
   })
-  reset()
+  if (!store.lastIssueUrl) reset()
 }
 
-function handleCancel() {
+function handleClose() {
   store.closeModal()
   reset()
 }
 
 function handleBackdropClick(e: MouseEvent) {
   if ((e.target as HTMLElement).dataset?.backdrop) {
-    handleCancel()
+    handleClose()
   }
 }
 </script>
@@ -66,47 +66,78 @@ function handleBackdropClick(e: MouseEvent) {
           </div>
 
           <div class="p-6 space-y-4">
-            <div>
-              <label class="block text-[11px] font-bold text-text-secondary dark:text-gray-400 uppercase tracking-wide mb-1.5">Comentario</label>
-              <textarea
-                v-model="comment"
-                placeholder="Describí el issue o sugerencia..."
-                class="input !h-24 !py-3 resize-none dark:bg-navy dark:text-white dark:border-white/10"
-                :class="{ '!border-coral !shadow-coral/20': !comment.trim() && store.loading }"
-              />
+            <div v-if="store.lastIssueUrl" class="bg-success/10 border border-success/20 rounded-xl p-3">
+              <div class="flex items-center gap-2">
+                <span class="text-success text-lg">✓</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs font-bold text-navy dark:text-white">Issue creado en GitLab</p>
+                  <a
+                    :href="store.lastIssueUrl"
+                    target="_blank"
+                    class="text-[11px] text-blue underline truncate block"
+                  >{{ store.lastIssueUrl }}</a>
+                </div>
+              </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-[11px] font-bold text-text-secondary dark:text-gray-400 uppercase tracking-wide mb-1.5">Prioridad</label>
-                <select
-                  v-model="priority"
-                  class="input appearance-none cursor-pointer dark:bg-navy dark:text-white dark:border-white/10"
-                >
-                  <option value="low">Baja</option>
-                  <option value="medium">Media</option>
-                  <option value="high">Alta</option>
-                </select>
+            <div v-if="store.pendingScreenshot && !store.lastIssueUrl" class="relative rounded-xl overflow-hidden border border-border dark:border-white/10 bg-surface dark:bg-navy">
+              <img
+                :src="store.pendingScreenshot"
+                alt="Screenshot"
+                class="w-full h-36 object-cover opacity-80"
+              />
+              <div class="absolute inset-0 flex items-center justify-center">
+                <span class="bg-navy/70 text-white text-[10px] font-bold px-2 py-1 rounded-lg">Screenshot capturado</span>
               </div>
+            </div>
+
+            <div v-if="!store.lastIssueUrl">
               <div>
-                <label class="block text-[11px] font-bold text-text-secondary dark:text-gray-400 uppercase tracking-wide mb-1.5">Categoría</label>
-                <select
-                  v-model="category"
-                  class="input appearance-none cursor-pointer dark:bg-navy dark:text-white dark:border-white/10"
-                >
-                  <option value="UI">UI</option>
-                  <option value="Bug">Bug</option>
-                  <option value="Improvement">Mejora</option>
-                </select>
+                <label class="block text-[11px] font-bold text-text-secondary dark:text-gray-400 uppercase tracking-wide mb-1.5">Comentario</label>
+                <textarea
+                  v-model="comment"
+                  placeholder="Describí el issue o sugerencia..."
+                  class="input !h-24 !py-3 resize-none dark:bg-navy dark:text-white dark:border-white/10"
+                />
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[11px] font-bold text-text-secondary dark:text-gray-400 uppercase tracking-wide mb-1.5">Prioridad</label>
+                  <select
+                    v-model="priority"
+                    class="input appearance-none cursor-pointer dark:bg-navy dark:text-white dark:border-white/10"
+                  >
+                    <option value="low">Baja</option>
+                    <option value="medium">Media</option>
+                    <option value="high">Alta</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-text-secondary dark:text-gray-400 uppercase tracking-wide mb-1.5">Categoría</label>
+                  <select
+                    v-model="category"
+                    class="input appearance-none cursor-pointer dark:bg-navy dark:text-white dark:border-white/10"
+                  >
+                    <option value="UI">UI</option>
+                    <option value="Bug">Bug</option>
+                    <option value="Improvement">Mejora</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
           <div class="px-6 py-4 border-t border-border dark:border-white/10 flex items-center justify-end gap-3">
-            <button class="btn-ghost dark:text-gray-400 dark:border-white/10 dark:hover:text-white" @click="handleCancel">
+            <button
+              v-if="!store.lastIssueUrl"
+              class="btn-ghost dark:text-gray-400 dark:border-white/10 dark:hover:text-white"
+              @click="handleClose"
+            >
               Cancelar
             </button>
             <button
+              v-if="!store.lastIssueUrl"
               class="btn-primary flex items-center gap-2"
               :disabled="!comment.trim() || store.loading"
               :class="{ 'opacity-50 cursor-not-allowed': !comment.trim() || store.loading }"
@@ -116,7 +147,14 @@ function handleBackdropClick(e: MouseEvent) {
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <span v-else>Guardar Pin</span>
+              <span v-else>Guardar &amp; crear Issue</span>
+            </button>
+            <button
+              v-else
+              class="btn-primary"
+              @click="handleClose"
+            >
+              Cerrar
             </button>
           </div>
         </div>

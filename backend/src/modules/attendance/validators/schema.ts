@@ -1,6 +1,8 @@
 // attendance/validators/schema.ts
 import type { ValidationRule } from 'arckode-framework'
 
+const GEOLOCATION_RADIUS_MAX = 1000 // metros — límite máximo para geofencing
+
 export const CreateScheduleSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
   name: { type: 'string' as const, required: true, min: 2 },
@@ -15,4 +17,26 @@ export const ManualRecordSchema: Record<string, ValidationRule> = {
   clockIn: { type: 'string' as const, required: true },
   clockOut: { type: 'string' as const },
   notes: { type: 'string' as const },
+}
+
+export const ClockInSchema: Record<string, ValidationRule> = {
+  employeeId: { type: 'string' as const },
+  method: { type: 'string' as const, enum: ['manual', 'fingerprint', 'facial', 'pin'] },
+}
+
+export const ClockOutSchema: Record<string, ValidationRule> = {
+  employeeId: { type: 'string' as const },
+}
+
+export const BiometricRecordSchema: Record<string, ValidationRule> = {
+  type: { type: 'string' as const, required: true, enum: ['clock_in', 'clock_out'] },
+  employeeId: { type: 'string' as const, required: true },
+  hotelId: { type: 'string' as const },
+}
+
+export const UpdateConfigSchema: Record<string, ValidationRule> = {
+  requireGeolocation: { type: 'number' as const },
+  geolocationRadius: { type: 'number' as const, min: 10, max: GEOLOCATION_RADIUS_MAX },
+  allowManualClockIn: { type: 'number' as const },
+  requirePhoto: { type: 'number' as const },
 }

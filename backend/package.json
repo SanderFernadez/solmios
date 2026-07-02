@@ -2,7 +2,7 @@
   "name": "managerhotel-backend",
   "type": "module",
   "scripts": {
-    "dev": "bun run --hot src/composition-root.ts",
+    "dev": "eval $(grep '^export ' .env 2>/dev/null) && bun run --hot src/composition-root.ts",
     "start": "bun run src/composition-root.ts",
     "migrate": "bun run migrate-db.ts",
     "doctor": "bun run doctor.ts",

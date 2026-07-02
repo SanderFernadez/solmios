@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
+import html2canvas from 'html2canvas'
 import { useFeedbackStore } from '@/stores/feedback.store'
 import FeedbackPin from './FeedbackPin.vue'
 
 const store = useFeedbackStore()
 
-function handleOverlayClick(e: MouseEvent) {
+async function handleOverlayClick(e: MouseEvent) {
   if (!store.isFeedbackMode) return
   if ((e.target as HTMLElement).closest('.fb-pin, .fb-modal-overlay')) return
+
+  const target = document.getElementById('app') || document.body
+  try {
+    const canvas = await html2canvas(target, { useCORS: true, allowTaint: true })
+    store.setScreenshot(canvas.toDataURL('image/png'))
+  } catch {
+    /* screenshot capture failed, continue without it */
+  }
+
   store.captureClick(e.clientX, e.clientY)
 }
 
