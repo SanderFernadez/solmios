@@ -1,10 +1,10 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-02T03:57:11.766Z",
+  "_generated": "2026-07-02T15:32:11.921Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
-    "healthy": true,
-    "violations": 0,
+    "healthy": false,
+    "violations": 1,
     "warnings": 0
   },
   "modules": [
@@ -179,6 +179,19 @@
     },
     {
       "name": "opiniones",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "cash",
       "structure": {
         "index": true,
         "types": true,
@@ -407,9 +420,16 @@
     "mantenimiento-notificaciones.ts",
     "facturas-reservas.ts",
     "mantenimiento-habitaciones.ts",
+    "payments-caja.ts",
     "booking-channex.ts"
   ],
-  "violations": [],
+  "violations": [
+    {
+      "module": "cash",
+      "type": "GOD_SERVICE",
+      "message": "\"cash/service.ts\" tiene 259 líneas. Un service > 200 líneas es un God Object — extraer a usecases/."
+    }
+  ],
   "warnings": [],
   "rules_summary": [
     "REGLA 1: Módulos NO importan de otros módulos. Usar conectores.",

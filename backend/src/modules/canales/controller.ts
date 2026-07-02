@@ -9,7 +9,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { CanalesService } from './service'
-import { CreateCanalesSchema, UpdateCanalesSchema } from './validators/schema'
+import { CreateCanalesSchema, UpdateCanalesSchema, TestConnectionSchema, ConnectOTASchema, DeactivateSchema, IngestBookingsSchema } from './validators/schema'
 
 export class CanalesController {
   constructor(
@@ -33,9 +33,9 @@ export class CanalesController {
 
   // POST /api/channels/test-connection — prueba conexión con una OTA.
   async testConnection(req: HttpRequest) {
-    const { hotelId, channel, hotel_id } = req.body as any
-    this.logger.info('POST /api/channels/test-connection', { channel, hotel_id })
-    const result = await this.service.testConnection(hotelId, channel, hotel_id)
+    const data = validateSchema(TestConnectionSchema, req.body) as any
+    this.logger.info('POST /api/channels/test-connection', { channel: data.channel, hotel_id: data.hotel_id })
+    const result = await this.service.testConnection(data.hotelId, data.channel, data.hotel_id)
     return { status: result.success ? 200 : 422, body: result }
   }
 
@@ -57,7 +57,7 @@ export class CanalesController {
 
   // POST /api/channels/connect — crea y activa un canal OTA.
   async connectOTA(req: HttpRequest) {
-    const dto = req.body as any
+    const dto = validateSchema(ConnectOTASchema, req.body) as any
     this.logger.info('POST /api/channels/connect', { channel: dto.channel })
     const result = await this.service.createOTAChannel(dto.hotelId, dto)
     return { status: result.success ? 200 : 422, body: result }
@@ -65,7 +65,8 @@ export class CanalesController {
 
   // POST /api/channels/:id/deactivate — desactiva un canal OTA.
   async deactivate(req: HttpRequest) {
-    const hotelId = (req.body as any)?.hotelId || (req.query as any)?.hotelId
+    const data = validateSchema(DeactivateSchema, req.body) as any
+    const hotelId = data.hotelId || (req.query as any)?.hotelId
     this.logger.info('POST /api/channels/:id/deactivate', { id: req.params.id })
     const result = await this.service.deactivateChannel(hotelId, req.params.id)
     return { status: result.success ? 200 : 422, body: result }
@@ -81,7 +82,8 @@ export class CanalesController {
 
   // POST /api/channels/bookings/ingest — ingesta bookings → reservas + ack.
   async ingestBookings(req: HttpRequest) {
-    const hotelId = (req.body as any)?.hotelId || (req.query as any)?.hotelId
+    const data = validateSchema(IngestBookingsSchema, req.body) as any
+    const hotelId = data.hotelId || (req.query as any)?.hotelId
     this.logger.info('POST /api/channels/bookings/ingest', { hotelId })
     const result = await this.service.ingestBookings(hotelId)
     return { status: result.success ? 200 : 422, body: result }

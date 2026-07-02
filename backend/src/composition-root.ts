@@ -379,6 +379,7 @@ import { serveStatic } from 'arckode-framework/static'
 const storage = new StorageService(new LocalStorageAdapter('./uploads', '/uploads'))
 serveStatic(router, './uploads', { prefix: '/uploads' })
 
+import { CashModule } from './modules/cash'
 const mods = [
   UsuariosModule(), HabitacionesModule(), ReservasModule(), HuespedesModule(),
   FacturasModule(), HousekeepingModule({ storage }), MantenimientoModule({ storage }), PaquetesModule(),
@@ -386,6 +387,7 @@ const mods = [
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),
   CanalesModule(),
   OpinionesModule(), GastosModule(), FoliosModule(), PaymentsModule(), EmpleadosModule(), PayrollModule(), AttendanceModule(), CrmModule(), MarketingModule(), AiRecepcionistaModule(), AiGerenteModule(), BookingengineModule(),
+  CashModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -422,6 +424,10 @@ system.addConnector('booking-channex', bookingChannexConnector)
 // ─── Conector: reservas → huéspedes (check-out actualiza stats + puntos) ────
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 system.addConnector('reservas-huespedes', reservasHuespedesConnector)
+
+// ─── Conector: payments → caja (pago cash completado → ingreso automático en caja)
+import { paymentsCajaConnector } from './connectors/payments-caja'
+system.addConnector('payments-caja', paymentsCajaConnector)
 
 import { facturasReservasConnector } from './connectors/facturas-reservas'
 system.addConnector('facturas-reservas', facturasReservasConnector)
@@ -1397,35 +1403,9 @@ router.put('/api/ttlock/lock/:id', [auth.authenticate('hotel_admin', 'super_admi
   return { status: 200, body: await orm.findById('LockDevices', req.params.id) }
 })
 
-// ─── Caja: registro de cobros ──────────────────────────────────────
-router.get('/api/caja', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  const id = await hotelOf(req)
-  const data = await orm.findMany('Configuration', { hotelId: id, key: 'caja_movements' }) as any[]
-  const movements = data.length > 0 ? safeParse(data[0].value) || [] : []
-  return { status: 200, body: { data: Array.isArray(movements) ? movements : [] } }
-})
-
-router.post('/api/caja', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const id = await hotelOf(req)
-  const body = req.body as any
-  const data = await orm.findMany('Configuration', { hotelId: id, key: 'caja_movements' }) as any[]
-  const movements = data.length > 0 ? safeParse(data[0].value) || [] : []
-  const entry = { id: crypto.randomUUID(), date: body.date, amount: body.amount, guestName: body.guestName, concept: body.concept, method: body.method, roomNumber: body.roomNumber, createdAt: new Date().toISOString() }
-  movements.unshift(entry)
-  const value = JSON.stringify(movements)
-  if (data.length > 0) { await orm.update('Configuration', data[0].id, { value }) }
-  else { await orm.create('Configuration', { id: crypto.randomUUID(), hotelId: id, key: 'caja_movements', value }) }
-  return { status: 201, body: entry }
-})
-
-router.delete('/api/caja/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const id = await hotelOf(req)
-  const data = await orm.findMany('Configuration', { hotelId: id, key: 'caja_movements' }) as any[]
-  const movements = data.length > 0 ? safeParse(data[0].value) || [] : []
-  const filtered = movements.filter((m: any) => m.id !== req.params.id)
-  if (data.length > 0) { await orm.update('Configuration', data[0].id, { value: JSON.stringify(filtered) }) }
-  return { status: 200, body: { success: true } }
-})
+// ─── Caja: ahora es módulo canónico (src/modules/cash/) ──────────────
+// Endpoints: /api/caja/movements, /api/caja/shifts, /api/caja/stats (+ conector payments→caja).
+// El blob configuration.caja_movements se migra a cash_movements via scripts/migrate-caja-blob.ts.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Endpoints Fase 1 — Completos (settings/full, rates copy, companions, payments, whatsapp, reservations/:id)

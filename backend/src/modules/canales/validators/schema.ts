@@ -19,3 +19,23 @@ export const CanalesValidator = {
   create: CreateCanalesSchema,
   update: UpdateCanalesSchema,
 }
+
+export const TestConnectionSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  channel: { type: 'string' as const, required: true },
+  hotel_id: { type: 'string' as const },
+}
+
+export const ConnectOTASchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  channel: { type: 'string' as const, required: true },
+  hotel_id: { type: 'string' as const },
+}
+
+export const DeactivateSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const },
+}
+
+export const IngestBookingsSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const },
+}
