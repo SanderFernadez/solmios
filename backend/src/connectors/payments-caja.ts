@@ -20,8 +20,7 @@ export function paymentsCajaConnector(ctx: ConnectorContext): void {
           paymentId: payment.id,
           amount: payment.amount,
           method: 'cash',
-          reservationId: payment.reservationId,
-          folioId: payment.folioId,
+          folioId: payment.folioId, // V23: PaymentDTO no tiene reservationId
           reference: payment.reference,
         })
       } catch {

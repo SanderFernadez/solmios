@@ -88,7 +88,7 @@ export class FoliosService {
   }
 
   async open(dto: OpenFolioDTO, user: CurrentUser): Promise<FolioDTO> {
-    const hotelId = dto.hotelId ?? (await this.hotelOf(user)) ?? ''
+    const hotelId = (await this.hotelOf(user)) ?? '' // V-02 IDOR: hotelId forzado del JWT, nunca del body
     this.logger.info('Abriendo folio', { hotelId, reservationId: dto.reservationId })
     let guestId = dto.guestId ?? null, roomId = dto.roomId ?? null
     if (dto.reservationId) {

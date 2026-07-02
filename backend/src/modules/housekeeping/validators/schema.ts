@@ -35,3 +35,12 @@ export const UpdateHousekeepingSchema: Record<string, ValidationRule> = {
 }
 
 export const HousekeepingValidator = { create: CreateHousekeepingSchema, update: UpdateHousekeepingSchema }
+
+export const UploadPhotoSchema: Record<string, ValidationRule> = {
+  photo: { type: 'string' as const, required: true },
+  fileName: { type: 'string' as const },
+}
+
+export const RemovePhotoSchema: Record<string, ValidationRule> = {
+  url: { type: 'string' as const, required: true },
+}

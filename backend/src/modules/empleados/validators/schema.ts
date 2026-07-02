@@ -49,3 +49,21 @@ export const CreateReviewSchema: Record<string, ValidationRule> = {
   reviewDate: { type: 'string' as const, required: true },
   score: { type: 'number' as const, min: 1, max: 10 },
 }
+
+export const UpdateDepartmentSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, min: 2, max: 100 },
+  description: { type: 'string' as const },
+  managerId: { type: 'string' as const },
+  parentId: { type: 'string' as const },
+}
+
+export const UpdateProfileSchema: Record<string, ValidationRule> = {
+  position: { type: 'string' as const, max: 100 },
+  salary: { type: 'number' as const, min: 0 },
+  hireDate: { type: 'string' as const },
+  departmentId: { type: 'string' as const },
+}
+
+export const RejectLeaveRequestSchema: Record<string, ValidationRule> = {
+  reason: { type: 'string' as const, max: 500 },
+}

@@ -12,6 +12,7 @@ import {
   CreateDepartmentSchema, CreateProfileSchema,
   CreateContractSchema, CreateDocumentSchema,
   CreateLeaveRequestSchema, CreateReviewSchema,
+  UpdateDepartmentSchema, UpdateProfileSchema, RejectLeaveRequestSchema,
 } from './validators/schema'
 
 export class EmpleadosController {
@@ -45,7 +46,7 @@ export class EmpleadosController {
 
   async updateDepartment(req: HttpRequest) {
     this.logger.info('PUT /api/departments/:id')
-    const data = req.body as Partial<CreateDepartmentDTO>
+    const data = validateSchema(UpdateDepartmentSchema, req.body)
     const dept = await this.service.updateDepartment(req.params.id, data)
     return { status: 200, body: dept }
   }
@@ -87,7 +88,7 @@ export class EmpleadosController {
 
   async updateProfile(req: HttpRequest) {
     this.logger.info('PUT /api/employee-profiles/:id')
-    const data = req.body as Partial<CreateEmployeeProfileDTO>
+    const data = validateSchema(UpdateProfileSchema, req.body)
     const profile = await this.service.updateProfile(req.params.id, data)
     return { status: 200, body: profile }
   }
@@ -193,8 +194,8 @@ export class EmpleadosController {
   async rejectLeaveRequest(req: HttpRequest) {
     this.logger.info('POST /api/leave-requests/:id/reject')
     const userId = (req as any).userId ?? ''
-    const { reason } = req.body as { reason?: string }
-    const request = await this.service.rejectLeaveRequest(req.params.id, userId, reason)
+    const data = validateSchema(RejectLeaveRequestSchema, req.body) as any
+    const request = await this.service.rejectLeaveRequest(req.params.id, userId, data.reason)
     return { status: 200, body: request }
   }
 

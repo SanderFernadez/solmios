@@ -2,7 +2,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingService } from './service'
-import { CreateHousekeepingSchema, UpdateHousekeepingSchema } from './validators/schema'
+import { CreateHousekeepingSchema, UpdateHousekeepingSchema, UploadPhotoSchema, RemovePhotoSchema } from './validators/schema'
 
 // Decodifica un data URL base64 (data:<mime>;base64,<data>) → buffer + metadata.
 // Necesario porque el router del framework no propaga req.files al handler,
@@ -64,13 +64,12 @@ export class HousekeepingController {
   }
 
   async uploadPhoto(req: HttpRequest) {
-    const { photo, fileName } = (req.body ?? {}) as { photo?: string; fileName?: string }
-    if (!photo) return { status: 400, body: { error: 'No se envió foto (base64 en body.photo)' } }
-    const parsed = parseDataUrl(photo)
+    const data = validateSchema(UploadPhotoSchema, req.body ?? {}) as any
+    const parsed = parseDataUrl(data.photo)
     if (!parsed) return { status: 400, body: { error: 'Formato inválido (se espera data URL base64)' } }
     const file: FileUpload = {
       fieldName: 'file',
-      originalName: fileName || `photo.${parsed.ext}`,
+      originalName: data.fileName || `photo.${parsed.ext}`,
       buffer: parsed.buffer,
       mimeType: parsed.mimeType,
       size: parsed.buffer.length,
@@ -79,9 +78,8 @@ export class HousekeepingController {
   }
 
   async removePhoto(req: HttpRequest) {
-    const photoUrl = req.query['url'] || req.query['photoUrl']
-    if (!photoUrl) return { status: 400, body: { error: 'url de foto requerida' } }
-    return { status: 200, body: await this.service.removePhoto(req.params.id, String(photoUrl), req.user as any) }
+    const data = validateSchema(RemovePhotoSchema, { url: req.query['url'] || req.query['photoUrl'] }) as any
+    return { status: 200, body: await this.service.removePhoto(req.params.id, data.url, req.user as any) }
   }
 
   async stats(req: HttpRequest) {

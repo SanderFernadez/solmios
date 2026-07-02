@@ -18,11 +18,17 @@ export class PaymentsController {
     private readonly logger: Logger,
   ) {}
 
+  /** Fuerza hotelId del JWT en los creates (P0 IDOR V1-V4). super_admin puede especificar otro. */
+  private forceHotelId(dto: { hotelId?: string }, user: any): string {
+    return user?.role === 'super_admin' ? (dto.hotelId || user.hotelId || '') : (user?.hotelId || '')
+  }
+
   // ─── Payments ────────────────────────────────────────
 
   async createPayment(req: HttpRequest) {
     this.logger.info('POST /api/payments')
     const data = validateSchema(CreatePaymentSchema, req.body) as unknown as CreatePaymentDTO
+    data.hotelId = this.forceHotelId(data, req.user as any) // V1 IDOR: forzar del JWT
     const payment = await this.service.createPayment(data)
     return { status: 201, body: payment }
   }
@@ -30,6 +36,7 @@ export class PaymentsController {
   async chargeCard(req: HttpRequest) {
     this.logger.info('POST /api/payments/charge')
     const data = validateSchema(ChargeCardSchema, req.body) as unknown as ChargeCardDTO
+    data.hotelId = this.forceHotelId(data, req.user as any) // V2 IDOR: forzar del JWT
     const result = await this.service.chargeCard(data)
     return { status: 200, body: result }
   }
@@ -68,6 +75,7 @@ export class PaymentsController {
   async createLink(req: HttpRequest) {
     this.logger.info('POST /api/payment-links')
     const data = validateSchema(CreatePaymentLinkSchema, req.body) as unknown as CreatePaymentLinkDTO
+    data.hotelId = this.forceHotelId(data, req.user as any) // V3 IDOR: forzar del JWT
     const link = await this.service.createPaymentLink(data)
     return { status: 201, body: link }
   }
@@ -96,6 +104,7 @@ export class PaymentsController {
   async createDeposit(req: HttpRequest) {
     this.logger.info('POST /api/deposits')
     const data = validateSchema(CreateDepositSchema, req.body) as unknown as CreateDepositDTO
+    data.hotelId = this.forceHotelId(data, req.user as any) // V4 IDOR: forzar del JWT
     const deposit = await this.service.createDeposit(data)
     return { status: 201, body: deposit }
   }

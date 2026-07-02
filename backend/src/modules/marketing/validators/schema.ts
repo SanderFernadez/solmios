@@ -23,3 +23,29 @@ export const CreateTemplateSchema: Record<string, ValidationRule> = {
   body: { type: 'string' as const },
   category: { type: 'string' as const, enum: ['general','reservation','checkin','checkout','payment','marketing'] },
 }
+
+export const UpdateAutoMessageSchema: Record<string, ValidationRule> = {
+  title: { type: 'string' as const, min: 2 },
+  color: { type: 'string' as const },
+  channel: { type: 'string' as const, enum: ['email','whatsapp','both'] },
+  triggerEvent: { type: 'string' as const, enum: ['on_reservation','pre_checkin','checkin_day','checkout_day','post_checkout'] },
+  triggerOffset: { type: 'number' as const },
+  emailSubject: { type: 'string' as const },
+  emailBody: { type: 'string' as const },
+  whatsappBody: { type: 'string' as const },
+  isActive: { type: 'number' as const },
+}
+
+export const CreateMessageLogSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  reservationId: { type: 'string' as const },
+  guestId: { type: 'string' as const },
+  channel: { type: 'string' as const, required: true },
+  status: { type: 'string' as const, required: true, enum: ['queued','sent','failed','delivered'] },
+}
+
+export const UpdateTemplateSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, min: 2 },
+  body: { type: 'string' as const },
+  category: { type: 'string' as const, enum: ['general','reservation','checkin','checkout','payment','marketing'] },
+}

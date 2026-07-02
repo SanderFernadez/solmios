@@ -71,3 +71,8 @@ export const BookingengineValidator = {
   createBooking: CreatePublicBookingSchema,
   trackEvent: TrackEventSchema,
 }
+
+export const CreateCheckoutSessionSchema: Record<string, ValidationRule> = {
+  successUrl: { type: 'string' as const, required: true },
+  cancelUrl: { type: 'string' as const, required: true },
+}

@@ -2,7 +2,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { MarketingService } from './service'
-import { CreateAutoMessageSchema, CreateTemplateSchema } from './validators/schema'
+import { CreateAutoMessageSchema, CreateTemplateSchema, UpdateAutoMessageSchema, CreateMessageLogSchema, UpdateTemplateSchema } from './validators/schema'
 import type { CreateAutoMessageDTO, CreateWhatsappTemplateDTO } from './types'
 
 export class MarketingController {
@@ -13,7 +13,10 @@ export class MarketingController {
     const d = validateSchema(CreateAutoMessageSchema, req.body) as any; d.hotelId = (req as any).hotelId ?? d.hotelId
     return { status: 201, body: await this.service.createAutoMessage(d) }
   }
-  async updateAutoMessage(req: HttpRequest) { return { status: 200, body: await this.service.updateAutoMessage(req.params.id, req.body as any) } }
+  async updateAutoMessage(req: HttpRequest) {
+    const data = validateSchema(UpdateAutoMessageSchema, req.body)
+    return { status: 200, body: await this.service.updateAutoMessage(req.params.id, data) }
+  }
   async deleteAutoMessage(req: HttpRequest) { await this.service.deleteAutoMessage(req.params.id); return { status: 200, body: { success: true } } }
 
   async listMessageLogs(req: HttpRequest) {
@@ -21,7 +24,8 @@ export class MarketingController {
     return { status: 200, body: { data: await this.service.listMessageLogs(h, reservationId) } }
   }
   async createMessageLog(req: HttpRequest) {
-    const d = req.body as any; d.hotelId = (req as any).hotelId ?? d.hotelId
+    const d = validateSchema(CreateMessageLogSchema, req.body) as any
+    d.hotelId = (req as any).hotelId ?? d.hotelId
     return { status: 201, body: await this.service.createMessageLog(d) }
   }
 
@@ -31,6 +35,9 @@ export class MarketingController {
     if (!d.name) return { status: 400, body: { error: 'name requerido' } }
     return { status: 201, body: await this.service.createTemplate(d) }
   }
-  async updateTemplate(req: HttpRequest) { return { status: 200, body: await this.service.updateTemplate(req.params.id, req.body as any) } }
+  async updateTemplate(req: HttpRequest) {
+    const data = validateSchema(UpdateTemplateSchema, req.body)
+    return { status: 200, body: await this.service.updateTemplate(req.params.id, data) }
+  }
   async deleteTemplate(req: HttpRequest) { await this.service.deleteTemplate(req.params.id); return { status: 200, body: { success: true } } }
 }

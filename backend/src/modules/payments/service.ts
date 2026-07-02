@@ -59,6 +59,9 @@ export class PaymentsService {
   async createPayment(dto: CreatePaymentDTO): Promise<PaymentDTO> {
     const payment = await this.crud.create(dto)
     await this.sockets.onPaymentCreated?.(payment)
+    // V8: los pagos cash se crean con status='completed' (payment-crud.ts). Emitimos onPaymentCompleted
+    // para que el conector payments→caja registre el ingreso en caja. Los pagos card van por webhook Stripe.
+    if (payment.status === 'completed') await this.sockets.onPaymentCompleted?.(payment)
     return payment
   }
 

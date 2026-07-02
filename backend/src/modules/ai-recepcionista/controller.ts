@@ -1,7 +1,7 @@
 import type { Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { AiRecepcionistaService } from './service'
-import { AiRecepcionistaValidator } from './validators/schema'
+import { AiRecepcionistaValidator, CloseConversationSchema, TransferConversationSchema, TestIntentSchema, WebChatMessageSchema, StartWhatsappSchema, StopWhatsappSchema } from './validators/schema'
 
 export class AiRecepcionistaController {
   constructor(
@@ -26,15 +26,15 @@ export class AiRecepcionistaController {
 
   async close(req: any) {
     const user = req.user || {}
-    const { resolvedBy, satisfactionScore } = req.body || {}
-    const result = await this.service.closeConversation(req.params.id, resolvedBy || 'agent', satisfactionScore, user)
+    const data = validateSchema(CloseConversationSchema, req.body || {}) as any
+    const result = await this.service.closeConversation(req.params.id, data.resolvedBy || 'agent', data.satisfactionScore, user)
     return { status: 200, body: result }
   }
 
   async transfer(req: any) {
     const user = req.user || {}
-    const { agentId, reason } = req.body || {}
-    const result = await this.service.transferConversation(req.params.id, agentId || null, reason, user)
+    const data = validateSchema(TransferConversationSchema, req.body || {}) as any
+    const result = await this.service.transferConversation(req.params.id, data.agentId || null, data.reason, user)
     return { status: 200, body: result }
   }
 
@@ -88,9 +88,8 @@ export class AiRecepcionistaController {
 
   async testIntent(req: any) {
     const user = req.user || {}
-    const { message } = req.body || {}
-    if (!message) return { status: 400, body: { error: 'message es requerido' } }
-    const result = await this.service.testIntent(req.params.id, message, user)
+    const data = validateSchema(TestIntentSchema, req.body || {}) as any
+    const result = await this.service.testIntent(req.params.id, data.message, user)
     return { status: 200, body: result }
   }
 
@@ -202,8 +201,7 @@ export class AiRecepcionistaController {
 
   async webChatMessage(req: any) {
     const slug = req.params?.slug
-    const { sessionId, content } = req.body || {}
-    if (!content) return { status: 400, body: { error: 'content es requerido' } }
+    const data = validateSchema(WebChatMessageSchema, req.body || {}) as any
 
     const hotels = await (this.service as any).hotelRepo.findMany({})
     const hotel = (hotels as any[]).find((h: any) =>
@@ -214,12 +212,12 @@ export class AiRecepcionistaController {
     const conv = await this.service.findOrCreateConversation({
       hotelId: hotel.id,
       channel: 'webchat',
-      channelConversationId: sessionId || crypto.randomUUID(),
+      channelConversationId: data.sessionId || crypto.randomUUID(),
       guestName: 'Web Guest',
       language: 'es',
     })
 
-    const response = await this.service.processIncomingMessage(conv.id, content, hotel.id)
+    const response = await this.service.processIncomingMessage(conv.id, data.content, hotel.id)
     return { status: 200, body: { conversationId: conv.id, response } }
   }
 
@@ -242,7 +240,8 @@ export class AiRecepcionistaController {
 
   async startWhatsapp(req: any) {
     const user = req.user || {}
-    const hotelId = req.body?.hotelId || user.hotelId
+    const data = validateSchema(StartWhatsappSchema, req.body || {}) as any
+    const hotelId = data.hotelId || user.hotelId
     if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
     const result = await this.service.startWhatsappSession(hotelId)
     return { status: 200, body: result }
@@ -250,7 +249,8 @@ export class AiRecepcionistaController {
 
   async stopWhatsapp(req: any) {
     const user = req.user || {}
-    const hotelId = req.body?.hotelId || user.hotelId
+    const data = validateSchema(StopWhatsappSchema, req.body || {}) as any
+    const hotelId = data.hotelId || user.hotelId
     if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
     const result = await this.service.stopWhatsappSession(hotelId)
     return { status: 200, body: result }

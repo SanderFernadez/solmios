@@ -10,6 +10,7 @@ import {
   CheckAvailabilitySchema,
   CreatePublicBookingSchema,
   TrackEventSchema,
+  CreateCheckoutSessionSchema,
 } from './validators/schema'
 
 export class BookingengineController {
@@ -89,8 +90,8 @@ export class BookingengineController {
   async createCheckoutSession(req: HttpRequest) {
     this.logger.info('POST /api/public/bookings/:id/checkout')
     const { id } = req.params
-    const { successUrl, cancelUrl } = req.body as { successUrl: string; cancelUrl: string }
-    const session = await this.service.createCheckoutSession(id, successUrl, cancelUrl)
+    const data = validateSchema(CreateCheckoutSessionSchema, req.body) as any
+    const session = await this.service.createCheckoutSession(id, data.successUrl, data.cancelUrl)
     return { status: 200, body: session }
   }
 

@@ -619,7 +619,7 @@ router.post('/api/folios/:id/invoice', [auth.authenticate('hotel_admin', 'super_
     notes: `Generada desde folio ${folio.id} · ${sum.total} total`,
   } as any, req.user as any)
   const linked = await folios.setInvoice(req.params.id, invoice.id, req.user as any)
-  return { status: 201, body: { folio: linked, invoice } }
+  return { status: 201, body: { folio: linked, invoice, invoiceData: invoice } } // invoiceData: alias de compat con el frontend (V-08)
 })
 
 // ─── Night audit: postear tarifa de habitación a folios in-house ───────────

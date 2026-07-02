@@ -18,3 +18,12 @@ export const AiGerenteValidator = {
   create: CreateAiGerenteSchema,
   update: UpdateAiGerenteSchema,
 }
+
+export const AskSchema: Record<string, ValidationRule> = {
+  query: { type: 'string' as const, required: true, min: 1 },
+  hotelId: { type: 'string' as const },
+}
+
+export const FeedbackSchema: Record<string, ValidationRule> = {
+  feedback: { type: 'string' as const, required: true, enum: ['helpful', 'not_helpful', 'inaccurate'] },
+}

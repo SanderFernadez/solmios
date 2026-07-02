@@ -122,3 +122,30 @@ export const AiRecepcionistaValidator = {
   updateTemplate: UpdateTemplateSchema,
   createWhatsappConfig: CreateWhatsappConfigSchema,
 }
+
+export const CloseConversationSchema: Record<string, ValidationRule> = {
+  resolvedBy: { type: 'string' as const, enum: RESOLVED_BY_ENUM },
+  satisfactionScore: { type: 'number' as const, min: 1, max: 5 },
+}
+
+export const TransferConversationSchema: Record<string, ValidationRule> = {
+  agentId: { type: 'string' as const },
+  reason: { type: 'string' as const, max: 500 },
+}
+
+export const TestIntentSchema: Record<string, ValidationRule> = {
+  message: { type: 'string' as const, required: true, min: 1 },
+}
+
+export const WebChatMessageSchema: Record<string, ValidationRule> = {
+  sessionId: { type: 'string' as const },
+  content: { type: 'string' as const, required: true, min: 1 },
+}
+
+export const StartWhatsappSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const },
+}
+
+export const StopWhatsappSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const },
+}

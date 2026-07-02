@@ -20,3 +20,22 @@ export const UpdateUsuarioSchema: Record<string, ValidationRule> = {
 }
 
 export const UsuarioValidator = { create: CreateUsuarioSchema, update: UpdateUsuarioSchema }
+
+export const LoginSchema: Record<string, ValidationRule> = {
+  email: { type: 'string' as const, required: true },
+  password: { type: 'string' as const, required: true },
+}
+
+export const ChangePasswordSchema: Record<string, ValidationRule> = {
+  currentPassword: { type: 'string' as const, required: true },
+  newPassword: { type: 'string' as const, required: true, min: 6 },
+}
+
+export const ForgotPasswordSchema: Record<string, ValidationRule> = {
+  email: { type: 'string' as const, required: true },
+}
+
+export const ResetPasswordSchema: Record<string, ValidationRule> = {
+  token: { type: 'string' as const, required: true },
+  newPassword: { type: 'string' as const, required: true, min: 6 },
+}

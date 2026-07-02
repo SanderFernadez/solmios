@@ -1,24 +1,23 @@
-// cash/service.ts — Facade pública del módulo Caja.
-// Casos de uso: CRUD de movimientos, turnos (abrir/cerrar/arqueo), conciliación,
-// y registerPaymentIncome (entrada del conector payments→caja con dedup por paymentId).
-// NO sabe de HTTP. NO importa de otros módulos. Depende de RepositoryAdapter (no del ORM directo).
+// cash/service.ts — Facade del módulo Caja. Orquestador delgado.
+// Movimientos CRUD + registerPaymentIncome aquí; turnos y stats delegan a ./usecases/.
+// Depende de RepositoryAdapter (no del ORM directo). hotelId forzado del JWT en create (P0 IDOR).
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError } from 'arckode-framework'
 import type {
   CashMovementDTO, CashShiftDTO, CreateMovementDTO, UpdateMovementDTO,
-  MovementQuery, CashPaginated, OpenShiftDTO, CloseShiftDTO,
-  ReconcileResult, CashStats, CurrentUser, MovementType,
+  MovementQuery, CashPaginated, CurrentUser, MovementType,
 } from './types'
 import type { CashSockets } from './sockets'
+import { computeStats } from './usecases/stats'
+import * as shiftsUc from './usecases/shifts'
+import type { ShiftDeps } from './usecases/shifts'
 
 const MOVEMENT_TYPES: MovementType[] = ['income', 'expense', 'opening', 'closing']
-const MS_PER_DAY = 24 * 60 * 60 * 1000 // ms en un día — para rangos de stats
 
 export class CashService {
   private sockets: CashSockets = {}
-  // Versionado de cache: cada mutación bumpa → las cacheKey viejas dejan de matchear y expiran a 300s.
-  private listVersion = 0
+  private listVersion = 0 // cache versioning: mutaciones bump → cacheKey viejas expiran a 300s
 
   constructor(
     private readonly repo: RepositoryAdapter<CashMovementDTO>,
@@ -30,8 +29,7 @@ export class CashService {
   ) {}
 
   setSockets(s: Partial<CashSockets>): void {
-    const next = s as Record<string, any>
-    const cur = this.sockets as Record<string, any>
+    const next = s as Record<string, any>; const cur = this.sockets as Record<string, any>
     for (const key of Object.keys(next)) {
       const h = next[key]; if (!h) continue
       const prev = cur[key]
@@ -39,10 +37,18 @@ export class CashService {
     }
   }
 
-  /** hotelId del JWT (super_admin puede especificar otro). Nunca confía en el body. */
   private hotelOfUser(user: CurrentUser, dtoHotelId?: string): string {
     if (user.role === 'super_admin') return dtoHotelId || user.hotelId || ''
     return user.hotelId || ''
+  }
+
+  private shiftDeps(): ShiftDeps {
+    return {
+      shiftRepo: this.shiftRepo, repo: this.repo, userRepo: this.userRepo,
+      auth: this.auth, logger: this.logger, sockets: this.sockets,
+      hotelOfUser: (u, h) => this.hotelOfUser(u, h),
+      bumpVersion: () => { this.listVersion++ },
+    }
   }
 
   // ─── Movimientos ───────────────────────────────────────
@@ -52,7 +58,6 @@ export class CashService {
     if (query.shiftId) filters.shiftId = query.shiftId
     if (query.type) filters.type = query.type
     if (query.method) filters.method = query.method
-
     const page = Math.max(query.page || 1, 1)
     const limit = Math.min(Math.max(query.limit || 20, 1), 100)
     const offset = (page - 1) * limit
@@ -61,18 +66,14 @@ export class CashService {
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as CashPaginated
 
-    // El adapter no soporta range directo → filtramos fecha en memoria y paginamos después.
     let rows = await this.repo.findMany(filters)
     if (query.from) rows = rows.filter(r => (r.createdAt || '') >= query.from!)
     if (query.to) rows = rows.filter(r => (r.createdAt || '') <= query.to! + 'T23:59:59')
     const total = rows.length
     const data = rows.slice(offset, offset + limit)
-
     const response: CashPaginated = {
-      data, total, limit, offset,
-      pages: Math.ceil(total / limit) || 1,
-      hasNext: offset + limit < total,
-      hasPrev: page > 1,
+      data, total, limit, offset, pages: Math.ceil(total / limit) || 1,
+      hasNext: offset + limit < total, hasPrev: page > 1,
     }
     await this.cache.set(cacheKey, response, 300)
     return response
@@ -89,8 +90,7 @@ export class CashService {
   async create(dto: CreateMovementDTO, user: CurrentUser): Promise<CashMovementDTO> {
     if (!MOVEMENT_TYPES.includes(dto.type)) throw new Error(`Tipo de movimiento inválido: ${dto.type}`)
     const hotelId = this.hotelOfUser(user)
-    // Asignar al turno abierto del hotel si existe (no obligatorio).
-    const shiftId = await this.resolveOpenShift(hotelId)
+    const shiftId = await shiftsUc.resolveOpenShift(this.shiftDeps(), hotelId)
     const item = await this.repo.create({
       ...dto, hotelId, shiftId: shiftId || null,
       category: dto.category || (dto.type === 'income' ? 'payment' : 'expense'),
@@ -106,7 +106,6 @@ export class CashService {
     if (!existing) throw new NotFoundError('Movimiento no encontrado')
     const me = await this.userRepo.findById(user.id)
     this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    // Integridad: los movimientos automáticos del conector no se editan a mano.
     if (existing.source === 'payment_connector') {
       throw new Error('Los movimientos automáticos (pago) no se pueden editar manualmente')
     }
@@ -128,11 +127,7 @@ export class CashService {
     this.listVersion++
   }
 
-  /**
-   * Conector payments→caja: registra un ingreso automático cuando un pago cash se completa.
-   * Dedup por paymentId: si ya existe un movimiento para ese pago, no se duplica.
-   * Best-effort: el conector envuelve en try/catch.
-   */
+  /** Conector payments→caja: ingreso automático por pago cash. Dedup por paymentId. */
   async registerPaymentIncome(input: {
     hotelId: string; paymentId: string; amount: number
     reservationId?: string; folioId?: string; method?: string; reference?: string
@@ -142,7 +137,7 @@ export class CashService {
       this.logger.info('registerPaymentIncome: ya registrado (dedup)', { paymentId: input.paymentId })
       return null
     }
-    const shiftId = await this.resolveOpenShift(input.hotelId)
+    const shiftId = await shiftsUc.resolveOpenShift(this.shiftDeps(), input.hotelId)
     const item = await this.repo.create({
       hotelId: input.hotelId, shiftId: shiftId || null,
       type: 'income', amount: input.amount, method: (input.method as any) || 'cash',
@@ -156,103 +151,21 @@ export class CashService {
     return item
   }
 
-  private async resolveOpenShift(hotelId: string): Promise<string | null> {
-    if (!hotelId) return null
-    const open = await this.shiftRepo.findMany({ hotelId, status: 'open' } as any)
-    return open[0]?.id ?? null
-  }
-
-  // ─── Turnos ────────────────────────────────────────────
-  async listShifts(hotelId: string | undefined, user: CurrentUser): Promise<CashShiftDTO[]> {
-    const hid = this.hotelOfUser(user, hotelId)
-    const shifts = await this.shiftRepo.findMany({ hotelId: hid || '__none__' } as any)
-    return shifts.sort((a, b) => (b.openedAt || '').localeCompare(a.openedAt || ''))
-  }
-
-  async getCurrentShift(user: CurrentUser): Promise<CashShiftDTO | null> {
-    const hotelId = this.hotelOfUser(user)
-    const open = await this.shiftRepo.findMany({ hotelId: hotelId || '__none__', status: 'open' } as any)
-    return open[0] ?? null
-  }
-
-  async openShift(dto: OpenShiftDTO, user: CurrentUser): Promise<CashShiftDTO> {
-    const hotelId = this.hotelOfUser(user)
-    const current = await this.getCurrentShift(user)
-    if (current) throw new Error('Ya hay un turno abierto. Cerralo antes de abrir uno nuevo.')
-    const now = new Date().toISOString()
-    const opening = dto.openingAmount || 0
-    const shift = await this.shiftRepo.create({
-      hotelId, status: 'open', openingAmount: opening,
-      openedBy: user.id, openedAt: now, notes: dto.notes,
-      denominations: '{}', difference: 0, expectedAmount: opening,
-    } as Omit<CashShiftDTO, 'id'>)
-    await this.sockets.onShiftOpened?.(shift)
-    this.listVersion++
-    return shift
-  }
-
-  async closeShift(id: string, dto: CloseShiftDTO, user: CurrentUser): Promise<CashShiftDTO> {
-    const shift = await this.shiftRepo.findById(id)
-    if (!shift) throw new NotFoundError('Turno no encontrado')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(shift.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    if (shift.status === 'closed') throw new Error('El turno ya está cerrado')
-
-    const rec = await this.computeReconcile(shift)
-    const now = new Date().toISOString()
-    const updated = await this.shiftRepo.update(id, {
-      status: 'closed', countedAmount: dto.countedAmount,
-      expectedAmount: rec.expected, difference: dto.countedAmount - rec.expected,
-      denominations: dto.denominations || '{}', closedBy: user.id, closedAt: now, notes: dto.notes,
-    } as Partial<Omit<CashShiftDTO, 'id'>>)
-    if (!updated) throw new NotFoundError('Turno no encontrado')
-    await this.sockets.onShiftClosed?.(updated)
-    this.listVersion++
-    return updated
-  }
-
-  async reconcile(id: string, user: CurrentUser): Promise<ReconcileResult> {
-    const shift = await this.shiftRepo.findById(id)
-    if (!shift) throw new NotFoundError('Turno no encontrado')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(shift.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    return this.computeReconcile(shift)
-  }
-
-  private async computeReconcile(shift: CashShiftDTO): Promise<ReconcileResult> {
-    const movs = shift.id ? await this.repo.findMany({ shiftId: shift.id } as any) : []
-    let income = 0, expense = 0
-    const byMethod: Record<string, number> = {}
-    for (const m of movs) {
-      if (m.type === 'income' || m.type === 'opening') income += m.amount
-      else if (m.type === 'expense' || m.type === 'closing') expense += m.amount
-      const mk = m.method || 'cash'
-      byMethod[mk] = (byMethod[mk] || 0) + m.amount
-    }
-    const opening = shift.openingAmount || 0
-    const expected = opening + income - expense
-    const counted = shift.countedAmount ?? 0
-    return { shift, opening, income, expense, expected, counted, difference: counted - expected, byMethod }
-  }
+  // ─── Turnos (delegan a usecases/shifts) ────────────────
+  listShifts(hotelId: string | undefined, user: CurrentUser) { return shiftsUc.listShifts(this.shiftDeps(), hotelId, user) }
+  getCurrentShift(user: CurrentUser) { return shiftsUc.getCurrentShift(this.shiftDeps(), user) }
+  openShift(dto: OpenShiftLike, user: CurrentUser) { return shiftsUc.openShift(this.shiftDeps(), dto, user) }
+  closeShift(id: string, dto: CloseShiftLike, user: CurrentUser) { return shiftsUc.closeShift(this.shiftDeps(), id, dto, user) }
+  reconcile(id: string, user: CurrentUser) { return shiftsUc.reconcile(this.shiftDeps(), id, user) }
 
   // ─── Stats ─────────────────────────────────────────────
-  async stats(hotelId: string | undefined, user: CurrentUser): Promise<CashStats> {
+  async stats(hotelId: string | undefined, user: CurrentUser) {
     const hid = this.hotelOfUser(user, hotelId)
-    const today = new Date().toISOString().slice(0, 10)
-    const weekAgo = new Date(Date.now() - 7 * MS_PER_DAY).toISOString()
-    const monthAgo = new Date(Date.now() - 30 * MS_PER_DAY).toISOString()
     const movs = await this.repo.findMany({ hotelId: hid || '__none__' } as any)
-    let todaySum = 0, weekSum = 0, monthSum = 0
-    const byMethod: Record<string, number> = {}
-    for (const m of movs) {
-      if (m.type === 'expense' || m.type === 'closing') continue
-      const c = m.createdAt || ''
-      if (c.slice(0, 10) === today) todaySum += m.amount
-      if (c >= weekAgo) weekSum += m.amount
-      if (c >= monthAgo) monthSum += m.amount
-      const mk = m.method || 'cash'
-      byMethod[mk] = (byMethod[mk] || 0) + m.amount
-    }
-    return { today: todaySum, week: weekSum, month: monthSum, count: movs.length, byMethod }
+    return computeStats(movs, Date.now())
   }
 }
+
+// Alias de tipos de los usecases para firmas delgadas (sin importar Parameters<> que ensucia).
+type OpenShiftLike = { openingAmount?: number; notes?: string }
+type CloseShiftLike = { countedAmount: number; denominations?: string; notes?: string }

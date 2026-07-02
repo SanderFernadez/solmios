@@ -1,17 +1,16 @@
 // usuarios/controller.ts — Adaptador HTTP
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
-import { CreateUsuarioSchema, UpdateUsuarioSchema } from './validators/schema'
+import { CreateUsuarioSchema, UpdateUsuarioSchema, LoginSchema, ChangePasswordSchema, ForgotPasswordSchema, ResetPasswordSchema } from './validators/schema'
 import type { UsuariosService } from './service'
 
 export class UsuariosController {
   constructor(private readonly service: UsuariosService, private readonly logger: Logger) {}
 
   async login(req: HttpRequest) {
-    const { email, password } = req.body as { email: string; password: string }
-    if (!email || !password) return { status: 400, body: { error: 'Email y password requeridos' } }
+    const data = validateSchema(LoginSchema, req.body) as any
     try {
-      const result = await this.service.login(email, password)
+      const result = await this.service.login(data.email, data.password)
       return { status: 200, body: result }
     } catch (e: any) {
       return { status: 401, body: { error: e.message } }
@@ -29,29 +28,20 @@ export class UsuariosController {
   }
 
   async changePassword(req: HttpRequest) {
-    const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string }
-    if (!currentPassword || !newPassword) {
-      return { status: 400, body: { error: 'Contraseña actual y nueva requeridas' } }
-    }
-    if (newPassword.length < 6) {
-      return { status: 400, body: { error: 'La nueva contraseña debe tener al menos 6 caracteres' } }
-    }
-    await this.service.changePassword((req.user as any).id, currentPassword, newPassword)
+    const data = validateSchema(ChangePasswordSchema, req.body) as any
+    await this.service.changePassword((req.user as any).id, data.currentPassword, data.newPassword)
     return { status: 200, body: { message: 'Contraseña actualizada' } }
   }
 
   async forgotPassword(req: HttpRequest) {
-    const { email } = req.body as { email: string }
-    if (!email) return { status: 400, body: { error: 'Email requerido' } }
-    await this.service.forgotPassword(email)
+    const data = validateSchema(ForgotPasswordSchema, req.body) as any
+    await this.service.forgotPassword(data.email)
     return { status: 200, body: { message: 'Si el email existe, recibirás un enlace de recuperación' } }
   }
 
   async resetPassword(req: HttpRequest) {
-    const { token, newPassword } = req.body as { token: string; newPassword: string }
-    if (!token || !newPassword) return { status: 400, body: { error: 'Token y nueva contraseña requeridos' } }
-    if (newPassword.length < 6) return { status: 400, body: { error: 'La contraseña debe tener al menos 6 caracteres' } }
-    await this.service.resetPassword(token, newPassword)
+    const data = validateSchema(ResetPasswordSchema, req.body) as any
+    await this.service.resetPassword(data.token, data.newPassword)
     return { status: 200, body: { message: 'Contraseña restablecida' } }
   }
 

@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { MantenimientoService } from './service'
-import { CreateMantenimientoSchema, UpdateMantenimientoSchema, AddNotesSchema } from './validators/schema'
+import { CreateMantenimientoSchema, UpdateMantenimientoSchema, AddNotesSchema, CompleteMantenimientoSchema, AddPhotoMantenimientoSchema } from './validators/schema'
 
 export class MantenimientoController {
   constructor(
@@ -50,8 +50,8 @@ export class MantenimientoController {
 
   async complete(req: HttpRequest) {
     const currentUser = req.user as any
-    const { notes } = (req.body || {}) as { notes?: string }
-    const item = await this.service.complete(req.params.id, currentUser, notes)
+    const data = validateSchema(CompleteMantenimientoSchema, req.body || {}) as any
+    const item = await this.service.complete(req.params.id, currentUser, data.notes)
     return { status: 200, body: item }
   }
 
@@ -68,9 +68,9 @@ export class MantenimientoController {
     const currentUser = req.user as any
     const file = (req as any).file as { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined
     if (!file) return { status: 400, body: { error: 'Archivo requerido' } }
-    const type = (req.body as any)?.type || 'during'
+    const data = validateSchema(AddPhotoMantenimientoSchema, req.body || {}) as any
     const fileUpload = { buffer: file.buffer, originalName: file.originalname, mimeType: file.mimetype, size: file.size }
-    const item = await this.service.addPhoto(req.params.id, fileUpload as any, type, currentUser)
+    const item = await this.service.addPhoto(req.params.id, fileUpload as any, data.type, currentUser)
     return { status: 200, body: item }
   }
 
