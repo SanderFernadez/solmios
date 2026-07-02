@@ -16,14 +16,17 @@
     <div class="grid grid-cols-4 gap-4 mb-6">
       <div class="card p-4 text-center">
         <div class="text-2xl font-black text-navy">${{ totalMonth.toLocaleString() }}</div>
+        <div v-if="formatSecondary(totalMonth)" class="text-[10px] text-text-muted">{{ formatSecondary(totalMonth) }}</div>
         <div class="text-[10px] text-text-muted font-bold uppercase">Ingresos del Mes</div>
       </div>
       <div class="card p-4 text-center">
         <div class="text-2xl font-black text-teal">${{ totalToday.toLocaleString() }}</div>
+        <div v-if="formatSecondary(totalToday)" class="text-[10px] text-text-muted">{{ formatSecondary(totalToday) }}</div>
         <div class="text-[10px] text-text-muted font-bold uppercase">Cobrado Hoy</div>
       </div>
       <div class="card p-4 text-center">
         <div class="text-2xl font-black text-gold">${{ totalPending.toLocaleString() }}</div>
+        <div v-if="formatSecondary(totalPending)" class="text-[10px] text-text-muted">{{ formatSecondary(totalPending) }}</div>
         <div class="text-[10px] text-text-muted font-bold uppercase">Pendiente</div>
       </div>
       <div class="card p-4 text-center">
@@ -602,6 +605,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { BillingService, type BillingStats } from '@/services/Billing.service'
 import { http } from '@/services/http'
+import { useCurrency } from '@/composables/useCurrency'
 import { FoliosService, type Folio } from '@/services/Folios.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -609,6 +613,7 @@ import { useToast } from '@/composables/useToast'
 const auth = useAuthStore()
 const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
+const { formatSecondary, loadCurrencyConfig } = useCurrency()
 
 const activeTab = ref('invoices')
 const invoiceFilter = ref('all')
@@ -716,7 +721,10 @@ async function loadFolios() {
     folios.value = await FoliosService.list(hotelId.value)
   } catch { folios.value = [] }
 }
-onMounted(loadData)
+onMounted(async () => {
+  await loadCurrencyConfig(hotelId.value)
+  loadData()
+})
 
 const filteredInvoices = computed(() => {
   if (invoiceFilter.value === 'all') return invoices.value
