@@ -74,25 +74,25 @@
   > Celdas: input numérico editable con el precio por noche para esa combinación.
   > Layout: la tabla debe tener sticky header (columnas temporadas visibles al scrollear), bordes de grupo por tipo de habitación, y color de fondo alternado por season.
   > Datos de origen: tabla `room_rates` con columnas `roomType, occupancy, seasonKey, price, hotelId`.
-- [ ] 2.3.2 Editable price inputs
+- [x] 2.3.2 Editable price inputs
   > Cada celda de la grid 2.3.1 debe ser un input `<input type="number">` con formato moneda (USD/DOP/etc según `hotel.currency`).
   > Al hacer focus: seleccionar todo el texto. Al hacer blur: validar que price >= 0 y mostrar indicador visual de "modificado" (borde azul).
   > Los cambios quedan en estado local ("dirty") hasta que se guarden con el botón general "💾 Guardar Cambios".
   > Si el usuario cambia de pestaña con datos dirty, mostrar modal de confirmación "¿Descartar cambios en tarifas?".
-- [ ] 2.3.3 "Copiar al próximo año" button
+- [x] 2.3.3 "Copiar al próximo año" button
   > Botón al lado del título de la sección Tarifas: "📋 Copiar al próximo año".
   > Al hacer clic: duplicar todas las `room_rates` de la temporada actual con fecha = fecha_actual + 1 año, manteniendo el mismo precio.
   > Mostrar modal de confirmación: "Se copiarán N tarifas al {año_siguiente}. ¿Continuar?"
   > En caso de conflictos (tarifa ya existe para ese año), mostrar opción "Sobrescribir" o "Saltar".
   > Toast success: "{N} tarifas copiadas a {año}."
-- [ ] 2.3.4 Save all rates in batch
+- [x] 2.3.4 Save all rates in batch
   > El botón "💾 Guardar Cambios" (global de Settings) debe ahora también guardar las tarifas editadas en la grid.
   > Enviar batch POST /api/rates/batch con array de `{roomType, occupancy, seasonKey, price}`.
   > Backend: upsert en `room_rates` (INSERT OR REPLACE por combinación roomType+occupancy+seasonKey+hotelId).
   > Mostrar loading state en el botón mientras guarda. Toast success "Tarifas actualizadas ({N} precios)."
 
 ### 2.4 Temporadas (new section)
-- [ ] 2.4.1 CRUD 4 seasons (name, label, dateRange, color)
+- [x] 2.4.1 CRUD 4 seasons (name, label, dateRange, color)
   > Crear sección de Temporadas en la pestaña Tarifas de Settings (antes de la grid de precios).
   > Lista de 4 temporadas preseleccionadas: Baja, Media, Alta, Especial.
   > Cada temporada tiene: nombre (texto), label corto (texto, ej "Baja"), rango de fechas (desde/hasta), color (color picker para la grid).
@@ -100,7 +100,7 @@
   > Persistir en `Configuration` con key `temporadas` vía `ConfigService.set('temporadas', ...)`.
   > Validación: no solapar rangos de fechas entre temporadas (alertar E2 "Las fechas de {temp1} y {temp2} se solapan.").
   > Si no hay temporadas configuradas, la grid de tarifas muestra una sola columna "Tarifa Base".
-- [ ] 2.4.2 Date pickers for start/end
+- [x] 2.4.2 Date pickers for start/end
   > Inputs de fecha para cada temporada: selector de rango (desde/hasta) con calendario visual.
   > Usar el date picker existente del proyecto (vue-datepicker o similar).
   > Mostrar barra de timeline visual debajo del formulario: línea horizontal con bloques de color representando cada temporada en el año, para detectar solapamientos visualmente.
@@ -193,19 +193,19 @@
 - [x] 4.2.12 Filters: room type, status, source
 
 ### 4.3 Room Blocks (Bloqueos)
-- [ ] 4.3.1 Create block dialog (reason, dates)
+- [x] 4.3.1 Create block dialog (reason, dates)
   > En la vista Planning, al hacer clic derecho sobre una celda vacía del Gantt, mostrar menú contextual con opción "🔒 Bloquear habitación".
   > Al seleccionar "Bloquear", abrir modal con: selector de habitación (pre-seleccionada si viene de clic en celda), rango de fechas (desde/hasta), campo "Motivo del bloqueo" (textarea, ej: "Mantenimiento", "Reservado para familiar", "Obra").
   > Colores de bloqueo: gris con rayas diagonales (patrón CSS). Texto dentro del bloque: motivo abreviado + fechas.
   > Al confirmar, POST /api/blocks con `{roomId, startDate, endDate, reason, hotelId}`.
   > El bloqueo se renderiza inmediatamente en el Gantt como bloque gris, sin recargar toda la página.
   > Backend: endpoint POST /api/blocks ya existe (task 1.3.9 completada), solo integrar frontend.
-- [ ] 4.3.2 Prevent reservation on blocked dates
+- [x] 4.3.2 Prevent reservation on blocked dates
   > Al crear o mover una reserva (drag) en el calendario, validar que la habitación NO tenga un bloqueo activo en el rango de fechas seleccionado.
   > Si hay conflicto: mostrar toast E2 "La Hab {n} está bloqueada del {start} al {end}: {motivo}." y rechazar la operación.
   > También validar en backend (capa service de reservas): al POST/PATCH reserva, verificar que no exista block solapado para esa roomId + fechas.
   > En la UI, las celdas con bloqueo deben mostrar un tooltip al hover: "🔒 Bloqueada: {motivo} ({fechas})".
-- [ ] 4.3.3 Delete block from context menu
+- [x] 4.3.3 Delete block from context menu
   > Clic derecho sobre un bloque gris en el Gantt → menú contextual con opción "🗑️ Eliminar bloqueo".
   > Mostrar modal de confirmación: "¿Eliminar bloqueo de Hab {n} ({motivo}) del {start} al {end}?".
   > Al confirmar, DELETE /api/blocks/:id. Remover el bloqueo del DOM sin recargar.
@@ -235,18 +235,18 @@
 - [x] 5.2.6 Lock icons in planning
 
 ### 5.3 Auto-Generation
-- [ ] 5.3.1 Auto-generate code when reservation confirmed
+- [x] 5.3.1 Auto-generate code when reservation confirmed
   > En el backend, cuando una reserva cambia a estado `confirmed` (PATCH /api/reservas/:id → status=confirmed), disparar automáticamente la generación de código TTLock.
   > Usar el servicio TTLock ya creado (task 5.1.5): POST /api/ttlock/generate-code/:reservationId.
   > El código generado se asocia a la reserva en `lock_codes` con columnas: `reservationId, code, startDate (checkIn), endDate (checkOut), status (active/pending/expired)`.
   > Si TTLock no está configurado para el hotel, saltar silenciosamente (sin error).
   > Loggear en `message_logs` la acción: "Código TTLock generado para reserva {id}".
-- [ ] 5.3.2 Auto-send code on check-in day (via auto-messages)
+- [x] 5.3.2 Auto-send code on check-in day (via auto-messages)
   > Cuando se ejecute el cron de auto-messages (task 6.1.3) y detecte que HOY es el checkIn de una reserva, y la reserva tiene un código TTLock activo, incluir el código en el mensaje.
   > Variable `{lock_code}` para las plantillas de auto-messages. El sistema de substitución (task 6.1.2) debe reemplazar `{lock_code}` con el código real.
   > Si la reserva no tiene código (TTLock no configurado), la variable se reemplaza con cadena vacía.
   > Enviar el mensaje por el canal configurado (email/WhatsApp).
-- [ ] 5.3.3 Auto-delete code after checkout (night audit)
+- [x] 5.3.3 Auto-delete code after checkout (night audit)
   > En el night audit (cierre nocturno), para reservas cuyo checkOut = fecha actual y status = checked_out, eliminar automáticamente el código TTLock.
   > POST /api/ttlock/delete-code/:codeId para cada código activo.
   > Marcar el código como `expired` en `lock_codes.status`.
@@ -342,7 +342,7 @@
 - [x] 8.2.3 On completion: send lock codes
 
 ### 8.3 QScanPro Integration
-- [ ] 8.3.1 Connection code per hotel
+- [x] 8.3.1 Connection code per hotel
   > En Settings → Integraciones, agregar tarjeta "QScanPro".
   > Input: "Código de conexión QScanPro" (texto, provisto por QScanPro al contratar el servicio).
   > Botón "Probar conexión" que hace GET a un endpoint de prueba de QScanPro.
@@ -396,7 +396,7 @@
 ## Phase 11: Check-in Digital Completo (Email + Notificaciones + UX)
 
 ### 11.1 Email de Notificación — Check-in
-- [ ] 11.1.1 Enviar email de confirmación al hacer check-in
+- [x] 11.1.1 Enviar email de confirmación al hacer check-in
   > En el endpoint `POST /api/reservas/:id/checkin` (composition-root.ts:536), después de confirmar el check-in,
   > disparar el envío de email usando el EmailService (task 6.1.4). El email debe contener:
   > - Asunto: "¡Bienvenido a {hotel_name}, {guest_name}!"
@@ -409,7 +409,7 @@
   > Toast en frontend después de check-in exitoso debe mostrar "Email de bienvenida enviado a {email}" o "Sin email registrado"
   > según el caso.
 
-- [ ] 11.1.2 Email de bienvenida automático vía auto-messages (checkin_day trigger)
+- [x] 11.1.2 Email de bienvenida automático vía auto-messages (checkin_day trigger)
   > El cron de auto-messages (task 6.1.3) debe detectar reservas con status='checked_in' cuyo checkIn = fecha actual,
   > y buscar auto-messages activos con triggerEvent='checkin_day'.
   > Si encuentra, enviar el email usando la plantilla configurada (emailSubject + emailBody con variables sustituidas).
@@ -418,7 +418,7 @@
   > {checkout_date}, {room_number}, {room_type}, {nights}, {total_amount}, {wifi_network},
   > {wifi_password}, {lock_codes}, {locator}, {pre_checkin_url}.
 
-- [ ] 11.1.3 Migrar frontend `doCheckin` a endpoint `/checkin` + completar check-in real
+- [x] 11.1.3 Migrar frontend `doCheckin` a endpoint `/checkin` + completar check-in real
   > BUG del dual path: `reservations/index.vue:doCheckin` hace check-in vía `update({status:'checked_in'})`,
   > que SOLO cambia el status. NO crea folio, NO marca room como occupied, NO crea tarea de housekeeping,
   > NO recalcula availability en Channex. El endpoint `POST /api/reservas/:id/checkin` (composition-root.ts:558)
@@ -428,12 +428,12 @@
   > (folio/room/housekeeping/Channex) solo funciona por este endpoint.
   > Prerequisito para que el check-in esté completo en producción.
 
-- [ ] 11.1.4 Gestionar config WiFi por hotel (`wifi_config` en Configuration)
+- [x] 11.1.4 Gestionar config WiFi por hotel (`wifi_config` en Configuration)
   > Crear Configuration key `wifi_config` ({network, password}) multi-tenant para que cada hotel configure su red.
   > El usecase `checkin-email.ts` hoy envía `{wifi_network}`/`{wifi_password}` vacíos.
   > Acción: UI de settings + lectura de `wifi_config` en `checkin-email.ts` (patrón `email_config`).
 
-- [ ] 11.1.5 Branding con logo del hotel (`Hotels.logoUrl` + upload)
+- [x] 11.1.5 Branding con logo del hotel (`Hotels.logoUrl` + upload)
   > El email de check-in (11.1.1) usa solo colores del template y emoji 🏨 (sin logo real).
   > Acción: agregar `logoUrl` al modelo Hotels + upload en settings + usar en plantillas de email.
   > {lock_code} real depende de TTLock (Fase F5); {pre_checkin_url} depende del pre-checkin (Fase F8).
@@ -485,7 +485,7 @@
   > Verificación: arckode analyze 0 violaciones · typecheck · tests (render por idioma, fallback, resolución hotel>default) · E2E.
 
 ### 11.2 Email de Notificación — Check-out
-- [ ] 11.2.1 Enviar email de agradecimiento al hacer check-out
+- [x] 11.2.1 Enviar email de agradecimiento al hacer check-out
   > En el endpoint `POST /api/reservas/:id/checkout` (composition-root.ts:584), después de confirmar el check-out,
   > disparar el envío de email. El email debe contener:
   > - Asunto: "¡Gracias por tu estancia en {hotel_name}, {guest_name}!"
@@ -495,13 +495,13 @@
   > Si no se envió (sin email), loggear y omitir.
   > Toast en frontend después de check-out: "Email de agradecimiento enviado a {email}" o "Sin email registrado".
 
-- [ ] 11.2.2 Email de post-estancia vía auto-messages (checkout_day trigger)
+- [x] 11.2.2 Email de post-estancia vía auto-messages (checkout_day trigger)
   > Mismo mecanismo que 11.1.2 pero con triggerEvent='checkout_day'.
   > Se dispara para reservas con checkOut = fecha actual y status='checked_out'.
   > Plantilla personalizable por hotel con las mismas variables.
 
 ### 11.3 Motor de Auto-Messages — Ejecución Real
-- [ ] 11.3.1 Servicio de cron en backend
+- [x] 11.3.1 Servicio de cron en backend
   > Crear `backend/src/services/cron.service.ts` que se inicializa en `composition-root.ts` después del server start.
   > Usar `setInterval` cada 5 minutos (300000ms) para ejecutar `processAutoMessages()`.
   > El cron consulta: (a) todas las reservas activas (status = 'checked_in' o 'checked_out' del día),
@@ -513,7 +513,7 @@
   > messageId = auto_message.id + reservation.id, saltar.
   > Loggear cada envío (success/failure) con timestamp. Si falla, reintentar en el siguiente ciclo del cron.
 
-- [ ] 11.3.2 Variable substitution engine real
+- [x] 11.3.2 Variable substitution engine real
   > La función `substituteVariables(template: string, reservation: any, hotel: any): string`
   > debe reemplazar TODAS las variables listadas en 11.1.2 con valores reales de la DB.
   > Buscar guest por reservation.guestId, room por reservation.roomId, hotel por reservation.hotelId.
@@ -523,30 +523,30 @@
   > Esta función ya está declarada en task 6.1.2 como [x] — verificar que realmente existe. Si solo es un stub, implementarla.
 
 ### 11.4 UX — Check-in Page
-- [ ] 11.4.1 Auto-refresh periódico
+- [x] 11.4.1 Auto-refresh periódico
   > En `frontend/src/pages/checkin/index.vue`, agregar `setInterval(loadData, 30000)` (cada 30 segundos)
   > para refrescar automáticamente la lista de habitaciones, llegadas, en casa y salidas.
   > Limpiar el intervalo en `onUnmounted` para evitar memory leaks.
   > Solo refrescar si la página está visible (usar `document.visibilityState`): si está en background, pausar.
 
-- [ ] 11.4.2 Sticky header para la grid de habitaciones
+- [x] 11.4.2 Sticky header para la grid de habitaciones
   > El header "Recepción Digital" y la barra de stats (en casa, por llegar, por salir) deben ser sticky (position: sticky, top: 0)
   > para que al scrollear hacia abajo en hoteles con muchas habitaciones, la información de cabecera siempre esté visible.
   > Agregar z-index: 10 y background blanco para que no se solape con el contenido.
 
-- [ ] 11.4.3 Indicador visual de email enviado/no enviado
+- [x] 11.4.3 Indicador visual de email enviado/no enviado
   > En el modal de check-in (línea 112-153), después de confirmar, mostrar un badge:
   > - "📧 Email enviado" (verde) si el huésped tiene email y se envió correctamente
   > - "⚠ Sin email" (ambar) si el huésped no tiene email registrado
   > - "❌ Error al enviar" (rojo) si el envío falló
   > El badge se muestra durante 3 segundos antes de cerrar el modal automáticamente.
 
-- [ ] 11.4.4 Reducir polling de heartbeat
+- [x] 11.4.4 Reducir polling de heartbeat
   > Los HEAD requests a `/__alive` se disparan ~30+ veces por minuto. Reducir el intervalo de polling
   > de ~2 segundos a 30 segundos. Revisar `frontend/src/composables/useAlive.ts` o donde esté configurado.
 
 ### 11.5 Configuración de Email en Settings
-- [ ] 11.5.1 Sección de configuración SMTP/Email
+- [x] 11.5.1 Sección de configuración SMTP/Email
   > Agregar en Settings → Integraciones una tarjeta "📧 Configuración de Email" con campos:
   > - Proveedor: selector (SMTP / Resend / SendGrid / Mailgun)
   > - SMTP Host, Puerto, Usuario, Contraseña (si SMTP)
