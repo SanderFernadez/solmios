@@ -209,10 +209,10 @@
 
     <!-- View Invoice Modal -->
     <Teleport to="body">
-      <div v-if="showViewModal && viewInvoice" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+      <div v-if="showViewModal && viewInvoice" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.stop>
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click.stop></div>
 
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
           <!-- Header -->
           <div class="sticky top-0 bg-white z-10 p-5 border-b border-border rounded-t-2xl">
             <div class="flex items-center justify-between">
