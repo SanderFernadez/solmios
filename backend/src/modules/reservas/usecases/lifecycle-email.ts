@@ -73,6 +73,7 @@ export async function dispatchLifecycleEmail(deps: LifecycleEmailDeps, input: Li
     room_number: room?.number ?? '',
     checkin_date: input.checkIn,
     checkout_date: input.checkOut,
+    logo_url: (hotel as { logo?: string } | null)?.logo ?? '',
   }
 
   try {

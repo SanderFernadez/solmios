@@ -831,7 +831,7 @@ async function openNewInvoice() {
   showRoomDropdown.value = false
   // Load rooms + tax rate in parallel
   const [roomsRes, configRes] = await Promise.all([
-    http.get<any>('/rooms').catch(() => null),
+    http.get<any>('/habitaciones').catch(() => null),
     http.get<any>('/settings/full').catch(() => null),
   ])
   // Rooms

@@ -379,3 +379,35 @@ export interface CheckinGuest {
   checkedIn: boolean
   checkedOut: boolean
 }
+
+// === FEEDBACK ===
+export type FeedbackPriority = 'low' | 'medium' | 'high'
+export type FeedbackCategory = 'UI' | 'Bug' | 'Improvement'
+export type FeedbackStatus = 'open' | 'in_progress' | 'done'
+
+export interface FeedbackPin {
+  id: string
+  x: number
+  y: number
+  route: string
+  comment: string
+  priority: FeedbackPriority
+  category: FeedbackCategory
+  status: FeedbackStatus
+  viewportWidth: number
+  viewportHeight: number
+  browser: string
+  createdAt: Date
+}
+
+export interface CreateFeedbackPayload {
+  x: number
+  y: number
+  route: string
+  comment: string
+  priority: FeedbackPriority
+  category: FeedbackCategory
+  viewportWidth: number
+  viewportHeight: number
+  browser: string
+}

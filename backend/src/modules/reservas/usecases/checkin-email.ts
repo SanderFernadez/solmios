@@ -36,17 +36,17 @@ interface CheckinEmailInput {
  * - Tenacy: si guest/room no pertenecen al hotel de la reserva, aborta (defensa IDOR).
  * Registra cada intento en message_logs (status sent/failed/skipped, spec 11.1.1).
  */
-export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEmailInput): Promise<void> {
+export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEmailInput): Promise<{ status: 'sent' | 'skipped' | 'failed' }> {
   const { emailSender, guestRepo, roomRepo, hotelRepo, messageLogRepo, logger } = deps
   if (!input.guestId) {
     logger.info('checkin-email: sin guestId', { reservationId: input.reservationId })
-    return
+    return { status: 'skipped' }
   }
 
   const guest = await guestRepo.findById(input.guestId)
-  if (guest?.hotelId && guest.hotelId !== input.hotelId) return // tenacy
+  if (guest?.hotelId && guest.hotelId !== input.hotelId) return { status: 'skipped' } // tenacy
   const room = input.roomId ? await roomRepo.findById(input.roomId) : null
-  if (room?.hotelId && room.hotelId !== input.hotelId) return // tenacy
+  if (room?.hotelId && room.hotelId !== input.hotelId) return { status: 'skipped' } // tenacy
   const hotel = await hotelRepo.findById(input.hotelId)
 
   const guestName = guest?.name || guest?.firstName || 'Huésped'
@@ -60,11 +60,11 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
       status: 'skipped', recipient: null, sentAt: null,
     } as Omit<MessageLogSummary, 'id'>)
     logger.info('checkin-email: walk-in sin email', { reservationId: input.reservationId, guestId: input.guestId })
-    return
+    return { status: 'skipped' }
   }
 
-  // Variables de plantilla 11.1.1. wifi/lock_code/pre_checkin dependen de config/integraciones
-  // no implementadas aún (ver tasks 11.1.4 wifi_config, 11.1.5 branding, F5 TTLock, F8 pre-checkin).
+  // Variables de plantilla 11.1.1. wifi viene del hotel (spec 11.1.4); logo del hotel (spec 11.1.5).
+  // lock_code (F5 TTLock) y pre_checkin_url (F8) quedan vacíos — dependen de fases externas a F11.
   const variables: Record<string, string | number> = {
     guest_name: guestName,
     hotel_name: hotel?.name || 'Hotel',
@@ -73,8 +73,9 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
     room_number: room?.number ?? '',
     checkin_date: input.checkIn,
     checkout_date: input.checkOut,
-    wifi_network: '',
-    wifi_password: '',
+    wifi_network: (hotel as { wifiNetwork?: string } | null)?.wifiNetwork ?? '',
+    wifi_password: (hotel as { wifiPassword?: string } | null)?.wifiPassword ?? '',
+    logo_url: (hotel as { logo?: string } | null)?.logo ?? '',
     lock_code: '',
     pre_checkin_url: '',
   }
@@ -91,6 +92,7 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
       status: 'sent', recipient: guest.email, sentAt: new Date().toISOString(),
     } as Omit<MessageLogSummary, 'id'>)
     logger.info('checkin-email: encolado', { reservationId: input.reservationId, to: guest.email, queueId })
+    return { status: 'sent' }
   } catch (e) {
     await messageLogRepo.create({
       hotelId: input.hotelId, reservationId: input.reservationId, messageId: null,
@@ -98,5 +100,6 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
       status: 'failed', recipient: guest.email, sentAt: null,
     } as Omit<MessageLogSummary, 'id'>)
     logger.warn('checkin-email: fallo al encolar', { reservationId: input.reservationId, error: (e as Error).message })
+    return { status: 'failed' }
   }
 }

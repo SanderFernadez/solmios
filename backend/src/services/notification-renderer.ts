@@ -74,8 +74,19 @@ export class NotificationRenderer {
       // El subject es texto plano (no HTML): se renderiza SIN escape (fix H2 —
       // 'Bed & Breakfast' no debe llegar al cliente como 'Bed &amp; Breakfast').
       subject: renderTemplate(subject, input.variables, false),
-      html: renderTemplate(body, input.variables, true),
+      html: this.applyLogo(renderTemplate(body, input.variables, true), input.variables),
     }
+  }
+
+  /**
+   * Branding (spec 11.1.5): si llega `logo_url` (hotel.logo), reemplaza el emoji 🏨 del
+   * header por el logo real. Un único punto de transformación — evita tocar las 15 plantillas.
+   * Sin logo_url → deja el emoji (default). Reemplaza solo la primera ocurrencia (header).
+   */
+  private applyLogo(html: string, variables: Record<string, string | number>): string {
+    const logo = String(variables.logo_url || '').trim()
+    if (!logo) return html
+    return html.replace('🏨 ', `<img src="${logo}" alt="logo" style="height:36px;vertical-align:middle"> `)
   }
 
   private async resolveTemplate(

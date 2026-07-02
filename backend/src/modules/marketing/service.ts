@@ -113,11 +113,31 @@ export class MarketingService {
       hotel_address: hotel?.address || '',
       room_number: room?.number || '',
       room_type: room?.type || '',
+      logo_url: (hotel as any)?.logo || '',
       ...extraVars,
     }
 
+    // Dedup (spec 11.3.1): el cron corre cada 1h y la condición (checkIn=today AND status=confirmed)
+    // se mantiene hasta el check-in real, así que sin este corte cada tick duplicaría el email.
+    // message_logs no guarda templateId/channel/metadata (solo response/sentAt/status), por eso
+    // usamos `response` como clave de dedup estable: `auto:{event}:{autoMessageId}`.
+    const todayPrefix = new Date().toISOString().slice(0, 10)
+    const sentLogs = reservationId
+      ? await this.logRepo.findMany({ hotelId, reservationId } as any)
+      : []
+    const alreadySentToday = (msgId: string) =>
+      sentLogs.some(l =>
+        l.response === `auto:${event}:${msgId}`
+        && ['sent', 'queued'].includes(l.status)
+        && (l.sentAt || '').slice(0, 10) === todayPrefix,
+      )
+
     for (const msg of matching) {
       try {
+        if (alreadySentToday(msg.id || '')) {
+          this.logger.info('Auto-message dedup: ya enviado hoy', { hotelId, event, reservationId, autoMessageId: msg.id })
+          continue
+        }
         const language = (msg.language || 'es') as any
         const templateEvent = msg.event || 'checkin_welcome'
 
@@ -131,16 +151,15 @@ export class MarketingService {
           relatedId: msg.id,
         })
 
-        // Log del envío
+        // Log del envío. response = clave de dedup (event×autoMessage) — persiste en message_logs.
         await this.createMessageLog({
           hotelId,
-          reservationId,
-          guestId: guestId || null,
-          channel: msg.channel || 'email',
-          templateId: msg.id || null,
-          status: queueId ? 'queued' : 'failed',
+          reservationId: reservationId || null,
+          messageType: 'email',
+          status: queueId ? 'sent' : 'failed',
+          recipient: guest?.email || null,
+          response: `auto:${event}:${msg.id || ''}`,
           sentAt: new Date().toISOString(),
-          metadata: JSON.stringify({ autoMessageId: msg.id, event, queueId }),
         } as any)
 
         this.logger.info('Auto-message encolado', { hotelId, event, guest: guest?.email, queueId })
