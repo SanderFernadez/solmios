@@ -1910,5 +1910,70 @@ setInterval(() => {
 }, EMAIL_WORKER_TICK_MS)
 logger.info('EmailService worker listo', { tickMs: EMAIL_WORKER_TICK_MS })
 
+// ─── Auto-Messages Cron Job (cada hora) ─────────────────────────────────────
+// Verifica si hay auto-messages activos que deban enviarse para reservas próximas.
+const AUTO_MESSAGES_TICK_MS = 60_000 * 60 // 1 hora
+const autoMsgTrigger = system.resolveModule<{ triggerAutoMessages: (params: any) => Promise<void> }>('marketing')
+if (autoMsgTrigger) {
+  const processAutoMessages = async () => {
+    try {
+      // Buscar reservas que checkean hoy o en los próximos días
+      const today = new Date()
+      const hotels = await orm.findMany('Hotels', {}) as any[]
+
+      for (const hotel of hotels) {
+        // checkin_day: reservas que checkean hoy
+        const checkinToday = await orm.findMany('Reservations', {
+          hotelId: hotel.id,
+          checkIn: today.toISOString().split('T')[0],
+          status: 'confirmed',
+        }) as any[]
+
+        for (const r of checkinToday) {
+          await autoMsgTrigger.triggerAutoMessages({
+            hotelId: hotel.id,
+            event: 'checkin_day',
+            reservationId: r.id,
+            guestId: r.guestId,
+            roomId: r.roomId,
+            variables: {
+              checkin_date: r.checkIn,
+              checkout_date: r.checkOut,
+              locator: r.externalLocator || r.id.slice(-8),
+            },
+          })
+        }
+
+        // checkout_day: reservas que hacen checkout hoy
+        const checkoutToday = await orm.findMany('Reservations', {
+          hotelId: hotel.id,
+          checkOut: today.toISOString().split('T')[0],
+          status: 'checked_in',
+        }) as any[]
+
+        for (const r of checkoutToday) {
+          await autoMsgTrigger.triggerAutoMessages({
+            hotelId: hotel.id,
+            event: 'checkout_day',
+            reservationId: r.id,
+            guestId: r.guestId,
+            roomId: r.roomId,
+            variables: {
+              checkin_date: r.checkIn,
+              checkout_date: r.checkOut,
+              locator: r.externalLocator || r.id.slice(-8),
+            },
+          })
+        }
+      }
+    } catch (e) {
+      logger.warn('auto-messages cron failed', { error: (e as Error).message })
+    }
+  }
+
+  setInterval(processAutoMessages, AUTO_MESSAGES_TICK_MS)
+  logger.info('Auto-messages cron listo', { tickMs: AUTO_MESSAGES_TICK_MS })
+}
+
 process.on('SIGINT', async () => { await system.stop(); process.exit(0) })
 process.on('SIGTERM', async () => { await system.stop(); process.exit(0) })
