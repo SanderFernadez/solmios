@@ -251,7 +251,7 @@
               </div>
               <div class="bg-surface rounded-xl p-3">
                 <div class="text-[10px] text-text-muted uppercase mb-1">Moneda</div>
-                <div class="text-sm font-bold text-navy">{{ viewInvoice.currency }}</div>
+                <div class="text-sm font-bold text-navy">{{ currencySymbol(viewInvoice.currency) }} {{ viewInvoice.currency }}</div>
               </div>
             </div>
 
@@ -271,7 +271,7 @@
                     <tr v-for="(item, idx) in viewInvoice.items" :key="idx" class="border-b border-border last:border-0">
                       <td class="p-2.5 text-[11px] text-text-muted">{{ Number(idx) + 1 }}</td>
                       <td class="p-2.5 text-sm font-bold text-navy">{{ item.description }}</td>
-                      <td class="p-2.5 text-sm font-bold text-navy text-right">${{ Number(item.amount).toFixed(2) }}</td>
+                      <td class="p-2.5 text-sm font-bold text-navy text-right">{{ currencySymbol(viewInvoice.currency) }}{{ Number(item.amount).toFixed(2) }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -282,26 +282,26 @@
             <div class="bg-navy/5 rounded-xl p-4 space-y-2.5">
               <div class="flex justify-between text-sm">
                 <span class="text-text-secondary">Subtotal</span>
-                <span class="font-bold">${{ viewInvoice.subtotal.toFixed(2) }}</span>
+                <span class="font-bold">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.subtotal.toFixed(2) }}</span>
               </div>
               <div class="flex justify-between text-sm">
                 <span class="text-text-secondary">Impuestos ({{ viewInvoice.taxRate }}%)</span>
-                <span class="font-bold">${{ viewInvoice.tax.toFixed(2) }}</span>
+                <span class="font-bold">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.tax.toFixed(2) }}</span>
               </div>
               <div class="border-t border-border pt-2.5">
                 <div class="flex justify-between">
                   <span class="font-extrabold text-navy">Total</span>
-                  <span class="font-extrabold text-navy text-xl">${{ viewInvoice.total.toFixed(2) }}</span>
+                  <span class="font-extrabold text-navy text-xl">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.total.toFixed(2) }}</span>
                 </div>
               </div>
               <div v-if="viewInvoice.amountPaid > 0" class="border-t border-border pt-2.5 space-y-1.5">
                 <div class="flex justify-between text-sm text-teal">
                   <span class="font-bold">Pagado</span>
-                  <span class="font-bold">-${{ viewInvoice.amountPaid.toFixed(2) }}</span>
+                  <span class="font-bold">-{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.amountPaid.toFixed(2) }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                   <span class="font-extrabold text-gold">Saldo Pendiente</span>
-                  <span class="font-extrabold text-gold">${{ viewInvoice.balance.toFixed(2) }}</span>
+                  <span class="font-extrabold text-gold">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.balance.toFixed(2) }}</span>
                 </div>
               </div>
             </div>
@@ -311,7 +311,7 @@
               <span class="text-lg">{{ paymentMethodIcon(viewInvoice.method) }}</span>
               <div>
                 <div class="text-[10px] text-text-muted uppercase">Método de Pago</div>
-                <div class="text-sm font-bold text-navy">{{ viewInvoice.method }}</div>
+                <div class="text-sm font-bold text-navy">{{ paymentMethodLabel(viewInvoice.method) }}</div>
               </div>
             </div>
 
@@ -319,17 +319,6 @@
             <div v-if="viewInvoice.notes" class="bg-surface rounded-xl p-3">
               <div class="text-[10px] text-text-muted uppercase mb-1">Notas</div>
               <div class="text-sm text-text-secondary whitespace-pre-wrap">{{ viewInvoice.notes }}</div>
-            </div>
-
-            <!-- Electronic Invoice -->
-            <div v-if="viewInvoice.eInvoice" class="bg-teal/5 border border-teal/20 rounded-xl p-3">
-              <div class="flex items-center gap-2">
-                <span class="text-lg">✅</span>
-                <div>
-                  <div class="text-sm font-bold text-teal">Factura Electrónica</div>
-                  <div class="text-[10px] text-text-muted">{{ viewInvoice.eInvoice }}</div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -765,6 +754,17 @@ function paymentMethodIcon(method: string) {
   const m = String(method).toLowerCase()
   const icons: Record<string, string> = { tarjeta: '💳', card: '💳', efectivo: '💵', cash: '💵', transferencia: '🏦', transfer: '🏦', link: '🔗' }
   return icons[m] ?? '💰'
+}
+
+function paymentMethodLabel(method: string) {
+  const m = String(method).toLowerCase()
+  const labels: Record<string, string> = { tarjeta: 'Tarjeta', card: 'Tarjeta', efectivo: 'Efectivo', cash: 'Efectivo', transferencia: 'Transferencia', transfer: 'Transferencia', link: 'Link de pago' }
+  return labels[m] ?? method
+}
+
+function currencySymbol(currency: string) {
+  const symbols: Record<string, string> = { USD: '$', DOP: 'RD$', EUR: '€', COP: '$', MXN: '$', ARS: '$', CLP: '$' }
+  return symbols[currency] ?? currency
 }
 
 function openViewInvoice(inv: any) {
