@@ -9,7 +9,7 @@ import type {
 } from './types'
 import {
   CreatePaymentSchema, ChargeCardSchema, CreatePaymentLinkSchema,
-  CreateDepositSchema, RefundDepositSchema, ReconcileSchema,
+  CreateDepositSchema, RefundDepositSchema, ReconcileSchema, RefundSchema,
 } from './validators/schema'
 
 export class PaymentsController {
@@ -37,8 +37,8 @@ export class PaymentsController {
   async refund(req: HttpRequest) {
     this.logger.info('POST /api/payments/:id/refund')
     const { id } = req.params
-    const { amount } = req.body as { amount?: number }
-    const payment = await this.service.refundPayment(id, amount)
+    const data = validateSchema(RefundSchema, req.body) as { amount?: number }
+    const payment = await this.service.refundPayment(id, data.amount)
     return { status: 200, body: payment }
   }
 

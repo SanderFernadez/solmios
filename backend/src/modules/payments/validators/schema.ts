@@ -61,6 +61,10 @@ export const ReconcileSchema: Record<string, ValidationRule> = {
   to: { type: 'string' as const },
 }
 
+export const RefundSchema: Record<string, ValidationRule> = {
+  amount: { type: 'number' as const, min: 0.01 },
+}
+
 export const PaymentsValidator = {
   createPayment: CreatePaymentSchema,
   chargeCard: ChargeCardSchema,

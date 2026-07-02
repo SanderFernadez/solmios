@@ -1,0 +1,48 @@
+// cash/validators/schema.ts — Validación de entrada (esquemas planos).
+
+import type { ValidationRule } from 'arckode-framework'
+
+// hotelId NO va en el schema del body — el service lo fuerza desde el JWT (P0 IDOR).
+export const CreateMovementSchema: Record<string, ValidationRule> = {
+  type: { type: 'string' as const, required: true },        // income | expense (enum validado en service)
+  amount: { type: 'number' as const, required: true, min: 0 },
+  method: { type: 'string' as const },
+  concept: { type: 'string' as const },
+  category: { type: 'string' as const },
+  guestName: { type: 'string' as const },
+  roomNumber: { type: 'string' as const },
+  reservationId: { type: 'string' as const },
+  folioId: { type: 'string' as const },
+  reference: { type: 'string' as const },
+  notes: { type: 'text' as any },
+}
+
+export const UpdateMovementSchema: Record<string, ValidationRule> = {
+  type: { type: 'string' as const },
+  amount: { type: 'number' as const, min: 0 },
+  method: { type: 'string' as const },
+  concept: { type: 'string' as const },
+  category: { type: 'string' as const },
+  guestName: { type: 'string' as const },
+  roomNumber: { type: 'string' as const },
+  reference: { type: 'string' as const },
+  notes: { type: 'text' as any },
+}
+
+export const OpenShiftSchema: Record<string, ValidationRule> = {
+  openingAmount: { type: 'number' as const, min: 0 },
+  notes: { type: 'text' as any },
+}
+
+export const CloseShiftSchema: Record<string, ValidationRule> = {
+  countedAmount: { type: 'number' as const, required: true, min: 0 },
+  denominations: { type: 'string' as const },   // JSON string
+  notes: { type: 'text' as any },
+}
+
+export const CashValidator = {
+  createMovement: CreateMovementSchema,
+  updateMovement: UpdateMovementSchema,
+  openShift: OpenShiftSchema,
+  closeShift: CloseShiftSchema,
+}
