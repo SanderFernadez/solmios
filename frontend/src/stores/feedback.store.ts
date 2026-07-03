@@ -107,24 +107,23 @@ export const useFeedbackStore = defineStore('feedback', () => {
       pins.value.push(pin)
       persist()
 
-      if (pendingScreenshot.value) {
-        try {
-          const result: GitLabIssueResult = await FeedbackService.createGitLabIssue({
-            screenshot: pendingScreenshot.value,
-            filename: `feedback-${activeRoute.value.replace(/\//g, '-')}-${Date.now()}.png`,
-            comment: data.comment,
-            route: activeRoute.value,
-            x: pendingCoordinates.value.x,
-            y: pendingCoordinates.value.y,
-            browser: getBrowser(),
-            viewportWidth: window.innerWidth,
-            viewportHeight: window.innerHeight,
-          })
-          lastIssueUrl.value = result.issueUrl
-          lastError.value = null
-        } catch (e: any) {
-          lastError.value = e?.message || 'Error al crear issue en GitLab'
-        }
+      // SIEMPRE crear issue en GitLab (screenshot es opcional)
+      try {
+        const result: GitLabIssueResult = await FeedbackService.createGitLabIssue({
+          screenshot: pendingScreenshot.value || '',
+          filename: `feedback-${activeRoute.value.replace(/\//g, '-')}-${Date.now()}.png`,
+          comment: data.comment,
+          route: activeRoute.value,
+          x: pendingCoordinates.value.x,
+          y: pendingCoordinates.value.y,
+          browser: getBrowser(),
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+        })
+        lastIssueUrl.value = result.issueUrl
+        lastError.value = null
+      } catch (e: any) {
+        lastError.value = e?.message || 'Error al crear issue en GitLab'
       }
 
       FeedbackService.create(pin).catch(() => {
