@@ -834,13 +834,15 @@ async function openNewInvoice() {
     http.get<any>('/habitaciones').catch(() => null),
     http.get<any>('/settings/full').catch(() => null),
   ])
-  // Rooms
+  // Rooms — solo habitaciones con huésped (guestId o guestName)
   const roomList = roomsRes?.data || roomsRes || []
-  rooms.value = (Array.isArray(roomList) ? roomList : []).map((r: any) => ({
-    id: r.id, number: r.number, type: r.type, status: r.status,
-    basePrice: r.basePrice, guestId: r.guestId || null,
-    guestName: r.guestName || '', reservationId: r.reservationId || null,
-  }))
+  rooms.value = (Array.isArray(roomList) ? roomList : [])
+    .filter((r: any) => r.guestId || r.guestName)
+    .map((r: any) => ({
+      id: r.id, number: r.number, type: r.type, status: r.status,
+      basePrice: r.basePrice, guestId: r.guestId || null,
+      guestName: r.guestName || '', reservationId: r.reservationId || null,
+    }))
   filteredRooms.value = rooms.value
   // Tax rate from config
   try {
