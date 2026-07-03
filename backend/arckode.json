@@ -1,10 +1,10 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-03T19:24:35.381Z",
+  "_generated": "2026-07-03T19:27:24.850Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
-    "healthy": false,
-    "violations": 1,
+    "healthy": true,
+    "violations": 0,
     "warnings": 0
   },
   "modules": [
@@ -529,13 +529,7 @@
     "reservas-ttlock.ts",
     "booking-channex.ts"
   ],
-  "violations": [
-    {
-      "module": "reservas-payment-requests.ts",
-      "type": "CONNECTOR_BUSINESS_LOGIC",
-      "message": "\"reservas-payment-requests.ts\" tiene 12 patrones de lógica de negocio. Los conectores solo deben wirear. (CLAUDE #3)"
-    }
-  ],
+  "violations": [],
   "warnings": [],
   "rules_summary": [
     "REGLA 1: Módulos NO importan de otros módulos. Usar conectores.",

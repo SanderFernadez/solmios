@@ -213,7 +213,7 @@ if (marketingSvc && typeof marketingSvc.setTriggerDeps === 'function') {
 }
 
 // ─── Auto PaymentRequest + Audit trail (reservas sockets) ──────────────────
-system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector)
+system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector(orm))
 await emailService.reclaimStale()
 setInterval(() => {
   emailService.processQueue().catch((e) => logger.error('email worker tick', { error: (e as Error).message }))
