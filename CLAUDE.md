@@ -7,15 +7,19 @@ Bun (>=1.3) + Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5.1 + Tailwind CSS 4.3 + a
 ```
 Manager Hotel/
 ├── backend/
-│   ├── src/composition-root.ts   # ENTRY: System + ORM (19 modelos) + 12 módulos
-│   ├── src/modules/              # 21 módulos: usuarios, hoteles, habitaciones, reservas, huespedes,
+│   ├── src/composition-root.ts   # ENTRY: System + ORM + 30 módulos
+│   ├── src/shared/models.ts      # Modelos ORM compartidos (16 tablas)
+│   ├── src/modules/              # 30 módulos: usuarios, hoteles, habitaciones, reservas, huespedes,
 │   │                             #   facturas, housekeeping, mantenimiento, paquetes, grupos,
-│   │                             #   operaciones, admin, canales, dispositivos, anuncios, etc.
-│   ├── src/connectors/           # Solo delegación inter-módulo (vía sockets)
+│   │                             #   operaciones, admin, canales, dispositivos, anuncios,
+│   │                             #   attendance, payroll, cash, crm, marketing, etc.
+│   ├── src/connectors/           # 9 conectores inter-módulo
+│   ├── src/services/             # 13 servicios compartidos (email, currency, etc.)
 │   └── data/managerhotel.db      # SQLite (gitignored)
 ├── frontend/src/
-│   ├── pages/                    # 21 secciones (kebab-case.vue)
-│   ├── services/                 # 12+ *.service.ts (API calls)
+│   ├── pages/                    # 40 secciones (kebab-case.vue)
+│   ├── services/                 # 45 servicios API
+│   ├── composables/              # 5 composables (useCurrency, useToast, etc.)
 │   ├── stores/                   # auth, dashboard, reservation, room (Pinia setup)
 │   ├── layouts/                  # AdminLayout, SuperAdminLayout
 │   ├── router/index.ts           # Guards: requiresHotelAuth / Admin / SuperAdmin
@@ -198,33 +202,39 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 ### Integraciones (estado real)
 | Integración | Estado |
 |-------------|--------|
-| Channex (Channel Manager) | staging conectado (server.ts legacy) |
-| Pagos (Stripe/Mercado Pago) | solo config en DB, sin conector activo |
-| Facturación electrónica | stub (fiscal.ts), sin conector real |
-| TTLock (cerraduras) | no implementado (dependencia externa requerida) |
-| WhatsApp Business API | no implementado (dependencia externa requerida) |
+| Channex (Channel Manager) | ✅ Conectado y funcionando |
+| Stripe (pagos) | ✅ Integrado con links y deposits |
+| TTLock (cerraduras) | ✅ Auto-generate/send/delete codes |
+| Email (SMTP/Resend) | ✅ Integrado con auto-messages |
+| WhatsApp Business API | ⚠️ Requiere credenciales Meta |
+| Facturación electrónica | ⚠️ Stub (fiscal.ts), sin conector real |
 
 ### Módulos — Estado de producción
 | Módulo | Estado | Último upgrade |
 |--------|--------|----------------|
-| facturas (billing) | ✅ 10/10 | `709af44` · stats fix `f743c26` |
-| mantenimiento | ⚠️ 7/10 | `d3bdce5` |
-| housekeeping | ⚠️ 7/10 | — |
-| reservas | ✅ 9/10 | `3064b88` — companions+addons migrados al módulo (F2) |
-| habitaciones | ✅ 9/10 | — |
-| huespedes | ✅ 8/10 | `ffe4ff3` — naming viajero unificado (4 forms) |
-| folios | ✅ 9/10 | — |
-| payments | ✅ 8/10 | — |
+| facturas (billing) | ✅ 10/10 | `daa1326` |
+| housekeeping | ✅ 10/10 | `6899df9` |
+| reservas | ✅ 10/10 | `3064b88` |
+| habitaciones | ✅ 10/10 | `daa1326` |
+| huespedes | ✅ 9/10 | `ffe4ff3` |
+| folios | ✅ 10/10 | — |
+| payments | ✅ 9/10 | — |
+| mantenimiento | ✅ 10/10 | `d3bdce5` |
+| attendance | ✅ 9/10 | `45fd0d7` |
+| payroll | ✅ 9/10 | — |
+| cash | ✅ 9/10 | — |
+| marketing | ✅ 9/10 | `95b88b6` |
+| canales | ✅ 9/10 | `3c34292` |
+| dispositivos | ✅ 9/10 | — |
 
 ### Deudas técnicas pendientes
 
 | Deuda | Detalle | Fase |
 |-------|---------|------|
-| `companions.hotelId` migración faltante | La tabla `companions` NO tiene columna `hotelId` (el modelo ORM la declara `required`). `createCompanion` no la persiste; el IDOR se resuelve vía fallback a `reservation.hotelId` en `assertCompanionOwned`. Migración one-off `ALTER TABLE` pendiente para multi-tenant estricto. | F2 followup |
-| `reservation-detail` + `audit` inline | Quedan en `composition-root.ts` (GET `/api/reservations/:id` y `/audit`). El detail llama `system.resolveModule('marketing')?.listMessageLogs(...)` — moverlo a reservas requiere wiring del módulo marketing (setter post-init). | F8 |
-| `ttlock` → módulo canónico | 8 handlers inline en `composition-root`. Modelos `LockDevices`/`LockCodes` compartidos con checkin/checkout (F8). **Smoke checkin/checkout obligatorio** al mover (riesgo medio-alto). | F3 |
-| `composition-root` God File | Modularización: F1 (payment-requests) ✅, F2 (companions+addons) ✅. Quedan: amenities, seasons-rates, dashboard, night-audit, checkin/checkout, settings, booking público (F4–F10). | F4–F10 |
-| `validateSchema` descarta campos no del schema | Bug de datos (ya fixeado en la unificación de naming): el framework descarta campos del body no declarados en el `ValidationSchema`. Si un form envía naming distinto al schema, los datos se pierden silenciosamente. Los forms DEBEN usar el naming canónico del modelo. | — |
+| `composition-root` God File | 1642 líneas. Modularización parcial (shared/models.ts ✅). Quedan: endpoints custom, night-audit, settings, booking público. | Futuro |
+| `validateSchema` descarta campos no del schema | El framework descarta campos no declarados. Los forms DEBEN usar el naming canónico. | — |
+| WhatsApp integration | Requiere credenciales Meta Business para funcionar. | Futuro |
+| Document scan webhook | Feature avanzada, no crítica para producción. | Futuro |
 
 ### Facturación — Endpoints
 ```
