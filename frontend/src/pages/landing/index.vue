@@ -11,7 +11,7 @@
           <!-- Logo -->
           <router-link to="/" class="flex items-center gap-2.5 group">
             <div class="w-9 h-9 rounded-xl bg-navy text-white flex items-center justify-center font-black text-base shadow-sm group-hover:bg-blue transition-colors">M</div>
-            <span class="font-black text-lg tracking-tight text-navy">Manager<span class="text-blue">Hotel</span></span>
+            <span class="font-black text-lg tracking-tight text-navy">Solmi<span class="text-blue">OS</span></span>
           </router-link>
 
           <!-- Links -->
@@ -103,7 +103,7 @@
           <div class="hero-fade-up relative lg:-mr-16 xl:-mr-28" style="animation-delay:.16s">
             <img
               :src="heroImage"
-              alt="Dashboard de ManagerHotel"
+              alt="Dashboard de SolmiOS"
               class="w-full rounded-2xl border border-slate-200/80 shadow-2xl shadow-slate-300/40"
             >
           </div>
@@ -115,7 +115,7 @@
 
     <!-- ═══ TRUST STRIP — carrusel infinito full-width ═══ -->
     <section class="w-full bg-white border-y border-slate-100 py-10 overflow-hidden">
-      <p class="text-center text-xs text-slate-400 mb-7 px-6">Más de 500 hoteles y alojamientos confían en ManagerHotel</p>
+      <p class="text-center text-xs text-slate-400 mb-7 px-6">Más de 500 hoteles y alojamientos confían en SolmiOS</p>
       <div class="relative overflow-hidden">
         <!-- Degradados laterales para efecto fade -->
         <div class="absolute left-0 top-0 bottom-0 w-20 md:w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
@@ -156,7 +156,7 @@
           <div class="aspect-[4/3] rounded-3xl relative overflow-hidden shadow-xl border border-slate-100">
             <img
               src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=900&q=80&auto=format&fit=crop"
-              alt="Habitación tipo Airbnb gestionada con ManagerHotel"
+              alt="Habitación tipo Airbnb gestionada con SolmiOS"
               class="w-full h-full object-cover"
               loading="lazy"
             >
@@ -189,7 +189,7 @@
         <!-- Copy -->
         <div>
           <div class="inline-flex items-center gap-2 mb-5 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100">
-            <span class="text-[11px] font-extrabold tracking-wide text-blue uppercase">Por qué ManagerHotel</span>
+            <span class="text-[11px] font-extrabold tracking-wide text-blue uppercase">Por qué SolmiOS</span>
           </div>
           <h2 class="text-3xl md:text-4xl font-black text-navy mb-4">Una plataforma, infinitas ventajas</h2>
           <p class="text-slate-500 mb-8 max-w-md">Reemplaza las hojas de cálculo y herramientas sueltas por un sistema pensado para la operación diaria de tu hotel.</p>
@@ -363,13 +363,13 @@
           <span class="text-[11px] font-extrabold tracking-wide text-white/90 uppercase">Prueba gratis 14 días</span>
         </div>
         <h2 class="text-3xl md:text-5xl font-black text-white mb-6 leading-tight">¿Listo para transformar<br>tu hotel?</h2>
-        <p class="text-white/60 mb-10 max-w-xl mx-auto">Únete a 500+ hoteles que ya gestionan todo desde ManagerHotel. Sin tarjeta de crédito, cancela cuando quieras.</p>
+        <p class="text-white/60 mb-10 max-w-xl mx-auto">Únete a 500+ hoteles que ya gestionan todo desde SolmiOS. Sin tarjeta de crédito, cancela cuando quieras.</p>
         <div class="flex flex-wrap gap-4 justify-center">
           <router-link to="/login" class="group inline-flex items-center gap-2 bg-white text-blue font-bold text-sm px-8 py-4 rounded-xl hover:bg-blue-50 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-blue-900/30">
             Comenzar Gratis
             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </router-link>
-          <a href="mailto:ventas@managerhotel.com" class="inline-flex items-center gap-2 border border-white/20 text-white font-semibold text-sm px-8 py-4 rounded-xl hover:bg-white/10 transition-colors">Hablar con Ventas</a>
+          <a href="mailto:ventas@solmios.com" class="inline-flex items-center gap-2 border border-white/20 text-white font-semibold text-sm px-8 py-4 rounded-xl hover:bg-white/10 transition-colors">Hablar con Ventas</a>
         </div>
         <!-- Trust mini-badges -->
         <div class="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mt-12 text-white/40">
@@ -388,7 +388,7 @@
           <div class="md:col-span-4">
             <div class="flex items-center gap-3 mb-4">
               <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white shadow-lg shadow-blue-900/40">M</div>
-              <span class="font-black text-lg text-white">Manager<span class="text-blue-400">Hotel</span></span>
+              <span class="font-black text-lg text-white">Solmi<span class="text-blue-400">OS</span></span>
             </div>
             <p class="text-sm text-white/40 max-w-xs mb-5">Hospitality OS para hoteles LATAM. Gestión completa sin complejidad.</p>
             <!-- Social icons -->
@@ -429,7 +429,7 @@
           </div>
         </div>
         <div class="border-t border-white/8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div class="text-sm text-white/30">© 2026 ManagerHotel. Todos los derechos reservados.</div>
+          <div class="text-sm text-white/30">© 2026 SolmiOS. Todos los derechos reservados.</div>
           <div class="flex gap-6">
             <span v-for="link in legalLinks" :key="link" class="text-sm text-white/30 transition-colors">{{ link }}</span>
           </div>
@@ -550,7 +550,7 @@ const plans = [
 ]
 
 const testimonials = [
-  { quote: 'Pasamos de usar 4 herramientas diferentes a solo ManagerHotel. El Channel Manager nos ahorró 3 horas diarias de trabajo manual.', name: 'Juan García', hotel: 'Hotel Caribe Paradise', initials: 'JG', avatarBg: '#1D6FA4' },
+  { quote: 'Pasamos de usar 4 herramientas diferentes a solo SolmiOS. El Channel Manager nos ahorró 3 horas diarias de trabajo manual.', name: 'Juan García', hotel: 'Hotel Caribe Paradise', initials: 'JG', avatarBg: '#1D6FA4' },
   { quote: 'La facturación electrónica para DGII era un dolor de cabeza. Ahora se genera automáticamente. El soporte es excepcional.', name: 'Roberto Suárez', hotel: 'Gran Hotel Santo Domingo', initials: 'RS', avatarBg: '#117A65' },
   { quote: 'Como recepcionista, todo es muy intuitivo. El check-in toma 30 segundos. Los huéspedes quedan impresionados.', name: 'María López', hotel: 'Hotel Caribe Paradise', initials: 'ML', avatarBg: '#6C3483' },
 ]

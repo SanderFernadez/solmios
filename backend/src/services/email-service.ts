@@ -225,7 +225,7 @@ export class EmailService implements EmailSender {
 
     const resendKey = await this.resolveResendKey(input.hotelId)
     if (resendKey) {
-      const fromAddress = 'ManagerHotel <noreply@managerhotel.com>'
+      const fromAddress = 'SolmiOS <noreply@solmios.com>'
       const { Resend } = await import('resend')
       const resend = new Resend(resendKey)
       const { error } = await resend.emails.send({ from: fromAddress, to: input.to, subject: input.subject, html: input.html })
@@ -254,7 +254,7 @@ export class EmailService implements EmailSender {
         port,
         user: String(cfg.user),
         pass: String(cfg.pass),
-        from: String(cfg.from ?? 'noreply@managerhotel.com'),
+        from: String(cfg.from ?? 'noreply@solmios.com'),
         secure: cfg.secure === true || port === 465,
       }
     } catch {

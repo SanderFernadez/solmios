@@ -16,9 +16,9 @@
     <aside class="w-64 bg-navy text-white flex flex-col flex-shrink-0 fixed h-full z-20" :class="auth.impersonating ? 'top-10' : ''">
       <!-- Logo -->
       <div class="h-16 flex items-center gap-3 px-5 border-b border-white/10">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-lg shadow-lg">M</div>
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-lg shadow-lg">S</div>
         <div>
-          <div class="font-black text-lg leading-tight">Manager<span class="text-cyan">Hotel</span></div>
+          <div class="font-black text-lg leading-tight">Solmi<span class="text-cyan">OS</span></div>
           <div class="text-[9px] font-bold tracking-[2px] text-gray-400 uppercase">{{ roleLabel }}</div>
         </div>
       </div>

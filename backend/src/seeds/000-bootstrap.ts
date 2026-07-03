@@ -32,10 +32,10 @@ export async function seed000Bootstrap(_orm: SeedOrm): Promise<void> {
     run(`INSERT OR IGNORE INTO hotels
       (id, name, address, phone, email, country, currency, timezone, checkIn, checkOut, plan, status, roomsCount, active, createdAt, updatedAt)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      HOTEL2_ID, 'ManagerHotel Corp', 'Oficinas Centrales', '+1 809 555 0000',
-      'admin@managerhotel.com', 'DO', 'USD', 'America/Santo_Domingo',
+      HOTEL2_ID, 'SolmiOS Corp', 'Oficinas Centrales', '+1 809 555 0000',
+      'admin@solmios.com', 'DO', 'USD', 'America/Santo_Domingo',
       '14:00', '11:00', 'enterprise', 'activo', 0, 1, now, now)
-    console.log('  ✓ ManagerHotel Corp creado')
+    console.log('  ✓ SolmiOS Corp creado')
   }
 
   // ─── Users (password = demo123 hash bcrypt) ───────────────────────────
@@ -44,7 +44,7 @@ export async function seed000Bootstrap(_orm: SeedOrm): Promise<void> {
   const RECEP_HASH = '$2b$10$83sBnIJsM3O8FmQtv31QjOEgC3vv6tn7bbINBV25Ya0XjOILWb4PS'
 
   const users = [
-    ['user-super-0000-0000-000000000001', 'Super Admin',   'admin@managerhotel.com',   SUPER_HASH, 'super_admin', HOTEL2_ID],
+    ['user-super-0000-0000-000000000001', 'Super Admin',   'admin@solmios.com',   SUPER_HASH, 'super_admin', HOTEL2_ID],
     ['user-admin-0000-0000-000000000002', 'Admin Palma',   'admin@caribeparadise.com', ADMIN_HASH, 'hotel_admin', HOTEL_ID],
     ['user-recep-0000-0000-000000000003', 'Maria Lopez',   'maria@caribeparadise.com', RECEP_HASH, 'receptionist', HOTEL_ID],
   ]

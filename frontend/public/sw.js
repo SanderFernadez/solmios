@@ -1,4 +1,4 @@
-// ManagerHotel Service Worker
+// SolmiOS Service Worker
 // Estrategia: app-shell (cache first para shell, network first para API).
 
 const CACHE_VERSION = 'mh-v4'

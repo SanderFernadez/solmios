@@ -46,7 +46,7 @@
               <div v-for="color in brandColors" :key="color.value" @click="settings.brandColor = color.value" class="w-10 h-10 rounded-lg cursor-pointer border-2 transition-all" :class="settings.brandColor === color.value ? 'border-navy scale-110' : 'border-transparent'" :style="{ background: color.value }"></div>
             </div>
           </div>
-          <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Dominio Personalizado</label><input v-model="settings.customDomain" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="app.managerhotel.com"></div>
+          <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Dominio Personalizado</label><input v-model="settings.customDomain" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="app.solmios.com"></div>
         </div>
       </div>
     </div>

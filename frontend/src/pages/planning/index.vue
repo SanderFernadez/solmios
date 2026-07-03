@@ -879,7 +879,7 @@ function popupQuote() {
   const id = Date.now().toString().slice(-6)
   quote.value = {
     show: true, id, today,
-    hotel: hotelInfo.value.name || 'ManagerHotel',
+    hotel: hotelInfo.value.name || 'SolmiOS',
     hotelAddress: hotelInfo.value.address,
     hotelPhone: hotelInfo.value.phone,
     hotelEmail: hotelInfo.value.email,

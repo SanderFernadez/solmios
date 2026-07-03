@@ -63,7 +63,7 @@ import { AuthService } from '@/services/Auth.service'
 const router = useRouter()
 const auth = useAuthStore()
 
-const email = ref('admin@managerhotel.com')
+const email = ref('admin@solmios.com')
 const password = ref('demo123')
 const error = ref('')
 const loading = ref(false)

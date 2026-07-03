@@ -13,7 +13,7 @@ export type { BookingConfigDTO, UpdateBookingConfigDTO, AvailabilityQuery, Avail
 export type { BookingengineSockets } from './sockets'
 export { BookingengineValidator, UpdateBookingConfigSchema, CheckAvailabilitySchema, CreatePublicBookingSchema, TrackEventSchema } from './validators/schema'
 
-export function BookingengineModule() {
+export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string, roomId: string) => void }) {
   return createModule({
     name: 'bookingengine',
     version: '1.0.0',
@@ -23,7 +23,7 @@ export function BookingengineModule() {
       name: 'bookingengine',
       version: '1.0.0',
       description: 'Booking engine: widget config, public availability, reservations, analytics',
-      actions: ['getConfig', 'updateConfig', 'checkAvailability', 'createBooking', 'getBooking', 'trackEvent', 'getAnalytics'],
+      actions: ['getConfig', 'updateConfig', 'checkAvailability', 'createBooking', 'getBooking', 'trackEvent', 'getAnalytics', 'getPublicBookingBySlug', 'createPublicBookingDirect'],
       events: ['onBookingCreated', 'onBookingCancelled', 'onConversionEvent'],
       tables: ['booking_config', 'availability_cache', 'conversion_events'],
       dependencies: ['canales', 'hoteles', 'habitaciones'],
@@ -40,7 +40,7 @@ export function BookingengineModule() {
 
       const log = logger.child('bookingengine')
       const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache)
-      const controller = new BookingengineController(service, log, orm, auth)
+      const controller = new BookingengineController(service, log, orm, auth, opts?.pushAvailability)
 
       // Admin routes (protegidas con auth)
       if (auth) {
@@ -53,6 +53,8 @@ export function BookingengineModule() {
       // Público (sin auth)
       router.post('/api/public/availability', (req: any) => controller.checkAvailability(req))
       router.get('/api/public/hotel/:slug', (req: any) => controller.getHotelPublicInfo(req))
+      router.get('/api/public/booking/:slug', (req: any) => controller.getPublicBookingBySlug(req))
+      router.post('/api/public/booking', (req: any) => controller.createPublicBookingDirect(req))
       router.post('/api/public/bookings', (req: any) => controller.createBooking(req))
       router.get('/api/public/bookings/:id', (req: any) => controller.getBooking(req))
       router.post('/api/public/bookings/:id/checkout', (req: any) => controller.createCheckoutSession(req))

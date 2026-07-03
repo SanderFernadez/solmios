@@ -1,6 +1,6 @@
 {
-  "name": "ManagerHotel — Hospitality OS",
-  "short_name": "ManagerHotel",
+  "name": "SolmiOS — Hospitality OS",
+  "short_name": "SolmiOS",
   "description": "Sistema de gestión hotelera todo-en-uno: planning, reservas, channel manager, pagos y más.",
   "start_url": "/",
   "display": "standalone",

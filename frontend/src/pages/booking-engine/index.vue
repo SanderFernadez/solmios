@@ -4,7 +4,7 @@
     <div class="bg-white border-b border-border px-6 py-4">
       <div class="max-w-7xl mx-auto flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-white text-lg shadow-lg">M</div>
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-white text-lg shadow-lg">S</div>
           <div>
             <div class="font-black text-xl text-navy">Motor de Reservas</div>
             <div class="text-xs text-text-muted">Google Hotel Ads · Widget Web</div>

@@ -4,9 +4,9 @@
     <aside class="w-64 bg-navy text-white flex flex-col flex-shrink-0 fixed h-full z-20">
       <!-- Logo -->
       <div class="h-16 flex items-center gap-3 px-5 border-b border-white/10">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-lg shadow-lg">M</div>
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-lg shadow-lg">S</div>
         <div>
-          <div class="font-black text-lg leading-tight">Manager<span class="text-cyan">Hotel</span></div>
+          <div class="font-black text-lg leading-tight">Solmi<span class="text-cyan">OS</span></div>
           <div class="text-[9px] font-bold tracking-[2px] text-gray-400 uppercase">Super Admin</div>
         </div>
       </div>
@@ -49,7 +49,7 @@
           <div class="w-9 h-9 rounded-full bg-coral/30 flex items-center justify-center text-sm font-bold">SA</div>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-bold truncate">{{ auth.user?.name ?? 'Super Admin' }}</div>
-            <div class="text-[10px] text-cyan">Plataforma ManagerHotel</div>
+            <div class="text-[10px] text-cyan">Plataforma SolmiOS</div>
           </div>
           <button @click="handleLogout" class="text-gray-400 hover:text-white transition-colors cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

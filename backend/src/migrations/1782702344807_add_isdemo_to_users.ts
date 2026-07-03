@@ -6,7 +6,7 @@ import type { MigrationRunner } from 'arckode-framework/cli/commands/db-migrate'
 
 // Seed data: cuentas demo iniciales marcadas como visibles en el login.
 // Son constantes sembradas (no hardcodeo de lógica/config en runtime).
-const DEMO_EMAILS = ['admin@managerhotel.com', 'admin@caribeparadise.com', 'maria@caribeparadise.com']
+const DEMO_EMAILS = ['admin@solmios.com', 'admin@caribeparadise.com', 'maria@caribeparadise.com']
 
 export async function up(db: MigrationRunner): Promise<void> {
   try {

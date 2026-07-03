@@ -78,7 +78,7 @@ export const StripeService = {
     if (cached) return cached
     const c = new Stripe(cfg.secretKey, {
       apiVersion: '2025-08-27.basil' as any,
-      appInfo: { name: 'ManagerHotel', version: '1.0.0' },
+      appInfo: { name: 'SolmiOS', version: '1.0.0' },
     })
     clients.set(cacheKey, c)
     return c

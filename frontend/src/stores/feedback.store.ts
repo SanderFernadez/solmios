@@ -4,7 +4,7 @@ import type { FeedbackPin, CreateFeedbackPayload, FeedbackPriority, FeedbackCate
 import { FeedbackService } from '@/services/Feedback.service'
 import type { GitLabIssueResult } from '@/services/Feedback.service'
 
-const STORAGE_KEY = 'managerhotel_feedback_pins'
+const STORAGE_KEY = 'solmios_feedback_pins'
 
 function loadStorage(): FeedbackPin[] {
   try {
