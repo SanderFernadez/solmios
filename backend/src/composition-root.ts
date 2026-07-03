@@ -8,6 +8,7 @@ import { cors, rateLimit, requestLogger, bodyLimit, timeout, compression } from 
 import { securityHeaders } from './shared/middlewares/security-headers'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { PostgresAdapter } from 'arckode-framework/adapters/postgres'
+import { ormMigrate } from 'arckode-framework/kernel/db/orm-migrate'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { HotelAuth } from './infrastructure/auth/hotel-auth'
 import { registerSharedModels } from './shared/models'
@@ -151,6 +152,16 @@ configureStripe(orm)
 
 // ─── Start ─────────────────────────────────────────────────────────────────
 await system.start()
+
+// Schema sync: crea tablas faltantes desde los modelos registrados (para módulos
+// sin migración como folios, amenities, companions, locks, plans, rates, etc.).
+// Modo migrate-only: RUN_MIGRATE=1. Idempotente (CREATE TABLE IF NOT EXISTS).
+if (process.env.RUN_MIGRATE === '1') {
+  await ormMigrate(db, (orm as any).models)
+  logger.info('ormMigrate completado: tablas sincronizadas desde modelos')
+  await system.stop()
+  process.exit(0)
+}
 
 const { emailService, startWorker } = bootstrapEmail(orm, logger, (name) => system.resolveModule(name))
 
