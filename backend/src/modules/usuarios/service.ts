@@ -67,11 +67,11 @@ export class UsuariosService {
     const token = (this.auth as any).createToken({ id: user.id, role: user.role, hotelId: user.hotelId })
     await this.repo.update(user.id, { token })
     let hotelName = ''
-    if (user.hotelId) {
+    if (user.hotelId && this.hotelRepo) {
       try {
-        const orm = (this.repo as any).orm
-        const hotel = await orm?.findOne?.('Hotels', { id: user.hotelId })
-        hotelName = hotel?.name || ''
+        const hotel = await this.hotelRepo.findById(user.hotelId)
+        if (hotel && this.auth) this.auth.assertOwnership(hotel, user.hotelId)
+        hotelName = (hotel as any)?.name || ''
       } catch { /* graceful */ }
     }
     return { token, user: { id: user.id, name: user.name, email: user.email, role: user.role, hotelId: user.hotelId, hotelName } }

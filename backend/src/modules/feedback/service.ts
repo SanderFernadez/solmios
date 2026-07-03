@@ -2,7 +2,6 @@ import type { Logger } from 'arckode-framework'
 
 export class FeedbackService {
   constructor(
-    private readonly orm: any,
     private readonly logger: Logger,
   ) {}
 

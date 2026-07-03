@@ -21,7 +21,7 @@ export function FeedbackModule() {
     create({ logger, orm, cache, router, auth }) {
       if (!auth) throw new Error('feedback: auth dependency required')
       const log = logger.child('feedback')
-      const service = new FeedbackService(orm, log)
+      const service = new FeedbackService(log)
       const controller = new FeedbackController(service, log)
 
       router.post('/api/feedback/gitlab-issue', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req: any) => controller.createGitLabIssue(req))
