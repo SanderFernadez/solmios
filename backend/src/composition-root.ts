@@ -5,6 +5,7 @@ import {
   System, ConfigStore, Logger, Router, MemoryCache, ORM, Container, OrmRepository, NodeServer,
 } from 'arckode-framework'
 import { cors, rateLimit, requestLogger, bodyLimit, timeout, compression } from 'arckode-framework/middlewares'
+import { securityHeaders } from './shared/middlewares/security-headers'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { HotelAuth } from './infrastructure/auth/hotel-auth'
@@ -45,19 +46,7 @@ const router = new Router()
 const FRONTEND_PORT = config.get<number>('FRONTEND_PORT')
 const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(',') || [`http://localhost:${PORT}`, 'http://localhost:3000', `http://localhost:${FRONTEND_PORT}`]
 router.use(cors({ origins: CORS_ORIGINS }))
-router.use(async (req: any, next: any) => {
-  const res = await next(req)
-  return {
-    ...res,
-    headers: {
-      ...res?.headers,
-      'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
-      'X-XSS-Protection': '1; mode=block',
-      'Referrer-Policy': 'strict-origin-when-cross-origin',
-    },
-  }
-})
+router.use(securityHeaders())
 router.use(bodyLimit(5 * 1024 * 1024))
 router.use(requestLogger(logger))
 router.use(rateLimit({ windowMs: 60_000, max: 200 }))

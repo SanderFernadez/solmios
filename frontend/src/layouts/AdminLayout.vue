@@ -103,6 +103,9 @@
             <span class="text-lg">🏨</span>
             <span class="text-sm font-bold text-navy">{{ auth.currentHotel }}</span>
           </div>
+
+          <!-- User Menu (Configuración / Cambiar contraseña / Salir) -->
+          <UserMenu />
         </div>
       </header>
 
@@ -128,6 +131,7 @@ import NotificationBell from '@/components/features/core-pms/NotificationBell.vu
 import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanner.vue'
 import OfflineBanner from '@/components/features/core-pms/OfflineBanner.vue'
 import HotelSwitcher from '@/components/features/core-pms/HotelSwitcher.vue'
+import UserMenu from '@/components/features/core-pms/UserMenu.vue'
 
 const route = useRoute()
 const router = useRouter()
