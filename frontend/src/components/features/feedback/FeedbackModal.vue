@@ -101,6 +101,10 @@ function handleBackdropClick(e: MouseEvent) {
               </div>
             </div>
 
+            <div v-else-if="!store.lastIssueUrl" class="rounded-xl border border-border dark:border-white/10 bg-surface dark:bg-navy p-3 text-center">
+              <p class="text-[11px] text-text-muted dark:text-gray-500">No se pudo capturar screenshot</p>
+            </div>
+
             <div v-if="!store.lastIssueUrl">
               <div>
                 <label class="block text-[11px] font-bold text-text-secondary dark:text-gray-400 uppercase tracking-wide mb-1.5">Comentario</label>
