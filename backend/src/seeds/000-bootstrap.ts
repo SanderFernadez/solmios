@@ -49,8 +49,8 @@ export async function seed000Bootstrap(_orm: SeedOrm): Promise<void> {
     ['user-recep-0000-0000-000000000003', 'Maria Lopez',   'maria@caribeparadise.com', RECEP_HASH, 'receptionist', HOTEL_ID],
   ]
   for (const [id, name, email, password, role, hotelId] of users) {
-    run(`INSERT OR IGNORE INTO users (id, name, email, password, role, hotelId, active, createdAt, updatedAt)
-      VALUES (?,?,?,?,?,?,1,?,?)`, id, name, email, password, role, hotelId, now, now)
+    run(`INSERT OR IGNORE INTO users (id, name, email, password, role, hotelId, active, isDemo, createdAt, updatedAt)
+      VALUES (?,?,?,?,?,?,1,1,?,?)`, id, name, email, password, role, hotelId, now, now)
   }
   console.log('  ✓ 3 usuarios demo (password: demo123)')
 
