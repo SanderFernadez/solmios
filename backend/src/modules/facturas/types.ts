@@ -110,9 +110,9 @@ export interface CurrentUser {
 
 export interface FacturasStats {
   total: number
-  pending: number
+  pendingAmount: number
   paid: number
-  overdue: number
+  overdueAmount: number
   cancelled: number
   monthlyRevenue: number
   todayRevenue: number

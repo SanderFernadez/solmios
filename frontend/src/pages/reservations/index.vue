@@ -107,23 +107,17 @@
                         <input :value="guestSearch" @input="onGuestSearchInput" type="text" placeholder="Nombre, documento o email…" class="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" @blur="blurGuestSearch" />
                         <ul v-if="guestSearchOpen && guestResults.length" class="absolute z-40 mt-1 w-full max-h-48 overflow-auto bg-white border border-border rounded-lg shadow-lg">
                           <li v-for="g in guestResults" :key="g.id" @mousedown.prevent="selectGuest(g)" class="px-3 py-2 text-sm cursor-pointer hover:bg-teal/10">
-                            <div class="font-bold text-navy">{{ g.name || (g.firstName + ' ' + g.lastName).trim() }}</div>
-                            <div class="text-[11px] text-text-muted">{{ g.documentNumber || 'Sin documento' }} · {{ g.email || g.phone || 'Sin contacto' }}</div>
+                            <div class="font-bold text-navy">{{ g.name }}</div>
+                            <div class="text-[11px] text-text-muted">{{ g.document || 'Sin documento' }} · {{ g.email || g.phone || 'Sin contacto' }}</div>
                           </li>
                         </ul>
                       </div>
                       <p v-if="selectedGuestId" class="text-[11px] text-teal mt-1 font-semibold">✓ Huésped existente: se reutiliza (no se crea uno nuevo)</p>
                     </div>
-                    <!-- Nombre + Apellidos -->
-                    <div class="grid grid-cols-2 gap-3">
-                      <div>
-                        <label class="block text-[11px] font-bold text-text-secondary mb-1">Nombre <span class="text-coral">*</span></label>
-                        <input v-model="form.firstName" type="text" placeholder="Nombre" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
-                      </div>
-                      <div>
-                        <label class="block text-[11px] font-bold text-text-secondary mb-1">Apellidos <span class="text-coral">*</span></label>
-                        <input v-model="form.lastName" type="text" placeholder="Apellidos" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
-                      </div>
+                    <!-- Nombre completo -->
+                    <div>
+                      <label class="block text-[11px] font-bold text-text-secondary mb-1">Nombre completo <span class="text-coral">*</span></label>
+                      <input v-model="form.name" type="text" placeholder="Nombre y apellido" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
                     </div>
                     <!-- Email + Teléfono -->
                     <div class="grid grid-cols-2 gap-3">
@@ -181,20 +175,20 @@
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-text-secondary mb-1">Nacimiento</label>
-                        <input v-model="form.dateOfBirth" type="date" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
+                        <input v-model="form.birthDate" type="date" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
                       </div>
                     </div>
                     <!-- Documento -->
                     <div class="grid grid-cols-3 gap-3">
                       <div>
                         <label class="block text-[11px] font-bold text-text-secondary mb-1">Tipo documento</label>
-                        <select v-model="form.docType" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
+                        <select v-model="form.documentType" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
                           <option v-for="d in docTypes" :key="d.v" :value="d.v">{{ d.l }}</option>
                         </select>
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-text-secondary mb-1">N° documento</label>
-                        <input v-model="form.documentNumber" type="text" placeholder="000-0000000-0" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
+                        <input v-model="form.document" type="text" placeholder="000-0000000-0" class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-text-secondary mb-1">Exp. documento</label>
@@ -212,7 +206,7 @@
                     </div>
                     <div>
                       <label class="block text-[11px] font-bold text-text-secondary mb-1">Observaciones</label>
-                      <textarea v-model="form.ownerNotes" rows="2" placeholder="Notas para el propietario (se incluye en el bono)..." class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white resize-none focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition"></textarea>
+                      <textarea v-model="form.guestNotes" rows="2" placeholder="Notas para el propietario (se incluye en el bono)..." class="w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-white resize-none focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition"></textarea>
                     </div>
                   </div>
                 </div>
@@ -276,10 +270,10 @@
                   <p v-if="!form.companions.length" class="text-[11px] text-text-muted italic">Sin acompañantes adicionales</p>
                   <div v-for="(c, i) in form.companions" :key="i" class="grid grid-cols-12 gap-2 mb-2 items-center">
                     <input v-model="c.name" type="text" placeholder="Nombre completo" class="col-span-5 px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
-                    <select v-model="c.docType" class="col-span-3 px-2 py-2 rounded-lg border border-border text-xs bg-white cursor-pointer">
+                    <select v-model="c.documentType" class="col-span-3 px-2 py-2 rounded-lg border border-border text-xs bg-white cursor-pointer">
                       <option value="dni">DNI</option><option value="passport">Pasaporte</option><option value="other">Otro</option>
                     </select>
-                    <input v-model="c.doc" type="text" placeholder="N° documento" class="col-span-3 px-2 py-2 rounded-lg border border-border text-xs bg-white" />
+                    <input v-model="c.documentNumber" type="text" placeholder="N° documento" class="col-span-3 px-2 py-2 rounded-lg border border-border text-xs bg-white" />
                     <button type="button" @click="removeCompanion(i)" class="col-span-1 text-coral hover:bg-coral/10 rounded-lg text-sm cursor-pointer">✕</button>
                   </div>
                 </div>
@@ -548,13 +542,13 @@ const MS_PER_DAY = 86_400_000
 
 // ── Form completo ──
 const form = ref({
-  // Cliente
-  firstName: '', lastName: '', email: '', phone: '',
+  // Cliente (naming canónico guests)
+  name: '', email: '', phone: '',
   language: 'Español', country: 'República Dominicana', nationality: 'Dominicana',
   address: '', city: '', province: '',
-  sex: '', dateOfBirth: '',
-  docType: 'dni', documentNumber: '', documentIssueDate: '',
-  communicateClient: 'none', ownerNotes: '',
+  sex: '', birthDate: '',
+  documentType: 'dni', document: '', documentIssueDate: '',
+  communicateClient: 'none', guestNotes: '',
   // Contacto emergencia
   emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
   // Alojamiento
@@ -568,7 +562,7 @@ const form = ref({
   depositPercentage: 100, deposit: 0, depositStatus: 'unpaid', payMethod: 'transfer',
   // Otros
   status: 'pending', notes: '', autoSendEnabled: true,
-  companions: [] as { id?: string; name: string; doc: string; docType?: string; nationality?: string }[],
+  companions: [] as { id?: string; name: string; documentNumber: string; documentType?: string; nationality?: string }[],
 })
 
 // ── Datos para dropdowns ──
@@ -699,12 +693,12 @@ function nBetween(a?: string, b?: string): number {
 // ── Modal Open / Close ──
 function resetForm() {
   form.value = {
-    firstName: '', lastName: '', email: '', phone: '',
+    name: '', email: '', phone: '',
     language: 'Español', country: 'República Dominicana', nationality: 'Dominicana',
     address: '', city: '', province: '',
-    sex: '', dateOfBirth: '',
-    docType: 'dni', documentNumber: '', documentIssueDate: '',
-    communicateClient: 'none', ownerNotes: '',
+    sex: '', birthDate: '',
+    documentType: 'dni', document: '', documentIssueDate: '',
+    communicateClient: 'none', guestNotes: '',
     emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
     checkIn: '', checkOut: '', roomId: '', adults: 2, children: 0,
     regime: 'room_only', promoCode: '',
@@ -761,8 +755,7 @@ async function openEdit(r: any) {
     // Guest data
     if (ext.guest) {
       const g = ext.guest
-      f.firstName = g.firstName || ''
-      f.lastName = g.lastName || ''
+      f.name = g.name || ''
       f.email = g.email || ''
       f.phone = g.phone || ''
       f.language = g.language || 'Español'
@@ -772,11 +765,11 @@ async function openEdit(r: any) {
       f.city = g.city || ''
       f.province = g.province || ''
       f.sex = g.sex || ''
-      f.dateOfBirth = g.dateOfBirth || ''
-      f.docType = g.documentType || 'dni'
-      f.documentNumber = g.documentNumber || ''
+      f.birthDate = g.birthDate || ''
+      f.documentType = g.documentType || 'dni'
+      f.document = g.document || ''
       f.documentIssueDate = g.documentIssueDate || ''
-      f.ownerNotes = g.observations || ''
+      f.guestNotes = g.notes || ''
       f.communicateClient = g.communicateClient || 'none'
     }
     // Emergency contact
@@ -788,8 +781,8 @@ async function openEdit(r: any) {
     }
     // Companions
     form.value.companions = (ext.companions || []).map((c: any) => ({
-      id: c.id, name: c.name || '', doc: c.documentNumber || '',
-      docType: c.documentType, nationality: c.nationality,
+      id: c.id, name: c.name || '', documentNumber: c.documentNumber || '',
+      documentType: c.documentType, nationality: c.nationality,
     }))
     // Lock
     if (ext.lockCodes?.length) lockCode.value = ext.lockCodes[0].code || ''
@@ -838,25 +831,24 @@ async function onGuestSearchInput(e: Event) {
 
 function selectGuest(g: Guest) {
   selectedGuestId.value = g.id
-  guestSearch.value = g.name || `${g.firstName} ${g.lastName}`.trim()
+  guestSearch.value = g.name || ''
   guestSearchOpen.value = false
   const f = form.value
-  f.firstName = g.firstName || ''
-  f.lastName = g.lastName || ''
+  f.name = g.name || ''
   f.email = g.email || ''
   f.phone = g.phone || ''
-  f.docType = g.documentType || 'dni'
-  f.documentNumber = g.documentNumber || ''
+  f.documentType = g.documentType || 'dni'
+  f.document = g.document || ''
   f.documentIssueDate = g.documentIssueDate || ''
   f.nationality = g.nationality || 'Dominicana'
   f.country = g.country || g.nationality || 'República Dominicana'
   f.language = g.language || 'Español'
   f.sex = g.sex || ''
-  f.dateOfBirth = g.dateOfBirth || ''
+  f.birthDate = g.birthDate || ''
   f.address = g.address || ''
   f.city = g.city || ''
   f.province = g.province || ''
-  f.ownerNotes = g.observations || ''
+  f.guestNotes = g.notes || ''
   f.communicateClient = (g.communicateClient as string) || 'none'
 }
 
@@ -867,7 +859,7 @@ function blurGuestSearch() {
 // Acompañantes (companions): alta/edición inline en el form. La sync con el backend
 // ya existe en save() (create/update/delete diff) — estas funciones solo manejan la UI.
 function addCompanion() {
-  form.value.companions.push({ name: '', doc: '', docType: 'passport', nationality: form.value.nationality || '' })
+  form.value.companions.push({ name: '', documentNumber: '', documentType: 'passport', nationality: form.value.nationality || '' })
 }
 function removeCompanion(i: number) {
   form.value.companions.splice(i, 1)
@@ -878,8 +870,7 @@ async function save() {
   // Validación de campos obligatorios (igual que MisterPlan): nombre, apellido, habitación,
   // fechas coherentes y al menos un contacto. La disponibilidad de la habitación la valida el backend.
   const missing: string[] = []
-  if (!form.value.firstName?.trim()) missing.push('nombre')
-  if (!form.value.lastName?.trim()) missing.push('apellido')
+  if (!form.value.name?.trim()) missing.push('nombre')
   if (!form.value.roomId) missing.push('habitación')
   if (!form.value.checkIn) missing.push('check-in')
   if (!form.value.checkOut) missing.push('check-out')
@@ -894,23 +885,21 @@ async function save() {
   try {
     // 1. Crear/actualizar huésped
     const guestPayload = {
-      firstName: form.value.firstName,
-      lastName: form.value.lastName,
-      name: `${form.value.firstName} ${form.value.lastName}`.trim(),
+      name: form.value.name,
       email: form.value.email,
       phone: form.value.phone,
       nationality: form.value.nationality,
       language: form.value.language,
       country: form.value.country,
       sex: form.value.sex,
-      dateOfBirth: form.value.dateOfBirth,
+      birthDate: form.value.birthDate,
       address: form.value.address,
       city: form.value.city,
       province: form.value.province,
-      documentType: form.value.docType,
-      documentNumber: form.value.documentNumber,
+      documentType: form.value.documentType,
+      document: form.value.document,
       documentIssueDate: form.value.documentIssueDate,
-      observations: form.value.ownerNotes,
+      notes: form.value.guestNotes,
       communicateClient: form.value.communicateClient,
     }
 
@@ -986,10 +975,10 @@ async function save() {
       const existingIds = new Set(existing.data.map(c => c.id).filter((id): id is string => Boolean(id)))
       for (const c of form.value.companions) {
         if (c.id && existingIds.has(c.id)) {
-          await CompanionsService.update(c.id, { name: c.name, documentNumber: c.doc, documentType: c.docType, nationality: c.nationality })
+          await CompanionsService.update(c.id, { name: c.name, documentNumber: c.documentNumber, documentType: c.documentType, nationality: c.nationality })
           existingIds.delete(c.id)
         } else if (c.name) {
-          await CompanionsService.create(reservationId, { name: c.name, documentNumber: c.doc, documentType: c.docType || 'passport', nationality: c.nationality })
+          await CompanionsService.create(reservationId, { name: c.name, documentNumber: c.documentNumber, documentType: c.documentType || 'passport', nationality: c.nationality })
         }
       }
       for (const id of existingIds) { await CompanionsService.remove(id) }
@@ -1067,7 +1056,7 @@ function exportCSV() {
 }
 
 function sendPayLink(ch: string) {
-  const g = `${form.value.firstName} ${form.value.lastName}`.trim()
+  const g = form.value.name
   const a = pend.value; const e = form.value.email; const p = form.value.phone
   if (ch === 'email' && e) { window.open(`mailto:${e}?subject=${encodeURIComponent('Pago pendiente - ' + g)}&body=${encodeURIComponent('Hola ' + g + ', tu reserva tiene $' + a + ' pendientes.')}`); toast.success('Email abierto') }
   else if (ch === 'whatsapp' && p) { window.open(`https://wa.me/${p.replace(/\D/g, '')}?text=${encodeURIComponent('Hola ' + g + ', pago pendiente: $' + a)}`); toast.success('WhatsApp abierto') }

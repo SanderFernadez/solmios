@@ -1,49 +1,34 @@
 import { http } from './http'
 import type { Guest } from '@/types'
 
+// RawGuest espejea el naming canónico del modelo DB `guests` (backend huespedes/model.ts).
+// Sin dobles (firstName/lastName, documentNumber, dateOfBirth, observations, *_es): un solo naming.
 interface RawGuest {
   id: string
   hotelId: string
   name: string
-  firstName?: string
-  lastName?: string
   email?: string
   phone?: string
-  telefono?: string
   document?: string
   documentType?: string
-  tipoDocumento?: string
-  documentNumber?: string
   documentIssueDate?: string
   nationality?: string
-  nacionalidad?: string
   language?: string
   country?: string
   sex?: string
-  dateOfBirth?: string
   address?: string
   city?: string
   province?: string
-  observations?: string
   communicateClient?: string
   totalStays?: number
-  totalEstancias?: number
   totalSpent?: number
-  totalGastado?: number
   loyaltyPoints?: number
-  puntos?: number
   birthDate?: string
   preferences?: string[] | string
   notes?: string
   tier?: string
   profession?: string
   emergencyContact?: string | object
-}
-
-function splitName(full: string): { first: string; last: string } {
-  const parts = full.trim().split(/\s+/)
-  if (parts.length === 1) return { first: parts[0], last: '' }
-  return { first: parts[0], last: parts.slice(1).join(' ') }
 }
 
 // preferences se persiste como JSON (array). Normaliza string→array para que la UI siempre reciba string[].
@@ -74,34 +59,29 @@ function normalizeEmergency(ec: string | object | undefined | null): { name: str
   }
 }
 
+// mapGuest: mapeo 1:1 RawGuest→Guest (naming canónico, sin split ni fallbacks de dobles).
 export function mapGuest(g: RawGuest): Guest {
-  const fullName = g.name || ''
-  const { first, last } = splitName(fullName)
   return {
     id: g.id,
     hotelId: g.hotelId,
-    firstName: first,
-    lastName: last,
-    name: fullName,
+    name: g.name || '',
     email: g.email,
     phone: g.phone,
-    documentType: g.documentType || g.tipoDocumento || '',
-    documentNumber: g.document || g.documentNumber || '',
+    documentType: g.documentType || '',
+    document: g.document || '',
     documentIssueDate: g.documentIssueDate || '',
-    nationality: g.nationality || g.nacionalidad || '',
+    nationality: g.nationality || '',
     language: g.language,
     country: g.country,
     sex: g.sex as Guest['sex'],
-    dateOfBirth: g.dateOfBirth,
+    birthDate: g.birthDate,
     address: g.address,
     city: g.city,
     province: g.province,
-    observations: g.observations,
     communicateClient: g.communicateClient as Guest['communicateClient'],
-    totalStays: g.totalStays ?? g.totalEstancias ?? 0,
-    totalSpent: g.totalSpent ?? g.totalGastado ?? 0,
-    loyaltyPoints: g.loyaltyPoints ?? g.puntos ?? 0,
-    birthDate: g.birthDate,
+    totalStays: g.totalStays ?? 0,
+    totalSpent: g.totalSpent ?? 0,
+    loyaltyPoints: g.loyaltyPoints ?? 0,
     preferences: normalizePreferences(g.preferences),
     notes: g.notes,
     tier: g.tier,

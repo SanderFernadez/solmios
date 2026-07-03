@@ -989,11 +989,11 @@ router.post('/api/public/pre-checkin/:hash', async (req) => {
 
   if (reservation.guestId) {
     await orm.update('Guests', reservation.guestId, {
-      name: body.guestName || undefined,
+      name: body.name || body.guestName || undefined,
       email: body.email || undefined,
       phone: body.phone || undefined,
       documentType: body.documentType || undefined,
-      documentNumber: body.documentNumber || undefined,
+      document: body.document || body.documentNumber || undefined,
       nationality: body.nationality || undefined,
       birthDate: body.birthDate || undefined,
     })

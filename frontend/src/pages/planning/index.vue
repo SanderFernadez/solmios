@@ -241,9 +241,8 @@
                 <div>
                   <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-[10px]">👤</span> Cliente</h4>
                   <div class="space-y-3">
-                    <div class="grid grid-cols-2 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre <span class="text-coral">*</span></label><input v-model="newRes.firstName" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Apellidos <span class="text-coral">*</span></label><input v-model="newRes.lastName" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" /></div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre completo <span class="text-coral">*</span></label><input v-model="newRes.name" type="text" placeholder="Nombre y apellido" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                     </div>
                     <div class="grid grid-cols-3 gap-3">
                       <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Email</label><input v-model="newRes.email" type="email" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" /></div>
@@ -264,15 +263,15 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                       <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Sexo</label><select v-model="newRes.sex" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="">Seleccionar</option><option value="male">Masculino</option><option value="female">Femenino</option><option value="non_binary">No binario</option><option value="other">Otro</option></select></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha nacimiento</label><input v-model="newRes.dateOfBirth" type="date" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha nacimiento</label><input v-model="newRes.birthDate" type="date" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Tipo documento</label><select v-model="newRes.docType" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="dni">DNI / NIF</option><option value="passport">Pasaporte</option><option value="cedula">Cédula</option><option value="rif">RIF</option><option value="other">Otro</option></select></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">N° documento</label><input v-model="newRes.documentNumber" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Tipo documento</label><select v-model="newRes.documentType" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="dni">DNI / NIF</option><option value="passport">Pasaporte</option><option value="cedula">Cédula</option><option value="rif">RIF</option><option value="other">Otro</option></select></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">N° documento</label><input v-model="newRes.document" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
                       <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha expedición</label><input v-model="newRes.documentIssueDate" type="date" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
                     </div>
                     <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Comunicar al cliente</label><select v-model="newRes.communicateClient" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="none">No enviar bono</option><option value="email_confirmation">Enviar email confirmación</option><option value="email_presaless">Enviar email preventa</option></select></div>
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Observaciones</label><textarea v-model="newRes.ownerNotes" rows="2" class="w-full px-3 py-2 rounded-xl border border-border text-sm resize-none"></textarea></div>
+                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Observaciones</label><textarea v-model="newRes.guestNotes" rows="2" class="w-full px-3 py-2 rounded-xl border border-border text-sm resize-none"></textarea></div>
                   </div>
                 </div>
                 <!-- Emergencia -->
@@ -565,13 +564,13 @@ const unblock = ref<{ show: boolean; id: string; room: string; reason: string; f
 const detailId = ref<string | null>(null)
 const newRes = ref({
   show: false, room: null as any, cin: '', cout: '',
-  // Cliente
-  firstName: '', lastName: '', email: '', phone: '',
+  // Cliente (naming canónico guests)
+  name: '', email: '', phone: '',
   language: 'Español', country: 'República Dominicana', nationality: 'Dominicana',
   address: '', city: '', province: '',
-  sex: '', dateOfBirth: '',
-  docType: 'dni', documentNumber: '', documentIssueDate: '',
-  communicateClient: 'none', ownerNotes: '',
+  sex: '', birthDate: '',
+  documentType: 'dni', document: '', documentIssueDate: '',
+  communicateClient: 'none', guestNotes: '',
   // Contacto emergencia
   emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
   // Alojamiento
@@ -855,12 +854,12 @@ function popupNewRes() {
   const taxes = Math.round(subtotal * 0.1)
   newRes.value = {
     show: true, room: p.room, cin: p.fromDate, cout: p.toDate,
-    firstName: '', lastName: '', email: '', phone: '',
+    name: '', email: '', phone: '',
     language: 'Español', country: 'República Dominicana', nationality: 'Dominicana',
     address: '', city: '', province: '',
-    sex: '', dateOfBirth: '',
-    docType: 'dni', documentNumber: '', documentIssueDate: '',
-    communicateClient: 'none', ownerNotes: '',
+    sex: '', birthDate: '',
+    documentType: 'dni', document: '', documentIssueDate: '',
+    communicateClient: 'none', guestNotes: '',
     emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
     adults: 2, kids: 0, regime: 'room_only', promoCode: '',
     ch: 'direct', commission: 0, extLocator: '', otaNotes: '',
@@ -941,21 +940,18 @@ async function saveNewRes() {
   const n = newRes.value
   const hotelId = hid.value || planRooms.value[0]?.hotelId
   if (!n.room) { toast.error('Falta habitación'); return }
-  if (!n.firstName?.trim()) { toast.error('Falta nombre del huésped'); return }
-  if (!n.lastName?.trim()) { toast.error('Falta apellido del huésped'); return }
+  if (!n.name?.trim()) { toast.error('Falta nombre del huésped'); return }
   let cout = n.cout
   if (!cout || cout <= n.cin) {
     const d = new Date(n.cin + 'T00:00:00')
     d.setDate(d.getDate() + 1)
     cout = fDate(d)
   }
-  const guestName = `${n.firstName.trim()} ${n.lastName.trim()}`
+  const guestName = n.name.trim()
   try {
     // 1. Crear huésped con todos los campos
     const guest: any = await GuestService.create({
       hotelId,
-      firstName: n.firstName.trim(),
-      lastName: n.lastName.trim(),
       name: guestName,
       email: n.email.trim(),
       phone: n.phone.trim(),
@@ -963,14 +959,14 @@ async function saveNewRes() {
       language: n.language,
       country: n.country,
       sex: n.sex,
-      dateOfBirth: n.dateOfBirth,
+      birthDate: n.birthDate,
       address: n.address,
       city: n.city,
       province: n.province,
-      documentType: n.docType,
-      documentNumber: n.documentNumber,
+      documentType: n.documentType,
+      document: n.document,
       documentIssueDate: n.documentIssueDate,
-      observations: n.ownerNotes,
+      notes: n.guestNotes,
       communicateClient: n.communicateClient,
     })
     // 2. Crear reserva
@@ -982,7 +978,7 @@ async function saveNewRes() {
       depositPercentage: n.depositPercentage,
       depositStatus: n.depositStatus,
       adults: n.adults, children: n.kids,
-      notes: n.ownerNotes,
+      notes: n.guestNotes,
       regime: n.regime,
       commission: n.commission,
       externalLocator: n.extLocator,

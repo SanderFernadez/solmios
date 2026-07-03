@@ -8,6 +8,7 @@ import type { FacturasSockets } from './sockets'
 import { taxRateFor, applyTax, buildInvoiceRecord, enrichInvoice, assertOwnership, hotelFilterFor, type EnrichDeps } from './usecases/billing'
 import { nextInvoiceNumber } from './usecases/invoice-number'
 import { getStatsForUser } from './usecases/stats'
+import { invalidateFacturasCaches } from './usecases/cache'
 import { createPaymentRecord } from './usecases/payment-record'
 import { generateCreditNote, type CreditNoteResult } from './usecases/credit-note'
 import { generateTaxReport, type TaxReport } from './usecases/tax-report'
@@ -115,7 +116,7 @@ export class FacturasService {
     const item = await this.repo.create(record as any)
     if (dto.items?.length) await persistItems(this.itemRepo, item.id, hotelId, dto.items)
     await this.sockets.onFacturasCreated?.(item)
-    await this.cache.delete('facturas:list:' + (item.hotelId || 'all'))
+    await invalidateFacturasCaches(this.cache, item.hotelId)
     return attachItems(this.itemRepo,await enrichInvoice(item, this.enrichDeps))
   }
 
@@ -127,7 +128,7 @@ export class FacturasService {
     const item = await this.repo.update(id, dto as Partial<Omit<FacturasDTO, 'id'>>)
     if (!item) throw new NotFoundError('Factura no encontrada')
     await this.sockets.onFacturasUpdated?.(item)
-    await this.cache.delete('facturas:list:' + (existing.hotelId || 'all'))
+    await invalidateFacturasCaches(this.cache, existing.hotelId)
     return enrichInvoice(item, this.enrichDeps)
   }
 
@@ -153,7 +154,7 @@ export class FacturasService {
     await createPaymentRecord(this.repo, inv, dto, this.logger)
 
     await this.sockets.onFacturasUpdated?.(updated)
-    await this.cache.delete('facturas:list:' + (inv.hotelId || 'all'))
+    await invalidateFacturasCaches(this.cache, inv.hotelId)
     return enrichInvoice(updated, this.enrichDeps)
   }
 
@@ -166,7 +167,7 @@ export class FacturasService {
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Factura no encontrada')
     await this.sockets.onFacturasDeleted?.(id)
-    await this.cache.delete('facturas:list:' + (existing.hotelId || 'all'))
+    await invalidateFacturasCaches(this.cache, existing.hotelId)
   }
 
   async creditNote(id: string, reason: string, user: CurrentUser): Promise<CreditNoteResult> {
@@ -177,7 +178,7 @@ export class FacturasService {
     if (inv.status === 'cancelled') throw new NotFoundError('La factura ya está cancelada')
     const result = await generateCreditNote(this.repo, inv, reason, user.id)
     await this.sockets.onFacturasUpdated?.(result.originalInvoice)
-    await this.cache.delete('facturas:list:' + (inv.hotelId || 'all'))
+    await invalidateFacturasCaches(this.cache, inv.hotelId)
     return result
   }
 

@@ -17,7 +17,7 @@
       <div class="space-y-4">
         <div>
           <label class="block text-[11px] font-bold text-navy uppercase mb-2">Nombre Completo *</label>
-          <input v-model="form.guestName" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" />
+          <input v-model="form.name" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" />
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Email</label><input v-model="form.email" type="email" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
@@ -27,10 +27,10 @@
           <div>
             <label class="block text-[11px] font-bold text-navy uppercase mb-2">Tipo Documento</label>
             <select v-model="form.documentType" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer">
-              <option value="passport">Pasaporte</option><option value="id">Cédula / DNI</option><option value="driver">Licencia</option>
+              <option value="passport">Pasaporte</option><option value="dni">Cédula / DNI</option><option value="other">Licencia / Otro</option>
             </select>
           </div>
-          <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Nº Documento</label><input v-model="form.documentNumber" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+          <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Nº Documento</label><input v-model="form.document" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Nacionalidad</label><input v-model="form.nationality" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
@@ -60,7 +60,7 @@
     <div v-else class="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
       <div class="text-5xl mb-4">✅</div>
       <h2 class="text-xl font-black text-navy mb-2">¡Check-in Completado!</h2>
-      <p class="text-sm text-text-secondary mb-4">{{ form.guestName }}, tu registro fue recibido. Te esperamos el {{ checkIn }}.</p>
+      <p class="text-sm text-text-secondary mb-4">{{ form.name }}, tu registro fue recibido. Te esperamos el {{ checkIn }}.</p>
       <div class="bg-surface rounded-xl p-3 text-xs text-text-secondary">
         Recibirás los códigos de acceso el día de tu llegada.
       </div>
@@ -87,7 +87,7 @@ const checkOut = ref('')
 const reservationId = ref('')
 
 const form = ref({
-  guestName: '', email: '', phone: '', documentType: 'passport', documentNumber: '',
+  name: '', email: '', phone: '', documentType: 'passport', document: '',
   nationality: '', birthDate: '', companions: [] as { name: string; documentNumber: string }[],
   acceptTerms: false,
 })
@@ -102,13 +102,13 @@ onMounted(async () => {
     checkIn.value = String(data.checkIn || '').slice(0, 10)
     checkOut.value = String(data.checkOut || '').slice(0, 10)
     reservationId.value = data.reservationId || data.id || ''
-    form.value.guestName = data.guestName || ''
+    form.value.name = data.name || data.guestName || ''
     form.value.email = data.email || ''
   } catch { error.value = 'Error al cargar datos de la reserva' }
 })
 
 async function submit() {
-  if (!form.value.guestName) { error.value = 'Nombre requerido'; return }
+  if (!form.value.name) { error.value = 'Nombre requerido'; return }
   if (!form.value.acceptTerms) { error.value = 'Debes aceptar las políticas'; return }
   saving.value = true; error.value = ''
   try {

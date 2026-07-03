@@ -31,26 +31,23 @@ export interface Room {
 }
 
 // === GUEST ===
+// Naming canónico = modelo DB `guests` (backend huespedes/model.ts). Sin dobles.
 export interface Guest {
   id: string
   hotelId: string
-  firstName: string
-  lastName: string
-  name?: string
+  name: string
   email?: string
   phone?: string
-  documentType: string
-  documentNumber: string
+  documentType?: string
+  document?: string
   nationality: string
   language?: string
   country?: string
   sex?: 'male' | 'female' | 'non_binary' | 'other'
-  dateOfBirth?: string
   address?: string
   city?: string
   province?: string
   documentIssueDate?: string
-  observations?: string
   communicateClient?: 'none' | 'email_confirmation' | 'email_presaless'
   totalStays: number
   totalSpent: number

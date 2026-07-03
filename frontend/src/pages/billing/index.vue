@@ -631,7 +631,7 @@ const chargeForm = ref({ description: '', amount: 0, notes: '' })
 const invoices = ref<any[]>([])
 const payments = ref<any[]>([])
 const folios = ref<Folio[]>([])
-const stats = ref<BillingStats>({ total: 0, pending: 0, paid: 0, overdue: 0, cancelled: 0, monthlyRevenue: 0, todayRevenue: 0, totalTax: 0 })
+const stats = ref<BillingStats>({ total: 0, pendingAmount: 0, paid: 0, overdueAmount: 0, cancelled: 0, monthlyRevenue: 0, todayRevenue: 0, totalTax: 0 })
 const loading = ref(true)
 const page = ref(1)
 const totalPages = ref(1)
@@ -722,7 +722,7 @@ const filteredInvoices = computed(() => {
 
 const totalMonth = computed(() => stats.value.monthlyRevenue)
 const totalToday = computed(() => stats.value.todayRevenue)
-const totalPending = computed(() => stats.value.pending + stats.value.overdue)
+const totalPending = computed(() => stats.value.pendingAmount + stats.value.overdueAmount)
 
 function methodClass(method: string) {
   const m = String(method).toLowerCase()

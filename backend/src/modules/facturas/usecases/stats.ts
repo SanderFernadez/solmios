@@ -1,5 +1,12 @@
 // facturas/usecases/stats.ts — Estadísticas de facturación pura (sin ORM, sin HTTP).
 // Extraída del service para mantenerlo < 200 líneas.
+//
+// Semántica de campos (separación counts vs montos, al estilo *Revenue):
+//   counts (nº de documentos): total, paid, cancelled
+//   montos ($):                pendingAmount, overdueAmount, monthlyRevenue, todayRevenue, totalTax
+// pendingAmount/overdueAmount acumulan el `amount` de las facturas pendientes/vencidas
+// (NO el conteo) — la tarjeta "Pendiente" del billing muestra dinero, no cantidad.
+// Antes esto era `pending++`/`overdue++` (contaba documentos) y la UI lo mostraba como $.
 
 import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import type { FacturasDTO, FacturasStats, CurrentUser } from '../types'
@@ -13,7 +20,7 @@ export async function getFacturasStats(
   const today = new Date().toISOString().split('T')[0]
   const monthStart = new Date().toISOString().slice(0, 7) + '-01'
 
-  let total = 0, pending = 0, paid = 0, overdue = 0, cancelled = 0
+  let total = 0, pendingAmount = 0, paid = 0, overdueAmount = 0, cancelled = 0
   let monthlyRevenue = 0, todayRevenue = 0, totalTax = 0
 
   for (const inv of all) {
@@ -23,17 +30,17 @@ export async function getFacturasStats(
     const taxes = Number(inv.taxes) || 0
     const issueDate = String(inv.issueDate || '')
 
-    if (status === 'pending') pending++
+    if (status === 'pending') pendingAmount += amount
     else if (status === 'paid') {
       paid++
       totalTax += taxes
       if (issueDate >= monthStart) monthlyRevenue += amount
       if (issueDate === today) todayRevenue += amount
-    } else if (status === 'overdue') overdue++
+    } else if (status === 'overdue') overdueAmount += amount
     else if (status === 'cancelled') cancelled++
   }
 
-  return { total, pending, paid, overdue, cancelled, monthlyRevenue, todayRevenue, totalTax }
+  return { total, pendingAmount, paid, overdueAmount, cancelled, monthlyRevenue, todayRevenue, totalTax }
 }
 
 /** Stats con cache + filtro multi-tenant resuelto desde el usuario. Wrapper de getFacturasStats. */
