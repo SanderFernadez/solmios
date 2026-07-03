@@ -46,15 +46,9 @@ export class ReservasController {
     return { status: 200, body: { data } }
   }
   async createCompanion(req: HttpRequest) {
-    try {
-      const dto = validateSchema(CompanionSchema, req.body) as any
-      const c = await createCompanion(this.companionsRepo, this.reservationRepo, this.userRepo, this.auth, req.params.id, dto, req.user as any)
-      return { status: 201, body: c }
-    } catch (e: any) {
-      this.logger.error('[DEBUG createCompanion]', e?.message, e?.stack)
-      console.error('[DEBUG createCompanion]', e?.message, '\n', e?.stack)
-      throw e
-    }
+    const dto = validateSchema(CompanionSchema, req.body) as any
+    const c = await createCompanion(this.companionsRepo, this.reservationRepo, this.userRepo, this.auth, req.params.id, dto, req.user as any)
+    return { status: 201, body: c }
   }
   async updateCompanion(req: HttpRequest) {
     const dto = validateSchema(CompanionSchema, req.body) as any

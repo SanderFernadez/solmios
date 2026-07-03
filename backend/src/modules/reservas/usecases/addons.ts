@@ -25,7 +25,6 @@ export async function createAddon(
 ): Promise<AddonDTO> {
   const res = await assertReservationOwned(reservationRepo, userRepo, auth, reservationId, user) // IDOR CR-31
   return repo.create({
-    id: crypto.randomUUID(),
     reservationId,
     hotelId: res.hotelId,
     description: dto.description,

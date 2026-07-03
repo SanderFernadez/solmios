@@ -23,11 +23,12 @@ export async function createCompanion(
   dto: CreateCompanionDTO,
   user: SimpleUser,
 ): Promise<CompanionDTO> {
-  const res = await assertReservationOwned(reservationRepo, userRepo, auth, reservationId, user) // IDOR CR-30
+  // IDOR CR-30: verificar que la reservation pertenezca al hotel del user.
+  // Nota: la tabla `companions` NO tiene columna hotelId (migración faltante), por eso
+  // no se persiste aquí — el ownership se resuelve vía la reservation padre (assertCompanionOwned).
+  await assertReservationOwned(reservationRepo, userRepo, auth, reservationId, user)
   return repo.create({
-    id: crypto.randomUUID(),
     reservationId,
-    hotelId: res.hotelId,
     name: dto.name,
     documentType: dto.documentType || 'passport',
     documentNumber: dto.documentNumber || '',
