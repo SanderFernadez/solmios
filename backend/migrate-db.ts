@@ -506,8 +506,8 @@ function seedDemoTalentoFinanzas() {
     run('INSERT INTO payroll_runs (id, hotelId, period, startDate, endDate, paymentDate, status) VALUES (?,?,?,?,?,?,?)',
       [runId, DEMO_HOTEL, '2026-06', '2026-06-01', '2026-06-30', '2026-06-30', 'processed'])
     for (const e of emps)
-      run('INSERT INTO payroll_run_details (id, runId, employeeId, baseSalary, additions, deductions, netPay, hoursWorked) VALUES (?,?,?,?,?,?,?,?)',
-        [uuid(), runId, e.id, e.salary ?? 0, 0, 0, Math.round((e.salary ?? 0) * 0.9), 160])
+      run('INSERT INTO payroll_run_details (id, runId, employeeId, baseSalary, daysWorked, hoursWorked, earnings, deductions, grossPay, totalDeductions, netPay, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+        [uuid(), runId, e.id, e.salary ?? 0, 22, 160, '[]', '[]', e.salary ?? 0, 0, Math.round((e.salary ?? 0) * 0.9), 'processed'])
   }
   if (cnt('attendance_records') === 0)
     for (const e of emps)
