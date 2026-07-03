@@ -52,7 +52,7 @@ const PreCheckinSchema: Record<string, ValidationRule> = {
   phone: { type: 'string' as const, max: 30 },
   documentType: { type: 'string' as const, enum: ['dni', 'passport', 'other'] },
   documentNumber: { type: 'string' as const, min: 5, max: 50 },
-  nationality: { type: 'string' as const, min: 2, max: 2 },
+  nationality: { type: 'string' as const, min: 2, max: 50 },
   birthDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
 }
 

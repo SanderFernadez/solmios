@@ -639,12 +639,12 @@ function mapGuestRow(g: any) {
   const lastVisitIso = counted.length ? counted.map((r: any) => r.checkOut).filter(Boolean).sort().reverse()[0] : ''
   return {
     id: g.id,
-    name: g.name ?? `${g.firstName} ${g.lastName}`.trim(),
-    initials: initialsOf(g.name ?? g.firstName),
+    name: g.name ?? '',
+    initials: initialsOf(g.name),
     email: g.email ?? '',
     phone: g.phone ?? '',
     nationality: g.nationality ?? '',
-    document: g.documentNumber ?? '',
+    document: g.document ?? '',
     birthDate: g.birthDate ?? '',
     stays: g.totalStays,
     totalSpent: g.totalSpent,

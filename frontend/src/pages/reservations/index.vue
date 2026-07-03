@@ -675,7 +675,7 @@ async function load() {
       const room = rm.get(r.roomId)
       const guest = gm.get(r.guestId)
       return {
-        id: r.id, guestName: guest?.name || guest?.firstName || 'Guest', email: guest?.email || '',
+        id: r.id, guestName: guest?.name || 'Guest', email: guest?.email || '',
         roomNumber: room?.number || r.roomNumber || '—', roomId: r.roomId, guestId: r.guestId,
         checkIn: String(r.checkIn || '').slice(0, 10), checkOut: String(r.checkOut || '').slice(0, 10),
         nights: nBetween(r.checkIn, r.checkOut), status: r.status, source: r.source,

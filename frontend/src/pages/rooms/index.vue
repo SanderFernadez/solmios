@@ -546,7 +546,7 @@ async function load() {
 
     const guestsMap = new Map<string, string>()
     for (const g of (guestsData as any).guests || []) {
-      if (g.id) guestsMap.set(g.id, g.name || `${g.firstName || ''} ${g.lastName || ''}`.trim())
+      if (g.id) guestsMap.set(g.id, g.name || '')
     }
 
     const reservations = (reservationsData as any).reservations || []
