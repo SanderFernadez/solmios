@@ -17,6 +17,7 @@ export class BookingengineController {
   constructor(
     private readonly service: BookingengineService,
     private readonly logger: Logger,
+    private readonly orm?: any,
   ) {}
 
   // ─── Admin (protegido con auth) ──────────────────────
@@ -114,5 +115,14 @@ export class BookingengineController {
     const data = validateSchema(TrackEventSchema, req.body) as unknown as CreateConversionEventDTO
     const event = await this.service.trackEvent(data)
     return { status: 201, body: event }
+  }
+
+  async dashboard(req: HttpRequest) {
+    this.logger.info('GET /api/booking-engine')
+    const user = req.user as any
+    const hotelId = user?.hotelId || (req.query as any)?.hotelId
+    if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
+    const result = await this.service.dashboard(hotelId, user)
+    return { status: 200, body: result }
   }
 }

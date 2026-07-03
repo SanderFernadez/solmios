@@ -7,18 +7,18 @@ import type { ReservasDTO } from './types'
 export { ReservasService }
 export type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 export type { ReservasSockets } from './sockets'
-export { ReservasValidator, CreateReservasSchema, UpdateReservasSchema } from './validators/schema'
+export { ReservasValidator, CreateReservasSchema, UpdateReservasSchema, PreCheckinSchema } from './validators/schema'
 
 export function ReservasModule() {
   return createModule({
     name: 'reservas',
-    version: '2.0.0',
-    description: 'Módulo de reservas — bookings with availability check',
+    version: '2.1.0',
+    description: 'Módulo de reservas — bookings, checkin/checkout, pre-checkin, guarantee cards, detail, audit',
     contract: {
       name: 'reservas',
-      version: '2.0.0',
-      description: 'Reservations with ownership, availability, and validation',
-      actions: ['list', 'getById', 'create', 'update', 'delete'],
+      version: '2.1.0',
+      description: 'Reservations with ownership, availability, validation, checkin/checkout, pre-checkin, guarantee',
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'checkin', 'checkout', 'getExtendedDetail', 'getAuditTrail', 'getPreCheckinData', 'submitPreCheckin', 'getBookingEngineDashboard'],
       events: ['onReservasCreated', 'onReservasUpdated', 'onReservasDeleted'],
       tables: ['reservations'],
       dependencies: [],
@@ -36,27 +36,52 @@ export function ReservasModule() {
       const blockRepo = new OrmRepository<any>(orm, 'RoomBlocks')
       const companionsRepo = new OrmRepository<any>(orm, 'Companions')
       const addonsRepo = new OrmRepository<any>(orm, 'ReservationAddons')
-      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, blockRepo)
-      const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth)
+      const messageLogRepo = new OrmRepository<any>(orm, 'MessageLogs')
+      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, blockRepo, orm)
+      const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth, orm, null, messageLogRepo, roomRepo, hotelRepo)
 
-      router.get('/api/reservas', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/reservas/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/reservas', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/reservas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/reservas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const hsa = [auth.authenticate('hotel_admin', 'super_admin')]
+      const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
 
-      // ── Companions (F2) — /api/reservations/* (detalle enriquecido, distinto del CRUD /api/reservas) ──
-      router.get('/api/reservations/:id/companions', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.listCompanions(req))
-      router.post('/api/reservations/:id/companions', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.createCompanion(req))
-      router.put('/api/companions/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.updateCompanion(req))
-      router.delete('/api/companions/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.deleteCompanion(req))
+      // ── CRUD ──
+      router.get('/api/reservas', hra, (req) => controller.index(req))
+      router.get('/api/reservas/:id', hra, (req) => controller.show(req))
+      router.post('/api/reservas', hra, (req) => controller.store(req))
+      router.put('/api/reservas/:id', hsa, (req) => controller.update(req))
+      router.delete('/api/reservas/:id', hsa, (req) => controller.destroy(req))
 
-      // ── Addons (F2) ──
-      router.get('/api/reservations/:id/addons', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.listAddons(req))
-      router.post('/api/reservations/:id/addons', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.createAddon(req))
-      router.delete('/api/addons/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.deleteAddon(req))
+      // ── Companions ──
+      router.get('/api/reservations/:id/companions', hra, (req) => controller.listCompanions(req))
+      router.post('/api/reservations/:id/companions', hra, (req) => controller.createCompanion(req))
+      router.put('/api/companions/:id', hsa, (req) => controller.updateCompanion(req))
+      router.delete('/api/companions/:id', hsa, (req) => controller.deleteCompanion(req))
 
-      log.info('Módulo reservas v2 listo')
+      // ── Addons ──
+      router.get('/api/reservations/:id/addons', hra, (req) => controller.listAddons(req))
+      router.post('/api/reservations/:id/addons', hra, (req) => controller.createAddon(req))
+      router.delete('/api/addons/:id', hsa, (req) => controller.deleteAddon(req))
+
+      // ── Check-in / Check-out ──
+      router.post('/api/reservas/:id/checkin', hra, (req) => controller.checkin(req))
+      router.post('/api/reservas/:id/checkout', hra, (req) => controller.checkout(req))
+
+      // ── Pre-checkin (público) ──
+      router.get('/api/public/pre-checkin/:hash', (req) => controller.getPreCheckinData(req))
+      router.post('/api/public/pre-checkin/:hash', (req) => controller.submitPreCheckin(req))
+
+      // ── Extended detail + Audit ──
+      router.get('/api/reservations/:id', hra, (req) => controller.getExtendedDetail(req))
+      router.get('/api/reservations/:id/audit', hra, (req) => controller.getAuditTrail(req))
+
+      // ── Guarantee card ──
+      router.post('/api/guarantee/pin', hsa, (req) => controller.setGuaranteePin(req))
+      router.get('/api/guarantee/has-pin', hra, (req) => controller.getGuaranteeHasPin(req))
+      router.post('/api/reservations/:id/guarantee-card/unlock', hra, (req) => controller.unlockGuaranteeCard(req))
+
+      // ── Booking engine dashboard ──
+      router.get('/api/booking-engine', hsa, (req) => controller.getBookingEngineDashboard(req))
+
+      log.info('Módulo reservas v2.1 listo (22 endpoints)')
       return service
     },
   })

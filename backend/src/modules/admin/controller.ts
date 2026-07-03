@@ -1,0 +1,100 @@
+import type { HttpRequest, Logger } from 'arckode-framework'
+import type { AdminService } from './service'
+
+export class AdminController {
+  constructor(
+    private readonly service: AdminService,
+    private readonly logger: Logger,
+  ) {}
+
+  async listHotels() {
+    return { status: 200, body: await this.service.listHotels() }
+  }
+
+  async listUsers() {
+    return { status: 200, body: await this.service.listUsers() }
+  }
+
+  async getAnalytics() {
+    return { status: 200, body: await this.service.getAnalytics() }
+  }
+
+  async listSubscriptions() {
+    return { status: 200, body: await this.service.listSubscriptions() }
+  }
+
+  async listAuditLogs() {
+    return { status: 200, body: await this.service.listAuditLogs() }
+  }
+
+  async listAnnouncements() {
+    return { status: 200, body: await this.service.listAnnouncements() }
+  }
+
+  async getMonitoring() {
+    return { status: 200, body: await this.service.getMonitoring() }
+  }
+
+  async listPlans() {
+    return { status: 200, body: await this.service.listPlans() }
+  }
+
+  async createPlan(req: HttpRequest) {
+    try {
+      const plan = await this.service.createPlan(req.body)
+      return { status: 201, body: plan }
+    } catch (e: any) {
+      return { status: 400, body: { error: e.message } }
+    }
+  }
+
+  async updatePlan(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.updatePlan(req.params.id, req.body, req.user as any) }
+    } catch (e: any) {
+      return { status: e.message.includes('no encontrado') ? 404 : 400, body: { error: e.message } }
+    }
+  }
+
+  async deletePlan(req: HttpRequest) {
+    try {
+      await this.service.deletePlan(req.params.id, req.user as any)
+      return { status: 200, body: { success: true } }
+    } catch (e: any) {
+      return { status: 404, body: { error: e.message } }
+    }
+  }
+
+  async listAmenitiesCatalog() {
+    return { status: 200, body: await this.service.listAmenitiesCatalog() }
+  }
+
+  async createAmenityCatalog(req: HttpRequest) {
+    try {
+      return { status: 201, body: await this.service.createAmenityCatalog(req.body) }
+    } catch (e: any) {
+      return { status: 409, body: { error: e.message } }
+    }
+  }
+
+  async updateAmenityCatalog(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.updateAmenityCatalog(req.params.id, req.body, req.user as any) }
+    } catch (e: any) {
+      return { status: 404, body: { error: e.message } }
+    }
+  }
+
+  async deleteAmenityCatalog(req: HttpRequest) {
+    try {
+      await this.service.deleteAmenityCatalog(req.params.id, req.user as any)
+      return { status: 200, body: { success: true } }
+    } catch (e: any) {
+      return { status: 404, body: { error: e.message } }
+    }
+  }
+
+  async getPublicUsers() {
+    return { status: 200, body: await this.service.getPublicUsers() }
+  }
+}

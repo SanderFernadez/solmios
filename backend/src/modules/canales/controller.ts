@@ -15,7 +15,13 @@ export class CanalesController {
   constructor(
     private readonly service: CanalesService,
     private readonly logger: Logger,
+    private readonly orm?: any,
   ) {}
+
+  async syncLog(req: HttpRequest) {
+    const hotelId = (req.query as any)?.hotelId || (req.user as any)?.hotelId
+    return { status: 200, body: await this.service.getSyncLog(hotelId) }
+  }
 
   // GET /api/channels?hotelId= — canales conectados (Channex real + fallback).
   async channels(req: HttpRequest) {

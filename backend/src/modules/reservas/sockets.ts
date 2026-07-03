@@ -8,4 +8,5 @@ export interface ReservasSockets {
   onReservasCreated?: (data: ReservasDTO) => Promise<void>
   onReservasUpdated?: (data: ReservasDTO) => Promise<void>
   onReservasDeleted?: (id: string) => Promise<void>
+  onReservationCheckedOut?: (data: { reservationId: string; roomId: string; hotelId: string }) => Promise<void>
 }

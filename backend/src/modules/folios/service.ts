@@ -1,6 +1,3 @@
-// folios/service.ts — Casos de uso del dominio de folios.
-// Un folio acumula cargos y pagos. Su balance = cargos - pagos.
-
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { FolioDTO, FolioChargeDTO, OpenFolioDTO, PostChargeDTO, ApplyPaymentDTO, FolioQuery, FolioListResult, CurrentUser } from './types'
@@ -8,13 +5,13 @@ import type { FoliosSockets } from './sockets'
 import { taxRateFor, applyTax, computeTotals } from './usecases/folio-math'
 import { folioSummary } from './usecases/folio-summary'
 import { closeAndInvoice as closeAndInvoiceUsecase, type CloseAndInvoiceResult } from './usecases/close-and-invoice'
+import { postNightAuditRoomCharges as postNightAuditUsecase } from './usecases/night-audit'
 
 export interface LookupDeps { guest: RepositoryAdapter<any>; reservation: RepositoryAdapter<any>; room: RepositoryAdapter<any>; user: RepositoryAdapter<any> }
 const now = () => new Date().toISOString()
 
 export class FoliosService {
   private sockets: FoliosSockets = {}
-
   constructor(
     private readonly folioRepo: RepositoryAdapter<FolioDTO>,
     private readonly chargeRepo: RepositoryAdapter<FolioChargeDTO>,
@@ -23,6 +20,7 @@ export class FoliosService {
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
+    private readonly orm?: any,
   ) {}
 
   setSockets(s: Partial<FoliosSockets>): void {
@@ -176,7 +174,6 @@ export class FoliosService {
 
   /** Cierra el folio y genera la factura con los cargos como líneas de detalle. */
   async closeAndInvoice(folioId: string, user: CurrentUser): Promise<CloseAndInvoiceResult> {
-    this.logger.info('Cerrando folio y generando factura', { folioId })
     const result = await closeAndInvoiceUsecase(
       {
         folioRepo: this.folioRepo,
@@ -192,5 +189,9 @@ export class FoliosService {
     await this.sockets.onFolioClosed?.(result.folio)
     await this.cache.delete(`folios:list:${result.folio.hotelId || 'all'}:*`)
     return result
+  }
+
+  async postNightAuditRoomCharges(user: any, query?: any): Promise<any> {
+    return postNightAuditUsecase(this.orm, (q:any,u:any)=>this.list(q,u), (d:any,u:any)=>this.open(d,u), (id:string,d:any,u:any)=>this.postCharge(id,d,u), user, query)
   }
 }

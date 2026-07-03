@@ -6,9 +6,11 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerHotelesModels } from './model'
 import { HotelesService } from './service'
 import { HotelesController } from './controller'
+import { SettingsFullUseCase } from './usecases/settings-full'
 import type { HotelesDTO } from './types'
 
 export { HotelesService }
+export { SettingsFullUseCase }
 export type { HotelesDTO, CreateHotelesDTO, UpdateHotelesDTO, HotelesQuery, HotelesPaginated } from './types'
 export type { HotelesSockets } from './sockets'
 export { HotelesValidator, CreateHotelesSchema, UpdateHotelesSchema } from './validators/schema'
@@ -36,16 +38,27 @@ export function HotelesModule() {
 
       const repo = new OrmRepository<HotelesDTO>(orm, 'Hotels')
       const log = logger.child('hoteles')
-      const service = new HotelesService(repo, log, cache, auth)
-      const controller = new HotelesController(service, log)
+      const settingsFull = new SettingsFullUseCase(orm)
+      const service = new HotelesService(repo, log, cache, auth, orm, settingsFull)
+      const controller = new HotelesController(service, log, orm)
 
-      router.get('/api/hoteles', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/hoteles/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
+      const hsa = [auth.authenticate('hotel_admin', 'super_admin')]
+      const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
+
+      router.get('/api/hoteles', hra, (req) => controller.index(req))
+      router.get('/api/hoteles/:id', hra, (req) => controller.show(req))
       router.post('/api/hoteles', [auth.authenticate('super_admin')], (req) => controller.store(req))
-      router.put('/api/hoteles/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
+      router.put('/api/hoteles/:id', hsa, (req) => controller.update(req))
       router.delete('/api/hoteles/:id', [auth.authenticate('super_admin')], (req) => controller.destroy(req))
 
-      log.info('Módulo hoteles v2 listo')
+      // Settings
+      router.get('/api/settings', hsa, (req) => controller.getSettings(req))
+      router.put('/api/settings/hotel', hsa, (req) => controller.updateHotel(req))
+      router.get('/api/settings/full', hsa, (req) => controller.getSettingsFull(req))
+      router.get('/api/configuracion/:key', hra, (req) => controller.getConfig(req))
+      router.post('/api/configuracion', hsa, (req) => controller.setConfig(req))
+
+      log.info('Módulo hoteles v2 listo (5 settings endpoints)')
       return service
     },
   })

@@ -40,7 +40,7 @@ export function CanalesModule() {
       const log = logger.child('canales')
       const syncLogRepo = new OrmRepository<any>(orm, 'SyncLog')
       const service = new CanalesService(repo, userRepo, log, cache, auth, orm, syncLogRepo)
-      const controller = new CanalesController(service, log)
+      const controller = new CanalesController(service, log, orm)
 
       const resolveHotelId = async (q: any, body: any) =>
         body?.hotelId || q?.hotelId || ((await orm.findMany('Hotels', {}))[0] as any)?.id
@@ -95,6 +95,8 @@ export function CanalesModule() {
       router.post('/api/canales', [auth.authenticate('super_admin')], (req) => controller.store(req))
       router.put('/api/canales/:id', [auth.authenticate('super_admin')], (req) => controller.update(req))
       router.delete('/api/canales/:id', [auth.authenticate('super_admin')], (req) => controller.destroy(req))
+
+      router.get('/api/channels/sync-log', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.syncLog(req))
 
       log.info('Módulo canales (Channex) listo')
       return service

@@ -1,8 +1,3 @@
-// canales/service.ts — Facade pública del módulo (orquestador)
-// Delega las operaciones de Channex a usecases/channex.ts (client API).
-// Aquí vive solo: config por hotel + CRUD sobre la config + orquestación.
-// NO sabe de HTTP. NO importa de otros módulos. Recibe dependencias por constructor.
-
 import type { RepositoryAdapter, Logger, CacheAdapter, ORM, Auth } from 'arckode-framework'
 import { NotFoundError } from 'arckode-framework'
 import type {
@@ -164,6 +159,12 @@ export class CanalesService {
   }
   async getChannelDetail(hotelId: string, channelId: string): Promise<any | null> {
     return this.channelApi.getChannelDetail(await this.getConfig(hotelId), channelId)
+  }
+
+  async getSyncLog(hotelId?: string): Promise<any[]> {
+    if (!this.orm) return []
+    const rows = await this.orm.findMany('Configuration', { hotelId: hotelId || 'platform', key: 'channex_sync_log' })
+    const raw = (rows[0] as any)?.value; return raw ? JSON.parse(raw) : []
   }
 
   // ─── CRUD delegado a usecase ─────────────────────────────────────────

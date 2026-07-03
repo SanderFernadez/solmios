@@ -104,3 +104,14 @@ export const AddonSchema: Record<string, ValidationRule> = {
   amount: { type: 'number' as const, min: 0 },
   quantity: { type: 'number' as const, min: 1, max: 100 },
 }
+
+// ── Pre-Checkin (público) ──
+export const PreCheckinSchema: Record<string, ValidationRule> = {
+  guestName: { type: 'string' as const, min: 2 },
+  email: { type: 'string' as const },
+  phone: { type: 'string' as const, max: 30 },
+  documentType: { type: 'string' as const, enum: ['dni', 'passport', 'other'] },
+  documentNumber: { type: 'string' as const, min: 5, max: 50 },
+  nationality: { type: 'string' as const, min: 2, max: 50 },
+  birthDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+}

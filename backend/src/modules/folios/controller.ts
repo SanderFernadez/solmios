@@ -8,6 +8,7 @@ export class FoliosController {
   constructor(
     private readonly service: FoliosService,
     private readonly logger: Logger,
+    private readonly orm?: any,
   ) {}
 
   async index(req: HttpRequest) {
@@ -39,5 +40,9 @@ export class FoliosController {
 
   async closeAndInvoice(req: HttpRequest) {
     return { status: 200, body: await this.service.closeAndInvoice(req.params.id, req.user as any) }
+  }
+
+  async postNightAuditRoomCharges(req: HttpRequest) {
+    return { status: 200, body: await this.service.postNightAuditRoomCharges(req.user as any, req.query as any) }
   }
 }

@@ -12,6 +12,7 @@ export class HotelesController {
   constructor(
     private readonly service: HotelesService,
     private readonly logger: Logger,
+    private readonly orm?: any,
   ) {}
 
   async index(req: HttpRequest) {
@@ -48,5 +49,48 @@ export class HotelesController {
     const currentUser = req.user as any
     await this.service.delete(req.params.id, currentUser)
     return { status: 204, body: null }
+  }
+
+  // ── Settings ─────────────────────────────────────────────────────────
+  async getSettings(req: HttpRequest) {
+    const id = await this.resolveHotel(req)
+    if (!id) return { status: 404, body: { error: 'Sin hotel' } }
+    const result = await this.service.getSettings(id, req.user as any)
+    return { status: 200, body: result }
+  }
+
+  async updateHotel(req: HttpRequest) {
+    const id = (req.body as any).id || (await this.resolveHotel(req))
+    if (!id) return { status: 404, body: { error: 'Sin hotel' } }
+    const body = await this.service.updateHotel(id, req.body as any, req.user as any)
+    return { status: 200, body }
+  }
+
+  async getSettingsFull(req: HttpRequest) {
+    const id = await this.resolveHotel(req); if (!id) return { status: 404, body: { error: 'Sin hotel' } }
+    const result = await this.service.getSettingsFull(id, req.user as any)
+    return { status: 200, body: result }
+  }
+
+  // ── Configuration KV ────────────────────────────────────────────────
+  async getConfig(req: HttpRequest) {
+    const id = await this.resolveHotel(req)
+    if (!id) return { status: 404, body: { error: 'Sin hotel' } }
+    const result = await this.service.getConfig(id, req.params.key)
+    return { status: 200, body: result }
+  }
+
+  async setConfig(req: HttpRequest) {
+    const result = await this.service.setConfig(req.body as any)
+    return { status: 200, body: result }
+  }
+
+  private async resolveHotel(req: any): Promise<string | undefined> {
+    const q = req?.query || {}; if (q.hotelId) return q.hotelId
+    const user = req?.user; if (user?.hotelId && user?.hotelId !== 'platform') return user.hotelId
+    if (user?.id && user?.role !== 'super_admin') {
+      const rows = await this.orm!.findMany('Users', { id: user.id }); const u: any = rows?.[0]; if (u?.hotelId) return u.hotelId
+    }
+    return ((await this.orm!.findMany('Hotels', {}))[0] as any)?.id
   }
 }

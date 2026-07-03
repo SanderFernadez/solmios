@@ -39,14 +39,15 @@ export function BookingengineModule() {
       const eventsRepo = new OrmRepository<ConversionEventDTO>(orm, 'ConversionEvents')
 
       const log = logger.child('bookingengine')
-      const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache)
-      const controller = new BookingengineController(service, log)
+      const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache, orm, auth)
+      const controller = new BookingengineController(service, log, orm)
 
       // Admin routes (protegidas con auth)
       if (auth) {
         router.get('/booking-engine/config', [auth.authenticate('admin', 'superadmin')], (req: any) => controller.getConfig(req))
         router.put('/booking-engine/config', [auth.authenticate('admin', 'superadmin')], (req: any) => controller.updateConfig(req))
         router.get('/booking-engine/analytics', [auth.authenticate('admin', 'superadmin')], (req: any) => controller.getAnalytics(req))
+        router.get('/api/booking-engine', [auth.authenticate('hotel_admin', 'super_admin')], (req: any) => controller.dashboard(req))
       }
 
       // Público (sin auth)

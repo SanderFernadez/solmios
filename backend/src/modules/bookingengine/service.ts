@@ -31,6 +31,8 @@ export class BookingengineService {
     eventsRepo: RepositoryAdapter<ConversionEventDTO>,
     private readonly logger: Logger,
     cache: CacheAdapter,
+    private readonly orm?: any,
+    private readonly auth?: any,
   ) {
     this.config = new ConfigUseCase(configRepo, cache)
     this.availability = new AvailabilityUseCase(availabilityRepo, cache)
@@ -92,5 +94,20 @@ export class BookingengineService {
 
   async getAnalytics(hotelId: string, from?: string, to?: string): Promise<BookingAnalytics> {
     return this.analytics.getAnalytics(hotelId, from, to)
+  }
+
+  async dashboard(hotelId: string, user?: any): Promise<any> {
+    if (!this.orm) throw new Error('ORM no disponible')
+    const [hotel, rooms] = await Promise.all([
+      this.orm.findById('Hotels', hotelId),
+      this.orm.findMany('Rooms', { hotelId }),
+    ])
+    if (this.auth) this.auth.assertOwnership(hotel, user)
+    const roomTypes = [...new Map((rooms as any[]).map((r: any) => [r.type || 'standard', { type: r.type || 'standard', price: r.basePrice, count: 0 }])).values()] as any[]
+    for (const r of rooms as any[]) { const t = roomTypes.find((rt: any) => rt.type === (r.type || 'standard')); if (t) t.count++ }
+    const now = new Date(); const m = String(now.getMonth() + 1).padStart(2, '0')
+    const direct = (await this.orm.findMany('Reservations', { hotelId, source: 'booking_engine' })) as any[]
+    const monthly = direct.filter((r: any) => r.createdAt && String(r.createdAt).slice(0, 7) === `${now.getFullYear()}-${m}`)
+    return { hotel, roomTypes, directMonth: monthly.length, directTotal: direct.length }
   }
 }

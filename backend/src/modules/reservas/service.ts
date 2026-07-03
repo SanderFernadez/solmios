@@ -3,18 +3,16 @@
 // Si supera 200 líneas -> extraer casos de uso a ./usecases/{caso}.ts.
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError, AuthError, ConflictError } from 'arckode-framework'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 import type { ReservasSockets } from './sockets'
-import { assertRoomAvailable } from './usecases/availability'
+import { checkinValidation, checkoutValidation, executeCheckin } from './usecases/checkin'
 import { NullEmailSender, type EmailSender } from '../../services/email-sender'
 import { dispatchCreateEmail } from './usecases/reservation-notifications'
-import { assertUpdateValidations } from './usecases/validate-update'
-import { safeEmit } from './usecases/safe-emit'
+import { setGuaranteePin as setGuaranteePinUsecase, getGuaranteeHasPin as getGuaranteeHasPinUsecase, unlockGuaranteeCard as unlockGuaranteeCardUsecase } from './usecases/guarantee'
+import { listReservations, getReservationById, createReservation, updateReservation, deleteReservation } from './usecases/crud'
+import { getPreCheckinData as getPreCheckinDataUsecase, submitPreCheckin as submitPreCheckinUsecase, findReservationByHash as findReservationByHashUsecase } from './usecases/pre-checkin'
+import { getExtendedDetail as getExtendedDetailUsecase, getAuditTrail as getAuditTrailUsecase } from './usecases/detail'
 
-const CACHE_TTL = 300 // seconds
-const DEFAULT_LIMIT = 20
-const MAX_LIMIT = 100
 const MS_PER_DAY = 86_400_000
 
 export class ReservasService {
@@ -23,6 +21,16 @@ export class ReservasService {
   private messageLogRepo: RepositoryAdapter<any> | null = null
   setEmailDeps(es: EmailSender, r: RepositoryAdapter<any>): void { this.emailSender = es; this.messageLogRepo = r }
   private notifyDeps = () => ({ emailSender: this.emailSender, messageLogRepo: this.messageLogRepo, guestRepo: this.guestRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, logger: this.logger })
+
+  // Cross-module orchestration deps (set from composition-root)
+  private orchestrationDeps: {
+    pushAvailabilityToChannex?: (hotelId: string, roomId: string) => void
+    sendCheckinEmail?: (deps: any, data: any) => Promise<void>
+    dispatchLifecycleEmail?: (deps: any, data: any) => Promise<void>
+  } = {}
+  setOrchestrationDeps(deps: typeof ReservasService.prototype.orchestrationDeps): void {
+    Object.assign(this.orchestrationDeps, deps)
+  }
 
   constructor(
     private readonly repo: RepositoryAdapter<ReservasDTO>,
@@ -34,6 +42,7 @@ export class ReservasService {
     private readonly roomRepo: RepositoryAdapter<any>,
     private readonly hotelRepo: RepositoryAdapter<any>,
     private readonly blockRepo?: RepositoryAdapter<any>,
+    private readonly orm?: any,
   ) {}
 
   // ACUMULA handlers — nunca pisa el anterior.
@@ -50,151 +59,109 @@ export class ReservasService {
     }
   }
 
-  // LIST — paginado con cache
   async list(query: ReservasQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasPaginated> {
-    this.logger.info('Listando reservas', { query, userId: currentUser.id })
-
-    const filters: Record<string, unknown> = {}
-    if (query.status) filters.status = query.status
-    if (query.channel) filters.channel = query.channel
-    if (query.roomId) filters.roomId = query.roomId
-    if (query.guestId) filters.guestId = query.guestId
-
-    // Multi-tenancy
-    // Resolve hotelId from DB if not provided in token
-    let hotelId = currentUser.hotelId
-    if (!hotelId && currentUser.role !== 'super_admin') {
-      const user = await this.userRepo.findById(currentUser.id)
-      hotelId = user?.hotelId
-    }
-
-    if (currentUser.role !== 'super_admin') {
-      if (!hotelId) throw new AuthError('No hotel assigned')
-      filters.hotelId = hotelId
-    } else if (query.hotelId) {
-      filters.hotelId = query.hotelId
-    }
-
-    const page = Math.max(query.page || 1, 1)
-    const limit = Math.min(Math.max(query.limit || DEFAULT_LIMIT, 1), MAX_LIMIT)
-    const offset = (page - 1) * limit
-
-    // Cache key includes hotel scope + query params for correctness
-    const cacheKey = `reservas:list:${hotelId || 'all'}:${JSON.stringify(filters)}:${page}:${limit}`
-    const cached = await this.cache.get(cacheKey)
-    if (cached) return cached as ReservasPaginated
-
-    let result
-    if (query.search) {
-      // Search by guestId or externalLocator
-      filters.externalLocator = { $like: `%${query.search}%` }
-      result = await this.repo.paginate(filters, { offset, limit })
-    } else {
-      result = await this.repo.paginate(filters, { offset, limit })
-    }
-
-    const response: ReservasPaginated = {
-      data: result.data,
-      total: result.total,
-      page,
-      limit,
-      pages: Math.ceil(result.total / limit),
-    }
-    await this.cache.set(cacheKey, response, CACHE_TTL)
-    return response
+    return listReservations(this.repo, this.userRepo, this.cache, this.logger, query, currentUser)
   }
 
-  // GET BY ID — ownership check
   async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Obteniendo reserva', { id, userId: currentUser.id })
-
-    const item = await this.repo.findById(id)
-    if (!item) throw new NotFoundError('Reserva no encontrada')
-
-    // Multi-tenancy: super_admin sees all, others only their hotel
-    if (currentUser.role !== 'super_admin' && item.hotelId !== currentUser.hotelId) {
-      throw new AuthError('No autorizado')
-    }
-    return item
+    return getReservationById(this.repo, id, currentUser)
   }
 
-  // CREATE — date validation + availability + ownership
   async create(dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Creando reserva', { userId: currentUser.id, roomId: dto.roomId })
-
-    // Multi-tenancy: cannot create in another hotel
-    if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
-      throw new AuthError('No autorizado para crear en otro hotel')
-    }
-
-    // Date validation: checkIn must be before checkOut (conflict, no auth error)
-    if (dto.checkIn >= dto.checkOut) {
-      throw new ConflictError('checkIn debe ser anterior a checkOut')
-    }
-
-    // Availability check — no overlap with active reservations
-    await assertRoomAvailable(this.repo, dto.roomId, dto.checkIn, dto.checkOut)
-
-    // Block dates check — no reservation on blocked dates
-    if (this.blockRepo) {
-      const blocks = await this.blockRepo.findMany({ roomId: dto.roomId, hotelId: dto.hotelId })
-      for (const block of blocks as any[]) {
-        if (dto.checkIn <= block.endDate && dto.checkOut >= block.startDate) {
-          throw new ConflictError(`Habitación bloqueada del ${block.startDate} al ${block.endDate}: ${block.reason || 'Sin motivo'}`)
-        }
-      }
-    }
-
-    const item = await this.repo.create(dto as any)
-    await safeEmit(this.logger, 'onReservasCreated', this.sockets.onReservasCreated, item)
-    await this.cache.delete(`reservas:list:${dto.hotelId}`)
-
-    // ── Encolar email según communicateClient (spec 6.1.4) ──
+    const item = await createReservation(this.repo, this.blockRepo, this.logger, this.cache, this.sockets, this.notifyDeps(), dto, currentUser)
     dispatchCreateEmail(this.notifyDeps(), dto, item)
-
     return item
   }
 
-  // UPDATE — ownership + date validation + availability
   async update(id: string, dto: UpdateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Actualizando reserva', { id, userId: currentUser.id })
-
-    const existing = await this.repo.findById(id)
-    if (!existing) throw new NotFoundError('Reserva no encontrada')
-
-    // Multi-tenancy
-    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
-      throw new AuthError('No autorizado')
-    }
-
-    // Validaciones de update: máquina de estados + coherencia de fechas + disponibilidad.
-    await assertUpdateValidations(this.repo, existing, dto, currentUser, id)
-
-    const item = await this.repo.update(id, dto as any)
-    if (!item) throw new NotFoundError('Reserva no encontrada')
-
-    await safeEmit(this.logger, 'onReservasUpdated', this.sockets.onReservasUpdated, item)
-    await this.cache.delete(`reservas:list:${existing.hotelId}`)
-
-    return item
+    return updateReservation(this.repo, this.logger, this.cache, this.sockets, id, dto, currentUser)
   }
 
-  // DELETE — ownership check
   async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
     this.logger.info('Eliminando reserva', { id, userId: currentUser.id })
+    return deleteReservation(this.repo, this.logger, this.cache, this.sockets, id, currentUser)
+  }
 
-    const existing = await this.repo.findById(id)
-    if (!existing) throw new NotFoundError('Reserva no encontrada')
+  // ── CHECK-IN ─────────────────────────────────────────────────────────────
+  async checkin(id: string, user: any): Promise<any> {
+    return checkinValidation(this.repo, id, user, this.auth)
+  }
 
-    // Multi-tenancy
-    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
-      throw new AuthError('No autorizado')
+  async executeCheckin(r: any, user: any, deps: { orm: any; pushAvailabilityToChannex?: any; sendCheckinEmail?: any; logger?: any }): Promise<any> {
+    const result = await executeCheckin(r, user, {
+      orm: deps.orm,
+      logger: deps.logger || this.logger,
+      repo: this.repo,
+    })
+    return result
+  }
+
+  // ── CHECK-OUT ──────────────────────────────────────────────────────────
+  async checkout(id: string, user: any): Promise<any> {
+    return checkoutValidation(this.repo, id, user, this.auth)
+  }
+
+  async executeCheckout(r: any, user: any, deps: { orm: any; invalidateHousekeepingCache?: () => Promise<void>; pushAvailabilityToChannex?: any; dispatchLifecycleEmail?: any; logger?: any }): Promise<any> {
+    const nowIso = new Date().toISOString()
+    try {
+      await deps.orm.update('Reservations', r.id, { status: 'checked_out', checkedOutAt: nowIso })
+    } catch (e: any) {
+      throw new Error(`Error interno al procesar check-out: ${e.message}`)
     }
+    const log = deps.logger || this.logger
+    deps.orm.create('Auditlog', { id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id, action: 'checkout', userId: user.id, hotelId: r.hotelId, detail: JSON.stringify({ roomId: r.roomId, guestId: r.guestId, checkIn: r.checkIn, checkOut: r.checkOut }), createdAt: nowIso }).catch((e: any) => log.warn('auditlog checkout', { error: e.message }))
+    deps.orm.update('LockCodes', r.id, { status: 'expired' }).catch((e: any) => log.warn('lock code expiry', { error: e.message }))
+    await this.sockets.onReservationCheckedOut?.({ reservationId: r.id, roomId: r.roomId, hotelId: r.hotelId })
+    return { ok: true, reservationId: r.id, status: 'checked_out' }
+  }
 
-    const deleted = await this.repo.delete(id)
-    if (!deleted) throw new NotFoundError('Reserva no encontrada')
+  // ── PRE-CHECKIN (público) ──────────────────────────────────────────────
+  async getPreCheckinData(hash: string): Promise<any> {
+    return getPreCheckinDataUsecase(hash, this.hotelRepo, this.roomRepo, this.guestRepo, this.orm)
+  }
 
-    await safeEmit(this.logger, 'onReservasDeleted', this.sockets.onReservasDeleted, id)
-    await this.cache.delete(`reservas:list:${existing.hotelId}`)
+  async submitPreCheckin(hash: string, body: any): Promise<void> {
+    return submitPreCheckinUsecase(hash, body, this.orm, this.guestRepo)
+  }
+
+  // ── EXTENDED RESERVATION DETAIL ─────────────────────────────────────────
+  async getExtendedDetail(id: string, currentUser: any): Promise<any> {
+    return getExtendedDetailUsecase(this.repo, this.guestRepo, this.roomRepo, this.orm, id, currentUser)
+  }
+
+  // ── AUDIT TRAIL ────────────────────────────────────────────────────────
+  async getAuditTrail(id: string, currentUser: any): Promise<any[]> {
+    return getAuditTrailUsecase(this.repo, this.orm, id, currentUser)
+  }
+
+  // ── GUARANTEE CARD ──────────────────────────────────────────────────────
+  async setGuaranteePin(user: any, body: any): Promise<{ success: boolean }> {
+    return setGuaranteePinUsecase(this.orm, this.userRepo, user, body)
+  }
+
+  async getGuaranteeHasPin(user: any): Promise<{ hasPin: boolean }> {
+    return getGuaranteeHasPinUsecase(this.orm, this.userRepo, user)
+  }
+
+  async unlockGuaranteeCard(reservationId: string, user: any, body: any): Promise<any> {
+    return unlockGuaranteeCardUsecase(this.orm, this.repo, this.userRepo, reservationId, user, body, this.auth)
+  }
+
+  async getBookingEngineDashboard(user: any): Promise<any> {
+    if (!this.orm) throw new Error('ORM no disponible')
+    let hotelId = user?.hotelId
+    if (!hotelId || hotelId === 'platform') {
+      const hotels = await this.orm.findMany('Hotels', {}); const first: any = hotels[0]
+      hotelId = first?.id
+    }
+    const hotel = (await this.orm.findMany('Hotels', { id: hotelId }))[0] as any
+    const roomTypes = await this.orm.findMany('Rooms', { hotelId }) as any[]
+    const res = await this.orm.findMany('Reservations', { hotelId }) as any[]
+    const directas = res.filter((r: any) => r.channel === 'direct' || r.channel === 'whatsapp').length
+    const revenueDirecta = res.filter((r: any) => r.channel === 'direct' || r.channel === 'whatsapp').reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
+    return { hotel, roomTypes, total: roomTypes?.length || 0, directas, revenueDirecta, totalReservas: res.length, comisionesAhorradas: Math.round(revenueDirecta * 0.15) }
   }
 }

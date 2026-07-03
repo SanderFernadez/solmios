@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-03T04:42:09.823Z",
+  "_generated": "2026-07-03T15:48:44.983Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -113,6 +113,19 @@
       "complete": true
     },
     {
+      "name": "admin",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "empleados",
       "structure": {
         "index": true,
@@ -140,6 +153,19 @@
     },
     {
       "name": "attendance",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "reports",
       "structure": {
         "index": true,
         "types": true,
@@ -204,6 +230,32 @@
       "complete": true
     },
     {
+      "name": "pricing",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "feedback",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "payment-requests",
       "structure": {
         "index": true,
@@ -231,6 +283,19 @@
     },
     {
       "name": "facturas",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "amenities",
       "structure": {
         "index": true,
         "types": true,
@@ -334,6 +399,19 @@
       "complete": true
     },
     {
+      "name": "dashboard",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "roles",
       "structure": {
         "index": true,
@@ -413,6 +491,19 @@
     },
     {
       "name": "crm",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "ttlock",
       "structure": {
         "index": true,
         "types": true,

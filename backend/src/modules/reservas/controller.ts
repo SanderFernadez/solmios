@@ -1,9 +1,12 @@
 import type { HttpRequest, Logger, Auth, RepositoryAdapter } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { ReservasService } from './service'
-import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema } from './validators/schema'
+import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema, PreCheckinSchema } from './validators/schema'
 import { listCompanions, createCompanion, updateCompanion, deleteCompanion } from './usecases/companions'
 import { listAddons, createAddon, deleteAddon } from './usecases/addons'
+import { hashGuaranteePin, verifyGuaranteePin } from '../../services/guarantee-pin'
+import { sendCheckinEmail } from './usecases/checkin-email'
+import { dispatchLifecycleEmail } from './usecases/lifecycle-email'
 
 export class ReservasController {
   constructor(
@@ -14,6 +17,11 @@ export class ReservasController {
     private readonly reservationRepo: RepositoryAdapter<any>,
     private readonly userRepo: RepositoryAdapter<any>,
     private readonly auth: Auth,
+    private readonly orm?: any,
+    private readonly emailSender?: any,
+    private readonly messageLogRepo?: any,
+    private readonly roomRepoForEmail?: any,
+    private readonly hotelRepoForEmail?: any,
   ) {}
 
   // ── CRUD reservas (/api/reservas) ──
@@ -73,5 +81,123 @@ export class ReservasController {
   async deleteAddon(req: HttpRequest) {
     await deleteAddon(this.addonsRepo, this.reservationRepo, this.userRepo, this.auth, req.params.id, req.user as any)
     return { status: 200, body: { success: true } }
+  }
+
+  // ── CHECK-IN ──────────────────────────────────────────────────────────
+  async checkin(req: HttpRequest) {
+    try {
+      const { reservation, hotelId } = await this.service.checkin(req.params.id, req.user as any)
+      const result = await this.service.executeCheckin(reservation, req.user as any, { orm: this.orm, logger: this.logger })
+      this.pushChannex(reservation.hotelId, reservation.roomId)
+      sendCheckinEmail({ emailSender: this.emailSender, guestRepo: this.userRepo, roomRepo: this.roomRepoForEmail || this.orm, hotelRepo: this.hotelRepoForEmail || this.orm, messageLogRepo: this.messageLogRepo, logger: this.logger }, { reservationId: reservation.id, hotelId: reservation.hotelId, guestId: result.guestId, roomId: reservation.roomId, checkIn: reservation.checkIn, checkOut: reservation.checkOut }).catch((e: any) => this.logger.warn('check-in email', { error: e.message }))
+      return { status: 200, body: result }
+    } catch (e: any) {
+      if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
+      if (e.name === 'AuthError') return { status: 403, body: { error: e.message } }
+      if (e.name === 'ConflictError') return { status: 409, body: { error: e.message } }
+      return { status: 500, body: { error: e.message } }
+    }
+  }
+
+  // ── CHECK-OUT ─────────────────────────────────────────────────────────
+  async checkout(req: HttpRequest) {
+    try {
+      const { reservation, hotelId } = await this.service.checkout(req.params.id, req.user as any)
+      const result = await this.service.executeCheckout(reservation, req.user as any, { orm: this.orm, logger: this.logger })
+      this.pushChannex(reservation.hotelId, reservation.roomId)
+      dispatchLifecycleEmail({ emailSender: this.emailSender, guestRepo: this.userRepo, roomRepo: this.roomRepoForEmail || this.orm, hotelRepo: this.hotelRepoForEmail || this.orm, messageLogRepo: this.messageLogRepo, logger: this.logger }, { reservationId: reservation.id, hotelId: reservation.hotelId, guestId: reservation.guestId, roomId: reservation.roomId, checkIn: reservation.checkIn, checkOut: reservation.checkOut, event: 'checkout' }).catch((e: any) => this.logger.warn('checkout email', { error: e.message }))
+      return { status: 200, body: result }
+    } catch (e: any) {
+      if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
+      if (e.name === 'AuthError') return { status: 403, body: { error: e.message } }
+      if (e.name === 'ConflictError') return { status: 409, body: { error: e.message } }
+      return { status: 500, body: { error: e.message } }
+    }
+  }
+
+  private pushChannex(hotelId: string, roomId: string): void {
+    const svc = this.service as any
+    if (svc.orchestrationDeps?.pushAvailabilityToChannex) {
+      svc.orchestrationDeps.pushAvailabilityToChannex(hotelId, roomId)
+    }
+  }
+
+  // ── PRE-CHECKIN (público) ─────────────────────────────────────────────
+  async getPreCheckinData(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.getPreCheckinData(req.params.hash) }
+    } catch (e: any) {
+      return { status: e.message.includes('expiro') ? 410 : 404, body: { success: false, error: { message: e.message } } }
+    }
+  }
+
+  async submitPreCheckin(req: HttpRequest) {
+    try {
+      validateSchema(PreCheckinSchema, req.body)
+    } catch (e: any) {
+      return { status: 400, body: { success: false, error: { message: `Datos inválidos: ${e.message}` } } }
+    }
+    try {
+      await this.service.submitPreCheckin(req.params.hash, req.body)
+      return { status: 200, body: { success: true, message: 'Pre-checkin completado' } }
+    } catch (e: any) {
+      return { status: 404, body: { success: false, error: { message: e.message } } }
+    }
+  }
+
+  // ── EXTENDED DETAIL ───────────────────────────────────────────────────
+  async getExtendedDetail(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.getExtendedDetail(req.params.id, req.user) }
+    } catch (e: any) {
+      if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
+      return { status: 403, body: { error: e.message } }
+    }
+  }
+
+  // ── AUDIT TRAIL ───────────────────────────────────────────────────────
+  async getAuditTrail(req: HttpRequest) {
+    try {
+      return { status: 200, body: { data: await this.service.getAuditTrail(req.params.id, req.user) } }
+    } catch (e: any) {
+      if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
+      return { status: 403, body: { error: e.message } }
+    }
+  }
+
+  // ── GUARANTEE CARD ────────────────────────────────────────────────────
+  async setGuaranteePin(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.setGuaranteePin(req.user as any, req.body) }
+    } catch (e: any) {
+      return { status: 400, body: { error: e.message } }
+    }
+  }
+
+  async getGuaranteeHasPin(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.getGuaranteeHasPin(req.user as any) }
+    } catch (e: any) {
+      return { status: 401, body: { error: e.message } }
+    }
+  }
+
+  async unlockGuaranteeCard(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.unlockGuaranteeCard(req.params.id, req.user as any, req.body) }
+    } catch (e: any) {
+      if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
+      if (e.name === 'AuthError') return { status: 403, body: { error: e.message } }
+      return { status: 400, body: { error: e.message } }
+    }
+  }
+
+  // ── BOOKING ENGINE DASHBOARD ──────────────────────────────────────────
+  async getBookingEngineDashboard(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.getBookingEngineDashboard(req.user as any) }
+    } catch (e: any) {
+      return { status: 500, body: { error: e.message } }
+    }
   }
 }

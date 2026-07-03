@@ -38,17 +38,21 @@ export function FoliosModule() {
       const service = new FoliosService(
         folioRepo, chargeRepo, configRepo,
         { guest: guestRepo, reservation: reservationRepo, room: roomRepo, user: userRepo },
-        log, cache, auth!,
+        log, cache, auth!, orm,
       )
-      const controller = new FoliosController(service, log)
+      const controller = new FoliosController(service, log, orm)
 
-      router.get('/api/folios', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/folios/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/folios', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.store(req))
+      const hsa = [auth.authenticate('hotel_admin', 'super_admin')]
+      const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
+
+      router.get('/api/folios', hra, (req) => controller.index(req))
+      router.get('/api/folios/:id', hra, (req) => controller.show(req))
+      router.post('/api/folios', hra, (req) => controller.store(req))
       router.post('/api/folios/:id/charges', [auth.authenticate('hotel_admin', 'receptionist')], (req) => controller.charge(req))
       router.post('/api/folios/:id/payments', [auth.authenticate('hotel_admin', 'receptionist')], (req) => controller.payment(req))
-      router.post('/api/folios/:id/close', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.close(req))
-      // /api/folios/:id/invoice se registra en composition-root (crea factura real cross-module) — sin ruta duplicada (V-07)
+      router.post('/api/folios/:id/close', hsa, (req) => controller.close(req))
+      router.post('/api/folios/:id/invoice', hsa, (req) => controller.closeAndInvoice(req))
+      router.post('/api/folios/audit/post-room-charges', hsa, (req) => controller.postNightAuditRoomCharges(req))
 
       log.info('Módulo folios listo')
       return service
