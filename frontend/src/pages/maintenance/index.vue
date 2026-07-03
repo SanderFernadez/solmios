@@ -110,6 +110,15 @@
           </tr>
         </thead>
         <tbody>
+          <tr v-if="filteredOrders.length === 0">
+            <td colspan="9" class="p-0">
+              <div class="flex flex-col items-center justify-center py-16 text-center">
+                <span class="text-4xl mb-3 opacity-40">🔧</span>
+                <p class="text-sm font-bold text-navy">Sin órdenes de mantenimiento</p>
+                <p class="text-xs text-text-muted mt-1">No hay órdenes para los filtros actuales.<br>Creá una nueva orden o ajustá los filtros.</p>
+              </div>
+            </td>
+          </tr>
           <tr v-for="order in filteredOrders" :key="order.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors cursor-pointer">
             <td class="p-4 text-sm font-mono text-text-muted">#{{ shortId(order.id) }}</td>
             <td class="p-4 text-sm font-bold text-navy">{{ order.title }}</td>

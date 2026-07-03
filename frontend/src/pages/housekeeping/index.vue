@@ -178,6 +178,15 @@
           </tr>
         </thead>
         <tbody>
+          <tr v-if="paginatedTasks.length === 0">
+            <td colspan="8" class="p-0">
+              <div class="flex flex-col items-center justify-center py-16 text-center">
+                <span class="text-4xl mb-3 opacity-40">🧹</span>
+                <p class="text-sm font-bold text-navy">Sin tareas de housekeeping</p>
+                <p class="text-xs text-text-muted mt-1">No hay tareas para los filtros actuales.<br>Creá una nueva tarea o ajustá los filtros.</p>
+              </div>
+            </td>
+          </tr>
           <tr v-for="task in paginatedTasks" :key="task.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
             <td class="p-4 text-sm font-black text-navy cursor-pointer" @click="openViewTask(task)">{{ task.roomNumber }}</td>
             <td class="p-4 text-sm cursor-pointer" @click="openViewTask(task)">{{ task.type }}</td>
