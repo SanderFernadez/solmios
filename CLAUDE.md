@@ -207,14 +207,24 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 ### Módulos — Estado de producción
 | Módulo | Estado | Último upgrade |
 |--------|--------|----------------|
-| facturas (billing) | ✅ 10/10 | `709af44` |
+| facturas (billing) | ✅ 10/10 | `709af44` · stats fix `f743c26` |
 | mantenimiento | ⚠️ 7/10 | `d3bdce5` |
 | housekeeping | ⚠️ 7/10 | — |
-| reservas | ✅ 9/10 | — |
+| reservas | ✅ 9/10 | `3064b88` — companions+addons migrados al módulo (F2) |
 | habitaciones | ✅ 9/10 | — |
-| huespedes | ✅ 8/10 | `51950cf` |
+| huespedes | ✅ 8/10 | `ffe4ff3` — naming viajero unificado (4 forms) |
 | folios | ✅ 9/10 | — |
 | payments | ✅ 8/10 | — |
+
+### Deudas técnicas pendientes
+
+| Deuda | Detalle | Fase |
+|-------|---------|------|
+| `companions.hotelId` migración faltante | La tabla `companions` NO tiene columna `hotelId` (el modelo ORM la declara `required`). `createCompanion` no la persiste; el IDOR se resuelve vía fallback a `reservation.hotelId` en `assertCompanionOwned`. Migración one-off `ALTER TABLE` pendiente para multi-tenant estricto. | F2 followup |
+| `reservation-detail` + `audit` inline | Quedan en `composition-root.ts` (GET `/api/reservations/:id` y `/audit`). El detail llama `system.resolveModule('marketing')?.listMessageLogs(...)` — moverlo a reservas requiere wiring del módulo marketing (setter post-init). | F8 |
+| `ttlock` → módulo canónico | 8 handlers inline en `composition-root`. Modelos `LockDevices`/`LockCodes` compartidos con checkin/checkout (F8). **Smoke checkin/checkout obligatorio** al mover (riesgo medio-alto). | F3 |
+| `composition-root` God File | Modularización: F1 (payment-requests) ✅, F2 (companions+addons) ✅. Quedan: amenities, seasons-rates, dashboard, night-audit, checkin/checkout, settings, booking público (F4–F10). | F4–F10 |
+| `validateSchema` descarta campos no del schema | Bug de datos (ya fixeado en la unificación de naming): el framework descarta campos del body no declarados en el `ValidationSchema`. Si un form envía naming distinto al schema, los datos se pierden silenciosamente. Los forms DEBEN usar el naming canónico del modelo. | — |
 
 ### Facturación — Endpoints
 ```
