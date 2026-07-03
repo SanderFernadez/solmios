@@ -402,36 +402,35 @@
               class="w-24 px-3 py-1.5 rounded-lg border border-border text-sm font-bold text-navy focus:outline-none focus:border-cyan" />
           </div>
 
-          <!-- Grid de temporadas -->
-          <div class="grid gap-2" :style="{ gridTemplateColumns: `repeat(${seasonsList.length}, 1fr)` }">
-            <div v-for="s in seasonsList" :key="s.name" class="rounded-xl p-3 border-2 transition-all"
-              :class="isCellClosed(roomType, s.name) ? 'border-red-300 bg-red-50 opacity-70' : 'border-border bg-white'"
-              :style="!isCellClosed(roomType, s.name) ? { borderColor: s.color + '40', backgroundColor: s.color + '08' } : {}">
-              <!-- Temporada label -->
-              <div class="flex items-center gap-1.5 mb-2">
-                <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: s.color }"></div>
-                <span class="text-[10px] font-bold uppercase" :style="{ color: s.color }">{{ s.label || s.name }}</span>
+          <!-- Filas por ocupación -->
+          <div v-for="occ in getOccupancies(roomType)" :key="occ" class="mb-4 last:mb-0">
+            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Ocupación: {{ occ }} huésped{{ occ > 1 ? 'es' : '' }}</div>
+
+            <!-- Grid de temporadas -->
+            <div class="grid gap-2" :style="{ gridTemplateColumns: `repeat(${seasonsList.length}, 1fr)` }">
+              <div v-for="s in seasonsList" :key="s.name" class="rounded-xl p-3 border-2 transition-all"
+                :class="isCellClosed(roomType, occ, s.name) ? 'border-red-300 bg-red-50 opacity-70' : 'border-border bg-white'"
+                :style="!isCellClosed(roomType, occ, s.name) ? { borderColor: s.color + '40', backgroundColor: s.color + '08' } : {}">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: s.color }"></div>
+                  <span class="text-[10px] font-bold uppercase" :style="{ color: s.color }">{{ s.label || s.name }}</span>
+                </div>
+                <div class="flex items-center gap-1 mb-1">
+                  <span class="text-lg font-black text-navy">+</span>
+                  <input :value="getPercentage(roomType, occ, s.name)" @input="setPercentage(roomType, occ, s.name, $event)"
+                    type="number" min="0" max="500" step="0.5"
+                    class="w-14 px-2 py-1 rounded-lg border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-cyan" />
+                  <span class="text-sm font-bold text-text-muted">%</span>
+                </div>
+                <div class="text-xs font-extrabold text-navy mb-2">
+                  = ${{ getCalculatedPrice(roomType, occ, s.name) }}
+                </div>
+                <button @click="toggleClosed(roomType, occ, s.name)"
+                  class="w-full py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                  :class="isCellClosed(roomType, occ, s.name) ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-surface text-text-muted hover:bg-surface-dark'">
+                  {{ isCellClosed(roomType, occ, s.name) ? '🔒 Cerrado' : '✓ Abierto' }}
+                </button>
               </div>
-              <!-- % de incremento -->
-              <div class="flex items-center gap-1 mb-1">
-                <span class="text-lg font-black text-navy">+</span>
-                <input :value="getPercentage(roomType, s.name)" @input="setPercentage(roomType, s.name, $event)"
-                  type="number" min="0" max="500" step="0.5"
-                  class="w-14 px-2 py-1 rounded-lg border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-cyan" />
-                <span class="text-sm font-bold text-text-muted">%</span>
-              </div>
-              <!-- Precio calculado -->
-              <div class="text-xs font-extrabold text-navy mb-2">
-                = ${{ getCalculatedPrice(roomType, s.name) }}
-              </div>
-              <!-- Botón cerrar ventas -->
-              <button @click="toggleClosed(roomType, s.name)"
-                class="w-full py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
-                :class="isCellClosed(roomType, s.name)
-                  ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                  : 'bg-surface text-text-muted hover:bg-surface-dark'">
-                {{ isCellClosed(roomType, s.name) ? '🔒 Cerrado' : '✓ Abierto' }}
-              </button>
             </div>
           </div>
         </div>
@@ -439,7 +438,7 @@
     </div>
 
     <!-- ========== CONDICIONES ========== -->
-    <div v-if="activeTab === 'conditions'" class="grid lg:grid-cols-2 gap-6">
+    <div v-if="(activeTab as string) === 'conditions'" class="grid lg:grid-cols-2 gap-6">
       <div class="card p-6">
         <h3 class="font-extrabold text-navy mb-4">Políticas de Reserva</h3>
         <div class="space-y-4">
@@ -552,7 +551,7 @@
     </div>
 
     <!-- ========== DESCRIPTION (multilingüe) ========== -->
-    <div v-if="activeTab === 'description'" class="space-y-6">
+    <div v-if="(activeTab as string) === 'description'" class="space-y-6">
       <div class="card p-6">
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-extrabold text-navy">Descripción Multilingüe</h3>
@@ -610,7 +609,7 @@
     </div>
 
     <!-- ========== INTEGRACIONES ========== -->
-    <div v-if="activeTab === 'integrations'" class="grid md:grid-cols-2 gap-6">
+    <div v-if="(activeTab as string) === 'integrations'" class="grid md:grid-cols-2 gap-6">
       <div class="card p-6">
         <h3 class="font-extrabold text-navy mb-4">Channel Manager</h3>
         <div class="p-4 bg-surface rounded-xl">
@@ -815,18 +814,18 @@ async function saveAutomation() {
   }
 }
 
-const activeTab = ref('hotel')
+const activeTab = ref('hotel' as string)
 const saving = ref(false)
 const loading = ref(true)
 
 const tabs = [
-  { value: 'hotel', label: 'Hotel', icon: '🏨' },
-  { value: 'location', label: 'Ubicación', icon: '📍' },
-  { value: 'amenities', label: 'Amenities', icon: '✨' },
-  { value: 'rates', label: 'Tarifas', icon: '💰' },
-  { value: 'conditions', label: 'Condiciones', icon: '📋' },
-  { value: 'description', label: 'Descripción', icon: '📝' },
-  { value: 'integrations', label: 'Integraciones', icon: '🔗' },
+  { value: 'hotel' as string, label: 'Hotel', icon: '🏨' },
+  { value: 'location' as string, label: 'Ubicación', icon: '📍' },
+  { value: 'amenities' as string, label: 'Amenities', icon: '✨' },
+  { value: 'rates' as string, label: 'Tarifas', icon: '💰' },
+  { value: 'conditions' as string, label: 'Condiciones', icon: '📋' },
+  { value: 'description' as string, label: 'Descripción', icon: '📝' },
+  { value: 'integrations' as string, label: 'Integraciones', icon: '🔗' },
 ]
 
 type HotelForm = Partial<HotelFull> & { cancellationType?: string; freeCancellation?: boolean }
@@ -1232,14 +1231,14 @@ function setBasePrice(roomType: string, event: Event) {
   }
 }
 
-function getPercentage(roomType: string, season: string): number {
-  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+function getPercentage(roomType: string, occupancy: number, season: string): number {
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === occupancy)
   return row?.percentages?.[season] ?? 0
 }
 
-function setPercentage(roomType: string, season: string, event: Event) {
+function setPercentage(roomType: string, occupancy: number, season: string, event: Event) {
   const val = Number((event.target as HTMLInputElement).value) || 0
-  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === occupancy)
   if (row) {
     row.percentages[season] = val
     const base = row.basePrices[season] ?? 0
@@ -1247,21 +1246,29 @@ function setPercentage(roomType: string, season: string, event: Event) {
   }
 }
 
-function getCalculatedPrice(roomType: string, season: string): number {
-  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+function getCalculatedPrice(roomType: string, occupancy: number, season: string): number {
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === occupancy)
   return row?.prices?.[season] ?? 0
 }
 
-function isCellClosed(roomType: string, season: string): boolean {
-  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+function isCellClosed(roomType: string, occupancy: number, season: string): boolean {
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === occupancy)
   return row?.closedCells?.[season] ?? false
 }
 
-function toggleClosed(roomType: string, season: string) {
-  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === 1)
+function toggleClosed(roomType: string, occupancy: number, season: string) {
+  const row = ratesMatrix.value.find(r => r.roomType === roomType && r.occupancy === occupancy)
   if (row) {
     row.closedCells[season] = !row.closedCells[season]
   }
+}
+
+function getOccupancies(roomType: string): number[] {
+  const occs = new Set<number>()
+  for (const r of ratesMatrix.value) {
+    if (r.roomType === roomType) occs.add(r.occupancy)
+  }
+  return [...occs].sort()
 }
 
 async function saveRates() {

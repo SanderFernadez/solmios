@@ -134,3 +134,60 @@ export interface ReservasPaginated {
   limit?: number
   pages?: number
 }
+
+// ── Companions (acompañantes) — tabla Companions (shared/models.ts) ──
+export interface CompanionDTO {
+  id: string
+  reservationId: string
+  hotelId?: string
+  name: string
+  documentType?: string
+  documentNumber?: string
+  nationality?: string
+  birthDate?: string
+  isMainGuest?: number
+  createdAt?: string
+  updatedAt?: string
+}
+export interface CreateCompanionDTO {
+  name: string
+  documentType?: string
+  documentNumber?: string
+  nationality?: string
+  birthDate?: string
+  isMainGuest?: boolean
+}
+export interface UpdateCompanionDTO {
+  name?: string
+  documentType?: string
+  documentNumber?: string
+  nationality?: string
+  birthDate?: string
+  isMainGuest?: boolean
+}
+
+// ── Addons (ReservationAddons) — tabla ReservationAddons (shared/models.ts) ──
+export interface AddonDTO {
+  id: string
+  reservationId: string
+  hotelId?: string
+  description: string
+  amount: number
+  kind?: string
+  quantity?: number
+  status?: string
+  createdAt?: string
+  updatedAt?: string
+}
+export interface CreateAddonDTO {
+  description: string
+  kind?: string
+  amount?: number
+  quantity?: number
+}
+
+export interface CurrentUser {
+  id: string
+  role: string
+  hotelId?: string
+}

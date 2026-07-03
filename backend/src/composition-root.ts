@@ -1213,64 +1213,9 @@ router.post('/api/rates/copy-next-year', [auth.authenticate('hotel_admin', 'supe
   return { status: 200, body: { success: true, copied, total: rates.length } }
 })
 
-// ─── Companions — CRUD standalone por reserva ───────────────────────────────
-router.get('/api/reservations/:id/companions', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  const data = await orm.findMany('Companions', { reservationId: req.params.id }) as any[]
-  return { status: 200, body: { data } }
-})
-
-router.post('/api/reservations/:id/companions', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  const body = req.body as any
-  if (!body?.name) return { status: 400, body: { error: 'name requerido' } }
-  const c = await orm.create('Companions', {
-    id: crypto.randomUUID(), reservationId: req.params.id,
-    name: body.name, documentType: body.documentType || 'passport',
-    documentNumber: body.documentNumber || '', nationality: body.nationality || '',
-    birthDate: body.birthDate || '', isMainGuest: body.isMainGuest ? 1 : 0,
-  })
-  return { status: 201, body: c }
-})
-
-router.put('/api/companions/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  const body = req.body as any
-  const patch: Record<string, any> = {}
-  for (const k of ['name','documentType','documentNumber','nationality','birthDate']) {
-    if (body[k] !== undefined) patch[k] = body[k]
-  }
-  if (body.isMainGuest !== undefined) patch.isMainGuest = body.isMainGuest ? 1 : 0
-  await orm.update('Companions', req.params.id, patch)
-  return { status: 200, body: await orm.findById('Companions', req.params.id) }
-})
-
-router.delete('/api/companions/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  await orm.delete('Companions', req.params.id)
-  return { status: 200, body: { success: true } }
-})
-
-// ─── Reservation Addons — otros servicios y descuentos (F3 match-misterplan) ─
-router.get('/api/reservations/:id/addons', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  const data = await orm.findMany('ReservationAddons', { reservationId: req.params.id }) as unknown[]
-  return { status: 200, body: { data } }
-})
-
-router.post('/api/reservations/:id/addons', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
-  const res = await orm.findById('Reservations', req.params.id) as { hotelId?: string } | null
-  if (!res) return { status: 404, body: { error: 'Reserva no encontrada' } }
-  const body = req.body as { description?: string; kind?: string; amount?: number; quantity?: number }
-  if (!body?.description) return { status: 400, body: { error: 'description requerido' } }
-  const addon = await orm.create('ReservationAddons', {
-    id: crypto.randomUUID(), reservationId: req.params.id, hotelId: res.hotelId,
-    description: body.description, kind: body.kind === 'discount' ? 'discount' : 'service',
-    amount: Number(body.amount) || 0, quantity: Number(body.quantity) || 1,
-  })
-  return { status: 201, body: addon }
-})
-
-router.delete('/api/addons/:id', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-  await orm.delete('ReservationAddons', req.params.id)
-  return { status: 200, body: { success: true } }
-})
-
+// Companions + Addons (CRUD) → migrados al módulo reservas (F2) con IDOR fixes
+// (CR-27/28/30/31: ownership vía la reservation padre). reservation-detail y
+// audit quedan aquí temporalmente (cross-module marketing — deuda F8).
 // ─── GET /api/reservations/:id — Detalle extendido (OTA + companions) ───────
 router.get('/api/reservations/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], async (req) => {
   const r = await orm.findById('Reservations', req.params.id) as any

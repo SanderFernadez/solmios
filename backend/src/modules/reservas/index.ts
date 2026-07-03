@@ -34,14 +34,27 @@ export function ReservasModule() {
       const roomRepo = new OrmRepository<any>(orm, 'Rooms')
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const blockRepo = new OrmRepository<any>(orm, 'RoomBlocks')
+      const companionsRepo = new OrmRepository<any>(orm, 'Companions')
+      const addonsRepo = new OrmRepository<any>(orm, 'ReservationAddons')
       const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, blockRepo)
-      const controller = new ReservasController(service, log)
+      const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth)
 
       router.get('/api/reservas', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
       router.get('/api/reservas/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
       router.post('/api/reservas', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.store(req))
       router.put('/api/reservas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
       router.delete('/api/reservas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+
+      // ── Companions (F2) — /api/reservations/* (detalle enriquecido, distinto del CRUD /api/reservas) ──
+      router.get('/api/reservations/:id/companions', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.listCompanions(req))
+      router.post('/api/reservations/:id/companions', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.createCompanion(req))
+      router.put('/api/companions/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.updateCompanion(req))
+      router.delete('/api/companions/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.deleteCompanion(req))
+
+      // ── Addons (F2) ──
+      router.get('/api/reservations/:id/addons', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.listAddons(req))
+      router.post('/api/reservations/:id/addons', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.createAddon(req))
+      router.delete('/api/addons/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.deleteAddon(req))
 
       log.info('Módulo reservas v2 listo')
       return service

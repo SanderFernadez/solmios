@@ -86,3 +86,21 @@ export const UpdateReservasSchema: Record<string, ValidationRule> = {
 }
 
 export const ReservasValidator = { create: CreateReservasSchema, update: UpdateReservasSchema }
+
+// ── Companions (F2) ──
+export const CompanionSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, required: true, min: 2, max: 200 },
+  documentType: { type: 'string' as const, enum: ['dni', 'passport', 'other'] },
+  documentNumber: { type: 'string' as const, max: 50 },
+  nationality: { type: 'string' as const, max: 50 },
+  birthDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+  isMainGuest: { type: 'boolean' as const },
+}
+
+// ── Addons (F2) ──
+export const AddonSchema: Record<string, ValidationRule> = {
+  description: { type: 'string' as const, required: true, min: 2, max: 500 },
+  kind: { type: 'string' as const, enum: ['service', 'discount'] },
+  amount: { type: 'number' as const, min: 0 },
+  quantity: { type: 'number' as const, min: 1, max: 100 },
+}
