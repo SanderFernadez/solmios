@@ -4,7 +4,7 @@ import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { registerUsuariosModels } from './model'
 import { UsuariosService } from './service'
 import { UsuariosController } from './controller'
-import { rateLimit, resetAttempts } from '../../middleware/rate-limit'
+import { rateLimit, resetAttempts } from '../../shared/middlewares/rate-limit'
 
 export { UsuariosService }
 export type { UsuarioDTO } from './types'
