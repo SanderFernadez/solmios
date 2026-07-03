@@ -23,7 +23,7 @@ export interface Role {
 
 export const TeamService = {
   /** Lista miembros del equipo del hotel actual (filtrado server-side por hotelId del token) */
-  list: () => http.get<{ data: TeamMember[]; total: number }>('/users'),
+  list: () => http.get<{ data: TeamMember[]; total: number }>('/usuarios'),
   /** Lista roles disponibles del sistema */
   listRoles: () => http.get<{ data: Role[]; total: number }>('/roles'),
   /** Cambia el rol de un miembro */
