@@ -17,6 +17,7 @@ import { registerSharedModels } from './shared/models'
 import { createNoShowCron } from './modules/reports/usecases/no-show-cron'
 import { createAutoMessagesCron } from './modules/marketing/usecases/auto-messages-cron'
 import { reservasPaymentRequestsConnector } from './connectors/reservas-payment-requests'
+import { configureStripe } from './infrastructure/stripe-config'
 
 // ─── Config (todo desde .env) ──────────────────────────────────────────────
 const config = new ConfigStore()
@@ -169,15 +170,7 @@ import { facturasReservasConnector } from './connectors/facturas-reservas'
 system.addConnector('facturas-reservas', facturasReservasConnector)
 
 // ─── Stripe config resolver ──────────────────────────────────────────
-import { StripeService } from './services/stripe-service'
-StripeService.setConfigResolver(async (hotelId) => {
-  if (!hotelId) return null
-  const rows = await orm.findMany('Configuration', { hotelId, key: 'stripe_config' }) as any[]
-  const v = rows[0]?.value
-  let cfg: any = v
-  if (typeof v === 'string') { try { cfg = JSON.parse(v) } catch { cfg = null } }
-  return cfg || null
-})
+configureStripe(orm)
 
 // ─── Start ─────────────────────────────────────────────────────────────────
 await system.start()
