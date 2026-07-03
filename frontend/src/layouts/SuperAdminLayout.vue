@@ -88,6 +88,9 @@
           <button class="bg-cyan text-navy font-extrabold text-sm px-4 py-2 rounded-lg hover:shadow-lg transition-all cursor-pointer">
             + Nuevo Hotel
           </button>
+
+          <!-- User Menu (Configuración / Cambiar contraseña / Salir) -->
+          <UserMenu />
         </div>
       </header>
 
@@ -105,6 +108,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { http } from '@/services/http'
 import HotelSwitcher from '@/components/features/core-pms/HotelSwitcher.vue'
+import UserMenu from '@/components/features/core-pms/UserMenu.vue'
 
 const route = useRoute()
 const router = useRouter()
