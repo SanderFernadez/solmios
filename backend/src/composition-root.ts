@@ -125,6 +125,10 @@ for (const m of mods) system.addModule(m as any)
 import { reservasHousekeepingConnector } from './connectors/reservas-housekeeping'
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 
+// ─── Conector: reservas → ttlock (check-out expira códigos de cerradura) ──
+import { reservasTtlockConnector } from './connectors/reservas-ttlock'
+system.addConnector('reservas-ttlock', reservasTtlockConnector)
+
 // ─── Conector: habitaciones → canales (cambio de precioBase → push tarifa Channex)
 import { habitacionesCanalesConnector } from './connectors/habitaciones-canales'
 system.addConnector('habitaciones-canales', habitacionesCanalesConnector)

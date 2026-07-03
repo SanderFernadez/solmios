@@ -43,6 +43,6 @@ export class FoliosController {
   }
 
   async postNightAuditRoomCharges(req: HttpRequest) {
-    return { status: 200, body: await this.service.postNightAuditRoomCharges(req.user as any, req.query as any) }
+    return { status: 200, body: await this.service.postNightAuditRoomCharges(this.orm, req.user as any, req.query as any) }
   }
 }

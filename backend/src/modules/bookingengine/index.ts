@@ -39,8 +39,8 @@ export function BookingengineModule() {
       const eventsRepo = new OrmRepository<ConversionEventDTO>(orm, 'ConversionEvents')
 
       const log = logger.child('bookingengine')
-      const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache, orm, auth)
-      const controller = new BookingengineController(service, log, orm)
+      const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache)
+      const controller = new BookingengineController(service, log, orm, auth)
 
       // Admin routes (protegidas con auth)
       if (auth) {

@@ -113,7 +113,6 @@ export class ReservasService {
     }
     const log = deps.logger || this.logger
     deps.orm.create('Auditlog', { id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id, action: 'checkout', userId: user.id, hotelId: r.hotelId, detail: JSON.stringify({ roomId: r.roomId, guestId: r.guestId, checkIn: r.checkIn, checkOut: r.checkOut }), createdAt: nowIso }).catch((e: any) => log.warn('auditlog checkout', { error: e.message }))
-    deps.orm.update('LockCodes', r.id, { status: 'expired' }).catch((e: any) => log.warn('lock code expiry', { error: e.message }))
     await this.sockets.onReservationCheckedOut?.({ reservationId: r.id, roomId: r.roomId, hotelId: r.hotelId })
     return { ok: true, reservationId: r.id, status: 'checked_out' }
   }

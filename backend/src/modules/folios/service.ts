@@ -20,7 +20,6 @@ export class FoliosService {
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
-    private readonly orm?: any,
   ) {}
 
   setSockets(s: Partial<FoliosSockets>): void {
@@ -191,7 +190,7 @@ export class FoliosService {
     return result
   }
 
-  async postNightAuditRoomCharges(user: any, query?: any): Promise<any> {
-    return postNightAuditUsecase(this.orm, (q:any,u:any)=>this.list(q,u), (d:any,u:any)=>this.open(d,u), (id:string,d:any,u:any)=>this.postCharge(id,d,u), user, query)
+  async postNightAuditRoomCharges(orm: any, user: any, query?: any): Promise<any> {
+    return postNightAuditUsecase(orm, (q:any,u:any)=>this.list(q,u), (d:any,u:any)=>this.open(d,u), (id:string,d:any,u:any)=>this.postCharge(id,d,u), user, query)
   }
 }

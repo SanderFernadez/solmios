@@ -38,7 +38,7 @@ export function FoliosModule() {
       const service = new FoliosService(
         folioRepo, chargeRepo, configRepo,
         { guest: guestRepo, reservation: reservationRepo, room: roomRepo, user: userRepo },
-        log, cache, auth!, orm,
+        log, cache, auth!,
       )
       const controller = new FoliosController(service, log, orm)
 

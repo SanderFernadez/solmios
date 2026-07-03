@@ -98,6 +98,13 @@ export class TtlockService {
     await this.lockCodesRepo.update(codeId, { status: 'revoked' })
   }
 
+  async expireCodesByReservation(reservationId: string): Promise<void> {
+    const codes = await this.lockCodesRepo.findMany({ reservationId }) as any[]
+    for (const c of codes) {
+      if (c.status === 'active') await this.lockCodesRepo.update(c.id, { status: 'expired' })
+    }
+  }
+
   async updateLock(lockId: string, body: any, hotelId?: string): Promise<any> {
     const patch: Partial<Omit<LockDeviceDTO, 'id'>> = {}
     if (body.roomId !== undefined) patch.roomId = body.roomId

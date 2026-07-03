@@ -18,6 +18,7 @@ export class BookingengineController {
     private readonly service: BookingengineService,
     private readonly logger: Logger,
     private readonly orm?: any,
+    private readonly auth?: any,
   ) {}
 
   // ─── Admin (protegido con auth) ──────────────────────
@@ -122,7 +123,7 @@ export class BookingengineController {
     const user = req.user as any
     const hotelId = user?.hotelId || (req.query as any)?.hotelId
     if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
-    const result = await this.service.dashboard(hotelId, user)
+    const result = await this.service.dashboard(this.orm, this.auth, hotelId, user)
     return { status: 200, body: result }
   }
 }
