@@ -15,7 +15,7 @@ export async function generateCodeForReservation(
   const res = await findReservationFn(reservationId) as any
   if (!res) throw new Error('Reserva no encontrada')
   if (res.hotelId !== hotelId) throw new Error('Sin acceso a esta reserva')
-  if (auth) auth.assertOwnership(res, { hotelId })
+  if (auth) auth.assertOwnership(res.hotelId, hotelId, undefined, 'super_admin')
   const lock = (await lockDevicesRepo.findMany({ roomId: res.roomId }))[0] as any
   if (!lock?.ttlockLockId) throw new Error('La habitación no tiene cerradura TTLock')
   const parsed = await getConfigFn(hotelId)

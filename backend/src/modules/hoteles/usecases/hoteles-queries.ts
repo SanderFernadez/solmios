@@ -7,7 +7,7 @@ export class HotelesQueries {
 
   async getSettings(hotelId: string, auth?: any, user?: any): Promise<any> {
     const hotel = await this.orm.findById('Hotels', hotelId)
-    if (user && auth) auth.assertOwnership(hotel, user)
+    if (user && auth) auth.assertOwnership(hotel?.id ?? hotelId, user.hotelId, user.role, 'super_admin')
     const rooms = await this.orm.findMany('Rooms', { hotelId }) as any[]
     const seen = new Set<string>(); const baseRates: any[] = []
     for (const r of rooms) { if (!seen.has(r.type)) { seen.add(r.type); baseRates.push({ type: r.type, price: r.basePrice }) } }
@@ -17,7 +17,7 @@ export class HotelesQueries {
   async updateHotel(id: string, body: Record<string, any>, auth?: any, user?: any): Promise<any> {
     const existing = await this.orm.findById('Hotels', id)
     if (!existing) throw new NotFoundError('Hotel no encontrado')
-    if (user && auth) auth.assertOwnership(existing, user)
+    if (user && auth) auth.assertOwnership(existing.id, user.hotelId, user.role, 'super_admin')
     const safePatch: Record<string, any> = {}
     const allowed = ['name', 'country', 'address', 'phone', 'email', 'timezone', 'currency', 'checkIn', 'checkOut', 'plan', 'freeCancellation', 'depositRequired', 'depositPercent', 'weekendSurcharge', 'ownerName', 'ownerTaxId', 'deviceEmail', 'accommodationType', 'registrationNumber', 'website', 'bookingEngineUrl', 'phone2', 'warningPhone', 'secondaryCurrency', 'youtubeUrl', 'starRating', 'onlineBookingStatus', 'motorVersion', 'latitude', 'longitude', 'province', 'municipality', 'locality', 'postalCode', 'cleaningType', 'depositType', 'depositFixed', 'advanceType', 'advanceAmount', 'releaseHours', 'defaultPaymentMethod', 'requestReviews', 'publishReviewScore', 'publishReviewComments', 'taxName', 'taxRate', 'descriptionJson', 'wifiNetwork', 'wifiPassword']
     for (const k of allowed) { if (body[k] !== undefined) safePatch[k] = body[k] }

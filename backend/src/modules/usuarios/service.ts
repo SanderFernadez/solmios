@@ -70,7 +70,7 @@ export class UsuariosService {
     if (user.hotelId && this.hotelRepo) {
       try {
         const hotel = await this.hotelRepo.findById(user.hotelId)
-        if (hotel && this.auth) this.auth.assertOwnership(hotel, user.hotelId)
+        if (hotel && this.auth) this.auth.assertOwnership((hotel as any).id, user.hotelId, user.role, 'super_admin')
         hotelName = (hotel as any)?.name || ''
       } catch { /* graceful */ }
     }

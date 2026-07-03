@@ -79,7 +79,7 @@ export class TtlockService {
     if (body.name !== undefined) patch.name = body.name
     await this.lockDevicesRepo.update(lockId, patch)
     const lock = await this.lockDevicesRepo.findById(lockId) as any
-    if (this.auth && lock) this.auth.assertOwnership(lock, { hotelId })
+    if (this.auth && lock) this.auth.assertOwnership(lock.hotelId, hotelId, undefined, 'super_admin')
     return lock
   }
 }
