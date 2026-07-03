@@ -165,7 +165,6 @@ const nonavItems = [
       { label: 'Gastos', path: '/panel/gastos', roles: ['hotel_admin'] },
       { label: 'Reportes', path: '/panel/reports', roles: ['hotel_admin'] },
       { label: 'Night Audit', path: '/panel/night-audit', roles: ['hotel_admin'] },
-      { label: 'Registro Viajeros', path: '/panel/registro-viajeros', roles: ['hotel_admin'] },
     ]
   },
   {
@@ -292,7 +291,6 @@ const pageTitle = computed(() => {
     folios: 'Folios In-House',
     payments: 'Links de Pago',
     gastos: 'Gastos',
-    'registro-viajeros': 'Registro de Viajeros',
     reports: 'Reportes',
     opiniones: 'Opiniones',
     'auto-messages': 'Envíos Automáticos',

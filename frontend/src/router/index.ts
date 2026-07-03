@@ -311,12 +311,6 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
-          path: 'registro-viajeros',
-          name: 'registro-viajeros',
-          component: () => import('@/pages/registro-viajeros/index.vue'),
-          meta: { requiresHotelAdmin: true },
-        },
-        {
           path: 'whatsapp-templates',
           name: 'whatsapp-templates',
           component: () => import('@/pages/whatsapp-templates/index.vue'),
