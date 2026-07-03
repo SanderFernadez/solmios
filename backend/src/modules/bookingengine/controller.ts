@@ -12,6 +12,7 @@ import {
   TrackEventSchema,
   CreateCheckoutSessionSchema,
 } from './validators/schema'
+import { getPublicBookingBySlug, createPublicBookingDirect } from './usecases/public-booking'
 
 export class BookingengineController {
   constructor(
@@ -120,73 +121,11 @@ export class BookingengineController {
   }
 
   async getPublicBookingBySlug(req: HttpRequest) {
-    const slug = req.params.slug
-    const q = (req.query || {}) as any
-    const hotels = await this.orm!.findMany('Hotels', {}) as any[]
-    const hotel = hotels.find((h: any) => h.name?.toLowerCase().replace(/\s+/g, '-') === slug || h.id === slug)
-    if (!hotel) return { status: 404, body: { error: 'Hotel no encontrado' } }
-    const rooms = await this.orm!.findMany('Rooms', { hotelId: hotel.id }) as any[]
-    let available = rooms.filter((r: any) => r.status === 'disponible' || r.status === 'available')
-
-    if (q.checkIn && q.checkOut) {
-      const hotelRes = await this.orm!.findMany('Reservations', { hotelId: hotel.id }) as any[]
-      const overlap = new Set(hotelRes
-        .filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show' && r.checkIn < q.checkOut && r.checkOut > q.checkIn)
-        .map((r: any) => r.roomId))
-      available = available.filter((r: any) => !overlap.has(r.id))
-    }
-
-    const roomIds = new Set(rooms.map((r: any) => r.id))
-    const amsRaw = ((await this.orm!.findMany('RoomAmenities', {})) as any[]).filter((a) => roomIds.has(a.roomId) && a.isActive !== false)
-    const amsByRoom = new Map<string, string[]>()
-    for (const a of amsRaw) {
-      if (!amsByRoom.has(a.roomId)) amsByRoom.set(a.roomId, [])
-      amsByRoom.get(a.roomId)!.push(a.amenityKey)
-    }
-
-    const byType = new Map<string, any[]>()
-    for (const r of available) {
-      const key = r.type || 'standard'
-      if (!byType.has(key)) byType.set(key, [])
-      byType.get(key)!.push({ id: r.id, number: r.number, name: r.name, basePrice: r.basePrice, capacity: r.capacity })
-    }
-    const roomTypes = Array.from(byType.entries()).map(([type, items]) => ({
-      type, count: items.length, price: items[0].basePrice, rooms: items,
-      amenities: amsByRoom.get(items[0].id) || [],
-    }))
-    return { status: 200, body: { hotel: { id: hotel.id, name: hotel.name, slug: hotel.name?.toLowerCase().replace(/\s+/g, '-') }, roomTypes } }
+    return getPublicBookingBySlug(this.orm, req.params.slug, req.query || {})
   }
 
   async createPublicBookingDirect(req: HttpRequest) {
-    const { hotelId, roomId, guestName, guestEmail, guestPhone, checkIn, checkOut, adults, children: kids } = req.body as any
-    if (!hotelId || !roomId || !guestName || !guestEmail || !checkIn || !checkOut) {
-      return { status: 400, body: { error: 'Campos requeridos: hotelId, roomId, guestName, guestEmail, checkIn, checkOut' } }
-    }
-    if (checkIn >= checkOut) return { status: 400, body: { error: 'checkIn debe ser anterior a checkOut' } }
-    const room = await this.orm!.findById('Rooms', roomId) as any
-    if (!room) return { status: 404, body: { error: 'Habitación no encontrada' } }
-
-    const overlapping = (await this.orm!.findMany('Reservations', { roomId })) as any[]
-    const hasOverlap = overlapping.some((r: any) =>
-      r.status !== 'cancelled' && r.status !== 'no_show' && r.checkIn < checkOut && r.checkOut > checkIn)
-    if (hasOverlap) return { status: 409, body: { error: 'Habitación no disponible en esas fechas' } }
-
-    const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
-    const totalAmount = (room.basePrice || 0) * nights
-    const guest = await this.orm!.create('Guests', {
-      id: crypto.randomUUID(), hotelId, name: guestName, email: guestEmail, phone: guestPhone || '',
-      documentType: 'passport', documentNumber: '', nationality: '', address: '',
-    })
-    const reservation = await this.orm!.create('Reservations', {
-      id: crypto.randomUUID(), hotelId, roomId, guestId: guest.id,
-      checkIn, checkOut, status: 'pending', source: 'direct',
-      adults: adults || 1, children: kids || 0, totalAmount, deposit: 0,
-      notes: 'Reserva desde widget público',
-    })
-
-    this.pushAvailability?.(hotelId, roomId)
-
-    return { status: 201, body: { reservation, guest } }
+    return createPublicBookingDirect(this.orm, req.body, this.pushAvailability, this.auth)
   }
 
   async dashboard(req: HttpRequest) {
