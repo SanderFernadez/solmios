@@ -104,6 +104,12 @@
           </span>
         </div>
         <div class="space-y-3">
+          <!-- Empty state: columna sin tareas -->
+          <div v-if="getColumnTasks(column.id).length === 0" class="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-border/60 rounded-xl">
+            <span class="text-2xl mb-2 opacity-50">{{ column.icon }}</span>
+            <p class="text-xs font-bold text-text-muted">Sin tareas</p>
+            <p class="text-[10px] text-text-muted/70 mt-1 px-2 leading-tight">{{ column.emptyHint }}</p>
+          </div>
           <div
             v-for="task in getColumnTasks(column.id)"
             :key="task.id"
@@ -470,10 +476,10 @@ const statsRanges = [7, 30, 90]
 // (Pendiente → En Progreso → Completada → Inspeccionada). Ocultar etapas rompe la
 // representación del proceso, así que el tablero SIEMPRE muestra las 4 columnas.
 const kanbanColumns = [
-  { id: 'pending', title: 'Pendiente', dotColor: 'bg-orange' },
-  { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan' },
-  { id: 'completed', title: 'Completada', dotColor: 'bg-teal' },
-  { id: 'inspected', title: 'Inspeccionada', dotColor: 'bg-purple' },
+  { id: 'pending', title: 'Pendiente', dotColor: 'bg-orange', icon: '📥', emptyHint: 'Las tareas nuevas aparecen acá' },
+  { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan', icon: '🧹', emptyHint: 'Arrastrá acá las tareas en limpieza' },
+  { id: 'completed', title: 'Completada', dotColor: 'bg-teal', icon: '✅', emptyHint: 'Tareas terminadas' },
+  { id: 'inspected', title: 'Inspeccionada', dotColor: 'bg-purple', icon: '🔍', emptyHint: 'Tareas verificadas por supervisión' },
 ]
 
 const TYPE_ICONS: Record<string, string> = { full_cleaning: '🧹', quick_cleaning: '✨', deep_cleaning: '🧼', inspection: '🔍', maintenance: '🔧' }
