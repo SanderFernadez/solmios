@@ -339,10 +339,7 @@
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Habitación *</label>
-              <select v-model="newTask.roomNumber" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
-                <option value="">Seleccionar...</option>
-                <option v-for="room in availableRooms" :key="room.number" :value="room.number">{{ room.number }} - {{ room.type }}</option>
-              </select>
+              <SearchSelect v-model="newTask.roomNumber" :options="roomOptions" placeholder="Buscar habitación..." />
             </div>
             <div>
               <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Tipo de Tarea *</label>
@@ -431,6 +428,7 @@ import { useHousekeepingStore, humanizeMs, type HousekeepingViewTask } from '@/s
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useNow } from '@/composables/useNow'
+import SearchSelect from '@/components/ui/SearchSelect.vue'
 
 const store = useHousekeepingStore()
 const auth = useAuthStore()
@@ -512,6 +510,11 @@ const stats = computed(() => {
 
 const availableRooms = computed(() =>
   store.rooms.map(r => ({ id: r.id, number: r.number, type: r.type || 'Standard' })),
+)
+
+// Opciones para el SearchSelect de habitación (buscador dinámico en Nueva Tarea).
+const roomOptions = computed(() =>
+  availableRooms.value.map(r => ({ value: r.number, label: `${r.number} · ${r.type}` })),
 )
 
 const filteredTasks = computed(() => {
