@@ -3,7 +3,12 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-black text-navy">Habitaciones</h2>
-      <div class="flex gap-2">
+      <div class="flex gap-2 items-center">
+        <div class="relative">
+          <input v-model="searchQuery" type="text" placeholder="Buscar habitación, tipo, piso..." class="pl-9 pr-4 py-2 rounded-xl border border-border text-xs font-bold w-64 focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 bg-white" />
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-xs">🔍</span>
+          <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-navy text-xs cursor-pointer">✕</button>
+        </div>
         <select v-model="activeFilter" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer bg-white">
           <option value="all">Todas</option>
           <option value="available">Disponibles</option>
@@ -392,6 +397,7 @@ const toast = useToast()
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 const activeFilter = ref('all')
+const searchQuery = ref('')
 const rooms = ref<MappedRoom[]>([])
 const loading = ref(false)
 const saving = ref(false)
@@ -500,11 +506,19 @@ const TYPE_ICON: Record<string, string> = {
 const totalRooms = ref(0)
 
 const filteredRooms = computed(() => {
-  if (activeFilter.value === 'all') return rooms.value
-  return rooms.value.filter(r => r.status === activeFilter.value)
+  let list = rooms.value
+  if (activeFilter.value !== 'all') list = list.filter(r => r.status === activeFilter.value)
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(r =>
+      [r.number, r.type, r.floor, r.status, ...(r.amenities || [])]
+        .join(' ').toLowerCase().includes(q),
+    )
+  }
+  return list
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(totalRooms.value / perPage)))
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredRooms.value.length / perPage)))
 
 const paginatedRoomTypes = computed(() => {
   const start = (page.value - 1) * perPage
@@ -521,7 +535,7 @@ const paginatedRoomTypes = computed(() => {
   }))
 })
 
-watch(activeFilter, () => { page.value = 1 })
+watch([activeFilter, searchQuery], () => { page.value = 1 })
 
 function roomCardClass(s: string) {
   const m: Record<string,string> = { available:'border-teal/20 bg-teal/[0.02]', occupied:'border-coral/20 bg-coral/[0.02]', cleaning:'border-cyan/20 bg-cyan/[0.02]', dirty:'border-gold/20 bg-gold/[0.02]', out_of_service:'border-gray-200 bg-gray-50' }
