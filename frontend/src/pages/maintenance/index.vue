@@ -56,6 +56,12 @@
           </span>
         </div>
         <div class="space-y-3">
+          <!-- Empty state: columna sin órdenes -->
+          <div v-if="getColumnOrders(column.id).length === 0" class="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-border/60 rounded-xl">
+            <span class="text-2xl mb-2 opacity-50">{{ column.icon }}</span>
+            <p class="text-xs font-bold text-text-muted">Sin órdenes</p>
+            <p class="text-[10px] text-text-muted/70 mt-1 px-2 leading-tight">{{ column.emptyHint }}</p>
+          </div>
           <div
             v-for="order in getColumnOrders(column.id)"
             :key="order.id"
@@ -453,10 +459,10 @@ const stats = computed(() => {
 })
 
 const kanbanColumns = [
-  { id: 'open', title: 'Abierta', dotColor: 'bg-orange' },
-  { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan' },
-  { id: 'waiting', title: 'Esperando', dotColor: 'bg-purple' },
-  { id: 'closed', title: 'Completada', dotColor: 'bg-teal' }
+  { id: 'open', title: 'Abierta', dotColor: 'bg-orange', icon: '🔧', emptyHint: 'Las órdenes nuevas aparecen acá' },
+  { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan', icon: '⚙️', emptyHint: 'Arrastrá acá las órdenes en trabajo' },
+  { id: 'waiting', title: 'Esperando', dotColor: 'bg-purple', icon: '⏳', emptyHint: 'Órdenes pausadas o esperando repuestos' },
+  { id: 'closed', title: 'Completada', dotColor: 'bg-teal', icon: '✅', emptyHint: 'Órdenes resueltas' }
 ]
 
 const availableStatuses = [
