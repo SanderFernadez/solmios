@@ -80,6 +80,16 @@ function handleBackdropClick(e: MouseEvent) {
               </div>
             </div>
 
+            <div v-if="store.lastError" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3">
+              <div class="flex items-center gap-2">
+                <span class="text-red-500 text-lg">✗</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs font-bold text-red-700 dark:text-red-300">Error al crear issue</p>
+                  <p class="text-[11px] text-red-600 dark:text-red-400">{{ store.lastError }}</p>
+                </div>
+              </div>
+            </div>
+
             <div v-if="store.pendingScreenshot && !store.lastIssueUrl" class="relative rounded-xl overflow-hidden border border-border dark:border-white/10 bg-surface dark:bg-navy">
               <img
                 :src="store.pendingScreenshot"

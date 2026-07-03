@@ -36,6 +36,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
   const pendingCoordinates = ref<{ x: number; y: number } | null>(null)
   const pendingScreenshot = ref<string | null>(null)
   const lastIssueUrl = ref<string | null>(null)
+  const lastError = ref<string | null>(null)
 
   const routePins = computed(() =>
     pins.value.filter(p => p.route === activeRoute.value)
@@ -72,6 +73,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
     isModalOpen.value = false
     pendingCoordinates.value = null
     pendingScreenshot.value = null
+    lastError.value = null
   }
 
   function getBrowser(): string {
@@ -119,8 +121,9 @@ export const useFeedbackStore = defineStore('feedback', () => {
             viewportHeight: window.innerHeight,
           })
           lastIssueUrl.value = result.issueUrl
-        } catch {
-          /* GitLab not configured or unavailable */
+          lastError.value = null
+        } catch (e: any) {
+          lastError.value = e?.message || 'Error al crear issue en GitLab'
         }
       }
 
@@ -191,6 +194,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
     pendingCoordinates,
     pendingScreenshot,
     lastIssueUrl,
+    lastError,
     routePins,
     enableFeedbackMode,
     disableFeedbackMode,
