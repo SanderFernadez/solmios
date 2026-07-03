@@ -7,6 +7,7 @@ import {
 import { cors, rateLimit, requestLogger, bodyLimit, timeout, compression } from 'arckode-framework/middlewares'
 import { securityHeaders } from './shared/middlewares/security-headers'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
+import { PostgresAdapter } from 'arckode-framework/adapters/postgres'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { HotelAuth } from './infrastructure/auth/hotel-auth'
 import { registerSharedModels } from './shared/models'
@@ -31,7 +32,11 @@ const PORT = config.get<number>('PORT')
 
 // ─── Infraestructura ───────────────────────────────────────────────────────
 const logger = new Logger('info')
-const db = new SqliteAdapter({ path: './data/managerhotel.db', wal: true, foreignKeys: true })
+// Multi-motor: DATABASE_URL -> Postgres, sino SQLite (DB_PATH). Migración SQLite→Postgres.
+const DATABASE_URL = process.env.DATABASE_URL
+const db = DATABASE_URL
+  ? new PostgresAdapter({ connectionString: DATABASE_URL })
+  : new SqliteAdapter({ path: process.env.DB_PATH || './data/managerhotel.db', wal: true, foreignKeys: true })
 await db.connect()
 const orm = new ORM(db)
 registerSharedModels(orm)
@@ -143,10 +148,11 @@ system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnecto
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm)
-const { emailService, startWorker } = bootstrapEmail(orm, logger, (name) => system.resolveModule(name))
 
 // ─── Start ─────────────────────────────────────────────────────────────────
 await system.start()
+
+const { emailService, startWorker } = bootstrapEmail(orm, logger, (name) => system.resolveModule(name))
 
 // Post-init: ai-recepcionista usa pushAvailability (reservas IA bypassan el módulo reservas).
 const aiRecepcionista = system.resolveModule<{ channexPusher: ((hotelId: string, roomId: string) => void) | null }>('ai-recepcionista')
