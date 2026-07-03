@@ -47,7 +47,7 @@ export function AdminModule() {
       router.post('/api/admin/amenities/catalog', sa, (req: any) => controller.createAmenityCatalog(req))
       router.put('/api/admin/amenities/catalog/:id', sa, (req: any) => controller.updateAmenityCatalog(req))
       router.delete('/api/admin/amenities/catalog/:id', sa, (req: any) => controller.deleteAmenityCatalog(req))
-      router.get('/api/public/users', ar, () => controller.getPublicUsers())
+      router.get('/api/public/users', () => controller.getPublicUsers())
 
       log.info('Módulo admin listo (15 endpoints)')
       return service
