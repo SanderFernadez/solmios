@@ -14,8 +14,9 @@ import type { EmailQueueDTO } from './services/email-service'
 import { NotificationRenderer, type AutoMessageTemplateRow } from './services/notification-renderer'
 import type { EmailSender } from './services/email-sender'
 import { registerSharedModels } from './shared/models'
-import { safeParse } from './shared/utils/safe-parse'
 import { createNoShowCron } from './modules/reports/usecases/no-show-cron'
+import { createAutoMessagesCron } from './modules/marketing/usecases/auto-messages-cron'
+import { reservasPaymentRequestsConnector } from './connectors/reservas-payment-requests'
 
 // ─── Config (todo desde .env) ──────────────────────────────────────────────
 const config = new ConfigStore()
@@ -212,39 +213,7 @@ if (marketingSvc && typeof marketingSvc.setTriggerDeps === 'function') {
 }
 
 // ─── Auto PaymentRequest + Audit trail (reservas sockets) ──────────────────
-const reservasSvc = system.resolveModule<{ setSockets: (s: any) => void }>('reservas')
-if (reservasSvc && typeof reservasSvc.setSockets === 'function') {
-  const audit = (action: string, id: string, hotelId: string | null, snap: any) => {
-    orm.create('Auditlog', {
-      id: crypto.randomUUID(), hotelId: hotelId || null, entity: 'Reservations', entityId: id, action,
-      userId: null, userName: 'system (auto)', detail: snap ? JSON.stringify(snap) : null,
-    }).catch((e: any) => logger.warn('audit log falló', { action, id, error: (e as Error).message }))
-  }
-
-  reservasSvc.setSockets({
-    onReservasCreated: async (r: any) => {
-      audit('create', r.id, r.hotelId, { status: r.status, totalAmount: r.totalAmount, roomId: r.roomId })
-      try {
-        const cfg = (await orm.findMany('Configuration', { hotelId: r.hotelId, key: 'automation_config' }))[0] as any
-        const auto = cfg ? safeParse(cfg.value) : {}
-        if (!auto?.autoPaymentRequest) return
-        const pending = Math.max(0, Number(r.totalAmount || 0) - Number(r.deposit || 0))
-        if (pending <= 0) return
-        const existing = await orm.findMany('PaymentRequests', { reservationId: r.id }) as any[]
-        if (existing.some((p: any) => p.status === 'pending')) return
-        await orm.create('PaymentRequests', {
-          id: crypto.randomUUID(), hotelId: r.hotelId, reservationId: r.id,
-          amount: pending, currency: r.currency || 'USD', status: 'pending', sentTo: '', sentVia: 'email',
-        })
-        logger.info('Auto PaymentRequest creado (automation_config.autoPaymentRequest)', { reservationId: r.id, amount: pending })
-      } catch (e) {
-        logger.warn('auto payment request falló (no bloquea la reserva)', { reservationId: r.id, error: (e as Error).message })
-      }
-    },
-    onReservasUpdated: async (r: any) => { audit('update', r.id, r.hotelId, { status: r.status, totalAmount: r.totalAmount }) },
-    onReservasDeleted: async (id: string) => { audit('delete', id, null, null) },
-  })
-}
+system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector)
 await emailService.reclaimStale()
 setInterval(() => {
   emailService.processQueue().catch((e) => logger.error('email worker tick', { error: (e as Error).message }))
@@ -261,44 +230,8 @@ setInterval(() => { noShowCron().catch((e) => logger.warn('markNoShows failed', 
 const AUTO_MESSAGES_TICK_MS = 60_000 * 60
 const autoMsgTrigger = system.resolveModule<{ triggerAutoMessages: (params: any) => Promise<void> }>('marketing')
 if (autoMsgTrigger) {
-  const processAutoMessages = async () => {
-    try {
-      const today = new Date()
-      const hotels = await orm.findMany('Hotels', {}) as any[]
-
-      for (const hotel of hotels) {
-        const checkinToday = await orm.findMany('Reservations', {
-          hotelId: hotel.id,
-          checkIn: today.toISOString().split('T')[0],
-          status: 'confirmed',
-        }) as any[]
-
-        for (const r of checkinToday) {
-          await autoMsgTrigger.triggerAutoMessages({
-            hotelId: hotel.id, event: 'checkin_day', reservationId: r.id, guestId: r.guestId, roomId: r.roomId,
-            variables: { checkin_date: r.checkIn, checkout_date: r.checkOut, locator: r.externalLocator || r.id.slice(-8) },
-          })
-        }
-
-        const checkoutToday = await orm.findMany('Reservations', {
-          hotelId: hotel.id,
-          checkOut: today.toISOString().split('T')[0],
-          status: 'checked_in',
-        }) as any[]
-
-        for (const r of checkoutToday) {
-          await autoMsgTrigger.triggerAutoMessages({
-            hotelId: hotel.id, event: 'checkout_day', reservationId: r.id, guestId: r.guestId, roomId: r.roomId,
-            variables: { checkin_date: r.checkIn, checkout_date: r.checkOut, locator: r.externalLocator || r.id.slice(-8) },
-          })
-        }
-      }
-    } catch (e) {
-      logger.warn('auto-messages cron failed', { error: (e as Error).message })
-    }
-  }
-
-  setInterval(processAutoMessages, AUTO_MESSAGES_TICK_MS)
+  const autoMsgCron = createAutoMessagesCron(orm, autoMsgTrigger)
+  setInterval(() => { autoMsgCron().catch((e) => logger.warn('auto-messages cron failed', { error: (e as Error).message })) }, AUTO_MESSAGES_TICK_MS)
   logger.info('Auto-messages cron listo', { tickMs: AUTO_MESSAGES_TICK_MS })
 }
 

@@ -10,7 +10,7 @@
         <div class="flex items-center justify-between h-full">
           <!-- Logo -->
           <router-link to="/" class="flex items-center gap-2.5 group">
-            <div class="w-9 h-9 rounded-xl bg-navy text-white flex items-center justify-center font-black text-base shadow-sm group-hover:bg-blue transition-colors">M</div>
+            <div class="w-9 h-9 rounded-xl bg-navy text-white flex items-center justify-center font-black text-base shadow-sm group-hover:bg-blue transition-colors">S</div>
             <span class="font-black text-lg tracking-tight text-navy">Solmi<span class="text-blue">OS</span></span>
           </router-link>
 
@@ -387,7 +387,7 @@
           <!-- Brand -->
           <div class="md:col-span-4">
             <div class="flex items-center gap-3 mb-4">
-              <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white shadow-lg shadow-blue-900/40">M</div>
+              <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white shadow-lg shadow-blue-900/40">S</div>
               <span class="font-black text-lg text-white">Solmi<span class="text-blue-400">OS</span></span>
             </div>
             <p class="text-sm text-white/40 max-w-xs mb-5">Hospitality OS para hoteles LATAM. Gestión completa sin complejidad.</p>

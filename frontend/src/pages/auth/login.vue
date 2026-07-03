@@ -3,7 +3,7 @@
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="text-center mb-8">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-navy to-blue mx-auto flex items-center justify-center font-black text-white text-2xl mb-4 shadow-lg">M</div>
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-navy to-blue mx-auto flex items-center justify-center font-black text-white text-2xl mb-4 shadow-lg">S</div>
         <h1 class="text-2xl font-black text-navy">Manager<span class="text-cyan">Hotel</span></h1>
         <p class="text-sm text-text-muted mt-1">Hospitality OS · LATAM</p>
       </div>

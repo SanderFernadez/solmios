@@ -35,7 +35,7 @@
         <h3 class="text-lg font-black text-navy mb-4">Logo y Apariencia</h3>
         <div class="space-y-4">
           <div class="flex items-center gap-4 p-4 bg-surface rounded-xl">
-            <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-3xl font-black">M</div>
+            <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-3xl font-black">S</div>
             <div>
               <div class="text-sm font-bold text-navy mb-2">Logo Actual</div>
               <button class="px-3 py-1.5 bg-white border border-border rounded-lg text-[10px] font-bold hover:border-navy transition-colors cursor-pointer">Cambiar Logo</button>
