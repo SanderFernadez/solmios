@@ -8,7 +8,7 @@ import { cors, rateLimit, requestLogger, bodyLimit, timeout, compression } from 
 import { securityHeaders } from './shared/middlewares/security-headers'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { PostgresAdapter } from 'arckode-framework/adapters/postgres'
-import { ormMigrate } from 'arckode-framework/kernel/db/orm-migrate'
+import { ormMigrate } from './scripts/orm-migrate'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { HotelAuth } from './infrastructure/auth/hotel-auth'
 import { registerSharedModels } from './shared/models'
