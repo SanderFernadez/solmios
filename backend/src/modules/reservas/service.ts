@@ -10,8 +10,10 @@ import { NullEmailSender, type EmailSender } from '../../services/email-sender'
 import { dispatchCreateEmail } from './usecases/reservation-notifications'
 import { setGuaranteePin as setGuaranteePinUsecase, getGuaranteeHasPin as getGuaranteeHasPinUsecase, unlockGuaranteeCard as unlockGuaranteeCardUsecase } from './usecases/guarantee'
 import { listReservations, getReservationById, createReservation, updateReservation, deleteReservation } from './usecases/crud'
-import { getPreCheckinData as getPreCheckinDataUsecase, submitPreCheckin as submitPreCheckinUsecase, findReservationByHash as findReservationByHashUsecase } from './usecases/pre-checkin'
+import { getPreCheckinData as getPreCheckinDataUsecase, submitPreCheckin as submitPreCheckinUsecase } from './usecases/pre-checkin'
 import { getExtendedDetail as getExtendedDetailUsecase, getAuditTrail as getAuditTrailUsecase } from './usecases/detail'
+import { getBookingEngineDashboard as getBookingEngineDashboardUsecase } from './usecases/booking-engine'
+import type { ReservasQueries } from './usecases/reservas-queries'
 
 const MS_PER_DAY = 86_400_000
 
@@ -41,8 +43,8 @@ export class ReservasService {
     private readonly guestRepo: RepositoryAdapter<any>,
     private readonly roomRepo: RepositoryAdapter<any>,
     private readonly hotelRepo: RepositoryAdapter<any>,
+    private readonly queries: ReservasQueries,
     private readonly blockRepo?: RepositoryAdapter<any>,
-    private readonly orm?: any,
   ) {}
 
   // ACUMULA handlers — nunca pisa el anterior.
@@ -95,6 +97,7 @@ export class ReservasService {
       orm: deps.orm,
       logger: deps.logger || this.logger,
       repo: this.repo,
+      queries: this.queries,
     })
     return result
   }
@@ -107,60 +110,49 @@ export class ReservasService {
   async executeCheckout(r: any, user: any, deps: { orm: any; invalidateHousekeepingCache?: () => Promise<void>; pushAvailabilityToChannex?: any; dispatchLifecycleEmail?: any; logger?: any }): Promise<any> {
     const nowIso = new Date().toISOString()
     try {
-      await deps.orm.update('Reservations', r.id, { status: 'checked_out', checkedOutAt: nowIso })
+      await this.queries.updateReservation(r.id, { status: 'checked_out', checkedOutAt: nowIso })
     } catch (e: any) {
       throw new Error(`Error interno al procesar check-out: ${e.message}`)
     }
     const log = deps.logger || this.logger
-    deps.orm.create('Auditlog', { id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id, action: 'checkout', userId: user.id, hotelId: r.hotelId, detail: JSON.stringify({ roomId: r.roomId, guestId: r.guestId, checkIn: r.checkIn, checkOut: r.checkOut }), createdAt: nowIso }).catch((e: any) => log.warn('auditlog checkout', { error: e.message }))
+    this.queries.createAuditLog({ id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id, action: 'checkout', userId: user.id, hotelId: r.hotelId, detail: JSON.stringify({ roomId: r.roomId, guestId: r.guestId, checkIn: r.checkIn, checkOut: r.checkOut }), createdAt: nowIso })
     await this.sockets.onReservationCheckedOut?.({ reservationId: r.id, roomId: r.roomId, hotelId: r.hotelId })
     return { ok: true, reservationId: r.id, status: 'checked_out' }
   }
 
   // ── PRE-CHECKIN (público) ──────────────────────────────────────────────
   async getPreCheckinData(hash: string): Promise<any> {
-    return getPreCheckinDataUsecase(hash, this.hotelRepo, this.roomRepo, this.guestRepo, this.orm)
+    return getPreCheckinDataUsecase(hash, this.hotelRepo, this.roomRepo, this.guestRepo, this.queries)
   }
 
   async submitPreCheckin(hash: string, body: any): Promise<void> {
-    return submitPreCheckinUsecase(hash, body, this.orm, this.guestRepo)
+    return submitPreCheckinUsecase(hash, body, this.queries, this.guestRepo)
   }
 
   // ── EXTENDED RESERVATION DETAIL ─────────────────────────────────────────
   async getExtendedDetail(id: string, currentUser: any): Promise<any> {
-    return getExtendedDetailUsecase(this.repo, this.guestRepo, this.roomRepo, this.orm, id, currentUser)
+    return getExtendedDetailUsecase(this.repo, this.guestRepo, this.roomRepo, this.queries, id, currentUser)
   }
 
   // ── AUDIT TRAIL ────────────────────────────────────────────────────────
   async getAuditTrail(id: string, currentUser: any): Promise<any[]> {
-    return getAuditTrailUsecase(this.repo, this.orm, id, currentUser)
+    return getAuditTrailUsecase(this.repo, this.queries, id, currentUser)
   }
 
   // ── GUARANTEE CARD ──────────────────────────────────────────────────────
   async setGuaranteePin(user: any, body: any): Promise<{ success: boolean }> {
-    return setGuaranteePinUsecase(this.orm, this.userRepo, user, body)
+    return setGuaranteePinUsecase(this.queries, this.userRepo, user, body)
   }
 
   async getGuaranteeHasPin(user: any): Promise<{ hasPin: boolean }> {
-    return getGuaranteeHasPinUsecase(this.orm, this.userRepo, user)
+    return getGuaranteeHasPinUsecase(this.queries, this.userRepo, user)
   }
 
   async unlockGuaranteeCard(reservationId: string, user: any, body: any): Promise<any> {
-    return unlockGuaranteeCardUsecase(this.orm, this.repo, this.userRepo, reservationId, user, body, this.auth)
+    return unlockGuaranteeCardUsecase(this.queries, this.repo, this.userRepo, reservationId, user, body, this.auth)
   }
 
   async getBookingEngineDashboard(user: any): Promise<any> {
-    if (!this.orm) throw new Error('ORM no disponible')
-    let hotelId = user?.hotelId
-    if (!hotelId || hotelId === 'platform') {
-      const hotels = await this.orm.findMany('Hotels', {}); const first: any = hotels[0]
-      hotelId = first?.id
-    }
-    const hotel = (await this.orm.findMany('Hotels', { id: hotelId }))[0] as any
-    const roomTypes = await this.orm.findMany('Rooms', { hotelId }) as any[]
-    const res = await this.orm.findMany('Reservations', { hotelId }) as any[]
-    const directas = res.filter((r: any) => r.channel === 'direct' || r.channel === 'whatsapp').length
-    const revenueDirecta = res.filter((r: any) => r.channel === 'direct' || r.channel === 'whatsapp').reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
-    return { hotel, roomTypes, total: roomTypes?.length || 0, directas, revenueDirecta, totalReservas: res.length, comisionesAhorradas: Math.round(revenueDirecta * 0.15) }
+    return getBookingEngineDashboardUsecase(this.queries, user)
   }
 }

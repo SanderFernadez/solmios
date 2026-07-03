@@ -1,8 +1,9 @@
-import type { Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger } from 'arckode-framework'
 
 export class AmenitiesService {
   constructor(
-    private readonly orm: any,
+    private readonly hotelAmenitiesRepo: RepositoryAdapter<any>,
+    private readonly roomAmenitiesRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
   ) {}
 
@@ -15,32 +16,32 @@ export class AmenitiesService {
   }
 
   async listHotelAmenities(hotelId: string): Promise<any[]> {
-    return await this.orm.findMany('HotelAmenities', { hotelId, isActive: 1 }) as any[]
+    return await this.hotelAmenitiesRepo.findMany({ hotelId, isActive: 1 }) as any[]
   }
 
   async updateHotelAmenities(hotelId: string, amenities: string[]): Promise<number> {
-    const existing = await this.orm.findMany('HotelAmenities', { hotelId }) as any[]
-    for (const ex of existing) { if (!amenities.includes(ex.amenityKey)) await this.orm.update('HotelAmenities', ex.id, { isActive: 0 }) }
+    const existing = await this.hotelAmenitiesRepo.findMany({ hotelId }) as any[]
+    for (const ex of existing) { if (!amenities.includes(ex.amenityKey)) await this.hotelAmenitiesRepo.update(ex.id, { isActive: 0 }) }
     for (const key of amenities) {
       const found = existing.find((e: any) => e.amenityKey === key)
-      if (found) { await this.orm.update('HotelAmenities', found.id, { isActive: 1 }) } else {
+      if (found) { await this.hotelAmenitiesRepo.update(found.id, { isActive: 1 }) } else {
         const cat = key.includes('pool') || key.includes('parking') || key.includes('gym') || key.includes('spa') || key.includes('restaurant') || key.includes('bar') || key.includes('garden') || key.includes('terrace') || key.includes('bbq') || key.includes('kids') ? 'exterior' : key.includes('service') || key.includes('laundry') || key.includes('concierge') || key.includes('pets') || key.includes('wheelchair') ? 'services' : 'interior'
-        await this.orm.create('HotelAmenities', { id: crypto.randomUUID(), hotelId, amenityKey: key, amenityCategory: cat, isActive: 1 })
+        await this.hotelAmenitiesRepo.create({ id: crypto.randomUUID(), hotelId, amenityKey: key, amenityCategory: cat, isActive: 1 })
       }
     }
     return amenities.length
   }
 
   async listRoomAmenities(roomId: string): Promise<any[]> {
-    return await this.orm.findMany('RoomAmenities', { roomId, isActive: 1 }) as any[]
+    return await this.roomAmenitiesRepo.findMany({ roomId, isActive: 1 }) as any[]
   }
 
   async updateRoomAmenities(roomId: string, amenities: string[]): Promise<number> {
-    const existing = await this.orm.findMany('RoomAmenities', { roomId }) as any[]
-    for (const ex of existing) { if (!amenities.includes(ex.amenityKey)) await this.orm.update('RoomAmenities', ex.id, { isActive: 0 }) }
+    const existing = await this.roomAmenitiesRepo.findMany({ roomId }) as any[]
+    for (const ex of existing) { if (!amenities.includes(ex.amenityKey)) await this.roomAmenitiesRepo.update(ex.id, { isActive: 0 }) }
     for (const key of amenities) {
       const found = existing.find((e: any) => e.amenityKey === key)
-      if (found) { await this.orm.update('RoomAmenities', found.id, { isActive: 1 }) } else { await this.orm.create('RoomAmenities', { id: crypto.randomUUID(), roomId, amenityKey: key, isShared: 0, isActive: 1 }) }
+      if (found) { await this.roomAmenitiesRepo.update(found.id, { isActive: 1 }) } else { await this.roomAmenitiesRepo.create({ id: crypto.randomUUID(), roomId, amenityKey: key, isShared: 0, isActive: 1 }) }
     }
     return amenities.length
   }

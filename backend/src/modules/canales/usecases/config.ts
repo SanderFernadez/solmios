@@ -1,11 +1,12 @@
 // canales/usecases/config.ts — Config management for channel manager
-import type { RepositoryAdapter, ORM } from 'arckode-framework'
+import type { RepositoryAdapter } from 'arckode-framework'
 import type { CanalesDTO } from '../types'
+import type { CanalesQueries } from './canales-queries'
 
 export class ConfigUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<CanalesDTO>,
-    private readonly orm?: ORM,
+    private readonly queries: CanalesQueries,
   ) {}
 
   async getConfig(hotelId: string): Promise<CanalesDTO | undefined> {
@@ -20,13 +21,6 @@ export class ConfigUseCase {
   }
 
   async getOTACatalog(): Promise<any[]> {
-    try {
-      if (!this.orm) return []
-      const rows = await this.orm.findMany('Configuration', { hotelId: 'platform', clave: 'canales_ota' })
-      const cfg = (rows as any[])?.[0]
-      if (!cfg) return []
-      const val = typeof cfg.value === 'string' ? JSON.parse(cfg.value) : cfg.value
-      return Array.isArray(val) ? val : []
-    } catch { return [] }
+    return this.queries.getOTACatalog()
   }
 }

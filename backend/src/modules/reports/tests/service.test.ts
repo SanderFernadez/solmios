@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'bun:test'
 import { silentLogger } from 'arckode-framework/testing'
 import { ReportsService } from '../service'
+import { ReportQueries } from '../usecases/report-queries'
 import { csvValue } from '../helpers'
 
 const log = silentLogger()
@@ -25,7 +26,7 @@ function makeOrm(overrides: Partial<Record<string, any>> = {}) {
 describe('ReportsService', () => {
   describe('getReports', () => {
     it('returns report summary', async () => {
-      const svc = new ReportsService(makeOrm(), log)
+      const svc = new ReportsService(log, new ReportQueries(makeOrm()))
       const result = await svc.getReports({ user: { id: 'u1', role: 'hotel_admin' }, query: {} })
       expect(result.totalRevenue).toBe(200)
     })

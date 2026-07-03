@@ -15,7 +15,6 @@ export class CanalesController {
   constructor(
     private readonly service: CanalesService,
     private readonly logger: Logger,
-    private readonly orm?: any,
   ) {}
 
   async syncLog(req: HttpRequest) {

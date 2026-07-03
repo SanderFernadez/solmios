@@ -5,6 +5,7 @@ import { describe, it, expect } from 'bun:test'
 import type { RepositoryAdapter, CacheAdapter, Auth } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { CanalesService } from '../service'
+import { CanalesQueries } from '../usecases/canales-queries'
 import type { CanalesDTO } from '../types'
 
 // silentLogger es una factory function — SIEMPRE llamarla con ()
@@ -30,25 +31,34 @@ function makeUserRepo() {
   return { findById: async () => ({ id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }) } as unknown as RepositoryAdapter<any>
 }
 
+function makeQueries() {
+  return new CanalesQueries({
+    findMany: async () => [],
+    findById: async () => null,
+    create: async (data: any) => data,
+    update: async () => {},
+  })
+}
+
 const mockUser = { id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }
 
 describe('CanalesService', () => {
   describe('getById', () => {
     it('lanza NotFound si el item no existe', async () => {
-      const service = new CanalesService(makeRepo(), makeUserRepo(), log, silentCache, mockAuth)
+      const service = new CanalesService(makeRepo(), makeUserRepo(), log, silentCache, mockAuth, makeQueries())
       await expect(service.getById('no-existe', mockUser)).rejects.toThrow('Canales no encontrado')
     })
 
     it('retorna el item si existe', async () => {
       const item = { id: '1', hotelId: 'hotel-1' } as CanalesDTO
-      const service = new CanalesService(makeRepo({ findById: async () => item }), makeUserRepo(), log, silentCache, mockAuth)
+      const service = new CanalesService(makeRepo({ findById: async () => item }), makeUserRepo(), log, silentCache, mockAuth, makeQueries())
       expect(await service.getById('1', mockUser)).toEqual(item)
     })
   })
 
   describe('create', () => {
     it('crea y retorna el item', async () => {
-      const service = new CanalesService(makeRepo(), makeUserRepo(), log, silentCache, mockAuth)
+      const service = new CanalesService(makeRepo(), makeUserRepo(), log, silentCache, mockAuth, makeQueries())
       const result = await service.create({} as any)
       expect(result.id).toBe('test-id')
     })
@@ -56,7 +66,7 @@ describe('CanalesService', () => {
 
   describe('delete', () => {
     it('lanza NotFound si el item no existe', async () => {
-      const service = new CanalesService(makeRepo({ delete: async () => false }), makeUserRepo(), log, silentCache, mockAuth)
+      const service = new CanalesService(makeRepo({ delete: async () => false }), makeUserRepo(), log, silentCache, mockAuth, makeQueries())
       await expect(service.delete('no-existe', mockUser)).rejects.toThrow('Canales no encontrado')
     })
   })

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'bun:test'
 import { silentLogger } from 'arckode-framework/testing'
 import { TtlockService } from '../service'
+import { TtlockQueries } from '../usecases/ttlock-queries'
 
 const log = silentLogger()
 
@@ -42,7 +43,8 @@ describe('TtlockService', () => {
   describe('getConfig', () => {
     it('returns connection status', async () => {
       const orm = makeOrm()
-      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), orm, log)
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
       const result = await svc.getConfig('h1')
       expect(result.configured).toBe(true)
       expect(result.connected).toBe(true)
@@ -52,7 +54,8 @@ describe('TtlockService', () => {
   describe('listLocks', () => {
     it('returns locks with room numbers', async () => {
       const orm = makeOrm()
-      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), orm, log)
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
       const result = await svc.listLocks('h1')
       expect(result).toHaveLength(1)
       expect(result[0].roomNumber).toBe('101')
@@ -70,7 +73,8 @@ describe('TtlockService', () => {
         },
         update: async (_table: string, _id: string, data: any) => { lockData = { ...lockData, ...data } },
       })
-      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), orm, log)
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
       const result = await svc.updateLock('l1', { name: 'Updated Door' })
       expect(result.name).toBe('Updated Door')
     })
@@ -80,7 +84,8 @@ describe('TtlockService', () => {
     it('marks code as revoked', async () => {
       let updated = false
       const orm = makeOrm({ update: async () => { updated = true } })
-      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), orm, log)
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
       await svc.revokeCode('c1')
       expect(updated).toBe(true)
     })

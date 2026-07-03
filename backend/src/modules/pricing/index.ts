@@ -1,6 +1,7 @@
-import { createModule } from 'arckode-framework'
+import { createModule, OrmRepository } from 'arckode-framework'
 import { PricingService } from './service'
 import { PricingController } from './controller'
+import { PricingQueries } from './usecases/pricing-queries'
 
 export { PricingService }
 
@@ -21,7 +22,12 @@ export function PricingModule() {
     create({ logger, orm, cache, router, auth }) {
       if (!auth) throw new Error('pricing: auth dependency required')
       const log = logger.child('pricing')
-      const service = new PricingService(orm, log)
+      const seasonsRepo = new OrmRepository<any>(orm, 'Seasons')
+      const ratesRepo = new OrmRepository<any>(orm, 'RoomRates')
+      const blocksRepo = new OrmRepository<any>(orm, 'RoomBlocks')
+      const restrictionsRepo = new OrmRepository<any>(orm, 'RateRestrictions')
+      const queries = new PricingQueries(orm)
+      const service = new PricingService(seasonsRepo, ratesRepo, blocksRepo, restrictionsRepo, log, queries)
       const controller = new PricingController(service, log)
 
       const hsa = [auth.authenticate('hotel_admin', 'super_admin')]

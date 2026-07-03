@@ -1,6 +1,7 @@
 import { createModule } from 'arckode-framework'
 import { ReportsService } from './service'
 import { ReportsController } from './controller'
+import { ReportQueries } from './usecases/report-queries'
 
 export { ReportsService }
 
@@ -21,7 +22,8 @@ export function ReportsModule() {
     create({ logger, orm, cache, router, auth }) {
       if (!auth) throw new Error('reports: auth dependency required')
       const log = logger.child('reports')
-      const service = new ReportsService(orm, log)
+      const queries = new ReportQueries(orm)
+      const service = new ReportsService(log, queries)
       const controller = new ReportsController(service, log)
 
       const ha = [auth.authenticate('hotel_admin', 'super_admin')]

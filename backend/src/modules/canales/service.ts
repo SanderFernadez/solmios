@@ -1,4 +1,4 @@
-import type { RepositoryAdapter, Logger, CacheAdapter, ORM, Auth } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError } from 'arckode-framework'
 import type {
   CanalesDTO, CreateCanalesDTO, UpdateCanalesDTO, CanalesQuery, CanalesPaginated,
@@ -8,12 +8,12 @@ import type {
 } from './types'
 import type { CanalesSockets } from './sockets'
 import { ChannexUseCase } from './usecases/channex'
-import { applyBookingRevision } from './usecases/booking-ingestion'
 import { pushAvailabilityForRoomType, pushAvailabilityForRoom, type AvailabilityDeps } from './usecases/availability'
 import { CanalesCrudUseCase } from './usecases/crud'
 import { ChannelApiUseCase } from './usecases/channel-api'
 import { BookingsUseCase } from './usecases/bookings'
 import { ConfigUseCase } from './usecases/config'
+import type { CanalesQueries } from './usecases/canales-queries'
 
 export class CanalesService {
   private sockets: CanalesSockets = {}
@@ -29,14 +29,14 @@ export class CanalesService {
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
-    private readonly orm?: ORM,
+    private readonly queries: CanalesQueries,
     private readonly syncLogRepo?: RepositoryAdapter<any>,
   ) {
     this.channex = new ChannexUseCase(logger)
     this.crud = new CanalesCrudUseCase(repo, userRepo, auth)
     this.channelApi = new ChannelApiUseCase(this.channex)
-    this.bookings = new BookingsUseCase(this.channex, orm!)
-    this.config = new ConfigUseCase(repo, orm)
+    this.bookings = new BookingsUseCase(this.channex, queries)
+    this.config = new ConfigUseCase(repo, queries)
   }
 
   setSockets(s: Partial<CanalesSockets>): void {
@@ -97,16 +97,16 @@ export class CanalesService {
   // Push de availability: recálculo + push. Disparado por reservas/checkin/checkout/bloqueos. Lógica en usecases/availability.ts.
   private availDeps(): AvailabilityDeps {
     return {
-      findMany: (m, q) => this.orm!.findMany(m, q),
+      findMany: (m, q) => this.queries.findMany(m, q),
       getConfig: h => this.getConfig(h),
       pushToChannex: (c, rt, r) => this.channex.pushAvailability(c, rt, r),
     }
   }
   async pushAvailability(hotelId: string, roomType: string): Promise<{ pushed: boolean }> {
-    return this.orm ? pushAvailabilityForRoomType(this.availDeps(), hotelId, roomType) : { pushed: false }
+    return pushAvailabilityForRoomType(this.availDeps(), hotelId, roomType)
   }
   async pushAvailabilityByRoom(hotelId: string, roomId: string): Promise<{ pushed: boolean }> {
-    return this.orm ? pushAvailabilityForRoom(this.availDeps(), hotelId, roomId) : { pushed: false }
+    return pushAvailabilityForRoom(this.availDeps(), hotelId, roomId)
   }
 
   // ─── Channel API delegado a usecase ──────────────────────────────────
@@ -162,9 +162,7 @@ export class CanalesService {
   }
 
   async getSyncLog(hotelId?: string): Promise<any[]> {
-    if (!this.orm) return []
-    const rows = await this.orm.findMany('Configuration', { hotelId: hotelId || 'platform', key: 'channex_sync_log' })
-    const raw = (rows[0] as any)?.value; return raw ? JSON.parse(raw) : []
+    return this.queries.getSyncLog(hotelId)
   }
 
   // ─── CRUD delegado a usecase ─────────────────────────────────────────

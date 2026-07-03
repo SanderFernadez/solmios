@@ -1,50 +1,24 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type { AdminAnalyticsDTO, MonitoringDTO, PlanDTO, AmenityCatalogDTO } from './types'
-import { getDashboardAnalytics, getMonitoringData } from './usecases/aggregators'
-
-const PLAN_PRICE: Record<string, number> = { enterprise: 199, professional: 99, starter: 49, essential: 49 }
+import type { DashboardQueries } from './usecases/dashboard-queries'
 
 export class AdminService {
   constructor(
     private readonly plansRepo: RepositoryAdapter<PlanDTO>,
     private readonly amenitiesRepo: RepositoryAdapter<AmenityCatalogDTO>,
-    private readonly orm: any,
     private readonly logger: Logger,
     private readonly auth?: any,
+    private readonly queries?: DashboardQueries,
   ) {}
 
-  async listHotels(): Promise<{ data: any[]; total: number }> {
-    const data = await this.orm.findMany('Hotels', {})
-    return { data, total: data.length }
-  }
-
-  async listUsers(): Promise<{ data: any[]; total: number }> {
-    const data = await this.orm.findMany('Users', {})
-    return { data: data.map(({ password: _pw, ...rest }: any) => rest), total: data.length }
-  }
-
-  async getAnalytics(): Promise<AdminAnalyticsDTO> {
-    return getDashboardAnalytics(this.orm)
-  }
-
-  async listSubscriptions(): Promise<{ data: any[]; total: number; mrrTotal: number }> {
-    const data = (await this.orm.findMany('Hotels', {})).map((h: any) => ({ ...h, mrr: PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49 }))
-    return { data, total: data.length, mrrTotal: data.reduce((s: number, h: any) => s + h.mrr, 0) }
-  }
-
-  async listAuditLogs(): Promise<{ data: any[]; total: number }> {
-    const data = await this.orm.findMany('Auditlog', {})
-    return { data, total: data.length }
-  }
-
-  async listAnnouncements(): Promise<{ data: any[]; total: number }> {
-    const data = await this.orm.findMany('Announcements', {})
-    return { data, total: data.length }
-  }
-
-  async getMonitoring(): Promise<MonitoringDTO> {
-    return getMonitoringData(this.orm)
-  }
+  async listHotels(): Promise<{ data: any[]; total: number }> { return this.queries!.listHotels() }
+  async listUsers(): Promise<{ data: any[]; total: number }> { return this.queries!.listUsers() }
+  async getAnalytics(): Promise<AdminAnalyticsDTO> { return this.queries!.getAnalytics() }
+  async listSubscriptions(): Promise<{ data: any[]; total: number; mrrTotal: number }> { return this.queries!.listSubscriptions() }
+  async listAuditLogs(): Promise<{ data: any[]; total: number }> { return this.queries!.listAuditLogs() }
+  async listAnnouncements(): Promise<{ data: any[]; total: number }> { return this.queries!.listAnnouncements() }
+  async getMonitoring(): Promise<MonitoringDTO> { return this.queries!.getMonitoring() }
+  async getPublicUsers(): Promise<any[]> { return this.queries!.getPublicUsers() }
 
   async listPlans(): Promise<{ data: any[]; total: number }> {
     const data = await this.plansRepo.findMany({})
@@ -114,10 +88,5 @@ export class AdminService {
     if (!existing) throw new Error('Amenity no encontrado')
     if (this.auth) this.auth.assertOwnership(existing, { role: 'super_admin' })
     await this.amenitiesRepo.delete(id)
-  }
-
-  async getPublicUsers(): Promise<any[]> {
-    const rows = (await this.orm.findMany('Users', { isDemo: 1, active: 1 })) as any[]
-    return rows.filter((u: any) => u && u.email).map((u: any) => ({ name: u.name, email: u.email, role: u.role }))
   }
 }

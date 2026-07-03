@@ -6,6 +6,7 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerCanalesModels } from './model'
 import { CanalesService } from './service'
 import { CanalesController } from './controller'
+import { CanalesQueries } from './usecases/canales-queries'
 import type { RoomTypeSummary, CanalesDTO } from './types'
 
 export { CanalesService }
@@ -39,17 +40,16 @@ export function CanalesModule() {
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('canales')
       const syncLogRepo = new OrmRepository<any>(orm, 'SyncLog')
-      const service = new CanalesService(repo, userRepo, log, cache, auth, orm, syncLogRepo)
-      const controller = new CanalesController(service, log, orm)
-
-      const resolveHotelId = async (q: any, body: any) =>
-        body?.hotelId || q?.hotelId || ((await orm.findMany('Hotels', {}))[0] as any)?.id
+      const queries = new CanalesQueries(orm)
+      const service = new CanalesService(repo, userRepo, log, cache, auth, queries, syncLogRepo)
+      const controller = new CanalesController(service, log)
 
       // ─── Channel manager (Channex real) ───────────────────────────────
       // hotelId se resuelve con fallback al primer hotel (igual que /sync) para
       // que GET /api/channels sin query explícita devuelva la config correcta.
       router.get('/api/channels', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
-        const hotelId = await resolveHotelId(req.query as any, {})
+        const hotelId = await queries.resolveHotelId((req.body as any)?.hotelId || (req.query as any)?.hotelId)
+        if (!hotelId) return { status: 404, body: { error: 'Hotel no encontrado' } }
         return { status: 200, body: await service.listChannels(hotelId) }
       })
       router.get('/api/channels/feed', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.feed())
@@ -70,15 +70,16 @@ export function CanalesModule() {
       router.get('/api/channels/iframe-token', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.iframeToken(req))
 
       // POST /api/channels/sync — crea propiedad + room types + rate plans + ARI en Channex.
-      // Lee habitaciones vía orm (cross-module read, igual que dashboard/reports).
+      // Lee habitaciones vía queries (cross-module read, igual que dashboard/reports).
       router.post('/api/channels/sync', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
         const body = (req.body as any) || {}
-        const hotelId = await resolveHotelId((req.query as any), body)
+        const hotelId = await queries.resolveHotelId(body.hotelId || (req.query as any)?.hotelId)
         if (!hotelId) return { status: 404, body: { error: 'Hotel no encontrado' } }
-        const hotel = (await orm.findMany('Hotels', { id: hotelId }))[0] as any
+        const hotels = await queries.findMany('Hotels', { id: hotelId })
+        const hotel = hotels[0] as any
         if (!hotel) return { status: 404, body: { error: 'Hotel no encontrado' } }
         // Agrupar habitaciones por tipo → resumen ARI.
-        const rooms = (await orm.findMany('Rooms', { hotelId })) as any[]
+        const rooms = await queries.findMany('Rooms', { hotelId }) as any[]
         const seen = new Map<string, RoomTypeSummary>()
         for (const r of rooms) {
           const cur = seen.get(r.type)

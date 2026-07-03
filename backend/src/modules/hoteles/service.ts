@@ -14,6 +14,7 @@ import { NotFoundError, AuthError } from 'arckode-framework'
 import type { HotelesDTO, CreateHotelesDTO, UpdateHotelesDTO, HotelesQuery, HotelesPaginated } from './types'
 import type { HotelesSockets } from './sockets'
 import type { SettingsFullUseCase } from './usecases/settings-full'
+import type { HotelesQueries } from './usecases/hoteles-queries'
 
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
 
@@ -25,8 +26,8 @@ export class HotelesService {
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
-    private readonly orm?: any,
     private readonly settingsFull?: SettingsFullUseCase,
+    private readonly queries?: HotelesQueries,
   ) {}
 
   // ACUMULA handlers — nunca pisa el anterior.
@@ -127,27 +128,15 @@ export class HotelesService {
     await this.cache.delete('hoteles:list')
   }
 
-  // ── Settings (cross-module reads via orm) ─────────────────────────────
+  // ── Settings (delegated to queries) ───────────────────────────────────
   async getSettings(hotelId: string, user?: any): Promise<any> {
-    if (!this.orm) throw new Error('ORM no disponible para settings')
-    const hotel = await this.orm.findById('Hotels', hotelId)
-    if (user) this.auth.assertOwnership(hotel, user)
-    const rooms = await this.orm.findMany('Rooms', { hotelId }) as any[]
-    const seen = new Set<string>(); const baseRates: any[] = []
-    for (const r of rooms) { if (!seen.has(r.type)) { seen.add(r.type); baseRates.push({ type: r.type, price: r.basePrice }) } }
-    return { hotel, baseRates }
+    if (!this.queries) throw new Error('Queries no disponible para settings')
+    return this.queries.getSettings(hotelId, this.auth, user)
   }
 
   async updateHotel(id: string, body: Record<string, any>, user?: any): Promise<any> {
-    if (!this.orm) throw new Error('ORM no disponible para settings')
-    const existing = await this.orm.findById('Hotels', id)
-    if (!existing) throw new NotFoundError('Hotel no encontrado')
-    if (user) this.auth.assertOwnership(existing, user)
-    const safePatch: Record<string, any> = {}
-    const allowed = ['name', 'country', 'address', 'phone', 'email', 'timezone', 'currency', 'checkIn', 'checkOut', 'plan', 'freeCancellation', 'depositRequired', 'depositPercent', 'weekendSurcharge', 'ownerName', 'ownerTaxId', 'deviceEmail', 'accommodationType', 'registrationNumber', 'website', 'bookingEngineUrl', 'phone2', 'warningPhone', 'secondaryCurrency', 'youtubeUrl', 'starRating', 'onlineBookingStatus', 'motorVersion', 'latitude', 'longitude', 'province', 'municipality', 'locality', 'postalCode', 'cleaningType', 'depositType', 'depositFixed', 'advanceType', 'advanceAmount', 'releaseHours', 'defaultPaymentMethod', 'requestReviews', 'publishReviewScore', 'publishReviewComments', 'taxName', 'taxRate', 'descriptionJson', 'wifiNetwork', 'wifiPassword']
-    for (const k of allowed) { if (body[k] !== undefined) safePatch[k] = body[k] }
-    await this.orm.update('Hotels', id, safePatch)
-    return await this.orm.findById('Hotels', id)
+    if (!this.queries) throw new Error('Queries no disponible para settings')
+    return this.queries.updateHotel(id, body, this.auth, user)
   }
 
   async getSettingsFull(hotelId: string, user?: any): Promise<any> {
@@ -156,20 +145,12 @@ export class HotelesService {
   }
 
   async getConfig(hotelId: string, key: string): Promise<any> {
-    if (!this.orm) throw new Error('ORM no disponible')
-    const row = (await this.orm.findMany('Configuration', { hotelId, key }))[0] as any
-      || (await this.orm.findMany('Configuration', { hotelId: 'platform', key }))[0] as any
-    return { valor: row ? safeParse(row.value) : null }
+    if (!this.queries) throw new Error('Queries no disponible')
+    return this.queries.getConfig(hotelId, key)
   }
 
   async setConfig(body: { clave: string; valor: any; hotelId?: string }): Promise<any> {
-    if (!this.orm) throw new Error('ORM no disponible')
-    const { clave, valor, hotelId } = body
-    if (!clave || valor === undefined) throw new Error('clave y valor requeridos')
-    const existing = (await this.orm.findMany('Configuration', { hotelId: hotelId || 'platform', key: clave }))[0] as any
-    const val = typeof valor === 'object' ? JSON.stringify(valor) : String(valor)
-    if (existing) await this.orm.update('Configuration', existing.id, { value: val })
-    else await this.orm.create('Configuration', { id: crypto.randomUUID(), hotelId: hotelId || 'platform', key: clave, value: val })
-    return { success: true }
+    if (!this.queries) throw new Error('Queries no disponible')
+    return this.queries.setConfig(body)
   }
 }

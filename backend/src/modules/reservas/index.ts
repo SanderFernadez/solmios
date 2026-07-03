@@ -2,6 +2,7 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerReservasModels } from './model'
 import { ReservasService } from './service'
 import { ReservasController } from './controller'
+import { ReservasQueries } from './usecases/reservas-queries'
 import type { ReservasDTO } from './types'
 
 export { ReservasService }
@@ -37,7 +38,8 @@ export function ReservasModule() {
       const companionsRepo = new OrmRepository<any>(orm, 'Companions')
       const addonsRepo = new OrmRepository<any>(orm, 'ReservationAddons')
       const messageLogRepo = new OrmRepository<any>(orm, 'MessageLogs')
-      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, blockRepo, orm)
+      const queries = new ReservasQueries(orm)
+      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo)
       const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth, orm, null, messageLogRepo, roomRepo, hotelRepo)
 
       const hsa = [auth.authenticate('hotel_admin', 'super_admin')]

@@ -2,6 +2,7 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import type { LockDeviceDTO, LockCodeDTO } from './types'
 import { TtlockService } from './service'
 import { TtlockController } from './controller'
+import { TtlockQueries } from './usecases/ttlock-queries'
 
 export { TtlockService }
 
@@ -24,7 +25,8 @@ export function TtlockModule() {
       const log = logger.child('ttlock')
       const lockDevicesRepo = new OrmRepository<LockDeviceDTO>(orm, 'LockDevices')
       const lockCodesRepo = new OrmRepository<LockCodeDTO>(orm, 'LockCodes')
-      const service = new TtlockService(lockDevicesRepo, lockCodesRepo, orm, log, auth)
+      const queries = new TtlockQueries(orm)
+      const service = new TtlockService(lockDevicesRepo, lockCodesRepo, log, queries, auth)
       const controller = new TtlockController(service, log)
 
       const hsa = [auth.authenticate('hotel_admin', 'super_admin')]

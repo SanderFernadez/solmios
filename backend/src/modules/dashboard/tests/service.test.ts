@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'bun:test'
 import { silentLogger } from 'arckode-framework/testing'
 import { DashboardService } from '../service'
+import { DashboardQueries } from '../usecases/dashboard-queries'
 
 const log = silentLogger()
 
@@ -26,7 +27,7 @@ function makeOrm(overrides: Partial<Record<string, any>> = {}) {
 describe('DashboardService', () => {
   describe('getDashboard', () => {
     it('returns aggregated dashboard data', async () => {
-      const svc = new DashboardService(makeOrm(), log)
+      const svc = new DashboardService(log, new DashboardQueries(makeOrm()))
       const result = await svc.getDashboard({ user: { id: 'u1' }, query: {} })
       expect(result.totalRooms).toBe(2)
       expect(result.occupied).toBe(1)
@@ -36,7 +37,7 @@ describe('DashboardService', () => {
 
   describe('getPlanning', () => {
     it('returns rooms and enriched reservations', async () => {
-      const svc = new DashboardService(makeOrm(), log)
+      const svc = new DashboardService(log, new DashboardQueries(makeOrm()))
       const result = await svc.getPlanning({ user: { id: 'u1' }, query: {} })
       expect(result.rooms).toHaveLength(2)
       expect(result.reservas).toHaveLength(1)

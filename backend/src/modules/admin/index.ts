@@ -2,6 +2,7 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import type { PlanDTO, AmenityCatalogDTO } from './types'
 import { AdminService } from './service'
 import { AdminController } from './controller'
+import { DashboardQueries } from './usecases/dashboard-queries'
 
 export { AdminService }
 
@@ -24,7 +25,8 @@ export function AdminModule() {
       const log = logger.child('admin')
       const plansRepo = new OrmRepository<PlanDTO>(orm, 'Plans')
       const amenitiesRepo = new OrmRepository<AmenityCatalogDTO>(orm, 'AmenitiesCatalog')
-      const service = new AdminService(plansRepo, amenitiesRepo, orm, log, auth)
+      const queries = new DashboardQueries(orm)
+      const service = new AdminService(plansRepo, amenitiesRepo, log, auth, queries)
       const controller = new AdminController(service, log)
 
       const sa = [auth.authenticate('super_admin')]

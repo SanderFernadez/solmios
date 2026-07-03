@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'bun:test'
 import { silentLogger } from 'arckode-framework/testing'
 import { PricingService } from '../service'
+import { PricingQueries } from '../usecases/pricing-queries'
 
 const log = silentLogger()
 
@@ -12,6 +13,7 @@ function makeOrm(overrides: Partial<Record<string, any>> = {}) {
       if (table === 'RoomBlocks') return []
       if (table === 'RateRestrictions') return []
       if (table === 'Reservations') return [{ id: 'res1', channel: 'booking', totalAmount: 200, checkIn: '2026-06-01', checkOut: '2026-06-03' }]
+      if (table === 'Rooms') return [{ id: 'rm1', type: 'standard' }]
       return []
     },
     create: async (_table: string, data: any) => data,
@@ -21,10 +23,33 @@ function makeOrm(overrides: Partial<Record<string, any>> = {}) {
   }
 }
 
+function makeRepo(orm: any, table: string) {
+  return {
+    findMany: async (filter: any) => orm.findMany(table, filter),
+    findById: async (id: string) => orm.findById?.(table, id),
+    findOne: async (filter: any) => { const rows = await orm.findMany(table, filter); return rows[0] || null },
+    create: async (data: any) => orm.create(table, data),
+    update: async (id: string, data: any) => orm.update(table, id, data),
+    delete: async (id: string) => orm.delete(table, id),
+    count: async () => 0,
+    paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
+  }
+}
+
+function makeService(ormOverride?: any) {
+  const orm = ormOverride || makeOrm()
+  const seasonsRepo = makeRepo(orm, 'Seasons')
+  const ratesRepo = makeRepo(orm, 'RoomRates')
+  const blocksRepo = makeRepo(orm, 'RoomBlocks')
+  const restrictionsRepo = makeRepo(orm, 'RateRestrictions')
+  const queries = new PricingQueries(orm)
+  return new PricingService(seasonsRepo, ratesRepo, blocksRepo, restrictionsRepo, log, queries)
+}
+
 describe('PricingService', () => {
   describe('listSeasons', () => {
     it('returns seasons sorted by sortOrder', async () => {
-      const svc = new PricingService(makeOrm(), log)
+      const svc = makeService()
       const result = await svc.listSeasons('h1')
       expect(result).toHaveLength(1)
     })
@@ -32,7 +57,7 @@ describe('PricingService', () => {
 
   describe('listRates', () => {
     it('returns room rates', async () => {
-      const svc = new PricingService(makeOrm(), log)
+      const svc = makeService()
       const result = await svc.listRates('h1')
       expect(result).toHaveLength(1)
     })
@@ -40,7 +65,7 @@ describe('PricingService', () => {
 
   describe('getChannelMetrics', () => {
     it('returns grouped metrics', async () => {
-      const svc = new PricingService(makeOrm(), log)
+      const svc = makeService()
       const result = await svc.getChannelMetrics('h1')
       expect(result).toHaveLength(1)
       expect(result[0].channel).toBe('booking')

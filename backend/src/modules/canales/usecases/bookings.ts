@@ -1,13 +1,12 @@
 // canales/usecases/bookings.ts — Bookings ingestion from Channex
-import type { ORM } from 'arckode-framework'
 import { ChannexUseCase } from './channex'
-import { applyBookingRevision } from './booking-ingestion'
 import type { BookingRevisionDTO, BookingIngestionResult } from '../types'
+import type { CanalesQueries } from './canales-queries'
 
 export class BookingsUseCase {
   constructor(
     private readonly channex: ChannexUseCase,
-    private readonly orm: ORM,
+    private readonly queries: CanalesQueries,
   ) {}
 
   async getBookings(cfg: any): Promise<BookingRevisionDTO[]> {
@@ -18,7 +17,7 @@ export class BookingsUseCase {
   async ingestBookings(hotelId: string, cfg: any): Promise<BookingIngestionResult> {
     const key = cfg?.channexApiKey || process.env.CHANNEX_API_KEY || ''
     return this.channex.ingestBookings(cfg, async (dto: any) => {
-      await applyBookingRevision({ orm: this.orm, channex: this.channex, hotelId, apiKey: key }, dto)
+      await this.queries.applyBookingRevision(dto, hotelId, this.channex, key)
     })
   }
 }

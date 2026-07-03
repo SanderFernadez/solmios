@@ -6,13 +6,14 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { HotelesService } from './service'
+import type { HotelesQueries } from './usecases/hoteles-queries'
 import { CreateHotelesSchema, UpdateHotelesSchema } from './validators/schema'
 
 export class HotelesController {
   constructor(
     private readonly service: HotelesService,
     private readonly logger: Logger,
-    private readonly orm?: any,
+    private readonly queries?: HotelesQueries,
   ) {}
 
   async index(req: HttpRequest) {
@@ -87,10 +88,7 @@ export class HotelesController {
 
   private async resolveHotel(req: any): Promise<string | undefined> {
     const q = req?.query || {}; if (q.hotelId) return q.hotelId
-    const user = req?.user; if (user?.hotelId && user?.hotelId !== 'platform') return user.hotelId
-    if (user?.id && user?.role !== 'super_admin') {
-      const rows = await this.orm!.findMany('Users', { id: user.id }); const u: any = rows?.[0]; if (u?.hotelId) return u.hotelId
-    }
-    return ((await this.orm!.findMany('Hotels', {}))[0] as any)?.id
+    if (!this.queries) return undefined
+    return this.queries.resolveHotelId(req?.user)
   }
 }

@@ -22,7 +22,7 @@ export async function checkoutValidation(repo: any, id: string, user: any, auth?
 }
 
 export async function executeCheckin(r: any, user: any, deps: {
-  orm: any; logger: any; repo: any; guestRepo?: any; roomRepo?: any
+  orm: any; logger: any; repo: any; queries?: any
 }): Promise<any> {
   const nowIso = new Date().toISOString()
   let guestId = r.guestId
@@ -45,6 +45,8 @@ export async function executeCheckin(r: any, user: any, deps: {
   } catch (e: any) {
     throw new Error(`Error interno al procesar check-in: ${e.message}`)
   }
-  deps.orm.create('Auditlog', { id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id, action: 'checkin', userId: user.id, hotelId: r.hotelId, detail: JSON.stringify({ guestId, roomId: r.roomId, folioId, checkIn: r.checkIn, checkOut: r.checkOut }), createdAt: nowIso }).catch((e: any) => deps.logger.warn('auditlog checkin', { error: e.message }))
+  if (deps.queries) {
+    deps.queries.createAuditLog({ id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id, action: 'checkin', userId: user.id, hotelId: r.hotelId, detail: JSON.stringify({ guestId, roomId: r.roomId, folioId, checkIn: r.checkIn, checkOut: r.checkOut }), createdAt: nowIso })
+  }
   return { ok: true, reservationId: r.id, status: 'checked_in', folioId, guestId }
 }

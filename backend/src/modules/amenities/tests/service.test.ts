@@ -17,10 +17,23 @@ function makeOrm(overrides: Partial<Record<string, any>> = {}) {
   }
 }
 
+function makeRepo(orm: any, table: string) {
+  return {
+    findMany: async (filter: any) => orm.findMany(table, filter),
+    findById: async (id: string) => orm.findById?.(table, id),
+    findOne: async (filter: any) => { const rows = await orm.findMany(table, filter); return rows[0] || null },
+    create: async (data: any) => orm.create(table, data),
+    update: async (id: string, data: any) => orm.update(table, id, data),
+    delete: async (id: string) => orm.delete(table, id),
+    count: async () => 0,
+    paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
+  }
+}
+
 describe('AmenitiesService', () => {
   describe('getStaticCatalog', () => {
     it('returns categorized amenities', () => {
-      const svc = new AmenitiesService({} as any, log)
+      const svc = new AmenitiesService({} as any, {} as any, log)
       const catalog = svc.getStaticCatalog()
       expect(catalog.interior).toContain('ac')
       expect(catalog.interior).toContain('wifi')
@@ -31,7 +44,8 @@ describe('AmenitiesService', () => {
 
   describe('listHotelAmenities', () => {
     it('returns hotel amenities', async () => {
-      const svc = new AmenitiesService(makeOrm(), log)
+      const orm = makeOrm()
+      const svc = new AmenitiesService(makeRepo(orm, 'HotelAmenities'), makeRepo(orm, 'RoomAmenities'), log)
       const result = await svc.listHotelAmenities('h1')
       expect(result).toHaveLength(1)
       expect(result[0].amenityKey).toBe('wifi')
@@ -40,7 +54,8 @@ describe('AmenitiesService', () => {
 
   describe('listRoomAmenities', () => {
     it('returns room amenities', async () => {
-      const svc = new AmenitiesService(makeOrm(), log)
+      const orm = makeOrm()
+      const svc = new AmenitiesService(makeRepo(orm, 'HotelAmenities'), makeRepo(orm, 'RoomAmenities'), log)
       const result = await svc.listRoomAmenities('rm1')
       expect(result).toHaveLength(1)
       expect(result[0].amenityKey).toBe('ac')

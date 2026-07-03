@@ -1,4 +1,4 @@
-import { createModule } from 'arckode-framework'
+import { createModule, OrmRepository } from 'arckode-framework'
 import { AmenitiesService } from './service'
 import { AmenitiesController } from './controller'
 
@@ -21,7 +21,9 @@ export function AmenitiesModule() {
     create({ logger, orm, cache, router, auth }) {
       if (!auth) throw new Error('amenities: auth dependency required')
       const log = logger.child('amenities')
-      const service = new AmenitiesService(orm, log)
+      const hotelAmenitiesRepo = new OrmRepository<any>(orm, 'HotelAmenities')
+      const roomAmenitiesRepo = new OrmRepository<any>(orm, 'RoomAmenities')
+      const service = new AmenitiesService(hotelAmenitiesRepo, roomAmenitiesRepo, log)
       const controller = new AmenitiesController(service, log)
 
       const hsa = [auth.authenticate('hotel_admin', 'super_admin')]

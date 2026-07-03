@@ -1,6 +1,7 @@
 import { createModule } from 'arckode-framework'
 import { DashboardService } from './service'
 import { DashboardController } from './controller'
+import { DashboardQueries } from './usecases/dashboard-queries'
 
 export { DashboardService }
 
@@ -21,7 +22,8 @@ export function DashboardModule() {
     create({ logger, orm, cache, router, auth }) {
       if (!auth) throw new Error('dashboard: auth dependency required')
       const log = logger.child('dashboard')
-      const service = new DashboardService(orm, log)
+      const queries = new DashboardQueries(orm)
+      const service = new DashboardService(log, queries)
       const controller = new DashboardController(service, log)
 
       const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]

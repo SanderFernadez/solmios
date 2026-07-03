@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'bun:test'
 import { silentLogger } from 'arckode-framework/testing'
 import { AdminService } from '../service'
+import { DashboardQueries } from '../usecases/dashboard-queries'
 
 const log = silentLogger()
 
@@ -46,7 +47,7 @@ describe('AdminService', () => {
   describe('listHotels', () => {
     it('returns hotels list', async () => {
       const repos = makeRepos()
-      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, makeOrm(), log)
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(makeOrm()))
       const result = await svc.listHotels()
       expect(result.data).toHaveLength(1)
     })
@@ -58,7 +59,7 @@ describe('AdminService', () => {
       const orm = makeOrm({
         findMany: async () => [{ id: 'u1', name: 'User', password: 'secret' }],
       })
-      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, orm, log)
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(orm))
       const result = await svc.listUsers()
       expect(result.data[0]).not.toHaveProperty('password')
     })
@@ -67,7 +68,7 @@ describe('AdminService', () => {
   describe('getAnalytics', () => {
     it('returns analytics with counts', async () => {
       const repos = makeRepos()
-      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, makeOrm(), log)
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(makeOrm()))
       const result = await svc.getAnalytics()
       expect(result.totalHoteles).toBe(1)
       expect(result.totalUsuarios).toBe(1)
@@ -78,7 +79,7 @@ describe('AdminService', () => {
   describe('listPlans', () => {
     it('returns plans list', async () => {
       const repos = makeRepos()
-      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, makeOrm(), log)
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(makeOrm()))
       const result = await svc.listPlans()
       expect(result.data).toHaveLength(1)
     })
@@ -87,7 +88,7 @@ describe('AdminService', () => {
   describe('createPlan', () => {
     it('creates a new plan', async () => {
       const repos = makeRepos()
-      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, makeOrm(), log)
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(makeOrm()))
       const result = await svc.createPlan({ name: 'New Plan', price: 99 })
       expect(result.name).toBe('New Plan')
       expect(result.price).toBe(99)
@@ -95,7 +96,7 @@ describe('AdminService', () => {
 
     it('throws without name', async () => {
       const repos = makeRepos()
-      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, makeOrm(), log)
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(makeOrm()))
       await expect(svc.createPlan({ price: 99 })).rejects.toThrow('name y price requeridos')
     })
   })
@@ -103,13 +104,13 @@ describe('AdminService', () => {
   describe('deletePlan', () => {
     it('deletes existing plan', async () => {
       const repos = makeRepos()
-      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, makeOrm(), log)
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(makeOrm()))
       await expect(svc.deletePlan('p1')).resolves.toBeUndefined()
     })
 
     it('throws for non-existent plan', async () => {
       const repos = makeRepos()
-      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, makeOrm(), log)
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(makeOrm()))
       await expect(svc.deletePlan('nope')).rejects.toThrow('no encontrado')
     })
   })

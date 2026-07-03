@@ -7,6 +7,7 @@ import { registerHotelesModels } from './model'
 import { HotelesService } from './service'
 import { HotelesController } from './controller'
 import { SettingsFullUseCase } from './usecases/settings-full'
+import { HotelesQueries } from './usecases/hoteles-queries'
 import type { HotelesDTO } from './types'
 
 export { HotelesService }
@@ -39,8 +40,9 @@ export function HotelesModule() {
       const repo = new OrmRepository<HotelesDTO>(orm, 'Hotels')
       const log = logger.child('hoteles')
       const settingsFull = new SettingsFullUseCase(orm)
-      const service = new HotelesService(repo, log, cache, auth, orm, settingsFull)
-      const controller = new HotelesController(service, log, orm)
+      const queries = new HotelesQueries(orm)
+      const service = new HotelesService(repo, log, cache, auth, settingsFull, queries)
+      const controller = new HotelesController(service, log, queries)
 
       const hsa = [auth.authenticate('hotel_admin', 'super_admin')]
       const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
