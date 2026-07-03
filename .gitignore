@@ -7,7 +7,7 @@ bun.lockb
 *.db-journal
 *.db-wal
 *.db-shm
-data/
+/backend/data/
 
 # Environment
 .env
