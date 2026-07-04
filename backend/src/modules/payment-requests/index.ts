@@ -10,6 +10,7 @@ import { registerPaymentRequestModels } from './model'
 import { PaymentRequestsService } from './service'
 import { PaymentRequestsController } from './controller'
 import type { PaymentRequestDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { PaymentRequestsService }
 export type {
@@ -55,16 +56,16 @@ export function PaymentRequestsModule() {
       const service = new PaymentRequestsService(repo, reservationRepo, folioRepo, folioChargeRepo, userRepo, log, auth!)
       const controller = new PaymentRequestsController(service, log)
 
-      const READ = ['hotel_admin', 'receptionist', 'super_admin']
-      const WRITE = ['hotel_admin', 'super_admin']
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      router.get('/api/payment-requests', [auth.authenticate(...READ)], (req) => controller.index(req))
-      router.get('/api/payment-requests/:id', [auth.authenticate(...READ)], (req) => controller.show(req))
-      router.post('/api/payment-requests', [auth.authenticate(...READ)], (req) => controller.store(req))
-      router.put('/api/payment-requests/:id', [auth.authenticate(...WRITE)], (req) => controller.update(req))
-      router.delete('/api/payment-requests/:id', [auth.authenticate(...WRITE)], (req) => controller.destroy(req))
-      router.get('/api/stripe/status', [auth.authenticate(...READ)], (req) => controller.stripeStatus(req))
-      router.post('/api/payment-requests/:id/create-checkout', [auth.authenticate(...READ)], (req) => controller.createCheckout(req))
+      router.get('/api/payment-requests', guard('billing', 'view'), (req) => controller.index(req))
+      router.get('/api/payment-requests/:id', guard('billing', 'view'), (req) => controller.show(req))
+      router.post('/api/payment-requests', guard('billing', 'create'), (req) => controller.store(req))
+      router.put('/api/payment-requests/:id', guard('billing', 'edit'), (req) => controller.update(req))
+      router.delete('/api/payment-requests/:id', guard('billing', 'delete'), (req) => controller.destroy(req))
+      router.get('/api/stripe/status', guard('billing', 'view'), (req) => controller.stripeStatus(req))
+      router.post('/api/payment-requests/:id/create-checkout', guard('billing', 'create'), (req) => controller.createCheckout(req))
       // Webhook público: sin auth, firma Stripe verificada en el service.
       router.post('/api/stripe/webhook', (req) => controller.webhook(req))
 

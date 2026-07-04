@@ -1,7 +1,8 @@
-import { createModule } from 'arckode-framework'
+import { createModule, OrmRepository } from 'arckode-framework'
 import { DashboardService } from './service'
 import { DashboardController } from './controller'
 import { DashboardQueries } from './usecases/dashboard-queries'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { DashboardService }
 
@@ -26,11 +27,12 @@ export function DashboardModule() {
       const service = new DashboardService(log, queries)
       const controller = new DashboardController(service, log)
 
-      const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      router.get('/api/dashboard', hra, (req: any) => controller.getDashboard(req))
-      router.get('/api/planning', hra, (req: any) => controller.getPlanning(req))
-      router.get('/api/checkin', hra, (req: any) => controller.getCheckinList(req))
+      router.get('/api/dashboard', guard('dashboard', 'view'), (req: any) => controller.getDashboard(req))
+      router.get('/api/planning', guard('dashboard', 'view'), (req: any) => controller.getPlanning(req))
+      router.get('/api/checkin', guard('dashboard', 'view'), (req: any) => controller.getCheckinList(req))
 
       log.info('Módulo dashboard listo')
       return service

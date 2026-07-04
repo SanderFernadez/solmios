@@ -5,6 +5,7 @@ import { registerUsuariosModels } from './model'
 import { UsuariosService } from './service'
 import { UsuariosController } from './controller'
 import { rateLimit, resetAttempts } from '../../shared/middlewares/rate-limit'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { UsuariosService }
 export type { UsuarioDTO } from './types'
@@ -32,6 +33,9 @@ export function UsuariosModule() {
       const service = new UsuariosService(repo, log, cache, auth, hotelRepo)
       const controller = new UsuariosController(service, log)
 
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
       // Auth (públicas) — con rate limiting en login
       router.post('/api/auth/login', async (req) => {
         const ip = (req as any).ip || 'unknown'
@@ -47,21 +51,19 @@ export function UsuariosModule() {
           return { status: 401, body: { error: 'Credenciales inválidas' } }
         }
       })
-      router.get('/api/auth/me', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.me(req))
-      router.post('/api/auth/logout', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.logout(req))
-      router.post('/api/auth/change-password', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.changePassword(req))
+      router.get('/api/auth/me', guard('users', 'view'), (req) => controller.me(req))
+      router.post('/api/auth/logout', guard('users', 'view'), (req) => controller.logout(req))
+      router.post('/api/auth/change-password', guard('users', 'edit'), (req) => controller.changePassword(req))
       router.post('/api/auth/forgot-password', (req) => controller.forgotPassword(req))
       router.post('/api/auth/reset-password', (req) => controller.resetPassword(req))
 
-      // PC-2 Multi-property: listar hoteles + cambiar de hotel
-      router.get('/api/auth/hotels', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.hotels(req))
-      router.post('/api/auth/switch-hotel/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.switchHotel(req))
+      router.get('/api/auth/hotels', guard('users', 'view'), (req) => controller.hotels(req))
+      router.post('/api/auth/switch-hotel/:id', guard('users', 'edit'), (req) => controller.switchHotel(req))
 
-      // Gestión de usuarios (hotel_admin + super_admin)
-      router.get('/api/usuarios', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.index(req))
-      router.post('/api/usuarios', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/usuarios/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/usuarios/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      router.get('/api/usuarios', guard('users', 'view'), (req) => controller.index(req))
+      router.post('/api/usuarios', guard('users', 'create'), (req) => controller.store(req))
+      router.put('/api/usuarios/:id', guard('users', 'edit'), (req) => controller.update(req))
+      router.delete('/api/usuarios/:id', guard('users', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo usuarios listo')
       return service

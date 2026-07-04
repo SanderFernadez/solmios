@@ -3,6 +3,7 @@ import { registerRolesModels } from './model'
 import { RolesService } from './service'
 import { RolesController } from './controller'
 import type { RolesDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { RolesService }
 export type { RolesDTO, CreateRolesDTO, UpdateRolesDTO, RolesQuery, RolesPaginated } from './types'
@@ -33,11 +34,14 @@ export function RolesModule() {
       const service = new RolesService(repo, log, cache, userRepo, auth)
       const controller = new RolesController(service, log)
 
-      router.get('/api/roles', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/roles/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/roles', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/roles/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/roles/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/roles', guard('users', 'view'), (req) => controller.index(req))
+      router.get('/api/roles/:id', guard('users', 'view'), (req) => controller.show(req))
+      router.post('/api/roles', guard('users', 'create'), (req) => controller.store(req))
+      router.put('/api/roles/:id', guard('users', 'edit'), (req) => controller.update(req))
+      router.delete('/api/roles/:id', guard('users', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo roles v2 listo')
       return service

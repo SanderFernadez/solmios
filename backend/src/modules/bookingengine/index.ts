@@ -7,6 +7,7 @@ import { registerBookingengineModels } from './model'
 import { BookingengineService } from './service'
 import { BookingengineController } from './controller'
 import type { BookingConfigDTO, PublicBookingDTO, ConversionEventDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { BookingengineService }
 export type { BookingConfigDTO, UpdateBookingConfigDTO, AvailabilityQuery, AvailabilityResult, PublicBookingDTO, CreatePublicBookingDTO, ConversionEventDTO, CreateConversionEventDTO, BookingAnalytics } from './types'
@@ -44,10 +45,13 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
 
       // Admin routes (protegidas con auth)
       if (auth) {
-        router.get('/booking-engine/config', [auth.authenticate('admin', 'superadmin')], (req: any) => controller.getConfig(req))
-        router.put('/booking-engine/config', [auth.authenticate('admin', 'superadmin')], (req: any) => controller.updateConfig(req))
-        router.get('/booking-engine/analytics', [auth.authenticate('admin', 'superadmin')], (req: any) => controller.getAnalytics(req))
-        router.get('/api/booking-engine', [auth.authenticate('hotel_admin', 'super_admin')], (req: any) => controller.dashboard(req))
+        const roleRepo = new OrmRepository<any>(orm, 'Roles')
+        const guard = createPermissionGuard(auth, roleRepo)
+
+        router.get('/booking-engine/config', guard('settings', 'view'), (req: any) => controller.getConfig(req))
+        router.put('/booking-engine/config', guard('settings', 'edit'), (req: any) => controller.updateConfig(req))
+        router.get('/booking-engine/analytics', guard('reports', 'view'), (req: any) => controller.getAnalytics(req))
+        router.get('/api/booking-engine', guard('settings', 'view'), (req: any) => controller.dashboard(req))
       }
 
       // Público (sin auth)

@@ -3,6 +3,7 @@ import { registerOpinionesModels } from './model'
 import { OpinionesService } from './service'
 import { OpinionesController } from './controller'
 import type { OpinionesDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { OpinionesService }
 export type { OpinionesDTO, CreateOpinionesDTO, UpdateOpinionesDTO, OpinionesQuery, OpinionesPaginated } from './types'
@@ -33,11 +34,14 @@ export function OpinionesModule() {
       const service = new OpinionesService(repo, log, cache, userRepo, auth)
       const controller = new OpinionesController(service, log)
 
-      router.get('/api/opiniones', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/opiniones/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/opiniones', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/opiniones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/opiniones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/opiniones', guard('reports', 'view'), (req) => controller.index(req))
+      router.get('/api/opiniones/:id', guard('reports', 'view'), (req) => controller.show(req))
+      router.post('/api/opiniones', guard('reports', 'create'), (req) => controller.store(req))
+      router.put('/api/opiniones/:id', guard('reports', 'edit'), (req) => controller.update(req))
+      router.delete('/api/opiniones/:id', guard('reports', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo opiniones v2 listo')
       return service

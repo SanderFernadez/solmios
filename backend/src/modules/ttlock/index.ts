@@ -3,6 +3,7 @@ import type { LockDeviceDTO, LockCodeDTO } from './types'
 import { TtlockService } from './service'
 import { TtlockController } from './controller'
 import { TtlockQueries } from './usecases/ttlock-queries'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { TtlockService }
 
@@ -29,17 +30,17 @@ export function TtlockModule() {
       const service = new TtlockService(lockDevicesRepo, lockCodesRepo, log, queries, auth)
       const controller = new TtlockController(service, log)
 
-      const hsa = [auth.authenticate('hotel_admin', 'super_admin')]
-      const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      router.get('/api/ttlock/config', hsa, (req: any) => controller.getConfig(req))
-      router.put('/api/ttlock/config', hsa, (req: any) => controller.updateConfig(req))
-      router.post('/api/ttlock/connect', hsa, (req: any) => controller.connect(req))
-      router.get('/api/ttlock/locks', hra, (req: any) => controller.listLocks(req))
-      router.post('/api/ttlock/sync', hsa, (req: any) => controller.syncLocks(req))
-      router.post('/api/ttlock/generate-code/:reservationId', hsa, (req: any) => controller.generateCode(req))
-      router.delete('/api/ttlock/code/:id', hsa, (req: any) => controller.revokeCode(req))
-      router.put('/api/ttlock/lock/:id', hsa, (req: any) => controller.updateLock(req))
+      router.get('/api/ttlock/config', guard('ttlock', 'view'), (req: any) => controller.getConfig(req))
+      router.put('/api/ttlock/config', guard('ttlock', 'edit'), (req: any) => controller.updateConfig(req))
+      router.post('/api/ttlock/connect', guard('ttlock', 'edit'), (req: any) => controller.connect(req))
+      router.get('/api/ttlock/locks', guard('ttlock', 'view'), (req: any) => controller.listLocks(req))
+      router.post('/api/ttlock/sync', guard('ttlock', 'edit'), (req: any) => controller.syncLocks(req))
+      router.post('/api/ttlock/generate-code/:reservationId', guard('ttlock', 'edit'), (req: any) => controller.generateCode(req))
+      router.delete('/api/ttlock/code/:id', guard('ttlock', 'edit'), (req: any) => controller.revokeCode(req))
+      router.put('/api/ttlock/lock/:id', guard('ttlock', 'edit'), (req: any) => controller.updateLock(req))
 
       log.info('Módulo ttlock listo (8 endpoints)')
       return service

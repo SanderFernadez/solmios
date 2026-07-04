@@ -7,6 +7,7 @@ import { registerHuespedesModels } from './model'
 import { HuespedesService } from './service'
 import { HuespedesController } from './controller'
 import type { HuespedesDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { HuespedesService }
 export type { HuespedesDTO, CreateHuespedesDTO, UpdateHuespedesDTO, HuespedesQuery, HuespedesPaginated } from './types'
@@ -41,12 +42,14 @@ export function HuespedesModule() {
       const service = new HuespedesService(repo, userRepo, log, cache, auth)
       const controller = new HuespedesController(service, log)
 
-      // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger
-      router.get('/api/huespedes', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/huespedes/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/huespedes', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/huespedes/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/huespedes/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/huespedes', guard('guests', 'view'), (req) => controller.index(req))
+      router.get('/api/huespedes/:id', guard('guests', 'view'), (req) => controller.show(req))
+      router.post('/api/huespedes', guard('guests', 'create'), (req) => controller.store(req))
+      router.put('/api/huespedes/:id', guard('guests', 'edit'), (req) => controller.update(req))
+      router.delete('/api/huespedes/:id', guard('guests', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo huespedes listo')
       return service

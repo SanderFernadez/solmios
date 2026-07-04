@@ -7,6 +7,7 @@ import { registerGruposModels } from './model'
 import { GruposService } from './service'
 import { GruposController } from './controller'
 import type { GruposDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { GruposService }
 export type { GruposDTO, CreateGruposDTO, UpdateGruposDTO, GruposQuery, GruposPaginated } from './types'
@@ -41,12 +42,14 @@ export function GruposModule() {
       const service = new GruposService(repo, userRepo, log, cache, auth)
       const controller = new GruposController(service, log)
 
-      // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger
-      router.get('/api/grupos', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/grupos/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/grupos', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/grupos/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/grupos/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/grupos', guard('reservations', 'view'), (req) => controller.index(req))
+      router.get('/api/grupos/:id', guard('reservations', 'view'), (req) => controller.show(req))
+      router.post('/api/grupos', guard('reservations', 'create'), (req) => controller.store(req))
+      router.put('/api/grupos/:id', guard('reservations', 'create'), (req) => controller.update(req))
+      router.delete('/api/grupos/:id', guard('reservations', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo grupos listo')
       return service

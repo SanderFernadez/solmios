@@ -1,6 +1,7 @@
 import { createModule, OrmRepository } from 'arckode-framework'
 import { AmenitiesService } from './service'
 import { AmenitiesController } from './controller'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { AmenitiesService }
 
@@ -26,14 +27,14 @@ export function AmenitiesModule() {
       const service = new AmenitiesService(hotelAmenitiesRepo, roomAmenitiesRepo, log)
       const controller = new AmenitiesController(service, log)
 
-      const hsa = [auth.authenticate('hotel_admin', 'super_admin')]
-      const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      router.get('/api/amenities/catalog', hra, () => controller.getCatalog())
-      router.get('/api/amenities/hotel', hra, (req: any) => controller.listHotel(req))
-      router.put('/api/amenities/hotel', hsa, (req: any) => controller.updateHotel(req))
-      router.get('/api/amenities/room/:roomId', hra, (req: any) => controller.listRoom(req))
-      router.put('/api/amenities/room/:roomId', hsa, (req: any) => controller.updateRoom(req))
+      router.get('/api/amenities/catalog', guard('settings', 'view'), () => controller.getCatalog())
+      router.get('/api/amenities/hotel', guard('settings', 'view'), (req: any) => controller.listHotel(req))
+      router.put('/api/amenities/hotel', guard('settings', 'edit'), (req: any) => controller.updateHotel(req))
+      router.get('/api/amenities/room/:roomId', guard('settings', 'view'), (req: any) => controller.listRoom(req))
+      router.put('/api/amenities/room/:roomId', guard('settings', 'edit'), (req: any) => controller.updateRoom(req))
 
       log.info('Módulo amenities listo')
       return service

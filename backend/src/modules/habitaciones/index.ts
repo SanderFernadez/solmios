@@ -3,6 +3,7 @@ import { registerHabitacionesModels } from './model'
 import { HabitacionesService } from './service'
 import { HabitacionesController } from './controller'
 import type { HabitacionesDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { HabitacionesService }
 export type { HabitacionesDTO, CreateHabitacionesDTO, UpdateHabitacionesDTO, HabitacionesQuery, HabitacionesPaginated } from './types'
@@ -35,14 +36,16 @@ export function HabitacionesModule() {
       const service = new HabitacionesService(repo, log, cache, userRepo, auth, orm)
       const controller = new HabitacionesController(service, log)
 
-      router.get('/api/habitaciones', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/habitaciones/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/habitaciones', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/habitaciones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/habitaciones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      // Batch create — multiple rooms with same config in one call
-      router.post('/api/habitaciones/batch', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.batchStore(req))
+      router.get('/api/habitaciones', guard('rooms', 'view'), (req) => controller.index(req))
+      router.get('/api/habitaciones/:id', guard('rooms', 'view'), (req) => controller.show(req))
+      router.post('/api/habitaciones', guard('rooms', 'create'), (req) => controller.store(req))
+      router.put('/api/habitaciones/:id', guard('rooms', 'edit'), (req) => controller.update(req))
+      router.delete('/api/habitaciones/:id', guard('rooms', 'delete'), (req) => controller.destroy(req))
+
+      router.post('/api/habitaciones/batch', guard('rooms', 'create'), (req) => controller.batchStore(req))
 
       log.info('Modulo habitaciones v2 listo')
       return service

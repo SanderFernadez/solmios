@@ -4,6 +4,7 @@ import { registerFoliosModels } from './model'
 import { FoliosService } from './service'
 import { FoliosController } from './controller'
 import type { FolioDTO, FolioChargeDTO, OpenFolioDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { FoliosService }
 export type { FolioDTO, FolioChargeDTO, OpenFolioDTO, PostChargeDTO, ApplyPaymentDTO, FolioQuery, FolioListResult } from './types'
@@ -42,17 +43,17 @@ export function FoliosModule() {
       )
       const controller = new FoliosController(service, log, orm)
 
-      const hsa = [auth.authenticate('hotel_admin', 'super_admin')]
-      const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      router.get('/api/folios', hra, (req) => controller.index(req))
-      router.get('/api/folios/:id', hra, (req) => controller.show(req))
-      router.post('/api/folios', hra, (req) => controller.store(req))
-      router.post('/api/folios/:id/charges', [auth.authenticate('hotel_admin', 'receptionist')], (req) => controller.charge(req))
-      router.post('/api/folios/:id/payments', [auth.authenticate('hotel_admin', 'receptionist')], (req) => controller.payment(req))
-      router.post('/api/folios/:id/close', hsa, (req) => controller.close(req))
-      router.post('/api/folios/:id/invoice', hsa, (req) => controller.closeAndInvoice(req))
-      router.post('/api/folios/audit/post-room-charges', hsa, (req) => controller.postNightAuditRoomCharges(req))
+      router.get('/api/folios', guard('billing', 'view'), (req) => controller.index(req))
+      router.get('/api/folios/:id', guard('billing', 'view'), (req) => controller.show(req))
+      router.post('/api/folios', guard('billing', 'create'), (req) => controller.store(req))
+      router.post('/api/folios/:id/charges', guard('billing', 'create'), (req) => controller.charge(req))
+      router.post('/api/folios/:id/payments', guard('billing', 'create'), (req) => controller.payment(req))
+      router.post('/api/folios/:id/close', guard('billing', 'edit'), (req) => controller.close(req))
+      router.post('/api/folios/:id/invoice', guard('billing', 'edit'), (req) => controller.closeAndInvoice(req))
+      router.post('/api/folios/audit/post-room-charges', guard('billing', 'edit'), (req) => controller.postNightAuditRoomCharges(req))
 
       log.info('Módulo folios listo')
       return service

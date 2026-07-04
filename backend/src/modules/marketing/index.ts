@@ -5,6 +5,7 @@ import { MarketingService } from './service'
 import { MarketingController } from './controller'
 import type { AutoMessageDTO, MessageLogDTO, WhatsappTemplateDTO } from './types'
 import type { TriggerDeps } from './service'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { MarketingService }
 export type { AutoMessageDTO, MessageLogDTO, WhatsappTemplateDTO, CreateAutoMessageDTO, CreateMessageLogDTO, CreateWhatsappTemplateDTO } from './types'
@@ -37,19 +38,20 @@ export function MarketingModule(opts?: { triggerDeps?: TriggerDeps }) {
       const service = new MarketingService(autoMsgRepo, logRepo, templateRepo, log, cache, opts?.triggerDeps)
       const controller = new MarketingController(service, log)
 
-      const a = (roles: string[]) => [auth.authenticate(...roles)]
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      router.get('/api/auto-messages', a(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.listAutoMessages(req))
-      router.post('/api/auto-messages', a(['hotel_admin', 'super_admin']), (req) => controller.createAutoMessage(req))
-      router.put('/api/auto-messages/:id', a(['hotel_admin', 'super_admin']), (req) => controller.updateAutoMessage(req))
-      router.delete('/api/auto-messages/:id', a(['hotel_admin', 'super_admin']), (req) => controller.deleteAutoMessage(req))
+      router.get('/api/auto-messages', guard('settings', 'view'), (req) => controller.listAutoMessages(req))
+      router.post('/api/auto-messages', guard('settings', 'create'), (req) => controller.createAutoMessage(req))
+      router.put('/api/auto-messages/:id', guard('settings', 'edit'), (req) => controller.updateAutoMessage(req))
+      router.delete('/api/auto-messages/:id', guard('settings', 'delete'), (req) => controller.deleteAutoMessage(req))
 
-      router.get('/api/whatsapp-templates', a(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.listTemplates(req))
-      router.post('/api/whatsapp-templates', a(['hotel_admin', 'super_admin']), (req) => controller.createTemplate(req))
-      router.put('/api/whatsapp-templates/:id', a(['hotel_admin', 'super_admin']), (req) => controller.updateTemplate(req))
-      router.delete('/api/whatsapp-templates/:id', a(['hotel_admin', 'super_admin']), (req) => controller.deleteTemplate(req))
+      router.get('/api/whatsapp-templates', guard('settings', 'view'), (req) => controller.listTemplates(req))
+      router.post('/api/whatsapp-templates', guard('settings', 'create'), (req) => controller.createTemplate(req))
+      router.put('/api/whatsapp-templates/:id', guard('settings', 'edit'), (req) => controller.updateTemplate(req))
+      router.delete('/api/whatsapp-templates/:id', guard('settings', 'delete'), (req) => controller.deleteTemplate(req))
 
-      router.get('/api/message-logs', a(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.listMessageLogs(req))
+      router.get('/api/message-logs', guard('settings', 'view'), (req) => controller.listMessageLogs(req))
 
       log.info('Módulo marketing listo — 3 tablas, 9 endpoints + trigger')
       return service

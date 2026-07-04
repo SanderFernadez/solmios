@@ -4,6 +4,7 @@ import { registerAiGerenteModels } from './model'
 import { AiGerenteService } from './service'
 import { AiGerenteController } from './controller'
 import type { AiGerenteDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { AiGerenteService }
 export type { AiGerenteDTO, CreateAiGerenteDTO, UpdateAiGerenteDTO, AiGerenteQuery, AiGerentePaginated, AskRequest } from './types'
@@ -39,10 +40,12 @@ export function AiGerenteModule() {
       const service = new AiGerenteService(interactionRepo, reservationRepo, roomRepo, hotelRepo, configRepo, guestRepo, log, cache)
       const controller = new AiGerenteController(service, log)
 
-      const roles = ['hotel_admin', 'super_admin'] as const
-      router.post('/api/ai/manager/ask', [auth.authenticate(...roles)], (req) => controller.ask(req))
-      router.get('/api/ai/manager/interactions', [auth.authenticate(...roles)], (req) => controller.index(req))
-      router.patch('/api/ai/manager/interactions/:id/feedback', [auth.authenticate(...roles)], (req) => controller.feedback(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.post('/api/ai/manager/ask', guard('ai', 'view'), (req) => controller.ask(req))
+      router.get('/api/ai/manager/interactions', guard('ai', 'view'), (req) => controller.index(req))
+      router.patch('/api/ai/manager/interactions/:id/feedback', guard('ai', 'view'), (req) => controller.feedback(req))
 
       log.info('Módulo ai-gerente listo (M17 Gerente IA)')
       return service

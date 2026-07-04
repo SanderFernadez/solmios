@@ -7,6 +7,7 @@ import type {
   PayrollConfigDTO, PayrollConceptDTO, PayrollRunDTO,
   PayrollRunDetailDTO, PayrollPayslipDTO, PayrollPaymentHistoryDTO,
 } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { PayrollService }
 export type {
@@ -48,25 +49,28 @@ export function PayrollModule() {
       const service = new PayrollService(configRepo, conceptRepo, runRepo, detailRepo, payslipRepo, paymentHistoryRepo, log, cache)
       const controller = new PayrollController(service, log)
 
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
       // Config
-      router.get('/api/payroll/config', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.getConfig(req))
-      router.put('/api/payroll/config', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.updateConfig(req))
+      router.get('/api/payroll/config', guard('billing', 'view'), (req) => controller.getConfig(req))
+      router.put('/api/payroll/config', guard('billing', 'edit'), (req) => controller.updateConfig(req))
 
       // Concepts
-      router.get('/api/payroll/concepts', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.listConcepts(req))
-      router.get('/api/payroll/concepts/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.getConcept(req))
-      router.post('/api/payroll/concepts', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.createConcept(req))
-      router.delete('/api/payroll/concepts/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.deleteConcept(req))
+      router.get('/api/payroll/concepts', guard('billing', 'view'), (req) => controller.listConcepts(req))
+      router.get('/api/payroll/concepts/:id', guard('billing', 'view'), (req) => controller.getConcept(req))
+      router.post('/api/payroll/concepts', guard('billing', 'create'), (req) => controller.createConcept(req))
+      router.delete('/api/payroll/concepts/:id', guard('billing', 'create'), (req) => controller.deleteConcept(req))
 
       // Runs
-      router.get('/api/payroll/runs', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.listRuns(req))
-      router.post('/api/payroll/runs', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.createRun(req))
-      router.get('/api/payroll/runs/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.getRun(req))
-      router.get('/api/payroll/runs/:id/details', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.getRunDetails(req))
-      router.post('/api/payroll/runs/:id/calculate', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.calculate(req))
-      router.post('/api/payroll/runs/:id/approve', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.approve(req))
-      router.post('/api/payroll/runs/:id/pay', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.markAsPaid(req))
-      router.post('/api/payroll/runs/:id/cancel', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.cancelRun(req))
+      router.get('/api/payroll/runs', guard('billing', 'view'), (req) => controller.listRuns(req))
+      router.post('/api/payroll/runs', guard('billing', 'create'), (req) => controller.createRun(req))
+      router.get('/api/payroll/runs/:id', guard('billing', 'view'), (req) => controller.getRun(req))
+      router.get('/api/payroll/runs/:id/details', guard('billing', 'view'), (req) => controller.getRunDetails(req))
+      router.post('/api/payroll/runs/:id/calculate', guard('billing', 'edit'), (req) => controller.calculate(req))
+      router.post('/api/payroll/runs/:id/approve', guard('billing', 'edit'), (req) => controller.approve(req))
+      router.post('/api/payroll/runs/:id/pay', guard('billing', 'edit'), (req) => controller.markAsPaid(req))
+      router.post('/api/payroll/runs/:id/cancel', guard('billing', 'edit'), (req) => controller.cancelRun(req))
 
       log.info('Módulo payroll listo — 6 tablas, 13 endpoints')
       return service

@@ -103,6 +103,13 @@ async function createTablesBlock1(): Promise<void> {
   await exec(`CREATE TABLE IF NOT EXISTS configuration (
     id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, key TEXT NOT NULL, value TEXT DEFAULT '{}',
     updatedAt TEXT, UNIQUE(hotelId, key))`)
+  // El modelo ORM (models.ts Configuration) solo declara key: { indexed: true }, sin unique
+  // compuesto (hotelId, key). ormMigrate crea la tabla PRIMERO sin ese constraint, y al correr
+  // después este CREATE TABLE IF NOT EXISTS la saltea → el UNIQUE nunca se aplica y los UPSERTs
+  // ON CONFLICT(hotelId, key) del seeder fallan. Lo garantizamos vía índice único idempotente
+  // (portable SQLite + Postgres). Si la tabla ya tiene el UNIQUE (DBs creadas por migrate legacy),
+  // IF NOT EXISTS lo saltea sin error.
+  await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_configuration_hotel_key ON configuration(hotelId, key)`)
 
   await exec(`CREATE TABLE IF NOT EXISTS email_queue (
     id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, recipient TEXT NOT NULL, subject TEXT NOT NULL,
@@ -560,7 +567,7 @@ async function seedDemoTalentoFinanzas(): Promise<void> {
     ]
     for (const [userId, deptId, position, salary, contract] of seeds) {
       const id = uuid()
-      await run("INSERT INTO employee_profiles (id, userId, hotelId, departmentId, position, hireDate, salary, contractType, active, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,1,?,?)",
+      await run("INSERT INTO employee_profiles (id, userId, hotelId, departmentId, position, hireDate, salary, contractType, active, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,1,?,?)",
         [id, userId, DEMO_HOTEL, deptId, position, "2025-03-01", salary, contract, now(), now()])
       emps.push({ id, salary })
     }

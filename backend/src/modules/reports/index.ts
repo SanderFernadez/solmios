@@ -1,7 +1,8 @@
-import { createModule } from 'arckode-framework'
+import { createModule, OrmRepository } from 'arckode-framework'
 import { ReportsService } from './service'
 import { ReportsController } from './controller'
 import { ReportQueries } from './usecases/report-queries'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { ReportsService }
 
@@ -26,15 +27,15 @@ export function ReportsModule() {
       const service = new ReportsService(log, queries)
       const controller = new ReportsController(service, log)
 
-      const ha = [auth.authenticate('hotel_admin', 'super_admin')]
-      const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      router.get('/api/reports', ha, (req: any) => controller.getReports(req))
-      router.get('/api/reports/advanced', ha, (req: any) => controller.getAdvancedReport(req))
-      router.get('/api/reports/export', ha, (req: any) => controller.exportReport(req))
+      router.get('/api/reports', guard('reports', 'view'), (req: any) => controller.getReports(req))
+      router.get('/api/reports/advanced', guard('reports', 'view'), (req: any) => controller.getAdvancedReport(req))
+      router.get('/api/reports/export', guard('reports', 'export'), (req: any) => controller.exportReport(req))
 
-      router.get('/api/night-audit', ha, (req: any) => controller.getNightAudit(req))
-      router.post('/api/night-audit/mark-no-shows', ha, () => controller.markNoShows())
+      router.get('/api/night-audit', guard('reports', 'view'), (req: any) => controller.getNightAudit(req))
+      router.post('/api/night-audit/mark-no-shows', guard('reports', 'edit'), () => controller.markNoShows())
 
       log.info('Módulo reports listo')
       return service

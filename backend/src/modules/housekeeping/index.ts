@@ -5,6 +5,7 @@ import { registerHousekeepingModels } from './model'
 import { HousekeepingService } from './service'
 import { HousekeepingController } from './controller'
 import type { HousekeepingDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 // Límite del body de upload por foto (10 MB). Las fotos viajan como base64 en JSON,
 // que infla ~33% respecto al binario → 10 MB cubre fotos reales de hasta ~7 MB.
@@ -42,20 +43,20 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage)
       const controller = new HousekeepingController(service, log)
 
-      router.get('/api/housekeeping', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      // /stats ANTES que /:id: el router enruta por orden de registro y /:id capturaría "stats".
-      router.get('/api/housekeeping/stats', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.stats(req))
-      router.get('/api/housekeeping/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/housekeeping', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/housekeeping/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/housekeeping/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      // Endpoints de administración (F3). FUTURE: cuando exista la app móvil del staff,
-      // agregar 'staff' a los auth.authenticate(...) de start/complete/photos.
-      router.put('/api/housekeeping/:id/start', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.start(req))
-      router.put('/api/housekeeping/:id/complete', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.complete(req))
-      router.post('/api/housekeeping/:id/photos', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin'), bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.uploadPhoto(req))
-      router.delete('/api/housekeeping/:id/photos', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.removePhoto(req))
+      router.get('/api/housekeeping', guard('housekeeping', 'view'), (req) => controller.index(req))
+      router.get('/api/housekeeping/stats', guard('housekeeping', 'view'), (req) => controller.stats(req))
+      router.get('/api/housekeeping/:id', guard('housekeeping', 'view'), (req) => controller.show(req))
+      router.post('/api/housekeeping', guard('housekeeping', 'create'), (req) => controller.store(req))
+      router.put('/api/housekeeping/:id', guard('housekeeping', 'edit'), (req) => controller.update(req))
+      router.delete('/api/housekeeping/:id', guard('housekeeping', 'delete'), (req) => controller.destroy(req))
+
+      router.put('/api/housekeeping/:id/start', guard('housekeeping', 'edit'), (req) => controller.start(req))
+      router.put('/api/housekeeping/:id/complete', guard('housekeeping', 'edit'), (req) => controller.complete(req))
+      router.post('/api/housekeeping/:id/photos', [...guard('housekeeping', 'edit'), bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.uploadPhoto(req))
+      router.delete('/api/housekeeping/:id/photos', guard('housekeeping', 'edit'), (req) => controller.removePhoto(req))
 
       log.info('Módulo housekeeping v2.1 listo (timings + fotos + stats)')
       return service

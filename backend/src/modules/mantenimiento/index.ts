@@ -5,6 +5,7 @@ import { registerMantenimientoModels } from './model'
 import { MantenimientoService } from './service'
 import { MantenimientoController } from './controller'
 import type { MantenimientoDTO, MaintenanceAuditDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { MantenimientoService }
 export type { MantenimientoDTO, CreateMantenimientoDTO, UpdateMantenimientoDTO, MantenimientoQuery, MantenimientoPaginated, MaintenanceAuditDTO, MaintenanceAuditAction } from './types'
@@ -40,29 +41,26 @@ export function MantenimientoModule(opts?: { storage?: StorageService }) {
       const service = new MantenimientoService(repo, log, cache, userRepo, auth, auditRepo, opts?.storage)
       const controller = new MantenimientoController(service, log)
 
-      // Stats ANTES que /:id: el router enruta por orden de registro y /:id capturaría "stats".
-      router.get('/api/mantenimiento/stats', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.stats(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      // CRUD
-      router.get('/api/mantenimiento', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/mantenimiento/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/mantenimiento', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/mantenimiento/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/mantenimiento/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      router.get('/api/mantenimiento/stats', guard('maintenance', 'view'), (req) => controller.stats(req))
 
-      // Timer
-      router.post('/api/mantenimiento/:id/start', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.start(req))
-      router.post('/api/mantenimiento/:id/complete', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.complete(req))
+      router.get('/api/mantenimiento', guard('maintenance', 'view'), (req) => controller.index(req))
+      router.get('/api/mantenimiento/:id', guard('maintenance', 'view'), (req) => controller.show(req))
+      router.post('/api/mantenimiento', guard('maintenance', 'create'), (req) => controller.store(req))
+      router.put('/api/mantenimiento/:id', guard('maintenance', 'edit'), (req) => controller.update(req))
+      router.delete('/api/mantenimiento/:id', guard('maintenance', 'delete'), (req) => controller.destroy(req))
 
-      // Notes
-      router.put('/api/mantenimiento/:id/notes', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.addNotes(req))
+      router.post('/api/mantenimiento/:id/start', guard('maintenance', 'edit'), (req) => controller.start(req))
+      router.post('/api/mantenimiento/:id/complete', guard('maintenance', 'edit'), (req) => controller.complete(req))
 
-      // Photos: upload (POST, bodyLimit 10MB) + remove (DELETE, ?url=...).
-      router.post('/api/mantenimiento/:id/photos', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin'), bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.addPhoto(req))
-      router.delete('/api/mantenimiento/:id/photos', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.removePhoto(req))
+      router.put('/api/mantenimiento/:id/notes', guard('maintenance', 'edit'), (req) => controller.addNotes(req))
 
-      // Audit
-      router.get('/api/mantenimiento/:id/audit', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.auditHistory(req))
+      router.post('/api/mantenimiento/:id/photos', [...guard('maintenance', 'edit'), bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.addPhoto(req))
+      router.delete('/api/mantenimiento/:id/photos', guard('maintenance', 'edit'), (req) => controller.removePhoto(req))
+
+      router.get('/api/mantenimiento/:id/audit', guard('maintenance', 'view'), (req) => controller.auditHistory(req))
 
       log.info('Modulo mantenimiento v1 listo — timer, audit, photos, stats')
       return service

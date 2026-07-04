@@ -12,6 +12,7 @@ import type {
   AiBookingFlowRecord,
   AiVoiceConfigRecord,
 } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { AiRecepcionistaService }
 export type {
@@ -96,38 +97,42 @@ export function AiRecepcionistaModule() {
       )
       const controller = new AiRecepcionistaController(service, log)
 
-      router.get('/api/ai/conversations', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/ai/conversations/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/ai/conversations/:id/close', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.close(req))
-      router.post('/api/ai/conversations/:id/transfer', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.transfer(req))
-      router.post('/api/ai/conversations/:id/messages', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.sendMessage(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      router.get('/api/ai/intents', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.listIntents(req))
-      router.get('/api/ai/intents/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.getIntent(req))
-      router.post('/api/ai/intents', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.createIntent(req))
-      router.put('/api/ai/intents/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.updateIntent(req))
-      router.delete('/api/ai/intents/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.deleteIntent(req))
-      router.post('/api/ai/intents/:id/test', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.testIntent(req))
+      router.get('/api/ai/conversations', guard('ai', 'view'), (req) => controller.index(req))
+      router.get('/api/ai/conversations/:id', guard('ai', 'view'), (req) => controller.show(req))
+      router.post('/api/ai/conversations/:id/close', guard('ai', 'edit'), (req) => controller.close(req))
+      router.post('/api/ai/conversations/:id/transfer', guard('ai', 'edit'), (req) => controller.transfer(req))
+      router.post('/api/ai/conversations/:id/messages', guard('ai', 'edit'), (req) => controller.sendMessage(req))
 
-      router.get('/api/ai/templates', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.listTemplates(req))
-      router.post('/api/ai/templates', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.createTemplate(req))
-      router.put('/api/ai/templates/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.updateTemplate(req))
-      router.delete('/api/ai/templates/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.deleteTemplate(req))
+      router.get('/api/ai/intents', guard('ai', 'edit'), (req) => controller.listIntents(req))
+      router.get('/api/ai/intents/:id', guard('ai', 'edit'), (req) => controller.getIntent(req))
+      router.post('/api/ai/intents', guard('ai', 'edit'), (req) => controller.createIntent(req))
+      router.put('/api/ai/intents/:id', guard('ai', 'edit'), (req) => controller.updateIntent(req))
+      router.delete('/api/ai/intents/:id', guard('ai', 'edit'), (req) => controller.deleteIntent(req))
+      router.post('/api/ai/intents/:id/test', guard('ai', 'edit'), (req) => controller.testIntent(req))
 
-      router.get('/api/ai/whatsapp/config', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.getWhatsappConfig(req))
-      router.put('/api/ai/whatsapp/config', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.updateWhatsappConfig(req))
-      router.post('/api/ai/whatsapp/start', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.startWhatsapp(req))
-      router.post('/api/ai/whatsapp/stop', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.stopWhatsapp(req))
-      router.get('/api/ai/whatsapp/qr/:hotelId?', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.getWhatsappQR(req))
-      router.get('/api/ai/whatsapp/status/:hotelId?', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.getWhatsappStatus(req))
+      router.get('/api/ai/templates', guard('ai', 'edit'), (req) => controller.listTemplates(req))
+      router.post('/api/ai/templates', guard('ai', 'edit'), (req) => controller.createTemplate(req))
+      router.put('/api/ai/templates/:id', guard('ai', 'edit'), (req) => controller.updateTemplate(req))
+      router.delete('/api/ai/templates/:id', guard('ai', 'edit'), (req) => controller.deleteTemplate(req))
 
+      router.get('/api/ai/whatsapp/config', guard('ai', 'edit'), (req) => controller.getWhatsappConfig(req))
+      router.put('/api/ai/whatsapp/config', guard('ai', 'edit'), (req) => controller.updateWhatsappConfig(req))
+      router.post('/api/ai/whatsapp/start', guard('ai', 'edit'), (req) => controller.startWhatsapp(req))
+      router.post('/api/ai/whatsapp/stop', guard('ai', 'edit'), (req) => controller.stopWhatsapp(req))
+      router.get('/api/ai/whatsapp/qr/:hotelId?', guard('ai', 'edit'), (req) => controller.getWhatsappQR(req))
+      router.get('/api/ai/whatsapp/status/:hotelId?', guard('ai', 'edit'), (req) => controller.getWhatsappStatus(req))
+
+      // Public webhook endpoints
       router.get('/api/ai/whatsapp/webhook/:hotelId', (req) => controller.whatsappWebhookVerify(req))
       router.post('/api/ai/whatsapp/webhook/:hotelId', (req) => controller.whatsappWebhookReceive(req))
 
       router.post('/api/ai/chat/:slug', (req) => controller.webChatMessage(req))
 
-      router.get('/api/ai/metrics', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.metrics(req))
-      router.get('/api/ai/metrics/dashboard', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.dashboardMetrics(req))
+      router.get('/api/ai/metrics', guard('ai', 'view'), (req) => controller.metrics(req))
+      router.get('/api/ai/metrics/dashboard', guard('ai', 'view'), (req) => controller.dashboardMetrics(req))
 
       log.info('Módulo ai-recepcionista listo')
       // Auto-reconnect WhatsApp sessions that were active before restart

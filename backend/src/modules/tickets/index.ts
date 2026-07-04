@@ -3,6 +3,7 @@ import { registerTicketsModels } from './model'
 import { TicketsService } from './service'
 import { TicketsController } from './controller'
 import type { TicketsDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { TicketsService }
 export type { TicketsDTO, CreateTicketsDTO, UpdateTicketsDTO, TicketsQuery, TicketsPaginated } from './types'
@@ -33,11 +34,14 @@ export function TicketsModule() {
       const service = new TicketsService(repo, log, cache, userRepo, auth)
       const controller = new TicketsController(service, log)
 
-      router.get('/api/tickets', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/tickets/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/tickets', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/tickets/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/tickets/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/tickets', guard('reports', 'view'), (req) => controller.index(req))
+      router.get('/api/tickets/:id', guard('reports', 'view'), (req) => controller.show(req))
+      router.post('/api/tickets', guard('reports', 'create'), (req) => controller.store(req))
+      router.put('/api/tickets/:id', guard('reports', 'edit'), (req) => controller.update(req))
+      router.delete('/api/tickets/:id', guard('reports', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo tickets v2 listo')
       return service

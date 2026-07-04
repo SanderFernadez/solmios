@@ -4,6 +4,7 @@ import { registerCrmModels } from './model'
 import { CrmService } from './service'
 import { CrmController } from './controller'
 import type { LoyaltyTransactionDTO, CouponDTO, GuestSegmentDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { CrmService }
 export type { LoyaltyTransactionDTO, CouponDTO, GuestSegmentDTO, GuestLTV, CrmDashboard, CreateCouponDTO, CreateSegmentDTO } from './types'
@@ -37,24 +38,25 @@ export function CrmModule() {
       const service = new CrmService(loyaltyRepo, couponRepo, segmentRepo, guestRepo, reservaRepo, log, cache)
       const controller = new CrmController(service, log)
 
-      const authd = (roles: string[]) => [auth.authenticate(...roles)]
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
-      router.post('/api/crm/points/award', authd(['hotel_admin', 'super_admin']), (req) => controller.awardPoints(req))
-      router.post('/api/crm/points/redeem', authd(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.redeemPoints(req))
-      router.get('/api/crm/points/history/:guestId', authd(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.getPointsHistory(req))
-      router.get('/api/crm/points/balance/:guestId', authd(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.getPointsBalance(req))
+      router.post('/api/crm/points/award', guard('guests', 'edit'), (req) => controller.awardPoints(req))
+      router.post('/api/crm/points/redeem', guard('guests', 'edit'), (req) => controller.redeemPoints(req))
+      router.get('/api/crm/points/history/:guestId', guard('guests', 'view'), (req) => controller.getPointsHistory(req))
+      router.get('/api/crm/points/balance/:guestId', guard('guests', 'view'), (req) => controller.getPointsBalance(req))
 
-      router.post('/api/crm/coupons', authd(['hotel_admin', 'super_admin']), (req) => controller.createCoupon(req))
-      router.get('/api/crm/coupons', authd(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.listCoupons(req))
-      router.post('/api/crm/coupons/validate', authd(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.validateCoupon(req))
-      router.delete('/api/crm/coupons/:id', authd(['hotel_admin', 'super_admin']), (req) => controller.deleteCoupon(req))
+      router.post('/api/crm/coupons', guard('guests', 'create'), (req) => controller.createCoupon(req))
+      router.get('/api/crm/coupons', guard('guests', 'view'), (req) => controller.listCoupons(req))
+      router.post('/api/crm/coupons/validate', guard('guests', 'view'), (req) => controller.validateCoupon(req))
+      router.delete('/api/crm/coupons/:id', guard('guests', 'edit'), (req) => controller.deleteCoupon(req))
 
-      router.post('/api/crm/segments', authd(['hotel_admin', 'super_admin']), (req) => controller.createSegment(req))
-      router.get('/api/crm/segments', authd(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.listSegments(req))
-      router.get('/api/crm/segments/:id/guests', authd(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.getGuestsInSegment(req))
+      router.post('/api/crm/segments', guard('guests', 'create'), (req) => controller.createSegment(req))
+      router.get('/api/crm/segments', guard('guests', 'view'), (req) => controller.listSegments(req))
+      router.get('/api/crm/segments/:id/guests', guard('guests', 'view'), (req) => controller.getGuestsInSegment(req))
 
-      router.get('/api/crm/ltv', authd(['hotel_admin', 'super_admin']), (req) => controller.getLTV(req))
-      router.get('/api/crm/dashboard', authd(['hotel_admin', 'receptionist', 'super_admin']), (req) => controller.getDashboard(req))
+      router.get('/api/crm/ltv', guard('guests', 'view'), (req) => controller.getLTV(req))
+      router.get('/api/crm/dashboard', guard('guests', 'view'), (req) => controller.getDashboard(req))
 
       log.info('Módulo CRM listo — 3 tablas, 14 endpoints')
       return service

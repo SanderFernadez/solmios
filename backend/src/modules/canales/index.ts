@@ -8,6 +8,7 @@ import { CanalesService } from './service'
 import { CanalesController } from './controller'
 import { CanalesQueries } from './usecases/canales-queries'
 import type { RoomTypeSummary, CanalesDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { CanalesService }
 export type { CanalesDTO, CreateCanalesDTO, UpdateCanalesDTO, CanalesQuery, CanalesPaginated, ChannelsResultDTO, ChannelDTO, SyncResultDTO, RoomTypeSummary, TestConnectionDTO, TestConnectionResultDTO, MappingDetailDTO, MappingRateDTO, OTAChannelCreateDTO, OTAChannelMappingDTO, OTAChannelResultDTO, GroupDTO } from './types'
@@ -44,41 +45,35 @@ export function CanalesModule() {
       const service = new CanalesService(repo, userRepo, log, cache, auth, queries, syncLogRepo)
       const controller = new CanalesController(service, log)
 
-      // ─── Channel manager (Channex real) ───────────────────────────────
-      // hotelId se resuelve con fallback al primer hotel (igual que /sync) para
-      // que GET /api/channels sin query explícita devuelva la config correcta.
-      router.get('/api/channels', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/channels', guard('channel-manager', 'view'), async (req) => {
         const hotelId = await queries.resolveHotelId((req.body as any)?.hotelId || (req.query as any)?.hotelId)
         if (!hotelId) return { status: 404, body: { error: 'Hotel no encontrado' } }
         return { status: 200, body: await service.listChannels(hotelId) }
       })
-      router.get('/api/channels/feed', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.feed())
+      router.get('/api/channels/feed', guard('channel-manager', 'view'), (req) => controller.feed())
 
-      // Channel API — conexión OTA (Expedia, Booking, etc.)
-      router.post('/api/channels/test-connection', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.testConnection(req))
-      router.get('/api/channels/mapping-details', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.mappingDetails(req))
-      router.get('/api/channels/groups', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.groups(req))
-      router.post('/api/channels/connect', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.connectOTA(req))
-      router.post('/api/channels/:id/deactivate', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.deactivate(req))
-      router.get('/api/channels/:id/detail', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.channelDetail(req))
+      router.post('/api/channels/test-connection', guard('channel-manager', 'edit'), (req) => controller.testConnection(req))
+      router.get('/api/channels/mapping-details', guard('channel-manager', 'view'), (req) => controller.mappingDetails(req))
+      router.get('/api/channels/groups', guard('channel-manager', 'view'), (req) => controller.groups(req))
+      router.post('/api/channels/connect', guard('channel-manager', 'edit'), (req) => controller.connectOTA(req))
+      router.post('/api/channels/:id/deactivate', guard('channel-manager', 'edit'), (req) => controller.deactivate(req))
+      router.get('/api/channels/:id/detail', guard('channel-manager', 'view'), (req) => controller.channelDetail(req))
 
-      // Bookings — recepción de reservas OTA desde Channex
-      router.get('/api/channels/bookings', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.bookings(req))
-      router.post('/api/channels/bookings/ingest', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.ingestBookings(req))
+      router.get('/api/channels/bookings', guard('channel-manager', 'view'), (req) => controller.bookings(req))
+      router.post('/api/channels/bookings/ingest', guard('channel-manager', 'edit'), (req) => controller.ingestBookings(req))
 
-      // iFrame — embed de Channex para mapear canales visualmente
-      router.get('/api/channels/iframe-token', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.iframeToken(req))
+      router.get('/api/channels/iframe-token', guard('channel-manager', 'view'), (req) => controller.iframeToken(req))
 
-      // POST /api/channels/sync — crea propiedad + room types + rate plans + ARI en Channex.
-      // Lee habitaciones vía queries (cross-module read, igual que dashboard/reports).
-      router.post('/api/channels/sync', [auth.authenticate('hotel_admin', 'super_admin')], async (req) => {
+      router.post('/api/channels/sync', guard('channel-manager', 'edit'), async (req) => {
         const body = (req.body as any) || {}
         const hotelId = await queries.resolveHotelId(body.hotelId || (req.query as any)?.hotelId)
         if (!hotelId) return { status: 404, body: { error: 'Hotel no encontrado' } }
         const hotels = await queries.findMany('Hotels', { id: hotelId })
         const hotel = hotels[0] as any
         if (!hotel) return { status: 404, body: { error: 'Hotel no encontrado' } }
-        // Agrupar habitaciones por tipo → resumen ARI.
         const rooms = await queries.findMany('Rooms', { hotelId }) as any[]
         const seen = new Map<string, RoomTypeSummary>()
         for (const r of rooms) {
@@ -90,14 +85,13 @@ export function CanalesModule() {
         return { status: 200, body: result }
       })
 
-      // ─── CRUD admin sobre la config (opcional) ────────────────────────
-      router.get('/api/canales', [auth.authenticate('super_admin')], (req) => controller.index(req))
-      router.get('/api/canales/:id', [auth.authenticate('super_admin')], (req) => controller.show(req))
-      router.post('/api/canales', [auth.authenticate('super_admin')], (req) => controller.store(req))
-      router.put('/api/canales/:id', [auth.authenticate('super_admin')], (req) => controller.update(req))
-      router.delete('/api/canales/:id', [auth.authenticate('super_admin')], (req) => controller.destroy(req))
+      router.get('/api/canales', guard('channel-manager', 'view'), (req) => controller.index(req))
+      router.get('/api/canales/:id', guard('channel-manager', 'view'), (req) => controller.show(req))
+      router.post('/api/canales', guard('channel-manager', 'edit'), (req) => controller.store(req))
+      router.put('/api/canales/:id', guard('channel-manager', 'edit'), (req) => controller.update(req))
+      router.delete('/api/canales/:id', guard('channel-manager', 'edit'), (req) => controller.destroy(req))
 
-      router.get('/api/channels/sync-log', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.syncLog(req))
+      router.get('/api/channels/sync-log', guard('channel-manager', 'view'), (req) => controller.syncLog(req))
 
       log.info('Módulo canales (Channex) listo')
       return service

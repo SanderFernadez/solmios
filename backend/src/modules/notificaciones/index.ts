@@ -3,6 +3,7 @@ import { registerNotificacionesModels } from './model'
 import { NotificacionesService } from './service'
 import { NotificacionesController } from './controller'
 import type { NotificacionesDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { NotificacionesService }
 export type { NotificacionesDTO, CreateNotificacionesDTO, UpdateNotificacionesDTO, NotificacionesQuery, NotificacionesPaginated } from './types'
@@ -33,11 +34,14 @@ export function NotificacionesModule() {
       const service = new NotificacionesService(repo, userRepo, log, cache, auth)
       const controller = new NotificacionesController(service, log)
 
-      router.get('/api/notificaciones', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/notificaciones/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/notificaciones', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/notificaciones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/notificaciones/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/notificaciones', guard('dashboard', 'view'), (req) => controller.index(req))
+      router.get('/api/notificaciones/:id', guard('dashboard', 'view'), (req) => controller.show(req))
+      router.post('/api/notificaciones', guard('dashboard', 'create'), (req) => controller.store(req))
+      router.put('/api/notificaciones/:id', guard('dashboard', 'create'), (req) => controller.update(req))
+      router.delete('/api/notificaciones/:id', guard('dashboard', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo notificaciones v2 listo')
       return service

@@ -250,16 +250,22 @@ describe('RolesService', () => {
       await expect(svc.update('role-1', { name: 'X' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
 
-    it('rejects update to system role', async () => {
+     it('rejects update to system role fields (name/icon/color)', async () => {
       const repo = makeRepo({ findById: async () => systemRole })
       const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
-      await expect(svc.update('role-1', { name: 'X' }, hotelAdmin)).rejects.toThrow('roles del sistema')
+      await expect(svc.update('role-1', { name: 'X' }, hotelAdmin)).rejects.toThrow('campos del sistema')
     })
 
-    it('super_admin also cannot modify system roles', async () => {
+    it('allows update to system role permissions', async () => {
       const repo = makeRepo({ findById: async () => systemRole })
       const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
-      await expect(svc.update('role-sys', { name: 'X' }, superAdmin)).rejects.toThrow('roles del sistema')
+      await expect(svc.update('role-1', { permissions: ['test:view'] }, hotelAdmin)).resolves.toBeDefined()
+    })
+
+    it('super_admin also cannot modify system role fields', async () => {
+      const repo = makeRepo({ findById: async () => systemRole })
+      const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.update('role-sys', { name: 'X' }, superAdmin)).rejects.toThrow('campos del sistema')
     })
 
     it('invalidates cache after update', async () => {

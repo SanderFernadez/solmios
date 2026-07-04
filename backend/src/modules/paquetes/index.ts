@@ -7,6 +7,7 @@ import { registerPaquetesModels } from './model'
 import { PaquetesService } from './service'
 import { PaquetesController } from './controller'
 import type { PaquetesDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { PaquetesService }
 export type { PaquetesDTO, CreatePaquetesDTO, UpdatePaquetesDTO, PaquetesQuery, PaquetesPaginated } from './types'
@@ -41,12 +42,14 @@ export function PaquetesModule() {
       const service = new PaquetesService(repo, userRepo, log, cache, auth)
       const controller = new PaquetesController(service, log)
 
-      // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger
-      router.get('/api/paquetes', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/paquetes/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/paquetes', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/paquetes/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/paquetes/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/paquetes', guard('rooms', 'view'), (req) => controller.index(req))
+      router.get('/api/paquetes/:id', guard('rooms', 'view'), (req) => controller.show(req))
+      router.post('/api/paquetes', guard('rooms', 'create'), (req) => controller.store(req))
+      router.put('/api/paquetes/:id', guard('rooms', 'create'), (req) => controller.update(req))
+      router.delete('/api/paquetes/:id', guard('rooms', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo paquetes listo')
       return service

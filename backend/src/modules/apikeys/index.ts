@@ -3,6 +3,7 @@ import { registerApikeysModels } from './model'
 import { ApikeysService } from './service'
 import { ApikeysController } from './controller'
 import type { ApikeysDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { ApikeysService }
 export type { ApikeysDTO, CreateApikeysDTO, UpdateApikeysDTO, ApikeysQuery, ApikeysPaginated } from './types'
@@ -32,11 +33,14 @@ export function ApikeysModule() {
       const service = new ApikeysService(repo, log, cache, auth)
       const controller = new ApikeysController(service, log)
 
-      router.get('/api/apikeys', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/apikeys/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/apikeys', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/apikeys/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/apikeys/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/apikeys', guard('settings', 'view'), (req) => controller.index(req))
+      router.get('/api/apikeys/:id', guard('settings', 'view'), (req) => controller.show(req))
+      router.post('/api/apikeys', guard('settings', 'create'), (req) => controller.store(req))
+      router.put('/api/apikeys/:id', guard('settings', 'create'), (req) => controller.update(req))
+      router.delete('/api/apikeys/:id', guard('settings', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo apikeys v2 listo')
       return service

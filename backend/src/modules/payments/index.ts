@@ -6,6 +6,7 @@ import { registerPaymentsModels } from './model'
 import { PaymentsService } from './service'
 import { PaymentsController } from './controller'
 import type { PaymentDTO, PaymentLinkDTO, DepositDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { PaymentsService }
 export type { PaymentDTO, CreatePaymentDTO, ChargeCardDTO, PaymentLinkDTO, CreatePaymentLinkDTO, DepositDTO, CreateDepositDTO, RefundDepositDTO, PaymentsQuery, PaymentsPaginated, ReconciliationEntry, ReconciliationResult } from './types'
@@ -42,30 +43,30 @@ export function PaymentsModule() {
 
       // Admin routes (protegidas con auth)
       if (auth) {
-        const adminAuth = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
-        const adminOnly = [auth.authenticate('hotel_admin', 'super_admin')]
+        const roleRepo = new OrmRepository<any>(orm, 'Roles')
+        const guard = createPermissionGuard(auth, roleRepo)
 
         // Payments
-        router.get('/api/payments', adminAuth, (req: any) => controller.listPayments(req))
-        router.get('/api/payments/:id', adminAuth, (req: any) => controller.getPayment(req))
-        router.post('/api/payments', adminOnly, (req: any) => controller.createPayment(req))
-        router.post('/api/payments/charge', adminOnly, (req: any) => controller.chargeCard(req))
-        router.post('/api/payments/:id/refund', adminOnly, (req: any) => controller.refund(req))
+        router.get('/api/payments', guard('billing', 'view'), (req: any) => controller.listPayments(req))
+        router.get('/api/payments/:id', guard('billing', 'view'), (req: any) => controller.getPayment(req))
+        router.post('/api/payments', guard('billing', 'create'), (req: any) => controller.createPayment(req))
+        router.post('/api/payments/charge', guard('billing', 'create'), (req: any) => controller.chargeCard(req))
+        router.post('/api/payments/:id/refund', guard('billing', 'create'), (req: any) => controller.refund(req))
 
         // Payment Links
-        router.get('/api/payment-links', adminAuth, (req: any) => controller.listLinks(req))
-        router.post('/api/payment-links', adminOnly, (req: any) => controller.createLink(req))
-        router.delete('/api/payment-links/:id', adminOnly, (req: any) => controller.cancelLink(req))
+        router.get('/api/payment-links', guard('billing', 'view'), (req: any) => controller.listLinks(req))
+        router.post('/api/payment-links', guard('billing', 'create'), (req: any) => controller.createLink(req))
+        router.delete('/api/payment-links/:id', guard('billing', 'create'), (req: any) => controller.cancelLink(req))
 
         // Deposits
-        router.get('/api/deposits', adminAuth, (req: any) => controller.listDeposits(req))
-        router.get('/api/deposits/:id', adminAuth, (req: any) => controller.getDeposit(req))
-        router.post('/api/deposits', adminOnly, (req: any) => controller.createDeposit(req))
-        router.post('/api/deposits/:id/refund', adminOnly, (req: any) => controller.refundDeposit(req))
-        router.post('/api/deposits/:id/release', adminOnly, (req: any) => controller.releaseDeposit(req))
+        router.get('/api/deposits', guard('billing', 'view'), (req: any) => controller.listDeposits(req))
+        router.get('/api/deposits/:id', guard('billing', 'view'), (req: any) => controller.getDeposit(req))
+        router.post('/api/deposits', guard('billing', 'create'), (req: any) => controller.createDeposit(req))
+        router.post('/api/deposits/:id/refund', guard('billing', 'create'), (req: any) => controller.refundDeposit(req))
+        router.post('/api/deposits/:id/release', guard('billing', 'create'), (req: any) => controller.releaseDeposit(req))
 
         // Reconciliation
-        router.post('/api/billing/reconciliation', adminOnly, (req: any) => controller.reconcile(req))
+        router.post('/api/billing/reconciliation', guard('billing', 'edit'), (req: any) => controller.reconcile(req))
       }
 
       // Public routes

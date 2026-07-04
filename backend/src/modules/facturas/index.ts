@@ -7,6 +7,7 @@ import { registerFacturasModels } from './model'
 import { FacturasService } from './service'
 import { FacturasController } from './controller'
 import type { FacturasDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { FacturasService }
 export type { FacturasDTO, CreateFacturasDTO, UpdateFacturasDTO, FacturasQuery, FacturasListResult } from './types'
@@ -47,19 +48,21 @@ export function FacturasModule() {
       const service = new FacturasService(repo, configRepo, { guest: guestRepo, reservation: reservationRepo, room: roomRepo }, userRepo, log, cache, auth!, itemRepo)
       const controller = new FacturasController(service, log, hotelRepo)
 
-      // Rutas públicas por defecto — agregar [auth.authenticate()] para proteger
-      router.get('/api/facturas', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/facturas/stats', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.stats(req))
-      router.get('/api/facturas/tax-report', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.taxReport(req))
-      router.get('/api/facturas/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.get('/api/facturas/:id/print', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.printInvoice(req))
-      router.get('/api/facturas/:id/pdf', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.pdf(req))
-      router.post('/api/facturas', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.post('/api/facturas/:id/pay', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.pay(req))
-      router.post('/api/facturas/:id/credit-note', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.creditNote(req))
-      router.post('/api/facturas/:id/email', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.email(req))
-      router.put('/api/facturas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/facturas/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/facturas', guard('billing', 'view'), (req) => controller.index(req))
+      router.get('/api/facturas/stats', guard('billing', 'view'), (req) => controller.stats(req))
+      router.get('/api/facturas/tax-report', guard('billing', 'view'), (req) => controller.taxReport(req))
+      router.get('/api/facturas/:id', guard('billing', 'view'), (req) => controller.show(req))
+      router.get('/api/facturas/:id/print', guard('billing', 'view'), (req) => controller.printInvoice(req))
+      router.get('/api/facturas/:id/pdf', guard('billing', 'view'), (req) => controller.pdf(req))
+      router.post('/api/facturas', guard('billing', 'create'), (req) => controller.store(req))
+      router.post('/api/facturas/:id/pay', guard('billing', 'edit'), (req) => controller.pay(req))
+      router.post('/api/facturas/:id/credit-note', guard('billing', 'edit'), (req) => controller.creditNote(req))
+      router.post('/api/facturas/:id/email', guard('billing', 'edit'), (req) => controller.email(req))
+      router.put('/api/facturas/:id', guard('billing', 'edit'), (req) => controller.update(req))
+      router.delete('/api/facturas/:id', guard('billing', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo facturas listo')
       return service

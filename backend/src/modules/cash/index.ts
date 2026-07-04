@@ -7,6 +7,7 @@ import { registerCashModels } from './model'
 import { CashService } from './service'
 import { CashController } from './controller'
 import type { CashMovementDTO, CashShiftDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { CashService }
 export type {
@@ -45,23 +46,23 @@ export function CashModule() {
       const service = new CashService(repo, shiftRepo, userRepo, log, cache, auth!)
       const controller = new CashController(service, log)
 
-      const READ = ['hotel_admin', 'receptionist', 'super_admin']
-      const WRITE = ['hotel_admin', 'super_admin']
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
       // Movimientos
-      router.get('/api/caja/movements', [auth.authenticate(...READ)], (req) => controller.index(req))
-      router.get('/api/caja/movements/:id', [auth.authenticate(...READ)], (req) => controller.show(req))
-      router.post('/api/caja/movements', [auth.authenticate(...WRITE)], (req) => controller.store(req))
-      router.put('/api/caja/movements/:id', [auth.authenticate(...WRITE)], (req) => controller.update(req))
-      router.delete('/api/caja/movements/:id', [auth.authenticate(...WRITE)], (req) => controller.destroy(req))
+      router.get('/api/caja/movements', guard('billing', 'view'), (req) => controller.index(req))
+      router.get('/api/caja/movements/:id', guard('billing', 'view'), (req) => controller.show(req))
+      router.post('/api/caja/movements', guard('billing', 'create'), (req) => controller.store(req))
+      router.put('/api/caja/movements/:id', guard('billing', 'create'), (req) => controller.update(req))
+      router.delete('/api/caja/movements/:id', guard('billing', 'create'), (req) => controller.destroy(req))
       // Turnos
-      router.get('/api/caja/shifts', [auth.authenticate(...READ)], (req) => controller.listShifts(req))
-      router.get('/api/caja/shifts/current', [auth.authenticate(...READ)], (req) => controller.currentShift(req))
-      router.post('/api/caja/shifts/open', [auth.authenticate(...WRITE)], (req) => controller.openShift(req))
-      router.post('/api/caja/shifts/:id/close', [auth.authenticate(...WRITE)], (req) => controller.closeShift(req))
-      router.get('/api/caja/shifts/:id/reconcile', [auth.authenticate(...READ)], (req) => controller.reconcile(req))
+      router.get('/api/caja/shifts', guard('billing', 'view'), (req) => controller.listShifts(req))
+      router.get('/api/caja/shifts/current', guard('billing', 'view'), (req) => controller.currentShift(req))
+      router.post('/api/caja/shifts/open', guard('billing', 'create'), (req) => controller.openShift(req))
+      router.post('/api/caja/shifts/:id/close', guard('billing', 'create'), (req) => controller.closeShift(req))
+      router.get('/api/caja/shifts/:id/reconcile', guard('billing', 'view'), (req) => controller.reconcile(req))
       // Stats
-      router.get('/api/caja/stats', [auth.authenticate(...READ)], (req) => controller.stats(req))
+      router.get('/api/caja/stats', guard('billing', 'view'), (req) => controller.stats(req))
 
       log.info('Módulo caja listo')
       return service

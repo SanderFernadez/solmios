@@ -3,6 +3,7 @@ import { registerAnunciosModels } from './model'
 import { AnunciosService } from './service'
 import { AnunciosController } from './controller'
 import type { AnunciosDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { AnunciosService }
 export type { AnunciosDTO, CreateAnunciosDTO, UpdateAnunciosDTO, AnunciosQuery, AnunciosPaginated } from './types'
@@ -33,11 +34,14 @@ export function AnunciosModule() {
       const service = new AnunciosService(repo, log, cache, userRepo, auth)
       const controller = new AnunciosController(service, log)
 
-      router.get('/api/anuncios', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.index(req))
-      router.get('/api/anuncios/:id', [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')], (req) => controller.show(req))
-      router.post('/api/anuncios', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.store(req))
-      router.put('/api/anuncios/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.update(req))
-      router.delete('/api/anuncios/:id', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.destroy(req))
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
+
+      router.get('/api/anuncios', guard('dashboard', 'view'), (req) => controller.index(req))
+      router.get('/api/anuncios/:id', guard('dashboard', 'view'), (req) => controller.show(req))
+      router.post('/api/anuncios', guard('dashboard', 'create'), (req) => controller.store(req))
+      router.put('/api/anuncios/:id', guard('dashboard', 'edit'), (req) => controller.update(req))
+      router.delete('/api/anuncios/:id', guard('dashboard', 'delete'), (req) => controller.destroy(req))
 
       log.info('Modulo anuncios v2 listo')
       return service

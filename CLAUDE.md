@@ -1,7 +1,50 @@
 # ManagerHotel (SOLMI OS) — CLAUDE.md
 
 ## Stack
-Bun (>=1.3) + Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5.1 + Tailwind CSS 4.3 + arckode-framework 1.4.3 + SQLite (bun:sqlite, WAL)
+Bun (>=1.3) + Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5.1 + Tailwind CSS 4.3 + arckode-framework 1.4.3 + **DB multi-motor** (SQLite bun:sqlite/WAL en dev/staging · Postgres vía `pg` para producción, elegido por `DATABASE_URL`)
+
+## Database — Migraciones y Seeders (estado real verificado 2026-07-04)
+
+El schema se construye en **2 capas complementarias** que deben correrse en orden sobre DB limpia:
+
+### Flujo de DB limpia (OBLIGATORIO — 2 pasos)
+```bash
+cd backend
+# Paso 1 — crea tablas desde los modelos ORM (hotels, users, rooms, guests, reservations, + ~30 módulos).
+#          system.init() registra modelos, ormMigrate hace CREATE TABLE IF NOT EXISTS, NO bindea puerto HTTP.
+DATABASE_URL=postgres://... RUN_MIGRATE=1 bun run src/composition-root.ts   # Postgres
+# o
+DB_PATH=data/managerhotel.db RUN_MIGRATE=1 bun run src/composition-root.ts  # SQLite
+
+# Paso 2 — seed demo + tablas EXTRA no-modeladas (packages, devices, announcements, api_keys,
+#          audit_log, configuration, email_queue, groups, maintenance, tickets, notifications, ai_*).
+bun run migrate-db.ts   # usa .env (DB_PATH o DATABASE_URL)
+```
+
+**Orden insaltable**: `migrate-db.ts` hace `seedBase()` (INSERT en hotels/users/...) ANTES de crear tablas extra, y NO crea las tablas base — las crea el ORM en el paso 1. Si lo corres solo sobre DB vacía → `no such table: hotels`.
+
+### Scripts disponibles
+| Script | Qué hace | Idempotente |
+|--------|----------|-------------|
+| `migrate-db.ts` (entry `bun run migrate`) | DDL tablas extra + seeds demo completos (24 tablas) | ✅ vía `exists()`/`COUNT(*)` + `ON CONFLICT` |
+| `RUN_MIGRATE=1 composition-root.ts` | Crea tablas desde modelos ORM registrados | ✅ `CREATE TABLE IF NOT EXISTS` |
+| `scripts/orm-migrate.ts` | `ormMigrate(db, models)` — copia minimizada del kernel (CREATE TABLE IF NOT EXISTS + indices) | ✅ |
+| `scripts/seed-default-roles.ts` | Roles por defecto (permisos) | ✅ |
+| `scripts/create-plans-table.ts` | Tabla `plans` (SaaS subscriptions) — Postgres | ✅ |
+| `scripts/add-user-type-pg.ts` / `add-user-type.ts` | ALTER `users.userType` (admin/merchant) | ✅ `addColumnIfMissing` |
+| `scripts/patch-orm-postgres.sh` | **postinstall** — parchea `node_modules/arckode-framework` para portabilidad Postgres (camelCase deserialize + tipo pool) | ✅ idempotente |
+
+### Portabilidad Postgres (state)
+- ✅ No queda SQL SQLite-only en `migrate-db.ts` (sin `PRAGMA`, sin `datetime('now')`, sin `AUTOINCREMENT`). Placeholders `?` → `$1,$2...` los convierte `PostgresAdapter` automáticamente.
+- ✅ `addColumnIfMissing()` es portable (ignora `duplicate column` / `already exists`).
+- ⚠️ **DEUDA bloqueante para producción Postgres**: el seeder pasa `1`/`0` a 3 columnas `BOOLEAN` creadas por el ORM (`departments.active`, `employee_profiles.active`, `coupons.active` — modelos `empleados`/`crm` declaran `type: 'boolean'`). El driver `pg` es estricto y rechaza integer→boolean. SQLite funciona porque no tiene tipo boolean nativo. Fix requiere decisión: cambiar esos modelos a `type: 'number'`, o normalizar booleanos en el adapter del framework, o pasar `true`/`false` desde el seeder.
+- ✅ `configuration` garantiza `UNIQUE(hotelId, key)` vía `CREATE UNIQUE INDEX IF NOT EXISTS idx_configuration_hotel_key` (el modelo ORM solo declara `key: { indexed: true }`; sin este índice los UPSERTs `ON CONFLICT(hotelId, key)` del seeder fallan en DB nueva).
+
+### Reglas de portabilidad (al tocar migraciones/seeder)
+- TODO DDL en INGLÉS, sin funciones SQLite-only. Para "ahora" usar `new Date().toISOString()` inyectado por param (NO `DEFAULT datetime('now')`).
+- Todo INSERT multi-motor: placeholders `?` (el adapter PG los convierte). Contar columnas vs `?` cuidadosamente.
+- Booleanos en tablas del ORM: pasar `1`/`0` solo si el modelo es `type: 'number'`. Si es `type: 'boolean'`, Postgres rompe.
+- Toda tabla con UPSERT `ON CONFLICT(col)` requiere `UNIQUE` constraint o `CREATE UNIQUE INDEX` explícito (el ORM no crea unique compuesto).
 
 ## Arquitectura
 ```
@@ -265,6 +308,6 @@ DELETE /api/facturas/:id          → Delete
 ```bash
 cd backend && bun run dev          # :3000
 cd frontend && bun run dev         # :5173
-cd backend && bun run migrate      # seed one-off
+cd backend && bun run migrate      # seed demo + tablas extra (requiere paso 1 RUN_MIGRATE antes en DB limpia — ver sección Database)
 cd backend && bun run doctor       # health-check Channex
 ```
