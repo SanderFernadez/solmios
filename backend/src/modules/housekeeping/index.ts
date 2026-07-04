@@ -27,9 +27,9 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       name: 'housekeeping',
       version: '2.1.0',
       description: 'Housekeeping tasks with ownership, timings, photo evidence and staff stats',
-      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'complete', 'uploadPhoto', 'removePhoto', 'stats'],
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'complete', 'uploadPhoto', 'removePhoto', 'stats', 'approve', 'presence', 'report', 'photoRequirements', 'supplyLists'],
       events: ['onHousekeepingCreated', 'onHousekeepingUpdated', 'onHousekeepingDeleted'],
-      tables: ['housekeeping'],
+      tables: ['housekeeping', 'photo_requirements', 'supply_items'],
       dependencies: [],
       rules: ['Ownership check required', 'hotelId not updatable', 'State machine enforced in service'],
     },
@@ -40,7 +40,9 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       const log = logger.child('housekeeping')
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const employeeRepo = new OrmRepository<any>(orm, 'EmployeeProfile')
-      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage)
+      const photoReqRepo = new OrmRepository<any>(orm, 'PhotoRequirement')
+      const supplyRepo = new OrmRepository<any>(orm, 'SupplyItem')
+      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo)
       const controller = new HousekeepingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -57,6 +59,17 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       router.put('/api/housekeeping/:id/complete', guard('housekeeping', 'edit'), (req) => controller.complete(req))
       router.post('/api/housekeeping/:id/photos', [...guard('housekeeping', 'edit'), bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.uploadPhoto(req))
       router.delete('/api/housekeeping/:id/photos', guard('housekeeping', 'edit'), (req) => controller.removePhoto(req))
+
+      // ─── Aprobación y presencia (F4/F5) ─────────────────────────────────
+      router.post('/api/housekeeping/:id/approve', guard('housekeeping', 'edit'), (req) => controller.approve(req))
+      router.post('/api/housekeeping/:id/presence', guard('housekeeping', 'edit'), (req) => controller.presence(req))
+      router.post('/api/housekeeping/:id/report', guard('housekeeping', 'edit'), (req) => controller.report(req))
+
+      // ─── Photo Requirements y Supply Lists ───────────────────────────────
+      router.get('/api/housekeeping/photo-requirements', guard('housekeeping', 'view'), (req) => controller.photoRequirements(req))
+      router.put('/api/housekeeping/photo-requirements', guard('housekeeping', 'edit'), (req) => controller.updatePhotoRequirements(req))
+      router.get('/api/housekeeping/supply-lists', guard('housekeeping', 'view'), (req) => controller.supplyLists(req))
+      router.put('/api/housekeeping/supply-lists', guard('housekeeping', 'edit'), (req) => controller.updateSupplyLists(req))
 
       log.info('Módulo housekeeping v2.1 listo (timings + fotos + stats)')
       return service

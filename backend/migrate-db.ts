@@ -835,6 +835,9 @@ async function main(): Promise<void> {
   // currency_config para todos los hoteles (idempotente)
   await seedCurrencyConfig()
 
+  // Tablas para app móvil housekeeping
+  await createHousekeepingMobileTables()
+
   // Demo talento/finanzas (idempotente; envuelto en try/catch por tablas/columnas
   // que se crean en el ORM del app y pueden no existir en un run standalone).
   try {
@@ -845,6 +848,82 @@ async function main(): Promise<void> {
   }
 
   console.log("\n✅ Migración completa")
+}
+
+// ─── Tablas para app móvil housekeeping ───────────────────────────────────
+async function createHousekeepingMobileTables(): Promise<void> {
+  // Photo Requirements: fotos requeridas por área y tipo de habitación
+  await exec(`CREATE TABLE IF NOT EXISTS photo_requirements (
+    id TEXT PRIMARY KEY,
+    hotelId TEXT NOT NULL,
+    areaId TEXT NOT NULL,
+    areaName TEXT NOT NULL,
+    icon TEXT DEFAULT 'photo_library',
+    required INTEGER DEFAULT 1,
+    tipText TEXT DEFAULT '',
+    roomType TEXT DEFAULT 'all',
+    active INTEGER DEFAULT 1,
+    createdAt TEXT,
+    updatedAt TEXT
+  )`)
+  await exec(`CREATE INDEX IF NOT EXISTS idx_photo_requirements_hotel ON photo_requirements(hotelId)`)
+
+  // Supply Items: suministros por tipo de habitación
+  await exec(`CREATE TABLE IF NOT EXISTS supply_items (
+    id TEXT PRIMARY KEY,
+    hotelId TEXT NOT NULL,
+    roomType TEXT NOT NULL,
+    name TEXT NOT NULL,
+    quantity INTEGER DEFAULT 1,
+    unit TEXT DEFAULT 'pieza',
+    createdAt TEXT,
+    updatedAt TEXT
+  )`)
+  await exec(`CREATE INDEX IF NOT EXISTS idx_supply_items_hotel ON supply_items(hotelId)`)
+
+  // Seed default photo requirements for first hotel
+  const hotelRows = (await db.query("SELECT id FROM hotels LIMIT 1")) as Array<{ id: string }>
+  const hid = hotelRows[0]?.id
+  if (hid) {
+    const defaultAreas = [
+      { areaId: 'bed', areaName: 'Cama', icon: 'bed', required: 1, tipText: 'Foto completa de la cama tendida' },
+      { areaId: 'bathroom', areaName: 'Baño', icon: 'bathroom', required: 1, tipText: 'Incluir ducha, lavamanos y toilet' },
+      { areaId: 'general', areaName: 'Vista General', icon: 'photo_library', required: 1, tipText: 'Vista panorámica de la habitación' },
+      { areaId: 'kitchen', areaName: 'Cocina', icon: 'kitchen', required: 0, tipText: 'Solo si tiene cocina' },
+      { areaId: 'living', areaName: 'Sala', icon: 'weekend', required: 0, tipText: 'Solo si tiene sala' },
+    ]
+    for (const area of defaultAreas) {
+      await exec(`INSERT OR IGNORE INTO photo_requirements (id, hotelId, areaId, areaName, icon, required, tipText, roomType, active) VALUES ('${uuid()}', '${hid}', '${area.areaId}', '${area.areaName}', '${area.icon}', ${area.required}, '${area.tipText}', 'all', 1)`)
+    }
+
+    // Seed default supply lists
+    const supplySets: Record<string, Array<{ name: string; quantity: number }>> = {
+      'Estándar': [
+        { name: 'Toallas grandes', quantity: 2 },
+        { name: 'Toallas pequeñas', quantity: 2 },
+        { name: 'Rollo papel higiénico', quantity: 3 },
+        { name: 'Jabón', quantity: 2 },
+        { name: 'Shampoo', quantity: 2 },
+        { name: 'Bolsa de basura', quantity: 2 },
+      ],
+      'Premium': [
+        { name: 'Toallas grandes', quantity: 3 },
+        { name: 'Toallas pequeñas', quantity: 3 },
+        { name: 'Toalla de playa', quantity: 2 },
+        { name: 'Rollo papel higiénico', quantity: 4 },
+        { name: 'Jabón artesanal', quantity: 2 },
+        { name: 'Shampoo premium', quantity: 2 },
+        { name: 'Acondicionador', quantity: 2 },
+        { name: 'Bolsa de basura', quantity: 3 },
+      ],
+    }
+    for (const [roomType, items] of Object.entries(supplySets)) {
+      for (const item of items) {
+        await exec(`INSERT OR IGNORE INTO supply_items (id, hotelId, roomType, name, quantity, unit) VALUES ('${uuid()}', '${hid}', '${roomType}', '${item.name}', ${item.quantity}, 'pieza')`)
+      }
+    }
+    console.log("seed housekeeping mobile: photo_requirements + supply_items listos")
+  }
 }
 
 main()

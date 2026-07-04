@@ -8,6 +8,8 @@ import type { HousekeepingSockets } from './sockets'
 import { TimingsUseCase, assertTransition } from './usecases/timings'
 import { PhotosUseCase } from './usecases/photos'
 import { StatsUseCase } from './usecases/stats'
+import { ApproveUseCase } from './usecases/approve'
+import { ConfigListsUseCase } from './usecases/config-lists'
 
 const CACHE_TTL = 300
 
@@ -16,6 +18,8 @@ export class HousekeepingService {
   private readonly timings: TimingsUseCase
   private readonly photos: PhotosUseCase
   private readonly statsUc: StatsUseCase
+  private readonly approveUc: ApproveUseCase
+  private readonly configLists?: ConfigListsUseCase
   private readonly employeeRepo?: RepositoryAdapter<any>
 
   constructor(
@@ -26,6 +30,8 @@ export class HousekeepingService {
     private readonly auth: Auth,
     employeeRepo?: RepositoryAdapter<any>,
     storage?: StorageService,
+    photoReqRepo?: RepositoryAdapter<any>,
+    supplyRepo?: RepositoryAdapter<any>,
   ) {
     this.employeeRepo = employeeRepo
     this.timings = new TimingsUseCase(
@@ -36,6 +42,10 @@ export class HousekeepingService {
     )
     this.photos = new PhotosUseCase(repo, logger, (h) => this.invalidateCache(h), storage)
     this.statsUc = new StatsUseCase(repo, cache, userRepo)
+    this.approveUc = new ApproveUseCase(repo)
+    if (photoReqRepo && supplyRepo) {
+      this.configLists = new ConfigListsUseCase(photoReqRepo, supplyRepo, logger)
+    }
   }
 
   setSockets(s: Partial<HousekeepingSockets>): void {
@@ -129,17 +139,29 @@ export class HousekeepingService {
     await this.invalidateCache(existing.hotelId)
   }
 
-  // ─── Delegaciones a usecases (F3). FUTURE: cuando exista la app móvil del staff,
-  // agregar 'staff' a los auth.authenticate de start/complete/photos en index.ts. ─
-  async start(id: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> { return this.timings.start(id, currentUser) }
-  async complete(id: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> { return this.timings.complete(id, currentUser) }
-  async addPhoto(id: string, file: FileUpload, currentUser: HousekeepingUser): Promise<HousekeepingDTO> { return this.photos.addPhoto(id, file, currentUser) }
-  async removePhoto(id: string, photoUrl: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> { return this.photos.removePhoto(id, photoUrl, currentUser) }
-  async stats(query: StaffStatsQuery, currentUser: HousekeepingUser): Promise<StaffStats[]> { return this.statsUc.stats(query, currentUser) }
+  // ─── Delegaciones a usecases ───────────────────────────────────────────────
+  async start(id: string, u: HousekeepingUser) { return this.timings.start(id, u) }
+  async complete(id: string, u: HousekeepingUser) { return this.timings.complete(id, u) }
+  async addPhoto(id: string, file: FileUpload, u: HousekeepingUser) { return this.photos.addPhoto(id, file, u) }
+  async removePhoto(id: string, url: string, u: HousekeepingUser) { return this.photos.removePhoto(id, url, u) }
+  async stats(q: StaffStatsQuery, u: HousekeepingUser) { return this.statsUc.stats(q, u) }
 
-  // D4 — Validación blanda de staffId con ownership (sin FK física). Solo valida si
-  // viene staffId y si el repo de empleados está disponible; no bloquea el connector
-  // del sistema (crea tareas sin staff) ni datos legacy.
+  // ─── Aprobación y presencia ───────────────────────────────────────────────
+  async approve(id: string, userId: string, note?: string) {
+    const result = await this.approveUc.approve(id, userId, note)
+    await this.sockets.onHousekeepingUpdated?.(result)
+    await this.invalidateCache(result.hotelId)
+    return result
+  }
+  async markPresence(id: string, userId: string) { return this.approveUc.markPresence(id, userId) }
+  async reportIssue(id: string, desc: string, type: string) { return this.approveUc.reportIssue(id, desc, type) }
+
+  // ─── Config lists (photo requirements + supply lists) ─────────────────────
+  async getPhotoRequirements(h: string, rt?: string) { return this.configLists?.getPhotoRequirements(h, rt) ?? [] }
+  async upsertPhotoRequirements(h: string, items: any[]) { return this.configLists?.upsertPhotoRequirements(h, items) ?? [] }
+  async getSupplyLists(h: string, rt?: string) { return this.configLists?.getSupplyLists(h, rt) ?? [] }
+  async upsertSupplyLists(h: string, rt: string, items: any[]) { return this.configLists?.upsertSupplyLists(h, rt, items) ?? [] }
+
   private async assertStaffExists(staffId: string | undefined, currentUser: HousekeepingUser): Promise<void> {
     if (!staffId || !this.employeeRepo) return
     const profile = await this.employeeRepo.findById(staffId).catch(() => null)
@@ -149,17 +171,10 @@ export class HousekeepingService {
     }
   }
 
-  private async invalidateCache(hotelId?: string): Promise<void> {
+  private async invalidateCache(hotelId?: string) {
     await this.cache.delete(`housekeeping:list:${hotelId}`)
     await this.statsUc.bumpVersion(hotelId)
   }
 
-  /**
-   * B3 — Punto público de invalidación para mutaciones que ocurren FUERA del service
-   * (ej. el check-out crea la tarea con tx.create directo en composition-root). Sin esto,
-   * el cache `housekeeping:list:*` quedaría stale hasta 300s tras un check-out.
-   */
-  async invalidateListCache(hotelId?: string): Promise<void> {
-    await this.invalidateCache(hotelId)
-  }
+  async invalidateListCache(hotelId?: string) { return this.invalidateCache(hotelId) }
 }

@@ -85,4 +85,59 @@ export class HousekeepingController {
   async stats(req: HttpRequest) {
     return { status: 200, body: await this.service.stats(req.query as any, req.user as any) }
   }
+
+  // ─── Aprobación y presencia (F4/F5) ───────────────────────────────────────
+  async approve(req: HttpRequest) {
+    const body = (req.body || {}) as Record<string, unknown>
+    const note = body.note as string | undefined
+    const result = await this.service.approve(req.params.id, (req.user as any).id, note)
+    return { status: 200, body: result }
+  }
+
+  async presence(req: HttpRequest) {
+    await this.service.markPresence(req.params.id, (req.user as any).id)
+    return { status: 200, body: { message: 'Presencia registrada' } }
+  }
+
+  async report(req: HttpRequest) {
+    const body = (req.body || {}) as Record<string, unknown>
+    const description = body.description as string | undefined
+    const type = (body.type as string) || 'maintenance'
+    if (!description) return { status: 400, body: { error: 'Descripción requerida' } }
+    await this.service.reportIssue(req.params.id, description, type)
+    return { status: 200, body: { message: 'Reporte enviado' } }
+  }
+
+  // ─── Photo Requirements y Supply Lists ────────────────────────────────────
+  async photoRequirements(req: HttpRequest) {
+    const hotelId = (req.user as any).hotelId
+    const roomType = req.query['roomType'] as string | undefined
+    const items = await this.service.getPhotoRequirements(hotelId, roomType)
+    return { status: 200, body: { data: items } }
+  }
+
+  async updatePhotoRequirements(req: HttpRequest) {
+    const hotelId = (req.user as any).hotelId
+    const body = (req.body || {}) as Record<string, unknown>
+    const items = (body.items || []) as any[]
+    const result = await this.service.upsertPhotoRequirements(hotelId, items)
+    return { status: 200, body: { data: result } }
+  }
+
+  async supplyLists(req: HttpRequest) {
+    const hotelId = (req.user as any).hotelId
+    const roomType = req.query['roomType'] as string | undefined
+    const items = await this.service.getSupplyLists(hotelId, roomType)
+    return { status: 200, body: { data: items } }
+  }
+
+  async updateSupplyLists(req: HttpRequest) {
+    const hotelId = (req.user as any).hotelId
+    const body = (req.body || {}) as Record<string, unknown>
+    const roomType = body.roomType as string | undefined
+    const items = (body.items || []) as any[]
+    if (!roomType) return { status: 400, body: { error: 'roomType requerido' } }
+    const result = await this.service.upsertSupplyLists(hotelId, roomType, items)
+    return { status: 200, body: { data: result } }
+  }
 }

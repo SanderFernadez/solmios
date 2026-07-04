@@ -250,4 +250,33 @@ export function registerSharedModels(orm: ORM): void {
       createdBy: { type: 'string' },
     },
   })
+
+  // ─── Photo Requirements (housekeeping) ───────────────
+  orm.define('PhotoRequirement', {
+    table: 'photo_requirements', timestamps: true,
+    fields: {
+      id: { type: 'string', required: true },
+      hotelId: { type: 'string', required: true, indexed: true },
+      areaId: { type: 'string', required: true },
+      areaName: { type: 'string', required: true },
+      icon: { type: 'string', default: 'photo_library' },
+      required: { type: 'number', default: 1 },
+      tipText: { type: 'string', default: '' },
+      roomType: { type: 'string', default: 'all' },
+      active: { type: 'number', default: 1 },
+    },
+  })
+
+  // ─── Supply Items (housekeeping) ─────────────────────
+  orm.define('SupplyItem', {
+    table: 'supply_items', timestamps: true,
+    fields: {
+      id: { type: 'string', required: true },
+      hotelId: { type: 'string', required: true, indexed: true },
+      roomType: { type: 'string', required: true },
+      name: { type: 'string', required: true },
+      quantity: { type: 'number', default: 1 },
+      unit: { type: 'string', default: 'pieza' },
+    },
+  })
 }
