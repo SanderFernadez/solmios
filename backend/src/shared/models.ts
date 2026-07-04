@@ -212,6 +212,7 @@ export function registerSharedModels(orm: ORM): void {
       hotelId: { type: 'string', required: true, indexed: true },
       description: { type: 'string', required: true },
       amount: { type: 'number', required: true },
+      quantity: { type: 'number', default: 1 },
       kind: { type: 'string', default: 'service' },
       status: { type: 'string', default: 'pending' },
     },

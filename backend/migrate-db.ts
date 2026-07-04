@@ -133,8 +133,8 @@ async function createTablesBlock1(): Promise<void> {
   await exec(`CREATE TABLE IF NOT EXISTS tickets (
     id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, userId TEXT NOT NULL,
     subject TEXT NOT NULL, category TEXT DEFAULT 'technical', priority TEXT DEFAULT 'medium',
-    status TEXT DEFAULT 'open', description TEXT, attachments TEXT,
-    assignedTo TEXT, slaStatus TEXT, slaBreached INTEGER DEFAULT 0, messages TEXT DEFAULT '[]',
+    status TEXT DEFAULT 'open', description TEXT,
+    assignedTo TEXT, messages TEXT DEFAULT '[]',
     createdAt TEXT, updatedAt TEXT)`)
 
   await exec(`CREATE TABLE IF NOT EXISTS notifications (

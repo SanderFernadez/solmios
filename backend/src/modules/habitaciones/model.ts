@@ -11,6 +11,7 @@ export const HabitacionesModel: ModelDefinition = {
     status: { type: 'string', default: 'available' },
     hotelId: { type: 'string', required: true, indexed: true },
     description: { type: 'text' },
+    amenities: { type: 'string', default: '' },
     capacity: { type: 'number', default: 2 },
     floor: { type: 'number' },
     surfaceArea: { type: 'number', default: 0 },
