@@ -259,7 +259,7 @@ describe('RolesService', () => {
     it('allows update to system role permissions', async () => {
       const repo = makeRepo({ findById: async () => systemRole })
       const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
-      await expect(svc.update('role-1', { permissions: ['test:view'] }, hotelAdmin)).resolves.toBeDefined()
+      await expect(svc.update('role-1', { permissions: ['test:view'] as any }, hotelAdmin)).resolves.toBeDefined()
     })
 
     it('super_admin also cannot modify system role fields', async () => {

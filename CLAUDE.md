@@ -50,23 +50,28 @@ bun run migrate-db.ts   # usa .env (DB_PATH o DATABASE_URL)
 ```
 Manager Hotel/
 ├── backend/
-│   ├── src/composition-root.ts   # ENTRY: System + ORM + 30 módulos
-│   ├── src/shared/models.ts      # Modelos ORM compartidos (16 tablas)
-│   ├── src/modules/              # 30 módulos: usuarios, hoteles, habitaciones, reservas, huespedes,
-│   │                             #   facturas, housekeeping, mantenimiento, paquetes, grupos,
-│   │                             #   operaciones, admin, canales, dispositivos, anuncios,
-│   │                             #   attendance, payroll, cash, crm, marketing, etc.
-│   ├── src/connectors/           # 9 conectores inter-módulo
+│   ├── src/composition-root.ts   # ENTRY: System + ORM + 39 módulos (232 líneas, solo wiring)
+│   ├── src/shared/
+│   │   ├── models.ts             # Modelos ORM compartidos
+│   │   ├── permissions.ts        # Sistema de permisos (hasPermission, getRolePermissions)
+│   │   ├── middlewares/          # security-headers.ts, rate-limit.ts
+│   │   └── utils/                # safe-parse.ts, hotel-of.ts, push-availability.ts
+│   ├── src/infrastructure/
+│   │   ├── auth/                 # hotel-auth.ts, require-user-type.ts, require-permission.ts, load-permissions.ts, create-permission-guard.ts
+│   │   ├── stripe-config.ts      # Stripe API key resolver
+│   │   └── email-bootstrap.ts    # EmailService setup + worker
+│   ├── src/modules/              # 39 módulos aislados (cada uno con controller/service/types/validators/model/sockets/tests)
+│   ├── src/connectors/           # 11 conectores inter-módulo
 │   ├── src/services/             # 13 servicios compartidos (email, currency, etc.)
 │   └── data/managerhotel.db      # SQLite (gitignored)
 ├── frontend/src/
-│   ├── pages/                    # 40 secciones (kebab-case.vue)
-│   ├── services/                 # 45 servicios API
+│   ├── pages/                    # 40+ secciones (kebab-case.vue)
+│   ├── services/                 # 45+ servicios API
 │   ├── composables/              # 5 composables (useCurrency, useToast, etc.)
-│   ├── stores/                   # auth, dashboard, reservation, room (Pinia setup)
+│   ├── stores/                   # auth, dashboard, reservation, room, feedback (Pinia setup)
 │   ├── layouts/                  # AdminLayout, SuperAdminLayout
 │   ├── router/index.ts           # Guards: requiresHotelAuth / Admin / SuperAdmin
-│   ├── components/               # ui/ + features/
+│   ├── components/               # ui/ + features/ (incluye feedback/)
 │   └── types/index.ts            # Tipos centralizados
 ├── PRD.md                        # QUÉ (producto, 26 módulos, 6 suites)
 ├── ARCHITECTURE.md               # CÓMO (técnico real — leer al iniciar)
@@ -76,6 +81,57 @@ Manager Hotel/
 ├── SPECS/                        # 6 specs detallados (M01, M02, M06, M13, M17, M23)
 └── openspec/                     # SDD activo
 ```
+
+## Sistema de Permisos (implementado)
+
+### Tipos de Usuario (userType)
+- `admin` — dueño de la plataforma (super_admin). Accede a `/admin/*`
+- `merchant` — dueño/gerente del hotel. Accede a `/panel/*`
+- merchant NUNCA accede a endpoints de admin
+
+### Roles por Hotel
+Cada hotel tiene roles con permisos granulares. El hotel admin puede crear/editar roles personalizados.
+
+**Roles por defecto:**
+- `hotel_admin` 👑 — acceso completo al hotel
+- `receptionist` 🔑 — operaciones del día a día
+- `housekeeper` 🧹 — solo tareas de limpieza
+- `maintenance` 🔧 — solo tareas de mantenimiento
+
+### Permisos (formato `module:action`)
+```
+dashboard:view
+reservations:view/create/edit/delete/checkin/checkout
+guests:view/create/edit/delete
+rooms:view/create/edit/delete
+housekeeping:view/create/edit
+maintenance:view/create/edit
+billing:view/create/edit/delete
+reports:view/export/edit
+settings:view/create/edit/delete
+users:view/create/edit/delete
+feedback:view
+channel-manager:view/edit
+ttlock:view/edit
+ai:view/edit
+```
+
+### Cómo se usa
+```typescript
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+
+// En module/index.ts:
+const guard = createPermissionGuard(auth, roleRepo)
+router.get('/api/reservations', guard('reservations', 'view'), handler)
+router.post('/api/reservations', guard('reservations', 'create'), handler)
+```
+
+### Archivos clave
+- `src/shared/permissions.ts` — estructura + hasPermission() + getRolePermissions()
+- `src/infrastructure/auth/require-permission.ts` — middleware
+- `src/infrastructure/auth/load-permissions.ts` — carga permisos del rol
+- `src/infrastructure/auth/create-permission-guard.ts` — helper que combina auth + permisos
+- `scripts/seed-default-roles.ts` — crea roles por defecto por hotel
 
 ## Lazy Loading — Skills por contexto
 
@@ -204,6 +260,8 @@ El CLI registra `openedAt` (creación del Issue) y `implementacionAt` (marcar `[
 - **NUNCA sin ownership check** — `auth.authenticate(...roles)` + `auth.assertOwnership()` post-findById
 - **NUNCA server.ts suelto** — el entry es `composition-root.ts`
 - **NUNCA import de otro módulo directo** — usar connector en `src/connectors/`
+- **SIEMPRE usar permisos** — `requirePermission(module, action)` en cada ruta (no solo roles)
+- **SIEMPRE userType** — rutas de admin usan `requireUserType('admin')`, rutas de hotel usan `requireUserType('merchant')`
 - `index.ts` de módulo es APPEND-ONLY
 - `model.ts` (BD) ≠ `types.ts` (API) — separados
 - `npm install arckode-framework` (desde npm, NO path local)
@@ -241,6 +299,8 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 - Single DB con columna `hotelId` en cada tabla
 - Cada query filtra por `hotelId` (desde token o query param)
 - Configuración: tabla `configuration` KV (por hotel + `platform`)
+- **userType**: `admin` (plataforma) vs `merchant` (hotel) — rutas protegidas por `requireUserType()`
+- **Permisos**: cada rol tiene permisos granulares (`module:action`) — rutas protegidas por `requirePermission()`
 
 ### Integraciones (estado real)
 | Integración | Estado |
