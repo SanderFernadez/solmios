@@ -1,34 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { FeedbackPin, CreateFeedbackPayload, FeedbackPriority, FeedbackCategory } from '@/types'
+import type { FeedbackPin, FeedbackPriority, FeedbackCategory } from '@/types'
 import { FeedbackService } from '@/services/Feedback.service'
 import type { GitLabIssueResult } from '@/services/Feedback.service'
 
-const STORAGE_KEY = 'solmios_feedback_pins'
-
-function loadStorage(): FeedbackPin[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveStorage(pins: FeedbackPin[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(pins))
-  } catch { /* quota exceeded, ignore */ }
-}
-
-let seqId = Date.now()
-function nextId(): string {
-  return `fb_${++seqId}`
-}
-
 export const useFeedbackStore = defineStore('feedback', () => {
   const isFeedbackMode = ref(false)
-  const pins = ref<FeedbackPin[]>(loadStorage())
+  const pins = ref<FeedbackPin[]>([])
   const selectedPin = ref<FeedbackPin | null>(null)
   const loading = ref(false)
   const activeRoute = ref('')
@@ -41,10 +19,6 @@ export const useFeedbackStore = defineStore('feedback', () => {
   const routePins = computed(() =>
     pins.value.filter(p => p.route === activeRoute.value)
   )
-
-  function persist() {
-    saveStorage(pins.value)
-  }
 
   function enableFeedbackMode(route: string) {
     activeRoute.value = route
@@ -91,23 +65,22 @@ export const useFeedbackStore = defineStore('feedback', () => {
     loading.value = true
     lastIssueUrl.value = null
     try {
-      const pin: FeedbackPin = {
-        id: nextId(),
-        ...pendingCoordinates.value,
+      // Guardar en la DB
+      const pin = await FeedbackService.create({
         route: activeRoute.value,
+        x: pendingCoordinates.value.x,
+        y: pendingCoordinates.value.y,
         comment: data.comment,
         priority: data.priority,
         category: data.category,
-        status: 'open',
+        screenshot: pendingScreenshot.value || undefined,
+        browser: getBrowser(),
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
-        browser: getBrowser(),
-        createdAt: new Date(),
-      }
+      })
       pins.value.push(pin)
-      persist()
 
-      // SIEMPRE crear issue en GitLab (screenshot es opcional)
+      // Crear issue en GitLab
       try {
         const result: GitLabIssueResult = await FeedbackService.createGitLabIssue({
           screenshot: pendingScreenshot.value || '',
@@ -122,17 +95,18 @@ export const useFeedbackStore = defineStore('feedback', () => {
         })
         lastIssueUrl.value = result.issueUrl
         lastError.value = null
+
+        // Actualizar pin con el issue URL
+        await FeedbackService.update(pin.id, { gitlabIssueUrl: result.issueUrl } as any)
       } catch (e: any) {
         lastError.value = e?.message || 'Error al crear issue en GitLab'
       }
 
-      FeedbackService.create(pin).catch(() => {
-        /* backend not available — localStorage fallback active */
-      })
-
       isModalOpen.value = false
       pendingCoordinates.value = null
       pendingScreenshot.value = null
+    } catch (e: any) {
+      lastError.value = e?.message || 'Error al guardar feedback'
     } finally {
       loading.value = false
     }
@@ -141,12 +115,9 @@ export const useFeedbackStore = defineStore('feedback', () => {
   async function updatePin(id: string, data: Partial<FeedbackPin>) {
     loading.value = true
     try {
+      const updated = await FeedbackService.update(id, data)
       const idx = pins.value.findIndex(p => p.id === id)
-      if (idx >= 0) {
-        pins.value[idx] = { ...pins.value[idx], ...data }
-        persist()
-      }
-      FeedbackService.update(id, data).catch(() => {})
+      if (idx >= 0) pins.value[idx] = updated
     } finally {
       loading.value = false
     }
@@ -155,9 +126,8 @@ export const useFeedbackStore = defineStore('feedback', () => {
   async function deletePin(id: string) {
     loading.value = true
     try {
+      await FeedbackService.remove(id)
       pins.value = pins.value.filter(p => p.id !== id)
-      persist()
-      FeedbackService.remove(id).catch(() => {})
     } finally {
       loading.value = false
     }
@@ -166,18 +136,10 @@ export const useFeedbackStore = defineStore('feedback', () => {
   async function loadPins(route: string) {
     loading.value = true
     try {
-      const remote = await FeedbackService.list(route)
-      const localIds = new Set(pins.value.map(p => p.id))
-      const merged = [...pins.value]
-      for (const r of remote) {
-        const i = merged.findIndex(m => m.id === r.id)
-        if (i >= 0) merged[i] = r
-        else merged.push(r)
-      }
-      pins.value = merged
-      persist()
+      const result = await FeedbackService.list(route)
+      pins.value = Array.isArray(result) ? result : (result as any).data || []
     } catch {
-      /* use localStorage data */
+      pins.value = []
     } finally {
       loading.value = false
     }

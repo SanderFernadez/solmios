@@ -1,10 +1,57 @@
-import type { Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
+import type { FeedbackPinDTO, CreateFeedbackPinDTO, UpdateFeedbackPinDTO } from './types'
 
 export class FeedbackService {
   constructor(
+    private readonly pinsRepo: RepositoryAdapter<FeedbackPinDTO>,
     private readonly logger: Logger,
+    private readonly auth?: Auth,
   ) {}
 
+  // ── CRUD Feedback Pins ──────────────────────────────────────────────────
+  async listPins(hotelId?: string, route?: string): Promise<{ data: FeedbackPinDTO[]; total: number }> {
+    const filters: Record<string, any> = {}
+    if (hotelId) filters.hotelId = hotelId
+    if (route) filters.route = route
+    const data = await this.pinsRepo.findMany(filters)
+    return { data: data as FeedbackPinDTO[], total: data.length }
+  }
+
+  async getPin(id: string, user?: any): Promise<FeedbackPinDTO | null> {
+    const pin = (await this.pinsRepo.findById(id)) as FeedbackPinDTO | null
+    if (pin && this.auth && user) this.auth.assertOwnership(pin, user.hotelId || user.id)
+    return pin
+  }
+
+  async createPin(dto: CreateFeedbackPinDTO): Promise<FeedbackPinDTO> {
+    const pin = await this.pinsRepo.create({
+      ...dto,
+      priority: dto.priority || 'medium',
+      category: dto.category || 'UI',
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any)
+    this.logger.info('Feedback pin creado', { id: pin.id, route: dto.route })
+    return pin as FeedbackPinDTO
+  }
+
+  async updatePin(id: string, dto: UpdateFeedbackPinDTO, user?: any): Promise<FeedbackPinDTO | null> {
+    const existing = await this.pinsRepo.findById(id)
+    if (!existing) return null
+    if (this.auth && user) this.auth.assertOwnership(existing, user.hotelId || user.id)
+    const updated = await this.pinsRepo.update(id, {
+      ...dto,
+      updatedAt: new Date().toISOString(),
+    } as any)
+    return updated as FeedbackPinDTO
+  }
+
+  async deletePin(id: string): Promise<boolean> {
+    return await this.pinsRepo.delete(id)
+  }
+
+  // ── GitLab Issue ────────────────────────────────────────────────────────
   async createGitLabIssue(reqBody: any, user: any): Promise<any> {
     const { screenshot, filename, comment, route, x, y, browser, viewportWidth, viewportHeight } = reqBody
     const GITLAB_TOKEN = process.env.GITLAB_TOKEN
