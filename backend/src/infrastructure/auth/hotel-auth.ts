@@ -14,6 +14,8 @@ export interface HotelTokenPayload {
   role: string
   /** hotelId del hotel cuyo scope rige el token (undefined para super_admin sin hotel asignado). */
   hotelId?: string
+  /** Tipo de usuario: 'admin' (plataforma) | 'merchant' (hotel) */
+  userType?: string
 }
 
 export class HotelAuth extends Auth {
@@ -48,17 +50,17 @@ export class HotelAuth extends Auth {
   createToken(payload: HotelTokenPayload, expiresIn?: string): string {
     const ttl = expiresIn ?? this.accessExpiresIn
     const token = this.jwtAdapter.sign(
-      { id: payload.id, role: payload.role, hotelId: payload.hotelId, type: 'access' },
+      { id: payload.id, role: payload.role, hotelId: payload.hotelId, userType: payload.userType || 'merchant', type: 'access' },
       this.accessSecret,
       ttl,
     )
-    this.authLogger.debug('Token creado', { userId: payload.id, hotelId: payload.hotelId, expiresIn: ttl })
+    this.authLogger.debug('Token creado', { userId: payload.id, hotelId: payload.hotelId, userType: payload.userType, expiresIn: ttl })
     return token
   }
 
   createRefreshToken(payload: HotelTokenPayload): string {
     const token = this.jwtAdapter.sign(
-      { id: payload.id, role: payload.role, hotelId: payload.hotelId, type: 'refresh', jti: crypto.randomUUID() },
+      { id: payload.id, role: payload.role, hotelId: payload.hotelId, userType: payload.userType || 'merchant', type: 'refresh', jti: crypto.randomUUID() },
       this.hotelRefreshSecret,
       this.hotelRefreshExpiresIn,
     )
@@ -94,6 +96,8 @@ export class HotelAuth extends Auth {
         role: payload.role as string,
         // hotelId opcional: los tokens legacy (pre-deploy, sin hotelId) siguen verificando OK.
         hotelId: payload.hotelId as string | undefined,
+        // userType opcional: tokens legacy (pre-deploy, sin userType) default a 'merchant'
+        userType: (payload.userType as string) || 'merchant',
       }
     } catch (e) {
       if (e instanceof AuthError) throw e

@@ -8,7 +8,8 @@ export const UsuariosModel: ModelDefinition = {
     name: { type: 'string', required: true },
     email: { type: 'string', required: true, unique: true, indexed: true },
     password: { type: 'string', required: true },
-    role: { type: 'string', default: "hotel_admin" },
+    userType: { type: 'string', default: 'merchant' }, // 'admin' | 'merchant'
+    role: { type: 'string', default: 'hotel_admin' },
     hotelId: { type: 'string', indexed: true },
     active: { type: 'number', default: 1 },
     isDemo: { type: 'number', default: 0 },

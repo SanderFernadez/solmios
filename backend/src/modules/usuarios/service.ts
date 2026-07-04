@@ -39,7 +39,7 @@ export class UsuariosService {
     }
     // Mantener rol original; si es super_admin y cambia a otro hotel, queda super_admin
     // Si es hotel_admin, ya validamos que targetHotelId === user.hotelId
-    const token = (this.auth as any).createToken({ id: userId, role: currentRole, hotelId: targetHotelId })
+    const token = (this.auth as any).createToken({ id: userId, role: currentRole, hotelId: targetHotelId, userType: 'merchant' })
     await this.repo.update(userId, { token })
     return {
       token,
@@ -64,7 +64,7 @@ export class UsuariosService {
     if (!String(user.password).startsWith('$2') && !String(user.password).startsWith('$argon2') && !String(user.password).includes(':')) {
       await this.repo.update(user.id, { password: await this.hashPassword(password) })
     }
-    const token = (this.auth as any).createToken({ id: user.id, role: user.role, hotelId: user.hotelId })
+    const token = (this.auth as any).createToken({ id: user.id, role: user.role, hotelId: user.hotelId, userType: user.userType || 'merchant' })
     await this.repo.update(user.id, { token })
     let hotelName = ''
     if (user.hotelId && this.hotelRepo) {

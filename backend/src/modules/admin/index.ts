@@ -3,6 +3,7 @@ import type { PlanDTO, AmenityCatalogDTO } from './types'
 import { AdminService } from './service'
 import { AdminController } from './controller'
 import { DashboardQueries } from './usecases/dashboard-queries'
+import { requireUserType } from '../../infrastructure/auth/require-user-type'
 
 export { AdminService }
 
@@ -29,8 +30,8 @@ export function AdminModule() {
       const service = new AdminService(plansRepo, amenitiesRepo, log, auth, queries)
       const controller = new AdminController(service, log)
 
-      const sa = [auth.authenticate('super_admin')]
-      const ar = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
+      const sa = [auth.authenticate('super_admin'), requireUserType('admin')]
+      const ar = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin'), requireUserType('merchant')]
 
       router.get('/api/admin/hoteles', sa, () => controller.listHotels())
       router.get('/api/admin/users', sa, () => controller.listUsers())

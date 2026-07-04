@@ -19,7 +19,7 @@ export class FeedbackService {
 
   async getPin(id: string, user?: any): Promise<FeedbackPinDTO | null> {
     const pin = (await this.pinsRepo.findById(id)) as FeedbackPinDTO | null
-    if (pin && this.auth && user) this.auth.assertOwnership(pin, user.hotelId || user.id)
+    if (pin && this.auth && user) this.auth.assertOwnership(pin.id, user.hotelId || user.id)
     return pin
   }
 
@@ -39,7 +39,7 @@ export class FeedbackService {
   async updatePin(id: string, dto: UpdateFeedbackPinDTO, user?: any): Promise<FeedbackPinDTO | null> {
     const existing = await this.pinsRepo.findById(id)
     if (!existing) return null
-    if (this.auth && user) this.auth.assertOwnership(existing, user.hotelId || user.id)
+    if (this.auth && user) this.auth.assertOwnership(existing.id, user.hotelId || user.id)
     const updated = await this.pinsRepo.update(id, {
       ...dto,
       updatedAt: new Date().toISOString(),
