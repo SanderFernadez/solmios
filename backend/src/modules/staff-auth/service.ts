@@ -5,6 +5,7 @@ import type { PinLoginDTO, PinLoginResponse, StaffUser } from './types'
 
 const MAX_ATTEMPTS = 5
 const LOCKOUT_MINUTES = 15
+const MS_PER_MINUTE = 60 * 1000
 
 export class StaffAuthService {
   constructor(
@@ -27,7 +28,7 @@ export class StaffAuthService {
     if (user.pinLockedUntil) {
       const lockedUntil = new Date(user.pinLockedUntil).getTime()
       if (lockedUntil > Date.now()) {
-        const remaining = Math.ceil((lockedUntil - Date.now()) / 60000)
+        const remaining = Math.ceil((lockedUntil - Date.now()) / MS_PER_MINUTE)
         throw new AuthError(`Cuenta bloqueada. Intenta en ${remaining} minutos`)
       }
       // Desbloquear si ya pasó el tiempo
@@ -50,11 +51,14 @@ export class StaffAuthService {
       const updateData: Record<string, any> = { pinAttempts: attempts }
 
       if (attempts >= MAX_ATTEMPTS) {
-        // Bloquear cuenta
-        const lockUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60000).toISOString()
+        // Bloquear cuenta e informar al usuario (antes bloqueaba silenciosamente y
+        // lanzaba "PIN incorrecto", impidiendo saber que la cuenta se bloqueó).
+        const lockUntil = new Date(Date.now() + LOCKOUT_MINUTES * MS_PER_MINUTE).toISOString()
         updateData.pinLockedUntil = lockUntil
         updateData.pinAttempts = 0
+        await this.userRepo.update(user.id, updateData as any)
         this.logger.warn('Cuenta bloqueada por múltiples intentos', { userId: user.id })
+        throw new AuthError(`Cuenta bloqueada. Intenta en ${LOCKOUT_MINUTES} minutos`)
       }
 
       await this.userRepo.update(user.id, updateData as any)

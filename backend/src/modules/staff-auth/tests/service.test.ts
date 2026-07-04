@@ -7,6 +7,7 @@ describe('StaffAuthService v2', () => {
   let mockUserRepo: any
   let mockLogger: any
   let mockAuth: any
+  let realPinHash: string
 
   beforeEach(async () => {
     mockUserRepo = { findMany: vi.fn(), findById: vi.fn(), update: vi.fn() }
@@ -16,15 +17,16 @@ describe('StaffAuthService v2', () => {
       createRefreshToken: vi.fn().mockReturnValue('refresh-token'),
     }
     service = new StaffAuthService(mockUserRepo, mockLogger, mockAuth)
-
-    // Pre-generate a bcrypt hash for PIN "123456"
-    global.Bun = { password: { hash: async (p: string) => `hashed_${p}`, verify: async (p: string, h: string) => h === `hashed_${p}` } } as any
+    // Bun.password es un global readonly del runtime (no se puede reasignar con
+    // global.Bun = {...}). Usamos el hash bcrypt REAL para '123456' y dejamos que el
+    // servicio verify contra él — ejercita el flujo real sin mockear el global.
+    realPinHash = await Bun.password.hash('123456')
   })
 
   it('loginByPin returns token for valid PIN', async () => {
     mockUserRepo.findMany.mockResolvedValue([{
       id: 'u1', name: 'María', phone: '8091234567', role: 'camarera',
-      hotelId: 'h1', pinEnabled: 1, pinHash: 'hashed_123456', pinAttempts: 0,
+      hotelId: 'h1', pinEnabled: 1, pinHash: realPinHash, pinAttempts: 0,
     }])
 
     const result = await service.loginByPin({ phone: '8091234567', pin: '123456' })
@@ -35,7 +37,7 @@ describe('StaffAuthService v2', () => {
   it('loginByPin throws on wrong PIN', async () => {
     mockUserRepo.findMany.mockResolvedValue([{
       id: 'u1', name: 'Ana', phone: '8091234567', role: 'camarera',
-      hotelId: 'h1', pinEnabled: 1, pinHash: 'hashed_123456', pinAttempts: 0,
+      hotelId: 'h1', pinEnabled: 1, pinHash: realPinHash, pinAttempts: 0,
     }])
 
     await expect(service.loginByPin({ phone: '8091234567', pin: '000000' }))
@@ -45,7 +47,7 @@ describe('StaffAuthService v2', () => {
   it('loginByPin locks account after 5 failed attempts', async () => {
     mockUserRepo.findMany.mockResolvedValue([{
       id: 'u1', name: 'Ana', phone: '8091234567', role: 'camarera',
-      hotelId: 'h1', pinEnabled: 1, pinHash: 'hashed_123456', pinAttempts: 4,
+      hotelId: 'h1', pinEnabled: 1, pinHash: realPinHash, pinAttempts: 4,
     }])
 
     await expect(service.loginByPin({ phone: '8091234567', pin: '000000' }))
