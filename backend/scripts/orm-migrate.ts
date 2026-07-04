@@ -25,7 +25,15 @@ export async function ormMigrate(db: DbAdapter, models: Map<string, ModelDefinit
       if (name === 'id') parts.push('PRIMARY KEY')
       if (f.required) parts.push('NOT NULL')
       if (f.unique) parts.push('UNIQUE')
-      if (f.default !== undefined) parts.push(`DEFAULT ${typeof f.default === 'string' ? `'${String(f.default).replace(/'/g, "''")}'` : f.default}`)
+      if (f.default !== undefined) {
+        // Serializar default por tipo: strings entre comillas, json (array/objeto) como string JSON,
+        // number/boolean literales. Evita generar SQL invalido como `DEFAULT []` o `DEFAULT [object]`.
+        let defVal: string
+        if (typeof f.default === 'string') defVal = `'${f.default.replace(/'/g, "''")}'`
+        else if (typeof f.default === 'object') defVal = `'${JSON.stringify(f.default).replace(/'/g, "''")}'`
+        else defVal = String(f.default)
+        parts.push(`DEFAULT ${defVal}`)
+      }
       return parts.join(' ')
     })
     if (!hasExplicitId) columns.unshift('id TEXT PRIMARY KEY')
