@@ -97,6 +97,11 @@ const router = createRouter({
           component: () => import('@/pages/super-admin/audit.vue'),
         },
         {
+          path: 'feedback',
+          name: 'super-admin-feedback',
+          component: () => import('@/pages/super-admin/feedback.vue'),
+        },
+        {
           path: 'monitoring',
           name: 'super-admin-monitoring',
           component: () => import('@/pages/super-admin/monitoring.vue'),
@@ -209,12 +214,6 @@ const router = createRouter({
           path: 'settings',
           name: 'settings',
           component: () => import('@/pages/settings/index.vue'),
-          meta: { requiresHotelAdmin: true },
-        },
-        {
-          path: 'settings/feedback',
-          name: 'settings-feedback',
-          component: () => import('@/pages/settings/feedback.vue'),
           meta: { requiresHotelAdmin: true },
         },
         {

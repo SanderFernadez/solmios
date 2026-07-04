@@ -206,7 +206,6 @@ const nonavItems = [
     label: 'Configuración', icon: '⚙️', roles: ['hotel_admin'],
     children: [
       { label: 'Configuración', path: '/panel/settings', roles: ['hotel_admin'] },
-      { label: 'Feedback', path: '/panel/settings/feedback', roles: ['hotel_admin'] },
       { label: 'Envíos Auto', path: '/panel/auto-messages', roles: ['hotel_admin'] },
       { label: 'Historial Envíos', path: '/panel/message-logs', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Plantillas WhatsApp', path: '/panel/whatsapp-templates', roles: ['hotel_admin', 'receptionist'] },
