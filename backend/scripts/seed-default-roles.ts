@@ -17,7 +17,7 @@ async function seed() {
 
       // Check if hotel already has roles
       const existingRoles = await client.query(
-        'SELECT COUNT(*) as count FROM roles WHERE "hotelId" = $1',
+        'SELECT COUNT(*) as count FROM roles WHERE "hotelid" = $1',
         [hotelId]
       )
 
@@ -72,7 +72,7 @@ async function seed() {
 
       for (const role of defaultRoles) {
         await client.query(
-          `INSERT INTO roles (id, name, icon, color, system, "hotelId", permissions, users, "createdAt", "updatedAt")
+          `INSERT INTO roles (id, name, icon, color, system, "hotelid", permissions, users, "createdat", "updatedat")
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
            ON CONFLICT (id) DO NOTHING`,
           [role.id, role.name, role.icon, role.color, role.system, role.hotelId, role.permissions, role.users]
