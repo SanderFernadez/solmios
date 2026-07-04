@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, watch, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import html2canvas from 'html2canvas'
 import { useFeedbackStore } from '@/stores/feedback.store'
 import FeedbackPin from './FeedbackPin.vue'
 
@@ -9,7 +8,6 @@ const route = useRoute()
 const store = useFeedbackStore()
 const capturing = ref(false)
 
-// Actualizar ruta cuando el usuario navega estando en feedback mode
 watch(() => route.fullPath, (newRoute) => {
   if (store.isFeedbackMode) {
     store.activeRoute = newRoute
@@ -17,27 +15,53 @@ watch(() => route.fullPath, (newRoute) => {
   }
 })
 
+async function captureScreenshot(): Promise<string | null> {
+  try {
+    // Intentar con getDisplayMedia (nativo del browser)
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { displaySurface: 'browser' } as any,
+    })
+    const track = stream.getVideoTracks()[0]
+    const imageCapture = new ImageCapture(track)
+    const bitmap = await imageCapture.grabFrame()
+    track.stop()
+
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(bitmap, 0, 0)
+
+    return canvas.toDataURL('image/png')
+  } catch {
+    // Fallback: intentar con html2canvas
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      const target = document.querySelector('[data-feedback-content]') || document.getElementById('app') || document.body
+      const canvas = await html2canvas(target as HTMLElement, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 1,
+        logging: false,
+        backgroundColor: '#ffffff',
+      })
+      return canvas.toDataURL('image/png')
+    } catch {
+      return null
+    }
+  }
+}
+
 async function handleOverlayClick(e: MouseEvent) {
   if (!store.isFeedbackMode) return
   if ((e.target as HTMLElement).closest('.fb-pin, .fb-modal-overlay')) return
 
-  // Ocultar overlay temporalmente para capturar screenshot limpio
   capturing.value = true
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
 
-  const target = document.querySelector('[data-feedback-content]') || document.getElementById('app') || document.body
-  try {
-    const canvas = await html2canvas(target as HTMLElement, {
-      useCORS: true,
-      allowTaint: true,
-      scale: 1,
-      logging: false,
-      backgroundColor: '#ffffff',
-      removeContainer: true,
-    })
-    store.setScreenshot(canvas.toDataURL('image/png'))
-  } catch (err) {
-    console.warn('[Feedback] Screenshot capture failed:', err)
+  const screenshot = await captureScreenshot()
+  if (screenshot) {
+    store.setScreenshot(screenshot)
   }
 
   capturing.value = false
