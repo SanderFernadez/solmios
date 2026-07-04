@@ -101,8 +101,8 @@ function handleBackdropClick(e: MouseEvent) {
               </div>
             </div>
 
-            <div v-else-if="!store.lastIssueUrl" class="rounded-xl border border-border dark:border-white/10 bg-surface dark:bg-navy p-3 text-center">
-              <p class="text-[11px] text-text-muted dark:text-gray-500">No se pudo capturar screenshot</p>
+            <div v-else-if="!store.lastIssueUrl && !store.pendingScreenshot" class="rounded-xl border border-border dark:border-white/10 bg-surface dark:bg-navy p-3 text-center">
+              <p class="text-[11px] text-text-muted dark:text-gray-500">Esperando permiso para capturar pantalla...</p>
             </div>
 
             <div v-if="!store.lastIssueUrl">
