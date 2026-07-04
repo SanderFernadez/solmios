@@ -29,6 +29,7 @@ export class ReservasService {
     pushAvailabilityToChannex?: (hotelId: string, roomId: string) => void
     sendCheckinEmail?: (deps: any, data: any) => Promise<void>
     dispatchLifecycleEmail?: (deps: any, data: any) => Promise<void>
+    settleFolio?: (params: { reservationId: string; hotelId: string; guestId: string | null; roomId: string | null; settle?: { amount: number; method: string; reference?: string } | null }, user: any) => Promise<{ folioId: string; invoiceId: string | null; balance: number; amountPaid: number; invoiceNumber: string | null }>
   } = {}
   setOrchestrationDeps(deps: typeof ReservasService.prototype.orchestrationDeps): void {
     Object.assign(this.orchestrationDeps, deps)
@@ -118,6 +119,18 @@ export class ReservasService {
     this.queries.createAuditLog({ id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id, action: 'checkout', userId: user.id, hotelId: r.hotelId, detail: JSON.stringify({ roomId: r.roomId, guestId: r.guestId, checkIn: r.checkIn, checkOut: r.checkOut }), createdAt: nowIso })
     await this.sockets.onReservationCheckedOut?.({ reservationId: r.id, roomId: r.roomId, hotelId: r.hotelId })
     return { ok: true, reservationId: r.id, status: 'checked_out' }
+  }
+
+  // ── SETTLEMENT (folio → invoice → payment) ─────────────────────────────
+  async settleFolioForCheckout(reservation: any, settle: { amount: number; method: string; reference?: string } | null | undefined, user: any): Promise<any> {
+    if (!this.orchestrationDeps.settleFolio) return null
+    return this.orchestrationDeps.settleFolio({
+      reservationId: reservation.id,
+      hotelId: reservation.hotelId,
+      guestId: reservation.guestId || null,
+      roomId: reservation.roomId,
+      settle: settle || null,
+    }, user)
   }
 
   // ── PRE-CHECKIN (público) ──────────────────────────────────────────────

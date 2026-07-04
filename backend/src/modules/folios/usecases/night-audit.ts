@@ -12,13 +12,19 @@ export async function postNightAuditRoomCharges(orm: any, listFolios: any, openF
   const roomById = new Map(rooms.map((r: any) => [r.id, r]))
   const inHouse = reservations.filter((r: any) => r.status === 'checked_in' && r.checkIn && r.checkOut && String(r.checkIn).slice(0, 10) <= t && t <= String(r.checkOut).slice(0, 10))
   let posted = 0
+  let skipped = 0
   const mockUser = { id: 'system', role: 'super_admin', hotelId }
   for (const res of inHouse) {
     const room = roomById.get(res.roomId); if (!room) continue
     let folio = (await listFolios({ reservationId: res.id, status: 'open' } as any, mockUser as any)).data?.[0]
     if (!folio) folio = await openFolio({ hotelId, reservationId: res.id, guestId: res.guestId, roomId: res.roomId }, mockUser as any)
+    const existingCharges = await orm.findMany('FolioCharges', { folioId: folio.id, description: { contains: t } }) as any[]
+    if (existingCharges && existingCharges.length > 0) {
+      skipped++
+      continue
+    }
     await postCharge(folio.id, { description: `Habitación ${room.number} — ${t}`, category: 'room', amount: Number(room.basePrice) || 0, quantity: 1, source: 'night_audit' }, mockUser as any)
     posted++
   }
-  return { posted, date: t }
+  return { posted, skipped, date: t }
 }

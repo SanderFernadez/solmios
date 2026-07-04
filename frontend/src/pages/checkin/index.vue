@@ -329,23 +329,64 @@
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
           <div class="p-5 border-b border-border bg-coral/5">
-            <h3 class="text-lg font-black text-navy">Check-out</h3>
+            <h3 class="text-lg font-black text-navy">Check-out · Hab {{ checkoutGuest.roomNumber }}</h3>
           </div>
           <div class="p-5 space-y-4">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" :class="checkoutGuest.channelColor">{{ checkoutGuest.initials }}</div>
               <div>
                 <div class="text-sm font-bold text-navy">{{ checkoutGuest.guestName }}</div>
-                <div class="text-[10px] text-text-muted">Hab {{ checkoutGuest.roomNumber }}</div>
+                <div class="text-[10px] text-text-muted">{{ checkoutGuest.checkIn }} → {{ checkoutGuest.checkOut }} · {{ checkoutGuest.nights }} noche(s)</div>
               </div>
             </div>
-            <div class="bg-surface rounded-xl p-4">
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Estancia</span><span class="font-bold">{{ checkoutGuest.checkIn }} → {{ checkoutGuest.checkOut }}</span></div>
-              <div class="flex justify-between text-xs mt-1"><span class="text-text-muted">Total</span><span class="font-bold text-teal">${{ checkoutGuest.totalAmount }}</span></div>
+
+            <!-- Loading folio -->
+            <div v-if="folioLoading" class="bg-surface rounded-xl p-4 flex items-center justify-center gap-2 text-xs text-text-muted">
+              <span class="inline-block w-3 h-3 border-2 border-text-muted border-t-transparent rounded-full animate-spin"></span>
+              Cargando cuenta...
             </div>
+
+            <!-- Folio balance -->
+            <div v-else-if="checkoutFolio" class="bg-surface rounded-xl p-4 space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-xs font-bold text-navy">Cuenta · Folio</span>
+                <span class="text-[10px] font-mono text-text-muted">{{ checkoutFolio.id.slice(0, 8) }}</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-text-muted">Cargos</span>
+                <span class="font-bold text-navy">${{ (checkoutFolio.chargesTotal || 0).toFixed(2) }}</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-text-muted">Pagos</span>
+                <span class="font-bold text-teal">-${{ (checkoutFolio.paymentsTotal || 0).toFixed(2) }}</span>
+              </div>
+              <div class="border-t border-border pt-2 flex justify-between text-sm">
+                <span class="font-bold text-navy">Saldo pendiente</span>
+                <span class="font-bold" :class="(checkoutFolio.balance || 0) > 0 ? 'text-coral' : 'text-teal'">
+                  ${{ (checkoutFolio.balance || 0).toFixed(2) }}
+                </span>
+              </div>
+              <div v-if="(checkoutFolio.balance || 0) <= 0" class="text-[10px] text-teal font-bold">✓ Cuenta saldada</div>
+            </div>
+
+            <!-- Payment method selection (only if balance > 0) -->
+            <div v-if="checkoutFolio && (checkoutFolio.balance || 0) > 0" class="space-y-3">
+              <div class="text-xs font-bold text-navy">Método de pago</div>
+              <div class="grid grid-cols-2 gap-2">
+                <button v-for="pm in paymentMethods" :key="pm.value"
+                  @click="settleMethod = pm.value"
+                  class="flex items-center gap-2 p-3 rounded-xl text-xs font-bold border transition-all cursor-pointer"
+                  :class="settleMethod === pm.value ? 'bg-teal text-white border-teal' : 'bg-white text-navy border-border hover:border-teal/30'">
+                  <span>{{ pm.icon }}</span>
+                  <span>{{ pm.label }}</span>
+                </button>
+              </div>
+            </div>
+
             <div class="bg-gold/10 border border-gold/20 rounded-xl p-3">
               <div class="text-[10px] font-bold text-gold">⚠ La habitación pasará a estado "Sucia" y se creará tarea de limpieza</div>
             </div>
+
             <div v-if="processing" class="flex items-center justify-center gap-2 text-xs text-coral font-bold">
               <span class="inline-block w-3 h-3 border-2 border-coral border-t-transparent rounded-full animate-spin"></span>
               Procesando...
@@ -353,8 +394,8 @@
           </div>
           <div class="p-5 border-t border-border flex gap-2">
             <button @click="closeCheckoutModal" :disabled="processing" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold hover:bg-surface cursor-pointer disabled:opacity-50">Cancelar</button>
-            <button @click="confirmCheckout" :disabled="processing" class="flex-1 py-2.5 bg-coral text-white rounded-xl text-sm font-bold hover:bg-coral/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-              {{ processing ? 'Procesando...' : 'Confirmar Check-out' }}
+            <button @click="confirmCheckout" :disabled="processing || folioLoading" class="flex-1 py-2.5 bg-coral text-white rounded-xl text-sm font-bold hover:bg-coral/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              {{ processing ? 'Procesando...' : checkoutSettleLabel }}
             </button>
           </div>
         </div>
@@ -369,6 +410,7 @@ import { useRouter } from 'vue-router'
 import { OperationsService } from '@/services/Operations.service'
 import { RoomService } from '@/services/Room.service'
 import { ReservationService } from '@/services/Reservation.service'
+import { FoliosService, type Folio } from '@/services/Folios.service'
 import { AmenitiesService } from '@/services/Amenities.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -386,7 +428,17 @@ const showRoomDetail = ref(false)
 const showRoomGrid = ref(false)
 const checkinGuest = ref<CheckinGuest | null>(null)
 const checkoutGuest = ref<CheckinGuest | null>(null)
+const checkoutFolio = ref<Folio | null>(null)
+const folioLoading = ref(false)
+const settleMethod = ref<string | null>(null)
 const selectedRoom = ref<CheckinRoom | null>(null)
+
+const paymentMethods = [
+  { value: 'cash', label: 'Efectivo', icon: '💵' },
+  { value: 'card', label: 'Tarjeta', icon: '💳' },
+  { value: 'transfer', label: 'Transferencia', icon: '🏦' },
+  { value: 'deposit', label: 'Depósito', icon: '📄' },
+]
 
 // Búsqueda directa en reservas para garantizar datos del huésped
 const selectedRoomGuest = computed(() => {
@@ -617,6 +669,12 @@ function mapGuest(r: Record<string, unknown>): CheckinGuest {
   }
 }
 
+const checkoutSettleLabel = computed(() => {
+  if (!checkoutFolio.value || !checkoutFolio.value.balance || checkoutFolio.value.balance <= 0) return 'Confirmar Check-out'
+  if (!settleMethod.value) return 'Seleccionar pago + Check-out'
+  return `Check-out + $${checkoutFolio.value.balance.toFixed(2)} (${settleMethod.value})`
+})
+
 const arrivalsToday = computed(() => arrivals.value.length)
 const departuresToday = computed(() => departures.value.length)
 const inHouse = computed(() => inHouseList.value.length)
@@ -721,25 +779,55 @@ async function confirmCheckin() {
   await doCheckin(checkinGuest.value)
 }
 
-function openCheckoutModal(guest: CheckinGuest) {
+async function openCheckoutModal(guest: CheckinGuest) {
   checkoutGuest.value = guest
+  checkoutFolio.value = null
+  settleMethod.value = null
   showCheckoutModal.value = true
+
+  if (guest.id) {
+    folioLoading.value = true
+    try {
+      const folios = await FoliosService.list(hotelId.value, 'open')
+      const match = folios.find(f => f.reservationId === guest.id)
+      if (match) {
+        const detail = await FoliosService.get(match.id)
+        checkoutFolio.value = detail
+        if (detail.balance && detail.balance > 0 && detail.balance <= (guest.totalAmount || 0)) {
+          settleMethod.value = 'cash'
+        }
+      }
+    } catch {
+      // folio not available — proceed without
+    } finally {
+      folioLoading.value = false
+    }
+  }
 }
 
 function closeCheckoutModal() {
   if (processing.value) return
   showCheckoutModal.value = false
   checkoutGuest.value = null
+  checkoutFolio.value = null
+  settleMethod.value = null
 }
 
 async function doCheckout(guest: CheckinGuest) {
   processing.value = true
   try {
-    await ReservationService.checkout(guest.id)
+    const balance = checkoutFolio.value?.balance || 0
+    const settle = balance > 0 && settleMethod.value
+      ? { method: settleMethod.value, amount: balance }
+      : null
+    const result = await ReservationService.checkout(guest.id, settle)
     checkedOut.value.add(guest.id)
     closeCheckoutModal()
     await loadData()
-    toast.success('Check-out listo', `${guest.guestName} · Hab ${guest.roomNumber} marcada para limpieza`)
+    const settleMsg = result.settlement?.invoiceNumber
+      ? ` · Factura ${result.settlement.invoiceNumber}`
+      : ''
+    toast.success('Check-out listo', `${guest.guestName} · Hab ${guest.roomNumber}${settleMsg}`)
   } catch (e) {
     const msg = resolveError(e, {
       409: 'Esta reserva no tiene check-in activo',

@@ -149,9 +149,10 @@ export const ReservationService = {
     return { folioId: data.folioId, guestId: data.guestId }
   },
 
-  /** Check-out real: reserva → checked_out + habitación cleaning + tarea de limpieza. */
-  async checkout(id: string): Promise<void> {
-    await http.post(`/reservas/${id}/checkout`, {})
+  /** Check-out real: reserva → checked_out + habitación cleaning + tarea de limpieza.
+   * Opcionalmente cierra folio, genera factura y registra pago. */
+  async checkout(id: string, settle?: { method: string; amount: number; reference?: string } | null): Promise<{ settlement?: { folioId: string; invoiceId: string | null; balance: number; amountPaid: number; invoiceNumber: string | null } }> {
+    return http.post(`/reservas/${id}/checkout`, { settle })
   },
 
   /** Elimina una reserva (la UI lo limita a pendientes/canceladas). */

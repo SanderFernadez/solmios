@@ -103,10 +103,18 @@ export class ReservasController {
   async checkout(req: HttpRequest) {
     try {
       const { reservation, hotelId } = await this.service.checkout(req.params.id, req.user as any)
+
+      // Settlement: close folio → create invoice → record payment (if any)
+      let settlementResult = null
+      const body = req.body as Record<string, any> | undefined
+      if (body?.settle !== undefined) {
+        settlementResult = await this.service.settleFolioForCheckout(reservation, body.settle, req.user as any)
+      }
+
       const result = await this.service.executeCheckout(reservation, req.user as any, { orm: this.orm, logger: this.logger })
       this.pushChannex(reservation.hotelId, reservation.roomId)
       dispatchLifecycleEmail({ emailSender: this.emailSender, guestRepo: this.userRepo, roomRepo: this.roomRepoForEmail, hotelRepo: this.hotelRepoForEmail, messageLogRepo: this.messageLogRepo, logger: this.logger }, { reservationId: reservation.id, hotelId: reservation.hotelId, guestId: reservation.guestId, roomId: reservation.roomId, checkIn: reservation.checkIn, checkOut: reservation.checkOut, event: 'checkout' }).catch((e: any) => this.logger.warn('checkout email', { error: e.message }))
-      return { status: 200, body: result }
+      return { status: 200, body: { ...result, settlement: settlementResult } }
     } catch (e: any) {
       if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
       if (e.name === 'AuthError') return { status: 403, body: { error: e.message } }

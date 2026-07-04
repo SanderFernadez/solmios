@@ -8,7 +8,6 @@ import { cors, rateLimit, requestLogger, bodyLimit, timeout, compression } from 
 import { securityHeaders } from './shared/middlewares/security-headers'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { PostgresAdapter } from 'arckode-framework/adapters/postgres'
-import { ormMigrate } from '../scripts/orm-migrate'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
 import { HotelAuth } from './infrastructure/auth/hotel-auth'
 import { registerSharedModels } from './shared/models'
@@ -17,6 +16,7 @@ import { bootstrapEmail } from './infrastructure/email-bootstrap'
 import { createPushAvailability } from './shared/utils/push-availability'
 import { createNoShowCron } from './modules/reports/usecases/no-show-cron'
 import { createAutoMessagesCron } from './modules/marketing/usecases/auto-messages-cron'
+import { createNightAuditCron } from './shared/usecases/night-audit-cron'
 import { reservasPaymentRequestsConnector } from './connectors/reservas-payment-requests'
 
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -107,6 +107,7 @@ import { AmenitiesModule } from './modules/amenities'
 import { TtlockModule } from './modules/ttlock'
 import { DashboardModule } from './modules/dashboard'
 import { FeedbackModule } from './modules/feedback'
+import { StaffAuthModule } from './modules/staff-auth'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
 
@@ -119,7 +120,7 @@ const mods = [
   EmpleadosModule(), PayrollModule(), AttendanceModule(), CrmModule(), MarketingModule(),
   AiRecepcionistaModule(), AiGerenteModule(), BookingengineModule({ pushAvailability }),
   CashModule(), PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
-  AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
+  AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(), StaffAuthModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -134,6 +135,7 @@ import { bookingChannexConnector } from './connectors/booking-channex'
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 import { paymentsCajaConnector } from './connectors/payments-caja'
 import { facturasReservasConnector } from './connectors/facturas-reservas'
+import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -146,6 +148,7 @@ system.addConnector('reservas-huespedes', reservasHuespedesConnector)
 system.addConnector('payments-caja', paymentsCajaConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)
 system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector(orm))
+system.addConnector('reservas-folios-settlement', reservasFoliosSettlementConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm)
@@ -158,8 +161,8 @@ configureStripe(orm)
 // puerto HTTP (PORT), así no choca con el servicio que ya corre. start() sí lo bindea.
 if (process.env.RUN_MIGRATE === '1') {
   system.init()
-  await ormMigrate(db, (orm as any).models)
-  logger.info('ormMigrate completado: tablas sincronizadas desde modelos')
+  await orm.migrate()
+  logger.info('orm.migrate() completado: tablas sincronizadas desde modelos')
   await system.stop()
   process.exit(0)
 }
@@ -187,6 +190,16 @@ if (autoMsgTrigger) {
   setInterval(() => { autoMsgCron().catch((e) => logger.warn('auto-messages cron failed', { error: (e as Error).message })) }, AUTO_MESSAGES_TICK_MS)
   logger.info('Auto-messages cron listo', { tickMs: AUTO_MESSAGES_TICK_MS })
 }
+
+const NIGHT_AUDIT_TICK_MS = 60_000 * 60 * 3 // cada 3h (postea si hay nuevas reservas in-house)
+const nightAuditCron = createNightAuditCron(orm, (name) => system.resolveModule(name), logger)
+setTimeout(() => {
+  nightAuditCron().catch((e) => logger.warn('night-audit initial run failed', { error: (e as Error).message }))
+}, 10_000) // primer corrida a los 10s de iniciar
+setInterval(() => {
+  nightAuditCron().catch((e) => logger.warn('night-audit cron failed', { error: (e as Error).message }))
+}, NIGHT_AUDIT_TICK_MS)
+logger.info('Night-audit cron listo', { tickMs: NIGHT_AUDIT_TICK_MS })
 
 // ─── Shutdown ──────────────────────────────────────────────────────────────
 process.on('SIGINT', async () => { await system.stop(); process.exit(0) })
