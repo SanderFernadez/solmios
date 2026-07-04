@@ -18,6 +18,12 @@ export const UsuariosModel: ModelDefinition = {
     resetExpires: { type: 'number' },
     avatar: { type: 'string' },
     phone: { type: 'string' },
+    // PIN auth para staff móvil (6 dígitos, bcrypt hash)
+    pinHash: { type: 'string' },
+    pinEnabled: { type: 'number', default: 0 },
+    pinAttempts: { type: 'number', default: 0 },
+    pinLockedUntil: { type: 'string' },
+    pinSetAt: { type: 'string' },
   },
   timestamps: true,
 }

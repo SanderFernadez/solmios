@@ -107,6 +107,7 @@ import { AmenitiesModule } from './modules/amenities'
 import { TtlockModule } from './modules/ttlock'
 import { DashboardModule } from './modules/dashboard'
 import { FeedbackModule } from './modules/feedback'
+import { StaffAuthModule } from './modules/staff-auth'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
 
@@ -120,6 +121,7 @@ const mods = [
   AiRecepcionistaModule(), AiGerenteModule(), BookingengineModule({ pushAvailability }),
   CashModule(), PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
+  StaffAuthModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 

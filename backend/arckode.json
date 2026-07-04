@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-04T14:49:32.067Z",
+  "_generated": "2026-07-04T18:29:32.422Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -257,6 +257,19 @@
     },
     {
       "name": "payment-requests",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "staff-auth",
       "structure": {
         "index": true,
         "types": true,
@@ -526,6 +539,7 @@
     "facturas-reservas.ts",
     "mantenimiento-habitaciones.ts",
     "payments-caja.ts",
+    "reservas-folios-settlement.ts",
     "reservas-ttlock.ts",
     "booking-channex.ts"
   ],
