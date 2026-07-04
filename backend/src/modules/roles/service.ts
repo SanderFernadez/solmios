@@ -83,9 +83,14 @@ export class RolesService {
     if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
       throw new AuthError('No autorizado')
     }
-    // Protect system roles
+    // Protect system roles from deletion/name change, but allow permission customization
     if (existing.system === 1) {
-      throw new AuthError('No se pueden modificar roles del sistema')
+      // Only allow updating permissions for system roles
+      const allowedFields = ['permissions']
+      const protectedFields = Object.keys(dto).filter(k => !allowedFields.includes(k))
+      if (protectedFields.length > 0) {
+        throw new AuthError('No se pueden modificar los campos del sistema. Solo se pueden editar los permisos.')
+      }
     }
     const item = await this.repo.update(id, dto as any)
     if (!item) throw new NotFoundError('Rol no encontrado')
