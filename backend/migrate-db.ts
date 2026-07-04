@@ -721,9 +721,82 @@ async function seedCurrencyConfig(): Promise<void> {
   } catch { /* hotels/configuration puede no existir en runs tempranos — seguro */ }
 }
 
+// ─── Seed BASE: datos demo mínimos para DB limpia ────────────────────────
+// Crea hotels/users/rooms/guests/reservations demo si no existen (idempotente).
+// IDs estables para que las relaciones (users→hotel, reservations→guest/room) resuelvan.
+// Universal (DbAdapter): SQLite y Postgres. Passwords bcrypt = "demo123".
+async function seedBase(): Promise<void> {
+  const exists = async (table: string, id: string): Promise<boolean> =>
+    ((await db.query(`SELECT id FROM ${table} WHERE id=?`, [id])) as Array<{ id: string }>).length > 0
+  const HOTEL_ID = 'bca45933-075b-4f0b-bed2-322c3cd7a216'
+  const HOTEL2_ID = 'aa000000-0000-0000-0000-000000000001'
+  const SUPER_HASH = '$2b$10$rOu5yxjyHLI5qBct230qRu7Gy4RHXzj4kvV.Ul3yFIRij.gqJFl6W'
+  const ADMIN_HASH = '$2b$10$Sgd47BfJ3pigUOpcf4LKBejWA9GxXdW7h8ePCwtLgcpUuYGG/Ogru'
+  const RECEP_HASH = '$2b$10$83sBnIJsM3O8FmQtv31QjOEgC3vv6tn7bbINBV25Ya0XjOILWb4PS'
+  const HOTELS_SQL = "INSERT INTO hotels (id, name, address, phone, email, country, currency, timezone, checkIn, checkOut, plan, status, roomsCount, active, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+
+  if (!(await exists('hotels', HOTEL_ID)))
+    await run(HOTELS_SQL, [HOTEL_ID, 'Hotel Boutique Palma', 'Calle Principal 123, Punta Cana', '+1 809 555 0100', 'admin@caribeparadise.com', 'DO', 'USD', 'America/Santo_Domingo', '15:00', '12:00', 'professional', 'activo', 12, 1, now(), now()])
+  if (!(await exists('hotels', HOTEL2_ID)))
+    await run(HOTELS_SQL, [HOTEL2_ID, 'SolmiOS Corp', 'Oficinas Centrales', '+1 809 555 0000', 'admin@solmios.com', 'DO', 'USD', 'America/Santo_Domingo', '14:00', '11:00', 'enterprise', 'activo', 0, 1, now(), now()])
+
+  const users: Array<[string, string, string, string, string, string]> = [
+    ['user-super-0000-0000-000000000001', 'Super Admin', 'admin@solmios.com', SUPER_HASH, 'super_admin', HOTEL2_ID],
+    ['user-admin-0000-0000-000000000002', 'Admin Palma', 'admin@caribeparadise.com', ADMIN_HASH, 'hotel_admin', HOTEL_ID],
+    ['user-recep-0000-0000-000000000003', 'Maria Lopez', 'maria@caribeparadise.com', RECEP_HASH, 'receptionist', HOTEL_ID],
+  ]
+  for (const [id, name, email, password, role, hotelId] of users)
+    if (!(await exists('users', id)))
+      await run("INSERT INTO users (id, name, email, password, role, hotelId, active, isDemo, createdAt, updatedAt) VALUES (?,?,?,?,?,?,1,1,?,?)",
+        [id, name, email, password, role, hotelId, now(), now()])
+
+  const rooms: Array<[string, string, string, string, number, string, number]> = [
+    ['room-0001-0000-0000-000000000001', '101', 'Suite Junior', 'suite', 120, 'disponible', 2],
+    ['room-0002-0000-0000-000000000002', '102', 'Doble Estandar', 'doble', 85, 'disponible', 2],
+    ['room-0003-0000-0000-000000000003', '103', 'Simple', 'simple', 65, 'disponible', 1],
+    ['room-0004-0000-0000-000000000004', '201', 'Suite Ejecutiva', 'suite', 180, 'disponible', 2],
+    ['room-0005-0000-0000-000000000005', '202', 'Doble Deluxe', 'doble', 110, 'disponible', 2],
+    ['room-0006-0000-0000-000000000006', '203', 'Triple', 'triple', 130, 'disponible', 3],
+    ['room-0007-0000-0000-000000000007', '204', 'Suite Premium', 'suite', 220, 'disponible', 2],
+    ['room-0008-0000-0000-000000000008', '205', 'Doble Vista Mar', 'doble', 135, 'disponible', 2],
+  ]
+  for (const [id, number, name, type, basePrice, status, capacity] of rooms)
+    if (!(await exists('rooms', id)))
+      await run("INSERT INTO rooms (id, number, name, type, basePrice, status, hotelId, capacity, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        [id, number, name, type, basePrice, status, HOTEL_ID, capacity, now(), now()])
+
+  const guests: Array<[string, string, string, string, string, string, number, number, string]> = [
+    ['guest-0001-0000-0000-000000000001', 'Carlos Mendoza', 'carlos@example.com', '+1 809 555 1001', 'P12345678', 'DO', 1, 320, 'bronze'],
+    ['guest-0002-0000-0000-000000000002', 'Maria Gonzalez', 'maria.g@example.com', '+1 809 555 1002', 'P23456789', 'DO', 3, 1250, 'silver'],
+    ['guest-0003-0000-0000-000000000003', 'John Smith', 'john@example.com', '+1 212 555 1003', 'US123456', 'US', 5, 3800, 'gold'],
+    ['guest-0004-0000-0000-000000000004', 'Laura Martinez', 'laura@example.com', '+34 612 345 678', 'ES789012', 'ES', 2, 890, 'silver'],
+    ['guest-0005-0000-0000-000000000005', 'Roberto Silva', 'roberto@example.com', '+55 11 99999001', 'BR456789', 'BR', 0, 0, 'bronze'],
+  ]
+  for (const [id, name, email, phone, document, nationality, totalStays, totalSpent, tier] of guests)
+    if (!(await exists('guests', id)))
+      await run("INSERT INTO guests (id, name, email, phone, document, nationality, totalStays, totalSpent, tier, hotelId, active, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?)",
+        [id, name, email, phone, document, nationality, totalStays, totalSpent, tier, HOTEL_ID, now(), now()])
+
+  const d = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10)
+  const reservations: Array<[string, string, string, string, string, string, string, number, number, number]> = [
+    ['res-0001-0000-0000-000000000001', 'guest-0001-0000-0000-000000000001', 'room-0001-0000-0000-000000000001', d(-1), d(3), 'confirmada', 'booking', 480, 100, 2],
+    ['res-0002-0000-0000-000000000002', 'guest-0002-0000-0000-000000000002', 'room-0002-0000-0000-000000000002', d(1), d(4), 'confirmada', 'directa', 255, 0, 2],
+    ['res-0003-0000-0000-000000000003', 'guest-0003-0000-0000-000000000003', 'room-0004-0000-0000-000000000004', d(5), d(10), 'pendiente', 'airbnb', 900, 200, 2],
+    ['res-0004-0000-0000-000000000004', 'guest-0004-0000-0000-000000000004', 'room-0005-0000-0000-000000000005', d(-7), d(-3), 'checkout', 'directa', 440, 100, 2],
+    ['res-0005-0000-0000-000000000005', 'guest-0005-0000-0000-000000000005', 'room-0003-0000-0000-000000000003', d(10), d(12), 'pendiente', 'directa', 130, 0, 1],
+  ]
+  for (const [id, guestId, roomId, checkIn, checkOut, status, channel, totalAmount, deposit, adults] of reservations)
+    if (!(await exists('reservations', id)))
+      await run("INSERT INTO reservations (id, guestId, roomId, hotelId, checkIn, checkOut, status, channel, totalAmount, deposit, adults, currency, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,'USD',?,?)",
+        [id, guestId, roomId, HOTEL_ID, checkIn, checkOut, status, channel, totalAmount, deposit, adults, now(), now()])
+
+  console.log("seed base: hotels/users/rooms/guests/reservations demo listos")
+}
+
 // ─── Orquestador principal ────────────────────────────────────────────────
 async function main(): Promise<void> {
   await db.connect()
+  await seedBase()
 
   // Lookups (async ahora)
   const hotelRows = (await db.query("SELECT id FROM hotels LIMIT 1")) as Array<{ id: string }>
