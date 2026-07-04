@@ -9,8 +9,7 @@
     "analyze": "bun run node_modules/arckode-framework/bin/arckode.js analyze",
     "test": "bun test --env-file .env.test",
     "typecheck": "bun run tsc --noEmit",
-    "lint": "echo 'No linter configured — add eslint to package.json'",
-    "postinstall": "bash scripts/patch-orm-postgres.sh"
+    "lint": "echo 'No linter configured — add eslint to package.json'"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -21,7 +20,7 @@
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc13",
     "pg": "^8.22.0",
-    "arckode-framework": "^1.4.3",
+    "arckode-framework": "^1.6.2",
     "nodemailer": "^9.0.1",
     "puppeteer": "^25.3.0",
     "resend": "^6.16.0",
