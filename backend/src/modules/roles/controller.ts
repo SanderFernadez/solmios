@@ -31,7 +31,12 @@ export class RolesController {
   async update(req: HttpRequest) {
     const currentUser = req.user as any
     const data = validateSchema(UpdateRolesSchema, req.body)
-    const item = await this.service.update(req.params.id, data as any, currentUser)
+    // permissions is not validated (JSON field) - pass directly
+    const payload = { ...data } as any
+    if (req.body && (req.body as any).permissions !== undefined) {
+      payload.permissions = (req.body as any).permissions
+    }
+    const item = await this.service.update(req.params.id, payload, currentUser)
     return { status: 200, body: item }
   }
 
