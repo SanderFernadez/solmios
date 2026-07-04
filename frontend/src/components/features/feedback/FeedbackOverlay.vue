@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { onMounted, onUnmounted, watch, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import html2canvas from 'html2canvas'
 import { useFeedbackStore } from '@/stores/feedback.store'
@@ -7,6 +7,7 @@ import FeedbackPin from './FeedbackPin.vue'
 
 const route = useRoute()
 const store = useFeedbackStore()
+const capturing = ref(false)
 
 // Actualizar ruta cuando el usuario navega estando en feedback mode
 watch(() => route.fullPath, (newRoute) => {
@@ -20,21 +21,26 @@ async function handleOverlayClick(e: MouseEvent) {
   if (!store.isFeedbackMode) return
   if ((e.target as HTMLElement).closest('.fb-pin, .fb-modal-overlay')) return
 
-  // Capturar screenshot del contenido visible
-  const target = document.getElementById('app') || document.body
+  // Ocultar overlay temporalmente para capturar screenshot limpio
+  capturing.value = true
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+  const target = document.querySelector('[data-feedback-content]') || document.getElementById('app') || document.body
   try {
-    const canvas = await html2canvas(target, {
+    const canvas = await html2canvas(target as HTMLElement, {
       useCORS: true,
       allowTaint: true,
       scale: 1,
       logging: false,
       backgroundColor: '#ffffff',
+      removeContainer: true,
     })
     store.setScreenshot(canvas.toDataURL('image/png'))
   } catch (err) {
     console.warn('[Feedback] Screenshot capture failed:', err)
   }
 
+  capturing.value = false
   store.captureClick(e.clientX, e.clientY)
 }
 
@@ -56,7 +62,7 @@ onUnmounted(() => {
 <template>
   <Transition name="fb-overlay">
     <div
-      v-if="store.isFeedbackMode"
+      v-if="store.isFeedbackMode && !capturing"
       class="fixed inset-0 z-[9998] cursor-crosshair"
       @click="handleOverlayClick"
       @contextmenu.prevent

@@ -113,7 +113,7 @@
       <AnnouncementBanner />
 
       <!-- Page Content -->
-      <main class="flex-1 p-6">
+      <main class="flex-1 p-6" data-feedback-content>
         <router-view />
       </main>
     </div>
