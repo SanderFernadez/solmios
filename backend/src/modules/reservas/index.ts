@@ -4,6 +4,7 @@ import { ReservasService } from './service'
 import { ReservasController } from './controller'
 import { ReservasQueries } from './usecases/reservas-queries'
 import type { ReservasDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { ReservasService }
 export type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
@@ -42,46 +43,46 @@ export function ReservasModule() {
       const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo)
       const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth, orm, null, messageLogRepo, roomRepo, hotelRepo)
 
-      const hsa = [auth.authenticate('hotel_admin', 'super_admin')]
-      const hra = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin')]
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
       // ── CRUD ──
-      router.get('/api/reservas', hra, (req) => controller.index(req))
-      router.get('/api/reservas/:id', hra, (req) => controller.show(req))
-      router.post('/api/reservas', hra, (req) => controller.store(req))
-      router.put('/api/reservas/:id', hsa, (req) => controller.update(req))
-      router.delete('/api/reservas/:id', hsa, (req) => controller.destroy(req))
+      router.get('/api/reservas', guard('reservations', 'view'), (req) => controller.index(req))
+      router.get('/api/reservas/:id', guard('reservations', 'view'), (req) => controller.show(req))
+      router.post('/api/reservas', guard('reservations', 'create'), (req) => controller.store(req))
+      router.put('/api/reservas/:id', guard('reservations', 'edit'), (req) => controller.update(req))
+      router.delete('/api/reservas/:id', guard('reservations', 'delete'), (req) => controller.destroy(req))
 
       // ── Companions ──
-      router.get('/api/reservations/:id/companions', hra, (req) => controller.listCompanions(req))
-      router.post('/api/reservations/:id/companions', hra, (req) => controller.createCompanion(req))
-      router.put('/api/companions/:id', hsa, (req) => controller.updateCompanion(req))
-      router.delete('/api/companions/:id', hsa, (req) => controller.deleteCompanion(req))
+      router.get('/api/reservations/:id/companions', guard('reservations', 'view'), (req) => controller.listCompanions(req))
+      router.post('/api/reservations/:id/companions', guard('reservations', 'edit'), (req) => controller.createCompanion(req))
+      router.put('/api/companions/:id', guard('reservations', 'edit'), (req) => controller.updateCompanion(req))
+      router.delete('/api/companions/:id', guard('reservations', 'delete'), (req) => controller.deleteCompanion(req))
 
       // ── Addons ──
-      router.get('/api/reservations/:id/addons', hra, (req) => controller.listAddons(req))
-      router.post('/api/reservations/:id/addons', hra, (req) => controller.createAddon(req))
-      router.delete('/api/addons/:id', hsa, (req) => controller.deleteAddon(req))
+      router.get('/api/reservations/:id/addons', guard('reservations', 'view'), (req) => controller.listAddons(req))
+      router.post('/api/reservations/:id/addons', guard('reservations', 'edit'), (req) => controller.createAddon(req))
+      router.delete('/api/addons/:id', guard('reservations', 'delete'), (req) => controller.deleteAddon(req))
 
       // ── Check-in / Check-out ──
-      router.post('/api/reservas/:id/checkin', hra, (req) => controller.checkin(req))
-      router.post('/api/reservas/:id/checkout', hra, (req) => controller.checkout(req))
+      router.post('/api/reservas/:id/checkin', guard('reservations', 'checkin'), (req) => controller.checkin(req))
+      router.post('/api/reservas/:id/checkout', guard('reservations', 'checkout'), (req) => controller.checkout(req))
 
       // ── Pre-checkin (público) ──
       router.get('/api/public/pre-checkin/:hash', (req) => controller.getPreCheckinData(req))
       router.post('/api/public/pre-checkin/:hash', (req) => controller.submitPreCheckin(req))
 
       // ── Extended detail + Audit ──
-      router.get('/api/reservations/:id', hra, (req) => controller.getExtendedDetail(req))
-      router.get('/api/reservations/:id/audit', hra, (req) => controller.getAuditTrail(req))
+      router.get('/api/reservations/:id', guard('reservations', 'view'), (req) => controller.getExtendedDetail(req))
+      router.get('/api/reservations/:id/audit', guard('reservations', 'view'), (req) => controller.getAuditTrail(req))
 
       // ── Guarantee card ──
-      router.post('/api/guarantee/pin', hsa, (req) => controller.setGuaranteePin(req))
-      router.get('/api/guarantee/has-pin', hra, (req) => controller.getGuaranteeHasPin(req))
-      router.post('/api/reservations/:id/guarantee-card/unlock', hra, (req) => controller.unlockGuaranteeCard(req))
+      router.post('/api/guarantee/pin', guard('reservations', 'edit'), (req) => controller.setGuaranteePin(req))
+      router.get('/api/guarantee/has-pin', guard('reservations', 'view'), (req) => controller.getGuaranteeHasPin(req))
+      router.post('/api/reservations/:id/guarantee-card/unlock', guard('reservations', 'edit'), (req) => controller.unlockGuaranteeCard(req))
 
       // ── Booking engine dashboard ──
-      router.get('/api/booking-engine', hsa, (req) => controller.getBookingEngineDashboard(req))
+      router.get('/api/booking-engine', guard('reservations', 'view'), (req) => controller.getBookingEngineDashboard(req))
 
       log.info('Módulo reservas v2.1 listo (22 endpoints)')
       return service
