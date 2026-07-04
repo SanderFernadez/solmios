@@ -150,18 +150,22 @@ system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnecto
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm)
 
-// ─── Start ─────────────────────────────────────────────────────────────────
-await system.start()
-
-// Schema sync: crea tablas faltantes desde los modelos registrados (para módulos
+// ─── Schema sync (modo migrate-only) ────────────────────────────────────────
+// RUN_MIGRATE=1: crea tablas faltantes desde los modelos registrados (para módulos
 // sin migración como folios, amenities, companions, locks, plans, rates, etc.).
-// Modo migrate-only: RUN_MIGRATE=1. Idempotente (CREATE TABLE IF NOT EXISTS).
+// Idempotente (CREATE TABLE IF NOT EXISTS). Usa system.init() (que registra modelos
+// vía orm.define en cada módulo) en vez de system.start() — init() no bindea el
+// puerto HTTP (PORT), así no choca con el servicio que ya corre. start() sí lo bindea.
 if (process.env.RUN_MIGRATE === '1') {
+  system.init()
   await ormMigrate(db, (orm as any).models)
   logger.info('ormMigrate completado: tablas sincronizadas desde modelos')
   await system.stop()
   process.exit(0)
 }
+
+// ─── Start ─────────────────────────────────────────────────────────────────
+await system.start()
 
 const { emailService, startWorker } = bootstrapEmail(orm, logger, (name) => system.resolveModule(name))
 

@@ -11,5 +11,5 @@
     }
   },
   "include": ["**/*.ts"],
-  "exclude": ["src/seeds"]
+  "exclude": ["src/seeds", "node_modules"]
 }
