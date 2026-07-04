@@ -212,6 +212,12 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          path: 'settings/feedback',
+          name: 'settings-feedback',
+          component: () => import('@/pages/settings/feedback.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'support',
           name: 'support',
           component: () => import('@/pages/support/index.vue'),

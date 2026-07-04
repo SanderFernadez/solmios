@@ -14,8 +14,48 @@ watch(() => route.fullPath, (newRoute) => {
   }
 })
 
-async function captureScreenshot(): Promise<string | null> {
-  // Método 1: getDisplayMedia (nativo del browser — muestra diálogo de permiso)
+function drawPinMarker(canvas: HTMLCanvasElement, x: number, y: number): void {
+  const ctx = canvas.getContext('2d')!
+  const size = 24
+
+  // Círculo exterior (borde blanco)
+  ctx.beginPath()
+  ctx.arc(x, y, size + 2, 0, Math.PI * 2)
+  ctx.fillStyle = 'white'
+  ctx.fill()
+
+  // Círculo interior (rojo)
+  ctx.beginPath()
+  ctx.arc(x, y, size, 0, Math.PI * 2)
+  ctx.fillStyle = '#ef4444'
+  ctx.fill()
+
+  // Cruz blanca
+  ctx.strokeStyle = 'white'
+  ctx.lineWidth = 3
+  ctx.lineCap = 'round'
+
+  // Línea horizontal
+  ctx.beginPath()
+  ctx.moveTo(x - 10, y)
+  ctx.lineTo(x + 10, y)
+  ctx.stroke()
+
+  // Línea vertical
+  ctx.beginPath()
+  ctx.moveTo(x, y - 10)
+  ctx.lineTo(x, y + 10)
+  ctx.stroke()
+
+  // Punto central
+  ctx.beginPath()
+  ctx.arc(x, y, 3, 0, Math.PI * 2)
+  ctx.fillStyle = 'white'
+  ctx.fill()
+}
+
+async function captureScreenshot(clickX?: number, clickY?: number): Promise<string | null> {
+  // Método 1: getDisplayMedia (nativo del browser)
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia({
       video: { displaySurface: 'browser' } as any,
@@ -32,6 +72,13 @@ async function captureScreenshot(): Promise<string | null> {
     const ctx = canvas.getContext('2d')!
     ctx.drawImage(bitmap, 0, 0)
 
+    // Dibujar pin en la posición del click
+    if (clickX !== undefined && clickY !== undefined) {
+      const scaleX = bitmap.width / window.innerWidth
+      const scaleY = bitmap.height / window.innerHeight
+      drawPinMarker(canvas, clickX * scaleX, clickY * scaleY)
+    }
+
     return canvas.toDataURL('image/png')
   } catch {
     // Método 2: fallback a html2canvas
@@ -45,6 +92,14 @@ async function captureScreenshot(): Promise<string | null> {
         logging: false,
         backgroundColor: '#ffffff',
       })
+
+      // Dibujar pin en la posición del click
+      if (clickX !== undefined && clickY !== undefined) {
+        const scaleX = canvas.width / window.innerWidth
+        const scaleY = canvas.height / window.innerHeight
+        drawPinMarker(canvas, clickX * scaleX, clickY * scaleY)
+      }
+
       return canvas.toDataURL('image/png')
     } catch {
       return null
@@ -65,8 +120,8 @@ async function handleOverlayClick(e: MouseEvent) {
   // 2. Esperar un frame para que el overlay desaparezca del DOM
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
 
-  // 3. Capturar screenshot SIN el overlay
-  const screenshot = await captureScreenshot()
+  // 3. Capturar screenshot SIN el overlay, CON el pin marcado
+  const screenshot = await captureScreenshot(x, y)
 
   // 4. REACTIVAR feedback mode y mostrar modal
   store.isFeedbackMode = true
