@@ -515,13 +515,10 @@ async function createTablesBlock2(): Promise<void> {
 
 // ─── Seed DEMO: Talento, Nómina, Pagos, Gastos, CRM (Hotel Boutique Palma) ──
 // hotelId EXPLÍCITO (no HID) → garantiza el hotel demo donde viven IA/WhatsApp/Stripe.
-//
-// FIXME: revisar portabilidad / consistencia de esquema — algunas tablas referenciadas
-// (expenses, roles) NO se crean en este archivo (las crea el ORM del app en runtime);
-// y algunos INSERT tocan columnas que no están en los DDL de acá (p.ej. paymentDate en
-// payroll_runs; daysWorked/earnings/grossPay/totalDeductions/status en payroll_run_details).
-// Esos INSERT fallan en AMBOS motores y el error queda atrapado por el try/catch externo
-// que loguea "parcial" (comportamiento ya presente en la versión SQLite original).
+// Las tablas referenciadas (departments, employee_profiles, payroll_runs, payroll_run_details,
+// attendance_records, payments, expenses, coupons, roles) las crea el ORM del app en runtime
+// (modelos en src/modules/). Este seed solo INSERTA datos; los campos referenciados existen
+// en los ModelDefinition. Idempotente via COUNT(*) previo.
 async function seedDemoTalentoFinanzas(): Promise<void> {
   const hotelRows = (await db.query("SELECT id FROM hotels WHERE name=?", ["Hotel Boutique Palma"])) as Array<{ id: string }>
   const DEMO_HOTEL = hotelRows[0]?.id
@@ -563,7 +560,7 @@ async function seedDemoTalentoFinanzas(): Promise<void> {
     ]
     for (const [userId, deptId, position, salary, contract] of seeds) {
       const id = uuid()
-      await run("INSERT INTO employee_profiles (id, userId, hotelId, departmentId, position, hireDate, salary, contractType, active, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,1,?,?)",
+      await run("INSERT INTO employee_profiles (id, userId, hotelId, departmentId, position, hireDate, salary, contractType, active, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,1,?,?)",
         [id, userId, DEMO_HOTEL, deptId, position, "2025-03-01", salary, contract, now(), now()])
       emps.push({ id, salary })
     }
@@ -571,11 +568,9 @@ async function seedDemoTalentoFinanzas(): Promise<void> {
 
   if ((await cnt("payroll_runs")) === 0) {
     const runId = uuid()
-    // FIXME: revisar portabilidad — paymentDate no existe en el DDL de payroll_runs.
-    await run("INSERT INTO payroll_runs (id, hotelId, period, startDate, endDate, paymentDate, status, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?)",
+    await run("INSERT INTO payroll_runs (id, hotelId, period, startDate, endDate, paymentDate, status, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?)",
       [runId, DEMO_HOTEL, "2026-06", "2026-06-01", "2026-06-30", "2026-06-30", "processed", now(), now()])
     for (const e of emps)
-      // FIXME: revisar portabilidad — daysWorked/earnings/grossPay/totalDeductions/status no están en el DDL.
       await run("INSERT INTO payroll_run_details (id, runId, employeeId, baseSalary, daysWorked, hoursWorked, earnings, deductions, grossPay, totalDeductions, netPay, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         [uuid(), runId, e.id, e.salary ?? 0, 22, 160, "[]", "[]", e.salary ?? 0, 0, Math.round((e.salary ?? 0) * 0.9), "processed"])
   }
@@ -597,7 +592,6 @@ async function seedDemoTalentoFinanzas(): Promise<void> {
       ["utilities", "Electricidad", 540, "Edenor", true],
       ["maintenance", "Repuestos A/C", 95, "RefriShop", false],
     ] as const)
-      // FIXME: revisar portabilidad — tabla `expenses` se crea en el ORM del app, no acá.
       await run("INSERT INTO expenses (id, hotelId, category, concept, amount, date, provider, paid) VALUES (?,?,?,?,?,?,?,?)",
         [uuid(), DEMO_HOTEL, cat, concept, amount, "2026-06-25", provider, paid ? 1 : 0])
   if ((await cnt("coupons")) === 0)
@@ -615,7 +609,6 @@ async function seedDemoTalentoFinanzas(): Promise<void> {
       ["Gerente", "👔", "bg-violet/20 text-violet", '["reservations.admin","rooms.admin","billing.admin","reports.admin"]'],
       ["Housekeeping", "🧹", "bg-green/20 text-green", '["housekeeping.admin"]'],
     ] as const)
-      // FIXME: revisar portabilidad — tabla `roles` se crea en el ORM del app, no acá.
       await run("INSERT INTO roles (id, hotelId, name, icon, color, system, permissions, users) VALUES (?,?,?,?,?,?,?,0)",
         [uuid(), DEMO_HOTEL, name, icon, color, 0, perms])
 
