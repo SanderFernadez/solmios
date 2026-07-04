@@ -52,19 +52,28 @@ async function captureScreenshot(): Promise<string | null> {
   }
 }
 
-function handleOverlayClick(e: MouseEvent) {
+async function handleOverlayClick(e: MouseEvent) {
   if (!store.isFeedbackMode) return
   if ((e.target as HTMLElement).closest('.fb-pin, .fb-modal-overlay')) return
 
-  // Mostrar modal INMEDIATAMENTE
-  store.captureClick(e.clientX, e.clientY)
+  const x = e.clientX
+  const y = e.clientY
 
-  // Capturar screenshot en background (getDisplayMedia muestra diálogo de permiso)
-  captureScreenshot().then(screenshot => {
-    if (screenshot) {
-      store.setScreenshot(screenshot)
-    }
-  })
+  // 1. OCULTAR overlay para que no salga en la foto
+  store.isFeedbackMode = false
+
+  // 2. Esperar un frame para que el overlay desaparezca del DOM
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+  // 3. Capturar screenshot SIN el overlay
+  const screenshot = await captureScreenshot()
+
+  // 4. REACTIVAR feedback mode y mostrar modal
+  store.isFeedbackMode = true
+  if (screenshot) {
+    store.setScreenshot(screenshot)
+  }
+  store.captureClick(x, y)
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -85,7 +94,7 @@ onUnmounted(() => {
 <template>
   <Transition name="fb-overlay">
     <div
-      v-if="store.isFeedbackMode"
+      v-if="store.isFeedbackMode && !store.isModalOpen"
       class="fixed inset-0 z-[9998] cursor-crosshair"
       @click="handleOverlayClick"
       @contextmenu.prevent
