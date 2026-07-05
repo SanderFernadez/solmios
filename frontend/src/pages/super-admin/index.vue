@@ -102,6 +102,41 @@
         </div>
       </div>
 
+      <!-- PC-2.2: Consolidado por hotel (ocupación/ADR/revenue cross-hotel) -->
+      <div v-if="(analytics as any)?.hotelsBreakdown?.length" class="bg-white rounded-2xl border border-border card-shadow">
+        <div class="p-5 border-b border-border">
+          <h3 class="text-sm font-black text-navy">Consolidado por hotel</h3>
+        </div>
+        <div class="p-4 overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead><tr class="border-b border-border text-text-muted uppercase">
+              <th class="text-left p-2">Hotel</th>
+              <th class="text-left p-2">Plan</th>
+              <th class="text-right p-2">Hab.</th>
+              <th class="text-right p-2">Reservas</th>
+              <th class="text-right p-2">Ocup. %</th>
+              <th class="text-right p-2">ADR</th>
+              <th class="text-right p-2">Revenue</th>
+              <th class="text-right p-2">MRR</th>
+              <th class="text-center p-2">Estado</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="h in (analytics as any)?.hotelsBreakdown || []" :key="h.id" class="border-b border-border/30">
+                <td class="p-2 text-navy font-bold">{{ h.name }}</td>
+                <td class="p-2 capitalize">{{ h.plan }}</td>
+                <td class="p-2 text-right">{{ h.rooms }}</td>
+                <td class="p-2 text-right">{{ h.reservations }}</td>
+                <td class="p-2 text-right font-bold" :class="h.occupancy > 80 ? 'text-coral' : h.occupancy > 50 ? 'text-gold' : 'text-teal'">{{ h.occupancy }}%</td>
+                <td class="p-2 text-right text-cyan font-bold">${{ (h.adr ?? 0).toLocaleString() }}</td>
+                <td class="p-2 text-right">${{ (h.revenue ?? 0).toLocaleString() }}</td>
+                <td class="p-2 text-right text-teal">${{ (h.mrr ?? 0).toLocaleString() }}</td>
+                <td class="p-2 text-center"><span class="px-2 py-0.5 rounded-full text-[9px] font-bold" :class="h.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-text-muted/10 text-text-muted'">{{ h.status }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Recent Activity -->
       <div class="bg-white rounded-2xl border border-border card-shadow">
         <div class="p-5 border-b border-border">
@@ -259,6 +294,8 @@ const mainStats = computed(() => {
     { icon: '💰', label: 'MRR Total', value: `$${(a?.mrr ?? 0).toLocaleString()}`, trend: 0 },
     { icon: '👤', label: 'Usuarios Totales', value: String(a?.totalUsuarios ?? 0), trend: 0 },
     { icon: '📋', label: 'Reservas', value: String(a?.totalReservas ?? 0), trend: 0 },
+    { icon: '🎯', label: 'Ocupación prom', value: `${a?.avgOccupancy ?? 0}%`, trend: 0 },
+    { icon: '💵', label: 'ADR prom', value: `$${(a?.avgADR ?? 0).toLocaleString()}`, trend: 0 },
   ]
 })
 

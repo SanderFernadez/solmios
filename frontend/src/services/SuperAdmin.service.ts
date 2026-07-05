@@ -20,6 +20,8 @@ export interface AdminAnalytics {
   activeHotels: number
   byPlan: Record<string, number>
   avgOccupancy: number
+  avgADR: number
+  hotelsBreakdown?: Array<{ id: string; name: string; plan: string; status: string; mrr: number; rooms: number; reservations: number; occupancy: number; adr: number; revenue: number }>
   npsScore: number
   ticketPromedio: number
 }

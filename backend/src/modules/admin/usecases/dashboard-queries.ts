@@ -38,12 +38,45 @@ export class DashboardQueries {
     const hs = await this.orm.findMany('Hotels', {})
     const us = await this.orm.findMany('Users', {})
     const rs = await this.orm.findMany('Reservations', {})
+    const rooms = await this.orm.findMany('Rooms', {})
+    const MS_PER_DAY = 86_400_000
+    const nights = (a: any, b: any): number => {
+      if (!a || !b) return 0
+      const d1 = new Date(String(a).slice(0, 10)).getTime()
+      const d2 = new Date(String(b).slice(0, 10)).getTime()
+      return d2 > d1 ? Math.round((d2 - d1) / MS_PER_DAY) : 0
+    }
+    // PC-2.2 — desglose por hotel con ocupación/ADR reales (cross-hotel)
+    const hotelsBreakdown = hs.map((h: any) => {
+      const hRooms = rooms.filter((r: any) => r.hotelId === h.id)
+      const hRes = rs.filter((r: any) => r.hotelId === h.id && ['confirmed', 'checked_in'].includes(r.status))
+      const revenue = hRes.reduce((s: number, r: any) => s + Number(r.totalAmount || 0), 0)
+      const nightsSold = hRes.reduce((s: number, r: any) => s + nights(r.checkIn, r.checkOut), 0)
+      return {
+        id: h.id, name: h.name, plan: h.plan || 'essential', status: h.status || 'active',
+        mrr: PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49,
+        rooms: hRooms.length, reservations: hRes.length,
+        occupancy: hRooms.length > 0 ? Math.min(100, Math.round((hRes.length / hRooms.length) * 100)) : 0,
+        adr: nightsSold > 0 ? Math.round(revenue / nightsSold) : 0,
+        revenue,
+      }
+    })
+    const activeBreakdown = hotelsBreakdown.filter((h: any) => h.status === 'active')
+    const avgOccupancy = activeBreakdown.length > 0
+      ? Math.round(activeBreakdown.reduce((s: number, h: any) => s + h.occupancy, 0) / activeBreakdown.length)
+      : 0
+    const totalRevenue = rs.reduce((s: number, r: any) => s + Number(r.totalAmount || 0), 0)
+    const totalNightsSold = rs.reduce((s: number, r: any) => s + nights(r.checkIn, r.checkOut), 0)
+    const avgADR = totalNightsSold > 0 ? Math.round(totalRevenue / totalNightsSold) : 0
     return {
       mrr: hs.reduce((s: number, h: any) => s + (PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49), 0),
       totalHoteles: hs.length, totalUsuarios: us.length, totalReservas: rs.length,
       activeHotels: hs.filter((h: any) => h.status === 'active').length,
       byPlan: hs.reduce((a: any, h: any) => ((a[h.plan] = (a[h.plan] || 0) + 1), a), {}),
-      avgOccupancy: 0, npsScore: 0, ticketPromedio: 0, monthlyRevenue: [],
+      avgOccupancy, avgADR, hotelsBreakdown,
+      topByRevenue: [...hotelsBreakdown].sort((a: any, b: any) => b.revenue - a.revenue).slice(0, 5),
+      topByOccupancy: [...hotelsBreakdown].sort((a: any, b: any) => b.occupancy - a.occupancy).slice(0, 5),
+      npsScore: 0, ticketPromedio: 0, monthlyRevenue: [],
     }
   }
 

@@ -56,9 +56,9 @@ cd frontend && npx vue-tsc -b  # 0 errores
 
 ### PC-2.2 — Reports consolidados en super-admin
 
-- [ ] **PC-2.2.1** Página `super-admin/consolidated.vue` con KPIs globales: MRR, hoteles activos, ocupación promedio, ADR promedio, reservas totales del mes
-- [ ] **PC-2.2.2** Tabla con 1 fila por hotel: nombre, plan, ocupación %, ADR, reservas mes, revenue mes, estado
-- [ ] **PC-2.2.3** Top 5 hoteles por revenue, top 5 por ocupación
+- [x] **PC-2.2.1** Página `super-admin/consolidated.vue` con KPIs globales: MRR, hoteles activos, ocupación promedio, ADR promedio, reservas totales del mes
+- [x] **PC-2.2.2** Tabla con 1 fila por hotel: nombre, plan, ocupación %, ADR, reservas mes, revenue mes, estado
+- [x] **PC-2.2.3** Top 5 hoteles por revenue, top 5 por ocupación
 
 **Aceptación**:
 ```bash
