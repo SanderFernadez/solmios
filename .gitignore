@@ -53,3 +53,6 @@ uploads/
 
 # GitLab sync state (cada dev tiene su propio estado)
 openspec/.gitlab-sync.json
+
+# App móvil Flutter — vive en su propio repo: underworf1/solmios-mobile
+/mobile/

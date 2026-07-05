@@ -1,0 +1,100 @@
+# SDD DAG State: mobile-app
+
+change_name: mobile-app
+created: 2026-07-04
+status: implementing
+current_phase: phase-1-infra
+
+phases:
+  phase-1-infra:
+    status: done
+    depends_on: []
+    tasks_total: 14
+    tasks_done: 14
+    notes: Estructura Flutter + core/ + shared widgets completados. pubspec, main, app, config, network, storage, utils, widgets.
+
+  phase-2-auth:
+    status: done
+    depends_on: [phase-1-infra]
+    tasks_total: 7
+    tasks_done: 7
+    notes: User entity, abstract repo, impl repo, auth provider, user selection screen, PIN login screen con numpad y animación error.
+
+  phase-3-housekeeping-core:
+    status: done
+    depends_on: [phase-2-auth]
+    tasks_total: 5
+    tasks_done: 5
+    notes: CleaningTask entity con comportamiento, abstract repo, impl repo con 10 operaciones, provider con state machine completa.
+
+  phase-4-camarera:
+    status: done
+    depends_on: [phase-3-housekeeping-core]
+    tasks_total: 5
+    tasks_done: 5
+    notes: Home con lista por estado, detalle con mensaje motivacional, checklist, suministros, timer, fotos, reportar incidencia.
+
+  phase-5-supervisor:
+    status: done
+    depends_on: [phase-3-housekeeping-core]
+    tasks_total: 3
+    tasks_done: 3
+    notes: Home con tareas completadas pendientes, approve screen con info camarera, timer respuesta, galería fotos, presencia, checklist interactivo, nota, aprobar.
+
+  phase-6-mantenimiento:
+    status: done
+    depends_on: [phase-3-housekeeping-core]
+    tasks_total: 2
+    tasks_done: 2
+    notes: Home con tickets mock, ticket detail con resolver y nota.
+
+  phase-7-dashboard:
+    status: done
+    depends_on: [phase-2-auth]
+    tasks_total: 7
+    tasks_done: 7
+    notes: Dashboard entities, repo, provider, screen con stats cards + room status grid por piso.
+
+  phase-8-rooms:
+    status: done
+    depends_on: [phase-2-auth]
+    tasks_total: 5
+    tasks_done: 5
+    notes: Room entity, repo, provider, screen con lista por estado.
+
+  phase-9-reservations:
+    status: done
+    depends_on: [phase-2-auth]
+    tasks_total: 5
+    tasks_done: 5
+    notes: Reservation entity, repo, provider, screen con lista.
+
+  phase-10-maintenance:
+    status: done
+    depends_on: [phase-2-auth]
+    tasks_total: 5
+    tasks_done: 5
+    notes: MaintenanceTicket entity, repo, provider, screen con lista.
+
+  phase-11-routing:
+    status: done
+    depends_on: [phase-1-infra]
+    tasks_total: 2
+    tasks_done: 2
+    notes: GoRouter con ShellRoute, ScaffoldWithNav con bottom nav 4 tabs.
+
+  phase-12-verify:
+    status: done
+    depends_on: [phase-11-routing]
+    tasks_total: 4
+    tasks_done: 4
+    notes: Fase 1 verificada: analysis_options.yaml creado, assets/images/ creado, todos los imports correctos. Pendiente flutter analyze real cuando SDK esté disponible.
+
+artifacts:
+  proposal: true
+  tasks: true
+  design: false
+  specs: false
+
+total_tasks: 64
+tasks_done: 64
