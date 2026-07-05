@@ -438,7 +438,10 @@
   > Acción: agregar `logoUrl` al modelo Hotels + upload en settings + usar en plantillas de email.
   > {lock_code} real depende de TTLock (Fase F5); {pre_checkin_url} depende del pre-checkin (Fase F8).
 
-- [ ] 11.1.6 Sistema de notification templates configurable + multi-idioma (i18n)
+- [x] 11.1.6 Sistema de notification templates configurable + multi-idioma (i18n)
+  > ✅ ESTADO REAL (2026-07-05): ya implementada en sesiones previas. Los 3 HTMLs hardcodeados YA NO EXISTEN (migrados a `notification-defaults.ts`). El sistema configurable multi-idioma funciona: modelo `auto_messages` con `event`/`language`/`triggerType`, renderer con override hotel > default código > fallback `es`, 15 plantillas (5 eventos × es/en/pt), 4 use cases transaccionales + cron vía `enqueueNotification`.
+  > Hardening aplicado esta sesión: (1) drift de enums `schema.ts` sincronizado con `NotificationEvent` (agregado `no_show`/`checkout`, quitado `reminder`); (2) `UpdateAutoMessageSchema` + `event`/`language`/`triggerType` editables; (3) UNIQUE index `(hotelId,event,language,channel)` en `migrate-db.ts`.
+  > DEBT residual (no bloqueante, documentada): (a) discrepancia `triggerEvent` (cron filtra) vs `event` (renderer resuelve) — puente frágil vía fallback `msg.event || 'checkin_welcome'`; (b) `email-invoice.ts` usa `enqueue` crudo, no `enqueueNotification` (facturas sin i18n); (c) `migrate-db.ts` aborta en dev por CHECK preexistente en `hotels.status` (deuda ajena) — el UNIQUE index aplica cuando se fixee el CHECK o manualmente via SQL.
   > REFACTOR ARQUITECTÓNICO: reemplazar las plantillas hardcodeadas de email-service.ts
   > (RESERVATION_CONFIRMATION_HTML, RESERVATION_PRE_SALE_HTML, CHECKIN_WELCOME_HTML) por un
   > sistema de plantillas configurables por hotel + multi-idioma. Unifica notificaciones

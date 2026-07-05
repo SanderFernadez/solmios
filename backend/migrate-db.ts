@@ -657,6 +657,12 @@ async function createTablesBlock3(): Promise<void> {
   await addColumnIfMissing("auto_messages", "language", "TEXT DEFAULT 'es'")
   await addColumnIfMissing("auto_messages", "triggerType", "TEXT DEFAULT 'cron'")
 
+  // UNIQUE override: una plantilla por (hotel, evento, idioma, canal). Evita overrides ambiguos
+  // en notification-renderer.ts (findOne por hotelId+event+channel+language). Portable PG+SQLite.
+  // NULLs (auto_messages viejos sin event) no chocan — SQL UNIQUE trata NULL != NULL.
+  await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_auto_messages_override
+    ON auto_messages(hotelId, event, language, channel)`)
+
   // ALTER idempotente: guests += language (spec 11.1.6 — idioma del huésped para resolver plantilla i18n).
   await addColumnIfMissing("guests", "language", "TEXT")
   // ALTER idempotente: guests += campos legales/CRM del cliente (detalle completo del huésped,
