@@ -41,20 +41,19 @@ export async function settleFolioAtCheckout(
     }, user)
   }
 
-  const { folio: closedFolio, invoiceData } = await folios.closeAndInvoice(folio.id, user)
-
-  if (!invoiceData || invoiceData.amount <= 0) {
-    if (closedFolio) {
-      await folios.setInvoice(closedFolio.id, null, user)
-    }
+  const balance = await folios.getBalance(folio.id, user)
+  if (balance <= 0) {
+    await folios.close(folio.id, user)
     return {
-      folioId: closedFolio?.id || folio.id,
+      folioId: folio.id,
       invoiceId: null,
       balance: 0,
-      amountPaid: 0,
+      amountPaid: settle?.amount || 0,
       invoiceNumber: null,
     }
   }
+
+  const { folio: closedFolio, invoiceData } = await folios.closeAndInvoice(folio.id, user)
 
   const invoice = await facturas.create({
     hotelId: invoiceData.hotelId,

@@ -1,6 +1,6 @@
 // payments/usecases/payment-links.ts — Payment link generation and management
 
-import type { RepositoryAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { PaymentLinkDTO, CreatePaymentLinkDTO } from '../types'
 import { randomBytes } from 'crypto'
@@ -8,7 +8,15 @@ import { randomBytes } from 'crypto'
 export class PaymentLinksUseCase {
   constructor(
     private readonly linkRepo: RepositoryAdapter<PaymentLinkDTO>,
+    private readonly auth?: Auth,
+    private readonly userRepo?: RepositoryAdapter<any>,
   ) {}
+
+  private async assertOwnership(resourceHotelId: string, userId?: string, userRole?: string): Promise<void> {
+    if (!this.auth || !this.userRepo || !userId) return
+    const me = await this.userRepo.findById(userId)
+    this.auth.assertOwnership(resourceHotelId, (me as any)?.hotelId ?? '', userRole || '', 'super_admin')
+  }
 
   async create(dto: CreatePaymentLinkDTO): Promise<PaymentLinkDTO> {
     const token = randomBytes(32).toString('hex')
@@ -67,7 +75,10 @@ export class PaymentLinksUseCase {
     } as any)
   }
 
-  async cancel(linkId: string): Promise<void> {
+  async cancel(linkId: string, userId?: string, userRole?: string): Promise<void> {
+    const link = await this.linkRepo.findById(linkId)
+    if (!link) throw new NotFoundError('Payment link not found')
+    await this.assertOwnership(link.hotelId, userId, userRole)
     await this.linkRepo.update(linkId, { status: 'cancelled' } as any)
   }
 

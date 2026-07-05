@@ -23,7 +23,8 @@ export class ReportsService {
     return this.queries.getNightAudit(id)
   }
 
-  async markNoShows(): Promise<number> {
-    return this.queries.markNoShows()
+  async markNoShows(req: any): Promise<number> {
+    const id = await this.queries.resolveHotelId(req)
+    return this.queries.markNoShows(id)
   }
 }

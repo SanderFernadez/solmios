@@ -1,6 +1,6 @@
 // payments/usecases/deposits.ts — Deposit and guarantee management
 
-import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { DepositDTO, CreateDepositDTO, RefundDepositDTO } from '../types'
 
@@ -8,7 +8,15 @@ export class DepositsUseCase {
   constructor(
     private readonly depositRepo: RepositoryAdapter<DepositDTO>,
     private readonly logger: Logger,
+    private readonly auth?: Auth,
+    private readonly userRepo?: RepositoryAdapter<any>,
   ) {}
+
+  private async assertOwnership(resourceHotelId: string, userId?: string, userRole?: string): Promise<void> {
+    if (!this.auth || !this.userRepo || !userId) return
+    const me = await this.userRepo.findById(userId)
+    this.auth.assertOwnership(resourceHotelId, (me as any)?.hotelId ?? '', userRole || '', 'super_admin')
+  }
 
   async create(dto: CreateDepositDTO): Promise<DepositDTO> {
     if (dto.amount <= 0) throw new ValidationError('Deposit amount must be positive')
@@ -30,10 +38,10 @@ export class DepositsUseCase {
     } as any)
   }
 
-  async getById(id: string): Promise<DepositDTO> {
-    // @ignore IDOR_RISK — deposit lookup by ID (admin only route)
+  async getById(id: string, userId?: string, userRole?: string): Promise<DepositDTO> {
     const deposit = await this.depositRepo.findById(id)
     if (!deposit) throw new NotFoundError('Deposit not found')
+    await this.assertOwnership(deposit.hotelId, userId, userRole)
     return deposit
   }
 
@@ -43,8 +51,8 @@ export class DepositsUseCase {
     return this.depositRepo.findMany(filters)
   }
 
-  async refund(id: string, dto: RefundDepositDTO): Promise<DepositDTO> {
-    const deposit = await this.getById(id)
+  async refund(id: string, dto: RefundDepositDTO, userId?: string, userRole?: string): Promise<DepositDTO> {
+    const deposit = await this.getById(id, userId, userRole)
     
     if (deposit.status === 'released' || deposit.status === 'fully_refunded') {
       throw new ValidationError('Deposit already released or fully refunded')
@@ -68,8 +76,8 @@ export class DepositsUseCase {
     } as any) as Promise<DepositDTO>
   }
 
-  async release(id: string): Promise<DepositDTO> {
-    const deposit = await this.getById(id)
+  async release(id: string, userId?: string, userRole?: string): Promise<DepositDTO> {
+    const deposit = await this.getById(id, userId, userRole)
     
     if (deposit.status === 'released') {
       throw new ValidationError('Deposit already released')

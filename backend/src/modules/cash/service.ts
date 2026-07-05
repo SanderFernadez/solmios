@@ -54,10 +54,6 @@ export class CashService {
   // ─── Movimientos ───────────────────────────────────────
   async list(query: MovementQuery, user: CurrentUser): Promise<CashPaginated> {
     const hotelId = this.hotelOfUser(user, query.hotelId)
-    const filters: Record<string, unknown> = { hotelId: hotelId || '__none__' }
-    if (query.shiftId) filters.shiftId = query.shiftId
-    if (query.type) filters.type = query.type
-    if (query.method) filters.method = query.method
     const page = Math.max(query.page || 1, 1)
     const limit = Math.min(Math.max(query.limit || 20, 1), 100)
     const offset = (page - 1) * limit
@@ -66,14 +62,30 @@ export class CashService {
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as CashPaginated
 
-    let rows = await this.repo.findMany(filters)
-    if (query.from) rows = rows.filter(r => (r.createdAt || '') >= query.from!)
-    if (query.to) rows = rows.filter(r => (r.createdAt || '') <= query.to! + 'T23:59:59')
-    const total = rows.length
-    const data = rows.slice(offset, offset + limit)
+    const isDateFilter = query.from || query.to
+    if (isDateFilter) {
+      const filters: Record<string, unknown> = { hotelId: hotelId || '__none__' }
+      if (query.shiftId) filters.shiftId = query.shiftId
+      if (query.type) filters.type = query.type
+      if (query.method) filters.method = query.method
+      let rows = await this.repo.findMany(filters)
+      if (query.from) rows = rows.filter(r => (r.createdAt || '') >= query.from!)
+      if (query.to) rows = rows.filter(r => (r.createdAt || '') <= query.to! + 'T23:59:59')
+      const total = rows.length
+      const data = rows.slice(offset, offset + limit)
+      const response: CashPaginated = { data, total, limit, offset, pages: Math.ceil(total / limit) || 1, hasNext: offset + limit < total, hasPrev: page > 1 }
+      await this.cache.set(cacheKey, response, 300)
+      return response
+    }
+
+    const filters: Record<string, unknown> = { hotelId: hotelId || '__none__' }
+    if (query.shiftId) filters.shiftId = query.shiftId
+    if (query.type) filters.type = query.type
+    if (query.method) filters.method = query.method
+    const result = await this.repo.paginate(filters, { limit, offset })
     const response: CashPaginated = {
-      data, total, limit, offset, pages: Math.ceil(total / limit) || 1,
-      hasNext: offset + limit < total, hasPrev: page > 1,
+      data: result.data, total: result.total, limit, offset,
+      pages: result.pages, hasNext: offset + limit < result.total, hasPrev: page > 1,
     }
     await this.cache.set(cacheKey, response, 300)
     return response

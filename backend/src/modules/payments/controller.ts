@@ -20,7 +20,15 @@ export class PaymentsController {
 
   /** Fuerza hotelId del JWT en los creates (P0 IDOR V1-V4). super_admin puede especificar otro. */
   private forceHotelId(dto: { hotelId?: string }, user: any): string {
-    return user?.role === 'super_admin' ? (dto.hotelId || user.hotelId || '') : (user?.hotelId || '')
+    return user?.userType === 'admin' ? (dto.hotelId || user.hotelId || '') : (user?.hotelId || '')
+  }
+
+  private userHotelId(user: any): string | undefined {
+    return user?.hotelId || undefined
+  }
+
+  private userInfo(user: any): { id?: string; role?: string; hotelId?: string } {
+    return { id: user?.id, role: user?.role || user?.userType, hotelId: user?.hotelId }
   }
 
   // ─── Payments ────────────────────────────────────────
@@ -45,19 +53,21 @@ export class PaymentsController {
     this.logger.info('POST /api/payments/:id/refund')
     const { id } = req.params
     const data = validateSchema(RefundSchema, req.body) as { amount?: number }
-    const payment = await this.service.refundPayment(id, data.amount)
+    const payment = await this.service.refundPayment(id, data.amount, this.userInfo(req.user))
     return { status: 200, body: payment }
   }
 
   async getPayment(req: HttpRequest) {
     this.logger.info('GET /api/payments/:id')
-    const payment = await this.service.getPayment(req.params.id)
+    const payment = await this.service.getPayment(req.params.id, this.userInfo(req.user))
     return { status: 200, body: payment }
   }
 
   async listPayments(req: HttpRequest) {
     this.logger.info('GET /api/payments')
     const query = req.query as unknown as PaymentsQuery
+    const userHotelId = this.userHotelId(req.user)
+    if (userHotelId) query.hotelId = userHotelId
     const result = await this.service.listPayments(query)
     return { status: 200, body: result }
   }
@@ -88,13 +98,14 @@ export class PaymentsController {
 
   async cancelLink(req: HttpRequest) {
     this.logger.info('DELETE /api/payment-links/:id')
-    await this.service.cancelPaymentLink(req.params.id)
+    await this.service.cancelPaymentLink(req.params.id, this.userInfo(req.user))
     return { status: 204, body: null }
   }
 
   async listLinks(req: HttpRequest) {
     this.logger.info('GET /api/payment-links')
-    const hotelId = (req as any).hotelId || req.query.hotelId
+    const userHotelId = this.userHotelId(req.user)
+    const hotelId = userHotelId || req.query.hotelId
     const links = await this.service.listPaymentLinks(hotelId)
     return { status: 200, body: links }
   }
@@ -113,19 +124,20 @@ export class PaymentsController {
     this.logger.info('POST /api/deposits/:id/refund')
     const { id } = req.params
     const data = validateSchema(RefundDepositSchema, req.body) as unknown as RefundDepositDTO
-    const deposit = await this.service.refundDeposit(id, data)
+    const deposit = await this.service.refundDeposit(id, data, this.userInfo(req.user))
     return { status: 200, body: deposit }
   }
 
   async releaseDeposit(req: HttpRequest) {
     this.logger.info('POST /api/deposits/:id/release')
-    const deposit = await this.service.releaseDeposit(req.params.id)
+    const deposit = await this.service.releaseDeposit(req.params.id, this.userInfo(req.user))
     return { status: 200, body: deposit }
   }
 
   async listDeposits(req: HttpRequest) {
     this.logger.info('GET /api/deposits')
-    const hotelId = (req as any).hotelId || req.query.hotelId
+    const userHotelId = this.userHotelId(req.user)
+    const hotelId = userHotelId || req.query.hotelId
     const { status } = req.query as { status?: string }
     const deposits = await this.service.listDeposits(hotelId, status)
     return { status: 200, body: deposits }
@@ -133,7 +145,7 @@ export class PaymentsController {
 
   async getDeposit(req: HttpRequest) {
     this.logger.info('GET /api/deposits/:id')
-    const deposit = await this.service.getDeposit(req.params.id)
+    const deposit = await this.service.getDeposit(req.params.id, this.userInfo(req.user))
     return { status: 200, body: deposit }
   }
 
@@ -141,7 +153,8 @@ export class PaymentsController {
 
   async reconcile(req: HttpRequest) {
     this.logger.info('POST /api/billing/reconciliation')
-    const hotelId = (req as any).hotelId
+    const userHotelId = this.userHotelId(req.user)
+    const hotelId = userHotelId || (req as any).hotelId
     const { entries, from, to } = req.body as { entries: ReconciliationEntry[]; from?: string; to?: string }
     const result = await this.service.reconcile(hotelId, entries, from, to)
     return { status: 200, body: result }

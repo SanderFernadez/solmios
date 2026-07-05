@@ -1,7 +1,7 @@
 // payments/service.ts — Facade pública del módulo Payments
 // Orquestador delgado que delega a usecases/
 
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type {
   PaymentDTO, CreatePaymentDTO, ChargeCardDTO,
@@ -31,11 +31,13 @@ export class PaymentsService {
     depositRepo: RepositoryAdapter<DepositDTO>,
     private readonly logger: Logger,
     cache: CacheAdapter,
+    private readonly auth?: any,
+    userRepo?: RepositoryAdapter<any>,
   ) {
     this.stripe = new StripeUseCase(logger)
-    this.crud = new PaymentCrudUseCase(paymentRepo, logger)
-    this.links = new PaymentLinksUseCase(linkRepo)
-    this.deposits = new DepositsUseCase(depositRepo, logger)
+    this.crud = new PaymentCrudUseCase(paymentRepo, logger, auth, userRepo)
+    this.links = new PaymentLinksUseCase(linkRepo, auth, userRepo)
+    this.deposits = new DepositsUseCase(depositRepo, logger, auth, userRepo)
     this.reconciliation = new ReconciliationUseCase(paymentRepo)
   }
 
@@ -59,8 +61,6 @@ export class PaymentsService {
   async createPayment(dto: CreatePaymentDTO): Promise<PaymentDTO> {
     const payment = await this.crud.create(dto)
     await this.sockets.onPaymentCreated?.(payment)
-    // V8: los pagos cash se crean con status='completed' (payment-crud.ts). Emitimos onPaymentCompleted
-    // para que el conector payments→caja registre el ingreso en caja. Los pagos card van por webhook Stripe.
     if (payment.status === 'completed') await this.sockets.onPaymentCompleted?.(payment)
     return payment
   }
@@ -95,8 +95,8 @@ export class PaymentsService {
     return { payment, checkoutUrl: session.url }
   }
 
-  async refundPayment(paymentId: string, amount?: number): Promise<PaymentDTO> {
-    const payment = await this.crud.getById(paymentId)
+  async refundPayment(paymentId: string, amount?: number, user?: { id?: string; role?: string }): Promise<PaymentDTO> {
+    const payment = await this.crud.getById(paymentId, user?.id, user?.role)
     if (payment.status !== 'completed') throw new ValidationError('Payment not completed')
     if (payment.method !== 'card') throw new ValidationError('Only card payments can be refunded via Stripe')
 
@@ -139,8 +139,8 @@ export class PaymentsService {
     return { type }
   }
 
-  async getPayment(id: string): Promise<PaymentDTO> {
-    return this.crud.getById(id)
+  async getPayment(id: string, user?: { id?: string; role?: string }): Promise<PaymentDTO> {
+    return this.crud.getById(id, user?.id, user?.role)
   }
 
   async listPayments(query: PaymentsQuery): Promise<PaymentsPaginated> {
@@ -157,8 +157,8 @@ export class PaymentsService {
     return this.links.getByToken(token)
   }
 
-  async cancelPaymentLink(id: string): Promise<void> {
-    return this.links.cancel(id)
+  async cancelPaymentLink(id: string, user?: { id?: string; role?: string }): Promise<void> {
+    return this.links.cancel(id, user?.id, user?.role)
   }
 
   async listPaymentLinks(hotelId: string): Promise<PaymentLinkDTO[]> {
@@ -171,20 +171,20 @@ export class PaymentsService {
     return this.deposits.create(dto)
   }
 
-  async refundDeposit(id: string, dto: RefundDepositDTO): Promise<DepositDTO> {
-    return this.deposits.refund(id, dto)
+  async refundDeposit(id: string, dto: RefundDepositDTO, user?: { id?: string; role?: string }): Promise<DepositDTO> {
+    return this.deposits.refund(id, dto, user?.id, user?.role)
   }
 
-  async releaseDeposit(id: string): Promise<DepositDTO> {
-    return this.deposits.release(id)
+  async releaseDeposit(id: string, user?: { id?: string; role?: string }): Promise<DepositDTO> {
+    return this.deposits.release(id, user?.id, user?.role)
   }
 
   async listDeposits(hotelId: string, status?: string): Promise<DepositDTO[]> {
     return this.deposits.list(hotelId, status)
   }
 
-  async getDeposit(id: string): Promise<DepositDTO> {
-    return this.deposits.getById(id)
+  async getDeposit(id: string, user?: { id?: string; role?: string }): Promise<DepositDTO> {
+    return this.deposits.getById(id, user?.id, user?.role)
   }
 
   // ─── Reconciliation ──────────────────────────────────

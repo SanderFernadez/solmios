@@ -38,7 +38,8 @@ export function PaymentsModule() {
       const depositRepo = new OrmRepository<DepositDTO>(orm, 'Deposit')
 
       const log = logger.child('payments')
-      const service = new PaymentsService(paymentRepo, linkRepo, depositRepo, log, cache)
+      const userRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new PaymentsService(paymentRepo, linkRepo, depositRepo, log, cache, auth, userRepo)
       const controller = new PaymentsController(service, log)
 
       // Admin routes (protegidas con auth)

@@ -35,7 +35,7 @@ export function ReportsModule() {
       router.get('/api/reports/export', guard('reports', 'export'), (req: any) => controller.exportReport(req))
 
       router.get('/api/night-audit', guard('reports', 'view'), (req: any) => controller.getNightAudit(req))
-      router.post('/api/night-audit/mark-no-shows', guard('reports', 'edit'), () => controller.markNoShows())
+      router.post('/api/night-audit/mark-no-shows', guard('reports', 'edit'), (req: any) => controller.markNoShows(req))
 
       log.info('Módulo reports listo')
       return service

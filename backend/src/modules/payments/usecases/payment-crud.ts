@@ -1,6 +1,6 @@
 // payments/usecases/payment-crud.ts — Payment CRUD operations
 
-import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type { PaymentDTO, CreatePaymentDTO, PaymentsQuery, PaymentsPaginated } from '../types'
 
@@ -8,7 +8,15 @@ export class PaymentCrudUseCase {
   constructor(
     private readonly paymentRepo: RepositoryAdapter<PaymentDTO>,
     private readonly logger: Logger,
+    private readonly auth?: Auth,
+    private readonly userRepo?: RepositoryAdapter<any>,
   ) {}
+
+  private async assertOwnership(resourceHotelId: string, userId?: string, userRole?: string): Promise<void> {
+    if (!this.auth || !this.userRepo || !userId) return
+    const me = await this.userRepo.findById(userId)
+    this.auth.assertOwnership(resourceHotelId, (me as any)?.hotelId ?? '', userRole || '', 'super_admin')
+  }
 
   async create(dto: CreatePaymentDTO): Promise<PaymentDTO> {
     if (dto.amount <= 0) throw new ValidationError('Payment amount must be positive')
@@ -34,10 +42,10 @@ export class PaymentCrudUseCase {
     return payment
   }
 
-  async getById(id: string): Promise<PaymentDTO> {
-    // @ignore IDOR_RISK — payment lookup by ID
+  async getById(id: string, userId?: string, userRole?: string): Promise<PaymentDTO> {
     const payment = await this.paymentRepo.findById(id)
     if (!payment) throw new ValidationError('Payment not found')
+    await this.assertOwnership(payment.hotelId, userId, userRole)
     return payment
   }
 

@@ -7,14 +7,24 @@ export class ReportQueries {
 
   async resolveHotelId(req: any): Promise<string | undefined> {
     const q = req?.query || {}
-    if (q.hotelId) return q.hotelId as string
+    if (q.hotelId) {
+      const userHotel = req?.user?.hotelId
+      if (userHotel && userHotel !== 'platform') {
+        if (q.hotelId !== userHotel) throw new Error('Access denied: can only view own hotel data')
+      }
+      return q.hotelId as string
+    }
     const userHotel = req?.user?.hotelId
     if (userHotel && userHotel !== 'platform') return userHotel as string
     const uRows = await this.orm.findMany('Users', { id: req.user?.id })
     const u: any = (uRows as any[])?.[0]
     if (u?.hotelId) return u.hotelId
-    const hotels = await this.orm.findMany('Hotels', {})
-    return (hotels as any[])?.[0]?.id
+    const isAdmin = req?.user?.userType === 'admin' || req?.user?.role === 'super_admin'
+    if (isAdmin) {
+      const hotels = await this.orm.findMany('Hotels', {})
+      return (hotels as any[])?.[0]?.id
+    }
+    throw new Error('No hotel assigned to user')
   }
 
   async getReports(hotelId: string): Promise<any> {
@@ -91,9 +101,11 @@ export class ReportQueries {
     return { fecha: t, ocupacion, habitacionesOcupadas: occupied, habitacionesTotales: rooms.length, ingresosHabitaciones: revenueHoy, ingresosServicios: revenueServicios, impuestos: 0, totalDia: revenueHoy + revenueServicios, checkins: checkinsHoy, checkouts: checkoutsHoy, noShows, cancelaciones, nochesVendidas: res.filter((r: any) => r.status === 'checked_in' || r.status === 'checked_out').length, adr, revpar, adrAyer: adrYesterday, pagosRecibidos: res.reduce((s: number, r: any) => s + (r.deposit || 0), 0), pagosPendientes: res.filter((r: any) => r.status !== 'cancelled').reduce((s: number, r: any) => s + Math.max(0, (r.totalAmount || 0) - (r.deposit || 0)), 0), depositos: res.filter((r: any) => r.status === 'pending').reduce((s: number, r: any) => s + (r.deposit || 0), 0), reembolsos: 0 }
   }
 
-  async markNoShows(): Promise<number> {
+  async markNoShows(hotelId?: string): Promise<number> {
     const todayStr = new Date().toISOString().split('T')[0]
-    const reservas = (await this.orm.findMany('Reservations', {})) as any[]
+    const filters: any = {}
+    if (hotelId) filters.hotelId = hotelId
+    const reservas = (await this.orm.findMany('Reservations', filters)) as any[]
     let count = 0
     for (const r of reservas) {
       const ci = String(r.checkIn || '').slice(0, 10)

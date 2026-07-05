@@ -40,8 +40,8 @@ export class ReportsController {
     return { status: 200, body: await this.service.getNightAudit(req) }
   }
 
-  async markNoShows() {
-    const marked = await this.service.markNoShows()
+  async markNoShows(req: HttpRequest) {
+    const marked = await this.service.markNoShows(req)
     return { status: 200, body: { success: true, marked } }
   }
 }
