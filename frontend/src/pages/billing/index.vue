@@ -593,7 +593,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { BillingService, type BillingStats } from '@/services/Billing.service'
-import { http } from '@/services/http'
+import { RoomService } from '@/services/Room.service'
+import { SettingsService } from '@/services/Settings.service'
 import { useCurrency } from '@/composables/useCurrency'
 import { FoliosService, type Folio } from '@/services/Folios.service'
 import { useAuthStore } from '@/stores/auth.store'
@@ -782,7 +783,7 @@ const printFrame = ref<HTMLIFrameElement | null>(null)
 async function printInvoice() {
   if (!viewInvoice.value) return
   try {
-    const html = await http.get<string>(`/facturas/${viewInvoice.value.id}/print`)
+    const html = await BillingService.print(viewInvoice.value.id)
     if (typeof html === 'string' && html.includes('<!DOCTYPE html>') && printFrame.value) {
       const doc = printFrame.value.contentDocument
       if (doc) {
@@ -831,11 +832,11 @@ async function openNewInvoice() {
   showRoomDropdown.value = false
   // Load rooms + tax rate in parallel
   const [roomsRes, configRes] = await Promise.all([
-    http.get<any>('/habitaciones').catch(() => null),
-    http.get<any>('/settings/full').catch(() => null),
+    RoomService.list().catch(() => null),
+    SettingsService.full().catch(() => null),
   ])
   // Rooms — solo habitaciones con huésped (guestId o guestName)
-  const roomList = roomsRes?.data || roomsRes || []
+  const roomList = roomsRes?.rooms || []
   rooms.value = (Array.isArray(roomList) ? roomList : [])
     .filter((r: any) => r.guestId || r.guestName)
     .map((r: any) => ({
@@ -1024,7 +1025,7 @@ async function confirmDelete() {
   if (!deleteTarget.value) return
   deleting.value = true
   try {
-    await http.delete(`/facturas/${deleteTarget.value.id}`)
+    await BillingService.remove(deleteTarget.value.id)
     closeDeleteModal()
     loadData()
     toast.success('Factura eliminada')

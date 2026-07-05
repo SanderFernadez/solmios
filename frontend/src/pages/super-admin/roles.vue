@@ -191,7 +191,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { http } from '@/services/http'
+import { TeamService } from '@/services/Team.service'
 
 const selectedRole = ref<any>(null)
 const showCreateRole = ref(false)
@@ -235,7 +235,7 @@ const featureFlags = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const { data } = await http.get<{ data: any[]; total: number }>('/roles')
+    const { data } = await TeamService.listRoles()
     roles.value = data.map((r: any) => ({
       id: r.id,
       name: r.name,

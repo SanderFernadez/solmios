@@ -76,6 +76,8 @@ export interface SettingsFull {
   blocks: any[]
   autoMessages: AutoMessage[]
   roomTypes: string[]
+  taxes?: any
+  impuestos?: any
   ttlock: { clientId?: string; clientSecret?: string; accountId?: string; accessToken?: string; configured: boolean }
 }
 

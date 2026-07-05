@@ -783,7 +783,7 @@ const uploadPhoto = async () => {
   formData.append('photo', newPhotoFile.value)
   formData.append('type', newPhotoType.value)
   try {
-    await http.post(`/mantenimiento/${selectedOrder.value.id}/photos`, formData)
+    await OperationsService.mantenimiento.post(`${selectedOrder.value.id}/photos`, formData)
     newPhotoFile.value = null
     toast.success('Foto subida')
     await loadData()

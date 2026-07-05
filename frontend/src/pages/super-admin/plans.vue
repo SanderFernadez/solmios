@@ -96,7 +96,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { http } from '@/services/http'
+import { PlansService } from '@/services/Plans.service'
 import { useToast } from '@/composables/useToast'
 const toast = useToast()
 
@@ -125,8 +125,8 @@ function openEdit(plan: any) {
 }
 
 async function loadPlans() {
-  const data = await http.get<any>('/admin/plans')
-  plans.value = data?.data || data || []
+  const { data } = await PlansService.list()
+  plans.value = data || []
 }
 
 async function save() {
@@ -134,10 +134,10 @@ async function save() {
   try {
     const payload = { ...form.value, features: features.value }
     if (editing.value) {
-      await http.put(`/admin/plans/${editing.value.id}`, payload)
+      await PlansService.update(editing.value.id, payload)
       toast.success('Plan actualizado')
     } else {
-      await http.post('/admin/plans', payload)
+      await PlansService.create(payload)
       toast.success('Plan creado')
     }
     showModal.value = false
@@ -150,7 +150,7 @@ async function save() {
 async function deletePlan(plan: any) {
   if (!confirm(`¿Eliminar plan "${plan.name}"?`)) return
   try {
-    await http.delete(`/admin/plans/${plan.id}`)
+    await PlansService.remove(plan.id)
     toast.success('Plan eliminado')
     await loadPlans()
   } catch (e: any) {

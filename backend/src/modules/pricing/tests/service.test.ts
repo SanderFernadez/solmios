@@ -107,7 +107,7 @@ describe('PricingService', () => {
       findOne: async (filter: any) => { const rows = await orm.findMany(table, filter); return rows[0] || null },
       create: async (data: any) => orm.create(table, data),
       update: async (id: string, data: any) => orm.update(table, id, data),
-      delete: async () => {},
+      delete: async () => true,
       count: async () => 0,
       paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
     })

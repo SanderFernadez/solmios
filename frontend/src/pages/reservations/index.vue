@@ -741,7 +741,7 @@ async function openEdit(r: any) {
 
   // Cargar datos extendidos (guest + companions + lock + pago/OTA)
   try {
-    const ext = await http.get<any>(`/reservations/${r.id}`)
+    const ext = await ReservationService.getById(r.id)
     // Datos de pago y OTA de la reserva (bug: antes no se recordaban al editar)
     f.payMethod = ext.paymentMethod || 'transfer'
     existingGuarantee.value = !!ext.hasGuaranteeCard
@@ -908,7 +908,7 @@ async function save() {
       const { GuestService } = await import('@/services/Guest.service')
       if (editId.value) {
         // Editar: ya tiene guestId
-        const existing = await http.get<any>(`/reservations/${editId.value}`)
+        const existing = await ReservationService.getById(editId.value)
         if (existing?.guestId) {
           await GuestService.update(existing.guestId, guestPayload)
           guestId = existing.guestId

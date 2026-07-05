@@ -175,4 +175,12 @@ export const BillingService = {
     a.click()
     URL.revokeObjectURL(url)
   },
+
+  print(id: string): Promise<string> {
+    return http.get<string>(`/facturas/${id}/print`)
+  },
+
+  remove(id: string): Promise<{ success: boolean }> {
+    return http.delete<{ success: boolean }>(`/facturas/${id}`)
+  },
 }

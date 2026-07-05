@@ -267,7 +267,7 @@ async function loadStatus() {
   } catch { availableChannels.value = DEFAULT_OTA_CATALOG }
   // Load sync history from DB
   try {
-    const logData = await http.get<any>('/sync-log?hotelId=' + hotelId.value)
+    const logData = await ChannelService.syncLog(hotelId.value)
     syncLog.value = (logData?.data || []).slice(0, 20)
   } catch {}
 }

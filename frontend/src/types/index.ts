@@ -130,6 +130,15 @@ export interface ReservationDetailGuest {
   totalStays?: number
   totalSpent?: number
   tier?: string
+  communicateClient?: string
+  country?: string | null
+  address?: string | null
+  city?: string | null
+  province?: string | null
+  sex?: string | null
+  documentType?: string | null
+  documentIssueDate?: string | null
+  notes?: string | null
 }
 
 export interface ReservationDetailRoom {
@@ -233,6 +242,7 @@ export interface ReservationDetail {
   promoCode?: string | null
   autoSendEnabled?: boolean
   communicateClient?: string
+  emergencyContact?: { name: string; phone: string; relation: string; email?: string }
   adults?: number
   children?: number
   createdAt?: string

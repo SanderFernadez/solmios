@@ -130,4 +130,8 @@ export const ChannelService = {
   async detail(channelId: string): Promise<any> {
     return http.get(`/channels/${channelId}/detail`)
   },
+
+  async syncLog(hotelId?: string): Promise<any> {
+    return http.get(`/sync-log${hotelId ? `?hotelId=${hotelId}` : ''}`)
+  },
 }

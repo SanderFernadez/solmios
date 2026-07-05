@@ -100,7 +100,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { http } from '@/services/http'
+import { AmenitiesService } from '@/services/Amenities.service'
 import { useToast } from '@/composables/useToast'
 const toast = useToast()
 
@@ -127,8 +127,8 @@ function openEdit(a: any) {
 }
 
 async function load() {
-  const data = await http.get<any>('/admin/amenities/catalog')
-  amenities.value = data?.data || data || []
+  const { data } = await AmenitiesService.adminListCatalog()
+  amenities.value = data || []
 }
 
 async function save() {
@@ -136,10 +136,10 @@ async function save() {
   saving.value = true
   try {
     if (editing.value) {
-      await http.put(`/admin/amenities/catalog/${editing.value.id}`, form.value)
+      await AmenitiesService.adminUpdateCatalogItem(editing.value.id, form.value)
       toast.success('Amenity actualizada')
     } else {
-      await http.post('/admin/amenities/catalog', form.value)
+      await AmenitiesService.adminCreateCatalogItem(form.value)
       toast.success('Amenity creada')
     }
     showModal.value = false
@@ -152,7 +152,7 @@ async function save() {
 async function deleteAmenity(a: any) {
   if (!confirm(`¿Eliminar "${a.label}"?`)) return
   try {
-    await http.delete(`/admin/amenities/catalog/${a.id}`)
+    await AmenitiesService.adminDeleteCatalogItem(a.id)
     toast.success('Amenity eliminada')
     await load()
   } catch (e: any) {
