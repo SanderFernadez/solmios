@@ -264,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import type { Room, RoomStatus } from '@/types'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useRoomStore } from '@/stores/room.store'
@@ -348,6 +348,16 @@ onMounted(async () => {
     dashboard.fetchStats(hotelId.value),
     roomStore.fetchRooms({ hotelId: hotelId.value }),
     reservationStore.fetchReservations({ hotelId: hotelId.value }),
+  ])
+})
+
+// PC-2.1.4 — recargar data al switchear hotel (el token refresca auth.user.hotelId).
+watch(hotelId, async (id) => {
+  if (!id) return
+  await Promise.all([
+    dashboard.fetchStats(id),
+    roomStore.fetchRooms({ hotelId: id }),
+    reservationStore.fetchReservations({ hotelId: id }),
   ])
 })
 

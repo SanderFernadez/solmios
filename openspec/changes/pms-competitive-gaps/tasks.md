@@ -43,10 +43,10 @@ cd frontend && npx vue-tsc -b  # 0 errores
 
 ### PC-2.1 — Hotel switcher en header
 
-- [ ] **PC-2.1.1** Backend: `GET /api/auth/hotels` que devuelve los hoteles accesibles para el usuario (super_admin: todos; hotel_admin: solo su hotelId actual; si el usuario tiene `accessibleHotelIds` en DB, esos)
+- [x] **PC-2.1.1** Backend: `GET /api/auth/hotels` que devuelve los hoteles accesibles para el usuario (super_admin: todos; hotel_admin: solo su hotelId actual; si el usuario tiene `accessibleHotelIds` en DB, esos)
 - [ ] **PC-2.1.2** Backend: `POST /api/auth/switch-hotel/:hotelId` — actualiza el `currentHotelId` en el token (solo si el user tiene acceso)
-- [ ] **PC-2.1.3** Frontend: `HotelSwitcher.vue` componente dropdown que reemplaza el badge estático en `AdminLayout` (solo se muestra si hay +1 hotel accesible)
-- [ ] **PC-2.1.4** Al switchear: refrescar token + recargar data del hotel actual (reservas, rooms, dashboard)
+- [x] **PC-2.1.3** Frontend: `HotelSwitcher.vue` componente dropdown que reemplaza el badge estático en `AdminLayout` (solo se muestra si hay +1 hotel accesible)
+- [x] **PC-2.1.4** Al switchear: refrescar token + recargar data del hotel actual (reservas, rooms, dashboard)
 
 **Aceptación**:
 ```bash
@@ -71,12 +71,12 @@ cd frontend && npx vue-tsc -b  # 0 errores
 
 ### PC-3.1 — Backend Stripe
 
-- [ ] **PC-3.1.1** `cd backend && bun add stripe`
+- [x] **PC-3.1.1** `cd backend && bun add stripe`
 - [ ] **PC-3.1.2** Crear `backend/src/services/stripe-service.ts` (singleton Stripe con STRIPE_SECRET_KEY, helpers para crear checkout session, construir payment link)
-- [ ] **PC-3.1.3** `POST /api/payment-requests/:id/create-checkout` — crea Checkout Session en Stripe y actualiza PaymentRequest con `stripeSessionId` + `stripePaymentUrl`
-- [ ] **PC-3.1.4** `POST /api/stripe/webhook` (público, sin auth, firma con `STRIPE_WEBHOOK_SECRET`) — maneja `checkout.session.completed`, `payment_intent.payment_failed`. Marca PaymentRequest como `paid` con `paidAt`
-- [ ] **PC-3.1.5** `.env.example` con `STRIPE_SECRET_KEY=`, `STRIPE_PUBLISHABLE_KEY=`, `STRIPE_WEBHOOK_SECRET=`, `STRIPE_CURRENCY=usd`
-- [ ] **PC-3.1.6** Si STRIPE_SECRET_KEY no está configurada, los endpoints responden 503 con `{ error: "Stripe no configurado" }` (graceful degradation)
+- [x] **PC-3.1.3** `POST /api/payment-requests/:id/create-checkout` — crea Checkout Session en Stripe y actualiza PaymentRequest con `stripeSessionId` + `stripePaymentUrl`
+- [x] **PC-3.1.4** `POST /api/stripe/webhook` (público, sin auth, firma con `STRIPE_WEBHOOK_SECRET`) — maneja `checkout.session.completed`, `payment_intent.payment_failed`. Marca PaymentRequest como `paid` con `paidAt`
+- [x] **PC-3.1.5** `.env.example` con `STRIPE_SECRET_KEY=`, `STRIPE_PUBLISHABLE_KEY=`, `STRIPE_WEBHOOK_SECRET=`, `STRIPE_CURRENCY=usd`
+- [x] **PC-3.1.6** Si STRIPE_SECRET_KEY no está configurada, los endpoints responden 503 con `{ error: "Stripe no configurado" }` (graceful degradation)
 
 **Aceptación**:
 ```bash

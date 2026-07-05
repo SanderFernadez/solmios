@@ -41,7 +41,7 @@ export async function processStripeWebhook(deps: WebhookDeps, rawBody: string, s
           const pr = await repo.findById(paymentRequestId)
           if (pr && pr.status !== 'paid') {
             await repo.update(paymentRequestId, {
-              status: 'paid', stripeSessionId: session.id,
+              status: 'paid', stripeSessionId: session.id, paidAt: new Date().toISOString(),
             } as Partial<PaymentRequestDTO>)
             await applyPaymentBridge(reservationRepo, folioRepo, folioChargeRepo, pr, session)
             const updated = await repo.findById(paymentRequestId) as PaymentRequestDTO

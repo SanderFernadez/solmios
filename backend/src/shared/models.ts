@@ -236,6 +236,7 @@ export function registerSharedModels(orm: ORM): void {
       sentVia: { type: 'string', default: 'email' },
       stripeSessionId: { type: 'string' },
       stripePaymentUrl: { type: 'string' },
+      paidAt: { type: 'string' },
     },
   })
 
