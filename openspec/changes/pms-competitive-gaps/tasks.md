@@ -102,10 +102,10 @@ cd frontend && npx vue-tsc -b  # 0 errores
 
 ### PC-4.1 — Manifest + service worker
 
-- [ ] **PC-4.1.1** Crear `frontend/public/manifest.webmanifest` con name, short_name, icons (192/512), theme_color (#0F1E3D navy), background_color, display: standalone
+- [x] **PC-4.1.1** Crear `frontend/public/manifest.webmanifest` con name, short_name, icons (192/512), theme_color (#0F1E3D navy), background_color, display: standalone
 - [ ] **PC-4.1.2** Crear `frontend/public/sw.js` — service worker con cache de app shell (/, /login, /assets/*), fallback offline a index.html
 - [ ] **PC-4.1.3** Registrar SW en `frontend/src/main.ts` (`navigator.serviceWorker.register('/sw.js')`)
-- [ ] **PC-4.1.4** `<link rel="manifest" href="/manifest.webmanifest">` + `<meta name="theme-color">` en `index.html`
+- [x] **PC-4.1.4** `<link rel="manifest" href="/manifest.webmanifest">` + `<meta name="theme-color">` en `index.html`
 - [ ] **PC-4.1.5** Generar iconos 192/512 desde favicon.svg (puede ser PNG estático en `/public/icons/`)
 
 ### PC-4.2 — Offline UX
@@ -144,11 +144,21 @@ cd frontend && npx vite build  # manifest + sw copiados a dist/
 
 ## 🔍 GATE final
 
-- [ ] `arckode analyze` ✅ VÁLIDO
-- [ ] backend typecheck 0 errores
-- [ ] backend tests 130+ pass
-- [ ] frontend `vue-tsc -b` 0 errores
-- [ ] frontend `vite build` success
+- [x] `arckode analyze` ✅ VÁLIDO
+- [x] backend typecheck 0 errores
+- [x] backend tests 130+ pass
+- [x] frontend `vue-tsc -b` 0 errores
+- [x] frontend `vite build` success
 - [ ] Manual: los 6 reports cargan con datos
 - [ ] Manual: super-admin puede cambiar de hotel
 - [ ] Manual: PWA instalable en Chrome
+
+---
+
+## 📝 Debt documentada (no bloqueante) — 2026-07-05
+
+- **PC-3.1.2** (helper `createPaymentLink`): el flujo real usa Checkout Session (`createCheckoutSession` provee la URL de cobro). Payment Links API de Stripe (objetos reutilizables) no se usa — sería dead code.
+- **PC-4.1.2/3** (SW con cache app shell): **DESACTIVADO intencionalmente** (commit `c79e8f9`). El SW anterior cacheaba el shell y rompía logout/navegación (servía versiones obsoletas). Reactivar requiere SW network-first + bypass `/api/*` + testing en prod cuidadoso.
+- **PC-4.1.5** (iconos PNG): manifest usa SVG (192/512). Funciona en la mayoría de navegadores; Chrome/Android históricamente prefieren PNG para el criterio "installable" estricto de Lighthouse.
+- **PC-4.2.3** (crear reserva offline): check-in/checkout SÍ deshabilitados offline (`useOnline`). Falta extender a "crear reserva" (ReservationModal).
+- **GATES manuales** (reports cargan, switcher, PWA instalable): requieren QA manual en prod.
