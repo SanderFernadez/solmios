@@ -28,6 +28,7 @@ export const ReservasModel: ModelDefinition = {
     autoSendEnabled: { type: 'boolean', default: true },
     preCheckinStatus: { type: 'string', default: 'pending' },
     preCheckinHash: { type: 'string' },
+    documentScanned: { type: 'boolean', default: false },
     groupId: { type: 'string' },
     otaNotes: { type: 'text' },
     // Campos nuevos del modal

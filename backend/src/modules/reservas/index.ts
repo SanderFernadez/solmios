@@ -3,6 +3,7 @@ import { registerReservasModels } from './model'
 import { ReservasService } from './service'
 import { ReservasController } from './controller'
 import { ReservasQueries } from './usecases/reservas-queries'
+import { handleQScanProWebhook, type QScanProWebhookBody } from './usecases/qscanpro-webhook'
 import type { ReservasDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
@@ -44,6 +45,7 @@ export function ReservasModule() {
       const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth, orm, null, messageLogRepo, roomRepo, hotelRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const configRepo = new OrmRepository<any>(orm, 'Configuration')
       const guard = createPermissionGuard(auth, roleRepo)
 
       // ── CRUD ──
@@ -71,6 +73,12 @@ export function ReservasModule() {
       // ── Pre-checkin (público) ──
       router.get('/api/public/pre-checkin/:hash', (req) => controller.getPreCheckinData(req))
       router.post('/api/public/pre-checkin/:hash', (req) => controller.submitPreCheckin(req))
+
+      // ── Webhook QScanPro (document scan) — público, autoridad = connection_code ──
+      router.post('/api/webhooks/qscanpro', (req) =>
+        handleQScanProWebhook((req.body ?? {}) as QScanProWebhookBody, { reservationRepo: repo, guestRepo, configRepo, logger: log })
+          .then((data) => ({ status: 200, body: { success: true, data } })),
+      )
 
       // ── Extended detail + Audit ──
       router.get('/api/reservations/:id', guard('reservations', 'view'), (req) => controller.getExtendedDetail(req))

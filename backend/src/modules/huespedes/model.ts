@@ -17,6 +17,7 @@ export const HuespedesModel: ModelDefinition = {
     city: { type: 'string' },
     province: { type: 'string' },
     documentType: { type: 'string' },
+    documentUrl: { type: 'string' },
     documentIssueDate: { type: 'string' },
     profession: { type: 'string' },
     emergencyContact: { type: 'json' },

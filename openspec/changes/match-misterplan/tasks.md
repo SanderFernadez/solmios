@@ -301,7 +301,7 @@
 - [x] 7.1.3 Template send button (opens wa.me)
 
 ### 7.2 WhatsApp Business API (optional, advanced)
-- [ ] 7.2.1 Meta Business setup documentation
+- [x] 7.2.1 Meta Business setup documentation
   > Crear guía de configuración en `/docs/whatsapp-business-setup.md` con pasos detallados:
   > 1. Crear cuenta de Meta Business (business.facebook.com)
   > 2. Registrar aplicación en Meta for Developers (developers.facebook.com)
@@ -349,7 +349,7 @@
   > Guardar código en `Configuration` con key `qscanpro_connection_code`.
   > Mostrar estado: "Conectado" (verde) o "Desconectado" (rojo) según la prueba de conexión.
   > El código de conexión se usa para autenticar webhooks entrantes de QScanPro.
-- [ ] 8.3.2 Document scan webhook receiver
+- [x] 8.3.2 Document scan webhook receiver
   > Crear endpoint público POST /api/webhooks/qscanpro que recibe notificaciones de QScanPro cuando un huésped escanea su documento.
   > Validar autenticación: el webhook incluye el connection_code como token de seguridad.
   > Espera recibir: `{reservationHash, documentType (cedula/pasaporte), documentNumber, documentUrl (imagen escaneada)}`.
