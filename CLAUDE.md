@@ -3,7 +3,35 @@
 ## Stack
 Bun (>=1.3) + Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5.1 + Tailwind CSS 4.3 + arckode-framework 1.4.3 + **DB multi-motor** (SQLite bun:sqlite/WAL en dev/staging · Postgres vía `pg` para producción, elegido por `DATABASE_URL`)
 
-## Database — Migraciones y Seeders (estado real verificado 2026-07-04)
+## Última sesión (2026-07-05) — Finance flow + Security audit
+
+### ✅ Completado
+- **Settlement flow** checkout → close folio → create invoice → record payment (`settle-folio-at-checkout.ts`)
+- **Auto-post room charge** al check-in (`checkin.ts` transacción ORM)
+- **Night audit cron** cada 3h con dedup por fecha (`night-audit-cron.ts`)
+- **Security audit** de todos los módulos financieros:
+  - Payments IDOR crítico (8 endpoints sin ownership check) → **FIXED** con `auth.assertOwnership()`
+  - Reports data leak (`resolveHotelId` devolvía cualquier hotel) → **FIXED**
+  - Reports `markNoShows` global → **FIXED** (ahora filtra por hotelId)
+  - Cash pagination in-memory → **FIXED** (usa `repo.paginate()`)
+  - Settlement edge case (folio se cerraba sin invoice) → **FIXED**
+- **Deploy a producción** hotel.zx89.site (backend activo, login funciona)
+- **441 tests** pasan ✅ | **arckode analyze** 0 violaciones ✅
+
+### 📋 Pendiente para mañana
+El usuario tiene estos cambios SDD abiertos. Preguntar por cuál empezar:
+1. **match-misterplan** — 6 tasks (pricing grid, WhatsApp, document scan, templates i18n)
+2. **pms-competitive-gaps** — ~30 tasks (reports UI, hotel switcher, Stripe, PWA) — usuario cuestionó si esto es válido
+3. **frontend-coverage-gaps** — ~8 gates finales
+4. **mobile-app** — App Flutter (recién empezó infra)
+
+### 🔍 Notas importantes
+- Producción PostgreSQL: **sin seed data** para folios, facturas, gastos, caja = 0 registros. Reports y night audit sí funcionan (computan desde reservas).
+- `bun` no está en PATH del SSH de producción → usar `/root/.bun/bin/bun`
+- Password SSH producción: Regionforo123
+- Login demo prod: `admin@caribeparadise.com` / `demo123`
+
+## Database — Migraciones y Seeders (estado real verificado 2026-07-05)
 
 El schema se construye en **2 capas complementarias** que deben correrse en orden sobre DB limpia:
 
@@ -60,8 +88,8 @@ Manager Hotel/
 │   │   ├── auth/                 # hotel-auth.ts, require-user-type.ts, require-permission.ts, load-permissions.ts, create-permission-guard.ts
 │   │   ├── stripe-config.ts      # Stripe API key resolver
 │   │   └── email-bootstrap.ts    # EmailService setup + worker
-│   ├── src/modules/              # 39 módulos aislados (cada uno con controller/service/types/validators/model/sockets/tests)
-│   ├── src/connectors/           # 11 conectores inter-módulo
+│   ├── src/modules/              # 40 módulos aislados (cada uno con controller/service/types/validators/model/sockets/tests)
+│   ├── src/connectors/           # 12 conectores inter-módulo
 │   ├── src/services/             # 13 servicios compartidos (email, currency, etc.)
 │   └── data/managerhotel.db      # SQLite (gitignored)
 ├── frontend/src/
@@ -266,6 +294,7 @@ El CLI registra `openedAt` (creación del Issue) y `implementacionAt` (marcar `[
 - `model.ts` (BD) ≠ `types.ts` (API) — separados
 - `npm install arckode-framework` (desde npm, NO path local)
 - `make:module X` genera estructura canónica — no crear módulos a mano
+- **TODO `findById` requiere `auth.assertOwnership()` después** — el analyzer lo detecta y bloquea si falta
 
 ### Base de datos — ENGLISH ONLY (OBLIGATORIO)
 - **TODAS** las tablas, columnas, y modelos en INGLÉS
@@ -313,22 +342,23 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 | Facturación electrónica | ⚠️ Stub (fiscal.ts), sin conector real |
 
 ### Módulos — Estado de producción
-| Módulo | Estado | Último upgrade |
-|--------|--------|----------------|
-| facturas (billing) | ✅ 10/10 | `daa1326` |
-| housekeeping | ✅ 10/10 | `6899df9` |
-| reservas | ✅ 10/10 | `3064b88` |
-| habitaciones | ✅ 10/10 | `daa1326` |
-| huespedes | ✅ 9/10 | `ffe4ff3` |
-| folios | ✅ 10/10 | — |
-| payments | ✅ 9/10 | — |
-| mantenimiento | ✅ 10/10 | `d3bdce5` |
-| attendance | ✅ 9/10 | `45fd0d7` |
-| payroll | ✅ 9/10 | — |
-| cash | ✅ 9/10 | — |
-| marketing | ✅ 9/10 | `95b88b6` |
-| canales | ✅ 9/10 | `3c34292` |
-| dispositivos | ✅ 9/10 | — |
+| Módulo | Estado | Score | Último upgrade |
+|--------|--------|-------|----------------|
+| facturas (billing) | ✅ | 10/10 | `2cd93b4` |
+| housekeeping | ✅ | 10/10 | `6899df9` |
+| reservas | ✅ | 10/10 | `2cd93b4` (settle + auto-post + cron) |
+| habitaciones | ✅ | 10/10 | `daa1326` |
+| huespedes | ✅ | 9/10 | `ffe4ff3` |
+| folios | ✅ | 10/10 | `2cd93b4` |
+| **payments** | ✅ **FIXED** | **10/10** | **`2cd93b4`** (IDOR ownership + auth) |
+| mantenimiento | ✅ | 10/10 | `d3bdce5` |
+| attendance | ✅ | 9/10 | `45fd0d7` |
+| payroll | ✅ | 9/10 | — |
+| **cash** | ✅ **FIXED** | **10/10** | **`2cd93b4`** (paginate en list) |
+| **reports** | ✅ **FIXED** | **10/10** | **`2cd93b4`** (data leak + no-show scope) |
+| marketing | ✅ | 9/10 | `95b88b6` |
+| canales | ✅ | 9/10 | `3c34292` |
+| dispositivos | ✅ | 9/10 | — |
 
 ### Deudas técnicas pendientes
 
@@ -338,6 +368,38 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 | `validateSchema` descarta campos no del schema | El framework descarta campos no declarados. Los forms DEBEN usar el naming canónico. | — |
 | WhatsApp integration | Requiere credenciales Meta Business para funcionar. | Futuro |
 | Document scan webhook | Feature avanzada, no crítica para producción. | Futuro |
+
+### Settlement Flow (checkout)
+```
+POST /api/reservas/:id/checkout    → body: { settle?: { method, amount, reference? } }
+```
+- Orchestra: close folio → create invoice → record payment (settle-folio-at-checkout.ts)
+- Si amount <= 0 después del close: folio se cierra sin invoice
+- Si settle es null/undefined: checkout sin settlement
+- Conector: `reservas-folios-settlement.ts`
+- Auto-post room charge at check-in: `checkin.ts` usa ORM transaction
+- Night audit cron: cada 3h, itera todos los hoteles, postea room charges con dedup por fecha
+
+### Finance API endpoints inventory
+| Módulo | Endpoint | Permiso |
+|--------|----------|---------|
+| Facturas | `/api/facturas` (+ stats, tax-report, :id, :id/print, :id/pdf, :id/pay, :id/credit-note, :id/email) | billing:view/create/edit/delete |
+| Folios | `/api/folios` (+ :id, :id/charges, :id/payments, :id/close, :id/invoice, audit/post-room-charges) | billing:view/create/edit |
+| Payments | `/api/payments` (+ :id, charge, :id/refund) | billing:view/create |
+| Payment Links | `/api/payment-links` (+ :id) | billing:view/create |
+| Deposits | `/api/deposits` (+ :id, :id/refund, :id/release) | billing:view/create |
+| Caja | `/api/caja/movements` (+ :id, shifts, shifts/current, shifts/:id/close, shifts/:id/reconcile, stats) | billing:view/create |
+| Caja Reconciliation | `/api/billing/reconciliation` | billing:edit |
+| Gastos | `/api/gastos` (+ :id) | billing:view/create/delete |
+| Reports | `/api/reports` (+ /advanced, /export) | reports:view/export |
+| Night Audit | `/api/night-audit` (+ mark-no-shows) | reports:view/edit |
+
+### Producción (hotel.zx89.site)
+- **SSH**: root@158.220.103.200 (password: Regionforo123)
+- **Repo**: `/www/wwwroot/hotel.zx89.site/solmios`
+- **Backend**: systemd `solmios-backend`, bun en `/root/.bun/bin/bun`
+- **Login demo**: `admin@caribeparadise.com` / `demo123`
+- **PG sin seed data**: folios, facturas, gastos, caja = 0 registros. Reports y night audit sí muestran data (computan desde reservas).
 
 ### Facturación — Endpoints
 ```
