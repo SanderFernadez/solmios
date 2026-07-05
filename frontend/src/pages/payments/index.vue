@@ -87,7 +87,7 @@
             </td>
             <td class="p-3 text-right" @click.stop>
               <div class="flex gap-1 justify-end flex-wrap">
-                <button v-if="stripeConfigured && p.status === 'pending'" @click="createStripe(p)" title="Crear link de pago Stripe" class="px-2 py-1 bg-purple/10 text-purple rounded-lg text-[10px] font-bold cursor-pointer hover:bg-purple/20">💳</button>
+                <button v-if="stripeConfigured && p.status === 'pending'" @click="createStripe(p)" title="Crear link de pago Stripe" class="px-2 py-1 bg-purple/10 text-purple rounded-lg text-[10px] font-bold cursor-pointer hover:bg-purple/20">🔗 Stripe</button>
                 <button v-if="p.stripePaymentUrl && p.status === 'pending'" @click="copyStripeUrl(p)" title="Copiar URL de pago" class="px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold cursor-pointer hover:bg-navy/20">🔗</button>
                 <button v-if="p.status === 'pending'" @click="resend(p, 'email')" title="Reenviar email" class="px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold cursor-pointer hover:bg-navy/20">📧</button>
                 <button v-if="p.status === 'pending'" @click="resend(p, 'whatsapp')" title="Reenviar WhatsApp" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-bold cursor-pointer hover:bg-emerald-200">💬</button>

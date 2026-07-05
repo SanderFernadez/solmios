@@ -44,7 +44,7 @@ cd frontend && npx vue-tsc -b  # 0 errores
 ### PC-2.1 — Hotel switcher en header
 
 - [x] **PC-2.1.1** Backend: `GET /api/auth/hotels` que devuelve los hoteles accesibles para el usuario (super_admin: todos; hotel_admin: solo su hotelId actual; si el usuario tiene `accessibleHotelIds` en DB, esos)
-- [ ] **PC-2.1.2** Backend: `POST /api/auth/switch-hotel/:hotelId` — actualiza el `currentHotelId` en el token (solo si el user tiene acceso)
+- [x] **PC-2.1.2** Backend: `POST /api/auth/switch-hotel/:hotelId` — actualiza el `currentHotelId` en el token (solo si el user tiene acceso)
 - [x] **PC-2.1.3** Frontend: `HotelSwitcher.vue` componente dropdown que reemplaza el badge estático en `AdminLayout` (solo se muestra si hay +1 hotel accesible)
 - [x] **PC-2.1.4** Al switchear: refrescar token + recargar data del hotel actual (reservas, rooms, dashboard)
 
@@ -86,9 +86,9 @@ cd frontend && npx vue-tsc -b  # 0 errores
 
 ### PC-3.2 — Frontend Stripe
 
-- [ ] **PC-3.2.1** `Payments.service.createWithStripe(reservationId, amount)` — crea PaymentRequest + Checkout Session, devuelve `stripePaymentUrl`
-- [ ] **PC-3.2.2** En `payments/index.vue`: botón "🔗 Crear link Stripe" por fila (si está configurado) abre el link o lo copia
-- [ ] **PC-3.2.3** En `reservations/index.vue` modal: botón "Crear link de pago Stripe" si el backend lo soporta
+- [x] **PC-3.2.1** `Payments.service.createWithStripe(reservationId, amount)` — crea PaymentRequest + Checkout Session, devuelve `stripePaymentUrl`
+- [x] **PC-3.2.2** En `payments/index.vue`: botón "🔗 Crear link Stripe" por fila (si está configurado) abre el link o lo copia
+- [x] **PC-3.2.3** En `reservations/index.vue` modal: botón "Crear link de pago Stripe" si el backend lo soporta
 
 **Aceptación**:
 ```bash

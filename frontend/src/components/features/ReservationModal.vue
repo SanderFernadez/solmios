@@ -523,7 +523,7 @@ function editar() { if (d.value) emit('edit', d.value) }
                   </div>
                   <div class="flex justify-between border-t border-border/50 pt-1.5"><span class="font-bold text-text-secondary">Pendiente de cobro</span><span class="font-black" :class="pending > 0 ? 'text-coral' : 'text-teal'">{{ money(pending) }}</span></div>
                   <div v-if="secondaryTotal !== null" class="flex justify-between"><span class="text-text-muted">Total ({{ secondaryCurrency }})</span><span class="font-bold text-purple">{{ moneySecondary(secondaryTotal) }}</span></div>
-                  <button @click="requirePayment" :disabled="saving || pending <= 0" class="w-full mt-2 py-2 bg-cyan text-navy rounded-lg text-xs font-black cursor-pointer hover:opacity-90 disabled:opacity-50">💳 Requerimiento de pago: Enviar</button>
+                  <button @click="requirePayment" :disabled="saving || pending <= 0" class="w-full mt-2 py-2 bg-cyan text-navy rounded-lg text-xs font-black cursor-pointer hover:opacity-90 disabled:opacity-50">💳 Crear link de pago Stripe</button>
                 </div>
                 <!-- Movimientos del folio (inline) -->
                 <div v-if="folioCharges" class="mt-3 pt-3 border-t border-teal/20">

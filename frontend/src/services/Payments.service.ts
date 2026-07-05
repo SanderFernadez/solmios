@@ -27,6 +27,12 @@ export const PaymentsService = {
   /** Crea una Checkout Session de Stripe y actualiza el PaymentRequest con la URL */
   createStripeCheckout: (paymentRequestId: string) =>
     http.post<{ url: string; sessionId: string }>(`/payment-requests/${paymentRequestId}/create-checkout`),
+  /** Crea PaymentRequest + Checkout Session en un solo flujo (PC-3.2.1). Devuelve { paymentRequest, url }. */
+  createWithStripe: async (reservationId: string, amount: number, opts?: { currency?: string; sentTo?: string; sentVia?: 'email' | 'whatsapp' | 'sms' }) => {
+    const pr = await PaymentsService.create({ reservationId, amount, ...opts })
+    const { url } = await PaymentsService.createStripeCheckout(pr.id!)
+    return { paymentRequest: pr, url }
+  },
   /** Estado de configuración de Stripe (para mostrar/ocultar botones) */
   status: () => http.get<{ configured: boolean; publishableKey: string }>('/stripe/status'),
 }
