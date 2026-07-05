@@ -201,6 +201,7 @@ export function registerSharedModels(orm: ORM): void {
       documentType: { type: 'string' },
       documentNumber: { type: 'string' },
       nationality: { type: 'string' },
+      birthDate: { type: 'string' },
       isMainGuest: { type: 'number', default: 0 },
     },
   })
