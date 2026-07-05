@@ -67,7 +67,7 @@
 - [x] 2.2.4 Add: requestReviews, publishReviewScore, publishReviewComments
 
 ### 2.3 Tarifas (new tab: matrix)
-- [ ] 2.3.1 Grid: rows = roomType × occupancy, columns = 4 seasons
+- [x] 2.3.1 Grid: rows = roomType × occupancy, columns = 4 seasons
   > Crear una matriz de precios interactiva en la pestaña Tarifas de Settings.
   > Filas: cada combinación de tipo de habitación (Single/Double/Suite/Family) × capacidad máxima (1-4 huéspedes) obtenida de `rooms` agrupado por `room.type`.
   > Columnas: 4 temporadas (Baja, Media, Alta, Especial) leídas de `ConfigService.get('temporadas')`.

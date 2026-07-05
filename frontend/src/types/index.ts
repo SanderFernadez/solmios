@@ -404,6 +404,7 @@ export interface CreateFeedbackPayload {
   comment: string
   priority: FeedbackPriority
   category: FeedbackCategory
+  screenshot?: string
   viewportWidth: number
   viewportHeight: number
   browser: string

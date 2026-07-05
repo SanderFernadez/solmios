@@ -7,6 +7,9 @@ export interface RoomRate {
   occupancy: number
   season: string
   price: number
+  basePrice: number
+  percentage: number
+  closed: number
 }
 
 export const RatesService = {

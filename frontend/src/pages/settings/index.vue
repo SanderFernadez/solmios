@@ -367,7 +367,7 @@
         </div>
       </div>
 
-      <!-- Tarifas estilo MisterPlan: precio base + % por temporada -->
+      <!-- Matriz de Tarifas: filas roomType × occupancy, columnas seasons -->
       <div class="card p-6">
         <div class="flex items-center justify-between mb-6">
           <h3 class="font-extrabold text-navy">Matriz de Tarifas</h3>
@@ -383,57 +383,76 @@
           </div>
         </div>
 
-        <div v-for="roomType in roomTypes" :key="roomType" class="mb-8 last:mb-0">
-          <!-- Header de tipo de habitación -->
-          <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-sm font-bold">
-              {{ roomType.charAt(0).toUpperCase() }}
-            </div>
-            <div>
-              <div class="text-sm font-extrabold text-navy capitalize">{{ roomType }}</div>
-              <div class="text-[10px] text-text-muted">Base: ${{ getBasePrice(roomType) }}/noche</div>
-            </div>
-          </div>
-
-          <!-- Precio base editable -->
-          <div class="mb-3 flex items-center gap-2">
-            <label class="text-[10px] font-bold text-text-muted uppercase">Precio Base $</label>
-            <input :value="getBasePrice(roomType)" @input="setBasePrice(roomType, $event)" type="number" min="0"
-              class="w-24 px-3 py-1.5 rounded-lg border border-border text-sm font-bold text-navy focus:outline-none focus:border-cyan" />
-          </div>
-
-          <!-- Filas por ocupación -->
-          <div v-for="occ in getOccupancies(roomType)" :key="occ" class="mb-4 last:mb-0">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Ocupación: {{ occ }} huésped{{ occ > 1 ? 'es' : '' }}</div>
-
-            <!-- Grid de temporadas -->
-            <div class="grid gap-2" :style="{ gridTemplateColumns: `repeat(${seasonsList.length}, 1fr)` }">
-              <div v-for="s in seasonsList" :key="s.name" class="rounded-xl p-3 border-2 transition-all"
-                :class="isCellClosed(roomType, occ, s.name) ? 'border-red-300 bg-red-50 opacity-70' : 'border-border bg-white'"
-                :style="!isCellClosed(roomType, occ, s.name) ? { borderColor: s.color + '40', backgroundColor: s.color + '08' } : {}">
-                <div class="flex items-center gap-1.5 mb-2">
-                  <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: s.color }"></div>
-                  <span class="text-[10px] font-bold uppercase" :style="{ color: s.color }">{{ s.label || s.name }}</span>
-                </div>
-                <div class="flex items-center gap-1 mb-1">
-                  <span class="text-lg font-black text-navy">+</span>
-                  <input :value="getPercentage(roomType, occ, s.name)" @input="setPercentage(roomType, occ, s.name, $event)"
-                    type="number" min="0" max="500" step="0.5"
-                    class="w-14 px-2 py-1 rounded-lg border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-cyan" />
-                  <span class="text-sm font-bold text-text-muted">%</span>
-                </div>
-                <div class="text-xs font-extrabold text-navy mb-2">
-                  = ${{ getCalculatedPrice(roomType, occ, s.name) }}
-                </div>
-                <button @click="toggleClosed(roomType, occ, s.name)"
-                  class="w-full py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
-                  :class="isCellClosed(roomType, occ, s.name) ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-surface text-text-muted hover:bg-surface-dark'">
-                  {{ isCellClosed(roomType, occ, s.name) ? '🔒 Cerrado' : '✓ Abierto' }}
-                </button>
-              </div>
-            </div>
-          </div>
+        <div class="overflow-auto max-h-[70vh] rounded-xl border border-border">
+          <table class="w-full border-collapse text-sm" style="min-width: 560px">
+            <thead>
+              <tr>
+                <th class="sticky top-0 left-0 z-30 bg-navy text-white px-4 py-3 text-left font-extrabold whitespace-nowrap">
+                  Tipo / Ocupación
+                </th>
+                <th v-for="s in seasonsList" :key="s.name"
+                  class="sticky top-0 z-20 px-3 py-3 text-center font-extrabold text-white whitespace-nowrap"
+                  style="min-width: 130px" :style="{ backgroundColor: s.color }">
+                  {{ s.label || s.name }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="roomType in roomTypes" :key="roomType">
+                <!-- Fila separadora de grupo: nombre + precio base editable -->
+                <tr class="border-t-2" style="border-color: rgba(13, 43, 78, 0.3)">
+                  <td :colspan="seasonsList.length + 1" class="bg-surface px-4 py-2.5">
+                    <div class="flex items-center gap-3 flex-wrap">
+                      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-xs font-bold">
+                        {{ roomType.charAt(0).toUpperCase() }}
+                      </div>
+                      <span class="font-extrabold text-navy capitalize">{{ roomType }}</span>
+                      <label class="flex items-center gap-2 ml-auto text-[10px] font-bold text-text-muted uppercase">
+                        Precio Base $
+                        <input :value="getBasePrice(roomType)" @input="setBasePrice(roomType, $event)" type="number" min="0"
+                          class="w-24 px-3 py-1.5 rounded-lg border border-border text-sm font-bold text-navy focus:outline-none focus:border-cyan" />
+                      </label>
+                    </div>
+                  </td>
+                </tr>
+                <!-- Filas por ocupación -->
+                <tr v-for="occ in getOccupancies(roomType)" :key="occ" class="border-t border-border">
+                  <td class="sticky left-0 z-10 bg-white px-4 py-2 text-xs font-bold text-text-muted whitespace-nowrap">
+                    {{ occ }} huésped{{ occ > 1 ? 'es' : '' }}
+                  </td>
+                  <td v-for="s in seasonsList" :key="s.name" class="px-2 py-2 text-center align-top"
+                    :class="isCellClosed(roomType, occ, s.name) ? 'opacity-60' : ''"
+                    :style="!isCellClosed(roomType, occ, s.name) ? { backgroundColor: s.color + '0D' } : { backgroundColor: '#fee2e2' }">
+                    <div class="flex flex-col items-center gap-1">
+                      <div class="flex items-center gap-1">
+                        <span class="text-xs font-black" :style="{ color: s.color }">+</span>
+                        <input :value="getPercentage(roomType, occ, s.name)" @input="setPercentage(roomType, occ, s.name, $event)"
+                          type="number" min="0" max="500" step="0.5"
+                          class="w-14 px-2 py-1 rounded-lg border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-cyan" />
+                        <span class="text-xs font-bold text-text-muted">%</span>
+                      </div>
+                      <div class="text-xs font-extrabold text-navy">= ${{ getCalculatedPrice(roomType, occ, s.name) }}</div>
+                      <button @click="toggleClosed(roomType, occ, s.name)"
+                        class="text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                        :class="isCellClosed(roomType, occ, s.name) ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-surface text-text-muted hover:bg-surface-dark'">
+                        {{ isCellClosed(roomType, occ, s.name) ? '🔒 Cerrado' : '✓ Abierto' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <tr v-if="roomTypes.length === 0">
+                <td :colspan="seasonsList.length + 1" class="px-4 py-8 text-center text-text-muted text-sm">
+                  No hay tarifas configuradas. Creá habitaciones con tipo definido para generar la matriz.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+
+        <p class="text-[11px] text-text-muted mt-3">
+          Cada celda aplica un % sobre el precio base del tipo de habitación. Precio final = base × (1 + % / 100).
+        </p>
       </div>
     </div>
 
@@ -1059,13 +1078,7 @@ async function saveAll() {
   } catch { errors.push('temporadas') }
 
   try {
-    const rates: any[] = []
-    for (const row of ratesMatrix.value) {
-      for (const [season, price] of Object.entries(row.prices)) {
-        rates.push({ roomType: row.roomType, occupancy: row.occupancy, season, price })
-      }
-    }
-    await HotelService.saveRates(rates)
+    await HotelService.saveRates(buildRatesPayload())
   } catch { errors.push('tarifas') }
 
   saving.value = false
@@ -1271,33 +1284,34 @@ function getOccupancies(roomType: string): number[] {
   return [...occs].sort()
 }
 
+function buildRatesPayload() {
+  const rates: any[] = []
+  for (const row of ratesMatrix.value) {
+    for (const s of seasonsList.value) {
+      rates.push({
+        roomType: row.roomType,
+        occupancy: row.occupancy,
+        season: s.name,
+        basePrice: row.basePrices?.[s.name] ?? 0,
+        percentage: row.percentages?.[s.name] ?? 0,
+        price: row.prices?.[s.name] ?? 0,
+        closed: row.closedCells?.[s.name] ?? false,
+      })
+    }
+  }
+  return rates
+}
+
 async function saveRates() {
   if (savingRates.value) return
   savingRates.value = true
   try {
-    // Save seasons
     const seasons = seasonsList.value.map((s, i) => ({
       name: s.name, label: s.label, startDate: s.startDate, endDate: s.endDate,
       color: s.color, sortOrder: i,
     }))
     await HotelService.saveSeasons(seasons)
-
-    // Save rates with new fields
-    const rates: any[] = []
-    for (const row of ratesMatrix.value) {
-      for (const s of seasonsList.value) {
-        rates.push({
-          roomType: row.roomType,
-          occupancy: row.occupancy,
-          season: s.name,
-          basePrice: row.basePrices?.[s.name] ?? 0,
-          percentage: row.percentages?.[s.name] ?? 0,
-          price: row.prices?.[s.name] ?? 0,
-          closed: row.closedCells?.[s.name] ?? false,
-        })
-      }
-    }
-    await HotelService.saveRates(rates)
+    await HotelService.saveRates(buildRatesPayload())
     toast.success('Tarifas guardadas')
   } catch {
     toast.error('Error al guardar tarifas')

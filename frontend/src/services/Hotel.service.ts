@@ -28,8 +28,8 @@ export interface Season {
 }
 
 export interface RoomRate {
-  id: string; hotelId: string; roomType: string; occupancy: number
-  season: string; price: number
+  id?: string; hotelId?: string; roomType: string; occupancy: number
+  season: string; price: number; basePrice: number; percentage: number; closed: number
 }
 
 export interface AmenityCatalog {

@@ -17,8 +17,8 @@ phases:
     status: done
     depends_on: [phase-1-foundation]
     tasks_total: 16
-    tasks_done: 14
-    notes: 7 tabs (Hotel, Ubicación con Leaflet, Amenities, Tarifas, Condiciones, Descripción multilingüe 12 idiomas, Integraciones). Botón copiar próximo año. Faltan: amenities 100+ (catálogo actual ~30), wizard secuencial (es tabs).
+    tasks_done: 15
+    notes: 7 tabs (Hotel, Ubicación con Leaflet, Amenities, Tarifas, Condiciones, Descripción multilingüe 12 idiomas, Integraciones). Botón copiar próximo año. 2.3.1 DONE: matriz tarifas → tabla matricial (sticky header + color por season) + fix persistencia (modelo RoomRates alineado: seasonKey→season + basePrice/percentage declarados; saveAll divergente unificado via buildRatesPayload). Faltan: amenities 100+ (catálogo actual ~30), wizard secuencial (es tabs).
   
   phase-3-reservation-modal:
     status: done

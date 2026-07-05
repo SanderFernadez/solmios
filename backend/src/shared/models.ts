@@ -149,8 +149,10 @@ export function registerSharedModels(orm: ORM): void {
       hotelId: { type: 'string', required: true, indexed: true },
       roomType: { type: 'string', required: true },
       occupancy: { type: 'number', required: true },
-      seasonKey: { type: 'string', required: true },
+      season: { type: 'string', required: true },
       price: { type: 'number', required: true },
+      basePrice: { type: 'number', default: 0 },
+      percentage: { type: 'number', default: 0 },
       closed: { type: 'number', default: 0 },
     },
   })

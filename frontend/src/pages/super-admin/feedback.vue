@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { FeedbackService } from '@/services/Feedback.service'
+import type { FeedbackStatus } from '@/types'
 
 interface FeedbackPin {
   id: string
@@ -58,7 +59,7 @@ async function loadPins() {
 
 async function updateStatus(pin: FeedbackPin, status: string) {
   try {
-    await FeedbackService.update(pin.id, { status })
+    await FeedbackService.update(pin.id, { status: status as FeedbackStatus })
     pin.status = status
   } catch (e) {
     console.error('Error updating pin:', e)
