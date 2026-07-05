@@ -674,7 +674,6 @@ async function createTablesBlock3(): Promise<void> {
   await addColumnIfMissing("guests", "province", "TEXT")
   await addColumnIfMissing("guests", "documentType", "TEXT")
   await addColumnIfMissing("guests", "documentIssueDate", "TEXT")
-  await addColumnIfMissing("guests", "communicateClient", "TEXT")
   await addColumnIfMissing("guests", "profession", "TEXT")
   await addColumnIfMissing("guests", "emergencyContact", "TEXT")
 
