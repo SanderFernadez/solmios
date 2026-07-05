@@ -315,7 +315,7 @@
           </div>
           <div class="p-5 border-t border-border flex gap-2">
             <button @click="closeCheckinModal" :disabled="processing" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold hover:bg-surface cursor-pointer disabled:opacity-50">Cancelar</button>
-            <button @click="confirmCheckin" :disabled="processing" class="flex-1 py-2.5 bg-teal text-white rounded-xl text-sm font-bold hover:bg-teal/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <button @click="confirmCheckin" :disabled="processing || !isOnline" class="flex-1 py-2.5 bg-teal text-white rounded-xl text-sm font-bold hover:bg-teal/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ processing ? 'Procesando...' : 'Confirmar Check-in' }}
             </button>
           </div>
@@ -394,7 +394,7 @@
           </div>
           <div class="p-5 border-t border-border flex gap-2">
             <button @click="closeCheckoutModal" :disabled="processing" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold hover:bg-surface cursor-pointer disabled:opacity-50">Cancelar</button>
-            <button @click="confirmCheckout" :disabled="processing || folioLoading" class="flex-1 py-2.5 bg-coral text-white rounded-xl text-sm font-bold hover:bg-coral/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <button @click="confirmCheckout" :disabled="processing || folioLoading || !isOnline" class="flex-1 py-2.5 bg-coral text-white rounded-xl text-sm font-bold hover:bg-coral/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ processing ? 'Procesando...' : checkoutSettleLabel }}
             </button>
           </div>
@@ -414,6 +414,8 @@ import { FoliosService, type Folio } from '@/services/Folios.service'
 import { AmenitiesService } from '@/services/Amenities.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useOnline } from '@/composables/useOnline'
+const { isOnline } = useOnline()
 import { ApiError } from '@/services/http'
 import type { CheckinRoom, CheckinGuest } from '@/types'
 

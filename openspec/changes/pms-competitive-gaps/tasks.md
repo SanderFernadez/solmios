@@ -110,8 +110,8 @@ cd frontend && npx vue-tsc -b  # 0 errores
 
 ### PC-4.2 — Offline UX
 
-- [ ] **PC-4.2.1** Detectar offline con `navigator.onLine` + evento `online`/`offline`
-- [ ] **PC-4.2.2** Banner "Sin conexión — mostrando datos en caché" cuando offline
+- [x] **PC-4.2.1** Detectar offline con `navigator.onLine` + evento `online`/`offline`
+- [x] **PC-4.2.2** Banner "Sin conexión — mostrando datos en caché" cuando offline
 - [ ] **PC-4.2.3** Botones de acción crítica (crear reserva, check-in) deshabilitados cuando offline + tooltip explicativo
 
 **Aceptación**:
