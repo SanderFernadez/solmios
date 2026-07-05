@@ -59,7 +59,7 @@
           </div>
         </div>
       </div>
-      <BarChart :data="(data as FacturacionReport).daily" :format="formatMoney" label="Ingresos diarios" />
+      <BarChart :data="series((data as FacturacionReport).daily)" :format="formatMoney" :label="longRange ? 'Ingresos mensuales' : 'Ingresos diarios'" />
     </div>
 
     <!-- Ocupación -->
@@ -67,6 +67,8 @@
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard label="Hab. totales" :value="String((data as OcupacionReport).totalRooms)" />
         <KpiCard label="Ocup. media real" :value="`${(data as OcupacionReport).avgRealOccupancy}%`" class="text-cyan" />
+        <KpiCard label="Ocupadas/día" :value="String(ocupAvgOccupied)" />
+        <KpiCard label="Libres/día" :value="String(ocupAvgFree)" class="text-teal" />
       </div>
       <div class="card p-5">
         <h4 class="text-xs font-black text-navy uppercase mb-3">Hab. por tipo</h4>
@@ -77,7 +79,7 @@
           </span>
         </div>
       </div>
-      <BarChart :data="(data as OcupacionReport).daily.map(d => ({ date: d.date, value: d.realOccupiedPct }))" :format="(v: number) => `${v}%`" label="Ocupación diaria (%)" />
+      <BarChart :data="series((data as OcupacionReport).daily.map(d => ({ date: d.date, value: d.realOccupiedPct })), 'avg')" :format="(v: number) => `${v}%`" :label="longRange ? 'Ocupación mensual (%)' : 'Ocupación diaria (%)'" />
       <div class="card p-5 overflow-x-auto">
         <table class="w-full text-xs">
           <thead><tr class="border-b border-border">
@@ -108,7 +110,7 @@
         <KpiCard label="Niños" :value="String((data as PernotacionesReport).totalChildren)" />
         <KpiCard label="Media/noche" :value="String((data as PernotacionesReport).avgPerNight)" />
       </div>
-      <BarChart :data="(data as PernotacionesReport).daily.map(d => ({ date: d.date, value: d.total }))" :format="String" label="Paxes por noche" />
+      <BarChart :data="series((data as PernotacionesReport).daily.map(d => ({ date: d.date, value: d.total })))" :format="String" :label="longRange ? 'Paxes por mes' : 'Paxes por noche'" />
     </div>
 
     <!-- Rendimiento -->
@@ -144,6 +146,25 @@
 
     <!-- Procedencia -->
     <div v-else-if="activeTab === 'procedencia' && data" class="space-y-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="Países" :value="String((data as ProcedenciaReport).byCountry.length)" />
+        <KpiCard label="Top país" :value="(data as ProcedenciaReport).byCountry[0]?.country || '—'" class="text-navy" />
+        <KpiCard label="Canales" :value="String((data as ProcedenciaReport).byChannel.length)" />
+        <KpiCard label="Revenue total" :value="formatMoney(procTotalRevenue)" class="text-teal" />
+      </div>
+      <div class="card p-5">
+        <h4 class="text-xs font-black text-navy uppercase mb-3">Revenue por canal</h4>
+        <div v-if="(data as ProcedenciaReport).byChannel.length === 0" class="text-xs text-text-muted">Sin datos.</div>
+        <div v-else class="space-y-2">
+          <div v-for="c in (data as ProcedenciaReport).byChannel" :key="c.channel" class="flex items-center gap-3 text-xs">
+            <span class="w-24 text-navy font-bold capitalize truncate">{{ c.channel }}</span>
+            <div class="flex-1 h-2 bg-surface rounded-full overflow-hidden">
+              <div class="h-full bg-cyan rounded-full" :style="{ width: Math.round((c.revenue / procMaxChannelRevenue) * 100) + '%' }"></div>
+            </div>
+            <span class="w-20 text-right text-text-secondary">{{ formatMoney(c.revenue) }}</span>
+          </div>
+        </div>
+      </div>
       <div class="grid md:grid-cols-2 gap-4">
         <div class="card p-5">
           <h4 class="text-xs font-black text-navy uppercase mb-3">Por país</h4>
@@ -212,7 +233,7 @@
           </div>
         </div>
       </div>
-      <BarChart :data="(data as ReservasReport).dailyCreated" :format="String" label="Reservas creadas por día" />
+      <BarChart :data="series((data as ReservasReport).dailyCreated)" :format="String" :label="longRange ? 'Reservas creadas por mes' : 'Reservas creadas por día'" />
     </div>
 
     <div v-else-if="!loading && !data" class="card p-12 text-center text-sm text-text-muted">
@@ -295,6 +316,49 @@ async function exportCsv() {
 function formatMoney(n: number): string {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n || 0)
 }
+
+// PC-1.2.5 — evolución mensual cuando el rango es largo (>90 días), diario en el resto.
+const longRange = computed(() => {
+  if (!from.value || !to.value) return false
+  return Math.round((new Date(to.value).getTime() - new Date(from.value).getTime()) / 86_400_000) > 90
+})
+
+function series(points: { date: string; value: number }[], mode: 'sum' | 'avg' = 'sum'): { date: string; value: number }[] {
+  if (!longRange.value || points.length === 0) return points
+  const buckets: Record<string, number[]> = {}
+  for (const p of points) {
+    const mk = p.date.slice(0, 7)
+    ;(buckets[mk] ||= []).push(p.value)
+  }
+  return Object.entries(buckets)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, vals]) => ({
+      date,
+      value: mode === 'avg'
+        ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length)
+        : vals.reduce((s, v) => s + v, 0),
+    }))
+}
+
+const chartGranularity = computed(() => longRange.value ? 'meses' : 'días')
+
+// Ocupación — medias diarias para KPIs extra (PC-1.2.4)
+const ocupAvgOccupied = computed(() => {
+  const d = (data.value as OcupacionReport | null)?.daily
+  if (!d || d.length === 0) return 0
+  return Math.round(d.reduce((s, x) => s + x.occupied, 0) / d.length)
+})
+const ocupAvgFree = computed(() => {
+  const d = (data.value as OcupacionReport | null)?.daily
+  if (!d || d.length === 0) return 0
+  return Math.round(d.reduce((s, x) => s + x.free, 0) / d.length)
+})
+
+// Procedencia — agregados para KPIs + chart de canales (PC-1.2.4/1.2.5)
+const procTotalRevenue = computed(() =>
+  (data.value as ProcedenciaReport | null)?.byChannel.reduce((s, c) => s + (c.revenue || 0), 0) ?? 0)
+const procMaxChannelRevenue = computed(() =>
+  Math.max(1, ...((data.value as ProcedenciaReport | null)?.byChannel.map(c => c.revenue || 0) ?? [1])))
 
 function formatDate(d: string): string {
   return new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })

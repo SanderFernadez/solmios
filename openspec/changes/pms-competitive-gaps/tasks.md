@@ -8,14 +8,14 @@
 
 ### PC-1.1 — Backend: enriquecer `/api/reports`
 
-- [ ] **PC-1.1.1** Extender el handler `/api/reports` existente para aceptar `?type=X&from=YYYY-MM-DD&to=YYYY-MM-DD` y devolver 6 datasets:
+- [x] **PC-1.1.1** Extender el handler `/api/reports` existente para aceptar `?type=X&from=YYYY-MM-DD&to=YYYY-MM-DD` y devolver 6 datasets:
   - `facturacion` — ingresos por tipo (hab, extras, impuestos, comisiones OTA)
   - `ocupacion` — total, real (sin bloqueos), diaria (% por día), libres vs ocupadas
   - `pernoctaciones` — personas por noche, total, desglose por día
   - `rendimiento` — ADR por tipo de hab, RevPAR, estancia media, revenue por tipo
   - `procedencia` — por país del huésped, por región
   - `reservas` — por canal (OTA vs directo), por fecha de disfrute, cancelaciones
-- [ ] **PC-1.1.2** Endpoint `/api/reports/export?type=X&format=csv` que devuelve CSV stream
+- [x] **PC-1.1.2** Endpoint `/api/reports/export?type=X&format=csv` que devuelve CSV stream
 
 **Aceptación**:
 ```bash
@@ -25,11 +25,11 @@ curl -H "Authorization: Bearer <token>" "http://localhost:3000/api/reports?type=
 
 ### PC-1.2 — Frontend: página reports con 6 tabs
 
-- [ ] **PC-1.2.1** Crear `frontend/src/services/Reports.service.ts` (getReport(type, params), exportCsv(type, params))
-- [ ] **PC-1.2.2** Refactorizar `pages/reports/index.vue` con 6 tabs: Facturación, Ocupación, Pernoctaciones, Rendimiento, Procedencia, Reservas
-- [ ] **PC-1.2.3** Cada tab: selector de rango de fechas (este mes / mes pasado / trimestre / año), tabla con datos, export CSV button
-- [ ] **PC-1.2.4** KPIs visuales arriba (4 cards por tab con los números clave)
-- [ ] **PC-1.2.5** Gráfico de barras simple (HTML/CSS puro sin lib) para evolución mensual
+- [x] **PC-1.2.1** Crear `frontend/src/services/Reports.service.ts` (getReport(type, params), exportCsv(type, params))
+- [x] **PC-1.2.2** Refactorizar `pages/reports/index.vue` con 6 tabs: Facturación, Ocupación, Pernoctaciones, Rendimiento, Procedencia, Reservas
+- [x] **PC-1.2.3** Cada tab: selector de rango de fechas (este mes / mes pasado / trimestre / año), tabla con datos, export CSV button
+- [x] **PC-1.2.4** KPIs visuales arriba (4 cards por tab con los números clave)
+- [x] **PC-1.2.5** Gráfico de barras simple (HTML/CSS puro sin lib) para evolución mensual
 
 **Aceptación**:
 ```bash
