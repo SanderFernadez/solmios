@@ -25,6 +25,7 @@ export interface LockDeviceDTO {
 export interface LockCodeDTO {
   id: string
   lockId: string
+  hotelId: string
   reservationId: string
   code: string
   codeType: string

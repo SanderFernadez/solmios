@@ -1,132 +1,93 @@
 # ManagerHotel (SOLMI OS) — CLAUDE.md
 
 ## Stack
-Bun (>=1.3) + Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5.1 + Tailwind CSS 4.3 + arckode-framework 1.4.3 + **DB multi-motor** (SQLite bun:sqlite/WAL en dev/staging · Postgres vía `pg` para producción, elegido por `DATABASE_URL`)
+Bun (>=1.3) + Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5.1 + Tailwind CSS 4.3 + arckode-framework 1.4.3 + **DB multi-motor** (SQLite bun:sqlite/WAL en dev · Postgres `pg` en prod, elegido por `DATABASE_URL`)
 
-## Última sesión (2026-07-05) — Finance flow + Security audit
+## Historial (lo más reciente arriba)
 
-### ✅ Completado
-- **Settlement flow** checkout → close folio → create invoice → record payment (`settle-folio-at-checkout.ts`)
-- **Auto-post room charge** al check-in (`checkin.ts` transacción ORM)
-- **Night audit cron** cada 3h con dedup por fecha (`night-audit-cron.ts`)
-- **Security audit** de todos los módulos financieros:
-  - Payments IDOR crítico (8 endpoints sin ownership check) → **FIXED** con `auth.assertOwnership()`
-  - Reports data leak (`resolveHotelId` devolvía cualquier hotel) → **FIXED**
-  - Reports `markNoShows` global → **FIXED** (ahora filtra por hotelId)
-  - Cash pagination in-memory → **FIXED** (usa `repo.paginate()`)
-  - Settlement edge case (folio se cerraba sin invoice) → **FIXED**
-- **Deploy a producción** hotel.zx89.site (backend activo, login funciona)
-- **441 tests** pasan ✅ | **arckode analyze** 0 violaciones ✅
+| Fecha | Trabajo | Resultado |
+|-------|---------|-----------|
+| **2026-07-05** | **Auditoría anti-patrón ORM** (mem 1805): 6 casos fixeados (`companions.birthDate`, `lock_codes.hotelId` multi-tenancy), consolidación modelos duales LockDevices/LockCodes, limpieza 7 columnas legacy, 12 módulos financieros validados. Avance SDD: match-misterplan 2.3.1+11.1.6, pms-competitive-gaps 31/39, frontend-coverage-gaps 9 GATES. | `1a187a5`+ · 12 commits · 4 deploys |
+| 2026-07-05 | Finance flow (settlement checkout, auto-post room charge, night-audit cron) + security audit (payments IDOR, reports leak, cash paginate). | `2cd93b4` · 441 tests ✅ |
 
-### 📋 Pendiente para mañana
-El usuario tiene estos cambios SDD abiertos. Preguntar por cuál empezar:
-1. **match-misterplan** — 6 tasks (pricing grid, WhatsApp, document scan, templates i18n)
-2. **pms-competitive-gaps** — ~30 tasks (reports UI, hotel switcher, Stripe, PWA) — usuario cuestionó si esto es válido
-3. **frontend-coverage-gaps** — ~8 gates finales
-4. **mobile-app** — App Flutter (recién empezó infra)
+### Estado changes SDD
+- **match-misterplan**: 2.3.1 ✅ (rates grid base+%), 11.1.6 ✅ (i18n). Pendiente: 7.2.2/7.2.3 WhatsApp (**bloqueado** por creds Meta).
+- **pms-competitive-gaps**: 31/39 ✅ + debt documentada (PC-4 SW desactivado, PC-3.1.2 Checkout Session cumple).
+- **frontend-coverage-gaps**: 9 GATES ✅. GATES manuales (reports/switcher/PWA en prod) sin validar.
+- **mobile-app**: OTRO profesional (Flutter, repo `solmios-mobile`). **NO scope — no tocar.**
 
-### 🔍 Notas importantes
-- Producción PostgreSQL: **sin seed data** para folios, facturas, gastos, caja = 0 registros. Reports y night audit sí funcionan (computan desde reservas).
-- `bun` no está en PATH del SSH de producción → usar `/root/.bun/bin/bun`
-- Password SSH producción: Regionforo123
-- Login demo prod: `admin@caribeparadise.com` / `demo123`
+## Database — Migraciones y Seeders
 
-## Database — Migraciones y Seeders (estado real verificado 2026-07-05)
+Schema en **2 capas** que se corren en orden sobre DB limpia:
 
-El schema se construye en **2 capas complementarias** que deben correrse en orden sobre DB limpia:
-
-### Flujo de DB limpia (OBLIGATORIO — 2 pasos)
 ```bash
 cd backend
-# Paso 1 — crea tablas desde los modelos ORM (hotels, users, rooms, guests, reservations, + ~30 módulos).
-#          system.init() registra modelos, ormMigrate hace CREATE TABLE IF NOT EXISTS, NO bindea puerto HTTP.
+# Paso 1 — tablas desde modelos ORM. system.init() registra modelos, ormMigrate hace CREATE TABLE IF NOT EXISTS, NO bindea puerto HTTP.
 DATABASE_URL=postgres://... RUN_MIGRATE=1 bun run src/composition-root.ts   # Postgres
-# o
 DB_PATH=data/managerhotel.db RUN_MIGRATE=1 bun run src/composition-root.ts  # SQLite
 
-# Paso 2 — seed demo + tablas EXTRA no-modeladas (packages, devices, announcements, api_keys,
-#          audit_log, configuration, email_queue, groups, maintenance, tickets, notifications, ai_*).
-bun run migrate-db.ts   # usa .env (DB_PATH o DATABASE_URL)
+# Paso 2 — seed demo + tablas EXTRA no-modeladas (packages, devices, announcements, api_keys, audit_log, configuration, email_queue, groups, maintenance, tickets, notifications, ai_*).
+bun run migrate-db.ts
 ```
 
-**Orden insaltable**: `migrate-db.ts` hace `seedBase()` (INSERT en hotels/users/...) ANTES de crear tablas extra, y NO crea las tablas base — las crea el ORM en el paso 1. Si lo corres solo sobre DB vacía → `no such table: hotels`.
+**Orden insaltable**: `migrate-db.ts` corre `seedBase()` (INSERT en hotels/users/...) ANTES de crear tablas extra, y NO crea las tablas base. Solo sobre DB vacía → `no such table: hotels`.
 
-### Scripts disponibles
+### Scripts
 | Script | Qué hace | Idempotente |
 |--------|----------|-------------|
-| `migrate-db.ts` (entry `bun run migrate`) | DDL tablas extra + seeds demo completos (24 tablas) | ✅ vía `exists()`/`COUNT(*)` + `ON CONFLICT` |
-| `RUN_MIGRATE=1 composition-root.ts` | Crea tablas desde modelos ORM registrados | ✅ `CREATE TABLE IF NOT EXISTS` |
-| `scripts/orm-migrate.ts` | `ormMigrate(db, models)` — copia minimizada del kernel (CREATE TABLE IF NOT EXISTS + indices) | ✅ |
+| `migrate-db.ts` (`bun run migrate`) | DDL tablas extra + seeds demo (24 tablas) | ✅ `exists()`/`COUNT(*)` + `ON CONFLICT` |
+| `RUN_MIGRATE=1 composition-root.ts` | Tablas desde modelos ORM | ✅ `CREATE TABLE IF NOT EXISTS` |
+| `scripts/orm-migrate.ts` | `ormMigrate(db, models)` — copia del kernel | ✅ |
 | `scripts/seed-default-roles.ts` | Roles por defecto (permisos) | ✅ |
-| `scripts/create-plans-table.ts` | Tabla `plans` (SaaS subscriptions) — Postgres | ✅ |
-| `scripts/add-user-type-pg.ts` / `add-user-type.ts` | ALTER `users.userType` (admin/merchant) | ✅ `addColumnIfMissing` |
-| `scripts/patch-orm-postgres.sh` | **postinstall** — parchea `node_modules/arckode-framework` para portabilidad Postgres (camelCase deserialize + tipo pool) | ✅ idempotente |
+| `scripts/create-plans-table.ts` | Tabla `plans` (SaaS subscriptions) | ✅ |
+| `scripts/add-user-type-{pg,}.ts` | ALTER `users.userType` | ✅ `addColumnIfMissing` |
+| `scripts/patch-orm-postgres.sh` | **postinstall** — parchea framework para Postgres (camelCase deserialize + pool) | ✅ idempotente |
 
-### Portabilidad Postgres (state)
-- ✅ No queda SQL SQLite-only en `migrate-db.ts` (sin `PRAGMA`, sin `datetime('now')`, sin `AUTOINCREMENT`). Placeholders `?` → `$1,$2...` los convierte `PostgresAdapter` automáticamente.
-- ✅ `addColumnIfMissing()` es portable (ignora `duplicate column` / `already exists`).
-- ⚠️ **DEUDA bloqueante para producción Postgres**: el seeder pasa `1`/`0` a 3 columnas `BOOLEAN` creadas por el ORM (`departments.active`, `employee_profiles.active`, `coupons.active` — modelos `empleados`/`crm` declaran `type: 'boolean'`). El driver `pg` es estricto y rechaza integer→boolean. SQLite funciona porque no tiene tipo boolean nativo. Fix requiere decisión: cambiar esos modelos a `type: 'number'`, o normalizar booleanos en el adapter del framework, o pasar `true`/`false` desde el seeder.
-- ✅ `configuration` garantiza `UNIQUE(hotelId, key)` vía `CREATE UNIQUE INDEX IF NOT EXISTS idx_configuration_hotel_key` (el modelo ORM solo declara `key: { indexed: true }`; sin este índice los UPSERTs `ON CONFLICT(hotelId, key)` del seeder fallan en DB nueva).
+### Portabilidad Postgres
+- ✅ Sin SQL SQLite-only en `migrate-db.ts` (sin `PRAGMA`/`datetime('now')`/`AUTOINCREMENT`). Placeholders `?` → `$1...` los convierte `PostgresAdapter`.
+- ✅ `addColumnIfMissing()` portable (ignora `duplicate column`).
+- ✅ `configuration` garantiza `UNIQUE(hotelId, key)` vía `CREATE UNIQUE INDEX idx_configuration_hotel_key` (el ORM no crea unique compuesto).
+- ✅ Booleanos: el ORM normaliza `type:'boolean'`↔INTEGER (`serialize v?1:0` / `deserialize v===true||v===1||'1'||'t'||'true'`). La columna physical es INTEGER en ambos motores → el seeder puede pasar `1`/`0` o `true`/`false` indistintamente. (Antes documentado como "deuda bloqueante PG" — era falso, el kernel ya lo maneja.)
 
-### Reglas de portabilidad (al tocar migraciones/seeder)
-- TODO DDL en INGLÉS, sin funciones SQLite-only. Para "ahora" usar `new Date().toISOString()` inyectado por param (NO `DEFAULT datetime('now')`).
-- Todo INSERT multi-motor: placeholders `?` (el adapter PG los convierte). Contar columnas vs `?` cuidadosamente.
-- Booleanos en tablas del ORM: pasar `1`/`0` solo si el modelo es `type: 'number'`. Si es `type: 'boolean'`, Postgres rompe.
-- Toda tabla con UPSERT `ON CONFLICT(col)` requiere `UNIQUE` constraint o `CREATE UNIQUE INDEX` explícito (el ORM no crea unique compuesto).
+### Reglas al tocar migraciones/seeder
+- DDL en INGLÉS, sin SQLite-only. Para "ahora": `new Date().toISOString()` por param (NO `DEFAULT datetime('now')`).
+- INSERT multi-motor: placeholders `?` (adapter PG convierte). Contar columnas vs `?`.
+- Booleanos en tablas ORM: el ORM mapea `type:'boolean'`→columna INTEGER y convierte en ambos sentidos. Seeder puede pasar `1`/`0` o `true`/`false`.
+- UPSERT `ON CONFLICT(col)` requiere UNIQUE constraint o `CREATE UNIQUE INDEX` explícito.
 
 ## Arquitectura
 ```
 Manager Hotel/
 ├── backend/
-│   ├── src/composition-root.ts   # ENTRY: System + ORM + 39 módulos (232 líneas, solo wiring)
+│   ├── src/composition-root.ts   # ENTRY: System + ORM + ~40 módulos (wiring + endpoints custom inline)
 │   ├── src/shared/
-│   │   ├── models.ts             # Modelos ORM compartidos
-│   │   ├── permissions.ts        # Sistema de permisos (hasPermission, getRolePermissions)
+│   │   ├── models.ts             # Modelos ORM compartidos (registerSharedModels)
+│   │   ├── permissions.ts        # hasPermission, getRolePermissions
 │   │   ├── middlewares/          # security-headers.ts, rate-limit.ts
 │   │   └── utils/                # safe-parse.ts, hotel-of.ts, push-availability.ts
 │   ├── src/infrastructure/
-│   │   ├── auth/                 # hotel-auth.ts, require-user-type.ts, require-permission.ts, load-permissions.ts, create-permission-guard.ts
+│   │   ├── auth/                 # hotel-auth, require-user-type, require-permission, load-permissions, create-permission-guard
 │   │   ├── stripe-config.ts      # Stripe API key resolver
 │   │   └── email-bootstrap.ts    # EmailService setup + worker
-│   ├── src/modules/              # 40 módulos aislados (cada uno con controller/service/types/validators/model/sockets/tests)
+│   ├── src/modules/              # ~40 módulos aislados (controller/service/types/validators/model/sockets/tests)
 │   ├── src/connectors/           # 12 conectores inter-módulo
-│   ├── src/services/             # 13 servicios compartidos (email, currency, etc.)
+│   ├── src/services/             # 13 servicios compartidos
 │   └── data/managerhotel.db      # SQLite (gitignored)
 ├── frontend/src/
-│   ├── pages/                    # 40+ secciones (kebab-case.vue)
-│   ├── services/                 # 45+ servicios API
-│   ├── composables/              # 5 composables (useCurrency, useToast, etc.)
-│   ├── stores/                   # auth, dashboard, reservation, room, feedback (Pinia setup)
-│   ├── layouts/                  # AdminLayout, SuperAdminLayout
-│   ├── router/index.ts           # Guards: requiresHotelAuth / Admin / SuperAdmin
-│   ├── components/               # ui/ + features/ (incluye feedback/)
-│   └── types/index.ts            # Tipos centralizados
-├── PRD.md                        # QUÉ (producto, 26 módulos, 6 suites)
-├── ARCHITECTURE.md               # CÓMO (técnico real — leer al iniciar)
-├── ANALISIS-MRPLAN.md            # Benchmarking vs MisterPlan CloudV2
-├── PLAN-IMPLEMENTACION.md        # Plan de trabajo a nivel MisterPlan
-├── FRD/                          # 35 specs funcionales por módulo
-├── SPECS/                        # 6 specs detallados (M01, M02, M06, M13, M17, M23)
-└── openspec/                     # SDD activo
+│   ├── pages/ services/ composables/ stores/ layouts/ router/ components/ types/
+├── PRD.md · ARCHITECTURE.md · ANALISIS-MRPLAN.md · PLAN-IMPLEMENTACION.md · FRD/ · SPECS/ · openspec/
 ```
 
-## Sistema de Permisos (implementado)
+## Sistema de Permisos
 
-### Tipos de Usuario (userType)
-- `admin` — dueño de la plataforma (super_admin). Accede a `/admin/*`
-- `merchant` — dueño/gerente del hotel. Accede a `/panel/*`
-- merchant NUNCA accede a endpoints de admin
+### userType
+- `admin` — dueño de la plataforma (super_admin). Accede a `/admin/*`.
+- `merchant` — dueño/gerente del hotel. Accede a `/panel/*`. NUNCA accede a endpoints admin.
 
-### Roles por Hotel
-Cada hotel tiene roles con permisos granulares. El hotel admin puede crear/editar roles personalizados.
+### Roles por hotel
+Cada hotel tiene roles con permisos granulares. Roles por defecto: `hotel_admin` 👑 (completo), `receptionist` 🔑 (operaciones), `housekeeper` 🧹 (limpieza), `maintenance` 🔧 (mantenimiento).
 
-**Roles por defecto:**
-- `hotel_admin` 👑 — acceso completo al hotel
-- `receptionist` 🔑 — operaciones del día a día
-- `housekeeper` 🧹 — solo tareas de limpieza
-- `maintenance` 🔧 — solo tareas de mantenimiento
-
-### Permisos (formato `module:action`)
+### Permisos (`module:action`)
 ```
 dashboard:view
 reservations:view/create/edit/delete/checkin/checkout
@@ -144,292 +105,235 @@ ttlock:view/edit
 ai:view/edit
 ```
 
-### Cómo se usa
+### Uso
 ```typescript
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
-
-// En module/index.ts:
 const guard = createPermissionGuard(auth, roleRepo)
 router.get('/api/reservations', guard('reservations', 'view'), handler)
-router.post('/api/reservations', guard('reservations', 'create'), handler)
 ```
-
-### Archivos clave
-- `src/shared/permissions.ts` — estructura + hasPermission() + getRolePermissions()
-- `src/infrastructure/auth/require-permission.ts` — middleware
-- `src/infrastructure/auth/load-permissions.ts` — carga permisos del rol
-- `src/infrastructure/auth/create-permission-guard.ts` — helper que combina auth + permisos
-- `scripts/seed-default-roles.ts` — crea roles por defecto por hotel
+- `src/shared/permissions.ts` — estructura + hasPermission/getRolePermissions
+- `src/infrastructure/auth/` — require-permission, load-permissions, create-permission-guard
+- `scripts/seed-default-roles.ts` — roles por defecto
 
 ## Lazy Loading — Skills por contexto
+NO cargar todo. Solo lo que aplique:
 
-NO cargues todo de golpe. Carga SOLO lo que aplique a la tarea actual:
+| Contexto | Cargar |
+|----------|--------|
+| Backend (cualquier `backend/`) | `backend/node_modules/arckode-framework/skills/{services,orm,auth}/SKILL.md` |
+| Módulo nuevo backend | `helpers/SKILL.md` + `make:module` |
+| Frontend (`frontend/`) | `ui-analyst`, `ui-designer` |
+| CRUD | `skills/crud` + `skills/api-client` (studio raíz) |
+| Auth/login | `skills/auth` |
+| Pagos/Stripe | `skills/payments` |
+| DB/migraciones | `database-qa`, `db-architect` |
+| Diseño UI | `designs/index.html` del proyecto |
+| Arranque sesión | `ARCHITECTURE.md` + `openspec/config.yaml` |
+| Feature en proyecto existente | Leer `backend/src/composition-root.ts` PRIMERO |
+| Sync tareas a GitLab | `openspec-gitlab-sync` (ver GitLab Sync abajo) |
 
-| Contexto | Cargar primero |
-|----------|---------------|
-| Backend (cualquier cambio en `backend/`) | `backend/node_modules/arckode-framework/skills/services/SKILL.md`, `backend/node_modules/arckode-framework/skills/orm/SKILL.md`, `backend/node_modules/arckode-framework/skills/auth/SKILL.md` |
-| Módulo nuevo backend | `node_modules/arckode-framework/skills/helpers/SKILL.md` + `make:module` |
-| Frontend (cualquier cambio en `frontend/`) | `~/.claude/skills/swarm/skills/ui-analyst/SKILL.md`, `~/.claude/skills/ui-designer/SKILL.md` |
-| CRUD (frontend/backend) | `skills/crud` + `skills/api-client` (del studio raíz) |
-| Auth / login | `skills/auth` (del studio raíz) |
-| Pagos / Stripe | `skills/payments` (del studio raíz) |
-| Base de datos / migraciones | `~/.claude/skills/database-qa/SKILL.md`, `~/.claude/skills/swarm/skills/db-architect/SKILL.md` |
-| Diseño UI nuevo | Cargar antes el design system: `designs/index.html` del proyecto |
-| Arranque de sesión | Leer `ARCHITECTURE.md` + `openspec/config.yaml` |
-| Feature nueva en proyecto existente | Leer `backend/src/composition-root.ts` primero (entiende todo el sistema) |
-| **Subir/sincronizar tareas a GitLab** | `~/.claude/skills/openspec-gitlab-sync/SKILL.md` (ver sección "GitLab Sync" abajo) |
+## Memoria — MemoryOne
+**Project**: `arckode-studio` · **topic_key**: `manager-hotel/{category}/{domain}/{concept}`
 
-## Memoria persistente — MemoryOne
-
-**Proyecto en MemoryOne**: `arckode-studio`
-**Convención de topic_key**: `manager-hotel/{category}/{domain}/{concept}`
-
-### Al inicio de sesión
 ```
-mem_context(project: "arckode-studio")
-mem_search(query: "Manager Hotel", project: "arckode-studio")
-```
-
-### Al guardar
-```
-mem_save(
-  title: "verbo + qué",
-  type: "bugfix|decision|pattern|preference|discovery|config|implementation",
-  project: "arckode-studio",
-  scope: "project",
-  topic_key: "manager-hotel/{category}/{domain}/{concept}",
-  content: "**What**: ...\n**Why**: ...\n**Where**: ...\n**Learned**: ..."
-)
-```
-
-### Al cerrar sesión
-```
-mem_session_summary(project: "arckode-studio", content: "## Goal\n...")
+mem_context(project: "arckode-studio")                    # inicio sesión
+mem_search(query: "...", project: "arckode-studio")
+mem_save(title, type, project: "arckode-studio", scope: "project",
+        topic_key: "manager-hotel/...", content: "**What** / **Why** / **Where** / **Learned**")
+mem_session_summary(project: "arckode-studio", content)   # cierre sesión
 ```
 
 ## SDD — Spec-Driven Development
+**Modo**: `memoryone-openspec` · **Config**: `openspec/config.yaml`
 
-**Modo**: `memoryone-openspec`
-**Config**: `openspec/config.yaml`
-**Cambio activo**: `match-misterplan` — 126 tasks, 10 fases, 0 completadas
+Cambio activo: `match-misterplan` (F1→F10, ver diagrama de fases en `tasks.md`).
+Otros activos: `pms-competitive-gaps`, `frontend-coverage-gaps`.
 
-Fases del cambio activo (en orden de dependencia):
-```
-F1 Foundation DB → F6 Settings → F3 Reservation Modal → F4 Planning
-                                                              ↓
-F5 TTLock → F6 Auto-Messages → F7 WhatsApp
-F8 Pre-Checkin | F9 Payments [paralelo]
-                                                              ↓
-                                                          F10 Reports
-```
-
-Reglas SDD del proyecto (de `openspec/config.yaml`):
-- Every new feature MUST reference its MisterPlan equivalent
-- For risky changes, include rollback plan
-- Specs: Given/When/Then + RFC 2119 + DB/API/UI sections REQUIRED
-- Apply: `make:module` + `RepositoryAdapter<T>`, NEVER raw SQL in services
+Reglas SDD (`openspec/config.yaml`):
+- Every new feature MUST reference su equivalente MisterPlan
+- Cambios riesgosos: incluir rollback plan
+- Specs: Given/When/Then + RFC 2119 + secciones DB/API/UI REQUIRED
+- Apply: `make:module` + `RepositoryAdapter<T>`, NEVER raw SQL en services
 - Verify: `bun run typecheck` + `npx vue-tsc --noEmit` + `arckode analyze` (0 violations)
-- Spanish for UI text, English for DB/API/code
+- Spanish UI / English DB-API-code
 
-## GitLab Sync — openspec-gitlab-sync (WORKFLOW PRINCIPAL DE TAREAS)
+## GitLab Sync — openspec-gitlab-sync
 
-**Esto es con lo que se trabaja: las tareas de openspec se suben a GitLab como Issues y se delegan a otro profesional siguiendo un flujo de vida obligatorio.**
+Las tasks de openspec se suben como Issues a GitLab y se delegan con un ciclo de vida obligatorio.
 
-- **Skill**: `openspec-gitlab-sync` v3 → `~/.claude/skills/openspec-gitlab-sync/SKILL.md` (Claude Code) / `~/.config/opencode/skills/openspec-gitlab-sync/SKILL.md` (OpenCode)
-- **CLI global**: `openspec-gitlab-sync` (instalado vía `bun link` en `~/projects/openspec-gitlab-sync`)
-- **GitLab project**: `underworf1/solmios` → https://gitlab.com/underworf1/solmios/-/issues
-- **Credenciales**: `GITLAB_TOKEN` + `GITLAB_PROJECT_ID` YA configurados en `~/.gitlab-env` (NUNCA pedir al usuario; hacer `source ~/.gitlab-env` antes de cada llamada)
+- **Skill**: `~/.claude/skills/openspec-gitlab-sync/SKILL.md`
+- **CLI global**: `openspec-gitlab-sync`
+- **Project**: `underworf1/solmios` → https://gitlab.com/underworf1/solmios/-/issues
+- **Creds**: `GITLAB_TOKEN` + `GITLAB_PROJECT_ID` en `~/.gitlab-env` (`source ~/.gitlab-env` SIEMPRE antes, NUNCA pedir al usuario)
 
-### Ciclo de vida OBLIGATORIO (sin estado "open")
-
+### Ciclo de vida OBLIGATORIO (sin "open")
 ```
-🔧 EN PROCESO  →  🧪 QA-DEV  →  📦 PREIMPLEMENTACION  →  🎨 QA-UI  →  ✅ IMPLEMENTACION
+🔧 EN PROCESO → 🧪 QA-DEV → 📦 PREIMPLEMENTACION → 🎨 QA-UI → ✅ IMPLEMENTACION
 ```
-
-| Label workflow | Significado | Quién lo mueve |
-|---------------|-------------|----------------|
-| `workflow:en-proceso` | Se está trabajando | Dev asignado en GitLab |
-| `workflow:qa-dev` | Dev verificó que funciona | Dev |
-| `workflow:preimplementacion` | Listo para revisión final | Dev/Lead |
-| `workflow:qa-ui` | Revisión visual/diseño | Designer/QA |
-| `workflow:implementacion` | Desplegado/completado | Automático al marcar `[x]` + push |
-
-### Flujo de delegación a otro profesional
-
-1. Las tasks se definen en `openspec/changes/*/tasks.md`
-2. `openspec-gitlab-sync push` las sube como Issues a GitLab con labels (`modulo:X`, `backend`/`frontend`, `F{fase}`, `match-misterplan`)
-3. Cada Issue lleva TODO inline: schema DB, reglas, archivos, checks → el profesional lo resuelve
-4. Al terminar, el profesional mueve el label a `workflow:qa-dev` (manual con curl, o re-sync)
-5. Avanza por el ciclo hasta `workflow:implementacion`
-6. **Prompt delegación listo** (en el SKILL.md): reemplazar `{ISSUE_NUM}` y pegar a cualquier IA/profesional
+`workflow:en-proceso` (dev trabajando) → `qa-dev` (dev verificó) → `preimplementacion` (listo revisión) → `qa-ui` (diseño/QA) → `implementacion` (desplegado, auto al marcar `[x]`+push)
 
 ### Comandos
 ```bash
-source ~/.gitlab-env                                      # SIEMPRE antes
-openspec-gitlab-sync init                                 # Crea labels + milestones
-openspec-gitlab-sync board                                # Tablero Kanban (5 columnas)
-openspec-gitlab-sync push                                 # Sync tasks.md ↔ GitLab Issues
-openspec-gitlab-sync push --verify                        # Solo Issues NO implementados (auto-marca [x] los hechos)
-openspec-gitlab-sync verify                               # Analiza código vs tasks.md
-openspec-gitlab-sync status                               # Cuántas en cada workflow
-openspec-gitlab-sync pull                                 # Lista Issues agrupados por workflow
-openspec-gitlab-sync report                               # Reporte de tiempos (openedAt → implementacionAt)
+source ~/.gitlab-env
+openspec-gitlab-sync { init | board | push | push --verify | verify | status | pull | report }
 ```
 
-### Time tracking
-El CLI registra `openedAt` (creación del Issue) y `implementacionAt` (marcar `[x]` + push). `report` calcula duración y promedio.
-
-## Reglas del proyecto
-
-### Backend (arckode-framework — OBLIGATORIO)
-- **NUNCA SQL crudo en módulos** — todo por `OrmRepository<T>` (findMany/create/update/delete/count)
-- **NUNCA ORM en services** — inyectar `OrmRepository<T>`, no el orm directo
-- **NUNCA controller sin validación** — `validateSchema()` en POST/PUT/PATCH
-- **NUNCA sin ownership check** — `auth.authenticate(...roles)` + `auth.assertOwnership()` post-findById
-- **NUNCA server.ts suelto** — el entry es `composition-root.ts`
-- **NUNCA import de otro módulo directo** — usar connector en `src/connectors/`
-- **SIEMPRE usar permisos** — `requirePermission(module, action)` en cada ruta (no solo roles)
-- **SIEMPRE userType** — rutas de admin usan `requireUserType('admin')`, rutas de hotel usan `requireUserType('merchant')`
+## Reglas — Backend (arckode-framework)
+- **NUNCA** SQL crudo en módulos → `OrmRepository<T>` (findMany/create/update/delete/count)
+- **NUNCA** ORM en services → inyectar `OrmRepository<T>`, no el orm directo
+- **NUNCA** controller sin `validateSchema()` en POST/PUT/PATCH
+- **NUNCA** sin ownership check → `auth.authenticate(...roles)` + `auth.assertOwnership()` post-findById
+- **NUNCA** server.ts suelto → entry es `composition-root.ts`
+- **NUNCA** import de otro módulo directo → connector en `src/connectors/`
+- **SIEMPRE** permisos → `requirePermission(module, action)` en cada ruta
+- **SIEMPRE** userType → admin rutas `requireUserType('admin')`, hotel rutas `requireUserType('merchant')`
 - `index.ts` de módulo es APPEND-ONLY
-- `model.ts` (BD) ≠ `types.ts` (API) — separados
-- `npm install arckode-framework` (desde npm, NO path local)
-- `make:module X` genera estructura canónica — no crear módulos a mano
-- **TODO `findById` requiere `auth.assertOwnership()` después** — el analyzer lo detecta y bloquea si falta
+- `model.ts` (BD) ≠ `types.ts` (API)
+- `npm install arckode-framework` (desde npm)
+- `make:module X` genera estructura canónica
+- TODO `findById` requiere `auth.assertOwnership()` después (analyzer detecta y bloquea)
 
-### Base de datos — ENGLISH ONLY (OBLIGATORIO)
-- **TODAS** las tablas, columnas, y modelos en INGLÉS
+### ⚠️ Anti-patrón ORM — descarte silencioso de campos (mem 1805)
+El ORM construye `allowedFields = new Set(Object.keys(def.fields))` y **descarta campos no declarados sin warning** (case-sensitive). Si un service/DTO/validators/frontend usa un campo NO declarado en el `orm.define(...)`, **se pierde al persistir silenciosamente**.
+
+**Síntoma**: dato que "se guarda pero al recargar vuelve al default" → campo no declarado en el modelo.
+
+**Check obligatorio al tocar un modelo o flujo de persistencia**:
+1. Todo campo en service/DTO/validators/frontend DEBE estar en el `orm.define(...)`.
+2. Case-sensitive: `basePrice` ≠ `baseprice`.
+3. Renombrar un campo en el modelo = columna orphan (ADD COLUMN, no rename) → dropear a mano.
+
+**6 casos históricos** (todos fixeados): `reservation_addons.quantity`, `room_rates.{season,basePrice,percentage}`, `payment_requests.paidAt`, `companions.birthDate`, **`lock_codes.hotelId`** (multi-tenancy roto por modelo dual shared/ttlock — consolidado en ttlock, fix 2026-07-05).
+
+### Modelos duales — último `orm.define` gana (RESUELTO)
+`composition-root.ts` registra `shared` PRIMERO, módulos DESPUÉS. Si un módulo redefine un modelo compartido, el último gana (`models.set`) y **descarta campos del anterior**. **RESUELTO 2026-07-05**: `LockDevices`/`LockCodes` estaban en shared + ttlock; ttlock ganaba y descartaba `lock_codes.hotelId` (multi-tenancy). Consolidado en `modules/ttlock/model.ts` — **regla: si un módulo es dueño de un modelo, NO definirlo en shared**.
+
+## Reglas — DB (ENGLISH ONLY)
+- TODAS tablas/columnas/modelos en INGLÉS
 - Multi-tenant por columna `hotelId` (NO schema-per-tenant)
 - id = TEXT (UUID), timestamps = createdAt/updatedAt, booleanos = INTEGER (0/1)
 
-### Frontend (Vue 3 — OBLIGATORIO)
+## Reglas — Frontend (Vue 3)
 - **SIEMPRE** `<script setup lang="ts">` + `<style scoped>`
 - **NUNCA** `fetch()` en componentes → `XxxService.method()`
-- **NUNCA** `<a href="/ruta">` interna → `<router-link to="/ruta">`
-- **NUNCA** Options API en Pinia → `defineStore('x', () => { ... })` setup syntax
+- **NUNCA** `<a href="/ruta">` interna → `<router-link>`
+- **NUNCA** Options API en Pinia → setup syntax
 - **NUNCA** store importa `useRouter` → componente hace `router.push()`
 - **NUNCA** service importa store → store orquesta service
 - **NUNCA** `any` sin justificación → `unknown` + type guard
-- Tipos centralizados en `types/index.ts`
+- Tipos en `types/index.ts`
 - Naming: páginas kebab-case, componentes PascalCase, stores camelCase, services PascalCase+.service.ts
 
-### Verificación (OBLIGATORIO antes de decir "listo")
+## Verificación (antes de "listo")
 ```bash
-# Backend — arckode analyze es GATE BLOQUEANTE (0 violaciones)
-cd backend && bun run node_modules/arckode-framework/bin/arckode.js analyze   # → "✅ VÁLIDO"
+# Backend — arckode analyze es GATE BLOQUEANTE
+cd backend && bun run node_modules/arckode-framework/bin/arckode.js analyze   # → ✅ VÁLIDO (0 violaciones)
 cd backend && bun run typecheck && bun test
-
 # Frontend
 cd frontend && npx vue-tsc --noEmit && bun run build
 ```
-
 > Si `arckode analyze` muestra ❌ violaciones, el backend **NO está terminado**.
 
-### Multi-tenancy
+## Multi-tenancy
 - Single DB con columna `hotelId` en cada tabla
-- Cada query filtra por `hotelId` (desde token o query param)
+- Cada query filtra por `hotelId` (token o query param)
 - Configuración: tabla `configuration` KV (por hotel + `platform`)
-- **userType**: `admin` (plataforma) vs `merchant` (hotel) — rutas protegidas por `requireUserType()`
-- **Permisos**: cada rol tiene permisos granulares (`module:action`) — rutas protegidas por `requirePermission()`
+- **userType** + **permisos** protegen rutas (ver Sistema de Permisos)
 
-### Integraciones (estado real)
+## Integraciones (estado real)
 | Integración | Estado |
 |-------------|--------|
-| Channex (Channel Manager) | ✅ Conectado y funcionando |
-| Stripe (pagos) | ✅ Integrado con links y deposits |
+| Channex (Channel Manager) | ✅ Conectado |
+| Stripe (pagos) | ✅ Links + deposits + checkout sessions |
 | TTLock (cerraduras) | ✅ Auto-generate/send/delete codes |
-| Email (SMTP/Resend) | ✅ Integrado con auto-messages |
-| WhatsApp Business API | ⚠️ Requiere credenciales Meta |
-| Facturación electrónica | ⚠️ Stub (fiscal.ts), sin conector real |
+| Email (SMTP/Resend) | ✅ Auto-messages |
+| WhatsApp Business API | ⚠️ Requiere creds Meta |
+| Facturación electrónica | ⚠️ Stub (`fiscal.ts`), sin conector |
 
-### Módulos — Estado de producción
-| Módulo | Estado | Score | Último upgrade |
-|--------|--------|-------|----------------|
-| facturas (billing) | ✅ | 10/10 | `2cd93b4` |
-| housekeeping | ✅ | 10/10 | `6899df9` |
-| reservas | ✅ | 10/10 | `2cd93b4` (settle + auto-post + cron) |
-| habitaciones | ✅ | 10/10 | `daa1326` |
-| huespedes | ✅ | 9/10 | `ffe4ff3` |
-| folios | ✅ | 10/10 | `2cd93b4` |
-| **payments** | ✅ **FIXED** | **10/10** | **`2cd93b4`** (IDOR ownership + auth) |
-| mantenimiento | ✅ | 10/10 | `d3bdce5` |
-| attendance | ✅ | 9/10 | `45fd0d7` |
-| payroll | ✅ | 9/10 | — |
-| **cash** | ✅ **FIXED** | **10/10** | **`2cd93b4`** (paginate en list) |
-| **reports** | ✅ **FIXED** | **10/10** | **`2cd93b4`** (data leak + no-show scope) |
-| marketing | ✅ | 9/10 | `95b88b6` |
-| canales | ✅ | 9/10 | `3c34292` |
-| dispositivos | ✅ | 9/10 | — |
+## Módulos — Estado producción
+| Módulo | Score | Nota |
+|--------|-------|------|
+| facturas (billing) | 10/10 | `2cd93b4` |
+| folios | 10/10 | settlement flow `2cd93b4` |
+| payments | 10/10 | IDOR fixed `2cd93b4` |
+| cash | 10/10 | paginate fixed `2cd93b4` |
+| reports | 10/10 | data-leak + no-show scope fixed `2cd93b4` |
+| reservas | 10/10 | settle + auto-post + night-audit cron |
+| habitaciones | 10/10 | `daa1326` |
+| huespedes | 10/10 | `birthDate` ORM fix `1a187a5` |
+| housekeeping | 10/10 | `6899df9` |
+| mantenimiento | 10/10 | `d3bdce5` |
+| attendance · payroll | 9/10 | — |
+| marketing · canales · dispositivos | 9/10 | — |
 
-### Deudas técnicas pendientes
+> Módulos financieros auditados vs anti-patrón ORM (2026-07-05): **limpios**.
 
-| Deuda | Detalle | Fase |
-|-------|---------|------|
-| `composition-root` God File | 1642 líneas. Modularización parcial (shared/models.ts ✅). Quedan: endpoints custom, night-audit, settings, booking público. | Futuro |
-| `validateSchema` descarta campos no del schema | El framework descarta campos no declarados. Los forms DEBEN usar el naming canónico. | — |
-| WhatsApp integration | Requiere credenciales Meta Business para funcionar. | Futuro |
-| Document scan webhook | Feature avanzada, no crítica para producción. | Futuro |
+## Deudas técnicas
+| Deuda | Detalle |
+|-------|---------|
+| Anti-patrón ORM (mem 1805) | Documentado + 6 casos fixeados (último: `lock_codes.hotelId` multi-tenancy). Vigilar al tocar modelos. |
+| `composition-root` God File | Endpoints custom inline + night-audit + settings + booking público. `shared/models.ts` extraído ✅. |
+| WhatsApp | Requiere creds Meta Business. |
+| Facturación electrónica | Stub, sin conector fiscal real. |
+| PC-4 Service Worker | Desactivado (commit `c79e8f9`, rompía logout). Reactivar requiere network-first + bypass `/api/*`. |
 
-### Settlement Flow (checkout)
+## Settlement Flow (checkout)
 ```
-POST /api/reservas/:id/checkout    → body: { settle?: { method, amount, reference? } }
+POST /api/reservas/:id/checkout → body: { settle?: { method, amount, reference? } }
 ```
-- Orchestra: close folio → create invoice → record payment (settle-folio-at-checkout.ts)
-- Si amount <= 0 después del close: folio se cierra sin invoice
-- Si settle es null/undefined: checkout sin settlement
-- Conector: `reservas-folios-settlement.ts`
-- Auto-post room charge at check-in: `checkin.ts` usa ORM transaction
-- Night audit cron: cada 3h, itera todos los hoteles, postea room charges con dedup por fecha
+- Orchestra: close folio → create invoice → record payment (`settle-folio-at-checkout.ts`, connector `reservas-folios-settlement.ts`)
+- `amount <= 0` tras close: folio se cierra sin invoice
+- `settle` null/undefined: checkout sin settlement
+- Auto-post room charge at check-in: `checkin.ts` (ORM transaction)
+- Night audit cron: cada 3h, todos los hoteles, dedup por fecha
 
-### Finance API endpoints inventory
-| Módulo | Endpoint | Permiso |
-|--------|----------|---------|
-| Facturas | `/api/facturas` (+ stats, tax-report, :id, :id/print, :id/pdf, :id/pay, :id/credit-note, :id/email) | billing:view/create/edit/delete |
-| Folios | `/api/folios` (+ :id, :id/charges, :id/payments, :id/close, :id/invoice, audit/post-room-charges) | billing:view/create/edit |
-| Payments | `/api/payments` (+ :id, charge, :id/refund) | billing:view/create |
-| Payment Links | `/api/payment-links` (+ :id) | billing:view/create |
-| Deposits | `/api/deposits` (+ :id, :id/refund, :id/release) | billing:view/create |
-| Caja | `/api/caja/movements` (+ :id, shifts, shifts/current, shifts/:id/close, shifts/:id/reconcile, stats) | billing:view/create |
-| Caja Reconciliation | `/api/billing/reconciliation` | billing:edit |
-| Gastos | `/api/gastos` (+ :id) | billing:view/create/delete |
-| Reports | `/api/reports` (+ /advanced, /export) | reports:view/export |
-| Night Audit | `/api/night-audit` (+ mark-no-shows) | reports:view/edit |
+## Finance API endpoints
+| Módulo | Base | Sub-rutas | Permiso |
+|--------|------|-----------|---------|
+| Facturas | `/api/facturas` | stats, tax-report, :id, :id/print (A4 público), :id/pay, :id/credit-note, :id/email | billing:* |
+| Folios | `/api/folios` | :id/charges, :id/payments, :id/close, :id/invoice, audit/post-room-charges | billing:view/create/edit |
+| Payments | `/api/payments` | :id, charge, :id/refund | billing:view/create |
+| Payment Links | `/api/payment-links` | :id | billing:view/create |
+| Deposits | `/api/deposits` | :id/refund, :id/release | billing:view/create |
+| Caja | `/api/caja/movements` | shifts, shifts/current, shifts/:id/close, shifts/:id/reconcile, stats | billing:view/create |
+| Reconciliation | `/api/billing/reconciliation` | — | billing:edit |
+| Gastos | `/api/gastos` | :id | billing:view/create/delete |
+| Reports | `/api/reports` | /advanced, /export | reports:view/export |
+| Night Audit | `/api/night-audit` | mark-no-shows | reports:view/edit |
 
-### Producción (hotel.zx89.site)
-- **SSH**: root@158.220.103.200 (password: Regionforo123)
-- **Repo**: `/www/wwwroot/hotel.zx89.site/solmios`
-- **Backend**: systemd `solmios-backend`, bun en `/root/.bun/bin/bun`
-- **Login demo**: `admin@caribeparadise.com` / `demo123`
-- **PG sin seed data**: folios, facturas, gastos, caja = 0 registros. Reports y night audit sí muestran data (computan desde reservas).
-
-### Facturación — Endpoints
-```
-GET    /api/facturas              → List (paginated)
-GET    /api/facturas/stats        → Dashboard stats
-GET    /api/facturas/tax-report   → Reporte fiscal por período
-GET    /api/facturas/:id          → Get by ID
-GET    /api/facturas/:id/print    → HTML A4 imprimible (público)
-POST   /api/facturas              → Create (múltiples items)
-POST   /api/facturas/:id/pay      → Pay (partial/full)
-POST   /api/facturas/:id/credit-note → Cancel + credit note
-PUT    /api/facturas/:id          → Update
-DELETE /api/facturas/:id          → Delete
-```
-
-### Facturación — Reglas
-- Impuestos vienen de `configuration(key='taxes')` — NO hardcodear
-- Hotel name viene de tabla `hotels` — NO hardcodear
-- Moneda viene del invoice — NO hardcodear
-- Items se guardan en `notes` como string descriptivo
-- NCF se genera automáticamente si está configurado
+### Facturación — reglas
+- Impuestos de `configuration(key='taxes')` — NO hardcodear
+- Hotel name de tabla `hotels` — NO hardcodear
+- Moneda del invoice — NO hardcodear
+- Items en `notes` como string descriptivo
+- NCF auto-generado si está configurado
 - Invoice number: counter atómico en `configuration(key='invoice_counter_{hotelId}_{year}')`
 
-### Credenciales demo
-`admin@managerhotel.com`, `admin@caribeparadise.com`, `maria@caribeparadise.com` — todas `demo123`
+## Producción (hotel.zx89.site)
+- **SSH**: `root@158.220.103.200` (password: `Regionforo123`)
+- **Repo**: `/www/wwwroot/hotel.zx89.site/solmios`
+- **Backend**: systemd `solmios-backend.service` (restart on-failure). bun en `/root/.bun/bin/bun` (NO en PATH del SSH).
+- **Frontend**: `dist/` servido por nginx (proxy `/api`,`/uploads`→:3000)
+- **DB**: PostgreSQL `solmios` (localhost:5432)
+- **Login demo (verificado)**: `admin@caribeparadise.com` / `demo123`
+  - ⚠️ `admin@managerhotel.com` da **401 en prod** (no migrado al seed PG). Solo local dev.
+- **PG sin seed data financiera**: folios, facturas, gastos, caja = 0 registros. Reports y night-audit computan desde reservas.
+- Ver skill `ssh-solmios` para protocolo de deploy completo.
 
-### Ejecución
+### Deploy rápido
+```bash
+# Setup SSH askpass al inicio de sesión — ver ssh-solmios skill
+REPO=/www/wwwroot/hotel.zx89.site/solmios
+SOLSSH "cd $REPO && git pull origin main"
+SOLSSH "cd $REPO/backend && bun install && systemctl restart solmios-backend"
+SOLSSH "cd $REPO/frontend && bun --bun vite build"   # SIEMPRE bun --bun (Node 18 + Vite 8 rompe)
+# Si cambiaron modelos ORM: cd $REPO/backend && set -a && source .env && set +a && RUN_MIGRATE=1 bun run src/composition-root.ts
+```
+
+## Ejecución (local)
 ```bash
 cd backend && bun run dev          # :3000
 cd frontend && bun run dev         # :5173
-cd backend && bun run migrate      # seed demo + tablas extra (requiere paso 1 RUN_MIGRATE antes en DB limpia — ver sección Database)
+cd backend && bun run migrate      # seed demo + tablas extra (requiere RUN_MIGRATE antes en DB limpia)
 cd backend && bun run doctor       # health-check Channex
 ```

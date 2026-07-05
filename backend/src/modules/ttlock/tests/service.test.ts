@@ -10,7 +10,7 @@ function makeOrm(overrides: Partial<Record<string, any>> = {}) {
     findMany: async (table: string, _filter: any) => {
       if (table === 'Configuration') return [{ id: 'cfg1', value: JSON.stringify({ clientId: 'test', clientSecret: 'sec', accessToken: 'tok', region: 'eu' }) }]
       if (table === 'LockDevices') return [{ id: 'l1', hotelId: 'h1', ttlockLockId: '123', name: 'Door 1', roomId: 'rm1', status: 'online' }]
-      if (table === 'LockCodes') return [{ id: 'c1', lockId: 'l1', code: '1234', status: 'active' }]
+      if (table === 'LockCodes') return [{ id: 'c1', lockId: 'l1', hotelId: 'h1', code: '1234', status: 'active' }]
       if (table === 'Rooms') return [{ id: 'rm1', number: '101' }]
       return []
     },

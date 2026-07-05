@@ -20,6 +20,7 @@ export const LockCodesModel: ModelDefinition = {
   fields: {
     id: { type: 'string', required: true },
     lockId: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
     reservationId: { type: 'string' },
     code: { type: 'string', required: true },
     codeType: { type: 'string', default: 'time' },

@@ -685,6 +685,10 @@ async function createTablesBlock3(): Promise<void> {
   // ALTER idempotente: columna recipient en message_logs (spec 11.1.1).
   await addColumnIfMissing("message_logs", "recipient", "TEXT")
 
+  // ALTER idempotente: lock_codes.hotelId — multi-tenancy (anti-patrón caso 6, memoria ORM).
+  // La tabla la modela el módulo ttlock; en DBs existentes la columna falta y el ORM no hace ALTER.
+  await addColumnIfMissing("lock_codes", "hotelId", "TEXT")
+
   // ALTER idempotente: reservations += condiciones + otros cobros (F3 match-misterplan).
   await addColumnIfMissing("reservations", "gdprAccepted", "INTEGER DEFAULT 0")
   await addColumnIfMissing("reservations", "marketingAccepted", "INTEGER DEFAULT 0")

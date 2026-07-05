@@ -157,38 +157,8 @@ export function registerSharedModels(orm: ORM): void {
     },
   })
 
-  // ─── Lock Devices ────────────────────────────────────
-  orm.define('LockDevices', {
-    table: 'lock_devices', timestamps: true,
-    fields: {
-      id: { type: 'string', required: true },
-      hotelId: { type: 'string', required: true, indexed: true },
-      roomId: { type: 'string', indexed: true },
-      name: { type: 'string', required: true },
-      model: { type: 'string' },
-      battery: { type: 'number' },
-      status: { type: 'string', default: 'online' },
-      ttlockLockId: { type: 'string' },
-    },
-  })
-
-  // ─── Lock Codes ──────────────────────────────────────
-  orm.define('LockCodes', {
-    table: 'lock_codes', timestamps: true,
-    fields: {
-      id: { type: 'string', required: true },
-      lockId: { type: 'string', required: true, indexed: true },
-      hotelId: { type: 'string', required: true, indexed: true },
-      reservationId: { type: 'string' },
-      code: { type: 'string', required: true },
-      codeType: { type: 'string', default: 'permanent' },
-      startDate: { type: 'string' },
-      endDate: { type: 'string' },
-      status: { type: 'string', default: 'active' },
-      ttlockKeyboardPwdId: { type: 'string' },
-      sentVia: { type: 'string', default: 'email' },
-    },
-  })
+  // LockDevices + LockCodes: definidos en modules/ttlock/model.ts (dueño canónico).
+  // NO redefinir aquí — el último orm.define gana y descarta campos (anti-patrón mem 1805).
 
   // ─── Companions ──────────────────────────────────────
   orm.define('Companions', {

@@ -25,5 +25,5 @@ export async function generateCodeForReservation(
   const startMs = new Date(res.checkIn).getTime(); const endMs = new Date(res.checkOut).getTime()
   let pwdId = ''
   try { const r = await addKeyboardPasswordFn(creds, Number(lock.ttlockLockId), password, startMs, endMs); pwdId = r.keyboardPwdId || '' } catch (e: any) { throw new Error(e.message || 'No se pudo crear el PIN') }
-  return await lockCodesRepo.create({ lockId: lock.id, reservationId, code: password, codeType: 'time', startDate: String(res.checkIn).slice(0, 10), endDate: String(res.checkOut).slice(0, 10), status: 'active', ttlockKeyboardPwdId: pwdId, sentVia: '' })
+  return await lockCodesRepo.create({ lockId: lock.id, hotelId, reservationId, code: password, codeType: 'time', startDate: String(res.checkIn).slice(0, 10), endDate: String(res.checkOut).slice(0, 10), status: 'active', ttlockKeyboardPwdId: pwdId, sentVia: '' })
 }
