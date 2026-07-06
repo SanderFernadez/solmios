@@ -3,17 +3,13 @@
 ## Stack
 Bun (>=1.3) + Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5.1 + Tailwind CSS 4.3 + arckode-framework 1.4.3 + **DB multi-motor** (SQLite bun:sqlite/WAL en dev · Postgres `pg` en prod, elegido por `DATABASE_URL`)
 
-## Historial (lo más reciente arriba)
+## Estado SDD (cambios activos)
 
-| Fecha | Trabajo | Resultado |
-|-------|---------|-----------|
-| **2026-07-05** | **Auditoría anti-patrón ORM** (mem 1805): 6 casos fixeados (`companions.birthDate`, `lock_codes.hotelId` multi-tenancy), consolidación modelos duales LockDevices/LockCodes, limpieza 7 columnas legacy, 12 módulos financieros validados. Avance SDD: match-misterplan 2.3.1+11.1.6, pms-competitive-gaps 31/39, frontend-coverage-gaps 9 GATES. | `1a187a5`+ · 12 commits · 4 deploys |
-| 2026-07-05 | Finance flow (settlement checkout, auto-post room charge, night-audit cron) + security audit (payments IDOR, reports leak, cash paginate). | `2cd93b4` · 441 tests ✅ |
+> Changelog e historial de commits: `git log`. Acá solo estado no derivable del repo.
 
-### Estado changes SDD
-- **match-misterplan**: 2.3.1 ✅ (rates grid base+%), 11.1.6 ✅ (i18n). Pendiente: 7.2.2/7.2.3 WhatsApp (**bloqueado** por creds Meta).
-- **pms-competitive-gaps**: 31/39 ✅ + debt documentada (PC-4 SW desactivado, PC-3.1.2 Checkout Session cumple).
-- **frontend-coverage-gaps**: 9 GATES ✅. GATES manuales (reports/switcher/PWA en prod) sin validar.
+- **match-misterplan**: base ✅ (rates grid, i18n). Pendiente 7.2.2/7.2.3 WhatsApp (**bloqueado** por creds Meta).
+- **pms-competitive-gaps**: mayoría ✅ + debt documentada (PC-4 SW desactivado, PC-3.1.2 Checkout Session cumple).
+- **frontend-coverage-gaps**: GATES automáticos ✅. GATES manuales (reports/switcher/PWA en prod) sin validar.
 - **mobile-app**: OTRO profesional (Flutter, repo `solmios-mobile`). **NO scope — no tocar.**
 
 ## Database — Migraciones y Seeders
@@ -250,28 +246,14 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 | WhatsApp Business API | ⚠️ Requiere creds Meta |
 | Facturación electrónica | ⚠️ Stub (`fiscal.ts`), sin conector |
 
-## Módulos — Estado producción
-| Módulo | Score | Nota |
-|--------|-------|------|
-| facturas (billing) | 10/10 | `2cd93b4` |
-| folios | 10/10 | settlement flow `2cd93b4` |
-| payments | 10/10 | IDOR fixed `2cd93b4` |
-| cash | 10/10 | paginate fixed `2cd93b4` |
-| reports | 10/10 | data-leak + no-show scope fixed `2cd93b4` |
-| reservas | 10/10 | settle + auto-post + night-audit cron |
-| habitaciones | 10/10 | `daa1326` |
-| huespedes | 10/10 | `birthDate` ORM fix `1a187a5` |
-| housekeeping | 10/10 | `6899df9` |
-| mantenimiento | 10/10 | `d3bdce5` |
-| attendance · payroll | 9/10 | — |
-| marketing · canales · dispositivos | 9/10 | — |
-
-> Módulos financieros auditados vs anti-patrón ORM (2026-07-05): **limpios**.
+## Módulos — madurez
+- **Producción, auditados vs anti-patrón ORM**: núcleo financiero (facturas, folios, payments, cash, reports, reservas) + operación (habitaciones, huespedes, housekeeping, mantenimiento).
+- **Funcionales, menor cobertura**: attendance, payroll, marketing, canales, dispositivos.
 
 ## Deudas técnicas
 | Deuda | Detalle |
 |-------|---------|
-| Anti-patrón ORM (mem 1805) | Documentado + 6 casos fixeados (último: `lock_codes.hotelId` multi-tenancy). Vigilar al tocar modelos. |
+| Anti-patrón ORM | Ver sección "Anti-patrón ORM" en Reglas Backend. 6 casos fixeados. Vigilar al tocar modelos. |
 | WhatsApp | Requiere creds Meta Business. |
 | Facturación electrónica | Stub, sin conector fiscal real. |
 | PC-4 Service Worker | Desactivado (commit `c79e8f9`, rompía logout). Reactivar requiere network-first + bypass `/api/*`. |
@@ -309,7 +291,7 @@ POST /api/reservas/:id/checkout → body: { settle?: { method, amount, reference
 - Invoice number: counter atómico en `configuration(key='invoice_counter_{hotelId}_{year}')`
 
 ## Producción (hotel.zx89.site)
-- **SSH**: `root@158.220.103.200` (password: `Regionforo123`)
+- **SSH**: `root@158.220.103.200` (credencial en gestor de secretos / `~/.ssh` — NUNCA en repo)
 - **Repo**: `/www/wwwroot/hotel.zx89.site/solmios`
 - **Backend**: systemd `solmios-backend.service` (restart on-failure). bun en `/root/.bun/bin/bun` (NO en PATH del SSH).
 - **Frontend**: `dist/` servido por nginx (proxy `/api`,`/uploads`→:3000)
