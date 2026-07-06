@@ -74,6 +74,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'housekeeping:view', 'housekeeping:edit',
   ],
 
+  // Supervisor - approve housekeeping, view rooms
+  supervisor: [
+    'dashboard:view',
+    'rooms:view',
+    'housekeeping:view', 'housekeeping:edit',
+  ],
+
   // Maintenance - maintenance tasks only
   maintenance: [
     'rooms:view',
