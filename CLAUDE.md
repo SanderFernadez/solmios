@@ -59,7 +59,7 @@ bun run migrate-db.ts
 ```
 Manager Hotel/
 ├── backend/
-│   ├── src/composition-root.ts   # ENTRY: System + ORM + ~40 módulos (wiring + endpoints custom inline)
+│   ├── src/composition-root.ts   # ENTRY: System + ORM + 40 módulos (207 líneas, wiring declarativo limpio — sin endpoints inline)
 │   ├── src/shared/
 │   │   ├── models.ts             # Modelos ORM compartidos (registerSharedModels)
 │   │   ├── permissions.ts        # hasPermission, getRolePermissions
@@ -272,7 +272,6 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 | Deuda | Detalle |
 |-------|---------|
 | Anti-patrón ORM (mem 1805) | Documentado + 6 casos fixeados (último: `lock_codes.hotelId` multi-tenancy). Vigilar al tocar modelos. |
-| `composition-root` God File | Endpoints custom inline + night-audit + settings + booking público. `shared/models.ts` extraído ✅. |
 | WhatsApp | Requiere creds Meta Business. |
 | Facturación electrónica | Stub, sin conector fiscal real. |
 | PC-4 Service Worker | Desactivado (commit `c79e8f9`, rompía logout). Reactivar requiere network-first + bypass `/api/*`. |
