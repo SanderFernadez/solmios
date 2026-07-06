@@ -37,11 +37,13 @@ export class PayrollController {
   }
 
   async getConcept(req: HttpRequest) {
-    return { status: 200, body: await this.service.getConcept(req.params.id) }
+    const user = (req as any).user
+    return { status: 200, body: await this.service.getConcept(req.params.id, user) }
   }
 
   async deleteConcept(req: HttpRequest) {
-    await this.service.deleteConcept(req.params.id)
+    const user = (req as any).user
+    await this.service.deleteConcept(req.params.id, user)
     return { status: 204, body: null }
   }
 
@@ -58,30 +60,36 @@ export class PayrollController {
   }
 
   async getRun(req: HttpRequest) {
-    return { status: 200, body: await this.service.getRun(req.params.id) }
+    const user = (req as any).user
+    return { status: 200, body: await this.service.getRun(req.params.id, user) }
   }
 
   async getRunDetails(req: HttpRequest) {
-    return { status: 200, body: await this.service.getRunDetails(req.params.id) }
+    const user = (req as any).user
+    return { status: 200, body: await this.service.getRunDetails(req.params.id, user) }
   }
 
   async calculate(req: HttpRequest) {
     const data = validateSchema(CalculateSchema, req.body) as any
     const employees = data.employees as PayrollEmployeeInput[]
-    const result = await this.service.calculateRun(req.params.id, employees)
+    const user = (req as any).user
+    const result = await this.service.calculateRun(req.params.id, employees, user)
     return { status: 200, body: result }
   }
 
   async approve(req: HttpRequest) {
     const userId = (req as any).userId ?? ''
-    return { status: 200, body: await this.service.approveRun(req.params.id, userId) }
+    const user = (req as any).user
+    return { status: 200, body: await this.service.approveRun(req.params.id, userId, user) }
   }
 
   async markAsPaid(req: HttpRequest) {
-    return { status: 200, body: await this.service.markRunAsPaid(req.params.id) }
+    const user = (req as any).user
+    return { status: 200, body: await this.service.markRunAsPaid(req.params.id, user) }
   }
 
   async cancelRun(req: HttpRequest) {
-    return { status: 200, body: await this.service.cancelRun(req.params.id) }
+    const user = (req as any).user
+    return { status: 200, body: await this.service.cancelRun(req.params.id, user) }
   }
 }

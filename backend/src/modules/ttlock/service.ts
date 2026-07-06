@@ -74,12 +74,14 @@ export class TtlockService {
   }
 
   async updateLock(lockId: string, body: any, hotelId?: string): Promise<any> {
+    // Ownership ANTES de escribir — sino el write cross-tenant se persiste aunque
+    // después tire ForbiddenError (orden roto).
+    const lock = await this.lockDevicesRepo.findById(lockId) as any
+    if (this.auth && lock) this.auth.assertOwnership(lock.hotelId, hotelId, undefined, 'super_admin')
     const patch: Partial<Omit<LockDeviceDTO, 'id'>> = {}
     if (body.roomId !== undefined) patch.roomId = body.roomId
     if (body.name !== undefined) patch.name = body.name
     await this.lockDevicesRepo.update(lockId, patch)
-    const lock = await this.lockDevicesRepo.findById(lockId) as any
-    if (this.auth && lock) this.auth.assertOwnership(lock.hotelId, hotelId, undefined, 'super_admin')
-    return lock
+    return await this.lockDevicesRepo.findById(lockId)
   }
 }

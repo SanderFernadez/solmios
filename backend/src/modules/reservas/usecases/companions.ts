@@ -24,11 +24,14 @@ export async function createCompanion(
   user: SimpleUser,
 ): Promise<CompanionDTO> {
   // IDOR CR-30: verificar que la reservation pertenezca al hotel del user.
-  // Nota: la tabla `companions` NO tiene columna hotelId (migración faltante), por eso
-  // no se persiste aquí — el ownership se resuelve vía la reservation padre (assertCompanionOwned).
-  await assertReservationOwned(reservationRepo, userRepo, auth, reservationId, user)
+  // assertReservationOwned devuelve la reserva → reutilizamos su hotelId.
+  const parent = await assertReservationOwned(reservationRepo, userRepo, auth, reservationId, user)
+  // hotelId SÍ está declarado en el modelo Companions (shared/models.ts) y es required.
+  // Persistirlo desde la reservation padre (fuente de verdad multi-tenant) — sin esto
+  // la fila queda con hotelId NULL (mismo bug que lock_codes.hotelId, mem 1805).
   return repo.create({
     reservationId,
+    hotelId: parent?.hotelId,
     name: dto.name,
     documentType: dto.documentType || 'passport',
     documentNumber: dto.documentNumber || '',

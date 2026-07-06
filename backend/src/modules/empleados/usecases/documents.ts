@@ -1,23 +1,25 @@
 // empleados/usecases/documents.ts — Document management + expiry alerts
 
-import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { NotFoundError } from 'arckode-framework'
 import type { DocumentDTO, CreateDocumentDTO, DocumentExpiryAlert } from '../types'
+import type { SimpleUser } from './ownership'
 
 export class DocumentUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<DocumentDTO>,
     private readonly logger: Logger,
+    private readonly auth?: Auth,
   ) {}
 
   async create(dto: CreateDocumentDTO): Promise<DocumentDTO> {
     return this.repo.create({ ...dto, alertSent: 0 } as any)
   }
 
-  async getById(id: string): Promise<DocumentDTO> {
-    // @ignore IDOR_RISK — document lookup by ID
+  async getById(id: string, user?: SimpleUser): Promise<DocumentDTO> {
     const doc = await this.repo.findById(id)
     if (!doc) throw new NotFoundError('Document not found')
+    if (this.auth && user) this.auth.assertOwnership(doc.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return doc
   }
 
@@ -28,8 +30,8 @@ export class DocumentUseCase {
     return this.repo.findMany(filters)
   }
 
-  async delete(id: string): Promise<void> {
-    await this.getById(id)
+  async delete(id: string, user?: SimpleUser): Promise<void> {
+    await this.getById(id, user)
     await this.repo.delete(id)
   }
 

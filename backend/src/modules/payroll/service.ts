@@ -1,6 +1,6 @@
 // payroll/service.ts — Facade del módulo Payroll
 
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import type {
   PayrollConfigDTO, CreatePayrollConfigDTO,
   PayrollConceptDTO, CreatePayrollConceptDTO,
@@ -9,6 +9,7 @@ import type {
   PayrollPayslipDTO,
   PayrollPaymentHistoryDTO,
   PayrollEmployeeInput, PayrollCalculationResult,
+  PayrollCurrentUser,
 } from './types'
 import type { PayrollSockets } from './sockets'
 import { PayrollCalculatorUseCase } from './usecases/calculator'
@@ -32,11 +33,12 @@ export class PayrollService {
     paymentHistoryRepo: RepositoryAdapter<PayrollPaymentHistoryDTO>,
     private readonly logger: Logger,
     cache: CacheAdapter,
+    private readonly auth?: Auth,
   ) {
     this.calculator = new PayrollCalculatorUseCase(conceptRepo, configRepo, logger)
     this.config = new PayrollConfigUseCase(configRepo, logger)
-    this.concepts = new PayrollConceptUseCase(conceptRepo, logger)
-    this.runs = new PayrollRunUseCase(runRepo, detailRepo, payslipRepo, logger)
+    this.concepts = new PayrollConceptUseCase(conceptRepo, logger, auth)
+    this.runs = new PayrollRunUseCase(runRepo, detailRepo, payslipRepo, logger, auth)
   }
 
   setSockets(s: Partial<PayrollSockets>): void {
@@ -55,28 +57,28 @@ export class PayrollService {
 
   // ─── Concepts ─────────────────────────────────────────
   async seedConcepts(hotelId: string): Promise<void> { return this.concepts.seedDefaultConcepts(hotelId) }
-  async getConcept(id: string): Promise<PayrollConceptDTO> { return this.concepts.getById(id) }
+  async getConcept(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollConceptDTO> { return this.concepts.getById(id, currentUser) }
   async listConcepts(hotelId: string): Promise<PayrollConceptDTO[]> { return this.concepts.list(hotelId) }
   async createConcept(dto: CreatePayrollConceptDTO): Promise<PayrollConceptDTO> { return this.concepts.create(dto) }
-  async updateConcept(id: string, data: Partial<CreatePayrollConceptDTO>): Promise<PayrollConceptDTO> { return this.concepts.update(id, data) }
-  async deleteConcept(id: string): Promise<void> { return this.concepts.delete(id) }
+  async updateConcept(id: string, data: Partial<CreatePayrollConceptDTO>, currentUser?: PayrollCurrentUser): Promise<PayrollConceptDTO> { return this.concepts.update(id, data, currentUser) }
+  async deleteConcept(id: string, currentUser?: PayrollCurrentUser): Promise<void> { return this.concepts.delete(id, currentUser) }
 
   // ─── Runs ─────────────────────────────────────────────
   async createRun(dto: CreatePayrollRunDTO): Promise<PayrollRunDTO> { return this.runs.create(dto) }
-  async getRun(id: string): Promise<PayrollRunDTO> { return this.runs.getById(id) }
+  async getRun(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.getById(id, currentUser) }
   async listRuns(hotelId: string): Promise<PayrollRunDTO[]> { return this.runs.list(hotelId) }
-  async getRunDetails(runId: string): Promise<PayrollRunDetailDTO[]> { return this.runs.getDetails(runId) }
-  async approveRun(id: string, approvedBy: string): Promise<PayrollRunDTO> { return this.runs.approve(id, approvedBy) }
-  async markRunAsPaid(id: string): Promise<PayrollRunDTO> { return this.runs.markAsPaid(id) }
-  async cancelRun(id: string): Promise<PayrollRunDTO> { return this.runs.cancel(id) }
+  async getRunDetails(runId: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDetailDTO[]> { return this.runs.getDetails(runId, currentUser) }
+  async approveRun(id: string, approvedBy: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.approve(id, approvedBy, currentUser) }
+  async markRunAsPaid(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.markAsPaid(id, currentUser) }
+  async cancelRun(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.cancel(id, currentUser) }
 
   // ─── Calculate ────────────────────────────────────────
-  async calculateRun(runId: string, employees: PayrollEmployeeInput[]): Promise<PayrollCalculationResult> {
-    const run = await this.runs.getById(runId)
+  async calculateRun(runId: string, employees: PayrollEmployeeInput[], currentUser?: PayrollCurrentUser): Promise<PayrollCalculationResult> {
+    const run = await this.runs.getById(runId, currentUser)
     const config = await this.config.getOrCreate(run.hotelId)
     await this.concepts.seedDefaultConcepts(run.hotelId)
     const result = await this.calculator.calculate(run.hotelId, run.period, config, employees)
-    await this.runs.saveCalculationResults(runId, result.employees)
+    await this.runs.saveCalculationResults(runId, result.employees, currentUser)
     return result
   }
 }

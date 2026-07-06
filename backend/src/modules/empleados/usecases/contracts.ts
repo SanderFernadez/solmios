@@ -1,13 +1,15 @@
 // empleados/usecases/contracts.ts — Contract management
 
-import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { ContractDTO, CreateContractDTO } from '../types'
+import type { SimpleUser } from './ownership'
 
 export class ContractUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<ContractDTO>,
     private readonly logger: Logger,
+    private readonly auth?: Auth,
   ) {}
 
   async create(dto: CreateContractDTO): Promise<ContractDTO> {
@@ -19,10 +21,10 @@ export class ContractUseCase {
     } as any)
   }
 
-  async getById(id: string): Promise<ContractDTO> {
-    // @ignore IDOR_RISK — contract lookup by ID
+  async getById(id: string, user?: SimpleUser): Promise<ContractDTO> {
     const contract = await this.repo.findById(id)
     if (!contract) throw new NotFoundError('Contract not found')
+    if (this.auth && user) this.auth.assertOwnership(contract.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return contract
   }
 
@@ -33,8 +35,8 @@ export class ContractUseCase {
     return this.repo.findMany(filters)
   }
 
-  async terminate(id: string): Promise<ContractDTO> {
-    const contract = await this.getById(id)
+  async terminate(id: string, user?: SimpleUser): Promise<ContractDTO> {
+    const contract = await this.getById(id, user)
     if (contract.status === 'terminated') throw new ValidationError('Contract already terminated')
     return this.repo.update(id, { status: 'terminated' } as any) as Promise<ContractDTO>
   }

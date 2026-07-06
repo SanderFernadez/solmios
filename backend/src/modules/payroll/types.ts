@@ -1,5 +1,13 @@
 // payroll/types.ts — DTOs y tipos
 
+// Usuario autenticado mínimo necesario para ownership checks (IDOR).
+// hotelId/role vienen del JWT (req.user) — ver create-permission-guard.ts.
+export interface PayrollCurrentUser {
+  id?: string
+  hotelId?: string
+  role?: string
+}
+
 // ─── Config ────────────────────────────────────────────
 export interface PayrollConfigDTO {
   id: string

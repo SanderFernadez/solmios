@@ -35,7 +35,7 @@ export function MarketingModule(opts?: { triggerDeps?: TriggerDeps }) {
       const templateRepo = new OrmRepository<WhatsappTemplateDTO>(orm, 'WhatsappTemplates')
 
       const log = logger.child('marketing')
-      const service = new MarketingService(autoMsgRepo, logRepo, templateRepo, log, cache, opts?.triggerDeps)
+      const service = new MarketingService(autoMsgRepo, logRepo, templateRepo, log, cache, opts?.triggerDeps, auth)
       const controller = new MarketingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

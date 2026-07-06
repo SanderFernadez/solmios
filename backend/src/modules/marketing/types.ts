@@ -1,5 +1,12 @@
 // marketing/types.ts
 
+/** Usuario autenticado mínimo requerido para checks de ownership multi-tenant. */
+export interface MarketingUser {
+  id: string
+  role: string
+  hotelId?: string
+}
+
 export interface AutoMessageDTO {
   id: string; hotelId: string; title: string; color: string
   emailSubject: string; emailBody: string; whatsappBody: string

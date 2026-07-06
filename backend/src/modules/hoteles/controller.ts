@@ -82,7 +82,7 @@ export class HotelesController {
   }
 
   async setConfig(req: HttpRequest) {
-    const result = await this.service.setConfig(req.body as any)
+    const result = await this.service.setConfig(req.body as any, req.user as any)
     return { status: 200, body: result }
   }
 

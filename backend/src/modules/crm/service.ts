@@ -1,6 +1,6 @@
 // crm/service.ts — CRM engine: points, coupons, segments, LTV
 
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type {
   LoyaltyTransactionDTO, CouponDTO, CreateCouponDTO,
@@ -22,6 +22,7 @@ export class CrmService {
     private readonly reservaRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     cache: CacheAdapter,
+    private readonly auth?: Auth,
   ) {
     this.ltvCalculator = new LtvUseCase(guestRepo, reservaRepo, logger)
   }
@@ -39,36 +40,45 @@ export class CrmService {
   }
 
   // ─── Points ───────────────────────────────────────────
-  async awardPoints(guestId: string, hotelId: string, points: number, description: string, reservationId?: string): Promise<LoyaltyTransactionDTO> {
+  async awardPoints(guestId: string, hotelId: string, points: number, description: string, reservationId?: string, role?: string): Promise<LoyaltyTransactionDTO> {
+    const guest = await this.guestRepo.findById(guestId)
+    if (!guest) throw new NotFoundError('Guest not found')
+    if (this.auth) this.auth.assertOwnership(guest.hotelId, hotelId, role, 'super_admin')
     const txn = await this.loyaltyRepo.create({ guestId, hotelId, reservationId: reservationId ?? null, type: 'earn', points, description } as any)
     await this.guestRepo.update(guestId, { loyaltyPoints: { increment: points } } as any)
     await this.checkTierUpgrade(guestId)
     return txn
   }
 
-  async redeemPoints(guestId: string, hotelId: string, points: number, description: string): Promise<LoyaltyTransactionDTO> {
-    // @ignore IDOR_RISK — guest lookup for point redemption
+  async redeemPoints(guestId: string, hotelId: string, points: number, description: string, role?: string): Promise<LoyaltyTransactionDTO> {
     const guest = await this.guestRepo.findById(guestId)
     if (!guest) throw new NotFoundError('Guest not found')
+    if (this.auth) this.auth.assertOwnership(guest.hotelId, hotelId, role, 'super_admin')
     if ((guest.loyaltyPoints ?? 0) < points) throw new ValidationError(`Insufficient points. Available: ${guest.loyaltyPoints ?? 0}`)
     const txn = await this.loyaltyRepo.create({ guestId, hotelId, type: 'redeem', points: -points, description } as any)
     await this.guestRepo.update(guestId, { loyaltyPoints: { increment: -points } } as any)
     return txn
   }
 
-  async getPointsHistory(guestId: string): Promise<LoyaltyTransactionDTO[]> {
+  async getPointsHistory(guestId: string, hotelId: string, role?: string): Promise<LoyaltyTransactionDTO[]> {
+    const guest = await this.guestRepo.findById(guestId)
+    if (!guest) throw new NotFoundError('Guest not found')
+    if (this.auth) this.auth.assertOwnership(guest.hotelId, hotelId, role, 'super_admin')
     return this.loyaltyRepo.findMany({ guestId })
   }
 
-  async getPointsBalance(guestId: string): Promise<number> {
-    // @ignore IDOR_RISK — guest points balance lookup
+  async getPointsBalance(guestId: string, hotelId: string, role?: string): Promise<number> {
     const guest = await this.guestRepo.findById(guestId)
-    return guest?.loyaltyPoints ?? 0
+    if (!guest) throw new NotFoundError('Guest not found')
+    if (this.auth) this.auth.assertOwnership(guest.hotelId, hotelId, role, 'super_admin')
+    return guest.loyaltyPoints ?? 0
   }
 
   // ─── Tier Management ──────────────────────────────────
+  // Internal helper — only reached from awardPoints (ownership already asserted there)
+  // or onCheckoutComplete (trusted reserva.guestId from connector). Not routed directly.
   async checkTierUpgrade(guestId: string): Promise<string> {
-    // @ignore IDOR_RISK — guest lookup for tier upgrade
+    // @ignore IDOR_RISK — guestId already validated by caller (see comment above method)
     const guest = await this.guestRepo.findById(guestId)
     if (!guest) return 'bronze'
     const newTier = this.calculateTier(guest.totalStays ?? 0, guest.totalSpent ?? 0)
@@ -93,9 +103,11 @@ export class CrmService {
     return this.couponRepo.create({ ...dto, useCount: 0, active: 1 } as any)
   }
 
-  async getCoupon(id: string): Promise<CouponDTO> {
-    // @ignore IDOR_RISK — coupon lookup
-    const c = await this.couponRepo.findById(id); if (!c) throw new NotFoundError('Coupon not found'); return c
+  async getCoupon(id: string, hotelId: string, role?: string): Promise<CouponDTO> {
+    const c = await this.couponRepo.findById(id)
+    if (!c) throw new NotFoundError('Coupon not found')
+    if (this.auth) this.auth.assertOwnership(c.hotelId, hotelId, role, 'super_admin')
+    return c
   }
 
   async listCoupons(hotelId: string): Promise<CouponDTO[]> {
@@ -111,11 +123,17 @@ export class CrmService {
     return c
   }
 
-  async useCoupon(id: string): Promise<void> {
+  async useCoupon(id: string, hotelId: string, role?: string): Promise<void> {
+    const coupon = await this.couponRepo.findById(id)
+    if (!coupon) throw new NotFoundError('Coupon not found')
+    if (this.auth) this.auth.assertOwnership(coupon.hotelId, hotelId, role, 'super_admin')
     await this.couponRepo.update(id, { useCount: { increment: 1 } } as any)
   }
 
-  async deleteCoupon(id: string): Promise<void> {
+  async deleteCoupon(id: string, hotelId: string, role?: string): Promise<void> {
+    const coupon = await this.couponRepo.findById(id)
+    if (!coupon) throw new NotFoundError('Coupon not found')
+    if (this.auth) this.auth.assertOwnership(coupon.hotelId, hotelId, role, 'super_admin')
     await this.couponRepo.update(id, { active: 0 } as any)
   }
 
@@ -128,10 +146,10 @@ export class CrmService {
     return this.segmentRepo.findMany({ hotelId, active: 1 })
   }
 
-  async getGuestsInSegment(hotelId: string, segmentId: string): Promise<any[]> {
-    // @ignore IDOR_RISK — segment lookup
+  async getGuestsInSegment(hotelId: string, segmentId: string, role?: string): Promise<any[]> {
     const segment = await this.segmentRepo.findById(segmentId)
     if (!segment) throw new NotFoundError('Segment not found')
+    if (this.auth) this.auth.assertOwnership(segment.hotelId, hotelId, role, 'super_admin')
     const rules: Record<string, any> = segment.rules ? JSON.parse(segment.rules) : {}
     const filters: Record<string, any> = { hotelId, active: 1 }
     if (rules.minStays) filters.totalStays = { $gte: rules.minStays }

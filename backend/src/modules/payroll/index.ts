@@ -46,7 +46,7 @@ export function PayrollModule() {
       const paymentHistoryRepo = new OrmRepository<PayrollPaymentHistoryDTO>(orm, 'PayrollPaymentHistory')
 
       const log = logger.child('payroll')
-      const service = new PayrollService(configRepo, conceptRepo, runRepo, detailRepo, payslipRepo, paymentHistoryRepo, log, cache)
+      const service = new PayrollService(configRepo, conceptRepo, runRepo, detailRepo, payslipRepo, paymentHistoryRepo, log, cache, auth)
       const controller = new PayrollController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

@@ -32,9 +32,10 @@ export function StaffAuthModule() {
       // PIN login — NO requiere autenticación
       router.post('/api/housekeeping/auth/pin', (req) => controller.loginByPin(req))
 
-      // PIN management — requiere autenticación de admin
-      router.post('/api/staff-auth/pin-set', (req) => controller.setPin(req))
-      router.post('/api/staff-auth/pin-reset/:userId', (req) => controller.resetPin(req))
+      // PIN management — requiere autenticación de admin del hotel
+      const adminOnly = [auth.authenticate('hotel_admin', 'super_admin')]
+      router.post('/api/staff-auth/pin-set', adminOnly, (req) => controller.setPin(req))
+      router.post('/api/staff-auth/pin-reset/:userId', adminOnly, (req) => controller.resetPin(req))
 
       logger.info('Módulo staff-auth v2.0 listo (bcrypt + rate limiting)')
       return service

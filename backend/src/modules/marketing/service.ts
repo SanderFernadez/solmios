@@ -1,9 +1,11 @@
 // marketing/service.ts
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
+import { NotFoundError } from 'arckode-framework'
 import type {
   AutoMessageDTO, CreateAutoMessageDTO,
   MessageLogDTO, CreateMessageLogDTO,
   WhatsappTemplateDTO, CreateWhatsappTemplateDTO,
+  MarketingUser,
 } from './types'
 import type { MarketingSockets } from './sockets'
 import type { EmailSender } from '../../services/email-sender'
@@ -26,6 +28,7 @@ export class MarketingService {
     private readonly logger: Logger,
     cache: CacheAdapter,
     private readonly triggerDeps?: TriggerDeps,
+    private readonly auth?: Auth,
   ) {}
 
   setSockets(s: Partial<MarketingSockets>): void {
@@ -42,15 +45,23 @@ export class MarketingService {
   async createAutoMessage(dto: CreateAutoMessageDTO): Promise<AutoMessageDTO> {
     return this.autoMsgRepo.create({ ...dto, isActive: dto.isActive !== false ? 1 : 0 } as any)
   }
-  async updateAutoMessage(id: string, data: Partial<CreateAutoMessageDTO>): Promise<AutoMessageDTO> {
+  async updateAutoMessage(id: string, data: Partial<CreateAutoMessageDTO>, user?: MarketingUser): Promise<AutoMessageDTO> {
+    const existing = await this.autoMsgRepo.findById(id)
+    if (!existing) throw new NotFoundError('Auto-mensaje no encontrado')
+    if (this.auth) this.auth.assertOwnership(existing.hotelId, user?.hotelId ?? '', user?.role, 'super_admin')
     const patch: Record<string, any> = {}
     const fields = ['title','color','emailSubject','emailBody','whatsappBody','channel','triggerEvent','triggerOffset','variables','isActive','event','language','triggerType']
     for (const k of fields) if ((data as any)[k] !== undefined) patch[k] = (data as any)[k]
     await this.autoMsgRepo.update(id, patch as any)
-    // @ignore IDOR_RISK — returning updated record after write
+    // @ignore IDOR_RISK — reload post-write, ownership ya validado arriba (mismo id)
     return this.autoMsgRepo.findById(id) as Promise<AutoMessageDTO>
   }
-  async deleteAutoMessage(id: string): Promise<void> { await this.autoMsgRepo.delete(id) }
+  async deleteAutoMessage(id: string, user?: MarketingUser): Promise<void> {
+    const existing = await this.autoMsgRepo.findById(id)
+    if (!existing) throw new NotFoundError('Auto-mensaje no encontrado')
+    if (this.auth) this.auth.assertOwnership(existing.hotelId, user?.hotelId ?? '', user?.role, 'super_admin')
+    await this.autoMsgRepo.delete(id)
+  }
 
   // ─── Message Logs ──────────────────────────────────────
   async listMessageLogs(hotelId: string, reservationId?: string): Promise<MessageLogDTO[]> {
@@ -66,15 +77,23 @@ export class MarketingService {
   async createTemplate(dto: CreateWhatsappTemplateDTO): Promise<WhatsappTemplateDTO> {
     return this.templateRepo.create({ ...dto, isActive: dto.isActive !== false ? 1 : 0 } as any)
   }
-  async updateTemplate(id: string, data: Partial<CreateWhatsappTemplateDTO>): Promise<WhatsappTemplateDTO> {
+  async updateTemplate(id: string, data: Partial<CreateWhatsappTemplateDTO>, user?: MarketingUser): Promise<WhatsappTemplateDTO> {
+    const existing = await this.templateRepo.findById(id)
+    if (!existing) throw new NotFoundError('Plantilla no encontrada')
+    if (this.auth) this.auth.assertOwnership(existing.hotelId, user?.hotelId ?? '', user?.role, 'super_admin')
     const patch: Record<string, any> = {}
     for (const k of ['name','body','category']) if ((data as any)[k] !== undefined) patch[k] = (data as any)[k]
     if (data.isActive !== undefined) patch.isActive = data.isActive ? 1 : 0
     await this.templateRepo.update(id, patch as any)
-    // @ignore IDOR_RISK — returning updated record after write
+    // @ignore IDOR_RISK — reload post-write, ownership ya validado arriba (mismo id)
     return this.templateRepo.findById(id) as Promise<WhatsappTemplateDTO>
   }
-  async deleteTemplate(id: string): Promise<void> { await this.templateRepo.delete(id) }
+  async deleteTemplate(id: string, user?: MarketingUser): Promise<void> {
+    const existing = await this.templateRepo.findById(id)
+    if (!existing) throw new NotFoundError('Plantilla no encontrada')
+    if (this.auth) this.auth.assertOwnership(existing.hotelId, user?.hotelId ?? '', user?.role, 'super_admin')
+    await this.templateRepo.delete(id)
+  }
 
   // ─── Trigger Auto-Messages ────────────────────────────
   /**

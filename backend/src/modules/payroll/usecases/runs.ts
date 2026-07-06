@@ -1,10 +1,11 @@
 // payroll/usecases/runs.ts — Payroll run lifecycle
 
-import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type {
   PayrollRunDTO, CreatePayrollRunDTO,
   PayrollRunDetailDTO, PayrollPayslipDTO,
+  PayrollCurrentUser,
 } from '../types'
 
 export class PayrollRunUseCase {
@@ -13,6 +14,7 @@ export class PayrollRunUseCase {
     private readonly detailRepo: RepositoryAdapter<PayrollRunDetailDTO>,
     private readonly payslipRepo: RepositoryAdapter<PayrollPayslipDTO>,
     private readonly logger: Logger,
+    private readonly auth?: Auth,
   ) {}
 
   async create(dto: CreatePayrollRunDTO): Promise<PayrollRunDTO> {
@@ -23,10 +25,14 @@ export class PayrollRunUseCase {
     } as any)
   }
 
-  async getById(id: string): Promise<PayrollRunDTO> {
-    // @ignore IDOR_RISK — run lookup by ID
+  async getById(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> {
     const run = await this.runRepo.findById(id)
     if (!run) throw new NotFoundError('Payroll run not found')
+    // IDOR: una liquidación pertenece a un hotel — verificar ownership antes de
+    // devolverla o de permitir cualquier transición de estado sobre ella.
+    if (this.auth && currentUser?.hotelId) {
+      this.auth.assertOwnership(run.hotelId, currentUser.hotelId, currentUser.role, 'super_admin')
+    }
     return run
   }
 
@@ -34,15 +40,19 @@ export class PayrollRunUseCase {
     return this.runRepo.findMany({ hotelId })
   }
 
-  async getDetails(runId: string): Promise<PayrollRunDetailDTO[]> {
+  async getDetails(runId: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDetailDTO[]> {
+    // El detalle no tiene hotelId propio — validar ownership vía el run padre
+    // antes de exponer detalles salariales de otro hotel.
+    await this.getById(runId, currentUser)
     return this.detailRepo.findMany({ runId })
   }
 
   async saveCalculationResults(
     runId: string,
     results: { employeeId: string; baseSalary: number; daysWorked: number; hoursWorked: number; overtimeHours: number; absences: number; earnings: any[]; deductions: any[]; grossPay: number; totalDeductions: number; netPay: number }[],
+    currentUser?: PayrollCurrentUser,
   ): Promise<PayrollRunDTO> {
-    const run = await this.getById(runId)
+    const run = await this.getById(runId, currentUser)
     if (run.status !== 'draft') throw new ValidationError('Run must be in draft status to calculate')
 
     const totalGross = results.reduce((s, r) => s + r.grossPay, 0)
@@ -72,8 +82,8 @@ export class PayrollRunUseCase {
     } as any) as Promise<PayrollRunDTO>
   }
 
-  async approve(runId: string, approvedBy: string): Promise<PayrollRunDTO> {
-    const run = await this.getById(runId)
+  async approve(runId: string, approvedBy: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> {
+    const run = await this.getById(runId, currentUser)
     if (run.status !== 'calculated') throw new ValidationError('Run must be calculated before approval')
 
     const details = await this.detailRepo.findMany({ runId })
@@ -93,8 +103,8 @@ export class PayrollRunUseCase {
     } as any) as Promise<PayrollRunDTO>
   }
 
-  async markAsPaid(runId: string): Promise<PayrollRunDTO> {
-    const run = await this.getById(runId)
+  async markAsPaid(runId: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> {
+    const run = await this.getById(runId, currentUser)
     if (run.status !== 'approved') throw new ValidationError('Run must be approved before payment')
 
     const details = await this.detailRepo.findMany({ runId })
@@ -107,8 +117,8 @@ export class PayrollRunUseCase {
     } as any) as Promise<PayrollRunDTO>
   }
 
-  async cancel(runId: string): Promise<PayrollRunDTO> {
-    const run = await this.getById(runId)
+  async cancel(runId: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> {
+    const run = await this.getById(runId, currentUser)
     if (run.status === 'paid') throw new ValidationError('Cannot cancel a paid run')
 
     const details = await this.detailRepo.findMany({ runId })

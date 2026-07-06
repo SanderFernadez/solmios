@@ -1,14 +1,16 @@
 // empleados/usecases/profiles.ts — Employee profile CRUD
 
-import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { EmployeeProfileDTO, CreateEmployeeProfileDTO, EmpleadosQuery, EmpleadosPaginated } from '../types'
+import type { SimpleUser } from './ownership'
 
 export class ProfileUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<EmployeeProfileDTO>,
     private readonly logger: Logger,
     private readonly userRepo?: RepositoryAdapter<any>,
+    private readonly auth?: Auth,
   ) {}
 
   async create(dto: CreateEmployeeProfileDTO): Promise<EmployeeProfileDTO> {
@@ -22,10 +24,10 @@ export class ProfileUseCase {
     } as any)
   }
 
-  // @ignore IDOR_RISK — profile lookup by ID
-  async getById(id: string): Promise<EmployeeProfileDTO> {
+  async getById(id: string, user?: SimpleUser): Promise<EmployeeProfileDTO> {
     const profile = await this.repo.findById(id)
     if (!profile) throw new NotFoundError('Employee profile not found')
+    if (this.auth && user) this.auth.assertOwnership(profile.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return profile
   }
 
@@ -58,13 +60,13 @@ export class ProfileUseCase {
     return { data, total: result.total ?? 0, page, limit }
   }
 
-  async update(id: string, data: Partial<CreateEmployeeProfileDTO>): Promise<EmployeeProfileDTO> {
-    await this.getById(id)
+  async update(id: string, data: Partial<CreateEmployeeProfileDTO>, user?: SimpleUser): Promise<EmployeeProfileDTO> {
+    await this.getById(id, user)
     return this.repo.update(id, data as any) as Promise<EmployeeProfileDTO>
   }
 
-  async deactivate(id: string): Promise<void> {
-    await this.getById(id)
+  async deactivate(id: string, user?: SimpleUser): Promise<void> {
+    await this.getById(id, user)
     await this.repo.update(id, { active: 0 } as any)
   }
 }
