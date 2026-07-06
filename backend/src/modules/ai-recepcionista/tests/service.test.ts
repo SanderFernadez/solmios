@@ -18,15 +18,15 @@ function mockRepo(): any {
   }
 }
 
-// 15 repos in constructor order:
+// 16 repos in constructor order:
 // 0 conversation · 1 message · 2 intent · 3 template · 4 whatsappConfig · 5 metrics · 6 bookingFlow
-// · 7 voiceConfig · 8 user · 9 hotel · 10 room · 11 reservation · 12 paymentLink · 13 config · 14 invoice
+// · 7 voiceConfig · 8 user · 9 hotel · 10 room · 11 reservation · 12 paymentLink · 13 config · 14 invoice · 15 guest
 function makeService(overrides: Record<number, any> = {}): AiRecepcionistaService {
-  const repos: any[] = Array.from({ length: 15 }, () => mockRepo())
+  const repos: any[] = Array.from({ length: 16 }, () => mockRepo())
   for (const [idx, repo] of Object.entries(overrides)) repos[Number(idx)] = repo
   return new AiRecepcionistaService(
     repos[0], repos[1], repos[2], repos[3], repos[4], repos[5], repos[6], repos[7],
-    repos[8], repos[9], repos[10], repos[11], repos[12], repos[13], repos[14],
+    repos[8], repos[9], repos[10], repos[11], repos[12], repos[13], repos[14], repos[15],
     log, silentCache, auth,
   )
 }
@@ -79,5 +79,27 @@ describe('AiRecepcionistaService', () => {
     const response = await service.processIncomingMessage('c1', 'xyzxyz', 'h1')
     expect(response).toBeDefined()
     expect(response.confidence).toBeLessThan(0.65)
+  })
+
+  it('sendMessage: IDOR — rechaza mensaje a conversación de otro hotel', async () => {
+    const convRepo = mockRepo()
+    convRepo.findById = async () => ({ id: 'c1', hotelId: 'h2', status: 'active' })
+    const service = makeService({ 0: convRepo })
+
+    await expect(
+      service.sendMessage('c1', { sender: 'agent', content: 'hola' }, { hotelId: 'h1', role: 'receptionist' }),
+    ).rejects.toThrow('No autorizado')
+  })
+
+  it('sendMessage: permite mensaje dentro del mismo hotel', async () => {
+    const convRepo = mockRepo()
+    convRepo.findById = async () => ({ id: 'c1', hotelId: 'h1', status: 'active' })
+    const messageRepo = mockRepo()
+    messageRepo.create = async (d: any) => d
+    const service = makeService({ 0: convRepo, 1: messageRepo })
+
+    const msg = await service.sendMessage('c1', { sender: 'agent', content: 'hola' }, { hotelId: 'h1', role: 'receptionist' })
+    expect(msg.conversationId).toBe('c1')
+    expect(msg.hotelId).toBe('h1')
   })
 })

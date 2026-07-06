@@ -20,6 +20,11 @@ export const HousekeepingModel: ModelDefinition = {
     startTime: { type: 'string' },
     endTime: { type: 'string', indexed: true },
     photos: { type: 'json', default: [] },
+    // Supervisor approval workflow (F3). Sin estos campos el ORM los descarta
+    // silenciosamente (anti-patrón mem 1805) y approve() nunca pasa su gate.
+    supervisorId: { type: 'string' },
+    supervisorNote: { type: 'text' },
+    supOnSiteTime: { type: 'string' },
   },
   timestamps: true,
 }

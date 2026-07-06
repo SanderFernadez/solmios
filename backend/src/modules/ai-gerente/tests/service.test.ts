@@ -52,10 +52,25 @@ describe('AiGerenteService', () => {
     expect(result.pagination.total).toBe(1)
   })
 
-  it('feedback: delega al repo', async () => {
-    const interactionRepo = mockRepo({ update: async (_id: string, d: any) => ({ id: 'i1', ...d }) })
+  it('feedback: delega al repo cuando el hotel coincide', async () => {
+    const interactionRepo = mockRepo({
+      findById: async () => ({ id: 'i1', hotelId: 'h1' }),
+      update: async (_id: string, d: any) => ({ id: 'i1', ...d }),
+    })
     const service = new AiGerenteService(interactionRepo, mockRepo(), mockRepo(), mockRepo(), mockRepo(), mockRepo(), log, silentCache)
-    const updated = await service.feedback('i1', 'helpful')
+    const updated = await service.feedback('i1', 'helpful', USER)
     expect(updated).toMatchObject({ feedback: 'helpful' })
+  })
+
+  it('feedback: null si la interacción no existe', async () => {
+    const service = new AiGerenteService(mockRepo(), mockRepo(), mockRepo(), mockRepo(), mockRepo(), mockRepo(), log, silentCache)
+    const updated = await service.feedback('nope', 'helpful', USER)
+    expect(updated).toBeNull()
+  })
+
+  it('feedback: IDOR — rechaza feedback de otro hotel', async () => {
+    const interactionRepo = mockRepo({ findById: async () => ({ id: 'i1', hotelId: 'h2' }) })
+    const service = new AiGerenteService(interactionRepo, mockRepo(), mockRepo(), mockRepo(), mockRepo(), mockRepo(), log, silentCache)
+    await expect(service.feedback('i1', 'helpful', USER)).rejects.toThrow('No autorizado')
   })
 })

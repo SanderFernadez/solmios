@@ -1,5 +1,13 @@
 // payroll/types.ts — DTOs y tipos
 
+// Usuario autenticado mínimo necesario para ownership checks (IDOR).
+// hotelId/role vienen del JWT (req.user) — ver create-permission-guard.ts.
+export interface PayrollCurrentUser {
+  id?: string
+  hotelId?: string
+  role?: string
+}
+
 // ─── Config ────────────────────────────────────────────
 export interface PayrollConfigDTO {
   id: string
@@ -16,8 +24,8 @@ export interface PayrollConfigDTO {
   minimumWage: number | null
   maxOvertimeHoursWeekly: number
   provisionType: string
-  aguinaldoEnabled: number
-  aguinaldoMonths: number
+  yearEndBonusEnabled: number
+  yearEndBonusMonths: number
 }
 
 export interface CreatePayrollConfigDTO {
@@ -30,8 +38,8 @@ export interface CreatePayrollConfigDTO {
   healthInsuranceRate?: number
   incomeTaxRates?: string
   minimumWage?: number
-  aguinaldoEnabled?: boolean
-  aguinaldoMonths?: number
+  yearEndBonusEnabled?: boolean
+  yearEndBonusMonths?: number
 }
 
 // ─── Concept ────────────────────────────────────────────

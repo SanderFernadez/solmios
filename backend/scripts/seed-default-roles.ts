@@ -59,6 +59,16 @@ async function seed() {
           users: 0,
         },
         {
+          id: `role-${hotelId}-supervisor`,
+          name: 'supervisor',
+          icon: '🔍',
+          color: 'bg-teal-100 text-teal-700',
+          system: 1,
+          hotelId,
+          permissions: JSON.stringify(DEFAULT_ROLE_PERMISSIONS.supervisor),
+          users: 0,
+        },
+        {
           id: `role-${hotelId}-maintenance`,
           name: 'maintenance',
           icon: '🔧',

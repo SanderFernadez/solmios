@@ -19,7 +19,7 @@ export class FeedbackService {
 
   async getPin(id: string, user?: any): Promise<FeedbackPinDTO | null> {
     const pin = (await this.pinsRepo.findById(id)) as FeedbackPinDTO | null
-    if (pin && this.auth && user) this.auth.assertOwnership(pin.id, user.hotelId || user.id)
+    if (pin && this.auth && user) this.auth.assertOwnership(pin.hotelId ?? '', user.hotelId, user.role, 'super_admin')
     return pin
   }
 
@@ -37,9 +37,9 @@ export class FeedbackService {
   }
 
   async updatePin(id: string, dto: UpdateFeedbackPinDTO, user?: any): Promise<FeedbackPinDTO | null> {
-    const existing = await this.pinsRepo.findById(id)
+    const existing = (await this.pinsRepo.findById(id)) as FeedbackPinDTO | null
     if (!existing) return null
-    if (this.auth && user) this.auth.assertOwnership(existing.id, user.hotelId || user.id)
+    if (this.auth && user) this.auth.assertOwnership(existing.hotelId ?? '', user.hotelId, user.role, 'super_admin')
     const updated = await this.pinsRepo.update(id, {
       ...dto,
       updatedAt: new Date().toISOString(),
@@ -47,7 +47,10 @@ export class FeedbackService {
     return updated as FeedbackPinDTO
   }
 
-  async deletePin(id: string): Promise<boolean> {
+  async deletePin(id: string, user?: any): Promise<boolean> {
+    const existing = (await this.pinsRepo.findById(id)) as FeedbackPinDTO | null
+    if (!existing) return false
+    if (this.auth && user) this.auth.assertOwnership(existing.hotelId ?? '', user.hotelId, user.role, 'super_admin')
     return await this.pinsRepo.delete(id)
   }
 

@@ -47,6 +47,7 @@ export class AiRecepcionistaService {
     private readonly paymentLinkRepo: any,
     private readonly configRepo: any,
     private readonly invoiceRepo: any,
+    private readonly guestRepo: any,
     private readonly logger: any,
     private readonly cache: any,
     private readonly auth: any,
@@ -90,8 +91,8 @@ export class AiRecepcionistaService {
   async transferConversation(id: string, agentId: string | null, reason?: string, u?: any) {
     return transferConversation(this.conversationRepo, this.sockets, id, agentId, reason, this.userHotel(u!), this.userRole(u!))
   }
-  async sendMessage(dto: any) {
-    return sendMessage(this.conversationRepo, this.messageRepo, this.sockets, this.cache, dto)
+  async sendMessage(conversationId: string, dto: any, u: any) {
+    return sendMessage(this.conversationRepo, this.messageRepo, this.sockets, this.cache, { ...dto, conversationId }, this.userHotel(u), this.userRole(u))
   }
   async processIncomingMessage(conversationId: string, content: string, hotelId: string) {
     // Fetch real hotel name for personalization
@@ -104,7 +105,7 @@ export class AiRecepcionistaService {
     } catch (e: any) {
       console.log(`[AI] hotel lookup failed: ${e?.message}`)
     }
-    return processIncomingMessage(this.conversationRepo, this.messageRepo, this.intentRepo, this.whatsappConfigRepo, this.sockets, this.cache, this.logger, conversationId, content, hotelId, hotelName, { roomRepo: this.roomRepo, reservationRepo: this.reservationRepo, hotelRepo: this.hotelRepo, paymentLinkRepo: this.paymentLinkRepo, configRepo: this.configRepo, invoiceRepo: this.invoiceRepo, onReservationCreated: this.onReservationCreated })
+    return processIncomingMessage(this.conversationRepo, this.messageRepo, this.intentRepo, this.whatsappConfigRepo, this.sockets, this.cache, this.logger, conversationId, content, hotelId, hotelName, { roomRepo: this.roomRepo, reservationRepo: this.reservationRepo, hotelRepo: this.hotelRepo, guestRepo: this.guestRepo, paymentLinkRepo: this.paymentLinkRepo, configRepo: this.configRepo, invoiceRepo: this.invoiceRepo, onReservationCreated: this.onReservationCreated })
   }
 
   async listIntents(q: IntentQuery, u: any) {

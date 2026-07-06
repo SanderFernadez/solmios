@@ -1,5 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
+import { validateSchema } from 'arckode-framework'
 import type { TtlockService } from './service'
+import { UpdateTTLockConfigSchema, ConnectTTLockSchema, UpdateLockDeviceSchema } from './validators/schema'
 
 export class TtlockController {
   constructor(
@@ -29,7 +31,8 @@ export class TtlockController {
   async updateConfig(req: HttpRequest) {
     const id = await this.hotelOf(req)
     if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
-    await this.service.updateConfig(id, req.body)
+    const data = validateSchema(UpdateTTLockConfigSchema, req.body) as any
+    await this.service.updateConfig(id, data)
     return { status: 200, body: { success: true } }
   }
 
@@ -37,7 +40,8 @@ export class TtlockController {
     const id = await this.hotelOf(req)
     if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
     try {
-      await this.service.connect(id, req.body)
+      const data = validateSchema(ConnectTTLockSchema, req.body) as any
+      await this.service.connect(id, data)
       return { status: 200, body: { success: true, connected: true } }
     } catch (e: any) {
       return { status: 502, body: { error: e.message || 'No se pudo conectar con TTLock' } }
@@ -81,6 +85,7 @@ export class TtlockController {
 
   async updateLock(req: HttpRequest) {
     const id = await this.hotelOf(req)
-    return { status: 200, body: await this.service.updateLock(req.params.id, req.body, id) }
+    const data = validateSchema(UpdateLockDeviceSchema, req.body) as any
+    return { status: 200, body: await this.service.updateLock(req.params.id, data, id) }
   }
 }

@@ -73,9 +73,12 @@ export class PaquetesService {
     return item
   }
 
-  async create(dto: CreatePaquetesDTO): Promise<PaquetesDTO> {
+  async create(dto: CreatePaquetesDTO, user: CurrentUser): Promise<PaquetesDTO> {
     this.logger.info('Creando paquetes')
-    const item = await this.repo.create(dto as Omit<PaquetesDTO, 'id'>)
+    // P0 (IDOR/cross-tenant): forzar hotelId del JWT — nunca confiar en dto.hotelId del body.
+    // super_admin puede especificar hotelId; el resto siempre usa el suyo.
+    const hotelId = user.role === 'super_admin' ? (dto.hotelId || user.hotelId || '') : (user.hotelId || '')
+    const item = await this.repo.create({ ...dto, hotelId } as Omit<PaquetesDTO, 'id'>)
     await this.sockets.onPaquetesCreated?.(item)
     await this.cache.delete('paquetes:list')
     return item

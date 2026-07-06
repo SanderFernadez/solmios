@@ -50,6 +50,14 @@ export class AttendanceController {
   }
 
   async biometricRecord(req: HttpRequest) {
+    // Webhook de lector biométrico (ZKTeco). No hay JWT de usuario — se autentica
+    // con una device key compartida (patrón env-secret, como STRIPE_WEBHOOK_SECRET).
+    // Fail-closed: sin ATTENDANCE_BIOMETRIC_KEY configurada, el endpoint queda cerrado.
+    const expected = process.env.ATTENDANCE_BIOMETRIC_KEY
+    const provided = (req.headers as any)?.['x-device-key'] || (req.headers as any)?.['x-api-key']
+    if (!expected || provided !== expected) {
+      return { status: 401, body: { error: 'Device key inválida o no configurada' } }
+    }
     const b = validateSchema(BiometricRecordSchema, req.body) as any
     if (b.type === 'clock_in') return { status: 201, body: await this.service.clockIn(b.employeeId, b.hotelId, 'fingerprint') }
     if (b.type === 'clock_out') return { status: 200, body: await this.service.clockOut(b.employeeId, b.hotelId) }

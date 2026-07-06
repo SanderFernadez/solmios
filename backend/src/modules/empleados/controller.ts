@@ -33,7 +33,7 @@ export class EmpleadosController {
 
   async getDepartment(req: HttpRequest) {
     this.logger.info('GET /api/departments/:id')
-    const dept = await this.service.getDepartment(req.params.id)
+    const dept = await this.service.getDepartment(req.params.id, (req as any).user)
     return { status: 200, body: dept }
   }
 
@@ -47,13 +47,13 @@ export class EmpleadosController {
   async updateDepartment(req: HttpRequest) {
     this.logger.info('PUT /api/departments/:id')
     const data = validateSchema(UpdateDepartmentSchema, req.body)
-    const dept = await this.service.updateDepartment(req.params.id, data)
+    const dept = await this.service.updateDepartment(req.params.id, data, (req as any).user)
     return { status: 200, body: dept }
   }
 
   async deleteDepartment(req: HttpRequest) {
     this.logger.info('DELETE /api/departments/:id')
-    await this.service.deleteDepartment(req.params.id)
+    await this.service.deleteDepartment(req.params.id, (req as any).user)
     return { status: 204, body: null }
   }
 
@@ -69,7 +69,7 @@ export class EmpleadosController {
 
   async getProfile(req: HttpRequest) {
     this.logger.info('GET /api/employee-profiles/:id')
-    const profile = await this.service.getProfile(req.params.id)
+    const profile = await this.service.getProfile(req.params.id, (req as any).user)
     return { status: 200, body: profile }
   }
 
@@ -89,13 +89,13 @@ export class EmpleadosController {
   async updateProfile(req: HttpRequest) {
     this.logger.info('PUT /api/employee-profiles/:id')
     const data = validateSchema(UpdateProfileSchema, req.body)
-    const profile = await this.service.updateProfile(req.params.id, data)
+    const profile = await this.service.updateProfile(req.params.id, data, (req as any).user)
     return { status: 200, body: profile }
   }
 
   async deactivateProfile(req: HttpRequest) {
     this.logger.info('DELETE /api/employee-profiles/:id')
-    await this.service.deactivateProfile(req.params.id)
+    await this.service.deactivateProfile(req.params.id, (req as any).user)
     return { status: 204, body: null }
   }
 
@@ -111,7 +111,7 @@ export class EmpleadosController {
 
   async getContract(req: HttpRequest) {
     this.logger.info('GET /api/employee-contracts/:id')
-    const contract = await this.service.getContract(req.params.id)
+    const contract = await this.service.getContract(req.params.id, (req as any).user)
     return { status: 200, body: contract }
   }
 
@@ -125,7 +125,7 @@ export class EmpleadosController {
 
   async terminateContract(req: HttpRequest) {
     this.logger.info('POST /api/employee-contracts/:id/terminate')
-    const contract = await this.service.terminateContract(req.params.id)
+    const contract = await this.service.terminateContract(req.params.id, (req as any).user)
     return { status: 200, body: contract }
   }
 
@@ -141,7 +141,7 @@ export class EmpleadosController {
 
   async getDocument(req: HttpRequest) {
     this.logger.info('GET /api/employee-documents/:id')
-    const doc = await this.service.getDocument(req.params.id)
+    const doc = await this.service.getDocument(req.params.id, (req as any).user)
     return { status: 200, body: doc }
   }
 
@@ -155,7 +155,7 @@ export class EmpleadosController {
 
   async deleteDocument(req: HttpRequest) {
     this.logger.info('DELETE /api/employee-documents/:id')
-    await this.service.deleteDocument(req.params.id)
+    await this.service.deleteDocument(req.params.id, (req as any).user)
     return { status: 204, body: null }
   }
 
@@ -171,7 +171,7 @@ export class EmpleadosController {
 
   async getLeaveRequest(req: HttpRequest) {
     this.logger.info('GET /api/leave-requests/:id')
-    const request = await this.service.getLeaveRequest(req.params.id)
+    const request = await this.service.getLeaveRequest(req.params.id, (req as any).user)
     return { status: 200, body: request }
   }
 
@@ -186,16 +186,16 @@ export class EmpleadosController {
 
   async approveLeaveRequest(req: HttpRequest) {
     this.logger.info('POST /api/leave-requests/:id/approve')
-    const userId = (req as any).userId ?? ''
-    const request = await this.service.approveLeaveRequest(req.params.id, userId)
+    const userId = (req as any).userId ?? (req as any).user?.id ?? ''
+    const request = await this.service.approveLeaveRequest(req.params.id, userId, (req as any).user)
     return { status: 200, body: request }
   }
 
   async rejectLeaveRequest(req: HttpRequest) {
     this.logger.info('POST /api/leave-requests/:id/reject')
-    const userId = (req as any).userId ?? ''
+    const userId = (req as any).userId ?? (req as any).user?.id ?? ''
     const data = validateSchema(RejectLeaveRequestSchema, req.body) as any
-    const request = await this.service.rejectLeaveRequest(req.params.id, userId, data.reason)
+    const request = await this.service.rejectLeaveRequest(req.params.id, userId, data.reason, (req as any).user)
     return { status: 200, body: request }
   }
 
@@ -211,7 +211,7 @@ export class EmpleadosController {
 
   async getReview(req: HttpRequest) {
     this.logger.info('GET /api/performance-reviews/:id')
-    const review = await this.service.getReview(req.params.id)
+    const review = await this.service.getReview(req.params.id, (req as any).user)
     return { status: 200, body: review }
   }
 
@@ -225,7 +225,7 @@ export class EmpleadosController {
 
   async completeReview(req: HttpRequest) {
     this.logger.info('POST /api/performance-reviews/:id/complete')
-    const review = await this.service.completeReview(req.params.id)
+    const review = await this.service.completeReview(req.params.id, (req as any).user)
     return { status: 200, body: review }
   }
 

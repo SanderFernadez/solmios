@@ -41,9 +41,10 @@ export class AiRecepcionistaController {
   // ─── Messages ───────────────────────────────────────────────────────────
 
   async sendMessage(req: any) {
+    const user = req.user || {}
     const body: any = req.body || {}
     validateSchema(AiRecepcionistaValidator.createMessage as any, body)
-    const msg = await this.service.sendMessage(body)
+    const msg = await this.service.sendMessage(req.params.id, body, user)
     return { status: 201, body: msg }
   }
 

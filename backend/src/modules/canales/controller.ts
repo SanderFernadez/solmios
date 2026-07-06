@@ -3,12 +3,17 @@
 // SIN lógica de negocio. SIN llamadas directas al ORM. (REGLA #12)
 // Toda mutación (POST/PUT/PATCH) DEBE pasar por validateSchema(). (REGLA #11)
 //
+// Multi-tenant: el hotelId se resuelve con resolveTenant(req) — sale del token,
+// override por ?hotelId= solo para super_admin. NUNCA confiar en el hotelId que
+// manda el cliente por query/body (fuga cross-tenant, anti-patrón query||token).
+//
 // La sincronización (POST /api/channels/sync) se cablea en index.ts porque
 // necesita datos del módulo habitaciones (cross-module → route en el root del módulo).
 
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { CanalesService } from './service'
+import { resolveTenant } from '../../shared/utils/resolve-tenant'
 import { CreateCanalesSchema, UpdateCanalesSchema, TestConnectionSchema, ConnectOTASchema, DeactivateSchema, IngestBookingsSchema } from './validators/schema'
 
 export class CanalesController {
@@ -18,14 +23,14 @@ export class CanalesController {
   ) {}
 
   async syncLog(req: HttpRequest) {
-    const hotelId = (req.query as any)?.hotelId || (req.user as any)?.hotelId
+    const hotelId = resolveTenant(req) as string
     return { status: 200, body: await this.service.getSyncLog(hotelId) }
   }
 
   // GET /api/channels?hotelId= — canales conectados (Channex real + fallback).
   async channels(req: HttpRequest) {
-    this.logger.info('GET /api/channels', { hotelId: (req.query as any)?.hotelId })
-    const hotelId = (req.query as any)?.hotelId
+    const hotelId = resolveTenant(req) as string
+    this.logger.info('GET /api/channels', { hotelId })
     const result = await this.service.listChannels(hotelId)
     return { status: 200, body: result }
   }
@@ -39,8 +44,9 @@ export class CanalesController {
   // POST /api/channels/test-connection — prueba conexión con una OTA.
   async testConnection(req: HttpRequest) {
     const data = validateSchema(TestConnectionSchema, req.body) as any
+    const hotelId = resolveTenant(req) as string
     this.logger.info('POST /api/channels/test-connection', { channel: data.channel, hotel_id: data.hotel_id })
-    const result = await this.service.testConnection(data.hotelId, data.channel, data.hotel_id)
+    const result = await this.service.testConnection(hotelId, data.channel, data.hotel_id)
     return { status: result.success ? 200 : 422, body: result }
   }
 
@@ -48,14 +54,15 @@ export class CanalesController {
   async mappingDetails(req: HttpRequest) {
     const q = req.query as any
     const { channel, hotel_id } = q
+    const hotelId = resolveTenant(req) as string
     this.logger.info('GET /api/channels/mapping-details', { channel, hotel_id })
-    const result = await this.service.getMappingDetails(q.hotelId, channel, hotel_id)
+    const result = await this.service.getMappingDetails(hotelId, channel, hotel_id)
     return { status: result.success ? 200 : 422, body: result }
   }
 
   // GET /api/channels/groups — lista grupos del account Channex.
   async groups(req: HttpRequest) {
-    const hotelId = (req.query as any)?.hotelId
+    const hotelId = resolveTenant(req) as string
     this.logger.info('GET /api/channels/groups')
     return { status: 200, body: await this.service.listGroups(hotelId) }
   }
@@ -63,15 +70,16 @@ export class CanalesController {
   // POST /api/channels/connect — crea y activa un canal OTA.
   async connectOTA(req: HttpRequest) {
     const dto = validateSchema(ConnectOTASchema, req.body) as any
+    const hotelId = resolveTenant(req) as string
     this.logger.info('POST /api/channels/connect', { channel: dto.channel })
-    const result = await this.service.createOTAChannel(dto.hotelId, dto)
+    const result = await this.service.createOTAChannel(hotelId, dto)
     return { status: result.success ? 200 : 422, body: result }
   }
 
   // POST /api/channels/:id/deactivate — desactiva un canal OTA.
   async deactivate(req: HttpRequest) {
     const data = validateSchema(DeactivateSchema, req.body) as any
-    const hotelId = data.hotelId || (req.query as any)?.hotelId
+    const hotelId = resolveTenant(req) as string
     this.logger.info('POST /api/channels/:id/deactivate', { id: req.params.id })
     const result = await this.service.deactivateChannel(hotelId, req.params.id)
     return { status: result.success ? 200 : 422, body: result }
@@ -79,7 +87,7 @@ export class CanalesController {
 
   // GET /api/channels/bookings — lista bookings pendientes del feed.
   async bookings(req: HttpRequest) {
-    const hotelId = (req.query as any)?.hotelId
+    const hotelId = resolveTenant(req) as string
     this.logger.info('GET /api/channels/bookings', { hotelId })
     const data = await this.service.getBookings(hotelId)
     return { status: 200, body: { data, total: data.length } }
@@ -88,7 +96,7 @@ export class CanalesController {
   // POST /api/channels/bookings/ingest — ingesta bookings → reservas + ack.
   async ingestBookings(req: HttpRequest) {
     const data = validateSchema(IngestBookingsSchema, req.body) as any
-    const hotelId = data.hotelId || (req.query as any)?.hotelId
+    const hotelId = resolveTenant(req) as string
     this.logger.info('POST /api/channels/bookings/ingest', { hotelId })
     const result = await this.service.ingestBookings(hotelId)
     return { status: result.success ? 200 : 422, body: result }
@@ -96,7 +104,7 @@ export class CanalesController {
 
   // GET /api/channels/iframe-token — token para embed de Channex.
   async iframeToken(req: HttpRequest) {
-    const hotelId = (req.query as any)?.hotelId
+    const hotelId = resolveTenant(req) as string
     const username = (req.query as any)?.username || 'Hotel Admin'
     this.logger.info('GET /api/channels/iframe-token', { hotelId, username })
     const token = await this.service.getIframeToken(hotelId, username)
@@ -108,7 +116,7 @@ export class CanalesController {
 
   // GET /api/channels/:id/detail — detalle completo del canal con tarifas y mapping.
   async channelDetail(req: HttpRequest) {
-    const hotelId = (req.query as any)?.hotelId
+    const hotelId = resolveTenant(req) as string
     this.logger.info('GET /api/channels/:id/detail', { id: req.params.id, hotelId })
     const result = await this.service.getChannelDetail(hotelId, req.params.id)
     return { status: result ? 200 : 404, body: result || { error: 'Canal no encontrado' } }

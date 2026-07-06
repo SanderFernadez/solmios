@@ -62,8 +62,36 @@ export const ConversionEventsModel: ModelDefinition = {
   },
 }
 
+// Booking público generado por el motor de reservas (POST /api/public/bookings).
+// Sin este modelo, `new OrmRepository(orm, 'BookingEngine')` en index.ts referencia
+// un modelo inexistente → createBooking/getBooking crashean en runtime.
+export const PublicBookingModel: ModelDefinition = {
+  table: 'public_bookings',
+  timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    roomType: { type: 'string' },
+    roomId: { type: 'string', indexed: true },
+    guestName: { type: 'string' },
+    guestEmail: { type: 'string' },
+    guestPhone: { type: 'string' },
+    checkIn: { type: 'string', indexed: true },
+    checkOut: { type: 'string' },
+    adults: { type: 'number', default: 1 },
+    children: { type: 'number', default: 0 },
+    totalAmount: { type: 'number', default: 0 },
+    currency: { type: 'string', default: 'USD' },
+    status: { type: 'string', default: 'pending', indexed: true },
+    paymentStatus: { type: 'string', default: 'unpaid' },
+    paymentRef: { type: 'string', default: '' },
+    promoCode: { type: 'string', default: '' },
+  },
+}
+
 export function registerBookingengineModels(orm: ORM): void {
   orm.define('BookingConfig', BookingConfigModel)
   orm.define('AvailabilityCache', AvailabilityCacheModel)
   orm.define('ConversionEvents', ConversionEventsModel)
+  orm.define('BookingEngine', PublicBookingModel)
 }

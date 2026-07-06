@@ -105,6 +105,13 @@ export const AddonSchema: Record<string, ValidationRule> = {
   quantity: { type: 'number' as const, min: 1, max: 100 },
 }
 
+// ── Settlement en checkout (F?): datos financieros del cierre de folio ──
+export const SettleSchema: Record<string, ValidationRule> = {
+  method: { type: 'string' as const, required: true, max: 50 },
+  amount: { type: 'number' as const, required: true, min: 0 },
+  reference: { type: 'string' as const, max: 200 },
+}
+
 // ── Pre-Checkin (público) ──
 export const PreCheckinSchema: Record<string, ValidationRule> = {
   guestName: { type: 'string' as const, min: 2 },

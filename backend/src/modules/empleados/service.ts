@@ -1,7 +1,7 @@
 // empleados/service.ts — Facade pública del módulo Empleados
 // Orquestador delgado que delega a usecases/
 
-import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import type {
   DepartmentDTO, CreateDepartmentDTO,
   EmployeeProfileDTO, CreateEmployeeProfileDTO,
@@ -20,6 +20,7 @@ import { DocumentUseCase } from './usecases/documents'
 import { LeaveRequestUseCase } from './usecases/leave-requests'
 import { ReviewUseCase } from './usecases/reviews'
 import { OrgChartUseCase } from './usecases/org-chart'
+import type { SimpleUser } from './usecases/ownership'
 
 export class EmpleadosService {
   private sockets: EmpleadosSockets = {}
@@ -41,13 +42,14 @@ export class EmpleadosService {
     private readonly logger: Logger,
     cache: CacheAdapter,
     userRepo?: RepositoryAdapter<any>,
+    auth?: Auth,
   ) {
-    this.departments = new DepartmentUseCase(departmentRepo, logger)
-    this.profiles = new ProfileUseCase(profileRepo, logger, userRepo)
-    this.contracts = new ContractUseCase(contractRepo, logger)
-    this.documents = new DocumentUseCase(documentRepo, logger)
-    this.leaveRequests = new LeaveRequestUseCase(leaveRepo, logger)
-    this.reviews = new ReviewUseCase(reviewRepo, logger)
+    this.departments = new DepartmentUseCase(departmentRepo, logger, auth)
+    this.profiles = new ProfileUseCase(profileRepo, logger, userRepo, auth)
+    this.contracts = new ContractUseCase(contractRepo, logger, auth)
+    this.documents = new DocumentUseCase(documentRepo, logger, auth)
+    this.leaveRequests = new LeaveRequestUseCase(leaveRepo, logger, auth)
+    this.reviews = new ReviewUseCase(reviewRepo, logger, auth)
     this.orgChart = new OrgChartUseCase(departmentRepo, profileRepo, logger)
   }
 
@@ -68,20 +70,20 @@ export class EmpleadosService {
     return this.departments.create(dto)
   }
 
-  async getDepartment(id: string): Promise<DepartmentDTO> {
-    return this.departments.getById(id)
+  async getDepartment(id: string, user?: SimpleUser): Promise<DepartmentDTO> {
+    return this.departments.getById(id, user)
   }
 
   async listDepartments(hotelId: string): Promise<DepartmentDTO[]> {
     return this.departments.list(hotelId)
   }
 
-  async updateDepartment(id: string, data: Partial<CreateDepartmentDTO>): Promise<DepartmentDTO> {
-    return this.departments.update(id, data)
+  async updateDepartment(id: string, data: Partial<CreateDepartmentDTO>, user?: SimpleUser): Promise<DepartmentDTO> {
+    return this.departments.update(id, data, user)
   }
 
-  async deleteDepartment(id: string): Promise<void> {
-    return this.departments.delete(id)
+  async deleteDepartment(id: string, user?: SimpleUser): Promise<void> {
+    return this.departments.delete(id, user)
   }
 
   // ─── Employee Profiles ────────────────────────────────
@@ -90,20 +92,20 @@ export class EmpleadosService {
     return this.profiles.create(dto)
   }
 
-  async getProfile(id: string): Promise<EmployeeProfileDTO> {
-    return this.profiles.getById(id)
+  async getProfile(id: string, user?: SimpleUser): Promise<EmployeeProfileDTO> {
+    return this.profiles.getById(id, user)
   }
 
   async listProfiles(query: EmpleadosQuery): Promise<EmpleadosPaginated> {
     return this.profiles.list(query)
   }
 
-  async updateProfile(id: string, data: Partial<CreateEmployeeProfileDTO>): Promise<EmployeeProfileDTO> {
-    return this.profiles.update(id, data)
+  async updateProfile(id: string, data: Partial<CreateEmployeeProfileDTO>, user?: SimpleUser): Promise<EmployeeProfileDTO> {
+    return this.profiles.update(id, data, user)
   }
 
-  async deactivateProfile(id: string): Promise<void> {
-    return this.profiles.deactivate(id)
+  async deactivateProfile(id: string, user?: SimpleUser): Promise<void> {
+    return this.profiles.deactivate(id, user)
   }
 
   // ─── Contracts ────────────────────────────────────────
@@ -112,16 +114,16 @@ export class EmpleadosService {
     return this.contracts.create(dto)
   }
 
-  async getContract(id: string): Promise<ContractDTO> {
-    return this.contracts.getById(id)
+  async getContract(id: string, user?: SimpleUser): Promise<ContractDTO> {
+    return this.contracts.getById(id, user)
   }
 
   async listContracts(hotelId: string, employeeId?: string): Promise<ContractDTO[]> {
     return this.contracts.list(hotelId, employeeId)
   }
 
-  async terminateContract(id: string): Promise<ContractDTO> {
-    return this.contracts.terminate(id)
+  async terminateContract(id: string, user?: SimpleUser): Promise<ContractDTO> {
+    return this.contracts.terminate(id, user)
   }
 
   // ─── Documents ────────────────────────────────────────
@@ -130,16 +132,16 @@ export class EmpleadosService {
     return this.documents.create(dto)
   }
 
-  async getDocument(id: string): Promise<DocumentDTO> {
-    return this.documents.getById(id)
+  async getDocument(id: string, user?: SimpleUser): Promise<DocumentDTO> {
+    return this.documents.getById(id, user)
   }
 
   async listDocuments(hotelId: string, employeeId?: string): Promise<DocumentDTO[]> {
     return this.documents.list(hotelId, employeeId)
   }
 
-  async deleteDocument(id: string): Promise<void> {
-    return this.documents.delete(id)
+  async deleteDocument(id: string, user?: SimpleUser): Promise<void> {
+    return this.documents.delete(id, user)
   }
 
   // ─── Leave Requests ───────────────────────────────────
@@ -148,20 +150,20 @@ export class EmpleadosService {
     return this.leaveRequests.create(dto)
   }
 
-  async getLeaveRequest(id: string): Promise<LeaveRequestDTO> {
-    return this.leaveRequests.getById(id)
+  async getLeaveRequest(id: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
+    return this.leaveRequests.getById(id, user)
   }
 
   async listLeaveRequests(hotelId: string, employeeId?: string, status?: string): Promise<LeaveRequestDTO[]> {
     return this.leaveRequests.list(hotelId, employeeId, status)
   }
 
-  async approveLeaveRequest(id: string, approvedBy: string): Promise<LeaveRequestDTO> {
-    return this.leaveRequests.approve(id, approvedBy)
+  async approveLeaveRequest(id: string, approvedBy: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
+    return this.leaveRequests.approve(id, approvedBy, user)
   }
 
-  async rejectLeaveRequest(id: string, approvedBy: string, reason?: string): Promise<LeaveRequestDTO> {
-    return this.leaveRequests.reject(id, approvedBy, reason)
+  async rejectLeaveRequest(id: string, approvedBy: string, reason?: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
+    return this.leaveRequests.reject(id, approvedBy, reason, user)
   }
 
   // ─── Performance Reviews ──────────────────────────────
@@ -170,16 +172,16 @@ export class EmpleadosService {
     return this.reviews.create(dto)
   }
 
-  async getReview(id: string): Promise<PerformanceReviewDTO> {
-    return this.reviews.getById(id)
+  async getReview(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> {
+    return this.reviews.getById(id, user)
   }
 
   async listReviews(hotelId: string, employeeId?: string): Promise<PerformanceReviewDTO[]> {
     return this.reviews.list(hotelId, employeeId)
   }
 
-  async completeReview(id: string): Promise<PerformanceReviewDTO> {
-    return this.reviews.complete(id)
+  async completeReview(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> {
+    return this.reviews.complete(id, user)
   }
 
   // ─── Alerts & Org Chart ───────────────────────────────

@@ -72,7 +72,13 @@ export class AiGerenteService {
     }
   }
 
-  async feedback(id: string, feedback: string): Promise<AiGerenteDTO | null> {
+  async feedback(id: string, feedback: string, user?: { hotelId?: string; role?: string }): Promise<AiGerenteDTO | null> {
+    // @ignore IDOR_RISK
+    const existing = await this.interactionRepo.findById(id)
+    if (!existing) return null
+    if (user && user.role !== 'super_admin' && existing.hotelId !== user.hotelId) {
+      throw new AuthError('No autorizado')
+    }
     return this.interactionRepo.update(id, { feedback } as any)
   }
 }

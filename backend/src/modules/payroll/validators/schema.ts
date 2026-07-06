@@ -34,6 +34,6 @@ export const UpdateConfigSchema: Record<string, ValidationRule> = {
   minimumWage: { type: 'number' as const, min: 0 },
   maxOvertimeHoursWeekly: { type: 'number' as const, min: 0 },
   provisionType: { type: 'string' as const },
-  aguinaldoEnabled: { type: 'number' as const },
-  aguinaldoMonths: { type: 'number' as const, min: 1, max: 12 },
+  yearEndBonusEnabled: { type: 'number' as const },
+  yearEndBonusMonths: { type: 'number' as const, min: 1, max: 12 },
 }

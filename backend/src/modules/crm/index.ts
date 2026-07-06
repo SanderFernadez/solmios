@@ -35,7 +35,7 @@ export function CrmModule() {
       const reservaRepo = new OrmRepository<any>(orm, 'Reservations')
 
       const log = logger.child('crm')
-      const service = new CrmService(loyaltyRepo, couponRepo, segmentRepo, guestRepo, reservaRepo, log, cache)
+      const service = new CrmService(loyaltyRepo, couponRepo, segmentRepo, guestRepo, reservaRepo, log, cache, auth)
       const controller = new CrmController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

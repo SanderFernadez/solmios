@@ -8,6 +8,7 @@ export interface ToolRepos {
   roomRepo: any
   reservationRepo: any
   hotelRepo: any
+  guestRepo?: any
   paymentLinkRepo?: any
   configRepo?: any
   invoiceRepo?: any
@@ -316,13 +317,28 @@ async function executeTool(name: string, args: Record<string, unknown>, hotelId:
       const totalNights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)
       const totalPrice = (room?.basePrice || room?.price || 0) * totalNights
 
+      // Reservations no declara guestName/guestEmail/guestPhone (mem 1805) — usa guestId FK a Guests.
+      // Busca huésped existente por email (más preciso) o nombre dentro del hotel; si no existe, lo crea.
+      let guestId: string | undefined
+      if (repos.guestRepo) {
+        const existing = guestEmail
+          ? await repos.guestRepo.findMany({ hotelId, email: guestEmail }).catch(() => [])
+          : await repos.guestRepo.findMany({ hotelId, name: guestName }).catch(() => [])
+        const found = (Array.isArray(existing) ? existing : (existing?.data || []))[0]
+        guestId = found?.id
+        if (!guestId) {
+          const g = await repos.guestRepo.create({
+            id: crypto.randomUUID(), hotelId, name: guestName, email: guestEmail, phone: guestPhone,
+          } as any)
+          guestId = g?.id
+        }
+      }
+
       const reservation = await repos.reservationRepo.create({
         id: crypto.randomUUID(),
         hotelId,
         roomId,
-        guestName,
-        guestEmail,
-        guestPhone,
+        guestId,
         checkIn,
         checkOut,
         adults,

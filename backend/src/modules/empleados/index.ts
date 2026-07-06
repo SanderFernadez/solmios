@@ -66,7 +66,7 @@ export function EmpleadosModule() {
       const service = new EmpleadosService(
         departmentRepo, profileRepo, contractRepo,
         documentRepo, leaveRepo, reviewRepo,
-        log, cache, userRepo,
+        log, cache, userRepo, auth,
       )
       const controller = new EmpleadosController(service, log)
 

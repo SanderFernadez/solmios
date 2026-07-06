@@ -87,7 +87,9 @@ export async function executeManagerTool(name: string, args: Record<string, unkn
     case 'cancel_reservation': {
       if (!args.confirmed) {
         const r = await reservationRepo.findById(args.reservationId)
-        return { requiresConfirmation: true, action: 'cancel_reservation', reservationId: args.reservationId, guestName: r?.guestName, status: r?.status, preview: `Cancelar la reserva de ${r?.guestName || args.reservationId}` }
+        // Reservations no tiene guestName (mem 1805) — resolver vía guestId → Guests.
+        const g = r?.guestId ? await repos.guestRepo.findById(r.guestId).catch(() => null) : null
+        return { requiresConfirmation: true, action: 'cancel_reservation', reservationId: args.reservationId, guestName: g?.name, status: r?.status, preview: `Cancelar la reserva de ${g?.name || args.reservationId}` }
       }
       const updated = await reservationRepo.update(args.reservationId, { status: 'cancelled' } as any)
       return { ok: !!updated, reservationId: args.reservationId, status: 'cancelled' }
@@ -96,7 +98,8 @@ export async function executeManagerTool(name: string, args: Record<string, unkn
     case 'block_room': {
       const { roomId, checkIn, checkOut, reason } = args as any
       if (!args.confirmed) return { requiresConfirmation: true, action: 'block_room', roomId, checkIn, checkOut, reason, preview: `Bloquear habitación ${roomId} del ${checkIn} al ${checkOut} (${reason})` }
-      const block = await reservationRepo.create({ id: crypto.randomUUID(), hotelId, roomId, guestName: `[BLOQUEO] ${reason}`, checkIn, checkOut, status: 'blocked', totalAmount: 0, createdAt: new Date().toISOString() } as any)
+      // Reservations no tiene campo `guestName` (mem 1805) — el label del bloqueo va en `notes`.
+      const block = await reservationRepo.create({ id: crypto.randomUUID(), hotelId, roomId, notes: `[BLOQUEO] ${reason}`, checkIn, checkOut, status: 'blocked', totalAmount: 0, createdAt: new Date().toISOString() } as any)
       return { ok: true, blockId: block.id, roomId }
     }
 
@@ -127,14 +130,20 @@ export async function executeManagerTool(name: string, args: Record<string, unkn
       const date = (args.date as string) || today
       const all = await reservationRepo.findMany({ hotelId }).catch(() => [])
       const arrivals = (Array.isArray(all) ? all : (all?.data || [])).filter((r: any) => r.checkIn === date && r.status !== 'cancelled')
-      return { ok: true, date, count: arrivals.length, arrivals: arrivals.map((r: any) => ({ id: r.id, guestName: r.guestName, roomId: r.roomId })) }
+      // guestName vía guestId → Guests (Reservations no tiene el campo, mem 1805).
+      const gArr = await repos.guestRepo.findMany({ hotelId }).catch(() => [])
+      const gByIdArr = new Map((Array.isArray(gArr) ? gArr : (gArr?.data || [])).map((g: any) => [g.id, g.name]))
+      return { ok: true, date, count: arrivals.length, arrivals: arrivals.map((r: any) => ({ id: r.id, guestName: gByIdArr.get(r.guestId) || null, roomId: r.roomId })) }
     }
 
     case 'list_departures': {
       const date = (args.date as string) || today
       const all = await reservationRepo.findMany({ hotelId }).catch(() => [])
       const departures = (Array.isArray(all) ? all : (all?.data || [])).filter((r: any) => r.checkOut === date && r.status !== 'cancelled')
-      return { ok: true, date, count: departures.length, departures: departures.map((r: any) => ({ id: r.id, guestName: r.guestName, roomId: r.roomId })) }
+      // guestName vía guestId → Guests (Reservations no tiene el campo, mem 1805).
+      const gDep = await repos.guestRepo.findMany({ hotelId }).catch(() => [])
+      const gByIdDep = new Map((Array.isArray(gDep) ? gDep : (gDep?.data || [])).map((g: any) => [g.id, g.name]))
+      return { ok: true, date, count: departures.length, departures: departures.map((r: any) => ({ id: r.id, guestName: gByIdDep.get(r.guestId) || null, roomId: r.roomId })) }
     }
 
     default:

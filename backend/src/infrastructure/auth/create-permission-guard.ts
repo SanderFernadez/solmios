@@ -18,7 +18,7 @@ import { requirePermission } from './require-permission'
 export function createPermissionGuard(
   auth: Auth,
   roleRepo: RepositoryAdapter<any>,
-  allowedRoles: string[] = ['hotel_admin', 'receptionist', 'super_admin'],
+  allowedRoles: string[] = ['hotel_admin', 'receptionist', 'super_admin', 'supervisor', 'housekeeper', 'maintenance'],
 ) {
   return (module: string, action: string): [MiddlewareHandler, MiddlewareHandler, MiddlewareHandler] => {
     return [

@@ -27,8 +27,9 @@ export class AiGerenteController {
 
   /** PATCH /api/ai/manager/interactions/:id/feedback — body: { feedback } */
   async feedback(req: HttpRequest) {
+    const user = (req as any).user
     const data = validateSchema(FeedbackSchema, req.body) as any
-    const updated = await this.service.feedback(req.params.id, data.feedback)
+    const updated = await this.service.feedback(req.params.id, data.feedback, user)
     return { status: 200, body: updated }
   }
 }

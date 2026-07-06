@@ -31,10 +31,15 @@ export class HotelesQueries {
     return { valor: row ? safeParse(row.value) : null }
   }
 
-  async setConfig(body: { clave: string; valor: any; hotelId?: string }): Promise<any> {
-    const { clave, valor, hotelId } = body
+  async setConfig(body: { clave: string; valor: any; hotelId?: string }, user?: any): Promise<any> {
+    const { clave, valor } = body
     if (!clave || valor === undefined) throw new Error('clave y valor requeridos')
-    const existing = (await this.orm.findMany('Configuration', { hotelId: hotelId || 'platform', key: clave }))[0] as any
+    // Multi-tenant: el hotelId sale del token. Solo super_admin puede targetear otro
+    // hotel (o 'platform') vía body.hotelId — un merchant queda forzado a su propio hotel.
+    const isSuper = user?.role === 'super_admin'
+    const hotelId = isSuper ? (body.hotelId || 'platform') : user?.hotelId
+    if (!hotelId) throw new Error('hotelId no resuelto para el usuario')
+    const existing = (await this.orm.findMany('Configuration', { hotelId, key: clave }))[0] as any
     const val = typeof valor === 'object' ? JSON.stringify(valor) : String(valor)
     if (existing) await this.orm.update('Configuration', existing.id, { value: val })
     else await this.orm.create('Configuration', { id: crypto.randomUUID(), hotelId: hotelId || 'platform', key: clave, value: val })

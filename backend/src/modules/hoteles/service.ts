@@ -149,8 +149,8 @@ export class HotelesService {
     return this.queries.getConfig(hotelId, key)
   }
 
-  async setConfig(body: { clave: string; valor: any; hotelId?: string }): Promise<any> {
+  async setConfig(body: { clave: string; valor: any; hotelId?: string }, user?: any): Promise<any> {
     if (!this.queries) throw new Error('Queries no disponible')
-    return this.queries.setConfig(body)
+    return this.queries.setConfig(body, user)
   }
 }

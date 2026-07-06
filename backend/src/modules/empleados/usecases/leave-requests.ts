@@ -1,13 +1,15 @@
 // empleados/usecases/leave-requests.ts — Leave request workflow
 
-import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { LeaveRequestDTO, CreateLeaveRequestDTO } from '../types'
+import type { SimpleUser } from './ownership'
 
 export class LeaveRequestUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<LeaveRequestDTO>,
     private readonly logger: Logger,
+    private readonly auth?: Auth,
   ) {}
 
   async create(dto: CreateLeaveRequestDTO): Promise<LeaveRequestDTO> {
@@ -15,10 +17,10 @@ export class LeaveRequestUseCase {
     return this.repo.create({ ...dto, status: 'pending' } as any)
   }
 
-  async getById(id: string): Promise<LeaveRequestDTO> {
-    // @ignore IDOR_RISK — leave request lookup by ID
+  async getById(id: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
     const request = await this.repo.findById(id)
     if (!request) throw new NotFoundError('Leave request not found')
+    if (this.auth && user) this.auth.assertOwnership(request.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return request
   }
 
@@ -30,8 +32,8 @@ export class LeaveRequestUseCase {
     return this.repo.findMany(filters)
   }
 
-  async approve(id: string, approvedBy: string): Promise<LeaveRequestDTO> {
-    const request = await this.getById(id)
+  async approve(id: string, approvedBy: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
+    const request = await this.getById(id, user)
     if (request.status !== 'pending') throw new ValidationError('Request already processed')
     return this.repo.update(id, {
       status: 'approved',
@@ -40,8 +42,8 @@ export class LeaveRequestUseCase {
     } as any) as Promise<LeaveRequestDTO>
   }
 
-  async reject(id: string, approvedBy: string, reason?: string): Promise<LeaveRequestDTO> {
-    const request = await this.getById(id)
+  async reject(id: string, approvedBy: string, reason?: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
+    const request = await this.getById(id, user)
     if (request.status !== 'pending') throw new ValidationError('Request already processed')
     return this.repo.update(id, {
       status: 'rejected',

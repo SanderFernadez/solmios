@@ -1,11 +1,15 @@
 // payroll/usecases/concepts.ts — Concept CRUD + seeding
 
-import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
-import type { PayrollConceptDTO, CreatePayrollConceptDTO } from '../types'
+import type { PayrollConceptDTO, CreatePayrollConceptDTO, PayrollCurrentUser } from '../types'
 
 export class PayrollConceptUseCase {
-  constructor(private readonly repo: RepositoryAdapter<PayrollConceptDTO>, private readonly logger: Logger) {}
+  constructor(
+    private readonly repo: RepositoryAdapter<PayrollConceptDTO>,
+    private readonly logger: Logger,
+    private readonly auth?: Auth,
+  ) {}
 
   async seedDefaultConcepts(hotelId: string): Promise<void> {
     const existing = await this.repo.findMany({ hotelId })
@@ -26,10 +30,14 @@ export class PayrollConceptUseCase {
     }
   }
 
-  async getById(id: string): Promise<PayrollConceptDTO> {
-    // @ignore IDOR_RISK — concept lookup by ID
+  async getById(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollConceptDTO> {
     const c = await this.repo.findById(id)
     if (!c) throw new NotFoundError('Concept not found')
+    // IDOR: un concepto pertenece a un hotel — verificar que el user autenticado
+    // pertenezca al mismo hotel (o sea super_admin) antes de devolverlo/mutarlo.
+    if (this.auth && currentUser?.hotelId) {
+      this.auth.assertOwnership(c.hotelId, currentUser.hotelId, currentUser.role, 'super_admin')
+    }
     return c
   }
 
@@ -41,14 +49,14 @@ export class PayrollConceptUseCase {
     return this.repo.create({ ...dto, active: 1, system: 0 } as any)
   }
 
-  async update(id: string, data: Partial<CreatePayrollConceptDTO>): Promise<PayrollConceptDTO> {
-    const c = await this.getById(id)
+  async update(id: string, data: Partial<CreatePayrollConceptDTO>, currentUser?: PayrollCurrentUser): Promise<PayrollConceptDTO> {
+    const c = await this.getById(id, currentUser)
     if (c.system === 1) throw new ValidationError('System concepts cannot be modified')
     return this.repo.update(id, data as any) as Promise<PayrollConceptDTO>
   }
 
-  async delete(id: string): Promise<void> {
-    const c = await this.getById(id)
+  async delete(id: string, currentUser?: PayrollCurrentUser): Promise<void> {
+    const c = await this.getById(id, currentUser)
     if (c.system === 1) throw new ValidationError('System concepts cannot be deleted')
     await this.repo.update(id, { active: 0 } as any)
   }

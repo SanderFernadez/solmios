@@ -1,6 +1,9 @@
 export async function postNightAuditRoomCharges(orm: any, listFolios: any, openFolio: any, postCharge: any, user: any, query?: any): Promise<any> {
   if (!orm) return { posted: 0, error: 'ORM no disponible' }
-  let hotelId = query?.hotelId as string || user?.hotelId as string
+  // Multi-tenant: solo super_admin puede targetear otro hotel vía ?hotelId=.
+  // Un merchant queda forzado a su propio hotelId del token (anti-patrón query||token).
+  const isSuper = user?.role === 'super_admin'
+  let hotelId = (isSuper ? (query?.hotelId as string) : undefined) || user?.hotelId as string
   if (!hotelId || hotelId === 'platform') {
     const hotels = await orm.findMany('Hotels', {}); const first: any = hotels[0]
     hotelId = first?.id
