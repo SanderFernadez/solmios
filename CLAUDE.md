@@ -1,7 +1,7 @@
 # ManagerHotel (SOLMI OS) — CLAUDE.md
 
 ## Stack
-Bun (>=1.3) + Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5.1 + Tailwind CSS 4.3 + arckode-framework 1.4.3 + **DB multi-motor** (SQLite bun:sqlite/WAL en dev · Postgres `pg` en prod, elegido por `DATABASE_URL`)
+Bun (>=1.3) + Vue 3.5 + Vite 8 + Pinia 3 + Vue Router 5.1 + Tailwind CSS 4.3 + arckode-framework 1.6.2 + **DB multi-motor** (SQLite bun:sqlite/WAL en dev · Postgres `pg` en prod, elegido por `DATABASE_URL`)
 
 ## Estado SDD (cambios activos)
 
@@ -37,9 +37,11 @@ bun run migrate-db.ts
 | `scripts/seed-default-roles.ts` | Roles por defecto (permisos) | ✅ |
 | `scripts/create-plans-table.ts` | Tabla `plans` (SaaS subscriptions) | ✅ |
 | `scripts/add-user-type-{pg,}.ts` | ALTER `users.userType` | ✅ `addColumnIfMissing` |
-| `scripts/patch-orm-postgres.sh` | **postinstall** — parchea framework para Postgres (camelCase deserialize + pool) | ✅ idempotente |
+| ~~`scripts/patch-orm-postgres.sh`~~ | **ELIMINADO** — el remap camelCase↔lowercase se upstreameó al framework 1.6.2 (nativo en `kernel/db/orm-utils.ts`, "Remap lowercase → camelCase"). Sin postinstall. | — |
 
 ### Portabilidad Postgres
+- ✅ camelCase↔lowercase: **nativo en framework 1.6.2** (`orm-utils.ts` remapea TODOS los fields, no solo timestamps). PG pliega identificadores no-entrecomillados a minúsculas (`hotelId`→`hotelid`); el ORM los devuelve en camelCase. Ya no hace falta parche/postinstall.
+- ⚠️ `ormMigrate` (RUN_MIGRATE) en 1.6.2 hace **`ADD COLUMN`** para campos nuevos de tablas existentes (antes solo `CREATE TABLE IF NOT EXISTS`). Renombrar un campo en el modelo → la columna vieja queda **orphan** (avisa por warning, NO la dropea): migrar data vieja→nueva a mano y `DROP COLUMN` explícito. Columnas físicas en PG son lowercase.
 - ✅ Sin SQL SQLite-only en `migrate-db.ts` (sin `PRAGMA`/`datetime('now')`/`AUTOINCREMENT`). Placeholders `?` → `$1...` los convierte `PostgresAdapter`.
 - ✅ `addColumnIfMissing()` portable (ignora `duplicate column`).
 - ✅ `configuration` garantiza `UNIQUE(hotelId, key)` vía `CREATE UNIQUE INDEX idx_configuration_hotel_key` (el ORM no crea unique compuesto).
