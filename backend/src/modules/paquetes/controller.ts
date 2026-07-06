@@ -29,7 +29,7 @@ export class PaquetesController {
   async store(req: HttpRequest) {
     this.logger.info('POST /paquetes')
     const data = validateSchema(CreatePaquetesSchema, req.body)
-    const item = await this.service.create(data as any)
+    const item = await this.service.create(data as any, req.user as any)
     return { status: 201, body: item }
   }
 

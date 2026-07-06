@@ -5,6 +5,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { AuditlogService } from './service'
 import { CreateAuditlogSchema } from './validators/schema'
+import { resolveTenant } from '../../shared/utils/resolve-tenant'
 
 export class AuditlogController {
   constructor(
@@ -15,7 +16,9 @@ export class AuditlogController {
   async index(req: HttpRequest) {
     try {
       this.logger.info('GET /auditlog')
-      const result = await this.service.list(req.query as any)
+      // IDOR fix: el hotelId sale del token (resolveTenant), no crudo del query.
+      const hotelId = resolveTenant(req)
+      const result = await this.service.list({ ...(req.query as any), hotelId })
       return { status: 200, body: result }
     } catch (err) {
       this.logger.error('Error in GET /auditlog', err as any)

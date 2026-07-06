@@ -7,7 +7,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { HotelesService } from './service'
 import type { HotelesQueries } from './usecases/hoteles-queries'
-import { CreateHotelesSchema, UpdateHotelesSchema } from './validators/schema'
+import { CreateHotelesSchema, UpdateHotelesSchema, SetConfigSchema } from './validators/schema'
 
 export class HotelesController {
   constructor(
@@ -63,7 +63,8 @@ export class HotelesController {
   async updateHotel(req: HttpRequest) {
     const id = (req.body as any).id || (await this.resolveHotel(req))
     if (!id) return { status: 404, body: { error: 'Sin hotel' } }
-    const body = await this.service.updateHotel(id, req.body as any, req.user as any)
+    const data = validateSchema(UpdateHotelesSchema, req.body)
+    const body = await this.service.updateHotel(id, data as any, req.user as any)
     return { status: 200, body }
   }
 
@@ -82,7 +83,9 @@ export class HotelesController {
   }
 
   async setConfig(req: HttpRequest) {
-    const result = await this.service.setConfig(req.body as any, req.user as any)
+    const data = validateSchema(SetConfigSchema, req.body) as any
+    // valor es de tipo dinámico (string/number/object) — se pasa sin re-tipar, el service serializa a JSON si aplica.
+    const result = await this.service.setConfig({ ...data, valor: (req.body as any).valor }, req.user as any)
     return { status: 200, body: result }
   }
 

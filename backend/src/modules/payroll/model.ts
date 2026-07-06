@@ -17,8 +17,8 @@ const PayrollConfigModel: ModelDefinition = {
     minimumWage: { type: 'number' },
     maxOvertimeHoursWeekly: { type: 'number', default: 12 },
     provisionType: { type: 'string', default: 'monthly' },
-    aguinaldoEnabled: { type: 'boolean', default: 1 },
-    aguinaldoMonths: { type: 'number', default: 2 },
+    yearEndBonusEnabled: { type: 'boolean', default: 1 },
+    yearEndBonusMonths: { type: 'number', default: 2 },
   },
   timestamps: true,
 }

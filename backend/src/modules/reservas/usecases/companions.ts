@@ -9,8 +9,13 @@ import { assertReservationOwned, type SimpleUser } from './reservation-ownership
 
 export async function listCompanions(
   repo: RepositoryAdapter<CompanionDTO>,
+  reservationRepo: RepositoryAdapter<any>,
+  userRepo: RepositoryAdapter<any>,
+  auth: Auth,
   reservationId: string,
+  user: SimpleUser,
 ): Promise<CompanionDTO[]> {
+  await assertReservationOwned(reservationRepo, userRepo, auth, reservationId, user) // IDOR fix — list también debe validar ownership
   return repo.findMany({ reservationId })
 }
 

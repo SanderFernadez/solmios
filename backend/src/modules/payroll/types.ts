@@ -24,8 +24,8 @@ export interface PayrollConfigDTO {
   minimumWage: number | null
   maxOvertimeHoursWeekly: number
   provisionType: string
-  aguinaldoEnabled: number
-  aguinaldoMonths: number
+  yearEndBonusEnabled: number
+  yearEndBonusMonths: number
 }
 
 export interface CreatePayrollConfigDTO {
@@ -38,8 +38,8 @@ export interface CreatePayrollConfigDTO {
   healthInsuranceRate?: number
   incomeTaxRates?: string
   minimumWage?: number
-  aguinaldoEnabled?: boolean
-  aguinaldoMonths?: number
+  yearEndBonusEnabled?: boolean
+  yearEndBonusMonths?: number
 }
 
 // ─── Concept ────────────────────────────────────────────

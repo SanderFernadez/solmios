@@ -42,7 +42,7 @@ export class FeedbackController {
   }
 
   async deletePin(req: HttpRequest) {
-    const deleted = await this.service.deletePin(req.params.id)
+    const deleted = await this.service.deletePin(req.params.id, req.user)
     if (!deleted) return { status: 404, body: { error: 'Pin no encontrado' } }
     return { status: 204, body: null }
   }

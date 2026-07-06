@@ -73,9 +73,12 @@ export class GruposService {
     return item
   }
 
-  async create(dto: CreateGruposDTO): Promise<GruposDTO> {
+  async create(dto: CreateGruposDTO, user: CurrentUser): Promise<GruposDTO> {
     this.logger.info('Creando grupos')
-    const item = await this.repo.create(dto as Omit<GruposDTO, 'id'>)
+    // P0 (IDOR/cross-tenant): forzar hotelId del JWT — nunca confiar en dto.hotelId del body.
+    // super_admin puede especificar hotelId; el resto siempre usa el suyo.
+    const hotelId = user.role === 'super_admin' ? (dto.hotelId || user.hotelId || '') : (user.hotelId || '')
+    const item = await this.repo.create({ ...dto, hotelId } as Omit<GruposDTO, 'id'>)
     await this.sockets.onGruposCreated?.(item)
     await this.cache.delete('grupos:list')
     return item

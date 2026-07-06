@@ -1,5 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
+import { validateSchema } from 'arckode-framework'
 import type { AdminService } from './service'
+import { CreatePlanSchema, UpdatePlanSchema, CreateAmenityCatalogSchema, UpdateAmenityCatalogSchema } from './validators/schema'
 
 export class AdminController {
   constructor(
@@ -41,7 +43,8 @@ export class AdminController {
 
   async createPlan(req: HttpRequest) {
     try {
-      const plan = await this.service.createPlan(req.body)
+      const data = validateSchema(CreatePlanSchema, req.body) as any
+      const plan = await this.service.createPlan(data)
       return { status: 201, body: plan }
     } catch (e: any) {
       return { status: 400, body: { error: e.message } }
@@ -50,7 +53,8 @@ export class AdminController {
 
   async updatePlan(req: HttpRequest) {
     try {
-      return { status: 200, body: await this.service.updatePlan(req.params.id, req.body, req.user as any) }
+      const data = validateSchema(UpdatePlanSchema, req.body) as any
+      return { status: 200, body: await this.service.updatePlan(req.params.id, data, req.user as any) }
     } catch (e: any) {
       return { status: e.message.includes('no encontrado') ? 404 : 400, body: { error: e.message } }
     }
@@ -71,7 +75,8 @@ export class AdminController {
 
   async createAmenityCatalog(req: HttpRequest) {
     try {
-      return { status: 201, body: await this.service.createAmenityCatalog(req.body) }
+      const data = validateSchema(CreateAmenityCatalogSchema, req.body) as any
+      return { status: 201, body: await this.service.createAmenityCatalog(data) }
     } catch (e: any) {
       return { status: 409, body: { error: e.message } }
     }
@@ -79,7 +84,8 @@ export class AdminController {
 
   async updateAmenityCatalog(req: HttpRequest) {
     try {
-      return { status: 200, body: await this.service.updateAmenityCatalog(req.params.id, req.body, req.user as any) }
+      const data = validateSchema(UpdateAmenityCatalogSchema, req.body) as any
+      return { status: 200, body: await this.service.updateAmenityCatalog(req.params.id, data, req.user as any) }
     } catch (e: any) {
       return { status: 404, body: { error: e.message } }
     }

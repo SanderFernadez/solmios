@@ -155,16 +155,21 @@ export async function sendMessage(
     contentType?: string; intentDetected?: string; confidence?: number;
     actionTaken?: string; actionResult?: Record<string, unknown>; metadata?: Record<string, unknown>;
   },
+  userHotelId?: string,
+  userRole?: string,
 ): Promise<AiMessageDTO> {
   // @ignore IDOR_RISK
   const conv = await convRepo.findById(dto.conversationId)
   if (!conv) throw new NotFoundError('Conversación no encontrada')
+  if (userRole && userRole !== 'super_admin' && conv.hotelId !== userHotelId) {
+    throw new AuthError('No autorizado')
+  }
   if (conv.status === 'resolved') {
     throw new AuthError('La conversación está cerrada.')
   }
   const msg = await msgRepo.create({
     id: crypto.randomUUID(),
-    conversationId: dto.conversationId, hotelId: dto.hotelId,
+    conversationId: dto.conversationId, hotelId: conv.hotelId,
     sender: dto.sender, content: dto.content,
     contentType: dto.contentType || 'text',
     intentDetected: dto.intentDetected, confidence: dto.confidence,

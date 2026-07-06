@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger, Auth, RepositoryAdapter } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { ReservasService } from './service'
-import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema, PreCheckinSchema } from './validators/schema'
+import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema, PreCheckinSchema, SettleSchema } from './validators/schema'
 import { listCompanions, createCompanion, updateCompanion, deleteCompanion } from './usecases/companions'
 import { listAddons, createAddon, deleteAddon } from './usecases/addons'
 import { hashGuaranteePin, verifyGuaranteePin } from '../../services/guarantee-pin'
@@ -50,7 +50,7 @@ export class ReservasController {
 
   // ── Companions (/api/reservations/:id/companions, /api/companions/:id) — F2 ──
   async listCompanions(req: HttpRequest) {
-    const data = await listCompanions(this.companionsRepo, req.params.id)
+    const data = await listCompanions(this.companionsRepo, this.reservationRepo, this.userRepo, this.auth, req.params.id, req.user as any)
     return { status: 200, body: { data } }
   }
   async createCompanion(req: HttpRequest) {
@@ -70,7 +70,7 @@ export class ReservasController {
 
   // ── Addons (/api/reservations/:id/addons, /api/addons/:id) — F2 ──
   async listAddons(req: HttpRequest) {
-    const data = await listAddons(this.addonsRepo, req.params.id)
+    const data = await listAddons(this.addonsRepo, this.reservationRepo, this.userRepo, this.auth, req.params.id, req.user as any)
     return { status: 200, body: { data } }
   }
   async createAddon(req: HttpRequest) {
@@ -108,7 +108,8 @@ export class ReservasController {
       let settlementResult = null
       const body = req.body as Record<string, any> | undefined
       if (body?.settle !== undefined) {
-        settlementResult = await this.service.settleFolioForCheckout(reservation, body.settle, req.user as any)
+        const settle = validateSchema(SettleSchema, body.settle) as { method: string; amount: number; reference?: string }
+        settlementResult = await this.service.settleFolioForCheckout(reservation, settle, req.user as any)
       }
 
       const result = await this.service.executeCheckout(reservation, req.user as any, { orm: this.orm, logger: this.logger })
@@ -119,6 +120,7 @@ export class ReservasController {
       if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
       if (e.name === 'AuthError') return { status: 403, body: { error: e.message } }
       if (e.name === 'ConflictError') return { status: 409, body: { error: e.message } }
+      if (e.name === 'ValidationError') return { status: 400, body: { error: e.message, fields: e.fields } }
       return { status: 500, body: { error: e.message } }
     }
   }

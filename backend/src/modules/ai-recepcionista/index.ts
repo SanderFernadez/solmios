@@ -79,6 +79,7 @@ export function AiRecepcionistaModule() {
       const paymentLinkRepo = new OrmRepository<any>(orm, 'PaymentLinks')
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
       const invoiceRepo = new OrmRepository<any>(orm, 'Invoices')
+      const guestRepo = new OrmRepository<any>(orm, 'Guests')
 
       const log = logger.child('ai-recepcionista')
 
@@ -93,6 +94,7 @@ export function AiRecepcionistaModule() {
         conversationRepo, messageRepo, intentRepo, templateRepo,
         whatsappConfigRepo, metricsRepo, bookingFlowRepo, voiceConfigRepo,
         userRepo, hotelRepo, roomRepo, reservationRepo, paymentLinkRepo, configRepo, invoiceRepo,
+        guestRepo,
         log, cache, auth!, onReservationCreated,
       )
       const controller = new AiRecepcionistaController(service, log)

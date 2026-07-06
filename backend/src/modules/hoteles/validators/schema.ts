@@ -128,4 +128,11 @@ export const UpdateHotelesSchema: Record<string, ValidationRule> = {
   wifiPassword: { type: 'string' as const, max: 100 },
 }
 
-export const HotelesValidator = { create: CreateHotelesSchema, update: UpdateHotelesSchema }
+export const SetConfigSchema: Record<string, ValidationRule> = {
+  clave: { type: 'string' as const, required: true, min: 1, max: 100 },
+  // valor puede ser string/number/object (se serializa a JSON en el service) —
+  // aceptamos string aquí como mínimo común y dejamos pasar cualquier otro tipo sin coercionar.
+  hotelId: { type: 'string' as const, max: 100 },
+}
+
+export const HotelesValidator = { create: CreateHotelesSchema, update: UpdateHotelesSchema, setConfig: SetConfigSchema }

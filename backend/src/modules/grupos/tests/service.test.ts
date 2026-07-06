@@ -49,8 +49,19 @@ describe('GruposService', () => {
   describe('create', () => {
     it('crea y retorna el item', async () => {
       const service = new GruposService(makeRepo(), makeUserRepo(), log, silentCache, mockAuth)
-      const result = await service.create({} as any)
+      const result = await service.create({} as any, mockUser)
       expect(result.id).toBe('test-id')
+    })
+
+    it('fuerza hotelId del JWT y ignora el del body (cross-tenant)', async () => {
+      const created: any[] = []
+      const repo = makeRepo({
+        create: async (data: any) => { created.push(data); return { id: 'test-id', ...data } as GruposDTO },
+      })
+      const service = new GruposService(repo, makeUserRepo(), log, silentCache, mockAuth)
+      // Intento cross-tenant: el body pide hotelId='hotel-2', pero el usuario es de 'hotel-1'.
+      await service.create({ hotelId: 'hotel-2', name: 'x' } as any, mockUser)
+      expect(created[0].hotelId).toBe('hotel-1') // forzado al del JWT, ignora 'hotel-2' del body
     })
   })
 

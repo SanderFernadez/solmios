@@ -96,7 +96,8 @@ export async function executeManagerTool(name: string, args: Record<string, unkn
     case 'block_room': {
       const { roomId, checkIn, checkOut, reason } = args as any
       if (!args.confirmed) return { requiresConfirmation: true, action: 'block_room', roomId, checkIn, checkOut, reason, preview: `Bloquear habitación ${roomId} del ${checkIn} al ${checkOut} (${reason})` }
-      const block = await reservationRepo.create({ id: crypto.randomUUID(), hotelId, roomId, guestName: `[BLOQUEO] ${reason}`, checkIn, checkOut, status: 'blocked', totalAmount: 0, createdAt: new Date().toISOString() } as any)
+      // Reservations no tiene campo `guestName` (mem 1805) — el label del bloqueo va en `notes`.
+      const block = await reservationRepo.create({ id: crypto.randomUUID(), hotelId, roomId, notes: `[BLOQUEO] ${reason}`, checkIn, checkOut, status: 'blocked', totalAmount: 0, createdAt: new Date().toISOString() } as any)
       return { ok: true, blockId: block.id, roomId }
     }
 
