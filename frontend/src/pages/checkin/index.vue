@@ -1,165 +1,217 @@
 <template>
-  <div class="min-h-screen bg-surface">
+  <div class="space-y-5">
     <!-- Header -->
-    <div class="bg-white border-b border-border px-6 py-4">
-      <div class="max-w-full mx-auto flex items-center justify-between">
-        <div>
-          <h1 class="text-xl font-black text-navy">Recepción Digital</h1>
-          <p class="text-xs text-text-muted">{{ todayFormatted }} · {{ arrivalsToday }} llegadas · {{ departuresToday }} salidas</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-xs font-bold px-3 py-1 rounded-full bg-teal/10 text-teal">{{ inHouse }} en casa</span>
-          <span class="text-xs font-bold px-3 py-1 rounded-full bg-gold/10 text-gold">{{ arrivalsToday }} por llegar</span>
-          <span class="text-xs font-bold px-3 py-1 rounded-full bg-coral/10 text-coral">{{ departuresToday }} por salir</span>
-        </div>
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-black text-navy">Recepción Digital</h1>
+        <p class="text-sm text-text-muted mt-0.5">{{ todayFormatted }} · {{ arrivalsToday }} llegadas · {{ departuresToday }} salidas</p>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-teal/10 text-teal">{{ inHouse }} en casa</span>
+        <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-gold/10 text-gold">{{ arrivalsToday }} por llegar</span>
+        <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-coral/10 text-coral">{{ departuresToday }} por salir</span>
       </div>
     </div>
 
-    <div class="px-6 py-4">
-      <!-- Loading skeleton -->
-      <div v-if="loading" class="space-y-4">
-        <div class="bg-white rounded-2xl border border-border p-4 animate-pulse">
-          <div class="h-4 w-48 bg-surface rounded mb-3"></div>
-          <div class="space-y-2">
-            <div v-for="i in 4" :key="i" class="h-10 bg-surface rounded-lg"></div>
+    <!-- Loading skeleton -->
+    <template v-if="loading">
+      <div class="card p-5 animate-pulse">
+        <div class="h-4 w-48 bg-surface-dark rounded mb-3"></div>
+        <div class="space-y-2">
+          <div v-for="i in 4" :key="i" class="h-10 bg-surface-dark rounded-lg"></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div v-for="i in 3" :key="i" class="card p-5 animate-pulse">
+          <div class="h-4 w-32 bg-surface-dark rounded mb-4"></div>
+          <div v-for="j in 3" :key="j" class="h-14 bg-surface-dark rounded-xl mb-2"></div>
+        </div>
+      </div>
+    </template>
+
+    <template v-else>
+      <!-- Room Summary -->
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-extrabold text-navy">Habitaciones · {{ todayFormatted }}</h2>
+          <button @click="showRoomGrid = !showRoomGrid"
+            class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg transition-colors cursor-pointer"
+            :class="showRoomGrid ? 'bg-navy text-white' : 'bg-surface text-navy hover:bg-border/30'">
+            {{ showRoomGrid ? 'Ocultar' : 'Ver todas' }}
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" :d="showRoomGrid ? 'M4.5 15.75l7.5-7.5 7.5 7.5' : 'M19.5 8.25l-7.5 7.5-7.5-7.5'"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Compact summary bars -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div v-for="group in roomGroups" :key="group.key"
+            @click="showRoomGrid = true"
+            class="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-surface cursor-pointer transition-colors border border-transparent hover:border-border">
+            <span class="text-base w-6 text-center flex-shrink-0">{{ group.icon }}</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] font-bold text-navy">{{ group.label }}</span>
+                <span class="text-[9px] font-bold" :class="group.occupiedCount > 0 ? 'text-coral' : 'text-teal'">
+                  {{ group.availableCount }} libre{{ group.availableCount !== 1 ? 's' : '' }}
+                </span>
+              </div>
+              <div class="w-full h-1.5 bg-surface-dark rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all" :style="{ width: group.percent + '%' }"
+                  :class="group.occupiedCount > 0 ? 'bg-coral' : 'bg-teal'"></div>
+              </div>
+              <div class="flex justify-between mt-0.5">
+                <span class="text-[9px] text-text-muted">{{ group.rooms.length }} habs</span>
+                <span class="text-[9px] text-text-muted">{{ group.occupiedCount }} ocupadas</span>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div v-for="i in 3" :key="i" class="bg-white rounded-2xl border border-border p-4 animate-pulse">
-            <div class="h-4 w-32 bg-surface rounded mb-3"></div>
-            <div v-for="j in 3" :key="j" class="h-12 bg-surface rounded-xl mb-2"></div>
+
+        <!-- Expanding room grid -->
+        <div v-if="showRoomGrid" class="mt-4 pt-4 border-t border-border">
+          <div v-for="group in roomGroups" :key="'grid-' + group.key" class="mb-4 last:mb-0">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-sm">{{ group.icon }}</span>
+              <span class="text-[10px] font-black text-text-muted uppercase tracking-wider">{{ group.label }}</span>
+            </div>
+            <div class="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-1.5">
+              <div v-for="room in group.rooms" :key="room.id"
+                @click.stop="selectRoom(room)"
+                class="p-2 rounded-lg border-2 cursor-pointer transition-all hover:shadow-sm hover:scale-[1.02]"
+                :class="[roomCardClass(room), selectedRoom?.id === room.id ? 'ring-2 ring-navy/30' : '']">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="text-[10px] font-black" :class="roomNumberClass(room)">{{ room.number }}</span>
+                  <span class="w-1.5 h-1.5 rounded-full" :class="roomDotClass(room)"></span>
+                </div>
+                <div class="text-[7px] font-bold text-text-muted uppercase">{{ roomTypeLabel(room.type) }}</div>
+                <div v-if="room.guestName" class="text-[8px] font-bold text-navy truncate mt-0.5">{{ room.guestName.split(' ')[0] }}</div>
+                <div v-else class="text-[7px] text-text-muted mt-0.5">{{ roomStatusLabel(room) }}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <template v-else>
-        <!-- Room Summary — compact by default -->
-        <div class="bg-white rounded-2xl border border-border p-4 mb-4">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-black text-navy">Habitaciones · {{ todayFormatted }}</h2>
-            <button @click="showRoomGrid = !showRoomGrid"
-              class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg transition-colors cursor-pointer"
-              :class="showRoomGrid ? 'bg-navy text-white' : 'bg-surface text-navy hover:bg-border/30'">
-              {{ showRoomGrid ? 'Ocultar' : 'Ver todas' }}
-              <span class="text-xs">{{ showRoomGrid ? '▴' : '▾' }}</span>
+      <!-- 3 Columns -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Arrivals Today -->
+        <div class="card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H4.5"/>
+                </svg>
+              </div>
+              <h2 class="text-base font-extrabold text-navy">Llegadas Hoy</h2>
+            </div>
+            <span class="text-xs font-bold text-gold bg-gold/10 px-2.5 py-1 rounded-full">{{ arrivals.length }}</span>
+          </div>
+          <div v-if="arrivals.length === 0" class="flex flex-col items-center gap-1.5 py-8 text-text-muted">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5"/>
+            </svg>
+            <span class="text-xs">Sin llegadas hoy</span>
+          </div>
+          <div v-for="a in arrivals" :key="a.id"
+            class="flex items-center gap-3 p-3 rounded-xl mb-2 transition-colors border"
+            :class="a.checkedIn ? 'bg-teal/5 border-teal/15' : 'bg-surface hover:bg-gold/5 cursor-pointer border-transparent hover:border-border'"
+            @click="!a.checkedIn && openCheckinModal(a)">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shrink-0" :class="a.channelColor">{{ a.initials }}</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-bold text-navy truncate">{{ a.guestName }}</div>
+              <div class="text-[10px] text-text-muted">Hab {{ a.roomNumber }} · {{ a.channelLabel }}</div>
+              <div class="text-[10px] text-text-muted">{{ a.checkIn }} → {{ a.checkOut }} · {{ a.nights }}n · ${{ a.totalAmount }}</div>
+            </div>
+            <button v-if="!a.checkedIn" @click.stop="openCheckinModal(a)" :disabled="processing"
+              class="shrink-0 px-3 py-1.5 bg-teal text-white text-[10px] font-bold rounded-lg hover:bg-teal/80 transition-colors cursor-pointer disabled:opacity-50">
+              Check-in
+            </button>
+            <span v-else class="shrink-0 flex items-center gap-1 text-[10px] font-bold text-teal">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              Hecho
+            </span>
+          </div>
+        </div>
+
+        <!-- In House -->
+        <div class="card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-teal/10 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+                </svg>
+              </div>
+              <h2 class="text-base font-extrabold text-navy">En Casa</h2>
+            </div>
+            <span class="text-xs font-bold text-teal bg-teal/10 px-2.5 py-1 rounded-full">{{ inHouseList.length }}</span>
+          </div>
+          <div v-if="inHouseList.length === 0" class="flex flex-col items-center gap-1.5 py-8 text-text-muted">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75"/>
+            </svg>
+            <span class="text-xs">Sin huéspedes en casa</span>
+          </div>
+          <div v-for="g in inHouseList" :key="g.id"
+            class="flex items-center gap-3 p-3 rounded-xl mb-2 bg-surface hover:bg-teal/5 cursor-pointer transition-colors border border-transparent hover:border-border"
+            @click="openCheckoutModal(g)">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shrink-0" :class="g.channelColor">{{ g.initials }}</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-bold text-navy truncate">{{ g.guestName }}</div>
+              <div class="text-[10px] text-text-muted">Hab {{ g.roomNumber }} · {{ g.channelLabel }}</div>
+              <div class="text-[10px] text-text-muted">Sale: {{ g.checkOut }} · {{ daysUntil(g.checkOut) }}d restantes</div>
+            </div>
+            <button @click.stop="openCheckoutModal(g)" :disabled="processing"
+              class="shrink-0 px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-lg hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+              Check-out
             </button>
           </div>
-
-          <!-- Compact summary bars — 2 por fila -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div v-for="group in roomGroups" :key="group.key"
-              @click="showRoomGrid = true"
-              class="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-surface cursor-pointer transition-colors group border border-transparent hover:border-border">
-              <span class="text-base w-6 text-center flex-shrink-0">{{ group.icon }}</span>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between mb-0.5">
-                  <span class="text-[10px] font-bold text-navy">{{ group.label }}</span>
-                  <span class="text-[9px] font-bold" :class="group.occupiedCount > 0 ? 'text-coral' : 'text-teal'">
-                    {{ group.availableCount }} libre{{ group.availableCount !== 1 ? 's' : '' }}
-                  </span>
-                </div>
-                <div class="w-full h-1.5 bg-surface rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all" :style="{ width: group.percent + '%' }"
-                    :class="group.occupiedCount > 0 ? 'bg-coral' : 'bg-teal'"></div>
-                </div>
-                <div class="flex justify-between mt-0.5">
-                  <span class="text-[8px] text-text-muted">{{ group.rooms.length }} habs</span>
-                  <span class="text-[8px] text-text-muted">{{ group.occupiedCount }} ocup</span>
-                </div>
-              </div>
-              <span class="text-[9px] text-text-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">▸</span>
-            </div>
-          </div>
-
-          <!-- Expanding room grid -->
-          <div v-if="showRoomGrid" class="mt-3 pt-3 border-t border-border">
-            <div v-for="group in roomGroups" :key="'grid-' + group.key" class="mb-3 last:mb-0">
-              <div class="flex items-center gap-2 mb-1.5">
-                <span class="text-sm">{{ group.icon }}</span>
-                <span class="text-[10px] font-black text-text-muted uppercase">{{ group.label }}</span>
-              </div>
-              <div class="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-1.5">
-                <div v-for="room in group.rooms" :key="room.id"
-                  @click.stop="selectRoom(room)"
-                  class="p-2 rounded-lg border-2 cursor-pointer transition-all hover:shadow-sm hover:scale-[1.02]"
-                  :class="[roomCardClass(room), selectedRoom?.id === room.id ? 'ring-2 ring-navy/30' : '']">
-                  <div class="flex items-center justify-between mb-0.5">
-                    <span class="text-[10px] font-black" :class="roomNumberClass(room)">{{ room.number }}</span>
-                    <span class="w-1.5 h-1.5 rounded-full" :class="roomDotClass(room)"></span>
-                  </div>
-                  <div class="text-[7px] font-bold text-text-muted uppercase">{{ roomTypeLabel(room.type) }}</div>
-                  <div v-if="room.guestName" class="text-[8px] font-bold text-navy truncate mt-0.5">{{ room.guestName.split(' ')[0] }}</div>
-                  <div v-else class="text-[7px] text-text-muted mt-0.5">{{ roomStatusLabel(room) }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <!-- Arrivals Today -->
-          <div class="bg-white rounded-2xl border border-border p-4">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-sm font-black text-navy">Llegadas Hoy</h2>
-              <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-0.5 rounded-full">{{ arrivals.length }}</span>
-            </div>
-            <div v-if="arrivals.length === 0" class="text-center py-8 text-xs text-text-muted">Sin llegadas hoy</div>
-            <div v-for="a in arrivals" :key="a.id" class="flex items-center gap-3 p-3 rounded-xl mb-2" :class="a.checkedIn ? 'bg-teal/5' : 'bg-surface hover:bg-gold/5 cursor-pointer'" @click="!a.checkedIn && openCheckinModal(a)">
-              <div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold" :class="a.channelColor">{{ a.initials }}</div>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-bold text-navy truncate">{{ a.guestName }}</div>
-                <div class="text-[10px] text-text-muted">Hab {{ a.roomNumber }} · {{ a.channelLabel }}</div>
-                <div class="text-[10px] text-text-muted">{{ a.checkIn }} → {{ a.checkOut }} · {{ a.nights }}n · ${{ a.totalAmount }}</div>
+        <!-- Departures Today -->
+        <div class="card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-coral/10 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-coral" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M9 12h12m0 0l-3-3m3 3l-3 3"/>
+                </svg>
               </div>
-              <button v-if="!a.checkedIn" @click.stop="openCheckinModal(a)" :disabled="processing" class="px-3 py-1.5 bg-teal text-white text-[10px] font-bold rounded-lg hover:bg-teal/80 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                Check-in
-              </button>
-              <span v-else class="text-[10px] font-bold text-teal">✓ Hecho</span>
+              <h2 class="text-base font-extrabold text-navy">Salidas Hoy</h2>
             </div>
+            <span class="text-xs font-bold text-coral bg-coral/10 px-2.5 py-1 rounded-full">{{ departures.length }}</span>
           </div>
-
-          <!-- In House -->
-          <div class="bg-white rounded-2xl border border-border p-4">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-sm font-black text-navy">En Casa</h2>
-              <span class="text-xs font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-full">{{ inHouseList.length }}</span>
-            </div>
-            <div v-if="inHouseList.length === 0" class="text-center py-8 text-xs text-text-muted">Sin huéspedes</div>
-            <div v-for="g in inHouseList" :key="g.id" class="flex items-center gap-3 p-3 rounded-xl mb-2 bg-surface cursor-pointer hover:bg-coral/5" @click="openCheckoutModal(g)">
-              <div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold" :class="g.channelColor">{{ g.initials }}</div>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-bold text-navy truncate">{{ g.guestName }}</div>
-                <div class="text-[10px] text-text-muted">Hab {{ g.roomNumber }} · {{ g.channelLabel }}</div>
-                <div class="text-[10px] text-text-muted">Sale: {{ g.checkOut }} · {{ daysUntil(g.checkOut) }}d restantes</div>
-              </div>
-              <button @click.stop="openCheckoutModal(g)" :disabled="processing" class="px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-lg hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                Check-out
-              </button>
-            </div>
+          <div v-if="departures.length === 0" class="flex flex-col items-center gap-1.5 py-8 text-text-muted">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M9 12h12"/>
+            </svg>
+            <span class="text-xs">Sin salidas hoy</span>
           </div>
-
-          <!-- Departures Today -->
-          <div class="bg-white rounded-2xl border border-border p-4">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-sm font-black text-navy">Salidas Hoy</h2>
-              <span class="text-xs font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-full">{{ departures.length }}</span>
+          <div v-for="d in departures" :key="d.id"
+            class="flex items-center gap-3 p-3 rounded-xl mb-2 transition-colors border"
+            :class="d.checkedOut ? 'bg-surface border-border/40' : 'bg-surface hover:bg-coral/5 cursor-pointer border-transparent hover:border-border'"
+            @click="!d.checkedOut && openCheckoutModal(d)">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shrink-0"
+              :class="d.checkedOut ? 'bg-surface-dark text-text-muted' : 'bg-coral/10 text-coral'">{{ d.initials }}</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-bold truncate" :class="d.checkedOut ? 'text-text-secondary' : 'text-navy'">{{ d.guestName }}</div>
+              <div class="text-[10px] text-text-muted">Hab {{ d.roomNumber }} · {{ d.channelLabel }}</div>
             </div>
-            <div v-if="departures.length === 0" class="text-center py-8 text-xs text-text-muted">Sin salidas hoy</div>
-            <div v-for="d in departures" :key="d.id" class="flex items-center gap-3 p-3 rounded-xl mb-2" :class="d.checkedOut ? 'bg-gray-100' : 'bg-surface hover:bg-coral/5 cursor-pointer'" @click="!d.checkedOut && openCheckoutModal(d)">
-              <div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold bg-gray-200 text-gray-500">{{ d.initials }}</div>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-bold text-navy truncate">{{ d.guestName }}</div>
-                <div class="text-[10px] text-text-muted">Hab {{ d.roomNumber }} · {{ d.channelLabel }}</div>
-              </div>
-              <button v-if="!d.checkedOut" @click.stop="openCheckoutModal(d)" :disabled="processing" class="px-3 py-1.5 bg-coral text-white text-[10px] font-bold rounded-lg hover:bg-coral/80 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                Check-out
-              </button>
-              <span v-else class="text-[10px] font-bold text-text-muted">✓ Hecho</span>
-            </div>
+            <button v-if="!d.checkedOut" @click.stop="openCheckoutModal(d)" :disabled="processing"
+              class="shrink-0 px-3 py-1.5 bg-coral text-white text-[10px] font-bold rounded-lg hover:bg-coral/80 transition-colors cursor-pointer disabled:opacity-50">
+              Check-out
+            </button>
+            <span v-else class="shrink-0 flex items-center gap-1 text-[10px] font-bold text-text-muted">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              Hecho
+            </span>
           </div>
         </div>
-      </template>
-    </div>
+      </div>
+    </template>
 
     <!-- Room Detail Popover -->
     <Teleport to="body">

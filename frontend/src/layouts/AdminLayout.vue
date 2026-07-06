@@ -13,24 +13,24 @@
     </div>
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-navy text-white flex flex-col flex-shrink-0 fixed h-full z-20" :class="auth.impersonating ? 'top-10' : ''">
+    <aside class="w-64 bg-[#11233E] text-[#C4C8D0] flex flex-col shrink-0 fixed h-full z-20" :class="auth.impersonating ? 'top-10' : ''">
       <!-- Logo -->
       <div class="h-16 flex items-center gap-3 px-5 border-b border-white/10">
         <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-lg shadow-lg">S</div>
         <div>
           <div class="font-black text-lg leading-tight">Solmi<span class="text-cyan">OS</span></div>
-          <div class="text-[9px] font-bold tracking-[2px] text-gray-400 uppercase">{{ roleLabel }}</div>
+          <div class="text-[9px] font-bold tracking-[2px] text-[#C4C8D0] uppercase">{{ roleLabel }}</div>
         </div>
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
+      <nav class="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto scrollbar-hide">
         <template v-for="item in visibleItems" :key="item.path || item.label">
           <!-- Parent with children -->
           <template v-if="item.children">
             <button @click="toggleSection(item.label)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold cursor-pointer transition-all"
-              :class="item.expanded ? 'bg-white/15 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'">
-              <span class="text-lg">{{ item.icon }}</span>
+              :class="isSectionActive(item) ? 'bg-white/15 text-white' : 'text-[#C4C8D0] hover:bg-white/5 hover:text-white'">
+              <span class="w-5 h-5 shrink-0 text-[#C4C8D0]" v-html="item.icon"></span>
               <span class="flex-1 text-left">{{ item.label }}</span>
               <span class="text-[10px]">{{ item.expanded ? '▾' : '▸' }}</span>
             </button>
@@ -39,20 +39,50 @@
               :key="child.path"
               :to="child.path"
               v-show="item.expanded"
-              class="flex items-center gap-3 pl-11 pr-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer"
-              :class="isActive(child.path) ? 'bg-white/15 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+              class="flex items-center gap-2.5 pl-11 pr-3 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+              :class="isActive(child.path) ? 'bg-white/8 text-white' : 'text-[#C4C8D0] hover:bg-white/5 hover:text-white'"
             >
+              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isActive(child.path) ? 'bg-cyan' : 'bg-[#C4C8D0]'"></span>
               <span>{{ child.label }}</span>
             </router-link>
           </template>
           <!-- Simple item (no children) -->
           <router-link v-else :to="item.path"
             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer"
-            :class="isActive(item.path) ? 'bg-white/15 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'">
-            <span class="text-lg">{{ item.icon }}</span>
+            :class="isActive(item.path) ? 'bg-white/15 text-white' : 'text-[#C4C8D0] hover:bg-white/5 hover:text-white'">
+            <span class="w-5 h-5 shrink-0 text-[#C4C8D0]" v-html="item.icon"></span>
             <span>{{ item.label }}</span>
           </router-link>
         </template>
+
+        <!-- Ocupación Hoy (dentro del nav: scrollea junto al menú cuando los submenus expandidos exceden el alto disponible) -->
+        <div class="mt-3 p-4 rounded-xl bg-white/5 border border-white/10">
+          <div class="text-[10px] font-bold tracking-wider text-[#C4C8D0] uppercase mb-3">Ocupación Hoy</div>
+          <div class="flex items-center gap-3">
+            <div class="relative w-14 h-14 shrink-0">
+              <svg viewBox="0 0 36 36" class="w-14 h-14 -rotate-90">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" />
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#22D3EE" stroke-width="3" stroke-linecap="round"
+                  :stroke-dasharray="`${occupancyPct * 0.974} 100`" />
+              </svg>
+              <div class="absolute inset-0 flex items-center justify-center text-sm font-black">{{ occupancyPct }}%</div>
+            </div>
+            <div class="flex-1 space-y-1.5">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-1.5 h-1.5 rounded-full bg-cyan"></span>Ocupadas</span>
+                <span class="font-bold">{{ occupancyBreakdown.occupied }}</span>
+              </div>
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-1.5 h-1.5 rounded-full bg-blue"></span>Disponibles</span>
+                <span class="font-bold">{{ occupancyBreakdown.available }}</span>
+              </div>
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>Mantenimiento</span>
+                <span class="font-bold">{{ occupancyBreakdown.maintenance }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </nav>
 
       <!-- PC-2 Multi-property: Hotel Switcher -->
@@ -68,9 +98,9 @@
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-bold truncate">{{ auth.user?.name ?? 'Admin' }}</div>
-            <div class="text-[10px] text-gray-400">{{ auth.currentHotel }}</div>
+            <div class="text-[10px] text-[#C4C8D0]">{{ auth.currentHotel }}</div>
           </div>
-          <button @click="handleLogout" class="text-gray-400 hover:text-white transition-colors cursor-pointer">
+          <button @click="handleLogout" class="text-[#C4C8D0] hover:text-white transition-colors cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
@@ -80,7 +110,7 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 ml-64 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
+    <div class="flex-1 min-w-0 ml-64 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
       <!-- Header -->
       <header class="h-16 bg-white border-b border-border flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
         <div>
@@ -139,10 +169,29 @@ const auth = useAuthStore()
 const dashboard = useDashboardStore()
 const roomStore = useRoomStore()
 
+const ICONS = {
+  dashboard: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5h4.5V21H3v-7.5ZM9.75 8.25h4.5V21h-4.5V8.25ZM16.5 3h4.5v18h-4.5V3Z"/></svg>',
+  calendar: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z"/></svg>',
+  bed: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 18v2M3 18h18M21 18v2M5 13V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>',
+  user: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>',
+  wallet: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h.01M3 10h18"/></svg>',
+  link: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5 21 3M16.5 3H21v4.5M10.5 13.5 3 21M7.5 21H3v-4.5"/></svg>',
+  sparkles: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.035-.259a3.375 3.375 0 0 0 2.456-2.455L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>',
+  heart: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/></svg>',
+  usergroup: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72M18 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M18 18.72v-.235a3 3 0 0 0-3-3M6 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M6 18.72v-.235a3 3 0 0 1 3-3m3.75-6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>',
+  cog: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.397-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.241.437-.613.43-.991a7.66 7.66 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>',
+}
+
 const nonavItems = [
-  { label: 'Dashboard', icon: '📊', path: '/panel', roles: ['hotel_admin', 'receptionist'] },
   {
-    label: 'Planificación', icon: '📅', roles: ['hotel_admin', 'receptionist'],
+    label: 'Dashboard', icon: ICONS.dashboard, roles: ['hotel_admin', 'receptionist'],
+    children: [
+      { label: 'General', path: '/panel/dashboard/general', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Administrativo', path: '/panel/dashboard/administrativo', roles: ['hotel_admin', 'receptionist'] },
+    ]
+  },
+  {
+    label: 'Planificación', icon: ICONS.calendar, roles: ['hotel_admin', 'receptionist'],
     children: [
       { label: 'Planning', path: '/panel/planning', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Reservas', path: '/panel/reservations', roles: ['hotel_admin', 'receptionist'] },
@@ -150,7 +199,7 @@ const nonavItems = [
     ]
   },
   {
-    label: 'Habitaciones', icon: '🚪', roles: ['hotel_admin', 'receptionist'],
+    label: 'Habitaciones', icon: ICONS.bed, roles: ['hotel_admin', 'receptionist'],
     children: [
       { label: 'Habitaciones', path: '/panel/rooms', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Housekeeping', path: '/panel/housekeeping', roles: ['hotel_admin'] },
@@ -158,9 +207,9 @@ const nonavItems = [
     ]
   },
   {
-    label: 'Huéspedes', icon: '👤', path: '/panel/guests', roles: ['hotel_admin', 'receptionist'] },
+    label: 'Huéspedes', icon: ICONS.user, path: '/panel/guests', roles: ['hotel_admin', 'receptionist'] },
   {
-    label: 'Finanzas', icon: '💰', roles: ['hotel_admin'],
+    label: 'Finanzas', icon: ICONS.wallet, roles: ['hotel_admin'],
     children: [
       { label: 'Facturación', path: '/panel/billing', roles: ['hotel_admin'] },
       { label: 'Folios In-House', path: '/panel/folios', roles: ['hotel_admin', 'receptionist'] },
@@ -172,7 +221,7 @@ const nonavItems = [
     ]
   },
   {
-    label: 'Ventas', icon: '🔗', roles: ['hotel_admin'],
+    label: 'Ventas', icon: ICONS.link, roles: ['hotel_admin'],
     children: [
       { label: 'Channel Manager', path: '/panel/channel-manager', roles: ['hotel_admin'] },
       { label: 'Grupos', path: '/panel/groups', roles: ['hotel_admin'] },
@@ -181,20 +230,20 @@ const nonavItems = [
     ]
   },
   {
-    label: 'IA', icon: '🤖', roles: ['hotel_admin', 'receptionist'],
+    label: 'IA', icon: ICONS.sparkles, roles: ['hotel_admin', 'receptionist'],
     children: [
       { label: 'Recepcionista', path: '/panel/ai-receptionist', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Configuración IA', path: '/panel/ai-receptionist/config', roles: ['hotel_admin'] },
     ]
   },
   {
-    label: 'CRM', icon: '💎', roles: ['hotel_admin'],
+    label: 'CRM', icon: ICONS.heart, roles: ['hotel_admin'],
     children: [
       { label: 'Fidelización', path: '/panel/crm', roles: ['hotel_admin'] },
     ]
   },
   {
-    label: 'RRHH', icon: '👥', roles: ['hotel_admin', 'receptionist'],
+    label: 'RRHH', icon: ICONS.usergroup, roles: ['hotel_admin', 'receptionist'],
     children: [
       { label: 'Empleados', path: '/panel/empleados', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Asistencia', path: '/panel/attendance', roles: ['hotel_admin', 'receptionist'] },
@@ -203,7 +252,7 @@ const nonavItems = [
     ]
   },
   {
-    label: 'Configuración', icon: '⚙️', roles: ['hotel_admin'],
+    label: 'Configuración', icon: ICONS.cog, roles: ['hotel_admin'],
     children: [
       { label: 'Configuración', path: '/panel/settings', roles: ['hotel_admin'] },
       { label: 'Envíos Auto', path: '/panel/auto-messages', roles: ['hotel_admin'] },
@@ -216,12 +265,22 @@ const nonavItems = [
   },
 ]
 
-// All nested sections start collapsed
-const collapsedSections = ref(new Set(nonavItems.filter(i => i.children).map(i => i.label)))
+const sectionLabels = nonavItems.filter(i => i.children).map(i => i.label)
 
+function sectionContainsRoute(item: any) {
+  return item.children?.some((c: any) => route.path.startsWith(c.path)) ?? false
+}
+
+// Todas las secciones inician colapsadas, salvo la que contiene la ruta activa
+const collapsedSections = ref(new Set(
+  sectionLabels.filter(label => !sectionContainsRoute(nonavItems.find(i => i.label === label)))
+))
+
+// Acordeón: abrir una sección cierra las demás, así nunca hay más de un menú principal sombreado
 function toggleSection(section: string) {
-  const s = new Set(collapsedSections.value)
-  s.has(section) ? s.delete(section) : s.add(section)
+  const wasOpen = !collapsedSections.value.has(section)
+  const s = new Set(sectionLabels)
+  if (!wasOpen) s.delete(section)
   collapsedSections.value = s
 }
 
@@ -232,6 +291,11 @@ interface NavItem {
   roles: string[]
   children?: NavItem[]
   expanded?: boolean
+}
+
+function isSectionActive(item: any) {
+  if (item.children) return sectionContainsRoute(item)
+  return isActive(item.path)
 }
 
 const visibleItems = computed(() => {
@@ -251,6 +315,21 @@ const visibleItems = computed(() => {
       }
       return item
     })
+})
+
+const occupancyPct = computed(() => dashboard.stats.occupancy)
+
+const occupancyBreakdown = computed(() => {
+  const byStatus = dashboard.stats.roomsByStatus
+  return {
+    occupied: byStatus.occupied ?? 0,
+    available: byStatus.available ?? 0,
+    maintenance: (byStatus.out_of_service ?? 0) + (byStatus.dirty ?? 0) + (byStatus.cleaning ?? 0),
+  }
+})
+
+onMounted(() => {
+  dashboard.fetchStats(auth.user?.hotelId)
 })
 
 const roleLabel = computed(() => {
@@ -278,7 +357,8 @@ const userInitials = computed(() => {
 
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
-    dashboard: 'Dashboard',
+    'dashboard-general': 'Dashboard General',
+    'dashboard-administrativo': 'Dashboard Administrativo',
     planning: 'Planificación',
     reservations: 'Reservas',
     rooms: 'Habitaciones',
@@ -315,7 +395,6 @@ const pageTitle = computed(() => {
 })
 
 function isActive(path: string) {
-  if (path === '/panel') return route.path === '/panel'
   return route.path.startsWith(path)
 }
 

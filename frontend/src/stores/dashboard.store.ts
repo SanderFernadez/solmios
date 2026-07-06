@@ -11,6 +11,10 @@ interface DashboardState extends DashboardStats {
   reservations: number
   guests: number
   pendingInvoices: number
+  trends?: {
+    ocupacion: { value: number; direction: 'up' | 'down' | 'stable' }
+    revenue: { value: number; direction: 'up' | 'down' | 'stable' }
+  }
 }
 
 const empty: DashboardState = {

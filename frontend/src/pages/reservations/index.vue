@@ -1,64 +1,148 @@
 <template>
-  <div>
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-black text-navy">Reservas</h2>
-      <div class="flex gap-2">
-        <button @click="exportCSV" class="bg-white border border-border text-navy font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-surface cursor-pointer">⬇ CSV</button>
-        <button @click="openNew" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg cursor-pointer">+ Nueva Reserva</button>
+  <div class="space-y-5">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-black text-navy">Reservas</h1>
+        <p class="text-sm text-text-muted mt-0.5">Gestión de reservaciones del hotel</p>
+      </div>
+      <div class="flex gap-2.5">
+        <button @click="exportCSV" class="flex items-center gap-2 border border-border bg-white text-text-secondary font-semibold text-sm px-4 py-2.5 rounded-xl hover:bg-surface transition-colors cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+          </svg>
+          Exportar CSV
+        </button>
+        <button @click="openNew" class="flex items-center gap-2 bg-navy text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-navy-light transition-colors cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Nueva Reserva
+        </button>
       </div>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-      <div v-for="s in statsCards" :key="s.label" class="card p-4 text-center">
-        <div class="text-2xl font-black" :class="s.color">{{ s.value }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">{{ s.label }}</div>
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div v-for="s in statsCards" :key="s.label" class="card p-4 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :style="{ background: s.bg, color: s.accent }">
+          <svg v-if="s.icon === 'checkin'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H4.5"/>
+          </svg>
+          <svg v-else-if="s.icon === 'checkout'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M9 12h12m0 0l-3-3m3 3l-3 3"/>
+          </svg>
+          <svg v-else-if="s.icon === 'money'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <svg v-else-if="s.icon === 'wallet'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18-3a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9v.75"/>
+          </svg>
+          <svg v-else-if="s.icon === 'clock'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <svg v-else-if="s.icon === 'confirmed'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="text-lg font-extrabold leading-tight text-navy">{{ s.value }}</div>
+          <div class="text-[10px] text-text-muted font-semibold uppercase tracking-wide leading-tight mt-0.5 truncate">{{ s.label }}</div>
+        </div>
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="flex items-center gap-2 mb-4 flex-wrap">
-      <input v-model="search" type="text" placeholder="Buscar huésped..." class="px-4 py-2 rounded-xl border border-border text-sm w-48 focus:outline-none focus:border-navy" />
-      <select v-model="filterStatus" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer">
-        <option value="">Todos</option>
-        <option value="confirmed">Confirmadas</option><option value="pending">Pendientes</option>
-        <option value="checked_in">Check-in</option><option value="checked_out">Check-out</option><option value="cancelled">Canceladas</option>
-      </select>
-      <select v-model="filterChannel" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer">
-        <option value="">Todos canales</option>
-        <option value="direct">Directa</option><option value="booking">Booking</option><option value="expedia">Expedia</option><option value="airbnb">Airbnb</option>
-      </select>
-      <span class="text-xs text-text-muted ml-auto">{{ filtered.length }} reservas</span>
-    </div>
+    <!-- Filters + Table -->
+    <div class="card overflow-hidden">
+      <!-- Toolbar -->
+      <div class="flex items-center gap-3 p-4 border-b border-border flex-wrap">
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+          </svg>
+          <input v-model="search" type="text" placeholder="Buscar huésped..." class="pl-9 pr-4 py-2 text-sm rounded-xl border border-border bg-surface focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 w-52 transition-all" />
+        </div>
+        <select v-model="filterStatus" class="px-3 py-2 rounded-xl border border-border text-xs font-semibold text-text-secondary bg-white cursor-pointer focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 transition-all">
+          <option value="">Todos los estados</option>
+          <option value="confirmed">Confirmadas</option>
+          <option value="pending">Pendientes</option>
+          <option value="checked_in">Check-in</option>
+          <option value="checked_out">Check-out</option>
+          <option value="cancelled">Canceladas</option>
+        </select>
+        <select v-model="filterChannel" class="px-3 py-2 rounded-xl border border-border text-xs font-semibold text-text-secondary bg-white cursor-pointer focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 transition-all">
+          <option value="">Todos los canales</option>
+          <option value="direct">Directa</option>
+          <option value="booking">Booking</option>
+          <option value="expedia">Expedia</option>
+          <option value="airbnb">Airbnb</option>
+        </select>
+        <span class="text-xs text-text-muted ml-auto font-medium">{{ filtered.length }} reservas</span>
+      </div>
 
-    <!-- Table -->
-    <div class="bg-white rounded-2xl border border-border overflow-hidden">
+      <!-- Table -->
       <table class="w-full">
-        <thead><tr class="border-b border-border bg-surface/50">
-          <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Huésped</th>
-          <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hab</th>
-          <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Check-in</th>
-          <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Check-out</th>
-          <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">N</th>
-          <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-          <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Canal</th>
-          <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Total</th>
-          <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase"></th>
-        </tr></thead>
-        <tbody>
-          <tr v-for="r in filtered" :key="r.id" class="border-b border-border last:border-0 hover:bg-surface/50 cursor-pointer" @click="openDetail(r)">
-            <td class="p-4"><div class="font-bold text-sm text-navy">{{ r.guestName }}</div><div class="text-[10px] text-text-muted">{{ r.email }}</div></td>
-            <td class="p-4 text-sm font-bold">{{ r.roomNumber }}</td>
-            <td class="p-4 text-sm">{{ fmtDate(r.checkIn) }}</td>
-            <td class="p-4 text-sm">{{ fmtDate(r.checkOut) }}</td>
-            <td class="p-4 text-sm font-bold">{{ r.nights }}n</td>
-            <td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="stClass(r.status)">{{ stLabel(r.status) }}</span></td>
-            <td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="srcClass(r.source)">{{ srcLabel(r.source) }}</span></td>
-            <td class="p-4 text-right text-sm font-extrabold text-navy">${{ r.total }}</td>
-            <td class="p-4 text-right" @click.stop>
-              <button v-if="r.status==='confirmed'" @click="confirmAction('checkin',r)" class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold cursor-pointer hover:bg-teal/20 mr-1">Check-in</button>
-              <button v-if="r.status==='pending'||r.status==='confirmed'" @click="confirmAction('cancel',r)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20 mr-1">Cancelar</button>
-              <button v-if="r.status==='pending'||r.status==='cancelled'" @click="confirmAction('delete',r)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20">Eliminar</button>
+        <thead>
+          <tr class="border-b border-border bg-surface/50">
+            <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Huésped</th>
+            <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Hab.</th>
+            <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Check-in</th>
+            <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Check-out</th>
+            <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">N</th>
+            <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estado</th>
+            <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Canal</th>
+            <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Total</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40">
+          <tr v-for="r in filtered" :key="r.id"
+            class="hover:bg-surface/60 cursor-pointer transition-colors"
+            @click="openDetail(r)">
+            <td class="px-4 py-5">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center text-xs font-black text-navy shrink-0">
+                  {{ (r.guestName || '?').slice(0,1).toUpperCase() }}
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-navy">{{ r.guestName }}</div>
+                  <div class="text-[11px] text-text-muted">{{ r.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-5">
+              <span class="text-sm font-bold text-navy">{{ r.roomNumber }}</span>
+            </td>
+            <td class="px-4 py-5 text-sm text-text-secondary">{{ fmtDate(r.checkIn) }}</td>
+            <td class="px-4 py-5 text-sm text-text-secondary">{{ fmtDate(r.checkOut) }}</td>
+            <td class="px-4 py-5">
+              <span class="text-xs font-bold text-text-secondary">{{ r.nights }}n</span>
+            </td>
+            <td class="px-4 py-5">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold" :class="stClass(r.status)">{{ stLabel(r.status) }}</span>
+            </td>
+            <td class="px-4 py-5">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold" :class="srcClass(r.source)">{{ srcLabel(r.source) }}</span>
+            </td>
+            <td class="px-4 py-5 text-right">
+              <span class="text-sm font-extrabold text-navy">${{ r.total }}</span>
+            </td>
+            <td class="px-4 py-5" @click.stop>
+              <div class="flex items-center justify-end gap-1">
+                <button v-if="r.status==='confirmed'" @click="confirmAction('checkin',r)" class="px-2.5 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold cursor-pointer hover:bg-teal/20 transition-colors">Check-in</button>
+                <button v-if="r.status==='pending'||r.status==='confirmed'" @click="confirmAction('cancel',r)" class="px-2.5 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20 transition-colors">Cancelar</button>
+                <button v-if="r.status==='pending'||r.status==='cancelled'" @click="confirmAction('delete',r)" class="px-2.5 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20 transition-colors">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="filtered.length === 0">
+            <td colspan="9" class="px-4 py-12 text-center">
+              <div class="flex flex-col items-center gap-2 text-text-muted">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"/>
+                </svg>
+                <span class="text-sm font-medium">No hay reservas que coincidan con los filtros</span>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -591,12 +675,12 @@ const statsCards = computed(() => {
   const tr = list.value.filter((r: any) => r.checkIn === today).reduce((s: number, r: any) => s + (r.total || 0), 0)
   const all = list.value.filter((r: any) => r.status !== 'cancelled').reduce((s: number, r: any) => s + (r.total || 0), 0)
   return [
-    { label: 'Check-ins Hoy', value: String(ti), color: 'text-navy' },
-    { label: 'Check-outs Hoy', value: String(to), color: 'text-coral' },
-    { label: 'Ingresos Hoy', value: '$' + tr, color: 'text-teal' },
-    { label: 'Total Facturado', value: '$' + all, color: 'text-purple' },
-    { label: 'Pendientes', value: String(list.value.filter((r: any) => r.status === 'pending').length), color: 'text-gold' },
-    { label: 'Confirmadas', value: String(list.value.filter((r: any) => r.status === 'confirmed').length), color: 'text-cyan' },
+    { label: 'Check-ins Hoy', value: String(ti), icon: 'checkin', bg: '#DBEAFE', accent: '#1D67E3' },
+    { label: 'Check-outs Hoy', value: String(to), icon: 'checkout', bg: '#FEE2E2', accent: '#EF4444' },
+    { label: 'Ingresos Hoy', value: '$' + tr, icon: 'money', bg: '#D1FAE5', accent: '#10B981' },
+    { label: 'Total Facturado', value: '$' + all, icon: 'wallet', bg: '#EDE9FE', accent: '#6C3483' },
+    { label: 'Pendientes', value: String(list.value.filter((r: any) => r.status === 'pending').length), icon: 'clock', bg: '#FEF3C7', accent: '#F59E0B' },
+    { label: 'Confirmadas', value: String(list.value.filter((r: any) => r.status === 'confirmed').length), icon: 'confirmed', bg: '#CFFAFE', accent: '#00B4D8' },
   ]
 })
 

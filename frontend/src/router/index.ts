@@ -145,8 +145,17 @@ const router = createRouter({
       children: [
         {
           path: '',
-          name: 'dashboard',
+          redirect: '/panel/dashboard/general',
+        },
+        {
+          path: 'dashboard/general',
+          name: 'dashboard-general',
           component: () => import('@/pages/dashboard/index.vue'),
+        },
+        {
+          path: 'dashboard/administrativo',
+          name: 'dashboard-administrativo',
+          component: () => import('@/pages/dashboard/administrativo.vue'),
         },
         {
           path: 'reservations',

@@ -12,7 +12,7 @@
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+      <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-hide">
         <router-link
           v-for="item in navItems"
           :key="item.path"
@@ -20,7 +20,7 @@
           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer"
           :class="isActive(item.path) ? 'bg-white/15 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
         >
-          <span class="text-lg">{{ item.icon }}</span>
+          <span class="w-5 h-5 shrink-0" v-html="item.icon"></span>
           <span>{{ item.label }}</span>
           <span
             v-if="item.badge"
@@ -127,26 +127,46 @@ onMounted(async () => {
   } catch {}
 })
 
+const ICONS = {
+  dashboard: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5h4.5V21H3v-7.5ZM9.75 8.25h4.5V21h-4.5V8.25ZM16.5 3h4.5v18h-4.5V3Z"/></svg>',
+  hotel: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>',
+  card: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path stroke-linecap="round" d="M3 10h18"/></svg>',
+  clipboard: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-7 7h6m-6 4h6"/></svg>',
+  sparkles: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.035-.259a3.375 3.375 0 0 0 2.456-2.455L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>',
+  ticket: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 1 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 1 0 0-4V7Z"/></svg>',
+  wallet: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h.01M3 10h18"/></svg>',
+  chart: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m3 17 6-6 4 4 8-8M21 7v6m0-6h-6"/></svg>',
+  user: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>',
+  usergroup: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72M18 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M18 18.72v-.235a3 3 0 0 0-3-3M6 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M6 18.72v-.235a3 3 0 0 1 3-3m3.75-6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>',
+  monitor: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17 9 20l-.75 1M13.25 17 14 20l.75 1M3 13.5h18M5 17h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/></svg>',
+  document: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m1 5H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l4.414 4.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>',
+  megaphone: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 11v2a2 2 0 0 0 2 2h1l3 5v-5h1l8 3V6l-8 3H6a2 2 0 0 0-2 2Z"/></svg>',
+  chat: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8Z"/></svg>',
+  key: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10 17.75H8v2H6v2H2v-3.75l6.408-6.408c.403-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z"/></svg>',
+  shield: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Z"/></svg>',
+  cog: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.397-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.241.437-.613.43-.991a7.66 7.66 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>',
+}
+
 const navItems = computed(() => {
   const s = stats.value
   return [
-    { path: '/admin', label: 'Dashboard', icon: '📊' },
-    { path: '/admin/hotels', label: 'Hoteles', icon: '🏨', badge: s.hoteles || undefined },
-    { path: '/admin/plans', label: 'Planes', icon: '💳' },
-    { path: '/admin/subscriptions', label: 'Suscripciones', icon: '📋' },
-    { path: '/admin/amenities', label: 'Amenities', icon: '✨' },
-    { path: '/admin/support', label: 'Soporte', icon: '🎫', badge: s.ticketsAbiertos || undefined },
-    { path: '/admin/billing', label: 'Facturación', icon: '💰' },
-    { path: '/admin/analytics', label: 'Analytics', icon: '📈' },
-    { path: '/admin/users', label: 'Usuarios', icon: '👤' },
-    { path: '/admin/empleados', label: 'Empleados', icon: '👥' },
-    { path: '/admin/monitoring', label: 'Monitoreo', icon: '🖥️' },
-    { path: '/admin/audit', label: 'Auditoría', icon: '📋' },
-    { path: '/admin/feedback', label: 'Feedback', icon: '💬' },
-    { path: '/admin/announcements', label: 'Anuncios', icon: '📢' },
-    { path: '/admin/api-keys', label: 'API & Webhooks', icon: '🔑' },
-    { path: '/admin/roles', label: 'Roles & Permisos', icon: '🔐' },
-    { path: '/admin/settings', label: 'Configuración', icon: '⚙️' },
+    { path: '/admin', label: 'Dashboard', icon: ICONS.dashboard },
+    { path: '/admin/hotels', label: 'Hoteles', icon: ICONS.hotel, badge: s.hoteles || undefined },
+    { path: '/admin/plans', label: 'Planes', icon: ICONS.card },
+    { path: '/admin/subscriptions', label: 'Suscripciones', icon: ICONS.clipboard },
+    { path: '/admin/amenities', label: 'Amenities', icon: ICONS.sparkles },
+    { path: '/admin/support', label: 'Soporte', icon: ICONS.ticket, badge: s.ticketsAbiertos || undefined },
+    { path: '/admin/billing', label: 'Facturación', icon: ICONS.wallet },
+    { path: '/admin/analytics', label: 'Analytics', icon: ICONS.chart },
+    { path: '/admin/users', label: 'Usuarios', icon: ICONS.user },
+    { path: '/admin/empleados', label: 'Empleados', icon: ICONS.usergroup },
+    { path: '/admin/monitoring', label: 'Monitoreo', icon: ICONS.monitor },
+    { path: '/admin/audit', label: 'Auditoría', icon: ICONS.document },
+    { path: '/admin/feedback', label: 'Feedback', icon: ICONS.chat },
+    { path: '/admin/announcements', label: 'Anuncios', icon: ICONS.megaphone },
+    { path: '/admin/api-keys', label: 'API & Webhooks', icon: ICONS.key },
+    { path: '/admin/roles', label: 'Roles & Permisos', icon: ICONS.shield },
+    { path: '/admin/settings', label: 'Configuración', icon: ICONS.cog },
   ]
 })
 
