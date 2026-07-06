@@ -15,6 +15,9 @@ export const CreateHousekeepingSchema: Record<string, ValidationRule> = {
   assignedDate: { type: 'string' as const },
   completedDate: { type: 'string' as const },
   cleaningItems: { type: 'array' as any },
+  startTime: { type: 'string' as const },
+  endTime: { type: 'string' as const },
+  photos: { type: 'array' as any },
 }
 
 export const UpdateHousekeepingSchema: Record<string, ValidationRule> = {
