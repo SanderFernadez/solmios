@@ -81,7 +81,15 @@ export class UsuariosService {
     // @ignore IDOR_RISK — el id proviene del JWT del propio usuario (req.user.id), es un self-lookup.
     const u = await this.repo.findById(id)
     if (!u) throw new NotFoundError('Usuario no encontrado')
-    return { id: u.id, name: u.name, email: u.email, role: u.role, hotelId: u.hotelId }
+    let hotelName = ''
+    if (u.hotelId && this.hotelRepo) {
+      try {
+        // @ignore IDOR_RISK — hotelId proviene del registro propio del usuario (u.hotelId), no de input externo.
+        const hotel = await this.hotelRepo.findById(u.hotelId)
+        hotelName = (hotel as any)?.name || ''
+      } catch { /* graceful */ }
+    }
+    return { id: u.id, name: u.name, email: u.email, role: u.role, hotelId: u.hotelId, hotelName }
   }
 
   async list(hotelId?: string): Promise<any[]> {

@@ -4,17 +4,18 @@
 
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <button
           v-for="view in views"
           :key="view.value"
           @click="switchView(view.value)"
-          class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
+          class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
           :class="activeView === view.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'"
         >
+          <span class="w-4 h-4 shrink-0" v-html="view.icon"></span>
           {{ view.label }}
         </button>
-        <div class="w-px bg-border mx-2"></div>
+        <div class="w-px h-6 bg-border mx-2"></div>
         <button
           v-for="filter in statusFilters"
           :key="filter.value"
@@ -30,25 +31,34 @@
         </label>
       </div>
       <div class="flex gap-2">
-        <button @click="openAssignModal" class="bg-navy text-white font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
-          + Asignar Tarea
+        <button @click="openAssignModal" class="flex items-center gap-1.5 bg-navy text-white font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+          Asignar Tarea
         </button>
-        <button @click="openNewTask" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
-          + Nueva Tarea
+        <button @click="openNewTask" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+          Nueva Tarea
         </button>
       </div>
     </div>
 
     <!-- Stats cards -->
-    <div class="grid grid-cols-5 gap-3 mb-6">
-      <div v-for="stat in stats" :key="stat.label" class="bg-white rounded-xl p-4 border border-border text-center">
-        <div class="text-lg font-black" :class="stat.color">{{ stat.value }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">{{ stat.label }}</div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      <div v-for="stat in stats" :key="stat.label" class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="stat.bg">
+            <span class="w-5 h-5" :class="stat.color" v-html="stat.icon"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none" :class="stat.color">{{ stat.value }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">{{ stat.label }}</div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Dashboard de Estadísticas -->
-    <div v-if="activeView === 'stats'" class="bg-white rounded-2xl border border-border card-shadow p-6">
+    <div v-if="activeView === 'stats'" class="card p-6">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h3 class="text-lg font-black text-navy">Rendimiento por Empleado</h3>
         <div class="flex gap-2">
@@ -105,8 +115,8 @@
         </div>
         <div class="space-y-3">
           <!-- Empty state: columna sin tareas -->
-          <div v-if="getColumnTasks(column.id).length === 0" class="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-border/60 rounded-xl">
-            <span class="text-2xl mb-2 opacity-50">{{ column.icon }}</span>
+          <div v-if="getColumnTasks(column.id).length === 0" class="flex flex-col items-center justify-center py-10 text-center border border-dashed border-border/60 rounded-xl">
+            <span class="w-7 h-7 mb-2 text-text-muted opacity-50" v-html="column.icon"></span>
             <p class="text-xs font-bold text-text-muted">Sin tareas</p>
             <p class="text-[10px] text-text-muted/70 mt-1 px-2 leading-tight">{{ column.emptyHint }}</p>
           </div>
@@ -121,7 +131,7 @@
             :class="[draggedTask?.id === task.id ? 'opacity-50' : '', TYPE_COLORS[task.rawType ?? ''] || 'border-l-gray-300']">
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs">{{ TYPE_ICONS[task.rawType ?? ''] || '🧹' }}</span>
+                <span class="w-3.5 h-3.5 text-navy shrink-0" v-html="TYPE_ICONS[task.rawType ?? ''] || ICON_SPARKLE"></span>
                 <span class="text-sm font-black text-navy">{{ task.roomNumber }}</span>
               </div>
               <span class="text-[9px] font-bold px-2 py-0.5 rounded-full" :class="priorityBadgeClass(task.priority)">
@@ -129,7 +139,10 @@
               </span>
             </div>
             <div class="text-[11px] text-text-secondary mb-3">{{ task.type }}</div>
-            <div v-if="taskTime(task)" class="text-[10px] text-cyan font-bold mb-2">⏱ {{ taskTime(task) }}</div>
+            <div v-if="taskTime(task)" class="flex items-center gap-1 text-[10px] text-cyan font-bold mb-2">
+              <span class="w-3 h-3 shrink-0" v-html="ICON_CLOCK"></span>
+              {{ taskTime(task) }}
+            </div>
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <div class="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white" :class="staffColor(task.assignedTo)">
@@ -137,7 +150,10 @@
                 </div>
                 <span class="text-[10px] font-medium text-navy">{{ task.assignedTo }}</span>
               </div>
-              <span v-if="task.photos.length" class="text-[10px] text-text-muted">📷 {{ task.photos.length }}</span>
+              <span v-if="task.photos.length" class="flex items-center gap-1 text-[10px] text-text-muted">
+                <span class="w-3 h-3 shrink-0" v-html="ICON_CAMERA"></span>
+                {{ task.photos.length }}
+              </span>
             </div>
           </div>
         </div>
@@ -145,13 +161,13 @@
     </div>
 
     <!-- List View -->
-    <div v-else class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <div v-else class="card overflow-hidden">
       <!-- Search & Controls -->
       <div class="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
           <div class="relative">
             <input v-model="listSearch" type="text" placeholder="Buscar habitación, tipo, empleado..." class="pl-9 pr-4 py-2 rounded-xl border border-border text-sm w-64 focus:outline-none focus:border-navy" />
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">🔍</span>
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_SEARCH"></span>
           </div>
           <select v-model="listPageSize" class="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
             <option :value="10">10 por página</option>
@@ -160,7 +176,10 @@
           </select>
         </div>
         <div class="flex items-center gap-3">
-          <button @click="exportCsv" class="px-4 py-2 bg-surface rounded-xl text-sm font-bold text-text-secondary hover:bg-surface-dark transition-colors cursor-pointer">📥 Exportar CSV</button>
+          <button @click="exportCsv" class="flex items-center gap-1.5 px-4 py-2 bg-surface rounded-xl text-sm font-bold text-text-secondary hover:bg-surface-dark transition-colors cursor-pointer">
+            <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
+            Exportar CSV
+          </button>
           <span class="text-xs text-text-muted">{{ filteredTasks.length }} tarea(s)</span>
         </div>
       </div>
@@ -181,7 +200,7 @@
           <tr v-if="paginatedTasks.length === 0">
             <td colspan="8" class="p-0">
               <div class="flex flex-col items-center justify-center py-16 text-center">
-                <span class="text-4xl mb-3 opacity-40">🧹</span>
+                <span class="w-10 h-10 mb-3 text-text-muted opacity-40" v-html="ICON_SPARKLE"></span>
                 <p class="text-sm font-bold text-navy">Sin tareas de housekeeping</p>
                 <p class="text-xs text-text-muted mt-1">No hay tareas para los filtros actuales.<br>Creá una nueva tarea o ajustá los filtros.</p>
               </div>
@@ -231,11 +250,11 @@
       <div v-if="totalListPages > 1" class="p-4 border-t border-border flex items-center justify-between">
         <span class="text-xs text-text-muted">{{ filteredTasks.length }} tarea(s) en {{ totalListPages }} página(s)</span>
         <div class="flex items-center gap-1">
-          <button @click="listPage = 1" :disabled="listPage <= 1" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">«</button>
-          <button @click="listPage--" :disabled="listPage <= 1" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
+          <button @click="listPage = 1" :disabled="listPage <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">«</button>
+          <button @click="listPage--" :disabled="listPage <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
           <span class="px-2 text-xs font-bold text-navy">{{ listPage }} / {{ totalListPages }}</span>
-          <button @click="listPage++" :disabled="listPage >= totalListPages" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">›</button>
-          <button @click="listPage = totalListPages" :disabled="listPage >= totalListPages" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">»</button>
+          <button @click="listPage++" :disabled="listPage >= totalListPages" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">›</button>
+          <button @click="listPage = totalListPages" :disabled="listPage >= totalListPages" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">»</button>
         </div>
       </div>
     </div>
@@ -463,10 +482,14 @@ const LIVE_TICK_MS = 60_000
 const { now } = useNow(LIVE_TICK_MS)
 const COMPLETED_STATUSES = ['completed', 'inspected']
 
+const ICON_BOARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"/></svg>'
+const ICON_LIST = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M4.5 6.75h.008v.008H4.5V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM4.5 12h.008v.008H4.5V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.008v.008H4.5v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>'
+const ICON_CHART = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>'
+
 const views = [
-  { label: '📋 Tablero', value: 'board' },
-  { label: '📝 Lista', value: 'list' },
-  { label: '📊 Estadísticas', value: 'stats' },
+  { label: 'Tablero', value: 'board', icon: ICON_BOARD },
+  { label: 'Lista', value: 'list', icon: ICON_LIST },
+  { label: 'Estadísticas', value: 'stats', icon: ICON_CHART },
 ]
 
 const statusFilters = [
@@ -479,17 +502,29 @@ const statusFilters = [
 
 const statsRanges = [7, 30, 90]
 
+const ICON_INBOX = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>'
+const ICON_SPARKLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.035-.259a3.375 3.375 0 0 0 2.456-2.455L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>'
+const ICON_CHECK_PLAIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>'
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>'
+const ICON_BOLT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 3v7.5H18L10.5 21v-7.5H6L13.5 3Z"/></svg>'
+const ICON_DROPLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.25S6.5 9.5 6.5 14a5.5 5.5 0 0 0 11 0c0-4.5-5.5-10.75-5.5-10.75Z"/></svg>'
+const ICON_WRENCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>'
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_CAMERA = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/></svg>'
+const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 12m0 0l4.5-4.5M12 12V3"/></svg>'
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
+
 // El Kanban es un flujo de proceso: las 4 columnas representan el pipeline completo
 // (Pendiente → En Progreso → Completada → Inspeccionada). Ocultar etapas rompe la
 // representación del proceso, así que el tablero SIEMPRE muestra las 4 columnas.
 const kanbanColumns = [
-  { id: 'pending', title: 'Pendiente', dotColor: 'bg-orange', icon: '📥', emptyHint: 'Las tareas nuevas aparecen acá' },
-  { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan', icon: '🧹', emptyHint: 'Arrastrá acá las tareas en limpieza' },
-  { id: 'completed', title: 'Completada', dotColor: 'bg-teal', icon: '✅', emptyHint: 'Tareas terminadas' },
-  { id: 'inspected', title: 'Inspeccionada', dotColor: 'bg-purple', icon: '🔍', emptyHint: 'Tareas verificadas por supervisión' },
+  { id: 'pending', title: 'Pendiente', dotColor: 'bg-orange', icon: ICON_INBOX, emptyHint: 'Las tareas nuevas aparecen acá' },
+  { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan', icon: ICON_SPARKLE, emptyHint: 'Arrastrá acá las tareas en limpieza' },
+  { id: 'completed', title: 'Completada', dotColor: 'bg-teal', icon: ICON_CHECK_PLAIN, emptyHint: 'Tareas terminadas' },
+  { id: 'inspected', title: 'Inspeccionada', dotColor: 'bg-purple', icon: ICON_SEARCH, emptyHint: 'Tareas verificadas por supervisión' },
 ]
 
-const TYPE_ICONS: Record<string, string> = { full_cleaning: '🧹', quick_cleaning: '✨', deep_cleaning: '🧼', inspection: '🔍', maintenance: '🔧' }
+const TYPE_ICONS: Record<string, string> = { full_cleaning: ICON_SPARKLE, quick_cleaning: ICON_BOLT, deep_cleaning: ICON_DROPLET, inspection: ICON_SEARCH, maintenance: ICON_WRENCH }
 const TYPE_COLORS: Record<string, string> = { full_cleaning: 'border-l-4 border-l-cyan-500', quick_cleaning: 'border-l-4 border-l-teal-500', deep_cleaning: 'border-l-4 border-l-blue-600', inspection: 'border-l-4 border-l-purple-500', maintenance: 'border-l-4 border-l-amber-500' }
 
 function blankTask(): HousekeepingViewTask {
@@ -500,11 +535,11 @@ const stats = computed(() => {
   const t = store.tasks
   const en = (s: string) => t.filter(x => x.status === s).length
   return [
-    { label: 'Pendientes', value: en('pending'), color: 'text-orange' },
-    { label: 'En Progreso', value: en('in_progress'), color: 'text-cyan' },
-    { label: 'Completadas', value: en('completed'), color: 'text-teal' },
-    { label: 'Inspeccionadas', value: en('inspected'), color: 'text-purple' },
-    { label: 'Total', value: t.length, color: 'text-navy' },
+    { label: 'Pendientes', value: en('pending'), color: 'text-orange', bg: 'bg-orange/10', icon: ICON_INBOX },
+    { label: 'En Progreso', value: en('in_progress'), color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_SPARKLE },
+    { label: 'Completadas', value: en('completed'), color: 'text-teal', bg: 'bg-teal/10', icon: ICON_CHECK_PLAIN },
+    { label: 'Inspeccionadas', value: en('inspected'), color: 'text-purple', bg: 'bg-purple/10', icon: ICON_SEARCH },
+    { label: 'Total', value: t.length, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_BOARD },
   ]
 })
 

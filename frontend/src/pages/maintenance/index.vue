@@ -25,16 +25,24 @@
           {{ filter.label }}
         </button>
       </div>
-      <button @click="openNewOrder" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
-        + Nueva Orden
+      <button @click="openNewOrder" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+        Nueva Orden
       </button>
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-6 gap-3 mb-6">
-      <div v-for="stat in stats" :key="stat.label" class="bg-white rounded-xl p-4 border border-border text-center">
-        <div class="text-lg font-black" :class="stat.color">{{ stat.value }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">{{ stat.label }}</div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div v-for="stat in stats" :key="stat.label" class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="stat.bg">
+            <span class="w-5 h-5" :class="stat.color" v-html="stat.icon"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none" :class="stat.color">{{ stat.value }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">{{ stat.label }}</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -57,8 +65,8 @@
         </div>
         <div class="space-y-3">
           <!-- Empty state: columna sin órdenes -->
-          <div v-if="getColumnOrders(column.id).length === 0" class="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-border/60 rounded-xl">
-            <span class="text-2xl mb-2 opacity-50">{{ column.icon }}</span>
+          <div v-if="getColumnOrders(column.id).length === 0" class="flex flex-col items-center justify-center py-10 text-center border border-dashed border-border/60 rounded-xl">
+            <span class="w-7 h-7 mb-2 text-text-muted opacity-50" v-html="column.icon"></span>
             <p class="text-xs font-bold text-text-muted">Sin órdenes</p>
             <p class="text-[10px] text-text-muted/70 mt-1 px-2 leading-tight">{{ column.emptyHint }}</p>
           </div>
@@ -96,7 +104,7 @@
     </div>
 
     <!-- List View -->
-    <div v-else class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <div v-else class="card overflow-hidden">
       <div v-if="loading" class="flex items-center justify-center py-12 text-text-muted text-sm">
         <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-navy" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
         Cargando órdenes...
@@ -119,7 +127,7 @@
           <tr v-if="filteredOrders.length === 0">
             <td colspan="9" class="p-0">
               <div class="flex flex-col items-center justify-center py-16 text-center">
-                <span class="text-4xl mb-3 opacity-40">🔧</span>
+                <span class="w-10 h-10 mb-3 text-text-muted opacity-40" v-html="ICON_WRENCH"></span>
                 <p class="text-sm font-bold text-navy">Sin órdenes de mantenimiento</p>
                 <p class="text-xs text-text-muted mt-1">No hay órdenes para los filtros actuales.<br>Creá una nueva orden o ajustá los filtros.</p>
               </div>
@@ -145,11 +153,13 @@
               </span>
             </td>
             <td class="p-4">
-              <span v-if="order.endTime && order.startTime" class="text-[10px] font-bold text-teal">
-                ⏱ {{ formatDuration(order.startTime, order.endTime) }}
+              <span v-if="order.endTime && order.startTime" class="flex items-center gap-1 text-[10px] font-bold text-teal">
+                <span class="w-3 h-3 shrink-0" v-html="ICON_CLOCK"></span>
+                {{ formatDuration(order.startTime, order.endTime) }}
               </span>
-              <span v-else-if="order.startTime" class="text-[10px] font-bold text-orange">
-                ⏱ {{ formatElapsed(order.startTime) }}
+              <span v-else-if="order.startTime" class="flex items-center gap-1 text-[10px] font-bold text-orange">
+                <span class="w-3 h-3 shrink-0" v-html="ICON_CLOCK"></span>
+                {{ formatElapsed(order.startTime) }}
               </span>
               <span v-else class="text-[10px] text-text-muted">—</span>
             </td>
@@ -426,6 +436,14 @@ const editingOrder = ref<any>(null)
 const showStatusModal = ref(false)
 const selectedOrder = ref<any>({})
 
+const ICON_WRENCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>'
+const ICON_COG = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.397-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.241.437-.613.43-.991a7.66 7.66 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_CHECK_PLAIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>'
+const ICON_USER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>'
+const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h.01M3 10h18"/></svg>'
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
+
 const views = [
   { label: 'Lista', value: 'list' },
   { label: 'Tablero', value: 'board' }
@@ -449,20 +467,20 @@ const stats = computed(() => {
     : 0
   const sinAsignar = o.filter((x: any) => !x.assignedTo && x.status !== 'closed').length
   return [
-    { label: 'Abiertas', value: en('open'), color: 'text-orange' },
-    { label: 'En Progreso', value: en('in_progress'), color: 'text-cyan' },
-    { label: 'Sin Asignar', value: sinAsignar, color: 'text-red' },
-    { label: 'Completadas', value: en('closed'), color: 'text-teal' },
-    { label: 'Tiempo Prom.', value: avgHours > 0 ? `${avgHours}h` : '—', color: 'text-navy' },
-    { label: 'Costo Total', value: `$${costo.toLocaleString()}`, color: 'text-navy' },
+    { label: 'Abiertas', value: en('open'), color: 'text-orange', bg: 'bg-orange/10', icon: ICON_WRENCH },
+    { label: 'En Progreso', value: en('in_progress'), color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_COG },
+    { label: 'Sin Asignar', value: sinAsignar, color: 'text-red', bg: 'bg-red/10', icon: ICON_USER },
+    { label: 'Completadas', value: en('closed'), color: 'text-teal', bg: 'bg-teal/10', icon: ICON_CHECK_PLAIN },
+    { label: 'Tiempo Prom.', value: avgHours > 0 ? `${avgHours}h` : '—', color: 'text-navy', bg: 'bg-navy/10', icon: ICON_CLOCK },
+    { label: 'Costo Total', value: `$${costo.toLocaleString()}`, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_WALLET },
   ]
 })
 
 const kanbanColumns = [
-  { id: 'open', title: 'Abierta', dotColor: 'bg-orange', icon: '🔧', emptyHint: 'Las órdenes nuevas aparecen acá' },
-  { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan', icon: '⚙️', emptyHint: 'Arrastrá acá las órdenes en trabajo' },
-  { id: 'waiting', title: 'Esperando', dotColor: 'bg-purple', icon: '⏳', emptyHint: 'Órdenes pausadas o esperando repuestos' },
-  { id: 'closed', title: 'Completada', dotColor: 'bg-teal', icon: '✅', emptyHint: 'Órdenes resueltas' }
+  { id: 'open', title: 'Abierta', dotColor: 'bg-orange', icon: ICON_WRENCH, emptyHint: 'Las órdenes nuevas aparecen acá' },
+  { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan', icon: ICON_COG, emptyHint: 'Arrastrá acá las órdenes en trabajo' },
+  { id: 'waiting', title: 'Esperando', dotColor: 'bg-purple', icon: ICON_CLOCK, emptyHint: 'Órdenes pausadas o esperando repuestos' },
+  { id: 'closed', title: 'Completada', dotColor: 'bg-teal', icon: ICON_CHECK_PLAIN, emptyHint: 'Órdenes resueltas' }
 ]
 
 const availableStatuses = [

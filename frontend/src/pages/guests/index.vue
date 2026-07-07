@@ -6,28 +6,57 @@
         <h2 class="text-xl font-black text-navy">Huéspedes</h2>
         <p class="text-sm text-text-muted mt-0.5">CRM y fidelización de clientes</p>
       </div>
-      <button @click="openNewGuest" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
-        + Nuevo Huésped
+      <button @click="openNewGuest" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+        Nuevo Huésped
       </button>
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-navy">{{ guests.length }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Total Huéspedes</div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
+            <span class="w-5 h-5 text-navy" v-html="ICON_USERS_GROUP"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-navy">{{ guests.length }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Total Huéspedes</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-cyan">{{ activeToday }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Activos Hoy</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
+            <span class="w-5 h-5 text-cyan" v-html="ICON_HOME"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-cyan">{{ activeToday }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Activos Hoy</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-teal">{{ frequentGuests }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Frecuentes</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
+            <span class="w-5 h-5 text-teal" v-html="ICON_STAR"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-teal">{{ frequentGuests }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Frecuentes</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-gold">{{ totalPoints.toLocaleString() }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Puntos OTorgados</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
+            <span class="w-5 h-5 text-gold" v-html="ICON_WALLET"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-gold">{{ totalPoints.toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Puntos Otorgados</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -124,7 +153,9 @@
                   <p class="text-sm text-gray-300">{{ viewGuest.nationality }} · {{ viewGuest.email }}</p>
                 </div>
               </div>
-              <button @click="closeViewModal" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors cursor-pointer">✕</button>
+              <button @click="closeViewModal" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
           </div>
 
@@ -349,78 +380,70 @@
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeFormModal"></div>
 
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-          <div class="p-5 border-b border-border">
-            <div class="flex items-center justify-between">
+          <div class="p-6 border-b border-border sticky top-0 bg-white z-10">
+            <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-black text-navy">{{ editingGuest ? 'Editar Huésped' : 'Nuevo Huésped' }}</h3>
-              <button @click="closeFormModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">✕</button>
+              <button @click="closeFormModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <!-- Wizard progress -->
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-navy">Paso {{ formStep }} de {{ FORM_STEPS.length }}</span>
+              <span class="text-xs font-bold text-text-muted">{{ FORM_STEPS[formStep - 1].label }}</span>
+            </div>
+            <div class="h-1.5 bg-surface-dark rounded-full overflow-hidden">
+              <div class="h-full bg-navy rounded-full transition-all" :style="{ width: (formStep / FORM_STEPS.length * 100) + '%' }"></div>
             </div>
           </div>
 
-          <div class="p-5 space-y-4">
-            <p class="text-[10px] text-text-muted">Los campos marcados con <span class="text-red-500 font-bold">*</span> son obligatorios.</p>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nombre Completo <span class="text-red-500">*</span></label>
-                <input v-model="form.name" type="text" placeholder="Nombre y apellido" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nacionalidad</label>
-                <SearchSelect v-model="form.nationality" :options="NATIONALITIES" placeholder="Buscar nacionalidad..." />
-              </div>
-            </div>
+          <div class="p-6 space-y-4">
+            <p v-if="formStep === 1" class="text-[11px] text-text-muted">Los campos marcados con <span class="text-red-500 font-bold">*</span> son obligatorios.</p>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Email <span class="text-red-500">*</span></label>
-                <input v-model="form.email" type="email" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+            <!-- Paso 1: Datos Personales -->
+            <template v-if="formStep === 1">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nombre Completo <span class="text-red-500">*</span></label>
+                  <input v-model="form.name" type="text" placeholder="Nombre y apellido" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nacionalidad</label>
+                  <SearchSelect v-model="form.nationality" :options="NATIONALITIES" placeholder="Buscar nacionalidad..." />
+                </div>
               </div>
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Teléfono</label>
-                <input v-model="form.phone" type="tel" placeholder="+1 809-555-0101" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Email <span class="text-red-500">*</span></label>
+                  <input v-model="form.email" type="email" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Teléfono</label>
+                  <input v-model="form.phone" type="tel" placeholder="+1 809-555-0101" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
               </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Documento</label>
-                <input v-model="form.document" type="text" placeholder="Pasaporte o ID" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Documento</label>
+                  <input v-model="form.document" type="text" placeholder="Pasaporte o ID" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tipo Documento</label>
+                  <select v-model="form.documentType" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                    <option value="">—</option>
+                    <option v-for="d in DOC_TYPES" :key="d.v" :value="d.v">{{ d.l }}</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Fecha de Nacimiento</label>
-                <input v-model="form.birthDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Idioma</label>
-                <select v-model="form.language" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-                  <option value="">Sin preferencia</option>
-                  <option v-for="l in LANGUAGES" :key="l.v" :value="l.v">{{ l.l }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tier (fidelización)</label>
-                <select v-model="form.tier" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-                  <option value="">Sin tier</option>
-                  <option value="bronze">Bronce</option>
-                  <option value="silver">Plata</option>
-                  <option value="gold">Oro</option>
-                  <option value="platinum">Platino</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Puntos de Fidelización</label>
-              <input v-model.number="form.loyaltyPoints" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-            </div>
-
-            <!-- Datos personales y legales -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">País</label>
-                <SearchSelect v-model="form.country" :options="COUNTRIES" placeholder="Buscar país..." />
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Exp. Documento</label>
+                  <input v-model="form.documentIssueDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Fecha de Nacimiento</label>
+                  <input v-model="form.birthDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Sexo</label>
@@ -431,80 +454,101 @@
                   <option value="other">Otro</option>
                 </select>
               </div>
-            </div>
+            </template>
 
-            <div class="grid grid-cols-3 gap-4">
-              <div class="col-span-2">
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Dirección</label>
-                <input v-model="form.address" type="text" placeholder="Calle, número..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+            <!-- Paso 2: Dirección y Profesión -->
+            <template v-if="formStep === 2">
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">País</label>
+                <SearchSelect v-model="form.country" :options="COUNTRIES" placeholder="Buscar país..." />
+              </div>
+              <div class="grid grid-cols-3 gap-4">
+                <div class="col-span-2">
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Dirección</label>
+                  <input v-model="form.address" type="text" placeholder="Calle, número..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Ciudad</label>
+                  <input v-model="form.city" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Provincia</label>
+                  <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Profesión</label>
+                  <input v-model="form.profession" type="text" placeholder="Médico, ingeniero..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Ciudad</label>
-                <input v-model="form.city" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-4">
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Provincia</label>
-                <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tipo Documento</label>
-                <select v-model="form.documentType" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-                  <option value="">—</option>
-                  <option v-for="d in DOC_TYPES" :key="d.v" :value="d.v">{{ d.l }}</option>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Idioma</label>
+                <select v-model="form.language" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <option value="">Sin preferencia</option>
+                  <option v-for="l in LANGUAGES" :key="l.v" :value="l.v">{{ l.l }}</option>
                 </select>
               </div>
+            </template>
+
+            <!-- Paso 3: Fidelización y Emergencia -->
+            <template v-if="formStep === 3">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tier (fidelización)</label>
+                  <select v-model="form.tier" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                    <option value="">Sin tier</option>
+                    <option value="bronze">Bronce</option>
+                    <option value="silver">Plata</option>
+                    <option value="gold">Oro</option>
+                    <option value="platinum">Platino</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Puntos de Fidelización</label>
+                  <input v-model.number="form.loyaltyPoints" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+              </div>
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Exp. Documento</label>
-                <input v-model="form.documentIssueDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Contacto de Emergencia</label>
+                <div class="grid grid-cols-2 gap-3">
+                  <input v-model="form.emergencyContact.name" type="text" placeholder="Nombre" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.emergencyContact.phone" type="text" placeholder="Teléfono" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.emergencyContact.relation" type="text" placeholder="Relación (esposa, hijo...)" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.emergencyContact.email" type="email" placeholder="Email" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
               </div>
-            </div>
+            </template>
 
-            <div class="grid grid-cols-3 gap-4">
+            <!-- Paso 4: Preferencias y Notas -->
+            <template v-if="formStep === 4">
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Profesión</label>
-                <input v-model="form.profession" type="text" placeholder="Médico, ingeniero..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Preferencias</label>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="pref in allPreferences"
+                    :key="pref"
+                    @click="togglePreference(pref)"
+                    class="px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer"
+                    :class="form.preferences.includes(pref) ? 'border-navy bg-navy/5 text-navy' : 'border-border text-text-secondary hover:border-navy/30'"
+                  >
+                    {{ pref }}
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <!-- Contacto de emergencia -->
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Contacto de Emergencia</label>
-              <div class="grid grid-cols-2 gap-3">
-                <input v-model="form.emergencyContact.name" type="text" placeholder="Nombre" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-                <input v-model="form.emergencyContact.phone" type="text" placeholder="Teléfono" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-                <input v-model="form.emergencyContact.relation" type="text" placeholder="Relación (esposa, hijo...)" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-                <input v-model="form.emergencyContact.email" type="email" placeholder="Email" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <div>
+                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Notas</label>
+                <textarea v-model="form.notes" rows="3" placeholder="Alergias, solicitudes especiales, etc." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
               </div>
-            </div>
-
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Preferencias</label>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="pref in allPreferences"
-                  :key="pref"
-                  @click="togglePreference(pref)"
-                  class="px-3 py-1.5 rounded-lg text-[11px] font-bold border-2 transition-all cursor-pointer"
-                  :class="form.preferences.includes(pref) ? 'border-navy bg-navy/5 text-navy' : 'border-border text-text-secondary hover:border-navy/30'"
-                >
-                  {{ pref }}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Notas</label>
-              <textarea v-model="form.notes" rows="3" placeholder="Alergias, solicitudes especiales, etc." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
-            </div>
+            </template>
           </div>
 
-          <div class="p-5 border-t border-border bg-surface/50">
-            <div class="flex gap-3 justify-end">
-              <button @click="closeFormModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
-              <button @click="saveGuest" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
+          <div class="p-6 border-t border-border bg-surface/50 sticky bottom-0">
+            <div class="flex gap-3 justify-between">
+              <button v-if="formStep === 1" @click="closeFormModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
+              <button v-else @click="prevFormStep" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Atrás</button>
+              <button v-if="formStep < FORM_STEPS.length" @click="nextFormStep" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">Siguiente</button>
+              <button v-else @click="saveGuest" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
                 {{ editingGuest ? 'Guardar Cambios' : 'Crear Huésped' }}
               </button>
             </div>
@@ -529,6 +573,12 @@ const auth = useAuthStore()
 const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
+const ICON_USERS_GROUP = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72M18 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M18 18.72v-.235a3 3 0 0 0-3-3M6 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M6 18.72v-.235a3 3 0 0 1 3-3m3.75-6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>'
+const ICON_HOME = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75"/></svg>'
+const ICON_STAR = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 21.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>'
+const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h.01M3 10h18"/></svg>'
+
 // Umbrales de segmentación de clientes (VIP por gasto, Frecuente por estadías)
 const VIP_SPEND_THRESHOLD = 5000
 const FREQUENT_STAYS_THRESHOLD = 5
@@ -546,6 +596,26 @@ const showViewModal = ref(false)
 const showFormModal = ref(false)
 const viewGuest = ref<any>(null)
 const editingGuest = ref<any>(null)
+
+const formStep = ref(1)
+const FORM_STEPS = [
+  { n: 1, label: 'Datos Personales' },
+  { n: 2, label: 'Dirección y Profesión' },
+  { n: 3, label: 'Fidelización y Emergencia' },
+  { n: 4, label: 'Preferencias y Notas' },
+]
+
+function nextFormStep() {
+  if (formStep.value === 1 && (!form.value.name || !form.value.email)) {
+    toast.warning('Nombre y email requeridos')
+    return
+  }
+  formStep.value = Math.min(formStep.value + 1, FORM_STEPS.length)
+}
+
+function prevFormStep() {
+  formStep.value = Math.max(formStep.value - 1, 1)
+}
 
 const form = ref({
   name: '',
@@ -803,6 +873,7 @@ function closeViewModal() {
 function openNewGuest() {
   editingGuest.value = null
   form.value = { name: '', email: '', phone: '', nationality: '', document: '', documentType: '', documentIssueDate: '', birthDate: '', sex: '', language: '', country: '', address: '', city: '', province: '', loyaltyPoints: 0, tier: '', profession: '', emergencyContact: { name: '', phone: '', relation: '', email: '' }, preferences: [], notes: '' }
+  formStep.value = 1
   showFormModal.value = true
 }
 
@@ -830,6 +901,7 @@ function openEditGuest(guest: any) {
     preferences: [...(guest.preferences ?? [])],
     notes: guest.notes ?? '',
   }
+  formStep.value = 1
   showFormModal.value = true
 }
 

@@ -4,25 +4,44 @@
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-black text-navy">Recepción Digital</h1>
-        <p class="text-sm text-text-muted mt-0.5">{{ todayFormatted }} · {{ arrivalsToday }} llegadas · {{ departuresToday }} salidas</p>
+        <p class="text-sm text-text-muted mt-0.5">{{ todayFormatted }}</p>
       </div>
-      <div class="flex items-center gap-2.5">
-        <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-teal/10 text-teal">{{ inHouse }} en casa</span>
-        <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-gold/10 text-gold">{{ arrivalsToday }} por llegar</span>
-        <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-coral/10 text-coral">{{ departuresToday }} por salir</span>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <div v-for="kpi in kpis" :key="kpi.key" class="card p-6">
+        <div class="flex items-start gap-3.5">
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" :class="kpi.classes" v-html="kpi.icon"></div>
+          <div class="flex-1 pt-0.5 min-w-0">
+            <div class="text-[13px] text-text-secondary font-medium mb-1.5 truncate">{{ kpi.label }}</div>
+            <div class="text-[28px] leading-none font-extrabold text-navy">{{ kpi.value }}</div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Loading skeleton -->
     <template v-if="loading">
-      <div class="card p-5 animate-pulse">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div v-for="i in 3" :key="i" class="card p-6 animate-pulse">
+          <div class="flex items-start gap-3.5">
+            <div class="w-14 h-14 rounded-2xl bg-surface-dark shrink-0"></div>
+            <div class="flex-1 space-y-2 pt-1">
+              <div class="h-3 w-20 bg-surface-dark rounded"></div>
+              <div class="h-6 w-12 bg-surface-dark rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card p-6 animate-pulse">
         <div class="h-4 w-48 bg-surface-dark rounded mb-3"></div>
         <div class="space-y-2">
           <div v-for="i in 4" :key="i" class="h-10 bg-surface-dark rounded-lg"></div>
         </div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div v-for="i in 3" :key="i" class="card p-5 animate-pulse">
+        <div v-for="i in 3" :key="i" class="card p-6 animate-pulse">
           <div class="h-4 w-32 bg-surface-dark rounded mb-4"></div>
           <div v-for="j in 3" :key="j" class="h-14 bg-surface-dark rounded-xl mb-2"></div>
         </div>
@@ -31,7 +50,7 @@
 
     <template v-else>
       <!-- Room Summary -->
-      <div class="card p-5">
+      <div class="card p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-extrabold text-navy">Habitaciones · {{ todayFormatted }}</h2>
           <button @click="showRoomGrid = !showRoomGrid"
@@ -45,15 +64,15 @@
         </div>
 
         <!-- Compact summary bars -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div v-for="group in roomGroups" :key="group.key"
             @click="showRoomGrid = true"
-            class="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-surface cursor-pointer transition-colors border border-transparent hover:border-border">
-            <span class="text-base w-6 text-center flex-shrink-0">{{ group.icon }}</span>
+            class="flex items-center gap-3 p-3 rounded-xl hover:bg-surface cursor-pointer transition-colors border border-transparent hover:border-border">
+            <span class="w-6 h-6 flex items-center justify-center shrink-0 text-navy" v-html="ROOM_ICONS[group.key] || ROOM_ICONS.standard"></span>
             <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-[10px] font-bold text-navy">{{ group.label }}</span>
-                <span class="text-[9px] font-bold" :class="group.occupiedCount > 0 ? 'text-coral' : 'text-teal'">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-bold text-navy">{{ group.label }}</span>
+                <span class="text-[11px] font-bold" :class="group.occupiedCount > 0 ? 'text-coral' : 'text-teal'">
                   {{ group.availableCount }} libre{{ group.availableCount !== 1 ? 's' : '' }}
                 </span>
               </div>
@@ -61,33 +80,42 @@
                 <div class="h-full rounded-full transition-all" :style="{ width: group.percent + '%' }"
                   :class="group.occupiedCount > 0 ? 'bg-coral' : 'bg-teal'"></div>
               </div>
-              <div class="flex justify-between mt-0.5">
-                <span class="text-[9px] text-text-muted">{{ group.rooms.length }} habs</span>
-                <span class="text-[9px] text-text-muted">{{ group.occupiedCount }} ocupadas</span>
+              <div class="flex justify-between mt-1">
+                <span class="text-[11px] text-text-muted">{{ group.rooms.length }} habs</span>
+                <span class="text-[11px] text-text-muted">{{ group.occupiedCount }} ocupadas</span>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Expanding room grid -->
-        <div v-if="showRoomGrid" class="mt-4 pt-4 border-t border-border">
-          <div v-for="group in roomGroups" :key="'grid-' + group.key" class="mb-4 last:mb-0">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-sm">{{ group.icon }}</span>
-              <span class="text-[10px] font-black text-text-muted uppercase tracking-wider">{{ group.label }}</span>
+        <div v-if="showRoomGrid" class="mt-5 pt-5 border-t border-border">
+          <!-- Legend -->
+          <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mb-6">
+            <div v-for="s in ROOM_STATUS_LEGEND" :key="s.status" class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full shrink-0" :class="s.dot"></span>
+              <span class="text-[12px] text-text-secondary">{{ s.label }}</span>
             </div>
-            <div class="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-1.5">
+          </div>
+
+          <div v-for="group in roomGroups" :key="'grid-' + group.key" class="mb-6 last:mb-0">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="w-4 h-4 flex items-center justify-center text-text-muted" v-html="ROOM_ICONS[group.key] || ROOM_ICONS.standard"></span>
+              <span class="text-xs font-black text-text-muted uppercase tracking-wider">{{ group.label }}</span>
+              <span class="text-xs text-text-muted">({{ group.rooms.length }})</span>
+            </div>
+            <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(128px, 1fr))">
               <div v-for="room in group.rooms" :key="room.id"
                 @click.stop="selectRoom(room)"
-                class="p-2 rounded-lg border-2 cursor-pointer transition-all hover:shadow-sm hover:scale-[1.02]"
-                :class="[roomCardClass(room), selectedRoom?.id === room.id ? 'ring-2 ring-navy/30' : '']">
-                <div class="flex items-center justify-between mb-0.5">
-                  <span class="text-[10px] font-black" :class="roomNumberClass(room)">{{ room.number }}</span>
-                  <span class="w-1.5 h-1.5 rounded-full" :class="roomDotClass(room)"></span>
+                class="p-3.5 rounded-xl border bg-white cursor-pointer transition-all hover:shadow-md"
+                :class="[roomCardClass(room), selectedRoom?.id === room.id ? 'ring-2 ring-navy/25' : '']">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-black text-navy">{{ room.number }}</span>
+                  <span class="w-2 h-2 rounded-full shrink-0" :class="roomDotClass(room)"></span>
                 </div>
-                <div class="text-[7px] font-bold text-text-muted uppercase">{{ roomTypeLabel(room.type) }}</div>
-                <div v-if="room.guestName" class="text-[8px] font-bold text-navy truncate mt-0.5">{{ room.guestName.split(' ')[0] }}</div>
-                <div v-else class="text-[7px] text-text-muted mt-0.5">{{ roomStatusLabel(room) }}</div>
+                <div class="text-[11px] font-semibold text-text-muted uppercase tracking-wide mb-1.5">{{ roomTypeLabel(room.type) }}</div>
+                <div v-if="room.guestName" class="text-xs font-bold text-navy truncate">{{ room.guestName.split(' ')[0] }}</div>
+                <div v-else class="text-[11px] font-semibold" :class="roomNumberClass(room)">{{ roomStatusLabel(room) }}</div>
               </div>
             </div>
           </div>
@@ -97,7 +125,7 @@
       <!-- 3 Columns -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Arrivals Today -->
-        <div class="card p-5">
+        <div class="card p-6">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
@@ -137,7 +165,7 @@
         </div>
 
         <!-- In House -->
-        <div class="card p-5">
+        <div class="card p-6">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-xl bg-teal/10 flex items-center justify-center shrink-0">
@@ -172,7 +200,7 @@
         </div>
 
         <!-- Departures Today -->
-        <div class="card p-5">
+        <div class="card p-6">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-xl bg-coral/10 flex items-center justify-center shrink-0">
@@ -217,106 +245,107 @@
     <Teleport to="body">
       <div v-if="showRoomDetail && selectedRoom" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeRoomDetail">
         <div class="absolute inset-0 bg-navy/30 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[85vh] overflow-y-auto">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
           <!-- Header -->
-          <div class="sticky top-0 bg-white border-b border-border p-5 z-10 rounded-t-2xl">
+          <div class="sticky top-0 bg-white border-b border-border p-6 z-10 rounded-t-2xl">
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2.5">
-                <span class="text-lg">{{ roomTypeIcon(selectedRoom.type) }}</span>
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-surface flex items-center justify-center text-navy shrink-0">
+                  <span class="w-6 h-6" v-html="roomTypeIcon(selectedRoom.type)"></span>
+                </div>
                 <div>
-                  <div class="text-base font-black text-navy">Hab {{ selectedRoom.number }}</div>
-                  <div class="text-[10px] font-bold text-text-muted uppercase">{{ roomTypeLabel(selectedRoom.type) }}</div>
+                  <div class="text-lg font-black text-navy">Hab {{ selectedRoom.number }}</div>
+                  <div class="text-xs font-bold text-text-muted uppercase">{{ roomTypeLabel(selectedRoom.type) }}</div>
                 </div>
               </div>
-              <button @click="closeRoomDetail" class="w-7 h-7 rounded-lg bg-surface flex items-center justify-center hover:bg-border/50 cursor-pointer text-xs">✕</button>
+              <button @click="closeRoomDetail" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center hover:bg-border/50 cursor-pointer text-sm shrink-0">✕</button>
             </div>
-            <div class="flex items-center gap-2 mt-2">
+            <div class="flex items-center gap-2 mt-3">
               <span class="w-2 h-2 rounded-full" :class="roomDotClass(selectedRoom)"></span>
-              <span class="text-[11px] font-bold" :class="roomNumberClass(selectedRoom)">{{ roomStatusLabel(selectedRoom) }}</span>
-              <span v-if="selectedRoom.guestName" class="text-[9px] text-text-muted ml-auto">{{ selectedRoom.checkDates }}</span>
+              <span class="text-xs font-bold" :class="roomNumberClass(selectedRoom)">{{ roomStatusLabel(selectedRoom) }}</span>
+              <span v-if="selectedRoom.guestName" class="text-[11px] text-text-muted ml-auto">{{ selectedRoom.checkDates }}</span>
             </div>
           </div>
 
           <!-- Guest info — garantizado si está ocupada -->
-          <div v-if="selectedRoom.status === 'occupied'" class="p-4 border-b border-border bg-surface/30">
-            <div class="text-[9px] font-bold text-text-muted uppercase mb-2">Huésped</div>
+          <div v-if="selectedRoom.status === 'occupied'" class="p-6 border-b border-border bg-surface/30">
+            <div class="text-[11px] font-bold text-text-muted uppercase mb-3">Huésped</div>
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-full bg-navy/10 flex items-center justify-center text-[11px] font-bold text-navy">
+              <div class="w-11 h-11 rounded-full bg-navy/10 flex items-center justify-center text-sm font-bold text-navy shrink-0">
                 {{ guestInitials(String(selectedRoomGuest?.guestName || selectedRoom.guestName || '?')) }}
               </div>
-              <div>
-                <div class="text-sm font-bold text-navy">{{ selectedRoomGuest?.guestName || selectedRoom.guestName || 'Sin nombre' }}</div>
-                <div v-if="selectedRoomGuest?.guestEmail || selectedRoom.guestEmail" class="text-[9px] text-text-muted">{{ selectedRoomGuest?.guestEmail || selectedRoom.guestEmail }}</div>
+              <div class="min-w-0">
+                <div class="text-base font-bold text-navy truncate">{{ selectedRoomGuest?.guestName || selectedRoom.guestName || 'Sin nombre' }}</div>
+                <div v-if="selectedRoomGuest?.guestEmail || selectedRoom.guestEmail" class="text-xs text-text-muted truncate">{{ selectedRoomGuest?.guestEmail || selectedRoom.guestEmail }}</div>
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-2 mt-2">
-              <div class="bg-white rounded-lg p-2 text-center">
-                <div class="text-[8px] text-text-muted">Check-in</div>
-                <div class="text-[10px] font-bold text-navy">{{ String(selectedRoomGuest?.checkIn || selectedRoom.checkIn || '').slice(0, 10) || '—' }}</div>
+            <div class="grid grid-cols-2 gap-3 mt-4">
+              <div class="bg-white rounded-xl p-3 text-center">
+                <div class="text-[11px] text-text-muted mb-0.5">Check-in</div>
+                <div class="text-sm font-bold text-navy">{{ String(selectedRoomGuest?.checkIn || selectedRoom.checkIn || '').slice(0, 10) || '—' }}</div>
               </div>
-              <div class="bg-white rounded-lg p-2 text-center">
-                <div class="text-[8px] text-text-muted">Check-out</div>
-                <div class="text-[10px] font-bold text-navy">{{ String(selectedRoomGuest?.checkOut || selectedRoom.checkOut || '').slice(0, 10) || '—' }}</div>
+              <div class="bg-white rounded-xl p-3 text-center">
+                <div class="text-[11px] text-text-muted mb-0.5">Check-out</div>
+                <div class="text-sm font-bold text-navy">{{ String(selectedRoomGuest?.checkOut || selectedRoom.checkOut || '').slice(0, 10) || '—' }}</div>
               </div>
             </div>
-            <div class="flex gap-2 mt-2">
-              <button @click="checkoutFromRoom(selectedRoom)" :disabled="processing" class="flex-1 py-1.5 bg-coral text-white text-[10px] font-bold rounded-lg hover:bg-coral/80 disabled:opacity-50 cursor-pointer">
+            <div class="flex gap-2 mt-4">
+              <button @click="checkoutFromRoom(selectedRoom)" :disabled="processing" class="flex-1 py-2.5 bg-coral text-white text-xs font-bold rounded-xl hover:bg-coral/80 disabled:opacity-50 cursor-pointer">
                 Check-out
               </button>
-              <button v-if="selectedRoom.resId || selectedRoomGuest?.id" @click="viewReservation((selectedRoom.resId || selectedRoomGuest?.id) as string)" class="flex-1 py-1.5 bg-navy text-white text-[10px] font-bold rounded-lg hover:bg-navy-light cursor-pointer">
+              <button v-if="selectedRoom.resId || selectedRoomGuest?.id" @click="viewReservation((selectedRoom.resId || selectedRoomGuest?.id) as string)" class="flex-1 py-2.5 bg-navy text-white text-xs font-bold rounded-xl hover:bg-navy-light cursor-pointer">
                 Ver Reserva
               </button>
             </div>
           </div>
 
           <!-- Empty state for non-occupied -->
-          <div v-else class="p-4 border-b border-border bg-surface/30">
-            <div class="text-center py-3">
-              <div class="text-2xl mb-1">🛏️</div>
-              <div class="text-xs font-bold text-teal">Disponible</div>
-              <div class="text-[9px] text-text-muted mt-0.5">Sin huésped asignado</div>
+          <div v-else class="p-6 border-b border-border bg-surface/30">
+            <div class="text-center py-2">
+              <div class="w-11 h-11 mx-auto mb-2 text-teal" v-html="ROOM_ICONS.standard"></div>
+              <div class="text-sm font-bold text-teal">Disponible</div>
+              <div class="text-xs text-text-muted mt-0.5">Sin huésped asignado</div>
             </div>
           </div>
 
           <!-- Room specs -->
-          <div class="p-4 border-b border-border">
-            <div class="text-[9px] font-bold text-text-muted uppercase mb-2">Detalles</div>
-            <div class="grid grid-cols-2 gap-2">
-              <div class="bg-surface rounded-lg p-2">
-                <div class="text-[8px] text-text-muted">Piso</div>
-                <div class="text-xs font-bold text-navy">{{ selectedRoom.floor || '—' }}</div>
+          <div class="p-6 border-b border-border">
+            <div class="text-[11px] font-bold text-text-muted uppercase mb-3">Detalles</div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-surface rounded-xl p-3">
+                <div class="text-[11px] text-text-muted mb-0.5">Piso</div>
+                <div class="text-sm font-bold text-navy">{{ selectedRoom.floor || '—' }}</div>
               </div>
-              <div class="bg-surface rounded-lg p-2">
-                <div class="text-[8px] text-text-muted">Capacidad</div>
-                <div class="text-xs font-bold text-navy">{{ selectedRoom.capacity || 2 }} pers</div>
+              <div class="bg-surface rounded-xl p-3">
+                <div class="text-[11px] text-text-muted mb-0.5">Capacidad</div>
+                <div class="text-sm font-bold text-navy">{{ selectedRoom.capacity || 2 }} pers</div>
               </div>
-              <div class="bg-surface rounded-lg p-2">
-                <div class="text-[8px] text-text-muted">Baños</div>
-                <div class="text-xs font-bold text-navy">{{ selectedRoom.bathrooms || 1 }}</div>
+              <div class="bg-surface rounded-xl p-3">
+                <div class="text-[11px] text-text-muted mb-0.5">Baños</div>
+                <div class="text-sm font-bold text-navy">{{ selectedRoom.bathrooms || 1 }}</div>
               </div>
-              <div class="bg-surface rounded-lg p-2">
-                <div class="text-[8px] text-text-muted">Superficie</div>
-                <div class="text-xs font-bold text-navy">{{ selectedRoom.surfaceArea ? selectedRoom.surfaceArea + ' m²' : '—' }}</div>
+              <div class="bg-surface rounded-xl p-3">
+                <div class="text-[11px] text-text-muted mb-0.5">Superficie</div>
+                <div class="text-sm font-bold text-navy">{{ selectedRoom.surfaceArea ? selectedRoom.surfaceArea + ' m²' : '—' }}</div>
               </div>
             </div>
-            <div class="mt-2 bg-surface rounded-lg p-2 flex justify-between items-center">
-              <span class="text-[8px] text-text-muted">Precio base / noche</span>
-              <span class="text-xs font-bold text-teal">${{ selectedRoom.basePrice || 0 }}</span>
+            <div class="mt-3 bg-surface rounded-xl p-3 flex justify-between items-center">
+              <span class="text-[11px] text-text-muted">Precio base / noche</span>
+              <span class="text-sm font-bold text-teal">${{ selectedRoom.basePrice || 0 }}</span>
             </div>
           </div>
 
           <!-- Amenities -->
-          <div class="p-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-[9px] font-bold text-text-muted uppercase">Amenities</span>
-              <span v-if="loadingAmenities" class="text-[8px] text-text-muted">cargando...</span>
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-[11px] font-bold text-text-muted uppercase">Amenities</span>
+              <span v-if="loadingAmenities" class="text-xs text-text-muted">cargando...</span>
             </div>
-            <div v-if="roomAmenities.length === 0 && !loadingAmenities" class="text-[9px] text-text-muted text-center py-2">Sin amenities registrados</div>
-            <div v-else class="flex flex-wrap gap-1">
-              <span v-for="a in roomAmenities" :key="a.key"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-bold"
-                :class="a.active ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-400 line-through'">
-                {{ a.icon }} {{ a.label }}
+            <div v-if="activeAmenities.length === 0 && !loadingAmenities" class="text-xs text-text-muted text-center py-3">Sin amenities registrados</div>
+            <div v-else class="flex flex-wrap gap-2">
+              <span v-for="a in activeAmenities" :key="a.key"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal/10 text-teal">
+                {{ a.label }}
               </span>
             </div>
           </div>
@@ -429,14 +458,17 @@
                   @click="settleMethod = pm.value"
                   class="flex items-center gap-2 p-3 rounded-xl text-xs font-bold border transition-all cursor-pointer"
                   :class="settleMethod === pm.value ? 'bg-teal text-white border-teal' : 'bg-white text-navy border-border hover:border-teal/30'">
-                  <span>{{ pm.icon }}</span>
+                  <span class="w-4 h-4 shrink-0" v-html="PAYMENT_ICONS[pm.value]"></span>
                   <span>{{ pm.label }}</span>
                 </button>
               </div>
             </div>
 
-            <div class="bg-gold/10 border border-gold/20 rounded-xl p-3">
-              <div class="text-[10px] font-bold text-gold">⚠ La habitación pasará a estado "Sucia" y se creará tarea de limpieza</div>
+            <div class="bg-gold/10 border border-gold/20 rounded-xl p-3 flex items-start gap-2">
+              <svg class="w-4 h-4 text-gold shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z"/>
+              </svg>
+              <div class="text-[10px] font-bold text-gold">La habitación pasará a estado "Sucia" y se creará tarea de limpieza</div>
             </div>
 
             <div v-if="processing" class="flex items-center justify-center gap-2 text-xs text-coral font-bold">
@@ -487,11 +519,18 @@ const folioLoading = ref(false)
 const settleMethod = ref<string | null>(null)
 const selectedRoom = ref<CheckinRoom | null>(null)
 
+const PAYMENT_ICONS: Record<string, string> = {
+  cash: '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path stroke-linecap="round" d="M6 9v.01M18 15v.01"/></svg>',
+  card: '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path stroke-linecap="round" d="M2 10h20"/></svg>',
+  transfer: '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10 12 3l9 7M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9M9 20v-6h6v6"/></svg>',
+  deposit: '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8 3h5.5L18 7.5V21H8V3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 3v4.5H18M10.5 12h5M10.5 15.5h5"/></svg>',
+}
+
 const paymentMethods = [
-  { value: 'cash', label: 'Efectivo', icon: '💵' },
-  { value: 'card', label: 'Tarjeta', icon: '💳' },
-  { value: 'transfer', label: 'Transferencia', icon: '🏦' },
-  { value: 'deposit', label: 'Depósito', icon: '📄' },
+  { value: 'cash', label: 'Efectivo' },
+  { value: 'card', label: 'Tarjeta' },
+  { value: 'transfer', label: 'Transferencia' },
+  { value: 'deposit', label: 'Depósito' },
 ]
 
 // Búsqueda directa en reservas para garantizar datos del huésped
@@ -506,7 +545,8 @@ const processing = ref(false)
 const rooms = ref<CheckinRoom[]>([])
 const allReservations = ref<Record<string, unknown>[]>([])
 const loading = ref(true)
-const roomAmenities = ref<{ key: string; label: string; icon: string; active: boolean }[]>([])
+const roomAmenities = ref<{ key: string; label: string; active: boolean }[]>([])
+const activeAmenities = computed(() => roomAmenities.value.filter(a => a.active))
 const loadingAmenities = ref(false)
 
 const today = new Date()
@@ -516,25 +556,25 @@ const todayFormatted = today.toLocaleDateString('es-ES', { weekday: 'long', day:
 const channelLabels: Record<string, string> = { direct: 'Direct', booking: 'Booking.com', expedia: 'Expedia', airbnb: 'Airbnb', google: 'Google' }
 const channelColors: Record<string, string> = { direct: 'bg-teal/10 text-teal', booking: 'bg-cyan/10 text-cyan', expedia: 'bg-gold/10 text-gold', airbnb: 'bg-coral/10 text-coral', google: 'bg-blue/10 text-blue' }
 
-const roomTypeCategories: Record<string, { key: string; icon: string; label: string; order: number }> = {
-  presidential: { key: 'premium', icon: '👑', label: 'Premium', order: 1 },
-  deluxe:      { key: 'premium', icon: '👑', label: 'Premium', order: 1 },
-  suite:       { key: 'premium', icon: '👑', label: 'Premium', order: 1 },
-  villa:       { key: 'premium', icon: '👑', label: 'Premium', order: 1 },
-  double:      { key: 'standard', icon: '🛏️', label: 'Dobles / Twin', order: 2 },
-  twin:        { key: 'standard', icon: '🛏️', label: 'Dobles / Twin', order: 2 },
-  triple:      { key: 'multiple', icon: '👥', label: 'Múltiples', order: 3 },
-  quad:        { key: 'multiple', icon: '👥', label: 'Múltiples', order: 3 },
-  family:      { key: 'multiple', icon: '👥', label: 'Múltiples', order: 3 },
-  single:      { key: 'individual', icon: '🚪', label: 'Individuales', order: 4 },
-  dorm:        { key: 'individual', icon: '🚪', label: 'Individuales', order: 4 },
+const ROOM_ICONS: Record<string, string> = {
+  premium: '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m3 8 4 3 5-6 5 6 4-3-2 10H5L3 8Z"/></svg>',
+  standard: '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 18v2M3 18h18M21 18v2M5 13V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>',
+  multiple: '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72M18 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M18 18.72v-.235a3 3 0 0 0-3-3M6 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M6 18.72v-.235a3 3 0 0 1 3-3m3.75-6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>',
+  individual: '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M5 21h10M5 21H3m14 0h2M13 12h.01"/></svg>',
 }
 
-const roomTypeIcons: Record<string, string> = {
-  presidential: '👑', deluxe: '👑', suite: '👑', villa: '👑',
-  double: '🛏️', twin: '🛏️',
-  triple: '👥', quad: '👥', family: '👥',
-  single: '🚪', dorm: '🚪',
+const roomTypeCategories: Record<string, { key: string; label: string; order: number }> = {
+  presidential: { key: 'premium', label: 'Premium', order: 1 },
+  deluxe:      { key: 'premium', label: 'Premium', order: 1 },
+  suite:       { key: 'premium', label: 'Premium', order: 1 },
+  villa:       { key: 'premium', label: 'Premium', order: 1 },
+  double:      { key: 'standard', label: 'Dobles / Twin', order: 2 },
+  twin:        { key: 'standard', label: 'Dobles / Twin', order: 2 },
+  triple:      { key: 'multiple', label: 'Múltiples', order: 3 },
+  quad:        { key: 'multiple', label: 'Múltiples', order: 3 },
+  family:      { key: 'multiple', label: 'Múltiples', order: 3 },
+  single:      { key: 'individual', label: 'Individuales', order: 4 },
+  dorm:        { key: 'individual', label: 'Individuales', order: 4 },
 }
 
 const roomTypeLabels: Record<string, string> = {
@@ -544,16 +584,16 @@ const roomTypeLabels: Record<string, string> = {
   single: 'Single', dorm: 'Dormitorio',
 }
 
-function roomTypeIcon(type: string) { return roomTypeIcons[type] || '🛏️' }
+function roomTypeIcon(type: string) { return ROOM_ICONS[roomTypeCategories[type]?.key || 'standard'] }
 function roomTypeLabel(type: string) { return roomTypeLabels[type] || type }
 
 const roomGroups = computed(() => {
   const inHouseRoomIds = new Set(inHouseList.value.map(g => g.roomId))
-  const groups = new Map<string, { key: string; icon: string; label: string; order: number; rooms: CheckinRoom[]; occupiedCount: number; availableCount: number; percent: number }>()
+  const groups = new Map<string, { key: string; label: string; order: number; rooms: CheckinRoom[]; occupiedCount: number; availableCount: number; percent: number }>()
   for (const room of rooms.value) {
-    const cat = roomTypeCategories[room.type] || { key: 'other', icon: '🛏️', label: 'Otras', order: 99 }
+    const cat = roomTypeCategories[room.type] || { key: 'other', label: 'Otras', order: 99 }
     if (!groups.has(cat.key)) {
-      groups.set(cat.key, { key: cat.key, icon: cat.icon, label: cat.label, order: cat.order, rooms: [], occupiedCount: 0, availableCount: 0, percent: 0 })
+      groups.set(cat.key, { key: cat.key, label: cat.label, order: cat.order, rooms: [], occupiedCount: 0, availableCount: 0, percent: 0 })
     }
     groups.get(cat.key)!.rooms.push(room)
   }
@@ -635,22 +675,20 @@ async function loadData() {
 
 onMounted(loadData)
 
-const amenityMeta: Record<string, { icon: string; label: string }> = {
-  wifi: { icon: '📶', label: 'WiFi' },
-  tv: { icon: '📺', label: 'TV' },
-  ac: { icon: '❄️', label: 'A/C' },
-  minibar: { icon: '🍸', label: 'Minibar' },
-  safe: { icon: '🔐', label: 'Caja fuerte' },
-  iron: { icon: '👕', label: 'Plancha' },
-  hairdryer: { icon: '💨', label: 'Secador' },
-  robe: { icon: '👘', label: 'Bata' },
-  towels_extra: { icon: '🛁', label: 'Toallas extra' },
-  sea_view: { icon: '🌊', label: 'Vista al mar' },
-  balcony: { icon: '🏖️', label: 'Balcón' },
-  jacuzzi: { icon: '🫧', label: 'Jacuzzi' },
-  kitchen: { icon: '🍳', label: 'Cocina' },
-  terrace: { icon: '🌿', label: 'Terraza' },
-  desk: { icon: '🪑', label: 'Escritorio' },
+const amenityLabels: Record<string, string> = {
+  // interior
+  ac: 'A/C', heating: 'Calefacción', kitchen: 'Cocina', microwave: 'Microondas', fridge: 'Refrigerador',
+  coffee_maker: 'Cafetera', washer: 'Lavadora', dishwasher: 'Lavavajillas', tv: 'TV', wifi: 'WiFi',
+  safe: 'Caja fuerte', minibar: 'Minibar', hair_dryer: 'Secador', iron: 'Plancha', balcony: 'Balcón',
+  bathtub: 'Bañera', work_desk: 'Escritorio',
+  // exterior
+  pool: 'Piscina', pool_heated: 'Piscina climatizada', parking_free: 'Estacionamiento gratis',
+  parking_paid: 'Estacionamiento pago', gym: 'Gimnasio', spa: 'Spa', restaurant: 'Restaurante',
+  bar: 'Bar', garden: 'Jardín', terrace: 'Terraza', bbq: 'Parrilla', elevator: 'Ascensor',
+  lounge: 'Lounge', kids_playground: 'Juegos infantiles',
+  // services
+  room_service: 'Room service', laundry: 'Lavandería', concierge: 'Conserjería',
+  luggage_storage: 'Guardaequipaje', pets_allowed: 'Admite mascotas', wheelchair_access: 'Acceso silla de ruedas',
 }
 
 async function loadRoomAmenities(roomId: string) {
@@ -666,10 +704,9 @@ async function loadRoomAmenities(roomId: string) {
       ...(catalogResult.exterior || []),
       ...(catalogResult.services || []),
     ]
-    roomAmenities.value = allAmenities.map(key => {
-      const meta = amenityMeta[key] || { icon: '✓', label: key }
-      return { key, label: meta.label, icon: meta.icon, active: roomKeys.has(key) }
-    })
+    roomAmenities.value = allAmenities.map(key => ({
+      key, label: amenityLabels[key] || key, active: roomKeys.has(key),
+    }))
   } catch (e) {
     roomAmenities.value = []
   }
@@ -733,6 +770,16 @@ const arrivalsToday = computed(() => arrivals.value.length)
 const departuresToday = computed(() => departures.value.length)
 const inHouse = computed(() => inHouseList.value.length)
 
+const KPI_ICON_BED = '<svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 18v2M3 18h18M21 18v2M5 13V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>'
+const KPI_ICON_ARRIVAL = '<svg viewBox="0 0 24 24" class="w-7 h-7" fill="none"><rect x="3" y="3" width="12" height="18" rx="1.5" fill="currentColor" opacity="0.55"/><circle cx="11" cy="12" r="1.2" fill="white"/><path d="M14 12h7m0 0-3-3m3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+const KPI_ICON_DEPARTURE = '<svg viewBox="0 0 24 24" class="w-7 h-7" fill="none"><rect x="9" y="3" width="12" height="18" rx="1.5" fill="currentColor" opacity="0.55"/><circle cx="17" cy="12" r="1.2" fill="white"/><path d="M10 12H3m0 0 3-3m-3 3 3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+
+const kpis = computed(() => [
+  { key: 'inhouse', label: 'En Casa', value: String(inHouse.value), icon: KPI_ICON_BED, classes: 'bg-teal/10 text-teal' },
+  { key: 'arrivals', label: 'Por Llegar Hoy', value: String(arrivalsToday.value), icon: KPI_ICON_ARRIVAL, classes: 'bg-gold/10 text-gold' },
+  { key: 'departures', label: 'Por Salir Hoy', value: String(departuresToday.value), icon: KPI_ICON_DEPARTURE, classes: 'bg-coral/10 text-coral' },
+])
+
 function daysUntil(dateStr: string) {
   const d = Math.ceil((new Date(dateStr + 'T12:00:00').getTime() - today.getTime()) / 86400000)
   return d > 0 ? d : 0
@@ -773,6 +820,14 @@ function roomStatusLabel(room: CheckinRoom) {
   const map: Record<string, string> = { available: 'Disponible', occupied: 'Ocupada', cleaning: 'Limpieza', dirty: 'Sucia', out_of_service: 'F/S' }
   return map[room.status] || room.status
 }
+
+const ROOM_STATUS_LEGEND = [
+  { status: 'available', label: 'Disponible', dot: 'bg-teal' },
+  { status: 'occupied', label: 'Ocupada', dot: 'bg-coral' },
+  { status: 'cleaning', label: 'Limpieza', dot: 'bg-cyan' },
+  { status: 'dirty', label: 'Sucia', dot: 'bg-gold' },
+  { status: 'out_of_service', label: 'Fuera de servicio', dot: 'bg-gray-400' },
+]
 
 async function selectRoom(room: CheckinRoom) {
   selectedRoom.value = room

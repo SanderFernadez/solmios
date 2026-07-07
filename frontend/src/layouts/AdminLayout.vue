@@ -116,10 +116,10 @@
         <div>
           <h1 class="text-lg font-black text-navy">{{ pageTitle }}</h1>
         </div>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
           <!-- Search -->
           <div class="relative">
-            <input type="text" placeholder="Buscar..." class="w-64 h-9 pl-9 pr-4 rounded-lg border border-border text-sm bg-surface focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 transition-all" />
+            <input type="text" placeholder="Buscar..." class="w-64 h-9 pl-9 pr-4 rounded-xl border border-border text-sm bg-surface focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 transition-all" />
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -128,9 +128,13 @@
           <!-- Notifications bell (componente dedicado) -->
           <NotificationBell />
 
+          <div class="w-px h-6 bg-border"></div>
+
           <!-- Hotel Selector -->
-          <div class="flex items-center gap-2 bg-surface rounded-lg px-3 py-1.5 border border-border">
-            <span class="text-lg">🏨</span>
+          <div class="flex items-center gap-2 bg-surface rounded-xl px-3 py-1.5 border border-border">
+            <svg class="w-4 h-4 text-cyan shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1" />
+            </svg>
             <span class="text-sm font-bold text-navy">{{ auth.currentHotel }}</span>
           </div>
 

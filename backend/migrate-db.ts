@@ -359,6 +359,39 @@ async function seedNotif(): Promise<void> {
   console.log(`notifications: ${items.length} insertados`)
 }
 
+// ─── Seed: AMENITIES (hotel_amenities + room_amenities) ─────────
+async function seedAmenities(): Promise<void> {
+  const c = await countRows("SELECT COUNT(*) as c FROM room_amenities")
+  if (c > 0) return console.log("room_amenities: ya tiene datos")
+
+  const hotelAmenities: Array<[string, string]> = [
+    ["wifi", "interior"], ["ac", "interior"], ["tv", "interior"], ["minibar", "interior"],
+    ["pool", "exterior"], ["parking_free", "exterior"], ["restaurant", "exterior"], ["gym", "exterior"],
+    ["room_service", "services"], ["concierge", "services"],
+  ]
+  for (const [amenityKey, amenityCategory] of hotelAmenities)
+    await run("INSERT INTO hotel_amenities (id, hotelId, amenityKey, amenityCategory, isActive, createdAt, updatedAt) VALUES (?,?,?,?,1,?,?)",
+      [uuid(), HID, amenityKey, amenityCategory, now(), now()])
+
+  // Claves por tipo de habitación (type en DB está en español: suite/doble/simple/triple)
+  const roomAmenitiesByType: Record<string, string[]> = {
+    suite: ["wifi", "ac", "tv", "minibar", "safe", "balcony", "bathtub", "hair_dryer"],
+    doble: ["wifi", "ac", "tv", "safe"],
+    simple: ["wifi", "ac"],
+    triple: ["wifi", "ac", "tv"],
+  }
+  let roomCount = 0
+  for (const room of ROOMS) {
+    const keys = roomAmenitiesByType[room.type] || ["wifi", "ac"]
+    for (const amenityKey of keys) {
+      await run("INSERT INTO room_amenities (id, roomId, amenityKey, isShared, isActive, createdAt, updatedAt) VALUES (?,?,?,0,1,?,?)",
+        [uuid(), room.id, amenityKey, now(), now()])
+      roomCount++
+    }
+  }
+  console.log(`amenities: ${hotelAmenities.length} hotel + ${roomCount} room insertados`)
+}
+
 // ─── Seed: CONFIGURATION (per-hotel JSON config) ────────────────
 async function seedConfig(): Promise<void> {
   const c = await countRows("SELECT COUNT(*) as c FROM configuration WHERE hotelId=?", [HID])
@@ -833,6 +866,7 @@ async function main(): Promise<void> {
   await seedMantenimiento()
   await seedTickets()
   await seedNotif()
+  await seedAmenities()
   await seedConfig()
 
   // DDL block 2 (RRHH/Payroll/Attendance/Payments)

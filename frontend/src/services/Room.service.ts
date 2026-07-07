@@ -17,12 +17,12 @@ interface RawRoom {
 }
 
 const ROOM_TYPE_MAP: Record<string, RoomType> = {
-  single: 'single', sencilla: 'single', individual: 'single',
-  double: 'double', doble: 'double',
+  single: 'single', sencilla: 'single', individual: 'single', simple: 'single',
+  double: 'double', doble: 'double', twin: 'double',
   suite: 'suite',
   villa: 'villa',
   dorm: 'dorm', compartida: 'dorm',
-  family: 'family', familiar: 'family',
+  family: 'family', familiar: 'family', triple: 'family', quad: 'family', cuadruple: 'family',
 }
 
 const ROOM_STATUS_MAP: Record<string, RoomStatus> = {

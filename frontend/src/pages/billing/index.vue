@@ -7,31 +7,65 @@
         <p class="text-sm text-text-muted mt-0.5">Pagos, facturación electrónica LATAM y folios</p>
       </div>
       <div class="flex gap-2">
-        <button @click="exportCsv" class="px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Exportar CSV</button>
-        <button @click="openNewInvoice" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">+ Nueva Factura</button>
+        <button @click="exportCsv" class="flex items-center gap-1.5 px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
+          Exportar CSV
+        </button>
+        <button @click="openNewInvoice" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+          Nueva Factura
+        </button>
       </div>
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-navy">${{ totalMonth.toLocaleString() }}</div>
-        <div v-if="formatSecondary(totalMonth)" class="text-[10px] text-text-muted">{{ formatSecondary(totalMonth) }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Ingresos del Mes</div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
+            <span class="w-5 h-5 text-navy" v-html="ICON_WALLET"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-navy truncate">${{ totalMonth.toLocaleString() }}</div>
+            <div v-if="formatSecondary(totalMonth)" class="text-[10px] text-text-muted truncate">{{ formatSecondary(totalMonth) }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-0.5 truncate">Ingresos del Mes</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-teal">${{ totalToday.toLocaleString() }}</div>
-        <div v-if="formatSecondary(totalToday)" class="text-[10px] text-text-muted">{{ formatSecondary(totalToday) }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Cobrado Hoy</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
+            <span class="w-5 h-5 text-teal" v-html="ICON_CHECK_PLAIN"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-teal truncate">${{ totalToday.toLocaleString() }}</div>
+            <div v-if="formatSecondary(totalToday)" class="text-[10px] text-text-muted truncate">{{ formatSecondary(totalToday) }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-0.5 truncate">Cobrado Hoy</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-gold">${{ totalPending.toLocaleString() }}</div>
-        <div v-if="formatSecondary(totalPending)" class="text-[10px] text-text-muted">{{ formatSecondary(totalPending) }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Pendiente</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
+            <span class="w-5 h-5 text-gold" v-html="ICON_CLOCK"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-gold truncate">${{ totalPending.toLocaleString() }}</div>
+            <div v-if="formatSecondary(totalPending)" class="text-[10px] text-text-muted truncate">{{ formatSecondary(totalPending) }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-0.5 truncate">Pendiente</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-cyan">{{ invoices.length }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Facturas Emitidas</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
+            <span class="w-5 h-5 text-cyan" v-html="ICON_DOCUMENT"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-cyan">{{ invoices.length }}</div>
+            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Facturas Emitidas</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -41,9 +75,10 @@
         v-for="tab in tabs"
         :key="tab.value"
         @click="activeTab = tab.value"
-        class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
+        class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
         :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'"
       >
+        <span class="w-4 h-4 shrink-0" v-html="tab.icon"></span>
         {{ tab.label }}
       </button>
     </div>
@@ -111,18 +146,18 @@
         </tbody>
       </table>
       <div v-if="filteredInvoices.length === 0" class="p-8 text-center">
-        <div class="text-3xl mb-2">📄</div>
+        <span class="w-9 h-9 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_DOCUMENT"></span>
         <p class="text-sm text-text-muted font-bold">No hay facturas {{ invoiceFilter !== 'all' ? 'con este filtro' : 'registradas' }}</p>
       </div>
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="flex items-center justify-between p-4 border-t border-border">
         <div class="text-[10px] text-text-muted font-bold">{{ totalItems }} factura(s)</div>
         <div class="flex items-center gap-1">
-          <button @click="page = 1; loadData()" :disabled="page <= 1" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">«</button>
-          <button @click="page--; loadData()" :disabled="page <= 1" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
+          <button @click="page = 1; loadData()" :disabled="page <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">«</button>
+          <button @click="page--; loadData()" :disabled="page <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
           <span class="px-2 text-xs font-bold text-navy">{{ page }} / {{ totalPages }}</span>
-          <button @click="page++; loadData()" :disabled="page >= totalPages" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">›</button>
-          <button @click="page = totalPages; loadData()" :disabled="page >= totalPages" class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">»</button>
+          <button @click="page++; loadData()" :disabled="page >= totalPages" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">›</button>
+          <button @click="page = totalPages; loadData()" :disabled="page >= totalPages" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">»</button>
         </div>
       </div>
     </div>
@@ -163,7 +198,7 @@
         </tbody>
       </table>
       <div v-if="payments.length === 0" class="p-8 text-center">
-        <div class="text-3xl mb-2">💳</div>
+        <span class="w-9 h-9 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_CARD"></span>
         <p class="text-sm text-text-muted font-bold">No hay pagos registrados</p>
       </div>
     </div>
@@ -227,12 +262,14 @@
                   <p class="text-xs text-text-muted mt-0.5">Emitida: {{ viewInvoice.date }} {{ viewInvoice.dueDate ? `· Vence: ${viewInvoice.dueDate}` : '' }}</p>
                 </div>
               </div>
-              <button @click="closeViewModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">✕</button>
+              <button @click="closeViewModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
           </div>
 
           <!-- Body -->
-          <div class="p-5 space-y-4">
+          <div class="p-6 space-y-4">
             <!-- NCF -->
             <div v-if="viewInvoice.ncf" class="bg-gold/10 border border-gold/20 rounded-xl p-3 flex items-center justify-between">
               <span class="text-[10px] font-bold text-gold uppercase">NCF</span>
@@ -308,7 +345,7 @@
 
             <!-- Payment Method -->
             <div v-if="viewInvoice.method" class="flex items-center gap-3 p-3 bg-surface rounded-xl">
-              <span class="text-lg">{{ paymentMethodIcon(viewInvoice.method) }}</span>
+              <span class="w-5 h-5 text-navy shrink-0" v-html="paymentMethodIcon(viewInvoice.method)"></span>
               <div>
                 <div class="text-[10px] text-text-muted uppercase">Método de Pago</div>
                 <div class="text-sm font-bold text-navy">{{ paymentMethodLabel(viewInvoice.method) }}</div>
@@ -323,16 +360,19 @@
           </div>
 
           <!-- Actions -->
-          <div class="sticky bottom-0 bg-white border-t border-border p-5 rounded-b-2xl">
+          <div class="sticky bottom-0 bg-white border-t border-border p-6 rounded-b-2xl">
             <div class="flex gap-2">
-              <button @click="printInvoice" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
-                🖨️ Imprimir
+              <button @click="printInvoice" class="flex items-center gap-1.5 px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
+                <span class="w-4 h-4 shrink-0" v-html="ICON_PRINTER"></span>
+                Imprimir
               </button>
-              <button @click="emailInvoice" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
-                ✉️ Enviar email
+              <button @click="emailInvoice" class="flex items-center gap-1.5 px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
+                <span class="w-4 h-4 shrink-0" v-html="ICON_ENVELOPE"></span>
+                Enviar email
               </button>
-              <button @click="downloadPdf" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
-                📄 PDF
+              <button @click="downloadPdf" class="flex items-center gap-1.5 px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
+                <span class="w-4 h-4 shrink-0" v-html="ICON_DOCUMENT"></span>
+                PDF
               </button>
               <button v-if="viewInvoice.status === 'pending' || viewInvoice.balance > 0" @click="closeViewModal(); openRecordPayment(viewInvoice)" class="flex-1 px-4 py-2.5 bg-teal text-white rounded-xl text-sm font-bold hover:bg-teal-light transition-colors cursor-pointer">
                 Registrar Pago
@@ -355,7 +395,9 @@
           <div class="p-5 border-b border-border">
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-black text-navy">Registrar Pago</h3>
-              <button @click="closePaymentModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">✕</button>
+              <button @click="closePaymentModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
           </div>
 
@@ -377,10 +419,10 @@
                   v-for="method in paymentMethods"
                   :key="method.value"
                   @click="paymentForm.method = method.value"
-                  class="p-3 rounded-xl border-2 text-center transition-all cursor-pointer"
+                  class="p-3 rounded-xl border text-center transition-all cursor-pointer"
                   :class="paymentForm.method === method.value ? 'border-navy bg-navy/5' : 'border-border hover:border-navy/30'"
                 >
-                  <span class="text-xl block mb-1">{{ method.icon }}</span>
+                  <span class="w-5 h-5 mx-auto mb-1 block" :class="paymentForm.method === method.value ? 'text-navy' : 'text-text-secondary'" v-html="method.icon"></span>
                   <span class="text-[10px] font-bold" :class="paymentForm.method === method.value ? 'text-navy' : 'text-text-secondary'">{{ method.label }}</span>
                 </button>
               </div>
@@ -416,7 +458,9 @@
           <div class="p-5 border-b border-border">
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-black text-navy">Agregar Cargo — Hab {{ chargeRoom }}</h3>
-              <button @click="closeChargeModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">✕</button>
+              <button @click="closeChargeModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
           </div>
 
@@ -465,14 +509,19 @@
           <div class="sticky top-0 bg-white z-10 p-5 border-b border-border rounded-t-2xl">
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-black text-navy">Nueva Factura</h3>
-              <button @click="closeNewInvoiceModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">✕</button>
+              <button @click="closeNewInvoiceModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
           </div>
 
-          <div class="p-5 space-y-4">
+          <div class="p-6 space-y-4">
             <!-- Room Search -->
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">🔍 Buscar Habitación</label>
+              <label class="flex items-center gap-1.5 text-[11px] font-bold text-navy uppercase tracking-wide mb-2">
+                <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_SEARCH"></span>
+                Buscar Habitación
+              </label>
               <div class="relative">
                 <input v-model="newInvoice.roomSearch" @input="filterRooms" @focus="showRoomDropdown = true" @blur="closeRoomDropdown" type="text" placeholder="Escribí número de hab, nombre del huésped..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 <div v-if="showRoomDropdown && filteredRooms.length" class="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg max-h-56 overflow-y-auto">
@@ -495,7 +544,7 @@
 
             <!-- Guest (auto-filled) -->
             <div v-if="newInvoice.guestName" class="flex items-center gap-3 p-3 bg-teal/5 border border-teal/20 rounded-xl">
-              <span class="text-lg">👤</span>
+              <span class="w-5 h-5 text-teal shrink-0" v-html="ICON_USER"></span>
               <div>
                 <div class="text-[10px] text-text-muted uppercase">Huésped</div>
                 <div class="text-sm font-bold text-navy">{{ newInvoice.guestName }}</div>
@@ -512,17 +561,19 @@
                 <div v-for="(item, idx) in newInvoice.items" :key="idx" class="flex gap-2 items-start">
                   <select v-model="item.description" class="flex-1 px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                     <option value="">Concepto...</option>
-                    <option value="Hospedaje">🏨 Hospedaje</option>
-                    <option value="Minibar">🍸 Minibar</option>
-                    <option value="Restaurante">🍽️ Restaurante</option>
-                    <option value="Spa">💆 Spa</option>
-                    <option value="Lavandería">👔 Lavandería</option>
-                    <option value="Servicio de habitación">🛎️ Serv. habitación</option>
-                    <option value="Telefonía">📞 Telefonía</option>
-                    <option value="Otros">📦 Otros</option>
+                    <option value="Hospedaje">Hospedaje</option>
+                    <option value="Minibar">Minibar</option>
+                    <option value="Restaurante">Restaurante</option>
+                    <option value="Spa">Spa</option>
+                    <option value="Lavandería">Lavandería</option>
+                    <option value="Servicio de habitación">Serv. habitación</option>
+                    <option value="Telefonía">Telefonía</option>
+                    <option value="Otros">Otros</option>
                   </select>
                   <input v-model.number="item.amount" type="number" min="0" step="0.01" placeholder="Monto" class="w-24 px-3 py-2 rounded-xl border border-border text-sm text-right focus:outline-none focus:border-navy" />
-                  <button v-if="newInvoice.items.length > 1" @click="removeInvoiceItem(idx)" class="w-8 h-8 rounded-lg bg-coral/10 text-coral flex items-center justify-center text-xs font-bold hover:bg-coral/20 transition-colors cursor-pointer">✕</button>
+                  <button v-if="newInvoice.items.length > 1" @click="removeInvoiceItem(idx)" class="w-8 h-8 rounded-lg bg-coral/10 text-coral flex items-center justify-center hover:bg-coral/20 transition-colors cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -552,7 +603,7 @@
             </div>
           </div>
 
-          <div class="sticky bottom-0 bg-white border-t border-border p-5 rounded-b-2xl">
+          <div class="sticky bottom-0 bg-white border-t border-border p-6 rounded-b-2xl">
             <div class="flex gap-3 justify-end">
               <button @click="closeNewInvoiceModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
               <button @click="saveNewInvoice" :disabled="savingInvoice || invoiceTotal <= 0" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
@@ -570,7 +621,9 @@
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeDeleteModal"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
           <div class="text-center mb-4">
-            <div class="text-3xl mb-2">⚠️</div>
+            <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-coral/10 flex items-center justify-center">
+              <span class="w-5 h-5 text-coral" v-html="ICON_ALERT_TRIANGLE"></span>
+            </div>
             <h3 class="text-lg font-black text-navy">Eliminar Factura</h3>
             <p class="text-sm text-text-secondary mt-2">¿Estás seguro de eliminar la factura <strong>#{{ deleteTarget.number }}</strong>?</p>
             <p class="text-xs text-text-muted mt-1">Esta acción no se puede deshacer.</p>
@@ -613,17 +666,34 @@ const showChargeModal = ref(false)
 const viewInvoice = ref<any>(null)
 const chargeRoom = ref('')
 
+const ICON_DOCUMENT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m1 5H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l4.414 4.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>'
+const ICON_CARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="5" width="20" height="14" rx="2"/><path stroke-linecap="round" d="M2 10h20"/></svg>'
+const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
+const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h.01M3 10h18"/></svg>'
+const ICON_CHECK_PLAIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>'
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
+const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 12m0 0l4.5-4.5M12 12V3"/></svg>'
+const ICON_PRINTER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0M6.34 18l-.229 2.523a1.125 1.125 0 0 0 1.12 1.227h9.539a1.125 1.125 0 0 0 1.12-1.227L17.66 18M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0c.646.049 1.288.11 1.913.247C19.232 7.441 20 8.375 20 9.456v6.294A2.25 2.25 0 0 1 17.75 18h-1.09M8.25 7.034V3.375c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Z"/></svg>'
+const ICON_ENVELOPE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>'
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>'
+const ICON_USER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>'
+const ICON_ALERT_TRIANGLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z"/></svg>'
+const ICON_CASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path stroke-linecap="round" d="M6 9v.01M18 15v.01"/></svg>'
+const ICON_BANK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10 12 3l9 7M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9M9 20v-6h6v6"/></svg>'
+const ICON_LINK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5 21 3M16.5 3H21v4.5M10.5 13.5 3 21M7.5 21H3v-4.5"/></svg>'
+
 const tabs = [
-  { value: 'invoices', label: '📄 Facturas' },
-  { value: 'payments', label: '💳 Pagos' },
-  { value: 'folios', label: '🏨 Folios' },
+  { value: 'invoices', label: 'Facturas', icon: ICON_DOCUMENT },
+  { value: 'payments', label: 'Pagos', icon: ICON_CARD },
+  { value: 'folios', label: 'Folios', icon: ICON_BUILDING },
 ]
 
 const paymentMethods = [
-  { value: 'card', label: 'Tarjeta', icon: '💳' },
-  { value: 'cash', label: 'Efectivo', icon: '💵' },
-  { value: 'transfer', label: 'Transferencia', icon: '🏦' },
-  { value: 'link', label: 'Link de pago', icon: '🔗' },
+  { value: 'card', label: 'Tarjeta', icon: ICON_CARD },
+  { value: 'cash', label: 'Efectivo', icon: ICON_CASH },
+  { value: 'transfer', label: 'Transferencia', icon: ICON_BANK },
+  { value: 'link', label: 'Link de pago', icon: ICON_LINK },
 ]
 
 const paymentForm = ref({ guest: '', amount: 0, method: 'card', reference: '', notes: '' })
@@ -753,8 +823,8 @@ function typeLabel(type: string) {
 
 function paymentMethodIcon(method: string) {
   const m = String(method).toLowerCase()
-  const icons: Record<string, string> = { tarjeta: '💳', card: '💳', efectivo: '💵', cash: '💵', transferencia: '🏦', transfer: '🏦', link: '🔗' }
-  return icons[m] ?? '💰'
+  const icons: Record<string, string> = { tarjeta: ICON_CARD, card: ICON_CARD, efectivo: ICON_CASH, cash: ICON_CASH, transferencia: ICON_BANK, transfer: ICON_BANK, link: ICON_LINK }
+  return icons[m] ?? ICON_WALLET
 }
 
 function paymentMethodLabel(method: string) {
