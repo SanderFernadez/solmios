@@ -53,18 +53,8 @@ export async function settleFolioAtCheckout(
     }
   }
 
-  const { folio: closedFolio, invoiceData } = await folios.closeAndInvoice(folio.id, user)
-
-  const invoice = await facturas.create({
-    hotelId: invoiceData.hotelId,
-    guestId: invoiceData.guestId || undefined,
-    reservationId: invoiceData.reservationId || undefined,
-    type: invoiceData.type,
-    amount: invoiceData.amount,
-    status: invoiceData.status,
-    notes: invoiceData.notes,
-    items: invoiceData.items,
-  }, user)
+  // Cierra el folio, emite la factura y las vincula. Un solo paso del lado del servicio.
+  const { folio: closedFolio, invoice } = await folios.closeAndCreateInvoice(folio.id, user)
 
   let amountPaid = 0
   if (settle && settle.amount > 0) {
@@ -76,12 +66,10 @@ export async function settleFolioAtCheckout(
     amountPaid = settle.amount
   }
 
-  await folios.setInvoice(closedFolio?.id || folio.id, invoice.id, user)
-
   return {
     folioId: closedFolio?.id || folio.id,
     invoiceId: invoice.id,
-    balance: invoiceData.amount - amountPaid,
+    balance: (invoice.amount ?? 0) - amountPaid,
     amountPaid,
     invoiceNumber: invoice.invoiceNumber || '',
   }
