@@ -13,6 +13,7 @@ export { FacturasService }
 export type { FacturasDTO, CreateFacturasDTO, UpdateFacturasDTO, FacturasQuery, FacturasListResult } from './types'
 export type { FacturasSockets } from './sockets'
 export { FacturasValidator, CreateFacturasSchema, UpdateFacturasSchema, PayFacturasSchema, CreditNoteSchema } from './validators/schema'
+export type { AuditPort, AuditEntry, AuditAction } from './usecases/audit'
 
 export function FacturasModule() {
   return createModule({

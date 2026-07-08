@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-06T23:29:50.999Z",
+  "_generated": "2026-07-08T23:17:56.589Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -9,215 +9,7 @@
   },
   "modules": [
     {
-      "name": "admin",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "ai-gerente",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "ai-recepcionista",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "amenities",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "anuncios",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "apikeys",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "attendance",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "auditlog",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "bookingengine",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "canales",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "cash",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "crm",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "dashboard",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "dispositivos",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "empleados",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "facturas",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "feedback",
+      "name": "housekeeping",
       "structure": {
         "index": true,
         "types": true,
@@ -243,7 +35,7 @@
       "complete": true
     },
     {
-      "name": "gastos",
+      "name": "auditlog",
       "structure": {
         "index": true,
         "types": true,
@@ -256,228 +48,7 @@
       "complete": true
     },
     {
-      "name": "grupos",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "habitaciones",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "hoteles",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "housekeeping",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "huespedes",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "mantenimiento",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "marketing",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "notificaciones",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "opiniones",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "paquetes",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "payment-requests",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "payments",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "payroll",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "pricing",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "reports",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "reservas",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "roles",
-      "structure": {
-        "index": true,
-        "types": true,
-        "sockets": true,
-        "service": true,
-        "controller": true,
-        "validators": true,
-        "tests": true
-      },
-      "complete": true
-    },
-    {
-      "name": "staff-auth",
+      "name": "ai-gerente",
       "structure": {
         "index": true,
         "types": true,
@@ -503,7 +74,280 @@
       "complete": true
     },
     {
-      "name": "ttlock",
+      "name": "bookingengine",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "mantenimiento",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "habitaciones",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "admin",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "empleados",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "anuncios",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "attendance",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "reports",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "paquetes",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "grupos",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "opiniones",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "cash",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "pricing",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "feedback",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "payment-requests",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "staff-auth",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "gastos",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "facturas",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "amenities",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "payments",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "reservas",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "marketing",
       "structure": {
         "index": true,
         "types": true,
@@ -527,21 +371,179 @@
         "tests": true
       },
       "complete": true
+    },
+    {
+      "name": "hoteles",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "payroll",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "huespedes",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "dashboard",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "roles",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "dispositivos",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "ai-recepcionista",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "canales",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "notificaciones",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "apikeys",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "crm",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "ttlock",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
     }
   ],
   "connectors": [
-    "booking-channex.ts",
-    "facturas-reservas.ts",
-    "habitaciones-canales.ts",
-    "mantenimiento-habitaciones.ts",
-    "mantenimiento-notificaciones.ts",
-    "payments-caja.ts",
     "reservas-canales.ts",
-    "reservas-folios-settlement.ts",
-    "reservas-housekeeping.ts",
+    "facturas-auditlog.ts",
     "reservas-huespedes.ts",
+    "folios-facturas.ts",
+    "habitaciones-canales.ts",
+    "reservas-housekeeping.ts",
     "reservas-payment-requests.ts",
-    "reservas-ttlock.ts"
+    "mantenimiento-notificaciones.ts",
+    "facturas-reservas.ts",
+    "mantenimiento-habitaciones.ts",
+    "payments-caja.ts",
+    "reservas-folios-settlement.ts",
+    "reservas-ttlock.ts",
+    "booking-channex.ts"
   ],
   "violations": [],
   "warnings": [],

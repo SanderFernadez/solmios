@@ -10,6 +10,7 @@ export { FoliosService }
 export type { FolioDTO, FolioChargeDTO, OpenFolioDTO, PostChargeDTO, ApplyPaymentDTO, FolioQuery, FolioListResult } from './types'
 export type { FoliosSockets } from './sockets'
 export { FoliosValidator } from './validators/schema'
+export type { FolioInvoicingPort, IssuedInvoice, CloseAndCreateInvoiceResult } from './service'
 
 export function FoliosModule() {
   return createModule({

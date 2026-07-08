@@ -136,6 +136,8 @@ import { bookingChannexConnector } from './connectors/booking-channex'
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 import { paymentsCajaConnector } from './connectors/payments-caja'
 import { facturasReservasConnector } from './connectors/facturas-reservas'
+import { facturasAuditlogConnector } from './connectors/facturas-auditlog'
+import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
@@ -148,7 +150,11 @@ system.addConnector('booking-channex', bookingChannexConnector)
 system.addConnector('reservas-huespedes', reservasHuespedesConnector)
 system.addConnector('payments-caja', paymentsCajaConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)
+system.addConnector('facturas-auditlog', facturasAuditlogConnector)
 system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector(orm))
+// folios-facturas debe registrarse antes que reservas-folios-settlement:
+// el settlement del checkout usa folios.closeAndCreateInvoice(), que necesita el puerto inyectado.
+system.addConnector('folios-facturas', foliosFacturasConnector)
 system.addConnector('reservas-folios-settlement', reservasFoliosSettlementConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────

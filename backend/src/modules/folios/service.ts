@@ -2,16 +2,27 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { FolioDTO, FolioChargeDTO, OpenFolioDTO, PostChargeDTO, ApplyPaymentDTO, FolioQuery, FolioListResult, CurrentUser } from './types'
 import type { FoliosSockets } from './sockets'
-import { taxRateFor, applyTax, computeTotals } from './usecases/folio-math'
+import { enrichFolio } from './usecases/enrich-folio'
 import { folioSummary } from './usecases/folio-summary'
 import { closeAndInvoice as closeAndInvoiceUsecase, type CloseAndInvoiceResult } from './usecases/close-and-invoice'
 import { postNightAuditRoomCharges as postNightAuditUsecase } from './usecases/night-audit'
+import { foliosListCacheKey, invalidateFoliosCaches } from './usecases/cache'
+import { postCharge as postChargeUsecase, applyPayment as applyPaymentUsecase } from './usecases/folio-entries'
+import {
+  closeAndCreateInvoice as closeAndCreateInvoiceUsecase,
+  type FolioInvoicingPort,
+  type CloseAndCreateInvoiceResult,
+} from './usecases/close-and-create-invoice'
 
 export interface LookupDeps { guest: RepositoryAdapter<any>; reservation: RepositoryAdapter<any>; room: RepositoryAdapter<any>; user: RepositoryAdapter<any> }
+
+export type { FolioInvoicingPort, IssuedInvoice, CloseAndCreateInvoiceResult } from './usecases/close-and-create-invoice'
+
 const now = () => new Date().toISOString()
 
 export class FoliosService {
   private sockets: FoliosSockets = {}
+  private invoicingPort: FolioInvoicingPort | null = null
   constructor(
     private readonly folioRepo: RepositoryAdapter<FolioDTO>,
     private readonly chargeRepo: RepositoryAdapter<FolioChargeDTO>,
@@ -33,6 +44,11 @@ export class FoliosService {
     }
   }
 
+  /** Conecta la creación de facturas. Lo inyecta el connector `folios-facturas`. */
+  setInvoicingDeps(port: FolioInvoicingPort): void {
+    this.invoicingPort = port
+  }
+
   private async hotelOf(user: CurrentUser): Promise<string> {
     const u = await this.deps.user.findById(user.id)
     return u?.hotelId ?? ''
@@ -49,7 +65,7 @@ export class FoliosService {
     }
     if (query?.status) filters.status = query.status
     if (query?.reservationId) filters.reservationId = query.reservationId
-    const cacheKey = `folios:list:${user?.hotelId || 'all'}:${JSON.stringify(query || {})}`
+    const cacheKey = await foliosListCacheKey(this.cache, user?.hotelId, query)
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as FolioListResult
     const folios = await this.folioRepo.findMany(filters)
@@ -68,20 +84,12 @@ export class FoliosService {
     return this.enrich(folio, true)
   }
 
-  private async enrich(f: FolioDTO, includeCharges = false): Promise<FolioDTO> {
-    const charges = await this.chargeRepo.findMany({ folioId: f.id })
-    const totals = computeTotals(charges as FolioChargeDTO[])
-    const [g, r] = await Promise.all([
-      f.guestId ? this.deps.guest.findById(f.guestId) : null,
-      f.roomId ? this.deps.room.findById(f.roomId) : null,
-    ])
-    return {
-      ...f,
-      guestName: (g as any)?.name ?? '',
-      roomNumber: (r as any)?.number ?? '',
-      ...totals,
-      charges: includeCharges ? (charges as FolioChargeDTO[]) : undefined,
-    }
+  private enrich(f: FolioDTO, includeCharges = false): Promise<FolioDTO> {
+    return enrichFolio(
+      { chargeRepo: this.chargeRepo, guestRepo: this.deps.guest, roomRepo: this.deps.room },
+      f,
+      includeCharges,
+    )
   }
 
   async open(dto: OpenFolioDTO, user: CurrentUser): Promise<FolioDTO> {
@@ -98,51 +106,29 @@ export class FoliosService {
       openedAt: now(), closedAt: null,
     } as any)
     await this.sockets.onFolioOpened?.(folio)
-    await this.cache.delete(`folios:list:${folio.hotelId || 'all'}:*`)
+    await invalidateFoliosCaches(this.cache, folio.hotelId)
     return this.enrich(folio)
   }
 
+  private get entriesDeps() {
+    return {
+      folioRepo: this.folioRepo, chargeRepo: this.chargeRepo, configRepo: this.configRepo,
+      userRepo: this.deps.user, auth: this.auth, logger: this.logger,
+    }
+  }
+
   async postCharge(folioId: string, dto: PostChargeDTO, user: CurrentUser): Promise<FolioChargeDTO> {
-    const folio = await this.folioRepo.findById(folioId)
-    if (!folio) throw new NotFoundError('Folio no encontrado')
-    const me = await this.deps.user.findById(user.id)
-    this.auth.assertOwnership(folio.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
-    if (folio.status !== 'open') throw new ValidationError('El folio no está abierto')
-    const qty = Number(dto.quantity) || 1
-    const base = (Number(dto.amount) || 0) * qty
-    if (base <= 0) throw new ValidationError('El monto del cargo debe ser positivo')
-    const rate = await taxRateFor(this.configRepo, folio.hotelId)
-    const { tax, total } = applyTax(base, rate)
-    const charge = await this.chargeRepo.create({
-      folioId, hotelId: folio.hotelId, description: dto.description,
-      category: dto.category ?? 'other', kind: 'charge', quantity: qty,
-      amount: base, taxes: tax, total, source: dto.source ?? 'manual', postedAt: now(),
-    } as any)
+    const { folio, charge } = await postChargeUsecase(this.entriesDeps, folioId, dto, user)
     await this.sockets.onFolioCharged?.(folio, charge)
-    await this.cache.delete(`folios:list:${folio.hotelId || 'all'}:*`)
-    return charge as FolioChargeDTO
+    await invalidateFoliosCaches(this.cache, folio.hotelId)
+    return charge
   }
 
   async applyPayment(folioId: string, dto: ApplyPaymentDTO, user: CurrentUser): Promise<FolioChargeDTO> {
-    const folio = await this.folioRepo.findById(folioId)
-    if (!folio) throw new NotFoundError('Folio no encontrado')
-    const me = await this.deps.user.findById(user.id)
-    this.auth.assertOwnership(folio.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
-    if (folio.status !== 'open') throw new ValidationError('El folio no está abierto')
-    const amount = Number(dto.amount) || 0
-    if (amount <= 0) throw new ValidationError('El monto del pago debe ser positivo')
-    const charges = await this.chargeRepo.findMany({ folioId })
-    const { balance } = computeTotals(charges as FolioChargeDTO[])
-    if (amount > balance + 0.01) throw new ValidationError(`El pago ($${amount}) excede el saldo pendiente ($${balance})`)
-    const charge = await this.chargeRepo.create({
-      folioId, hotelId: folio.hotelId,
-      description: `Pago${dto.method ? ` (${dto.method})` : ''}${dto.reference ? ` · Ref ${dto.reference}` : ''}`,
-      category: 'payment', kind: 'payment', quantity: 1, amount: -amount, taxes: 0,
-      total: -amount, source: dto.method ?? 'manual', postedAt: now(),
-    } as any)
+    const { folio, charge } = await applyPaymentUsecase(this.entriesDeps, folioId, dto, user)
     await this.sockets.onFolioPaid?.(folio, charge)
-    await this.cache.delete(`folios:list:${folio.hotelId || 'all'}:*`)
-    return charge as FolioChargeDTO
+    await invalidateFoliosCaches(this.cache, folio.hotelId)
+    return charge
   }
 
   // ─── Cerrar folio ──────
@@ -154,7 +140,7 @@ export class FoliosService {
     if (folio.status !== 'open') throw new ValidationError('El folio no está abierto')
     const closed = await this.folioRepo.update(folioId, { status: 'closed', closedAt: now() } as any)
     await this.sockets.onFolioClosed?.(closed)
-    await this.cache.delete(`folios:list:${folio.hotelId || 'all'}:*`)
+    await invalidateFoliosCaches(this.cache, folio.hotelId)
     return this.enrich(closed as FolioDTO, true)
   }
 
@@ -186,7 +172,23 @@ export class FoliosService {
       user,
     )
     await this.sockets.onFolioClosed?.(result.folio)
-    await this.cache.delete(`folios:list:${result.folio.hotelId || 'all'}:*`)
+    await invalidateFoliosCaches(this.cache, result.folio.hotelId)
+    return result
+  }
+
+  /** Cierra el folio, emite la factura y deja el folio vinculado a ella (`invoiceId`). */
+  async closeAndCreateInvoice(folioId: string, user: CurrentUser): Promise<CloseAndCreateInvoiceResult> {
+    const result = await closeAndCreateInvoiceUsecase(
+      {
+        port: this.invoicingPort,
+        logger: this.logger,
+        closeAndInvoice: (id, u) => this.closeAndInvoice(id, u),
+        setInvoice: (id, invId, u) => this.setInvoice(id, invId, u),
+      },
+      folioId,
+      user,
+    )
+    await invalidateFoliosCaches(this.cache, result.folio.hotelId)
     return result
   }
 
