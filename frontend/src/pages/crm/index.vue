@@ -12,29 +12,57 @@
     </div>
 
     <!-- KPIs -->
-    <div class="grid grid-cols-4 gap-4 mb-6" v-if="dashboard">
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-navy">{{ dashboard.totalGuests }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Total Huéspedes</div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" v-if="dashboard">
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
+            <span class="w-5 h-5 text-navy" v-html="ICON_USERS"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-navy truncate">{{ dashboard.totalGuests }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total Huéspedes</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-teal">{{ dashboard.activeThisMonth }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Activos Este Mes</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
+            <span class="w-5 h-5 text-teal" v-html="ICON_CHECK"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-teal truncate">{{ dashboard.activeThisMonth }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Activos Este Mes</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-gold">{{ dashboard.totalPointsIssued.toLocaleString() }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">Puntos Emitidos</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
+            <span class="w-5 h-5 text-gold" v-html="ICON_STAR"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-gold truncate">{{ dashboard.totalPointsIssued.toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Puntos Emitidos</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-cyan">${{ dashboard.avgLTV.toLocaleString() }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">LTV Promedio</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
+            <span class="w-5 h-5 text-cyan" v-html="ICON_WALLET"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-cyan truncate">${{ dashboard.avgLTV.toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">LTV Promedio</div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Tiers -->
-    <div class="grid grid-cols-5 gap-3 mb-6" v-if="dashboard">
+    <div class="grid grid-cols-3 md:grid-cols-5 gap-3 mb-6" v-if="dashboard">
       <div v-for="(count, tier) in dashboard.topTierCounts" :key="tier" class="card p-3 text-center" :class="tierBg(tier)">
-        <div class="text-xl mb-1">{{ tierIcon(tier) }}</div>
+        <span class="w-6 h-6 mx-auto mb-1 block" v-html="tierIcon(tier)"></span>
         <div class="text-lg font-black">{{ count }}</div>
         <div class="text-[9px] font-bold uppercase">{{ tier }}</div>
       </div>
@@ -42,27 +70,57 @@
 
     <div class="flex gap-2 mb-6">
       <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value"
-        class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
+        class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
         :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
+        <span class="w-4 h-4 shrink-0" v-html="tab.icon"></span>
         {{ tab.label }}
       </button>
     </div>
 
     <!-- LTV -->
     <div v-if="activeTab === 'ltv' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border"><h3 class="font-extrabold text-navy text-sm">📈 Valor de Vida del Cliente (LTV)</h3></div>
-      <table class="w-full">
-        <thead><tr class="border-b bg-surface/50"><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Huésped</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Tier</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estancias</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Total Gastado</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Promedio</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Puntos</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Última Visita</th><th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">LTV Score</th></tr></thead>
-        <tbody><tr v-for="g in ltv" :key="g.guestId" class="border-b last:border-0 hover:bg-surface/50"><td class="p-4 text-sm font-bold text-navy">{{ g.name }}</td><td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="tierBadge(g.tier)">{{ g.tier }}</span></td><td class="p-4 text-sm">{{ g.totalStays }}</td><td class="p-4 text-sm font-bold">${{ g.totalSpent.toLocaleString() }}</td><td class="p-4 text-sm">${{ g.avgPerStay.toLocaleString() }}</td><td class="p-4 text-sm text-gold font-bold">{{ g.loyaltyPoints }}</td><td class="p-4 text-sm text-text-secondary">{{ g.daysSinceLastVisit <= 30 ? '🔥 ' + g.daysSinceLastVisit + 'd' : g.daysSinceLastVisit + 'd' }}</td><td class="p-4 text-right text-sm font-extrabold" :class="g.ltvScore >= 50 ? 'text-teal' : g.ltvScore >= 30 ? 'text-gold' : 'text-text-secondary'">{{ g.ltvScore }}</td></tr></tbody>
-      </table>
+      <div class="p-4 border-b border-border"><h3 class="flex items-center gap-2 font-extrabold text-navy text-sm"><span class="w-4 h-4 shrink-0" v-html="ICON_CHART"></span>Valor de Vida del Cliente (LTV)</h3></div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-border bg-surface/50">
+              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Huésped</th>
+              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tier</th>
+              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estancias</th>
+              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Total Gastado</th>
+              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Promedio</th>
+              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Puntos</th>
+              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Última Visita</th>
+              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">LTV Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="g in ltv" :key="g.guestId" class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors">
+              <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ g.name }}</td>
+              <td class="px-4 py-2.5"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize" :class="tierBadge(g.tier)">{{ g.tier }}</span></td>
+              <td class="px-4 py-2.5 text-right text-text-secondary">{{ g.totalStays }}</td>
+              <td class="px-4 py-2.5 text-right font-bold text-navy">${{ g.totalSpent.toLocaleString() }}</td>
+              <td class="px-4 py-2.5 text-right text-text-secondary">${{ g.avgPerStay.toLocaleString() }}</td>
+              <td class="px-4 py-2.5 text-right text-gold font-bold">{{ g.loyaltyPoints }}</td>
+              <td class="px-4 py-2.5 text-right text-text-secondary whitespace-nowrap">
+                <span v-if="g.daysSinceLastVisit <= 30" class="inline-flex items-center gap-1"><span class="w-3 h-3 text-coral shrink-0" v-html="ICON_FLAME"></span>{{ g.daysSinceLastVisit }}d</span>
+                <span v-else>{{ g.daysSinceLastVisit }}d</span>
+              </td>
+              <td class="px-4 py-2.5 text-right font-extrabold" :class="g.ltvScore >= 50 ? 'text-teal' : g.ltvScore >= 30 ? 'text-gold' : 'text-text-secondary'">{{ g.ltvScore }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <div v-if="!ltv.length" class="p-8 text-center text-text-muted text-sm">Cargando LTV...</div>
     </div>
 
     <!-- Cupones -->
     <div v-if="activeTab === 'coupons' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between">
-        <h3 class="font-extrabold text-navy text-sm">🎫 Cupones y Descuentos</h3>
-        <button @click="showCouponForm = true" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">+ Nuevo Cupón</button>
+      <div class="p-4 border-b border-border flex justify-between items-center">
+        <h3 class="flex items-center gap-2 font-extrabold text-navy text-sm"><span class="w-4 h-4 shrink-0" v-html="ICON_TAG"></span>Cupones y Descuentos</h3>
+        <button @click="showCouponForm = true" class="flex items-center gap-1 px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">
+          <span class="w-3 h-3 shrink-0" v-html="ICON_PLUS"></span>Nuevo Cupón
+        </button>
       </div>
 
       <div v-if="showCouponForm" class="p-4 border-b border-border bg-surface/50">
@@ -79,16 +137,43 @@
         </div>
       </div>
 
-      <table class="w-full">
-        <thead><tr class="border-b bg-surface/50"><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Código</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Tipo</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Valor</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Usos</th><th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Vence</th><th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acción</th></tr></thead>
-        <tbody><tr v-for="c in coupons" :key="c.id" class="border-b last:border-0 hover:bg-surface/50"><td class="p-4 text-sm font-bold text-navy">{{ c.code }}</td><td class="p-4 text-sm">{{ c.type === 'percentage' ? '%' : '$' }}</td><td class="p-4 text-sm font-bold text-teal">{{ c.type === 'percentage' ? c.value + '%' : '$' + c.value }}</td><td class="p-4 text-sm">{{ c.useCount }}{{ c.maxUses ? '/' + c.maxUses : '' }}</td><td class="p-4 text-sm text-text-secondary">{{ c.expiresAt || 'Sin vencimiento' }}</td><td class="p-4 text-right"><button @click="deleteCoupon(c)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">Eliminar</button></td></tr></tbody>
-      </table>
-      <div v-if="!coupons.length" class="p-8 text-center text-text-muted text-sm">No hay cupones. Creá el primero.</div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-border bg-surface/50">
+              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Código</th>
+              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tipo</th>
+              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Valor</th>
+              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Usos</th>
+              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Vence</th>
+              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in coupons" :key="c.id" class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors">
+              <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ c.code }}</td>
+              <td class="px-4 py-2.5 text-text-secondary">{{ c.type === 'percentage' ? '%' : '$' }}</td>
+              <td class="px-4 py-2.5 text-right font-bold text-teal">{{ c.type === 'percentage' ? c.value + '%' : '$' + c.value }}</td>
+              <td class="px-4 py-2.5 text-right text-text-secondary">{{ c.useCount }}{{ c.maxUses ? '/' + c.maxUses : '' }}</td>
+              <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ c.expiresAt || 'Sin vencimiento' }}</td>
+              <td class="px-4 py-2.5 text-right">
+                <button @click="deleteCoupon(c)" class="inline-flex items-center gap-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">
+                  <span class="w-3 h-3 shrink-0" v-html="ICON_TRASH"></span>Eliminar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="!coupons.length" class="p-8 text-center">
+        <span class="w-8 h-8 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_TAG"></span>
+        <p class="text-text-muted text-sm">No hay cupones. Creá el primero.</p>
+      </div>
     </div>
 
     <!-- Validar cupón -->
     <div v-if="activeTab === 'validate' && !loading" class="max-w-md mx-auto card p-6">
-      <h3 class="font-extrabold text-navy text-sm mb-4">💳 Validar Cupón</h3>
+      <h3 class="flex items-center gap-2 font-extrabold text-navy text-sm mb-4"><span class="w-4 h-4 shrink-0" v-html="ICON_CARD"></span>Validar Cupón</h3>
       <div class="space-y-3">
         <input v-model="validateCode" placeholder="Código del cupón" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm">
         <input v-model.number="validateAmount" type="number" placeholder="Monto de la compra" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm">
@@ -102,9 +187,11 @@
 
     <!-- Segmentos -->
     <div v-if="activeTab === 'segments' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between">
-        <h3 class="font-extrabold text-navy text-sm">🎯 Segmentos de Huéspedes</h3>
-        <button @click="showSegmentForm = true" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">+ Nuevo</button>
+      <div class="p-4 border-b border-border flex justify-between items-center">
+        <h3 class="flex items-center gap-2 font-extrabold text-navy text-sm"><span class="w-4 h-4 shrink-0" v-html="ICON_TARGET"></span>Segmentos de Huéspedes</h3>
+        <button @click="showSegmentForm = true" class="flex items-center gap-1 px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">
+          <span class="w-3 h-3 shrink-0" v-html="ICON_PLUS"></span>Nuevo
+        </button>
       </div>
 
       <div v-if="showSegmentForm" class="p-4 border-b bg-surface/50">
@@ -119,13 +206,16 @@
         </div>
       </div>
 
-      <div class="p-4 grid grid-cols-3 gap-4">
+      <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div v-for="s in segments" :key="s.id" class="p-4 bg-surface rounded-xl">
           <div class="font-extrabold text-navy text-sm mb-1">{{ s.name }}</div>
           <div class="text-[10px] text-text-muted mb-2">{{ s.description || 'Segmento dinámico' }} · {{ s.count }} huéspedes</div>
           <button @click="viewSegmentGuests(s)" class="text-[10px] text-cyan font-bold hover:underline cursor-pointer">Ver huéspedes →</button>
         </div>
-        <div v-if="!segments.length" class="col-span-3 p-8 text-center text-text-muted text-sm">No hay segmentos definidos</div>
+        <div v-if="!segments.length" class="col-span-1 md:col-span-3 p-8 text-center">
+          <span class="w-8 h-8 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_TARGET"></span>
+          <p class="text-text-muted text-sm">No hay segmentos definidos</p>
+        </div>
       </div>
     </div>
   </div>
@@ -136,15 +226,31 @@ import { ref, onMounted } from 'vue'
 import { CrmService, type Coupon, type GuestSegment, type GuestLTV, type CrmDashboard } from '@/services/Crm.service'
 import { useToast } from '@/composables/useToast'
 
+const ICON_USERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
+const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'
+const ICON_STAR = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="currentColor"><path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 21.44a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>'
+const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5M21 12h-4a1.5 1.5 0 0 0 0 3h4v-3Z"/></svg>'
+const ICON_CHART = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg>'
+const ICON_TAG = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.169.659 1.591l9.5 9.5a2.25 2.25 0 0 0 3.182 0l4.318-4.318a2.25 2.25 0 0 0 0-3.182l-9.5-9.5A2.25 2.25 0 0 0 9.568 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.008v.008H6.75V6.75Z"/></svg>'
+const ICON_CARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="5" width="20" height="14" rx="2"/><path stroke-linecap="round" d="M2 10h20"/></svg>'
+const ICON_TARGET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-4.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0-3a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>'
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
+const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h12M9.75 7.5v-1.5a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 1.5 1.5v1.5m-8.25 0 .75 11.25a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5L17.25 7.5"/></svg>'
+const ICON_FLAME = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.048 8.287 8.287 0 0 0 9 9.6a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 1-1.925 3.547 5.975 5.975 0 0 1-2.133 1.001A3.75 3.75 0 0 0 12 18Z"/></svg>'
+const ICON_MEDAL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15.75 8.25 21l3.75-2 3.75 2-.75-5.25M15.75 9a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>'
+const ICON_GEM = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 8.25 6.75 12 6.75-12M5.25 8.25 8 4.5h8l2.75 3.75M5.25 8.25h13.5"/></svg>'
+const ICON_CROWN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17h18M4 17l-1-9 5 4 4-6 4 6 5-4-1 9"/></svg>'
+const ICON_USER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
+
 const toast = useToast()
 const activeTab = ref('ltv')
 const loading = ref(true)
 
 const tabs = [
-  { value: 'ltv', label: '📈 LTV' },
-  { value: 'coupons', label: '🎫 Cupones' },
-  { value: 'validate', label: '💳 Validar' },
-  { value: 'segments', label: '🎯 Segmentos' },
+  { value: 'ltv', label: 'LTV', icon: ICON_CHART },
+  { value: 'coupons', label: 'Cupones', icon: ICON_TAG },
+  { value: 'validate', label: 'Validar', icon: ICON_CARD },
+  { value: 'segments', label: 'Segmentos', icon: ICON_TARGET },
 ]
 
 const dashboard = ref<CrmDashboard | null>(null)
@@ -160,9 +266,9 @@ const validateCode = ref('')
 const validateAmount = ref(0)
 const validatedCoupon = ref<Coupon | null>(null)
 
-function tierIcon(t: string) { return { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎', diamond: '👑' }[t] || '👤' }
-function tierBg(t: string) { return { bronze: 'bg-amber-50', silver: 'bg-gray-50', gold: 'bg-yellow-50', platinum: 'bg-cyan-50', diamond: 'bg-purple-50' }[t] || '' }
-function tierBadge(t: string) { return { bronze: 'bg-amber-100 text-amber-700', silver: 'bg-gray-200 text-gray-700', gold: 'bg-yellow-100 text-yellow-700', platinum: 'bg-cyan-100 text-cyan-700', diamond: 'bg-purple-100 text-purple-700' }[t] || '' }
+function tierIcon(t: string) { return { bronze: ICON_MEDAL, silver: ICON_MEDAL, gold: ICON_MEDAL, platinum: ICON_GEM, diamond: ICON_CROWN }[t] || ICON_USER }
+function tierBg(t: string) { return { bronze: 'bg-amber-50 text-amber-600', silver: 'bg-gray-50 text-gray-500', gold: 'bg-gold/10 text-gold', platinum: 'bg-cyan/10 text-cyan', diamond: 'bg-purple/10 text-purple' }[t] || '' }
+function tierBadge(t: string) { return { bronze: 'bg-amber-100 text-amber-700', silver: 'bg-gray-200 text-gray-700', gold: 'bg-gold/10 text-gold', platinum: 'bg-cyan/10 text-cyan', diamond: 'bg-purple/10 text-purple' }[t] || '' }
 
 async function loadData() {
   loading.value = true

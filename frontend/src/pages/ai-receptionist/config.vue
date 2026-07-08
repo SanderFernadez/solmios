@@ -5,6 +5,19 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import QrcodeVue from 'qrcode.vue'
 
+const ICON_ROBOT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5.5v2M5 10.5h14a1 1 0 0 1 1 1v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6a1 1 0 0 1 1-1Z"/><circle cx="9" cy="14.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="14.5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="4" r="1.1" fill="currentColor" stroke="none"/></svg>'
+const ICON_PHONE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a1.5 1.5 0 0 0 1.5-1.5v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5a2.25 2.25 0 0 0-2.25 2.25Z"/></svg>'
+const ICON_SPARKLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>'
+const ICON_TARGET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-4.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0-3a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>'
+const ICON_DOCUMENT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m1 5H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l4.414 4.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>'
+const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 1.5 1.5 3.75-3.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="currentColor"><path d="M6.75 5.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75V5.25Z"/></svg>'
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
+const ICON_SAVE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.8c0-1.68 0-2.52.327-3.162a3 3 0 0 1 1.311-1.311C5.28 3 6.12 3 7.8 3h6.982c.478 0 .717 0 .942.055.2.049.39.129.564.237.197.122.367.292.706.632l2.082 2.082c.34.34.51.51.632.706.108.175.188.365.237.564.055.225.055.464.055.942V16.2c0 1.68 0 2.52-.327 3.162a3 3 0 0 1-1.311 1.311C17.72 21 16.88 21 15.2 21H7.8c-1.68 0-2.52 0-3.162-.327a3 3 0 0 1-1.311-1.311C3 18.72 3 17.88 3 16.2V7.8Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21v-6.75a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 .75.75V21M7.5 3v3.75a.75.75 0 0 0 .75.75h6a.75.75 0 0 0 .75-.75V3"/></svg>'
+
+const TAB_ICONS: Record<string, string> = { whatsapp: ICON_PHONE, llm: ICON_SPARKLE, intents: ICON_TARGET, templates: ICON_DOCUMENT }
+
 const auth = useAuthStore()
 const toast = useToast()
 const hotelId = auth.user?.hotelId || JSON.parse(localStorage.getItem('user') || '{}').hotelId || ''
@@ -165,7 +178,9 @@ onBeforeUnmount(() => { stopPolling() })
       <!-- Header -->
       <div class="mb-6">
         <div class="flex items-center gap-3 mb-1">
-          <div class="w-9 h-9 bg-gradient-to-br from-cyan to-teal rounded-xl flex items-center justify-center text-lg shadow-sm">🤖</div>
+          <div class="w-9 h-9 bg-gradient-to-br from-cyan to-teal rounded-xl flex items-center justify-center shadow-sm text-white">
+            <span class="w-5 h-5 shrink-0" v-html="ICON_ROBOT"></span>
+          </div>
           <div>
             <h1 class="text-xl font-extrabold text-navy">Configuración de la Recepcionista IA</h1>
             <p class="text-xs text-text-muted font-medium">Personalizá el comportamiento de tu recepcionista virtual</p>
@@ -175,10 +190,10 @@ onBeforeUnmount(() => { stopPolling() })
 
       <!-- Tabs -->
       <div class="flex gap-1 mb-6 border-b border-border">
-        <button v-for="t in [{k:'whatsapp',l:'WhatsApp',icon:'💬'},{k:'llm',l:'Modelo IA',icon:'🧠'},{k:'intents',l:'Intenciones',icon:'🎯'},{k:'templates',l:'Plantillas',icon:'📝'}]" :key="t.k"
+        <button v-for="t in [{k:'whatsapp',l:'WhatsApp'},{k:'llm',l:'Modelo IA'},{k:'intents',l:'Intenciones'},{k:'templates',l:'Plantillas'}]" :key="t.k"
           @click="tab = t.k as any"
           :class="['flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold transition-all -mb-px border-b-2 cursor-pointer', tab === t.k ? 'border-cyan text-cyan' : 'border-transparent text-text-muted hover:text-navy']">
-          <span>{{ t.icon }}</span> {{ t.l }}
+          <span class="w-4 h-4 shrink-0" v-html="TAB_ICONS[t.k]"></span> {{ t.l }}
         </button>
       </div>
 
@@ -189,9 +204,9 @@ onBeforeUnmount(() => { stopPolling() })
           <p class="text-sm text-text-muted mb-6">Escaneá el código QR con tu WhatsApp del celular. No perdés el número, ambos ven los mensajes.</p>
 
           <div class="flex items-center gap-3 mb-6">
-            <div :class="['w-10 h-10 rounded-xl flex items-center justify-center text-sm', 
+            <div :class="['w-10 h-10 rounded-xl flex items-center justify-center p-2',
               wsStatus.status === 'connected' ? 'bg-success/10 text-success' : wsStatus.status === 'qr_pending' ? 'bg-warning/10 text-warning' : 'bg-surface text-text-muted']">
-              {{ wsStatus.status === 'connected' ? '✅' : wsStatus.status === 'qr_pending' ? '📱' : '⏸️' }}
+              <span class="w-full h-full" v-html="wsStatus.status === 'connected' ? ICON_CHECK_CIRCLE : wsStatus.status === 'qr_pending' ? ICON_PHONE : ICON_PAUSE"></span>
             </div>
             <div>
               <p class="text-sm font-extrabold text-navy">
@@ -213,7 +228,8 @@ onBeforeUnmount(() => { stopPolling() })
             <button @click="startWhatsapp" :disabled="wsLoading"
               class="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-extrabold transition-all shadow-sm disabled:opacity-50 cursor-pointer"
               :class="wsStatus.status === 'connected' ? 'bg-navy hover:bg-navy-light text-white' : 'bg-teal hover:bg-teal-light text-white'">
-              {{ wsLoading ? '⏳ Conectando...' : wsStatus.status === 'disconnected' ? '📱 Conectar WhatsApp' : '🔄 Reconectar' }}
+              <span class="w-4 h-4 shrink-0" v-html="wsLoading ? ICON_CLOCK : wsStatus.status === 'disconnected' ? ICON_PHONE : ICON_REFRESH"></span>
+              {{ wsLoading ? 'Conectando...' : wsStatus.status === 'disconnected' ? 'Conectar WhatsApp' : 'Reconectar' }}
             </button>
             <button v-if="wsStatus.status === 'connected'" @click="stopWhatsapp"
               class="px-5 py-2.5 rounded-xl text-sm font-extrabold bg-coral/10 text-coral hover:bg-coral/20 transition-all cursor-pointer">
@@ -264,8 +280,9 @@ onBeforeUnmount(() => { stopPolling() })
             </div>
           </div>
           <button @click="saveLLMConfig" :disabled="saving"
-            class="mt-6 px-5 py-2.5 bg-navy hover:bg-navy-light text-white rounded-xl text-sm font-extrabold transition-all shadow-sm disabled:opacity-50 cursor-pointer">
-            {{ saving ? 'Guardando...' : '💾 Guardar Configuración' }}
+            class="flex items-center gap-1.5 mt-6 px-5 py-2.5 bg-navy hover:bg-navy-light text-white rounded-xl text-sm font-extrabold transition-all shadow-sm disabled:opacity-50 cursor-pointer">
+            <span class="w-4 h-4 shrink-0" v-html="ICON_SAVE"></span>
+            {{ saving ? 'Guardando...' : 'Guardar Configuración' }}
           </button>
         </div>
       </div>
@@ -300,7 +317,7 @@ onBeforeUnmount(() => { stopPolling() })
       <!-- Templates Tab (placeholder) -->
       <div v-if="tab === 'templates'">
         <div class="bg-white rounded-2xl border border-border shadow-sm p-12 text-center">
-          <div class="text-4xl mb-3">📝</div>
+          <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_DOCUMENT"></span>
           <h3 class="text-lg font-extrabold text-navy mb-1">Plantillas de Respuesta</h3>
           <p class="text-sm text-text-muted max-w-sm mx-auto">Mensajes predefinidos para check-in, check-out, bienvenida, fuera de horario y más. Próximamente.</p>
         </div>

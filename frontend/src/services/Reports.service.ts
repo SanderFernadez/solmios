@@ -91,10 +91,10 @@ export const ReportsService = {
 }
 
 export const REPORT_META: Record<ReportType, { label: string; icon: string; description: string }> = {
-  facturacion: { label: 'Facturación', icon: '💰', description: 'Ingresos por habitación, extras, impuestos y comisiones OTA' },
-  ocupacion: { label: 'Ocupación', icon: '📊', description: 'Diaria, real (sin bloqueos), libres vs ocupadas' },
-  pernoctaciones: { label: 'Pernoctaciones', icon: '🛏️', description: 'Personas por noche, total y desglose' },
-  rendimiento: { label: 'Rendimiento', icon: '📈', description: 'ADR por tipo, RevPAR, estancia media' },
-  procedencia: { label: 'Procedencia', icon: '🌍', description: 'Por país del huésped y por canal' },
-  reservas: { label: 'Reservas', icon: '📅', description: 'Por canal (OTA vs directo), estados, cancelaciones' },
+  facturacion: { label: 'Facturación', icon: 'wallet', description: 'Ingresos por habitación, extras, impuestos y comisiones OTA' },
+  ocupacion: { label: 'Ocupación', icon: 'chart', description: 'Diaria, real (sin bloqueos), libres vs ocupadas' },
+  pernoctaciones: { label: 'Pernoctaciones', icon: 'bed', description: 'Personas por noche, total y desglose' },
+  rendimiento: { label: 'Rendimiento', icon: 'trending', description: 'ADR por tipo, RevPAR, estancia media' },
+  procedencia: { label: 'Procedencia', icon: 'globe', description: 'Por país del huésped y por canal' },
+  reservas: { label: 'Reservas', icon: 'calendar', description: 'Por canal (OTA vs directo), estados, cancelaciones' },
 }

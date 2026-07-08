@@ -1,52 +1,92 @@
 <template>
-  <div class="min-h-screen bg-surface flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
-      <!-- Logo -->
-      <div class="text-center mb-8">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-navy to-blue mx-auto flex items-center justify-center font-black text-white text-2xl mb-4 shadow-lg">S</div>
-        <h1 class="text-2xl font-black text-navy">Manager<span class="text-cyan">Hotel</span></h1>
-        <p class="text-sm text-text-muted mt-1">Hospitality OS · LATAM</p>
-      </div>
+  <div class="min-h-screen flex">
+    <!-- Carrusel (solo desktop) -->
+    <div class="hidden lg:flex lg:w-3/5 relative overflow-hidden bg-navy">
+      <div
+        v-for="(s, idx) in slides"
+        :key="idx"
+        class="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
+        :class="idx === activeSlide ? 'opacity-100' : 'opacity-0'"
+        :style="{ backgroundImage: `url(${s.image})` }"
+      ></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-navy/95 via-navy/70 to-navy/50"></div>
 
-      <!-- Login Form -->
-      <div class="bg-white rounded-2xl border border-border card-shadow p-8">
-        <h2 class="text-lg font-extrabold text-navy mb-6">Iniciar Sesión</h2>
-
-        <form @submit.prevent="handleLogin" class="space-y-4">
+      <div class="relative z-10 flex flex-col justify-between w-full p-12 text-white">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-black text-lg">S</div>
           <div>
-            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Email</label>
-            <input v-model="email" type="email" placeholder="admin@hotel.com" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
+            <div class="font-black text-lg leading-none">Solmi<span class="text-cyan">OS</span></div>
+            <div class="text-[10px] text-white/60 uppercase tracking-wide mt-0.5">Panel Hotel</div>
           </div>
+        </div>
 
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide">Contraseña</label>
-              <router-link to="/forgot-password" class="text-[11px] font-bold text-cyan hover:text-navy transition-colors">¿Olvidaste tu contraseña?</router-link>
+        <div class="flex-1 flex items-center">
+          <div class="max-w-md">
+            <div class="w-16 h-16 rounded-2xl bg-cyan/15 flex items-center justify-center mb-6">
+              <span class="w-8 h-8 text-cyan" v-html="slides[activeSlide].icon"></span>
             </div>
-            <input v-model="password" type="password" placeholder="••••••••" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
+            <h2 class="text-3xl font-black leading-tight mb-3">{{ slides[activeSlide].title }}</h2>
+            <p class="text-white/70 text-sm leading-relaxed">{{ slides[activeSlide].text }}</p>
           </div>
+        </div>
 
-          <div v-if="error" class="bg-red/10 text-red text-xs font-bold p-3 rounded-xl">{{ error }}</div>
+        <div class="flex items-center gap-2">
+          <button
+            v-for="(s, idx) in slides"
+            :key="idx"
+            @click="goToSlide(idx)"
+            class="h-1.5 rounded-full transition-all cursor-pointer"
+            :class="idx === activeSlide ? 'w-8 bg-cyan' : 'w-1.5 bg-white/25 hover:bg-white/40'"
+            :aria-label="`Ir a slide ${idx + 1}`"
+          ></button>
+        </div>
+      </div>
+    </div>
 
-          <button type="submit" :disabled="loading" class="w-full h-11 bg-navy text-white font-extrabold text-sm rounded-xl hover:bg-navy-light transition-colors disabled:opacity-50 cursor-pointer">
-            {{ loading ? 'Entrando...' : 'Entrar' }}
-          </button>
-        </form>
+    <!-- Login -->
+    <div class="w-full lg:w-2/5 flex items-center justify-center p-4 bg-surface">
+      <div class="w-full max-w-md">
+        <!-- Logo (solo mobile, el carrusel ya lo muestra en desktop) -->
+        <div class="text-center mb-8 lg:hidden">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-navy to-blue mx-auto flex items-center justify-center font-black text-white text-2xl mb-4 shadow-lg">S</div>
+          <h1 class="text-2xl font-black text-navy">Solmi<span class="text-cyan">OS</span></h1>
+          <p class="text-sm text-text-muted mt-1">Hospitality OS · LATAM</p>
+        </div>
 
-        <!-- Demo Accounts -->
-        <div class="mt-6 pt-6 border-t border-border">
-          <div class="text-[10px] font-bold text-text-muted uppercase mb-3">Cuentas Demo</div>
-          <div class="space-y-2">
-            <button v-for="account in demoAccounts" :key="account.email" @click="loginAs(account)" class="w-full p-3 bg-surface rounded-xl hover:bg-surface-dark transition-colors cursor-pointer text-left">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" :class="account.avatarClass">{{ account.initials }}</div>
-                <div class="flex-1">
-                  <div class="text-sm font-bold text-navy">{{ account.name }}</div>
-                  <div class="text-[10px] text-text-muted">{{ account.email }}</div>
-                </div>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="account.roleClass">{{ account.roleLabel }}</span>
+        <!-- Login Form -->
+        <div class="bg-white rounded-2xl border border-border card-shadow p-8">
+          <h2 class="text-lg font-extrabold text-navy mb-6">Iniciar Sesión</h2>
+
+          <form @submit.prevent="handleLogin" class="space-y-4">
+            <div>
+              <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Email</label>
+              <input v-model="email" type="email" placeholder="admin@hotel.com" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide">Contraseña</label>
+                <router-link to="/forgot-password" class="text-[11px] font-bold text-cyan hover:text-navy transition-colors">¿Olvidaste tu contraseña?</router-link>
               </div>
+              <input v-model="password" type="password" placeholder="••••••••" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
+            </div>
+
+            <div v-if="error" class="bg-coral/10 text-coral text-xs font-bold p-3 rounded-xl">{{ error }}</div>
+
+            <button type="submit" :disabled="loading" class="w-full h-11 bg-navy text-white font-extrabold text-sm rounded-xl hover:bg-navy-light transition-colors disabled:opacity-50 cursor-pointer">
+              {{ loading ? 'Entrando...' : 'Entrar' }}
             </button>
+          </form>
+
+          <!-- Demo Accounts (dev) -->
+          <div v-if="demoAccounts.length" class="mt-6 pt-4 border-t border-border">
+            <div class="text-[10px] font-bold text-text-muted uppercase mb-2 text-center">Cuentas demo (development)</div>
+            <div class="flex items-center justify-center flex-wrap gap-x-2 gap-y-1 text-xs">
+              <template v-for="(account, idx) in demoAccounts" :key="account.email">
+                <button @click="loginAs(account)" class="text-cyan hover:text-navy hover:underline font-bold cursor-pointer" :title="account.email">{{ account.roleLabel }}</button>
+                <span v-if="idx < demoAccounts.length - 1" class="text-border">·</span>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -55,10 +95,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { AuthService } from '@/services/Auth.service'
+
+const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
+const ICON_GLOBE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0 0c2.25 0 4-4 4-9s-1.75-9-4-9-4 4-4 9 1.75 9 4 9ZM3.5 9h17M3.5 15h17"/></svg>'
+const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5M21 12h-4a1.5 1.5 0 0 0 0 3h4v-3Z"/></svg>'
+const ICON_CHART = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg>'
+
+const slides = [
+  { icon: ICON_BUILDING, title: 'Todo tu hotel, en un solo panel', text: 'Reservas, habitaciones, huéspedes y facturación conectados en tiempo real.', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80' },
+  { icon: ICON_GLOBE, title: 'Sincronizado con tus canales', text: 'Booking, Airbnb, Expedia y más — disponibilidad y tarifas siempre al día.', image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=1200&q=80' },
+  { icon: ICON_WALLET, title: 'Cobros sin fricción', text: 'Links de pago, folios, caja y reportes financieros en un solo flujo.', image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=80' },
+  { icon: ICON_CHART, title: 'Decisiones basadas en datos', text: 'Ocupación, ADR, RevPAR y procedencia de huéspedes en tiempo real.', image: 'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1200&q=80' },
+]
+const activeSlide = ref(0)
+let slideTimer: ReturnType<typeof setInterval> | undefined
+
+function goToSlide(idx: number) {
+  activeSlide.value = idx
+  restartTimer()
+}
+
+function restartTimer() {
+  if (slideTimer) clearInterval(slideTimer)
+  slideTimer = setInterval(() => {
+    activeSlide.value = (activeSlide.value + 1) % slides.length
+  }, 5000)
+}
+
+onMounted(restartTimer)
+onUnmounted(() => { if (slideTimer) clearInterval(slideTimer) })
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -69,8 +138,6 @@ const error = ref('')
 const loading = ref(false)
 
 const ROLE_LABELS: Record<string, string> = { super_admin: 'Super Admin', hotel_admin: 'Hotel Admin', receptionist: 'Recepcionista' }
-const AVATAR_CLASS: Record<string, string> = { super_admin: 'bg-red/20 text-red', hotel_admin: 'bg-cyan/20 text-cyan', receptionist: 'bg-teal/20 text-teal' }
-const ROLE_CLASS: Record<string, string> = { super_admin: 'bg-red/10 text-red', hotel_admin: 'bg-cyan/10 text-cyan', receptionist: 'bg-teal/10 text-teal' }
 
 const demoAccounts = ref<any[]>([])
 
@@ -89,10 +156,7 @@ onMounted(async () => {
         name: u.name,
         email: u.email,
         password: 'demo123',
-        initials: (u.name || '??').split(' ').map((p: string) => p[0]).slice(0, 2).join(''),
-        avatarClass: AVATAR_CLASS[u.role] || 'bg-surface text-navy',
         roleLabel: ROLE_LABELS[u.role] || u.role,
-        roleClass: ROLE_CLASS[u.role] || '',
       }))
     }
   } catch (e) {

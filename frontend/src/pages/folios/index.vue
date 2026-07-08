@@ -6,40 +6,70 @@
         <p class="text-xs text-text-muted mt-0.5">Cuentas abiertas de huéspedes con check-in activo — cargos, pagos y facturación</p>
       </div>
       <div class="flex gap-2">
-        <button @click="load" :disabled="loading" class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
-          {{ loading ? 'Cargando...' : '↻ Refrescar' }}
+        <button @click="load" :disabled="loading" class="flex items-center gap-1.5 px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_REFRESH"></span>
+          {{ loading ? 'Cargando...' : 'Refrescar' }}
         </button>
         <button @click="postAllRoomCharges" :disabled="posting"
-          class="px-4 py-2 bg-cyan text-navy font-bold text-sm rounded-xl hover:shadow-lg cursor-pointer disabled:opacity-50">
-          {{ posting ? 'Posteando...' : '🏨 Postear cargos habitación (todos)' }}
+          class="flex items-center gap-1.5 px-4 py-2 bg-cyan text-navy font-bold text-sm rounded-xl hover:shadow-lg cursor-pointer disabled:opacity-50">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_BUILDING"></span>
+          {{ posting ? 'Posteando...' : 'Postear cargos habitación (todos)' }}
         </button>
       </div>
     </div>
 
     <!-- Stats -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-navy">{{ folios.length }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Folios abiertos</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
+            <span class="w-5 h-5 text-navy" v-html="ICON_BUILDING"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-navy">{{ folios.length }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Folios abiertos</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-teal">{{ formatMoney(totalCharges) }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Total cargos</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
+            <span class="w-5 h-5 text-teal" v-html="ICON_DOCUMENT"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-teal truncate">{{ formatMoney(totalCharges) }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total cargos</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-cyan">{{ formatMoney(totalPayments) }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Total pagos</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
+            <span class="w-5 h-5 text-cyan" v-html="ICON_CARD"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none text-cyan truncate">{{ formatMoney(totalPayments) }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total pagos</div>
+          </div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black" :class="totalBalance > 0 ? 'text-coral' : 'text-teal'">{{ formatMoney(totalBalance) }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Balance pendiente</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="totalBalance > 0 ? 'bg-coral/10' : 'bg-teal/10'">
+            <span class="w-5 h-5" :class="totalBalance > 0 ? 'text-coral' : 'text-teal'" v-html="ICON_CLOCK"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none truncate" :class="totalBalance > 0 ? 'text-coral' : 'text-teal'">{{ formatMoney(totalBalance) }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Balance pendiente</div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Lista -->
     <div v-if="loading && folios.length === 0" class="card p-12 text-center text-sm text-text-muted">Cargando folios...</div>
     <div v-else-if="folios.length === 0" class="card p-12 text-center">
-      <div class="text-4xl mb-3 opacity-50">📋</div>
+      <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_DOCUMENT"></span>
       <h3 class="font-bold text-navy mb-1">Sin folios abiertos</h3>
       <p class="text-xs text-text-muted">Los folios se abren automáticamente al hacer check-in de una reserva.</p>
     </div>
@@ -63,7 +93,7 @@
               <div class="text-[10px] text-text-muted uppercase font-bold">Balance</div>
               <div class="text-sm font-black" :class="(f.balance || 0) > 0 ? 'text-coral' : 'text-teal'">{{ formatMoney(f.balance || 0) }}</div>
             </div>
-            <span class="text-text-muted text-xs">{{ expanded.has(f.id) ? '▲' : '▼' }}</span>
+            <span class="w-4 h-4 text-text-muted shrink-0 transition-transform" :class="expanded.has(f.id) ? 'rotate-180' : ''" v-html="ICON_CHEVRON_DOWN"></span>
           </div>
         </div>
 
@@ -79,7 +109,7 @@
             <div v-else class="bg-white rounded-xl border border-border divide-y divide-border">
               <div v-for="c in f.charges" :key="c.id" class="px-3 py-2 flex items-center justify-between text-xs">
                 <div class="flex items-center gap-2 min-w-0">
-                  <span class="shrink-0" :class="c.kind === 'payment' ? '🔄' : categoryIcon(c.category)"></span>
+                  <span class="w-2 h-2 rounded-full shrink-0" :class="c.kind === 'payment' ? 'bg-teal' : 'bg-navy/30'"></span>
                   <div class="min-w-0">
                     <div class="font-bold text-navy truncate">{{ c.description || c.category }}</div>
                     <div class="text-[10px] text-text-muted">{{ categoryLabel(c.category) }} · {{ formatDate(c.postedAt) }} · {{ c.source }}</div>
@@ -113,10 +143,14 @@
 
           <!-- Acciones -->
           <div class="flex flex-wrap gap-2">
-            <button @click.stop="openPayModal(f)" class="px-3 py-2 bg-teal/10 text-teal rounded-lg text-xs font-bold cursor-pointer hover:bg-teal/20">💳 Registrar pago</button>
+            <button @click.stop="openPayModal(f)" class="flex items-center gap-1.5 px-3 py-2 bg-teal/10 text-teal rounded-lg text-xs font-bold cursor-pointer hover:bg-teal/20">
+              <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_CARD"></span>
+              Registrar pago
+            </button>
             <button @click.stop="closeAndInvoice(f)" :disabled="closing === f.id"
-              class="px-3 py-2 bg-navy text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-navy/90 disabled:opacity-50">
-              {{ closing === f.id ? 'Cerrando...' : '🧾 Cerrar y facturar' }}
+              class="flex items-center gap-1.5 px-3 py-2 bg-navy text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-navy/90 disabled:opacity-50">
+              <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_DOCUMENT"></span>
+              {{ closing === f.id ? 'Cerrando...' : 'Cerrar y facturar' }}
             </button>
           </div>
         </div>
@@ -128,7 +162,10 @@
       <div v-if="chargeModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="chargeModal.show=false">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-          <h3 class="text-lg font-black text-navy mb-4">+ Cargo a folio</h3>
+          <h3 class="flex items-center gap-2 text-lg font-black text-navy mb-4">
+            <span class="w-5 h-5 shrink-0" v-html="ICON_PLUS"></span>
+            Cargo a folio
+          </h3>
           <div class="space-y-3">
             <div class="bg-surface rounded-lg p-2 text-xs text-text-secondary">
               <strong>{{ chargeModal.folio?.guestName }}</strong> · Hab. {{ chargeModal.folio?.roomNumber }}
@@ -136,13 +173,13 @@
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Categoría</label>
               <select v-model="chargeForm.category" class="w-full px-3 py-2 rounded-lg border border-border text-sm cursor-pointer">
-                <option value="room">🏨 Habitación</option>
-                <option value="minibar">🍾 Minibar</option>
-                <option value="restaurant">🍽️ Restaurante</option>
-                <option value="laundry">👔 Lavandería</option>
-                <option value="spa">💆 SPA</option>
-                <option value="service">⚙️ Servicio</option>
-                <option value="other">📦 Otro</option>
+                <option value="room">Habitación</option>
+                <option value="minibar">Minibar</option>
+                <option value="restaurant">Restaurante</option>
+                <option value="laundry">Lavandería</option>
+                <option value="spa">SPA</option>
+                <option value="service">Servicio</option>
+                <option value="other">Otro</option>
               </select>
             </div>
             <div>
@@ -175,7 +212,10 @@
       <div v-if="payModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="payModal.show=false">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-          <h3 class="text-lg font-black text-navy mb-4">💳 Registrar pago</h3>
+          <h3 class="flex items-center gap-2 text-lg font-black text-navy mb-4">
+            <span class="w-5 h-5 shrink-0" v-html="ICON_CARD"></span>
+            Registrar pago
+          </h3>
           <div class="space-y-3">
             <div class="bg-surface rounded-lg p-2 text-xs text-text-secondary">
               <strong>{{ payModal.folio?.guestName }}</strong> · Hab. {{ payModal.folio?.roomNumber }} · Balance: {{ formatMoney(payModal.folio?.balance || 0) }}
@@ -183,10 +223,10 @@
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Método</label>
               <select v-model="payForm.method" class="w-full px-3 py-2 rounded-lg border border-border text-sm cursor-pointer">
-                <option value="cash">💵 Efectivo</option>
-                <option value="card">💳 Tarjeta</option>
-                <option value="transfer">🏦 Transferencia</option>
-                <option value="link">🔗 Link de pago</option>
+                <option value="cash">Efectivo</option>
+                <option value="card">Tarjeta</option>
+                <option value="transfer">Transferencia</option>
+                <option value="link">Link de pago</option>
               </select>
             </div>
             <div>
@@ -220,6 +260,14 @@ import type { Folio } from '@/services/Folios.service'
 import { OperationsService } from '@/services/Operations.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+
+const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
+const ICON_DOCUMENT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m1 5H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l4.414 4.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>'
+const ICON_CARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="5" width="20" height="14" rx="2"/><path stroke-linecap="round" d="M2 10h20"/></svg>'
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
+const ICON_CHEVRON_DOWN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>'
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -371,10 +419,6 @@ function formatDate(d?: string | null): string {
   return new Date(d.includes('T') ? d : d + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
 }
 
-function categoryIcon(c: string): string {
-  const m: Record<string, string> = { room: '🏨', minibar: '🍾', restaurant: '🍽️', laundry: '👔', spa: '💆', service: '⚙️', other: '📦' }
-  return m[c] || '📦'
-}
 function categoryLabel(c: string): string {
   const m: Record<string, string> = { room: 'Habitación', minibar: 'Minibar', restaurant: 'Restaurante', laundry: 'Lavandería', spa: 'SPA', service: 'Servicio', other: 'Otro' }
   return m[c] || c
