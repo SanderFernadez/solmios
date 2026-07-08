@@ -62,7 +62,7 @@
             <span class="w-5 h-5 text-cyan" v-html="ICON_DOCUMENT"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-cyan">{{ invoices.length }}</div>
+            <div class="text-xl font-black leading-none text-cyan">{{ stats.total }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Facturas Emitidas</div>
           </div>
         </div>
@@ -95,57 +95,62 @@
         <div class="flex items-center justify-between">
           <h3 class="font-extrabold text-navy text-sm">Facturas</h3>
           <div class="flex gap-2">
-            <select v-model="invoiceFilter" class="px-3 py-1.5 rounded-lg border border-border text-[11px] font-bold focus:outline-none focus:border-navy cursor-pointer">
+            <select v-model="invoiceFilter" @change="applyInvoiceFilter" class="px-3 py-1.5 rounded-lg border border-border text-[11px] font-bold focus:outline-none focus:border-navy cursor-pointer">
               <option value="all">Todas</option>
               <option value="paid">Pagadas</option>
               <option value="pending">Pendientes</option>
               <option value="overdue">Vencidas</option>
+              <option value="cancelled">Anuladas</option>
             </select>
           </div>
         </div>
       </div>
-      <table class="w-full">
-        <thead>
-          <tr class="border-b border-border bg-surface/50">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Factura</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Huésped</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hab</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Concepto</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Total</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="inv in filteredInvoices"
-            :key="inv.id"
-            @click="openViewInvoice(inv)"
-            class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors cursor-pointer"
-          >
-            <td class="p-4 text-sm font-bold text-navy">#{{ inv.number }}</td>
-            <td class="p-4 text-sm font-bold">{{ inv.guest }}</td>
-            <td class="p-4 text-sm">{{ inv.room }}</td>
-            <td class="p-4 text-sm text-text-secondary">{{ inv.concept }}</td>
-            <td class="p-4">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="invoiceStatusClass(inv.status)">
-                {{ invoiceStatusLabel(inv.status) }}
-              </span>
-            </td>
-            <td class="p-4 text-sm text-text-secondary">{{ inv.date }}</td>
-            <td class="p-4 text-right text-sm font-extrabold text-navy">${{ inv.total.toLocaleString() }}</td>
-            <td class="p-4 text-right">
-              <div class="flex gap-1 justify-end">
-                <button @click.stop="openViewInvoice(inv)" class="px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 transition-colors cursor-pointer">Ver</button>
-                <button v-if="inv.status === 'pending'" @click.stop="openRecordPayment(inv)" class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 transition-colors cursor-pointer">Cobrar</button>
-                <button @click.stop="openDeleteModal(inv)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 transition-colors cursor-pointer">Eliminar</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="filteredInvoices.length === 0" class="p-8 text-center">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px]">
+          <thead>
+            <tr class="border-b border-border bg-surface/50">
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Factura</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Huésped</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hab</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Concepto</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
+              <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Total</th>
+              <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="inv in invoices"
+              :key="inv.id"
+              @click="openViewInvoice(inv)"
+              class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors cursor-pointer"
+            >
+              <td class="p-4 text-sm font-bold text-navy">#{{ inv.number }}</td>
+              <td class="p-4 text-sm font-bold">{{ inv.guest }}</td>
+              <td class="p-4 text-sm">{{ inv.room }}</td>
+              <td class="p-4 text-sm text-text-secondary">{{ inv.concept }}</td>
+              <td class="p-4">
+                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="invoiceStatusClass(inv.status)">
+                  {{ invoiceStatusLabel(inv.status) }}
+                </span>
+              </td>
+              <td class="p-4 text-sm text-text-secondary">{{ inv.date }}</td>
+              <td class="p-4 text-right text-sm font-extrabold text-navy">${{ inv.total.toLocaleString() }}</td>
+              <td class="p-4 text-right">
+                <div class="flex gap-1 justify-end">
+                  <button @click.stop="openViewInvoice(inv)" class="px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 transition-colors cursor-pointer">Ver</button>
+                  <button v-if="inv.balance > 0 && inv.status !== 'cancelled'" @click.stop="openRecordPayment(inv)" class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 transition-colors cursor-pointer">Cobrar</button>
+                  <!-- Una factura con efectos contables se anula, no se borra. -->
+                  <button v-if="inv.deletable" @click.stop="openDeleteModal(inv)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 transition-colors cursor-pointer">Eliminar</button>
+                  <button v-else-if="inv.status !== 'cancelled'" @click.stop="openCreditNoteModal(inv)" class="px-2 py-1 bg-gold/10 text-gold rounded-lg text-[10px] font-bold hover:bg-gold/20 transition-colors cursor-pointer">Anular</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="invoices.length === 0" class="p-8 text-center">
         <span class="w-9 h-9 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_DOCUMENT"></span>
         <p class="text-sm text-text-muted font-bold">No hay facturas {{ invoiceFilter !== 'all' ? 'con este filtro' : 'registradas' }}</p>
       </div>
@@ -167,36 +172,38 @@
       <div class="p-4 border-b border-border">
         <h3 class="font-extrabold text-navy text-sm">Pagos Recientes</h3>
       </div>
-      <table class="w-full">
-        <thead>
-          <tr class="border-b border-border bg-surface/50">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Huésped</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Concepto</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Método</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Monto</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="payment in payments" :key="payment.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
-            <td class="p-4 text-sm font-bold text-navy">{{ payment.guest }}</td>
-            <td class="p-4 text-sm">{{ payment.concept }}</td>
-            <td class="p-4">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="methodClass(payment.method)">
-                {{ payment.method }}
-              </span>
-            </td>
-            <td class="p-4">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="payment.status === 'paid' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">
-                {{ payment.status === 'paid' ? 'Pagado' : 'Pendiente' }}
-              </span>
-            </td>
-            <td class="p-4 text-sm text-text-secondary">{{ payment.date }}</td>
-            <td class="p-4 text-right text-sm font-extrabold text-navy">${{ payment.amount }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[640px]">
+          <thead>
+            <tr class="border-b border-border bg-surface/50">
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Huésped</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Concepto</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Método</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
+              <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="payment in payments" :key="payment.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
+              <td class="p-4 text-sm font-bold text-navy">{{ payment.guest }}</td>
+              <td class="p-4 text-sm">{{ payment.concept }}</td>
+              <td class="p-4">
+                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="methodClass(payment.method)">
+                  {{ payment.method }}
+                </span>
+              </td>
+              <td class="p-4">
+                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="payment.status === 'paid' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">
+                  {{ payment.status === 'paid' ? 'Pagado' : 'Pendiente' }}
+                </span>
+              </td>
+              <td class="p-4 text-sm text-text-secondary">{{ payment.date }}</td>
+              <td class="p-4 text-right text-sm font-extrabold text-navy">${{ payment.amount }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <div v-if="payments.length === 0" class="p-8 text-center">
         <span class="w-9 h-9 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_CARD"></span>
         <p class="text-sm text-text-muted font-bold">No hay pagos registrados</p>
@@ -235,7 +242,7 @@
           <div class="mt-3 pt-3 border-t border-border flex justify-end gap-2">
             <button v-if="folio.status === 'open'" @click="openAddCharge(folio)" class="px-3 py-1.5 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 transition-colors cursor-pointer">+ Cargo</button>
             <button v-if="folio.status === 'open'" @click="openRecordPaymentForFolio(folio)" class="px-3 py-1.5 bg-teal text-white rounded-lg text-[10px] font-bold hover:bg-teal-light transition-colors cursor-pointer">Registrar Pago</button>
-            <button v-if="folio.status === 'open'" @click="closeAndInvoice(folio)" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg transition-colors cursor-pointer">Cerrar y Facturar</button>
+            <button v-if="folio.status === 'open'" @click="openCloseFolioModal(folio)" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg transition-colors cursor-pointer">Cerrar y Facturar</button>
             <span v-if="folio.status === 'closed' && folio.invoiceId" class="text-[10px] text-teal font-bold self-center">✓ Facturado</span>
           </div>
         </div>
@@ -493,7 +500,7 @@
           <div class="p-5 border-t border-border bg-surface/50">
             <div class="flex gap-3 justify-end">
               <button @click="closeChargeModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
-              <button @click="saveCharge" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">Agregar</button>
+              <button @click="saveCharge" :disabled="savingCharge" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">{{ savingCharge ? 'Agregando...' : 'Agregar' }}</button>
             </div>
           </div>
         </div>
@@ -638,6 +645,67 @@
       </div>
     </Teleport>
 
+    <!-- Close Folio + Invoice Modal -->
+    <Teleport to="body">
+      <div v-if="showCloseFolioModal && closeFolioTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCloseFolioModal">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeCloseFolioModal"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+          <div class="text-center mb-4">
+            <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-cyan/10 flex items-center justify-center">
+              <span class="w-5 h-5 text-cyan" v-html="ICON_DOCUMENT"></span>
+            </div>
+            <h3 class="text-lg font-black text-navy">Cerrar y Facturar</h3>
+            <p class="text-sm text-text-secondary mt-2">
+              Se cerrará el folio de <strong>{{ closeFolioTarget.guestName || 'huésped' }}</strong> y se emitirá la factura por
+              <strong>${{ (closeFolioTarget.chargesTotal || 0).toLocaleString() }}</strong>.
+            </p>
+            <p class="text-xs text-text-muted mt-1">El folio no admite más cargos después de cerrarse.</p>
+          </div>
+          <div class="flex gap-3">
+            <button @click="closeCloseFolioModal" class="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
+            <button @click="confirmCloseAndInvoice" :disabled="closingFolio" class="flex-1 px-4 py-2.5 bg-cyan text-navy rounded-xl text-sm font-bold hover:shadow-lg transition-colors cursor-pointer disabled:opacity-50">
+              {{ closingFolio ? 'Facturando...' : 'Cerrar y Facturar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Credit Note Modal -->
+    <Teleport to="body">
+      <div v-if="showCreditNoteModal && creditNoteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCreditNoteModal">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeCreditNoteModal"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div class="p-5 border-b border-border">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-black text-navy">Anular Factura #{{ creditNoteTarget.number }}</h3>
+              <button @click="closeCreditNoteModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          </div>
+          <div class="p-5 space-y-4">
+            <p class="text-sm text-text-secondary">
+              Esta factura ya tiene efectos contables, así que no se elimina: se emite una
+              <strong>nota de crédito</strong> por ${{ creditNoteTarget.total.toLocaleString() }} que la anula dejando el rastro.
+            </p>
+            <div>
+              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Motivo de la anulación</label>
+              <textarea v-model="creditNoteReason" rows="3" placeholder="Ej: error en el monto facturado, servicio no prestado..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
+            </div>
+          </div>
+          <div class="p-5 border-t border-border bg-surface/50">
+            <div class="flex gap-3 justify-end">
+              <button @click="closeCreditNoteModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
+              <button @click="confirmCreditNote" :disabled="issuingCreditNote" class="px-5 py-2.5 bg-gold text-white rounded-xl text-sm font-bold hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
+                {{ issuingCreditNote ? 'Emitiendo...' : 'Emitir Nota de Crédito' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Invoice Print Frame (oculto) -->
     <iframe ref="printFrame" class="hidden" style="position:absolute;width:0;height:0;border:0;"></iframe>
   </div>
@@ -645,7 +713,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { BillingService, type BillingStats } from '@/services/Billing.service'
+import { BillingService, isDeletable, type BillingStats, type Invoice, type InvoiceStatus } from '@/services/Billing.service'
 import { RoomService } from '@/services/Room.service'
 import { SettingsService } from '@/services/Settings.service'
 import { useCurrency } from '@/composables/useCurrency'
@@ -658,8 +726,11 @@ const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 const { formatSecondary, loadCurrencyConfig } = useCurrency()
 
+/** Cuántos pagos recientes trae el tab "Pagos" (no está paginado). */
+const PAYMENTS_PAGE_SIZE = 20
+
 const activeTab = ref('invoices')
-const invoiceFilter = ref('all')
+const invoiceFilter = ref<InvoiceStatus | 'all'>('all')
 const showViewModal = ref(false)
 const showPaymentModal = ref(false)
 const showChargeModal = ref(false)
@@ -711,9 +782,21 @@ const showDeleteModal = ref(false)
 const deleteTarget = ref<any>(null)
 const deleting = ref(false)
 const savingPayment = ref(false)
+const savingCharge = ref(false)
 const paymentTargetId = ref<string | null>(null)
 const paymentTargetKind = ref<'invoice' | 'folio'>('invoice')
 const chargeFolioId = ref<string | null>(null)
+
+// Cerrar folio + facturar
+const showCloseFolioModal = ref(false)
+const closeFolioTarget = ref<Folio | null>(null)
+const closingFolio = ref(false)
+
+// Nota de crédito — la vía para anular una factura ya emitida
+const showCreditNoteModal = ref(false)
+const creditNoteTarget = ref<any>(null)
+const creditNoteReason = ref('')
+const issuingCreditNote = ref(false)
 
 // New Invoice state
 const showNewInvoiceModal = ref(false)
@@ -733,47 +816,69 @@ const conceptFor = (inv: any) => {
   return ({ invoice: 'Factura', payment: 'Pago', folio: 'Cargo / Folio' } as Record<string, string>)[inv.type] || inv.type
 }
 
+/** Vista de fila a partir del DTO del backend. */
+function toRow(d: Invoice) {
+  return {
+    id: d.id,
+    number: d.number,
+    guest: d.guest || '',
+    room: d.room || '',
+    concept: conceptFor(d),
+    status: d.status,
+    type: d.type,
+    date: d.issueDate || '',
+    dueDate: d.dueDate || '',
+    subtotal: d.subtotal,
+    taxRate: d.taxRate,
+    tax: d.tax,
+    total: d.total,
+    amountPaid: d.amountPaid || 0,
+    balance: d.balance ?? d.total,
+    currency: d.currency || 'USD',
+    ncf: d.ncf,
+    items: (Array.isArray(d.items) && d.items.length) ? d.items : [{ description: conceptFor(d), amount: d.total }],
+    method: d.paymentMethod || '',
+    notes: d.notes || '',
+    deletable: isDeletable(d),
+  }
+}
+
+/**
+ * Facturas y pagos son tipos distintos de documento en la misma tabla: se piden por separado
+ * (`type=invoice` / `type=payment`). Antes se traía una página mezclada y se separaba con
+ * `.filter()`, así que la paginación contaba pagos como facturas y el filtro de estado solo
+ * miraba la página actual.
+ */
 async function loadData() {
   loading.value = true
   try {
-    const [{ invoices: data, pages, hasNext, hasPrev, total }, statsData] = await Promise.all([
-      BillingService.list(hotelId.value, undefined, page.value),
+    const [invoiceRes, paymentRes, statsData] = await Promise.all([
+      BillingService.list({
+        hotelId: hotelId.value,
+        type: 'invoice',
+        status: invoiceFilter.value === 'all' ? undefined : invoiceFilter.value,
+        page: page.value,
+      }),
+      BillingService.list({ hotelId: hotelId.value, type: 'payment', limit: PAYMENTS_PAGE_SIZE }).catch(() => null),
       BillingService.stats().catch(() => null),
     ])
     if (statsData) stats.value = statsData
-    totalPages.value = pages
-    totalItems.value = total
-    const view = data.map(d => ({
-      id: d.id,
-      number: d.number,
-      guest: d.guest || '',
-      room: d.room || '',
-      concept: conceptFor(d),
-      status: d.status,
-      type: d.type,
-      date: d.issueDate || '',
-      dueDate: d.dueDate || '',
-      subtotal: d.subtotal,
-      taxRate: d.taxRate,
-      tax: d.tax,
-      total: d.total,
-      amountPaid: d.amountPaid || 0,
-      balance: d.balance ?? d.total,
-      currency: d.currency || 'USD',
-      ncf: d.ncf,
-      eInvoice: d.ncf ? `NCF: ${d.ncf}` : null,
-      items: (Array.isArray(d.items) && d.items.length) ? d.items : [{ description: conceptFor(d), amount: d.total }],
-      method: d.paymentMethod || '',
-      notes: d.notes || '',
-    }))
-    invoices.value = view.filter(i => i.type === 'invoice')
-    payments.value = view.filter(i => i.type === 'payment').map(p => ({
+    totalPages.value = invoiceRes.pages
+    totalItems.value = invoiceRes.total
+    invoices.value = invoiceRes.invoices.map(toRow)
+    payments.value = (paymentRes?.invoices ?? []).map(toRow).map(p => ({
       id: p.id, guest: p.guest, concept: p.concept, method: p.method || '—',
       status: p.status, date: p.date, amount: p.total,
     }))
     await loadFolios()
   } catch { toast.error("Error al cargar datos") }
   finally { loading.value = false }
+}
+
+/** El filtro de estado se resuelve en el servidor: hay que volver a la página 1. */
+function applyInvoiceFilter() {
+  page.value = 1
+  loadData()
 }
 
 async function loadFolios() {
@@ -784,11 +889,6 @@ async function loadFolios() {
 onMounted(async () => {
   await loadCurrencyConfig(hotelId.value)
   loadData()
-})
-
-const filteredInvoices = computed(() => {
-  if (invoiceFilter.value === 'all') return invoices.value
-  return invoices.value.filter(i => i.status === invoiceFilter.value)
 })
 
 const totalMonth = computed(() => stats.value.monthlyRevenue)
@@ -807,8 +907,14 @@ function methodClass(method: string) {
 }
 
 function invoiceStatusClass(status: string) {
-  const classes: Record<string, string> = { paid: 'bg-teal/10 text-teal', pending: 'bg-gold/10 text-gold', overdue: 'bg-coral/10 text-coral' }
-  return classes[status] ?? ''
+  const classes: Record<string, string> = {
+    paid: 'bg-teal/10 text-teal',
+    pending: 'bg-gold/10 text-gold',
+    overdue: 'bg-coral/10 text-coral',
+    cancelled: 'bg-gray-100 text-gray-500',
+    draft: 'bg-navy/10 text-navy',
+  }
+  return classes[status] ?? 'bg-gray-100 text-gray-500'
 }
 
 function invoiceStatusLabel(status: string) {
@@ -888,12 +994,6 @@ async function downloadPdf() {
     a.click()
     URL.revokeObjectURL(url)
   } catch { toast.error('Error al generar el PDF') }
-}
-
-function openNewPayment() {
-  paymentTargetId.value = null
-  paymentForm.value = { guest: '', amount: 0, method: 'card', reference: '', notes: '' }
-  showPaymentModal.value = true
 }
 
 async function openNewInvoice() {
@@ -982,7 +1082,9 @@ async function saveNewInvoice() {
 function openRecordPayment(inv: any) {
   paymentTargetKind.value = 'invoice'
   paymentTargetId.value = inv.id
-  paymentForm.value = { guest: inv.guest, amount: inv.total, method: 'card', reference: '', notes: '' }
+  // El saldo, no el total: una factura con pago parcial ya tiene plata aplicada.
+  const outstanding = Math.max(0, inv.balance ?? inv.total)
+  paymentForm.value = { guest: inv.guest, amount: outstanding, method: 'card', reference: '', notes: '' }
   showPaymentModal.value = true
 }
 
@@ -1026,6 +1128,7 @@ async function savePayment() {
     loadData()
     toast.success('Pago registrado')
   } catch { toast.error('Error al guardar el pago') }
+  finally { savingPayment.value = false }
 }
 
 function openAddCharge(folio: Folio) {
@@ -1041,6 +1144,8 @@ function closeChargeModal() {
 
 async function saveCharge() {
   if (!chargeFolioId.value || !chargeForm.value.description || chargeForm.value.amount <= 0) { toast.warning('Datos incompletos'); return }
+  if (savingCharge.value) return
+  savingCharge.value = true
   try {
     await FoliosService.charge(chargeFolioId.value, {
       description: `${chargeForm.value.description}${chargeForm.value.notes ? ` — ${chargeForm.value.notes}` : ''}`,
@@ -1048,32 +1153,33 @@ async function saveCharge() {
     })
     closeChargeModal()
     loadData()
+    toast.success('Cargo agregado')
   } catch { toast.error('Error al guardar cargo') }
+  finally { savingCharge.value = false }
 }
 
-async function closeAndInvoice(folio: Folio) {
-  if (!confirm(`¿Cerrar el folio de ${folio.guestName || 'huésped'} y generar factura por $${(folio.chargesTotal || 0).toLocaleString()}?`)) return
+function openCloseFolioModal(folio: Folio) {
+  closeFolioTarget.value = folio
+  showCloseFolioModal.value = true
+}
+
+function closeCloseFolioModal() {
+  showCloseFolioModal.value = false
+  closeFolioTarget.value = null
+}
+
+/** El backend cierra el folio, emite la factura y las vincula en una sola operación. */
+async function confirmCloseAndInvoice() {
+  const folio = closeFolioTarget.value
+  if (!folio || closingFolio.value) return
+  closingFolio.value = true
   try {
-    const res = await FoliosService.closeAndInvoice(folio.id)
-    // La factura se genera con los datos del folio
-    const invoiceData = res?.invoiceData
-    if (invoiceData) {
-      // Crear la factura via BillingService
-      await BillingService.create({
-        hotelId: invoiceData.hotelId,
-        guestId: invoiceData.guestId,
-        reservationId: invoiceData.reservationId,
-        type: invoiceData.type,
-        amount: invoiceData.amount,
-        status: invoiceData.status,
-        notes: invoiceData.notes,
-      })
-      toast.success('Folio cerrado — factura generada')
-    } else {
-      toast.success('Folio cerrado')
-    }
+    const { invoice } = await FoliosService.closeAndInvoice(folio.id)
+    closeCloseFolioModal()
     loadData()
+    toast.success(`Folio cerrado — factura ${invoice?.invoiceNumber ?? ''} generada`.trim())
   } catch { toast.error('Error al cerrar el folio') }
+  finally { closingFolio.value = false }
 }
 
 function exportCsv() {
@@ -1099,7 +1205,36 @@ async function confirmDelete() {
     closeDeleteModal()
     loadData()
     toast.success('Factura eliminada')
-  } catch { toast.error('Error al eliminar la factura') }
+  } catch (e) {
+    // El backend rechaza con 409 si la factura ya tiene efectos contables.
+    const msg = e instanceof Error && e.message ? e.message : 'Error al eliminar la factura'
+    toast.error(msg)
+  }
   finally { deleting.value = false }
+}
+
+function openCreditNoteModal(inv: any) {
+  creditNoteTarget.value = inv
+  creditNoteReason.value = ''
+  showCreditNoteModal.value = true
+}
+
+function closeCreditNoteModal() {
+  showCreditNoteModal.value = false
+  creditNoteTarget.value = null
+}
+
+async function confirmCreditNote() {
+  if (!creditNoteTarget.value || issuingCreditNote.value) return
+  if (!creditNoteReason.value.trim()) { toast.warning('Indicá el motivo de la anulación'); return }
+  issuingCreditNote.value = true
+  try {
+    await BillingService.creditNote(creditNoteTarget.value.id, creditNoteReason.value.trim())
+    closeCreditNoteModal()
+    closeViewModal()
+    loadData()
+    toast.success('Nota de crédito emitida')
+  } catch { toast.error('Error al emitir la nota de crédito') }
+  finally { issuingCreditNote.value = false }
 }
 </script>
