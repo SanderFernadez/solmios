@@ -258,6 +258,10 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 | Anti-patrón ORM | Ver sección "Anti-patrón ORM" en Reglas Backend. 6 casos fixeados. Vigilar al tocar modelos. |
 | WhatsApp | Requiere creds Meta Business. |
 | Facturación electrónica | Stub, sin conector fiscal real. |
+| NCF se emite siempre | `create()` asigna `NCF-{número}` a toda factura aunque `electronic_invoicing.enabled` sea false. `usecases/fiscal.ts` (`buildNcf`) existe pero no está cableado. Por eso el guard de borrado usa la config, no la presencia del campo `ncf`. |
+| Search de facturas | `?search=` filtra la página ya traída, no la tabla: un match en la página 3 no aparece buscando desde la 1. Mover a WHERE del repo. |
+| Impuesto duplicado en UI | `billing/index.vue` recalcula la tasa sumando `taxes` activos; el backend hace su propio cálculo (`taxRateFor`). Dos fuentes de verdad → el preview puede diferir del total emitido. |
+| Email de factura por `prompt()` | `emailInvoice()` pide el destinatario con `window.prompt`, sin validar el formato. |
 | PC-4 Service Worker | Desactivado (commit `c79e8f9`, rompía logout). Reactivar requiere network-first + bypass `/api/*`. |
 
 ## Settlement Flow (checkout)
@@ -289,8 +293,36 @@ POST /api/reservas/:id/checkout → body: { settle?: { method, amount, reference
 - Hotel name de tabla `hotels` — NO hardcodear
 - Moneda del invoice — NO hardcodear
 - Items en `notes` como string descriptivo
-- NCF auto-generado si está configurado
+- NCF auto-generado (hoy SIEMPRE — ver deudas técnicas)
 - Invoice number: counter atómico en `configuration(key='invoice_counter_{hotelId}_{year}')`
+
+### ⚠️ `invoices` guarda TRES tipos de documento
+La tabla `invoices` mezcla `type: 'invoice' | 'payment' | 'folio'`. `pay()` marca la factura como
+`paid` **y** crea un comprobante `type:'payment'` con el mismo monto (`usecases/payment-record.ts`).
+
+**Un `payment` es el rastro del cobro, NO un ingreso adicional.** Todo agregado de dinero debe
+filtrar por `type: 'invoice'`, o cuenta cada cobro dos veces. `usecases/stats.ts` lo hace; si escribís
+un reporte nuevo sobre esta tabla, hacé lo mismo. (Bug histórico: "Ingresos del Mes" mostraba 2×.)
+
+Corolarios:
+- `pendingAmount`/`overdueAmount` acumulan **saldo** (`amount - amountPaid`), no el total facturado.
+- El frontend pide `?type=invoice` y `?type=payment` por separado; paginar la mezcla contaba pagos como facturas.
+
+### Anular ≠ borrar
+Una factura con efectos contables (cobrada, vencida, anulada, con pagos parciales, o de un hotel con
+`electronic_invoicing.enabled`) **no se borra**: se anula con `POST /api/facturas/:id/credit-note`.
+`usecases/deletable.ts` lo impone con `ConflictError` (409); el frontend espeja la regla en `isDeletable()`
+solo para decidir qué botón mostrar. Borrar deja el libro de ventas sin respaldo y abre un hueco en el numerador.
+
+### Folio → factura es una sola operación del servidor
+`POST /api/folios/:id/invoice` cierra el folio, emite la factura y setea `folio.invoiceId`
+(`folios/usecases/close-and-create-invoice.ts` + connector `folios-facturas`). NO orquestar esto desde
+el frontend: si el segundo request falla, el folio queda cerrado sin factura.
+
+### Caché de listados: versionada, no por clave fija
+`CacheAdapter` solo borra claves exactas (no hay glob ni prefijo). Las claves de listado incluyen
+filtros y paginación, así que se invalidan bumpeando un token de versión
+(`facturas/usecases/cache.ts`, `folios/usecases/cache.ts`). Un `cache.delete('x:*')` **no borra nada**.
 
 ## Producción (hotel.zx89.site)
 - **SSH**: `root@158.220.103.200` (credencial en gestor de secretos / `~/.ssh` — NUNCA en repo)
