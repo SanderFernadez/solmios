@@ -4,7 +4,9 @@
 // Toda mutación (POST/PUT/PATCH) DEBE pasar por validateSchema(). (REGLA #11)
 
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+// Superconjunto del `validateSchema` del framework: entiende `text` (multilínea) y `array`/`object`.
+// Con el del framework, `notes` se descartaba en silencio y nunca se guardaba.
+import { validateSchema } from '../../shared/validators/validate-body'
 import type { GastosService } from './service'
 import { CreateGastosSchema, UpdateGastosSchema } from './validators/schema'
 

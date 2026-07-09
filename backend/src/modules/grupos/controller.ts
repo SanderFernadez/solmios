@@ -4,7 +4,7 @@
 // Toda mutación (POST/PUT/PATCH) DEBE pasar por validateSchema(). (REGLA #11)
 
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+import { validateSchema } from '../../shared/validators/validate-body'
 import type { GruposService } from './service'
 import { CreateGruposSchema, UpdateGruposSchema } from './validators/schema'
 

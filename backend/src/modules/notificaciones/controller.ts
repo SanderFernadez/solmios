@@ -1,5 +1,5 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+import { validateSchema } from '../../shared/validators/validate-body'
 import type { NotificacionesService } from './service'
 import { CreateNotificacionesSchema, UpdateNotificacionesSchema } from './validators/schema'
 

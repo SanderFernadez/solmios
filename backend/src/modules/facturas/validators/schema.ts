@@ -1,6 +1,6 @@
 // facturas/validators/schema.ts — Validacion de entrada
 
-import type { ValidationRule } from 'arckode-framework'
+import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
 const TYPE_ENUM = ['invoice', 'payment', 'folio', 'receipt', 'credit_note']
 const STATUS_ENUM = ['pending', 'paid', 'overdue', 'cancelled', 'draft']
@@ -20,7 +20,7 @@ export const CreateFacturasSchema: Record<string, ValidationRule> = {
   paymentMethod: { type: 'string' as const, max: 50 },
   notes: { type: 'string' as const, max: MAX_NOTES_LENGTH },
   ncf: { type: 'string' as const, max: 50 },
-  items: { type: 'array' as any },
+  items: { type: 'array' as const },
 }
 
 export const UpdateFacturasSchema: Record<string, ValidationRule> = {

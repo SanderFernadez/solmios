@@ -1,4 +1,4 @@
-import type { ValidationRule } from 'arckode-framework'
+import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
 const TYPE_ENUM = ['full_cleaning', 'quick_cleaning', 'deep_cleaning', 'inspection', 'maintenance']
 const PRIORITY_ENUM = ['low', 'medium', 'high', 'urgent']
@@ -14,10 +14,10 @@ export const CreateHousekeepingSchema: Record<string, ValidationRule> = {
   notes: { type: 'string' as const, max: 2000 },
   assignedDate: { type: 'string' as const },
   completedDate: { type: 'string' as const },
-  cleaningItems: { type: 'array' as any },
+  cleaningItems: { type: 'array' as const },
   startTime: { type: 'string' as const },
   endTime: { type: 'string' as const },
-  photos: { type: 'array' as any },
+  photos: { type: 'array' as const },
 }
 
 export const UpdateHousekeepingSchema: Record<string, ValidationRule> = {
@@ -29,12 +29,12 @@ export const UpdateHousekeepingSchema: Record<string, ValidationRule> = {
   notes: { type: 'string' as const, max: 2000 },
   assignedDate: { type: 'string' as const },
   completedDate: { type: 'string' as const },
-  cleaningItems: { type: 'array' as any },
+  cleaningItems: { type: 'array' as const },
   // Timings + fotos gestionados principalmente vía endpoints dedicados (start/complete/photos),
   // pero se permiten en update para que el panel admin pueda corregirlos manualmente.
   startTime: { type: 'string' as const },
   endTime: { type: 'string' as const },
-  photos: { type: 'array' as any },
+  photos: { type: 'array' as const },
 }
 
 export const HousekeepingValidator = { create: CreateHousekeepingSchema, update: UpdateHousekeepingSchema }

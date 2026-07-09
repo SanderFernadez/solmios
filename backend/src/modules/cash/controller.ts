@@ -3,7 +3,7 @@
 // Toda mutación POST/PUT pasa por validateSchema().
 
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+import { validateSchema } from '../../shared/validators/validate-body'
 import type { CashService } from './service'
 import { CreateMovementSchema, UpdateMovementSchema, OpenShiftSchema, CloseShiftSchema } from './validators/schema'
 

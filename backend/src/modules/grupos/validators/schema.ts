@@ -1,6 +1,6 @@
 // grupos/validators/schema.ts — Validación de entrada
 
-import type { ValidationRule } from 'arckode-framework'
+import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
 export const CreateGruposSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
@@ -11,7 +11,7 @@ export const CreateGruposSchema: Record<string, ValidationRule> = {
   checkOut: { type: 'string' as const },
     status: { type: 'string' as const },
     totalAmount: { type: 'number' as const },
-    notes: { type: 'text' as any },
+    notes: { type: 'text' as const },
 }
 
 export const UpdateGruposSchema: Record<string, ValidationRule> = {
@@ -22,7 +22,7 @@ export const UpdateGruposSchema: Record<string, ValidationRule> = {
   checkOut: { type: 'string' as const },
     status: { type: 'string' as const },
     totalAmount: { type: 'number' as const },
-    notes: { type: 'text' as any },
+    notes: { type: 'text' as const },
 }
 
 export const GruposValidator = {

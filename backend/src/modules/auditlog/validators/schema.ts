@@ -1,4 +1,4 @@
-import type { ValidationRule } from 'arckode-framework'
+import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
 export const CreateAuditlogSchema: Record<string, ValidationRule> = {
     action: { type: 'string' as const, required: true },
@@ -7,7 +7,7 @@ export const CreateAuditlogSchema: Record<string, ValidationRule> = {
     userName: { type: 'string' as const },
     entity: { type: 'string' as const },
     entityId: { type: 'string' as const },
-    detail: { type: 'text' as any },
+    detail: { type: 'text' as const },
   ip: { type: 'string' as const },
 }
 
@@ -17,7 +17,7 @@ export const UpdateAuditlogSchema: Record<string, ValidationRule> = {
     userName: { type: 'string' as const },
     entity: { type: 'string' as const },
     entityId: { type: 'string' as const },
-    detail: { type: 'text' as any },
+    detail: { type: 'text' as const },
   ip: { type: 'string' as const },
 }
 

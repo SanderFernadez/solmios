@@ -1,4 +1,4 @@
-import type { ValidationRule } from 'arckode-framework'
+import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
 // `validateSchema` devuelve SOLO los campos declarados acá: un campo ausente se descarta en
 // silencio antes de llegar al service, aunque exista en el DTO y en el modelo.
@@ -13,7 +13,7 @@ export const CreateGastosSchema: Record<string, ValidationRule> = {
   date: { type: 'string' as const },
     provider: { type: 'string' as const },
   invoiceNumber: { type: 'string' as const },
-    notes: { type: 'text' as any },
+    notes: { type: 'text' as const },
     paid: { type: 'number' as const },
     paymentMethod: { type: 'string' as const, enum: PAYMENT_METHODS },
 }
@@ -25,7 +25,7 @@ export const UpdateGastosSchema: Record<string, ValidationRule> = {
   date: { type: 'string' as const },
     provider: { type: 'string' as const },
   invoiceNumber: { type: 'string' as const },
-    notes: { type: 'text' as any },
+    notes: { type: 'text' as const },
     paid: { type: 'number' as const },
     paymentMethod: { type: 'string' as const, enum: PAYMENT_METHODS },
 }

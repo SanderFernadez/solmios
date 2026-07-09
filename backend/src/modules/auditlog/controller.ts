@@ -2,7 +2,7 @@
 // Append-only: solo index, show, store. Sin update ni destroy.
 
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+import { validateSchema } from '../../shared/validators/validate-body'
 import type { AuditlogService } from './service'
 import { CreateAuditlogSchema } from './validators/schema'
 import { resolveTenant } from '../../shared/utils/resolve-tenant'

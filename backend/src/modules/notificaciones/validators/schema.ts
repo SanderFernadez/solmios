@@ -1,4 +1,4 @@
-import type { ValidationRule } from 'arckode-framework'
+import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
 const TYPE_ENUM = ['system', 'reservation', 'payment', 'housekeeping', 'maintenance', 'announcement']
 const CHANNEL_ENUM = ['in_app', 'email', 'sms', 'whatsapp']
@@ -15,7 +15,7 @@ export const CreateNotificacionesSchema: Record<string, ValidationRule> = {
   sent: { type: 'number' as const },
   date: { type: 'string' as const },
   channel: { type: 'string' as const, enum: CHANNEL_ENUM },
-  metadata: { type: 'object' as any },
+  metadata: { type: 'object' as const },
 }
 
 export const UpdateNotificacionesSchema: Record<string, ValidationRule> = {
@@ -27,7 +27,7 @@ export const UpdateNotificacionesSchema: Record<string, ValidationRule> = {
   sent: { type: 'number' as const },
   date: { type: 'string' as const },
   channel: { type: 'string' as const, enum: CHANNEL_ENUM },
-  metadata: { type: 'object' as any },
+  metadata: { type: 'object' as const },
 }
 
 export const NotificacionesValidator = { create: CreateNotificacionesSchema, update: UpdateNotificacionesSchema }

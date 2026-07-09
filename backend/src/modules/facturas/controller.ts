@@ -4,7 +4,7 @@
 // Toda mutación (POST/PUT/PATCH) DEBE pasar por validateSchema(). (REGLA #11)
 
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+import { validateSchema } from '../../shared/validators/validate-body'
 import type { FacturasService } from './service'
 import { CreateFacturasSchema, UpdateFacturasSchema, PayFacturasSchema, CreditNoteSchema, EmailInvoiceSchema } from './validators/schema'
 import { renderInvoiceHtml } from './usecases/invoice-template'

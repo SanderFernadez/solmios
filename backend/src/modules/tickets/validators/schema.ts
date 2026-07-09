@@ -1,4 +1,4 @@
-import type { ValidationRule } from 'arckode-framework'
+import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
 const CATEGORY_ENUM = ['technical', 'billing', 'reservation', 'housekeeping', 'maintenance', 'general']
 const PRIORITY_ENUM = ['low', 'medium', 'high', 'urgent']
@@ -13,7 +13,7 @@ export const CreateTicketsSchema: Record<string, ValidationRule> = {
   status: { type: 'string' as const, enum: STATUS_ENUM },
   description: { type: 'string' as const, max: 5000 },
   assignedTo: { type: 'string' as const, max: 100 },
-  messages: { type: 'array' as any },
+  messages: { type: 'array' as const },
 }
 
 export const UpdateTicketsSchema: Record<string, ValidationRule> = {
@@ -23,7 +23,7 @@ export const UpdateTicketsSchema: Record<string, ValidationRule> = {
   status: { type: 'string' as const, enum: STATUS_ENUM },
   description: { type: 'string' as const, max: 5000 },
   assignedTo: { type: 'string' as const, max: 100 },
-  messages: { type: 'array' as any },
+  messages: { type: 'array' as const },
 }
 
 export const TicketsValidator = { create: CreateTicketsSchema, update: UpdateTicketsSchema }
