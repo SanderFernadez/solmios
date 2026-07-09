@@ -5,7 +5,7 @@ import { ValidationError, NotFoundError } from 'arckode-framework'
 import type {
   PayrollRunDTO, CreatePayrollRunDTO,
   PayrollRunDetailDTO, PayrollPayslipDTO,
-  PayrollCurrentUser,
+  PayrollCurrentUser, PayrollPaymentMethod,
 } from '../types'
 
 export class PayrollRunUseCase {
@@ -103,7 +103,7 @@ export class PayrollRunUseCase {
     } as any) as Promise<PayrollRunDTO>
   }
 
-  async markAsPaid(runId: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> {
+  async markAsPaid(runId: string, currentUser?: PayrollCurrentUser, paymentMethod: PayrollPaymentMethod = 'transfer'): Promise<PayrollRunDTO> {
     const run = await this.getById(runId, currentUser)
     if (run.status !== 'approved') throw new ValidationError('Run must be approved before payment')
 
@@ -113,7 +113,7 @@ export class PayrollRunUseCase {
     }
 
     return this.runRepo.update(runId, {
-      status: 'paid', paidAt: new Date().toISOString(),
+      status: 'paid', paidAt: new Date().toISOString(), paymentMethod,
     } as any) as Promise<PayrollRunDTO>
   }
 

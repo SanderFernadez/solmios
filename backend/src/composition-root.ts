@@ -145,6 +145,7 @@ import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { foliosPaymentsConnector } from './connectors/folios-payments'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
 import { gastosCajaConnector } from './connectors/gastos-caja'
+import { payrollGastosConnector } from './connectors/payroll-gastos'
 import { messagesUsuariosConnector } from './connectors/messages-usuarios'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
@@ -158,6 +159,9 @@ system.addConnector('reservas-huespedes', reservasHuespedesConnector)
 system.addConnector('payments-caja', paymentsCajaConnector)
 // Un gasto en efectivo saca plata del cajón: sin esto el arqueo del turno no lo ve.
 system.addConnector('gastos-caja', gastosCajaConnector)
+// Pagar la nómina es un gasto. Cae en `gastos` y de ahí, si fue en efectivo, en la caja.
+// Se registra después de gastos-caja para que el egreso encuentre el socket ya inyectado.
+system.addConnector('payroll-gastos', payrollGastosConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)
 system.addConnector('facturas-auditlog', facturasAuditlogConnector)
 // El dinero se asienta en `payments` → payments-caja lo lleva al arqueo y a la conciliación.

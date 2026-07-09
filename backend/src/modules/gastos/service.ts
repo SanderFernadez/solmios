@@ -10,7 +10,7 @@
 // Esto permite swapear SQL → MongoDB → Prisma en composition-root.ts sin tocar este archivo.
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { GastosDTO, CreateGastosDTO, UpdateGastosDTO, GastosQuery, GastosPaginated, CurrentUser } from './types'
 import type { GastosSockets } from './sockets'
 
@@ -85,6 +85,20 @@ export class GastosService {
     return item
   }
 
+  /** Gasto generado por un conector, si ya existe. Clave de deduplicación (`payroll` + runId). */
+  async findBySource(hotelId: string, source: string, sourceId: string): Promise<GastosDTO | null> {
+    if (!hotelId || !source || !sourceId) return null
+    const rows = await this.repo.findMany({ hotelId, source, sourceId })
+    return rows[0] ?? null
+  }
+
+  /** Un gasto automático no se edita ni se borra acá: su fuente de verdad es el módulo que lo creó. */
+  private assertManual(item: GastosDTO): void {
+    if (item.source && item.source !== 'manual') {
+      throw new ValidationError(`Este gasto lo generó el módulo "${item.source}". Modificalo en su origen.`)
+    }
+  }
+
   async create(dto: CreateGastosDTO, user: CurrentUser): Promise<GastosDTO> {
     this.logger.info('Creando gastos')
     // P0 V-01 (IDOR): forzar hotelId del JWT — nunca confiar en dto.hotelId del body.
@@ -102,6 +116,7 @@ export class GastosService {
     if (!existing) throw new NotFoundError('Gastos no encontrado')
     const me = await this.userRepo.findById(user.id)
     this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
+    this.assertManual(existing)
     const item = await this.repo.update(id, dto as Partial<Omit<GastosDTO, 'id'>>)
     if (!item) throw new NotFoundError('Gastos no encontrado')
     await this.sockets.onGastosUpdated?.(item)
@@ -115,6 +130,7 @@ export class GastosService {
     if (!existing) throw new NotFoundError('Gastos no encontrado')
     const me = await this.userRepo.findById(user.id)
     this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
+    this.assertManual(existing)
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Gastos no encontrado')
     await this.sockets.onGastosDeleted?.(id)

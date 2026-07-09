@@ -9,7 +9,7 @@ import type {
   PayrollPayslipDTO,
   PayrollPaymentHistoryDTO,
   PayrollEmployeeInput, PayrollCalculationResult,
-  PayrollCurrentUser,
+  PayrollCurrentUser, PayrollPaymentMethod,
 } from './types'
 import type { PayrollSockets } from './sockets'
 import { PayrollCalculatorUseCase } from './usecases/calculator'
@@ -69,7 +69,16 @@ export class PayrollService {
   async listRuns(hotelId: string): Promise<PayrollRunDTO[]> { return this.runs.list(hotelId) }
   async getRunDetails(runId: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDetailDTO[]> { return this.runs.getDetails(runId, currentUser) }
   async approveRun(id: string, approvedBy: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.approve(id, approvedBy, currentUser) }
-  async markRunAsPaid(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.markAsPaid(id, currentUser) }
+  /**
+   * Pagar la nómina saca plata del hotel. El conector `payroll-gastos` escucha `onRunPaid` y asienta
+   * el egreso; antes el evento estaba declarado y nunca se emitía, así que el costo laboral no
+   * aparecía en el balance, ni en reportes, ni en caja.
+   */
+  async markRunAsPaid(id: string, currentUser?: PayrollCurrentUser, paymentMethod?: PayrollPaymentMethod): Promise<PayrollRunDTO> {
+    const run = await this.runs.markAsPaid(id, currentUser, paymentMethod)
+    await this.sockets.onRunPaid?.(run)
+    return run
+  }
   async cancelRun(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.cancel(id, currentUser) }
 
   // ─── Calculate ────────────────────────────────────────

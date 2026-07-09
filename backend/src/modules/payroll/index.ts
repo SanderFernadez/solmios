@@ -16,6 +16,7 @@ export type {
   CreatePayrollConfigDTO, CreatePayrollConceptDTO, CreatePayrollRunDTO,
   PayrollEmployeeInput, PayrollEmployeeResult, PayrollCalculationResult,
 } from './types'
+export type { PayrollPaymentMethod } from './types'
 export type { PayrollSockets } from './sockets'
 
 export function PayrollModule() {

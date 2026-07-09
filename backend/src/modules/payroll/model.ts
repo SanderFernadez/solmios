@@ -57,6 +57,8 @@ const PayrollRunModel: ModelDefinition = {
     approvedBy: { type: 'string' },
     approvedAt: { type: 'string' },
     paidAt: { type: 'string' },
+    // Con qué se pagó la nómina. Solo `cash` mueve el cajón físico, vía gastos-caja.
+    paymentMethod: { type: 'string', default: 'transfer' },
   },
   timestamps: true,
 }

@@ -86,7 +86,11 @@ export interface PayrollRunDTO {
   approvedBy: string | null
   approvedAt: string | null
   paidAt: string | null
+  paymentMethod?: PayrollPaymentMethod
 }
+
+/** Con qué se pagó la nómina. Solo `cash` mueve el cajón físico. */
+export type PayrollPaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
 
 export interface CreatePayrollRunDTO {
   hotelId: string

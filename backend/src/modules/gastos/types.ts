@@ -4,6 +4,9 @@
 /** Solo `cash` impacta el arqueo del cajón físico. El resto ya está bancarizado. */
 export type ExpensePaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
 
+/** `manual` lo cargó una persona; el resto lo generó un conector y no se edita a mano. */
+export type ExpenseSource = 'manual' | 'payroll'
+
 export interface GastosDTO {
   id: string
   hotelId: string
@@ -16,6 +19,8 @@ export interface GastosDTO {
   notes?: string
   paid?: number
   paymentMethod?: ExpensePaymentMethod
+  source?: ExpenseSource
+  sourceId?: string
   createdAt: string
   updatedAt: string
 }
@@ -31,6 +36,9 @@ export interface CreateGastosDTO {
   notes?: string
   paid?: number
   paymentMethod?: ExpensePaymentMethod
+  /** Solo lo setean los conectores: `validateSchema` los descarta si vinieran del body. */
+  source?: ExpenseSource
+  sourceId?: string
 }
 
 export interface UpdateGastosDTO {

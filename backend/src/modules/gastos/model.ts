@@ -17,6 +17,11 @@ export const GastosModel: ModelDefinition = {
     // cash | card | transfer | other. Solo `cash` mueve el cajón físico (conector gastos-caja),
     // igual que payments-caja. Default `other`: un gasto no descuadra el arqueo sin decirlo.
     paymentMethod: { type: 'string', default: 'other' },
+    // Quién originó el gasto: `manual` o el conector que lo generó (`payroll`). Un gasto automático
+    // no se edita acá: se edita en su origen.
+    source: { type: 'string', default: 'manual' },
+    // Id de la entidad que lo originó (el `runId` de la nómina). Clave de deduplicación.
+    sourceId: { type: 'string', indexed: true },
   },
   timestamps: true,
 }
