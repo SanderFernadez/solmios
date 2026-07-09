@@ -1,38 +1,46 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <div>
         <h2 class="text-xl font-black text-navy">Equipo</h2>
-        <p class="text-xs text-text-muted mt-0.5">Gestiona los usuarios y roles de tu hotel</p>
+        <p class="text-sm text-text-muted mt-0.5">Gestiona los usuarios y roles de tu hotel</p>
       </div>
       <div class="flex gap-2">
-        <button @click="load" :disabled="loading" class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
-          {{ loading ? 'Cargando...' : '↻ Refrescar' }}
+        <button @click="load" :disabled="loading" class="flex items-center gap-1.5 px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_REFRESH"></span>{{ loading ? 'Cargando...' : 'Refrescar' }}
         </button>
-        <button @click="openInvite" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg cursor-pointer">+ Invitar miembro</button>
+        <button @click="openInvite" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>Invitar miembro
+        </button>
       </div>
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-3 gap-3 mb-6">
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-navy">{{ members.length }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Miembros</div>
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10"><span class="w-5 h-5 text-navy" v-html="ICON_USERS"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-navy truncate">{{ members.length }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Miembros</div></div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-cyan">{{ adminCount }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Admins</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10"><span class="w-5 h-5 text-cyan" v-html="ICON_BUILDING"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-cyan truncate">{{ adminCount }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Admins</div></div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-teal">{{ receptionistCount }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Recepcionistas</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10"><span class="w-5 h-5 text-teal" v-html="ICON_BELL"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-teal truncate">{{ receptionistCount }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Recepcionistas</div></div>
+        </div>
       </div>
     </div>
 
     <!-- Aviso de seguridad -->
-    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 flex items-start gap-2">
-      <span class="text-base shrink-0">🔒</span>
-      <p class="text-xs text-blue-800">
+    <div class="card bg-cyan/5 border border-cyan/20 rounded-xl p-3 mb-4 flex items-start gap-2">
+      <span class="w-4 h-4 text-cyan shrink-0 mt-0.5" v-html="ICON_LOCK"></span>
+      <p class="text-xs text-navy">
         Los miembros solo ven datos de <strong>tu hotel</strong>. Solo tú (admin) puedes gestionar roles.
         No puedes degradarte a ti mismo.
       </p>
@@ -41,10 +49,12 @@
     <!-- Lista -->
     <div v-if="loading && members.length === 0" class="card p-12 text-center text-sm text-text-muted">Cargando equipo...</div>
     <div v-else-if="members.length === 0" class="card p-12 text-center">
-      <div class="text-4xl mb-3 opacity-50">👥</div>
+      <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_USERS"></span>
       <h3 class="font-bold text-navy mb-1">Sin miembros</h3>
       <p class="text-xs text-text-muted mb-4">Invita al primer miembro de tu equipo</p>
-      <button @click="openInvite" class="px-5 py-2.5 bg-cyan text-navy rounded-xl text-sm font-bold cursor-pointer">+ Invitar</button>
+      <button @click="openInvite" class="inline-flex items-center gap-1.5 px-5 py-2.5 bg-cyan text-navy rounded-xl text-sm font-bold hover:shadow-lg cursor-pointer">
+        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>Invitar
+      </button>
     </div>
     <div v-else class="bg-white rounded-2xl border border-border overflow-hidden">
       <table class="w-full">
@@ -75,7 +85,7 @@
             <td class="p-4 text-xs text-text-secondary">{{ m.email }}</td>
             <td class="p-4">
               <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="roleMeta(m.role).class">
-                {{ roleMeta(m.role).icon }} {{ roleMeta(m.role).label }}
+                {{ roleMeta(m.role).label }}
               </span>
             </td>
             <td class="p-4">
@@ -116,12 +126,12 @@
               class="w-full text-left p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3"
               :class="selectedRole === role.key ? 'border-navy bg-navy/5' : 'border-border hover:border-navy/30'"
             >
-              <span class="text-xl">{{ role.icon }}</span>
+              <span class="w-6 h-6 text-navy shrink-0" v-html="role.icon"></span>
               <div class="flex-1">
                 <div class="text-sm font-bold text-navy">{{ role.label }}</div>
                 <div class="text-[10px] text-text-muted">{{ role.description }}</div>
               </div>
-              <span v-if="selectedRole === role.key" class="text-navy font-bold">✓</span>
+              <span v-if="selectedRole === role.key" class="w-4 h-4 text-navy shrink-0" v-html="ICON_CHECK"></span>
             </button>
           </div>
           <div class="flex gap-3 mt-5">
@@ -153,8 +163,8 @@
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Rol inicial</label>
               <select v-model="inviteForm.role" class="w-full px-3 py-2 rounded-lg border border-border text-sm cursor-pointer">
-                <option value="receptionist">🛎️ Recepcionista</option>
-                <option value="hotel_admin">🏨 Admin Hotel</option>
+                <option value="receptionist">Recepcionista</option>
+                <option value="hotel_admin">Admin Hotel</option>
               </select>
             </div>
             <div>
@@ -181,6 +191,14 @@ import type { TeamMember } from '@/services/Team.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 
+const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
+const ICON_USERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
+const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
+const ICON_BELL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>'
+const ICON_LOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>'
+const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'
+
 const auth = useAuthStore()
 const toast = useToast()
 
@@ -192,8 +210,8 @@ const adminCount = computed(() => members.value.filter(m => m.role === 'hotel_ad
 const receptionistCount = computed(() => members.value.filter(m => m.role === 'receptionist').length)
 
 const availableRoles = [
-  { key: 'hotel_admin', label: 'Admin Hotel', icon: '🏨', description: 'Acceso completo al hotel (no puede eliminarse a sí mismo)' },
-  { key: 'receptionist', label: 'Recepcionista', icon: '🛎️', description: 'Reservas, check-in/out, huéspedes. Sin acceso a finanzas ni equipo' },
+  { key: 'hotel_admin', label: 'Admin Hotel', icon: ICON_BUILDING, description: 'Acceso completo al hotel (no puede eliminarse a sí mismo)' },
+  { key: 'receptionist', label: 'Recepcionista', icon: ICON_BELL, description: 'Reservas, check-in/out, huéspedes. Sin acceso a finanzas ni equipo' },
 ]
 
 async function load() {

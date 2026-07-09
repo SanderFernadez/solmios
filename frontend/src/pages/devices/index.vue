@@ -1,44 +1,48 @@
 <template>
-  <div class="min-h-screen bg-surface">
-    <!-- Header -->
-    <div class="bg-white border-b border-border px-6 py-4">
-      <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div>
-          <h1 class="text-xl font-black text-navy">Dispositivos Conectados</h1>
-          <p class="text-xs text-text-muted">Sesiones activas · Control de acceso</p>
-        </div>
+  <div>
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div>
+        <h2 class="text-xl font-black text-navy">Dispositivos Conectados</h2>
+        <p class="text-sm text-text-muted mt-0.5">Sesiones activas · Control de acceso</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-bold px-3 py-1 rounded-full bg-blue/10 text-blue">{{ activeSessions }} sesiones activas</span>
+        <button @click="revokeAll" class="px-4 py-2 bg-coral text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all cursor-pointer">
+          Cerrar Todas las Sesiones
+        </button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="card p-4">
         <div class="flex items-center gap-3">
-          <span class="text-xs font-bold px-3 py-1 rounded-full bg-blue/10 text-blue">{{ activeSessions }} sesiones activas</span>
-          <button @click="revokeAll" class="px-4 py-2 bg-coral text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all cursor-pointer">
-            Cerrar Todas las Sesiones
-          </button>
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10"><span class="w-5 h-5 text-navy" v-html="ICON_SIGNAL"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-navy truncate">{{ activeSessions }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Sesiones Activas</div></div>
+        </div>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10"><span class="w-5 h-5 text-cyan" v-html="ICON_USERS"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-cyan truncate">{{ uniqueUsers }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Usuarios Conectados</div></div>
+        </div>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10"><span class="w-5 h-5 text-gold" v-html="ICON_MOBILE"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-gold truncate">{{ mobileCount }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Dispositivos Móviles</div></div>
+        </div>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10"><span class="w-5 h-5 text-teal" v-html="ICON_CLOCK"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-teal truncate">Ahora</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Último Acceso</div></div>
         </div>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto p-6">
-      <!-- KPIs -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-xl p-4 border border-border">
-          <div class="text-[10px] font-bold text-text-muted uppercase">Sesiones Activas</div>
-          <div class="text-2xl font-black text-navy mt-1">{{ activeSessions }}</div>
-        </div>
-        <div class="bg-white rounded-xl p-4 border border-border">
-          <div class="text-[10px] font-bold text-text-muted uppercase">Usuarios Conectados</div>
-          <div class="text-2xl font-black text-navy mt-1">{{ uniqueUsers }}</div>
-        </div>
-        <div class="bg-white rounded-xl p-4 border border-border">
-          <div class="text-[10px] font-bold text-text-muted uppercase">Dispositivos Móviles</div>
-          <div class="text-2xl font-black text-navy mt-1">{{ mobileCount }}</div>
-        </div>
-        <div class="bg-white rounded-xl p-4 border border-border">
-          <div class="text-[10px] font-bold text-text-muted uppercase">Último Acceso</div>
-          <div class="text-2xl font-black text-teal mt-1">Ahora</div>
-        </div>
-      </div>
-
       <!-- Active Sessions -->
-      <div class="bg-white rounded-2xl border border-border p-6 mb-6">
+      <div class="card p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-black text-navy">Sesiones Activas</h2>
           <div class="flex gap-2">
@@ -91,7 +95,7 @@
                 </td>
                 <td class="py-3 text-xs">
                   <div class="flex items-center gap-1.5">
-                    <span>{{ session.deviceIcon }}</span>
+                    <span class="w-3.5 h-3.5 text-text-muted shrink-0" v-html="session.isMobile ? ICON_MOBILE : ICON_DESKTOP"></span>
                     <span class="text-navy">{{ session.device }}</span>
                   </div>
                 </td>
@@ -116,7 +120,7 @@
       </div>
 
       <!-- Session History -->
-      <div class="bg-white rounded-2xl border border-border p-6">
+      <div class="card p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-black text-navy">Historial de Sesiones</h2>
           <div class="flex items-center gap-2">
@@ -143,7 +147,7 @@
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="log.actionClass">{{ log.action }}</span>
                 </td>
                 <td class="py-3 text-xs text-navy flex items-center gap-1.5">
-                  <span>{{ log.deviceIcon }}</span> {{ log.device }}
+                  <span class="w-3.5 h-3.5 text-text-muted shrink-0" v-html="ICON_DESKTOP"></span> {{ log.device }}
                 </td>
                 <td class="py-3 text-xs text-text-muted font-mono">{{ log.ip }}</td>
                 <td class="py-3 text-xs text-text-muted">{{ log.location }}</td>
@@ -153,7 +157,6 @@
           </table>
         </div>
       </div>
-    </div>
   </div>
 </template>
 
@@ -162,6 +165,12 @@ import { ref, computed, onMounted } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+
+const ICON_SIGNAL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9a3 3 0 0 1 4.243 0M6.343 6.343a8 8 0 0 1 11.314 0M3.515 3.515a12 12 0 0 1 16.97 0M12 18.01v.01"/></svg>'
+const ICON_USERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
+const ICON_MOBILE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18h3"/></svg>'
+const ICON_DESKTOP = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25"/></svg>'
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -181,7 +190,7 @@ onMounted(async () => {
       user: d.userName ?? '',
       initials: (d.userName ?? '').split(' ').map((p: string) => p[0]).slice(0, 2).join(''),
       email: '', role: '', roleClass: 'bg-cyan/10 text-cyan', avatarClass: 'bg-cyan/20 text-cyan',
-      device: d.device ?? '', deviceIcon: d.icon ?? '🖥️',
+      device: d.device ?? '',
       browser: d.browser ?? '', os: d.os ?? '', ip: d.ip ?? '',
       isMobile: d.isMobile === 1, lastAccess: d.lastActivity ?? '',
     }))

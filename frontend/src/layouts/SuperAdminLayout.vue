@@ -1,13 +1,17 @@
 <template>
   <div class="flex min-h-screen bg-surface">
+    <!-- Mobile backdrop -->
+    <div v-if="mobileMenuOpen" class="fixed inset-0 bg-navy/50 z-20 lg:hidden" @click="mobileMenuOpen = false"></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 bg-navy text-white flex flex-col flex-shrink-0 fixed h-full z-20">
+    <aside class="w-72 bg-navy text-white flex flex-col flex-shrink-0 fixed h-full z-30 transition-transform duration-300 lg:translate-x-0"
+      :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'">
       <!-- Logo -->
-      <div class="h-16 flex items-center gap-3 px-5 border-b border-white/10">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-lg shadow-lg">S</div>
+      <div class="h-20 flex items-center gap-3 px-5 border-b border-white/10">
+        <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-2xl shadow-lg shrink-0">S</div>
         <div>
-          <div class="font-black text-lg leading-tight">Solmi<span class="text-cyan">OS</span></div>
-          <div class="text-[9px] font-bold tracking-[2px] text-gray-400 uppercase">Super Admin</div>
+          <div class="font-black text-2xl leading-tight">Solmi<span class="text-cyan">OS</span></div>
+          <div class="text-[10px] font-bold tracking-[2px] text-gray-400 uppercase">Super Admin</div>
         </div>
       </div>
 
@@ -17,7 +21,7 @@
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-semibold transition-all cursor-pointer"
           :class="isActive(item.path) ? 'bg-white/15 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
         >
           <span class="w-5 h-5 shrink-0" v-html="item.icon"></span>
@@ -61,15 +65,18 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 ml-64 flex flex-col">
+    <div class="flex-1 min-w-0 lg:ml-72 flex flex-col">
       <!-- Header -->
-      <header class="h-16 bg-white border-b border-border flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
-        <div>
-          <h1 class="text-lg font-black text-navy">{{ pageTitle }}</h1>
+      <header class="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 shadow-sm gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <button @click="mobileMenuOpen = true" class="lg:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface cursor-pointer">
+            <span class="w-5 h-5 shrink-0 block" v-html="ICON_MENU"></span>
+          </button>
+          <h1 class="text-lg font-black text-navy truncate">{{ pageTitle }}</h1>
         </div>
         <div class="flex items-center gap-4">
           <!-- Search -->
-          <div class="relative">
+          <div class="relative hidden md:block">
             <input type="text" placeholder="Buscar hoteles, usuarios..." class="w-72 h-9 pl-9 pr-4 rounded-lg border border-border text-sm bg-surface focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 transition-all" />
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -85,7 +92,7 @@
           </button>
 
           <!-- Quick Actions -->
-          <button class="bg-cyan text-navy font-extrabold text-sm px-4 py-2 rounded-lg hover:shadow-lg transition-all cursor-pointer">
+          <button class="hidden sm:block bg-cyan text-navy font-extrabold text-sm px-4 py-2 rounded-lg hover:shadow-lg transition-all cursor-pointer">
             + Nuevo Hotel
           </button>
 
@@ -103,16 +110,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { http } from '@/services/http'
 import HotelSwitcher from '@/components/features/core-pms/HotelSwitcher.vue'
 import UserMenu from '@/components/features/core-pms/UserMenu.vue'
 
+const ICON_MENU = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/></svg>'
+
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const mobileMenuOpen = ref(false)
+
+watch(() => route.path, () => { mobileMenuOpen.value = false })
 
 const stats = ref<any>({})
 

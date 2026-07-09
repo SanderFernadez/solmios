@@ -1,11 +1,13 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <div>
         <h2 class="text-xl font-black text-navy">Envíos Automáticos</h2>
-        <p class="text-xs text-text-muted mt-0.5">Mensajes programados que se envían automáticamente según eventos de la reserva</p>
+        <p class="text-sm text-text-muted mt-0.5">Mensajes programados que se envían automáticamente según eventos de la reserva</p>
       </div>
-      <button @click="openNew" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg cursor-pointer">+ Nuevo Mensaje</button>
+      <button @click="openNew" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>Nuevo Mensaje
+      </button>
     </div>
 
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -37,7 +39,9 @@
                 <input v-model="form.isActive" type="checkbox" class="w-4 h-4 rounded text-cyan" />
                 <span class="text-xs font-bold text-navy">Activo</span>
               </label>
-              <button @click="modal.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center cursor-pointer">✕</button>
+              <button @click="modal.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-muted hover:text-navy cursor-pointer">
+                <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
+              </button>
             </div>
           </div>
           <div class="p-5 space-y-4">
@@ -80,7 +84,9 @@
             </div>
           </div>
           <div class="p-5 border-t border-border bg-surface/50 flex gap-3 justify-end sticky bottom-0">
-            <button v-if="modal.edit" @click="deleteMsg" class="px-5 py-2.5 border border-coral/30 text-coral rounded-xl text-sm font-bold cursor-pointer mr-auto">🗑️ Eliminar</button>
+            <button v-if="modal.edit" @click="deleteMsg" class="flex items-center gap-1.5 px-5 py-2.5 border border-coral/30 text-coral rounded-xl text-sm font-bold cursor-pointer mr-auto">
+              <span class="w-4 h-4 shrink-0" v-html="ICON_TRASH"></span>Eliminar
+            </button>
             <button @click="modal.show=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
             <button @click="save" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer">{{ saving?'Guardando...':'Guardar' }}</button>
           </div>
@@ -96,6 +102,10 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { AutoMessagesService } from '@/services/AutoMessages.service'
 
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
+const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
+const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h12M9.75 7.5v-1.5a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 1.5 1.5v1.5m-8.25 0 .75 11.25a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5L17.25 7.5"/></svg>'
+
 const auth = useAuthStore()
 const toast = useToast()
 
@@ -108,10 +118,10 @@ const form = ref({ title:'', color:'#3b82f6', emailSubject:'', emailBody:'', wha
 
 const variables = ['{hotel_name}','{hotel_address}','{hotel_phone}','{guest_name}','{checkin_date}','{checkout_date}','{room_number}','{room_type}','{nights}','{total_amount}','{pending_amount}','{locator}','{wifi_network}','{wifi_password}','{lock_codes}','{reservation_image}']
 
-function channelLabel(c: string) { const m: any = { email:'📧 Email', whatsapp:'💬 WhatsApp', both:'📧💬 Ambos' }; return m[c]||c }
+function channelLabel(c: string) { const m: any = { email:'Email', whatsapp:'WhatsApp', both:'Email + WhatsApp' }; return m[c]||c }
 function triggerLabel(t: string) { const m: any = { on_reservation:'Al crear reserva', pre_checkin:'Antes del check-in', checkin_day:'Día del check-in', checkout_day:'Día del check-out', post_checkout:'Después del check-out' }; return m[t]||t }
 function eventLabel(e?: string) { const m: any = { checkin_welcome:'Bienvenida', reservation_confirmed:'Confirmación', reservation_presale:'Pre-venta', reminder:'Recordatorio' }; return e ? (m[e]||e) : '—' }
-function langLabel(l?: string) { const m: any = { es:'🇪🇸 ES', en:'🇬🇧 EN', pt:'🇧🇷 PT' }; return l ? (m[l]||l) : '—' }
+function langLabel(l?: string) { const m: any = { es:'ES', en:'EN', pt:'PT' }; return l ? (m[l]||l) : '—' }
 
 function insertVariable(v: string) {
   const el = document.activeElement as HTMLTextAreaElement | HTMLInputElement | null

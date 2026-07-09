@@ -12,14 +12,18 @@
       <button @click="auth.stopImpersonation(); router.push('/admin')" class="text-sm font-extrabold text-navy bg-white px-4 py-1.5 rounded-lg hover:bg-surface transition-colors cursor-pointer">✕ Volver a Super Admin</button>
     </div>
 
+    <!-- Mobile backdrop -->
+    <div v-if="mobileMenuOpen" class="fixed inset-0 bg-navy/50 z-20 lg:hidden" @click="mobileMenuOpen = false"></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 bg-[#11233E] text-[#C4C8D0] flex flex-col shrink-0 fixed h-full z-20" :class="auth.impersonating ? 'top-10' : ''">
+    <aside class="w-72 bg-[#11233E] text-[#C4C8D0] flex flex-col shrink-0 fixed h-full z-30 transition-transform duration-300 lg:translate-x-0"
+      :class="[auth.impersonating ? 'top-10' : '', mobileMenuOpen ? 'translate-x-0' : '-translate-x-full']">
       <!-- Logo -->
-      <div class="h-16 flex items-center gap-3 px-5 border-b border-white/10">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-lg shadow-lg">S</div>
+      <div class="h-20 flex items-center gap-3 px-5 border-b border-white/10">
+        <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-2xl shadow-lg shrink-0">S</div>
         <div>
-          <div class="font-black text-lg leading-tight">Solmi<span class="text-cyan">OS</span></div>
-          <div class="text-[9px] font-bold tracking-[2px] text-[#C4C8D0] uppercase">{{ roleLabel }}</div>
+          <div class="font-black text-2xl leading-tight">Solmi<span class="text-cyan">OS</span></div>
+          <div class="text-[10px] font-bold tracking-[2px] text-[#C4C8D0] uppercase">{{ roleLabel }}</div>
         </div>
       </div>
 
@@ -28,7 +32,7 @@
         <template v-for="item in visibleItems" :key="item.path || item.label">
           <!-- Parent with children -->
           <template v-if="item.children">
-            <button @click="toggleSection(item.label)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold cursor-pointer transition-all"
+            <button @click="toggleSection(item.label)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-semibold cursor-pointer transition-all"
               :class="isSectionActive(item) ? 'bg-white/15 text-white' : 'text-[#C4C8D0] hover:bg-white/5 hover:text-white'">
               <span class="w-5 h-5 shrink-0 text-[#C4C8D0]" v-html="item.icon"></span>
               <span class="flex-1 text-left">{{ item.label }}</span>
@@ -39,7 +43,7 @@
               :key="child.path"
               :to="child.path"
               v-show="item.expanded"
-              class="flex items-center gap-2.5 pl-11 pr-3 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+              class="flex items-center gap-2.5 pl-11 pr-3 py-2 rounded-lg text-base font-semibold transition-all cursor-pointer"
               :class="isActive(child.path) ? 'bg-white/8 text-white' : 'text-[#C4C8D0] hover:bg-white/5 hover:text-white'"
             >
               <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isActive(child.path) ? 'bg-cyan' : 'bg-[#C4C8D0]'"></span>
@@ -48,7 +52,7 @@
           </template>
           <!-- Simple item (no children) -->
           <router-link v-else :to="item.path"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-semibold transition-all cursor-pointer"
             :class="isActive(item.path) ? 'bg-white/15 text-white' : 'text-[#C4C8D0] hover:bg-white/5 hover:text-white'">
             <span class="w-5 h-5 shrink-0 text-[#C4C8D0]" v-html="item.icon"></span>
             <span>{{ item.label }}</span>
@@ -57,27 +61,27 @@
 
         <!-- Ocupación Hoy (dentro del nav: scrollea junto al menú cuando los submenus expandidos exceden el alto disponible) -->
         <div class="mt-3 p-4 rounded-xl bg-white/5 border border-white/10">
-          <div class="text-[10px] font-bold tracking-wider text-[#C4C8D0] uppercase mb-3">Ocupación Hoy</div>
-          <div class="flex items-center gap-3">
-            <div class="relative w-14 h-14 shrink-0">
-              <svg viewBox="0 0 36 36" class="w-14 h-14 -rotate-90">
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" />
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#22D3EE" stroke-width="3" stroke-linecap="round"
+          <div class="text-xs font-bold tracking-wider text-[#C4C8D0] uppercase mb-3">Ocupación Hoy</div>
+          <div class="flex items-center gap-4">
+            <div class="relative w-20 h-20 shrink-0">
+              <svg viewBox="0 0 36 36" class="w-20 h-20 -rotate-90">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3.5" />
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#22D3EE" stroke-width="3.5" stroke-linecap="round"
                   :stroke-dasharray="`${occupancyPct * 0.974} 100`" />
               </svg>
-              <div class="absolute inset-0 flex items-center justify-center text-sm font-black">{{ occupancyPct }}%</div>
+              <div class="absolute inset-0 flex items-center justify-center text-lg font-black">{{ occupancyPct }}%</div>
             </div>
-            <div class="flex-1 space-y-1.5">
-              <div class="flex items-center justify-between text-[11px]">
-                <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-1.5 h-1.5 rounded-full bg-cyan"></span>Ocupadas</span>
+            <div class="flex-1 space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-2 h-2 rounded-full bg-cyan"></span>Ocupadas</span>
                 <span class="font-bold">{{ occupancyBreakdown.occupied }}</span>
               </div>
-              <div class="flex items-center justify-between text-[11px]">
-                <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-1.5 h-1.5 rounded-full bg-blue"></span>Disponibles</span>
+              <div class="flex items-center justify-between text-xs">
+                <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-2 h-2 rounded-full bg-blue"></span>Disponibles</span>
                 <span class="font-bold">{{ occupancyBreakdown.available }}</span>
               </div>
-              <div class="flex items-center justify-between text-[11px]">
-                <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>Mantenimiento</span>
+              <div class="flex items-center justify-between text-xs">
+                <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-2 h-2 rounded-full bg-gray-400"></span>Mantenimiento</span>
                 <span class="font-bold">{{ occupancyBreakdown.maintenance }}</span>
               </div>
             </div>
@@ -110,16 +114,22 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 min-w-0 ml-64 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
+    <div class="flex-1 min-w-0 lg:ml-72 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
       <!-- Header -->
-      <header class="h-16 bg-white border-b border-border flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
-        <div>
-          <h1 class="text-lg font-black text-navy">{{ pageTitle }}</h1>
+      <header class="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <button @click="mobileMenuOpen = true" class="lg:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface cursor-pointer">
+            <span class="w-5 h-5 shrink-0 block" v-html="ICON_MENU"></span>
+          </button>
+          <div class="min-w-0">
+            <h1 class="text-lg font-black text-navy truncate leading-tight">{{ pageTitle }}</h1>
+            <p class="text-[11px] text-text-muted truncate hidden sm:block">{{ auth.currentHotel }}</p>
+          </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
           <!-- Search -->
-          <div class="relative">
-            <input type="text" placeholder="Buscar..." class="w-64 h-9 pl-9 pr-4 rounded-xl border border-border text-sm bg-surface focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 transition-all" />
+          <div class="relative hidden md:block">
+            <input type="text" placeholder="Buscar..." class="w-56 h-9 pl-9 pr-4 rounded-xl border border-transparent text-sm bg-surface focus:outline-none focus:bg-white focus:border-cyan focus:ring-2 focus:ring-cyan/20 transition-all" />
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -129,14 +139,6 @@
           <NotificationBell />
 
           <div class="w-px h-6 bg-border"></div>
-
-          <!-- Hotel Selector -->
-          <div class="flex items-center gap-2 bg-surface rounded-xl px-3 py-1.5 border border-border">
-            <svg class="w-4 h-4 text-cyan shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1" />
-            </svg>
-            <span class="text-sm font-bold text-navy">{{ auth.currentHotel }}</span>
-          </div>
 
           <!-- User Menu (Configuración / Cambiar contraseña / Salir) -->
           <UserMenu />
@@ -155,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useDashboardStore } from '@/stores/dashboard.store'
@@ -167,11 +169,17 @@ import OfflineBanner from '@/components/features/core-pms/OfflineBanner.vue'
 import HotelSwitcher from '@/components/features/core-pms/HotelSwitcher.vue'
 import UserMenu from '@/components/features/core-pms/UserMenu.vue'
 
+const ICON_MENU = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/></svg>'
+
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const dashboard = useDashboardStore()
 const roomStore = useRoomStore()
+const mobileMenuOpen = ref(false)
+
+// Cierra el drawer mobile al navegar a otra ruta
+watch(() => route.path, () => { mobileMenuOpen.value = false })
 
 const ICONS = {
   dashboard: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5h4.5V21H3v-7.5ZM9.75 8.25h4.5V21h-4.5V8.25ZM16.5 3h4.5v18h-4.5V3Z"/></svg>',
@@ -188,16 +196,14 @@ const ICONS = {
 
 const nonavItems = [
   {
-    label: 'Dashboard', icon: ICONS.dashboard, roles: ['hotel_admin', 'receptionist'],
-    children: [
-      { label: 'General', path: '/panel/dashboard/general', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Administrativo', path: '/panel/dashboard/administrativo', roles: ['hotel_admin', 'receptionist'] },
-    ]
+    label: 'Dashboard', icon: ICONS.dashboard, path: '/panel/dashboard/administrativo', roles: ['hotel_admin', 'receptionist'],
   },
   {
-    label: 'Planificación', icon: ICONS.calendar, roles: ['hotel_admin', 'receptionist'],
+    label: 'Planning', icon: ICONS.calendar, path: '/panel/planning', roles: ['hotel_admin', 'receptionist'],
+  },
+  {
+    label: 'Reservas', icon: ICONS.calendar, roles: ['hotel_admin', 'receptionist'],
     children: [
-      { label: 'Planning', path: '/panel/planning', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Reservas', path: '/panel/reservations', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Check-in/out', path: '/panel/checkin', roles: ['hotel_admin', 'receptionist'] },
     ]
@@ -363,7 +369,7 @@ const pageTitle = computed(() => {
   const titles: Record<string, string> = {
     'dashboard-general': 'Dashboard General',
     'dashboard-administrativo': 'Dashboard Administrativo',
-    planning: 'Planificación',
+    planning: 'Planning',
     reservations: 'Reservas',
     rooms: 'Habitaciones',
     guests: 'Huéspedes',

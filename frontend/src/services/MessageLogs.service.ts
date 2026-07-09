@@ -32,23 +32,23 @@ export const MessageLogsService = {
   },
 }
 
-export const MSG_STATUS_META: Record<string, { icon: string; label: string; class: string }> = {
-  pending: { icon: '⏳', label: 'Pendiente', class: 'bg-gold/10 text-gold' },
-  queued: { icon: '📬', label: 'En cola', class: 'bg-blue-100 text-blue-700' },
-  sent: { icon: '✅', label: 'Enviado', class: 'bg-teal/10 text-teal' },
-  failed: { icon: '❌', label: 'Fallido', class: 'bg-coral/10 text-coral' },
+export const MSG_STATUS_META: Record<string, { label: string; class: string }> = {
+  pending: { label: 'Pendiente', class: 'bg-gold/10 text-gold' },
+  queued: { label: 'En cola', class: 'bg-cyan/10 text-cyan' },
+  sent: { label: 'Enviado', class: 'bg-teal/10 text-teal' },
+  failed: { label: 'Fallido', class: 'bg-coral/10 text-coral' },
 }
 
 export function msgStatusMeta(status: string) {
-  return MSG_STATUS_META[status] || { icon: '📨', label: status, class: 'bg-gray-100 text-gray-500' }
+  return MSG_STATUS_META[status] || { label: status, class: 'bg-gray-100 text-gray-500' }
 }
 
-export const MSG_TYPE_META: Record<string, { icon: string; label: string }> = {
-  email: { icon: '📧', label: 'Email' },
-  whatsapp: { icon: '💬', label: 'WhatsApp' },
-  sms: { icon: '📱', label: 'SMS' },
+export const MSG_TYPE_META: Record<string, { label: string }> = {
+  email: { label: 'Email' },
+  whatsapp: { label: 'WhatsApp' },
+  sms: { label: 'SMS' },
 }
 
 export function msgTypeMeta(type: string) {
-  return MSG_TYPE_META[type] || { icon: '📨', label: type }
+  return MSG_TYPE_META[type] || { label: type }
 }

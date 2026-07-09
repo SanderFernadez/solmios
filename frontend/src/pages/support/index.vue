@@ -1,30 +1,32 @@
 <template>
   <div>
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <div>
-        <h1 class="text-xl font-black text-navy">Soporte</h1>
-        <p class="text-sm text-text-muted">Centro de ayuda y tickets de soporte</p>
+        <h2 class="text-xl font-black text-navy">Soporte</h2>
+        <p class="text-sm text-text-muted mt-0.5">Centro de ayuda y tickets de soporte</p>
       </div>
-      <button @click="showNewTicketModal = true" class="flex items-center gap-2 px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-all cursor-pointer">
-        <span>＋</span> Nuevo Ticket
+      <button @click="showNewTicketModal = true" class="flex items-center gap-1.5 px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-all cursor-pointer">
+        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>Nuevo Ticket
       </button>
     </div>
 
     <!-- Métricas -->
     <div class="grid grid-cols-4 gap-4 mb-6">
-      <div v-for="stat in metrics" :key="stat.label" class="bg-white rounded-xl p-4 border border-border card-shadow text-center">
-        <div class="text-2xl font-black" :class="stat.color">{{ stat.value }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase">{{ stat.label }}</div>
+      <div v-for="stat in metrics" :key="stat.label" class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="stat.bg"><span class="w-5 h-5" :class="stat.color" v-html="stat.icon"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none truncate" :class="stat.color">{{ stat.value }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">{{ stat.label }}</div></div>
+        </div>
       </div>
     </div>
 
     <!-- Quick Links -->
-    <div class="bg-white rounded-2xl border border-border card-shadow p-6 mb-6">
+    <div class="card p-6 mb-6">
       <div class="text-[10px] font-bold text-text-muted uppercase mb-4">Recursos Rápidos</div>
       <div class="grid grid-cols-4 gap-3">
         <div v-for="link in quickLinks" :key="link.title" class="p-4 bg-surface rounded-xl hover:bg-cyan/10 hover:border-cyan/30 border border-transparent transition-all cursor-pointer">
-          <div class="text-lg mb-2">{{ link.icon }}</div>
+          <span class="w-5 h-5 text-cyan mb-2 block" v-html="link.icon"></span>
           <div class="text-sm font-bold text-navy">{{ link.title }}</div>
           <div class="text-[10px] text-text-muted mt-1">{{ link.desc }}</div>
         </div>
@@ -43,10 +45,10 @@
     </div>
 
     <!-- Mis Tickets -->
-    <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <div class="card overflow-hidden">
       <div class="p-4 border-b border-border"><div class="text-sm font-extrabold text-navy">Mis Tickets ({{ filteredTickets.length }})</div></div>
       <div v-if="filteredTickets.length === 0" class="p-12 text-center">
-        <div class="text-4xl mb-3">🎫</div>
+        <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_TICKET"></span>
         <div class="text-sm font-bold text-text-muted">No hay tickets</div>
         <div class="text-[10px] text-text-muted">Crea un ticket si necesitas ayuda</div>
       </div>
@@ -74,7 +76,7 @@
 
     <!-- Modal: Ver Ticket -->
     <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showViewModal = false">
-      <div class="bg-white rounded-2xl w-full max-w-2xl card-shadow max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <div>
             <div class="flex items-center gap-3">
@@ -84,7 +86,9 @@
             </div>
             <div class="text-sm text-text-muted mt-1">{{ selectedTicket.createdAt }}</div>
           </div>
-          <button @click="showViewModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+          <button @click="showViewModal = false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">
+            <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
+          </button>
         </div>
         <div class="p-6">
           <div class="bg-surface rounded-xl p-4 mb-4">
@@ -128,10 +132,12 @@
 
     <!-- Modal: Responder -->
     <div v-if="showReplyModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showReplyModal = false">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
+      <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Responder Ticket #{{ selectedTicket.id }}</h3>
-          <button @click="showReplyModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+          <button @click="showReplyModal = false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">
+            <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
+          </button>
         </div>
         <div class="p-6">
           <div class="bg-surface rounded-xl p-3 mb-4"><div class="text-sm font-bold text-navy">{{ selectedTicket.subject }}</div></div>
@@ -146,10 +152,12 @@
 
     <!-- Modal: Nuevo Ticket -->
     <div v-if="showNewTicketModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showNewTicketModal = false">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
+      <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Nuevo Ticket de Soporte</h3>
-          <button @click="showNewTicketModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+          <button @click="showNewTicketModal = false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">
+            <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
+          </button>
         </div>
         <div class="p-6">
           <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Categoría *</label>
@@ -174,7 +182,7 @@
           </div>
           <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Asunto *</label><input v-model="newTicket.subject" type="text" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Descripción corta del problema"></div>
           <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Descripción Detallada *</label><textarea v-model="newTicket.description" rows="5" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Explique con detalle el problema o solicitud..."></textarea></div>
-          <div class="bg-surface rounded-xl p-3 mb-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-2">Archivos Adjuntos (opcional)</div><div class="flex items-center gap-3"><label class="px-4 py-2 bg-white border border-border rounded-lg text-sm font-bold hover:border-navy/30 transition-colors cursor-pointer">📎 Adjuntar archivo<input type="file" class="hidden" @change="handleFileUpload" multiple></label><span class="text-[10px] text-text-muted">PNG, JPG, PDF, LOG (máx 5MB)</span></div><div v-if="newTicket.files.length" class="mt-2 flex flex-wrap gap-2"><span v-for="(f, i) in newTicket.files" :key="i" class="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-border text-[10px] font-bold">{{ f }} <button @click="removeFile(i)" class="text-red cursor-pointer">✕</button></span></div></div>
+          <div class="bg-surface rounded-xl p-3 mb-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-2">Archivos Adjuntos (opcional)</div><div class="flex items-center gap-3"><label class="flex items-center gap-1.5 px-4 py-2 bg-white border border-border rounded-lg text-sm font-bold hover:border-navy/30 transition-colors cursor-pointer"><span class="w-4 h-4 shrink-0" v-html="ICON_PAPERCLIP"></span>Adjuntar archivo<input type="file" class="hidden" @change="handleFileUpload" multiple></label><span class="text-[10px] text-text-muted">PNG, JPG, PDF, LOG (máx 5MB)</span></div><div v-if="newTicket.files.length" class="mt-2 flex flex-wrap gap-2"><span v-for="(f, i) in newTicket.files" :key="i" class="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-border text-[10px] font-bold">{{ f }} <button @click="removeFile(i)" class="w-3 h-3 text-red cursor-pointer" v-html="ICON_X"></button></span></div></div>
         </div>
         <div class="flex gap-3 p-6 border-t border-border">
           <button @click="showNewTicketModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
@@ -190,6 +198,18 @@ import { ref, computed, onMounted } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
+const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
+const ICON_TICKET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h3m-8.25 4.5h13.5A2.25 2.25 0 0 0 21 18.25V15a2.25 2.25 0 0 1 0-4.5V7.75A2.25 2.25 0 0 0 18.75 5.5H5.25A2.25 2.25 0 0 0 3 7.75v2.75a2.25 2.25 0 0 1 0 4.5v3.25A2.25 2.25 0 0 0 5.25 20.5Z"/></svg>'
+const ICON_PAPERCLIP = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13"/></svg>'
+const ICON_CLOCK_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"/></svg>'
+const ICON_LOADER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
+const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 2.25 2.25 4.5-4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_BOOK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>'
+const ICON_PLAY = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>'
+const ICON_CHAT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>'
+const ICON_MAIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0a2.25 2.25 0 0 0-2.25-2.25H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -224,18 +244,18 @@ const metrics = computed(() => {
   const t = tickets.value
   const en = (s: string) => t.filter((x: any) => x.status === s).length
   return [
-    { label: 'Abiertos', value: en('Abierto'), color: 'text-orange' },
-    { label: 'En Progreso', value: en('En Progreso'), color: 'text-cyan' },
-    { label: 'Resueltos', value: en('Resuelto'), color: 'text-teal' },
-    { label: 'Total', value: t.length, color: 'text-navy' },
+    { label: 'Abiertos', value: en('Abierto'), color: 'text-orange', bg: 'bg-orange/10', icon: ICON_CLOCK_ALERT },
+    { label: 'En Progreso', value: en('En Progreso'), color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_LOADER },
+    { label: 'Resueltos', value: en('Resuelto'), color: 'text-teal', bg: 'bg-teal/10', icon: ICON_CHECK_CIRCLE },
+    { label: 'Total', value: t.length, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_TICKET },
   ]
 })
 
 const quickLinks = [
-  { icon: '📖', title: 'Guía Rápida', desc: 'Aprende lo básico del sistema' },
-  { icon: '🎥', title: 'Video Tutoriales', desc: 'Paso a paso en video' },
-  { icon: '💬', title: 'Chat en Vivo', desc: 'Habla con soporte ahora' },
-  { icon: '📧', title: 'Email Directo', desc: 'soporte@arckode.com' }
+  { icon: ICON_BOOK, title: 'Guía Rápida', desc: 'Aprende lo básico del sistema' },
+  { icon: ICON_PLAY, title: 'Video Tutoriales', desc: 'Paso a paso en video' },
+  { icon: ICON_CHAT, title: 'Chat en Vivo', desc: 'Habla con soporte ahora' },
+  { icon: ICON_MAIL, title: 'Email Directo', desc: 'soporte@arckode.com' }
 ]
 
 const tickets = ref<any[]>([])

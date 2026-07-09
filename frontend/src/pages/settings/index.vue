@@ -46,17 +46,17 @@
         <h2 class="text-xl font-black text-navy">Configuración</h2>
         <p class="text-sm text-text-muted mt-0.5">Datos del hotel, amenities, tarifas e integraciones</p>
       </div>
-      <button @click="saveAll" :disabled="saving" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
-        {{ saving ? 'Guardando...' : '💾 Guardar' }}
+      <button @click="saveAll" :disabled="saving" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+        <span class="w-4 h-4 shrink-0" v-html="ICON_SAVE"></span>{{ saving ? 'Guardando...' : 'Guardar' }}
       </button>
     </div>
 
     <!-- Tabs -->
     <div class="flex gap-2 mb-6 overflow-x-auto">
       <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value"
-        class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap"
+        class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap"
         :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
-        {{ tab.icon }} {{ tab.label }}
+        <span class="w-4 h-4 shrink-0" v-html="tab.icon"></span>{{ tab.label }}
       </button>
     </div>
 
@@ -99,11 +99,11 @@
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Clasificación</label>
               <select v-model="form.starRating" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="">N/A</option>
-                <option value="1">⭐ 1 Estrella</option>
-                <option value="2">⭐⭐ 2 Estrellas</option>
-                <option value="3">⭐⭐⭐ 3 Estrellas</option>
-                <option value="4">⭐⭐⭐⭐ 4 Estrellas</option>
-                <option value="5">⭐⭐⭐⭐⭐ 5 Estrellas</option>
+                <option value="1">1 Estrella</option>
+                <option value="2">2 Estrellas</option>
+                <option value="3">3 Estrellas</option>
+                <option value="4">4 Estrellas</option>
+                <option value="5">5 Estrellas</option>
               </select>
             </div>
             <div class="col-span-2">
@@ -214,9 +214,9 @@
 
       <!-- PIN de tarjeta de garantía (MisterPlan) -->
       <div class="card p-6">
-        <h3 class="font-extrabold text-navy mb-1">PIN de tarjeta de garantía 🔒</h3>
+        <h3 class="font-extrabold text-navy mb-1">PIN de tarjeta de garantía</h3>
         <p class="text-xs text-text-muted mb-4">PIN requerido para ver los datos de las tarjetas de garantía en el detalle de reserva.
-          <span v-if="hasGuaranteePin" class="text-teal font-semibold">Configurado ✓</span>
+          <span v-if="hasGuaranteePin" class="inline-flex items-center gap-1 text-teal font-semibold"><span class="w-3 h-3 shrink-0" v-html="ICON_CHECK"></span>Configurado</span>
           <span v-else class="text-coral font-semibold">Sin configurar</span>
         </p>
         <div class="flex flex-wrap items-end gap-3">
@@ -232,7 +232,7 @@
 
       <!-- Automatización del flujo de reserva (auto/manual) -->
       <div class="card p-6">
-        <h3 class="font-extrabold text-navy mb-1">Automatización ⚙️</h3>
+        <h3 class="font-extrabold text-navy mb-1">Automatización</h3>
         <p class="text-xs text-text-muted mb-4">Acciones automáticas al confirmar / hacer check-in. Podés apagarlas y hacerlo manual cuando quieras.</p>
         <div class="space-y-3">
           <label class="flex items-center justify-between bg-surface rounded-xl p-3 cursor-pointer">
@@ -259,7 +259,7 @@
           </div>
         </div>
         <div class="card p-6 text-center">
-          <div class="text-3xl mb-2">🏨</div>
+          <span class="w-8 h-8 mx-auto mb-2 text-navy/60 block" v-html="ICON_BUILDING"></span>
           <div class="text-sm font-bold text-navy">{{ form.name || 'Hotel' }}</div>
           <div class="text-[10px] text-text-muted mt-1">{{ form.country || '' }}</div>
         </div>
@@ -288,8 +288,8 @@
                 class="w-full px-3 py-2 rounded-lg border border-border text-sm font-bold text-navy" />
             </div>
           </div>
-          <button @click="useMyLocation" class="mt-3 w-full text-xs font-bold text-teal hover:underline cursor-pointer">
-            📍 Usar mi ubicación actual
+          <button @click="useMyLocation" class="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-bold text-teal hover:underline cursor-pointer">
+            <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_MAP_PIN"></span>Usar mi ubicación actual
           </button>
         </div>
         <div class="card p-6">
@@ -337,7 +337,7 @@
         <div v-if="customAmenities.length > 0" class="mt-3 flex flex-wrap gap-2">
           <span v-for="a in customAmenities" :key="a.key" class="px-3 py-1.5 bg-navy/5 text-navy rounded-full text-xs font-bold flex items-center gap-1">
             {{ a.label }}
-            <button @click="removeCustomAmenity(a.key)" class="text-coral hover:text-red-700 cursor-pointer ml-1">✕</button>
+            <button @click="removeCustomAmenity(a.key)" class="w-3 h-3 text-coral hover:opacity-75 cursor-pointer ml-1" v-html="ICON_X"></button>
           </span>
         </div>
       </div>
@@ -373,12 +373,12 @@
           <h3 class="font-extrabold text-navy">Matriz de Tarifas</h3>
           <div class="flex gap-2">
             <button @click="copyRatesNextYear" :disabled="copying"
-              class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
-              {{ copying ? 'Copiando...' : '📅 Copiar al próximo año' }}
+              class="flex items-center gap-1.5 px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
+              <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_CALENDAR"></span>{{ copying ? 'Copiando...' : 'Copiar al próximo año' }}
             </button>
             <button @click="saveRates" :disabled="savingRates"
-              class="px-4 py-2 bg-cyan text-navy rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
-              {{ savingRates ? 'Guardando...' : '💾 Guardar' }}
+              class="flex items-center gap-1.5 px-4 py-2 bg-cyan text-navy rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
+              <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_SAVE"></span>{{ savingRates ? 'Guardando...' : 'Guardar' }}
             </button>
           </div>
         </div>
@@ -422,7 +422,7 @@
                   </td>
                   <td v-for="s in seasonsList" :key="s.name" class="px-2 py-2 text-center align-top"
                     :class="isCellClosed(roomType, occ, s.name) ? 'opacity-60' : ''"
-                    :style="!isCellClosed(roomType, occ, s.name) ? { backgroundColor: s.color + '0D' } : { backgroundColor: '#fee2e2' }">
+                    :style="!isCellClosed(roomType, occ, s.name) ? { backgroundColor: s.color + '0D' } : { backgroundColor: 'rgba(239,68,68,0.12)' }">
                     <div class="flex flex-col items-center gap-1">
                       <div class="flex items-center gap-1">
                         <span class="text-xs font-black" :style="{ color: s.color }">+</span>
@@ -433,9 +433,10 @@
                       </div>
                       <div class="text-xs font-extrabold text-navy">= ${{ getCalculatedPrice(roomType, occ, s.name) }}</div>
                       <button @click="toggleClosed(roomType, occ, s.name)"
-                        class="text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors cursor-pointer"
-                        :class="isCellClosed(roomType, occ, s.name) ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-surface text-text-muted hover:bg-surface-dark'">
-                        {{ isCellClosed(roomType, occ, s.name) ? '🔒 Cerrado' : '✓ Abierto' }}
+                        class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                        :class="isCellClosed(roomType, occ, s.name) ? 'bg-coral/10 text-coral hover:bg-coral/20' : 'bg-surface text-text-muted hover:bg-surface-dark'">
+                        <span class="w-2.5 h-2.5 shrink-0" v-html="isCellClosed(roomType, occ, s.name) ? ICON_LOCK : ICON_CHECK"></span>
+                        {{ isCellClosed(roomType, occ, s.name) ? 'Cerrado' : 'Abierto' }}
                       </button>
                     </div>
                   </td>
@@ -602,7 +603,7 @@
             <img :src="form.logo" alt="Logo" class="w-full h-full object-contain" />
           </div>
           <div v-else class="w-20 h-20 rounded-xl border-2 border-dashed border-border bg-surface flex items-center justify-center">
-            <span class="text-2xl">🏨</span>
+            <span class="w-8 h-8 text-text-muted" v-html="ICON_BUILDING"></span>
           </div>
           <div class="flex-1">
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">URL del Logo</label>
@@ -634,7 +635,7 @@
         <div class="p-4 bg-surface rounded-xl">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
-              <span class="text-xl">🌐</span>
+              <span class="w-5 h-5 text-cyan" v-html="ICON_GLOBE"></span>
               <div><div class="text-sm font-bold text-navy">Channex</div><div class="text-[10px] text-text-muted">Sincronización con OTAs</div></div>
             </div>
             <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-teal/10 text-teal">Conectado</span>
@@ -648,10 +649,10 @@
         <div class="p-4 bg-surface rounded-xl">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
-              <span class="text-xl">💳</span>
+              <span class="w-5 h-5 text-cyan" v-html="ICON_CARD"></span>
               <div><div class="text-sm font-bold text-navy">Stripe</div><div class="text-[10px] text-text-muted">Pagos con tarjeta</div></div>
             </div>
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="stripeConnected ? 'bg-teal/10 text-teal' : 'bg-yellow-100 text-yellow-700'">{{ stripeConnected ? 'Conectado' : 'No configurado' }}</span>
+            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="stripeConnected ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">{{ stripeConnected ? 'Conectado' : 'No configurado' }}</span>
           </div>
           <div class="space-y-3">
             <div>
@@ -685,10 +686,10 @@
         <div class="p-4 bg-surface rounded-xl">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
-              <span class="text-xl">💬</span>
+              <span class="w-5 h-5 text-cyan" v-html="ICON_CHAT"></span>
               <div><div class="text-sm font-bold text-navy">WhatsApp</div><div class="text-[10px] text-text-muted">Mensajes automatizados</div></div>
             </div>
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">No configurado</span>
+            <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-gold/10 text-gold">No configurado</span>
           </div>
           <p class="text-xs text-text-muted">Requiere cuenta de Meta Business.</p>
         </div>
@@ -698,7 +699,7 @@
         <h3 class="font-extrabold text-navy mb-4">Facturación Electrónica</h3>
         <div class="p-4 bg-surface rounded-xl">
           <div class="flex items-center gap-3 mb-3">
-            <span class="text-xl">🧾</span>
+            <span class="w-5 h-5 text-cyan" v-html="ICON_RECEIPT"></span>
             <div><div class="text-sm font-bold text-navy">DGII - Rep. Dominicana</div><div class="text-[10px] text-text-muted">NCF automático</div></div>
           </div>
           <p class="text-xs text-text-muted">Disponible según el país de operación del hotel.</p>
@@ -731,6 +732,23 @@ leaflet.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
+
+const ICON_SAVE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 4.5H6.75a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25V7.5L17.25 4.5Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.5v-6h-6v6M9 4.5v3h6v-3"/></svg>'
+const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'
+const ICON_LOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>'
+const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
+const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
+const ICON_MAP_PIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>'
+const ICON_CALENDAR = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z"/></svg>'
+const ICON_SPARKLES = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.035-.259a3.375 3.375 0 0 0 2.456-2.455L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"/></svg>'
+const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h.01M3 10h18"/></svg>'
+const ICON_CLIPBOARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m-7 5h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2.5a1.5 1.5 0 0 0-1.5-1.5h-1a1.5 1.5 0 0 0-1.5 1.5H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>'
+const ICON_PENCIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z"/></svg>'
+const ICON_LINK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5 21 3M16.5 3H21v4.5M10.5 13.5 3 21M7.5 21H3v-4.5"/></svg>'
+const ICON_GLOBE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3.6 9h16.8M3.6 15h16.8M12 3a14.5 14.5 0 0 1 0 18m0-18a14.5 14.5 0 0 0 0 18"/></svg>'
+const ICON_CARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 6.75h19.5A1.5 1.5 0 0 1 23.25 8.25v9a1.5 1.5 0 0 1-1.5 1.5H2.25a1.5 1.5 0 0 1-1.5-1.5v-9a1.5 1.5 0 0 1 1.5-1.5ZM6 15.75h3"/></svg>'
+const ICON_CHAT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>'
+const ICON_RECEIPT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25 12 12l3 2.25M9 8.25h6M6 20.25v-16.5A.75.75 0 0 1 6.75 3h10.5a.75.75 0 0 1 .75.75v16.5l-3-1.5-2.25 1.5-2.25-1.5-2.25 1.5-3-1.5Z"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -838,13 +856,13 @@ const saving = ref(false)
 const loading = ref(true)
 
 const tabs = [
-  { value: 'hotel' as string, label: 'Hotel', icon: '🏨' },
-  { value: 'location' as string, label: 'Ubicación', icon: '📍' },
-  { value: 'amenities' as string, label: 'Amenities', icon: '✨' },
-  { value: 'rates' as string, label: 'Tarifas', icon: '💰' },
-  { value: 'conditions' as string, label: 'Condiciones', icon: '📋' },
-  { value: 'description' as string, label: 'Descripción', icon: '📝' },
-  { value: 'integrations' as string, label: 'Integraciones', icon: '🔗' },
+  { value: 'hotel' as string, label: 'Hotel', icon: ICON_BUILDING },
+  { value: 'location' as string, label: 'Ubicación', icon: ICON_MAP_PIN },
+  { value: 'amenities' as string, label: 'Amenities', icon: ICON_SPARKLES },
+  { value: 'rates' as string, label: 'Tarifas', icon: ICON_WALLET },
+  { value: 'conditions' as string, label: 'Condiciones', icon: ICON_CLIPBOARD },
+  { value: 'description' as string, label: 'Descripción', icon: ICON_PENCIL },
+  { value: 'integrations' as string, label: 'Integraciones', icon: ICON_LINK },
 ]
 
 type HotelForm = Partial<HotelFull> & { cancellationType?: string; freeCancellation?: boolean }
@@ -1183,7 +1201,7 @@ async function copyRatesNextYear() {
   copying.value = true
   try {
     const r = await HotelService.copyRatesNextYear()
-    toast.success(`✅ ${r.copied} tarifas copiadas al próximo año`)
+    toast.success(`${r.copied} tarifas copiadas al próximo año`)
     // Recargar matriz
     const rt = await HotelService.rates()
     rebuildMatrix(rt.data)

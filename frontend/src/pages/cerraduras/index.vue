@@ -1,12 +1,14 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <div>
         <h2 class="text-xl font-black text-navy">Cerraduras TTLock</h2>
-        <p class="text-xs text-text-muted mt-0.5">Gestión de cerraduras electrónicas y códigos de acceso</p>
+        <p class="text-sm text-text-muted mt-0.5">Gestión de cerraduras electrónicas y códigos de acceso</p>
       </div>
       <div class="flex gap-2">
-        <button @click="syncLocks" :disabled="syncing" class="px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 cursor-pointer disabled:opacity-50">{{ syncing ? 'Sincronizando...' : '🔄 Sincronizar' }}</button>
+        <button @click="syncLocks" :disabled="syncing" class="flex items-center gap-1.5 px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 cursor-pointer disabled:opacity-50">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_REFRESH"></span>{{ syncing ? 'Sincronizando...' : 'Sincronizar' }}
+        </button>
       </div>
     </div>
 
@@ -24,8 +26,12 @@
         <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Región</label><select v-model="ttlockConfig.region" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer"><option value="eu">Europa (eu)</option><option value="us">EE.UU. (us)</option><option value="cn">China (cn)</option></select></div>
         <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Account ID / Email</label><input v-model="ttlockConfig.accountId" type="text" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
         <div class="flex items-end gap-2">
-          <button @click="saveTtlockConfig" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy/80">💾 Guardar Config</button>
-          <button @click="connectTtlock" class="px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-teal/80">🔗 Conectar</button>
+          <button @click="saveTtlockConfig" class="flex items-center gap-1.5 px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy/80">
+            <span class="w-4 h-4 shrink-0" v-html="ICON_SAVE"></span>Guardar Config
+          </button>
+          <button @click="connectTtlock" class="flex items-center gap-1.5 px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-teal/80">
+            <span class="w-4 h-4 shrink-0" v-html="ICON_LINK"></span>Conectar
+          </button>
         </div>
       </div>
       <p class="text-[10px] text-text-muted mt-3">Registrate en <a href="https://open.ttlock.com" target="_blank" class="text-cyan underline">open.ttlock.com</a> → Crea una App OAuth → Copia Client ID y Secret aquí</p>
@@ -121,6 +127,10 @@ import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { TTLockService } from '@/services/TTLock.service'
+
+const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
+const ICON_SAVE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 4.5H6.75a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25V7.5L17.25 4.5Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.5v-6h-6v6M9 4.5v3h6v-3"/></svg>'
+const ICON_LINK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5 21 3M16.5 3H21v4.5M10.5 13.5 3 21M7.5 21H3v-4.5"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()

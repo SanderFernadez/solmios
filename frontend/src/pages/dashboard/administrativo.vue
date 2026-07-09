@@ -2,76 +2,64 @@
   <div class="page-dashboard-administrativo space-y-6">
     <!-- KPIs -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
-      <div v-for="kpi in kpis" :key="kpi.key" class="card p-6">
-        <div class="flex items-start gap-3.5 mb-5">
+      <div
+        v-for="kpi in kpis"
+        :key="kpi.key"
+        class="card p-6"
+        :class="kpi.solid ? 'text-white' : ''"
+        :style="kpi.style"
+      >
+        <div class="flex items-start gap-3.5 mb-4">
           <div
             class="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-            :style="{ background: kpi.bg, color: kpi.accent }"
+            :style="{ background: kpi.solid ? 'rgba(255,255,255,0.25)' : `${kpi.accentColor}1A`, color: kpi.solid ? '#FFFFFF' : kpi.accentColor }"
           >
             <svg v-if="kpi.icon === 'bed'" viewBox="0 0 24 24" class="w-7 h-7" fill="none">
               <rect x="2" y="11" width="20" height="7" rx="1.5" fill="currentColor" />
-              <rect x="2" y="7" width="6" height="5" rx="1" fill="currentColor" opacity="0.55" />
+              <rect x="2" y="7" width="6" height="5" rx="1" fill="currentColor" opacity="0.65" />
               <rect x="2" y="17" width="20" height="2" rx="1" fill="currentColor" />
             </svg>
             <svg v-else-if="kpi.icon === 'calendar'" viewBox="0 0 24 24" class="w-7 h-7" fill="none">
-              <rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor" opacity="0.55" />
+              <rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor" opacity="0.65" />
               <rect x="3" y="5" width="18" height="5" rx="3" fill="currentColor" />
-              <path d="M8 14.5 10.5 17 16 11.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              <path d="M8 14.5 10.5 17 16 11.5" stroke="#0D2B4E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
             </svg>
             <svg v-else-if="kpi.icon === 'user-check'" viewBox="0 0 24 24" class="w-7 h-7" fill="none">
               <circle cx="9.5" cy="8" r="3.7" fill="currentColor" />
-              <path d="M4 19.5c0-3.3 2.5-6 5.5-6 1.4 0 2.7.55 3.6 1.4" fill="currentColor" opacity="0.55" />
+              <path d="M4 19.5c0-3.3 2.5-6 5.5-6 1.4 0 2.7.55 3.6 1.4" fill="currentColor" opacity="0.65" />
               <circle cx="17.5" cy="16.5" r="4.3" fill="currentColor" />
-              <path d="M15.6 16.5 17 17.9l2.3-2.7" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              <path d="M15.6 16.5 17 17.9l2.3-2.7" stroke="#0D2B4E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
             </svg>
             <svg v-else viewBox="0 0 24 24" class="w-7 h-7" fill="none">
-              <rect x="2.5" y="7" width="19" height="12" rx="3" fill="currentColor" opacity="0.55" />
+              <rect x="2.5" y="7" width="19" height="12" rx="3" fill="currentColor" opacity="0.65" />
               <rect x="2.5" y="7" width="19" height="4" rx="2" fill="currentColor" />
-              <circle cx="17" cy="14" r="2" fill="white" />
+              <circle cx="17" cy="14" r="2" fill="#0D2B4E" />
             </svg>
           </div>
-          <div class="flex-1 pt-0.5 min-w-0">
-            <div class="text-[13px] text-text-secondary font-medium mb-1.5 truncate">{{ kpi.label }}</div>
-            <div class="text-[28px] leading-none font-extrabold text-navy">{{ kpi.value }}</div>
+          <div class="flex-1 min-w-0 pt-0.5">
+            <div
+              class="text-[11px] font-bold tracking-wide uppercase truncate mb-1.5"
+              :class="kpi.solid ? 'text-white/80' : 'text-text-muted'"
+            >
+              {{ kpi.label }}
+            </div>
+            <div class="text-3xl font-extrabold leading-none" :class="kpi.solid ? 'text-white' : 'text-navy'">
+              {{ kpi.value }}<span v-if="kpi.total" class="text-base font-semibold ml-1" :class="kpi.solid ? 'text-white/70' : 'text-text-muted'">/ {{ kpi.total }}</span>
+            </div>
           </div>
         </div>
-
-        <template v-if="kpi.footer === 'progress'">
-          <div class="flex items-center justify-between text-[13px] mb-2">
-            <span class="text-text-muted">de {{ kpi.total }}</span>
-            <span class="font-bold" :style="{ color: kpi.accent }">{{ kpi.pct }}%</span>
-          </div>
-          <div class="h-1.5 rounded-full bg-surface-dark overflow-hidden">
-            <div class="h-full rounded-full transition-all" :style="{ width: kpi.pct + '%', background: kpi.accent }"></div>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="flex items-center justify-between gap-3">
-            <div class="text-[13px] whitespace-nowrap">
-              <span class="font-bold" :class="kpi.trendDir === 'down' ? 'text-coral' : 'text-success'">
-                {{ kpi.trendDir === 'down' ? '' : '+' }}{{ kpi.trendPct }}%
-              </span>
-              <span class="text-text-muted"> vs ayer</span>
-            </div>
-            <svg viewBox="0 0 100 32" class="w-20 h-8" preserveAspectRatio="none">
-              <polyline
-                :points="kpi.sparkline"
-                fill="none"
-                :stroke="kpi.accent"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </div>
-        </template>
+        <div class="h-1.5 rounded-full overflow-hidden" :style="{ background: kpi.solid ? 'rgba(255,255,255,0.25)' : `${kpi.accentColor}22` }">
+          <div
+            class="h-full rounded-full transition-all"
+            :style="{ width: kpi.pct + '%', background: kpi.solid ? '#FFFFFF' : kpi.accentColor }"
+          ></div>
+        </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5">
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-5">
     <!-- Calendario de Reservas -->
-    <div class="card p-6 min-w-0">
+    <div class="card p-6 min-w-0 xl:col-span-3">
       <h2 class="font-extrabold text-navy text-base mb-4">Calendario de Reservas</h2>
 
       <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
@@ -188,8 +176,8 @@
     </div>
 
     <!-- Right column: Actividad Reciente + Canales de Reservas -->
-    <div class="flex flex-col gap-5">
-      <div class="card p-6 shrink-0">
+    <div class="flex flex-col gap-5 xl:col-span-1">
+      <div class="card p-6 shrink-0" :style="sideCardStyleGreen">
         <div class="flex items-center justify-between mb-4">
           <h2 class="font-extrabold text-navy text-base">Actividad Reciente</h2>
           <router-link to="/panel/reservations" class="text-xs font-semibold text-blue hover:underline">Ver todas</router-link>
@@ -218,7 +206,7 @@
         </div>
       </div>
 
-      <div class="card p-6 flex-1 flex flex-col">
+      <div class="card p-6 flex-1 flex flex-col" :style="sideCardStyleBlue">
         <h2 class="font-extrabold text-navy text-base mb-5 shrink-0">Canales de Reservas</h2>
         <div v-if="channelStats.length" class="flex-1 flex items-center gap-5">
           <div class="relative w-28 h-28 shrink-0">
@@ -351,6 +339,38 @@ const reservasAyer = computed(() => stayingOn(yesterdayKey))
 const checkinsAyer = computed(() => arrivingOn(yesterdayKey))
 const ingresosAyer = computed(() => dashboard.stats.trends?.revenue.value || 0)
 
+function ratioPct(current: number, base: number) {
+  if (base > 0) return Math.min(100, Math.round((current / base) * 100))
+  return current > 0 ? 100 : 0
+}
+
+function outlineStyle(accentColor: string, shadowRgb: string) {
+  return {
+    borderTop: `1px solid ${accentColor}`,
+    borderBottom: `1px solid ${accentColor}`,
+    borderLeft: `1px solid ${accentColor}`,
+    borderRight: `6px solid ${accentColor}`,
+    boxShadow: `0 28px 48px -14px rgba(${shadowRgb}, 0.5), 0 14px 28px -10px rgba(15, 23, 42, 0.22)`,
+  }
+}
+
+function solidStyle(colorFrom: string, colorTo: string, shadowRgb: string) {
+  return {
+    background: `linear-gradient(135deg, ${colorFrom}, ${colorTo})`,
+    boxShadow: `0 30px 55px -14px rgba(${shadowRgb}, 0.6), 0 14px 28px -10px rgba(${shadowRgb}, 0.4)`,
+  }
+}
+
+const sideCardStyleGreen = {
+  border: '2.5px solid rgba(5, 150, 105, 0.55)',
+  boxShadow: '0 24px 45px -16px rgba(5, 150, 105, 0.45), 0 10px 20px -10px rgba(5, 150, 105, 0.28)',
+}
+
+const sideCardStyleBlue = {
+  border: '2.5px solid rgba(37, 99, 235, 0.55)',
+  boxShadow: '0 24px 45px -16px rgba(37, 99, 235, 0.45), 0 10px 20px -10px rgba(37, 99, 235, 0.28)',
+}
+
 const kpis = computed(() => {
   const s = dashboard.stats
   const checkinsHoy = s.arrivalsToday
@@ -359,50 +379,47 @@ const kpis = computed(() => {
   return [
     {
       key: 'ocupacion',
-      label: 'Habitaciones Ocupadas',
+      label: 'Ocupación',
       value: String(s.occupied),
-      bg: '#DBEAFE',
-      accent: '#3B82F6',
-      icon: 'bed',
-      footer: 'progress' as const,
       total: s.totalRooms,
       pct: s.occupancy,
+      accentColor: '#2563EB',
+      solid: false,
+      icon: 'bed',
+      style: outlineStyle('#2563EB', '37, 99, 235'),
     },
     {
       key: 'reservas',
       label: 'Reservas Hoy',
       value: String(reservasHoy.value),
-      bg: '#DCFCE7',
-      accent: '#22C55E',
+      total: 0,
+      pct: ratioPct(reservasHoy.value, reservasAyer.value),
+      accentColor: '#7C3AED',
+      solid: false,
       icon: 'calendar',
-      footer: 'trend' as const,
-      trendPct: Math.abs(pctChange(reservasHoy.value, reservasAyer.value)),
-      trendDir: reservasHoy.value >= reservasAyer.value ? 'up' : 'down',
-      sparkline: sparklinePoints(last7Keys.map(stayingOn)),
+      style: outlineStyle('#7C3AED', '124, 58, 237'),
     },
     {
       key: 'checkins',
-      label: 'Check-ins Hoy',
+      label: 'Check-ins',
       value: String(checkinsHoy),
-      bg: '#FEF3C7',
-      accent: '#F59E0B',
+      total: 0,
+      pct: ratioPct(checkinsHoy, checkinsAyer.value),
+      accentColor: '#06B6D4',
+      solid: false,
       icon: 'user-check',
-      footer: 'trend' as const,
-      trendPct: Math.abs(pctChange(checkinsHoy, checkinsAyer.value)),
-      trendDir: checkinsHoy >= checkinsAyer.value ? 'up' : 'down',
-      sparkline: sparklinePoints(last7Keys.map(arrivingOn)),
+      style: outlineStyle('#06B6D4', '6, 182, 212'),
     },
     {
       key: 'ingresos',
       label: 'Ingresos Hoy',
       value: `$${ingresosHoy.toLocaleString()}`,
-      bg: '#EDE9FE',
-      accent: '#8B5CF6',
+      total: 0,
+      pct: ratioPct(ingresosHoy, ingresosAyer.value),
+      accentColor: '#10B981',
+      solid: true,
       icon: 'wallet',
-      footer: 'trend' as const,
-      trendPct: Math.abs(pctChange(ingresosHoy, ingresosAyer.value)),
-      trendDir: ingresosHoy >= ingresosAyer.value ? 'up' : 'down',
-      sparkline: sparklinePoints(last7Keys.map(revenueOn)),
+      style: solidStyle('#34D399', '#059669', '5, 150, 105'),
     },
   ]
 })

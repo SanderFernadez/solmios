@@ -1,37 +1,45 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <div>
         <h2 class="text-xl font-black text-navy">Historial de Envíos</h2>
-        <p class="text-xs text-text-muted mt-0.5">Trazabilidad de emails, WhatsApp y SMS enviados a huéspedes</p>
+        <p class="text-sm text-text-muted mt-0.5">Trazabilidad de emails, WhatsApp y SMS enviados a huéspedes</p>
       </div>
       <div class="flex gap-2">
-        <button @click="load" :disabled="loading" class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
-          {{ loading ? 'Cargando...' : '↻ Refrescar' }}
+        <button @click="load" :disabled="loading" class="flex items-center gap-1.5 px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_REFRESH"></span>{{ loading ? 'Cargando...' : 'Refrescar' }}
         </button>
-        <button @click="exportCsv" :disabled="logs.length === 0" class="px-4 py-2 bg-cyan text-navy font-bold text-sm rounded-xl hover:shadow-lg cursor-pointer disabled:opacity-50">
-          ⬇ Exportar CSV
+        <button @click="exportCsv" :disabled="logs.length === 0" class="flex items-center gap-1.5 px-4 py-2 bg-cyan text-navy font-bold text-sm rounded-xl hover:shadow-lg cursor-pointer disabled:opacity-50">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>Exportar CSV
         </button>
       </div>
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-navy">{{ stats.total }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Total</div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10"><span class="w-5 h-5 text-navy" v-html="ICON_MAIL"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-navy truncate">{{ stats.total }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total</div></div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-teal">{{ stats.sent }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Enviados ✅</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10"><span class="w-5 h-5 text-teal" v-html="ICON_CHECK_CIRCLE"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-teal truncate">{{ stats.sent }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Enviados</div></div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-gold">{{ stats.pending }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Pendientes ⏳</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10"><span class="w-5 h-5 text-gold" v-html="ICON_CLOCK"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-gold truncate">{{ stats.pending }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Pendientes</div></div>
+        </div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-coral">{{ stats.failed }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Fallidos ❌</div>
+      <div class="card p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-coral/10"><span class="w-5 h-5 text-coral" v-html="ICON_XCIRCLE"></span></div>
+          <div class="min-w-0"><div class="text-xl font-black leading-none text-coral truncate">{{ stats.failed }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Fallidos</div></div>
+        </div>
       </div>
     </div>
 
@@ -40,16 +48,16 @@
       <input v-model="search" type="text" placeholder="Buscar destinatario..." class="px-4 py-2 rounded-xl border border-border text-sm w-56 focus:outline-none focus:border-navy" />
       <select v-model="filterType" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer">
         <option value="">Todos los canales</option>
-        <option value="email">📧 Email</option>
-        <option value="whatsapp">💬 WhatsApp</option>
-        <option value="sms">📱 SMS</option>
+        <option value="email">Email</option>
+        <option value="whatsapp">WhatsApp</option>
+        <option value="sms">SMS</option>
       </select>
       <select v-model="filterStatus" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer">
         <option value="">Todos los estados</option>
-        <option value="sent">✅ Enviados</option>
-        <option value="pending">⏳ Pendientes</option>
-        <option value="failed">❌ Fallidos</option>
-        <option value="queued">📬 En cola</option>
+        <option value="sent">Enviados</option>
+        <option value="pending">Pendientes</option>
+        <option value="failed">Fallidos</option>
+        <option value="queued">En cola</option>
       </select>
       <span class="text-xs text-text-muted ml-auto">{{ filtered.length }} resultados</span>
     </div>
@@ -57,7 +65,7 @@
     <!-- Lista -->
     <div v-if="loading && logs.length === 0" class="card p-12 text-center text-sm text-text-muted">Cargando...</div>
     <div v-else-if="filtered.length === 0" class="card p-12 text-center">
-      <div class="text-4xl mb-3 opacity-50">📭</div>
+      <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_MAIL"></span>
       <h3 class="font-bold text-navy mb-1">Sin envíos registrados</h3>
       <p class="text-xs text-text-muted">Cuando se disparen auto-messages o envíos manuales, aparecerán aquí.</p>
     </div>
@@ -81,8 +89,7 @@
               <div class="text-[10px] text-text-muted">{{ formatTime(log.sentAt || log.createdAt) }}</div>
             </td>
             <td class="p-3">
-              <span class="text-sm">{{ msgTypeMeta(log.messageType).icon }}</span>
-              <span class="text-[10px] text-text-muted ml-1">{{ msgTypeMeta(log.messageType).label }}</span>
+              <span class="text-xs text-text-secondary font-bold">{{ msgTypeMeta(log.messageType).label }}</span>
             </td>
             <td class="p-3">
               <div class="text-xs font-bold text-navy">{{ log.guestName || '—' }}</div>
@@ -94,7 +101,7 @@
             </td>
             <td class="p-3">
               <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="msgStatusMeta(log.status).class">
-                {{ msgStatusMeta(log.status).icon }} {{ msgStatusMeta(log.status).label }}
+                {{ msgStatusMeta(log.status).label }}
               </span>
             </td>
             <td class="p-3 max-w-xs">
@@ -114,11 +121,13 @@
             <div>
               <h3 class="text-lg font-black text-navy">Detalle de envío</h3>
               <p class="text-xs text-text-muted">
-                {{ msgTypeMeta(detailModal.log?.messageType || '').icon }} {{ msgTypeMeta(detailModal.log?.messageType || '').label }} ·
+                {{ msgTypeMeta(detailModal.log?.messageType || '').label }} ·
                 <span :class="msgStatusMeta(detailModal.log?.status || '').class">{{ msgStatusMeta(detailModal.log?.status || '').label }}</span>
               </p>
             </div>
-            <button @click="detailModal.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center cursor-pointer">✕</button>
+            <button @click="detailModal.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-muted hover:text-navy cursor-pointer">
+              <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
+            </button>
           </div>
           <div v-if="detailModal.log" class="space-y-3 text-xs">
             <div class="grid grid-cols-2 gap-3 bg-surface rounded-lg p-3">
@@ -166,6 +175,14 @@ import { MessageLogsService, msgStatusMeta, msgTypeMeta } from '@/services/Messa
 import type { MessageLog } from '@/services/MessageLogs.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+
+const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
+const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M7.5 12l4.5 4.5m0 0 4.5-4.5m-4.5 4.5V3"/></svg>'
+const ICON_MAIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0a2.25 2.25 0 0 0-2.25-2.25H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>'
+const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 2.25 2.25 4.5-4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_XCIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
