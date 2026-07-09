@@ -38,16 +38,22 @@ export type Permission = string
 // Default permissions for system roles
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
   // Hotel Admin - full access to everything
+  // El dueño del hotel administra TODO su hotel. Le faltaban los `:delete` de billing/housekeeping/
+  // maintenance y los `:create/:edit/:delete` de dashboard (anuncios, notificaciones), reports
+  // (opiniones, tickets, night-audit) y settings (dispositivos, api keys, auto-mensajes, bloqueos de
+  // tarifa): 32 endpoints eran inalcanzables para él, incluido borrar una factura o un gasto.
+  //
+  // Alta/baja de HOTELES no está acá: es operación de plataforma (`hotels:*`, solo super_admin).
   hotel_admin: [
-    'dashboard:view',
+    'dashboard:view', 'dashboard:create', 'dashboard:edit', 'dashboard:delete',
     'reservations:view', 'reservations:create', 'reservations:edit', 'reservations:delete', 'reservations:checkin', 'reservations:checkout',
     'guests:view', 'guests:create', 'guests:edit', 'guests:delete',
     'rooms:view', 'rooms:create', 'rooms:edit', 'rooms:delete',
-    'housekeeping:view', 'housekeeping:create', 'housekeeping:edit',
-    'maintenance:view', 'maintenance:create', 'maintenance:edit',
-    'billing:view', 'billing:create', 'billing:edit',
-    'reports:view', 'reports:export',
-    'settings:view', 'settings:edit',
+    'housekeeping:view', 'housekeeping:create', 'housekeeping:edit', 'housekeeping:delete',
+    'maintenance:view', 'maintenance:create', 'maintenance:edit', 'maintenance:delete',
+    'billing:view', 'billing:create', 'billing:edit', 'billing:delete',
+    'reports:view', 'reports:export', 'reports:create', 'reports:edit', 'reports:delete',
+    'settings:view', 'settings:edit', 'settings:create', 'settings:delete',
     'users:view', 'users:create', 'users:edit', 'users:delete',
     'feedback:view',
     'channel-manager:view', 'channel-manager:edit',
@@ -98,7 +104,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
 export function hasPermission(userPermissions: Permission[], module: string, action: string): boolean {
   if (!userPermissions || !Array.isArray(userPermissions)) return false
   const required = `${module}:${action}`
-  return userPermissions.includes(required) || userPermissions.includes(`${module}:*`)
+  // `*:*` lo asigna loadPermissions a super_admin. require-permission ya lo deja pasar antes de
+  // llegar acá, pero reconocerlo evita que el bypass sea el único punto que sostiene el acceso total.
+  return userPermissions.includes('*:*') ||
+    userPermissions.includes(required) ||
+    userPermissions.includes(`${module}:*`)
 }
 
 /**
@@ -118,9 +128,17 @@ export function hasModuleAccess(userPermissions: Permission[], module: string): 
  * @param customPermissions - Custom permissions from the role record (overrides defaults)
  * @returns Array of permissions
  */
+/**
+ * Un permiso válido es `modulo:accion` (o `modulo:*`, o `*:*`). La tabla `roles` de instalaciones
+ * viejas guarda otro formato (`billing.read`, con punto). `hasPermission` solo entiende dos puntos,
+ * así que devolver esos permisos tal cual dejaría al usuario SIN ACCESO A NADA — y en silencio.
+ */
+const isValidPermission = (p: unknown): p is Permission => typeof p === 'string' && p.includes(':')
+
 export function getRolePermissions(roleName: string, customPermissions?: Permission[]): Permission[] {
-  if (customPermissions && customPermissions.length > 0) {
-    return customPermissions
-  }
+  const custom = Array.isArray(customPermissions) ? customPermissions.filter(isValidPermission) : []
+  // Solo pisamos los defaults si la DB trae permisos que el sistema sabe evaluar. Una fila con el
+  // formato viejo (o corrupta) cae al mapa estático en vez de bloquear al usuario.
+  if (custom.length > 0) return custom
   return DEFAULT_ROLE_PERMISSIONS[roleName] || []
 }

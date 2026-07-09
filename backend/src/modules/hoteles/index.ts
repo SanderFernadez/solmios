@@ -50,9 +50,12 @@ export function HotelesModule() {
 
       router.get('/api/hoteles', guard('settings', 'view'), (req) => controller.index(req))
       router.get('/api/hoteles/:id', guard('settings', 'view'), (req) => controller.show(req))
-      router.post('/api/hoteles', guard('settings', 'create'), (req) => controller.store(req))
+      // Alta y baja de hoteles son operaciones de PLATAFORMA, no del hotelero. `hotels:*` no lo tiene
+      // ningún rol de hotel: solo super_admin, que bypassa el guard. Antes usaban `settings:create` /
+      // `settings:delete`, los mismos permisos que necesita un hotel_admin para sus dispositivos.
+      router.post('/api/hoteles', guard('hotels', 'create'), (req) => controller.store(req))
       router.put('/api/hoteles/:id', guard('settings', 'edit'), (req) => controller.update(req))
-      router.delete('/api/hoteles/:id', guard('settings', 'delete'), (req) => controller.destroy(req))
+      router.delete('/api/hoteles/:id', guard('hotels', 'delete'), (req) => controller.destroy(req))
 
       // Settings
       router.get('/api/settings', guard('settings', 'view'), (req) => controller.getSettings(req))
