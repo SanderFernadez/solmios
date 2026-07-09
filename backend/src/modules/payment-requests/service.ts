@@ -2,10 +2,12 @@
 // CRUD de PaymentRequests + integración Stripe (status, checkout, webhook).
 // hotelId forzado del JWT en create; assertOwnership en update/delete (P0 IDOR CR-25/26).
 //
-// DEUDA F10 (documentada): handleWebhook aplica el pago a Reservations + FolioCharges
+// El asiento del dinero ya sale por el puerto `StripePaymentPort` → módulo `payments`
+// (conector `payment-requests-payments`), así el cobro entra a la conciliación bancaria.
+//
+// DEUDA F10 (parcial): handleWebhook todavía aplica el pago a Reservations + FolioCharges
 // accediendo a esas tablas vía repos cross-table. El patrón canónico sería emitir
-// onPaymentRequestPaid y que un conector aplique el pago. Se preserva el comportamiento
-// original (acceso directo) para no cambiar el flujo en esta fase.
+// onPaymentRequestPaid y que un conector aplique el pago sobre los módulos dueños.
 
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { NotFoundError } from 'arckode-framework'
@@ -16,12 +18,14 @@ import type {
 } from './types'
 import type { PaymentRequestsSockets } from './sockets'
 import { processStripeWebhook } from './usecases/stripe-webhook'
+import type { StripePaymentPort } from './usecases/payment-port'
 
 /** Puerto por defecto para el fallback de URLs de checkout en dev (sin header Origin). */
 const DEFAULT_PORT = 3000
 
 export class PaymentRequestsService {
   private sockets: PaymentRequestsSockets = {}
+  private paymentPort: StripePaymentPort | null = null
 
   constructor(
     private readonly repo: RepositoryAdapter<PaymentRequestDTO>,
@@ -40,6 +44,11 @@ export class PaymentRequestsService {
       const prev = cur[key]
       cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
     }
+  }
+
+  /** Inyectado por el conector `payment-requests-payments`. Sin él, el cobro no se asienta. */
+  setPaymentDeps(deps: { paymentPort: StripePaymentPort }): void {
+    this.paymentPort = deps.paymentPort
   }
 
   /** super_admin puede especificar hotelId; resto usa el del JWT. */
@@ -152,7 +161,7 @@ export class PaymentRequestsService {
       {
         repo: this.repo, reservationRepo: this.reservationRepo,
         folioRepo: this.folioRepo, folioChargeRepo: this.folioChargeRepo,
-        logger: this.logger, sockets: this.sockets,
+        logger: this.logger, sockets: this.sockets, paymentPort: this.paymentPort,
       },
       rawBody, signature,
     )

@@ -20,6 +20,7 @@ export type {
 } from './types'
 export type { PaymentRequestsSockets } from './sockets'
 export { CreatePaymentRequestSchema, UpdatePaymentRequestSchema, PaymentRequestsValidator } from './validators/schema'
+export type { StripePaymentPort, RecordStripePaymentInput, RecordedPayment } from './usecases/payment-port'
 
 export function PaymentRequestsModule() {
   return createModule({
@@ -38,6 +39,7 @@ export function PaymentRequestsModule() {
       rules: [
         'hotelId forzado del JWT en create (P0 IDOR)',
         'assertOwnership en update/delete (P0 IDOR CR-25/26)',
+        'handleWebhook asienta el cobro en `payments` vía conector payment-requests-payments',
         'handleWebhook aplica pago a Reservations/FolioCharges (DEUDA F10: mover a conector reactivo)',
       ],
     },

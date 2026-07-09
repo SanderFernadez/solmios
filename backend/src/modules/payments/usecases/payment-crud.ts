@@ -37,13 +37,23 @@ export class PaymentCrudUseCase {
       currency: dto.currency ?? 'USD',
       description: dto.description ?? '',
       reference: dto.reference ?? '',
-      stripePaymentId: '',
-      stripeSessionId: '',
+      stripePaymentId: dto.stripePaymentId ?? '',
+      stripeSessionId: dto.stripeSessionId ?? '',
       metadata: dto.metadata ?? {},
       processedAt: status === 'completed' ? new Date().toISOString() : undefined,
     } as any)
 
     return payment
+  }
+
+  /**
+   * Busca el asiento de un cobro de Stripe. Stripe reintenta el webhook ante cualquier error, así
+   * que el cobro debe poder reconocerse ya registrado sin depender del estado del PaymentRequest.
+   */
+  async findByStripeSession(hotelId: string, stripeSessionId: string): Promise<PaymentDTO | null> {
+    if (!hotelId || !stripeSessionId) return null
+    const rows = await this.paymentRepo.findMany({ hotelId, stripeSessionId })
+    return rows[0] ?? null
   }
 
   async getById(id: string, userId?: string, userRole?: string): Promise<PaymentDTO> {

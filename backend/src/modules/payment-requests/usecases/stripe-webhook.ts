@@ -7,6 +7,7 @@ import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import { StripeService } from '../../../services/stripe-service'
 import type { PaymentRequestDTO, WebhookResult } from '../types'
 import type { PaymentRequestsSockets } from '../sockets'
+import { recordStripePayment, type StripePaymentPort } from './payment-port'
 
 export interface WebhookDeps {
   repo: RepositoryAdapter<PaymentRequestDTO>
@@ -15,11 +16,12 @@ export interface WebhookDeps {
   folioChargeRepo: RepositoryAdapter<any>
   logger: Logger
   sockets: PaymentRequestsSockets
+  paymentPort: StripePaymentPort | null
 }
 
 /** Procesa el webhook Stripe: marca el PaymentRequest paid + aplica el pago a reserva/folio. */
 export async function processStripeWebhook(deps: WebhookDeps, rawBody: string, signature: string): Promise<WebhookResult> {
-  const { repo, reservationRepo, folioRepo, folioChargeRepo, logger, sockets } = deps
+  const { repo, reservationRepo, folioRepo, folioChargeRepo, logger, sockets, paymentPort } = deps
 
   if (!StripeService.isConfigured()) return { status: 503, error: 'Stripe no configurado' } as any
   if (!signature) return { status: 400, error: 'Falta stripe-signature' } as any
@@ -40,13 +42,35 @@ export async function processStripeWebhook(deps: WebhookDeps, rawBody: string, s
         if (paymentRequestId) {
           const pr = await repo.findById(paymentRequestId)
           if (pr && pr.status !== 'paid') {
+            const amountPaid = amountOf(session, pr)
+            const hotelId = session.metadata?.hotelId || pr.hotelId
+            const openFolio = await findOpenFolio(folioRepo, session.metadata?.reservationId || pr.reservationId)
+
+            // El dinero se asienta PRIMERO. Si falla, el PaymentRequest queda `pending` y el
+            // reintento de Stripe vuelve a correr todo desde cero, sin dejar plata sin asentar.
+            const { alreadyRecorded } = await recordStripePayment(paymentPort, logger, {
+              hotelId,
+              amount: amountPaid,
+              currency: (pr.currency || 'USD').toUpperCase(),
+              stripeSessionId: session.id,
+              stripePaymentId: session.payment_intent || '',
+              folioId: openFolio?.id,
+              description: `Pago Stripe · Reserva ${String(pr.reservationId || '').slice(0, 8)}`,
+              reference: session.payment_intent || session.id,
+            })
+
+            // El bridge no es idempotente (suma al `deposit` de la reserva). Si el cobro ya estaba
+            // asentado, este webhook es un reintento y la reserva/folio ya se actualizaron.
+            if (!alreadyRecorded) {
+              await applyPaymentBridge(reservationRepo, folioChargeRepo, pr, session, openFolio)
+            }
+
             await repo.update(paymentRequestId, {
               status: 'paid', stripeSessionId: session.id, paidAt: new Date().toISOString(),
             } as Partial<PaymentRequestDTO>)
-            await applyPaymentBridge(reservationRepo, folioRepo, folioChargeRepo, pr, session)
             const updated = await repo.findById(paymentRequestId) as PaymentRequestDTO
             await sockets.onPaymentRequestPaid?.(updated)
-            logger.info('Stripe payment completed + applied', { paymentRequestId, amountPaid: Math.abs(Number(session.amount_total ?? pr.amount ?? 0)) / 100 })
+            logger.info('Stripe payment completed + applied', { paymentRequestId, amountPaid })
           }
         }
         break
@@ -70,15 +94,26 @@ export async function processStripeWebhook(deps: WebhookDeps, rawBody: string, s
   }
 }
 
+/** Stripe cotiza en la unidad mínima de la moneda (centavos). */
+function amountOf(session: any, pr: PaymentRequestDTO): number {
+  return Math.abs(Number(session.amount_total ?? pr.amount ?? 0)) / 100
+}
+
+async function findOpenFolio(folioRepo: RepositoryAdapter<any>, reservationId?: string): Promise<any | null> {
+  if (!reservationId) return null
+  const folios = await folioRepo.findMany({ reservationId })
+  return folios.find((f: any) => f.status === 'open') ?? null
+}
+
 /** Bridge: aplicar el pago a la reserva (deposit/pendingAmount/status) + folio (cargo payment). */
 async function applyPaymentBridge(
   reservationRepo: RepositoryAdapter<any>,
-  folioRepo: RepositoryAdapter<any>,
   folioChargeRepo: RepositoryAdapter<any>,
   pr: PaymentRequestDTO,
   session: any,
+  openFolio: any | null,
 ): Promise<void> {
-  const amountPaid = Math.abs(Number(session.amount_total ?? pr.amount ?? 0)) / 100
+  const amountPaid = amountOf(session, pr)
   const reservationId = session.metadata?.reservationId || pr.reservationId
   const hotelId = session.metadata?.hotelId || pr.hotelId
   if (!reservationId) return
@@ -97,8 +132,6 @@ async function applyPaymentBridge(
     await reservationRepo.update(reservationId, update)
   }
 
-  const folios = await folioRepo.findMany({ reservationId })
-  const openFolio = folios.find((f: any) => f.status === 'open')
   if (openFolio && amountPaid > 0) {
     await folioChargeRepo.create({
       folioId: openFolio.id, hotelId,

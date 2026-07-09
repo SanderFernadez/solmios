@@ -16,6 +16,7 @@ import { PaymentCrudUseCase } from './usecases/payment-crud'
 import { PaymentLinksUseCase } from './usecases/payment-links'
 import { DepositsUseCase } from './usecases/deposits'
 import { ReconciliationUseCase } from './usecases/reconciliation'
+import { refundPayment } from './usecases/refund'
 
 export class PaymentsService {
   private sockets: PaymentsSockets = {}
@@ -96,31 +97,10 @@ export class PaymentsService {
   }
 
   async refundPayment(paymentId: string, amount?: number, user?: { id?: string; role?: string }): Promise<PaymentDTO> {
-    const payment = await this.crud.getById(paymentId, user?.id, user?.role)
-    if (payment.status !== 'completed') throw new ValidationError('Payment not completed')
-    if (payment.method !== 'card') throw new ValidationError('Only card payments can be refunded via Stripe')
-
-    if (!this.stripe.isConfigured()) throw new ValidationError('Stripe not configured')
-
-    const refund = await this.stripe.refund({ paymentId: payment.stripePaymentId, amount })
-
-    const refundPayment = await this.createPayment({
-      hotelId: payment.hotelId,
-      type: 'refund',
-      method: 'card',
-      amount: amount ?? payment.amount,
-      currency: payment.currency,
-      description: `Refund for payment ${paymentId}`,
-      reference: refund.id,
-      folioId: payment.folioId,
-      guestId: payment.guestId,
-    })
-
-    if (!amount || amount >= payment.amount) {
-      await this.crud.updateStatus(paymentId, 'refunded')
-    }
-
-    return refundPayment
+    return refundPayment(
+      { crud: this.crud, stripe: this.stripe, createPayment: (dto) => this.createPayment(dto) },
+      paymentId, amount, user,
+    )
   }
 
   async handleStripeWebhook(payload: Buffer, signature: string): Promise<{ type: string; paymentId?: string }> {
@@ -145,6 +125,11 @@ export class PaymentsService {
 
   async listPayments(query: PaymentsQuery): Promise<PaymentsPaginated> {
     return this.crud.list(query)
+  }
+
+  /** Asiento de un cobro Stripe, si ya existe. Lo usa el conector payment-requests-payments. */
+  async findByStripeSession(hotelId: string, stripeSessionId: string): Promise<PaymentDTO | null> {
+    return this.crud.findByStripeSession(hotelId, stripeSessionId)
   }
 
   // ─── Payment Links ───────────────────────────────────
@@ -189,7 +174,7 @@ export class PaymentsService {
 
   // ─── Reconciliation ──────────────────────────────────
 
-  async reconcile(hotelId: string, bankEntries: ReconciliationEntry[], from?: string, to?: string): Promise<ReconciliationResult> {
+  async reconcile(hotelId: string, bankEntries?: ReconciliationEntry[], from?: string, to?: string): Promise<ReconciliationResult> {
     return this.reconciliation.reconcile(hotelId, bankEntries, from, to)
   }
 }

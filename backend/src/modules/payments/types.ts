@@ -47,6 +47,9 @@ export interface CreatePaymentDTO {
    * y la caja/conciliación no se enteran.
    */
   status?: PaymentStatus
+  /** Identidad del cobro en Stripe. Permite deduplicar los reintentos del webhook. */
+  stripeSessionId?: string
+  stripePaymentId?: string
 }
 
 export interface ChargeCardDTO {
