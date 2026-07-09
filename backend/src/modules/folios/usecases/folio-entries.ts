@@ -8,6 +8,7 @@ import type { RepositoryAdapter, Auth, Logger } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { FolioDTO, FolioChargeDTO, PostChargeDTO, ApplyPaymentDTO, CurrentUser } from '../types'
 import { taxRateFor, applyTax, computeTotals } from './folio-math'
+import { recordFolioPayment, normalizeFolioPaymentMethod, type FolioPaymentPort } from './payment-port'
 
 /** Tolerancia de centavos al comparar un pago contra el saldo (errores de redondeo float). */
 const BALANCE_EPSILON = 0.01
@@ -21,6 +22,7 @@ export interface FolioEntriesDeps {
   userRepo: RepositoryAdapter<any>
   auth: Auth
   logger: Logger
+  paymentPort?: FolioPaymentPort | null
 }
 
 /** Carga el folio, valida ownership y que esté abierto. */
@@ -76,16 +78,31 @@ export async function applyPayment(
     throw new ValidationError(`El pago ($${amount}) excede el saldo pendiente ($${balance})`)
   }
 
+  const method = normalizeFolioPaymentMethod(dto.method)
+
+  // Asiento del dinero PRIMERO: si no se puede registrar en `payments` (caja, conciliación), el
+  // pago entero falla y el folio queda intacto. Bajar el saldo sin asentar la plata es peor.
+  const payment = await recordFolioPayment(deps.paymentPort ?? null, deps.logger, {
+    hotelId: folio.hotelId,
+    folioId,
+    guestId: folio.guestId ?? null,
+    amount,
+    currency: folio.currency ?? 'USD',
+    method,
+    reference: dto.reference,
+    description: `Pago de folio ${folioId.slice(0, 8)}`,
+  })
+
   const charge = await deps.chargeRepo.create({
     folioId, hotelId: folio.hotelId,
     description: `Pago${dto.method ? ` (${dto.method})` : ''}${dto.reference ? ` · Ref ${dto.reference}` : ''}`,
     category: 'payment', kind: 'payment', quantity: 1, amount: -amount, taxes: 0,
-    total: -amount, source: dto.method ?? 'manual', postedAt: now(),
+    total: -amount, source: method, postedAt: now(),
   } as any)
 
   deps.logger.info('Pago aplicado al folio', {
-    folioId, chargeId: charge.id, amount, method: dto.method ?? null,
-    balanceBefore: balance, balanceAfter: balance - amount,
+    folioId, chargeId: charge.id, amount, method,
+    balanceBefore: balance, balanceAfter: balance - amount, paymentId: payment?.id ?? null,
   })
   return { folio, charge: charge as FolioChargeDTO }
 }

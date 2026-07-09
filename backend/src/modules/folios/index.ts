@@ -11,6 +11,8 @@ export type { FolioDTO, FolioChargeDTO, OpenFolioDTO, PostChargeDTO, ApplyPaymen
 export type { FoliosSockets } from './sockets'
 export { FoliosValidator } from './validators/schema'
 export type { FolioInvoicingPort, IssuedInvoice, CloseAndCreateInvoiceResult } from './service'
+export type { FolioPaymentPort, RecordFolioPaymentInput } from './usecases/payment-port'
+export { normalizeFolioPaymentMethod } from './usecases/payment-port'
 
 export function FoliosModule() {
   return createModule({

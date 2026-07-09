@@ -8,6 +8,7 @@ import { closeAndInvoice as closeAndInvoiceUsecase, type CloseAndInvoiceResult }
 import { postNightAuditRoomCharges as postNightAuditUsecase } from './usecases/night-audit'
 import { foliosListCacheKey, invalidateFoliosCaches } from './usecases/cache'
 import { postCharge as postChargeUsecase, applyPayment as applyPaymentUsecase } from './usecases/folio-entries'
+import type { FolioPaymentPort } from './usecases/payment-port'
 import {
   closeAndCreateInvoice as closeAndCreateInvoiceUsecase,
   type FolioInvoicingPort,
@@ -23,6 +24,7 @@ const now = () => new Date().toISOString()
 export class FoliosService {
   private sockets: FoliosSockets = {}
   private invoicingPort: FolioInvoicingPort | null = null
+  private paymentPort: FolioPaymentPort | null = null
   constructor(
     private readonly folioRepo: RepositoryAdapter<FolioDTO>,
     private readonly chargeRepo: RepositoryAdapter<FolioChargeDTO>,
@@ -47,6 +49,11 @@ export class FoliosService {
   /** Conecta la creación de facturas. Lo inyecta el connector `folios-facturas`. */
   setInvoicingDeps(port: FolioInvoicingPort): void {
     this.invoicingPort = port
+  }
+
+  /** Conecta el asiento del dinero en `payments`. Lo inyecta el connector `folios-payments`. */
+  setPaymentDeps(port: FolioPaymentPort): void {
+    this.paymentPort = port
   }
 
   private async hotelOf(user: CurrentUser): Promise<string> {
@@ -113,7 +120,7 @@ export class FoliosService {
   private get entriesDeps() {
     return {
       folioRepo: this.folioRepo, chargeRepo: this.chargeRepo, configRepo: this.configRepo,
-      userRepo: this.deps.user, auth: this.auth, logger: this.logger,
+      userRepo: this.deps.user, auth: this.auth, logger: this.logger, paymentPort: this.paymentPort,
     }
   }
 

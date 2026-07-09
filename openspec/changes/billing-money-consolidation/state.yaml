@@ -1,0 +1,67 @@
+# SDD State: billing-money-consolidation
+
+change_name: billing-money-consolidation
+created: 2026-07-08
+status: in_progress
+current_phase: apply
+parent_changes: []
+
+motivation: |
+  Reproducido en local: un cobro en efectivo desde /panel/billing no entra al arqueo de caja
+  ni a la conciliación bancaria. `facturas.pay()` escribe un comprobante dentro de `invoices`
+  en vez de registrar un pago en `payments`, que es la tabla conectada a caja.
+
+sprints:
+  bm-1-invoice-payments:
+    title: El cobro de una factura registra un pago real
+    status: pending
+    tasks_total: 6
+    tasks_done: 0
+    priority: critical
+
+  bm-2-folio-payments:
+    title: El pago a un folio registra un pago real
+    status: pending
+    tasks_total: 4
+    tasks_done: 0
+    priority: high
+
+  bm-3-migration:
+    title: Migrar `invoices.type='payment'` → `payments`
+    status: pending
+    tasks_total: 6
+    tasks_done: 0
+    priority: critical
+    risk: high
+
+  bm-4-cleanup:
+    title: Limpieza de tipos muertos y UI
+    status: pending
+    tasks_total: 5
+    tasks_done: 0
+    priority: medium
+
+total_tasks: 21
+tasks_done: 0
+
+execution_order:
+  - bm-1-invoice-payments
+  - bm-2-folio-payments
+  - bm-3-migration
+  - bm-4-cleanup
+
+artifacts:
+  proposal: true
+  tasks: true
+  state: true
+  specs: false
+
+rollback: |
+  Las filas migradas llevan metadata.migratedFrom='invoices'. Revertir:
+  DELETE FROM payments WHERE metadata->>'migratedFrom' = 'invoices'
+  Los datos originales en `invoices` no se borran en esta fase.
+
+gate:
+  arckode_analyze: pending
+  backend_tests: pending
+  e2e_cash: pending

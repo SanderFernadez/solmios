@@ -13,6 +13,7 @@ import { listInvoices } from './usecases/list-invoices'
 import { auditSafely, type AuditPort } from './usecases/audit'
 import { assertDeletable, isElectronicInvoicingEnabled } from './usecases/deletable'
 import { payInvoice } from './usecases/pay-invoice'
+import type { PaymentPort } from './usecases/payment-port'
 import { generateCreditNote, type CreditNoteResult } from './usecases/credit-note'
 import { generateTaxReport, type TaxReport } from './usecases/tax-report'
 import { attachItems, deleteItems } from './usecases/invoice-items'
@@ -24,6 +25,7 @@ export class FacturasService {
   private emailPort: InvoiceEmailPort | null = null
   private hotelRepo: RepositoryAdapter<any> | null = null
   private auditPort: AuditPort | null = null
+  private paymentPort: PaymentPort | null = null
 
   constructor(
     private readonly repo: RepositoryAdapter<FacturasDTO>,
@@ -55,6 +57,11 @@ export class FacturasService {
   /** Conecta el audit log. Lo inyecta el connector `facturas-auditlog`. */
   setAuditDeps(auditPort: AuditPort): void {
     this.auditPort = auditPort
+  }
+
+  /** Conecta el registro de pagos. Lo inyecta el connector `facturas-payments`. */
+  setPaymentDeps(paymentPort: PaymentPort): void {
+    this.paymentPort = paymentPort
   }
 
   async list(query?: FacturasQuery, user?: CurrentUser): Promise<FacturasListResult> {
@@ -107,12 +114,15 @@ export class FacturasService {
     if (!inv) throw new NotFoundError('Factura no encontrada')
     await assertOwnership(this.userRepo, this.auth,inv.hotelId, user.id, user.role)
 
-    const { updated, applied, balance } = await payInvoice(this.repo, this.logger, inv, dto)
+    const { updated, applied, balance, paymentId } = await payInvoice(
+      this.repo, this.logger, this.paymentPort, inv, dto,
+    )
 
     await auditSafely(this.auditPort, this.logger, {
       hotelId: inv.hotelId, userId: user.id, action: 'invoice.pay', entityId: id,
       detail: `${inv.invoiceNumber} · ${applied} ${inv.currency} vía ${dto.method ?? 'n/d'}` +
-        `${dto.reference ? ` · ref ${dto.reference}` : ''} · saldo ${balance}`,
+        `${dto.reference ? ` · ref ${dto.reference}` : ''} · saldo ${balance}` +
+        `${paymentId ? ` · payment ${paymentId}` : ''}`,
     })
 
     await this.sockets.onFacturasUpdated?.(updated)

@@ -56,6 +56,14 @@ export async function createInvoice(
 
   if (dto.items?.length) assertItemsSum(dto.items, base)
   const record = buildInvoiceRecord({ hotelId, type, taxes, amount, invoiceNumber, ncf: ncf ?? null, dto })
+
+  // Una factura que nace con pagos heredados del folio ya puede estar saldada.
+  const amountPaid = Number(dto.amountPaid) || 0
+  if (amountPaid > 0) {
+    ;(record as any).amountPaid = amountPaid
+    ;(record as any).status = amountPaid >= amount ? 'paid' : 'pending'
+  }
+
   const item = await repo.create(record as any)
   if (dto.items?.length) await persistItems(itemRepo, item.id, hotelId, dto.items)
 

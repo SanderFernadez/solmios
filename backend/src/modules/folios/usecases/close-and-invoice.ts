@@ -30,6 +30,12 @@ export interface CloseAndInvoiceResult {
     status: string
     notes: string
     items: InvoiceLineItem[]
+    /**
+     * Pagos ya posteados al folio. La factura nace con este saldo aplicado: el dinero se asentó al
+     * postear el pago (`folios.applyPayment` → `payments`), así que volver a "cobrar" la factura
+     * por ese mismo monto lo registraría dos veces.
+     */
+    amountPaid: number
   }
 }
 
@@ -78,6 +84,8 @@ export async function closeAndInvoice(
     status: 'pending',
     notes: `Folio ${folioId.slice(0, 8)} · ${items.length} cargo(s) · ${guestName}${roomNumber ? ` · Hab ${roomNumber}` : ''}`,
     items,
+    // Los pagos posteados al folio ya movieron dinero real; la factura los hereda.
+    amountPaid: totals.paymentsTotal,
   }
 
   return { folio: closed as FolioDTO, invoiceData }

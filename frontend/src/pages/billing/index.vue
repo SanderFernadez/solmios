@@ -1102,7 +1102,9 @@ function closePaymentModal() {
 async function savePayment() {
   if (!paymentForm.value.guest || paymentForm.value.amount <= 0) { toast.warning('Datos incompletos'); return }
   savingPayment.value = true
-  const method = paymentMethods.find(m => m.value === paymentForm.value.method)?.label ?? 'Other'
+  // El código canónico ('cash'), no la etiqueta en español: la API tiene un enum cerrado y la DB
+  // habla inglés. Mandar "Efectivo" hacía que el pago cayera en `other` y no llegara a la caja.
+  const method = paymentForm.value.method
   try {
     if (paymentTargetKind.value === 'folio' && paymentTargetId.value) {
       await FoliosService.pay(paymentTargetId.value, {

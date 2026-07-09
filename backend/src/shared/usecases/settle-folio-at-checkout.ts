@@ -18,9 +18,15 @@ export interface SettleFolioResult {
   invoiceNumber: string | null
 }
 
+/**
+ * Liquida la estadía al hacer check-out.
+ *
+ * El dinero se asienta UNA sola vez: `folios.applyPayment` lo registra en `payments` (caja +
+ * conciliación) y la factura emitida al cerrar el folio hereda ese monto como `amountPaid`.
+ * Ya no recibe `facturas`: la emisión la hace `folios.closeAndCreateInvoice` vía connector.
+ */
 export async function settleFolioAtCheckout(
   folios: any,
-  facturas: any,
   params: SettleFolioParams,
   user: any,
 ): Promise<SettleFolioResult> {
@@ -54,22 +60,17 @@ export async function settleFolioAtCheckout(
   }
 
   // Cierra el folio, emite la factura y las vincula. Un solo paso del lado del servicio.
+  // El pago ya se posteó con `folios.applyPayment`, que asienta el dinero en `payments`. La factura
+  // hereda ese monto como `amountPaid`. NO se llama a `facturas.pay()`: registraría el mismo dinero
+  // una segunda vez en caja y conciliación.
   const { folio: closedFolio, invoice } = await folios.closeAndCreateInvoice(folio.id, user)
 
-  let amountPaid = 0
-  if (settle && settle.amount > 0) {
-    await facturas.pay(invoice.id, {
-      amount: settle.amount,
-      method: settle.method,
-      reference: settle.reference,
-    }, user)
-    amountPaid = settle.amount
-  }
+  const amountPaid = settle?.amount || 0
 
   return {
     folioId: closedFolio?.id || folio.id,
     invoiceId: invoice.id,
-    balance: (invoice.amount ?? 0) - amountPaid,
+    balance: Math.max(0, (invoice.amount ?? 0) - amountPaid),
     amountPaid,
     invoiceNumber: invoice.invoiceNumber || '',
   }

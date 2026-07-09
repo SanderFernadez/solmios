@@ -18,7 +18,7 @@ export class MessagesController {
 
   async send(req: HttpRequest) {
     const user = req.user as any
-    const { toUserId, message, photoUrl } = req.body || {}
+    const { toUserId, message, photoUrl } = (req.body ?? {}) as { toUserId?: string; message?: string; photoUrl?: string | null }
     if (!toUserId) return { status: 400, body: { success: false, error: { message: 'toUserId is required' } } }
     const item = await this.service.sendMessage(toUserId, message || '', photoUrl || null, user)
     return { status: 201, body: { success: true, data: item } }
