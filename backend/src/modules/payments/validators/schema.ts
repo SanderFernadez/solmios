@@ -54,11 +54,11 @@ export const RefundDepositSchema: Record<string, ValidationRule> = {
   reason: { type: 'string' as const },
 }
 
+// `hotelId` sale del JWT, no del body. `entries` es un array: validateSchema no tiene tipo `array`,
+// así que el controller lo estrecha a mano y el usecase descarta las filas sin monto numérico.
 export const ReconcileSchema: Record<string, ValidationRule> = {
-  hotelId: { type: 'string' as const, required: true },
-  entries: { type: 'string' as const, required: true }, // JSON array
-  from: { type: 'string' as const },
-  to: { type: 'string' as const },
+  from: { type: 'date' as const },
+  to: { type: 'date' as const },
 }
 
 export const RefundSchema: Record<string, ValidationRule> = {

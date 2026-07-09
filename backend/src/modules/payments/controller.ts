@@ -155,8 +155,14 @@ export class PaymentsController {
     this.logger.info('POST /api/billing/reconciliation')
     const userHotelId = this.userHotelId(req.user)
     const hotelId = userHotelId || (req as any).hotelId
-    const { entries, from, to } = req.body as { entries: ReconciliationEntry[]; from?: string; to?: string }
-    const result = await this.service.reconcile(hotelId, entries, from, to)
+    const { from, to } = validateSchema(ReconcileSchema, req.body ?? {}) as { from?: string; to?: string }
+    const { entries } = (req.body ?? {}) as { entries?: unknown }
+    const result = await this.service.reconcile(
+      hotelId,
+      Array.isArray(entries) ? (entries as ReconciliationEntry[]) : [],
+      from,
+      to,
+    )
     return { status: 200, body: result }
   }
 }
