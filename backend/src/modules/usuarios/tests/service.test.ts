@@ -118,6 +118,73 @@ describe('UsuariosService', () => {
     })
   })
 
+  // ── LOGIN POR TELÉFONO ────────────────────────────────────────
+
+  describe('login por teléfono', () => {
+    /** Como en producción: la base guarda el teléfono con guiones. */
+    const conTelefono = () =>
+      makeRepo({ findMany: async () => [mockUser({ phone: '809-555-0001' })] })
+
+    for (const escrito of [
+      '8095550001',
+      '809-555-0001',
+      '809 555 0001',
+      '(809) 555-0001',
+      '+18095550001',
+      '+1 809 555 0001',
+      '18095550001',
+      '+1 (809) 555-0001',
+    ]) {
+      it(`entra escribiendo "${escrito}"`, async () => {
+        const svc = new UsuariosService(conTelefono(), log, cache, makeAuth())
+        const u = await svc.login(escrito, 'secreto')
+        expect(u.user.id).toBe('u1')
+      })
+    }
+
+    it('falla con un teléfono que no existe', async () => {
+      const svc = new UsuariosService(conTelefono(), log, cache, makeAuth())
+      await expect(svc.login('8095559999', 'secreto')).rejects.toThrow('Credenciales inválidas')
+    })
+
+    it('una entrada sin dígitos no matchea a un usuario sin teléfono', async () => {
+      // `+` pasa el test de "parece teléfono" y normaliza a ''. Antes eso coincidía
+      // con cualquier usuario cuyo phone fuera null → se elegía un usuario arbitrario.
+      const svc = new UsuariosService(
+        makeRepo({ findMany: async () => [mockUser({ phone: null })] }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await expect(svc.login('+', 'secreto')).rejects.toThrow('Credenciales inválidas')
+    })
+
+    it('un usuario sin teléfono nunca matchea por teléfono', async () => {
+      const svc = new UsuariosService(
+        makeRepo({ findMany: async () => [mockUser({ phone: '' })] }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await expect(svc.login('8095550001', 'secreto')).rejects.toThrow('Credenciales inválidas')
+    })
+
+    it('sigue exigiendo la password correcta', async () => {
+      const svc = new UsuariosService(conTelefono(), log, cache, makeAuth())
+      await expect(svc.login('+1 809 555 0001', 'wrong')).rejects.toThrow('Credenciales inválidas')
+    })
+
+    it('un teléfono de usuario inactivo no entra', async () => {
+      const svc = new UsuariosService(
+        makeRepo({ findMany: async () => [mockUser({ phone: '809-555-0001', active: 0 })] }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await expect(svc.login('+18095550001', 'secreto')).rejects.toThrow('Credenciales inválidas')
+    })
+  })
+
   // ── LOGOUT ────────────────────────────────────────────────────
 
   describe('logout', () => {

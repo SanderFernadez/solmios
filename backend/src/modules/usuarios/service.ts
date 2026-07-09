@@ -1,6 +1,7 @@
 // usuarios/service.ts — Auth + gestión de usuarios
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, AuthError } from 'arckode-framework'
+import { normalizePhone, looksLikePhone } from './usecases/normalize-phone'
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required')
@@ -56,15 +57,19 @@ export class UsuariosService {
 
   async login(emailOrPhone: string, password: string): Promise<{ token: string; user: any }> {
     const trimmed = emailOrPhone.trim()
-    // Si parece teléfono (solo dígitos, espacios, guiones, paréntesis) → buscar por phone normalizado
-    const isPhone = /^[\d\s\-\(\)\+]+$/.test(trimmed)
     let user: any = null
-    if (isPhone) {
-      const cleanInput = trimmed.replace(/[\s\-\(\)\+]/g, '')
+    if (looksLikePhone(trimmed)) {
+      // Ambos lados se normalizan: la base guarda `809-555-0001` y el usuario escribe
+      // `+1 809 555 0001`. Comparar los strings crudos nunca coincide.
+      const cleanInput = normalizePhone(trimmed)
+      // Entrada sin dígitos (p. ej. solo `+`): normalizaría a '' y matchearía a
+      // cualquier usuario sin teléfono cargado.
+      if (!cleanInput) throw new AuthError('Credenciales inválidas')
       const allUsers = await this.repo.findMany({})
-      user = allUsers.find((u: any) =>
-        String(u.phone || '').replace(/[\s\-\(\)\+]/g, '') === cleanInput,
-      )
+      user = allUsers.find((u: any) => {
+        const phone = String(u.phone || '')
+        return phone !== '' && normalizePhone(phone) === cleanInput
+      })
     } else {
       user = await this.repo.findOne({ email: trimmed.toLowerCase() })
     }
