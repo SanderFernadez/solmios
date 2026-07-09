@@ -25,6 +25,9 @@ export function foliosFacturasConnector(ctx: ConnectorContext): void {
         status: invoiceData.status,
         notes: invoiceData.notes,
         items: invoiceData.items,
+        // Los pagos posteados al folio ya asentaron dinero en `payments`: la factura los hereda
+        // en vez de volver a cobrarse.
+        amountPaid: invoiceData.amountPaid,
       }, user),
   })
 }

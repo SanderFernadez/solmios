@@ -13,7 +13,9 @@ export type { MessagesSockets } from './sockets'
 export { MessagesValidator, SendMessageSchema } from './validators/schema'
 
 /** Roles que pueden usar el chat interno: cualquier miembro autenticado del hotel. */
-const STAFF_ROLES = ['hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'super_admin'] as const
+const STAFF_ROLES: [string, ...string[]] = [
+  'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor', 'super_admin',
+]
 
 export function MessagesModule() {
   return createModule({

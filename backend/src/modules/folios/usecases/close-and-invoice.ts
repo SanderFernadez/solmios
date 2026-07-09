@@ -58,10 +58,13 @@ export async function closeAndInvoice(
   const taxes = taxCharges.reduce((s, c) => s + Number(c.taxes || 0), 0)
   const subtotal = totals.chargesTotal - taxes
 
-  // Construir líneas de la factura desde los cargos
+  // Líneas de la factura: el monto NETO del cargo (`amount`), no el bruto (`total`, que ya lleva
+  // impuestos). `invoiceData.amount` es el subtotal y `facturas.create` recalcula los impuestos
+  // sobre él; si las líneas trajeran el bruto, `assertItemsSum` rechazaría la factura por
+  // inconsistencia financiera (items 120 vs monto 100).
   const items: InvoiceLineItem[] = taxCharges.map(c => ({
     description: c.description || c.category,
-    amount: Number(c.total) || 0,
+    amount: Number(c.amount) || 0,
   }))
 
   // Obtener datos del huésped y habitación
