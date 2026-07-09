@@ -123,7 +123,7 @@ const mods = [
   CashModule(), PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
   StaffAuthModule(),
-  MessagesModule(),
+  MessagesModule({ storage }),
 ]
 for (const m of mods) system.addModule(m as any)
 
