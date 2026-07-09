@@ -64,10 +64,10 @@
 
 <header>
   <h1>SOLMI OS — Cómo circula el dinero</h1>
-  <p class="sub">Grafo real del módulo Finanzas, trazado sobre el código. 7 páginas · 8 módulos backend · 18 conectores.</p>
+  <p class="sub">Grafo real del módulo Finanzas, trazado sobre el código. 7 páginas · 8 módulos backend · 20 conectores.</p>
   <p class="sub" style="margin-top:8px;font-size:13px">
-    Estado: <span style="color:var(--green)">todo el dinero pasa por <code>payments</code></span> y los reportes cuadran contra caja y conciliación.
-    Sin islas. Queda un solo <span style="color:var(--amber)">tramo ámbar</span>: el webhook de Stripe todavía parchea reserva y folio con repos crudos (deuda F10).
+    Estado: <span style="color:var(--green)">todo cobro y todo egreso pasan por <code>payments</code> o <code>expenses</code></span>, y el balance cuadra contra caja y conciliación.
+    Quedan tres cosas sin cablear (depósitos, comisión OTA, payment links) y un tramo ámbar: el webhook de Stripe todavía parchea reserva y folio con repos crudos (deuda F10).
   </p>
 </header>
 
@@ -267,9 +267,23 @@ que necesita el puerto ya inyectado.</p>
   <p>Además: <code>getNightAudit</code> sumaba <strong>toda la historia</strong> del hotel y la etiquetaba «del día» — ADR, RevPAR y «pagos recibidos» incluidos. Ahora lee <code>folio_charges</code> y <code>payments</code> del día, y calcula <code>impuestos</code> y <code>reembolsos</code> en vez de devolver <code>0</code> hardcodeado.</p>
 </div>
 
+<div class="isla" style="border-left-color:var(--green)">
+  <h3>4 · Nóminas y el motor de reservas &nbsp;<span style="color:var(--green)">ARREGLADO</span></h3>
+  <p><strong>Nóminas:</strong> <code>markAsPaid</code> solo cambiaba un estado. El costo laboral —el mayor egreso de un hotel— no existía para el balance. Ahora emite <code>onRunPaid</code> y el conector <code>payroll-gastos</code> asienta un gasto de categoría <code>staff</code>. Monto = <code>totalNet</code>: las retenciones se remiten después.</p>
+  <p><strong>Motor de reservas:</strong> el widget público cobra con Stripe de verdad, y su webhook solo marcaba <code>bookings.paymentStatus = 'paid'</code>. El módulo no tenía una sola referencia a <code>payments</code>. Ahora el conector <code>bookingengine-payments</code> lo asienta, deduplicado por la sesión de Stripe.</p>
+</div>
+
 <div class="isla warn">
-  <h3>4 · <code>facturas → reservas</code> es una conexión de papel</h3>
+  <h3>5 · <code>facturas → reservas</code> es una conexión de papel</h3>
   <p>Cuando una factura se marca pagada, el conector solo escribe un texto en <code>reserva.notes</code>. No hay campo estructurado de estado de facturación en la reserva.</p>
+</div>
+
+<div class="isla">
+  <h3>6 · Lo que sigue sin conectar</h3>
+  <p><strong>Depósitos en garantía</strong> (<code>deposits.ts:24</code>): tabla de dinero que nadie lee. Ni conciliación, ni caja, ni balance. Hoy no cobra a Stripe, así que no fuga plata: es una isla estructural.</p>
+  <p><strong>Comisión OTA</strong>: <code>reserva.commissionAmount</code> es un costo real que solo se resta en el reporte devengado. Nunca es un <code>expense</code>, así que el balance en base caja no lo ve.</p>
+  <p><strong>Payment links</strong>: <code>markUsed()</code> no tiene ningún llamador y <code>createPaymentLink</code> nunca crea un link real de Stripe. Bomba latente: si se cablea a Stripe sin asentar en <code>payments</code>, todo cobro por link se pierde.</p>
+  <p><strong>Nota de crédito</strong>: anular una factura cobrada no genera un <code>refund</code>. <em>Esto es correcto</em>: emitir una nota de crédito no es devolver la plata. Queda una deuda del hotel con el huésped, y la devolución es un movimiento aparte.</p>
 </div>
 
 <div class="isla" style="border-left-color:var(--green)">
