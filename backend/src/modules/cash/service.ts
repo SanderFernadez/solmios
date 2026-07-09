@@ -12,6 +12,8 @@ import type { CashSockets } from './sockets'
 import { computeStats } from './usecases/stats'
 import * as shiftsUc from './usecases/shifts'
 import type { ShiftDeps } from './usecases/shifts'
+import { registerPaymentIncome, registerExpenseOutflow, removeExpenseOutflow } from './usecases/auto-movements'
+import type { AutoMovementDeps, PaymentIncomeInput, ExpenseOutflowInput } from './usecases/auto-movements'
 
 const MOVEMENT_TYPES: MovementType[] = ['income', 'expense', 'opening', 'closing']
 
@@ -48,6 +50,15 @@ export class CashService {
       auth: this.auth, logger: this.logger, sockets: this.sockets,
       hotelOfUser: (u, h) => this.hotelOfUser(u, h),
       bumpVersion: () => { this.listVersion++ },
+    }
+  }
+
+  private autoDeps(): AutoMovementDeps {
+    return {
+      repo: this.repo, logger: this.logger,
+      resolveShift: (hotelId) => shiftsUc.resolveOpenShift(this.shiftDeps(), hotelId),
+      onCreated: async (m) => { await this.sockets.onCashMovementCreated?.(m) },
+      onDeleted: async (id) => { await this.sockets.onCashMovementDeleted?.(id) },
     }
   }
 
@@ -121,6 +132,9 @@ export class CashService {
     if (existing.source === 'payment_connector') {
       throw new Error('Los movimientos automáticos (pago) no se pueden editar manualmente')
     }
+    if (existing.source === 'expense_connector') {
+      throw new Error('Los movimientos automáticos (gasto) no se editan acá: modificá el gasto')
+    }
     const item = await this.repo.update(id, dto as Partial<Omit<CashMovementDTO, 'id'>>)
     if (!item) throw new NotFoundError('Movimiento no encontrado')
     await this.sockets.onCashMovementUpdated?.(item)
@@ -139,28 +153,26 @@ export class CashService {
     this.listVersion++
   }
 
-  /** Conector payments→caja: ingreso automático por pago cash. Dedup por paymentId. */
-  async registerPaymentIncome(input: {
-    hotelId: string; paymentId: string; amount: number
-    reservationId?: string; folioId?: string; method?: string; reference?: string
-  }): Promise<CashMovementDTO | null> {
-    const existing = await this.repo.findMany({ hotelId: input.hotelId, paymentId: input.paymentId } as any)
-    if (existing.length > 0) {
-      this.logger.info('registerPaymentIncome: ya registrado (dedup)', { paymentId: input.paymentId })
-      return null
-    }
-    const shiftId = await shiftsUc.resolveOpenShift(this.shiftDeps(), input.hotelId)
-    const item = await this.repo.create({
-      hotelId: input.hotelId, shiftId: shiftId || null,
-      type: 'income', amount: input.amount, method: (input.method as any) || 'cash',
-      concept: 'Pago automático', category: 'payment', source: 'payment_connector',
-      reservationId: input.reservationId, folioId: input.folioId,
-      paymentId: input.paymentId, reference: input.reference,
-    } as Omit<CashMovementDTO, 'id'>)
-    await this.sockets.onCashMovementCreated?.(item)
-    this.listVersion++
-    this.logger.info('registerPaymentIncome: ingreso creado', { paymentId: input.paymentId, amount: input.amount })
+  // ─── Movimientos automáticos (delegan a usecases/auto-movements) ──
+  /** Conector payments→caja: ingreso por pago cash. Dedup por paymentId. */
+  async registerPaymentIncome(input: PaymentIncomeInput): Promise<CashMovementDTO | null> {
+    const item = await registerPaymentIncome(this.autoDeps(), input)
+    if (item) this.listVersion++
     return item
+  }
+
+  /** Conector gastos→caja: egreso por gasto en efectivo. Dedup por expenseId. */
+  async registerExpenseOutflow(input: ExpenseOutflowInput): Promise<CashMovementDTO | null> {
+    const item = await registerExpenseOutflow(this.autoDeps(), input)
+    if (item) this.listVersion++
+    return item
+  }
+
+  /** Conector gastos→caja: revierte el egreso (gasto borrado, impago, o ya no en efectivo). */
+  async removeExpenseOutflow(expenseId: string): Promise<boolean> {
+    const removed = await removeExpenseOutflow(this.autoDeps(), expenseId)
+    if (removed) this.listVersion++
+    return removed
   }
 
   // ─── Turnos (delegan a usecases/shifts) ────────────────

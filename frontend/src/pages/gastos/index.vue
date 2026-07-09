@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { GastosService, type Gasto } from '@/services/Gastos.service'
+import { GastosService, type Gasto, type ExpensePaymentMethod } from '@/services/Gastos.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 
@@ -20,6 +20,13 @@ const CATEGORY_LABEL: Record<string, string> = {
   staff: 'Personal',
   marketing: 'Marketing',
   utilities: 'Servicios',
+}
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  transfer: 'Transferencia',
+  other: 'Otro',
 }
 
 const auth = useAuthStore()
@@ -45,8 +52,13 @@ const emptyForm = () => ({
   provider: '',
   date: new Date().toISOString().split('T')[0],
   notes: '',
+  paid: 0,
+  paymentMethod: 'cash' as ExpensePaymentMethod,
 })
 const form = ref(emptyForm())
+
+// Un gasto pagado en efectivo sale del cajón y aparece en el arqueo del turno.
+const movesCash = computed(() => form.value.paid === 1 && form.value.paymentMethod === 'cash')
 
 onMounted(() => loadData())
 
@@ -82,6 +94,8 @@ function openEdit(g: Gasto) {
     provider: g.provider || '',
     date: (g.date || '').slice(0, 10) || new Date().toISOString().split('T')[0],
     notes: g.notes || '',
+    paid: Number(g.paid) === 1 ? 1 : 0,
+    paymentMethod: g.paymentMethod || 'cash',
   }
   editingId.value = g.id ?? null
   showDialog.value = true
@@ -182,6 +196,7 @@ function goNext() { if (page.value < pages.value) loadData(page.value + 1) }
             <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Categoría</th>
             <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Importe</th>
             <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Fecha</th>
+            <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Pago</th>
             <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Proveedor</th>
             <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
           </tr></thead>
@@ -191,6 +206,12 @@ function goNext() { if (page.value < pages.value) loadData(page.value + 1) }
               <td class="p-3"><span class="text-[10px] font-bold px-2 py-1 rounded-full bg-navy/5 text-navy">{{ CATEGORY_LABEL[g.category || ''] || g.category || '—' }}</span></td>
               <td class="p-3 text-sm text-right font-black text-coral">${{ (g.amount || 0).toLocaleString() }}</td>
               <td class="p-3 text-xs text-text-muted">{{ (g.date || '').slice(0, 10) }}</td>
+              <td class="p-3 text-xs whitespace-nowrap">
+                <span v-if="Number(g.paid) === 1" class="text-[10px] font-bold px-2 py-1 rounded-full bg-navy/5 text-navy">
+                  {{ PAYMENT_METHOD_LABEL[g.paymentMethod || 'other'] }}
+                </span>
+                <span v-else class="text-[10px] font-bold px-2 py-1 rounded-full bg-coral/10 text-coral">Impago</span>
+              </td>
               <td class="p-3 text-xs">{{ g.provider || '—' }}</td>
               <td class="p-3 text-right whitespace-nowrap">
                 <button @click="openEdit(g)" class="inline-flex items-center gap-1 px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold cursor-pointer hover:bg-navy/20 mr-1">
@@ -261,9 +282,27 @@ function goNext() { if (page.value < pages.value) loadData(page.value + 1) }
                 <input v-model="form.provider" placeholder="Opcional" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
               </div>
             </div>
+            <div class="flex gap-3">
+              <div class="flex-1">
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Fecha</label>
+                <input v-model="form.date" type="date" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+              <div class="flex-1">
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Método de pago</label>
+                <select v-model="form.paymentMethod" class="w-full px-3 py-2 rounded-lg border border-border text-sm cursor-pointer focus:outline-none focus:border-navy">
+                  <option value="cash">Efectivo</option><option value="card">Tarjeta</option>
+                  <option value="transfer">Transferencia</option><option value="other">Otro</option>
+                </select>
+              </div>
+            </div>
             <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Fecha</label>
-              <input v-model="form.date" type="date" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input v-model.number="form.paid" type="checkbox" :true-value="1" :false-value="0" class="w-4 h-4 accent-navy cursor-pointer" />
+                <span class="text-sm font-bold text-navy">Ya está pagado</span>
+              </label>
+              <p v-if="movesCash" class="text-[11px] text-text-muted mt-1.5 pl-6">
+                Sale del cajón: se registra como egreso en el arqueo del turno abierto.
+              </p>
             </div>
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Notas</label>

@@ -20,6 +20,7 @@ export const CashMovementsModel: ModelDefinition = {
     reservationId: { type: 'string', indexed: true },
     folioId: { type: 'string' },
     paymentId: { type: 'string', indexed: true },      // FK al Payment que generó el movimiento (dedup)
+    expenseId: { type: 'string', indexed: true },      // FK al Expense que generó el egreso (dedup)
     reference: { type: 'string' },
     createdBy: { type: 'string' },
     notes: { type: 'text' },

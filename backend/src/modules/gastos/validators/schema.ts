@@ -1,5 +1,9 @@
 import type { ValidationRule } from 'arckode-framework'
 
+// `validateSchema` devuelve SOLO los campos declarados acá: un campo ausente se descarta en
+// silencio antes de llegar al service, aunque exista en el DTO y en el modelo.
+const PAYMENT_METHODS = ['cash', 'card', 'transfer', 'other']
+
 export const CreateGastosSchema: Record<string, ValidationRule> = {
   // hotelId opcional en el body (P0 V-01): el service lo fuerza desde el JWT. Solo super_admin lo usa.
   hotelId: { type: 'string' as const },
@@ -11,6 +15,7 @@ export const CreateGastosSchema: Record<string, ValidationRule> = {
   invoiceNumber: { type: 'string' as const },
     notes: { type: 'text' as any },
     paid: { type: 'number' as const },
+    paymentMethod: { type: 'string' as const, enum: PAYMENT_METHODS },
 }
 
 export const UpdateGastosSchema: Record<string, ValidationRule> = {
@@ -22,6 +27,7 @@ export const UpdateGastosSchema: Record<string, ValidationRule> = {
   invoiceNumber: { type: 'string' as const },
     notes: { type: 'text' as any },
     paid: { type: 'number' as const },
+    paymentMethod: { type: 'string' as const, enum: PAYMENT_METHODS },
 }
 
 export const GastosValidator = { create: CreateGastosSchema, update: UpdateGastosSchema }

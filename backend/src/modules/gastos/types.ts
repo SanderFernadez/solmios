@@ -1,6 +1,9 @@
 // gastos/types.ts — DTOs y tipos de queries (generado desde model.ts).
 // Responsabilidad ÚNICA: contrato TypeScript del módulo. El schema de DB vive en ./model.ts.
 
+/** Solo `cash` impacta el arqueo del cajón físico. El resto ya está bancarizado. */
+export type ExpensePaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
+
 export interface GastosDTO {
   id: string
   hotelId: string
@@ -12,6 +15,7 @@ export interface GastosDTO {
   invoiceNumber?: string
   notes?: string
   paid?: number
+  paymentMethod?: ExpensePaymentMethod
   createdAt: string
   updatedAt: string
 }
@@ -26,6 +30,7 @@ export interface CreateGastosDTO {
   invoiceNumber?: string
   notes?: string
   paid?: number
+  paymentMethod?: ExpensePaymentMethod
 }
 
 export interface UpdateGastosDTO {
@@ -38,6 +43,7 @@ export interface UpdateGastosDTO {
   invoiceNumber?: string
   notes?: string
   paid?: number
+  paymentMethod?: ExpensePaymentMethod
 }
 
 // ─── Consultas ─────────────────────────────────────────

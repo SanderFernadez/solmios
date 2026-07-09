@@ -20,6 +20,7 @@ export interface CashMovementDTO {
   reservationId?: string
   folioId?: string
   paymentId?: string
+  expenseId?: string
   reference?: string
   createdBy?: string
   notes?: string

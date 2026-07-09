@@ -1,6 +1,9 @@
 // services/Gastos.service.ts — API client for expenses
 import { http } from './http'
 
+/** Solo `cash` mueve el arqueo de caja. El resto ya está bancarizado. */
+export type ExpensePaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
+
 export interface Gasto {
   id?: string
   hotelId: string
@@ -12,6 +15,7 @@ export interface Gasto {
   invoiceNumber?: string
   notes?: string
   paid?: number
+  paymentMethod?: ExpensePaymentMethod
 }
 
 export const GastosService = {

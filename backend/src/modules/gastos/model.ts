@@ -14,6 +14,9 @@ export const GastosModel: ModelDefinition = {
     invoiceNumber: { type: 'string' },
     notes: { type: 'text' },
     paid: { type: 'number', default: 0 },
+    // cash | card | transfer | other. Solo `cash` mueve el cajón físico (conector gastos-caja),
+    // igual que payments-caja. Default `other`: un gasto no descuadra el arqueo sin decirlo.
+    paymentMethod: { type: 'string', default: 'other' },
   },
   timestamps: true,
 }
