@@ -43,13 +43,11 @@ export function UsuariosModule() {
         if (!allowed) {
           return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
         }
-        try {
-          const result = await controller.login(req)
-          resetAttempts(ip as string)
-          return result
-        } catch (e) {
-          return { status: 401, body: { error: 'Credenciales inválidas' } }
-        }
+        // Un login fallido lanza, así que no llega a resetear el contador.
+        // Antes se reseteaba con cualquier resultado y el límite nunca se alcanzaba.
+        const result = await controller.login(req)
+        resetAttempts(ip as string)
+        return result
       })
       router.get('/api/auth/me', guard('users', 'view'), (req) => controller.me(req))
       router.post('/api/auth/logout', guard('users', 'view'), (req) => controller.logout(req))

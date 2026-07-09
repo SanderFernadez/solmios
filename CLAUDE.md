@@ -330,8 +330,9 @@ filtros y paginación, así que se invalidan bumpeando un token de versión
 - **Backend**: systemd `solmios-backend.service` (restart on-failure). bun en `/root/.bun/bin/bun` (NO en PATH del SSH).
 - **Frontend**: `dist/` servido por nginx (proxy `/api`,`/uploads`→:3000)
 - **DB**: PostgreSQL `solmios` (localhost:5432)
-- **Login demo (verificado)**: `admin@caribeparadise.com` / `demo123`
-  - ⚠️ `admin@managerhotel.com` da **401 en prod** (no migrado al seed PG). Solo local dev.
+- **Login demo (verificado 2026-07-09)**: `hotel@solmios.com` / `demo123` (`hotel_admin`). También `admin@solmios.com` (`super_admin`), `recepcion@`, `rosa@`, `carlos@`, `luis@` — todos `@solmios.com` / `demo123`.
+  - Acepta **email o teléfono** en el mismo campo: `8095550000` ≡ `809-555-0000` ≡ `+1 809 555 0000`.
+  - ⚠️ `admin@caribeparadise.com` y `admin@managerhotel.com` dan **401 en prod**: la DB fue re-seedeada con el dominio `@solmios.com`. Solo existen en la SQLite local de dev.
 - **PG sin seed data financiera**: folios, facturas, gastos, caja = 0 registros. Reports y night-audit computan desde reservas.
 - Ver skill `ssh-solmios` para protocolo de deploy completo.
 

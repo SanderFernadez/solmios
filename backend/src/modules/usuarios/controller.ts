@@ -9,12 +9,11 @@ export class UsuariosController {
 
   async login(req: HttpRequest) {
     const data = validateSchema(LoginSchema, req.body) as any
-    try {
-      const result = await this.service.login(data.email, data.password)
-      return { status: 200, body: result }
-    } catch (e: any) {
-      return { status: 401, body: { error: e.message } }
-    }
+    // Sin catch: `AuthError` ya viaja como 401 y `ValidationError` como 400.
+    // Atraparlos acá convertía cualquier fallo interno (ORM, red) en
+    // "Credenciales inválidas", que es la respuesta más engañosa posible.
+    const result = await this.service.login(data.email, data.password)
+    return { status: 200, body: result }
   }
 
   async me(req: HttpRequest) {
