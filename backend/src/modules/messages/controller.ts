@@ -1,5 +1,7 @@
 import type { HttpRequest } from 'arckode-framework'
+import { validateSchema } from 'arckode-framework'
 import type { MessagesService } from './service'
+import { SendMessageSchema } from './validators/schema'
 
 export class MessagesController {
   constructor(private readonly service: MessagesService) {}
@@ -18,9 +20,8 @@ export class MessagesController {
 
   async send(req: HttpRequest) {
     const user = req.user as any
-    const { toUserId, message, photoUrl } = req.body || {}
-    if (!toUserId) return { status: 400, body: { success: false, error: { message: 'toUserId is required' } } }
-    const item = await this.service.sendMessage(toUserId, message || '', photoUrl || null, user)
+    const body = validateSchema(SendMessageSchema, req.body) as { toUserId: string; message?: string; photoUrl?: string | null }
+    const item = await this.service.sendMessage(body.toUserId, body.message || '', body.photoUrl || null, user)
     return { status: 201, body: { success: true, data: item } }
   }
 

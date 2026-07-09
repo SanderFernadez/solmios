@@ -21,6 +21,10 @@ export class PaymentCrudUseCase {
   async create(dto: CreatePaymentDTO): Promise<PaymentDTO> {
     if (dto.amount <= 0) throw new ValidationError('Payment amount must be positive')
 
+    // El efectivo se cobra en el acto; la tarjeta espera confirmación de Stripe. Un `status`
+    // explícito gana: un cobro manual ya recibido (transferencia, POS) entra `completed`.
+    const status = dto.status ?? (dto.method === 'cash' ? 'completed' : 'pending')
+
     const payment = await this.paymentRepo.create({
       hotelId: dto.hotelId,
       folioId: dto.folioId ?? null,
@@ -28,7 +32,7 @@ export class PaymentCrudUseCase {
       guestId: dto.guestId ?? null,
       type: dto.type,
       method: dto.method,
-      status: dto.method === 'cash' ? 'completed' : 'pending',
+      status,
       amount: dto.amount,
       currency: dto.currency ?? 'USD',
       description: dto.description ?? '',
@@ -36,7 +40,7 @@ export class PaymentCrudUseCase {
       stripePaymentId: '',
       stripeSessionId: '',
       metadata: dto.metadata ?? {},
-      processedAt: dto.method === 'cash' ? new Date().toISOString() : undefined,
+      processedAt: status === 'completed' ? new Date().toISOString() : undefined,
     } as any)
 
     return payment

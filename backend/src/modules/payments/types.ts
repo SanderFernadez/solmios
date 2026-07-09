@@ -40,6 +40,13 @@ export interface CreatePaymentDTO {
   description?: string
   reference?: string
   metadata?: Record<string, any>
+  /**
+   * Estado explícito. Sin esto, `cash` se asume cobrado y todo lo demás queda `pending` (correcto
+   * para tarjeta vía Stripe: se confirma por webhook). Un cobro registrado a mano — "el huésped ya
+   * transfirió" — es dinero recibido y debe entrar `completed`, o nunca dispara `onPaymentCompleted`
+   * y la caja/conciliación no se enteran.
+   */
+  status?: PaymentStatus
 }
 
 export interface ChargeCardDTO {

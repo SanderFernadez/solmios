@@ -1,22 +1,9 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { MessageDTO, MessageUser, Conversation } from './types'
 
-export interface MessageDTO {
-  id: string
-  fromuserid: string
-  touserid: string
-  message: string
-  photourl: string | null
-  isread: number
-  hotelid: string
-  createdat: string
-  updatedat: string
-}
+export type { MessageDTO, MessageUser, Conversation } from './types'
 
-export interface MessageUser {
-  id: string
-  hotelId: string
-  role: string
-}
+const isManager = (role: string) => role === 'hotel_admin' || role === 'super_admin'
 
 export class MessagesService {
   constructor(
@@ -24,68 +11,63 @@ export class MessagesService {
     private readonly logger: Logger,
   ) {}
 
-  async getConversations(currentUser: MessageUser): Promise<any[]> {
+  /** Última conversación por interlocutor. */
+  async getConversations(currentUser: MessageUser): Promise<Conversation[]> {
     const [sent, received] = await Promise.all([
-      this.repo.findAll({ hotelid: currentUser.hotelId, fromuserid: currentUser.id }),
-      this.repo.findAll({ hotelid: currentUser.hotelId, touserid: currentUser.id }),
+      this.repo.findMany({ hotelId: currentUser.hotelId, fromUserId: currentUser.id }),
+      this.repo.findMany({ hotelId: currentUser.hotelId, toUserId: currentUser.id }),
     ])
 
-    const allMessages = [...(sent.data || []), ...(received.data || [])]
     const byUser = new Map<string, MessageDTO>()
-
-    for (const msg of allMessages) {
-      const otherId = msg.fromuserid === currentUser.id ? msg.touserid : msg.fromuserid
+    for (const msg of [...sent, ...received]) {
+      const otherId = msg.fromUserId === currentUser.id ? msg.toUserId : msg.fromUserId
       const existing = byUser.get(otherId)
-      if (!existing || new Date(msg.createdat) > new Date(existing.createdat)) {
-        byUser.set(otherId, msg)
-      }
+      if (!existing || new Date(msg.createdAt) > new Date(existing.createdAt)) byUser.set(otherId, msg)
     }
 
     return Array.from(byUser.entries()).map(([userId, lastMsg]) => ({
       userId,
       lastMessage: lastMsg.message,
-      lastPhoto: lastMsg.photourl,
-      lastTime: lastMsg.createdat,
-      isRead: lastMsg.isread,
-      direction: lastMsg.fromuserid === currentUser.id ? 'sent' : 'received',
+      lastPhoto: lastMsg.photoUrl,
+      lastTime: lastMsg.createdAt,
+      isRead: lastMsg.isRead,
+      direction: lastMsg.fromUserId === currentUser.id ? 'sent' : 'received',
     }))
   }
 
+  /** Hilo completo con un interlocutor, en orden cronológico. */
   async getMessagesWith(userId: string, currentUser: MessageUser): Promise<MessageDTO[]> {
     const [sent, received] = await Promise.all([
-      this.repo.findAll({ hotelid: currentUser.hotelId, fromuserid: currentUser.id, touserid: userId }),
-      this.repo.findAll({ hotelid: currentUser.hotelId, fromuserid: userId, touserid: currentUser.id }),
+      this.repo.findMany({ hotelId: currentUser.hotelId, fromUserId: currentUser.id, toUserId: userId }),
+      this.repo.findMany({ hotelId: currentUser.hotelId, fromUserId: userId, toUserId: currentUser.id }),
     ])
-
-    const all = [...(sent.data || []), ...(received.data || [])]
-    all.sort((a, b) => new Date(a.createdat).getTime() - new Date(b.createdat).getTime())
-    return all
+    return [...sent, ...received].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    )
   }
 
   async sendMessage(toUserId: string, message: string, photoUrl: string | null, currentUser: MessageUser): Promise<MessageDTO> {
-    const item = await this.repo.create({
-      fromuserid: currentUser.id,
-      touserid: toUserId,
+    this.logger.info('Enviando mensaje', { from: currentUser.id, to: toUserId, hasPhoto: Boolean(photoUrl) })
+    return this.repo.create({
+      fromUserId: currentUser.id,
+      toUserId,
       message: message || '',
-      photourl: photoUrl,
-      isread: 0,
-      hotelid: currentUser.hotelId,
-    } as any)
-    return item
+      photoUrl,
+      isRead: false,
+      hotelId: currentUser.hotelId,
+    } as Omit<MessageDTO, 'id'>)
   }
 
+  /** Solo el destinatario (o un manager) puede marcar como leído. */
   async markAsRead(messageId: string, currentUser: MessageUser): Promise<void> {
     const msg = await this.repo.findById(messageId)
     if (!msg) return
-    if (msg.touserid !== currentUser.id && currentUser.role !== 'hotel_admin' && currentUser.role !== 'super_admin') return
-    await this.repo.update(messageId, { isread: 1 } as any)
+    if (msg.toUserId !== currentUser.id && !isManager(currentUser.role)) return
+    await this.repo.update(messageId, { isRead: true } as Partial<Omit<MessageDTO, 'id'>>)
   }
 
-  async getAllConversations(currentUser: MessageUser): Promise<any[]> {
-    if (currentUser.role !== 'hotel_admin' && currentUser.role !== 'super_admin') {
-      return []
-    }
-    const result = await this.repo.findAll({ hotelid: currentUser.hotelId })
-    return result.data || []
+  async getAllConversations(currentUser: MessageUser): Promise<MessageDTO[]> {
+    if (!isManager(currentUser.role)) return []
+    return this.repo.findMany({ hotelId: currentUser.hotelId })
   }
 }

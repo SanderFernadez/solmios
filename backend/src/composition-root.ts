@@ -141,6 +141,7 @@ import { facturasReservasConnector } from './connectors/facturas-reservas'
 import { facturasAuditlogConnector } from './connectors/facturas-auditlog'
 import { facturasPaymentsConnector } from './connectors/facturas-payments'
 import { foliosFacturasConnector } from './connectors/folios-facturas'
+import { foliosPaymentsConnector } from './connectors/folios-payments'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
@@ -154,8 +155,9 @@ system.addConnector('reservas-huespedes', reservasHuespedesConnector)
 system.addConnector('payments-caja', paymentsCajaConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)
 system.addConnector('facturas-auditlog', facturasAuditlogConnector)
-// facturas-payments asienta el dinero en `payments` → payments-caja lo lleva al arqueo de caja.
+// El dinero se asienta en `payments` → payments-caja lo lleva al arqueo y a la conciliación.
 system.addConnector('facturas-payments', facturasPaymentsConnector)
+system.addConnector('folios-payments', foliosPaymentsConnector)
 system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector(orm))
 // folios-facturas debe registrarse antes que reservas-folios-settlement:
 // el settlement del checkout usa folios.closeAndCreateInvoice(), que necesita el puerto inyectado.

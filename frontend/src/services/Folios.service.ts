@@ -33,6 +33,13 @@ export interface Folio {
   charges?: FolioCharge[]
 }
 
+/** La factura emitida al cerrar un folio. `amount` es el total con impuestos. */
+export interface IssuedInvoice {
+  id: string
+  invoiceNumber?: string
+  amount?: number
+}
+
 interface FolioResponse { data: Folio[]; total: number }
 
 export const FoliosService = {
@@ -61,8 +68,12 @@ export const FoliosService = {
     return http.post(`/folios/${id}/payments`, data)
   },
 
-  /** Cierra el folio y genera la factura (con NCF). */
-  async closeAndInvoice(id: string): Promise<{ folio: Folio; invoiceData: any }> {
+  /**
+   * Cierra el folio, emite la factura y las vincula — en una sola operación del backend.
+   * Antes devolvía `invoiceData` y el frontend tenía que crear la factura en un segundo
+   * request: si ese fallaba, el folio quedaba cerrado sin factura.
+   */
+  async closeAndInvoice(id: string): Promise<{ folio: Folio; invoice: IssuedInvoice }> {
     return http.post(`/folios/${id}/invoice`, {})
   },
 }
