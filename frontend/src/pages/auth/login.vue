@@ -146,14 +146,11 @@ const ROLE_LABELS: Record<string, string> = {
   maintenance: 'Mantenimiento',
 }
 
-// Cuentas demo fijas (siempre visibles para que testers/clientes puedan probar)
+// Cuentas demo fijas (solo roles de panel web — camarera/mantenimiento van en la app móvil)
 const FIXED_DEMO_ACCOUNTS = [
   { name: 'Super Admin', email: 'admin@solmios.com', password: 'demo123', role: 'super_admin' },
-  { name: 'Admin Palma', email: 'admin@caribeparadise.com', password: 'demo123', role: 'hotel_admin' },
-  { name: 'Maria Lopez', email: 'maria@caribeparadise.com', password: 'demo123', role: 'receptionist' },
-  { name: 'Rosa Perez', email: 'rosa@caribeparadise.com', password: 'demo123', role: 'housekeeper' },
-  { name: 'Carlos Ruiz', email: 'carlos@caribeparadise.com', password: 'demo123', role: 'supervisor' },
-  { name: 'Luis Martin', email: 'luis@caribeparadise.com', password: 'demo123', role: 'maintenance' },
+  { name: 'Hotel Admin Demo', email: 'hotel@solmios.com', password: 'demo123', role: 'hotel_admin' },
+  { name: 'Recepcionista Demo', email: 'recepcion@solmios.com', password: 'demo123', role: 'receptionist' },
 ]
 
 const demoAccounts = ref<any[]>(
