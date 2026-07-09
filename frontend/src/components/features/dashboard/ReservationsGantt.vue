@@ -44,11 +44,13 @@
           <div class="sticky left-0 z-10 w-44 shrink-0 border-r border-white/8 bg-[#0B1526] px-4 py-3">
             <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Habitaciones</span>
           </div>
-          <div v-for="day in days" :key="day.dateStr" class="shrink-0 border-r border-white/5 px-1 py-2.5 text-center"
-            :style="{ width: `${cellW}px` }" :class="day.isToday ? 'bg-[#2563EB]/15' : day.isWeekend ? 'bg-white/2' : ''">
-            <div class="text-[9px] font-extrabold uppercase tracking-wide" :class="day.isToday ? 'text-[#60A5FA]' : 'text-slate-500'">{{ day.dayName }}</div>
-            <div class="mt-0.5 text-sm font-black tabular-nums" :class="day.isToday ? 'text-[#60A5FA]' : 'text-slate-200'">{{ day.dayNum }}</div>
-            <div v-if="day.isToday" class="mx-auto mt-1 h-0.5 w-6 rounded-full bg-[#3B82F6]"></div>
+          <div v-for="day in days" :key="day.dateStr" class="shrink-0 border-r border-white/5 px-1 py-1.5 text-center"
+            :style="{ width: `${cellW}px` }" :class="!day.isToday && day.isWeekend ? 'bg-white/2' : ''">
+            <div class="mx-auto inline-flex min-w-[44px] flex-col items-center rounded-lg px-2 py-1"
+              :class="day.isToday ? 'bg-[#2563EB] shadow-[0_0_14px_rgba(37,99,235,0.55)]' : ''">
+              <div class="text-[9px] font-extrabold uppercase tracking-wide" :class="day.isToday ? 'text-white/80' : 'text-slate-500'">{{ day.dayName }}</div>
+              <div class="text-sm font-black tabular-nums leading-tight" :class="day.isToday ? 'text-white' : 'text-slate-200'">{{ day.dayNum }}</div>
+            </div>
           </div>
         </div>
 
@@ -60,7 +62,7 @@
 
           <div v-for="row in rows" :key="row.room.id" class="flex border-b border-white/5 hover:bg-white/2 transition-colors">
             <!-- Etiqueta habitación -->
-            <div class="sticky left-0 z-10 flex w-44 shrink-0 items-center gap-2.5 border-r border-white/8 bg-[#0B1526] px-4 py-2.5">
+            <div class="sticky left-0 z-10 flex w-44 shrink-0 items-center gap-2.5 border-r border-white/8 bg-[#0B1526] px-4 py-1.5">
               <span class="h-2 w-2 shrink-0 rounded-full" :class="ROOM_DOT[row.room.status] ?? 'bg-slate-500'"></span>
               <div class="min-w-0">
                 <div class="text-sm font-black tabular-nums text-white">{{ row.room.number }}</div>
@@ -69,7 +71,7 @@
             </div>
 
             <!-- Celdas (drop targets) -->
-            <div class="relative flex" :style="{ width: `${days.length * cellW}px`, height: '52px' }">
+            <div class="relative flex" :style="{ width: `${days.length * cellW}px`, height: '46px' }">
               <div v-for="day in days" :key="day.dateStr" class="h-full shrink-0 border-r border-white/4"
                 :style="{ width: `${cellW}px` }" :class="day.isToday ? 'bg-[#2563EB]/6' : day.isWeekend ? 'bg-white/1' : ''"
                 :data-date="day.dateStr" :data-rid="row.room.id"
@@ -77,7 +79,7 @@
 
               <!-- Barras de reserva -->
               <div v-for="bar in row.bars" :key="bar.res.id"
-                class="cc-bar group absolute top-2 flex h-9 cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-2.5 transition-shadow"
+                class="cc-bar group absolute top-1.5 flex h-8 cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-2.5 transition-shadow"
                 :style="barStyle(bar)"
                 draggable="true"
                 @dragstart="onDragStart($event, bar)"

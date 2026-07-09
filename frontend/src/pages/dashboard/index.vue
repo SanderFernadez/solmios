@@ -1,5 +1,5 @@
 <template>
-  <div class="cc-dashboard -m-6 min-h-[calc(100vh-64px)] space-y-5 p-6">
+  <div class="cc-dashboard -m-6 min-h-screen space-y-4 p-5">
     <!-- 1. Centro de operaciones -->
     <CommandCenterHeader
       :hotel-name="hotelName"
@@ -11,7 +11,7 @@
     />
 
     <!-- 2. KPIs gigantes -->
-    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <KpiHeroCard
         label="Ocupación Actual" accent="blue" suffix="%"
         :value="dashboard.stats.occupancy"
@@ -56,7 +56,7 @@
     </div>
 
     <!-- 3. Calendario + actividad/canales/estados -->
-    <div class="grid gap-5 xl:grid-cols-3">
+    <div class="grid gap-4 xl:grid-cols-3">
       <div class="xl:col-span-2">
         <ReservationsGantt
           :rooms="roomStore.rooms"
@@ -66,9 +66,9 @@
           @changed="refreshOperationalData"
         />
       </div>
-      <div class="space-y-5">
+      <div class="space-y-4">
         <LiveActivityFeed :items="activityItems" />
-        <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
+        <div class="grid gap-4 sm:grid-cols-2">
           <ChannelDistributionBars :channels="channelDistribution" />
           <RoomsStatusDonut :by-status="dashboard.stats.roomsByStatus" />
         </div>
@@ -76,7 +76,7 @@
     </div>
 
     <!-- 4. Estado del hotel + IA + ingresos -->
-    <div class="grid gap-5 lg:grid-cols-3">
+    <div class="grid gap-4 lg:grid-cols-3">
       <HotelStatusPanel :services="hotelServices" />
       <AiInsightsPanel :user-name="userFirstName" :insights="aiInsights" />
       <RevenueChart
@@ -571,9 +571,9 @@ async function setRoomStatus(status: RoomStatus) {
 <style scoped>
 .cc-dashboard {
   background:
-    radial-gradient(1000px 500px at 80% -10%, rgba(37, 99, 235, 0.08), transparent),
-    radial-gradient(800px 400px at 0% 110%, rgba(6, 182, 212, 0.05), transparent),
-    #060B16;
+    radial-gradient(1000px 500px at 80% -10%, rgba(37, 99, 235, 0.1), transparent),
+    radial-gradient(800px 400px at 0% 110%, rgba(6, 182, 212, 0.06), transparent),
+    #04070F;
 }
 .cc-modal-btn {
   padding: 10px 16px;

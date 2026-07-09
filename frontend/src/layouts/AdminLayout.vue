@@ -90,6 +90,15 @@
         <HotelSwitcher />
       </div>
 
+      <!-- Reloj en vivo (estilo centro de operaciones) -->
+      <div class="border-t border-white/10 px-4 py-3">
+        <div class="text-[9px] font-bold uppercase tracking-wider text-[#C4C8D0]">{{ sidebarDate }}</div>
+        <div class="mt-0.5 flex items-center justify-between">
+          <span class="font-mono text-2xl font-black tabular-nums text-white tracking-tight">{{ sidebarClock }}</span>
+          <span class="text-base">{{ isNight ? '🌙' : '☀️' }}</span>
+        </div>
+      </div>
+
       <!-- User -->
       <div class="p-4 border-t border-white/10">
         <div class="flex items-center gap-3">
@@ -111,8 +120,8 @@
 
     <!-- Main Content -->
     <div class="flex-1 min-w-0 ml-64 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
-      <!-- Header -->
-      <header class="h-16 bg-white border-b border-border flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
+      <!-- Header (el dashboard general trae su propia barra oscura de comando) -->
+      <header v-if="!isCommandCenter" class="h-16 bg-white border-b border-border flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
         <div>
           <h1 class="text-lg font-black text-navy">{{ pageTitle }}</h1>
         </div>
@@ -161,6 +170,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useRoomStore } from '@/stores/room.store'
 import { OperationsService } from '@/services/Operations.service'
+import { useNow } from '@/composables/useNow'
 import NotificationBell from '@/components/features/core-pms/NotificationBell.vue'
 import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanner.vue'
 import OfflineBanner from '@/components/features/core-pms/OfflineBanner.vue'
@@ -172,6 +182,19 @@ const router = useRouter()
 const auth = useAuthStore()
 const dashboard = useDashboardStore()
 const roomStore = useRoomStore()
+
+// El dashboard general es un "centro de operaciones" full-dark con barra propia
+const isCommandCenter = computed(() => route.name === 'dashboard-general')
+
+const { now } = useNow(1000)
+const sidebarClock = computed(() =>
+  new Date(now.value).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }))
+const sidebarDate = computed(() =>
+  new Date(now.value).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+const isNight = computed(() => {
+  const h = new Date(now.value).getHours()
+  return h >= 19 || h < 7
+})
 
 const ICONS = {
   dashboard: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5h4.5V21H3v-7.5ZM9.75 8.25h4.5V21h-4.5V8.25ZM16.5 3h4.5v18h-4.5V3Z"/></svg>',

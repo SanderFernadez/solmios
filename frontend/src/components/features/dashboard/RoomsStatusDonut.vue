@@ -1,7 +1,7 @@
 <template>
   <div class="rounded-[20px] border border-white/8 bg-[#0B1526] p-5">
     <h2 class="text-xs font-black uppercase tracking-wider text-white">Habitaciones por Estado</h2>
-    <div class="mt-4 flex items-center gap-5">
+    <div class="mt-4 flex flex-wrap items-center justify-center gap-4">
       <!-- Donut -->
       <div class="relative h-28 w-28 shrink-0">
         <svg viewBox="0 0 42 42" class="h-28 w-28 -rotate-90">
@@ -20,11 +20,11 @@
       </div>
 
       <!-- Leyenda -->
-      <div class="min-w-0 flex-1 space-y-2">
+      <div class="min-w-[130px] flex-1 space-y-1.5">
         <div v-for="seg in segments" :key="seg.label" class="flex items-center justify-between gap-2">
-          <span class="flex min-w-0 items-center gap-2 text-[11px] font-semibold text-slate-300">
-            <span class="h-2.5 w-2.5 shrink-0 rounded-sm" :style="{ background: seg.color }"></span>
-            <span class="truncate">{{ seg.label }}</span>
+          <span class="flex items-center gap-1.5 text-[10px] font-semibold text-slate-300">
+            <span class="h-2 w-2 shrink-0 rounded-sm" :style="{ background: seg.color }"></span>
+            <span>{{ seg.label }}</span>
           </span>
           <span class="shrink-0 text-xs font-black tabular-nums text-white">{{ seg.count }}</span>
         </div>

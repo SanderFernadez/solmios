@@ -12,8 +12,11 @@
 
     <div class="relative mt-4 flex gap-4">
       <!-- Avatar -->
-      <div class="hidden sm:grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#2563EB]/30 to-[#06B6D4]/30 text-3xl shadow-[0_0_24px_rgba(6,182,212,0.25)]">
-        🤖
+      <div class="relative hidden sm:grid h-20 w-20 shrink-0 place-items-center">
+        <div class="absolute inset-0 rounded-full bg-gradient-to-br from-[#2563EB]/40 to-[#06B6D4]/40 blur-md cc-breathe"></div>
+        <div class="relative grid h-16 w-16 place-items-center rounded-2xl border border-[#06B6D4]/40 bg-gradient-to-br from-[#0E1B33] to-[#0B2438] text-4xl shadow-[0_0_28px_rgba(6,182,212,0.35)]">
+          🤖
+        </div>
       </div>
 
       <div class="min-w-0 flex-1">
