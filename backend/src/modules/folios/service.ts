@@ -8,12 +8,9 @@ import { closeAndInvoice as closeAndInvoiceUsecase, type CloseAndInvoiceResult }
 import { postNightAuditRoomCharges as postNightAuditUsecase } from './usecases/night-audit'
 import { foliosListCacheKey, invalidateFoliosCaches } from './usecases/cache'
 import { postCharge as postChargeUsecase, applyPayment as applyPaymentUsecase } from './usecases/folio-entries'
+import { openFolio } from './usecases/open-folio'
 import type { FolioPaymentPort } from './usecases/payment-port'
-import {
-  closeAndCreateInvoice as closeAndCreateInvoiceUsecase,
-  type FolioInvoicingPort,
-  type CloseAndCreateInvoiceResult,
-} from './usecases/close-and-create-invoice'
+import { closeAndCreateInvoice as closeAndCreateInvoiceUsecase, type FolioInvoicingPort, type CloseAndCreateInvoiceResult } from './usecases/close-and-create-invoice'
 
 export interface LookupDeps { guest: RepositoryAdapter<any>; reservation: RepositoryAdapter<any>; room: RepositoryAdapter<any>; user: RepositoryAdapter<any> }
 
@@ -101,17 +98,11 @@ export class FoliosService {
 
   async open(dto: OpenFolioDTO, user: CurrentUser): Promise<FolioDTO> {
     const hotelId = (await this.hotelOf(user)) ?? '' // V-02 IDOR: hotelId forzado del JWT, nunca del body
-    this.logger.info('Abriendo folio', { hotelId, reservationId: dto.reservationId })
-    let guestId = dto.guestId ?? null, roomId = dto.roomId ?? null
-    if (dto.reservationId) {
-      const res = await this.deps.reservation.findById(dto.reservationId)
-      if (res) { guestId = guestId ?? res.guestId ?? null; roomId = roomId ?? res.roomId ?? null }
-    }
-    const folio = await this.folioRepo.create({
-      hotelId, reservationId: dto.reservationId ?? null, guestId, roomId,
-      status: 'open', currency: dto.currency ?? 'USD', invoiceId: null,
-      openedAt: now(), closedAt: null,
-    } as any)
+    const folio = await openFolio(
+      { folioRepo: this.folioRepo, reservationRepo: this.deps.reservation, logger: this.logger },
+      dto,
+      hotelId,
+    )
     await this.sockets.onFolioOpened?.(folio)
     await invalidateFoliosCaches(this.cache, folio.hotelId)
     return this.enrich(folio)

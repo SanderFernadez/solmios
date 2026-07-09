@@ -1,10 +1,10 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-09T02:07:59.224Z",
+  "_generated": "2026-07-09T02:11:17.660Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
-    "healthy": false,
-    "violations": 5,
+    "healthy": true,
+    "violations": 0,
     "warnings": 0
   },
   "modules": [
@@ -298,14 +298,14 @@
       "name": "messages",
       "structure": {
         "index": true,
-        "types": false,
-        "sockets": false,
+        "types": true,
+        "sockets": true,
         "service": true,
         "controller": true,
-        "validators": false,
-        "tests": false
+        "validators": true,
+        "tests": true
       },
-      "complete": false
+      "complete": true
     },
     {
       "name": "facturas",
@@ -560,33 +560,7 @@
     "reservas-ttlock.ts",
     "booking-channex.ts"
   ],
-  "violations": [
-    {
-      "module": "messages",
-      "type": "MISSING_TYPES",
-      "message": "Módulo \"messages\" sin types.ts (DTOs)"
-    },
-    {
-      "module": "messages",
-      "type": "MISSING_SOCKETS",
-      "message": "Módulo \"messages\" sin sockets.ts (hooks opcionales)"
-    },
-    {
-      "module": "messages",
-      "type": "MISSING_VALIDATORS",
-      "message": "Módulo \"messages\" sin validators/schema.ts"
-    },
-    {
-      "module": "messages",
-      "type": "MISSING_TESTS",
-      "message": "Módulo \"messages\" sin tests/"
-    },
-    {
-      "module": "folios",
-      "type": "GOD_SERVICE",
-      "message": "\"folios/service.ts\" tiene 206 líneas. Un service > 200 líneas es un God Object — extraer a usecases/."
-    }
-  ],
+  "violations": [],
   "warnings": [],
   "rules_summary": [
     "REGLA 1: Módulos NO importan de otros módulos. Usar conectores.",

@@ -1,31 +1,7 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import type { MessageDTO, MessageUser, Conversation } from './types'
 
-export interface MessageDTO {
-  id: string
-  fromUserId: string
-  toUserId: string
-  message: string
-  photoUrl: string | null
-  isRead: boolean
-  hotelId: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface MessageUser {
-  id: string
-  hotelId: string
-  role: string
-}
-
-export interface Conversation {
-  userId: string
-  lastMessage: string
-  lastPhoto: string | null
-  lastTime: string
-  isRead: boolean
-  direction: 'sent' | 'received'
-}
+export type { MessageDTO, MessageUser, Conversation } from './types'
 
 const isManager = (role: string) => role === 'hotel_admin' || role === 'super_admin'
 
