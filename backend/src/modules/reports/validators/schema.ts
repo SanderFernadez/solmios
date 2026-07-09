@@ -1,6 +1,7 @@
 import type { ValidationRule } from 'arckode-framework'
 
-const REPORT_TYPE_ENUM = ['facturacion', 'ocupacion', 'pernoctaciones', 'rendimiento', 'procedencia', 'reservas']
+// Agregar una estrategia sin sumarla acá hace que la query se rechace con "Must be one of: ...".
+const REPORT_TYPE_ENUM = ['balance', 'facturacion', 'ocupacion', 'pernoctaciones', 'rendimiento', 'procedencia', 'reservas']
 
 export const ReportsQuerySchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const },

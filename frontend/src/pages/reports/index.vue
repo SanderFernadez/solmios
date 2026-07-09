@@ -40,6 +40,66 @@
     <!-- Loading -->
     <div v-if="loading" class="card p-12 text-center text-sm text-text-muted">Cargando reporte...</div>
 
+    <!-- Balance — base caja: solo plata que se movió -->
+    <div v-else-if="activeTab === 'balance' && data" class="space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <KpiCard label="Ingresos cobrados" :value="formatMoney((data as BalanceReport).ingresosCobrados)" class="text-teal" :icon="ICON_WALLET" icon-bg="bg-teal/10" icon-color="text-teal" />
+        <KpiCard label="Egresos pagados" :value="formatMoney((data as BalanceReport).egresosPagados)" class="text-coral" :icon="ICON_RECEIPT" />
+        <KpiCard label="Resultado" :value="formatMoney((data as BalanceReport).resultado)" :class="(data as BalanceReport).resultado >= 0 ? 'text-navy' : 'text-coral'" :icon="ICON_TRENDING" />
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card p-5">
+          <h4 class="text-xs font-black text-navy uppercase mb-3">Ingresos por método</h4>
+          <div v-if="Object.keys((data as BalanceReport).ingresosPorMetodo).length === 0" class="text-xs text-text-muted">Sin cobros en el período.</div>
+          <div v-else class="space-y-2">
+            <div v-for="(val, method) in (data as BalanceReport).ingresosPorMetodo" :key="method" class="flex items-center justify-between text-xs">
+              <span class="text-navy font-bold">{{ METHOD_LABEL[method] || method }}</span>
+              <span class="text-text-secondary">{{ formatMoney(val as number) }}</span>
+            </div>
+            <div class="flex items-center justify-between text-xs pt-2 border-t border-border font-black text-navy">
+              <span>Total</span><span>{{ formatMoney((data as BalanceReport).ingresosCobrados) }}</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-text-muted mt-3">
+            Un pago registra un monto y un método, no qué consumo saldó: por eso no se abre por habitación y extras.
+          </p>
+        </div>
+
+        <div class="card p-5">
+          <h4 class="text-xs font-black text-navy uppercase mb-3">Egresos por categoría</h4>
+          <div v-if="Object.keys((data as BalanceReport).egresosPorCategoria).length === 0" class="text-xs text-text-muted">Sin gastos pagados en el período.</div>
+          <div v-else class="space-y-2">
+            <div v-for="(val, cat) in (data as BalanceReport).egresosPorCategoria" :key="cat" class="flex items-center justify-between text-xs">
+              <span class="text-navy font-bold">{{ CATEGORY_LABEL[cat] || cat }}</span>
+              <span class="text-text-secondary">{{ formatMoney(val as number) }}</span>
+            </div>
+            <div class="flex items-center justify-between text-xs pt-2 border-t border-border font-black text-navy">
+              <span>Total</span><span>{{ formatMoney((data as BalanceReport).egresosPagados) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compromisos: no entran en el resultado porque la plata no se movió. -->
+      <div class="card p-5">
+        <h4 class="text-xs font-black text-navy uppercase mb-3">Pendientes</h4>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-navy font-bold">Por cobrar <span class="text-text-muted font-normal">(facturado {{ formatMoney((data as BalanceReport).facturado) }})</span></span>
+            <span class="font-black text-gold">{{ formatMoney((data as BalanceReport).porCobrar) }}</span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-navy font-bold">Gastos impagos</span>
+            <span class="font-black text-coral">{{ formatMoney((data as BalanceReport).egresosPendientes) }}</span>
+          </div>
+        </div>
+        <p class="text-[11px] text-text-muted mt-3">
+          No entran en el resultado: son compromisos, no plata movida. El resultado es base caja y por eso cuadra con Caja y Conciliación.
+        </p>
+      </div>
+    </div>
+
     <!-- Facturación -->
     <div v-else-if="activeTab === 'facturacion' && data" class="space-y-4">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -49,8 +109,9 @@
         <KpiCard label="Comisiones OTA" :value="formatMoney((data as FacturacionReport).commissionOTA)" :icon="ICON_GLOBE" />
         <KpiCard label="Total bruto" :value="formatMoney((data as FacturacionReport).total)" class="text-navy" :icon="ICON_WALLET" />
         <KpiCard label="Neto" :value="formatMoney((data as FacturacionReport).net)" class="text-teal" :icon="ICON_TRENDING" icon-bg="bg-teal/10" icon-color="text-teal" />
-        <KpiCard label="Gastos" :value="formatMoney((data as FacturacionReport).gastos)" class="text-coral" :icon="ICON_RECEIPT" />
-        <KpiCard label="Resultado" :value="formatMoney((data as FacturacionReport).resultado)" class="text-navy" :icon="ICON_TRENDING" />
+        <!-- Devengado: incluye los gastos impagos. El Balance, en base caja, solo cuenta los pagados. -->
+        <KpiCard label="Gastos (devengado)" :value="formatMoney((data as FacturacionReport).gastos)" class="text-coral" :icon="ICON_RECEIPT" />
+        <KpiCard label="Resultado (devengado)" :value="formatMoney((data as FacturacionReport).resultado)" class="text-navy" :icon="ICON_TRENDING" />
       </div>
 
       <!-- Devengado vs cobrado: la brecha es la cuenta por cobrar, no un descuadre. -->
@@ -274,7 +335,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ReportsService, REPORT_META } from '@/services/Reports.service'
-import type { ReportType, FacturacionReport, OcupacionReport, PernotacionesReport, RendimientoReport, ProcedenciaReport, ReservasReport, AnyReport } from '@/services/Reports.service'
+import type { ReportType, BalanceReport, FacturacionReport, OcupacionReport, PernotacionesReport, RendimientoReport, ProcedenciaReport, ReservasReport, AnyReport } from '@/services/Reports.service'
+
+const METHOD_LABEL: Record<string, string> = {
+  cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia',
+  link: 'Link de pago', deposit: 'Depósito', other: 'Otro',
+}
+
+const CATEGORY_LABEL: Record<string, string> = {
+  general: 'General', supplies: 'Suministros', maintenance: 'Mantenimiento',
+  cleaning: 'Limpieza', staff: 'Personal', marketing: 'Marketing', utilities: 'Servicios',
+}
 import { useToast } from '@/composables/useToast'
 import KpiCard from '@/components/features/core-pms/KpiCard.vue'
 import BarChart from '@/components/features/core-pms/BarChart.vue'

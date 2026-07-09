@@ -1,6 +1,22 @@
 import { http } from './http'
 
-export type ReportType = 'facturacion' | 'ocupacion' | 'pernoctaciones' | 'rendimiento' | 'procedencia' | 'reservas'
+export type ReportType = 'balance' | 'facturacion' | 'ocupacion' | 'pernoctaciones' | 'rendimiento' | 'procedencia' | 'reservas'
+
+/**
+ * Estado de resultados en base caja: solo plata que se movió.
+ * `facturado` y `egresosPendientes` son compromisos, y no entran en `resultado`.
+ */
+export interface BalanceReport {
+  type: string; from: string; to: string
+  ingresosCobrados: number
+  ingresosPorMetodo: Record<string, number>
+  egresosPagados: number
+  egresosPorCategoria: Record<string, number>
+  egresosPendientes: number
+  resultado: number
+  facturado: number
+  porCobrar: number
+}
 
 export interface ReportParams {
   from?: string
@@ -75,7 +91,7 @@ export interface ReservasReport {
   dailyCreated: Array<{ date: string; value: number }>
 }
 
-export type AnyReport = FacturacionReport | OcupacionReport | PernotacionesReport | RendimientoReport | ProcedenciaReport | ReservasReport
+export type AnyReport = BalanceReport | FacturacionReport | OcupacionReport | PernotacionesReport | RendimientoReport | ProcedenciaReport | ReservasReport
 
 export const ReportsService = {
   get: <T extends AnyReport>(type: ReportType, params?: ReportParams) =>
@@ -100,6 +116,7 @@ export const ReportsService = {
 }
 
 export const REPORT_META: Record<ReportType, { label: string; icon: string; description: string }> = {
+  balance: { label: 'Balance', icon: 'trending', description: 'Estado de resultados: lo cobrado menos los gastos pagados. Cuadra con Caja' },
   facturacion: { label: 'Facturación', icon: 'wallet', description: 'Ingresos por habitación, extras, impuestos y comisiones OTA' },
   ocupacion: { label: 'Ocupación', icon: 'chart', description: 'Diaria, real (sin bloqueos), libres vs ocupadas' },
   pernoctaciones: { label: 'Pernoctaciones', icon: 'bed', description: 'Personas por noche, total y desglose' },

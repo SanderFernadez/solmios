@@ -20,6 +20,8 @@ export class FacturacionStrategy implements ReportStrategy {
     // Negativo = el huésped prepagó estadías futuras. Es información, no un error.
     const porCobrar = facturado - ingresado
 
+    // Devengado: TODOS los gastos del período, pagados o no. El reporte `balance` cuenta solo los
+    // pagados, porque trabaja en base caja. La diferencia entre ambos es `egresosPendientes`.
     const gastos = sumExpenses(ctx.expenses)
     const net = facturado - taxes - commissionOTA
 

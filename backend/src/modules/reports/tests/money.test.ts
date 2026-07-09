@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'bun:test'
 import {
   inDateRange, paymentDate, expenseDate, sumCollected, sumCharged, sumRefunded, sumExpenses,
-  chargeTotal, isConsumption,
+  chargeTotal, isConsumption, collectedByMethod, isPaid, sumByCategory,
 } from '../usecases/money'
 
 const charge = (over: any = {}) => ({ type: 'charge', status: 'completed', amount: 100, ...over })
@@ -30,6 +30,11 @@ describe('sumCollected — dinero que realmente entró', () => {
   it('no cuenta depósitos en garantía ni retiros como ingreso', () => {
     expect(sumCollected([charge({ type: 'deposit', amount: 500 }), charge({ type: 'withdrawal', amount: 200 })])).toBe(0)
   })
+
+  // Restar el crudo sumaría la devolución en vez de restarla.
+  it('resta la devolución aunque el monto venga negativo', () => {
+    expect(sumCollected([charge({ amount: 100 }), charge({ type: 'refund', amount: -30 })])).toBe(70)
+  })
 })
 
 describe('sumCharged / sumRefunded — brutos, para vistas de dos líneas', () => {
@@ -44,6 +49,44 @@ describe('sumCharged / sumRefunded — brutos, para vistas de dos líneas', () =
   it('juntos no cuentan la devolución dos veces', () => {
     const rows = [charge({ amount: 100 }), charge({ type: 'refund', amount: 30 })]
     expect(sumCharged(rows) - sumRefunded(rows)).toBe(sumCollected(rows))
+  })
+
+  it('la identidad se mantiene con montos de devolución negativos', () => {
+    const rows = [charge({ amount: 100 }), charge({ type: 'refund', amount: -30 })]
+    expect(sumCharged(rows) - sumRefunded(rows)).toBe(sumCollected(rows))
+  })
+})
+
+describe('collectedByMethod', () => {
+  it('agrupa lo cobrado por método', () => {
+    const r = collectedByMethod([charge({ method: 'cash', amount: 100 }), charge({ method: 'link', amount: 50 })])
+    expect(r).toEqual({ cash: 100, link: 50 })
+  })
+
+  it('la devolución descuenta del método por el que se cobró', () => {
+    const r = collectedByMethod([charge({ method: 'card', amount: 100 }), charge({ method: 'card', type: 'refund', amount: 30 })])
+    expect(r).toEqual({ card: 70 })
+  })
+
+  it('un pago sin método cae en `other`', () => {
+    expect(collectedByMethod([charge({ method: undefined, amount: 10 })])).toEqual({ other: 10 })
+  })
+
+  it('los pagos no completados no suman', () => {
+    expect(collectedByMethod([charge({ method: 'cash', status: 'pending' })])).toEqual({})
+  })
+})
+
+describe('isPaid / sumByCategory', () => {
+  it('un gasto solo sale de la plata cuando está pagado', () => {
+    expect(isPaid({ paid: 1 })).toBe(true)
+    expect(isPaid({ paid: 0 })).toBe(false)
+    expect(isPaid({})).toBe(false)
+  })
+
+  it('agrupa los gastos por categoría, con `general` por defecto', () => {
+    const r = sumByCategory([{ amount: 100, category: 'supplies' }, { amount: 50 }, { amount: 20, category: 'supplies' }])
+    expect(r).toEqual({ supplies: 120, general: 50 })
   })
 })
 

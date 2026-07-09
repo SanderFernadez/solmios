@@ -36,10 +36,35 @@ export const expenseDate = (expense: any): string | undefined => expense?.date |
 export function sumCollected(payments: any[]): number {
   return payments.reduce((total: number, p: any) => {
     if (p.status !== 'completed') return total
-    if (p.type === 'refund') return total - Number(p.amount || 0)
+    // `Math.abs`: una devolución se guarda a veces con monto negativo. Sin esto, restar el crudo la
+    // sumaría, y `sumCharged - sumRefunded` dejaría de dar `sumCollected`.
+    if (p.type === 'refund') return total - Math.abs(Number(p.amount || 0))
     if (p.type === 'charge') return total + Number(p.amount || 0)
     return total
   }, 0)
+}
+
+/** Cobrado neto por método de pago. Un reembolso descuenta del método por el que se cobró. */
+export function collectedByMethod(payments: any[]): Record<string, number> {
+  const byMethod: Record<string, number> = {}
+  for (const p of payments) {
+    if (p.status !== 'completed') continue
+    const method = p.method || 'other'
+    if (p.type === 'charge') byMethod[method] = (byMethod[method] || 0) + Number(p.amount || 0)
+    else if (p.type === 'refund') byMethod[method] = (byMethod[method] || 0) - Math.abs(Number(p.amount || 0))
+  }
+  return byMethod
+}
+
+/** Un gasto solo sale de la plata cuando está pagado. `paid` es 0/1. */
+export const isPaid = (expense: any): boolean => Number(expense?.paid) === 1
+
+export function sumByCategory(expenses: any[]): Record<string, number> {
+  return expenses.reduce((acc: Record<string, number>, e: any) => {
+    const category = e.category || 'general'
+    acc[category] = (acc[category] || 0) + Number(e.amount || 0)
+    return acc
+  }, {})
 }
 
 /**

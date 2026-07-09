@@ -68,7 +68,8 @@ export class ReportQueries {
       this.orm.findMany('Rooms', { hotelId }) as Promise<any[]>,
       this.orm.findMany('Guests', { hotelId }) as Promise<any[]>,
       this.orm.findMany('Expenses', { hotelId }) as Promise<any[]>,
-      this.orm.findMany('Payments', { hotelId }) as Promise<any[]>,
+      // El modelo se registra en singular (`orm.define('Payment', ...)`), no 'Payments'.
+      this.orm.findMany('Payment', { hotelId }) as Promise<any[]>,
       this.orm.findMany('FolioCharges', { hotelId }) as Promise<any[]>,
       this.orm.findMany('RoomBlocks', { hotelId }) as Promise<any[]>,
       (await this.orm.findMany('Hotels', { id: hotelId }))[0] as any,
@@ -102,7 +103,7 @@ export class ReportQueries {
     const [rooms, res, payments, folioCharges] = await Promise.all([
       this.orm.findMany('Rooms', { hotelId }) as Promise<any[]>,
       this.orm.findMany('Reservations', { hotelId }) as Promise<any[]>,
-      this.orm.findMany('Payments', { hotelId }) as Promise<any[]>,
+      this.orm.findMany('Payment', { hotelId }) as Promise<any[]>,
       this.orm.findMany('FolioCharges', { hotelId }) as Promise<any[]>,
     ])
     const t = new Date().toISOString().split('T')[0]
