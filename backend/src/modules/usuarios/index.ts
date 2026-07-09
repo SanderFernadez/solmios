@@ -49,9 +49,14 @@ export function UsuariosModule() {
         resetAttempts(ip as string)
         return result
       })
-      router.get('/api/auth/me', guard('users', 'view'), (req) => controller.me(req))
-      router.post('/api/auth/logout', guard('users', 'view'), (req) => controller.logout(req))
-      router.post('/api/auth/change-password', guard('users', 'edit'), (req) => controller.changePassword(req))
+      // `me` y `logout` operan sobre el propio usuario del token, no sobre la
+      // tabla de usuarios: pedirles `users:view` dejaba a supervisor, camarera y
+      // mantenimiento sin poder leer su propio perfil ni cerrar sesión (403).
+      router.get('/api/auth/me', [auth.authenticate()], (req) => controller.me(req))
+      router.post('/api/auth/logout', [auth.authenticate()], (req) => controller.logout(req))
+      // Cambia la contraseña del `req.user.id` del token y exige la actual:
+      // `users:edit` es el permiso para editar a OTROS, no a uno mismo.
+      router.post('/api/auth/change-password', [auth.authenticate()], (req) => controller.changePassword(req))
       router.post('/api/auth/forgot-password', (req) => controller.forgotPassword(req))
       router.post('/api/auth/reset-password', (req) => controller.resetPassword(req))
 
