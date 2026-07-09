@@ -38,8 +38,9 @@ export class FoliosController {
     return { status: 200, body: await this.service.close(req.params.id, req.user as any) }
   }
 
+  /** Cierra el folio, emite la factura y las vincula — todo del lado del servidor. */
   async closeAndInvoice(req: HttpRequest) {
-    return { status: 200, body: await this.service.closeAndInvoice(req.params.id, req.user as any) }
+    return { status: 200, body: await this.service.closeAndCreateInvoice(req.params.id, req.user as any) }
   }
 
   async postNightAuditRoomCharges(req: HttpRequest) {

@@ -106,14 +106,36 @@ export interface BillingStats {
   totalTax: number
 }
 
+export interface ListInvoicesParams {
+  hotelId?: string
+  /** 'invoice' | 'payment' | 'folio'. Sin tipo, la API devuelve los tres mezclados. */
+  type?: InvoiceType
+  status?: InvoiceStatus
+  page?: number
+  limit?: number
+}
+
+/**
+ * ¿Se puede eliminar esta factura? Espeja la regla del backend (usecases/deletable.ts):
+ * una factura con efectos contables se anula con nota de crédito, no se borra.
+ * Acá solo decide qué botón mostrar — quien manda es el backend, que rechaza con 409.
+ */
+export function isDeletable(inv: Invoice): boolean {
+  if (inv.type !== 'invoice') return true
+  if (inv.status === 'paid' || inv.status === 'overdue' || inv.status === 'cancelled') return false
+  return (inv.amountPaid ?? 0) === 0
+}
+
 export const BillingService = {
-  async list(hotelId?: string, type?: string, page = 1, limit = 20): Promise<{ invoices: Invoice[]; total: number; pages: number; hasNext: boolean; hasPrev: boolean }> {
-    const params = new URLSearchParams()
-    if (hotelId) params.set('hotelId', hotelId)
-    if (type) params.set('type', type)
-    params.set('page', String(page))
-    params.set('limit', String(limit))
-    const data = await http.get<BillingResponse>(`/facturas?${params.toString()}`)
+  async list(params: ListInvoicesParams = {}): Promise<{ invoices: Invoice[]; total: number; pages: number; hasNext: boolean; hasPrev: boolean }> {
+    const { hotelId, type, status, page = 1, limit = 20 } = params
+    const qs = new URLSearchParams()
+    if (hotelId) qs.set('hotelId', hotelId)
+    if (type) qs.set('type', type)
+    if (status) qs.set('status', status)
+    qs.set('page', String(page))
+    qs.set('limit', String(limit))
+    const data = await http.get<BillingResponse>(`/facturas?${qs.toString()}`)
     return {
       invoices: (data.data ?? []).map(mapInvoice),
       total: data.total ?? 0,
@@ -121,6 +143,11 @@ export const BillingService = {
       hasNext: data.hasNext ?? false,
       hasPrev: data.hasPrev ?? false,
     }
+  },
+
+  /** Anula una factura emitida. Es la vía correcta cuando `isDeletable()` da false. */
+  async creditNote(invoiceId: string, reason: string): Promise<unknown> {
+    return http.post(`/facturas/${invoiceId}/credit-note`, { reason })
   },
 
   async stats(): Promise<BillingStats> {

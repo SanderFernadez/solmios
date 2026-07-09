@@ -137,9 +137,30 @@ const password = ref('demo123')
 const error = ref('')
 const loading = ref(false)
 
-const ROLE_LABELS: Record<string, string> = { super_admin: 'Super Admin', hotel_admin: 'Hotel Admin', receptionist: 'Recepcionista' }
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  hotel_admin: 'Hotel Admin',
+  receptionist: 'Recepcionista',
+  housekeeper: 'Camarera',
+  supervisor: 'Supervisor',
+  maintenance: 'Mantenimiento',
+}
 
-const demoAccounts = ref<any[]>([])
+// Cuentas demo fijas (solo roles de panel web — camarera/mantenimiento van en la app móvil)
+const FIXED_DEMO_ACCOUNTS = [
+  { name: 'Super Admin', email: 'admin@solmios.com', password: 'demo123', role: 'super_admin' },
+  { name: 'Hotel Admin Demo', email: 'hotel@solmios.com', password: 'demo123', role: 'hotel_admin' },
+  { name: 'Recepcionista Demo', email: 'recepcion@solmios.com', password: 'demo123', role: 'receptionist' },
+]
+
+const demoAccounts = ref<any[]>(
+  FIXED_DEMO_ACCOUNTS.map((u) => ({
+    name: u.name,
+    email: u.email,
+    password: u.password,
+    roleLabel: ROLE_LABELS[u.role] || u.role,
+  })),
+)
 
 onMounted(async () => {
   try {
@@ -151,13 +172,18 @@ onMounted(async () => {
     }
     const json = await r.json()
     const list = Array.isArray(json) ? json : (json.data || [])
-    if (Array.isArray(list)) {
-      demoAccounts.value = list.map((u: any) => ({
-        name: u.name,
-        email: u.email,
-        password: 'demo123',
-        roleLabel: ROLE_LABELS[u.role] || u.role,
-      }))
+    if (Array.isArray(list) && list.length) {
+      // Fusionar cuentas del endpoint con las fijas (evitar duplicados por email)
+      const knownEmails = new Set(FIXED_DEMO_ACCOUNTS.map((u) => u.email))
+      const extra = list
+        .filter((u: any) => u.email && !knownEmails.has(u.email))
+        .map((u: any) => ({
+          name: u.name,
+          email: u.email,
+          password: 'demo123',
+          roleLabel: ROLE_LABELS[u.role] || u.role,
+        }))
+      if (extra.length) demoAccounts.value = [...demoAccounts.value, ...extra]
     }
   } catch (e) {
     // Silently degrade — demo accounts are a convenience, not critical. Log for debugging.

@@ -30,6 +30,12 @@ export interface CloseAndInvoiceResult {
     status: string
     notes: string
     items: InvoiceLineItem[]
+    /**
+     * Pagos ya posteados al folio. La factura nace con este saldo aplicado: el dinero se asentó al
+     * postear el pago (`folios.applyPayment` → `payments`), así que volver a "cobrar" la factura
+     * por ese mismo monto lo registraría dos veces.
+     */
+    amountPaid: number
   }
 }
 
@@ -52,10 +58,13 @@ export async function closeAndInvoice(
   const taxes = taxCharges.reduce((s, c) => s + Number(c.taxes || 0), 0)
   const subtotal = totals.chargesTotal - taxes
 
-  // Construir líneas de la factura desde los cargos
+  // Líneas de la factura: el monto NETO del cargo (`amount`), no el bruto (`total`, que ya lleva
+  // impuestos). `invoiceData.amount` es el subtotal y `facturas.create` recalcula los impuestos
+  // sobre él; si las líneas trajeran el bruto, `assertItemsSum` rechazaría la factura por
+  // inconsistencia financiera (items 120 vs monto 100).
   const items: InvoiceLineItem[] = taxCharges.map(c => ({
     description: c.description || c.category,
-    amount: Number(c.total) || 0,
+    amount: Number(c.amount) || 0,
   }))
 
   // Obtener datos del huésped y habitación
@@ -78,6 +87,8 @@ export async function closeAndInvoice(
     status: 'pending',
     notes: `Folio ${folioId.slice(0, 8)} · ${items.length} cargo(s) · ${guestName}${roomNumber ? ` · Hab ${roomNumber}` : ''}`,
     items,
+    // Los pagos posteados al folio ya movieron dinero real; la factura los hereda.
+    amountPaid: totals.paymentsTotal,
   }
 
   return { folio: closed as FolioDTO, invoiceData }

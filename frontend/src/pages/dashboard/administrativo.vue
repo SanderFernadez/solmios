@@ -598,7 +598,12 @@ interface ActivityItem {
   date: Date
 }
 
-const recentActivity = computed<ActivityItem[]>(() => {
+/** Lo que consume el template: la actividad más su fecha ya formateada. */
+interface ActivityRow extends ActivityItem {
+  timeLabel: string
+}
+
+const recentActivity = computed<ActivityRow[]>(() => {
   const items: ActivityItem[] = []
   for (const r of reservationStore.reservations) {
     if (r.status === 'cancelled') continue
@@ -616,7 +621,7 @@ const recentActivity = computed<ActivityItem[]>(() => {
   return items
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, 5)
-    .map(item => ({ ...item, timeLabel: relativeDayLabel(item.date) }) as ActivityItem & { timeLabel: string })
+    .map(item => ({ ...item, timeLabel: relativeDayLabel(item.date) }))
 })
 
 // === Canales de Reservas ===

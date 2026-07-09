@@ -58,6 +58,12 @@ export interface CreateFacturasDTO {
   paymentMethod?: string | null
   notes?: string | null
   items?: InvoiceItem[]
+  /**
+   * Monto ya cobrado al emitir. Lo usa la factura que nace de un folio: los pagos posteados al folio
+   * ya asentaron dinero en `payments`, así que la factura los hereda en vez de volver a cobrarse
+   * (lo que registraría el mismo dinero dos veces).
+   */
+  amountPaid?: number
 }
 
 export interface UpdateFacturasDTO {

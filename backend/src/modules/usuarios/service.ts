@@ -54,9 +54,20 @@ export class UsuariosService {
     }
   }
 
-  async login(email: string, password: string): Promise<{ token: string; user: any }> {
-    const normalizedEmail = email.trim().toLowerCase()
-    const user = await this.repo.findOne({ email: normalizedEmail })
+  async login(emailOrPhone: string, password: string): Promise<{ token: string; user: any }> {
+    const trimmed = emailOrPhone.trim()
+    // Si parece teléfono (solo dígitos, espacios, guiones, paréntesis) → buscar por phone normalizado
+    const isPhone = /^[\d\s\-\(\)\+]+$/.test(trimmed)
+    let user: any = null
+    if (isPhone) {
+      const cleanInput = trimmed.replace(/[\s\-\(\)\+]/g, '')
+      const allUsers = await this.repo.findMany({})
+      user = allUsers.find((u: any) =>
+        String(u.phone || '').replace(/[\s\-\(\)\+]/g, '') === cleanInput,
+      )
+    } else {
+      user = await this.repo.findOne({ email: trimmed.toLowerCase() })
+    }
     if (!user || user.active === 0) throw new AuthError('Credenciales inválidas')
     const valid = await this.verifyPassword(password, user.password)
     if (!valid) throw new AuthError('Credenciales inválidas')
