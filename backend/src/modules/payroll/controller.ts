@@ -1,10 +1,10 @@
 // payroll/controller.ts — Adaptador HTTP
 
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+import { validateSchema, ValidationError } from 'arckode-framework'
 import type { PayrollService } from './service'
-import type { CreatePayrollConceptDTO, CreatePayrollRunDTO, PayrollEmployeeInput } from './types'
-import { CreateConceptSchema, CreateRunSchema, CalculateSchema, UpdateConfigSchema } from './validators/schema'
+import type { CreatePayrollConceptDTO, CreatePayrollRunDTO, PayrollEmployeeInput, PayrollPaymentMethod } from './types'
+import { CreateConceptSchema, CreateRunSchema, CalculateSchema, UpdateConfigSchema, MarkAsPaidSchema } from './validators/schema'
 
 export class PayrollController {
   constructor(private readonly service: PayrollService, private readonly logger: Logger) {}
@@ -70,10 +70,13 @@ export class PayrollController {
   }
 
   async calculate(req: HttpRequest) {
-    const data = validateSchema(CalculateSchema, req.body) as any
-    const employees = data.employees as PayrollEmployeeInput[]
+    validateSchema(CalculateSchema, req.body ?? {})
+    const { employees } = (req.body ?? {}) as { employees?: unknown }
+    if (!Array.isArray(employees) || employees.length === 0) {
+      throw new ValidationError('employees debe ser un array con al menos un empleado')
+    }
     const user = (req as any).user
-    const result = await this.service.calculateRun(req.params.id, employees, user)
+    const result = await this.service.calculateRun(req.params.id, employees as PayrollEmployeeInput[], user)
     return { status: 200, body: result }
   }
 
@@ -85,7 +88,8 @@ export class PayrollController {
 
   async markAsPaid(req: HttpRequest) {
     const user = (req as any).user
-    return { status: 200, body: await this.service.markRunAsPaid(req.params.id, user) }
+    const { paymentMethod } = validateSchema(MarkAsPaidSchema, req.body ?? {}) as { paymentMethod?: PayrollPaymentMethod }
+    return { status: 200, body: await this.service.markRunAsPaid(req.params.id, user, paymentMethod) }
   }
 
   async cancelRun(req: HttpRequest) {

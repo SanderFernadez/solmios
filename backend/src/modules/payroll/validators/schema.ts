@@ -19,8 +19,15 @@ export const CreateRunSchema: Record<string, ValidationRule> = {
   paymentDate: { type: 'string' as const, required: true },
 }
 
-export const CalculateSchema: Record<string, ValidationRule> = {
-  employees: { type: 'array' as any, required: true },
+// `validateSchema` no tiene tipo `array`: declararlo como tal hacía que el campo NO se copiara al
+// output y el controller leyera `undefined` → 500 en cada cálculo de nómina. El array lo estrecha
+// el controller a mano. Este schema queda para los escalares que se sumen en el futuro.
+export const CalculateSchema: Record<string, ValidationRule> = {}
+
+// Sin método explícito se asume transferencia: es como se paga un sueldo salvo que digas otra cosa,
+// y no toca el cajón físico. Solo `cash` mueve la caja.
+export const MarkAsPaidSchema: Record<string, ValidationRule> = {
+  paymentMethod: { type: 'string' as const, enum: ['cash', 'card', 'transfer', 'other'] },
 }
 
 export const UpdateConfigSchema: Record<string, ValidationRule> = {
