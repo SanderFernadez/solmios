@@ -25,6 +25,20 @@ export interface SendMessageDTO {
   photoUrl?: string | null
 }
 
+/**
+ * Un mensaje ya resuelto contra el directorio: trae quién lo escribió.
+ *
+ * En un hilo 1-a-1 el remitente es obvio, pero en el canal del equipo hay N
+ * personas hablando y la burbuja necesita nombre y foto. Estos campos NO son
+ * columnas: se agregan al leer y nunca se pasan a `create`/`update` (el ORM
+ * descarta silenciosamente los campos que no están en el modelo).
+ */
+export interface MessageWithSender extends MessageDTO {
+  senderName: string
+  senderAvatar: string | null
+  senderRole: string
+}
+
 /** Última interacción con cada interlocutor, para la lista de chats. */
 export interface Conversation {
   userId: string
@@ -33,6 +47,10 @@ export interface Conversation {
   lastTime: string
   isRead: boolean
   direction: 'sent' | 'received'
+  /** El canal del equipo se pinta distinto y va fijo arriba de la lista. */
+  isTeam?: boolean
+  /** Quién escribió el último mensaje. Solo útil en el canal del equipo. */
+  lastSenderName?: string
 }
 
 /** Un compañero de trabajo al que se le puede escribir. Proyección mínima: nunca email ni teléfono. */
@@ -40,6 +58,8 @@ export interface ContactDTO {
   id: string
   name: string
   role: string
+  /** URL de la foto de perfil, o null si nunca subió una. */
+  avatar: string | null
 }
 
 /**

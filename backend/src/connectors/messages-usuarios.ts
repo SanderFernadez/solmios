@@ -4,7 +4,7 @@
 // `users:view`, que housekeeper/supervisor/maintenance no tienen. En vez de sobre-privilegiar esos
 // roles, `messages` declara el puerto `UserDirectory` y este connector se lo cablea.
 //
-// Proyecta a `{id, name, role}`: un contacto del chat nunca lleva email ni teléfono.
+// Proyecta a `{id, name, role, avatar}`: un contacto del chat nunca lleva email ni teléfono.
 
 import type { ConnectorContext } from 'arckode-framework'
 import type { ContactDTO, UserDirectory } from '../modules/messages'
@@ -16,7 +16,12 @@ export function messagesUsuariosConnector(ctx: ConnectorContext): void {
   messages.setUserDirectory({
     listStaff: async (hotelId: string): Promise<ContactDTO[]> => {
       const staff = await usuarios.list(hotelId)
-      return staff.map((u) => ({ id: String(u.id), name: String(u.name ?? ''), role: String(u.role ?? '') }))
+      return staff.map((u) => ({
+        id: String(u.id),
+        name: String(u.name ?? ''),
+        role: String(u.role ?? ''),
+        avatar: u.avatar ? String(u.avatar) : null,
+      }))
     },
   })
 }

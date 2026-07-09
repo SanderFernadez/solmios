@@ -20,42 +20,46 @@ export class MessagesController {
     private readonly storage?: StorageService,
   ) {}
 
+  // El kernel ya envuelve toda respuesta en {success, data}. Envolver acá otra vez
+  // producía {success, data:{success, data:[...]}} y obligaba al cliente a
+  // desenvolver dos veces para adivinar dónde estaba el array.
+
   async conversations(req: HttpRequest) {
     const user = req.user as any
     const result = await this.service.getConversations(user)
-    return { status: 200, body: { success: true, data: result } }
+    return { status: 200, body: result }
   }
 
   async messagesWith(req: HttpRequest) {
     const user = req.user as any
     const result = await this.service.getMessagesWith(req.params.userId, user)
-    return { status: 200, body: { success: true, data: result } }
+    return { status: 200, body: result }
   }
 
   /** Compañeros del hotel. Sirve al chat sin exigir el permiso `users:view`. */
   async contacts(req: HttpRequest) {
     const user = req.user as any
     const result = await this.service.getContacts(user)
-    return { status: 200, body: { success: true, data: result } }
+    return { status: 200, body: result }
   }
 
   async send(req: HttpRequest) {
     const user = req.user as any
     const body = validateSchema(SendMessageSchema, req.body) as { toUserId: string; message?: string; photoUrl?: string | null }
     const item = await this.service.sendMessage(body.toUserId, body.message || '', body.photoUrl || null, user)
-    return { status: 201, body: { success: true, data: item } }
+    return { status: 201, body: item }
   }
 
   async markRead(req: HttpRequest) {
     const user = req.user as any
     await this.service.markAsRead(req.params.id, user)
-    return { status: 200, body: { success: true, data: { message: 'Marcado como leído' } } }
+    return { status: 200, body: { message: 'Marcado como leído' } }
   }
 
   async allConversations(req: HttpRequest) {
     const user = req.user as any
     const result = await this.service.getAllConversations(user)
-    return { status: 200, body: { success: true, data: result } }
+    return { status: 200, body: result }
   }
 
   async uploadPhoto(req: HttpRequest) {
