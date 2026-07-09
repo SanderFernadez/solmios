@@ -2,19 +2,22 @@
 
 ## BM-1 — El cobro de una factura registra un pago real
 
-- [ ] 1.1 `facturas/usecases/payment-port.ts` — declarar `PaymentPort { recordPayment(...) }`
-- [ ] 1.2 `connectors/facturas-payments.ts` — inyectar `payments.createPayment()` en `facturas`
-- [ ] 1.3 `facturas.pay()` usa el puerto; elimina `createPaymentRecord` (deja de escribir `type:'payment'`)
-- [ ] 1.4 Registrar el connector en `composition-root.ts`
+- [x] 1.1 `facturas/usecases/payment-port.ts` — declarar `PaymentPort { recordPayment(...) }`
+- [x] 1.2 `connectors/facturas-payments.ts` — inyectar `payments.createPayment()` en `facturas`
+- [x] 1.3 `facturas.pay()` usa el puerto; elimina `createPaymentRecord` (deja de escribir `type:'payment'`)
+- [x] 1.4 Registrar el connector en `composition-root.ts`
 - [ ] 1.5 Test: cobrar una factura en efectivo emite `onPaymentCompleted` (→ caja)
 - [ ] 1.6 Test: dos cobros con métodos distintos → dos filas en `payments`, ningún método pisado
 
 ## BM-2 — El pago a un folio registra un pago real
 
-- [ ] 2.1 `folios.applyPayment()` registra en `payments` vía puerto, manteniendo la línea en `folio_charges`
-- [ ] 2.2 `connectors/folios-payments.ts`
+- [x] 2.1 `folios.applyPayment()` registra en `payments` vía puerto, manteniendo la línea en `folio_charges`
+- [x] 2.2 `connectors/folios-payments.ts`
 - [ ] 2.3 Test: el saldo del folio no cambia (la línea auxiliar sigue existiendo)
 - [ ] 2.4 Test: el pago aparece en `payments` con `folioId`
+
+> BM-1 y BM-2 aplicados y verificados end-to-end (ver state.yaml).
+> Tests 1.5/1.6/2.3/2.4 pendientes: la verificación fue e2e contra SQLite, falta cubrirlos con unit tests.
 
 ## BM-3 — Migración de datos
 

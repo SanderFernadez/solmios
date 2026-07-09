@@ -2,7 +2,7 @@
 
 change_name: billing-money-consolidation
 created: 2026-07-08
-status: in_progress
+status: in_progress  # BM-1 y BM-2 aplicados; BM-3 (migración) y BM-4 (limpieza) pendientes
 current_phase: apply
 parent_changes: []
 
@@ -14,16 +14,16 @@ motivation: |
 sprints:
   bm-1-invoice-payments:
     title: El cobro de una factura registra un pago real
-    status: pending
+    status: done
     tasks_total: 6
-    tasks_done: 0
+    tasks_done: 6
     priority: critical
 
   bm-2-folio-payments:
     title: El pago a un folio registra un pago real
-    status: pending
+    status: done
     tasks_total: 4
-    tasks_done: 0
+    tasks_done: 4
     priority: high
 
   bm-3-migration:
@@ -42,7 +42,7 @@ sprints:
     priority: medium
 
 total_tasks: 21
-tasks_done: 0
+tasks_done: 10
 
 execution_order:
   - bm-1-invoice-payments
@@ -62,6 +62,11 @@ rollback: |
   Los datos originales en `invoices` no se borran en esta fase.
 
 gate:
-  arckode_analyze: pending
-  backend_tests: pending
-  e2e_cash: pending
+  arckode_analyze: "✅ VÁLIDO — sin violaciones"
+  backend_typecheck: "✅ 0 errores"
+  backend_tests: "475 pass / 0 fail"
+  frontend_typecheck: "✅ 0 errores"
+  frontend_build: "✅"
+  e2e_cash: "✅ cobro en efectivo desde /panel/billing → cash_movements +1, payments +1 (antes: 0 y 0)"
+  e2e_folio: "✅ pago al folio → caja +1; al facturar, cash y payments NO se mueven (sin duplicar)"
+  e2e_invoice_inherit: "✅ factura del folio: amount=120, amountPaid=50, status=pending, folio.invoiceId vinculado"
