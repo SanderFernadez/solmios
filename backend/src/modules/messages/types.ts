@@ -34,3 +34,19 @@ export interface Conversation {
   isRead: boolean
   direction: 'sent' | 'received'
 }
+
+/** Un compañero de trabajo al que se le puede escribir. Proyección mínima: nunca email ni teléfono. */
+export interface ContactDTO {
+  id: string
+  name: string
+  role: string
+}
+
+/**
+ * Puerto hacia el módulo `usuarios`. Lo cablea `connectors/messages-usuarios.ts`.
+ * El chat necesita los nombres de sus interlocutores sin depender del permiso `users:view`,
+ * que housekeeper/supervisor/maintenance no tienen.
+ */
+export interface UserDirectory {
+  listStaff(hotelId: string): Promise<ContactDTO[]>
+}

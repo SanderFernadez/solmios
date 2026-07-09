@@ -13,6 +13,7 @@ export { MessagesService }
 export type { MessageDTO, MessageUser, SendMessageDTO, Conversation } from './types'
 export type { MessagesSockets } from './sockets'
 export { MessagesValidator, SendMessageSchema } from './validators/schema'
+export type { ContactDTO, UserDirectory } from './types'
 
 /** Roles que pueden usar el chat interno: cualquier miembro autenticado del hotel. */
 const STAFF_ROLES: [string, ...string[]] = [
@@ -51,6 +52,8 @@ export function MessagesModule(opts: { storage?: StorageService } = {}) {
 
       router.get('/api/messages', staff, (req) => controller.conversations(req))
       router.get('/api/messages/all', staff, (req) => controller.allConversations(req))
+      // Las rutas literales van ANTES de '/:userId', si no el param captura 'contacts'/'upload'.
+      router.get('/api/messages/contacts', staff, (req) => controller.contacts(req))
       router.post('/api/messages/upload', [...staff, bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.uploadPhoto(req))
       router.get('/api/messages/:userId', staff, (req) => controller.messagesWith(req))
       router.post('/api/messages', staff, (req) => controller.send(req))

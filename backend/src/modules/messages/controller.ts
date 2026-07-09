@@ -32,6 +32,13 @@ export class MessagesController {
     return { status: 200, body: { success: true, data: result } }
   }
 
+  /** Compañeros del hotel. Sirve al chat sin exigir el permiso `users:view`. */
+  async contacts(req: HttpRequest) {
+    const user = req.user as any
+    const result = await this.service.getContacts(user)
+    return { status: 200, body: { success: true, data: result } }
+  }
+
   async send(req: HttpRequest) {
     const user = req.user as any
     const body = validateSchema(SendMessageSchema, req.body) as { toUserId: string; message?: string; photoUrl?: string | null }
@@ -53,8 +60,8 @@ export class MessagesController {
 
   async uploadPhoto(req: HttpRequest) {
     if (!this.storage) return { status: 500, body: { error: 'Storage no configurado' } }
-    const body = req.body ?? {}
-    const photo = body.photo as string | undefined
+    const body = (req.body ?? {}) as { photo?: string; fileName?: string }
+    const photo = body.photo
     if (!photo) return { status: 400, body: { error: 'Falta el campo photo (data URL base64)' } }
     const parsed = parseDataUrl(photo)
     if (!parsed) return { status: 400, body: { error: 'Formato inválido (se espera data URL base64)' } }

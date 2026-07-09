@@ -5,7 +5,7 @@ import { describe, it, expect } from 'bun:test'
 import type { RepositoryAdapter } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { MessagesService } from '../service'
-import type { MessageDTO, MessageUser } from '../types'
+import type { MessageDTO, MessageUser, ContactDTO, UserDirectory } from '../types'
 
 const log = silentLogger()
 
@@ -84,5 +84,51 @@ describe('MessagesService', () => {
 
     expect(await svc.getAllConversations(me)).toEqual([])
     expect(await svc.getAllConversations(boss)).toHaveLength(1)
+  })
+})
+
+describe('MessagesService.getContacts', () => {
+  /** El directorio real lo cablea `connectors/messages-usuarios.ts` desde UsuariosService.list(). */
+  const directoryOf = (staff: ContactDTO[]): UserDirectory => ({
+    listStaff: async (hotelId: string) => (hotelId === 'h1' ? staff : []),
+  })
+
+  const staffOfH1: ContactDTO[] = [
+    { id: 'u1', name: 'Yo Mismo', role: 'receptionist' },
+    { id: 'u2', name: 'Rosa Perez', role: 'housekeeper' },
+    { id: 'u3', name: 'Carlos Ruiz', role: 'supervisor' },
+  ]
+
+  it('devuelve los compañeros del hotel, sin el propio usuario', async () => {
+    const svc = new MessagesService(repoWith([]), log)
+    svc.setUserDirectory(directoryOf(staffOfH1))
+
+    const contacts = await svc.getContacts(me)
+
+    expect(contacts.map((c) => c.id)).toEqual(['u2', 'u3'])
+  })
+
+  it('un contacto nunca lleva email ni teléfono', async () => {
+    const svc = new MessagesService(repoWith([]), log)
+    svc.setUserDirectory(directoryOf(staffOfH1))
+
+    const [contact] = await svc.getContacts(me)
+
+    expect(Object.keys(contact).sort()).toEqual(['id', 'name', 'role'])
+  })
+
+  it('solo trae staff del hotel del que pregunta', async () => {
+    const svc = new MessagesService(repoWith([]), log)
+    svc.setUserDirectory(directoryOf(staffOfH1))
+
+    const otherHotel: MessageUser = { id: 'u1', hotelId: 'h2', role: 'housekeeper' }
+
+    expect(await svc.getContacts(otherHotel)).toEqual([])
+  })
+
+  it('degrada a lista vacía si el connector no cableó el directorio', async () => {
+    const svc = new MessagesService(repoWith([]), log)
+
+    expect(await svc.getContacts(me)).toEqual([])
   })
 })

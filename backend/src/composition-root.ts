@@ -143,6 +143,7 @@ import { facturasPaymentsConnector } from './connectors/facturas-payments'
 import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { foliosPaymentsConnector } from './connectors/folios-payments'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
+import { messagesUsuariosConnector } from './connectors/messages-usuarios'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -163,6 +164,8 @@ system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnecto
 // el settlement del checkout usa folios.closeAndCreateInvoice(), que necesita el puerto inyectado.
 system.addConnector('folios-facturas', foliosFacturasConnector)
 system.addConnector('reservas-folios-settlement', reservasFoliosSettlementConnector)
+// El chat resuelve nombres de compañeros sin pasar por `users:view`.
+system.addConnector('messages-usuarios', messagesUsuariosConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm)

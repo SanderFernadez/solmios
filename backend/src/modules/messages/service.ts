@@ -1,15 +1,32 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import type { MessageDTO, MessageUser, Conversation } from './types'
+import type { MessageDTO, MessageUser, Conversation, ContactDTO, UserDirectory } from './types'
 
-export type { MessageDTO, MessageUser, Conversation } from './types'
+export type { MessageDTO, MessageUser, Conversation, ContactDTO, UserDirectory } from './types'
 
 const isManager = (role: string) => role === 'hotel_admin' || role === 'super_admin'
 
 export class MessagesService {
+  /** Cableado por `connectors/messages-usuarios.ts`. Ausente = el módulo degrada, no falla. */
+  private directory?: UserDirectory
+
   constructor(
     private readonly repo: RepositoryAdapter<MessageDTO>,
     private readonly logger: Logger,
   ) {}
+
+  setUserDirectory(directory: UserDirectory): void {
+    this.directory = directory
+  }
+
+  /** Compañeros del hotel a los que se les puede escribir. Excluye al propio usuario. */
+  async getContacts(currentUser: MessageUser): Promise<ContactDTO[]> {
+    if (!this.directory) {
+      this.logger.warn('getContacts sin UserDirectory cableado — revisar connector messages-usuarios')
+      return []
+    }
+    const staff = await this.directory.listStaff(currentUser.hotelId)
+    return staff.filter((u) => u.id !== currentUser.id)
+  }
 
   /** Última conversación por interlocutor. */
   async getConversations(currentUser: MessageUser): Promise<Conversation[]> {
