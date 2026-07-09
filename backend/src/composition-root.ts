@@ -108,6 +108,7 @@ import { TtlockModule } from './modules/ttlock'
 import { DashboardModule } from './modules/dashboard'
 import { FeedbackModule } from './modules/feedback'
 import { StaffAuthModule } from './modules/staff-auth'
+import { MessagesModule } from './modules/messages'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
 
@@ -122,6 +123,7 @@ const mods = [
   CashModule(), PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
   StaffAuthModule(),
+  MessagesModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -136,6 +138,9 @@ import { bookingChannexConnector } from './connectors/booking-channex'
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 import { paymentsCajaConnector } from './connectors/payments-caja'
 import { facturasReservasConnector } from './connectors/facturas-reservas'
+import { facturasAuditlogConnector } from './connectors/facturas-auditlog'
+import { facturasPaymentsConnector } from './connectors/facturas-payments'
+import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
@@ -148,7 +153,13 @@ system.addConnector('booking-channex', bookingChannexConnector)
 system.addConnector('reservas-huespedes', reservasHuespedesConnector)
 system.addConnector('payments-caja', paymentsCajaConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)
+system.addConnector('facturas-auditlog', facturasAuditlogConnector)
+// facturas-payments asienta el dinero en `payments` → payments-caja lo lleva al arqueo de caja.
+system.addConnector('facturas-payments', facturasPaymentsConnector)
 system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector(orm))
+// folios-facturas debe registrarse antes que reservas-folios-settlement:
+// el settlement del checkout usa folios.closeAndCreateInvoice(), que necesita el puerto inyectado.
+system.addConnector('folios-facturas', foliosFacturasConnector)
 system.addConnector('reservas-folios-settlement', reservasFoliosSettlementConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
