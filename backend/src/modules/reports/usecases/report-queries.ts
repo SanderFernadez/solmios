@@ -1,6 +1,9 @@
 import { MS_PER_DAY } from '../helpers'
 import type { ReportContext } from '../strategies/types'
 import { reportStrategies } from '../strategies'
+import {
+  inDateRange, paymentDate, expenseDate, sumCharged, sumRefunded, chargeTotal, isConsumption,
+} from './money'
 
 export class ReportQueries {
   constructor(private readonly orm: any) {}
@@ -60,11 +63,12 @@ export class ReportQueries {
     const type = String(q.type || 'facturacion')
     const to = String(q.to || new Date().toISOString().slice(0, 10))
     const from = String(q.from || new Date(Date.now() - 30 * MS_PER_DAY).toISOString().slice(0, 10))
-    const [reservations, rooms, guests, expenses, folioCharges, blocks, hotel] = await Promise.all([
+    const [reservations, rooms, guests, expenses, payments, folioCharges, blocks, hotel] = await Promise.all([
       this.orm.findMany('Reservations', { hotelId }) as Promise<any[]>,
       this.orm.findMany('Rooms', { hotelId }) as Promise<any[]>,
       this.orm.findMany('Guests', { hotelId }) as Promise<any[]>,
       this.orm.findMany('Expenses', { hotelId }) as Promise<any[]>,
+      this.orm.findMany('Payments', { hotelId }) as Promise<any[]>,
       this.orm.findMany('FolioCharges', { hotelId }) as Promise<any[]>,
       this.orm.findMany('RoomBlocks', { hotelId }) as Promise<any[]>,
       (await this.orm.findMany('Hotels', { id: hotelId }))[0] as any,
@@ -73,32 +77,80 @@ export class ReportQueries {
     const totalRooms = rooms.length
     const taxRate = Number(hotel?.taxRate || 0) / 100
 
-    const ctx: ReportContext = { from, to, totalRooms, taxRate, reservations: inRange, rooms, guests, expenses, folioCharges, blocks, hotel }
+    // Gastos y pagos se acotan al período: un reporte de un mes no puede sumar la tabla entera.
+    const expensesInRange = inDateRange(expenses, from, to, expenseDate)
+    const paymentsInRange = inDateRange(payments, from, to, paymentDate)
+
+    const ctx: ReportContext = {
+      from, to, totalRooms, taxRate, reservations: inRange, rooms, guests,
+      expenses: expensesInRange, payments: paymentsInRange, folioCharges, blocks, hotel,
+    }
     const strategy = reportStrategies.find(s => s.type === type)
     if (!strategy) throw new Error(`Tipo de reporte desconocido: ${type}`)
     return strategy.execute(ctx)
   }
 
+  /**
+   * Cierre del día. Los ingresos salen del libro auxiliar (`folio_charges`) y del asiento del dinero
+   * (`payments`), NO de `Reservations`: antes se sumaba la tabla entera y se etiquetaba "del día",
+   * así que ADR, RevPAR y "pagos recibidos" arrastraban toda la historia del hotel.
+   *
+   * Si el hotel todavía no opera con folios, los ingresos del día son 0. Es el número correcto:
+   * no se posteó nada.
+   */
   async getNightAudit(hotelId: string): Promise<any> {
-    const rooms = await this.orm.findMany('Rooms', { hotelId }) as any[]
-    const res = await this.orm.findMany('Reservations', { hotelId }) as any[]
+    const [rooms, res, payments, folioCharges] = await Promise.all([
+      this.orm.findMany('Rooms', { hotelId }) as Promise<any[]>,
+      this.orm.findMany('Reservations', { hotelId }) as Promise<any[]>,
+      this.orm.findMany('Payments', { hotelId }) as Promise<any[]>,
+      this.orm.findMany('FolioCharges', { hotelId }) as Promise<any[]>,
+    ])
     const t = new Date().toISOString().split('T')[0]
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    const yesterday = new Date(Date.now() - MS_PER_DAY).toISOString().split('T')[0]
+
+    const chargeDay = (c: any) => String(c.postedAt || c.createdAt || '').slice(0, 10)
+    const consumptionOn = (d: string) => folioCharges.filter((c: any) => chargeDay(c) === d && isConsumption(c))
+    const roomChargesOn = (d: string) => consumptionOn(d).filter((c: any) => c.category === 'room')
+    const roomRevenueOn = (d: string) => roomChargesOn(d).reduce((s: number, c: any) => s + chargeTotal(c), 0)
+
+    const todayConsumption = consumptionOn(t)
+    const ingresosHabitaciones = roomRevenueOn(t)
+    const ingresosServicios = todayConsumption.filter((c: any) => c.category !== 'room').reduce((s: number, c: any) => s + chargeTotal(c), 0)
+    const impuestos = todayConsumption.reduce((s: number, c: any) => s + Number(c.taxes || 0), 0)
+
+    const paymentsToday = inDateRange(payments, t, t, paymentDate)
+    const pagosRecibidos = sumCharged(paymentsToday)
+    const reembolsos = sumRefunded(paymentsToday)
+
     const occupied = rooms.filter((r: any) => r.status === 'occupied').length
     const ocupacion = rooms.length ? Math.round((occupied / rooms.length) * 100) : 0
-    const revenueTotal = res.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
-    const revenueHoy = res.filter((r: any) => String(r.checkIn || '').slice(0, 10) === t).reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
-    const revenueServicios = res.reduce((s: number, r: any) => s + (r.deposit || 0), 0)
-    const checkinsHoy = res.filter((r: any) => r.checkIn && String(r.checkIn).slice(0, 10) === t && (r.status === 'confirmed' || r.status === 'checked_in')).length
-    const checkoutsHoy = res.filter((r: any) => r.checkOut && String(r.checkOut).slice(0, 10) === t && (r.status === 'checked_in' || r.status === 'checked_out')).length
-    const noShows = res.filter((r: any) => r.checkIn && String(r.checkIn).slice(0, 10) === t && r.status === 'pending').length
-    const cancelaciones = res.filter((r: any) => r.status === 'cancelled').length
-    const nightsOf = (r: any) => { const a = new Date(String(r.checkIn).slice(0, 10)).getTime(); const b = new Date(String(r.checkOut).slice(0, 10)).getTime(); return a && b && b > a ? Math.round((b - a) / 86400000) : 0 }
-    const totalNightsSold = res.reduce((s: number, r: any) => s + nightsOf(r), 0)
-    const adr = totalNightsSold > 0 ? Math.round(revenueTotal / totalNightsSold) : 0
-    const revpar = Math.round(adr * (ocupacion / 100))
-    const adrYesterday = occupied > 0 ? Math.round(res.filter((r: any) => String(r.checkIn || '').slice(0, 10) === yesterday).reduce((s: number, r: any) => s + (r.totalAmount || 0), 0) / Math.max(occupied, 1)) : 0
-    return { fecha: t, ocupacion, habitacionesOcupadas: occupied, habitacionesTotales: rooms.length, ingresosHabitaciones: revenueHoy, ingresosServicios: revenueServicios, impuestos: 0, totalDia: revenueHoy + revenueServicios, checkins: checkinsHoy, checkouts: checkoutsHoy, noShows, cancelaciones, nochesVendidas: res.filter((r: any) => r.status === 'checked_in' || r.status === 'checked_out').length, adr, revpar, adrAyer: adrYesterday, pagosRecibidos: res.reduce((s: number, r: any) => s + (r.deposit || 0), 0), pagosPendientes: res.filter((r: any) => r.status !== 'cancelled').reduce((s: number, r: any) => s + Math.max(0, (r.totalAmount || 0) - (r.deposit || 0)), 0), depositos: res.filter((r: any) => r.status === 'pending').reduce((s: number, r: any) => s + (r.deposit || 0), 0), reembolsos: 0 }
+
+    // Una noche vendida = un cargo de habitación posteado ese día (uno por folio in-house).
+    const nochesVendidas = roomChargesOn(t).length
+    const nochesVendidasAyer = roomChargesOn(yesterday).length
+    const adr = nochesVendidas > 0 ? Math.round(ingresosHabitaciones / nochesVendidas) : 0
+    const adrAyer = nochesVendidasAyer > 0 ? Math.round(roomRevenueOn(yesterday) / nochesVendidasAyer) : 0
+    const revpar = rooms.length > 0 ? Math.round(ingresosHabitaciones / rooms.length) : 0
+
+    const dayOf = (v: any) => String(v || '').slice(0, 10)
+    const checkins = res.filter((r: any) => dayOf(r.checkIn) === t && (r.status === 'confirmed' || r.status === 'checked_in')).length
+    const checkouts = res.filter((r: any) => dayOf(r.checkOut) === t && (r.status === 'checked_in' || r.status === 'checked_out')).length
+    const noShows = res.filter((r: any) => dayOf(r.checkIn) === t && r.status === 'pending').length
+    const cancelaciones = res.filter((r: any) => r.status === 'cancelled' && dayOf(r.updatedAt) === t).length
+
+    // Saldos, no movimientos del día: la deuda viva y las garantías retenidas.
+    const activas = res.filter((r: any) => r.status !== 'cancelled')
+    const pagosPendientes = activas.reduce((s: number, r: any) => s + Math.max(0, (r.totalAmount || 0) - (r.deposit || 0)), 0)
+    const depositos = res.filter((r: any) => r.status === 'pending').reduce((s: number, r: any) => s + (r.deposit || 0), 0)
+
+    return {
+      fecha: t, ocupacion, habitacionesOcupadas: occupied, habitacionesTotales: rooms.length,
+      ingresosHabitaciones, ingresosServicios, impuestos,
+      totalDia: ingresosHabitaciones + ingresosServicios,
+      checkins, checkouts, noShows, cancelaciones, nochesVendidas,
+      adr, revpar, adrAyer,
+      pagosRecibidos, pagosPendientes, depositos, reembolsos,
+    }
   }
 
   async markNoShows(hotelId?: string): Promise<number> {

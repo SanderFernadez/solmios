@@ -49,7 +49,35 @@
         <KpiCard label="Comisiones OTA" :value="formatMoney((data as FacturacionReport).commissionOTA)" :icon="ICON_GLOBE" />
         <KpiCard label="Total bruto" :value="formatMoney((data as FacturacionReport).total)" class="text-navy" :icon="ICON_WALLET" />
         <KpiCard label="Neto" :value="formatMoney((data as FacturacionReport).net)" class="text-teal" :icon="ICON_TRENDING" icon-bg="bg-teal/10" icon-color="text-teal" />
+        <KpiCard label="Gastos" :value="formatMoney((data as FacturacionReport).gastos)" class="text-coral" :icon="ICON_RECEIPT" />
+        <KpiCard label="Resultado" :value="formatMoney((data as FacturacionReport).resultado)" class="text-navy" :icon="ICON_TRENDING" />
       </div>
+
+      <!-- Devengado vs cobrado: la brecha es la cuenta por cobrar, no un descuadre. -->
+      <div class="card p-5">
+        <h4 class="text-xs font-black text-navy uppercase mb-3">Facturado vs cobrado</h4>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-navy font-bold">Facturado <span class="text-text-muted font-normal">(devengado)</span></span>
+            <span class="font-black text-navy">{{ formatMoney((data as FacturacionReport).facturado) }}</span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-navy font-bold">Ingresado <span class="text-text-muted font-normal">(cobrado)</span></span>
+            <span class="font-black text-teal">{{ formatMoney((data as FacturacionReport).ingresado) }}</span>
+          </div>
+          <div class="flex items-center justify-between text-sm pt-2 border-t border-border">
+            <span class="font-black text-navy">{{ (data as FacturacionReport).porCobrar >= 0 ? 'Por cobrar' : 'Cobrado por adelantado' }}</span>
+            <span class="font-black" :class="(data as FacturacionReport).porCobrar >= 0 ? 'text-gold' : 'text-teal'">
+              {{ formatMoney(Math.abs((data as FacturacionReport).porCobrar)) }}
+            </span>
+          </div>
+        </div>
+        <p class="text-[11px] text-text-muted mt-3">
+          Lo ingresado sale de los pagos registrados, así que cuadra contra Caja y Conciliación.
+          Lo facturado es lo que el hotel tiene derecho a cobrar en el período.
+        </p>
+      </div>
+
       <div class="card p-5">
         <h4 class="text-xs font-black text-navy uppercase mb-3">Extras por categoría</h4>
         <div v-if="Object.keys((data as FacturacionReport).extrasByCategory).length === 0" class="text-xs text-text-muted">Sin extras facturados en el período.</div>

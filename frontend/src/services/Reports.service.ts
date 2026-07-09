@@ -16,6 +16,15 @@ export interface FacturacionReport {
   commissionOTA: number
   total: number
   net: number
+  /** Devengado: lo que el hotel tiene derecho a cobrar. Igual a `total`. */
+  facturado: number
+  /** Cobrado: lo que entró de verdad, desde `payments`. */
+  ingresado: number
+  /** `facturado - ingresado`. Negativo = el huésped prepagó estadías futuras. */
+  porCobrar: number
+  gastos: number
+  /** `net - gastos`. */
+  resultado: number
   daily: Array<{ date: string; value: number }>
 }
 
