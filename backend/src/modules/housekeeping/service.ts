@@ -162,11 +162,21 @@ export class HousekeepingService {
   async getSupplyLists(h: string, rt?: string) { return this.configLists?.getSupplyLists(h, rt) ?? [] }
   async upsertSupplyLists(h: string, rt: string, items: any[]) { return this.configLists?.upsertSupplyLists(h, rt, items) ?? [] }
 
+  /**
+   * `staffId` es el id de un USUARIO, no el de un `employee_profile`.
+   *
+   * Así lo manda la app (`?staffId=<users.id>`) y así lo compara `list()` contra
+   * la columna `housekeeping.staffId`. Validarlo con `employeeRepo.findById()`
+   * lo buscaba por la clave primaria de otra tabla: no coincidía nunca, y
+   * asignarle una tarea a una camarera real fallaba siempre con
+   * "staffId no corresponde a un empleado válido". Con `employee_profiles`
+   * prácticamente vacío en producción, no había forma de asignar ninguna tarea.
+   */
   private async assertStaffExists(staffId: string | undefined, currentUser: HousekeepingUser): Promise<void> {
-    if (!staffId || !this.employeeRepo) return
-    const profile = await this.employeeRepo.findById(staffId).catch(() => null)
-    if (!profile) throw new ValidationError('staffId no corresponde a un empleado válido')
-    if (currentUser.role !== 'super_admin' && profile.hotelId !== currentUser.hotelId) {
+    if (!staffId) return
+    const staff = await this.userRepo.findById(staffId).catch(() => null)
+    if (!staff) throw new ValidationError('staffId no corresponde a un empleado válido')
+    if (currentUser.role !== 'super_admin' && staff.hotelId !== currentUser.hotelId) {
       throw new AuthError('staffId no pertenece a tu hotel')
     }
   }

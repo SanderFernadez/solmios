@@ -253,3 +253,59 @@ describe('HousekeepingService', () => {
     })
   })
 })
+
+describe('assertStaffExists — staffId es un usuario, no un employee_profile', () => {
+  const admin = { id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' } as any
+
+  const repoStub = {
+    create: async (d: any) => ({ id: 'hk-1', ...d }),
+    findMany: async () => [],
+  } as unknown as RepositoryAdapter<any>
+
+  /** Un repo de usuarios que conoce a la camarera del hotel-1. */
+  const usersRepo = (over: Record<string, any> = {}) =>
+    ({
+      findById: async (id: string) =>
+        id === 'rosa' ? { id: 'rosa', hotelId: 'hotel-1', role: 'housekeeper', ...over } : null,
+    }) as unknown as RepositoryAdapter<any>
+
+  // El bug: se validaba contra employee_profiles, tabla casi vacía en producción
+  // y con otras claves primarias. Ninguna camarera real pasaba el chequeo.
+  it('acepta el id de un usuario del hotel, aunque no tenga employee_profile', async () => {
+    const employeeRepo = { findById: async () => null } as any
+    const svc = new HousekeepingService(repoStub, log, silentCache, usersRepo(), fakeAuth, employeeRepo)
+
+    const created = await svc.create(
+      { roomId: 'room-1', hotelId: 'hotel-1', staffId: 'rosa' } as any,
+      admin,
+    )
+
+    expect(created.staffId).toBe('rosa')
+  })
+
+  it('rechaza un staffId que no existe', async () => {
+    const svc = new HousekeepingService(repoStub, log, silentCache, usersRepo(), fakeAuth)
+
+    expect(
+      svc.create({ roomId: 'room-1', hotelId: 'hotel-1', staffId: 'fantasma' } as any, admin),
+    ).rejects.toThrow()
+  })
+
+  it('rechaza asignarle la tarea a alguien de otro hotel', async () => {
+    const svc = new HousekeepingService(
+      repoStub, log, silentCache, usersRepo({ hotelId: 'hotel-2' }), fakeAuth,
+    )
+
+    expect(
+      svc.create({ roomId: 'room-1', hotelId: 'hotel-1', staffId: 'rosa' } as any, admin),
+    ).rejects.toThrow()
+  })
+
+  it('sin staffId la tarea se crea sin asignar', async () => {
+    const svc = new HousekeepingService(repoStub, log, silentCache, usersRepo(), fakeAuth)
+
+    const created = await svc.create({ roomId: 'room-1', hotelId: 'hotel-1' } as any, admin)
+
+    expect(created.staffId).toBeUndefined()
+  })
+})
