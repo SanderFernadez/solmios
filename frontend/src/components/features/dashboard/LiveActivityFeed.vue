@@ -11,7 +11,7 @@
       </span>
     </div>
 
-    <div class="cc-feed flex-1 overflow-y-auto px-3 py-2">
+    <div class="cc-feed flex flex-1 flex-col overflow-y-auto px-3 py-2">
       <TransitionGroup name="feed" tag="div">
         <div v-for="item in items" :key="item.id" class="flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-white/3">
           <span class="w-10 shrink-0 pt-0.5 text-right font-mono text-[10px] font-bold tabular-nums text-slate-500">{{ item.time }}</span>
@@ -25,7 +25,14 @@
           </span>
         </div>
       </TransitionGroup>
-      <div v-if="!items.length" class="px-3 py-8 text-center text-xs text-slate-500">Sin actividad reciente</div>
+      <div v-if="!items.length" class="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-8 text-center">
+        <span class="grid h-12 w-12 place-items-center rounded-full bg-white/5 text-slate-500">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l2-7 4 14 2-7h6" />
+          </svg>
+        </span>
+        <p class="text-xs text-slate-500">Sin actividad reciente</p>
+      </div>
     </div>
 
     <router-link to="/panel/notifications"
@@ -50,7 +57,6 @@ defineProps<{ items: FeedItem[] }>()
 </script>
 
 <style scoped>
-.cc-feed { max-height: 340px; }
 .feed-enter-active { transition: all 0.3s ease; }
 .feed-enter-from { opacity: 0; transform: translateX(16px); }
 .feed-move { transition: transform 0.3s ease; }

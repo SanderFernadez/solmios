@@ -1,8 +1,9 @@
 <template>
   <div class="cc-kpi group relative overflow-hidden rounded-[16px] px-4 py-3 transition-transform duration-300 hover:-translate-y-0.5"
-    :style="{ background: theme.bg, border: `1.5px solid ${theme.borderColor}`, boxShadow: `0 0 24px ${theme.outerGlow}, inset 0 1px 0 rgba(255,255,255,0.06)` }">
-    <!-- glow que respira -->
-    <div class="pointer-events-none absolute -top-14 -right-14 h-36 w-36 rounded-full blur-3xl cc-breathe" :style="{ background: theme.glow }"></div>
+    :style="{ background: theme.bg, border: `1.5px solid ${theme.borderColor}`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 30px ${theme.outerGlowSoft}` }">
+    <!-- glow interior que respira -->
+    <div class="pointer-events-none absolute -top-14 -right-14 h-24 w-24 rounded-full blur-3xl opacity-70 cc-breathe" :style="{ background: theme.glow }"></div>
+    <div class="pointer-events-none absolute -bottom-16 -left-10 h-20 w-20 rounded-full blur-3xl opacity-40" :style="{ background: theme.glow }"></div>
 
     <div class="relative flex items-start justify-between gap-3">
       <div class="min-w-0">
@@ -26,24 +27,24 @@
       </div>
 
       <!-- Anillo de progreso con ícono, o ícono suelto -->
-      <div v-if="progress !== undefined && progress !== null" class="relative h-12 w-12 shrink-0">
-        <svg viewBox="0 0 36 36" class="h-12 w-12 -rotate-90" :style="{ filter: `drop-shadow(0 0 5px ${theme.outerGlow})` }">
+      <div v-if="progress !== undefined && progress !== null" class="relative h-16 w-16 shrink-0">
+        <svg viewBox="0 0 36 36" class="h-16 w-16 -rotate-90" :style="{ filter: `drop-shadow(0 0 5px ${theme.outerGlow})` }">
           <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3.4" />
           <circle cx="18" cy="18" r="15.5" fill="none" :stroke="theme.stroke" stroke-width="3.4" stroke-linecap="round"
             :stroke-dasharray="`${ringDash} 100`" class="transition-[stroke-dasharray] duration-700 ease-out" />
         </svg>
         <div class="cc-icon absolute inset-0 grid place-items-center" :style="{ color: theme.stroke }">
-          <span class="block h-4 w-4" v-html="ICONS[icon]"></span>
+          <span class="block h-6 w-6" v-html="ICONS[icon]"></span>
         </div>
       </div>
-      <div v-else class="cc-icon grid h-11 w-11 shrink-0 place-items-center rounded-full"
+      <div v-else class="cc-icon grid h-16 w-16 shrink-0 place-items-center rounded-full"
         :style="{ background: theme.glow, boxShadow: `0 0 14px ${theme.outerGlow}`, color: theme.stroke }">
-        <span class="block h-5 w-5" v-html="ICONS[icon]"></span>
+        <span class="block h-7 w-7" v-html="ICONS[icon]"></span>
       </div>
     </div>
 
     <!-- Barra de progreso lineal -->
-    <div v-if="progress !== undefined && progress !== null" class="relative mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
+    <div v-if="progress !== undefined && progress !== null && showBar" class="relative mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-white/10">
       <div class="h-full rounded-full transition-[width] duration-700 ease-out"
         :style="{ width: `${clampedProgress}%`, background: theme.stroke, boxShadow: `0 0 8px ${theme.stroke}` }"></div>
     </div>
@@ -71,7 +72,7 @@ import { useCountUp } from '@/composables/useCountUp'
 
 export type KpiIcon = 'bed' | 'checkin' | 'checkout' | 'money'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   label: string
   value: number
   icon: KpiIcon
@@ -81,12 +82,16 @@ const props = defineProps<{
   unit?: string
   /** % para el anillo/barra (0-100) */
   progress?: number | null
+  /** Muestra la barra lineal debajo del anillo (default true) */
+  showBar?: boolean
   /** serie para sparkline */
   spark?: number[] | null
   /** variación vs ayer en % */
   trend?: number | null
   subStats?: { label: string; value: string | number; tone?: string }[]
-}>()
+}>(), {
+  showBar: true,
+})
 
 const ICONS: Record<KpiIcon, string> = {
   bed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 18v2M3 18h18M21 18v2M6 9V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2"/></svg>',
@@ -97,24 +102,24 @@ const ICONS: Record<KpiIcon, string> = {
 
 const THEMES = {
   blue: {
-    borderColor: 'rgba(59,130,246,0.55)', outerGlow: 'rgba(37,99,235,0.28)',
+    borderColor: 'rgba(59,130,246,0.65)', outerGlow: 'rgba(37,99,235,0.45)', outerGlowSoft: 'rgba(37,99,235,0.22)',
     bg: 'linear-gradient(155deg, rgba(37,99,235,0.3) 0%, rgba(10,19,34,0.95) 55%)',
-    glow: 'rgba(37,99,235,0.3)', stroke: '#3B82F6', labelColor: '#93C5FD',
+    glow: 'rgba(37,99,235,0.35)', stroke: '#3B82F6', labelColor: '#93C5FD',
   },
   green: {
-    borderColor: 'rgba(34,197,94,0.55)', outerGlow: 'rgba(34,197,94,0.25)',
+    borderColor: 'rgba(34,197,94,0.65)', outerGlow: 'rgba(34,197,94,0.42)', outerGlowSoft: 'rgba(34,197,94,0.2)',
     bg: 'linear-gradient(155deg, rgba(34,197,94,0.26) 0%, rgba(10,19,34,0.95) 55%)',
-    glow: 'rgba(34,197,94,0.28)', stroke: '#22C55E', labelColor: '#86EFAC',
+    glow: 'rgba(34,197,94,0.32)', stroke: '#22C55E', labelColor: '#86EFAC',
   },
   purple: {
-    borderColor: 'rgba(139,92,246,0.55)', outerGlow: 'rgba(139,92,246,0.28)',
+    borderColor: 'rgba(139,92,246,0.65)', outerGlow: 'rgba(139,92,246,0.45)', outerGlowSoft: 'rgba(139,92,246,0.22)',
     bg: 'linear-gradient(155deg, rgba(139,92,246,0.28) 0%, rgba(10,19,34,0.95) 55%)',
-    glow: 'rgba(139,92,246,0.3)', stroke: '#A78BFA', labelColor: '#C4B5FD',
+    glow: 'rgba(139,92,246,0.35)', stroke: '#A78BFA', labelColor: '#C4B5FD',
   },
   amber: {
-    borderColor: 'rgba(245,158,11,0.55)', outerGlow: 'rgba(245,158,11,0.25)',
+    borderColor: 'rgba(245,158,11,0.65)', outerGlow: 'rgba(245,158,11,0.42)', outerGlowSoft: 'rgba(245,158,11,0.2)',
     bg: 'linear-gradient(155deg, rgba(245,158,11,0.24) 0%, rgba(10,19,34,0.95) 55%)',
-    glow: 'rgba(245,158,11,0.26)', stroke: '#F59E0B', labelColor: '#FCD34D',
+    glow: 'rgba(245,158,11,0.3)', stroke: '#F59E0B', labelColor: '#FCD34D',
   },
 } as const
 

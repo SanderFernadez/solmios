@@ -4,19 +4,22 @@
     <button
       type="button"
       @click="open = !open"
-      class="flex items-center gap-2 bg-surface rounded-lg pl-1.5 pr-2.5 py-1.5 border border-border hover:bg-surface-dark transition-colors cursor-pointer"
-      :class="{ 'ring-2 ring-cyan/30': open }"
+      class="flex items-center gap-2 rounded-lg pl-1.5 pr-2.5 py-1.5 transition-colors cursor-pointer"
+      :class="[transparent ? 'hover:bg-white/5' : 'bg-surface border border-border hover:bg-surface-dark', { 'ring-2 ring-cyan/30': open }]"
       aria-haspopup="menu"
       :aria-expanded="open"
     >
-      <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" :class="avatarClass">
+      <div v-if="placeholder" class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white/10 text-slate-300 overflow-hidden">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Zm0 2c-3.866 0-7 2.239-7 5v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1c0-2.761-3.134-5-7-5Z" /></svg>
+      </div>
+      <div v-else class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" :class="avatarClass">
         {{ initials }}
       </div>
       <div class="hidden sm:block text-left leading-tight">
-        <div class="text-xs font-bold text-navy max-w-[120px] truncate">{{ name }}</div>
-        <div class="text-[10px] text-text-muted">{{ roleLabel }}</div>
+        <div class="text-xs font-bold max-w-[120px] truncate" :class="dark ? 'text-white' : 'text-navy'">{{ name }}</div>
+        <div class="text-[10px]" :class="dark ? 'text-slate-400' : 'text-text-muted'">{{ roleLabel }}</div>
       </div>
-      <svg class="w-4 h-4 text-text-muted transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-4 h-4 transition-transform" :class="[dark ? 'text-slate-400' : 'text-text-muted', { 'rotate-180': open }]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
       </svg>
     </button>
@@ -30,7 +33,10 @@
       <!-- Info usuario -->
       <div class="px-4 py-3 border-b border-border bg-surface">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" :class="avatarClass">
+          <div v-if="placeholder" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-navy/10 text-navy/50 overflow-hidden">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Zm0 2c-3.866 0-7 2.239-7 5v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1c0-2.761-3.134-5-7-5Z" /></svg>
+          </div>
+          <div v-else class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" :class="avatarClass">
             {{ initials }}
           </div>
           <div class="min-w-0">
@@ -77,6 +83,15 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+
+defineProps<{
+  /** Sin fondo/borde en el trigger — para headers oscuros que ya tienen su propio fondo */
+  transparent?: boolean
+  /** Muestra un ícono silueta genérico en vez de las iniciales coloreadas */
+  placeholder?: boolean
+  /** Texto del trigger en blanco/slate — para headers oscuros. El dropdown siempre queda claro. */
+  dark?: boolean
+}>()
 
 const auth = useAuthStore()
 const router = useRouter()

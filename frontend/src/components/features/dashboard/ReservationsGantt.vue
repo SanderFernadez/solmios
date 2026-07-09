@@ -44,8 +44,8 @@
           <div class="sticky left-0 z-10 w-44 shrink-0 border-r border-white/8 bg-[#0B1526] px-4 py-3">
             <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Habitaciones</span>
           </div>
-          <div v-for="day in days" :key="day.dateStr" class="shrink-0 border-r border-white/5 px-1 py-1.5 text-center"
-            :style="{ width: `${cellW}px` }" :class="!day.isToday && day.isWeekend ? 'bg-white/2' : ''">
+          <div v-for="day in days" :key="day.dateStr" class="shrink-0 border-r border-white/15 px-1 py-1.5 text-center"
+            :style="{ width: `${cellW}px` }" :class="!day.isToday && day.isWeekend ? 'bg-[#2563EB]/14' : ''">
             <div class="mx-auto inline-flex min-w-[44px] flex-col items-center rounded-lg px-2 py-1"
               :class="day.isToday ? 'bg-[#2563EB] shadow-[0_0_14px_rgba(37,99,235,0.55)]' : ''">
               <div class="text-[9px] font-extrabold uppercase tracking-wide" :class="day.isToday ? 'text-white/80' : 'text-slate-500'">{{ day.dayName }}</div>
@@ -60,7 +60,7 @@
           <div v-if="nowOffsetPx !== null" class="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-[#3B82F6]"
             :style="{ left: `${176 + nowOffsetPx}px`, boxShadow: '0 0 8px rgba(59,130,246,0.9)' }"></div>
 
-          <div v-for="row in rows" :key="row.room.id" class="flex border-b border-white/5 hover:bg-white/2 transition-colors">
+          <div v-for="row in rows" :key="row.room.id" class="flex border-b border-white/12 hover:bg-white/2 transition-colors">
             <!-- Etiqueta habitación -->
             <div class="sticky left-0 z-10 flex w-44 shrink-0 items-center gap-2.5 border-r border-white/8 bg-[#0B1526] px-4 py-1.5">
               <span class="h-2 w-2 shrink-0 rounded-full" :class="ROOM_DOT[row.room.status] ?? 'bg-slate-500'"></span>
@@ -72,8 +72,8 @@
 
             <!-- Celdas (drop targets) -->
             <div class="relative flex" :style="{ width: `${days.length * cellW}px`, height: '46px' }">
-              <div v-for="day in days" :key="day.dateStr" class="h-full shrink-0 border-r border-white/4"
-                :style="{ width: `${cellW}px` }" :class="day.isToday ? 'bg-[#2563EB]/6' : day.isWeekend ? 'bg-white/1' : ''"
+              <div v-for="day in days" :key="day.dateStr" class="h-full shrink-0 border-r border-white/12"
+                :style="{ width: `${cellW}px` }" :class="day.isToday ? 'bg-[#2563EB]/6' : day.isWeekend ? 'bg-[#2563EB]/8' : ''"
                 :data-date="day.dateStr" :data-rid="row.room.id"
                 @dragover.prevent @drop="onDrop(row.room, day.dateStr)"></div>
 

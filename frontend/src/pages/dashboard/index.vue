@@ -11,7 +11,7 @@
     />
 
     <!-- 2. KPIs gigantes — ocupación e ingresos pesan más que check-in/out -->
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.3fr_1fr_1fr_1.25fr]">
+    <div class="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-[1.3fr_1fr_1fr_1.25fr]">
       <KpiHeroCard
         label="Ocupación Actual" accent="blue" suffix="%" icon="bed"
         :value="dashboard.stats.occupancy"
@@ -28,6 +28,7 @@
         :value="dashboard.stats.arrivalsToday"
         unit="Huéspedes"
         :progress="arrivalsProgress"
+        :show-bar="false"
         :sub-stats="[
           { label: 'Realizados', value: arrivalsDone, tone: 'text-[#4ADE80]' },
           { label: 'Pendientes', value: arrivalsPending, tone: 'text-[#FBBF24]' },
@@ -38,6 +39,7 @@
         :value="dashboard.stats.departuresToday"
         unit="Huéspedes"
         :progress="departuresProgress"
+        :show-bar="false"
         :sub-stats="[
           { label: 'Realizados', value: departuresDone, tone: 'text-[#A78BFA]' },
           { label: 'Pendientes', value: departuresPending, tone: 'text-[#FBBF24]' },
@@ -52,8 +54,8 @@
     </div>
 
     <!-- 3. Calendario + actividad/canales/estados -->
-    <div class="grid gap-4 xl:grid-cols-3">
-      <div class="xl:col-span-2">
+    <div class="grid min-w-0 gap-4 xl:grid-cols-3">
+      <div class="min-w-0 xl:col-span-2">
         <ReservationsGantt
           :rooms="roomStore.rooms"
           :reservations="reservationStore.reservations"
@@ -62,9 +64,9 @@
           @changed="refreshOperationalData"
         />
       </div>
-      <div class="space-y-4">
-        <LiveActivityFeed :items="activityItems" />
-        <div class="grid gap-4 sm:grid-cols-2">
+      <div class="flex min-w-0 flex-col gap-4">
+        <LiveActivityFeed :items="activityItems" class="min-h-0 flex-1" />
+        <div class="grid min-w-0 gap-4 sm:grid-cols-2">
           <ChannelDistributionBars :channels="channelDistribution" />
           <RoomsStatusDonut :by-status="dashboard.stats.roomsByStatus" />
         </div>
@@ -72,7 +74,7 @@
     </div>
 
     <!-- 4. Estado del hotel + IA + ingresos -->
-    <div class="grid gap-4 lg:grid-cols-3">
+    <div class="grid min-w-0 gap-4 lg:grid-cols-3">
       <HotelStatusPanel :services="hotelServices" />
       <AiInsightsPanel :user-name="userFirstName" :insights="aiInsights" />
       <RevenueChart

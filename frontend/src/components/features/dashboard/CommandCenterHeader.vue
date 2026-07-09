@@ -1,97 +1,95 @@
 <template>
-  <div class="cc-panel relative overflow-hidden rounded-[20px] border border-white/8 px-5 py-4">
-    <!-- glow decorativo -->
-    <div class="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-[#2563EB]/20 blur-3xl"></div>
-    <div class="pointer-events-none absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-[#06B6D4]/10 blur-3xl"></div>
+  <div class="flex flex-wrap items-stretch gap-4">
+    <!-- Identidad — foto real de hotel, bordes difuminados en las 4 direcciones para fundirse con el fondo. Oculta en mobile. -->
+    <div class="relative hidden w-40 shrink-0 items-center overflow-hidden rounded-lg sm:w-48 md:flex lg:w-56 xl:w-64">
+      <img
+        src="https://images.unsplash.com/photo-1506813257165-8c4bffd3a57f?auto=format&fit=crop&w=800&q=80"
+        alt=""
+        class="cc-hotel-photo absolute inset-0 h-full w-full object-cover"
+      />
+      <div class="absolute inset-0" style="background: linear-gradient(90deg, #04070F 0%, rgba(4,7,15,0.88) 24%, rgba(4,7,15,0.35) 50%, rgba(4,7,15,0.2) 70%, rgba(4,7,15,0.12) 100%)"></div>
 
-    <div class="relative flex flex-wrap items-center gap-x-5 gap-y-3">
-      <!-- Identidad -->
-      <div class="flex items-center gap-3 min-w-[230px]">
-        <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-white shadow-[0_0_20px_rgba(37,99,235,0.45)]">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1" />
+      <div class="relative z-10 min-w-0 px-5 py-2">
+        <h1 class="text-sm md:text-base font-black tracking-tight text-white uppercase leading-none truncate">{{ hotelName }}</h1>
+        <div class="mt-1.5 flex items-center gap-0.5">
+          <svg v-for="i in 5" :key="i" class="h-3 w-3 shrink-0" :class="i <= stars ? 'text-[#F59E0B]' : 'text-white/15'" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.958a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.446a1 1 0 0 0-.363 1.118l1.287 3.957c.3.922-.755 1.688-1.538 1.118l-3.367-2.446a1 1 0 0 0-1.176 0l-3.367 2.446c-.783.57-1.838-.196-1.538-1.118l1.286-3.957a1 1 0 0 0-.363-1.118L2.062 9.385c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 0 0 .95-.69l1.286-3.958Z" />
           </svg>
         </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-xl md:text-2xl font-black tracking-tight text-white uppercase leading-none">{{ hotelName }}</h1>
-            <span v-if="stars > 0" class="text-[#F59E0B] text-xs tracking-widest">{{ '★'.repeat(stars) }}</span>
-          </div>
-          <p class="mt-1 text-[10px] font-bold uppercase tracking-[3px] text-slate-400">Centro de Operaciones</p>
-        </div>
       </div>
+    </div>
 
-      <div class="hidden xl:block h-10 w-px bg-white/10"></div>
+    <!-- Única card real: pills de estado — se oculta en mobile, no entra el diseño de una sola fila -->
+    <div class="cc-status-card relative hidden flex-1 min-w-0 overflow-hidden rounded-2xl border border-white/8 px-4 py-4 md:block lg:px-6 lg:py-5">
+      <div class="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-[#2563EB]/15 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-[#06B6D4]/10 blur-3xl"></div>
 
-      <!-- Pills de estado -->
-      <div class="flex flex-wrap items-center gap-2.5 flex-1">
+      <div class="relative flex flex-nowrap items-center gap-2.5 lg:gap-4 xl:gap-6">
         <!-- Estado del hotel -->
         <div class="cc-pill">
-          <span class="relative flex h-2.5 w-2.5">
+          <span class="relative flex h-2.5 w-2.5 shrink-0">
             <span class="absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping" :class="apiOnline ? 'bg-[#22C55E]' : 'bg-[#EF4444]'"></span>
-            <span class="relative inline-flex h-2.5 w-2.5 rounded-full" :class="apiOnline ? 'bg-[#22C55E]' : 'bg-[#EF4444]'"></span>
+            <span class="relative inline-flex h-2.5 w-2.5 rounded-full" :class="apiOnline ? 'bg-[#22C55E] cc-glow-green' : 'bg-[#EF4444]'"></span>
           </span>
-          <div>
-            <div class="cc-pill-label">Estado del Hotel</div>
-            <div class="text-[13px] font-black leading-tight" :class="apiOnline ? 'text-[#22C55E]' : 'text-[#EF4444]'">
+          <div class="min-w-0">
+            <div class="cc-pill-label truncate">Estado del Hotel</div>
+            <div class="truncate text-[12px] font-black leading-tight" :class="apiOnline ? 'text-[#22C55E]' : 'text-[#EF4444]'">
               {{ apiOnline ? 'OPERATIVO' : 'SIN CONEXIÓN' }}
             </div>
-            <div class="cc-pill-sub">{{ apiOnline ? 'Todo funciona correctamente' : 'Reintentando conexión…' }}</div>
+            <div class="cc-pill-sub truncate">{{ apiOnline ? 'Todo funciona correctamente' : 'Reintentando conexión…' }}</div>
           </div>
         </div>
 
         <!-- Sincronización channel manager -->
-        <div v-if="lastSync" class="cc-pill">
-          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#2563EB]/20 text-[#60A5FA]">
-            <svg class="h-4 w-4 animate-[spin_6s_linear_infinite]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <div class="cc-pill">
+          <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-lg" :class="lastSync ? 'bg-[#2563EB]/20 text-[#60A5FA]' : 'bg-white/5 text-slate-500'">
+            <svg class="h-3.5 w-3.5" :class="lastSync ? 'animate-[spin_6s_linear_infinite]' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M5.5 9A7.5 7.5 0 0 1 19 8m-.5 7A7.5 7.5 0 0 1 5 16" />
             </svg>
           </span>
-          <div>
-            <div class="cc-pill-label">Sincronización</div>
-            <div class="text-[13px] font-black leading-tight text-white">{{ syncAgoShort }}</div>
-            <div class="cc-pill-sub">{{ syncAgoLong }}</div>
+          <div class="min-w-0">
+            <div class="cc-pill-label truncate">Sincronización</div>
+            <div class="truncate text-[12px] font-black leading-tight" :class="lastSync ? 'text-white' : 'text-slate-500'">{{ lastSync ? syncAgoShort : 'Sin conectar' }}</div>
+            <div class="cc-pill-sub truncate">{{ lastSync ? syncAgoLong : 'Channel Manager no configurado' }}</div>
           </div>
         </div>
 
         <!-- Clima (solo si el hotel tiene coordenadas y la API respondió) -->
-        <div v-if="weather" class="cc-pill">
-          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F59E0B]/20 text-lg">{{ weather.icon }}</span>
-          <div>
-            <div class="cc-pill-label">Clima</div>
-            <div class="text-[13px] font-black leading-tight text-white">{{ Math.round(weather.temp) }}°C</div>
-            <div class="cc-pill-sub">{{ weather.label }}</div>
+        <div class="cc-pill">
+          <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-lg" :class="weather ? 'bg-[#F59E0B]/20' : 'bg-white/5'">
+            <template v-if="weather">{{ weather.icon }}</template>
+            <svg v-else class="h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z" />
+            </svg>
+          </span>
+          <div class="min-w-0">
+            <div class="cc-pill-label truncate">Clima</div>
+            <div class="truncate text-[12px] font-black leading-tight" :class="weather ? 'text-white' : 'text-slate-500'">{{ weather ? `${Math.round(weather.temp)}°C` : '—' }}</div>
+            <div class="cc-pill-sub truncate">{{ weather ? weather.label : 'No disponible' }}</div>
           </div>
         </div>
 
         <!-- Recepción -->
         <div class="cc-pill">
-          <span class="relative flex h-2.5 w-2.5">
+          <span class="relative flex h-2.5 w-2.5 shrink-0">
             <span class="absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping" :class="alerts > 0 ? 'bg-[#F59E0B]' : 'bg-[#22C55E]'"></span>
-            <span class="relative inline-flex h-2.5 w-2.5 rounded-full" :class="alerts > 0 ? 'bg-[#F59E0B]' : 'bg-[#22C55E]'"></span>
+            <span class="relative inline-flex h-2.5 w-2.5 rounded-full" :class="alerts > 0 ? 'bg-[#F59E0B]' : 'bg-[#22C55E] cc-glow-green'"></span>
           </span>
-          <div>
-            <div class="cc-pill-label">Recepción</div>
-            <div class="text-[13px] font-black leading-tight" :class="alerts > 0 ? 'text-[#F59E0B]' : 'text-[#22C55E]'">
+          <div class="min-w-0">
+            <div class="cc-pill-label truncate">Recepción</div>
+            <div class="truncate text-[12px] font-black leading-tight" :class="alerts > 0 ? 'text-[#F59E0B]' : 'text-[#22C55E]'">
               {{ alerts > 0 ? `${alerts} PENDIENTE${alerts === 1 ? '' : 'S'}` : 'ONLINE' }}
             </div>
-            <div class="cc-pill-sub">{{ alerts > 0 ? 'Requiere atención' : 'Todo Normal' }}</div>
+            <div class="cc-pill-sub truncate">{{ alerts > 0 ? 'Requiere atención' : 'Todo Normal' }}</div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Herramientas: buscador + campana + usuario -->
-      <div class="cc-usertools ml-auto flex items-center gap-2">
-        <div class="relative hidden lg:block">
-          <input type="text" placeholder="Buscar..."
-            class="h-9 w-44 rounded-xl border border-white/10 bg-white/5 pl-9 pr-3 text-sm text-white placeholder:text-slate-500 transition-all focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30" />
-          <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-        <NotificationBell />
-        <UserMenu />
-      </div>
+    <!-- Herramientas — sin card propia, se integra con el fondo del dashboard -->
+    <div class="cc-usertools ml-auto flex items-center gap-1.5 py-1">
+      <NotificationBell />
+      <UserMenu transparent placeholder dark />
     </div>
   </div>
 </template>
@@ -128,23 +126,29 @@ const syncAgoShort = computed(() => {
   if (diff < 3600) return `${Math.floor(diff / 60)}m`
   return `${Math.floor(diff / 3600)}h`
 })
+
 </script>
 
 <style scoped>
-.cc-panel {
+.cc-hotel-photo {
+  -webkit-mask-image: linear-gradient(90deg, black 0%, black 78%, transparent 100%);
+  mask-image: linear-gradient(90deg, black 0%, black 78%, transparent 100%);
+}
+.cc-status-card {
   background:
     radial-gradient(1200px 300px at 20% -50%, rgba(37, 99, 235, 0.14), transparent),
     linear-gradient(180deg, #0C1830 0%, #0A1426 100%);
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.45);
 }
 .cc-pill {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(8px);
+  flex: 1 1 0%;
+  min-width: 0;
+}
+.cc-glow-green {
+  box-shadow: 0 0 6px 1px rgba(34, 197, 94, 0.9), 0 0 14px 4px rgba(34, 197, 94, 0.45);
 }
 .cc-pill-label {
   font-size: 9px;
@@ -158,11 +162,8 @@ const syncAgoShort = computed(() => {
   color: rgb(100 116 139);
 }
 
-/* NotificationBell y UserMenu vienen del header claro — overrides para la barra oscura */
-.cc-usertools :deep(.bg-surface) { background: rgba(255, 255, 255, 0.05); }
-.cc-usertools :deep(.border-border) { border-color: rgba(255, 255, 255, 0.1); }
-.cc-usertools :deep(.text-navy) { color: white; }
+/* NotificationBell viene del header claro — su trigger necesita override para la barra oscura.
+   Su dropdown va por Teleport a body, así que no lo alcanza este selector (y no debe alcanzarlo). */
 .cc-usertools :deep(.text-text-secondary) { color: rgb(148 163 184); }
-.cc-usertools :deep(.text-text-muted) { color: rgb(100 116 139); }
 .cc-usertools :deep(button:hover.hover\:bg-surface) { background: rgba(255, 255, 255, 0.1); }
 </style>

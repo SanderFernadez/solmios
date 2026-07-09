@@ -10,25 +10,23 @@
       </span>
     </div>
 
-    <div class="relative mt-4 flex gap-4">
+    <div class="relative mt-4 flex items-center gap-4">
       <!-- Avatar -->
-      <div class="relative hidden sm:grid h-20 w-20 shrink-0 place-items-center">
-        <div class="absolute inset-0 rounded-full bg-gradient-to-br from-[#2563EB]/40 to-[#06B6D4]/40 blur-md cc-breathe"></div>
-        <div class="relative grid h-16 w-16 place-items-center rounded-2xl border border-[#06B6D4]/40 bg-gradient-to-br from-[#0E1B33] to-[#0B2438] text-4xl shadow-[0_0_28px_rgba(6,182,212,0.35)]">
-          🤖
-        </div>
+      <div class="relative hidden h-40 w-40 shrink-0 place-items-center sm:grid">
+        <img :src="robotIcon" alt="IA Hotel" class="h-full w-full object-contain cc-robot-glow" />
       </div>
 
       <div class="min-w-0 flex-1">
         <p class="text-sm font-black text-white">{{ greeting }}, {{ userName }} 👋</p>
         <p class="mt-0.5 text-[11px] text-slate-400">Analicé los datos del hotel y esto es lo que encontré:</p>
 
-        <ul class="mt-3 space-y-2">
-          <li v-for="(ins, i) in insights" :key="i" class="flex items-start gap-2 text-xs" :style="{ animationDelay: `${i * 80}ms` }">
-            <span class="mt-0.5 shrink-0" :class="TONE_TEXT[ins.tone]">{{ TONE_ICON[ins.tone] }}</span>
-            <span class="text-slate-300" v-html="ins.text"></span>
+        <ul class="mt-3.5 space-y-2.5">
+          <li v-for="(ins, i) in displayInsights" :key="i" class="flex items-start gap-2.5 text-xs" :style="{ animationDelay: `${i * 80}ms` }">
+            <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full" :class="TONE_BG[ins.tone]">
+              <span class="block h-3 w-3" :class="TONE_TEXT[ins.tone]" v-html="TONE_ICON[ins.tone]"></span>
+            </span>
+            <span class="pt-0.5 text-slate-300" v-html="ins.text"></span>
           </li>
-          <li v-if="!insights.length" class="text-xs text-slate-500">Sin hallazgos por ahora — todo dentro de lo esperado. ✨</li>
         </ul>
       </div>
     </div>
@@ -42,15 +40,38 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import robotIcon from '@/assets/RobotoIADashboard.png'
 
 export interface AiInsight { text: string; tone: 'ok' | 'warn' | 'danger' | 'info' }
 
-defineProps<{ userName: string; insights: AiInsight[] }>()
+const props = defineProps<{ userName: string; insights: AiInsight[] }>()
 
-const TONE_ICON: Record<AiInsight['tone'], string> = { ok: '✅', warn: '⚠️', danger: '🚨', info: '💡' }
+const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'
+const ICON_WARNING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"/></svg>'
+const ICON_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-1.5a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>'
+const ICON_TREND = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 18 6.41-6.41a2.25 2.25 0 0 1 3.18 0l2.12 2.12a2.25 2.25 0 0 0 3.18 0L21.75 9M15 9h6.75V15"/></svg>'
+
+const TONE_ICON: Record<AiInsight['tone'], string> = { ok: ICON_CHECK, warn: ICON_WARNING, danger: ICON_ALERT, info: ICON_TREND }
 const TONE_TEXT: Record<AiInsight['tone'], string> = {
   ok: 'text-[#22C55E]', warn: 'text-[#F59E0B]', danger: 'text-[#EF4444]', info: 'text-[#22D3EE]',
 }
+const TONE_BG: Record<AiInsight['tone'], string> = {
+  ok: 'bg-[#22C55E]/15', warn: 'bg-[#F59E0B]/15', danger: 'bg-[#EF4444]/15', info: 'bg-[#22D3EE]/15',
+}
+
+/** Sugerencias genéricas para completar la lista cuando hay pocos hallazgos reales del día */
+const FALLBACK_TIPS: AiInsight[] = [
+  { text: 'Revisá las tarifas de temporada alta para maximizar tus ingresos.', tone: 'info' },
+  { text: 'Enviá un mensaje de bienvenida automático a los huéspedes que llegan hoy.', tone: 'info' },
+  { text: 'Confirmá que el Channel Manager esté sincronizando correctamente.', tone: 'info' },
+  { text: 'Revisá las opiniones recientes para detectar oportunidades de mejora.', tone: 'info' },
+]
+const MIN_ITEMS = 4
+
+const displayInsights = computed<AiInsight[]>(() => {
+  if (props.insights.length >= MIN_ITEMS) return props.insights
+  return [...props.insights, ...FALLBACK_TIPS.slice(0, MIN_ITEMS - props.insights.length)]
+})
 
 const greeting = computed(() => {
   const h = new Date().getHours()
@@ -65,5 +86,8 @@ const greeting = computed(() => {
 @keyframes cc-breathe {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
+}
+.cc-robot-glow {
+  filter: drop-shadow(0 0 14px rgba(37, 99, 235, 0.65)) drop-shadow(0 0 34px rgba(6, 182, 212, 0.4));
 }
 </style>
