@@ -1,7 +1,7 @@
 // usuarios/service.ts — Auth + gestión de usuarios
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, AuthError } from 'arckode-framework'
-import { normalizePhone, looksLikePhone } from './usecases/normalize-phone'
+import { normalizePhone, looksLikePhone, toStoredPhone } from './usecases/normalize-phone'
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required')
@@ -117,7 +117,8 @@ export class UsuariosService {
   async create(data: any): Promise<any> {
     if (!data.password) throw new Error('Password is required')
     const password = await this.hashPassword(data.password)
-    const created = await this.repo.create({ ...data, id: crypto.randomUUID(), password, active: 1 })
+    const phone = toStoredPhone(data.phone)
+    const created = await this.repo.create({ ...data, ...phone, id: crypto.randomUUID(), password, active: 1 })
     const { password: _, token: __, resetToken: ___, resetExpires: ____, ...rest } = created
     return rest
   }
@@ -125,6 +126,7 @@ export class UsuariosService {
   async update(id: string, data: any): Promise<any> {
     const allowed = (({ name, email, password, phone, avatar, role }) => ({ name, email, password, phone, avatar, role }))(data)
     if (allowed.password) allowed.password = await this.hashPassword(allowed.password)
+    Object.assign(allowed, toStoredPhone(allowed.phone))
     const updated = await this.repo.update(id, allowed)
     const { password: _, token: __, resetToken: ___, resetExpires: ____, ...rest } = updated
     return rest

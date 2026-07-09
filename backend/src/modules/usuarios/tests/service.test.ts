@@ -358,6 +358,18 @@ describe('UsuariosService', () => {
       const svc = new UsuariosService(makeRepo(), log, cache, makeAuth())
       await expect(svc.create({ name: 'Ana', email: 'ana@test.com' })).rejects.toThrow('Password is required')
     })
+
+    it('persiste el teléfono como dígitos planos', async () => {
+      let captured: any = null
+      const svc = new UsuariosService(
+        makeRepo({ create: async (d: any) => { captured = d; return { ...d, id: 'u1' } } }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await svc.create({ name: 'Ana', email: 'a@t.com', password: 'x', phone: '+1 (809) 555-0001' })
+      expect(captured.phone).toBe('8095550001')
+    })
   })
 
   // ── UPDATE ────────────────────────────────────────────────────
@@ -398,6 +410,30 @@ describe('UsuariosService', () => {
       expect(result).not.toHaveProperty('resetToken')
       expect(result).not.toHaveProperty('resetExpires')
       expect(result.id).toBe('u1')
+    })
+
+    it('persiste el teléfono como dígitos planos', async () => {
+      let captured: any = null
+      const svc = new UsuariosService(
+        makeRepo({ update: async (id: string, d: any) => { captured = d; return { ...d, id } } }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await svc.update('u1', { phone: '+1 809 555 0001' })
+      expect(captured.phone).toBe('8095550001')
+    })
+
+    it('un update sin phone no toca el teléfono guardado', async () => {
+      let captured: any = null
+      const svc = new UsuariosService(
+        makeRepo({ update: async (id: string, d: any) => { captured = d; return { ...d, id } } }),
+        log,
+        cache,
+        makeAuth(),
+      )
+      await svc.update('u1', { name: 'Ana' })
+      expect(captured.phone).toBeUndefined()
     })
   })
 

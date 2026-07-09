@@ -3,7 +3,7 @@
 // código de país, así que `18095550001` nunca coincidía con `8095550001` de la base.
 
 import { describe, it, expect } from 'bun:test'
-import { normalizePhone, looksLikePhone } from '../usecases/normalize-phone'
+import { normalizePhone, looksLikePhone, toStoredPhone } from '../usecases/normalize-phone'
 
 describe('normalizePhone', () => {
   it('reduce a dígitos los formatos que ya funcionaban', () => {
@@ -54,5 +54,28 @@ describe('looksLikePhone', () => {
   it('un email nunca es teléfono', () => {
     expect(looksLikePhone('rosa@solmios.com')).toBe(false)
     expect(looksLikePhone('admin@managerhotel.com')).toBe(false)
+  })
+})
+
+describe('toStoredPhone', () => {
+  it('persiste dígitos planos, venga como venga', () => {
+    for (const escrito of ['809-555-0001', '(809) 555-0001', '+1 809 555 0001', ' 8095550001 ']) {
+      expect(toStoredPhone(escrito)).toEqual({ phone: '8095550001' })
+    }
+  })
+
+  it('no devuelve la clave si no vino el campo — un update parcial no borra el teléfono', () => {
+    expect(toStoredPhone(undefined)).toEqual({})
+    expect(toStoredPhone(null)).toEqual({})
+  })
+
+  it('permite borrar el teléfono explícitamente con cadena vacía', () => {
+    expect(toStoredPhone('')).toEqual({ phone: '' })
+    expect(toStoredPhone('   ')).toEqual({ phone: '' })
+  })
+
+  it('es idempotente: normalizar lo ya normalizado no cambia nada', () => {
+    const once = toStoredPhone('+1 809 555 0001')
+    expect(toStoredPhone(once.phone)).toEqual(once)
   })
 })

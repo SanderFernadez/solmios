@@ -32,3 +32,17 @@ export function normalizePhone(raw: string): string {
 export function looksLikePhone(raw: string): boolean {
   return /^[\d\s\-()+]+$/.test(raw)
 }
+
+/**
+ * Forma en que el teléfono se PERSISTE: dígitos planos, sin separadores ni código
+ * de país (`8095550001`). El formato de presentación es cosa de la UI.
+ *
+ * Devuelve un objeto parcial a propósito: si no vino `phone` no devuelve la clave,
+ * para que un update parcial no borre el teléfono que ya estaba guardado.
+ */
+export function toStoredPhone(raw: unknown): { phone?: string } {
+  if (raw === undefined || raw === null) return {}
+  const value = String(raw).trim()
+  if (value === '') return { phone: '' }
+  return { phone: normalizePhone(value) }
+}
