@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLMI OS — Flujo de Finanzas</title>
+<style>
+  :root{
+    --bg:#0d1526; --panel:#16213e; --panel-2:#1c2c50; --line:#2a3c66;
+    --txt:#e8eefc; --muted:#93a3c4;
+    --green:#3ddc84; --amber:#ffb443; --red:#ff5c6c; --blue:#5aa9ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:32px}
+  h1{margin:0 0 6px;font-size:26px;letter-spacing:-.02em}
+  h2{font-size:19px;margin:44px 0 14px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0}
+  code{font-family:ui-monospace,"JetBrains Mono",Menlo,monospace;font-size:.88em;
+       background:#0a1120;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin:0 0 18px;font-size:13px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .sw{width:26px;height:0;border-top-width:2.5px;border-top-style:solid}
+
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;
+          background:linear-gradient(180deg,#101a30,#0c1424)}
+  svg{display:block;min-width:1120px}
+  .nlabel{font:600 13.5px ui-sans-serif,system-ui,sans-serif;fill:var(--txt)}
+  .nsub{font:11px ui-monospace,Menlo,monospace;fill:var(--muted)}
+  .elabel{font:11px ui-sans-serif,system-ui,sans-serif;fill:var(--muted)}
+  .elabel.bad{fill:var(--red)}
+  .elabel.warn{fill:var(--amber)}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .card h3{margin:0 0 6px;font-size:14px;display:flex;align-items:center;gap:8px}
+  .card p{margin:0;color:var(--muted);font-size:13.5px}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none}
+
+  .isla{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);
+        border-radius:8px;padding:14px 18px;margin-bottom:12px}
+  .isla.warn{border-left-color:var(--amber)}
+  .isla h3{margin:0 0 6px;font-size:14.5px}
+  .isla p{margin:0 0 6px;color:var(--muted);font-size:13.5px}
+  .isla p:last-child{margin:0}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  tbody tr:last-child td{border-bottom:none}
+  .ok{color:var(--green)} .no{color:var(--red)} .mid{color:var(--amber)}
+
+  pre{background:#0a1120;border:1px solid var(--line);border-radius:8px;padding:14px 16px;
+      overflow-x:auto;font-size:12.5px;line-height:1.7;color:#cfe0ff}
+  .foot{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);
+        color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>SOLMI OS — Cómo circula el dinero</h1>
+  <p class="sub">Grafo real del módulo Finanzas, trazado sobre el código. 7 páginas · 8 módulos backend · 18 conectores.</p>
+  <p class="sub" style="margin-top:8px;font-size:13px">
+    Estado: <span style="color:var(--green)">todo el dinero pasa por <code>payments</code></span> y los reportes cuadran contra caja y conciliación.
+    Sin islas. Queda un solo <span style="color:var(--amber)">tramo ámbar</span>: el webhook de Stripe todavía parchea reserva y folio con repos crudos (deuda F10).
+  </p>
+</header>
+
+<div class="legend">
+  <span><i class="sw" style="border-color:var(--green)"></i> Conectado y verificado</span>
+  <span><i class="sw" style="border-color:var(--amber);border-top-style:dashed"></i> Conexión parcial o débil</span>
+  <span><i class="sw" style="border-color:var(--red);border-top-style:dashed"></i> Isla — no existe la conexión</span>
+</div>
+
+<div class="scroll">
+<svg viewBox="0 0 1120 740" role="img" aria-label="Grafo del flujo de dinero">
+  <defs>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 z" fill="#3ddc84"/></marker>
+    <marker id="aa" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 z" fill="#ffb443"/></marker>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 z" fill="#ff5c6c"/></marker>
+    <style>
+      .eg{stroke:#3ddc84;stroke-width:2;fill:none;marker-end:url(#ag)}
+      .ea{stroke:#ffb443;stroke-width:2;fill:none;stroke-dasharray:6 4;marker-end:url(#aa)}
+      .er{stroke:#ff5c6c;stroke-width:2;fill:none;stroke-dasharray:6 4;marker-end:url(#ar)}
+      .box{fill:#16213e;stroke:#2a3c66;stroke-width:1.5;rx:9}
+      .hub{fill:#1c2c50;stroke:#5aa9ff;stroke-width:2;rx:9}
+      .bad{fill:#241420;stroke:#ff5c6c;stroke-width:1.5;stroke-dasharray:5 3;rx:9}
+    </style>
+  </defs>
+
+  <!-- ENTRADAS -->
+  <rect class="box" x="30" y="40" width="170" height="58"/>
+  <text class="nlabel" x="115" y="64" text-anchor="middle">Night Audit (cron 3h)</text>
+  <text class="nsub" x="115" y="82" text-anchor="middle">night-audit-cron.ts</text>
+
+  <rect class="box" x="30" y="300" width="170" height="58"/>
+  <text class="nlabel" x="115" y="324" text-anchor="middle">Reserva · checkout</text>
+  <text class="nsub" x="115" y="342" text-anchor="middle">modules/reservas</text>
+
+  <rect class="box" x="30" y="558" width="170" height="58"/>
+  <text class="nlabel" x="115" y="582" text-anchor="middle">Link de Pago · Stripe</text>
+  <text class="nsub" x="115" y="600" text-anchor="middle">payment-requests</text>
+
+  <!-- CENTRO -->
+  <rect class="box" x="300" y="300" width="170" height="58"/>
+  <text class="nlabel" x="385" y="324" text-anchor="middle">Folios In-House</text>
+  <text class="nsub" x="385" y="342" text-anchor="middle">cuenta corriente</text>
+
+  <rect class="box" x="580" y="158" width="170" height="58"/>
+  <text class="nlabel" x="665" y="182" text-anchor="middle">Facturación</text>
+  <text class="nsub" x="665" y="200" text-anchor="middle">modules/facturas</text>
+
+  <rect class="hub" x="570" y="398" width="190" height="62"/>
+  <text class="nlabel" x="665" y="420" text-anchor="middle" style="fill:#5aa9ff">PAYMENTS</text>
+  <text class="nsub" x="665" y="438" text-anchor="middle">fuente de verdad</text>
+  <text class="nsub" x="665" y="452" text-anchor="middle">del dinero</text>
+
+  <rect class="box" x="600" y="620" width="170" height="58"/>
+  <text class="nlabel" x="685" y="644" text-anchor="middle">Gastos</text>
+  <text class="nsub" x="685" y="662" text-anchor="middle">tabla expenses</text>
+
+  <!-- SALIDAS -->
+  <rect class="box" x="880" y="100" width="170" height="58"/>
+  <text class="nlabel" x="965" y="124" text-anchor="middle">Audit Log</text>
+  <text class="nsub" x="965" y="142" text-anchor="middle">entity = invoice</text>
+
+  <rect class="box" x="880" y="380" width="170" height="58"/>
+  <text class="nlabel" x="965" y="404" text-anchor="middle">Caja</text>
+  <text class="nsub" x="965" y="422" text-anchor="middle">arqueo · turnos</text>
+
+  <rect class="box" x="880" y="490" width="170" height="58"/>
+  <text class="nlabel" x="965" y="512" text-anchor="middle">Conciliación</text>
+  <text class="nsub" x="965" y="530" text-anchor="middle">extracto vs payments</text>
+
+  <rect class="box" x="880" y="620" width="170" height="58"/>
+  <text class="nlabel" x="965" y="644" text-anchor="middle">Reportes</text>
+  <text class="nsub" x="965" y="662" text-anchor="middle">facturado vs cobrado</text>
+
+  <!-- ARISTAS VERDES -->
+  <path class="eg" d="M115,100 C115,200 200,265 296,310"/>
+  <text class="elabel" x="128" y="222">postRoomCharges</text>
+  <text class="elabel" x="128" y="236">dedup por fecha</text>
+
+  <path class="eg" d="M202,329 L294,329"/>
+  <text class="elabel" x="248" y="320" text-anchor="middle">settleFolio</text>
+
+  <path class="eg" d="M470,316 C520,300 540,240 576,206"/>
+  <text class="elabel" x="474" y="264">closeAndCreateInvoice</text>
+
+  <path class="eg" d="M470,344 C510,362 530,392 566,412"/>
+  <text class="elabel" x="470" y="396">applyPayment</text>
+  <text class="elabel" x="470" y="410" style="fill:#3ddc84">no best-effort</text>
+
+  <path class="eg" d="M665,218 L665,394"/>
+  <text class="elabel" x="675" y="290">pay → recordPayment</text>
+  <text class="elabel" x="675" y="304">createPayment(completed)</text>
+
+  <path class="eg" d="M752,176 C800,160 840,142 876,132"/>
+  <text class="elabel" x="762" y="152">auditSafely</text>
+
+  <path class="eg" d="M762,442 C800,470 840,492 876,506"/>
+  <text class="elabel" x="768" y="492">status = completed</text>
+
+  <path class="eg" d="M772,652 L876,650"/>
+  <text class="elabel" x="824" y="642" text-anchor="middle">Expenses</text>
+
+  <!-- ARISTAS AMBAR -->
+  <path class="ea" d="M762,415 L876,406"/>
+  <text class="elabel warn" x="770" y="386">onPaymentCompleted</text>
+  <text class="elabel warn" x="770" y="399">solo method = 'cash'</text>
+
+  <path class="ea" d="M578,166 C420,86 210,120 122,296"/>
+  <text class="elabel warn" x="300" y="104" text-anchor="middle">solo escribe notes — sin estado estructurado</text>
+
+  <!-- ARISTAS ROJAS -->
+  <path class="ea" d="M200,570 C280,510 330,420 380,362"/>
+  <text class="elabel warn" x="206" y="486">bridge: FolioCharges +</text>
+  <text class="elabel warn" x="206" y="500">Reservations (repo crudo)</text>
+
+  <path class="eg" d="M202,600 C380,660 490,530 564,452"/>
+  <text class="elabel" x="390" y="602" text-anchor="middle" style="fill:#3ddc84">recordStripePayment → asiento en payments (dedup por stripeSessionId)</text>
+
+  <path class="ea" d="M672,616 C712,552 800,478 874,436"/>
+  <text class="elabel warn" x="686" y="546">solo si es</text>
+  <text class="elabel warn" x="686" y="560">efectivo</text>
+
+  <path class="eg" d="M665,464 C665,566 762,606 874,638"/>
+  <text class="elabel" x="700" y="592" style="fill:#3ddc84">ingresado (cobrado) — cuadra con caja y conciliación</text>
+</svg>
+</div>
+
+<h2>Qué resuelve cada pieza</h2>
+<div class="cards">
+  <div class="card"><h3><i class="dot" style="background:var(--blue)"></i>Payments</h3>
+    <p>El asiento único del dinero. Nadie más guarda plata: folios y facturas delegan acá vía puertos que los conectores inyectan. Si esta tabla miente, miente todo el sistema.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Folios In-House</h3>
+    <p>La cuenta corriente del huésped mientras está alojado. Acumula cargos (habitación, consumos) y pagos. Se cierra contra una factura en una sola operación del servidor.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Facturación</h3>
+    <p>El documento fiscal. Hereda el <code>amountPaid</code> del folio, no re-cobra. Anular ≠ borrar: una factura con efectos contables se anula con nota de crédito.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Night Audit</h3>
+    <p>Cron cada 3h. Postea el cargo de habitación del día a todos los folios de reservas <code>checked_in</code>, con dedup por fecha para no cobrar dos veces.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--amber)"></i>Caja</h3>
+    <p>El cajón físico y el arqueo por turno. Solo recibe pagos en efectivo (<code>method === 'cash'</code>); tarjeta y transferencia ya están bancarizadas y no pasan por acá.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Conciliación</h3>
+    <p>Cruza el extracto bancario contra los pagos <code>completed</code>, por monto (±0.01) y referencia. Cada movimiento del banco consume un solo pago.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Links de Pago</h3>
+    <p>Checkout Stripe por reserva. El cobro se asienta en <code>payments</code> vía puerto, deduplicado por <code>stripeSessionId</code>. Sigue parcheando reserva y folio con repos crudos: deuda F10 parcial.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Gastos</h3>
+    <p>Egresos del hotel. Si está pagado y es en efectivo, sale del cajón y aparece en el arqueo. Tarjeta y transferencia ya están bancarizadas y no lo tocan.</p></div>
+</div>
+
+<h2>Los dos caminos del dinero</h2>
+<pre>checkout de reserva
+  └─ reservas-folios-settlement ─→ folios.applyPayment
+        └─ folios-payments ─→ payments.createPayment(status: 'completed')   ← el dinero existe acá
+              └─ onPaymentCompleted ─→ payments-caja ─→ caja.registerPaymentIncome   (solo cash)
+  └─ folios.closeAndCreateInvoice
+        └─ folios-facturas ─→ facturas.create   (hereda amountPaid, no re-cobra)
+              └─ facturas-auditlog ─→ auditlog
+
+webhook Stripe (checkout.session.completed)
+  └─ payment-requests-payments ─→ payments.createPayment(method: 'link', completed)   ← asiento primero
+        └─ dedup por stripeSessionId: el reintento de Stripe no cobra dos veces
+  └─ bridge ─→ reserva (deposit, pendingAmount) + folio_charges (kind: 'payment')
+  └─ payment_requests.status = 'paid'                                    ← recién al final
+
+gasto pagado en efectivo
+  └─ gastos-caja ─→ caja.registerExpenseOutflow (type: 'expense', dedup por expenseId)
+        └─ el arqueo lo resta: expected = opening + income − expense
+
+reportes
+  └─ facturado  = reservas + extras del período      (devengado)
+  └─ ingresado  = payments completados del período   (cobrado)   ← cuadra con caja/conciliación
+  └─ resultado  = neto − gastos del período</pre>
+<p style="color:var(--muted);font-size:13.5px;margin-top:10px">
+El orden de registro de los conectores importa: <code>folios-facturas</code> se registra antes que
+<code>reservas-folios-settlement</code> porque el settlement usa <code>closeAndCreateInvoice()</code>,
+que necesita el puerto ya inyectado.</p>
+
+<h2>Lo que estaba roto</h2>
+
+<div class="isla" style="border-left-color:var(--green)">
+  <h3>1 · Links de Pago (Stripe) → <code>payments</code> &nbsp;<span style="color:var(--green)">ARREGLADO</span></h3>
+  <p><strong>Era:</strong> el webhook escribía <code>FolioCharges</code> y <code>Reservations</code> con repos crudos, sin pasar por <code>payments.createPayment</code>. El cobro quedaba fuera de la conciliación bancaria.</p>
+  <p><strong>Ahora:</strong> el conector <code>payment-requests-payments</code> inyecta un <code>StripePaymentPort</code>. El webhook asienta el dinero <em>antes</em> de marcar la solicitud como pagada, así un fallo deja que Stripe reintente en limpio. Se deduplica por <code>stripeSessionId</code> para que el reintento no cobre dos veces.</p>
+  <p>No impacta Caja, y está bien: un cobro Stripe ya está bancarizado, no entra al cajón físico.</p>
+</div>
+
+<div class="isla" style="border-left-color:var(--green)">
+  <h3>2 · Gastos → Caja &nbsp;<span style="color:var(--green)">ARREGLADO</span></h3>
+  <p><strong>Era:</strong> ningún conector escuchaba los eventos de <code>gastos</code>. Los egresos vivían en dos silos que nunca se cruzaban.</p>
+  <p><strong>Ahora:</strong> el conector <code>gastos-caja</code> asienta un egreso cuando el gasto está pagado <em>y</em> es en efectivo, simétrico a <code>payments-caja</code>. Se agregó <code>expenses.paymentMethod</code>. Como el conector reacciona a create <em>y</em> update, editar un gasto de efectivo a transferencia <strong>revierte</strong> el egreso; dedup por <code>expenseId</code>.</p>
+</div>
+
+<div class="isla" style="border-left-color:var(--green)">
+  <h3>3 · Reportes no leía la fuente de verdad &nbsp;<span style="color:var(--green)">ARREGLADO</span></h3>
+  <p><strong>Era:</strong> los ingresos salían de <code>Reservations.totalAmount</code>. Peor: <code>ctx.expenses</code> se cargaba de la base y <strong>ninguna estrategia lo leía</strong> — los gastos no aparecían en ningún reporte.</p>
+  <p><strong>Ahora:</strong> el reporte separa <strong>Facturado</strong> (devengado) de <strong>Ingresado</strong> (cobrado, desde <code>payments</code>), y muestra la brecha como <em>Por cobrar</em>. Los gastos del período se restan en <code>resultado</code>.</p>
+  <p>Además: <code>getNightAudit</code> sumaba <strong>toda la historia</strong> del hotel y la etiquetaba «del día» — ADR, RevPAR y «pagos recibidos» incluidos. Ahora lee <code>folio_charges</code> y <code>payments</code> del día, y calcula <code>impuestos</code> y <code>reembolsos</code> en vez de devolver <code>0</code> hardcodeado.</p>
+</div>
+
+<div class="isla warn">
+  <h3>4 · <code>facturas → reservas</code> es una conexión de papel</h3>
+  <p>Cuando una factura se marca pagada, el conector solo escribe un texto en <code>reserva.notes</code>. No hay campo estructurado de estado de facturación en la reserva.</p>
+</div>
+
+<div class="isla" style="border-left-color:var(--green)">
+  <h3>5 · Conciliación: 3 tests en rojo &nbsp;<span style="color:var(--green)">ARREGLADO</span></h3>
+  <p><strong>Era:</strong> <code>[...bankEntries]</code> sin guarda → un POST sin <code>entries</code> tiraba <em>“Spread syntax requires ...iterable”</em>. Y el rango de fechas mandaba <code>{ $gte, $lte }</code> al <code>WHERE</code>, que solo soporta igualdad: el driver lo bindeaba crudo.</p>
+  <p><strong>Ahora:</strong> el rango se acota en memoria comparando por día (así <code>to</code> incluye los pagos de esa fecha), las filas sin monto numérico se descartan antes de cruzar — una sola envenenaba <code>difference</code> con <code>NaN</code> — y el controller valida con <code>ReconcileSchema</code>, que estaba escrito e importado pero nunca cableado.</p>
+  <p><strong>8 pass, 0 fail.</strong></p>
+</div>
+
+<h2>Estado por página del menú</h2>
+<table>
+  <thead><tr><th>Página</th><th>Módulo backend</th><th>Llega a <code>payments</code></th><th>Llega a Caja</th></tr></thead>
+  <tbody>
+    <tr><td>Facturación</td><td><code>facturas</code></td><td class="ok">Sí</td><td class="mid">Solo si es efectivo</td></tr>
+    <tr><td>Folios In-House</td><td><code>folios</code></td><td class="ok">Sí</td><td class="mid">Solo si es efectivo</td></tr>
+    <tr><td>Links de Pago</td><td><code>payment-requests</code></td><td class="ok">Sí</td><td class="mid">No (no es efectivo)</td></tr>
+    <tr><td>Caja</td><td><code>cash</code></td><td class="ok">Recibe</td><td>—</td></tr>
+    <tr><td>Gastos</td><td><code>gastos</code></td><td>No aplica</td><td class="mid">Sí, si es efectivo</td></tr>
+    <tr><td>Reportes</td><td><code>reports</code></td><td class="ok">Sí (Ingresado)</td><td class="ok">Cuadra</td></tr>
+    <tr><td>Night Audit</td><td><code>reports</code> + <code>folios</code></td><td class="mid">Vía folio</td><td class="mid">Vía folio</td></tr>
+  </tbody>
+</table>
+
+<p class="foot">Generado a partir del código en <code>backend/src/{modules,connectors,shared}</code> y <code>frontend/src/{pages,services}</code>. Los hallazgos de conciliación se verificaron ejecutando la suite.</p>
+
+</div>
+</body>
+</html>
