@@ -79,8 +79,17 @@ export class BookingengineService {
     return this.stripe.createCheckoutSession(booking, successUrl, cancelUrl)
   }
 
+  /**
+   * El cobro del widget es plata real que entra por Stripe. Sin emitir el evento, quedaba solo en la
+   * fila de `bookings`: fuera de `payments`, de la conciliación bancaria y del balance.
+   */
   async handleStripeWebhook(payload: Buffer, signature: string) {
-    return this.stripe.handleWebhook(payload, signature)
+    const result = await this.stripe.handleWebhook(payload, signature)
+    if (result.type === 'booking_confirmed' && result.bookingId) {
+      const booking = await this.booking.getById(result.bookingId)
+      await this.sockets.onBookingPaid?.(booking)
+    }
+    return result
   }
 
   async getBooking(id: string): Promise<PublicBookingDTO> {

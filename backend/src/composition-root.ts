@@ -146,6 +146,7 @@ import { foliosPaymentsConnector } from './connectors/folios-payments'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
 import { gastosCajaConnector } from './connectors/gastos-caja'
 import { payrollGastosConnector } from './connectors/payroll-gastos'
+import { bookingenginePaymentsConnector } from './connectors/bookingengine-payments'
 import { messagesUsuariosConnector } from './connectors/messages-usuarios'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
@@ -169,6 +170,8 @@ system.addConnector('facturas-payments', facturasPaymentsConnector)
 system.addConnector('folios-payments', foliosPaymentsConnector)
 // Un cobro Stripe también es dinero: sin esto queda fuera de `payments` y de la conciliación.
 system.addConnector('payment-requests-payments', paymentRequestsPaymentsConnector)
+// El widget público cobra con Stripe: ese dinero vivía solo en la tabla `bookings`.
+system.addConnector('bookingengine-payments', bookingenginePaymentsConnector)
 system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector(orm))
 // folios-facturas debe registrarse antes que reservas-folios-settlement:
 // el settlement del checkout usa folios.closeAndCreateInvoice(), que necesita el puerto inyectado.
