@@ -69,6 +69,6 @@ export class MessagesController {
       size: parsed.buffer.length,
     }
     const stored = await this.storage.upload(file, 'chat')
-    return { status: 201, body: { success: true, data: { url: stored.url } } }
+    return { status: 201, body: { url: stored.url } }
   }
 }
