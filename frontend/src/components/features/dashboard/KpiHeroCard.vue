@@ -1,65 +1,65 @@
 <template>
-  <div class="cc-kpi group relative overflow-hidden rounded-[18px] p-5 transition-transform duration-300 hover:-translate-y-0.5"
-    :style="{ background: theme.bg, border: `1.5px solid ${theme.borderColor}`, boxShadow: `0 0 28px ${theme.outerGlow}, inset 0 1px 0 rgba(255,255,255,0.06)` }">
+  <div class="cc-kpi group relative overflow-hidden rounded-[16px] px-4 py-3 transition-transform duration-300 hover:-translate-y-0.5"
+    :style="{ background: theme.bg, border: `1.5px solid ${theme.borderColor}`, boxShadow: `0 0 24px ${theme.outerGlow}, inset 0 1px 0 rgba(255,255,255,0.06)` }">
     <!-- glow que respira -->
-    <div class="pointer-events-none absolute -top-16 -right-16 h-44 w-44 rounded-full blur-3xl cc-breathe" :style="{ background: theme.glow }"></div>
+    <div class="pointer-events-none absolute -top-14 -right-14 h-36 w-36 rounded-full blur-3xl cc-breathe" :style="{ background: theme.glow }"></div>
 
-    <div class="relative flex items-start justify-between">
-      <div class="text-[11px] font-extrabold uppercase tracking-[2px]" :style="{ color: theme.labelColor }">{{ label }}</div>
+    <div class="relative flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <div class="text-[10px] font-extrabold uppercase tracking-[2px]" :style="{ color: theme.labelColor }">{{ label }}</div>
 
-      <!-- Anillo de progreso u ícono -->
-      <div v-if="progress !== undefined && progress !== null" class="relative -mt-1 h-16 w-16 shrink-0">
-        <svg viewBox="0 0 36 36" class="h-16 w-16 -rotate-90" :style="{ filter: `drop-shadow(0 0 6px ${theme.outerGlow})` }">
+        <!-- Número gigante -->
+        <div class="mt-1 flex items-baseline gap-2">
+          <span class="font-black tabular-nums leading-none tracking-tight text-white text-[clamp(34px,2.7vw,50px)]"
+            :style="{ textShadow: `0 0 24px ${theme.outerGlow}` }">
+            {{ prefix }}{{ formatted }}<span v-if="suffix" class="text-[0.6em] font-extrabold" :style="{ color: theme.labelColor }">{{ suffix }}</span>
+          </span>
+          <!-- Tendencia junto al número (como en la referencia) -->
+          <span v-if="trend !== undefined && trend !== null"
+            class="flex shrink-0 items-center gap-1 text-[10px] font-extrabold tabular-nums"
+            :class="trend >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'">
+            {{ trend >= 0 ? '▲' : '▼' }} {{ trend >= 0 ? '+' : '' }}{{ trend }}%
+            <span class="font-semibold text-slate-500">vs ayer</span>
+          </span>
+        </div>
+        <div v-if="unit" class="mt-0.5 text-[11px] font-semibold text-slate-400">{{ unit }}</div>
+      </div>
+
+      <!-- Anillo de progreso con ícono, o ícono suelto -->
+      <div v-if="progress !== undefined && progress !== null" class="relative h-12 w-12 shrink-0">
+        <svg viewBox="0 0 36 36" class="h-12 w-12 -rotate-90" :style="{ filter: `drop-shadow(0 0 5px ${theme.outerGlow})` }">
           <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3.4" />
           <circle cx="18" cy="18" r="15.5" fill="none" :stroke="theme.stroke" stroke-width="3.4" stroke-linecap="round"
             :stroke-dasharray="`${ringDash} 100`" class="transition-[stroke-dasharray] duration-700 ease-out" />
         </svg>
-        <div class="absolute inset-0 grid place-items-center">
-          <span class="text-lg" v-html="icon"></span>
+        <div class="cc-icon absolute inset-0 grid place-items-center" :style="{ color: theme.stroke }">
+          <span class="block h-4 w-4" v-html="ICONS[icon]"></span>
         </div>
       </div>
-      <div v-else class="grid h-12 w-12 place-items-center rounded-full text-xl"
-        :style="{ background: theme.glow, boxShadow: `0 0 16px ${theme.outerGlow}` }">
-        <span v-html="icon"></span>
+      <div v-else class="cc-icon grid h-11 w-11 shrink-0 place-items-center rounded-full"
+        :style="{ background: theme.glow, boxShadow: `0 0 14px ${theme.outerGlow}`, color: theme.stroke }">
+        <span class="block h-5 w-5" v-html="ICONS[icon]"></span>
       </div>
     </div>
 
-    <!-- Número gigante -->
-    <div class="relative mt-1 flex items-baseline gap-2">
-      <span class="font-black tabular-nums leading-none tracking-tight text-white text-[clamp(48px,3.8vw,72px)]"
-        :style="{ textShadow: `0 0 30px ${theme.outerGlow}` }">
-        {{ prefix }}{{ formatted }}<span v-if="suffix" class="text-[0.55em] font-extrabold" :style="{ color: theme.labelColor }">{{ suffix }}</span>
-      </span>
-    </div>
-    <div v-if="unit" class="mt-1 text-xs font-semibold text-slate-400">{{ unit }}</div>
-
     <!-- Barra de progreso lineal -->
-    <div v-if="progress !== undefined && progress !== null" class="relative mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+    <div v-if="progress !== undefined && progress !== null" class="relative mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
       <div class="h-full rounded-full transition-[width] duration-700 ease-out"
         :style="{ width: `${clampedProgress}%`, background: theme.stroke, boxShadow: `0 0 8px ${theme.stroke}` }"></div>
     </div>
 
     <!-- Sparkline -->
-    <svg v-if="spark && spark.length > 1" class="relative mt-3 h-10 w-full" :viewBox="`0 0 100 24`" preserveAspectRatio="none">
-      <polyline :points="sparkPoints" fill="none" :stroke="theme.stroke" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"
+    <svg v-if="spark && spark.length > 1" class="relative mt-1.5 h-8 w-full" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <polyline :points="sparkPoints" fill="none" :stroke="theme.stroke" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"
         :style="{ filter: `drop-shadow(0 0 3px ${theme.stroke})` }" />
       <polygon :points="`0,24 ${sparkPoints} 100,24`" :fill="theme.stroke" opacity="0.15" />
     </svg>
 
-    <!-- Sub-stats + tendencia -->
-    <div class="relative mt-3 flex items-end justify-between gap-2">
-      <div class="flex gap-4">
-        <div v-for="s in subStats ?? []" :key="s.label">
-          <div class="text-lg font-black leading-none tabular-nums" :class="s.tone ?? 'text-white'">{{ s.value }}</div>
-          <div class="mt-1 text-[10px] font-semibold text-slate-400">{{ s.label }}</div>
-        </div>
-      </div>
-      <div v-if="trend !== undefined && trend !== null"
-        class="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold tabular-nums"
-        :class="trend >= 0 ? 'bg-[#22C55E]/15 text-[#4ADE80]' : 'bg-[#EF4444]/15 text-[#F87171]'">
-        <span>{{ trend >= 0 ? '▲' : '▼' }}</span>
-        <span>{{ trend >= 0 ? '+' : '' }}{{ trend }}%</span>
-        <span class="font-semibold text-slate-400">vs ayer</span>
+    <!-- Sub-stats -->
+    <div v-if="subStats?.length" class="relative mt-2 flex gap-5">
+      <div v-for="s in subStats" :key="s.label">
+        <div class="text-base font-black leading-none tabular-nums" :class="s.tone ?? 'text-white'">{{ s.value }}</div>
+        <div class="mt-0.5 text-[9px] font-semibold text-slate-400">{{ s.label }}</div>
       </div>
     </div>
   </div>
@@ -69,10 +69,12 @@
 import { computed, toRef } from 'vue'
 import { useCountUp } from '@/composables/useCountUp'
 
+export type KpiIcon = 'bed' | 'checkin' | 'checkout' | 'money'
+
 const props = defineProps<{
   label: string
   value: number
-  icon: string
+  icon: KpiIcon
   accent: 'blue' | 'green' | 'purple' | 'amber'
   prefix?: string
   suffix?: string
@@ -85,6 +87,13 @@ const props = defineProps<{
   trend?: number | null
   subStats?: { label: string; value: string | number; tone?: string }[]
 }>()
+
+const ICONS: Record<KpiIcon, string> = {
+  bed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 18v2M3 18h18M21 18v2M6 9V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2"/></svg>',
+  checkin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
+  checkout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+  money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+}
 
 const THEMES = {
   blue: {
@@ -137,5 +146,10 @@ const sparkPoints = computed(() => {
 @keyframes cc-breathe {
   0%, 100% { opacity: 0.7; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.15); }
+}
+/* el SVG inyectado por v-html hereda el tamaño del span contenedor */
+.cc-icon :deep(svg) {
+  width: 100%;
+  height: 100%;
 }
 </style>

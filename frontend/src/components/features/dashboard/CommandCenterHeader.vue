@@ -7,7 +7,11 @@
     <div class="relative flex flex-wrap items-center gap-x-5 gap-y-3">
       <!-- Identidad -->
       <div class="flex items-center gap-3 min-w-[230px]">
-        <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-2xl shadow-[0_0_20px_rgba(37,99,235,0.45)]">🏨</div>
+        <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-white shadow-[0_0_20px_rgba(37,99,235,0.45)]">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1" />
+          </svg>
+        </div>
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-xl md:text-2xl font-black tracking-tight text-white uppercase leading-none">{{ hotelName }}</h1>

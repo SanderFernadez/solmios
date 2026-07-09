@@ -10,14 +10,13 @@
       :alerts="dashboard.stats.openIncidents"
     />
 
-    <!-- 2. KPIs gigantes -->
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <!-- 2. KPIs gigantes — ocupación e ingresos pesan más que check-in/out -->
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.3fr_1fr_1fr_1.25fr]">
       <KpiHeroCard
-        label="Ocupación Actual" accent="blue" suffix="%"
+        label="Ocupación Actual" accent="blue" suffix="%" icon="bed"
         :value="dashboard.stats.occupancy"
         :progress="dashboard.stats.occupancy"
         :trend="occupancyTrend"
-        :icon="'🛏️'"
         :sub-stats="[
           { label: 'Habitaciones', value: dashboard.stats.totalRooms },
           { label: 'Disponibles', value: availableRooms, tone: 'text-[#4ADE80]' },
@@ -25,33 +24,30 @@
         ]"
       />
       <KpiHeroCard
-        label="Check-in Hoy" accent="green"
+        label="Check-in Hoy" accent="green" icon="checkin"
         :value="dashboard.stats.arrivalsToday"
         unit="Huéspedes"
         :progress="arrivalsProgress"
-        :icon="'🔑'"
         :sub-stats="[
           { label: 'Realizados', value: arrivalsDone, tone: 'text-[#4ADE80]' },
           { label: 'Pendientes', value: arrivalsPending, tone: 'text-[#FBBF24]' },
         ]"
       />
       <KpiHeroCard
-        label="Check-out Hoy" accent="purple"
+        label="Check-out Hoy" accent="purple" icon="checkout"
         :value="dashboard.stats.departuresToday"
         unit="Huéspedes"
         :progress="departuresProgress"
-        :icon="'🚪'"
         :sub-stats="[
           { label: 'Realizados', value: departuresDone, tone: 'text-[#A78BFA]' },
           { label: 'Pendientes', value: departuresPending, tone: 'text-[#FBBF24]' },
         ]"
       />
       <KpiHeroCard
-        label="Ingresos Hoy" accent="amber" prefix="$"
+        label="Ingresos Hoy" accent="amber" prefix="$" icon="money"
         :value="dashboard.stats.revenueToday"
         :trend="revenueTrend"
         :spark="revenueSpark"
-        :icon="'💰'"
       />
     </div>
 
