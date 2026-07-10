@@ -5,6 +5,7 @@
     "dev": "eval $(grep '^export ' .env 2>/dev/null) && bun run --hot src/composition-root.ts",
     "start": "bun run src/composition-root.ts",
     "migrate": "bun run migrate-db.ts",
+    "sync-roles": "bun run scripts/sync-system-roles.ts",
     "doctor": "bun run doctor.ts",
     "analyze": "bun run node_modules/arckode-framework/bin/arckode.js analyze",
     "test": "bun test --env-file .env.test",

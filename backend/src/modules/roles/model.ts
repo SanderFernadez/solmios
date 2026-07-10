@@ -11,6 +11,9 @@ export const RolesModel: ModelDefinition = {
     system: { type: 'number', default: 0 },
     hotelId: { type: 'string' },
     permissions: { type: 'json', default: [] },
+    /** Huella de los permisos que escribió `scripts/sync-system-roles.ts`. Si los permisos actuales
+     *  ya no hashean a este valor, alguien los personalizó y el sync no los pisa. */
+    defaultsHash: { type: 'string' },
     users: { type: 'number', default: 0 },
   },
   timestamps: true,
