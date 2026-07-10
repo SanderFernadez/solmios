@@ -253,4 +253,19 @@ export function registerSharedModels(orm: ORM): void {
       unit: { type: 'string', default: 'pieza' },
     },
   })
+
+  // ─── Checklist Templates (housekeeping) ──────────────
+  // La "lista de cosas" que el admin arma para la camarera. Ítems libres,
+  // por hotel y tipo de habitación (roomType 'all' = para todas).
+  orm.define('ChecklistTemplate', {
+    table: 'checklist_templates', timestamps: true,
+    fields: {
+      id: { type: 'string', required: true },
+      hotelId: { type: 'string', required: true, indexed: true },
+      roomType: { type: 'string', default: 'all' },
+      text: { type: 'string', required: true },
+      sortOrder: { type: 'number', default: 0 },
+      active: { type: 'number', default: 1 },
+    },
+  })
 }

@@ -37,6 +37,7 @@ export class HousekeepingService {
     photoReqRepo?: RepositoryAdapter<any>,
     supplyRepo?: RepositoryAdapter<any>,
     private readonly roomRepo?: RepositoryAdapter<any>,
+    checklistRepo?: RepositoryAdapter<any>,
   ) {
     this.employeeRepo = employeeRepo
     this.timings = new TimingsUseCase(
@@ -50,7 +51,7 @@ export class HousekeepingService {
     this.listUc = new ListUseCase(repo, cache, userRepo, roomRepo)
     this.approveUc = new ApproveUseCase(repo)
     if (photoReqRepo && supplyRepo) {
-      this.configLists = new ConfigListsUseCase(photoReqRepo, supplyRepo, logger)
+      this.configLists = new ConfigListsUseCase(photoReqRepo, supplyRepo, logger, checklistRepo)
     }
   }
 
@@ -155,6 +156,8 @@ export class HousekeepingService {
   async upsertPhotoRequirements(h: string, items: any[]) { return this.configLists?.upsertPhotoRequirements(h, items) ?? [] }
   async getSupplyLists(h: string, rt?: string) { return this.configLists?.getSupplyLists(h, rt) ?? [] }
   async upsertSupplyLists(h: string, rt: string, items: any[]) { return this.configLists?.upsertSupplyLists(h, rt, items) ?? [] }
+  async getChecklist(h: string, rt?: string) { return this.configLists?.getChecklist(h, rt) ?? [] }
+  async upsertChecklist(h: string, rt: string, items: any[]) { return this.configLists?.upsertChecklist(h, rt, items) ?? [] }
 
   /**
    * `staffId` es el id de un USUARIO, no el de un `employee_profile`.

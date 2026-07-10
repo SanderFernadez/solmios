@@ -27,9 +27,9 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       name: 'housekeeping',
       version: '2.1.0',
       description: 'Housekeeping tasks with ownership, timings, photo evidence and staff stats',
-      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'complete', 'uploadPhoto', 'removePhoto', 'stats', 'approve', 'reject', 'presence', 'report', 'photoRequirements', 'supplyLists'],
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'complete', 'uploadPhoto', 'removePhoto', 'stats', 'approve', 'reject', 'presence', 'report', 'photoRequirements', 'supplyLists', 'checklist'],
       events: ['onHousekeepingCreated', 'onHousekeepingUpdated', 'onHousekeepingDeleted'],
-      tables: ['housekeeping', 'photo_requirements', 'supply_items'],
+      tables: ['housekeeping', 'photo_requirements', 'supply_items', 'checklist_templates'],
       dependencies: [],
       rules: ['Ownership check required', 'hotelId not updatable', 'State machine enforced in service'],
     },
@@ -42,10 +42,11 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       const employeeRepo = new OrmRepository<any>(orm, 'EmployeeProfile')
       const photoReqRepo = new OrmRepository<any>(orm, 'PhotoRequirement')
       const supplyRepo = new OrmRepository<any>(orm, 'SupplyItem')
+      const checklistRepo = new OrmRepository<any>(orm, 'ChecklistTemplate')
       // La tarea guarda `roomId`; la app muestra "Hab. 201 · Piso 2". Sin este
       // repo la camarera veía tarjetas que decían "Hab." y "Piso 0".
       const roomRepo = new OrmRepository<any>(orm, 'Rooms')
-      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo, roomRepo)
+      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo, roomRepo, checklistRepo)
       const controller = new HousekeepingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -59,6 +60,8 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       router.put('/api/housekeeping/photo-requirements', guard('housekeeping', 'edit'), (req) => controller.updatePhotoRequirements(req))
       router.get('/api/housekeeping/supply-lists', guard('housekeeping', 'view'), (req) => controller.supplyLists(req))
       router.put('/api/housekeeping/supply-lists', guard('housekeeping', 'edit'), (req) => controller.updateSupplyLists(req))
+      router.get('/api/housekeeping/checklist', guard('housekeeping', 'view'), (req) => controller.checklist(req))
+      router.put('/api/housekeeping/checklist', guard('housekeeping', 'edit'), (req) => controller.updateChecklist(req))
       router.get('/api/housekeeping/:id', guard('housekeeping', 'view'), (req) => controller.show(req))
       router.post('/api/housekeeping', guard('housekeeping', 'create'), (req) => controller.store(req))
       router.put('/api/housekeeping/:id', guard('housekeeping', 'edit'), (req) => controller.update(req))

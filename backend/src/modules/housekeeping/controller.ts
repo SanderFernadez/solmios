@@ -138,6 +138,23 @@ export class HousekeepingController {
     return { status: 200, body: { data: items } }
   }
 
+  // ─── Checklist (la "lista de cosas" configurable por el admin) ─────────────
+  async checklist(req: HttpRequest) {
+    const hotelId = (req.user as any).hotelId
+    const roomType = req.query['roomType'] as string | undefined
+    const items = await this.service.getChecklist(hotelId, roomType)
+    return { status: 200, body: { data: items } }
+  }
+
+  async updateChecklist(req: HttpRequest) {
+    const hotelId = (req.user as any).hotelId
+    const body = (req.body || {}) as Record<string, unknown>
+    const roomType = (body.roomType as string | undefined) || 'all'
+    const items = (body.items || []) as any[]
+    const result = await this.service.upsertChecklist(hotelId, roomType, items)
+    return { status: 200, body: { data: result } }
+  }
+
   async updateSupplyLists(req: HttpRequest) {
     const hotelId = (req.user as any).hotelId
     const body = (req.body || {}) as Record<string, unknown>

@@ -22,12 +22,74 @@ export interface SupplyItem {
   hotelId: string
 }
 
+export interface ChecklistItem {
+  id: string
+  hotelId: string
+  roomType: string
+  text: string
+  sortOrder: number
+  active: boolean
+}
+
 export class ConfigListsUseCase {
   constructor(
     private readonly photoReqRepo: RepositoryAdapter<PhotoRequirement>,
     private readonly supplyRepo: RepositoryAdapter<SupplyItem>,
     private readonly logger: Logger,
+    private readonly checklistRepo?: RepositoryAdapter<ChecklistItem>,
   ) {}
+
+  // Lista por defecto cuando el hotel todavía no configuró su checklist. El
+  // admin la sobrescribe. Sin esto la camarera no tendría ítems que revisar.
+  private defaultChecklist(hotelId: string): ChecklistItem[] {
+    const items = [
+      'Papel higiénico y amenities',
+      'A/C funcionando',
+      'TV y control remoto',
+      'Cortinas sin manchas',
+      'Basureros vacíos',
+      'Sábanas sin arrugas',
+      'Baño desinfectado',
+    ]
+    return items.map((text, i) => ({
+      id: `default-check-${i}`,
+      hotelId,
+      roomType: 'all',
+      text,
+      sortOrder: i,
+      active: true,
+    }))
+  }
+
+  async getChecklist(hotelId: string, roomType?: string): Promise<ChecklistItem[]> {
+    if (!this.checklistRepo) return this.defaultChecklist(hotelId)
+    const filters: Record<string, unknown> = { hotelId, active: 1 }
+    if (roomType) filters.roomType = roomType
+    const rows = await this.checklistRepo.findMany(filters)
+    const list = rows.length > 0 ? rows : this.defaultChecklist(hotelId)
+    return [...list]
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      .map((r) => ({ ...r, active: true }))
+  }
+
+  // Reemplaza la lista completa del (hotel, roomType): borra e inserta, igual
+  // que supply-lists. Permite ítems libres y reordenar sin dejar huérfanos.
+  async upsertChecklist(hotelId: string, roomType: string, items: Partial<ChecklistItem>[]): Promise<ChecklistItem[]> {
+    if (!this.checklistRepo) return []
+    const existing = await this.checklistRepo.findMany({ hotelId, roomType })
+    for (const item of existing) await this.checklistRepo.delete(item.id)
+    const results: ChecklistItem[] = []
+    let order = 0
+    for (const item of items) {
+      const text = (item.text ?? '').trim()
+      if (!text) continue
+      const created = await this.checklistRepo.create({
+        hotelId, roomType, text, sortOrder: order++, active: 1,
+      } as any)
+      results.push({ ...created, active: true })
+    }
+    return results
+  }
 
   // Set por defecto cuando el hotel todavía no configuró sus fotos requeridas.
   // El admin puede sobrescribirlo (upsert). Sin esto, la camarera no tendría
