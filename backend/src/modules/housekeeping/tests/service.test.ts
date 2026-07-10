@@ -232,22 +232,23 @@ describe('HousekeepingService', () => {
     })
   })
 
+  // `task.staffId` guarda un `users.id`. Estos tests lo daban por un
+  // `employee_profiles.id`, que es lo que hacía el código: comparaba contra la
+  // clave primaria de otra tabla y ninguna camarera real pasaba el chequeo.
   describe('staff ownership (A7)', () => {
     it('non-admin user cannot start a task assigned to another', async () => {
-      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending', staffId: 'profile-aaa' } as HousekeepingDTO
-      const employeeRepo = { findOne: async () => ({ id: 'profile-bbb', userId: 'staff1', hotelId: 'h1' }) } as any
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending', staffId: 'otra-camarera' } as HousekeepingDTO
       const repo = makeRepo({ findById: async () => task, update: async (id, data) => ({ ...task, ...data, id } as HousekeepingDTO) })
-      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth, employeeRepo)
-      const staffUser = { id: 'staff1', role: 'staff', hotelId: 'h1' }
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      const staffUser = { id: 'staff1', role: 'housekeeper', hotelId: 'h1' }
       await expect(svc.start('hk1', staffUser)).rejects.toThrow('no es la tarea asignada')
     })
 
     it('non-admin user can start their own assigned task', async () => {
-      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending', staffId: 'profile-aaa' } as HousekeepingDTO
-      const employeeRepo = { findOne: async () => ({ id: 'profile-aaa', userId: 'staff1', hotelId: 'h1' }) } as any
+      const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'pending', staffId: 'staff1' } as HousekeepingDTO
       const repo = makeRepo({ findById: async () => task, update: async (id, data) => ({ ...task, ...data, id } as HousekeepingDTO) })
-      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth, employeeRepo)
-      const staffUser = { id: 'staff1', role: 'staff', hotelId: 'h1' }
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      const staffUser = { id: 'staff1', role: 'housekeeper', hotelId: 'h1' }
       const result = await svc.start('hk1', staffUser)
       expect(result.status).toBe('in_progress')
     })

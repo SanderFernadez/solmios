@@ -29,16 +29,18 @@ export class TimingsUseCase {
   ) {}
 
   /**
-   * A7 — Ownership por staff asignado. Preparatorio para la app móvil: cuando exista el
-   * rol 'staff', solo el empleado asignado (o un admin) podrá iniciar/finalizar la tarea.
-   * Hoy no hay rol staff → el check es inerte para los usuarios actuales (los admins pasan).
-   * Resuelve el desajuste de IDs: req.user.id es userId, task.staffId es EmployeeProfile.id.
+   * Solo la persona asignada (o un admin) inicia y termina su tarea.
+   *
+   * `task.staffId` es un `users.id`: así lo escribe `create()`, así lo filtra
+   * `list()` (`?staffId=<users.id>`, que es lo que manda la app) y así lo valida
+   * `assertStaffExists`. Esto antes lo buscaba en `employee_profiles`, comparando
+   * la clave primaria de OTRA tabla: no coincidía nunca. Como los admins salían
+   * por el `return` de arriba, el bug solo lo veía la camarera, que quedaba sin
+   * poder arrancar el cronómetro de su propia habitación.
    */
-  private async assertAssignedStaff(task: HousekeepingDTO, currentUser: HousekeepingUser): Promise<void> {
+  private assertAssignedStaff(task: HousekeepingDTO, currentUser: HousekeepingUser): void {
     if (ADMIN_ROLES.includes(currentUser.role)) return
-    if (!this.employeeRepo) throw new AuthError('No autorizado')
-    const profile = await this.employeeRepo.findOne({ userId: currentUser.id } as any).catch(() => null)
-    if (!profile || profile.id !== task.staffId) {
+    if (task.staffId !== currentUser.id) {
       throw new AuthError('No autorizado: no es la tarea asignada a este empleado')
     }
   }
@@ -47,7 +49,7 @@ export class TimingsUseCase {
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
     if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
-    await this.assertAssignedStaff(existing, currentUser)
+    this.assertAssignedStaff(existing, currentUser)
     if (!existing.staffId) throw new ValidationError('Asigna un empleado antes de iniciar la tarea')
     assertTransition(existing.status, 'in_progress')
     const item = await this.repo.update(id, { status: 'in_progress', startTime: new Date().toISOString() } as any)
@@ -61,7 +63,7 @@ export class TimingsUseCase {
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
     if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
-    await this.assertAssignedStaff(existing, currentUser)
+    this.assertAssignedStaff(existing, currentUser)
     assertTransition(existing.status, 'completed')
     if (!existing.startTime) throw new ValidationError('La tarea no fue iniciada (falta startTime)')
     const nowIso = new Date().toISOString()

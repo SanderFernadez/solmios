@@ -37,8 +37,11 @@ export function NotificacionesModule() {
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
 
-      router.get('/api/notificaciones', guard('dashboard', 'view'), (req) => controller.index(req))
-      router.get('/api/notificaciones/:id', guard('dashboard', 'view'), (req) => controller.show(req))
+      // Leer los avisos del propio hotel no exige `dashboard:view`: camarera,
+      // supervisor y mantenimiento no lo tienen, y la campanita les quedaba
+      // vacía con un 403 silencioso. `list()` ya filtra por el hotelId del token.
+      router.get('/api/notificaciones', [auth.authenticate()], (req) => controller.index(req))
+      router.get('/api/notificaciones/:id', [auth.authenticate()], (req) => controller.show(req))
       router.post('/api/notificaciones', guard('dashboard', 'create'), (req) => controller.store(req))
       router.put('/api/notificaciones/:id', guard('dashboard', 'create'), (req) => controller.update(req))
       router.delete('/api/notificaciones/:id', guard('dashboard', 'delete'), (req) => controller.destroy(req))
