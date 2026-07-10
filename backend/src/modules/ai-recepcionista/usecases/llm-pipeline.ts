@@ -12,6 +12,7 @@ export interface ToolRepos {
   paymentLinkRepo?: any
   configRepo?: any
   invoiceRepo?: any
+  logger?: { error?: (msg: string, meta?: Record<string, unknown>) => void }
   onReservationCreated?: (hotelId: string, roomId: string) => Promise<void>
 }
 
@@ -499,7 +500,10 @@ async function executeTool(name: string, args: Record<string, unknown>, hotelId:
             maxUses: 1,
             useCount: 0,
           })
-        } catch {}
+        } catch (e: any) {
+          // No abortamos la respuesta al huésped, pero un link que no se persiste es un cobro perdido.
+          repos.logger?.error?.('No se pudo guardar el link de pago de la IA', { hotelId, reservationId, error: e?.message })
+        }
       }
 
       return {

@@ -105,7 +105,7 @@ export class AiRecepcionistaService {
     } catch (e: any) {
       console.log(`[AI] hotel lookup failed: ${e?.message}`)
     }
-    return processIncomingMessage(this.conversationRepo, this.messageRepo, this.intentRepo, this.whatsappConfigRepo, this.sockets, this.cache, this.logger, conversationId, content, hotelId, hotelName, { roomRepo: this.roomRepo, reservationRepo: this.reservationRepo, hotelRepo: this.hotelRepo, guestRepo: this.guestRepo, paymentLinkRepo: this.paymentLinkRepo, configRepo: this.configRepo, invoiceRepo: this.invoiceRepo, onReservationCreated: this.onReservationCreated })
+    return processIncomingMessage(this.conversationRepo, this.messageRepo, this.intentRepo, this.whatsappConfigRepo, this.sockets, this.cache, this.logger, conversationId, content, hotelId, hotelName, { roomRepo: this.roomRepo, reservationRepo: this.reservationRepo, hotelRepo: this.hotelRepo, guestRepo: this.guestRepo, paymentLinkRepo: this.paymentLinkRepo, configRepo: this.configRepo, invoiceRepo: this.invoiceRepo, logger: this.logger, onReservationCreated: this.onReservationCreated })
   }
 
   async listIntents(q: IntentQuery, u: any) {

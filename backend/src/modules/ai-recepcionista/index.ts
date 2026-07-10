@@ -76,7 +76,10 @@ export function AiRecepcionistaModule() {
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const roomRepo = new OrmRepository<any>(orm, 'Rooms')
       const reservationRepo = new OrmRepository<any>(orm, 'Reservations')
-      const paymentLinkRepo = new OrmRepository<any>(orm, 'PaymentLinks')
+      // El modelo se registra en singular (`orm.define('PaymentLink', ...)` en payments/model.ts).
+      // Con 'PaymentLinks' el ORM tiraba `Modelo no definido` y el `catch {}` del pipeline lo tragaba:
+      // la IA le mandaba al huésped un link de pago que nunca se guardaba.
+      const paymentLinkRepo = new OrmRepository<any>(orm, 'PaymentLink')
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
       const invoiceRepo = new OrmRepository<any>(orm, 'Invoices')
       const guestRepo = new OrmRepository<any>(orm, 'Guests')
