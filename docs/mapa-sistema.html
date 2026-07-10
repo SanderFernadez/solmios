@@ -270,7 +270,7 @@
 <div class="isla warn">
   <h3>5 · Payment Links: duplicado legacy</h3>
   <p>La tabla <code>payment_links</code> del módulo <code>payments</code> no la consume nadie. El flujo vivo de links de pago es el módulo <code>payment-requests</code>, que sí asienta en <code>payments</code>.</p>
-  <p>Peor: <code>ai-recepcionista</code> abre un repositorio sobre el modelo <code>'PaymentLinks'</code> (plural) que <strong>no existe</strong> — el modelo real se llama <code>'PaymentLink'</code>. Es el único repositorio fantasma del sistema.</p>
+  <p><span class="ok">Resuelto</span> — el repositorio fantasma: <code>ai-recepcionista</code> abría un repo sobre el modelo <code>'PaymentLinks'</code> (plural), que no existe. El ORM tiraba <code>Modelo no definido</code> y un <code>catch {}</code> vacío se lo tragaba: al huésped le llegaba una URL de pago sin respaldo en la base. Ahora apunta a <code>'PaymentLink'</code> y el catch loguea. El duplicado legacy de la tabla sigue en pie.</p>
 </div>
 
 <div class="isla warn">
@@ -294,14 +294,32 @@
   <p><code>/panel/empleados</code> es mixto: aprobar licencias y dar de baja sí persisten, pero los <strong>cinco botones de creación</strong> solo muestran un aviso.</p>
 </div>
 
-<div class="isla">
-  <h3>Rota para todos — Opiniones</h3>
-  <p>La página llama a <code>/api/reviews</code>. Ese endpoint <strong>no existe</strong>: probado contra producción devuelve <strong>404</strong>. El módulo real expone <code>/api/opiniones</code>, que devuelve 200 y no lo consume nadie.</p>
+<div class="isla good">
+  <h3>Opiniones — <span class="ok">arreglada</span></h3>
+  <p>La página llamaba a <code>/api/reviews</code>, un endpoint que no existe: 404 para todos. El módulo real expone <code>/api/opiniones</code>. Tampoco existían <code>/stats</code>, <code>/request</code> ni <code>/:id/respond</code> —responder es un PUT sobre la opinión—, así que esos métodos se borraron: no los usaba nadie.</p>
+  <p>La interfaz declaraba <code>text</code>, <code>platform</code> y <code>respondedAt</code>, campos que no están en la tabla. El modelo tiene <code>comment</code> y <code>channel</code>, que es lo que la página siempre usó. <code>guestName</code> el backend no lo devuelve: la página cae en «Anónimo».</p>
 </div>
 
-<div class="isla warn">
-  <h3>El menú vuelve a mentir</h3>
-  <p>El menú ofrece <strong>Planning</strong> y <strong>Opiniones</strong> a la recepcionista, pero el router las marca <code>requiresHotelAdmin</code> y la rebota a <code>/panel</code> en silencio. La API se lo permitiría: el bloqueo es solo del router.</p>
+<div class="isla good">
+  <h3>El menú ya no miente — <span class="ok">arreglado</span></h3>
+  <p>El menú ofrecía <strong>Planning</strong> y <strong>Opiniones</strong> a la recepcionista, pero el router las marcaba <code>requiresHotelAdmin</code> y la rebotaba a <code>/panel</code> en silencio. La API sí le daba acceso (<code>reservations:view</code>, <code>reports:view</code>): mandó el menú, las rutas pasan a <code>requiresHotelAuth</code>.</p>
+</div>
+
+<h2>Lo que el grafo no vio</h2>
+<p class="sub" style="margin-bottom:14px">Dos bugs de runtime, invisibles leyendo el mapa de conexiones: los módulos estaban bien cableados, pero la llamada de adentro estaba mal escrita. Aparecieron al ejercitar los endpoints, no al leerlos.</p>
+
+<div class="isla good">
+  <h3>El sistema no podía hacer check-in — <span class="ok">arreglado</span></h3>
+  <p><code>Auth.assertOwnership(dueño, solicitante, rol, rolAdmin)</code> espera cuatro strings. Cuatro flujos lo llamaban con objetos: <code>assertOwnership(reserva, { hotelId })</code>. La comparación <code>===</code> entre dos objetos distintos nunca da true y el rol llegaba <code>undefined</code>, así que lanzaba <strong>Forbidden siempre</strong>.</p>
+  <p>Muertos: <code>POST /reservas/:id/checkin</code> y <code>/checkout</code> (500) · <code>POST /public/booking</code> — <strong>403 en toda reserva del sitio público</strong>, incluso con la habitación del propio hotel · el desbloqueo de tarjeta de garantía · el ABM de planes y amenities, ni para el super_admin.</p>
+  <p>Los tests no lo agarraron porque mockeaban <code>auth</code> con un doble permisivo. El test nuevo instancia el <code>Auth</code> real del framework.</p>
+</div>
+
+<div class="isla good">
+  <h3>El programa de fidelidad nunca acreditó un punto — <span class="ok">arreglado</span></h3>
+  <p>Tres bugs encadenados. <strong>Uno</strong>: el service sumaba con <code>{ increment: n }</code>, que el ORM no entiende —su <code>update()</code> copia el valor tal cual—. El saldo quedaba en 0 para siempre y el canje respondía «Insufficient points: 0». Un <code>try {} catch {}</code> vacío lo tapaba.</p>
+  <p><strong>Dos</strong>: el conector sólo escuchaba <code>onReservasUpdated</code> (el PUT genérico). El botón de checkout emite <code>onReservationCheckedOut</code>, así que por el flujo real el CRM ni corría. <strong>Tres</strong>: <code>totalStays</code> se incrementaba en el check-in <em>y</em> en el checkout — cada visita sumaba dos estadías, inflando el <code>tier</code> y falseando el <code>avgPerStay</code> del LTV.</p>
+  <p>De yapa, <code>useCoupon</code> incrementaba <code>useCount</code> igual de mal: <code>maxUses</code> era decorativo y el cupón valía para siempre.</p>
 </div>
 
 <h2>Qué haría primero</h2>
@@ -309,11 +327,11 @@
   <thead><tr><th>#</th><th>Qué</th><th>Por qué</th><th>Tamaño</th></tr></thead>
   <tbody>
     <tr><td>1</td><td>Cargar las credenciales en el <code>.env</code> de producción</td><td>Sin esto, Stripe, Channex, el email y la IA son código muerto en producción</td><td>minutos</td></tr>
-    <tr><td>2</td><td>Apuntar <code>Opiniones.service</code> a <code>/api/opiniones</code></td><td>Hoy la página devuelve 404 para todos</td><td>6 líneas</td></tr>
-    <tr><td>3</td><td>Facturar los extras de la reserva</td><td>Se le muestra al huésped un cargo que nunca se cobra</td><td>medio</td></tr>
-    <tr><td>4</td><td>Corregir el repositorio fantasma <code>'PaymentLinks'</code></td><td>Las escrituras de la IA van a un modelo que no existe</td><td>1 línea</td></tr>
-    <tr><td>5</td><td>Alinear menú y router (Planning, Opiniones)</td><td>El menú promete pantallas que el router niega</td><td>2 líneas</td></tr>
-    <tr><td>6</td><td>Persistir las escrituras del panel de plataforma</td><td>Nueve pantallas donde «Guardar» no guarda</td><td>grande</td></tr>
+    <tr><td>2</td><td>Facturar los extras de la reserva</td><td>Se le muestra al huésped un cargo que nunca se cobra</td><td>medio</td></tr>
+    <tr><td>3</td><td>Persistir las escrituras del panel de plataforma</td><td>Nueve pantallas donde «Guardar» no guarda</td><td>grande</td></tr>
+    <tr><td>4</td><td>Que <code>payroll</code> lea <code>attendance</code></td><td>El cálculo de sueldos ignora las horas realmente fichadas</td><td>medio</td></tr>
+    <tr><td>5</td><td>Que la IA cree reservas por el módulo, no por el ORM</td><td>Se saltea limpieza, disponibilidad en Channex y apertura de folio</td><td>medio</td></tr>
+    <tr><td>6</td><td>Aplicar el descuento de los cupones en algún lado</td><td>Se validan y se consumen, pero ningún módulo de dinero los conoce</td><td>medio</td></tr>
   </tbody>
 </table>
 
