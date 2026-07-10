@@ -23,6 +23,12 @@ export interface HousekeepingSockets {
   onHousekeepingUpdated?: (data: HousekeepingDTO) => Promise<void>
   onHousekeepingDeleted?: (id: string) => Promise<void>
   /**
+   * A alguien le acaban de asignar una tarea. Evento propio, no `onHousekeepingUpdated`:
+   * ese se dispara también al iniciar y al terminar, y avisaría tres veces de lo mismo.
+   * Solo suena cuando la tarea cambia de dueño (o se le asigna por primera vez).
+   */
+  onTaskAssigned?: (data: HousekeepingDTO) => Promise<void>
+  /**
    * La camarera reportó algo roto. Lo cablea `connectors/housekeeping-mantenimiento`,
    * que abre el ticket. Sin este hook, `reportIssue` solo dejaba una nota en la
    * tarea de limpieza y mantenimiento nunca se enteraba.

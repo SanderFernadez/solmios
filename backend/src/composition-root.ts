@@ -149,6 +149,7 @@ import { payrollGastosConnector } from './connectors/payroll-gastos'
 import { bookingenginePaymentsConnector } from './connectors/bookingengine-payments'
 import { messagesUsuariosConnector } from './connectors/messages-usuarios'
 import { housekeepingMantenimientoConnector } from './connectors/housekeeping-mantenimiento'
+import { housekeepingNotificacionesConnector } from './connectors/housekeeping-notificaciones'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -182,6 +183,8 @@ system.addConnector('reservas-folios-settlement', reservasFoliosSettlementConnec
 system.addConnector('messages-usuarios', messagesUsuariosConnector)
 // Lo que la camarera reporta como roto se convierte en un ticket con fotos.
 system.addConnector('housekeeping-mantenimiento', housekeepingMantenimientoConnector)
+// Asignar una habitación le avisa a la persona asignada.
+system.addConnector('housekeeping-notificaciones', housekeepingNotificacionesConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm)

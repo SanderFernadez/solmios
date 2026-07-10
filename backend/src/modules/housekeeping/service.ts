@@ -5,6 +5,9 @@ import { NotFoundError, AuthError, ValidationError } from 'arckode-framework'
 import type { StorageService, FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingDTO, CreateHousekeepingDTO, UpdateHousekeepingDTO, HousekeepingQuery, HousekeepingPaginated, StaffStats, StaffStatsQuery, HousekeepingUser } from './types'
 import type { HousekeepingSockets } from './sockets'
+import { bumpListVersion } from './usecases/cache'
+import { ListUseCase } from './usecases/list'
+import { withRoomInfo } from './usecases/room-info'
 import { TimingsUseCase, assertTransition } from './usecases/timings'
 import { PhotosUseCase } from './usecases/photos'
 import { StatsUseCase } from './usecases/stats'
@@ -20,6 +23,7 @@ export class HousekeepingService {
   private readonly statsUc: StatsUseCase
   private readonly approveUc: ApproveUseCase
   private readonly configLists?: ConfigListsUseCase
+  private readonly listUc: ListUseCase
   private readonly employeeRepo?: RepositoryAdapter<any>
 
   constructor(
@@ -32,6 +36,7 @@ export class HousekeepingService {
     storage?: StorageService,
     photoReqRepo?: RepositoryAdapter<any>,
     supplyRepo?: RepositoryAdapter<any>,
+    private readonly roomRepo?: RepositoryAdapter<any>,
   ) {
     this.employeeRepo = employeeRepo
     this.timings = new TimingsUseCase(
@@ -42,6 +47,7 @@ export class HousekeepingService {
     )
     this.photos = new PhotosUseCase(repo, logger, (h) => this.invalidateCache(h), storage)
     this.statsUc = new StatsUseCase(repo, cache, userRepo)
+    this.listUc = new ListUseCase(repo, cache, userRepo, roomRepo)
     this.approveUc = new ApproveUseCase(repo)
     if (photoReqRepo && supplyRepo) {
       this.configLists = new ConfigListsUseCase(photoReqRepo, supplyRepo, logger)
@@ -65,44 +71,16 @@ export class HousekeepingService {
   }
 
   async list(query: HousekeepingQuery, currentUser: HousekeepingUser): Promise<HousekeepingPaginated> {
-    const filters: Record<string, unknown> = {}
-    if (query.status) filters.status = query.status
-    if (query.type) filters.type = query.type
-    if (query.priority) filters.priority = query.priority
-    if (query.roomId) filters.roomId = query.roomId
-    if (query.staffId) filters.staffId = query.staffId
-
-    let hotelId = currentUser.hotelId
-    if (!hotelId && currentUser.role !== 'super_admin') {
-      const user = await this.userRepo.findById(currentUser.id)
-      hotelId = user?.hotelId
-    }
-    if (currentUser.role !== 'super_admin') {
-      if (!hotelId) throw new AuthError('No hotel assigned')
-      filters.hotelId = hotelId
-    } else if (query.hotelId) {
-      filters.hotelId = query.hotelId
-    }
-
-    const page = Math.max(query.page || 1, 1)
-    const limit = Math.min(Math.max(query.limit || 20, 1), 100)
-    const offset = (page - 1) * limit
-
-    const cacheKey = `housekeeping:list:${hotelId || 'all'}`
-    const cached = await this.cache.get(cacheKey)
-    if (cached) return cached as HousekeepingPaginated
-
-    const result = await this.repo.paginate(filters, { offset, limit })
-    const response = { data: result.data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
-    await this.cache.set(cacheKey, response, CACHE_TTL)
-    return response
+    return this.listUc.list(query, currentUser)
   }
 
   async getById(id: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
     const item = await this.repo.findById(id)
     if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
     if (currentUser.role !== 'super_admin' && item.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
-    return item
+    // El detalle también muestra "Hab. X": sin esto el título quedaba vacío.
+    const [enriched] = await withRoomInfo(this.roomRepo, [item])
+    return enriched as HousekeepingDTO
   }
 
   async create(dto: CreateHousekeepingDTO, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
@@ -112,6 +90,8 @@ export class HousekeepingService {
     await this.assertStaffExists(dto.staffId, currentUser)
     const item = await this.repo.create(dto as any)
     await this.sockets.onHousekeepingCreated?.(item)
+    // Nace ya asignada: la camarera tiene que enterarse.
+    if (dto.staffId) await this.sockets.onTaskAssigned?.(item)
     await this.invalidateCache(dto.hotelId)
     return item
   }
@@ -125,6 +105,10 @@ export class HousekeepingService {
     const item = await this.repo.update(id, dto as any)
     if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
     await this.sockets.onHousekeepingUpdated?.(item)
+    // Solo cuando cambia de dueño: un `update` de estado no es una asignación.
+    if (dto.staffId && dto.staffId !== existing.staffId) {
+      await this.sockets.onTaskAssigned?.(item)
+    }
     await this.invalidateCache(existing.hotelId)
     return item
   }
@@ -184,7 +168,9 @@ export class HousekeepingService {
   }
 
   private async invalidateCache(hotelId?: string) {
-    await this.cache.delete(`housekeeping:list:${hotelId}`)
+    // `delete` de una clave exacta ya no alcanza: la clave del listado incluye
+    // filtros y página. Se bumpea la versión y las entradas viejas se huerfanizan.
+    await bumpListVersion(this.cache, hotelId)
     await this.statsUc.bumpVersion(hotelId)
   }
 

@@ -42,7 +42,10 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       const employeeRepo = new OrmRepository<any>(orm, 'EmployeeProfile')
       const photoReqRepo = new OrmRepository<any>(orm, 'PhotoRequirement')
       const supplyRepo = new OrmRepository<any>(orm, 'SupplyItem')
-      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo)
+      // La tarea guarda `roomId`; la app muestra "Hab. 201 · Piso 2". Sin este
+      // repo la camarera veía tarjetas que decían "Hab." y "Piso 0".
+      const roomRepo = new OrmRepository<any>(orm, 'Rooms')
+      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo, roomRepo)
       const controller = new HousekeepingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
