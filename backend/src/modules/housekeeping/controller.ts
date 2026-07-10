@@ -74,7 +74,7 @@ export class HousekeepingController {
       mimeType: parsed.mimeType,
       size: parsed.buffer.length,
     }
-    return { status: 201, body: await this.service.addPhoto(req.params.id, file, req.user as any) }
+    return { status: 201, body: await this.service.addPhoto(req.params.id, file, (data.areaId as string) ?? 'evidence', req.user as any) }
   }
 
   async removePhoto(req: HttpRequest) {

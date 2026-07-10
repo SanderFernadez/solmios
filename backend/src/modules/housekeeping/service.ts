@@ -126,7 +126,7 @@ export class HousekeepingService {
   // ─── Delegaciones a usecases ───────────────────────────────────────────────
   async start(id: string, u: HousekeepingUser) { return this.timings.start(id, u) }
   async complete(id: string, u: HousekeepingUser) { return this.timings.complete(id, u) }
-  async addPhoto(id: string, file: FileUpload, u: HousekeepingUser) { return this.photos.addPhoto(id, file, u) }
+  async addPhoto(id: string, file: FileUpload, areaId: string, u: HousekeepingUser) { return this.photos.addPhoto(id, file, areaId, u) }
   async removePhoto(id: string, url: string, u: HousekeepingUser) { return this.photos.removePhoto(id, url, u) }
   async stats(q: StaffStatsQuery, u: HousekeepingUser) { return this.statsUc.stats(q, u) }
 

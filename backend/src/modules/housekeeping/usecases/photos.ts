@@ -17,7 +17,7 @@ export class PhotosUseCase {
     private readonly storage?: StorageService,
   ) {}
 
-  async addPhoto(id: string, file: FileUpload, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
+  async addPhoto(id: string, file: FileUpload, areaId: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
     if (!this.storage) throw new Error('StorageService no configurado para housekeeping')
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
@@ -33,6 +33,10 @@ export class PhotosUseCase {
     }
     const stored = await this.storage.upload(file, 'housekeeping')
     const photos = [...(existing.photos ?? []), {
+      // `areaId` identifica a qué requisito (cama, baño, general…) corresponde la
+      // foto. Antes se descartaba, así que la app no podía llenar los recuadros
+      // con nombre ni exigir las fotos requeridas.
+      areaId: areaId || 'evidence',
       url: stored.url,
       path: stored.path,
       name: stored.originalName,

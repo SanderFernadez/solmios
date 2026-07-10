@@ -216,19 +216,19 @@ describe('HousekeepingService', () => {
         update: async (id, data) => ({ id, roomId: 'r1', hotelId: 'h1', status: 'in_progress', photos: (data as any).photos } as HousekeepingDTO),
       })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth, undefined, mockStorage as any)
-      const result = await svc.addPhoto('hk1', imageFile, hotelAdmin)
+      const result = await svc.addPhoto('hk1', imageFile, 'bed', hotelAdmin)
       expect(result.photos).toHaveLength(1)
     })
 
     it('rejects non-image photo (mime whitelist A4)', async () => {
       const svc = new HousekeepingService(makeRepo({ findById: async () => ({ id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'in_progress', photos: [] } as any) }), log, silentCache, makeUserRepo(), fakeAuth, undefined, mockStorage as any)
-      await expect(svc.addPhoto('hk1', textFile, hotelAdmin)).rejects.toThrow('Solo se permiten imágenes')
+      await expect(svc.addPhoto('hk1', textFile, 'bed', hotelAdmin)).rejects.toThrow('Solo se permiten imágenes')
     })
 
     it('rejects photo beyond MAX_PHOTOS_PER_TASK limit (A3)', async () => {
       const photos = Array.from({ length: 20 }, (_, i) => ({ url: `/u${i}.jpg`, path: `p${i}`, name: `u${i}.jpg`, size: 1, mimeType: 'image/jpeg', uploadedAt: 'x' }))
       const svc = new HousekeepingService(makeRepo({ findById: async () => ({ id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'in_progress', photos } as any) }), log, silentCache, makeUserRepo(), fakeAuth, undefined, mockStorage as any)
-      await expect(svc.addPhoto('hk1', imageFile, hotelAdmin)).rejects.toThrow('Límite')
+      await expect(svc.addPhoto('hk1', imageFile, 'bed', hotelAdmin)).rejects.toThrow('Límite')
     })
   })
 

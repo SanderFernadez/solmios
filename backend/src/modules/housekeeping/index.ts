@@ -53,6 +53,12 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
 
       router.get('/api/housekeeping', guard('housekeeping', 'view'), (req) => controller.index(req))
       router.get('/api/housekeeping/stats', guard('housekeeping', 'view'), (req) => controller.stats(req))
+      // Rutas literales ANTES de `/:id`: si van después, `:id` las captura y
+      // "photo-requirements" se interpreta como el id de una tarea (404).
+      router.get('/api/housekeeping/photo-requirements', guard('housekeeping', 'view'), (req) => controller.photoRequirements(req))
+      router.put('/api/housekeeping/photo-requirements', guard('housekeeping', 'edit'), (req) => controller.updatePhotoRequirements(req))
+      router.get('/api/housekeeping/supply-lists', guard('housekeeping', 'view'), (req) => controller.supplyLists(req))
+      router.put('/api/housekeeping/supply-lists', guard('housekeeping', 'edit'), (req) => controller.updateSupplyLists(req))
       router.get('/api/housekeeping/:id', guard('housekeeping', 'view'), (req) => controller.show(req))
       router.post('/api/housekeeping', guard('housekeeping', 'create'), (req) => controller.store(req))
       router.put('/api/housekeeping/:id', guard('housekeeping', 'edit'), (req) => controller.update(req))
@@ -68,12 +74,6 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       router.post('/api/housekeeping/:id/reject', guard('housekeeping', 'edit'), (req) => controller.reject(req))
       router.post('/api/housekeeping/:id/presence', guard('housekeeping', 'edit'), (req) => controller.presence(req))
       router.post('/api/housekeeping/:id/report', guard('housekeeping', 'edit'), (req) => controller.report(req))
-
-      // ─── Photo Requirements y Supply Lists ───────────────────────────────
-      router.get('/api/housekeeping/photo-requirements', guard('housekeeping', 'view'), (req) => controller.photoRequirements(req))
-      router.put('/api/housekeeping/photo-requirements', guard('housekeeping', 'edit'), (req) => controller.updatePhotoRequirements(req))
-      router.get('/api/housekeeping/supply-lists', guard('housekeeping', 'view'), (req) => controller.supplyLists(req))
-      router.put('/api/housekeeping/supply-lists', guard('housekeeping', 'edit'), (req) => controller.updateSupplyLists(req))
 
       log.info('Módulo housekeeping v2.1 listo (timings + fotos + stats)')
       return service

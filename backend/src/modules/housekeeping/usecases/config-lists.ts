@@ -29,11 +29,34 @@ export class ConfigListsUseCase {
     private readonly logger: Logger,
   ) {}
 
+  // Set por defecto cuando el hotel todavía no configuró sus fotos requeridas.
+  // El admin puede sobrescribirlo (upsert). Sin esto, la camarera no tendría
+  // ninguna foto que subir hasta que alguien configure.
+  private defaultRequirements(hotelId: string): PhotoRequirement[] {
+    const base = [
+      { areaId: 'bed', areaName: 'Cama tendida', icon: 'bed', tipText: 'Foto de la cama tendida' },
+      { areaId: 'bathroom', areaName: 'Baño', icon: 'bathroom', tipText: 'Baño limpio, amenities alineados' },
+      { areaId: 'general', areaName: 'Vista general', icon: 'photo', tipText: 'Vista general desde la puerta' },
+    ]
+    return base.map((b) => ({
+      id: `default-${b.areaId}`,
+      areaId: b.areaId,
+      areaName: b.areaName,
+      icon: b.icon,
+      required: true,
+      tipText: b.tipText,
+      roomType: 'all',
+      active: true,
+      hotelId,
+    }))
+  }
+
   // ─── Photo Requirements ───────────────────────────────────────────────────
   async getPhotoRequirements(hotelId: string, roomType?: string): Promise<PhotoRequirement[]> {
     const filters: Record<string, unknown> = { hotelId, active: true }
     if (roomType) filters.roomType = roomType
-    return this.photoReqRepo.findMany(filters)
+    const configured = await this.photoReqRepo.findMany(filters)
+    return configured.length > 0 ? configured : this.defaultRequirements(hotelId)
   }
 
   async upsertPhotoRequirements(hotelId: string, items: Partial<PhotoRequirement>[]): Promise<PhotoRequirement[]> {
