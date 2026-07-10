@@ -109,14 +109,14 @@
 
                   <!-- Reservation -->
                   <div v-if="gRes(room.id, day.dateStr) && isResFirst(room.id, day.dateStr)"
-                    class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-grab active:cursor-grabbing hover:brightness-90"
+                    class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-pointer hover:brightness-90"
                     :class="gRes(room.id, day.dateStr)!.bg"
                     :style="{ width: resSpan(room.id, day) + 'px', minWidth: '60px' }"
                     draggable="true"
                     @dragstart="onResDrag($event, gRes(room.id, day.dateStr)!)"
-                    @click.stop="viewResDetail(gRes(room.id, day.dateStr)!)"
+                    @click.stop="openContext($event, gRes(room.id, day.dateStr)!, room)"
                     @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
-                    <span class="text-[8px] font-black text-white/80 bg-white/20 rounded px-1 py-0.5 mr-1.5 shrink-0">{{ gRes(room.id, day.dateStr)!.ch }}</span>
+                    <span class="text-[11px] leading-none mr-1.5 shrink-0" :title="'Canal: ' + gRes(room.id, day.dateStr)!.ch">{{ chIcon(gRes(room.id, day.dateStr)!.chKey) }}</span>
                     <span class="text-[9px] font-extrabold truncate text-white">{{ gRes(room.id, day.dateStr)!.name }}</span>
                     <span class="text-[8px] text-white/70 ml-auto shrink-0 flex items-center gap-0.5">
                       <span v-if="gRes(room.id, day.dateStr)!.lockCode" :title="`Cerradura: ${gRes(room.id, day.dateStr)!.lockCode}`">🔐</span>
@@ -607,6 +607,14 @@ const CH: Record<string, any> = {
   whatsapp: { l: 'WhatsApp', bg: 'bg-emerald-500', b: 'bg-emerald-100 text-emerald-700' },
   phone: { l: 'Teléfono', bg: 'bg-gray-500', b: 'bg-gray-100 text-gray-600' },
 }
+// Icono por canal (en vez del texto). El nombre del canal queda en el `title` al pasar el mouse.
+const CHANNEL_ICON: Record<string, string> = {
+  direct: '🏨', directa: '🏨',
+  booking: '📘', 'booking.com': '📘',
+  expedia: '✈️', airbnb: '🏡',
+  google: '🌐', whatsapp: '💬', phone: '📞',
+}
+const chIcon = (key: string): string => CHANNEL_ICON[key] || '🔗'
 const ST: Record<string, any> = {
   pending: { l: 'Pendiente', b: 'bg-gold/10 text-gold' }, confirmed: { l: 'Confirmada', b: 'bg-teal/10 text-teal' },
   checked_in: { l: 'Check-in', b: 'bg-cyan/10 text-cyan' }, checked_out: { l: 'Check-out', b: 'bg-gray-100 text-gray-500' },
@@ -667,7 +675,7 @@ function gRes(rid: any, ds: string) {
   const ch = (r.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: r.channel || 'Directa', bg: 'bg-gray-400' }
   const status = r.status || 'pending'
   return {
-    id: r.id, name: r.guestName || 'Guest', ch: cc.l,
+    id: r.id, name: r.guestName || 'Guest', ch: cc.l, chKey: ch,
     bg: colorMode.value === 'status' ? (ST_COLOR[status] || 'bg-gray-400') : cc.bg,
     amt: r.totalAmount || 0,
     status,
