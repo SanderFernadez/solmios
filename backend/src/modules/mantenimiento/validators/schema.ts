@@ -1,14 +1,16 @@
 import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
+import { MAX_TEXT_LENGTH, MIN_TEXT_LENGTH } from '../../../shared/validators/limits'
 
 const CATEGORY_ENUM = ['general', 'plumbing', 'electrical', 'hvac', 'furniture', 'appliance', 'structural', 'pest_control', 'carpentry', 'painting', 'electronics']
 const PRIORITY_ENUM = ['low', 'medium', 'high', 'urgent']
 const STATUS_ENUM = ['open', 'in_progress', 'waiting', 'resolved', 'closed']
 export const PHOTO_TYPE_ENUM = ['before', 'after', 'during']
-const NOTES_MAX_LENGTH = 2000
+// Un solo tope para todo el texto que escribe una persona.
+const NOTES_MAX_LENGTH = MAX_TEXT_LENGTH
 
 export const CreateMantenimientoSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
-  title: { type: 'string' as const, required: true, min: 2, max: 200 },
+  title: { type: 'string' as const, required: true, min: MIN_TEXT_LENGTH, max: MAX_TEXT_LENGTH },
   roomId: { type: 'string' as const },
   roomNumber: { type: 'string' as const, max: 20 },
   description: { type: 'string' as const, max: NOTES_MAX_LENGTH },
@@ -25,7 +27,7 @@ export const CreateMantenimientoSchema: Record<string, ValidationRule> = {
 }
 
 export const UpdateMantenimientoSchema: Record<string, ValidationRule> = {
-  title: { type: 'string' as const, min: 2, max: 200 },
+  title: { type: 'string' as const, min: MIN_TEXT_LENGTH, max: MAX_TEXT_LENGTH },
   roomId: { type: 'string' as const },
   roomNumber: { type: 'string' as const, max: 20 },
   description: { type: 'string' as const, max: NOTES_MAX_LENGTH },
@@ -47,7 +49,7 @@ export const AddNotesSchema: Record<string, ValidationRule> = {
 export const MantenimientoValidator = { create: CreateMantenimientoSchema, update: UpdateMantenimientoSchema }
 
 export const CompleteMantenimientoSchema: Record<string, ValidationRule> = {
-  notes: { type: 'string' as const, max: 2000 },
+  notes: { type: 'string' as const, max: MAX_TEXT_LENGTH },
 }
 
 export const AddPhotoMantenimientoSchema: Record<string, ValidationRule> = {

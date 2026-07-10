@@ -2,7 +2,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from '../../shared/validators/validate-body'
 import type { FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingService } from './service'
-import { CreateHousekeepingSchema, UpdateHousekeepingSchema, UploadPhotoSchema, RemovePhotoSchema } from './validators/schema'
+import { CreateHousekeepingSchema, UpdateHousekeepingSchema, UploadPhotoSchema, RemovePhotoSchema, ReportIssueSchema } from './validators/schema'
 
 // Decodifica un data URL base64 (data:<mime>;base64,<data>) → buffer + metadata.
 // Necesario porque el router del framework no propaga req.files al handler,
@@ -101,11 +101,10 @@ export class HousekeepingController {
 
   async report(req: HttpRequest) {
     const currentUser = req.user as any
-    const body = (req.body || {}) as Record<string, unknown>
-    const description = body.description as string | undefined
-    const type = (body.type as string) || 'maintenance'
-    if (!description) return { status: 400, body: { error: 'Descripción requerida' } }
-    await this.service.reportIssue(req.params.id, description, type, currentUser)
+    // Antes esto solo comprobaba que `description` existiera: se podía mandar un
+    // texto de cualquier largo, y de ahí viajaba al ticket y a la notificación.
+    const data = validateSchema(ReportIssueSchema, req.body) as { description: string; type?: string }
+    await this.service.reportIssue(req.params.id, data.description, data.type ?? 'maintenance', currentUser)
     return { status: 200, body: { message: 'Reporte enviado' } }
   }
 
