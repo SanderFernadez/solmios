@@ -4,16 +4,28 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { LeaveRequestDTO, CreateLeaveRequestDTO } from '../types'
 import type { SimpleUser } from './ownership'
+import { validateEmployeeBelongsToHotel } from './validate-employee'
 
 export class LeaveRequestUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<LeaveRequestDTO>,
+    private readonly profileRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly auth?: Auth,
   ) {}
 
   async create(dto: CreateLeaveRequestDTO): Promise<LeaveRequestDTO> {
     if (dto.days <= 0) throw new ValidationError('Days must be positive')
+    await validateEmployeeBelongsToHotel(this.profileRepo, dto.employeeId, dto.hotelId)
+    // Validate days against date range
+    if (dto.startDate && dto.endDate) {
+      const start = new Date(dto.startDate)
+      const end = new Date(dto.endDate)
+      const diffDays = Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1
+      if (dto.days !== diffDays) {
+        throw new ValidationError(`Days (${dto.days}) doesn't match date range (${diffDays} days)`)
+      }
+    }
     return this.repo.create({ ...dto, status: 'pending' } as any)
   }
 
@@ -45,11 +57,14 @@ export class LeaveRequestUseCase {
   async reject(id: string, approvedBy: string, reason?: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
     const request = await this.getById(id, user)
     if (request.status !== 'pending') throw new ValidationError('Request already processed')
+    const notesParts: string[] = []
+    if (request.notes) notesParts.push(request.notes)
+    if (reason) notesParts.push(`Rejection: ${reason}`)
     return this.repo.update(id, {
       status: 'rejected',
       approvedBy,
       approvedAt: new Date().toISOString(),
-      notes: reason ? `${request.notes}\nRejection: ${reason}`.trim() : request.notes,
+      notes: notesParts.join('\n') || null,
     } as any) as Promise<LeaveRequestDTO>
   }
 }

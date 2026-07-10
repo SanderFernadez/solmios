@@ -60,17 +60,10 @@ export class UsuariosService {
     const trimmed = emailOrPhone.trim()
     let user: any = null
     if (looksLikePhone(trimmed)) {
-      // Ambos lados se normalizan: la base guarda `809-555-0001` y el usuario escribe
-      // `+1 809 555 0001`. Comparar los strings crudos nunca coincide.
       const cleanInput = normalizePhone(trimmed)
-      // Entrada sin dígitos (p. ej. solo `+`): normalizaría a '' y matchearía a
-      // cualquier usuario sin teléfono cargado.
       if (!cleanInput) throw new AuthError('Credenciales inválidas')
-      const allUsers = await this.repo.findMany({})
-      user = allUsers.find((u: any) => {
-        const phone = String(u.phone || '')
-        return phone !== '' && normalizePhone(phone) === cleanInput
-      })
+      // Phones are stored normalized (digits-only) via toStoredPhone in create/update
+      user = await this.repo.findOne({ phone: cleanInput })
     } else {
       user = await this.repo.findOne({ email: trimmed.toLowerCase() })
     }

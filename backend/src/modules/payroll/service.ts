@@ -12,10 +12,12 @@ import type {
   PayrollCurrentUser, PayrollPaymentMethod,
 } from './types'
 import type { PayrollSockets } from './sockets'
+import type { PayrollPrefillPort, PayrollPrefillRow } from './types'
 import { PayrollCalculatorUseCase } from './usecases/calculator'
 import { PayrollConfigUseCase } from './usecases/config'
 import { PayrollConceptUseCase } from './usecases/concepts'
 import { PayrollRunUseCase } from './usecases/runs'
+import { buildPayrollPrefill } from '../../shared/usecases/build-payroll-prefill'
 
 export class PayrollService {
   private sockets: PayrollSockets = {}
@@ -23,6 +25,7 @@ export class PayrollService {
   private config: PayrollConfigUseCase
   private concepts: PayrollConceptUseCase
   private runs: PayrollRunUseCase
+  private prefillPort?: PayrollPrefillPort
 
   constructor(
     configRepo: RepositoryAdapter<PayrollConfigDTO>,
@@ -38,7 +41,9 @@ export class PayrollService {
     this.calculator = new PayrollCalculatorUseCase(conceptRepo, configRepo, logger)
     this.config = new PayrollConfigUseCase(configRepo, logger)
     this.concepts = new PayrollConceptUseCase(conceptRepo, logger, auth)
-    this.runs = new PayrollRunUseCase(runRepo, detailRepo, payslipRepo, logger, auth)
+    // paymentHistoryRepo llegaba al constructor y se perdía: la tabla payroll_payment_history
+    // quedaba huérfana. Ahora markAsPaid escribe una fila por empleado (ver usecases/runs.ts).
+    this.runs = new PayrollRunUseCase(runRepo, detailRepo, payslipRepo, paymentHistoryRepo, configRepo, logger, auth)
   }
 
   setSockets(s: Partial<PayrollSockets>): void {
@@ -89,5 +94,31 @@ export class PayrollService {
     const result = await this.calculator.calculate(run.hotelId, run.period, config, employees)
     await this.runs.saveCalculationResults(runId, result.employees, currentUser)
     return result
+  }
+
+  // ─── Prefill desde Asistencia ─────────────────────────
+  /** El conector `attendance-payroll` cablea este puerto. Sin él, el prefill devuelve []. */
+  setPrefillPort(port: PayrollPrefillPort): void { this.prefillPort = port }
+
+  /**
+   * Arma la liquidación desde los fichajes reales: salario del legajo + horas de attendance.
+   * El período y el hotel salen del RUN (confiables), nunca del cliente. Es solo lectura: el
+   * contador revisa y corrige antes de calcular.
+   */
+  async getPrefill(runId: string, currentUser?: PayrollCurrentUser): Promise<PayrollPrefillRow[]> {
+    const run = await this.runs.getById(runId, currentUser)   // existencia + ownership
+    if (!this.prefillPort) {
+      this.logger.warn('Prefill sin conector attendance-payroll: se devuelve vacío', { runId })
+      return []
+    }
+    const [employees, report] = await Promise.all([
+      this.prefillPort.listEmployees(run.hotelId),
+      this.prefillPort.getReport(run.hotelId, run.startDate, run.endDate),
+    ])
+    const { rows, orphanFichajes } = buildPayrollPrefill(employees, report)
+    if (orphanFichajes.length > 0) {
+      this.logger.warn('Fichajes de empleados sin legajo activo: no se liquidan', { runId, orphanFichajes })
+    }
+    return rows
   }
 }

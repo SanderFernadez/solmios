@@ -4,15 +4,18 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { PerformanceReviewDTO, CreatePerformanceReviewDTO } from '../types'
 import type { SimpleUser } from './ownership'
+import { validateEmployeeBelongsToHotel } from './validate-employee'
 
 export class ReviewUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<PerformanceReviewDTO>,
+    private readonly profileRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly auth?: Auth,
   ) {}
 
   async create(dto: CreatePerformanceReviewDTO): Promise<PerformanceReviewDTO> {
+    await validateEmployeeBelongsToHotel(this.profileRepo, dto.employeeId, dto.hotelId)
     return this.repo.create({
       ...dto,
       status: 'draft',

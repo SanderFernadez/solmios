@@ -36,7 +36,7 @@ export function AttendanceModule() {
       const profileRepo = new OrmRepository<{ id: string }>(orm, 'EmployeeProfile')
 
       const log = logger.child('attendance')
-      const service = new AttendanceService(recordRepo, scheduleRepo, configRepo, log, cache)
+      const service = new AttendanceService(recordRepo, scheduleRepo, configRepo, log, cache, auth)
       const controller = new AttendanceController(service, log, profileRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

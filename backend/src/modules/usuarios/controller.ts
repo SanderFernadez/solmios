@@ -93,14 +93,33 @@ export class UsuariosController {
   }
 
   async store(req: HttpRequest) {
-    const data = validateSchema(CreateUsuarioSchema, req.body)
+    const data = validateSchema(CreateUsuarioSchema, req.body) as any
     const isSuperAdmin = (req.user as any).role === 'super_admin'
     // super_admin crea usuarios para cualquier hotel → respeta hotelId del body (onboarding de nuevos hoteles).
     // hotel_admin/recepcionista se anclan a su propio hotel (multi-tenant seguro, leído del token).
     if (!isSuperAdmin) data.hotelId = (req.user as any).hotelId
-    if (data.role && !isSuperAdmin) delete data.role
+    if (data.role && !isSuperAdmin) {
+      // Non-superAdmins can only create users with roles at or below their level
+      const callerRole = (req.user as any).role
+      const allowedRoles = this.getAllowedRolesForCreator(callerRole)
+      if (!allowedRoles.includes(data.role)) {
+        return { status: 403, body: { error: `No puede crear usuarios con rol ${data.role}` } }
+      }
+    } else if (!isSuperAdmin && !data.role) {
+      // Default to receptionist for non-superAdmins (safer than hotel_admin)
+      data.role = 'receptionist'
+    }
     const item = await this.service.create(data)
     return { status: 201, body: item }
+  }
+
+  private getAllowedRolesForCreator(callerRole: string): string[] {
+    switch (callerRole) {
+      case 'super_admin': return ['super_admin', 'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor']
+      case 'hotel_admin': return ['receptionist', 'housekeeper', 'maintenance', 'supervisor']
+      case 'receptionist': return ['housekeeper', 'maintenance']
+      default: return []
+    }
   }
 
   async update(req: HttpRequest) {

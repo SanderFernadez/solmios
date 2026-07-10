@@ -4,15 +4,19 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { NotFoundError } from 'arckode-framework'
 import type { DocumentDTO, CreateDocumentDTO, DocumentExpiryAlert } from '../types'
 import type { SimpleUser } from './ownership'
+import { validateEmployeeBelongsToHotel } from './validate-employee'
 
 export class DocumentUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<DocumentDTO>,
-    private readonly logger: Logger,
+    private readonly profileRepo: RepositoryAdapter<any>,
+    private readonly userRepo?: RepositoryAdapter<any>,
+    private readonly logger?: Logger,
     private readonly auth?: Auth,
   ) {}
 
   async create(dto: CreateDocumentDTO): Promise<DocumentDTO> {
+    await validateEmployeeBelongsToHotel(this.profileRepo, dto.employeeId, dto.hotelId)
     return this.repo.create({ ...dto, alertSent: 0 } as any)
   }
 
@@ -40,6 +44,20 @@ export class DocumentUseCase {
     const now = new Date()
     const cutoff = new Date(now.getTime() + daysAhead * 86400000)
 
+    // Batch-fetch employee names to avoid N+1
+    const employeeIds = [...new Set(docs.map(d => d.employeeId).filter(Boolean))]
+    const namesMap = new Map<string, string>()
+    if (employeeIds.length && this.userRepo) {
+      try {
+        const profiles = await this.profileRepo.findMany({ hotelId, userId: employeeIds })
+        const userIds = profiles.map((p: any) => p.userId).filter(Boolean)
+        if (userIds.length) {
+          const users = await this.userRepo.findMany({ id: userIds })
+          for (const u of users) namesMap.set(u.id, u.name ?? u.email ?? '')
+        }
+      } catch { /* fallback to empty names */ }
+    }
+
     const alerts: DocumentExpiryAlert[] = []
     for (const doc of docs) {
       if (!doc.expiryDate) continue
@@ -48,7 +66,7 @@ export class DocumentUseCase {
         const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / 86400000)
         alerts.push({
           employeeId: doc.employeeId,
-          employeeName: '',
+          employeeName: namesMap.get(doc.employeeId) ?? '',
           documentId: doc.id,
           documentName: doc.name,
           type: doc.type,

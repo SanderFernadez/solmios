@@ -8,6 +8,103 @@ import type {
   PayrollCalculationResult,
 } from '../types'
 
+// ─── Safe Formula Evaluator ─────────────────────────────
+// Reemplaza new Function() con un parser matemático que solo permite:
+// números, operadores aritméticos (+−*/%), paréntesis y variables conocidas.
+// Cualquier intento de inyección (function calls, property access, etc.) es rechazado.
+
+const ALLOWED_VARS = ['base', 'overtimeAmount', 'overtimeHours', 'daysWorked', 'hoursWorked'] as const
+const SAFE_FORMULA_RE = /^[0-9+\-*/().%\s]+$/
+
+function safeEvalFormula(formula: string, vars: Record<string, number>): number {
+  // 1. Reemplazar variables conocidas por sus valores numéricos
+  let expr = formula
+  for (const name of ALLOWED_VARS) {
+    expr = expr.replaceAll(name, `(${vars[name] ?? 0})`)
+  }
+
+  // 2. Validar que solo quedan caracteres seguros (números, operadores, paréntesis)
+  if (!SAFE_FORMULA_RE.test(expr)) {
+    throw new Error(`Formula contains disallowed characters: ${formula}`)
+  }
+
+  // 3. Evaluar con parser recursivo (sin eval, sin new Function)
+  const tokens = tokenize(expr)
+  const result = parseExpression(tokens, { pos: 0 })
+  if (tokens.length > 0) throw new Error('Unexpected token at end of formula')
+  return result
+}
+
+type TokenNum = { type: 'num'; value: number }
+type TokenOp = { type: 'op'; value: string }
+type TokenParen = { type: 'lparen' } | { type: 'rparen' }
+type Token = TokenNum | TokenOp | TokenParen
+
+function tokenize(expr: string): Token[] {
+  const tokens: Token[] = []
+  let i = 0
+  while (i < expr.length) {
+    if (expr[i] === ' ') { i++; continue }
+    if (expr[i] === '(') { tokens.push({ type: 'lparen' }); i++; continue }
+    if (expr[i] === ')') { tokens.push({ type: 'rparen' }); i++; continue }
+    if ('+-*/%'.includes(expr[i])) { tokens.push({ type: 'op', value: expr[i] }); i++; continue }
+    if (/[\d.]/.test(expr[i])) {
+      let num = ''
+      while (i < expr.length && /[\d.]/.test(expr[i])) { num += expr[i]; i++ }
+      tokens.push({ type: 'num', value: parseFloat(num) })
+      continue
+    }
+    throw new Error(`Unexpected character in formula: ${expr[i]}`)
+  }
+  return tokens
+}
+
+// Expression = Term (('+' | '-') Term)*
+function parseExpression(tokens: Token[], ctx: { pos: number }): number {
+  let result = parseTerm(tokens, ctx)
+  while (ctx.pos < tokens.length && tokens[ctx.pos].type === 'op' && ('+-'.includes((tokens[ctx.pos] as TokenOp).value))) {
+    const op = (tokens[ctx.pos] as TokenOp).value; ctx.pos++
+    const right = parseTerm(tokens, ctx)
+    result = op === '+' ? result + right : result - right
+  }
+  return result
+}
+
+// Term = Factor (('*' | '/' | '%') Factor)*
+function parseTerm(tokens: Token[], ctx: { pos: number }): number {
+  let result = parseFactor(tokens, ctx)
+  while (ctx.pos < tokens.length && tokens[ctx.pos].type === 'op' && ('*/%'.includes((tokens[ctx.pos] as TokenOp).value))) {
+    const op = (tokens[ctx.pos] as TokenOp).value; ctx.pos++
+    const right = parseFactor(tokens, ctx)
+    if (op === '*') result *= right
+    else if (op === '/') result /= right
+    else result %= right
+  }
+  return result
+}
+
+// Factor = ['+' | '-'] (Number | '(' Expression ')')
+function parseFactor(tokens: Token[], ctx: { pos: number }): number {
+  let negate = false
+  if (ctx.pos < tokens.length && tokens[ctx.pos].type === 'op' && (tokens[ctx.pos] as TokenOp).value === '-') {
+    negate = true; ctx.pos++
+  }
+  if (ctx.pos < tokens.length && tokens[ctx.pos].type === 'op' && (tokens[ctx.pos] as TokenOp).value === '+') {
+    ctx.pos++
+  }
+  if (ctx.pos >= tokens.length) throw new Error('Unexpected end of formula')
+  const tok = tokens[ctx.pos]
+  if (tok.type === 'num') { ctx.pos++; return negate ? -tok.value : tok.value }
+  if (tok.type === 'lparen') {
+    ctx.pos++
+    const result = parseExpression(tokens, ctx)
+    if (ctx.pos >= tokens.length || tokens[ctx.pos].type !== 'rparen') throw new Error('Missing closing parenthesis')
+    ctx.pos++
+    return negate ? -result : result
+  }
+  throw new Error(`Unexpected token in formula: ${JSON.stringify(tok)}`)
+}
+
 interface TaxBracket { from: number; to?: number; rate: number }
 
 export class PayrollCalculatorUseCase {
@@ -28,9 +125,14 @@ export class PayrollCalculatorUseCase {
     const earnings = concepts.filter(c => c.type === 'earning' || c.type === 'contribution')
     const deductions = concepts.filter(c => c.type === 'deduction' || c.type === 'tax')
 
-    const taxBrackets: TaxBracket[] = config.incomeTaxRates
-      ? JSON.parse(config.incomeTaxRates)
-      : []
+    let taxBrackets: TaxBracket[] = []
+    if (config.incomeTaxRates) {
+      try {
+        taxBrackets = JSON.parse(config.incomeTaxRates)
+      } catch {
+        this.logger.warn('Invalid incomeTaxRates JSON in config, skipping tax calculation', { hotelId })
+      }
+    }
 
     const results: PayrollEmployeeResult[] = []
     let totalGross = 0
@@ -139,8 +241,11 @@ export class PayrollCalculatorUseCase {
       case 'formula':
         if (!concept.formula) return 0
         try {
-          return new Function('vars', `with(vars) { return ${concept.formula} }`)(vars)
-        } catch { return 0 }
+          return safeEvalFormula(concept.formula, vars)
+        } catch (err) {
+          this.logger.warn('Formula evaluation failed, defaulting to 0', { formula: concept.formula, error: String(err) })
+          return 0
+        }
       default:
         return 0
     }

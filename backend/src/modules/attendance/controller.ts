@@ -6,6 +6,16 @@ import { CreateScheduleSchema, ManualRecordSchema, ClockInSchema, ClockOutSchema
 import { hasPermission } from '../../shared/permissions'
 import { resolveAttendanceTarget, type EmployeeProfileFinder } from '../../shared/usecases/resolve-employee'
 
+/**
+ * `hotelId` es obligatorio en el schema del turno pero el cliente no lo manda: sale del token. Se
+ * inyectaba DESPUÉS de `validateSchema` → crear un turno desde el frontend daba 400. Va antes.
+ */
+const withHotelId = (req: HttpRequest): Record<string, unknown> => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const fromReq = (req as any).user?.hotelId ?? (req.query as any)?.hotelId
+  return { ...body, hotelId: fromReq ?? body.hotelId }
+}
+
 export class AttendanceController {
   constructor(
     private readonly service: AttendanceService,
@@ -45,18 +55,17 @@ export class AttendanceController {
     const b = validateSchema(ManualRecordSchema, req.body) as any
     return { status: 201, body: await this.service.manualRecord(b.employeeId, (req as any).user?.hotelId, { clockIn: b.clockIn, clockOut: b.clockOut, notes: b.notes }, (req as any).userId) }
   }
-  async getToday(req: HttpRequest) { return { status: 200, body: await this.service.getToday(req.params.employeeId) } }
+  async getToday(req: HttpRequest) { return { status: 200, body: await this.service.getToday(req.params.employeeId, (req as any).user?.hotelId) } }
   async listRecords(req: HttpRequest) { const q = req.query as any; q.hotelId = (req as any).user?.hotelId ?? q.hotelId; return { status: 200, body: await this.service.listRecords(q) } }
   async getReport(req: HttpRequest) { const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId; const { from, to } = req.query as any; return { status: 200, body: await this.service.getReport(hotelId, from, to) } }
 
   async createSchedule(req: HttpRequest) {
-    const data = validateSchema(CreateScheduleSchema, req.body) as any
-    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
+    const data = validateSchema(CreateScheduleSchema, withHotelId(req)) as any
     return { status: 201, body: await this.service.createSchedule(data) }
   }
-  async getSchedule(req: HttpRequest) { return { status: 200, body: await this.service.getSchedule(req.params.id) } }
+  async getSchedule(req: HttpRequest) { return { status: 200, body: await this.service.getSchedule(req.params.id, (req as any).user?.hotelId) } }
   async listSchedules(req: HttpRequest) { return { status: 200, body: await this.service.listSchedules((req as any).user?.hotelId ?? (req.query as any).hotelId) } }
-  async deleteSchedule(req: HttpRequest) { await this.service.deleteSchedule(req.params.id); return { status: 204, body: null } }
+  async deleteSchedule(req: HttpRequest) { await this.service.deleteSchedule(req.params.id, (req as any).user?.hotelId); return { status: 204, body: null } }
 
   async getConfig(req: HttpRequest) { const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId; if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }; return { status: 200, body: await this.service.getConfig(hotelId) } }
   async updateConfig(req: HttpRequest) {
@@ -76,6 +85,11 @@ export class AttendanceController {
       return { status: 401, body: { error: 'Device key inválida o no configurada' } }
     }
     const b = validateSchema(BiometricRecordSchema, req.body) as any
+    // Validate hotelId against registered device hotel (prevents cross-tenant clock-in via stolen key)
+    const allowedHotelId = process.env.ATTENDANCE_BIOMETRIC_HOTEL_ID
+    if (allowedHotelId && b.hotelId !== allowedHotelId) {
+      return { status: 403, body: { error: 'Device not authorized for this hotel' } }
+    }
     if (b.type === 'clock_in') return { status: 201, body: await this.service.clockIn(b.employeeId, b.hotelId, 'fingerprint') }
     if (b.type === 'clock_out') return { status: 200, body: await this.service.clockOut(b.employeeId, b.hotelId) }
     return { status: 400, body: { error: 'Unknown event type' } }

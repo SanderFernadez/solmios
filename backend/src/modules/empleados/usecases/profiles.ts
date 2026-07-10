@@ -5,6 +5,18 @@ import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { EmployeeProfileDTO, CreateEmployeeProfileDTO, EmpleadosQuery, EmpleadosPaginated } from '../types'
 import type { SimpleUser } from './ownership'
 
+const SENSITIVE_FIELDS = ['salary', 'bankAccount', 'bankName', 'emergencyContactPhone'] as const
+const PRIVILEGED_ROLES = ['hotel_admin', 'super_admin']
+
+function stripSensitive(profile: any, userRole?: string): any {
+  if (!userRole || PRIVILEGED_ROLES.includes(userRole)) return profile
+  const stripped = { ...profile }
+  for (const field of SENSITIVE_FIELDS) {
+    delete stripped[field]
+  }
+  return stripped
+}
+
 export class ProfileUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<EmployeeProfileDTO>,
@@ -39,14 +51,16 @@ export class ProfileUseCase {
     const profile = await this.repo.findById(id)
     if (!profile) throw new NotFoundError('Employee profile not found')
     if (this.auth && user) this.auth.assertOwnership(profile.hotelId, user.hotelId ?? '', user.role, 'super_admin')
-    return profile
+    return stripSensitive(profile, user?.role)
   }
 
-  async getByUserId(userId: string): Promise<EmployeeProfileDTO | null> {
-    return this.repo.findOne({ userId })
+  async getByUserId(userId: string, hotelId?: string): Promise<EmployeeProfileDTO | null> {
+    const filters: Record<string, unknown> = { userId }
+    if (hotelId) filters.hotelId = hotelId
+    return this.repo.findOne(filters)
   }
 
-  async list(query: EmpleadosQuery): Promise<EmpleadosPaginated> {
+  async list(query: EmpleadosQuery, user?: SimpleUser): Promise<EmpleadosPaginated> {
     const filters: Record<string, any> = { active: 1 }
     if (query.hotelId) filters.hotelId = query.hotelId
     if (query.departmentId) filters.departmentId = query.departmentId
@@ -56,19 +70,22 @@ export class ProfileUseCase {
     const result = await this.repo.paginate(filters, { limit, offset })
     const data = result.data ?? []
     if (this.userRepo && data.length) {
-      const enriched = await Promise.all(
-        data.map(async (p) => {
-          try {
-            const user = await this.userRepo!.findById(p.userId)
-            return { ...p, userName: user?.name ?? user?.email ?? p.userId }
-          } catch {
-            return { ...p, userName: p.userId }
-          }
-        })
-      )
-      return { data: enriched as EmployeeProfileDTO[], total: result.total ?? 0, page, limit }
+      // Batch-fetch users to avoid N+1 queries
+      const userIds = data.map(p => p.userId).filter(Boolean)
+      let usersMap = new Map<string, any>()
+      if (userIds.length) {
+        try {
+          const users = await this.userRepo!.findMany({ id: userIds })
+          for (const u of users) usersMap.set(u.id, u)
+        } catch { /* fallback to per-profile lookup */ }
+      }
+      const enriched = data.map(p => {
+        const u = usersMap.get(p.userId)
+        return { ...p, userName: u?.name ?? u?.email ?? p.userId }
+      })
+      return { data: enriched.map(p => stripSensitive(p, user?.role)), total: result.total ?? 0, page, limit }
     }
-    return { data, total: result.total ?? 0, page, limit }
+    return { data: data.map(p => stripSensitive(p, user?.role)), total: result.total ?? 0, page, limit }
   }
 
   async update(id: string, data: Partial<CreateEmployeeProfileDTO>, user?: SimpleUser): Promise<EmployeeProfileDTO> {

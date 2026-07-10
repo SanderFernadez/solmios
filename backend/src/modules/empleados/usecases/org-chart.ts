@@ -3,6 +3,21 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type { DepartmentDTO, EmployeeProfileDTO } from '../types'
 
+export interface OrgChartNode {
+  id: string
+  name: string
+  description: string
+  managerId: string | null
+  parentId: string | null
+  employees: EmployeeProfileDTO[]
+  children: OrgChartNode[]
+}
+
+export interface OrgChart {
+  departments: OrgChartNode[]
+  totalEmployees: number
+}
+
 export class OrgChartUseCase {
   constructor(
     private readonly departmentRepo: RepositoryAdapter<DepartmentDTO>,
@@ -10,11 +25,11 @@ export class OrgChartUseCase {
     private readonly logger: Logger,
   ) {}
 
-  async getOrgChart(hotelId: string): Promise<any> {
+  async getOrgChart(hotelId: string): Promise<OrgChart> {
     const departments = await this.departmentRepo.findMany({ hotelId, active: 1 })
     const profiles = await this.profileRepo.findMany({ hotelId, active: 1 })
 
-    const deptMap = new Map<string, any>()
+    const deptMap = new Map<string, OrgChartNode>()
     for (const dept of departments) {
       deptMap.set(dept.id, { ...dept, employees: [], children: [] })
     }
@@ -26,7 +41,7 @@ export class OrgChartUseCase {
       }
     }
 
-    const roots: any[] = []
+    const roots: OrgChartNode[] = []
     for (const dept of departments) {
       const node = deptMap.get(dept.id)!
       if (dept.parentId && deptMap.has(dept.parentId)) {

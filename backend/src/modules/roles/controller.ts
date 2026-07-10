@@ -31,10 +31,19 @@ export class RolesController {
   async update(req: HttpRequest) {
     const currentUser = req.user as any
     const data = validateSchema(UpdateRolesSchema, req.body)
-    // permissions is not validated (JSON field) - pass directly
     const payload = { ...data } as any
     if (req.body && (req.body as any).permissions !== undefined) {
-      payload.permissions = (req.body as any).permissions
+      const perms = (req.body as any).permissions
+      // Validate permissions structure: must be array of {module: string, actions: string[]}
+      if (!Array.isArray(perms)) {
+        return { status: 400, body: { error: 'permissions must be an array' } }
+      }
+      for (const p of perms) {
+        if (!p.module || !Array.isArray(p.actions)) {
+          return { status: 400, body: { error: 'Each permission must have module (string) and actions (array)' } }
+        }
+      }
+      payload.permissions = perms
     }
     const item = await this.service.update(req.params.id, payload, currentUser)
     return { status: 200, body: item }

@@ -15,6 +15,17 @@ import {
   UpdateDepartmentSchema, UpdateProfileSchema, RejectLeaveRequestSchema,
 } from './validators/schema'
 
+/**
+ * `hotelId` es obligatorio en cada schema pero el cliente no lo manda: sale del token (o del query).
+ * Se inyectaba DESPUÉS de `validateSchema`, así que crear un contrato/documento/ausencia/evaluación
+ * desde el frontend devolvía 400 `hotelId is required`. Va antes de validar; el token pisa al body.
+ */
+const withHotelId = (req: HttpRequest): Record<string, unknown> => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const fromReq = (req as any).user?.hotelId ?? (req.query as any)?.hotelId
+  return { ...body, hotelId: fromReq ?? body.hotelId }
+}
+
 export class EmpleadosController {
   constructor(
     private readonly service: EmpleadosService,
@@ -25,8 +36,7 @@ export class EmpleadosController {
 
   async createDepartment(req: HttpRequest) {
     this.logger.info('POST /api/departments')
-    const data = validateSchema(CreateDepartmentSchema, req.body) as unknown as CreateDepartmentDTO
-    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
+    const data = validateSchema(CreateDepartmentSchema, withHotelId(req)) as unknown as CreateDepartmentDTO
     const dept = await this.service.createDepartment(data)
     return { status: 201, body: dept }
   }
@@ -61,8 +71,7 @@ export class EmpleadosController {
 
   async createProfile(req: HttpRequest) {
     this.logger.info('POST /api/employee-profiles')
-    const data = validateSchema(CreateProfileSchema, req.body) as unknown as CreateEmployeeProfileDTO
-    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
+    const data = validateSchema(CreateProfileSchema, withHotelId(req)) as unknown as CreateEmployeeProfileDTO
     const profile = await this.service.createProfile(data)
     return { status: 201, body: profile }
   }
@@ -90,7 +99,7 @@ export class EmpleadosController {
     if (user?.role !== 'super_admin' && !query.hotelId) {
       return { status: 400, body: { error: 'hotelId requerido' } }
     }
-    const result = await this.service.listProfiles(query)
+    const result = await this.service.listProfiles(query, user)
     return { status: 200, body: result }
   }
 
@@ -111,8 +120,7 @@ export class EmpleadosController {
 
   async createContract(req: HttpRequest) {
     this.logger.info('POST /api/employee-contracts')
-    const data = validateSchema(CreateContractSchema, req.body) as unknown as CreateContractDTO
-    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
+    const data = validateSchema(CreateContractSchema, withHotelId(req)) as unknown as CreateContractDTO
     const contract = await this.service.createContract(data)
     return { status: 201, body: contract }
   }
@@ -141,8 +149,7 @@ export class EmpleadosController {
 
   async createDocument(req: HttpRequest) {
     this.logger.info('POST /api/employee-documents')
-    const data = validateSchema(CreateDocumentSchema, req.body) as unknown as CreateDocumentDTO
-    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
+    const data = validateSchema(CreateDocumentSchema, withHotelId(req)) as unknown as CreateDocumentDTO
     const doc = await this.service.createDocument(data)
     return { status: 201, body: doc }
   }
@@ -171,8 +178,7 @@ export class EmpleadosController {
 
   async createLeaveRequest(req: HttpRequest) {
     this.logger.info('POST /api/leave-requests')
-    const data = validateSchema(CreateLeaveRequestSchema, req.body) as unknown as CreateLeaveRequestDTO
-    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
+    const data = validateSchema(CreateLeaveRequestSchema, withHotelId(req)) as unknown as CreateLeaveRequestDTO
     const request = await this.service.createLeaveRequest(data)
     return { status: 201, body: request }
   }
@@ -211,8 +217,7 @@ export class EmpleadosController {
 
   async createReview(req: HttpRequest) {
     this.logger.info('POST /api/performance-reviews')
-    const data = validateSchema(CreateReviewSchema, req.body) as unknown as CreatePerformanceReviewDTO
-    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
+    const data = validateSchema(CreateReviewSchema, withHotelId(req)) as unknown as CreatePerformanceReviewDTO
     const review = await this.service.createReview(data)
     return { status: 201, body: review }
   }

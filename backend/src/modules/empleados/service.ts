@@ -47,10 +47,10 @@ export class EmpleadosService {
   ) {
     this.departments = new DepartmentUseCase(departmentRepo, logger, auth)
     this.profiles = new ProfileUseCase(profileRepo, logger, userRepo, auth)
-    this.contracts = new ContractUseCase(contractRepo, logger, auth)
-    this.documents = new DocumentUseCase(documentRepo, logger, auth)
-    this.leaveRequests = new LeaveRequestUseCase(leaveRepo, logger, auth)
-    this.reviews = new ReviewUseCase(reviewRepo, logger, auth)
+    this.contracts = new ContractUseCase(contractRepo, profileRepo, logger, auth)
+    this.documents = new DocumentUseCase(documentRepo, profileRepo, userRepo, logger, auth)
+    this.leaveRequests = new LeaveRequestUseCase(leaveRepo, profileRepo, logger, auth)
+    this.reviews = new ReviewUseCase(reviewRepo, profileRepo, logger, auth)
     this.orgChart = new OrgChartUseCase(departmentRepo, profileRepo, logger)
   }
 
@@ -83,15 +83,17 @@ export class EmpleadosService {
   // ─── Employee Profiles ────────────────────────────────
 
   async createProfile(dto: CreateEmployeeProfileDTO): Promise<EmployeeProfileDTO> {
-    return this.profiles.create(dto)
+    const profile = await this.profiles.create(dto)
+    this.sockets.onEmployeeCreated?.(profile)
+    return profile
   }
 
   async getProfile(id: string, user?: SimpleUser): Promise<EmployeeProfileDTO> {
     return this.profiles.getById(id, user)
   }
 
-  async listProfiles(query: EmpleadosQuery): Promise<EmpleadosPaginated> {
-    return this.profiles.list(query)
+  async listProfiles(query: EmpleadosQuery, user?: SimpleUser): Promise<EmpleadosPaginated> {
+    return this.profiles.list(query, user)
   }
 
   /** Perfil del propio usuario. Autoservicio para la app del personal. */
@@ -104,7 +106,9 @@ export class EmpleadosService {
   }
 
   async deactivateProfile(id: string, user?: SimpleUser): Promise<void> {
-    return this.profiles.deactivate(id, user)
+    const profile = await this.profiles.getById(id, user)
+    await this.profiles.deactivate(id, user)
+    this.sockets.onEmployeeDeactivated?.(profile)
   }
 
   // ─── Contracts ────────────────────────────────────────

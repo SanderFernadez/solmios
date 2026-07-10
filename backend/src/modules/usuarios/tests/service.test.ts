@@ -121,9 +121,12 @@ describe('UsuariosService', () => {
   // ── LOGIN POR TELÉFONO ────────────────────────────────────────
 
   describe('login por teléfono', () => {
-    /** Como en producción: la base guarda el teléfono con guiones. */
+    /** Como en producción: la base guarda el teléfono normalizado (solo dígitos). */
     const conTelefono = () =>
-      makeRepo({ findMany: async () => [mockUser({ phone: '809-555-0001' })] })
+      makeRepo({ findOne: async (filters: any) => {
+        if (filters.phone === '8095550001') return mockUser({ phone: '8095550001' })
+        return null
+      }})
 
     for (const escrito of [
       '8095550001',

@@ -4,6 +4,15 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { PayrollConceptDTO, CreatePayrollConceptDTO, PayrollCurrentUser } from '../types'
 
+const SAFE_FORMULA_RE = /^[0-9+\-*/().%\s]+$/
+
+function validateFormula(formula: string): void {
+  const cleaned = formula.replaceAll(/base|overtimeAmount|overtimeHours|daysWorked|hoursWorked/g, '')
+  if (!SAFE_FORMULA_RE.test(cleaned)) {
+    throw new ValidationError('Formula contains disallowed characters. Only numbers, +, -, *, /, %, (, ) and variables (base, overtimeAmount, overtimeHours, daysWorked, hoursWorked) are allowed.')
+  }
+}
+
 export class PayrollConceptUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<PayrollConceptDTO>,
@@ -46,12 +55,18 @@ export class PayrollConceptUseCase {
   }
 
   async create(dto: CreatePayrollConceptDTO): Promise<PayrollConceptDTO> {
+    if (dto.calculationMethod === 'formula' && dto.formula) {
+      validateFormula(dto.formula)
+    }
     return this.repo.create({ ...dto, active: 1, system: 0 } as any)
   }
 
   async update(id: string, data: Partial<CreatePayrollConceptDTO>, currentUser?: PayrollCurrentUser): Promise<PayrollConceptDTO> {
     const c = await this.getById(id, currentUser)
     if (c.system === 1) throw new ValidationError('System concepts cannot be modified')
+    if (data.calculationMethod === 'formula' && data.formula) {
+      validateFormula(data.formula)
+    }
     return this.repo.update(id, data as any) as Promise<PayrollConceptDTO>
   }
 

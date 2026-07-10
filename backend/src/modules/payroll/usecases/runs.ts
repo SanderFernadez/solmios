@@ -4,15 +4,18 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type {
   PayrollRunDTO, CreatePayrollRunDTO,
-  PayrollRunDetailDTO, PayrollPayslipDTO,
+  PayrollRunDetailDTO, PayrollPayslipDTO, PayrollPaymentHistoryDTO,
   PayrollCurrentUser, PayrollPaymentMethod,
 } from '../types'
+import { nextPayslipNumber } from './payslip-number'
 
 export class PayrollRunUseCase {
   constructor(
     private readonly runRepo: RepositoryAdapter<PayrollRunDTO>,
     private readonly detailRepo: RepositoryAdapter<PayrollRunDetailDTO>,
     private readonly payslipRepo: RepositoryAdapter<PayrollPayslipDTO>,
+    private readonly paymentHistoryRepo: RepositoryAdapter<PayrollPaymentHistoryDTO>,
+    private readonly configRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly auth?: Auth,
   ) {}
@@ -59,10 +62,10 @@ export class PayrollRunUseCase {
     const totalDeductions = results.reduce((s, r) => s + r.totalDeductions, 0)
     const totalNet = results.reduce((s, r) => s + r.netPay, 0)
 
-    // Remove existing details for this run
+    // Remove existing details for this run (batch delete)
     const existing = await this.detailRepo.findMany({ runId })
-    for (const d of existing) {
-      await this.detailRepo.delete(d.id)
+    if (existing.length) {
+      await Promise.all(existing.map(d => this.detailRepo.delete(d.id)))
     }
 
     // Create new details
@@ -88,15 +91,18 @@ export class PayrollRunUseCase {
 
     const details = await this.detailRepo.findMany({ runId })
 
-    // Generate payslips
+    // Generate payslips with atomic counter (batch operations to avoid N+1)
+    const payslipCreates = []
+    const detailUpdates = []
     for (const d of details) {
-      await this.payslipRepo.create({
+      const payslipNumber = await nextPayslipNumber(this.configRepo, run.hotelId, run.period)
+      payslipCreates.push(this.payslipRepo.create({
         runDetailId: d.id, employeeId: d.employeeId, hotelId: run.hotelId,
-        period: run.period,
-        payslipNumber: `REC-${run.period}-${String(details.indexOf(d) + 1).padStart(3, '0')}`,
-      } as any)
-      await this.detailRepo.update(d.id, { status: 'approved', payslipGenerated: 1 } as any)
+        period: run.period, payslipNumber,
+      } as any))
+      detailUpdates.push(this.detailRepo.update(d.id, { status: 'approved', payslipGenerated: 1 } as any))
     }
+    await Promise.all([...payslipCreates, ...detailUpdates])
 
     return this.runRepo.update(runId, {
       status: 'approved', approvedBy, approvedAt: new Date().toISOString(),
@@ -107,13 +113,31 @@ export class PayrollRunUseCase {
     const run = await this.getById(runId, currentUser)
     if (run.status !== 'approved') throw new ValidationError('Run must be approved before payment')
 
+    // El pago sólo dejaba `status:'paid'` en la cabecera: cero rastro por empleado. Ahora cada detalle
+    // asienta una fila en payroll_payment_history. La transición approved→paid ocurre una sola vez
+    // (arriba se exige `approved`), pero se chequea existencia por si un reintento parcial la repite.
+    const paidAt = new Date().toISOString()
     const details = await this.detailRepo.findMany({ runId })
+
+    // Batch fetch existing payment histories to avoid N+1
+    const existingPayments = await this.paymentHistoryRepo.findMany({ runId })
+    const existingSet = new Set(existingPayments.map((p: any) => p.employeeId))
+
+    const detailUpdates = []
+    const historyCreates = []
     for (const d of details) {
-      await this.detailRepo.update(d.id, { status: 'paid' } as any)
+      detailUpdates.push(this.detailRepo.update(d.id, { status: 'paid' } as any))
+      if (!existingSet.has(d.employeeId)) {
+        historyCreates.push(this.paymentHistoryRepo.create({
+          runId, employeeId: d.employeeId, hotelId: run.hotelId,
+          amount: d.netPay, method: paymentMethod, reference: run.period, paidAt,
+        } as any))
+      }
     }
+    await Promise.all([...detailUpdates, ...historyCreates])
 
     return this.runRepo.update(runId, {
-      status: 'paid', paidAt: new Date().toISOString(), paymentMethod,
+      status: 'paid', paidAt, paymentMethod,
     } as any) as Promise<PayrollRunDTO>
   }
 
@@ -122,8 +146,14 @@ export class PayrollRunUseCase {
     if (run.status === 'paid') throw new ValidationError('Cannot cancel a paid run')
 
     const details = await this.detailRepo.findMany({ runId })
-    for (const d of details) {
-      await this.detailRepo.delete(d.id)
+    if (details.length) {
+      await Promise.all(details.map(d => this.detailRepo.delete(d.id)))
+    }
+
+    // Also clean up payment history records to prevent orphans
+    const historyRecords = await this.paymentHistoryRepo.findMany({ runId })
+    if (historyRecords.length) {
+      await Promise.all(historyRecords.map(h => this.paymentHistoryRepo.delete(h.id)))
     }
 
     return this.runRepo.update(runId, { status: 'cancelled' } as any) as Promise<PayrollRunDTO>

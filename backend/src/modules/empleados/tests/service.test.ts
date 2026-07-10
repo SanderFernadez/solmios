@@ -24,6 +24,18 @@ function makeRepo(overrides: Partial<RepositoryAdapter<any>> = {}): RepositoryAd
   }
 }
 
+/** Mock profileRepo that returns a valid profile for any employeeId/hotelId combo */
+function makeProfileRepo(): RepositoryAdapter<any> {
+  return makeRepo({
+    findOne: async (filters: any) => {
+      if (filters.userId && filters.hotelId) {
+        return { id: 'p1', userId: filters.userId, hotelId: filters.hotelId, active: 1 }
+      }
+      return null
+    },
+  })
+}
+
 describe('EmpleadosService', () => {
   describe('createDepartment', () => {
     it('crea un departamento', async () => {
@@ -52,20 +64,20 @@ describe('EmpleadosService', () => {
 
   describe('createContract', () => {
     it('crea un contrato', async () => {
-      const service = new EmpleadosService(makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
+      const service = new EmpleadosService(makeRepo(), makeProfileRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
       const result = await service.createContract({ hotelId: 'h1', employeeId: 'e1', type: 'indefinido', startDate: '2026-01-01', salary: 1500 })
       expect(result.status).toBe('active')
     })
 
     it('rechaza salario negativo', async () => {
-      const service = new EmpleadosService(makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
+      const service = new EmpleadosService(makeRepo(), makeProfileRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
       await expect(service.createContract({ hotelId: 'h1', employeeId: 'e1', type: 'indefinido', startDate: '2026-01-01', salary: -100 })).rejects.toThrow('Salary must be positive')
     })
   })
 
   describe('createLeaveRequest', () => {
     it('crea una solicitud de vacaciones', async () => {
-      const service = new EmpleadosService(makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
+      const service = new EmpleadosService(makeRepo(), makeProfileRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
       const result = await service.createLeaveRequest({ hotelId: 'h1', employeeId: 'e1', type: 'vacation', startDate: '2026-07-01', endDate: '2026-07-15', days: 15 })
       expect(result.status).toBe('pending')
       expect(result.days).toBe(15)
@@ -74,7 +86,7 @@ describe('EmpleadosService', () => {
 
   describe('createReview', () => {
     it('crea una evaluación de desempeño', async () => {
-      const service = new EmpleadosService(makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
+      const service = new EmpleadosService(makeRepo(), makeProfileRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
       const result = await service.createReview({ hotelId: 'h1', employeeId: 'e1', reviewerId: 'r1', reviewDate: '2026-06-01', score: 8 })
       expect(result.status).toBe('draft')
       expect(result.score).toBe(8)

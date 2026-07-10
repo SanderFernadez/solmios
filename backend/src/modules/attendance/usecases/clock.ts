@@ -3,6 +3,7 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { AttendanceRecordDTO, AttendanceScheduleDTO, AttendanceConfigDTO, AttendanceReport } from '../types'
+import { inDateRange } from '../../../shared/usecases/date-range'
 
 export class ClockUseCase {
   constructor(
@@ -88,32 +89,61 @@ export class ClockUseCase {
   async manualRecord(employeeId: string, hotelId: string, data: { clockIn: string; clockOut?: string; notes?: string }, approvedBy: string): Promise<AttendanceRecordDTO> {
     const today = data.clockIn.slice(0, 10)
     const existing = await this.recordRepo.findOne({ employeeId, date: today })
+
+    // Compute hours if both clockIn and clockOut provided
+    let totalHours: number | null = null
+    let overtimeHours = 0
+    if (data.clockIn && data.clockOut) {
+      const clockInMs = new Date(data.clockIn).getTime()
+      const clockOutMs = new Date(data.clockOut).getTime()
+      totalHours = Math.round(((clockOutMs - clockInMs) / 3600000) * 100) / 100
+      const config = await this.configRepo.findOne({ hotelId })
+      const schedule = await this.getEmployeeSchedule(employeeId, hotelId)
+      if (schedule && config?.overtimeEnabled) {
+        const [sh, sm] = schedule.startTime.split(':').map(Number)
+        const [eh, em] = schedule.endTime.split(':').map(Number)
+        const standardMinutes = (eh * 60 + em) - (sh * 60 + sm) - schedule.breakMinutes
+        const standardHours = standardMinutes / 60
+        const otThreshold = schedule.overtimeThresholdMinutes / 60
+        overtimeHours = Math.max(0, totalHours - standardHours - otThreshold)
+      }
+    }
+
+    const patch: any = {
+      clockIn: data.clockIn, clockOut: data.clockOut ?? null,
+      method: 'manual', notes: data.notes ?? null, approvedBy,
+    }
+    if (totalHours !== null) {
+      patch.totalHours = totalHours
+      patch.overtimeHours = Math.round(overtimeHours * 100) / 100
+    }
+
     if (existing) {
-      return this.recordRepo.update(existing.id, {
-        clockIn: data.clockIn, clockOut: data.clockOut ?? null,
-        method: 'manual', notes: data.notes ?? null, approvedBy,
-      } as any) as Promise<AttendanceRecordDTO>
+      return this.recordRepo.update(existing.id, patch) as Promise<AttendanceRecordDTO>
     }
     return this.recordRepo.create({
-      employeeId, hotelId, date: today, clockIn: data.clockIn, clockOut: data.clockOut ?? null,
-      method: 'manual', notes: data.notes ?? null, approvedBy,
+      employeeId, hotelId, date: today, ...patch,
     } as any)
   }
 
-  async getToday(employeeId: string): Promise<AttendanceRecordDTO | null> {
+  async getToday(employeeId: string, hotelId?: string): Promise<AttendanceRecordDTO | null> {
     const today = new Date().toISOString().slice(0, 10)
-    return this.recordRepo.findOne({ employeeId, date: today })
+    const filters: Record<string, unknown> = { employeeId, date: today }
+    if (hotelId) filters.hotelId = hotelId
+    return this.recordRepo.findOne(filters)
   }
 
   async list(hotelId: string, from?: string, to?: string, employeeId?: string): Promise<AttendanceRecordDTO[]> {
+    // El rango NO va al findMany: el ORM bindea `{ $gte }` crudo y rompe. Se acota en memoria.
     const filters: Record<string, any> = { hotelId }
     if (employeeId) filters.employeeId = employeeId
-    if (from && to) filters.date = { $gte: from, $lte: to }
-    return this.recordRepo.findMany(filters)
+    const records = await this.recordRepo.findMany(filters)
+    return inDateRange(records, 'date', from, to)
   }
 
   async getReport(hotelId: string, from: string, to: string): Promise<AttendanceReport[]> {
-    const records = await this.recordRepo.findMany({ hotelId, date: { $gte: from, $lte: to } })
+    const all = await this.recordRepo.findMany({ hotelId })
+    const records = inDateRange(all, 'date', from, to)
     const byEmployee = new Map<string, { days: number; hours: number; ot: number; abs: number; late: number }>()
 
     for (const r of records) {

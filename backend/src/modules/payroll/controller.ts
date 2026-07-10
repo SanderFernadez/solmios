@@ -1,10 +1,22 @@
 // payroll/controller.ts — Adaptador HTTP
 
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema, ValidationError } from 'arckode-framework'
+import { validateSchema } from 'arckode-framework'
 import type { PayrollService } from './service'
-import type { CreatePayrollConceptDTO, CreatePayrollRunDTO, PayrollEmployeeInput, PayrollPaymentMethod } from './types'
-import { CreateConceptSchema, CreateRunSchema, CalculateSchema, UpdateConfigSchema, MarkAsPaidSchema } from './validators/schema'
+import type { CreatePayrollConceptDTO, CreatePayrollRunDTO, PayrollPaymentMethod } from './types'
+import { CreateConceptSchema, CreateRunSchema, UpdateConfigSchema, MarkAsPaidSchema } from './validators/schema'
+import { parseEmployeeInputs } from './usecases/validate-employees'
+
+/**
+ * `hotelId` es obligatorio en el schema pero el cliente no lo manda en el body: sale del token (o del
+ * query param). Se inyectaba DESPUÉS de `validateSchema`, así que crear una liquidación o un concepto
+ * desde el frontend devolvía 400 `hotelId is required`. Va antes de validar. El token pisa al body.
+ */
+const withHotelId = (req: HttpRequest): Record<string, unknown> => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const fromReq = (req as any).user?.hotelId ?? (req.query as any)?.hotelId
+  return { ...body, hotelId: fromReq ?? body.hotelId }
+}
 
 export class PayrollController {
   constructor(private readonly service: PayrollService, private readonly logger: Logger) {}
@@ -31,8 +43,7 @@ export class PayrollController {
   }
 
   async createConcept(req: HttpRequest) {
-    const data = validateSchema(CreateConceptSchema, req.body) as unknown as CreatePayrollConceptDTO
-    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
+    const data = validateSchema(CreateConceptSchema, withHotelId(req)) as unknown as CreatePayrollConceptDTO
     return { status: 201, body: await this.service.createConcept(data) }
   }
 
@@ -54,8 +65,7 @@ export class PayrollController {
   }
 
   async createRun(req: HttpRequest) {
-    const data = validateSchema(CreateRunSchema, req.body) as unknown as CreatePayrollRunDTO
-    data.hotelId = (req as any).user?.hotelId ?? data.hotelId
+    const data = validateSchema(CreateRunSchema, withHotelId(req)) as unknown as CreatePayrollRunDTO
     return { status: 201, body: await this.service.createRun(data) }
   }
 
@@ -69,20 +79,21 @@ export class PayrollController {
     return { status: 200, body: await this.service.getRunDetails(req.params.id, user) }
   }
 
-  async calculate(req: HttpRequest) {
-    validateSchema(CalculateSchema, req.body ?? {})
-    const { employees } = (req.body ?? {}) as { employees?: unknown }
-    if (!Array.isArray(employees) || employees.length === 0) {
-      throw new ValidationError('employees debe ser un array con al menos un empleado')
-    }
+  async prefill(req: HttpRequest) {
     const user = (req as any).user
-    const result = await this.service.calculateRun(req.params.id, employees as PayrollEmployeeInput[], user)
+    return { status: 200, body: await this.service.getPrefill(req.params.id, user) }
+  }
+
+  async calculate(req: HttpRequest) {
+    const employees = parseEmployeeInputs((req.body as { employees?: unknown } ?? {}).employees)
+    const user = (req as any).user
+    const result = await this.service.calculateRun(req.params.id, employees, user)
     return { status: 200, body: result }
   }
 
   async approve(req: HttpRequest) {
-    const userId = (req as any).userId ?? ''
     const user = (req as any).user
+    const userId = user?.id ?? ''
     return { status: 200, body: await this.service.approveRun(req.params.id, userId, user) }
   }
 
