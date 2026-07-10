@@ -22,9 +22,10 @@ export async function getGuaranteeHasPin(queries: ReservasQueries, userRepo: any
 export async function unlockGuaranteeCard(queries: ReservasQueries, repo: any, userRepo: any, reservationId: string, user: any, body: any, auth?: any): Promise<any> {
   const r = await repo.findById(reservationId) as any
   if (!r) throw new NotFoundError('Reserva no encontrada')
-  if (auth) auth.assertOwnership(r, { hotelId: r.hotelId })
   const hid = await resolveHotelIdForUser(queries, userRepo, user)
   if (!hid) throw new AuthError('Hotel no encontrado')
+  // El assert va DESPUÉS de resolver el hotel del usuario: antes comparaba la reserva contra sí misma.
+  if (auth) auth.assertOwnership(r.hotelId, hid, user?.role, 'super_admin')
   if (r.hotelId !== hid) throw new AuthError('Sin acceso a esta reserva')
   if (!r.hasGuaranteeCard && !r.cardLast4) throw new Error('Esta reserva no tiene tarjeta de garantía')
   const pinRow = await queries.findConfiguration(hid, 'guarantee_pin')

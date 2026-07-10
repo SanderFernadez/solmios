@@ -5,7 +5,9 @@ export async function checkinValidation(repo: any, id: string, user: any, auth?:
   const r = await repo.findById(id) as any
   if (!r) throw new NotFoundError('Reserva no encontrada')
   if (user.role !== 'super_admin' && r.hotelId !== hotelId) throw new AuthError('No autorizado')
-  if (auth) auth.assertOwnership(r, { hotelId })
+  // assertOwnership recibe (dueño, solicitante, rol, rolAdmin) — todos strings. Pasarle objetos
+  // hace que la comparación `===` nunca dé true y lanza Forbidden SIEMPRE: el check-in quedaba muerto.
+  if (auth) auth.assertOwnership(r.hotelId, hotelId, user.role, 'super_admin')
   if (r.status === 'checked_in') throw new ConflictError('La reserva ya tiene check-in')
   if (!['confirmed', 'pending'].includes(r.status)) throw new ConflictError(`No se puede hacer check-in de una reserva ${r.status}`)
   return { reservation: r, hotelId: r.hotelId }
@@ -16,7 +18,7 @@ export async function checkoutValidation(repo: any, id: string, user: any, auth?
   const r = await repo.findById(id) as any
   if (!r) throw new NotFoundError('Reserva no encontrada')
   if (user.role !== 'super_admin' && r.hotelId !== hotelId) throw new AuthError('No autorizado')
-  if (auth) auth.assertOwnership(r, { hotelId })
+  if (auth) auth.assertOwnership(r.hotelId, hotelId, user.role, 'super_admin')
   if (r.status !== 'checked_in') throw new ConflictError(`Solo se puede hacer check-out de una reserva con check-in (actual: ${r.status})`)
   return { reservation: r, hotelId: r.hotelId }
 }

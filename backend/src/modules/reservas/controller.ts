@@ -94,6 +94,7 @@ export class ReservasController {
     } catch (e: any) {
       if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
       if (e.name === 'AuthError') return { status: 403, body: { error: e.message } }
+      if (e.name === 'ForbiddenError') return { status: 403, body: { error: e.message } }
       if (e.name === 'ConflictError') return { status: 409, body: { error: e.message } }
       return { status: 500, body: { error: e.message } }
     }
@@ -119,6 +120,7 @@ export class ReservasController {
     } catch (e: any) {
       if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
       if (e.name === 'AuthError') return { status: 403, body: { error: e.message } }
+      if (e.name === 'ForbiddenError') return { status: 403, body: { error: e.message } }
       if (e.name === 'ConflictError') return { status: 409, body: { error: e.message } }
       if (e.name === 'ValidationError') return { status: 400, body: { error: e.message, fields: e.fields } }
       return { status: 500, body: { error: e.message } }
@@ -198,6 +200,7 @@ export class ReservasController {
     } catch (e: any) {
       if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
       if (e.name === 'AuthError') return { status: 403, body: { error: e.message } }
+      if (e.name === 'ForbiddenError') return { status: 403, body: { error: e.message } }
       return { status: 400, body: { error: e.message } }
     }
   }

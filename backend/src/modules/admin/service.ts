@@ -2,6 +2,17 @@ import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type { AdminAnalyticsDTO, MonitoringDTO, PlanDTO, AmenityCatalogDTO } from './types'
 import type { DashboardQueries } from './usecases/dashboard-queries'
 
+/**
+ * Planes y catálogo de amenities son recursos de la plataforma: no pertenecen a ningún hotel ni
+ * usuario. `assertOwnership(dueño, solicitante, rol, rolAdmin)` sale bien por una de dos puertas:
+ * que el solicitante SEA el dueño, o que tenga el rol de admin. Este centinela nunca va a coincidir
+ * con un `user.id`, así que cierra la primera puerta y deja sólo la del rol.
+ *
+ * Antes se llamaba `assertOwnership(existing, { role: 'super_admin' })` — dos objetos, `===` siempre
+ * false y sin rol: lanzaba Forbidden hasta para el super_admin. Editar un plan era imposible.
+ */
+const PLATFORM_RESOURCE = '__platform__'
+
 export class AdminService {
   constructor(
     private readonly plansRepo: RepositoryAdapter<PlanDTO>,
@@ -40,7 +51,7 @@ export class AdminService {
   async updatePlan(id: string, body: any, user?: any): Promise<any> {
     const existing = await this.plansRepo.findById(id) as any
     if (!existing) throw new Error('Plan no encontrado')
-    if (this.auth) this.auth.assertOwnership(existing, { role: 'super_admin' })
+    if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
     const patch: Record<string, any> = {}
     for (const k of ['name', 'price', 'currency', 'description', 'features', 'limits', 'isActive', 'sortOrder']) {
       if (body[k] !== undefined) patch[k] = k === 'isActive' ? (body[k] ? 1 : 0) : body[k]
@@ -52,7 +63,7 @@ export class AdminService {
   async deletePlan(id: string, user?: any): Promise<void> {
     const existing = await this.plansRepo.findById(id) as any
     if (!existing) throw new Error('Plan no encontrado')
-    if (this.auth) this.auth.assertOwnership(existing, { role: 'super_admin' })
+    if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
     await this.plansRepo.delete(id)
   }
 
@@ -75,7 +86,7 @@ export class AdminService {
   async updateAmenityCatalog(id: string, body: any, user?: any): Promise<any> {
     const existing = await this.amenitiesRepo.findById(id) as any
     if (!existing) throw new Error('Amenity no encontrado')
-    if (this.auth) this.auth.assertOwnership(existing, { role: 'super_admin' })
+    if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
     const patch: Record<string, any> = {}
     for (const k of ['key', 'label', 'category', 'icon', 'isActive', 'sortOrder']) {
       if (body[k] !== undefined) patch[k] = k === 'isActive' ? (body[k] ? 1 : 0) : body[k]
@@ -86,7 +97,7 @@ export class AdminService {
   async deleteAmenityCatalog(id: string, user?: any): Promise<void> {
     const existing = await this.amenitiesRepo.findById(id) as any
     if (!existing) throw new Error('Amenity no encontrado')
-    if (this.auth) this.auth.assertOwnership(existing, { role: 'super_admin' })
+    if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
     await this.amenitiesRepo.delete(id)
   }
 }

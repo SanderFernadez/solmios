@@ -46,7 +46,9 @@ export async function createPublicBookingDirect(orm: any, body: any, pushAvailab
 
   const room = await orm.findById('Rooms', roomId) as any
   if (!room) return { status: 404, body: { error: 'Habitación no encontrada' } }
-  if (auth) auth.assertOwnership(room, { hotelId })
+  // No hay usuario: el motor es público. La habitación tiene que ser del hotel del formulario.
+  // Iba `assertOwnership(room, { hotelId })` — dos objetos, `===` siempre false: toda reserva daba 403.
+  if (auth) auth.assertOwnership(room.hotelId, hotelId)
 
   const overlapping = (await orm.findMany('Reservations', { roomId })) as any[]
   const hasOverlap = overlapping.some((r: any) =>
