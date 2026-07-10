@@ -218,12 +218,57 @@
         </div>
       </div>
     </div>
+
+    <!-- Huéspedes del segmento -->
+    <div v-if="openSegment" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 p-4" @click.self="openSegment = null">
+      <div class="card w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+        <div class="p-4 border-b border-border flex justify-between items-center shrink-0">
+          <div>
+            <h3 class="font-extrabold text-navy text-sm">{{ openSegment.name }}</h3>
+            <p class="text-[10px] text-text-muted mt-0.5">{{ segmentGuests.length }} huéspedes en este segmento</p>
+          </div>
+          <button @click="openSegment = null" class="px-3 py-1.5 border rounded-lg text-xs font-bold text-text-secondary cursor-pointer">Cerrar</button>
+        </div>
+
+        <div v-if="loadingGuests" class="p-10 flex justify-center">
+          <div class="w-6 h-6 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
+        </div>
+
+        <div v-else-if="segmentGuests.length" class="overflow-y-auto">
+          <table class="w-full text-sm">
+            <thead class="sticky top-0 bg-surface">
+              <tr class="border-b border-border">
+                <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Huésped</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tier</th>
+                <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estancias</th>
+                <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Total Gastado</th>
+                <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Puntos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="g in segmentGuests" :key="g.id" class="border-b border-border/60 last:border-0">
+                <td class="px-4 py-2.5">
+                  <div class="font-bold text-navy">{{ g.name }}</div>
+                  <div class="text-[10px] text-text-muted">{{ g.email || 'Sin email' }}</div>
+                </td>
+                <td class="px-4 py-2.5"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize" :class="tierBadge(g.tier)">{{ g.tier }}</span></td>
+                <td class="px-4 py-2.5 text-right text-text-secondary">{{ g.totalStays }}</td>
+                <td class="px-4 py-2.5 text-right font-bold text-navy">${{ g.totalSpent.toLocaleString() }}</td>
+                <td class="px-4 py-2.5 text-right text-gold font-bold">{{ g.loyaltyPoints }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-else class="p-10 text-center text-text-muted text-sm">Ningún huésped cumple las reglas de este segmento.</div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { CrmService, type Coupon, type GuestSegment, type GuestLTV, type CrmDashboard } from '@/services/Crm.service'
+import { CrmService, type Coupon, type GuestSegment, type GuestLTV, type CrmDashboard, type SegmentGuest } from '@/services/Crm.service'
 import { useToast } from '@/composables/useToast'
 
 const ICON_USERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
@@ -265,6 +310,9 @@ const segmentForm = ref({ name: '', tier: '', minStays: 0 })
 const validateCode = ref('')
 const validateAmount = ref(0)
 const validatedCoupon = ref<Coupon | null>(null)
+const openSegment = ref<GuestSegment | null>(null)
+const segmentGuests = ref<SegmentGuest[]>([])
+const loadingGuests = ref(false)
 
 function tierIcon(t: string) { return { bronze: ICON_MEDAL, silver: ICON_MEDAL, gold: ICON_MEDAL, platinum: ICON_GEM, diamond: ICON_CROWN }[t] || ICON_USER }
 function tierBg(t: string) { return { bronze: 'bg-amber-50 text-amber-600', silver: 'bg-gray-50 text-gray-500', gold: 'bg-gold/10 text-gold', platinum: 'bg-cyan/10 text-cyan', diamond: 'bg-purple/10 text-purple' }[t] || '' }
@@ -297,5 +345,12 @@ async function createSegment() {
   try { await CrmService.createSegment({ name: segmentForm.value.name, rules: JSON.stringify(rules) }); toast.success('Segmento creado'); showSegmentForm.value = false; segmentForm.value = { name: '', tier: '', minStays: 0 }; loadData() }
   catch { toast.error('Error') }
 }
-function viewSegmentGuests(s: GuestSegment) { toast.info(`${s.name}: ${s.count} huéspedes`) }
+async function viewSegmentGuests(s: GuestSegment) {
+  openSegment.value = s
+  loadingGuests.value = true
+  segmentGuests.value = []
+  try { segmentGuests.value = await CrmService.getGuestsInSegment(s.id) }
+  catch { toast.error('No se pudieron cargar los huéspedes del segmento'); openSegment.value = null }
+  finally { loadingGuests.value = false }
+}
 </script>

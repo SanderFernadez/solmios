@@ -11,11 +11,13 @@ import type { CrmSockets } from './sockets'
 import { LtvUseCase } from './usecases/ltv'
 import { CouponUseCase } from './usecases/coupons'
 import { applyPoints, nextTier, pointsForStay } from './usecases/loyalty'
+import { SegmentUseCase } from './usecases/segments'
 
 export class CrmService {
   private sockets: CrmSockets = {}
   private ltvCalculator: LtvUseCase
   private coupons: CouponUseCase
+  private segments: SegmentUseCase
 
   constructor(
     private readonly loyaltyRepo: RepositoryAdapter<LoyaltyTransactionDTO>,
@@ -29,6 +31,7 @@ export class CrmService {
   ) {
     this.ltvCalculator = new LtvUseCase(guestRepo, reservaRepo, logger)
     this.coupons = new CouponUseCase({ repo: couponRepo, auth, onUsed: (id) => this.sockets.onCouponUsed?.(id) ?? Promise.resolve() })
+    this.segments = new SegmentUseCase({ repo: segmentRepo, guestRepo, auth })
   }
 
   setSockets(s: Partial<CrmSockets>): void {
@@ -142,26 +145,10 @@ export class CrmService {
   useCoupon(id: string, hotelId: string, role?: string): Promise<CouponDTO> { return this.coupons.use(id, hotelId, role) }
   deleteCoupon(id: string, hotelId: string, role?: string): Promise<void> { return this.coupons.deactivate(id, hotelId, role) }
 
-  // ─── Segments ─────────────────────────────────────────
-  async createSegment(dto: CreateSegmentDTO): Promise<GuestSegmentDTO> {
-    return this.segmentRepo.create({ ...dto, count: 0, active: 1 } as any)
-  }
-
-  async listSegments(hotelId: string): Promise<GuestSegmentDTO[]> {
-    return this.segmentRepo.findMany({ hotelId, active: 1 })
-  }
-
-  async getGuestsInSegment(hotelId: string, segmentId: string, role?: string): Promise<any[]> {
-    const segment = await this.segmentRepo.findById(segmentId)
-    if (!segment) throw new NotFoundError('Segment not found')
-    if (this.auth) this.auth.assertOwnership(segment.hotelId, hotelId, role, 'super_admin')
-    const rules: Record<string, any> = segment.rules ? JSON.parse(segment.rules) : {}
-    const filters: Record<string, any> = { hotelId, active: 1 }
-    if (rules.minStays) filters.totalStays = { $gte: rules.minStays }
-    if (rules.minSpent) filters.totalSpent = { $gte: rules.minSpent }
-    if (rules.tier) filters.tier = rules.tier
-    return this.guestRepo.findMany(filters)
-  }
+  // ─── Segments (delegan a usecases/segments) ───────────
+  createSegment(dto: CreateSegmentDTO): Promise<GuestSegmentDTO> { return this.segments.create(dto) }
+  listSegments(hotelId: string): Promise<GuestSegmentDTO[]> { return this.segments.list(hotelId) }
+  getGuestsInSegment(hotelId: string, segmentId: string, role?: string): Promise<any[]> { return this.segments.guestsIn(hotelId, segmentId, role) }
 
   // ─── LTV ──────────────────────────────────────────────
   async calculateLTV(hotelId: string, limit = 50): Promise<GuestLTV[]> {

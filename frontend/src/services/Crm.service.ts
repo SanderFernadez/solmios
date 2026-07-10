@@ -11,6 +11,11 @@ export interface Coupon {
 export interface GuestSegment {
   id: string; hotelId: string; name: string; description: string; rules: string | null; count: number
 }
+/** Huésped que cae dentro de un segmento. Subconjunto de Guest: lo que la tabla del modal muestra. */
+export interface SegmentGuest {
+  id: string; name: string; email: string | null; tier: string
+  totalStays: number; totalSpent: number; loyaltyPoints: number
+}
 export interface GuestLTV {
   guestId: string; name: string; totalStays: number; totalSpent: number; avgPerStay: number
   loyaltyPoints: number; tier: string; firstVisit: string; lastVisit: string; daysSinceLastVisit: number; ltvScore: number
@@ -36,7 +41,7 @@ export const CrmService = {
   // Segments
   listSegments: (): Promise<GuestSegment[]> => http.get('/api/crm/segments'),
   createSegment: (data: Partial<GuestSegment>): Promise<GuestSegment> => http.post('/api/crm/segments', data),
-  getGuestsInSegment: (id: string): Promise<any[]> => http.get(`/api/crm/segments/${id}/guests`),
+  getGuestsInSegment: (id: string): Promise<SegmentGuest[]> => http.get(`/api/crm/segments/${id}/guests`),
 
   // LTV + Dashboard
   getLTV: (): Promise<GuestLTV[]> => http.get('/api/crm/ltv'),
