@@ -113,7 +113,7 @@ import { MessagesModule } from './modules/messages'
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
 
 const mods = [
-  UsuariosModule(), HabitacionesModule(), ReservasModule(), HuespedesModule(),
+  UsuariosModule({ storage }), HabitacionesModule(), ReservasModule(), HuespedesModule(),
   FacturasModule(), HousekeepingModule({ storage }), MantenimientoModule({ storage }), PaquetesModule(),
   GruposModule(), HotelesModule(), RolesModule(), DispositivosModule(),
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),

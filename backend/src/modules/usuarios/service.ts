@@ -2,6 +2,7 @@
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, AuthError } from 'arckode-framework'
 import { normalizePhone, looksLikePhone, toStoredPhone } from './usecases/normalize-phone'
+import { getProfile, updateProfile, type ProfilePatch } from './usecases/profile'
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required')
@@ -94,18 +95,11 @@ export class UsuariosService {
   }
 
   async me(id: string): Promise<any> {
-    // @ignore IDOR_RISK — el id proviene del JWT del propio usuario (req.user.id), es un self-lookup.
-    const u = await this.repo.findById(id)
-    if (!u) throw new NotFoundError('Usuario no encontrado')
-    let hotelName = ''
-    if (u.hotelId && this.hotelRepo) {
-      try {
-        // @ignore IDOR_RISK — hotelId proviene del registro propio del usuario (u.hotelId), no de input externo.
-        const hotel = await this.hotelRepo.findById(u.hotelId)
-        hotelName = (hotel as any)?.name || ''
-      } catch { /* graceful */ }
-    }
-    return { id: u.id, name: u.name, email: u.email, role: u.role, hotelId: u.hotelId, hotelName }
+    return getProfile(this.repo, this.hotelRepo, id)
+  }
+
+  async updateProfile(userId: string, data: ProfilePatch): Promise<any> {
+    return updateProfile(this.repo, this.hotelRepo, userId, data)
   }
 
   async list(hotelId?: string): Promise<any[]> {

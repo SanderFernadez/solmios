@@ -1,11 +1,17 @@
 // usuarios/controller.ts — Adaptador HTTP
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
-import { CreateUsuarioSchema, UpdateUsuarioSchema, LoginSchema, ChangePasswordSchema, ForgotPasswordSchema, ResetPasswordSchema } from './validators/schema'
+import type { StorageService } from 'arckode-framework/modules/storage'
+import { CreateUsuarioSchema, UpdateUsuarioSchema, LoginSchema, ChangePasswordSchema, ForgotPasswordSchema, ResetPasswordSchema, UpdateProfileSchema } from './validators/schema'
 import type { UsuariosService } from './service'
+import { parseDataUrl, isImage } from '../../shared/utils/data-url'
 
 export class UsuariosController {
-  constructor(private readonly service: UsuariosService, private readonly logger: Logger) {}
+  constructor(
+    private readonly service: UsuariosService,
+    private readonly logger: Logger,
+    private readonly storage?: StorageService,
+  ) {}
 
   async login(req: HttpRequest) {
     const data = validateSchema(LoginSchema, req.body) as any
@@ -19,6 +25,38 @@ export class UsuariosController {
   async me(req: HttpRequest) {
     const user = await this.service.me((req.user as any).id)
     return { status: 200, body: user }
+  }
+
+  /** Edita el perfil propio. Siempre el del token: no recibe un id. */
+  async updateMe(req: HttpRequest) {
+    const data = validateSchema(UpdateProfileSchema, req.body) as any
+    const user = await this.service.updateProfile((req.user as any).id, data)
+    return { status: 200, body: user }
+  }
+
+  /** Sube la foto de perfil y la deja guardada en el usuario del token. */
+  async uploadAvatar(req: HttpRequest) {
+    if (!this.storage) return { status: 500, body: { error: 'Storage no configurado' } }
+    const body = (req.body ?? {}) as { photo?: string; fileName?: string }
+    if (!body.photo) return { status: 400, body: { error: 'Falta el campo photo (data URL base64)' } }
+
+    const parsed = parseDataUrl(body.photo)
+    if (!parsed) return { status: 400, body: { error: 'Formato inválido (se espera data URL base64)' } }
+    if (!isImage(parsed.mimeType)) return { status: 400, body: { error: 'Solo se permiten imágenes' } }
+
+    const userId = (req.user as any).id
+    const stored = await this.storage.upload(
+      {
+        fieldName: 'file',
+        originalName: body.fileName || `avatar-${userId}.${parsed.ext}`,
+        buffer: parsed.buffer,
+        mimeType: parsed.mimeType,
+        size: parsed.buffer.length,
+      },
+      'avatars',
+    )
+    const user = await this.service.updateProfile(userId, { avatar: stored.url })
+    return { status: 201, body: user }
   }
 
   async logout(req: HttpRequest) {

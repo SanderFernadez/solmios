@@ -1,6 +1,8 @@
 // usuarios/index.ts — PUERTA PÚBLICA (auth + gestión de usuarios)
 import { createModule, OrmRepository } from 'arckode-framework'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
+import type { StorageService } from 'arckode-framework/modules/storage'
+import { bodyLimit } from 'arckode-framework/middlewares'
 import { registerUsuariosModels } from './model'
 import { UsuariosService } from './service'
 import { UsuariosController } from './controller'
@@ -10,7 +12,10 @@ import { createPermissionGuard } from '../../infrastructure/auth/create-permissi
 export { UsuariosService }
 export type { UsuarioDTO } from './types'
 
-export function UsuariosModule() {
+/** Una foto de perfil es una sola imagen: 5 MB de base64 sobra de largo. */
+const AVATAR_UPLOAD_LIMIT = 5 * 1024 * 1024
+
+export function UsuariosModule(opts: { storage?: StorageService } = {}) {
   return createModule({
     name: 'usuarios',
     version: '1.0.0',
@@ -18,11 +23,11 @@ export function UsuariosModule() {
     contract: {
       name: 'usuarios', version: '1.0.0',
       description: 'Login JWT + CRUD de empleados del hotel',
-      actions: ['login', 'me', 'logout', 'list', 'create', 'update', 'delete', 'changePassword', 'getHotels', 'switchHotel'],
+      actions: ['login', 'me', 'updateMe', 'uploadAvatar', 'logout', 'list', 'create', 'update', 'delete', 'changePassword', 'getHotels', 'switchHotel'],
       events: ['user.created', 'user.disabled'],
       tables: ['users'],
       dependencies: [],
-      rules: ['Password hasheado bcrypt', 'Login emite JWT', 'Solo hotel_admin gestiona usuarios'],
+      rules: ['Password hasheado bcrypt', 'Login emite JWT', 'Solo hotel_admin gestiona usuarios', 'El perfil propio no requiere users:edit'],
     },
     create({ logger, orm, cache, router, auth }) {
       if (!auth) throw new Error('usuarios: auth dependency required')
@@ -31,7 +36,7 @@ export function UsuariosModule() {
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const log = logger.child('usuarios')
       const service = new UsuariosService(repo, log, cache, auth, hotelRepo)
-      const controller = new UsuariosController(service, log)
+      const controller = new UsuariosController(service, log, opts.storage)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
@@ -53,6 +58,10 @@ export function UsuariosModule() {
       // tabla de usuarios: pedirles `users:view` dejaba a supervisor, camarera y
       // mantenimiento sin poder leer su propio perfil ni cerrar sesión (403).
       router.get('/api/auth/me', [auth.authenticate()], (req) => controller.me(req))
+      // El perfil propio: `users:edit` es el permiso para editar a OTROS. Sin estas
+      // rutas, una camarera no podía ni cambiarse el nombre ni ponerse una foto.
+      router.put('/api/auth/me', [auth.authenticate()], (req) => controller.updateMe(req))
+      router.post('/api/auth/avatar', [auth.authenticate(), bodyLimit(AVATAR_UPLOAD_LIMIT)], (req) => controller.uploadAvatar(req))
       router.post('/api/auth/logout', [auth.authenticate()], (req) => controller.logout(req))
       // Cambia la contraseña del `req.user.id` del token y exige la actual:
       // `users:edit` es el permiso para editar a OTROS, no a uno mismo.
