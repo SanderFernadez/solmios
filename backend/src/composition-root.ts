@@ -148,6 +148,7 @@ import { gastosCajaConnector } from './connectors/gastos-caja'
 import { payrollGastosConnector } from './connectors/payroll-gastos'
 import { bookingenginePaymentsConnector } from './connectors/bookingengine-payments'
 import { messagesUsuariosConnector } from './connectors/messages-usuarios'
+import { housekeepingMantenimientoConnector } from './connectors/housekeeping-mantenimiento'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -179,6 +180,8 @@ system.addConnector('folios-facturas', foliosFacturasConnector)
 system.addConnector('reservas-folios-settlement', reservasFoliosSettlementConnector)
 // El chat resuelve nombres de compañeros sin pasar por `users:view`.
 system.addConnector('messages-usuarios', messagesUsuariosConnector)
+// Lo que la camarera reporta como roto se convierte en un ticket con fotos.
+system.addConnector('housekeeping-mantenimiento', housekeepingMantenimientoConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm)

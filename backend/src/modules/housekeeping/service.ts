@@ -154,7 +154,9 @@ export class HousekeepingService {
     return result
   }
   async markPresence(id: string, userId: string) { return this.approveUc.markPresence(id, userId) }
-  async reportIssue(id: string, desc: string, type: string) { return this.approveUc.reportIssue(id, desc, type) }
+  async reportIssue(id: string, desc: string, type: string, reporter: { id: string; hotelId?: string; role: string }) {
+    return this.approveUc.reportIssue(id, desc, type, reporter, this.sockets.onIssueReported)
+  }
 
   // ─── Config lists (photo requirements + supply lists) ─────────────────────
   async getPhotoRequirements(h: string, rt?: string) { return this.configLists?.getPhotoRequirements(h, rt) ?? [] }

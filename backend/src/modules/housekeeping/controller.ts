@@ -100,11 +100,12 @@ export class HousekeepingController {
   }
 
   async report(req: HttpRequest) {
+    const currentUser = req.user as any
     const body = (req.body || {}) as Record<string, unknown>
     const description = body.description as string | undefined
     const type = (body.type as string) || 'maintenance'
     if (!description) return { status: 400, body: { error: 'Descripción requerida' } }
-    await this.service.reportIssue(req.params.id, description, type)
+    await this.service.reportIssue(req.params.id, description, type, currentUser)
     return { status: 200, body: { message: 'Reporte enviado' } }
   }
 

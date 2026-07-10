@@ -94,7 +94,9 @@ export class MantenimientoService {
     if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
       throw new NotFoundError('No autorizado para crear en otro hotel')
     }
-    const item = await this.repo.create(dto as any)
+    // `reportedBy` sale del token, nunca del cliente: es lo que permite no
+    // notificarle un ticket a quien lo acaba de levantar.
+    const item = await this.repo.create({ ...dto, reportedBy: currentUser.id } as any)
     await this.audit.log(item.id, dto.hotelId, currentUser.id, 'created', null, item.title)
     await this.sockets.onMantenimientoCreated?.(item)
     await this.listUc.invalidate(dto.hotelId)

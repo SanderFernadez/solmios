@@ -2,6 +2,7 @@
 import type { RepositoryAdapter } from 'arckode-framework'
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { HousekeepingDTO } from '../types'
+import type { IssueReport } from '../sockets'
 import { assertTransition } from './timings'
 
 export class ApproveUseCase {
@@ -52,9 +53,32 @@ export class ApproveUseCase {
     } as any)
   }
 
-  async reportIssue(taskId: string, description: string, type: string): Promise<void> {
+  /**
+   * La camarera reporta algo. `type: 'maintenance'` abre además un ticket real.
+   *
+   * Antes esto solo apendaba una línea a `notes` de la tarea de limpieza: el
+   * reporte moría ahí y mantenimiento nunca veía ni la descripción ni las fotos
+   * de lo que había que arreglar.
+   */
+  async reportIssue(
+    taskId: string,
+    description: string,
+    type: string,
+    reporter: { id: string; hotelId?: string; role: string },
+    onIssueReported?: (issue: IssueReport) => Promise<void>,
+  ): Promise<void> {
+    // Este usecase no recibe `auth`, así que el ownership se comprueba explícito
+    // contra `reporter.hotelId` apenas se carga la tarea.
+    // @ignore IDOR_RISK — ownership verificado abajo contra reporter.hotelId
     const task = await this.repo.findById(taskId)
     if (!task) throw new NotFoundError('Tarea no encontrada')
+
+    // Sin esto se podía reportar sobre la tarea de otro hotel, y el ticket
+    // resultante nacía en ese hotel ajeno.
+    const taskHotelId = (task as any).hotelId
+    if (reporter.role !== 'super_admin' && taskHotelId !== reporter.hotelId) {
+      throw new AuthError('La tarea no pertenece a tu hotel')
+    }
 
     // Agregar reporte a las notas
     const existingNotes = (task as any).notes || ''
@@ -64,5 +88,16 @@ export class ApproveUseCase {
     await this.repo.update(taskId, {
       notes: updatedNotes,
     } as any)
+
+    if (type !== 'maintenance' || !onIssueReported) return
+
+    // La nota queda igual: si abrir el ticket falla, el reporte no se pierde.
+    await onIssueReported({
+      hotelId: taskHotelId,
+      roomId: (task as any).roomId,
+      description,
+      photos: Array.isArray((task as any).photos) ? (task as any).photos : [],
+      reportedBy: reporter.id,
+    })
   }
 }

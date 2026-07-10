@@ -14,6 +14,9 @@ export const MantenimientoModel: ModelDefinition = {
     priority: { type: 'string', default: "medium" },
     status: { type: 'string', default: "open" },
     assignedTo: { type: 'string' },
+    /** Quién levantó el ticket. Sin esto, avisar de un ticket nuevo despierta
+     *  también al que acaba de crearlo. */
+    reportedBy: { type: 'string' },
     estimatedCost: { type: 'number', default: 0 },
     reportedDate: { type: 'string' },
     resolvedDate: { type: 'string' },

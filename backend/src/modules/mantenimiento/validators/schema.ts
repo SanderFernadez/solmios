@@ -19,6 +19,9 @@ export const CreateMantenimientoSchema: Record<string, ValidationRule> = {
   estimatedCost: { type: 'number' as const, min: 0 },
   reportedDate: { type: 'string' as const },
   resolvedDate: { type: 'string' as const },
+  // Sin las fotos no se sabe qué hay que arreglar. `reportedBy` NO se acepta del
+  // cliente: lo pone el service desde el token.
+  photos: { type: 'array' as any },
 }
 
 export const UpdateMantenimientoSchema: Record<string, ValidationRule> = {
