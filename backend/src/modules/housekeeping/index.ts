@@ -27,7 +27,7 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       name: 'housekeeping',
       version: '2.1.0',
       description: 'Housekeeping tasks with ownership, timings, photo evidence and staff stats',
-      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'complete', 'uploadPhoto', 'removePhoto', 'stats', 'approve', 'reject', 'presence', 'report', 'photoRequirements', 'supplyLists', 'checklist'],
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'pause', 'resume', 'complete', 'uploadPhoto', 'removePhoto', 'stats', 'approve', 'reject', 'presence', 'report', 'photoRequirements', 'supplyLists', 'checklist'],
       events: ['onHousekeepingCreated', 'onHousekeepingUpdated', 'onHousekeepingDeleted'],
       tables: ['housekeeping', 'photo_requirements', 'supply_items', 'checklist_templates'],
       dependencies: [],
@@ -68,6 +68,8 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       router.delete('/api/housekeeping/:id', guard('housekeeping', 'delete'), (req) => controller.destroy(req))
 
       router.put('/api/housekeeping/:id/start', guard('housekeeping', 'edit'), (req) => controller.start(req))
+      router.put('/api/housekeeping/:id/pause', guard('housekeeping', 'edit'), (req) => controller.pause(req))
+      router.put('/api/housekeeping/:id/resume', guard('housekeeping', 'edit'), (req) => controller.resume(req))
       router.put('/api/housekeeping/:id/complete', guard('housekeeping', 'edit'), (req) => controller.complete(req))
       router.post('/api/housekeeping/:id/photos', [...guard('housekeeping', 'edit'), bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.uploadPhoto(req))
       router.delete('/api/housekeeping/:id/photos', guard('housekeeping', 'edit'), (req) => controller.removePhoto(req))

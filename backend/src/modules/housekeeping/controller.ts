@@ -59,6 +59,14 @@ export class HousekeepingController {
     return { status: 200, body: await this.service.start(req.params.id, req.user as any) }
   }
 
+  async pause(req: HttpRequest) {
+    return { status: 200, body: await this.service.pause(req.params.id, req.user as any) }
+  }
+
+  async resume(req: HttpRequest) {
+    return { status: 200, body: await this.service.resume(req.params.id, req.user as any) }
+  }
+
   async complete(req: HttpRequest) {
     return { status: 200, body: await this.service.complete(req.params.id, req.user as any) }
   }

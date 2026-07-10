@@ -46,6 +46,9 @@ export interface HousekeepingDTO {
   cleaningItems?: CleaningItem[]
   startTime?: string
   endTime?: string
+  /** Pausa del cronómetro: `pausedAt` = pausada desde (null si corre); `pausedSeconds` = acumulado. */
+  pausedAt?: string | null
+  pausedSeconds?: number
   photos?: PhotoEvidence[]
   createdAt: string
   updatedAt: string

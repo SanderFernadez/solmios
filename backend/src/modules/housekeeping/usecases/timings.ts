@@ -59,6 +59,43 @@ export class TimingsUseCase {
     return item
   }
 
+  /** Pausa la limpieza: congela el cronómetro. Guarda desde cuándo está pausada. */
+  async pause(id: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
+    this.assertAssignedStaff(existing, currentUser)
+    if (existing.status !== 'in_progress') throw new ValidationError('Solo se pausa una limpieza en curso')
+    if ((existing as any).pausedAt) return existing // ya pausada: idempotente
+    const item = await this.repo.update(id, { pausedAt: new Date().toISOString() } as any)
+    if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
+    await this.onUpdated(item)
+    await this.invalidate(existing.hotelId)
+    return item
+  }
+
+  /** Reanuda: acumula el tiempo pausado y vuelve a correr el cronómetro. */
+  async resume(id: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
+    this.assertAssignedStaff(existing, currentUser)
+    const pausedAt = (existing as any).pausedAt as string | undefined
+    if (!pausedAt) return existing // no estaba pausada: idempotente
+    const accumulated = ((existing as any).pausedSeconds ?? 0) + this.secondsSince(pausedAt)
+    const item = await this.repo.update(id, { pausedAt: null, pausedSeconds: accumulated } as any)
+    if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
+    await this.onUpdated(item)
+    await this.invalidate(existing.hotelId)
+    return item
+  }
+
+  private secondsSince(iso: string): number {
+    const then = new Date(iso).getTime()
+    const now = Date.now()
+    return now > then ? Math.floor((now - then) / 1000) : 0
+  }
+
   async complete(id: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
@@ -67,7 +104,14 @@ export class TimingsUseCase {
     assertTransition(existing.status, 'completed')
     if (!existing.startTime) throw new ValidationError('La tarea no fue iniciada (falta startTime)')
     const nowIso = new Date().toISOString()
-    const item = await this.repo.update(id, { status: 'completed', endTime: nowIso, completedDate: nowIso } as any)
+    // Si estaba pausada al finalizar, se cierra la pausa acumulándola primero,
+    // para que la duración no cuente ese tiempo.
+    const pausedAt = (existing as any).pausedAt as string | undefined
+    const pausedSeconds = ((existing as any).pausedSeconds ?? 0) + (pausedAt ? this.secondsSince(pausedAt) : 0)
+    const item = await this.repo.update(id, {
+      status: 'completed', endTime: nowIso, completedDate: nowIso,
+      pausedAt: null, pausedSeconds,
+    } as any)
     if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
     await this.onUpdated(item)
     await this.invalidate(existing.hotelId)

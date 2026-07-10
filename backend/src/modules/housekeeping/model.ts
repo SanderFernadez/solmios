@@ -19,6 +19,10 @@ export const HousekeepingModel: ModelDefinition = {
     // como endTime - startTime (D1 del plan: evitar doble fuente de verdad).
     startTime: { type: 'string' },
     endTime: { type: 'string', indexed: true },
+    // Pausa: `pausedAt` marca desde cuándo está pausada (null = corriendo);
+    // `pausedSeconds` acumula el tiempo pausado. La duración real descuenta esto.
+    pausedAt: { type: 'string' },
+    pausedSeconds: { type: 'number', default: 0 },
     photos: { type: 'json', default: [] },
     // Supervisor approval workflow (F3). Sin estos campos el ORM los descarta
     // silenciosamente (anti-patrón mem 1805) y approve() nunca pasa su gate.
