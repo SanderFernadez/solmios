@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa Mental RRHH — Manager Hotel</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;overflow:hidden;height:100vh;width:100vw}
+canvas{display:block}
+#controls{position:fixed;top:16px;right:16px;z-index:10;display:flex;gap:8px;flex-direction:column}
+#controls button{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s}
+#controls button:hover{background:#334155;border-color:#06b6d4}
+#controls button.active{background:#06b6d4;color:#0f172a;border-color:#06b6d4}
+#legend{position:fixed;bottom:16px;left:16px;z-index:10;background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;font-size:11px}
+#legend h4{font-size:12px;margin-bottom:8px;color:#94a3b8}
+.legend-item{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+#tooltip{position:fixed;display:none;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 16px;font-size:12px;max-width:340px;pointer-events:none;z-index:100;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+#tooltip h4{font-size:13px;font-weight:700;margin-bottom:4px}
+#tooltip p{color:#94a3b8;line-height:1.4}
+#tooltip .tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;margin:2px;background:#334155;color:#e2e8f0}
+#tooltip .tag-ok{background:#064e3b;color:#6ee7b7}
+#tooltip .tag-warn{background:#78350f;color:#fcd34d}
+#tooltip .tag-error{background:#7f1d1d;color:#fca5a5}
+#tooltip .issue{color:#fca5a5;margin-top:6px;line-height:1.45}
+#tooltip .fix{color:#6ee7b7;margin-top:6px;line-height:1.45}
+#title-bar{position:fixed;top:16px;left:16px;z-index:10}
+#title-bar h1{font-size:18px;font-weight:900;color:#06b6d4}
+#title-bar p{font-size:11px;color:#64748b}
+#title-bar .rev{font-size:10px;color:#475569;margin-top:2px}
+#search{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:8px 16px;color:#e2e8f0;font-size:13px;width:260px;outline:none}
+#search:focus{border-color:#06b6d4}
+#search::placeholder{color:#475569}
+</style>
+</head>
+<body>
+
+<div id="title-bar">
+  <h1>RRHH — Mapa Mental</h1>
+  <p>Arrastrá para mover · Scroll para zoom · Pasá el mouse por un nodo</p>
+  <p class="rev">Verificado contra el código el 10/07/2026 · Horas→Nómina y permisos payroll:* resueltos · pendientes GitLab #154-158</p>
+  <p class="rev" id="counts"></p>
+</div>
+
+<input type="text" id="search" placeholder="Buscar módulo, tabla o campo...">
+
+<div id="controls">
+  <button data-view="reset" class="active">Vista Completa</button>
+  <button data-view="empleados">👤 Empleados</button>
+  <button data-view="attendance">🕐 Asistencia</button>
+  <button data-view="payroll">💰 Nómina</button>
+  <button data-view="roles">🔐 Roles</button>
+  <button data-view="usuarios">🪪 Usuarios</button>
+  <button data-view="housekeeping">🧹 Housekeeping</button>
+  <button data-view="mantenimiento">🔧 Mantenimiento</button>
+  <button data-view="missing">⚠️ Faltantes</button>
+</div>
+
+<div id="legend">
+  <h4>Leyenda</h4>
+  <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div> Módulo central</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div> Tabla del módulo</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> Tabla compartida (shared/models.ts)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Tabla huérfana (nadie la escribe)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f43f5e"></div> Relación real</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7f1d1d;border:2px dashed #ef4444"></div> Relación que NO existe</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6b7280;border:2px dashed #9ca3af"></div> Falta implementar</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> Resuelto (esta iteración)</div>
+</div>
+
+<div id="tooltip"></div>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const tooltip = document.getElementById('tooltip');
+const searchInput = document.getElementById('search');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+
+// ─── DATA MODEL ────────────────────────────────────────
+// Los conteos de endpoints salen de `rg -c "router\.(get|post|...)" <modulo>/index.ts`.
+// Los campos salen del `orm.define(...)` de cada model.ts, NO del DTO: el ORM descarta en
+// silencio cualquier campo que no esté declarado en el modelo.
+const MODULES = {
+  empleados: {
+    label: '👤 Empleados', color: '#06b6d4', status: 'warn',
+    desc: 'Expediente, contratos, documentos, vacaciones, evaluaciones, organigrama',
+    tables: ['departments', 'employee_profiles', 'employee_contracts', 'employee_documents', 'leave_requests', 'performance_reviews'],
+    endpoints: 30,
+    fields: {
+      departments: ['name', 'managerId', 'parentId', 'active'],
+      employee_profiles: ['userId', 'departmentId', 'position', 'managerId', 'hireDate', 'salary', 'contractType', 'vacationDaysTotal', 'vacationDaysUsed', 'documentNumber', 'documentType', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation', 'bankName', 'bankAccount'],
+      employee_contracts: ['employeeId', 'type', 'startDate', 'endDate', 'salary', 'currency', 'status'],
+      employee_documents: ['employeeId', 'type', 'name', 'fileUrl', 'expiryDate', 'alertSent'],
+      leave_requests: ['employeeId', 'type', 'startDate', 'endDate', 'days', 'status', 'approvedBy'],
+      performance_reviews: ['employeeId', 'reviewerId', 'score', 'period', 'strengths', 'improvements']
+    },
+    perms: ['users:view', 'users:create', 'users:edit', 'users:delete'],
+    issues: [
+      'No existe el permiso <b>employees:*</b>: el expediente se protege con <b>users:*</b>, el mismo que da de alta cuentas.',
+      'Según el comentario de <b>housekeeping/service.ts</b>, <b>employee_profiles</b> está prácticamente vacío en producción. La ficha existe; casi nadie la tiene cargada.'
+    ]
+  },
+  attendance: {
+    label: '🕐 Asistencia', color: '#22c55e', status: 'warn',
+    desc: 'Fichaje digital, horarios, reportes, biometría, geofence',
+    tables: ['attendance_records', 'attendance_schedules', 'attendance_config'],
+    orphanTables: { attendance_schedules: 'Ningún empleado tiene turno asignado: no existe una columna scheduleId en employee_profiles. Sólo se usa attendance_config.defaultScheduleId, que es del hotel entero.' },
+    endpoints: 15,
+    fields: {
+      attendance_records: ['employeeId', 'date', 'clockIn', 'clockOut', 'breakStart', 'breakEnd', 'totalHours', 'overtimeHours', 'status', 'method'],
+      attendance_schedules: ['name', 'startTime', 'endTime', 'breakMinutes', 'graceMinutes', 'overtimeThresholdMinutes'],
+      attendance_config: ['defaultScheduleId', 'requirePhoto', 'requireLocation', 'geoFenceRadius', 'autoClockOut', 'overtimeEnabled', 'overtimeMultiplier', 'weeklyHoursLimit']
+    },
+    perms: ['attendance:view', 'attendance:create', 'attendance:edit'],
+    fk: 'attendance_records.employeeId → employee_profiles.id',
+    fixed: [
+      '<b>GET /api/attendance/report</b> devolvía 500 SIEMPRE (armaba el WHERE con <code>{ $gte }</code>, que el ORM no bindea). Arreglado con <code>shared/usecases/date-range.ts</code>; ahora las horas se acotan en memoria.',
+      'Las horas fichadas <b>ya alimentan la nómina</b>: el conector <b>attendance-payroll</b> las lee vía <code>getReport</code>.'
+    ]
+  },
+  payroll: {
+    label: '💰 Nómina', color: '#f59e0b', status: 'warn',
+    desc: 'Cálculo, liquidación, deducciones, recibos de pago',
+    tables: ['payroll_config', 'payroll_concepts', 'payroll_runs', 'payroll_run_details', 'payroll_payslips', 'payroll_payment_history'],
+    endpoints: 15,
+    fields: {
+      payroll_config: ['currency', 'paymentFrequency', 'overtimeMultiplier', 'socialSecurityRate', 'incomeTaxRates', 'yearEndBonusEnabled'],
+      payroll_concepts: ['code', 'name', 'type', 'calculationMethod', 'value', 'formula', 'system'],
+      payroll_runs: ['period', 'startDate', 'endDate', 'status', 'totalGross', 'totalDeductions', 'totalNet', 'paymentMethod'],
+      payroll_run_details: ['runId', 'employeeId', 'baseSalary', 'daysWorked', 'hoursWorked', 'overtimeHours', 'absences', 'lateArrivals', 'grossPay', 'netPay'],
+      payroll_payslips: ['runDetailId', 'employeeId', 'period', 'payslipNumber', 'pdfPath ⌀', 'sentAt ⌀', 'sentVia ⌀', 'viewedAt ⌀'],
+      payroll_payment_history: ['runId', 'employeeId', 'hotelId', 'amount', 'method', 'reference', 'paidAt']
+    },
+    perms: ['billing:view', 'billing:create', 'billing:edit'],
+    fk: 'payroll_run_details.employeeId → employee_profiles.id',
+    fixed: [
+      '<b>El cálculo prellena desde los fichajes</b>: nuevo <code>GET /runs/:id/prefill</code> arma la liquidación con el salario del legajo + horas de asistencia. La UI ya no pide los datos con <code>window.prompt()</code>.',
+      '<b>El body de calculate se valida por elemento</b> (<code>parseEmployeeInputs</code>): un <code>baseSalary:"abc"</code> ahora es 400, antes entraba al motor.',
+      '<b>payroll_payment_history se puebla al pagar</b> (una fila por empleado, con hotelId). Antes era una tabla muerta.'
+    ],
+    issues: [
+      'Usa permisos <b>billing:*</b>: no existe <b>payroll:*</b> en shared/permissions.ts. Quien factura puede liquidar sueldos. <b>[GitLab #152/#153]</b>',
+      'Los campos marcados con ⌀ nunca se escriben: no hay generación de PDF ni envío de recibos. <b>[GitLab #157]</b>'
+    ]
+  },
+  roles: {
+    label: '🔐 Roles', color: '#a855f7', status: 'warn',
+    desc: 'Permisos granulares por hotel, roles del sistema protegidos',
+    tables: ['roles'],
+    endpoints: 5,
+    fields: {
+      roles: ['name', 'permissions', 'hotelId', 'system']
+    },
+    perms: ['users:view', 'users:create', 'users:edit', 'users:delete'],
+    issues: [
+      'La tabla se lee, pero manda el <b>mapa estático</b>: getRolePermissions() sólo usa roles.permissions si la fila trae permisos con formato válido; si no, cae a DEFAULT_ROLE_PERMISSIONS. Editar la fila puede no cambiar nada.'
+    ]
+  },
+  usuarios: {
+    label: '🪪 Usuarios', color: '#ec4899', status: 'ok',
+    desc: 'Auth JWT, login por email o teléfono, cuentas, avatar',
+    tables: ['users'],
+    endpoints: 14,
+    fields: {
+      users: ['email', 'phone', 'password', 'userType', 'hotelId', 'roleId', 'name', 'lastName', 'avatar']
+    },
+    perms: ['users:view', 'users:create', 'users:edit', 'users:delete']
+  },
+  housekeeping: {
+    label: '🧹 Housekeeping', color: '#10b981', status: 'ok',
+    desc: 'Tareas de limpieza, fotos, tiempos, aprobación del supervisor',
+    tables: ['housekeeping', 'photo_requirements', 'supply_items'],
+    sharedTables: ['photo_requirements', 'supply_items'],
+    endpoints: 17,
+    fields: {
+      housekeeping: ['roomId', 'staffId', 'type', 'priority', 'status', 'notes', 'assignedDate', 'completedDate', 'cleaningItems', 'startTime', 'endTime', 'photos'],
+      photo_requirements: ['roomType', 'requiredAngles'],
+      supply_items: ['name', 'category', 'stock']
+    },
+    perms: ['housekeeping:view', 'housekeeping:create', 'housekeeping:edit', 'housekeeping:delete'],
+    fk: 'housekeeping.staffId → users.id  (NO employee_profiles)',
+    issues: [
+      '<b>staffId es un users.id</b>, no un employee_profiles.id. Validarlo contra employee_profiles rompía toda asignación de tareas.',
+      'photo_requirements y supply_items viven en <b>shared/models.ts</b>, no en el módulo.'
+    ]
+  },
+  mantenimiento: {
+    label: '🔧 Mantenimiento', color: '#ea580c', status: 'ok',
+    desc: 'Tickets de reparación, audit trail, fotos, prioridades',
+    tables: ['maintenance', 'maintenance_audit'],
+    endpoints: 12,
+    fields: {
+      maintenance: ['roomId', 'roomNumber', 'title', 'description', 'category', 'priority', 'status', 'assignedTo', 'reportedBy', 'sourceTaskId', 'estimatedCost', 'reportedDate', 'resolvedDate', 'startTime', 'endTime', 'notes', 'photos'],
+      maintenance_audit: ['ticketId', 'action', 'performedBy', 'details']
+    },
+    perms: ['maintenance:view', 'maintenance:create', 'maintenance:edit', 'maintenance:delete'],
+    fk: 'maintenance.assignedTo → users.id  (NO employee_profiles)'
+  }
+};
+
+// Pendientes en GitLab (underworf1/solmios). `done:true` = resuelto esta iteración.
+const MISSING = [
+  { id: 'horas-nomina', label: '🔗 Horas → Nómina', desc: 'RESUELTO: conector attendance-payroll + endpoint /runs/:id/prefill. El cálculo arranca de los fichajes reales, con revisión antes de confirmar.', status: 'done', done: true,
+    tables: ['connectors/attendance-payroll.ts'], fields: ['prefill', 'buildPayrollPrefill', 'setPrefillPort'] },
+  { id: 'perms-payroll', label: '🔐 Permisos payroll:*', desc: 'RESUELTO GitLab #152/#153: payroll agregado a MODULES + payroll:* solo a hotel_admin; los 16 endpoints usan payroll:* en vez de billing:*. Recepción ya NO ve ni crea liquidaciones. En prod: correr sync-system-roles --apply para migrar el rol hotel_admin.', status: 'done', done: true,
+    tables: ['shared/permissions.ts', 'payroll/index.ts'], fields: ['payroll:view', 'payroll:create', 'payroll:edit', 'payroll:delete'] },
+  { id: 'perms-empleados', label: '🔐 Permisos employees:*', desc: 'PENDIENTE (sin issue GitLab). El expediente de empleados se protege con users:*, el mismo permiso que da de alta cuentas. Debería tener employees:*.', status: 'warn',
+    tables: ['shared/permissions.ts', 'empleados/index.ts'], fields: ['employees:view', 'employees:edit', 'employees:delete'] },
+  { id: 'equipo', label: '📦 Equipo/Activos', desc: 'GitLab #154. Asignación de bienes a empleados (laptops, uniformes, herramientas, llaves).', status: 'critical',
+    tables: ['employee_equipment (NUEVA)'], fields: ['employeeId', 'assetName', 'serialNumber', 'assignedDate', 'returnedDate', 'status'] },
+  { id: 'capacitacion', label: '🎓 Capacitación', desc: 'GitLab #155. Cursos, certificaciones, inducciones, vencimientos.', status: 'warn',
+    tables: ['employee_trainings (NUEVA)'], fields: ['employeeId', 'courseId', 'completedAt', 'expiresAt', 'certificateUrl'] },
+  { id: 'turnos', label: '📅 Turnos', desc: 'GitLab #156. attendance_schedules YA existe, pero no hay forma de asignarle un turno a un empleado: falta scheduleId (o tabla de asignación) y el calendario visual.', status: 'warn',
+    tables: ['employee_schedules (NUEVA)'], fields: ['employeeId', 'scheduleId', 'dayOfWeek', 'rotationGroup'] },
+  { id: 'dashboard-rrhh', label: '📊 Dashboard RRHH', desc: 'GitLab #158. Reporte consolidado: rotación, antigüedad, costo nómina, docs por vencer.', status: 'info',
+    tables: ['(agregado)'], fields: ['rotacion', 'antiguedad', 'costoNomina', 'docsPorVencer', 'vacacionesPendientes'] },
+  { id: 'payslip-pdf', label: '📄 PDF Recibos', desc: 'GitLab #157. Las columnas pdfPath/sentAt/sentVia existen en payroll_payslips y nunca se escriben: no hay generación ni envío.', status: 'info',
+    tables: ['(extensión payslips)'], fields: ['generatePdf()', 'sendEmail()'] },
+];
+
+// ─── RELATIONSHIPS ─────────────────────────────────────
+const RELATIONS = [
+  { from: 'usuarios', to: 'empleados', label: 'users.id → profile.userId', type: 'strong' },
+  { from: 'empleados', to: 'attendance', label: 'profile.id → employeeId', type: 'strong' },
+  { from: 'empleados', to: 'payroll', label: 'salary → cálculo', type: 'strong' },
+  { from: 'usuarios', to: 'housekeeping', label: 'users.id → staffId', type: 'normal' },
+  { from: 'usuarios', to: 'mantenimiento', label: 'users.id → assignedTo', type: 'normal' },
+  { from: 'roles', to: 'usuarios', label: 'roleId (permisos: mapa estático)', type: 'weak' },
+  { from: 'attendance', to: 'payroll', label: 'horas fichadas → prefill ✓', type: 'strong' },
+];
+
+// ─── NODES LAYOUT ──────────────────────────────────────
+let nodes = [];
+let edges = [];
+let dragging = null;
+let dragOffset = { x: 0, y: 0 };
+let pan = { x: 0, y: 0 };
+let zoom = 1;
+let hoveredNode = null;
+let animT = 0;
+
+const TABLE_COLORS = { own: '#8b5cf6', shared: '#64748b', orphan: '#ef4444' };
+
+function tableKind(mod, tbl) {
+  if (mod.orphanTables && mod.orphanTables[tbl]) return 'orphan';
+  if (mod.sharedTables && mod.sharedTables.includes(tbl)) return 'shared';
+  return 'own';
+}
+
+function buildGraph() {
+  nodes = [];
+  edges = [];
+
+  const cx = W / 2, cy = H / 2;
+  const modKeys = Object.keys(MODULES);
+  const radius = Math.min(W, H) * 0.32;
+
+  nodes.push({ id: 'rrhh', x: cx, y: cy, r: 55, color: '#0f172a', border: '#06b6d4', label: 'RRHH', type: 'center', data: { desc: 'Sistema de Recursos Humanos' } });
+
+  modKeys.forEach((key, i) => {
+    const angle = (i / modKeys.length) * Math.PI * 2 - Math.PI / 2;
+    const m = MODULES[key];
+    nodes.push({
+      id: key,
+      x: cx + Math.cos(angle) * radius,
+      y: cy + Math.sin(angle) * radius,
+      r: 40,
+      color: '#1e293b',
+      border: m.color,
+      label: m.label,
+      type: 'module',
+      data: m
+    });
+    edges.push({ from: 'rrhh', to: key, color: m.color, width: 2 });
+
+    const subR = 110;
+    m.tables.forEach((tbl, ti) => {
+      const subAngle = angle + (ti - (m.tables.length - 1) / 2) * 0.35;
+      const tid = key + ':' + tbl;
+      const kind = tableKind(m, tbl);
+      nodes.push({
+        id: tid,
+        x: cx + Math.cos(angle) * radius + Math.cos(subAngle) * subR,
+        y: cy + Math.sin(angle) * radius + Math.sin(subAngle) * subR,
+        r: 22,
+        color: kind === 'orphan' ? '#2a1111' : '#1e1b4b',
+        border: TABLE_COLORS[kind],
+        label: tbl.length > 18 ? tbl.substring(0, 16) + '..' : tbl,
+        type: 'table',
+        dash: kind === 'orphan',
+        data: { module: key, table: tbl, fields: m.fields[tbl] || [], kind, note: (m.orphanTables || {})[tbl] }
+      });
+      edges.push({ from: key, to: tid, color: TABLE_COLORS[kind] + '40', width: 1, dash: kind === 'orphan' ? [4, 3] : null });
+    });
+  });
+
+  const missR = Math.min(W, H) * 0.45;
+  MISSING.forEach((miss, i) => {
+    const angle = (i / MISSING.length) * Math.PI * 2 + Math.PI / 5;
+    const colors = { critical: '#ef4444', warn: '#f59e0b', info: '#6b7280', done: '#22c55e' };
+    nodes.push({
+      id: 'missing:' + miss.id,
+      x: cx + Math.cos(angle) * missR,
+      y: cy + Math.sin(angle) * missR,
+      r: 30,
+      color: miss.done ? '#052e16' : '#1c1917',
+      border: colors[miss.status],
+      label: miss.label,
+      type: 'missing',
+      dash: !miss.done,
+      data: miss
+    });
+    edges.push({ from: 'rrhh', to: 'missing:' + miss.id, color: colors[miss.status] + '40', width: 1, dash: miss.done ? null : [6, 4] });
+  });
+
+  RELATIONS.forEach(r => {
+    edges.push({
+      from: r.from, to: r.to,
+      color: r.broken ? '#ef4444aa' : '#f43f5e50',
+      width: r.broken ? 2 : 1.5,
+      dash: r.broken ? [7, 5] : null,
+      label: r.label,
+      broken: r.broken
+    });
+  });
+}
+
+buildGraph();
+window.addEventListener('resize', () => { resize(); buildGraph(); });
+
+// ─── COORDS ────────────────────────────────────────────
+// draw() aplica translate(pan) + scale(zoom). Todo hit-test tiene que deshacer esa transformación,
+// o los nodos dejan de ser clickeables apenas hacés zoom (y aparecen hitboxes fantasma).
+function toWorld(sx, sy) {
+  return { x: (sx - pan.x) / zoom, y: (sy - pan.y) / zoom };
+}
+
+function findNode(sx, sy) {
+  const p = toWorld(sx, sy);
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const n = nodes[i];
+    const dx = p.x - n.x, dy = p.y - n.y;
+    if (dx * dx + dy * dy < n.r * n.r) return n;
+  }
+  return null;
+}
+
+// ─── INTERACTION ───────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  const n = findNode(e.clientX, e.clientY);
+  if (n) {
+    const p = toWorld(e.clientX, e.clientY);
+    dragging = n;
+    dragOffset.x = p.x - n.x;
+    dragOffset.y = p.y - n.y;
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (dragging) {
+    const p = toWorld(e.clientX, e.clientY);
+    dragging.x = p.x - dragOffset.x;
+    dragging.y = p.y - dragOffset.y;
+  }
+  const n = findNode(e.clientX, e.clientY);
+  hoveredNode = n;
+  if (n && n.type !== 'center') {
+    canvas.style.cursor = 'pointer';
+    showTooltip(n, e.clientX, e.clientY);
+  } else {
+    canvas.style.cursor = dragging ? 'grabbing' : 'default';
+    tooltip.style.display = 'none';
+  }
+});
+
+canvas.addEventListener('mouseup', () => { dragging = null; });
+canvas.addEventListener('mouseleave', () => { dragging = null; tooltip.style.display = 'none'; });
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  const next = Math.max(0.3, Math.min(3, zoom * delta));
+  const applied = next / zoom;   // el clamp puede recortar el delta: el pan debe usar el real
+  const mx = e.clientX, my = e.clientY;
+  pan.x = mx - (mx - pan.x) * applied;
+  pan.y = my - (my - pan.y) * applied;
+  zoom = next;
+}, { passive: false });
+
+function showTooltip(node, mx, my) {
+  let html = '';
+  if (node.type === 'module') {
+    const d = node.data;
+    const tag = d.status === 'ok'
+      ? '<span class="tag tag-ok">SIN PENDIENTES CONOCIDOS</span>'
+      : '<span class="tag tag-warn">CON SALVEDADES</span>';
+    html = `<h4>${d.label}</h4><p>${d.desc}</p>`
+      + `<p style="margin-top:6px">${d.tables.length} tablas · ${d.endpoints} endpoints</p>`
+      + `<p style="margin-top:4px">${tag}</p>`
+      + (d.fk ? `<p style="margin-top:4px;color:#7dd3fc">FK: ${d.fk}</p>` : '')
+      + `<p style="margin-top:4px">Permisos: ${d.perms.map(p => '<span class="tag">' + p + '</span>').join(' ')}</p>`
+      + (d.fixed ? d.fixed.map(f => `<p class="fix">✓ ${f}</p>`).join('') : '')
+      + (d.issues ? d.issues.map(i => `<p class="issue">▸ ${i}</p>`).join('') : '');
+  } else if (node.type === 'table') {
+    const d = node.data;
+    const kindTag = d.kind === 'orphan' ? '<span class="tag tag-error">HUÉRFANA</span>'
+      : d.kind === 'shared' ? '<span class="tag">COMPARTIDA</span>' : '';
+    html = `<h4>${d.table} ${kindTag}</h4><p>Módulo: ${d.module}</p>`
+      + (d.note ? `<p class="issue">▸ ${d.note}</p>` : '')
+      + `<p style="margin-top:4px">Campos: ${d.fields.map(f => '<span class="tag">' + f + '</span>').join(' ')}</p>`
+      + (d.fields.some(f => f.includes('⌀')) ? '<p class="issue">⌀ = columna declarada que nunca se escribe</p>' : '');
+  } else if (node.type === 'missing') {
+    const d = node.data;
+    const st = d.status === 'done' ? '<span class="tag tag-ok">RESUELTO</span>'
+      : d.status === 'critical' ? '<span class="tag tag-error">CRÍTICO</span>'
+      : d.status === 'warn' ? '<span class="tag tag-warn">IMPORTANTE</span>' : '<span class="tag">MEJORA</span>';
+    html = `<h4>${d.label}</h4><p>${d.desc}</p><p style="margin-top:4px">${st}</p>`
+      + `<p style="margin-top:4px">Tablas: ${d.tables.join(', ')}</p>`
+      + `<p style="margin-top:2px">Campos: ${d.fields.map(f => '<span class="tag">' + f + '</span>').join(' ')}</p>`;
+  }
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
+  const tx = mx + 16, ty = my + 16;
+  tooltip.style.left = (tx + tooltip.offsetWidth > W ? mx - tooltip.offsetWidth - 8 : tx) + 'px';
+  tooltip.style.top = (ty + tooltip.offsetHeight > H ? my - tooltip.offsetHeight - 8 : ty) + 'px';
+}
+
+// ─── DRAW ──────────────────────────────────────────────
+function draw() {
+  animT += 0.01;
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(pan.x, pan.y);
+  ctx.scale(zoom, zoom);
+
+  edges.forEach(e => {
+    const from = nodes.find(n => n.id === e.from);
+    const to = nodes.find(n => n.id === e.to);
+    if (!from || !to) return;
+    const dimmed = from._dim && to._dim;
+    ctx.globalAlpha = dimmed ? 0.12 : 1;
+
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.strokeStyle = e.color;
+    ctx.lineWidth = e.width || 1;
+    ctx.setLineDash(e.dash || []);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (e.label) {
+      const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
+      ctx.font = e.broken ? 'bold 9px system-ui' : '9px system-ui';
+      ctx.fillStyle = e.broken ? '#fca5a5' : '#64748b';
+      ctx.textAlign = 'center';
+      ctx.fillText(e.label, mx, my - 4);
+    }
+    ctx.globalAlpha = 1;
+  });
+
+  nodes.forEach(n => {
+    const isHovered = hoveredNode === n;
+    const pulse = Math.sin(animT * 2) * 3;
+    ctx.globalAlpha = n._dim ? 0.15 : 1;
+
+    if (n.type === 'module' || n.type === 'center') {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r + 8 + (isHovered ? 4 : 0), 0, Math.PI * 2);
+      const grad = ctx.createRadialGradient(n.x, n.y, n.r, n.x, n.y, n.r + 12);
+      grad.addColorStop(0, n.border + '30');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r + (isHovered ? 3 : 0) + (n.type === 'module' ? pulse * 0.3 : 0), 0, Math.PI * 2);
+    ctx.fillStyle = n.color;
+    ctx.fill();
+    ctx.strokeStyle = n.border;
+    ctx.lineWidth = n.type === 'center' ? 3 : 2;
+    if (n.dash) ctx.setLineDash([4, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (n.type === 'missing') {
+      ctx.font = `${n.r * 0.7}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = n.border;
+      ctx.fillText(n.data && n.data.done ? '✓' : '!', n.x, n.y);
+    }
+
+    ctx.font = n.type === 'center' ? 'bold 13px system-ui' : n.type === 'module' ? 'bold 11px system-ui' : '9px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#e2e8f0';
+    const lines = wrapText(n.label, n.r * 1.6);
+    lines.forEach((line, li) => {
+      ctx.fillText(line, n.x, n.y + (li - (lines.length - 1) / 2) * 12);
+    });
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.restore();
+  requestAnimationFrame(draw);
+}
+
+function wrapText(text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return [text];
+  const words = text.split(' ');
+  const lines = [];
+  let current = '';
+  words.forEach(w => {
+    const test = current ? current + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && current) {
+      lines.push(current);
+      current = w;
+    } else {
+      current = test;
+    }
+  });
+  if (current) lines.push(current);
+  return lines;
+}
+
+draw();
+
+// El encabezado anterior decía "18 tablas · 67 endpoints" — no coincidía ni con sus propios datos.
+// Se cuenta, no se escribe.
+(function renderCounts() {
+  const mods = Object.values(MODULES);
+  const tablas = mods.reduce((s, m) => s + m.tables.length, 0);
+  const endpoints = mods.reduce((s, m) => s + m.endpoints, 0);
+  const huerfanas = mods.reduce((s, m) => s + Object.keys(m.orphanTables || {}).length, 0);
+  const pendientes = MISSING.filter(m => !m.done).length;
+  const resueltos = MISSING.filter(m => m.done).length;
+  document.getElementById('counts').textContent =
+    `${mods.length} módulos · ${tablas} tablas (${huerfanas} huérfana) · ${endpoints} endpoints · ${pendientes} pendientes · ${resueltos} resuelto`;
+})();
+
+// ─── CONTROLS ──────────────────────────────────────────
+const buttons = document.querySelectorAll('#controls button');
+buttons.forEach(b => b.addEventListener('click', () => {
+  buttons.forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  const v = b.dataset.view;
+  if (v === 'reset') resetView();
+  else if (v === 'missing') centerOn('missing:' + MISSING[0].id);
+  else centerOn(v);
+}));
+
+function resetView() {
+  pan = { x: 0, y: 0 };
+  zoom = 1;
+  buildGraph();
+}
+
+function centerOn(id) {
+  const n = nodes.find(x => x.id === id);
+  if (!n) return;
+  pan.x = W / 2 - n.x * zoom;
+  pan.y = H / 2 - n.y * zoom;
+}
+
+// ─── SEARCH ────────────────────────────────────────────
+// `_dim` sólo servía si draw() lo leía. Antes se calculaba y se tiraba: escribir en el buscador
+// no producía ningún efecto visible.
+searchInput.addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) { nodes.forEach(n => n._dim = false); return; }
+  nodes.forEach(n => {
+    const d = n.data || {};
+    const fields = Array.isArray(d.fields) ? d.fields.join(' ') : Object.values(d.fields || {}).flat().join(' ');
+    const searchable = [n.label, d.desc, (d.tables || []).join(' '), d.table, fields, (d.perms || []).join(' ')]
+      .filter(Boolean).join(' ').toLowerCase();
+    n._dim = !searchable.includes(q);
+  });
+});
+</script>
+</body>
+</html>
