@@ -52,27 +52,43 @@ export class ConfigListsUseCase {
   }
 
   // ─── Photo Requirements ───────────────────────────────────────────────────
+  // La columna `required`/`active` es numérica (0/1) en la BD; la API habla en
+  // booleanos. Se convierte en la frontera: número→bool al salir, bool→número al
+  // entrar. (Pasar `true` a una columna `real` en Postgres tira 500.)
+  private toBool(v: unknown): boolean {
+    return v === true || v === 1 || v === '1' || v === 'true'
+  }
+
+  private normalizeOut(r: PhotoRequirement): PhotoRequirement {
+    return { ...r, required: this.toBool(r.required), active: true }
+  }
+
   async getPhotoRequirements(hotelId: string, roomType?: string): Promise<PhotoRequirement[]> {
-    const filters: Record<string, unknown> = { hotelId, active: true }
+    const filters: Record<string, unknown> = { hotelId, active: 1 }
     if (roomType) filters.roomType = roomType
     const configured = await this.photoReqRepo.findMany(filters)
-    return configured.length > 0 ? configured : this.defaultRequirements(hotelId)
+    const rows = configured.length > 0 ? configured : this.defaultRequirements(hotelId)
+    return rows.map((r) => this.normalizeOut(r))
   }
 
   async upsertPhotoRequirements(hotelId: string, items: Partial<PhotoRequirement>[]): Promise<PhotoRequirement[]> {
     const results: PhotoRequirement[] = []
     for (const item of items) {
+      // bool→número para la columna numérica.
+      const payload: Record<string, unknown> = { ...item }
+      if ('required' in item) payload.required = this.toBool(item.required) ? 1 : 0
+      if ('active' in item) payload.active = this.toBool(item.active) ? 1 : 0
       const existing = await this.photoReqRepo.findMany({
         hotelId,
         areaId: item.areaId,
         roomType: item.roomType || 'all',
       })
       if (existing.length > 0) {
-        const updated = await this.photoReqRepo.update(existing[0].id, item as any)
-        if (updated) results.push(updated)
+        const updated = await this.photoReqRepo.update(existing[0].id, payload as any)
+        if (updated) results.push(this.normalizeOut(updated))
       } else {
-        const created = await this.photoReqRepo.create({ ...item, hotelId, active: true } as any)
-        results.push(created)
+        const created = await this.photoReqRepo.create({ ...payload, hotelId, active: 1 } as any)
+        results.push(this.normalizeOut(created))
       }
     }
     return results
