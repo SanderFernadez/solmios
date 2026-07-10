@@ -2,6 +2,7 @@
 
 import type { RepositoryAdapter } from 'arckode-framework'
 import type { ConversionEventDTO, CreateConversionEventDTO, BookingAnalytics } from '../types'
+import { inDateRange } from '../../../shared/usecases/date-range'
 
 export class AnalyticsUseCase {
   constructor(
@@ -13,10 +14,9 @@ export class AnalyticsUseCase {
   }
 
   async getAnalytics(hotelId: string, from?: string, to?: string): Promise<BookingAnalytics> {
-    const events = await this.eventsRepo.findMany({
-      hotelId,
-      ...(from && to ? { createdAt: { $gte: from, $lte: to } } : {}),
-    })
+    // El rango se acota en memoria: el ORM no bindea `{ $gte }` (ver shared/usecases/date-range).
+    const all = await this.eventsRepo.findMany({ hotelId })
+    const events = inDateRange(all, 'createdAt', from, to)
 
     const searches = events.filter((e: ConversionEventDTO) => e.event === 'search').length
     const bookings = events.filter((e: ConversionEventDTO) => e.event === 'booking_created').length

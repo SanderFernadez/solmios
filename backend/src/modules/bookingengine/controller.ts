@@ -127,13 +127,4 @@ export class BookingengineController {
   async createPublicBookingDirect(req: HttpRequest) {
     return createPublicBookingDirect(this.orm, req.body, this.pushAvailability, this.auth)
   }
-
-  async dashboard(req: HttpRequest) {
-    this.logger.info('GET /api/booking-engine')
-    const user = req.user as any
-    const hotelId = user?.hotelId || (req.query as any)?.hotelId
-    if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
-    const result = await this.service.dashboard(this.orm, this.auth, hotelId, user)
-    return { status: 200, body: result }
-  }
 }

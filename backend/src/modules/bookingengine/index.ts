@@ -51,7 +51,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         router.get('/booking-engine/config', guard('settings', 'view'), (req: any) => controller.getConfig(req))
         router.put('/booking-engine/config', guard('settings', 'edit'), (req: any) => controller.updateConfig(req))
         router.get('/booking-engine/analytics', guard('reports', 'view'), (req: any) => controller.getAnalytics(req))
-        router.get('/api/booking-engine', guard('settings', 'view'), (req: any) => controller.dashboard(req))
+        // GET /api/booking-engine lo sirve el módulo `reservas`, que se registra antes y gana por orden de ruta.
       }
 
       // Público (sin auth)

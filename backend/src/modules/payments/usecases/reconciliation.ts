@@ -2,19 +2,7 @@
 
 import type { RepositoryAdapter } from 'arckode-framework'
 import type { PaymentDTO, ReconciliationEntry, ReconciliationResult } from '../types'
-
-/**
- * El WHERE del repositorio solo soporta igualdad: un `{ $gte, $lte }` se bindea crudo al driver
- * ("Binding expected string"). El rango se acota en memoria, comparando por día para que `to`
- * incluya los pagos de esa misma fecha.
- */
-function inDateRange(payments: PaymentDTO[], from?: string, to?: string): PaymentDTO[] {
-  if (!from && !to) return payments
-  const day = (iso: string) => (iso || '').slice(0, 10)
-  const gte = from ? day(from) : undefined
-  const lte = to ? day(to) : undefined
-  return payments.filter(p => (!gte || day(p.createdAt) >= gte) && (!lte || day(p.createdAt) <= lte))
-}
+import { inDateRange } from '../../../shared/usecases/date-range'
 
 export class ReconciliationUseCase {
   constructor(
@@ -28,6 +16,7 @@ export class ReconciliationUseCase {
 
     const payments = inDateRange(
       await this.paymentRepo.findMany({ hotelId, status: 'completed' }),
+      'createdAt',
       from,
       to,
     )

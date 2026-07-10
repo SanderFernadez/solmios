@@ -10,7 +10,6 @@ import type {
   BookingAnalytics,
 } from './types'
 import type { BookingengineSockets } from './sockets'
-import { getDashboardData } from './usecases/dashboard-data'
 import { ConfigUseCase } from './usecases/config'
 import { AvailabilityUseCase } from './usecases/availability'
 import { BookingUseCase } from './usecases/booking'
@@ -102,9 +101,5 @@ export class BookingengineService {
 
   async getAnalytics(hotelId: string, from?: string, to?: string): Promise<BookingAnalytics> {
     return this.analytics.getAnalytics(hotelId, from, to)
-  }
-
-  async dashboard(orm: any, auth: any | null, hotelId: string, user?: any): Promise<any> {
-    return getDashboardData(orm, auth, hotelId, user)
   }
 }

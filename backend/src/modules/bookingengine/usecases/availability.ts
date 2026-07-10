@@ -3,6 +3,7 @@
 import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type { AvailabilityQuery, AvailabilityResult, RoomTypeAvailability } from '../types'
+import { inDateRange } from '../../../shared/usecases/date-range'
 
 export class AvailabilityUseCase {
   constructor(
@@ -18,11 +19,10 @@ export class AvailabilityUseCase {
     const cached = await this.cache.get<AvailabilityResult>(cacheKey)
     if (cached) return cached
 
+    // El rango va en memoria: el ORM no bindea `{ $gte }` (ver shared/usecases/date-range).
     const today = new Date().toISOString().split('T')[0]
-    const items = await this.availabilityRepo.findMany({
-      hotelId: query.hotelId,
-      date: { $gte: query.checkIn, $lte: today },
-    })
+    const all = await this.availabilityRepo.findMany({ hotelId: query.hotelId })
+    const items = inDateRange(all, 'date', query.checkIn, today)
 
     const roomTypes = this.aggregateAvailability(items, query.adults ?? 2)
     const result: AvailabilityResult = {
