@@ -56,6 +56,13 @@ export interface Conversation {
    * cuántos mensajes —no cuántas conversaciones— tiene pendientes.
    */
   unreadCount: number
+  /** Nombre del interlocutor, resuelto en el backend. Antes lo cruzaba el
+   *  cliente contra un directorio filtrado por hotel y caía a "Usuario". */
+  name?: string
+  /** Avatar del interlocutor, o null. */
+  avatar?: string | null
+  /** Rol del interlocutor (para el color del avatar en la app). */
+  role?: string
   /** El canal del equipo se pinta distinto y va fijo arriba de la lista. */
   isTeam?: boolean
   /** Quién escribió el último mensaje. Solo útil en el canal del equipo. */
@@ -78,4 +85,12 @@ export interface ContactDTO {
  */
 export interface UserDirectory {
   listStaff(hotelId: string): Promise<ContactDTO[]>
+  /**
+   * Resuelve nombre/avatar/rol de usuarios por id, SIN filtrar por hotel.
+   *
+   * `listStaff` solo trae al staff del hotel; pero una conversación puede ser
+   * con alguien de afuera (el super_admin de la plataforma, que no está
+   * scopeado a ningún hotel). Sin esto, esos remitentes salían como "Usuario".
+   */
+  resolveNames(userIds: string[]): Promise<Map<string, ContactDTO>>
 }

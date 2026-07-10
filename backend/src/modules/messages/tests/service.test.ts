@@ -20,6 +20,16 @@ function msg(over: Partial<MessageDTO>): MessageDTO {
   }
 }
 
+/** Un `UserDirectory` completo a partir de un staff fijo. `resolveNames` filtra
+ *  de esa misma lista (en los tests no hay usuarios fuera del hotel). */
+function dirOf(staff: ContactDTO[]): UserDirectory {
+  return {
+    listStaff: async () => staff,
+    resolveNames: async (ids: string[]) =>
+      new Map(staff.filter((s) => ids.includes(s.id)).map((s) => [s.id, s])),
+  }
+}
+
 /** Repo que respeta los filtros exactos, como el ORM real. */
 function repoWith(rows: MessageDTO[], sink: any[] = []): RepositoryAdapter<MessageDTO> {
   return {
@@ -161,12 +171,30 @@ describe('MessagesService — mensajes sin leer', () => {
     const svc = new MessagesService(repoWith([
       msg({ id: 'm1', fromUserId: 'u2', toUserId: 'team:h1', isRead: false }),
     ]), log)
-    svc.setUserDirectory({ listStaff: async () => [{ id: 'u2', name: 'Rosa', role: 'housekeeper', avatar: null }] })
+    svc.setUserDirectory(dirOf([{ id: 'u2', name: 'Rosa', role: 'housekeeper', avatar: null }]))
 
     const convos = await svc.getConversations(me)
 
     expect(convos[0].isTeam).toBe(true)
     expect(convos[0].unreadCount).toBe(0)
+  })
+
+  // El nombre del interlocutor lo resuelve el backend, no el cliente: así no
+  // depende de que el remitente esté en el directorio filtrado por hotel.
+  it('adjunta el nombre del interlocutor a la conversación directa', async () => {
+    const svc = new MessagesService(repoWith([
+      msg({ id: 'm1', fromUserId: 'u2', toUserId: 'u1', message: 'hola', isRead: false }),
+    ]), log)
+    svc.setUserDirectory(dirOf([
+      { id: 'u2', name: 'Rosa Perez', role: 'housekeeper', avatar: '/uploads/rosa.jpg' },
+    ]))
+
+    const convos = await svc.getConversations(me)
+    const chat = convos.find((c) => c.userId === 'u2')!
+
+    expect(chat.name).toBe('Rosa Perez')
+    expect(chat.avatar).toBe('/uploads/rosa.jpg')
+    expect(chat.role).toBe('housekeeper')
   })
 })
 
@@ -174,6 +202,8 @@ describe('MessagesService.getContacts', () => {
   /** El directorio real lo cablea `connectors/messages-usuarios.ts` desde UsuariosService.list(). */
   const directoryOf = (staff: ContactDTO[]): UserDirectory => ({
     listStaff: async (hotelId: string) => (hotelId === 'h1' ? staff : []),
+    resolveNames: async (ids: string[]) =>
+      new Map(staff.filter((s) => ids.includes(s.id)).map((s) => [s.id, s])),
   })
 
   const staffOfH1: ContactDTO[] = [
@@ -217,12 +247,10 @@ describe('MessagesService.getContacts', () => {
 })
 
 describe('MessagesService — canal del equipo', () => {
-  const directory: UserDirectory = {
-    listStaff: async () => [
-      { id: 'u1', name: 'Yo Mismo', role: 'receptionist', avatar: null },
-      { id: 'u2', name: 'Rosa Perez', role: 'housekeeper', avatar: '/uploads/a.jpg' },
-    ],
-  }
+  const directory: UserDirectory = dirOf([
+    { id: 'u1', name: 'Yo Mismo', role: 'receptionist', avatar: null },
+    { id: 'u2', name: 'Rosa Perez', role: 'housekeeper', avatar: '/uploads/a.jpg' },
+  ])
 
   const withDirectory = (rows: MessageDTO[], sink: any[] = []) => {
     const svc = new MessagesService(repoWith(rows, sink), log)
@@ -291,5 +319,90 @@ describe('MessagesService — canal del equipo', () => {
     await withDirectory(rows, sink).markAsRead('m1', boss)
 
     expect(sink).toEqual([])
+  })
+})
+
+describe('MessagesService — no leídos del canal del equipo', () => {
+  const directory = dirOf([
+    { id: 'u1', name: 'Yo Mismo', role: 'receptionist', avatar: null },
+    { id: 'u2', name: 'Rosa', role: 'housekeeper', avatar: null },
+  ])
+
+  /** Repo de marcas de lectura en memoria. Muta el array recibido para que el
+   *  test pueda inspeccionar lo que se creó. */
+  function readsRepoWith(marks: any[] = []) {
+    const store = marks
+    return {
+      findMany: async (f: any) => store.filter((r) => Object.entries(f ?? {}).every(([k, v]) => r[k] === v)),
+      create: async (d: any) => { store.push(d); return d },
+      update: async (id: string, d: any) => {
+        const r = store.find((x) => x.id === id); if (r) Object.assign(r, d); return r
+      },
+    } as unknown as RepositoryAdapter<any>
+  }
+
+  const teamRows = [
+    msg({ id: 't1', fromUserId: 'u2', toUserId: 'team:h1', createdAt: '2026-07-01T10:00:00Z' }),
+    msg({ id: 't2', fromUserId: 'u2', toUserId: 'team:h1', createdAt: '2026-07-02T10:00:00Z' }),
+  ]
+  const build = (reads: any[]) => {
+    const svc = new MessagesService(repoWith(teamRows), log, readsRepoWith(reads))
+    svc.setUserDirectory(directory)
+    return svc
+  }
+
+  it('sin marca de lectura, cuenta todos los mensajes ajenos del grupo', async () => {
+    const convos = await build([]).getConversations(me)
+    const team = convos.find((c) => c.isTeam)!
+
+    expect(team.unreadCount).toBe(2)
+    expect(team.isRead).toBe(false)
+  })
+
+  it('con marca posterior al último mensaje, el grupo queda en 0', async () => {
+    const reads = [{ id: 'r1', hotelId: 'h1', userId: 'u1', channel: 'team', lastReadAt: '2026-07-03T00:00:00Z' }]
+    const convos = await build(reads).getConversations(me)
+    const team = convos.find((c) => c.isTeam)!
+
+    expect(team.unreadCount).toBe(0)
+    expect(team.isRead).toBe(true)
+  })
+
+  it('cuenta solo los mensajes posteriores a la marca', async () => {
+    const reads = [{ id: 'r1', hotelId: 'h1', userId: 'u1', channel: 'team', lastReadAt: '2026-07-01T12:00:00Z' }]
+    const convos = await build(reads).getConversations(me)
+
+    expect(convos.find((c) => c.isTeam)!.unreadCount).toBe(1)
+  })
+
+  it('mis propios mensajes al grupo no cuentan como no leídos', async () => {
+    const mine = [msg({ id: 't3', fromUserId: 'u1', toUserId: 'team:h1', createdAt: '2026-07-05T10:00:00Z' })]
+    const svc = new MessagesService(repoWith(mine), log, readsRepoWith([]))
+    svc.setUserDirectory(directory)
+
+    expect((await svc.getConversations(me)).find((c) => c.isTeam)!.unreadCount).toBe(0)
+  })
+
+  it('markTeamRead crea la marca la primera vez y la actualiza después', async () => {
+    const reads: any[] = []
+    const repo = readsRepoWith(reads)
+    const svc = new MessagesService(repoWith(teamRows), log, repo)
+    svc.setUserDirectory(directory)
+
+    await svc.markTeamRead(me)
+    expect(reads).toHaveLength(1)
+    expect(reads[0].channel).toBe('team')
+    const first = reads[0].lastReadAt
+
+    await svc.markTeamRead(me)
+    expect(reads).toHaveLength(1)          // no duplica
+    expect(reads[0].lastReadAt >= first).toBe(true)
+  })
+
+  it('sin repo de lecturas (tests viejos), el grupo no cuenta', async () => {
+    const svc = new MessagesService(repoWith(teamRows), log)  // sin readsRepo
+    svc.setUserDirectory(directory)
+
+    expect((await svc.getConversations(me)).find((c) => c.isTeam)!.unreadCount).toBe(0)
   })
 })

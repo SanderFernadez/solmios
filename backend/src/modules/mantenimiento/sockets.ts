@@ -8,4 +8,7 @@ export interface MantenimientoSockets {
   onMantenimientoCreated?: (data: MantenimientoDTO) => Promise<void>
   onMantenimientoUpdated?: (data: MantenimientoDTO) => Promise<void>
   onMantenimientoDeleted?: (id: string) => Promise<void>
+  /** El ticket pasó a manos de un técnico. Solo dispara cuando `assignedTo`
+   *  cambia, no en cada update — para avisarle a esa persona sin spamear. */
+  onMantenimientoAssigned?: (data: MantenimientoDTO) => Promise<void>
 }

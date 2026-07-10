@@ -40,6 +40,9 @@ export class ListUseCase {
     if (query.category) filters.category = query.category
     if (query.priority) filters.priority = query.priority
     if (query.roomId) filters.roomId = query.roomId
+    // El técnico pide sus tickets con `?assignedTo=<su id>`. Antes se ignoraba
+    // y veía TODOS los del hotel.
+    if (query.assignedTo) filters.assignedTo = query.assignedTo
     if (query.search) filters.title = { contains: query.search }
 
     const hotelId = await resolveHotelId(currentUser, this.userRepo)
@@ -61,7 +64,7 @@ export class ListUseCase {
     // CacheKey único por query (versión del hotel + todos los parámetros) → sin colisión
     // entre filtros que antes compartían la misma key y se servían data cruzada.
     const ver = await this.getVersion(hotelId || 'all')
-    const cacheKey = `mantenimiento:list:${hotelId || 'all'}:v${ver}:${query.status ?? '-'}:${query.category ?? '-'}:${query.priority ?? '-'}:${query.roomId ?? '-'}:${query.search ?? '-'}:${query.sortBy ?? '-'}:${query.sortOrder ?? '-'}:${page}:${limit}`
+    const cacheKey = `mantenimiento:list:${hotelId || 'all'}:v${ver}:${query.status ?? '-'}:${query.category ?? '-'}:${query.priority ?? '-'}:${query.roomId ?? '-'}:${query.assignedTo ?? '-'}:${query.search ?? '-'}:${query.sortBy ?? '-'}:${query.sortOrder ?? '-'}:${page}:${limit}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as MantenimientoPaginated
 

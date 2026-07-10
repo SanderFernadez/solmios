@@ -107,6 +107,8 @@ export class MantenimientoService {
     const item = await this.repo.create({ ...dto, reportedBy: currentUser.id } as any)
     await this.audit.log(item.id, dto.hotelId, currentUser.id, 'created', null, item.title)
     await this.sockets.onMantenimientoCreated?.(item)
+    // Si nace ya asignado a un técnico, avisale a esa persona.
+    if (item.assignedTo) await this.sockets.onMantenimientoAssigned?.(item)
     await this.listUc.invalidate(dto.hotelId)
     return item
   }
@@ -117,6 +119,10 @@ export class MantenimientoService {
     const item = await this.repo.update(id, dto as any)
     if (!item) throw new NotFoundError('Ticket de mantenimiento no encontrado')
     await this.sockets.onMantenimientoUpdated?.(item)
+    // Aviso dirigido: solo cuando el ticket cambia de técnico, no en cada edición.
+    if (dto.assignedTo && dto.assignedTo !== existing.assignedTo) {
+      await this.sockets.onMantenimientoAssigned?.(item)
+    }
     await this.listUc.invalidate(existing.hotelId)
     return item
   }

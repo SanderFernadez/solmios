@@ -142,6 +142,14 @@ async function createTablesBlock1(): Promise<void> {
     title TEXT NOT NULL, message TEXT, read INTEGER DEFAULT 0, sent INTEGER DEFAULT 0,
     date TEXT, channel TEXT, metadata TEXT, createdAt TEXT, updatedAt TEXT)`)
 
+  // Hasta dónde leyó cada usuario un canal (hoy: el grupo del equipo). Los no
+  // leídos del grupo son los mensajes posteriores a `lastReadAt`.
+  await exec(`CREATE TABLE IF NOT EXISTS message_reads (
+    id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, userId TEXT NOT NULL,
+    channel TEXT NOT NULL, lastReadAt TEXT, createdAt TEXT, updatedAt TEXT)`)
+  await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_message_reads_user_channel
+    ON message_reads (hotelId, userId, channel)`)
+
   // ─── AI Receptionist tables ─────────────────────────────────────
   await exec(`CREATE TABLE IF NOT EXISTS ai_conversations (
     id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, guestId TEXT, reservationId TEXT,

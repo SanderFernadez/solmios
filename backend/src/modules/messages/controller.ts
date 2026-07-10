@@ -56,6 +56,13 @@ export class MessagesController {
     return { status: 200, body: { message: 'Marcado como leído' } }
   }
 
+  /** El usuario abrió el canal del equipo: baja su contador de no leídos del grupo. */
+  async markTeamRead(req: HttpRequest) {
+    const user = req.user as any
+    await this.service.markTeamRead(user)
+    return { status: 200, body: { message: 'Grupo marcado como leído' } }
+  }
+
   async allConversations(req: HttpRequest) {
     const user = req.user as any
     const result = await this.service.getAllConversations(user)

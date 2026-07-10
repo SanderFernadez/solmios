@@ -70,6 +70,21 @@ describe('MantenimientoService', () => {
       const svc = new MantenimientoService(makeRepo(), log, silentCache, userRepoWithoutHotel, fakeAuth, makeAuditRepo())
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
     })
+
+    // El técnico pide `?assignedTo=<su id>`. Antes se ignoraba y veía todo el hotel.
+    it('filtra por assignedTo cuando se lo pasan', async () => {
+      let captured: Record<string, unknown> = {}
+      const repo = makeRepo({
+        paginate: async (filters: any) => {
+          captured = filters
+          return { data: [], total: 0, limit: 20, offset: 0, pages: 0 }
+        },
+      })
+      const svc = new MantenimientoService(repo, log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo())
+      await svc.list({ assignedTo: 'tech-1' }, hotelAdmin)
+
+      expect(captured.assignedTo).toBe('tech-1')
+    })
   })
 
   describe('getById', () => {

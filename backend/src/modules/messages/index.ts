@@ -8,6 +8,7 @@ import { registerMessagesModels } from './model'
 import { MessagesService } from './service'
 import { MessagesController } from './controller'
 import type { MessageDTO } from './types'
+import type { ReadMarker } from './usecases/team-reads'
 
 export { MessagesService }
 export type { MessageDTO, MessageUser, SendMessageDTO, Conversation } from './types'
@@ -39,8 +40,9 @@ export function MessagesModule(opts: { storage?: StorageService } = {}) {
       if (!auth) throw new Error('messages: auth dependency required')
       registerMessagesModels(orm)
       const repo = new OrmRepository<MessageDTO>(orm, 'Messages')
+      const readsRepo = new OrmRepository<ReadMarker>(orm, 'MessageReads')
       const log = logger.child('messages')
-      const service = new MessagesService(repo, log)
+      const service = new MessagesService(repo, log, readsRepo)
       const controller = new MessagesController(service, opts.storage)
 
       // Las rutas nacían sin auth: cualquiera sin token listaba los mensajes del hotel, y el
@@ -55,6 +57,8 @@ export function MessagesModule(opts: { storage?: StorageService } = {}) {
       // Las rutas literales van ANTES de '/:userId', si no el param captura 'contacts'/'upload'.
       router.get('/api/messages/contacts', staff, (req) => controller.contacts(req))
       router.post('/api/messages/upload', [...staff, bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.uploadPhoto(req))
+      // Literal antes de '/:userId', si no el param captura 'team'.
+      router.post('/api/messages/team/read', staff, (req) => controller.markTeamRead(req))
       router.get('/api/messages/:userId', staff, (req) => controller.messagesWith(req))
       router.post('/api/messages', staff, (req) => controller.send(req))
       router.put('/api/messages/:id/read', staff, (req) => controller.markRead(req))

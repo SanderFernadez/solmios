@@ -80,6 +80,8 @@ export interface MantenimientoQuery {
   category?: MaintenanceCategory
   priority?: MaintenancePriority
   roomId?: string
+  /** Tickets de un técnico. La app manda `?assignedTo=<users.id>` para "mis tickets". */
+  assignedTo?: string
   search?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'

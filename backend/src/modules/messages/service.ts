@@ -1,7 +1,10 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import { AuthError } from 'arckode-framework'
 import type { MessageDTO, MessageUser, Conversation, ContactDTO, UserDirectory, MessageWithSender } from './types'
+import type { MessagesSockets } from './sockets'
 import { TEAM_ALIAS, isTeamId, resolveRecipient, teamIdFor } from './usecases/team-channel'
+import { markTeamRead, type ReadMarker } from './usecases/team-reads'
+import { listConversations } from './usecases/list-conversations'
 
 export type { MessageDTO, MessageUser, Conversation, ContactDTO, UserDirectory, MessageWithSender } from './types'
 
@@ -14,13 +17,34 @@ export class MessagesService {
   /** Cableado por `connectors/messages-usuarios.ts`. Ausente = el módulo degrada, no falla. */
   private directory?: UserDirectory
 
+  private sockets: MessagesSockets = {}
+
   constructor(
     private readonly repo: RepositoryAdapter<MessageDTO>,
     private readonly logger: Logger,
+    /** Marcas de lectura por canal. Ausente (tests) → el team no cuenta no leídos. */
+    private readonly readsRepo?: RepositoryAdapter<ReadMarker>,
   ) {}
+
+  /** El usuario abrió el grupo: baja su contador de no leídos del canal. */
+  async markTeamRead(currentUser: MessageUser): Promise<void> {
+    await markTeamRead(this.readsRepo, currentUser)
+  }
 
   setUserDirectory(directory: UserDirectory): void {
     this.directory = directory
+  }
+
+  // ACUMULA handlers — nunca pisa el anterior.
+  setSockets(s: Partial<MessagesSockets>): void {
+    const next = s as Record<string, any>
+    const cur = this.sockets as Record<string, any>
+    for (const key of Object.keys(next)) {
+      const h = next[key]
+      if (!h) continue
+      const prev = cur[key]
+      cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
+    }
   }
 
   /** Compañeros del hotel a los que se les puede escribir. Excluye al propio usuario. */
@@ -55,61 +79,7 @@ export class MessagesService {
 
   /** Última conversación por interlocutor, más el canal del equipo si tiene mensajes. */
   async getConversations(currentUser: MessageUser): Promise<Conversation[]> {
-    const teamId = teamIdFor(currentUser.hotelId)
-    const [sent, received, team] = await Promise.all([
-      this.repo.findMany({ hotelId: currentUser.hotelId, fromUserId: currentUser.id }),
-      this.repo.findMany({ hotelId: currentUser.hotelId, toUserId: currentUser.id }),
-      this.repo.findMany({ hotelId: currentUser.hotelId, toUserId: teamId }),
-    ])
-
-    const byUser = new Map<string, MessageDTO>()
-    // Los que yo mandé al equipo salen en `sent`: agruparlos por interlocutor los
-    // mezclaría con los chats personales.
-    for (const msg of [...sent.filter((m) => !isTeamId(m.toUserId)), ...received]) {
-      const otherId = msg.fromUserId === currentUser.id ? msg.toUserId : msg.fromUserId
-      const existing = byUser.get(otherId)
-      if (!existing || new Date(msg.createdAt) > new Date(existing.createdAt)) byUser.set(otherId, msg)
-    }
-
-    // Los pendientes son los que me mandaron y no abrí, contados uno por uno.
-    // `received` ya está en memoria: contarlos acá no cuesta una query más.
-    const unreadByUser = new Map<string, number>()
-    for (const msg of received) {
-      if (msg.isRead) continue
-      unreadByUser.set(msg.fromUserId, (unreadByUser.get(msg.fromUserId) ?? 0) + 1)
-    }
-
-    const direct: Conversation[] = Array.from(byUser.entries()).map(([userId, lastMsg]) => ({
-      userId,
-      lastMessage: lastMsg.message,
-      lastPhoto: lastMsg.photoUrl,
-      lastTime: lastMsg.createdAt,
-      isRead: lastMsg.isRead,
-      direction: lastMsg.fromUserId === currentUser.id ? 'sent' : 'received',
-      unreadCount: unreadByUser.get(userId) ?? 0,
-    }))
-
-    if (team.length === 0) return direct
-
-    const lastTeam = [...team].sort(byCreatedAtAsc).at(-1)!
-    const staff = await this.staffById(currentUser.hotelId)
-    return [
-      {
-        userId: TEAM_ALIAS,
-        lastMessage: lastTeam.message,
-        lastPhoto: lastTeam.photoUrl,
-        lastTime: lastTeam.createdAt,
-        // El canal del equipo no lleva acuse de lectura: marcarlo "no leído" para
-        // siempre dejaría un badge permanente que nadie puede apagar. Por lo
-        // mismo no aporta pendientes al contador.
-        isRead: true,
-        unreadCount: 0,
-        direction: lastTeam.fromUserId === currentUser.id ? 'sent' : 'received',
-        isTeam: true,
-        lastSenderName: staff.get(lastTeam.fromUserId)?.name ?? '',
-      },
-      ...direct,
-    ]
+    return listConversations(this.repo, this.directory, this.readsRepo, currentUser)
   }
 
   /**
@@ -143,7 +113,7 @@ export class MessagesService {
     const recipient = resolveRecipient(toUserId, currentUser.hotelId)
 
     this.logger.info('Enviando mensaje', { from: currentUser.id, to: recipient, hasPhoto: Boolean(photoUrl) })
-    return this.repo.create({
+    const sent = await this.repo.create({
       fromUserId: currentUser.id,
       toUserId: recipient,
       message: message || '',
@@ -151,6 +121,16 @@ export class MessagesService {
       isRead: false,
       hotelId: currentUser.hotelId,
     } as Omit<MessageDTO, 'id'>)
+
+    // El aviso al teléfono es un efecto de costado: el mensaje ya está guardado.
+    // Si Firebase está caído, el destinatario lo verá igual al abrir la app.
+    try {
+      await this.sockets.onMessageSent?.(sent)
+    } catch (error) {
+      this.logger.warn('El aviso del mensaje falló', { id: sent.id, error: String(error) })
+    }
+
+    return sent
   }
 
   /** Solo el destinatario (o un manager) puede marcar como leído. */
