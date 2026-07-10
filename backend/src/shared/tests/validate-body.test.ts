@@ -51,12 +51,22 @@ describe('validateBody — object / json', () => {
     expect(out.metadata).toEqual({ a: 1 })
   })
 
-  it('`json` se comporta igual que `object`', () => {
+  it('`json` acepta un objeto', () => {
     const out = validateBody({ contents: { type: 'json' } }, { contents: { x: true } })
     expect(out.contents).toEqual({ x: true })
   })
 
-  it('un array NO es un objeto plano', () => {
+  // `packages.contents` arranca en `[]`: los modelos usan `json` tanto para objetos como para listas.
+  it('`json` también acepta un array', () => {
+    const out = validateBody({ contents: { type: 'json' } }, { contents: [{ label: 'Desayuno' }] })
+    expect(out.contents).toEqual([{ label: 'Desayuno' }])
+  })
+
+  it('`json` rechaza un escalar', () => {
+    expect(() => validateBody({ contents: { type: 'json' } }, { contents: 'texto' })).toThrow('Validation error')
+  })
+
+  it('`object` es estricto: un array NO es un objeto plano', () => {
     expect(() => validateBody({ metadata: { type: 'object' } }, { metadata: [1] })).toThrow('Validation error')
   })
 

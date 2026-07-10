@@ -34,7 +34,7 @@ const STRUCTURED: ReadonlySet<string> = new Set<StructuredType>(['array', 'objec
 
 const isStructured = (rule: BodyRule): rule is StructuredRule => STRUCTURED.has(rule.type)
 
-/** Un objeto plano: ni null, ni array. `json` y `object` son lo mismo para el body. */
+/** Un objeto plano: ni null, ni array. */
 const isPlainObject = (v: unknown): boolean => typeof v === 'object' && v !== null && !Array.isArray(v)
 
 function validateStructured(field: string, rule: StructuredRule, value: unknown): { value?: unknown; errors: string[] } {
@@ -45,9 +45,18 @@ function validateStructured(field: string, rule: StructuredRule, value: unknown)
       if (rule.max !== undefined && value.length > rule.max) return { errors: [`Maximum ${rule.max} items`] }
       return { value, errors: [] }
     }
-    case 'object':
-    case 'json': {
+    // `object` es estricto: un objeto plano. `metadata`, `preferences`, `emergencyContact`.
+    case 'object': {
       if (!isPlainObject(value)) return { errors: [rule.message ?? `${field} must be an object`] }
+      return { value, errors: [] }
+    }
+    // `json` es cualquier estructura: los modelos lo usan tanto para objetos como para listas
+    // (`packages.contents` arranca en `[]`). Rechazar el array convertía un descarte silencioso
+    // en un 400.
+    case 'json': {
+      if (!isPlainObject(value) && !Array.isArray(value)) {
+        return { errors: [rule.message ?? `${field} must be an object or an array`] }
+      }
       return { value, errors: [] }
     }
     case 'text': {
