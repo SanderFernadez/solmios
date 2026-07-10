@@ -550,8 +550,16 @@ async function executeTool(name: string, args: Record<string, unknown>, hotelId:
         notes: `${nights} noches × $${room?.basePrice || 0} + ${taxRate * 100}% tax`,
       }
 
-      if (repos.invoiceRepo) {
-        try { await repos.invoiceRepo.create(invoice) } catch {}
+      // Sin factura persistida no hay factura: anunciarle el número al huésped inventa un comprobante.
+      if (!repos.invoiceRepo) {
+        repos.logger?.error?.('La IA no puede emitir facturas: falta invoiceRepo', { hotelId, reservationId })
+        return { error: 'No se pudo emitir la factura' }
+      }
+      try {
+        await repos.invoiceRepo.create(invoice)
+      } catch (e: any) {
+        repos.logger?.error?.('No se pudo guardar la factura de la IA', { hotelId, reservationId, invoiceNumber, error: e?.message })
+        return { error: 'No se pudo emitir la factura' }
       }
 
       return {

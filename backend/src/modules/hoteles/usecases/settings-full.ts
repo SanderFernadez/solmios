@@ -5,10 +5,14 @@ function safeParse(v: any) { if (typeof v !== 'string') return v; try { return J
 export class SettingsFullUseCase {
   constructor(private readonly orm: any) {}
 
-  async execute(hotelId: string, auth?: { assertOwnership?: (hotel: any, user: any) => void }, user?: any): Promise<any> {
+  async execute(
+    hotelId: string,
+    auth?: { assertOwnership?: (ownerId: string, requesterId: string, role?: string, adminRole?: string) => void },
+    user?: any,
+  ): Promise<any> {
     const hotel = await this.orm.findById('Hotels', hotelId)
     if (!hotel) throw new NotFoundError('Hotel no encontrado')
-    if (user && auth?.assertOwnership) auth.assertOwnership(hotel, user)
+    if (user && auth?.assertOwnership) auth.assertOwnership(hotel.id, user.hotelId, user.role, 'super_admin')
     const [amenities, seasons, rates, blocks] = await Promise.all([
       this.orm.findMany('HotelAmenities', { hotelId, isActive: 1 }) as Promise<any[]>,
       this.orm.findMany('Seasons', { hotelId }) as Promise<any[]>,

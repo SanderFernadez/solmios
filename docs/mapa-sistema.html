@@ -68,18 +68,19 @@
 </header>
 
 <div class="tiles">
-  <div class="tile"><div class="n" style="color:var(--green)">22</div><div class="l">Conectores vivos</div></div>
-  <div class="tile"><div class="n" style="color:var(--green)">46</div><div class="l">Pantallas reales</div></div>
+  <div class="tile"><div class="n" style="color:var(--green)">23</div><div class="l">Conectores vivos</div></div>
+  <div class="tile"><div class="n" style="color:var(--green)">50</div><div class="l">Pantallas reales</div></div>
   <div class="tile"><div class="n" style="color:var(--amber)">8</div><div class="l">Pantallas que no guardan</div></div>
   <div class="tile"><div class="n" style="color:var(--red)">2</div><div class="l">Pantallas maqueta</div></div>
   <div class="tile"><div class="n" style="color:var(--red)">6</div><div class="l">Tablas que nadie lee</div></div>
-  <div class="tile"><div class="n" style="color:var(--red)">0</div><div class="l">Integraciones vivas en prod</div></div>
+  <div class="tile"><div class="n" style="color:var(--amber)">1</div><div class="l">Integración incompleta en código</div></div>
 </div>
 
 <div class="isla" style="border-left-color:var(--blue)">
   <h3>El titular</h3>
-  <p>El <strong>núcleo operativo y financiero está bien construido</strong>: 22 conectores, el dinero converge en <code>payments</code> y el balance cuadra contra caja y conciliación.</p>
-  <p>Lo que falla está en los bordes: <strong>ninguna integración externa tiene credenciales en producción</strong> (Stripe, Channex y el LLM tienen la variable vacía, y Channex apunta a <em>staging</em>), la pantalla de <strong>Opiniones llama a un endpoint que no existe</strong>, y hay <strong>seis tablas de datos que nadie lee</strong> — dos de ellas con plata adentro.</p>
+  <p>El <strong>núcleo operativo y financiero está bien construido</strong>: 23 conectores, el dinero converge en <code>payments</code> y el balance cuadra contra caja y conciliación.</p>
+  <p>Lo que falla está en los bordes: hay <strong>seis tablas de datos que nadie lee</strong> —dos de ellas con plata adentro—, <strong>nueve pantallas del panel de plataforma donde «Guardar» no guarda</strong>, y de las integraciones externas solo una está incompleta en el código: <strong>WhatsApp por Meta recibe mensajes pero no puede responder</strong>.</p>
+  <p><span class="ok">Corregido respecto de la versión anterior de este mapa</span> — decía que ninguna integración tenía credenciales «porque la variable del <code>.env</code> está vacía». Es el lugar equivocado: Stripe, Email, TTLock, la IA y WhatsApp <strong>leen sus credenciales de la tabla <code>configuration</code>, por hotel</strong>, no del entorno. Que la env var esté vacía no prueba que la integración esté muerta; hay que mirar esa tabla en la base de producción.</p>
 </div>
 
 <h2>El grafo</h2>
@@ -228,18 +229,21 @@
 </p>
 
 <h2>Integraciones externas — el código vs la realidad</h2>
-<p class="sub" style="margin-bottom:14px">El código de casi todas es real. Lo que falta son las credenciales: en el <code>.env</code> de producción esas variables <strong>están vacías</strong>.</p>
+<p class="sub" style="margin-bottom:14px">
+  El código de casi todas es real. La credencial de casi todas <strong>vive en la tabla <code>configuration</code>, por hotel</strong> — no en el <code>.env</code>.
+  Por eso «la variable está vacía» no alcanza para declarar muerta una integración: <strong>desde el código no se puede saber si está viva</strong>. Hay que abrir esa tabla en la base de producción.
+</p>
 <table>
-  <thead><tr><th>Integración</th><th>Código</th><th>¿Viva en producción?</th><th>Qué falta</th></tr></thead>
+  <thead><tr><th>Integración</th><th>Código</th><th>¿Dónde vive la credencial?</th><th>Qué falta</th></tr></thead>
   <tbody>
-    <tr><td><strong>Stripe</strong></td><td class="ok">Real · 3 flujos, 3 webhooks</td><td class="no">No — clave vacía</td><td><code>STRIPE_SECRET_KEY</code> y <code>STRIPE_WEBHOOK_SECRET</code></td></tr>
-    <tr><td><strong>Channex</strong> (OTAs)</td><td class="ok">Real · push ARI + ingesta</td><td class="no">No — clave vacía, y apunta a <em>staging</em></td><td><code>CHANNEX_API_KEY</code> · cambiar <code>CHANNEX_BASE_URL</code> a producción</td></tr>
-    <tr><td><strong>TTLock</strong> (cerraduras)</td><td class="ok">Real · crea y revoca PIN</td><td class="mid">Config presente en la base</td><td>Verificar que el <code>accessToken</code> OAuth siga vigente</td></tr>
-    <tr><td><strong>Email</strong></td><td class="ok">Real · SMTP + Resend, con cola y worker</td><td class="no">No — sin config</td><td><code>email_config</code> o <code>resend_api_key</code> por hotel</td></tr>
-    <tr><td><strong>IA</strong> (recepcionista y gerente)</td><td class="ok">Real · LLM vía HTTP (DeepSeek por defecto)</td><td class="no">No — clave vacía</td><td><code>DEEPSEEK_API_KEY</code> o <code>LLM_API_KEY</code></td></tr>
-    <tr><td><strong>WhatsApp — Baileys</strong></td><td class="ok">Real · recibe y responde</td><td class="mid">Arranca solo, sin sesión</td><td>Escanear el QR una vez</td></tr>
-    <tr><td><strong>WhatsApp — Meta</strong></td><td class="no">Incompleto</td><td class="no">No</td><td><strong>Recibe pero no puede responder</strong>: no existe el envío por <code>graph.facebook.com</code></td></tr>
-    <tr><td><strong>Facturación electrónica</strong></td><td class="no">Stub</td><td class="no">No</td><td>El adaptador fiscal existe y <strong>nadie lo llama</strong>. El NCF que se emite es un número local</td></tr>
+    <tr><td><strong>Stripe</strong></td><td class="ok">Real · 3 flujos, 3 webhooks</td><td><code>configuration.stripe_config</code> por hotel</td><td>Verificar la config en la base de prod</td></tr>
+    <tr><td><strong>Channex</strong> (OTAs)</td><td class="ok">Real · push ARI + ingesta</td><td><code>configuration</code>, con <code>CHANNEX_API_KEY</code> de reserva</td><td class="mid"><strong>Apunta a <em>staging</em></strong>: es el default de <code>CHANNEX_BASE_URL</code>, y el iframe OAuth lo tiene escrito a mano</td></tr>
+    <tr><td><strong>TTLock</strong> (cerraduras)</td><td class="ok">Real · crea y revoca PIN</td><td><code>configuration.ttlock_config</code></td><td>Verificar que el <code>accessToken</code> OAuth siga vigente</td></tr>
+    <tr><td><strong>Email</strong></td><td class="ok">Real · SMTP + Resend, con cola y worker</td><td><code>email_config</code> o <code>resend_api_key</code></td><td>Verificar la config en la base de prod</td></tr>
+    <tr><td><strong>IA</strong> (recepcionista y gerente)</td><td class="ok">Real · LLM vía HTTP (DeepSeek por defecto)</td><td><code>configuration</code>, con <code>LLM_API_KEY</code> de reserva</td><td>Verificar la config en la base de prod</td></tr>
+    <tr><td><strong>WhatsApp — Baileys</strong></td><td class="ok">Real · recibe y responde</td><td><code>configuration.baileysCredentials</code></td><td>Escanear el QR una vez</td></tr>
+    <tr><td><strong>WhatsApp — Meta</strong></td><td class="no">Incompleto</td><td><code>configuration</code> (guarda el <code>accessToken</code>… y no lo usa)</td><td class="no"><strong>Recibe pero no puede responder</strong>: <code>graph.facebook.com</code> no aparece en una sola línea del backend</td></tr>
+    <tr><td><strong>Facturación electrónica</strong></td><td class="no">Stub</td><td>—</td><td>El adaptador fiscal existe y <strong>nadie lo llama</strong>. El NCF que se emite es un número local</td></tr>
   </tbody>
 </table>
 
@@ -279,7 +283,7 @@
 </div>
 
 <h2>Las pantallas</h2>
-<p class="sub" style="margin-bottom:14px">De 57 pantallas, 46 funcionan de punta a punta. El problema se concentra en el panel de plataforma.</p>
+<p class="sub" style="margin-bottom:14px">De 60 pantallas, 50 funcionan de punta a punta. El problema se concentra en el panel de plataforma.</p>
 
 <div class="isla">
   <h3>Maquetas — muestran datos inventados</h3>
@@ -306,7 +310,30 @@
 </div>
 
 <h2>Lo que el grafo no vio</h2>
-<p class="sub" style="margin-bottom:14px">Dos bugs de runtime, invisibles leyendo el mapa de conexiones: los módulos estaban bien cableados, pero la llamada de adentro estaba mal escrita. Aparecieron al ejercitar los endpoints, no al leerlos.</p>
+<p class="sub" style="margin-bottom:14px">Bugs de runtime, invisibles leyendo el mapa de conexiones: los módulos estaban bien cableados, pero la llamada de adentro estaba mal escrita. Aparecieron al ejercitar los endpoints, no al leerlos.</p>
+
+<div class="isla good">
+  <h3>La pantalla de configuración del hotel devolvía 403 a su propio dueño — <span class="ok">arreglado</span></h3>
+  <p>El mismo bug de <code>assertOwnership</code> de más abajo, <strong>sobrevivió en un quinto lugar</strong>: <code>settings-full.ts</code> lo llamaba con dos objetos. <code>GET /api/settings/full</code> tiraba <strong>Forbidden para todos</strong>, incluso para el <code>super_admin</code>. Verificado contra la base real: el <code>hotel_admin</code> del hotel recibía <code>403</code>.</p>
+  <p>Se escondió del typecheck porque el propio parámetro <strong>declaraba la firma equivocada</strong> (<code>assertOwnership?: (hotel: any, user: any) =&gt; void</code>): TypeScript validaba la llamada contra una mentira. El tipo ahora dice la verdad.</p>
+  <p>No era solo una pantalla muerta. Como <code>?hotelId=</code> pisa al hotel del token, ese <code>assertOwnership</code> <strong>es la única defensa</strong> entre un hotel y la configuración de otro. Hoy: el dueño entra, un hotel ajeno recibe 403, el <code>super_admin</code> pasa — los tres casos con test.</p>
+</div>
+
+<div class="isla good">
+  <h3>Dos módulos peleaban por la misma ruta — <span class="ok">arreglado</span></h3>
+  <p><code>/api/booking-engine</code> estaba registrada <strong>dos veces</strong>: en <code>reservas</code> y en <code>bookingengine</code>. El router enruta por orden de registro y <code>reservas</code> se registra antes, así que ganaba siempre. El handler de <code>bookingengine</code> era <strong>inalcanzable</strong> — y adentro tenía el mismo <code>assertOwnership</code> roto, esperando a que alguien lo despertara.</p>
+  <p>Efecto secundario: la ruta quedaba protegida por <code>reservations:view</code>, no por el <code>settings:view</code> que su dueño declaraba. Se eliminó la ruta muerta y la cadena detrás de ella. El comportamiento observable no cambia.</p>
+</div>
+
+<div class="isla good">
+  <h3>La IA anunciaba facturas que no existían — <span class="ok">arreglado</span></h3>
+  <p>Hermano del bug del link de pago, en el mismo archivo y sin arreglar: <code>try { await repos.invoiceRepo.create(invoice) } catch {}</code>. Si la factura no se persistía, la IA <strong>igual le cantaba el número de factura al huésped</strong>. Ahora loguea y devuelve error: sin comprobante guardado no hay comprobante.</p>
+</div>
+
+<div class="isla warn">
+  <h3>Una trampa que quedó armada</h3>
+  <p><code>hoteles/usecases/settings.ts</code> tiene las <strong>mismas dos llamadas rotas</strong> a <code>assertOwnership</code>. Hoy no hace daño: <strong>no lo importa nadie</strong> —el service usa <code>hoteles-queries.ts</code>, que sí tiene la firma correcta—. Es código muerto que le explota al próximo que lo cablee.</p>
+</div>
 
 <div class="isla good">
   <h3>El sistema no podía hacer check-in — <span class="ok">arreglado</span></h3>
@@ -326,18 +353,22 @@
 <table>
   <thead><tr><th>#</th><th>Qué</th><th>Por qué</th><th>Tamaño</th></tr></thead>
   <tbody>
-    <tr><td>1</td><td>Cargar las credenciales en el <code>.env</code> de producción</td><td>Sin esto, Stripe, Channex, el email y la IA son código muerto en producción</td><td>minutos</td></tr>
-    <tr><td>2</td><td>Facturar los extras de la reserva</td><td>Se le muestra al huésped un cargo que nunca se cobra</td><td>medio</td></tr>
-    <tr><td>3</td><td>Persistir las escrituras del panel de plataforma</td><td>Nueve pantallas donde «Guardar» no guarda</td><td>grande</td></tr>
-    <tr><td>4</td><td>Que <code>payroll</code> lea <code>attendance</code></td><td>El cálculo de sueldos ignora las horas realmente fichadas</td><td>medio</td></tr>
-    <tr><td>5</td><td>Que la IA cree reservas por el módulo, no por el ORM</td><td>Se saltea limpieza, disponibilidad en Channex y apertura de folio</td><td>medio</td></tr>
-    <tr><td>6</td><td>Aplicar el descuento de los cupones en algún lado</td><td>Se validan y se consumen, pero ningún módulo de dinero los conoce</td><td>medio</td></tr>
+    <tr><td>1</td><td>Abrir la tabla <code>configuration</code> en la base de producción</td><td>Es donde viven de verdad las credenciales de Stripe, email, TTLock, IA y WhatsApp. Sin mirarla no se sabe qué integración está viva</td><td>minutos</td></tr>
+    <tr><td>2</td><td>Sacar a Channex de <em>staging</em></td><td>Es el default de <code>CHANNEX_BASE_URL</code>, y el iframe de OAuth lo tiene escrito a mano en el controller</td><td>chico</td></tr>
+    <tr><td>3</td><td>Facturar los extras de la reserva</td><td>Se le muestra al huésped un cargo que nunca se cobra</td><td>medio</td></tr>
+    <tr><td>4</td><td>Persistir las escrituras del panel de plataforma</td><td>Nueve pantallas donde «Guardar» no guarda</td><td>grande</td></tr>
+    <tr><td>5</td><td>Que <code>payroll</code> lea <code>attendance</code></td><td>El cálculo de sueldos ignora las horas realmente fichadas</td><td>medio</td></tr>
+    <tr><td>6</td><td>Que la IA cree reservas por el módulo, no por el ORM</td><td>Se saltea limpieza, disponibilidad en Channex y apertura de folio</td><td>medio</td></tr>
+    <tr><td>7</td><td>Aplicar el descuento de los cupones en algún lado</td><td>Se validan y se consumen, pero ningún módulo de dinero los conoce</td><td>medio</td></tr>
+    <tr><td>8</td><td>Borrar <code>hoteles/usecases/settings.ts</code></td><td>Código muerto con la llamada rota a <code>assertOwnership</code>, listo para reincidir</td><td>minutos</td></tr>
   </tbody>
 </table>
 
 <p class="foot">
   Método: lectura del código en <code>backend/src</code> y <code>frontend/src</code>, más pruebas contra <code>hotel.zx89.site</code> (login real, endpoints, base de datos).
   Los conteos de conectores, tablas huérfanas y pantallas salen de abrir cada archivo, no de suponer.
+  La revisión del 10/07/2026 ejercitó los endpoints contra la base local: así apareció el 403 de <code>/api/settings/full</code>, que leyendo el código se veía como una guarda correcta.
+  Un fix menor que no figura arriba: el contador de mensajes sin leer contaba conversaciones, no mensajes (<code>c5ac66f</code>).
 </p>
 
 </div>
