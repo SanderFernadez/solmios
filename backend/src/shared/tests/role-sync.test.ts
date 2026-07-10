@@ -89,6 +89,37 @@ describe('planRoleSync — refresca lo que sí debe', () => {
   })
 })
 
+describe('planRoleSync — --adopt', () => {
+  const adopt = (r: RoleRow, ids: string[]) => planRoleSync([r], DEFAULTS, { adopt: new Set(ids) })[0]
+
+  it('adopta una fila vieja sin huella cuando se la nombra', () => {
+    const p = adopt(role({ id: 'r1', permissions: ['billing:view'], defaultsHash: null }), ['r1'])
+
+    expect(p.action).toBe('adopt')
+    expect(p.nextPermissions).toEqual(DEFAULTS.hotel_admin)
+    expect(p.nextHash).toBe(permissionsHash(DEFAULTS.hotel_admin))
+  })
+
+  it('no adopta la que no se nombró', () => {
+    const p = adopt(role({ id: 'r1', permissions: ['billing:view'], defaultsHash: null }), ['otro'])
+    expect(p.action).toBe('review')
+  })
+
+  // Una fila CON huella que ya no matchea fue editada a conciencia. Adoptarla sería pisar esa
+  // decisión, así que `--adopt` no la alcanza.
+  it('NO adopta un rol personalizado, aunque se lo nombre', () => {
+    const p = adopt(role({ id: 'r1', permissions: ['billing:view'], defaultsHash: 'huella-vieja' }), ['r1'])
+    expect(p.action).toBe('skip-custom')
+  })
+
+  it('adoptar es idempotente: al segundo pase ya está al día', () => {
+    const p = adopt(role({ id: 'r1', permissions: ['billing:view'], defaultsHash: null }), ['r1'])
+    const aplicado = { ...p.role, permissions: p.nextPermissions!, defaultsHash: p.nextHash! }
+
+    expect(adopt(aplicado, ['r1']).action).toBe('up-to-date')
+  })
+})
+
 describe('planRoleSync — el sync es convergente', () => {
   it('tras aplicar el plan, un segundo sync no escribe nada', () => {
     const rows: RoleRow[] = [

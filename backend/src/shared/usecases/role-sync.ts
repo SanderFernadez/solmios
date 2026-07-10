@@ -25,6 +25,7 @@ export type SyncAction =
   | 'skip-custom'   // alguien lo editó: no se toca
   | 'skip-unknown'  // no es un rol de sistema, o no existe en el mapa
   | 'review'        // fila vieja sin huella y con permisos distintos: decide un humano
+  | 'adopt'         // una persona confirmó que esa fila vieja nunca se editó: se alinea al default
 
 export interface RoleRow {
   id: string
@@ -43,6 +44,14 @@ export interface RolePlan {
   nextHash?: string
 }
 
+export interface SyncOptions {
+  /**
+   * Ids de roles `review` que se adoptan al default, porque alguien confirmó que nadie los editó.
+   * Es la única forma de sacar una fila vieja del limbo: el script no puede saberlo solo.
+   */
+  adopt?: ReadonlySet<string>
+}
+
 /** Huella estable: el orden de los permisos no importa, el conjunto sí. */
 export function permissionsHash(permissions: string[]): string {
   const canonical = [...permissions].sort().join('\n')
@@ -52,7 +61,7 @@ export function permissionsHash(permissions: string[]): string {
 const sameSet = (a: string[], b: string[]): boolean =>
   a.length === b.length && permissionsHash(a) === permissionsHash(b)
 
-export function planRoleSync(rows: RoleRow[], defaults: Record<string, string[]>): RolePlan[] {
+export function planRoleSync(rows: RoleRow[], defaults: Record<string, string[]>, opts: SyncOptions = {}): RolePlan[] {
   return rows.map((role) => {
     const target = defaults[role.name]
 
@@ -69,11 +78,11 @@ export function planRoleSync(rows: RoleRow[], defaults: Record<string, string[]>
     }
 
     if (!role.defaultsHash) {
-      return {
-        role,
-        action: 'review' as const,
-        reason: 'fila vieja sin huella: no se puede distinguir un default viejo de una personalización',
-      }
+      // `--adopt` solo saca del limbo a las filas SIN huella. Una fila con huella que ya no matchea
+      // fue editada a conciencia, y adoptarla sería pisar esa decisión.
+      return opts.adopt?.has(role.id)
+        ? { role, action: 'adopt' as const, reason: 'adoptado: confirmaste que nadie lo editó', nextPermissions: target, nextHash: targetHash }
+        : { role, action: 'review' as const, reason: 'fila vieja sin huella: no se puede distinguir un default viejo de una personalización' }
     }
 
     if (role.defaultsHash === permissionsHash(current)) {
@@ -91,4 +100,4 @@ export function planRoleSync(rows: RoleRow[], defaults: Record<string, string[]>
 }
 
 /** Solo estas acciones escriben en la base. */
-export const WRITES: ReadonlySet<SyncAction> = new Set<SyncAction>(['update', 'stamp'])
+export const WRITES: ReadonlySet<SyncAction> = new Set<SyncAction>(['update', 'stamp', 'adopt'])

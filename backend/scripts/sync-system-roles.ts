@@ -7,8 +7,12 @@
 //
 // Nunca pisa una personalización: ver `src/shared/usecases/role-sync.ts` para las reglas.
 //
-//   bun run scripts/sync-system-roles.ts            # dry-run: muestra el plan, no escribe
-//   bun run scripts/sync-system-roles.ts --apply    # escribe
+//   bun run scripts/sync-system-roles.ts                  # dry-run: muestra el plan, no escribe
+//   bun run scripts/sync-system-roles.ts --apply          # escribe
+//   bun run scripts/sync-system-roles.ts --adopt=<id>     # alinea una fila `review` al default
+//
+// `--adopt` es para las filas viejas sin huella: el script no puede saber si son un default viejo o
+// una personalización, así que lo confirma una persona. Una vez adoptadas, la huella se encarga.
 //
 // Motor: DATABASE_URL → Postgres · DB_PATH → SQLite. Idempotente: correrlo dos veces no escribe la
 // segunda vez.
@@ -17,6 +21,9 @@ import { DEFAULT_ROLE_PERMISSIONS } from '../src/shared/permissions'
 import { planRoleSync, WRITES, type RoleRow, type RolePlan } from '../src/shared/usecases/role-sync'
 
 const APPLY = process.argv.includes('--apply')
+const ADOPT = new Set(
+  process.argv.filter((a) => a.startsWith('--adopt=')).map((a) => a.slice('--adopt='.length)),
+)
 
 /** Postgres pliega los identificadores no entrecomillados a minúsculas; SQLite conserva el camelCase. */
 function pick(row: Record<string, unknown>, name: string): unknown {
@@ -86,7 +93,7 @@ async function sqliteStore(path: string): Promise<Store> {
 }
 
 const ICON: Record<string, string> = {
-  update: '🔄', stamp: '🏷️ ', 'up-to-date': '✅', 'skip-custom': '🔒', 'skip-unknown': '➖', review: '⚠️ ',
+  update: '🔄', stamp: '🏷️ ', 'up-to-date': '✅', 'skip-custom': '🔒', 'skip-unknown': '➖', review: '⚠️ ', adopt: '🤝',
 }
 
 function report(plans: RolePlan[]): void {
@@ -100,7 +107,8 @@ function report(plans: RolePlan[]): void {
   if (review.length > 0) {
     console.log(`\n⚠️  ${review.length} rol(es) sin huella y con permisos distintos al default.`)
     console.log('   No se tocan: puede ser un default viejo o una personalización, y no hay forma de saberlo.')
-    console.log('   Si sabés que nadie los editó, comparalos a mano y actualizalos; el próximo sync ya los va a manejar.')
+    console.log('   Si confirmás que nadie los editó, adoptalos al default:')
+    for (const p of review) console.log(`     --adopt=${p.role.id}   # ${p.role.name} · ${p.role.permissions.length} perms`)
   }
 }
 
@@ -110,7 +118,14 @@ async function main(): Promise<void> {
 
   try {
     const rows = (await store.readRoles()).map(toRoleRow)
-    const plans = planRoleSync(rows, DEFAULT_ROLE_PERMISSIONS)
+    const plans = planRoleSync(rows, DEFAULT_ROLE_PERMISSIONS, { adopt: ADOPT })
+
+    const desconocidos = [...ADOPT].filter((id) => !rows.some((r) => r.id === id))
+    if (desconocidos.length > 0) {
+      console.error(`\n❌ --adopt con ids que no existen: ${desconocidos.join(', ')}`)
+      process.exitCode = 1
+      return
+    }
 
     console.log(`\n${APPLY ? 'APLICANDO' : 'DRY-RUN (usá --apply para escribir)'} · ${rows.length} roles · motor ${url ? 'postgres' : 'sqlite'}\n`)
     report(plans)
