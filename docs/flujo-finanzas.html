@@ -27,7 +27,7 @@
 
   .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;
           background:linear-gradient(180deg,#101a30,#0c1424)}
-  svg{display:block;min-width:1120px}
+  svg{display:block;min-width:1150px}
   .nlabel{font:600 13.5px ui-sans-serif,system-ui,sans-serif;fill:var(--txt)}
   .nsub{font:11px ui-monospace,Menlo,monospace;fill:var(--muted)}
   .elabel{font:11px ui-sans-serif,system-ui,sans-serif;fill:var(--muted)}
@@ -71,14 +71,36 @@
   </p>
 </header>
 
+<h2 style="margin-top:0">Qué cambió</h2>
+<table>
+  <thead><tr><th>Commit</th><th>Qué estaba mal</th><th>Verificado con</th></tr></thead>
+  <tbody>
+    <tr><td><code>b236e06</code> conciliación</td><td>Un POST sin <code>entries</code> reventaba el endpoint. El rango de fechas mandaba <code>{$gte,$lte}</code> a un WHERE que solo soporta igualdad.</td><td>8 tests (antes 3 en rojo)</td></tr>
+    <tr><td><code>0677ada</code> Stripe → payments</td><td>Un cobro por Link de Pago no creaba fila en <code>payments</code>: invisible para la conciliación.</td><td>tests + dedup por sesión</td></tr>
+    <tr><td><code>19dec02</code> gastos → caja</td><td>Un gasto en efectivo no salía del cajón. Egresos en dos silos.</td><td>API + tabla</td></tr>
+    <tr><td><code>c4c05c6</code> reportes</td><td><code>getNightAudit</code> sumaba <strong>toda la historia</strong> y la llamaba «del día». <code>ctx.expenses</code> se cargaba y ninguna estrategia lo leía.</td><td>API contra la base</td></tr>
+    <tr><td><code>d578df8</code> balance</td><td>No existía un estado de resultados.</td><td>API: cuadra con los 3 gastos reales</td></tr>
+    <tr><td><code>4548af8</code> payroll</td><td><code>calculate</code> devolvía <strong>500 siempre</strong>: nunca se pudo calcular una nómina.</td><td>API: 200, y 400 sin <code>employees</code></td></tr>
+    <tr><td><code>0000917</code> payroll → gastos</td><td>Pagar la nómina no dejaba rastro. El balance ignoraba el mayor egreso del hotel.</td><td>run → gasto → movimiento de caja</td></tr>
+    <tr><td><code>65c4e2f</code> validación</td><td><strong>22 campos</strong> que el usuario carga se descartaban en silencio, incluidas las líneas de una factura.</td><td>API: <code>notes</code> multilínea y 2 <code>invoice_items</code></td></tr>
+    <tr><td><code>7d30fa5</code> motor de reservas</td><td>El widget cobra con Stripe de verdad y ese dinero solo vivía en la tabla <code>bookings</code>.</td><td>tests + dedup por sesión</td></tr>
+    <tr><td><code>b3af265</code> permisos</td><td>32 endpoints inalcanzables para el dueño del hotel. Y la tabla <code>roles</code>, si matcheara, lo dejaba sin acceso a nada.</td><td>API: DELETE gasto 403 → 204</td></tr>
+  </tbody>
+</table>
+<p style="color:var(--muted);font-size:13px;margin-top:12px">
+  <code>arckode analyze</code> ✅ · typecheck 0 errores · <strong>643 tests, 0 fallos</strong> (eran 483) · <code>vue-tsc</code> 0 · build ok.
+  Nada de esto está en producción todavía: requiere <code>RUN_MIGRATE</code> (6 columnas nuevas) y deploy.
+</p>
+
+<h2>El grafo</h2>
 <div class="legend">
   <span><i class="sw" style="border-color:var(--green)"></i> Conectado y verificado</span>
-  <span><i class="sw" style="border-color:var(--amber);border-top-style:dashed"></i> Conexión parcial o débil</span>
+  <span><i class="sw" style="border-color:var(--amber);border-top-style:dashed"></i> Conexión parcial — y correcta que lo sea</span>
   <span><i class="sw" style="border-color:var(--red);border-top-style:dashed"></i> Isla — no existe la conexión</span>
 </div>
 
 <div class="scroll">
-<svg viewBox="0 0 1120 740" role="img" aria-label="Grafo del flujo de dinero">
+<svg viewBox="0 0 1150 880" role="img" aria-label="Grafo del flujo de dinero">
   <defs>
     <marker id="ag" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto">
       <path d="M0,0 L7,3 L0,6 z" fill="#3ddc84"/></marker>
@@ -92,108 +114,118 @@
       .er{stroke:#ff5c6c;stroke-width:2;fill:none;stroke-dasharray:6 4;marker-end:url(#ar)}
       .box{fill:#16213e;stroke:#2a3c66;stroke-width:1.5;rx:9}
       .hub{fill:#1c2c50;stroke:#5aa9ff;stroke-width:2;rx:9}
-      .bad{fill:#241420;stroke:#ff5c6c;stroke-width:1.5;stroke-dasharray:5 3;rx:9}
+      .sink{fill:#16213e;stroke:#3ddc84;stroke-width:1.5;rx:9}
     </style>
   </defs>
 
-  <!-- ENTRADAS -->
-  <rect class="box" x="30" y="40" width="170" height="58"/>
-  <text class="nlabel" x="115" y="64" text-anchor="middle">Night Audit (cron 3h)</text>
-  <text class="nsub" x="115" y="82" text-anchor="middle">night-audit-cron.ts</text>
+  <!-- ENTRADAS: de acá nace el dinero -->
+  <rect class="box" x="30" y="40" width="180" height="58"/>
+  <text class="nlabel" x="120" y="64" text-anchor="middle">Night Audit · cron 3h</text>
+  <text class="nsub" x="120" y="82" text-anchor="middle">cargo de habitación</text>
 
-  <rect class="box" x="30" y="300" width="170" height="58"/>
-  <text class="nlabel" x="115" y="324" text-anchor="middle">Reserva · checkout</text>
-  <text class="nsub" x="115" y="342" text-anchor="middle">modules/reservas</text>
+  <rect class="box" x="30" y="240" width="180" height="58"/>
+  <text class="nlabel" x="120" y="264" text-anchor="middle">Reserva · checkout</text>
+  <text class="nsub" x="120" y="282" text-anchor="middle">modules/reservas</text>
 
-  <rect class="box" x="30" y="558" width="170" height="58"/>
-  <text class="nlabel" x="115" y="582" text-anchor="middle">Link de Pago · Stripe</text>
-  <text class="nsub" x="115" y="600" text-anchor="middle">payment-requests</text>
+  <rect class="box" x="30" y="430" width="180" height="58"/>
+  <text class="nlabel" x="120" y="454" text-anchor="middle">Link de Pago · Stripe</text>
+  <text class="nsub" x="120" y="472" text-anchor="middle">payment-requests</text>
+
+  <rect class="box" x="30" y="590" width="180" height="58"/>
+  <text class="nlabel" x="120" y="614" text-anchor="middle">Motor de Reservas</text>
+  <text class="nsub" x="120" y="632" text-anchor="middle">widget público · Stripe</text>
+
+  <rect class="box" x="30" y="760" width="180" height="58"/>
+  <text class="nlabel" x="120" y="784" text-anchor="middle">Nóminas</text>
+  <text class="nsub" x="120" y="802" text-anchor="middle">payroll · markAsPaid</text>
 
   <!-- CENTRO -->
-  <rect class="box" x="300" y="300" width="170" height="58"/>
-  <text class="nlabel" x="385" y="324" text-anchor="middle">Folios In-House</text>
-  <text class="nsub" x="385" y="342" text-anchor="middle">cuenta corriente</text>
+  <rect class="box" x="320" y="240" width="180" height="58"/>
+  <text class="nlabel" x="410" y="264" text-anchor="middle">Folios In-House</text>
+  <text class="nsub" x="410" y="282" text-anchor="middle">cuenta corriente</text>
 
-  <rect class="box" x="580" y="158" width="170" height="58"/>
-  <text class="nlabel" x="665" y="182" text-anchor="middle">Facturación</text>
-  <text class="nsub" x="665" y="200" text-anchor="middle">modules/facturas</text>
+  <rect class="box" x="600" y="100" width="180" height="58"/>
+  <text class="nlabel" x="690" y="124" text-anchor="middle">Facturación</text>
+  <text class="nsub" x="690" y="142" text-anchor="middle">modules/facturas</text>
 
-  <rect class="hub" x="570" y="398" width="190" height="62"/>
-  <text class="nlabel" x="665" y="420" text-anchor="middle" style="fill:#5aa9ff">PAYMENTS</text>
-  <text class="nsub" x="665" y="438" text-anchor="middle">fuente de verdad</text>
-  <text class="nsub" x="665" y="452" text-anchor="middle">del dinero</text>
+  <rect class="hub" x="590" y="380" width="200" height="64"/>
+  <text class="nlabel" x="690" y="402" text-anchor="middle" style="fill:#5aa9ff">PAYMENTS</text>
+  <text class="nsub" x="690" y="420" text-anchor="middle">fuente de verdad</text>
+  <text class="nsub" x="690" y="434" text-anchor="middle">del dinero</text>
 
-  <rect class="box" x="600" y="620" width="170" height="58"/>
-  <text class="nlabel" x="685" y="644" text-anchor="middle">Gastos</text>
-  <text class="nsub" x="685" y="662" text-anchor="middle">tabla expenses</text>
+  <rect class="box" x="360" y="760" width="180" height="58"/>
+  <text class="nlabel" x="450" y="784" text-anchor="middle">Gastos</text>
+  <text class="nsub" x="450" y="802" text-anchor="middle">tabla expenses</text>
 
   <!-- SALIDAS -->
-  <rect class="box" x="880" y="100" width="170" height="58"/>
-  <text class="nlabel" x="965" y="124" text-anchor="middle">Audit Log</text>
-  <text class="nsub" x="965" y="142" text-anchor="middle">entity = invoice</text>
+  <rect class="box" x="930" y="60" width="190" height="58"/>
+  <text class="nlabel" x="1025" y="84" text-anchor="middle">Audit Log</text>
+  <text class="nsub" x="1025" y="102" text-anchor="middle">entity = invoice</text>
 
-  <rect class="box" x="880" y="380" width="170" height="58"/>
-  <text class="nlabel" x="965" y="404" text-anchor="middle">Caja</text>
-  <text class="nsub" x="965" y="422" text-anchor="middle">arqueo · turnos</text>
+  <rect class="sink" x="930" y="380" width="190" height="58"/>
+  <text class="nlabel" x="1025" y="404" text-anchor="middle">Conciliación</text>
+  <text class="nsub" x="1025" y="422" text-anchor="middle">extracto vs payments</text>
 
-  <rect class="box" x="880" y="490" width="170" height="58"/>
-  <text class="nlabel" x="965" y="512" text-anchor="middle">Conciliación</text>
-  <text class="nsub" x="965" y="530" text-anchor="middle">extracto vs payments</text>
+  <rect class="sink" x="930" y="530" width="190" height="58"/>
+  <text class="nlabel" x="1025" y="554" text-anchor="middle">Caja</text>
+  <text class="nsub" x="1025" y="572" text-anchor="middle">arqueo · solo efectivo</text>
 
-  <rect class="box" x="880" y="620" width="170" height="58"/>
-  <text class="nlabel" x="965" y="644" text-anchor="middle">Reportes</text>
-  <text class="nsub" x="965" y="662" text-anchor="middle">facturado vs cobrado</text>
+  <rect class="sink" x="930" y="700" width="190" height="58"/>
+  <text class="nlabel" x="1025" y="724" text-anchor="middle">Reportes · Balance</text>
+  <text class="nsub" x="1025" y="742" text-anchor="middle">facturado vs cobrado</text>
 
-  <!-- ARISTAS VERDES -->
-  <path class="eg" d="M115,100 C115,200 200,265 296,310"/>
-  <text class="elabel" x="128" y="222">postRoomCharges</text>
-  <text class="elabel" x="128" y="236">dedup por fecha</text>
+  <!-- ARISTAS VERDES: el dinero llega a payments o a expenses -->
+  <path class="eg" d="M120,100 C120,190 210,238 314,256"/>
+  <text class="elabel" x="206" y="196">postRoomCharges</text>
+  <text class="elabel" x="206" y="210">dedup por fecha</text>
 
-  <path class="eg" d="M202,329 L294,329"/>
-  <text class="elabel" x="248" y="320" text-anchor="middle">settleFolio</text>
+  <path class="eg" d="M212,269 L312,269"/>
+  <text class="elabel" x="262" y="260" text-anchor="middle">settleFolio</text>
 
-  <path class="eg" d="M470,316 C520,300 540,240 576,206"/>
-  <text class="elabel" x="474" y="264">closeAndCreateInvoice</text>
+  <path class="eg" d="M502,252 C540,230 572,190 610,164"/>
+  <text class="elabel" x="500" y="216">closeAndCreateInvoice</text>
 
-  <path class="eg" d="M470,344 C510,362 530,392 566,412"/>
-  <text class="elabel" x="470" y="396">applyPayment</text>
-  <text class="elabel" x="470" y="410" style="fill:#3ddc84">no best-effort</text>
+  <path class="eg" d="M502,288 C540,320 574,350 614,374"/>
+  <text class="elabel" x="470" y="330">applyPayment</text>
+  <text class="elabel" x="470" y="344" style="fill:#3ddc84">no best-effort</text>
 
-  <path class="eg" d="M665,218 L665,394"/>
-  <text class="elabel" x="675" y="290">pay → recordPayment</text>
-  <text class="elabel" x="675" y="304">createPayment(completed)</text>
+  <path class="eg" d="M690,160 L690,374"/>
+  <text class="elabel" x="700" y="250">pay → recordPayment</text>
+  <text class="elabel" x="700" y="264">createPayment(completed)</text>
 
-  <path class="eg" d="M752,176 C800,160 840,142 876,132"/>
-  <text class="elabel" x="762" y="152">auditSafely</text>
+  <path class="eg" d="M782,118 C840,110 880,102 922,96"/>
+  <text class="elabel" x="790" y="98">auditSafely</text>
 
-  <path class="eg" d="M762,442 C800,470 840,492 876,506"/>
-  <text class="elabel" x="768" y="492">status = completed</text>
+  <path class="eg" d="M212,455 C340,448 480,432 584,418"/>
+  <text class="elabel" x="248" y="428">recordStripePayment · dedup stripeSessionId</text>
 
-  <path class="eg" d="M772,652 L876,650"/>
-  <text class="elabel" x="824" y="642" text-anchor="middle">Expenses</text>
+  <path class="eg" d="M212,617 C360,600 480,478 584,442"/>
+  <text class="elabel" x="250" y="560">postBookingPayment · dedup stripeSessionId</text>
 
-  <!-- ARISTAS AMBAR -->
-  <path class="ea" d="M762,415 L876,406"/>
-  <text class="elabel warn" x="770" y="386">onPaymentCompleted</text>
-  <text class="elabel warn" x="770" y="399">solo method = 'cash'</text>
+  <path class="eg" d="M212,789 L354,789"/>
+  <text class="elabel" x="216" y="762">onRunPaid → gasto `staff`</text>
+  <text class="elabel" x="216" y="828">monto = totalNet, no totalGross</text>
 
-  <path class="ea" d="M578,166 C420,86 210,120 122,296"/>
-  <text class="elabel warn" x="300" y="104" text-anchor="middle">solo escribe notes — sin estado estructurado</text>
+  <path class="eg" d="M792,396 C840,398 880,400 922,403"/>
+  <text class="elabel" x="800" y="382">status = completed</text>
 
-  <!-- ARISTAS ROJAS -->
-  <path class="ea" d="M200,570 C280,510 330,420 380,362"/>
-  <text class="elabel warn" x="206" y="486">bridge: FolioCharges +</text>
-  <text class="elabel warn" x="206" y="500">Reservations (repo crudo)</text>
+  <path class="eg" d="M690,448 C690,610 780,700 922,728"/>
+  <text class="elabel" x="700" y="618">ingresado (cobrado)</text>
 
-  <path class="eg" d="M202,600 C380,660 490,530 564,452"/>
-  <text class="elabel" x="390" y="602" text-anchor="middle" style="fill:#3ddc84">recordStripePayment → asiento en payments (dedup por stripeSessionId)</text>
+  <path class="eg" d="M542,806 C660,824 800,790 922,752"/>
+  <text class="elabel" x="600" y="830">egresos pagados</text>
 
-  <path class="ea" d="M672,616 C712,552 800,478 874,436"/>
-  <text class="elabel warn" x="686" y="546">solo si es</text>
-  <text class="elabel warn" x="686" y="560">efectivo</text>
+  <!-- ARISTAS ÁMBAR: conexión parcial, y está bien que lo sea -->
+  <path class="ea" d="M792,428 C850,462 900,494 942,524"/>
+  <text class="elabel warn" x="756" y="502">onPaymentCompleted</text>
+  <text class="elabel warn" x="756" y="516">solo method = 'cash'</text>
 
-  <path class="eg" d="M665,464 C665,566 762,606 874,638"/>
-  <text class="elabel" x="700" y="592" style="fill:#3ddc84">ingresado (cobrado) — cuadra con caja y conciliación</text>
+  <path class="ea" d="M542,776 C660,756 800,650 922,584"/>
+  <text class="elabel warn" x="548" y="722">solo si el gasto</text>
+  <text class="elabel warn" x="548" y="736">es en efectivo</text>
+
+  <path class="ea" d="M598,108 C420,46 170,96 118,236"/>
+  <text class="elabel warn" x="340" y="66" text-anchor="middle">solo escribe notes — sin estado estructurado</text>
 </svg>
 </div>
 
@@ -215,6 +247,12 @@
     <p>Checkout Stripe por reserva. El cobro se asienta en <code>payments</code> vía puerto, deduplicado por <code>stripeSessionId</code>. Sigue parcheando reserva y folio con repos crudos: deuda F10 parcial.</p></div>
   <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Gastos</h3>
     <p>Egresos del hotel. Si está pagado y es en efectivo, sale del cajón y aparece en el arqueo. Tarjeta y transferencia ya están bancarizadas y no lo tocan.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Nóminas</h3>
+    <p>Pagar una corrida asienta un gasto de categoría <code>staff</code> por el <code>totalNet</code>. Las retenciones se remiten después: son su propio gasto cuando se pagan.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Motor de Reservas</h3>
+    <p>El widget público cobra con Stripe Checkout. El cobro se asienta en <code>payments</code>, deduplicado por la sesión. No toca caja: ya está bancarizado.</p></div>
+  <div class="card"><h3><i class="dot" style="background:var(--green)"></i>Balance</h3>
+    <p>Estado de resultados en base caja: <code>cobrado − gastos pagados</code>. Lo facturado sin cobrar y los gastos impagos se muestran aparte: son compromisos, no plata movida.</p></div>
 </div>
 
 <h2>Los dos caminos del dinero</h2>
@@ -302,7 +340,9 @@ que necesita el puerto ya inyectado.</p>
     <tr><td>Links de Pago</td><td><code>payment-requests</code></td><td class="ok">Sí</td><td class="mid">No (no es efectivo)</td></tr>
     <tr><td>Caja</td><td><code>cash</code></td><td class="ok">Recibe</td><td>—</td></tr>
     <tr><td>Gastos</td><td><code>gastos</code></td><td>No aplica</td><td class="mid">Sí, si es efectivo</td></tr>
-    <tr><td>Reportes</td><td><code>reports</code></td><td class="ok">Sí (Ingresado)</td><td class="ok">Cuadra</td></tr>
+    <tr><td>Reportes · Balance</td><td><code>reports</code></td><td class="ok">Sí (Ingresado)</td><td class="ok">Cuadra</td></tr>
+    <tr><td>Nóminas <span style="color:var(--muted)">(fuera del menú)</span></td><td><code>payroll</code></td><td>Vía gasto</td><td class="mid">Sí, si es efectivo</td></tr>
+    <tr><td>Motor de Reservas <span style="color:var(--muted)">(público)</span></td><td><code>bookingengine</code></td><td class="ok">Sí</td><td class="mid">No (no es efectivo)</td></tr>
     <tr><td>Night Audit</td><td><code>reports</code> + <code>folios</code></td><td class="mid">Vía folio</td><td class="mid">Vía folio</td></tr>
   </tbody>
 </table>
