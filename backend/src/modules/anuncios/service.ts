@@ -74,7 +74,13 @@ export class AnunciosService {
     if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
       throw new AuthError('No autorizado para crear en otro hotel')
     }
-    const item = await this.repo.create(dto as any)
+    // La fecha se pone acá, por parámetro, no por default de columna: el default
+    // portable de "ahora" es este, no `DEFAULT datetime('now')` (SQLite-only, que
+    // en Postgres guardaba el string literal). Ver CLAUDE.md, reglas de migración.
+    const item = await this.repo.create({
+      ...dto,
+      date: dto.date ?? new Date().toISOString(),
+    } as any)
     await this.sockets.onAnunciosCreated?.(item)
     await this.cache.delete(`anuncios:list:${dto.hotelId}`)
     return item

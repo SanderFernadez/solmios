@@ -120,7 +120,7 @@ async function createTablesBlock1(): Promise<void> {
 
   await exec(`CREATE TABLE IF NOT EXISTS groups (
     id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL, leadGuestId TEXT,
-    totalRooms INTEGER DEFAULT 1, checkIn TEXT, checkOut TEXT, status TEXT DEFAULT 'pendiente',
+    totalRooms INTEGER DEFAULT 1, checkIn TEXT, checkOut TEXT, status TEXT DEFAULT 'pending',
     totalAmount REAL DEFAULT 0, notes TEXT, createdAt TEXT, updatedAt TEXT)`)
 
   await exec(`CREATE TABLE IF NOT EXISTS maintenance (
@@ -785,9 +785,9 @@ async function seedBase(): Promise<void> {
   const HOTELS_SQL = "INSERT INTO hotels (id, name, address, phone, email, country, currency, timezone, checkIn, checkOut, plan, status, roomsCount, active, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
   if (!(await exists('hotels', HOTEL_ID)))
-    await run(HOTELS_SQL, [HOTEL_ID, 'Hotel Boutique Palma', 'Calle Principal 123, Punta Cana', '+1 809 555 0100', 'admin@caribeparadise.com', 'DO', 'USD', 'America/Santo_Domingo', '15:00', '12:00', 'professional', 'activo', 12, 1, now(), now()])
+    await run(HOTELS_SQL, [HOTEL_ID, 'Hotel Boutique Palma', 'Calle Principal 123, Punta Cana', '+1 809 555 0100', 'admin@caribeparadise.com', 'DO', 'USD', 'America/Santo_Domingo', '15:00', '12:00', 'professional', 'active', 12, 1, now(), now()])
   if (!(await exists('hotels', HOTEL2_ID)))
-    await run(HOTELS_SQL, [HOTEL2_ID, 'SolmiOS Corp', 'Oficinas Centrales', '+1 809 555 0000', 'admin@solmios.com', 'DO', 'USD', 'America/Santo_Domingo', '14:00', '11:00', 'enterprise', 'activo', 0, 1, now(), now()])
+    await run(HOTELS_SQL, [HOTEL2_ID, 'SolmiOS Corp', 'Oficinas Centrales', '+1 809 555 0000', 'admin@solmios.com', 'DO', 'USD', 'America/Santo_Domingo', '14:00', '11:00', 'enterprise', 'active', 0, 1, now(), now()])
 
   const users: Array<[string, string, string, string, string, string]> = [
     ['user-super-0000-0000-000000000001', 'Super Admin', 'admin@solmios.com', SUPER_HASH, 'super_admin', HOTEL2_ID],
@@ -800,14 +800,14 @@ async function seedBase(): Promise<void> {
         [id, name, email, password, role, hotelId, now(), now()])
 
   const rooms: Array<[string, string, string, string, number, string, number]> = [
-    ['room-0001-0000-0000-000000000001', '101', 'Suite Junior', 'suite', 120, 'disponible', 2],
-    ['room-0002-0000-0000-000000000002', '102', 'Doble Estandar', 'doble', 85, 'disponible', 2],
-    ['room-0003-0000-0000-000000000003', '103', 'Simple', 'simple', 65, 'disponible', 1],
-    ['room-0004-0000-0000-000000000004', '201', 'Suite Ejecutiva', 'suite', 180, 'disponible', 2],
-    ['room-0005-0000-0000-000000000005', '202', 'Doble Deluxe', 'doble', 110, 'disponible', 2],
-    ['room-0006-0000-0000-000000000006', '203', 'Triple', 'triple', 130, 'disponible', 3],
-    ['room-0007-0000-0000-000000000007', '204', 'Suite Premium', 'suite', 220, 'disponible', 2],
-    ['room-0008-0000-0000-000000000008', '205', 'Doble Vista Mar', 'doble', 135, 'disponible', 2],
+    ['room-0001-0000-0000-000000000001', '101', 'Suite Junior', 'suite', 120, 'available', 2],
+    ['room-0002-0000-0000-000000000002', '102', 'Doble Estandar', 'double', 85, 'available', 2],
+    ['room-0003-0000-0000-000000000003', '103', 'Simple', 'single', 65, 'available', 1],
+    ['room-0004-0000-0000-000000000004', '201', 'Suite Ejecutiva', 'suite', 180, 'available', 2],
+    ['room-0005-0000-0000-000000000005', '202', 'Doble Deluxe', 'double', 110, 'available', 2],
+    ['room-0006-0000-0000-000000000006', '203', 'Triple', 'triple', 130, 'available', 3],
+    ['room-0007-0000-0000-000000000007', '204', 'Suite Premium', 'suite', 220, 'available', 2],
+    ['room-0008-0000-0000-000000000008', '205', 'Doble Vista Mar', 'double', 135, 'available', 2],
   ]
   for (const [id, number, name, type, basePrice, status, capacity] of rooms)
     if (!(await exists('rooms', id)))
@@ -828,11 +828,11 @@ async function seedBase(): Promise<void> {
 
   const d = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10)
   const reservations: Array<[string, string, string, string, string, string, string, number, number, number]> = [
-    ['res-0001-0000-0000-000000000001', 'guest-0001-0000-0000-000000000001', 'room-0001-0000-0000-000000000001', d(-1), d(3), 'confirmada', 'booking', 480, 100, 2],
-    ['res-0002-0000-0000-000000000002', 'guest-0002-0000-0000-000000000002', 'room-0002-0000-0000-000000000002', d(1), d(4), 'confirmada', 'directa', 255, 0, 2],
-    ['res-0003-0000-0000-000000000003', 'guest-0003-0000-0000-000000000003', 'room-0004-0000-0000-000000000004', d(5), d(10), 'pendiente', 'airbnb', 900, 200, 2],
-    ['res-0004-0000-0000-000000000004', 'guest-0004-0000-0000-000000000004', 'room-0005-0000-0000-000000000005', d(-7), d(-3), 'checkout', 'directa', 440, 100, 2],
-    ['res-0005-0000-0000-000000000005', 'guest-0005-0000-0000-000000000005', 'room-0003-0000-0000-000000000003', d(10), d(12), 'pendiente', 'directa', 130, 0, 1],
+    ['res-0001-0000-0000-000000000001', 'guest-0001-0000-0000-000000000001', 'room-0001-0000-0000-000000000001', d(-1), d(3), 'checked_in', 'booking', 480, 100, 2],
+    ['res-0002-0000-0000-000000000002', 'guest-0002-0000-0000-000000000002', 'room-0002-0000-0000-000000000002', d(1), d(4), 'confirmed', 'direct', 255, 0, 2],
+    ['res-0003-0000-0000-000000000003', 'guest-0003-0000-0000-000000000003', 'room-0004-0000-0000-000000000004', d(5), d(10), 'pending', 'airbnb', 900, 200, 2],
+    ['res-0004-0000-0000-000000000004', 'guest-0004-0000-0000-000000000004', 'room-0005-0000-0000-000000000005', d(-7), d(-3), 'checked_out', 'direct', 440, 100, 2],
+    ['res-0005-0000-0000-000000000005', 'guest-0005-0000-0000-000000000005', 'room-0003-0000-0000-000000000003', d(10), d(12), 'pending', 'direct', 130, 0, 1],
   ]
   for (const [id, guestId, roomId, checkIn, checkOut, status, channel, totalAmount, deposit, adults] of reservations)
     if (!(await exists('reservations', id)))

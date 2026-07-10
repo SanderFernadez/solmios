@@ -372,7 +372,7 @@ const stats = computed(() => {
   const g = groups.value
   const rooms = g.reduce((s: number, x: any) => s + (x.rooms ?? 0), 0)
   const total = g.reduce((s: number, x: any) => s + (x.total ?? 0), 0)
-  const pend = g.filter((x: any) => x.status === 'Pendiente').length
+  const pend = g.filter((x: any) => x.status === 'pending').length
   return [
     { label: 'Grupos Activos', value: g.length, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_USERS_GROUP },
     { label: 'Habitaciones Bloqueadas', value: rooms, color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_BED },
@@ -498,7 +498,7 @@ const createGroup = async () => {
       totalRooms: newGroup.value.rooms || 1,
       checkIn: newGroup.value.checkIn,
       checkOut: newGroup.value.checkOut,
-      status: 'pendiente',
+      status: 'pending',
       totalAmount: (newGroup.value.rooms || 1) * (nights > 0 ? nights : 1) * (newGroup.value.rate || 0),
       notes: newGroup.value.email ? `Contacto: ${newGroup.value.contact} / ${newGroup.value.email}` : '',
     })

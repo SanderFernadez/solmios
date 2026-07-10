@@ -163,21 +163,21 @@
           <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Categoría *</label>
             <select v-model="newTicket.category" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
               <option value="">Seleccionar categoría</option>
-              <option value="Técnico">Técnico</option>
-              <option value="Integraciones">Integraciones (Channex, OTAs)</option>
-              <option value="Facturación">Facturación Electrónica</option>
-              <option value="Configuración">Configuración del Sistema</option>
-              <option value="Capacitación">Capacitación / Ayuda</option>
-              <option value="Sugerencia">Sugerencia de Mejora</option>
-              <option value="Otro">Otro</option>
+              <option value="technical">Técnico</option>
+              <option value="technical">Integraciones (Channex, OTAs)</option>
+              <option value="billing">Facturación Electrónica</option>
+              <option value="technical">Configuración del Sistema</option>
+              <option value="general">Capacitación / Ayuda</option>
+              <option value="general">Sugerencia de Mejora</option>
+              <option value="general">Otro</option>
             </select>
           </div>
           <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Prioridad *</label>
             <select v-model="newTicket.priority" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
-              <option value="Baja">Baja — Sugerencia o mejora</option>
-              <option value="Normal">Normal — Duda o configuración</option>
-              <option value="Alta">Alta — Funcionalidad bloqueada</option>
-              <option value="Urgente">Urgente — Sistema caído o overbooking</option>
+              <option value="low">Baja — Sugerencia o mejora</option>
+              <option value="medium">Normal — Duda o configuración</option>
+              <option value="high">Alta — Funcionalidad bloqueada</option>
+              <option value="urgent">Urgente — Sistema caído o overbooking</option>
             </select>
           </div>
           <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Asunto *</label><input v-model="newTicket.subject" type="text" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Descripción corta del problema"></div>
@@ -226,7 +226,7 @@ const replyMessage = ref('')
 
 const newTicket = ref({
   category: '',
-  priority: 'Normal',
+  priority: 'medium',
   subject: '',
   description: '',
   files: [] as string[]
@@ -234,19 +234,19 @@ const newTicket = ref({
 
 const statusFilters = [
   { label: 'Todos', value: 'all' },
-  { label: 'Abiertos', value: 'Abierto' },
-  { label: 'En Progreso', value: 'En Progreso' },
-  { label: 'Resueltos', value: 'Resuelto' },
-  { label: 'Cerrados', value: 'Cerrado' }
+  { label: 'Abiertos', value: 'open' },
+  { label: 'En Progreso', value: 'in_progress' },
+  { label: 'Resueltos', value: 'resolved' },
+  { label: 'Cerrados', value: 'closed' }
 ]
 
 const metrics = computed(() => {
   const t = tickets.value
-  const en = (s: string) => t.filter((x: any) => x.status === s).length
+  const en = (s: string) => t.filter((x: any) => x.rawStatus === s).length
   return [
-    { label: 'Abiertos', value: en('Abierto'), color: 'text-orange', bg: 'bg-orange/10', icon: ICON_CLOCK_ALERT },
-    { label: 'En Progreso', value: en('En Progreso'), color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_LOADER },
-    { label: 'Resueltos', value: en('Resuelto'), color: 'text-teal', bg: 'bg-teal/10', icon: ICON_CHECK_CIRCLE },
+    { label: 'Abiertos', value: en('open'), color: 'text-orange', bg: 'bg-orange/10', icon: ICON_CLOCK_ALERT },
+    { label: 'En Progreso', value: en('in_progress'), color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_LOADER },
+    { label: 'Resueltos', value: en('resolved'), color: 'text-teal', bg: 'bg-teal/10', icon: ICON_CHECK_CIRCLE },
     { label: 'Total', value: t.length, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_TICKET },
   ]
 })
@@ -260,8 +260,8 @@ const quickLinks = [
 
 const tickets = ref<any[]>([])
 
-const PRI_EN: Record<string, string> = { alta: 'Alta', urgente: 'Urgente', media: 'Normal', baja: 'Baja' }
-const EST_EN: Record<string, string> = { abierto: 'Abierto', en_progreso: 'En Progreso', cerrado: 'Resuelto' }
+const PRI_EN: Record<string, string> = { low: 'Baja', medium: 'Normal', high: 'Alta', urgent: 'Urgente' }
+const EST_EN: Record<string, string> = { open: 'Abierto', in_progress: 'En Progreso', resolved: 'Resuelto', closed: 'Cerrado' }
 
 onMounted(loadData)
 
@@ -270,13 +270,15 @@ async function loadData() {
   try {
     const { data } = await OperationsService.tickets.list(hotelId.value)
     tickets.value = data.map((t: any) => {
-      const msgs = (() => { try { return JSON.parse(t.mensajes || '[]') } catch { return [] } })()
+      const raw = t.messages ?? t.mensajes
+      const msgs = Array.isArray(raw) ? raw : (() => { try { return JSON.parse(raw || '[]') } catch { return [] } })()
       return {
         id: t.id,
         subject: t.subject,
         description: t.description ?? '',
         priority: PRI_EN[t.priority] ?? 'Normal',
         status: EST_EN[t.status] ?? 'Abierto',
+        rawStatus: t.status,
         category: t.category,
         createdAt: t.createdAt ? String(t.createdAt).replace('T', ' ').slice(0, 16) : '',
         assignedTo: t.assignedTo ?? '',
@@ -289,7 +291,7 @@ async function loadData() {
 
 const filteredTickets = computed(() => {
   let result = tickets.value
-  if (activeFilter.value !== 'all') result = result.filter(t => t.status === activeFilter.value)
+  if (activeFilter.value !== 'all') result = result.filter(t => t.rawStatus === activeFilter.value)
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     result = result.filter(t => t.subject.toLowerCase().includes(q) || String(t.id).includes(q))
@@ -311,7 +313,7 @@ const sendReply = async () => {
     const newReply = { author: 'Hotel Admin', date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }), message: replyMessage.value }
     const updatedReplies = [...tickets.value[idx].replies, newReply]
     try {
-      await OperationsService.tickets.update(selectedTicket.value.id, { mensajes: JSON.stringify(updatedReplies) })
+      await OperationsService.tickets.update(selectedTicket.value.id, { messages: updatedReplies })
       tickets.value[idx].replies = updatedReplies
       toast.success('Respuesta enviada')
     } catch { toast.error('Error al enviar respuesta') }
@@ -322,7 +324,7 @@ const sendReply = async () => {
 
 const closeTicket = async () => {
   try {
-    await OperationsService.tickets.update(selectedTicket.value.id, { status: 'cerrado' })
+    await OperationsService.tickets.update(selectedTicket.value.id, { status: 'closed' })
     showViewModal.value = false
     toast.success('Ticket cerrado')
     await loadData()
@@ -348,13 +350,13 @@ const createTicket = async () => {
     await OperationsService.tickets.create({
       subject: newTicket.value.subject,
       description: newTicket.value.description || '',
-      category: newTicket.value.category || 'tecnico',
-      priority: newTicket.value.priority || 'media',
-      status: 'abierto',
+      category: newTicket.value.category || 'general',
+      priority: newTicket.value.priority || 'medium',
+      status: 'open',
       hotelId: hotelId.value,
       userId: auth.user?.id || 'guest',
     })
-    newTicket.value = { category: '', priority: 'Normal', subject: '', description: '', files: [] }
+    newTicket.value = { category: '', priority: 'medium', subject: '', description: '', files: [] }
     showNewTicketModal.value = false
     toast.success('Ticket creado')
     await loadData()
