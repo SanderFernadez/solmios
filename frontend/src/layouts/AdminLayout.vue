@@ -202,7 +202,7 @@ const nonavItems = [
     label: 'Planning', icon: ICONS.calendar, path: '/panel/planning', roles: ['hotel_admin', 'receptionist'],
   },
   {
-    label: 'Channel Manager', icon: ICONS.link, path: '/panel/channel-manager', roles: ['hotel_admin'],
+    label: 'Channel', icon: ICONS.link, path: '/panel/channel-manager', roles: ['hotel_admin'],
   },
   {
     label: 'Reservas', icon: ICONS.calendar, roles: ['hotel_admin', 'receptionist'],
