@@ -1,5 +1,6 @@
 import { createModule, OrmRepository } from 'arckode-framework'
 import type { LockDeviceDTO, LockCodeDTO } from './types'
+import { registerTtlockModels } from './model'
 import { TtlockService } from './service'
 import { TtlockController } from './controller'
 import { TtlockQueries } from './usecases/ttlock-queries'
@@ -23,6 +24,10 @@ export function TtlockModule() {
     },
     create({ logger, orm, cache, router, auth }) {
       if (!auth) throw new Error('ttlock: auth dependency required')
+      // ttlock es el dueño canónico de LockDevices/LockCodes (ya no viven en shared/models). Sin
+      // este registro, `orm.findMany('LockCodes', ...)` — que hace el detalle de una reserva — falla
+      // con "Modelo 'LockCodes' no definido" al abrir cualquier reserva desde Planning.
+      registerTtlockModels(orm)
       const log = logger.child('ttlock')
       const lockDevicesRepo = new OrmRepository<LockDeviceDTO>(orm, 'LockDevices')
       const lockCodesRepo = new OrmRepository<LockCodeDTO>(orm, 'LockCodes')
