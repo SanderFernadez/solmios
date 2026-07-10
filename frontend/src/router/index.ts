@@ -211,7 +211,7 @@ const router = createRouter({
           path: 'opiniones',
           name: 'opiniones',
           component: () => import('@/pages/opiniones/index.vue'),
-          meta: { requiresHotelAdmin: true },
+          meta: { requiresHotelAuth: true },
         },
         {
           path: 'gastos',
@@ -286,7 +286,7 @@ const router = createRouter({
           path: 'planning',
           name: 'planning',
           component: () => import('@/pages/planning/index.vue'),
-          meta: { requiresHotelAdmin: true },
+          meta: { requiresHotelAuth: true },
         },
         {
           path: 'channel-manager',
