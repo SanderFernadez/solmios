@@ -1,14 +1,16 @@
-// connectors/reservas-huespedes.ts
-import type { ConnectorContext } from 'arckode-framework'
+// connectors/reservas-huespedes.ts — solo wiring. La lógica vive en shared/usecases/credit-stay-to-crm.
+import type { ConnectorContext, Logger } from 'arckode-framework'
+import { creditStayToCrm, isCheckedOut, type CrmCheckoutPort } from '../shared/usecases/credit-stay-to-crm'
 
-export function reservasHuespedesConnector(ctx: ConnectorContext): void {
-  const reservas = ctx.resolveModule<{ setSockets: (s: any) => void }>('reservas')
+export function reservasHuespedesConnector(logger: Logger): (ctx: ConnectorContext) => void {
+  return (ctx: ConnectorContext) => {
+    const reservas = ctx.resolveModule<{ setSockets: (s: any) => void }>('reservas')
+    const crm = (): CrmCheckoutPort | null => ctx.resolveModule<CrmCheckoutPort>('crm') ?? null
 
-  reservas.setSockets({
-    onReservasUpdated: async (reserva: any) => {
-      if (reserva.status !== 'checked_out' || !reserva.guestId) return
-      const crm = ctx.resolveModule<{ onCheckoutComplete: (reserva: any) => Promise<any> }>('crm')
-      if (crm) await crm.onCheckoutComplete(reserva).catch(() => {})
-    },
-  })
+    reservas.setSockets({
+      onReservasUpdated: (r: any) => isCheckedOut(r) ? creditStayToCrm(crm(), logger, r) : Promise.resolve(),
+      onReservationCheckedOut: (d: any) =>
+        creditStayToCrm(crm(), logger, { id: d.reservationId, hotelId: d.hotelId, guestId: d.guestId, totalAmount: d.totalAmount }),
+    })
+  }
 }

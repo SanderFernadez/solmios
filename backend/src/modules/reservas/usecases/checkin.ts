@@ -36,13 +36,13 @@ export async function executeCheckin(r: any, user: any, deps: {
 
   try {
     await deps.orm.transaction(async (tx: any) => {
+      // La estadía se cuenta UNA vez, en el checkout (`CrmService.onCheckoutComplete`), donde también
+      // se suma `totalSpent`. Acá se contaba de nuevo: cada huésped sumaba +2 estadías por visita,
+      // inflando el `tier` y falseando el `avgPerStay` del LTV (totalSpent / totalStays).
       if (!guestId) {
         const guestName = r.externalLocator ? `Pasajero ${r.externalLocator}` : 'Pasajero walk-in'
-        const guest = await tx.create('Guests', { id: crypto.randomUUID(), name: guestName, hotelId: r.hotelId, active: 1, totalStays: 1, totalSpent: 0, tier: 'bronze', notes: r.otaNotes || null }) as any
+        const guest = await tx.create('Guests', { id: crypto.randomUUID(), name: guestName, hotelId: r.hotelId, active: 1, totalStays: 0, totalSpent: 0, tier: 'bronze', notes: r.otaNotes || null }) as any
         guestId = guest.id
-      } else {
-        const g = (await tx.findMany('Guests', { id: guestId }))[0] as any
-        if (g) await tx.update('Guests', guestId, { totalStays: (Number(g.totalStays) || 0) + 1 })
       }
       folioId = crypto.randomUUID()
       await tx.create('Folios', { id: folioId, hotelId: r.hotelId, reservationId: r.id, guestId, roomId: r.roomId, status: 'open', currency: r.currency || 'USD', invoiceId: null, openedAt: nowIso, closedAt: null })

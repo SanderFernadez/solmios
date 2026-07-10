@@ -158,7 +158,7 @@ system.addConnector('reservas-canales', reservasCanalesConnector)
 system.addConnector('mantenimiento-notificaciones', mantenimientoNotificacionesConnector)
 system.addConnector('mantenimiento-habitaciones', mantenimientoHabitacionesConnector)
 system.addConnector('booking-channex', bookingChannexConnector)
-system.addConnector('reservas-huespedes', reservasHuespedesConnector)
+system.addConnector('reservas-huespedes', reservasHuespedesConnector(logger))
 system.addConnector('payments-caja', paymentsCajaConnector)
 // Un gasto en efectivo saca plata del cajón: sin esto el arqueo del turno no lo ve.
 system.addConnector('gastos-caja', gastosCajaConnector)

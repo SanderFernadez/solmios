@@ -117,7 +117,7 @@ export class ReservasService {
     }
     const log = deps.logger || this.logger
     this.queries.createAuditLog({ id: crypto.randomUUID(), entity: 'Reservations', entityId: r.id, action: 'checkout', userId: user.id, hotelId: r.hotelId, detail: JSON.stringify({ roomId: r.roomId, guestId: r.guestId, checkIn: r.checkIn, checkOut: r.checkOut }), createdAt: nowIso })
-    await this.sockets.onReservationCheckedOut?.({ reservationId: r.id, roomId: r.roomId, hotelId: r.hotelId })
+    await this.sockets.onReservationCheckedOut?.({ reservationId: r.id, roomId: r.roomId, hotelId: r.hotelId, guestId: r.guestId ?? null, totalAmount: Number(r.totalAmount) || 0 })
     return { ok: true, reservationId: r.id, status: 'checked_out' }
   }
 

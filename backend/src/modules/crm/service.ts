@@ -9,10 +9,13 @@ import type {
 } from './types'
 import type { CrmSockets } from './sockets'
 import { LtvUseCase } from './usecases/ltv'
+import { CouponUseCase } from './usecases/coupons'
+import { applyPoints, nextTier, pointsForStay } from './usecases/loyalty'
 
 export class CrmService {
   private sockets: CrmSockets = {}
   private ltvCalculator: LtvUseCase
+  private coupons: CouponUseCase
 
   constructor(
     private readonly loyaltyRepo: RepositoryAdapter<LoyaltyTransactionDTO>,
@@ -25,6 +28,7 @@ export class CrmService {
     private readonly auth?: Auth,
   ) {
     this.ltvCalculator = new LtvUseCase(guestRepo, reservaRepo, logger)
+    this.coupons = new CouponUseCase({ repo: couponRepo, auth, onUsed: (id) => this.sockets.onCouponUsed?.(id) ?? Promise.resolve() })
   }
 
   setSockets(s: Partial<CrmSockets>): void {
@@ -33,10 +37,37 @@ export class CrmService {
   }
 
   // ─── Auto-checkout from connector ─────────────────────
+  /**
+   * El conector `reservas-huespedes` ya es best-effort (`.catch()`), así que acá no hace falta
+   * tragarse los errores. El `try {} catch {}` que había escondía el bug de los `{ increment }`:
+   * el CRM fallaba en silencio en cada checkout.
+   */
   async onCheckoutComplete(reserva: any): Promise<void> {
-    try { await this.guestRepo.update(reserva.guestId, { totalStays: { increment: 1 }, totalSpent: { increment: reserva.totalAmount ?? 0 } } as any) } catch {}
-    await this.awardPoints(reserva.guestId, reserva.hotelId, Math.floor((reserva.totalAmount ?? 0) * 10), `Estadía ${reserva.id}`, reserva.id)
-    await this.checkTierUpgrade(reserva.guestId)
+    // @ignore IDOR_RISK — `reserva` viene del conector reservas-huespedes, no de un request.
+    const guest = await this.guestRepo.findById(reserva.guestId)
+    if (!guest) {
+      this.logger.warn('Checkout sin huésped: no se acreditan puntos', { reservationId: reserva.id })
+      return
+    }
+
+    // Una estadía se acredita UNA vez. Al checkout se puede llegar por dos eventos distintos
+    // (`onReservationCheckedOut` y `onReservasUpdated`); sin esto, el reintento duplica puntos.
+    const yaAcreditada = await this.loyaltyRepo.findMany({ reservationId: reserva.id, type: 'earn' })
+    if (yaAcreditada.length > 0) {
+      this.logger.info('Checkout ya acreditado: se omite', { reservationId: reserva.id })
+      return
+    }
+
+    await this.guestRepo.update(guest.id, {
+      totalStays: Number(guest.totalStays ?? 0) + 1,
+      totalSpent: Number(guest.totalSpent ?? 0) + (Number(reserva.totalAmount) || 0),
+    } as any)
+
+    const puntos = pointsForStay(reserva.totalAmount)
+    // Una estadía de cortesía (importe 0) no da puntos, pero sí cuenta para el nivel:
+    // `awardPoints` rechaza `points <= 0`, así que el ascenso se recalcula aparte.
+    if (puntos > 0) await this.awardPoints(reserva.guestId, reserva.hotelId, puntos, `Estadía ${reserva.id}`, reserva.id)
+    else await this.checkTierUpgrade(reserva.guestId)
   }
 
   // ─── Points ───────────────────────────────────────────
@@ -44,8 +75,14 @@ export class CrmService {
     const guest = await this.guestRepo.findById(guestId)
     if (!guest) throw new NotFoundError('Guest not found')
     if (this.auth) this.auth.assertOwnership(guest.hotelId, hotelId, role, 'super_admin')
+    if (points <= 0) throw new ValidationError('Los puntos a acreditar deben ser positivos')
+
     const txn = await this.loyaltyRepo.create({ guestId, hotelId, reservationId: reservationId ?? null, type: 'earn', points, description } as any)
-    await this.guestRepo.update(guestId, { loyaltyPoints: { increment: points } } as any)
+    // Leer, sumar, escribir: el ORM no entiende `{ increment }` — ver usecases/loyalty.ts.
+    const balance = applyPoints(guest.loyaltyPoints, points)
+    await this.guestRepo.update(guestId, { loyaltyPoints: balance } as any)
+
+    await this.sockets.onPointsAwarded?.(guestId, points)
     await this.checkTierUpgrade(guestId)
     return txn
   }
@@ -54,9 +91,13 @@ export class CrmService {
     const guest = await this.guestRepo.findById(guestId)
     if (!guest) throw new NotFoundError('Guest not found')
     if (this.auth) this.auth.assertOwnership(guest.hotelId, hotelId, role, 'super_admin')
-    if ((guest.loyaltyPoints ?? 0) < points) throw new ValidationError(`Insufficient points. Available: ${guest.loyaltyPoints ?? 0}`)
+    if (points <= 0) throw new ValidationError('Los puntos a canjear deben ser positivos')
+
+    const available = Number(guest.loyaltyPoints ?? 0)
+    if (available < points) throw new ValidationError(`Insufficient points. Available: ${available}`)
+
     const txn = await this.loyaltyRepo.create({ guestId, hotelId, type: 'redeem', points: -points, description } as any)
-    await this.guestRepo.update(guestId, { loyaltyPoints: { increment: -points } } as any)
+    await this.guestRepo.update(guestId, { loyaltyPoints: applyPoints(available, -points) } as any)
     return txn
   }
 
@@ -77,65 +118,29 @@ export class CrmService {
   // ─── Tier Management ──────────────────────────────────
   // Internal helper — only reached from awardPoints (ownership already asserted there)
   // or onCheckoutComplete (trusted reserva.guestId from connector). Not routed directly.
+  /** Devuelve el nivel VIGENTE tras el cálculo. Antes devolvía el viejo, incluso si acababa de subir. */
   async checkTierUpgrade(guestId: string): Promise<string> {
     // @ignore IDOR_RISK — guestId already validated by caller (see comment above method)
     const guest = await this.guestRepo.findById(guestId)
     if (!guest) return 'bronze'
-    const newTier = this.calculateTier(guest.totalStays ?? 0, guest.totalSpent ?? 0)
-    if (newTier !== guest.tier && this.tierOrder(newTier) > this.tierOrder(guest.tier)) {
-      await this.guestRepo.update(guestId, { tier: newTier } as any)
+
+    const current = guest.tier ?? 'bronze'
+    const upgraded = nextTier(current, Number(guest.totalStays ?? 0), Number(guest.totalSpent ?? 0))
+    if (upgraded !== current) {
+      await this.guestRepo.update(guestId, { tier: upgraded } as any)
+      await this.sockets.onTierUpgrade?.(guestId, current, upgraded)
     }
-    return guest.tier ?? 'bronze'
+    return upgraded
   }
 
-  private calculateTier(stays: number, spent: number): string {
-    if (stays >= 20 || spent >= 50000) return 'diamond'
-    if (stays >= 10 || spent >= 20000) return 'platinum'
-    if (stays >= 5  || spent >= 8000) return 'gold'
-    if (stays >= 2  || spent >= 3000) return 'silver'
-    return 'bronze'
-  }
 
-  private tierOrder(t: string): number { return { bronze: 0, silver: 1, gold: 2, platinum: 3, diamond: 4 }[t] ?? 0 }
-
-  // ─── Coupons ──────────────────────────────────────────
-  async createCoupon(dto: CreateCouponDTO): Promise<CouponDTO> {
-    return this.couponRepo.create({ ...dto, useCount: 0, active: 1 } as any)
-  }
-
-  async getCoupon(id: string, hotelId: string, role?: string): Promise<CouponDTO> {
-    const c = await this.couponRepo.findById(id)
-    if (!c) throw new NotFoundError('Coupon not found')
-    if (this.auth) this.auth.assertOwnership(c.hotelId, hotelId, role, 'super_admin')
-    return c
-  }
-
-  async listCoupons(hotelId: string): Promise<CouponDTO[]> {
-    return this.couponRepo.findMany({ hotelId, active: 1 })
-  }
-
-  async validateCoupon(code: string, hotelId: string, purchaseAmount: number): Promise<CouponDTO> {
-    const coupons = await this.couponRepo.findMany({ hotelId, code, active: 1 })
-    const c = coupons[0]; if (!c) throw new NotFoundError('Coupon not found')
-    if (c.maxUses && c.useCount >= c.maxUses) throw new ValidationError('Coupon limit reached')
-    if (c.expiresAt && new Date(c.expiresAt) < new Date()) throw new ValidationError('Coupon expired')
-    if (c.minPurchase > purchaseAmount) throw new ValidationError(`Minimum purchase: $${c.minPurchase}`)
-    return c
-  }
-
-  async useCoupon(id: string, hotelId: string, role?: string): Promise<void> {
-    const coupon = await this.couponRepo.findById(id)
-    if (!coupon) throw new NotFoundError('Coupon not found')
-    if (this.auth) this.auth.assertOwnership(coupon.hotelId, hotelId, role, 'super_admin')
-    await this.couponRepo.update(id, { useCount: { increment: 1 } } as any)
-  }
-
-  async deleteCoupon(id: string, hotelId: string, role?: string): Promise<void> {
-    const coupon = await this.couponRepo.findById(id)
-    if (!coupon) throw new NotFoundError('Coupon not found')
-    if (this.auth) this.auth.assertOwnership(coupon.hotelId, hotelId, role, 'super_admin')
-    await this.couponRepo.update(id, { active: 0 } as any)
-  }
+  // ─── Coupons (delegan a usecases/coupons) ─────────────
+  createCoupon(dto: CreateCouponDTO): Promise<CouponDTO> { return this.coupons.create(dto) }
+  getCoupon(id: string, hotelId: string, role?: string): Promise<CouponDTO> { return this.coupons.getById(id, hotelId, role) }
+  listCoupons(hotelId: string): Promise<CouponDTO[]> { return this.coupons.list(hotelId) }
+  validateCoupon(code: string, hotelId: string, purchaseAmount: number): Promise<CouponDTO> { return this.coupons.validate(code, hotelId, purchaseAmount) }
+  useCoupon(id: string, hotelId: string, role?: string): Promise<CouponDTO> { return this.coupons.use(id, hotelId, role) }
+  deleteCoupon(id: string, hotelId: string, role?: string): Promise<void> { return this.coupons.deactivate(id, hotelId, role) }
 
   // ─── Segments ─────────────────────────────────────────
   async createSegment(dto: CreateSegmentDTO): Promise<GuestSegmentDTO> {

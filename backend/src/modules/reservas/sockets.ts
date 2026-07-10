@@ -8,5 +8,7 @@ export interface ReservasSockets {
   onReservasCreated?: (data: ReservasDTO) => Promise<void>
   onReservasUpdated?: (data: ReservasDTO) => Promise<void>
   onReservasDeleted?: (id: string) => Promise<void>
-  onReservationCheckedOut?: (data: { reservationId: string; roomId: string; hotelId: string }) => Promise<void>
+  // `guestId`/`totalAmount` viajan en el payload para que el CRM pueda acreditar puntos sin volver a
+  // leer la reserva (un conector delega, no consulta). Ambos pueden faltar: hay reservas sin huésped.
+  onReservationCheckedOut?: (data: { reservationId: string; roomId: string; hotelId: string; guestId?: string | null; totalAmount?: number }) => Promise<void>
 }
