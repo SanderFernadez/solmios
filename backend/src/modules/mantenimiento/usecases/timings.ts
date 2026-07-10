@@ -50,7 +50,7 @@ export class TimingsUseCase {
     assertOwnership(existing.hotelId, currentUser)
     assertTransition(existing.status, 'closed')
     const now = new Date().toISOString()
-    const update: Record<string, any> = { status: 'closed', endTime: now, resolvedDate: now }
+    const update: Record<string, any> = { status: 'closed', endTime: now, resolvedDate: now, resolvedBy: currentUser.id }
     if (notes) update.notes = notes
     const item = await this.repo.update(id, update as any)
     if (!item) throw new NotFoundError('Ticket de mantenimiento no encontrado')

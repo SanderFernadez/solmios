@@ -38,6 +38,31 @@ export class ApproveUseCase {
     return updated
   }
 
+  /**
+   * El supervisor devuelve la limpieza a la camarera para que la repita.
+   * Transición completed → pending (permitida) con la nota del motivo. La camarera
+   * la vuelve a arrancar; la nota le dice qué corregir.
+   */
+  async reject(taskId: string, userId: string, note?: string): Promise<HousekeepingDTO> {
+    const task = await this.repo.findById(taskId)
+    if (!task) throw new NotFoundError('Tarea no encontrada')
+
+    if (task.status !== 'completed') {
+      throw new AuthError('Solo se pueden devolver tareas completadas')
+    }
+
+    assertTransition(task.status, 'pending')
+
+    const updated = await this.repo.update(taskId, {
+      status: 'pending',
+      supervisorId: userId,
+      supervisorNote: note || null,
+    } as any)
+
+    if (!updated) throw new NotFoundError('Error al actualizar tarea')
+    return updated
+  }
+
   async markPresence(taskId: string, userId: string): Promise<void> {
     const task = await this.repo.findById(taskId)
     if (!task) throw new NotFoundError('Tarea no encontrada')

@@ -94,6 +94,13 @@ export class HousekeepingController {
     return { status: 200, body: result }
   }
 
+  async reject(req: HttpRequest) {
+    const body = (req.body || {}) as Record<string, unknown>
+    const note = body.note as string | undefined
+    const result = await this.service.reject(req.params.id, (req.user as any).id, note)
+    return { status: 200, body: result }
+  }
+
   async presence(req: HttpRequest) {
     await this.service.markPresence(req.params.id, (req.user as any).id)
     return { status: 200, body: { message: 'Presencia registrada' } }

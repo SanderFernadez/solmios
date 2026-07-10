@@ -24,6 +24,8 @@ export interface MantenimientoDTO {
   priority?: MaintenancePriority
   status?: MaintenanceStatus
   assignedTo?: string
+  /** users.id de quien cerró el ticket (lo setea `complete()`). */
+  resolvedBy?: string
   estimatedCost?: number
   reportedDate?: string
   resolvedDate?: string

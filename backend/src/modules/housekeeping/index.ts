@@ -27,7 +27,7 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       name: 'housekeeping',
       version: '2.1.0',
       description: 'Housekeeping tasks with ownership, timings, photo evidence and staff stats',
-      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'complete', 'uploadPhoto', 'removePhoto', 'stats', 'approve', 'presence', 'report', 'photoRequirements', 'supplyLists'],
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'start', 'complete', 'uploadPhoto', 'removePhoto', 'stats', 'approve', 'reject', 'presence', 'report', 'photoRequirements', 'supplyLists'],
       events: ['onHousekeepingCreated', 'onHousekeepingUpdated', 'onHousekeepingDeleted'],
       tables: ['housekeeping', 'photo_requirements', 'supply_items'],
       dependencies: [],
@@ -65,6 +65,7 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
 
       // ─── Aprobación y presencia (F4/F5) ─────────────────────────────────
       router.post('/api/housekeeping/:id/approve', guard('housekeeping', 'edit'), (req) => controller.approve(req))
+      router.post('/api/housekeeping/:id/reject', guard('housekeeping', 'edit'), (req) => controller.reject(req))
       router.post('/api/housekeeping/:id/presence', guard('housekeeping', 'edit'), (req) => controller.presence(req))
       router.post('/api/housekeeping/:id/report', guard('housekeeping', 'edit'), (req) => controller.report(req))
 

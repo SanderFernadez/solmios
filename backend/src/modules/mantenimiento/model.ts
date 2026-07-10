@@ -14,6 +14,9 @@ export const MantenimientoModel: ModelDefinition = {
     priority: { type: 'string', default: "medium" },
     status: { type: 'string', default: "open" },
     assignedTo: { type: 'string' },
+    /** Quién marcó el ticket como resuelto (users.id). Lo setea `complete()` con el
+     *  usuario del token. Puede diferir de `assignedTo` (otro técnico lo cierra). */
+    resolvedBy: { type: 'string' },
     /** Quién levantó el ticket. Trazabilidad: mantenimiento sabe a quién preguntarle.
      *  (No sirve para filtrar notificaciones: hoy la notificación es del hotel, sin
      *  destinatario — ver connectors/mantenimiento-notificaciones.) */

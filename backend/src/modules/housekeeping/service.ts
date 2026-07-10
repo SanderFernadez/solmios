@@ -137,6 +137,14 @@ export class HousekeepingService {
     await this.invalidateCache(result.hotelId)
     return result
   }
+  async reject(id: string, userId: string, note?: string) {
+    const result = await this.approveUc.reject(id, userId, note)
+    await this.sockets.onHousekeepingUpdated?.(result)
+    // La camarera tiene que enterarse de que su limpieza volvió.
+    if (result.staffId) await this.sockets.onTaskAssigned?.(result)
+    await this.invalidateCache(result.hotelId)
+    return result
+  }
   async markPresence(id: string, userId: string) { return this.approveUc.markPresence(id, userId) }
   async reportIssue(id: string, desc: string, type: string, reporter: { id: string; hotelId?: string; role: string }) {
     return this.approveUc.reportIssue(id, desc, type, reporter, this.sockets.onIssueReported)
