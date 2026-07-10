@@ -71,6 +71,14 @@ export class MessagesService {
       if (!existing || new Date(msg.createdAt) > new Date(existing.createdAt)) byUser.set(otherId, msg)
     }
 
+    // Los pendientes son los que me mandaron y no abrí, contados uno por uno.
+    // `received` ya está en memoria: contarlos acá no cuesta una query más.
+    const unreadByUser = new Map<string, number>()
+    for (const msg of received) {
+      if (msg.isRead) continue
+      unreadByUser.set(msg.fromUserId, (unreadByUser.get(msg.fromUserId) ?? 0) + 1)
+    }
+
     const direct: Conversation[] = Array.from(byUser.entries()).map(([userId, lastMsg]) => ({
       userId,
       lastMessage: lastMsg.message,
@@ -78,6 +86,7 @@ export class MessagesService {
       lastTime: lastMsg.createdAt,
       isRead: lastMsg.isRead,
       direction: lastMsg.fromUserId === currentUser.id ? 'sent' : 'received',
+      unreadCount: unreadByUser.get(userId) ?? 0,
     }))
 
     if (team.length === 0) return direct
@@ -91,8 +100,10 @@ export class MessagesService {
         lastPhoto: lastTeam.photoUrl,
         lastTime: lastTeam.createdAt,
         // El canal del equipo no lleva acuse de lectura: marcarlo "no leído" para
-        // siempre dejaría un badge permanente que nadie puede apagar.
+        // siempre dejaría un badge permanente que nadie puede apagar. Por lo
+        // mismo no aporta pendientes al contador.
         isRead: true,
+        unreadCount: 0,
         direction: lastTeam.fromUserId === currentUser.id ? 'sent' : 'received',
         isTeam: true,
         lastSenderName: staff.get(lastTeam.fromUserId)?.name ?? '',

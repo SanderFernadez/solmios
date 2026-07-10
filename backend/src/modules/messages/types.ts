@@ -47,6 +47,15 @@ export interface Conversation {
   lastTime: string
   isRead: boolean
   direction: 'sent' | 'received'
+  /**
+   * Cuántos mensajes de este interlocutor siguen sin leer.
+   *
+   * `isRead` describe SOLO al último mensaje, y por eso no alcanza para contar:
+   * si el último lo escribí yo, dice `true` aunque los tres anteriores de la
+   * otra persona sigan sin abrirse. El cliente suma este campo para saber
+   * cuántos mensajes —no cuántas conversaciones— tiene pendientes.
+   */
+  unreadCount: number
   /** El canal del equipo se pinta distinto y va fijo arriba de la lista. */
   isTeam?: boolean
   /** Quién escribió el último mensaje. Solo útil en el canal del equipo. */

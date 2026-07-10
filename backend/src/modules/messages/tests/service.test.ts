@@ -87,6 +87,89 @@ describe('MessagesService', () => {
   })
 })
 
+describe('MessagesService — mensajes sin leer', () => {
+  it('cuenta los mensajes pendientes, no las conversaciones', async () => {
+    const rows = [
+      msg({ id: 'm1', fromUserId: 'u2', toUserId: 'u1', isRead: false, createdAt: '2026-07-01T10:00:00Z' }),
+      msg({ id: 'm2', fromUserId: 'u2', toUserId: 'u1', isRead: false, createdAt: '2026-07-01T11:00:00Z' }),
+      msg({ id: 'm3', fromUserId: 'u2', toUserId: 'u1', isRead: false, createdAt: '2026-07-01T12:00:00Z' }),
+    ]
+    const convos = await new MessagesService(repoWith(rows), log).getConversations(me)
+
+    expect(convos[0].unreadCount).toBe(3)
+  })
+
+  // El bug que traía "0 sin leer": `isRead` habla solo del último mensaje.
+  it('cuenta los pendientes aunque el último mensaje lo haya escrito yo', async () => {
+    const rows = [
+      msg({ id: 'm1', fromUserId: 'u2', toUserId: 'u1', isRead: false, createdAt: '2026-07-01T10:00:00Z' }),
+      msg({ id: 'm2', fromUserId: 'u2', toUserId: 'u1', isRead: false, createdAt: '2026-07-01T11:00:00Z' }),
+      msg({ id: 'm3', fromUserId: 'u1', toUserId: 'u2', isRead: true, createdAt: '2026-07-01T12:00:00Z' }),
+    ]
+    const convos = await new MessagesService(repoWith(rows), log).getConversations(me)
+
+    expect(convos[0].direction).toBe('sent')
+    expect(convos[0].isRead).toBe(true)
+    expect(convos[0].unreadCount).toBe(2)
+  })
+
+  it('los mensajes ya leídos no suman', async () => {
+    const rows = [
+      msg({ id: 'm1', fromUserId: 'u2', toUserId: 'u1', isRead: true }),
+      msg({ id: 'm2', fromUserId: 'u2', toUserId: 'u1', isRead: false, createdAt: '2026-07-01T11:00:00Z' }),
+    ]
+    const convos = await new MessagesService(repoWith(rows), log).getConversations(me)
+
+    expect(convos[0].unreadCount).toBe(1)
+  })
+
+  it('los que yo mandé nunca cuentan como pendientes míos', async () => {
+    const rows = [
+      msg({ id: 'm1', fromUserId: 'u1', toUserId: 'u2', isRead: false }),
+      msg({ id: 'm2', fromUserId: 'u1', toUserId: 'u2', isRead: false, createdAt: '2026-07-01T11:00:00Z' }),
+    ]
+    const convos = await new MessagesService(repoWith(rows), log).getConversations(me)
+
+    expect(convos[0].unreadCount).toBe(0)
+  })
+
+  it('cada interlocutor lleva su propia cuenta', async () => {
+    const rows = [
+      msg({ id: 'm1', fromUserId: 'u2', toUserId: 'u1', isRead: false }),
+      msg({ id: 'm2', fromUserId: 'u2', toUserId: 'u1', isRead: false, createdAt: '2026-07-01T11:00:00Z' }),
+      msg({ id: 'm3', fromUserId: 'u3', toUserId: 'u1', isRead: false, createdAt: '2026-07-01T12:00:00Z' }),
+    ]
+    const convos = await new MessagesService(repoWith(rows), log).getConversations(me)
+    const byId = Object.fromEntries(convos.map((c) => [c.userId, c.unreadCount]))
+
+    expect(byId).toEqual({ u2: 2, u3: 1 })
+  })
+
+  it('los pendientes de otro hotel no se cuelan', async () => {
+    const rows = [
+      msg({ id: 'm1', fromUserId: 'u2', toUserId: 'u1', isRead: false, hotelId: 'h1' }),
+      msg({ id: 'm2', fromUserId: 'u2', toUserId: 'u1', isRead: false, hotelId: 'h2', createdAt: '2026-07-01T11:00:00Z' }),
+    ]
+    const convos = await new MessagesService(repoWith(rows), log).getConversations(me)
+
+    expect(convos[0].unreadCount).toBe(1)
+  })
+
+  // El canal grupal no tiene acuse de lectura: sumarlo dejaría un globo encendido
+  // para siempre, porque nadie puede marcarlo como leído.
+  it('el canal del equipo no aporta pendientes', async () => {
+    const svc = new MessagesService(repoWith([
+      msg({ id: 'm1', fromUserId: 'u2', toUserId: 'team:h1', isRead: false }),
+    ]), log)
+    svc.setUserDirectory({ listStaff: async () => [{ id: 'u2', name: 'Rosa', role: 'housekeeper', avatar: null }] })
+
+    const convos = await svc.getConversations(me)
+
+    expect(convos[0].isTeam).toBe(true)
+    expect(convos[0].unreadCount).toBe(0)
+  })
+})
+
 describe('MessagesService.getContacts', () => {
   /** El directorio real lo cablea `connectors/messages-usuarios.ts` desde UsuariosService.list(). */
   const directoryOf = (staff: ContactDTO[]): UserDirectory => ({
