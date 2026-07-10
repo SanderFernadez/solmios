@@ -90,12 +90,20 @@ export class MantenimientoService {
     return this.assertOrderAccess(id, currentUser)
   }
 
+  /**
+   * Tickets abiertos desde una tarea de limpieza. Lo usa el conector
+   * `housekeeping-mantenimiento` para no abrir dos veces el mismo reporte.
+   */
+  async findBySourceTask(hotelId: string, sourceTaskId: string): Promise<MantenimientoDTO[]> {
+    if (!hotelId || !sourceTaskId) return []
+    return this.repo.findMany({ hotelId, sourceTaskId })
+  }
+
   async create(dto: CreateMantenimientoDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
     if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
       throw new NotFoundError('No autorizado para crear en otro hotel')
     }
-    // `reportedBy` sale del token, nunca del cliente: es lo que permite no
-    // notificarle un ticket a quien lo acaba de levantar.
+    // `reportedBy` sale del token, nunca del cliente: es trazabilidad de quién reportó.
     const item = await this.repo.create({ ...dto, reportedBy: currentUser.id } as any)
     await this.audit.log(item.id, dto.hotelId, currentUser.id, 'created', null, item.title)
     await this.sockets.onMantenimientoCreated?.(item)

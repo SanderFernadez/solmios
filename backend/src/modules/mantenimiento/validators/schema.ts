@@ -1,4 +1,4 @@
-import type { ValidationRule } from 'arckode-framework'
+import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
 const CATEGORY_ENUM = ['general', 'plumbing', 'electrical', 'hvac', 'furniture', 'appliance', 'structural', 'pest_control', 'carpentry', 'painting', 'electronics']
 const PRIORITY_ENUM = ['low', 'medium', 'high', 'urgent']
@@ -21,7 +21,7 @@ export const CreateMantenimientoSchema: Record<string, ValidationRule> = {
   resolvedDate: { type: 'string' as const },
   // Sin las fotos no se sabe qué hay que arreglar. `reportedBy` NO se acepta del
   // cliente: lo pone el service desde el token.
-  photos: { type: 'array' as any },
+  photos: { type: 'array' as const },
 }
 
 export const UpdateMantenimientoSchema: Record<string, ValidationRule> = {

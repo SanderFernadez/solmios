@@ -51,6 +51,11 @@ export interface CreateMantenimientoDTO {
   estimatedCost?: number
   reportedDate?: string
   resolvedDate?: string
+  /** Evidencia de qué hay que arreglar. Sin esto, mantenimiento va a ciegas. */
+  photos?: MaintenancePhoto[]
+  /** Tarea de limpieza que originó el ticket. Clave de deduplicación: la camarera reporta
+   *  desde el celular, y tocar dos veces no puede abrir dos tickets. */
+  sourceTaskId?: string
 }
 
 export interface UpdateMantenimientoDTO {

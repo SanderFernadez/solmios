@@ -7,6 +7,8 @@ import type { HousekeepingDTO } from './types'
 /** Una incidencia que la camarera manda a mantenimiento desde su tarea. */
 export interface IssueReport {
   hotelId: string
+  /** La tarea de limpieza de la que salió. Clave de deduplicación del ticket. */
+  taskId: string
   roomId?: string
   /** Lo que la camarera escribió: sin esto no hay nada que arreglar. */
   description: string

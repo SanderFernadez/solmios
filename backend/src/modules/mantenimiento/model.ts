@@ -14,9 +14,12 @@ export const MantenimientoModel: ModelDefinition = {
     priority: { type: 'string', default: "medium" },
     status: { type: 'string', default: "open" },
     assignedTo: { type: 'string' },
-    /** Quién levantó el ticket. Sin esto, avisar de un ticket nuevo despierta
-     *  también al que acaba de crearlo. */
+    /** Quién levantó el ticket. Trazabilidad: mantenimiento sabe a quién preguntarle.
+     *  (No sirve para filtrar notificaciones: hoy la notificación es del hotel, sin
+     *  destinatario — ver connectors/mantenimiento-notificaciones.) */
     reportedBy: { type: 'string' },
+    /** Tarea de limpieza que originó el ticket. Deduplica el doble-toque de la app. */
+    sourceTaskId: { type: 'string', indexed: true },
     estimatedCost: { type: 'number', default: 0 },
     reportedDate: { type: 'string' },
     resolvedDate: { type: 'string' },

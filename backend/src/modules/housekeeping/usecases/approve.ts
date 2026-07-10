@@ -56,9 +56,11 @@ export class ApproveUseCase {
   /**
    * La camarera reporta algo. `type: 'maintenance'` abre además un ticket real.
    *
-   * Antes esto solo apendaba una línea a `notes` de la tarea de limpieza: el
-   * reporte moría ahí y mantenimiento nunca veía ni la descripción ni las fotos
-   * de lo que había que arreglar.
+   * Antes esto solo apendaba una línea a `notes` de la tarea de limpieza: el reporte moría ahí y
+   * mantenimiento nunca veía ni la descripción ni las fotos de lo que había que arreglar.
+   *
+   * Orden: ticket → nota. Al revés, un fallo al abrir el ticket dejaba la nota escrita, y el
+   * reintento la duplicaba. Ambos pasos son idempotentes: la app se usa con mala señal.
    */
   async reportIssue(
     taskId: string,
@@ -80,24 +82,27 @@ export class ApproveUseCase {
       throw new AuthError('La tarea no pertenece a tu hotel')
     }
 
-    // Agregar reporte a las notas
+    // El ticket PRIMERO. Si falla, el request muere y la camarera lo ve, sin dejar una nota
+    // huérfana: reintentar desde la app arranca limpio. El ticket se deduplica por tarea.
+    if (type === 'maintenance' && onIssueReported) {
+      await onIssueReported({
+        hotelId: taskHotelId,
+        taskId,
+        roomId: (task as any).roomId,
+        description,
+        photos: Array.isArray((task as any).photos) ? (task as any).photos : [],
+        reportedBy: reporter.id,
+      })
+    }
+
+    // La nota es idempotente: la app se usa con mala señal y el doble-toque es la regla, no la
+    // excepción. Sin esto, reintentar dejaba la misma incidencia escrita tres veces.
     const existingNotes = (task as any).notes || ''
+    if (existingNotes.includes(description)) return
+
     const reportEntry = `[${type.toUpperCase()}] ${new Date().toISOString()}: ${description}`
     const updatedNotes = existingNotes ? `${existingNotes}\n${reportEntry}` : reportEntry
 
-    await this.repo.update(taskId, {
-      notes: updatedNotes,
-    } as any)
-
-    if (type !== 'maintenance' || !onIssueReported) return
-
-    // La nota queda igual: si abrir el ticket falla, el reporte no se pierde.
-    await onIssueReported({
-      hotelId: taskHotelId,
-      roomId: (task as any).roomId,
-      description,
-      photos: Array.isArray((task as any).photos) ? (task as any).photos : [],
-      reportedBy: reporter.id,
-    })
+    await this.repo.update(taskId, { notes: updatedNotes } as any)
   }
 }
