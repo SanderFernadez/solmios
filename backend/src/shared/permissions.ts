@@ -15,6 +15,8 @@ export const MODULES = {
   reports: 'Reportes',
   settings: 'Configuración',
   users: 'Usuarios',
+  /** Fichar entrada/salida no es administrar usuarios: lo hace todo el personal desde la app. */
+  attendance: 'Asistencia',
   feedback: 'Feedback',
   'channel-manager': 'Channel Manager',
   ttlock: 'Cerraduras',
@@ -55,13 +57,22 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'reports:view', 'reports:export', 'reports:create', 'reports:edit', 'reports:delete',
     'settings:view', 'settings:edit', 'settings:create', 'settings:delete',
     'users:view', 'users:create', 'users:edit', 'users:delete',
+    'attendance:view', 'attendance:create', 'attendance:edit',
     'feedback:view',
     'channel-manager:view', 'channel-manager:edit',
     'ttlock:view', 'ttlock:edit',
     'ai:view', 'ai:edit',
   ],
 
-  // Receptionist - day-to-day operations
+  // Receptionist — la operación del mostrador. Los permisos siguen a lo que el menú del panel le
+  // muestra (AdminLayout.vue): sin esto ve páginas que la API le contesta 403.
+  //   billing:view/create  → Folios In-House (cargos y pagos) y Links de Pago
+  //   users:view           → Empleados (solo lectura)
+  //   settings:view        → Plantillas de WhatsApp e Historial de Envíos (solo lectura)
+  //   reports:create/edit  → abrir y responder tickets de Soporte y Opiniones
+  //   ai:edit              → responder una conversación del recepcionista IA
+  // NO lleva `billing:edit` ni `billing:delete`: cerrar un folio, emitir la factura o borrarla es
+  // del hotel_admin.
   receptionist: [
     'dashboard:view',
     'reservations:view', 'reservations:create', 'reservations:edit', 'reservations:checkin', 'reservations:checkout',
@@ -69,15 +80,21 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'rooms:view',
     'housekeeping:view',
     'maintenance:view',
-    'reports:view',
+    'billing:view', 'billing:create',
+    'reports:view', 'reports:create', 'reports:edit',
+    'settings:view',
+    'users:view',
+    'attendance:view', 'attendance:create',
     'ttlock:view',
-    'ai:view',
+    'ai:view', 'ai:edit',
   ],
 
   // Housekeeper - cleaning tasks only
   housekeeper: [
     'rooms:view',
     'housekeeping:view', 'housekeeping:edit',
+    // Ficha desde la app. Ve sus propios registros, no los de los demás.
+    'attendance:view', 'attendance:create',
   ],
 
   // Supervisor - approve housekeeping, view rooms
@@ -85,12 +102,16 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'dashboard:view',
     'rooms:view',
     'housekeeping:view', 'housekeeping:edit',
+    // Ficha, y además corrige fichajes y arma turnos del equipo.
+    'attendance:view', 'attendance:create', 'attendance:edit',
   ],
 
   // Maintenance - maintenance tasks only
   maintenance: [
     'rooms:view',
     'maintenance:view', 'maintenance:edit',
+    // Ficha desde la app, igual que el resto del personal.
+    'attendance:view', 'attendance:create',
   ],
 }
 

@@ -40,25 +40,27 @@ export function AttendanceModule() {
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
 
-      // Clock
-      router.post('/api/attendance/clock-in', guard('users', 'create'), (req) => controller.clockIn(req))
-      router.post('/api/attendance/clock-out', guard('users', 'create'), (req) => controller.clockOut(req))
-      router.post('/api/attendance/break/start', guard('users', 'create'), (req) => controller.startBreak(req))
-      router.post('/api/attendance/break/end', guard('users', 'create'), (req) => controller.endBreak(req))
-      router.post('/api/attendance/manual', guard('users', 'edit'), (req) => controller.manualRecord(req))
-      router.get('/api/attendance/today/:employeeId', guard('users', 'view'), (req) => controller.getToday(req))
-      router.get('/api/attendance/records', guard('users', 'view'), (req) => controller.listRecords(req))
-      router.get('/api/attendance/report', guard('users', 'view'), (req) => controller.getReport(req))
+      // Clock — fichar es una acción del propio empleado, no administrar usuarios. Antes pedía
+      // `users:create`, que solo tiene hotel_admin: ninguna camarera ni recepcionista podía fichar.
+      router.post('/api/attendance/clock-in', guard('attendance', 'create'), (req) => controller.clockIn(req))
+      router.post('/api/attendance/clock-out', guard('attendance', 'create'), (req) => controller.clockOut(req))
+      router.post('/api/attendance/break/start', guard('attendance', 'create'), (req) => controller.startBreak(req))
+      router.post('/api/attendance/break/end', guard('attendance', 'create'), (req) => controller.endBreak(req))
+      // Corregir un fichaje ajeno sí es una acción de supervisión.
+      router.post('/api/attendance/manual', guard('attendance', 'edit'), (req) => controller.manualRecord(req))
+      router.get('/api/attendance/today/:employeeId', guard('attendance', 'view'), (req) => controller.getToday(req))
+      router.get('/api/attendance/records', guard('attendance', 'view'), (req) => controller.listRecords(req))
+      router.get('/api/attendance/report', guard('attendance', 'view'), (req) => controller.getReport(req))
 
-      // Schedules
-      router.post('/api/attendance/schedules', guard('users', 'create'), (req) => controller.createSchedule(req))
-      router.get('/api/attendance/schedules', guard('users', 'view'), (req) => controller.listSchedules(req))
-      router.get('/api/attendance/schedules/:id', guard('users', 'view'), (req) => controller.getSchedule(req))
-      router.delete('/api/attendance/schedules/:id', guard('users', 'edit'), (req) => controller.deleteSchedule(req))
+      // Schedules — armar el turno de otro es supervisión, no autoservicio.
+      router.post('/api/attendance/schedules', guard('attendance', 'edit'), (req) => controller.createSchedule(req))
+      router.get('/api/attendance/schedules', guard('attendance', 'view'), (req) => controller.listSchedules(req))
+      router.get('/api/attendance/schedules/:id', guard('attendance', 'view'), (req) => controller.getSchedule(req))
+      router.delete('/api/attendance/schedules/:id', guard('attendance', 'edit'), (req) => controller.deleteSchedule(req))
 
       // Config
-      router.get('/api/attendance/config', guard('users', 'view'), (req) => controller.getConfig(req))
-      router.put('/api/attendance/config', guard('users', 'edit'), (req) => controller.updateConfig(req))
+      router.get('/api/attendance/config', guard('attendance', 'view'), (req) => controller.getConfig(req))
+      router.put('/api/attendance/config', guard('attendance', 'edit'), (req) => controller.updateConfig(req))
 
       // Biometric device webhook (ZKTeco / fingerprint — public, key-protected)
       router.post('/api/attendance/biometric', (req) => controller.biometricRecord(req))
