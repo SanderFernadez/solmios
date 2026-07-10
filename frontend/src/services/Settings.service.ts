@@ -1,6 +1,6 @@
 import { http } from './http'
-import type { RoomRate } from './Rates.service'
-import type { Season } from './Seasons.service'
+// Los tipos viven en Hotel.service, que es quien realmente consume /rates y /seasons.
+import type { RoomRate, Season } from './Hotel.service'
 import type { AutoMessage } from './AutoMessages.service'
 
 export interface HotelFull {
