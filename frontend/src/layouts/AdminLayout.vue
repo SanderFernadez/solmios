@@ -235,7 +235,7 @@ const nonavItems = [
     children: [
       { label: 'Channel Manager', path: '/panel/channel-manager', roles: ['hotel_admin'] },
       { label: 'Grupos', path: '/panel/groups', roles: ['hotel_admin'] },
-      { label: 'Paquetes', path: '/panel/packages', roles: ['hotel_admin'] },
+      { label: 'Ofertas', path: '/panel/packages', roles: ['hotel_admin'] },
       { label: 'Opiniones', path: '/panel/opiniones', roles: ['hotel_admin', 'receptionist'] },
     ]
   },
@@ -378,7 +378,7 @@ const pageTitle = computed(() => {
     maintenance: 'Mantenimiento',
     'channel-manager': 'Channel Manager',
     'booking-engine': 'Booking Engine',
-    packages: 'Paquetes',
+    packages: 'Ofertas',
     groups: 'Grupos',
     'night-audit': 'Night Audit',
     billing: 'Facturación',

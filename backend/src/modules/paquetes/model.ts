@@ -8,7 +8,8 @@ export const PaquetesModel: ModelDefinition = {
     hotelId: { type: 'string', required: true, indexed: true },
     name: { type: 'string', required: true },
     description: { type: 'text' },
-    type: { type: 'string', default: "upsell" },
+    // combo = paquete (habitación + extras) · servicio = extra suelto que se vende aparte.
+    type: { type: 'string', default: "combo" },
     price: { type: 'number', required: true },
     contents: { type: 'json', default: [] },
     active: { type: 'number', default: 1 },
