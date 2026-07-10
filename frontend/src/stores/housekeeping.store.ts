@@ -112,7 +112,8 @@ export const useHousekeepingStore = defineStore('housekeeping', () => {
       rooms.value = roomsRes.rooms ?? []
       staff.value = employeesResult.data ?? []
       const roomMap = new Map(rooms.value.map(r => [r.id, r]))
-      const staffMap = new Map(staff.value.map(s => [s.id, s.userName || s.userId]))
+      // Indexar por userId: los tasks guardan staffId = users.id (no employee_profiles.id).
+      const staffMap = new Map(staff.value.map(s => [s.userId, s.userName || s.userId]))
       tasks.value = (tasksRes.data ?? []).map(t => mapTask(t, roomMap, staffMap))
     } finally {
       loading.value = false

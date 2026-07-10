@@ -383,7 +383,7 @@
               <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Asignar a</label>
               <select v-model="newTask.staffId" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="">Seleccionar...</option>
-                <option v-for="emp in store.staff" :key="emp.id" :value="emp.id">{{ emp.userName || emp.userId }}</option>
+                <option v-for="emp in assignableStaff" :key="emp.id" :value="emp.userId">{{ emp.userName || emp.userId }}</option>
               </select>
             </div>
             <div class="col-span-2">
@@ -413,7 +413,7 @@
             <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Seleccionar Personal</label>
             <select v-model="assignStaff" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
               <option value="">Seleccionar...</option>
-              <option v-for="emp in store.staff" :key="emp.id" :value="emp.id">{{ emp.userName || emp.userId }} — {{ emp.position || 'Staff' }}</option>
+              <option v-for="emp in assignableStaff" :key="emp.id" :value="emp.userId">{{ emp.userName || emp.userId }} — {{ emp.position || 'Staff' }}</option>
             </select>
           </div>
           <div v-if="assignStaff" class="bg-surface rounded-xl p-4">
@@ -581,6 +581,10 @@ const getColumnTasks = (columnId: string) => store.tasks.filter(t => t.status ==
 const assignableTasks = computed(() =>
   store.tasks.filter(t => t.status === 'pending' && !t.staffId),
 )
+
+// Solo empleados con cuenta de usuario (userId) pueden ser asignados:
+// el backend valida staffId contra users.id, no employee_profiles.id.
+const assignableStaff = computed(() => store.staff.filter(e => e.userId))
 
 const newTask = ref({ roomNumber: '', type: '', priority: 'medium', staffId: '', notes: '' })
 

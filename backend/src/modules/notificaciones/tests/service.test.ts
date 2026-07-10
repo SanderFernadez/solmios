@@ -41,17 +41,17 @@ function makeUserRepo(overrides: Partial<RepositoryAdapter<any>> = {}): Reposito
 
 describe('NotificacionesService', () => {
   describe('list', () => {
-    it('returns paginated notifications', async () => {
-      const notifs = [{ id: 'n1', hotelId: 'h1', title: 'Alert' }] as NotificacionesDTO[]
-      const repo = makeRepo({ paginate: async () => ({ data: notifs, total: 1, limit: 20, offset: 0, pages: 1 }) })
+    it('returns notifications', async () => {
+      const notifs = [{ id: 'n1', hotelId: 'h1', title: 'Alert', createdAt: '2026-07-01' }] as NotificacionesDTO[]
+      const repo = makeRepo({ findMany: async () => notifs })
       const svc = new NotificacionesService(repo, makeUserRepo(), log, silentCache, fakeAuth)
       const result = await svc.list({}, adminUser)
       expect(result.data).toHaveLength(1)
     })
 
     it('filters by hotelId for hotel_admin', async () => {
-      const notifs = [{ id: 'n1', hotelId: 'h1', title: 'Alert' }] as NotificacionesDTO[]
-      const repo = makeRepo({ paginate: async () => ({ data: notifs, total: 1, limit: 20, offset: 0, pages: 1 }) })
+      const notifs = [{ id: 'n1', hotelId: 'h1', title: 'Alert', createdAt: '2026-07-01' }] as NotificacionesDTO[]
+      const repo = makeRepo({ findMany: async () => notifs })
       const svc = new NotificacionesService(repo, makeUserRepo(), log, silentCache, fakeAuth)
       const result = await svc.list({}, hotelAdmin)
       expect(result.data).toHaveLength(1)
@@ -61,6 +61,38 @@ describe('NotificacionesService', () => {
       const noHotel = { id: 'u1', role: 'hotel_admin', hotelId: undefined }
       const svc = new NotificacionesService(makeRepo(), makeUserRepo(), log, silentCache, fakeAuth)
       await expect(svc.list({}, noHotel)).rejects.toThrow('No hotel assigned')
+    })
+
+    // El bug: un aviso personal (userId set) llegaba a cualquiera del hotel, y el
+    // dueño a veces no lo veía (cache envenenado por una key que solo era el hotel).
+    it('cada usuario ve los broadcast del hotel + solo SUS avisos personales', async () => {
+      const rows = [
+        { id: 'broadcast', hotelId: 'h1', userId: null, title: 'Aviso general', createdAt: '2026-07-03' },
+        { id: 'mio', hotelId: 'h1', userId: 'user1', title: 'Tu tarea', createdAt: '2026-07-02' },
+        { id: 'de-otro', hotelId: 'h1', userId: 'otro', title: 'Tarea de otro', createdAt: '2026-07-01' },
+      ] as unknown as NotificacionesDTO[]
+      const repo = makeRepo({ findMany: async () => rows })
+      const svc = new NotificacionesService(repo, makeUserRepo(), log, silentCache, fakeAuth)
+
+      const result = await svc.list({}, hotelAdmin)  // hotelAdmin.id === 'user1'
+      const ids = result.data.map((n) => n.id)
+
+      expect(ids).toContain('broadcast')
+      expect(ids).toContain('mio')
+      expect(ids).not.toContain('de-otro')
+    })
+
+    it('ordena por fecha, más nuevo primero', async () => {
+      const rows = [
+        { id: 'viejo', hotelId: 'h1', userId: null, title: 'a', createdAt: '2026-07-01' },
+        { id: 'nuevo', hotelId: 'h1', userId: null, title: 'b', createdAt: '2026-07-05' },
+      ] as unknown as NotificacionesDTO[]
+      const repo = makeRepo({ findMany: async () => rows })
+      const svc = new NotificacionesService(repo, makeUserRepo(), log, silentCache, fakeAuth)
+
+      const result = await svc.list({}, hotelAdmin)
+
+      expect(result.data[0].id).toBe('nuevo')
     })
   })
 

@@ -52,14 +52,23 @@ export class NotificacionesService {
     const limit = Math.min(Math.max(query.limit || 20, 1), 100)
     const offset = (page - 1) * limit
 
-    const cacheKey = `notificaciones:list:${currentUser.hotelId || 'all'}`
-    const cached = await this.cache.get(cacheKey)
-    if (cached) return cached as NotificacionesPaginated
+    // Cada usuario ve los avisos del hotel (broadcast, sin `userId`) MÁS los suyos
+    // personales — nunca los de otro. El filtro del ORM es por igualdad y esto es
+    // un OR (`userId` nulo O `userId` = yo), así que se resuelve en memoria: el
+    // volumen de notificaciones por hotel es acotado. Un `?userId=` explícito
+    // (un manager mirando a alguien) respeta ese pedido.
+    const scoped = query.userId
+      ? () => true
+      : (n: NotificacionesDTO) => !n.userId || n.userId === currentUser.id
 
-    const result = await this.repo.paginate(filters, { offset, limit })
-    const response = { data: result.data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
-    await this.cache.set(cacheKey, response, CACHE_TTL)
-    return response
+    // Sin cache: la key vieja era solo el hotel, así que la primera consulta se
+    // cacheaba y todas las demás —de cualquier usuario— recibían ESA, y el aviso
+    // personal no llegaba a su dueño. Con keys por usuario el `cache.delete` del
+    // create no las alcanza (no hay glob). Es bajo volumen; se computa fresco.
+    const all = (await this.repo.findMany(filters)).filter(scoped)
+    all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const data = all.slice(offset, offset + limit)
+    return { data, total: all.length, page, limit, pages: Math.ceil(all.length / limit) }
   }
 
   async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<NotificacionesDTO> {
