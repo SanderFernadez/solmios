@@ -1,7 +1,7 @@
 // empleados/controller.ts — Adaptador HTTP del módulo
 
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+import { validateSchema, NotFoundError } from 'arckode-framework'
 import type { EmpleadosService } from './service'
 import type {
   CreateDepartmentDTO, CreateEmployeeProfileDTO,
@@ -70,6 +70,14 @@ export class EmpleadosController {
   async getProfile(req: HttpRequest) {
     this.logger.info('GET /api/employee-profiles/:id')
     const profile = await this.service.getProfile(req.params.id, (req as any).user)
+    return { status: 200, body: profile }
+  }
+
+  /** GET /api/employee-profiles/me — el perfil del que llama. Sin `users:view`. */
+  async myProfile(req: HttpRequest) {
+    const user = (req as any).user
+    const profile = await this.service.myProfile(user?.id, user?.hotelId)
+    if (!profile) throw new NotFoundError('Este usuario no tiene un perfil de empleado')
     return { status: 200, body: profile }
   }
 

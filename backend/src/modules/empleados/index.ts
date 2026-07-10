@@ -12,6 +12,11 @@ import type {
 } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
+/** Todo el personal del hotel puede leer su propio perfil. */
+const STAFF_ROLES: [string, ...string[]] = [
+  'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor', 'super_admin',
+]
+
 export { EmpleadosService }
 export type {
   DepartmentDTO, EmployeeProfileDTO, ContractDTO,
@@ -83,6 +88,10 @@ export function EmpleadosModule() {
       // ─── Employee Profiles ────────────────────────────
       router.post('/api/employee-profiles', guard('users', 'create'), (req) => controller.createProfile(req))
       router.get('/api/employee-profiles', guard('users', 'view'), (req) => controller.listProfiles(req))
+      // Autoservicio: la app del personal necesita su `profile.id` para pedir sus tareas, y
+      // `users:view` le daría los contratos, salarios y licencias de todo el hotel.
+      // Va ANTES de `/:id`: el router resuelve por orden de registro y `me` se comería como un id.
+      router.get('/api/employee-profiles/me', [auth.authenticate(...STAFF_ROLES)], (req) => controller.myProfile(req))
       router.get('/api/employee-profiles/:id', guard('users', 'view'), (req) => controller.getProfile(req))
       router.put('/api/employee-profiles/:id', guard('users', 'edit'), (req) => controller.updateProfile(req))
       router.delete('/api/employee-profiles/:id', guard('users', 'delete'), (req) => controller.deactivateProfile(req))

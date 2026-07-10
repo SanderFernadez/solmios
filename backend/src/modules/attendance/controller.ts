@@ -3,26 +3,43 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { AttendanceService } from './service'
 import { CreateScheduleSchema, ManualRecordSchema, ClockInSchema, ClockOutSchema, BiometricRecordSchema, UpdateConfigSchema } from './validators/schema'
+import { hasPermission } from '../../shared/permissions'
+import { resolveAttendanceTarget, type EmployeeProfileFinder } from '../../shared/usecases/resolve-employee'
 
 export class AttendanceController {
-  constructor(private readonly service: AttendanceService, private readonly logger: Logger) {}
+  constructor(
+    private readonly service: AttendanceService,
+    private readonly logger: Logger,
+    private readonly profiles: EmployeeProfileFinder,
+  ) {}
+
+  /**
+   * A quién se le imputa el fichaje. Antes leía `req.userId` —que no existe— así que sin
+   * `employeeId` en el body escribía un registro con el campo vacío. Y aceptaba cualquier
+   * `employeeId`: se podía fichar por otro.
+   */
+  private async target(req: HttpRequest, requested?: string): Promise<string> {
+    const user = (req as any).user
+    const canActForOthers = hasPermission(user?.permissions ?? [], 'attendance', 'edit')
+    return resolveAttendanceTarget(this.profiles, user ?? {}, requested, canActForOthers)
+  }
 
   async clockIn(req: HttpRequest) {
     const b = validateSchema(ClockInSchema, req.body) as any
-    const hotelId = (req as any).user?.hotelId; const employeeId = b.employeeId ?? (req as any).userId
-    return { status: 201, body: await this.service.clockIn(employeeId, hotelId, b.method) }
+    const hotelId = (req as any).user?.hotelId
+    return { status: 201, body: await this.service.clockIn(await this.target(req, b.employeeId), hotelId, b.method) }
   }
   async clockOut(req: HttpRequest) {
     const b = validateSchema(ClockOutSchema, req.body) as any
-    return { status: 200, body: await this.service.clockOut(b.employeeId ?? (req as any).userId, (req as any).user?.hotelId) }
+    return { status: 200, body: await this.service.clockOut(await this.target(req, b.employeeId), (req as any).user?.hotelId) }
   }
   async startBreak(req: HttpRequest) {
     const b = validateSchema(ClockOutSchema, req.body) as any
-    return { status: 200, body: await this.service.startBreak(b.employeeId ?? (req as any).userId) }
+    return { status: 200, body: await this.service.startBreak(await this.target(req, b.employeeId)) }
   }
   async endBreak(req: HttpRequest) {
     const b = validateSchema(ClockOutSchema, req.body) as any
-    return { status: 200, body: await this.service.endBreak(b.employeeId ?? (req as any).userId) }
+    return { status: 200, body: await this.service.endBreak(await this.target(req, b.employeeId)) }
   }
   async manualRecord(req: HttpRequest) {
     const b = validateSchema(ManualRecordSchema, req.body) as any

@@ -32,10 +32,12 @@ export function AttendanceModule() {
       const recordRepo = new OrmRepository<AttendanceRecordDTO>(orm, 'AttendanceRecord')
       const scheduleRepo = new OrmRepository<AttendanceScheduleDTO>(orm, 'AttendanceSchedule')
       const configRepo = new OrmRepository<AttendanceConfigDTO>(orm, 'AttendanceConfig')
+      // Cross-table, no cross-module: el fichaje se imputa al perfil de empleado del token.
+      const profileRepo = new OrmRepository<{ id: string }>(orm, 'EmployeeProfile')
 
       const log = logger.child('attendance')
       const service = new AttendanceService(recordRepo, scheduleRepo, configRepo, log, cache)
-      const controller = new AttendanceController(service, log)
+      const controller = new AttendanceController(service, log, profileRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)

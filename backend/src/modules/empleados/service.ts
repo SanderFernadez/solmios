@@ -13,6 +13,7 @@ import type {
   DocumentExpiryAlert,
 } from './types'
 import type { EmpleadosSockets } from './sockets'
+import { accumulateSockets } from '../../shared/utils/accumulate-sockets'
 import { DepartmentUseCase } from './usecases/departments'
 import { ProfileUseCase } from './usecases/profiles'
 import { ContractUseCase } from './usecases/contracts'
@@ -54,14 +55,7 @@ export class EmpleadosService {
   }
 
   setSockets(s: Partial<EmpleadosSockets>): void {
-    const next = s as Record<string, any>
-    const cur = this.sockets as Record<string, any>
-    for (const key of Object.keys(next)) {
-      const h = next[key]
-      if (!h) continue
-      const prev = cur[key]
-      cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
-    }
+    accumulateSockets(this.sockets, s)
   }
 
   // ─── Departments ──────────────────────────────────────
@@ -98,6 +92,11 @@ export class EmpleadosService {
 
   async listProfiles(query: EmpleadosQuery): Promise<EmpleadosPaginated> {
     return this.profiles.list(query)
+  }
+
+  /** Perfil del propio usuario. Autoservicio para la app del personal. */
+  async myProfile(userId: string, hotelId?: string): Promise<EmployeeProfileDTO | null> {
+    return this.profiles.mine(userId, hotelId)
   }
 
   async updateProfile(id: string, data: Partial<CreateEmployeeProfileDTO>, user?: SimpleUser): Promise<EmployeeProfileDTO> {

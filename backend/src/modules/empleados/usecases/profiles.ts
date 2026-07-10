@@ -13,6 +13,17 @@ export class ProfileUseCase {
     private readonly auth?: Auth,
   ) {}
 
+  /**
+   * El perfil del propio usuario. Autoservicio: la app del personal necesita su `profile.id` para
+   * pedir sus tareas, y `users:view` le daría los contratos, salarios y licencias de todo el hotel.
+   */
+  async mine(userId: string, hotelId?: string): Promise<EmployeeProfileDTO | null> {
+    if (!userId) return null
+    const filters: Record<string, unknown> = { userId }
+    if (hotelId) filters.hotelId = hotelId
+    return (await this.repo.findOne(filters)) ?? null
+  }
+
   async create(dto: CreateEmployeeProfileDTO): Promise<EmployeeProfileDTO> {
     const existing = await this.repo.findOne({ userId: dto.userId, hotelId: dto.hotelId })
     if (existing) throw new ValidationError('Employee profile already exists for this user')
