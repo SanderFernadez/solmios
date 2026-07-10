@@ -139,6 +139,7 @@ export interface PayrollPaymentHistoryDTO {
   id: string
   runId: string
   employeeId: string
+  hotelId: string
   amount: number
   method: string
   reference: string | null
@@ -192,4 +193,36 @@ export interface PayrollCalculationResult {
   totalDeductions: number
   totalNet: number
   employeeCount: number
+}
+
+// ─── Prefill desde Asistencia ───────────────────────────
+// Puertos que el conector `attendance-payroll` inyecta. Payroll no importa de otros módulos:
+// declara la interfaz y la recibe cableada (patrón puerto, como messages.setUserDirectory).
+
+/** Un empleado liquidable: id de su legajo (employee_profiles.id) y su salario base. */
+export interface PayrollEmployeeRef {
+  employeeId: string
+  employeeName: string
+  baseSalary: number
+}
+
+/** Horas agregadas de un empleado en el período. Estructuralmente igual a AttendanceReport. */
+export interface AttendanceReportInput {
+  employeeId: string
+  daysWorked: number
+  hoursWorked: number
+  overtimeHours: number
+  absences: number
+  lateArrivals: number
+}
+
+export interface PayrollPrefillPort {
+  listEmployees(hotelId: string): Promise<PayrollEmployeeRef[]>
+  getReport(hotelId: string, from: string, to: string): Promise<AttendanceReportInput[]>
+}
+
+/** Fila prellenada para la tabla editable de la UI. */
+export interface PayrollPrefillRow extends PayrollEmployeeInput {
+  employeeName: string
+  hasAttendance: boolean   // false → sin fichajes en el período; la UI lo marca, no lo oculta
 }

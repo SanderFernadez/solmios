@@ -17,6 +17,8 @@ export const MODULES = {
   users: 'Usuarios',
   /** Fichar entrada/salida no es administrar usuarios: lo hace todo el personal desde la app. */
   attendance: 'Asistencia',
+  /** Liquidar sueldos NO es facturar: antes usaba billing:* y recepción podía crear liquidaciones. */
+  payroll: 'Nómina',
   feedback: 'Feedback',
   'channel-manager': 'Channel Manager',
   ttlock: 'Cerraduras',
@@ -58,6 +60,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'settings:view', 'settings:edit', 'settings:create', 'settings:delete',
     'users:view', 'users:create', 'users:edit', 'users:delete',
     'attendance:view', 'attendance:create', 'attendance:edit',
+    // Nómina es del dueño del hotel, no de recepción: por eso payroll:* NO está en receptionist.
+    'payroll:view', 'payroll:create', 'payroll:edit', 'payroll:delete',
     'feedback:view',
     'channel-manager:view', 'channel-manager:edit',
     'ttlock:view', 'ttlock:edit',

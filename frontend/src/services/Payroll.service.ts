@@ -43,6 +43,12 @@ export interface PayrollEmployeeInput {
   absences: number; lateArrivals: number
 }
 
+/** Fila prellenada desde los fichajes: incluye el nombre y si el empleado fichó en el período. */
+export interface PayrollPrefillRow extends PayrollEmployeeInput {
+  employeeName: string
+  hasAttendance: boolean
+}
+
 export interface PayrollCalculationResult {
   period: string; employees: any[]; totalGross: number; totalDeductions: number; totalNet: number; employeeCount: number
 }
@@ -59,6 +65,7 @@ export const PayrollService = {
   createRun: (hotelId: string, data: Partial<PayrollRun>): Promise<PayrollRun> => http.post(`/api/payroll/runs${hotelParam(hotelId)}`, data),
   getRun: (id: string): Promise<PayrollRun> => http.get(`/api/payroll/runs/${id}`),
   getRunDetails: (id: string): Promise<PayrollRunDetail[]> => http.get(`/api/payroll/runs/${id}/details`),
+  prefill: (id: string): Promise<PayrollPrefillRow[]> => http.get(`/api/payroll/runs/${id}/prefill`),
   calculate: (id: string, employees: PayrollEmployeeInput[]): Promise<PayrollCalculationResult> => http.post(`/api/payroll/runs/${id}/calculate`, { employees }),
   approve: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/approve`),
   markAsPaid: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/pay`),

@@ -15,6 +15,12 @@ export interface AttendanceSchedule {
   graceMinutes: number; overtimeThresholdMinutes: number
 }
 
+/** Fila agregada por empleado que devuelve /api/attendance/report (para la nómina). */
+export interface AttendanceReportRow {
+  employeeId: string; daysWorked: number; hoursWorked: number
+  overtimeHours: number; absences: number; lateArrivals: number
+}
+
 export interface AttendanceConfig {
   id: string; hotelId: string; autoClockOut: number; autoClockOutTime: string
   overtimeEnabled: number; overtimeMultiplier: number; allowMobileClockIn: number
@@ -29,7 +35,7 @@ export const AttendanceService = {
   manualRecord: (data: { employeeId: string; clockIn: string; clockOut?: string; notes?: string }) => http.post('/api/attendance/manual', data) as Promise<AttendanceRecord>,
   getToday: (employeeId: string): Promise<AttendanceRecord | null> => http.get(`/api/attendance/today/${employeeId}`),
   listRecords: (params?: Record<string, string>): Promise<AttendanceRecord[]> => { const qs = params ? '?' + new URLSearchParams(params).toString() : ''; return http.get(`/api/attendance/records${qs}`) },
-  getReport: (from: string, to: string): Promise<any[]> => http.get(`/api/attendance/report?from=${from}&to=${to}`),
+  getReport: (from: string, to: string): Promise<AttendanceReportRow[]> => http.get(`/api/attendance/report?from=${from}&to=${to}`),
 
   listSchedules: (): Promise<AttendanceSchedule[]> => http.get('/api/attendance/schedules'),
   createSchedule: (data: Partial<AttendanceSchedule>): Promise<AttendanceSchedule> => http.post('/api/attendance/schedules', data),

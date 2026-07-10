@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-10T05:05:35.413Z",
+  "_generated": "2026-07-10T20:36:46.800Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -412,6 +412,19 @@
       "complete": true
     },
     {
+      "name": "pushtokens",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "huespedes",
       "structure": {
         "index": true,
@@ -544,9 +557,11 @@
   ],
   "connectors": [
     "folios-payments.ts",
+    "pushtokens-usuarios.ts",
     "payment-requests-payments.ts",
     "reservas-canales.ts",
     "facturas-auditlog.ts",
+    "messages-pushtokens.ts",
     "reservas-huespedes.ts",
     "gastos-caja.ts",
     "folios-facturas.ts",
@@ -555,6 +570,7 @@
     "reservas-housekeeping.ts",
     "bookingengine-payments.ts",
     "payroll-gastos.ts",
+    "attendance-payroll.ts",
     "reservas-payment-requests.ts",
     "messages-usuarios.ts",
     "mantenimiento-notificaciones.ts",

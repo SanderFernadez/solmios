@@ -192,12 +192,32 @@
         </div>
       </div>
     </Teleport>
+
+    <CalculatePayrollModal
+      v-if="calcRun"
+      :run="calcRun"
+      @close="calcRun = null"
+      @calculated="onCalculated"
+    />
+
+    <FormModal
+      v-if="conceptModal"
+      title="Nuevo Concepto"
+      :fields="conceptFields"
+      :loading="savingConcept"
+      submit-label="Crear Concepto"
+      @close="conceptModal = false"
+      @submit="createConcept"
+    />
   </div>
 </template>
+
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { PayrollService, type PayrollRun, type PayrollConfig, type PayrollConcept } from '@/services/Payroll.service'
+import CalculatePayrollModal from '@/components/features/CalculatePayrollModal.vue'
+import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -232,6 +252,7 @@ const runs = ref<PayrollRun[]>([])
 const config = ref<PayrollConfig | null>(null)
 const concepts = ref<PayrollConcept[]>([])
 
+const calcRun = ref<PayrollRun | null>(null)
 const showNewRunModal = ref(false)
 const creatingRun = ref(false)
 const newRunError = ref('')
@@ -283,25 +304,14 @@ async function createRun() {
   }
 }
 
-async function calculateRun(run: PayrollRun) {
-  const empCount = parseInt(prompt('N° de empleados a calcular:', '1') ?? '0')
-  if (!empCount) return
-  const employees = []
-  for (let i = 0; i < empCount; i++) {
-    const emp: any = { employeeId: prompt(`ID empleado ${i+1}:`, `emp-${i+1}`) ?? `emp-${i+1}` }
-    emp.baseSalary = parseFloat(prompt(`Salario base ${i+1}:`, '1500') ?? '1500')
-    emp.daysWorked = parseInt(prompt(`Días trabajados ${i+1}:`, '30') ?? '30')
-    emp.hoursWorked = parseInt(prompt(`Horas trabajadas ${i+1}:`, '240') ?? '240')
-    emp.overtimeHours = parseInt(prompt(`Horas extra ${i+1}:`, '0') ?? '0')
-    emp.absences = parseInt(prompt(`Ausencias ${i+1}:`, '0') ?? '0')
-    emp.lateArrivals = 0
-    employees.push(emp)
-  }
-  try {
-    const result = await PayrollService.calculate(run.id, employees)
-    toast.success(`Nómina calculada: ${result.employeeCount} empleados, $${result.totalNet.toLocaleString()} neto`)
-    loadData()
-  } catch { toast.error('Error al calcular') }
+function calculateRun(run: PayrollRun) {
+  calcRun.value = run
+}
+
+function onCalculated(result: { employeeCount: number; totalNet: number }) {
+  toast.success(`Nómina calculada: ${result.employeeCount} empleados, $${result.totalNet.toLocaleString()} neto`)
+  calcRun.value = null
+  loadData()
 }
 
 async function approveRun(run: PayrollRun) {
@@ -324,6 +334,42 @@ async function cancelRun(run: PayrollRun) {
 
 function viewDetails(run: PayrollRun) { toast.info(`Detalle de ${run.period} — ${run.employeeCount} empleados, $${run.totalNet.toLocaleString()} neto`) }
 async function saveConfig() { try { await PayrollService.updateConfig(hotelId.value!, config.value!); toast.success('Configuración guardada') } catch { toast.error('Error') } }
-function openNewConcept() { toast.info('Nuevo concepto — formulario pendiente') }
-function deleteConcept(c: PayrollConcept) { toast.info(`Eliminar ${c.code} — pendiente`) }
+
+const conceptModal = ref(false)
+const savingConcept = ref(false)
+const conceptFields: FormField[] = [
+  { key: 'code', label: 'Código', required: true, placeholder: 'OT, BONO…' },
+  { key: 'name', label: 'Nombre', required: true, placeholder: 'Horas extra' },
+  { key: 'type', label: 'Tipo', type: 'select', required: true, default: 'earning', options: [
+    { value: 'earning', label: 'Percepción' }, { value: 'deduction', label: 'Deducción' },
+    { value: 'contribution', label: 'Aporte' }, { value: 'tax', label: 'Impuesto' },
+  ] },
+  { key: 'calculationMethod', label: 'Cálculo', type: 'select', required: true, default: 'fixed', options: [
+    { value: 'fixed', label: 'Monto fijo' }, { value: 'percentage', label: 'Porcentaje' },
+    { value: 'formula', label: 'Fórmula' }, { value: 'hours_based', label: 'Por horas' },
+  ] },
+  { key: 'value', label: 'Valor', type: 'number', min: 0 },
+]
+
+function openNewConcept() { conceptModal.value = true }
+
+async function createConcept(values: Record<string, string | number>) {
+  savingConcept.value = true
+  try {
+    await PayrollService.createConcept(hotelId.value!, values as unknown as Partial<PayrollConcept>)
+    toast.success('Concepto creado')
+    conceptModal.value = false
+    loadData()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Error al crear el concepto')
+  } finally {
+    savingConcept.value = false
+  }
+}
+
+async function deleteConcept(c: PayrollConcept) {
+  if (!confirm(`¿Eliminar el concepto "${c.code}"?`)) return
+  try { await PayrollService.deleteConcept(c.id); toast.success('Concepto eliminado'); loadData() }
+  catch { toast.error('Error al eliminar el concepto') }
+}
 </script>

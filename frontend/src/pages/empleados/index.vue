@@ -271,6 +271,16 @@
         <p class="text-text-muted text-sm">No hay evaluaciones registradas</p>
       </div>
     </div>
+
+    <FormModal
+      v-if="formModal"
+      :title="formModal.title"
+      :fields="formModal.fields"
+      :submit-label="formModal.submitLabel"
+      :loading="savingForm"
+      @close="formModal = null"
+      @submit="submitForm"
+    />
   </div>
 </template>
 
@@ -279,6 +289,7 @@ import { ref, computed, onMounted } from 'vue'
 import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert } from '@/services/Empleados.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 
 const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
@@ -416,8 +427,94 @@ async function completeReview(r: PerformanceReview) {
   catch { toast.error('Error al completar') }
 }
 
-function openNewContract() { toast.info('Nuevo contrato — formulario pendiente') }
-function openNewDocument() { toast.info('Nuevo documento — formulario pendiente') }
-function openNewLeave() { toast.info('Nueva solicitud — formulario pendiente') }
-function openNewReview() { toast.info('Nueva evaluación — formulario pendiente') }
+// ─── Formularios (modal genérico dirigido por estado) ───
+type FormValues = Record<string, string | number>
+const formModal = ref<{ title: string; submitLabel: string; fields: FormField[]; onSubmit: (v: FormValues) => Promise<unknown> } | null>(null)
+const savingForm = ref(false)
+
+const employeeOptions = () => profiles.value.map((p) => ({ value: p.id, label: p.userName || p.position || p.id }))
+
+function openNewContract() {
+  formModal.value = {
+    title: 'Nuevo Contrato', submitLabel: 'Crear Contrato',
+    fields: [
+      { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions() },
+      { key: 'type', label: 'Tipo', type: 'select', required: true, default: 'full_time', options: [
+        { value: 'full_time', label: 'Tiempo completo' }, { value: 'part_time', label: 'Medio tiempo' },
+        { value: 'temporary', label: 'Temporal' }, { value: 'contractor', label: 'Por servicios' },
+      ] },
+      { key: 'startDate', label: 'Fecha inicio', type: 'date', required: true },
+      { key: 'endDate', label: 'Fecha fin (opcional)', type: 'date' },
+      { key: 'salary', label: 'Salario', type: 'number', required: true, min: 0 },
+      { key: 'currency', label: 'Moneda', default: 'DOP' },
+      { key: 'position', label: 'Puesto' },
+    ],
+    onSubmit: (v) => EmpleadosService.createContract(v),
+  }
+}
+
+function openNewDocument() {
+  formModal.value = {
+    title: 'Nuevo Documento', submitLabel: 'Guardar Documento',
+    fields: [
+      { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions() },
+      { key: 'type', label: 'Tipo', type: 'select', required: true, default: 'id', options: [
+        { value: 'id', label: 'Identificación' }, { value: 'contract', label: 'Contrato' },
+        { value: 'certificate', label: 'Certificado' }, { value: 'other', label: 'Otro' },
+      ] },
+      { key: 'name', label: 'Nombre', required: true, placeholder: 'Cédula, Título…' },
+      { key: 'fileUrl', label: 'URL del archivo', placeholder: 'https://…' },
+      { key: 'expiryDate', label: 'Vence (opcional)', type: 'date' },
+    ],
+    onSubmit: (v) => EmpleadosService.createDocument(v),
+  }
+}
+
+function openNewLeave() {
+  formModal.value = {
+    title: 'Nueva Solicitud de Ausencia', submitLabel: 'Crear Solicitud',
+    fields: [
+      { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions() },
+      { key: 'type', label: 'Tipo', type: 'select', required: true, default: 'vacation', options: [
+        { value: 'vacation', label: 'Vacaciones' }, { value: 'permission', label: 'Permiso' },
+        { value: 'sick_leave', label: 'Enfermedad' }, { value: 'maternity', label: 'Maternidad' }, { value: 'other', label: 'Otro' },
+      ] },
+      { key: 'startDate', label: 'Desde', type: 'date', required: true },
+      { key: 'endDate', label: 'Hasta', type: 'date', required: true },
+      { key: 'days', label: 'Días', type: 'number', required: true, min: 1, default: 1 },
+      { key: 'reason', label: 'Motivo', type: 'textarea' },
+    ],
+    onSubmit: (v) => EmpleadosService.createLeaveRequest(v),
+  }
+}
+
+function openNewReview() {
+  formModal.value = {
+    title: 'Nueva Evaluación', submitLabel: 'Crear Evaluación',
+    fields: [
+      { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions() },
+      { key: 'reviewDate', label: 'Fecha', type: 'date', required: true, default: new Date().toISOString().slice(0, 10) },
+      { key: 'period', label: 'Período', placeholder: '2026-Q3' },
+      { key: 'score', label: 'Puntaje (1-10)', type: 'number', min: 1 },
+      { key: 'strengths', label: 'Fortalezas', type: 'textarea' },
+      { key: 'improvements', label: 'A mejorar', type: 'textarea' },
+    ],
+    onSubmit: (v) => EmpleadosService.createReview({ ...v, reviewerId: auth.user?.id ?? '' } as FormValues),
+  }
+}
+
+async function submitForm(values: FormValues) {
+  if (!formModal.value) return
+  savingForm.value = true
+  try {
+    await formModal.value.onSubmit(values)
+    toast.success('Guardado')
+    formModal.value = null
+    loadData()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Error al guardar')
+  } finally {
+    savingForm.value = false
+  }
+}
 </script>

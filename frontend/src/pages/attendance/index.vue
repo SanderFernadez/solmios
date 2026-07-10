@@ -260,15 +260,26 @@
         </div>
       </div>
     </div>
+
+    <FormModal
+      v-if="scheduleModal"
+      title="Nuevo Turno"
+      :fields="scheduleFields"
+      :loading="savingSchedule"
+      submit-label="Crear Turno"
+      @close="scheduleModal = false"
+      @submit="createSchedule"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { AttendanceService, type AttendanceRecord, type AttendanceSchedule } from '@/services/Attendance.service'
+import { AttendanceService, type AttendanceRecord, type AttendanceSchedule, type AttendanceReportRow } from '@/services/Attendance.service'
 import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.service'
 import { useToast } from '@/composables/useToast'
 import CameraCapture from '@/components/features/CameraCapture.vue'
+import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 
 const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
 const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 1.5 1.5 3.75-3.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
@@ -295,7 +306,7 @@ const now = ref(''); const today = ref('')
 
 const todayRecord = ref<AttendanceRecord | null>(null)
 const schedules = ref<AttendanceSchedule[]>([])
-const report = ref<any[]>([])
+const report = ref<AttendanceReportRow[]>([])
 const reportFrom = ref(''); const reportTo = ref('')
 const manualForm = ref({ employeeId: '', clockIn: '', clockOut: '', notes: '' })
 const selectedMethod = ref('pin')
@@ -371,6 +382,35 @@ async function loadReport() {
   try { report.value = await AttendanceService.getReport(reportFrom.value, reportTo.value) } catch { toast.error('Error') }
 }
 
-function openNewSchedule() { const n = prompt('Nombre del turno:'); if (!n) return; const s = prompt('Hora inicio (HH:MM):','06:00'); const e = prompt('Hora fin (HH:MM):','14:00'); if (!s || !e) return; AttendanceService.createSchedule({ name: n, startTime: s, endTime: e }).then(() => { toast.success('Turno creado'); loadData() }).catch(() => toast.error('Error')) }
-function deleteSchedule(s: AttendanceSchedule) { AttendanceService.deleteSchedule(s.id).then(() => { toast.success('Turno eliminado'); loadData() }).catch(() => toast.error('Error')) }
+const scheduleModal = ref(false)
+const savingSchedule = ref(false)
+const scheduleFields: FormField[] = [
+  { key: 'name', label: 'Nombre del turno', required: true, placeholder: 'Mañana' },
+  { key: 'startTime', label: 'Hora inicio', type: 'text', required: true, default: '06:00', placeholder: 'HH:MM' },
+  { key: 'endTime', label: 'Hora fin', type: 'text', required: true, default: '14:00', placeholder: 'HH:MM' },
+  { key: 'breakMinutes', label: 'Descanso (min)', type: 'number', min: 0, default: 30 },
+  { key: 'graceMinutes', label: 'Tolerancia (min)', type: 'number', min: 0, default: 10 },
+]
+
+function openNewSchedule() { scheduleModal.value = true }
+
+async function createSchedule(values: Record<string, string | number>) {
+  savingSchedule.value = true
+  try {
+    await AttendanceService.createSchedule(values as unknown as Partial<AttendanceSchedule>)
+    toast.success('Turno creado')
+    scheduleModal.value = false
+    loadData()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Error al crear el turno')
+  } finally {
+    savingSchedule.value = false
+  }
+}
+
+async function deleteSchedule(s: AttendanceSchedule) {
+  if (!confirm(`¿Eliminar el turno "${s.name}"?`)) return
+  try { await AttendanceService.deleteSchedule(s.id); toast.success('Turno eliminado'); loadData() }
+  catch { toast.error('Error al eliminar el turno') }
+}
 </script>

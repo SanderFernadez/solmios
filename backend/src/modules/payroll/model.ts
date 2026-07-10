@@ -106,6 +106,9 @@ const PayrollPaymentHistoryModel: ModelDefinition = {
   fields: {
     runId: { type: 'string', required: true, indexed: true },
     employeeId: { type: 'string', required: true, indexed: true },
+    // Multi-tenancy: sin hotelId, un reporte de pagos no puede filtrar por hotel. El resto de las
+    // tablas del proyecto lo tienen; ésta no lo tenía porque nadie la poblaba (ver runs.markAsPaid).
+    hotelId: { type: 'string', required: true, indexed: true },
     amount: { type: 'number', required: true },
     method: { type: 'string', required: true },
     reference: { type: 'string' },

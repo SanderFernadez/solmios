@@ -15,6 +15,7 @@ export type {
   PayrollRunDetailDTO, PayrollPayslipDTO, PayrollPaymentHistoryDTO,
   CreatePayrollConfigDTO, CreatePayrollConceptDTO, CreatePayrollRunDTO,
   PayrollEmployeeInput, PayrollEmployeeResult, PayrollCalculationResult,
+  PayrollPrefillPort, PayrollPrefillRow, PayrollEmployeeRef, AttendanceReportInput,
 } from './types'
 export type { PayrollPaymentMethod } from './types'
 export type { PayrollSockets } from './sockets'
@@ -28,7 +29,7 @@ export function PayrollModule() {
     contract: {
       name: 'payroll', version: '1.0.0',
       description: 'Nómina completa',
-      actions: ['getConfig','updateConfig','listConcepts','createConcept','deleteConcept','listRuns','createRun','getRun','getRunDetails','calculate','approve','markAsPaid','cancelRun'],
+      actions: ['getConfig','updateConfig','listConcepts','createConcept','deleteConcept','listRuns','createRun','getRun','getRunDetails','prefill','setPrefillPort','calculate','approve','markAsPaid','cancelRun'],
       events: ['onRunCreated','onRunApproved','onRunPaid'],
       tables: ['payroll_config','payroll_concepts','payroll_runs','payroll_run_details','payroll_payslips','payroll_payment_history'],
       dependencies: [],
@@ -53,27 +54,29 @@ export function PayrollModule() {
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
 
+      // Permiso payroll:* (NO billing:*): liquidar sueldos es del hotel_admin, no de recepción.
       // Config
-      router.get('/api/payroll/config', guard('billing', 'view'), (req) => controller.getConfig(req))
-      router.put('/api/payroll/config', guard('billing', 'edit'), (req) => controller.updateConfig(req))
+      router.get('/api/payroll/config', guard('payroll', 'view'), (req) => controller.getConfig(req))
+      router.put('/api/payroll/config', guard('payroll', 'edit'), (req) => controller.updateConfig(req))
 
       // Concepts
-      router.get('/api/payroll/concepts', guard('billing', 'view'), (req) => controller.listConcepts(req))
-      router.get('/api/payroll/concepts/:id', guard('billing', 'view'), (req) => controller.getConcept(req))
-      router.post('/api/payroll/concepts', guard('billing', 'create'), (req) => controller.createConcept(req))
-      router.delete('/api/payroll/concepts/:id', guard('billing', 'create'), (req) => controller.deleteConcept(req))
+      router.get('/api/payroll/concepts', guard('payroll', 'view'), (req) => controller.listConcepts(req))
+      router.get('/api/payroll/concepts/:id', guard('payroll', 'view'), (req) => controller.getConcept(req))
+      router.post('/api/payroll/concepts', guard('payroll', 'create'), (req) => controller.createConcept(req))
+      router.delete('/api/payroll/concepts/:id', guard('payroll', 'delete'), (req) => controller.deleteConcept(req))
 
       // Runs
-      router.get('/api/payroll/runs', guard('billing', 'view'), (req) => controller.listRuns(req))
-      router.post('/api/payroll/runs', guard('billing', 'create'), (req) => controller.createRun(req))
-      router.get('/api/payroll/runs/:id', guard('billing', 'view'), (req) => controller.getRun(req))
-      router.get('/api/payroll/runs/:id/details', guard('billing', 'view'), (req) => controller.getRunDetails(req))
-      router.post('/api/payroll/runs/:id/calculate', guard('billing', 'edit'), (req) => controller.calculate(req))
-      router.post('/api/payroll/runs/:id/approve', guard('billing', 'edit'), (req) => controller.approve(req))
-      router.post('/api/payroll/runs/:id/pay', guard('billing', 'edit'), (req) => controller.markAsPaid(req))
-      router.post('/api/payroll/runs/:id/cancel', guard('billing', 'edit'), (req) => controller.cancelRun(req))
+      router.get('/api/payroll/runs', guard('payroll', 'view'), (req) => controller.listRuns(req))
+      router.post('/api/payroll/runs', guard('payroll', 'create'), (req) => controller.createRun(req))
+      router.get('/api/payroll/runs/:id', guard('payroll', 'view'), (req) => controller.getRun(req))
+      router.get('/api/payroll/runs/:id/details', guard('payroll', 'view'), (req) => controller.getRunDetails(req))
+      router.get('/api/payroll/runs/:id/prefill', guard('payroll', 'view'), (req) => controller.prefill(req))
+      router.post('/api/payroll/runs/:id/calculate', guard('payroll', 'edit'), (req) => controller.calculate(req))
+      router.post('/api/payroll/runs/:id/approve', guard('payroll', 'edit'), (req) => controller.approve(req))
+      router.post('/api/payroll/runs/:id/pay', guard('payroll', 'edit'), (req) => controller.markAsPaid(req))
+      router.post('/api/payroll/runs/:id/cancel', guard('payroll', 'delete'), (req) => controller.cancelRun(req))
 
-      log.info('Módulo payroll listo — 6 tablas, 13 endpoints')
+      log.info('Módulo payroll listo — 6 tablas, 16 endpoints')
       return service
     },
   })

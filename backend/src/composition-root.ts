@@ -109,6 +109,8 @@ import { DashboardModule } from './modules/dashboard'
 import { FeedbackModule } from './modules/feedback'
 import { StaffAuthModule } from './modules/staff-auth'
 import { MessagesModule } from './modules/messages'
+import { PushTokensModule } from './modules/pushtokens'
+import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
 
@@ -124,6 +126,7 @@ const mods = [
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
   StaffAuthModule(),
   MessagesModule({ storage }),
+  PushTokensModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -146,8 +149,11 @@ import { foliosPaymentsConnector } from './connectors/folios-payments'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
 import { gastosCajaConnector } from './connectors/gastos-caja'
 import { payrollGastosConnector } from './connectors/payroll-gastos'
+import { attendancePayrollConnector } from './connectors/attendance-payroll'
 import { bookingenginePaymentsConnector } from './connectors/bookingengine-payments'
 import { messagesUsuariosConnector } from './connectors/messages-usuarios'
+import { messagesPushtokensConnector } from './connectors/messages-pushtokens'
+import { pushtokensUsuariosConnector } from './connectors/pushtokens-usuarios'
 import { housekeepingMantenimientoConnector } from './connectors/housekeeping-mantenimiento'
 import { housekeepingNotificacionesConnector } from './connectors/housekeeping-notificaciones'
 
@@ -165,6 +171,8 @@ system.addConnector('gastos-caja', gastosCajaConnector)
 // Pagar la nómina es un gasto. Cae en `gastos` y de ahí, si fue en efectivo, en la caja.
 // Se registra después de gastos-caja para que el egreso encuentre el socket ya inyectado.
 system.addConnector('payroll-gastos', payrollGastosConnector)
+// Cablea el prefill de nómina: payroll lee horas de attendance y salarios de empleados.
+system.addConnector('attendance-payroll', attendancePayrollConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)
 system.addConnector('facturas-auditlog', facturasAuditlogConnector)
 // El dinero se asienta en `payments` → payments-caja lo lleva al arqueo y a la conciliación.
@@ -181,6 +189,10 @@ system.addConnector('folios-facturas', foliosFacturasConnector)
 system.addConnector('reservas-folios-settlement', reservasFoliosSettlementConnector)
 // El chat resuelve nombres de compañeros sin pasar por `users:view`.
 system.addConnector('messages-usuarios', messagesUsuariosConnector)
+// Un mensaje nuevo le llega al teléfono aunque la app esté cerrada.
+system.addConnector('messages-pushtokens', messagesPushtokensConnector)
+// El aviso dice el nombre de quien escribió, no su id.
+system.addConnector('pushtokens-usuarios', pushtokensUsuariosConnector)
 // Lo que la camarera reporta como roto se convierte en un ticket con fotos.
 system.addConnector('housekeeping-mantenimiento', housekeepingMantenimientoConnector)
 // Asignar una habitación le avisa a la persona asignada.
@@ -211,6 +223,15 @@ const { emailService, startWorker } = bootstrapEmail(orm, logger, (name) => syst
 // Post-init: ai-recepcionista usa pushAvailability (reservas IA bypassan el módulo reservas).
 const aiRecepcionista = system.resolveModule<{ channexPusher: ((hotelId: string, roomId: string) => void) | null }>('ai-recepcionista')
 if (aiRecepcionista) aiRecepcionista.channexPusher = pushAvailability
+
+// Post-init: los avisos al teléfono. Sin credenciales de Firebase `fromEnv`
+// devuelve null y el módulo se queda solo guardando tokens: la app sigue
+// avisando mientras está abierta, que es lo que hacía antes de todo esto.
+const fcm = FcmClient.fromEnv(logger)
+if (fcm) {
+  const pushTokens = system.resolveModule<{ setSender: (s: FcmClient) => void }>('pushtokens')
+  pushTokens?.setSender(fcm)
+}
 
 startWorker()
 

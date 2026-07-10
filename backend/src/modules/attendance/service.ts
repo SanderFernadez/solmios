@@ -52,6 +52,7 @@ export class AttendanceService {
     const s = await this.scheduleRepo.findById(id)
     if (!s) throw new NotFoundError('Schedule not found')
     if (hotelId && s.hotelId !== hotelId) throw new AuthError('Not authorized to delete this schedule')
+    this.auth?.assertOwnership(s.hotelId, hotelId ?? s.hotelId, undefined, 'super_admin')
     await this.scheduleRepo.update(id, { active: 0 } as any)
   }
 
