@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLMI OS — Mapa del sistema</title>
+<style>
+  :root{
+    --bg:#0d1526; --panel:#16213e; --panel-2:#1c2c50; --line:#2a3c66;
+    --txt:#e8eefc; --muted:#93a3c4;
+    --green:#3ddc84; --amber:#ffb443; --red:#ff5c6c; --blue:#5aa9ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}
+  h1{margin:0 0 6px;font-size:26px;letter-spacing:-.02em}
+  h2{font-size:19px;margin:44px 0 14px;letter-spacing:-.01em}
+  h3{font-size:15px;margin:26px 0 10px}
+  .sub{color:var(--muted);margin:0}
+  code{font-family:ui-monospace,"JetBrains Mono",Menlo,monospace;font-size:.88em;
+       background:#0a1120;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0 8px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .tile .n{font-size:26px;font-weight:800;line-height:1.1}
+  .tile .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
+
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin:0 0 16px;font-size:13px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .sw{width:26px;height:0;border-top-width:2.5px;border-top-style:solid}
+
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;
+          background:linear-gradient(180deg,#101a30,#0c1424)}
+  svg{display:block;min-width:1010px}
+  .nlabel{font:600 13px ui-sans-serif,system-ui,sans-serif;fill:var(--txt)}
+  .nsub{font:10.5px ui-monospace,Menlo,monospace;fill:var(--muted)}
+  .elabel{font:10.5px ui-sans-serif,system-ui,sans-serif;fill:var(--muted)}
+  .elabel.bad{fill:var(--red)}
+  .elabel.warn{fill:var(--amber)}
+  .band{font:700 11px ui-sans-serif,system-ui,sans-serif;fill:var(--muted);letter-spacing:.12em}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  tbody tr:last-child td{border-bottom:none}
+  .ok{color:var(--green)} .no{color:var(--red)} .mid{color:var(--amber)}
+
+  .isla{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);
+        border-radius:8px;padding:14px 18px;margin-bottom:12px}
+  .isla.warn{border-left-color:var(--amber)}
+  .isla.good{border-left-color:var(--green)}
+  .isla h3{margin:0 0 6px;font-size:14.5px}
+  .isla p{margin:0 0 6px;color:var(--muted);font-size:13.5px}
+  .isla p:last-child{margin:0}
+
+  .foot{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);
+        color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>SOLMI OS — Mapa del sistema</h1>
+  <p class="sub">Qué está conectado, qué no, y qué no funciona. Trazado leyendo el código y probando producción.</p>
+</header>
+
+<div class="tiles">
+  <div class="tile"><div class="n" style="color:var(--green)">22</div><div class="l">Conectores vivos</div></div>
+  <div class="tile"><div class="n" style="color:var(--green)">46</div><div class="l">Pantallas reales</div></div>
+  <div class="tile"><div class="n" style="color:var(--amber)">8</div><div class="l">Pantallas que no guardan</div></div>
+  <div class="tile"><div class="n" style="color:var(--red)">2</div><div class="l">Pantallas maqueta</div></div>
+  <div class="tile"><div class="n" style="color:var(--red)">6</div><div class="l">Tablas que nadie lee</div></div>
+  <div class="tile"><div class="n" style="color:var(--red)">0</div><div class="l">Integraciones vivas en prod</div></div>
+</div>
+
+<div class="isla" style="border-left-color:var(--blue)">
+  <h3>El titular</h3>
+  <p>El <strong>núcleo operativo y financiero está bien construido</strong>: 22 conectores, el dinero converge en <code>payments</code> y el balance cuadra contra caja y conciliación.</p>
+  <p>Lo que falla está en los bordes: <strong>ninguna integración externa tiene credenciales en producción</strong> (Stripe, Channex y el LLM tienen la variable vacía, y Channex apunta a <em>staging</em>), la pantalla de <strong>Opiniones llama a un endpoint que no existe</strong>, y hay <strong>seis tablas de datos que nadie lee</strong> — dos de ellas con plata adentro.</p>
+</div>
+
+<h2>El grafo</h2>
+<div class="legend">
+  <span><i class="sw" style="border-color:var(--green)"></i> Conectado y verificado</span>
+  <span><i class="sw" style="border-color:var(--red);border-top-style:dashed"></i> Falta la conexión</span>
+</div>
+
+<h3>1 · La operación — quién avisa a quién</h3>
+<div class="scroll">
+<svg viewBox="0 0 1010 430" role="img" aria-label="Grafo de la operación">
+  <defs>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#3ddc84"/></marker>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#ff5c6c"/></marker>
+    <style>
+      .eg{stroke:#3ddc84;stroke-width:1.8;fill:none;marker-end:url(#ag)}
+      .er{stroke:#ff5c6c;stroke-width:1.8;fill:none;stroke-dasharray:6 4;marker-end:url(#ar)}
+      .box{fill:#16213e;stroke:#2a3c66;stroke-width:1.4;rx:8}
+    </style>
+  </defs>
+
+  <rect class="box" x="40" y="60" width="180" height="54"/>
+  <text class="nlabel" x="130" y="82" text-anchor="middle">Motor de Reservas</text>
+  <text class="nsub" x="130" y="99" text-anchor="middle">widget público</text>
+
+  <rect class="box" x="40" y="170" width="180" height="54"/>
+  <text class="nlabel" x="130" y="192" text-anchor="middle">Reservas</text>
+  <text class="nsub" x="130" y="209" text-anchor="middle">checkin · checkout</text>
+
+  <rect class="box" x="40" y="300" width="180" height="54"/>
+  <text class="nlabel" x="130" y="322" text-anchor="middle">Recepcionista IA</text>
+  <text class="nsub" x="130" y="339" text-anchor="middle">WhatsApp · LLM</text>
+
+  <rect class="box" x="300" y="110" width="180" height="54"/>
+  <text class="nlabel" x="390" y="132" text-anchor="middle">Housekeeping</text>
+  <text class="nsub" x="390" y="149" text-anchor="middle">app del personal</text>
+
+  <rect class="box" x="300" y="230" width="180" height="54"/>
+  <text class="nlabel" x="390" y="252" text-anchor="middle">Mantenimiento</text>
+  <text class="nsub" x="390" y="269" text-anchor="middle">tickets</text>
+
+  <rect class="box" x="560" y="60" width="180" height="54"/>
+  <text class="nlabel" x="650" y="82" text-anchor="middle">Habitaciones</text>
+  <text class="nsub" x="650" y="99" text-anchor="middle">estado · tarifa</text>
+
+  <rect class="box" x="560" y="230" width="180" height="54"/>
+  <text class="nlabel" x="650" y="258" text-anchor="middle">Notificaciones</text>
+
+  <rect class="box" x="560" y="340" width="180" height="54"/>
+  <text class="nlabel" x="650" y="362" text-anchor="middle">TTLock</text>
+  <text class="nsub" x="650" y="379" text-anchor="middle">cerraduras</text>
+
+  <rect class="box" x="820" y="140" width="160" height="54"/>
+  <text class="nlabel" x="900" y="162" text-anchor="middle">Canales</text>
+  <text class="nsub" x="900" y="179" text-anchor="middle">Channex · OTAs</text>
+
+  <path class="eg" d="M222,74 C420,18 700,34 872,136"/>
+  <text class="elabel" x="330" y="38">booking-channex</text>
+
+  <path class="eg" d="M222,182 C250,160 270,145 296,134"/>
+  <text class="elabel" x="300" y="103">reservas-housekeeping</text>
+
+  <path class="eg" d="M222,214 C300,300 430,344 554,362"/>
+  <text class="elabel" x="230" y="234">reservas-ttlock</text>
+
+  <path class="eg" d="M222,200 C420,214 640,214 818,166"/>
+  <text class="elabel" x="620" y="194">reservas-canales</text>
+
+  <path class="eg" d="M390,166 L390,228"/>
+  <text class="elabel" x="398" y="190">housekeeping-mantenimiento</text>
+
+  <path class="eg" d="M482,244 C520,220 530,140 556,100"/>
+  <text class="elabel" x="538" y="162">mantenimiento-habitaciones</text>
+
+  <path class="eg" d="M482,260 L556,258"/>
+  <text class="elabel" x="486" y="244">mantenimiento-notificaciones</text>
+
+  <path class="eg" d="M742,104 L826,136"/>
+  <text class="elabel" x="746" y="98">habitaciones-canales</text>
+
+  <path class="er" d="M130,298 L130,228"/>
+  <text class="elabel bad" x="16" y="268">✗ la IA crea reservas</text>
+  <text class="elabel bad" x="16" y="281">salteando el módulo</text>
+</svg>
+</div>
+
+<h3>2 · Las islas — datos que nadie lee</h3>
+<div class="scroll">
+<svg viewBox="0 0 1010 300" role="img" aria-label="Grafo de las islas">
+  <defs>
+    <marker id="ar2" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#ff5c6c"/></marker>
+    <style>
+      .er2{stroke:#ff5c6c;stroke-width:1.8;fill:none;stroke-dasharray:6 4;marker-end:url(#ar2)}
+      .boxt{fill:#16213e;stroke:#3ddc84;stroke-width:1.4;rx:8}
+      .dead{fill:#241420;stroke:#ff5c6c;stroke-width:1.4;stroke-dasharray:5 3;rx:8}
+    </style>
+  </defs>
+
+  <text class="band" x="40" y="30">DEBERÍA LLEGAR ACÁ</text>
+
+  <rect class="boxt" x="40" y="50" width="180" height="50"/>
+  <text class="nlabel" x="130" y="80" text-anchor="middle">Nóminas</text>
+
+  <rect class="boxt" x="280" y="50" width="180" height="50"/>
+  <text class="nlabel" x="370" y="80" text-anchor="middle">Folios</text>
+
+  <rect class="boxt" x="520" y="50" width="180" height="50"/>
+  <text class="nlabel" x="610" y="80" text-anchor="middle">PAYMENTS</text>
+
+  <text class="band" x="40" y="190" style="fill:#ff5c6c">PERO SE QUEDA ACÁ</text>
+
+  <rect class="dead" x="40" y="205" width="180" height="58"/>
+  <text class="nlabel" x="130" y="228" text-anchor="middle">Asistencia</text>
+  <text class="nsub" x="130" y="245" text-anchor="middle">horas fichadas</text>
+
+  <rect class="dead" x="280" y="205" width="180" height="58"/>
+  <text class="nlabel" x="370" y="228" text-anchor="middle">Extras de reserva</text>
+  <text class="nsub" x="370" y="245" text-anchor="middle">reservation_addons</text>
+
+  <rect class="dead" x="520" y="205" width="180" height="58"/>
+  <text class="nlabel" x="610" y="228" text-anchor="middle">Depósitos</text>
+  <text class="nsub" x="610" y="245" text-anchor="middle">deposits</text>
+
+  <rect class="dead" x="770" y="205" width="200" height="58"/>
+  <text class="nlabel" x="870" y="228" text-anchor="middle">Payment Links · Recibos</text>
+  <text class="nsub" x="870" y="245" text-anchor="middle">legacy · write-only</text>
+
+  <path class="er2" d="M130,203 L130,104"/>
+  <text class="elabel bad" x="140" y="150">✗ la nómina ignora</text>
+  <text class="elabel bad" x="140" y="163">las horas fichadas</text>
+
+  <path class="er2" d="M370,203 L370,104"/>
+  <text class="elabel bad" x="380" y="150">✗ cargos que nunca</text>
+  <text class="elabel bad" x="380" y="163">se facturan</text>
+
+  <path class="er2" d="M610,203 L610,104"/>
+  <text class="elabel bad" x="620" y="150">✗ plata fuera</text>
+  <text class="elabel bad" x="620" y="163">de payments</text>
+
+  <text class="elabel bad" x="790" y="180">✗ sin destino: nadie los lee</text>
+</svg>
+</div>
+
+<p class="sub" style="margin-top:14px;font-size:13px">
+  El flujo del dinero tiene su propio grafo en <code>docs/flujo-finanzas.html</code>: reserva → folio → <code>payments</code> → caja, conciliación y balance.
+</p>
+
+<h2>Integraciones externas — el código vs la realidad</h2>
+<p class="sub" style="margin-bottom:14px">El código de casi todas es real. Lo que falta son las credenciales: en el <code>.env</code> de producción esas variables <strong>están vacías</strong>.</p>
+<table>
+  <thead><tr><th>Integración</th><th>Código</th><th>¿Viva en producción?</th><th>Qué falta</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Stripe</strong></td><td class="ok">Real · 3 flujos, 3 webhooks</td><td class="no">No — clave vacía</td><td><code>STRIPE_SECRET_KEY</code> y <code>STRIPE_WEBHOOK_SECRET</code></td></tr>
+    <tr><td><strong>Channex</strong> (OTAs)</td><td class="ok">Real · push ARI + ingesta</td><td class="no">No — clave vacía, y apunta a <em>staging</em></td><td><code>CHANNEX_API_KEY</code> · cambiar <code>CHANNEX_BASE_URL</code> a producción</td></tr>
+    <tr><td><strong>TTLock</strong> (cerraduras)</td><td class="ok">Real · crea y revoca PIN</td><td class="mid">Config presente en la base</td><td>Verificar que el <code>accessToken</code> OAuth siga vigente</td></tr>
+    <tr><td><strong>Email</strong></td><td class="ok">Real · SMTP + Resend, con cola y worker</td><td class="no">No — sin config</td><td><code>email_config</code> o <code>resend_api_key</code> por hotel</td></tr>
+    <tr><td><strong>IA</strong> (recepcionista y gerente)</td><td class="ok">Real · LLM vía HTTP (DeepSeek por defecto)</td><td class="no">No — clave vacía</td><td><code>DEEPSEEK_API_KEY</code> o <code>LLM_API_KEY</code></td></tr>
+    <tr><td><strong>WhatsApp — Baileys</strong></td><td class="ok">Real · recibe y responde</td><td class="mid">Arranca solo, sin sesión</td><td>Escanear el QR una vez</td></tr>
+    <tr><td><strong>WhatsApp — Meta</strong></td><td class="no">Incompleto</td><td class="no">No</td><td><strong>Recibe pero no puede responder</strong>: no existe el envío por <code>graph.facebook.com</code></td></tr>
+    <tr><td><strong>Facturación electrónica</strong></td><td class="no">Stub</td><td class="no">No</td><td>El adaptador fiscal existe y <strong>nadie lo llama</strong>. El NCF que se emite es un número local</td></tr>
+  </tbody>
+</table>
+
+<h2>Las seis islas</h2>
+
+<div class="isla">
+  <h3>1 · Extras de reserva — hay plata adentro</h3>
+  <p><code>reservation_addons</code> guarda cargos con <code>amount</code>. Se crean, se ven en el detalle de la reserva… y <strong>nunca se postean al folio ni a <code>payments</code></strong>. <code>settle-folio-at-checkout</code> ni los mira.</p>
+  <p><strong>Consecuencia:</strong> el huésped consume un extra, se muestra en pantalla, y no se le cobra.</p>
+</div>
+
+<div class="isla">
+  <h3>2 · Depósitos en garantía — hay plata adentro</h3>
+  <p>La tabla <code>deposits</code> tiene CRUD completo dentro de <code>payments</code>, pero ningún conector, reporte ni la conciliación la leen.</p>
+  <p>Hoy <code>createDeposit</code> ni siquiera cobra a Stripe, así que no fuga dinero: es una feature a medio construir.</p>
+</div>
+
+<div class="isla">
+  <h3>3 · Asistencia no alimenta la nómina</h3>
+  <p>Las horas fichadas viven en <code>attendance</code>. El módulo <code>payroll</code> <strong>no menciona <code>attendance</code> en un solo archivo</strong>: el cálculo de sueldos ignora la asistencia real y toma los datos que le manda el cliente.</p>
+</div>
+
+<div class="isla">
+  <h3>4 · Recibos de nómina: write-only</h3>
+  <p><code>payroll_payslips</code> solo se escribe (<code>payslipRepo.create</code>). Nunca se lee, lista ni consulta. Y <code>payroll_payment_history</code> está peor: el repositorio <strong>se inyecta en el service y no se asigna nunca a <code>this.</code></strong>.</p>
+</div>
+
+<div class="isla warn">
+  <h3>5 · Payment Links: duplicado legacy</h3>
+  <p>La tabla <code>payment_links</code> del módulo <code>payments</code> no la consume nadie. El flujo vivo de links de pago es el módulo <code>payment-requests</code>, que sí asienta en <code>payments</code>.</p>
+  <p>Peor: <code>ai-recepcionista</code> abre un repositorio sobre el modelo <code>'PaymentLinks'</code> (plural) que <strong>no existe</strong> — el modelo real se llama <code>'PaymentLink'</code>. Es el único repositorio fantasma del sistema.</p>
+</div>
+
+<div class="isla warn">
+  <h3>6 · La IA crea reservas salteando el módulo</h3>
+  <p><code>ai-recepcionista</code> escribe reservas con el ORM directo, sin pasar por el módulo <code>reservas</code>. Se saltea sus conectores: no genera tarea de limpieza, no empuja disponibilidad a Channex, no abre folio.</p>
+</div>
+
+<h2>Las pantallas</h2>
+<p class="sub" style="margin-bottom:14px">De 57 pantallas, 46 funcionan de punta a punta. El problema se concentra en el panel de plataforma.</p>
+
+<div class="isla">
+  <h3>Maquetas — muestran datos inventados</h3>
+  <p><code>/admin/analytics</code>: <strong>no importa un solo service</strong>. El «MRR Total $18.450», el hotel «Boutique Hotel Colonial» y los porcentajes de soporte están escritos a mano en el archivo.</p>
+  <p><code>/admin/users</code>: la lista es real, pero crear, editar y suspender <strong>solo mutan el array local</strong>. El modal de actividad muestra los mismos registros falsos para cualquier usuario.</p>
+</div>
+
+<div class="isla warn">
+  <h3>No guardan — leen de la API, pero las escrituras se pierden al recargar</h3>
+  <p><code>/admin/hotels</code> · <code>/admin/billing</code> · <code>/admin/subscriptions</code> · <code>/admin/roles</code> · <code>/admin/announcements</code> · <code>/admin/support</code> · <code>/panel/devices</code></p>
+  <p>El caso más honesto es <code>/admin/roles</code>: el botón dice «Guardar Cambios» y el handler es <code>savePermissions() { /* TODO: persist */ }</code>.</p>
+  <p><code>/panel/empleados</code> es mixto: aprobar licencias y dar de baja sí persisten, pero los <strong>cinco botones de creación</strong> solo muestran un aviso.</p>
+</div>
+
+<div class="isla">
+  <h3>Rota para todos — Opiniones</h3>
+  <p>La página llama a <code>/api/reviews</code>. Ese endpoint <strong>no existe</strong>: probado contra producción devuelve <strong>404</strong>. El módulo real expone <code>/api/opiniones</code>, que devuelve 200 y no lo consume nadie.</p>
+</div>
+
+<div class="isla warn">
+  <h3>El menú vuelve a mentir</h3>
+  <p>El menú ofrece <strong>Planning</strong> y <strong>Opiniones</strong> a la recepcionista, pero el router las marca <code>requiresHotelAdmin</code> y la rebota a <code>/panel</code> en silencio. La API se lo permitiría: el bloqueo es solo del router.</p>
+</div>
+
+<h2>Qué haría primero</h2>
+<table>
+  <thead><tr><th>#</th><th>Qué</th><th>Por qué</th><th>Tamaño</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Cargar las credenciales en el <code>.env</code> de producción</td><td>Sin esto, Stripe, Channex, el email y la IA son código muerto en producción</td><td>minutos</td></tr>
+    <tr><td>2</td><td>Apuntar <code>Opiniones.service</code> a <code>/api/opiniones</code></td><td>Hoy la página devuelve 404 para todos</td><td>6 líneas</td></tr>
+    <tr><td>3</td><td>Facturar los extras de la reserva</td><td>Se le muestra al huésped un cargo que nunca se cobra</td><td>medio</td></tr>
+    <tr><td>4</td><td>Corregir el repositorio fantasma <code>'PaymentLinks'</code></td><td>Las escrituras de la IA van a un modelo que no existe</td><td>1 línea</td></tr>
+    <tr><td>5</td><td>Alinear menú y router (Planning, Opiniones)</td><td>El menú promete pantallas que el router niega</td><td>2 líneas</td></tr>
+    <tr><td>6</td><td>Persistir las escrituras del panel de plataforma</td><td>Nueve pantallas donde «Guardar» no guarda</td><td>grande</td></tr>
+  </tbody>
+</table>
+
+<p class="foot">
+  Método: lectura del código en <code>backend/src</code> y <code>frontend/src</code>, más pruebas contra <code>hotel.zx89.site</code> (login real, endpoints, base de datos).
+  Los conteos de conectores, tablas huérfanas y pantallas salen de abrir cada archivo, no de suponer.
+</p>
+
+</div>
+</body>
+</html>
