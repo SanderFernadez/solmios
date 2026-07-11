@@ -32,11 +32,12 @@ export function AttendanceModule() {
       const recordRepo = new OrmRepository<AttendanceRecordDTO>(orm, 'AttendanceRecord')
       const scheduleRepo = new OrmRepository<AttendanceScheduleDTO>(orm, 'AttendanceSchedule')
       const configRepo = new OrmRepository<AttendanceConfigDTO>(orm, 'AttendanceConfig')
+      const assignmentRepo = new OrmRepository<any>(orm, 'ShiftAssignment')
       // Cross-table, no cross-module: el fichaje se imputa al perfil de empleado del token.
-      const profileRepo = new OrmRepository<{ id: string }>(orm, 'EmployeeProfile')
+      const profileRepo = new OrmRepository<{ id: string; hotelId: string }>(orm, 'EmployeeProfile')
 
       const log = logger.child('attendance')
-      const service = new AttendanceService(recordRepo, scheduleRepo, configRepo, log, cache, auth)
+      const service = new AttendanceService(recordRepo, scheduleRepo, configRepo, log, cache, auth, assignmentRepo, profileRepo)
       const controller = new AttendanceController(service, log, profileRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -59,6 +60,11 @@ export function AttendanceModule() {
       router.get('/api/attendance/schedules', guard('attendance', 'view'), (req) => controller.listSchedules(req))
       router.get('/api/attendance/schedules/:id', guard('attendance', 'view'), (req) => controller.getSchedule(req))
       router.delete('/api/attendance/schedules/:id', guard('attendance', 'edit'), (req) => controller.deleteSchedule(req))
+
+      // Calendario de turnos — asignar el turno de otro es supervisión (attendance:edit).
+      router.get('/api/attendance/shift-assignments', guard('attendance', 'view'), (req) => controller.listShiftAssignments(req))
+      router.post('/api/attendance/shift-assignments', guard('attendance', 'edit'), (req) => controller.assignShift(req))
+      router.delete('/api/attendance/shift-assignments/:id', guard('attendance', 'edit'), (req) => controller.removeShiftAssignment(req))
 
       // Config
       router.get('/api/attendance/config', guard('attendance', 'view'), (req) => controller.getConfig(req))

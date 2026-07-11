@@ -2,7 +2,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { AttendanceService } from './service'
-import { CreateScheduleSchema, ManualRecordSchema, ClockInSchema, ClockOutSchema, BiometricRecordSchema, UpdateConfigSchema } from './validators/schema'
+import { CreateScheduleSchema, ManualRecordSchema, ClockInSchema, ClockOutSchema, BiometricRecordSchema, UpdateConfigSchema, CreateShiftAssignmentSchema } from './validators/schema'
 import { hasPermission } from '../../shared/permissions'
 import { resolveAttendanceTarget, type EmployeeProfileFinder } from '../../shared/usecases/resolve-employee'
 
@@ -66,6 +66,21 @@ export class AttendanceController {
   async getSchedule(req: HttpRequest) { return { status: 200, body: await this.service.getSchedule(req.params.id, (req as any).user?.hotelId) } }
   async listSchedules(req: HttpRequest) { return { status: 200, body: await this.service.listSchedules((req as any).user?.hotelId ?? (req.query as any).hotelId) } }
   async deleteSchedule(req: HttpRequest) { await this.service.deleteSchedule(req.params.id, (req as any).user?.hotelId); return { status: 204, body: null } }
+
+  // ─── Calendario de Turnos ─────────────────────────────
+  async listShiftAssignments(req: HttpRequest) {
+    const q = req.query as any
+    const hotelId = (req as any).user?.hotelId ?? q.hotelId
+    return { status: 200, body: await this.service.listShiftAssignments(hotelId, q.from, q.to, q.employeeId) }
+  }
+  async assignShift(req: HttpRequest) {
+    const data = validateSchema(CreateShiftAssignmentSchema, withHotelId(req)) as any
+    return { status: 201, body: await this.service.assignShift(data) }
+  }
+  async removeShiftAssignment(req: HttpRequest) {
+    await this.service.removeShiftAssignment(req.params.id, (req as any).user?.hotelId)
+    return { status: 204, body: null }
+  }
 
   async getConfig(req: HttpRequest) { const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId; if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }; return { status: 200, body: await this.service.getConfig(hotelId) } }
   async updateConfig(req: HttpRequest) {

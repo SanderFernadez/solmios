@@ -4,14 +4,17 @@ import { NotFoundError, AuthError } from 'arckode-framework'
 import type {
   AttendanceRecordDTO, AttendanceScheduleDTO, CreateAttendanceScheduleDTO,
   AttendanceConfigDTO, AttendanceReport, AttendanceQuery,
+  ShiftAssignmentDTO, CreateShiftAssignmentDTO,
 } from './types'
 import type { AttendanceSockets } from './sockets'
 import { ClockUseCase } from './usecases/clock'
+import { ShiftAssignmentUseCase } from './usecases/shift-assignments'
 import { accumulateSockets } from '../../shared/utils/accumulate-sockets'
 
 export class AttendanceService {
   private sockets: AttendanceSockets = {}
   private clock: ClockUseCase
+  private shifts: ShiftAssignmentUseCase
 
   constructor(
     recordRepo: RepositoryAdapter<AttendanceRecordDTO>,
@@ -20,9 +23,17 @@ export class AttendanceService {
     private readonly logger: Logger,
     cache: CacheAdapter,
     private readonly auth?: Auth,
+    assignmentRepo?: RepositoryAdapter<ShiftAssignmentDTO>,
+    profileRepo?: RepositoryAdapter<{ id: string; hotelId: string }>,
   ) {
     this.clock = new ClockUseCase(recordRepo, scheduleRepo, configRepo, logger)
+    this.shifts = new ShiftAssignmentUseCase(assignmentRepo as any, scheduleRepo as any, profileRepo as any, logger)
   }
+
+  // ─── Calendario de Turnos ─────────────────────────────
+  async listShiftAssignments(hotelId: string, from?: string, to?: string, employeeId?: string) { return this.shifts.list(hotelId, from, to, employeeId) }
+  async assignShift(dto: CreateShiftAssignmentDTO) { return this.shifts.assign(dto) }
+  async removeShiftAssignment(id: string, hotelId: string) { return this.shifts.remove(id, hotelId) }
 
   setSockets(s: Partial<AttendanceSockets>): void {
     accumulateSockets(this.sockets, s)

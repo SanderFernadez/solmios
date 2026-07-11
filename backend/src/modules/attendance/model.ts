@@ -55,8 +55,22 @@ const AttendanceConfigModel: ModelDefinition = {
   timestamps: true,
 }
 
+// Calendario de turnos: qué turno le toca a cada empleado cada día (roster).
+const ShiftAssignmentModel: ModelDefinition = {
+  table: 'shift_assignments',
+  fields: {
+    hotelId: { type: 'string', required: true, indexed: true },
+    employeeId: { type: 'string', required: true, indexed: true },
+    scheduleId: { type: 'string', required: true },
+    date: { type: 'string', required: true, indexed: true },
+    notes: { type: 'string' },
+  },
+  timestamps: true,
+}
+
 export function registerAttendanceModels(orm: ORM): void {
   orm.define('AttendanceRecord', AttendanceRecordModel)
   orm.define('AttendanceSchedule', AttendanceScheduleModel)
   orm.define('AttendanceConfig', AttendanceConfigModel)
+  orm.define('ShiftAssignment', ShiftAssignmentModel)
 }

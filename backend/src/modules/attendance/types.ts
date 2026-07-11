@@ -50,3 +50,13 @@ export interface AttendanceQuery {
   from?: string; to?: string; status?: string
   page?: number; limit?: number
 }
+
+export interface ShiftAssignmentDTO {
+  id: string; hotelId: string; employeeId: string
+  scheduleId: string; date: string; notes: string | null
+  createdAt: string; updatedAt: string
+}
+
+export interface CreateShiftAssignmentDTO {
+  hotelId: string; employeeId: string; scheduleId: string; date: string; notes?: string
+}

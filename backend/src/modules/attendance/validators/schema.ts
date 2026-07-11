@@ -34,6 +34,14 @@ export const BiometricRecordSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const },
 }
 
+export const CreateShiftAssignmentSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  employeeId: { type: 'string' as const, required: true },
+  scheduleId: { type: 'string' as const, required: true },
+  date: { type: 'string' as const, required: true, min: 8, max: 10 },
+  notes: { type: 'string' as const, max: 500 },
+}
+
 export const UpdateConfigSchema: Record<string, ValidationRule> = {
   requireGeolocation: { type: 'number' as const },
   geolocationRadius: { type: 'number' as const, min: 10, max: GEOLOCATION_RADIUS_MAX },

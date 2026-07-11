@@ -261,6 +261,56 @@
       </div>
     </div>
 
+    <!-- Calendario de Turnos -->
+    <div v-if="activeTab === 'calendar' && !loading" class="space-y-4">
+      <div class="card p-4 flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+          <button @click="shiftWeek(-7)" class="w-8 h-8 rounded-lg border border-border hover:border-navy/30 flex items-center justify-center cursor-pointer text-navy">‹</button>
+          <span class="text-sm font-bold text-navy">{{ weekDays[0] }} → {{ weekDays[6] }}</span>
+          <button @click="shiftWeek(7)" class="w-8 h-8 rounded-lg border border-border hover:border-navy/30 flex items-center justify-center cursor-pointer text-navy">›</button>
+        </div>
+        <div class="flex items-center gap-2 ml-auto">
+          <label class="text-[10px] font-bold text-text-muted uppercase">Turno a pintar</label>
+          <select v-model="paintScheduleId" class="px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+            <option value="" disabled>Elegí un turno</option>
+            <option v-for="s in schedules" :key="s.id" :value="s.id">{{ s.name }} ({{ s.startTime }}-{{ s.endTime }})</option>
+          </select>
+        </div>
+      </div>
+
+      <div v-if="!schedules.length" class="card p-8 text-center text-sm text-text-muted">
+        Creá al menos un turno en la pestaña <b>Horarios</b> antes de armar el calendario.
+      </div>
+      <div v-else-if="!profiles.length" class="card p-8 text-center text-sm text-text-muted">
+        No hay empleados con legajo. Cargalos en <b>Empleados</b>.
+      </div>
+      <div v-else class="card overflow-x-auto">
+        <table class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="bg-surface/50">
+              <th class="text-left px-3 py-2.5 text-[10px] font-bold text-text-muted uppercase sticky left-0 bg-surface/50">Empleado</th>
+              <th v-for="(d, i) in weekDays" :key="d" class="px-2 py-2.5 text-[10px] font-bold text-text-muted uppercase text-center whitespace-nowrap">
+                {{ WEEKDAY_LABELS[i] }}<br><span class="text-text-muted/60">{{ d.slice(8) }}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in profiles" :key="p.id" class="border-t border-border/50">
+              <td class="px-3 py-2 font-bold text-navy whitespace-nowrap sticky left-0 bg-white">{{ p.userName || p.position || p.id.slice(0,6) }}</td>
+              <td v-for="d in weekDays" :key="d" class="px-1.5 py-1.5 text-center">
+                <button @click="onCell(p, d)"
+                  class="w-full min-h-[34px] rounded-lg text-[10px] font-bold px-1 py-1 transition-colors cursor-pointer"
+                  :class="cellFor(p.id, d) ? 'bg-cyan/15 text-navy hover:bg-coral/15' : 'bg-surface text-text-muted/50 hover:bg-navy/5'">
+                  {{ cellFor(p.id, d) ? scheduleName(cellFor(p.id, d)!.scheduleId) : '+' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-[11px] text-text-muted">Elegí un turno arriba y hacé click en una celda para asignarlo. Click en una celda asignada para quitar el turno.</p>
+    </div>
+
     <FormModal
       v-if="scheduleModal"
       title="Nuevo Turno"
@@ -274,8 +324,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { AttendanceService, type AttendanceRecord, type AttendanceSchedule, type AttendanceReportRow } from '@/services/Attendance.service'
+import { ref, computed, onMounted, watch } from 'vue'
+import { AttendanceService, type AttendanceRecord, type AttendanceSchedule, type AttendanceReportRow, type ShiftAssignment } from '@/services/Attendance.service'
 import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.service'
 import { useToast } from '@/composables/useToast'
 import CameraCapture from '@/components/features/CameraCapture.vue'
@@ -324,6 +374,7 @@ const methods = [
 
 const tabs = [
   { value: 'clock', label: 'Ponche Digital', icon: ICON_CLOCK },
+  { value: 'calendar', label: 'Calendario', icon: ICON_CALENDAR },
   { value: 'schedules', label: 'Horarios', icon: ICON_CALENDAR },
   { value: 'reports', label: 'Reportes', icon: ICON_CHART },
 ]
@@ -381,6 +432,54 @@ async function loadReport() {
   if (!reportFrom.value || !reportTo.value) { toast.warning('Seleccioná fechas'); return }
   try { report.value = await AttendanceService.getReport(reportFrom.value, reportTo.value) } catch { toast.error('Error') }
 }
+
+// ─── Calendario de Turnos ───────────────────────────────
+const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+const fmt = (d: Date) => d.toISOString().slice(0, 10)
+function mondayOf(d: Date): Date {
+  const x = new Date(d)
+  const day = (x.getDay() + 6) % 7   // 0 = lunes
+  x.setDate(x.getDate() - day)
+  x.setHours(0, 0, 0, 0)
+  return x
+}
+const weekStart = ref(mondayOf(new Date()))
+const weekDays = computed(() => Array.from({ length: 7 }, (_, i) => {
+  const d = new Date(weekStart.value); d.setDate(d.getDate() + i); return fmt(d)
+}))
+const assignments = ref<ShiftAssignment[]>([])
+const paintScheduleId = ref('')
+
+const cellFor = (employeeId: string, date: string) => assignments.value.find((a) => a.employeeId === employeeId && a.date === date)
+const scheduleName = (id: string) => schedules.value.find((s) => s.id === id)?.name ?? '—'
+
+async function loadWeek() {
+  try { assignments.value = await AttendanceService.listShiftAssignments(weekDays.value[0], weekDays.value[6]) }
+  catch { /* silent */ }
+}
+function shiftWeek(delta: number) {
+  const d = new Date(weekStart.value); d.setDate(d.getDate() + delta); weekStart.value = d
+  loadWeek()
+}
+async function onCell(p: EmployeeProfile, date: string) {
+  const existing = cellFor(p.id, date)
+  if (existing) {
+    try { await AttendanceService.removeShiftAssignment(existing.id); await loadWeek() }
+    catch { toast.error('No se pudo quitar el turno') }
+    return
+  }
+  if (!paintScheduleId.value) { toast.warning('Elegí un turno para asignar'); return }
+  try { await AttendanceService.assignShift({ employeeId: p.id, scheduleId: paintScheduleId.value, date }); await loadWeek() }
+  catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'No se pudo asignar el turno') }
+}
+
+// Carga las asignaciones al abrir la pestaña (y si aún no hay turno pintado, toma el primero).
+watch(activeTab, (t) => {
+  if (t === 'calendar') {
+    if (!paintScheduleId.value && schedules.value.length) paintScheduleId.value = schedules.value[0].id
+    loadWeek()
+  }
+})
 
 const scheduleModal = ref(false)
 const savingSchedule = ref(false)
