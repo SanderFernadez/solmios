@@ -100,7 +100,7 @@
     <!-- Modal de habitación (heat map) -->
     <Teleport to="body">
       <div v-if="selectedRoom" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="selectedRoom = null"></div>
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
         <div class="relative w-full max-w-md overflow-hidden rounded-[20px] border border-border bg-white shadow-2xl">
           <div class="border-b border-border p-5">
