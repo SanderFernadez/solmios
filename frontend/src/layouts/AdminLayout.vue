@@ -221,7 +221,7 @@ const ICON_MOON = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="currentC
 
 const nonavItems = [
   {
-    label: 'Dashboard', icon: ICONS.dashboard, path: '/panel/dashboard/administrativo', roles: ['hotel_admin', 'receptionist'],
+    label: 'Dashboard', icon: ICONS.dashboard, path: '/panel/dashboard', roles: ['hotel_admin', 'receptionist'],
   },
   {
     label: 'Planning', icon: ICONS.calendar, path: '/panel/planning', roles: ['hotel_admin', 'receptionist'],
@@ -401,7 +401,6 @@ const userInitials = computed(() => {
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
     'dashboard-general': 'Dashboard General',
-    'dashboard-administrativo': 'Dashboard Administrativo',
     planning: 'Planning',
     reservations: 'Reservas',
     rooms: 'Habitaciones',

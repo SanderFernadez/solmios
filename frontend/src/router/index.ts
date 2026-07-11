@@ -145,7 +145,7 @@ const router = createRouter({
       children: [
         {
           path: '',
-          redirect: '/panel/dashboard/general',
+          redirect: '/panel/dashboard',
         },
         // Compat: las URLs viejas de RRHH (planas) redirigen a las nuevas bajo /panel/rrhh/*,
         // así no se rompen links guardados ni bookmarks.
@@ -158,15 +158,13 @@ const router = createRouter({
         { path: 'roles', redirect: '/panel/rrhh/roles' },
         { path: 'rrhh-dashboard', redirect: '/panel/rrhh/dashboard' },
         {
-          path: 'dashboard/general',
+          path: 'dashboard',
           name: 'dashboard-general',
           component: () => import('@/pages/dashboard/index.vue'),
         },
-        {
-          path: 'dashboard/administrativo',
-          name: 'dashboard-administrativo',
-          component: () => import('@/pages/dashboard/administrativo.vue'),
-        },
+        // Compat: URLs viejas del dashboard, retiradas en favor de /panel/dashboard — redirect por links/bookmarks guardados.
+        { path: 'dashboard/general', redirect: '/panel/dashboard' },
+        { path: 'dashboard/administrativo', redirect: '/panel/dashboard' },
         {
           path: 'reservations',
           name: 'reservations',
