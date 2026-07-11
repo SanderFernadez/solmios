@@ -6,6 +6,7 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerEmpleadosModels } from './model'
 import { EmpleadosService } from './service'
 import { EmpleadosController } from './controller'
+import { DashboardUseCase } from './usecases/dashboard'
 import type {
   DepartmentDTO, EmployeeProfileDTO, ContractDTO,
   DocumentDTO, LeaveRequestDTO, PerformanceReviewDTO,
@@ -73,7 +74,8 @@ export function EmpleadosModule() {
         documentRepo, leaveRepo, reviewRepo,
         log, cache, userRepo, auth,
       )
-      const controller = new EmpleadosController(service, log)
+      const dashboard = new DashboardUseCase(profileRepo, contractRepo, documentRepo, leaveRepo, reviewRepo, departmentRepo, log)
+      const controller = new EmpleadosController(service, log, dashboard)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
@@ -124,6 +126,9 @@ export function EmpleadosModule() {
 
       // ─── Org Chart ────────────────────────────────────
       router.get('/api/org-chart', guard('users', 'view'), (req) => controller.getOrgChart(req))
+
+      // ─── Dashboard RRHH (resumen consolidado de talento) ──
+      router.get('/api/hr-dashboard', guard('users', 'view'), (req) => controller.getDashboard(req))
 
       log.info('Módulo empleados listo — 6 tablas, 27 endpoints')
       return service

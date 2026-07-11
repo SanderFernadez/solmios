@@ -265,6 +265,12 @@ const router = createRouter({
           meta: { requiresHotelAuth: true },
         },
         {
+          path: 'rrhh-dashboard',
+          name: 'rrhh-dashboard',
+          component: () => import('@/pages/rrhh-dashboard/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'payroll',
           name: 'payroll',
           component: () => import('@/pages/payroll/index.vue'),

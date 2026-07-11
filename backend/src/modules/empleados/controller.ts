@@ -3,6 +3,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema, NotFoundError } from 'arckode-framework'
 import type { EmpleadosService } from './service'
+import type { DashboardUseCase } from './usecases/dashboard'
 import type {
   CreateDepartmentDTO, CreateEmployeeProfileDTO,
   CreateContractDTO, CreateDocumentDTO,
@@ -30,6 +31,8 @@ export class EmpleadosController {
   constructor(
     private readonly service: EmpleadosService,
     private readonly logger: Logger,
+    // Agregación de solo-lectura: va directo al usecase para no engordar el service (gate 200 líneas).
+    private readonly dashboard?: DashboardUseCase,
   ) {}
 
   // ─── Departments ──────────────────────────────────────
@@ -257,5 +260,12 @@ export class EmpleadosController {
     const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
     const chart = await this.service.getOrgChart(hotelId)
     return { status: 200, body: chart }
+  }
+
+  async getDashboard(req: HttpRequest) {
+    const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
+    if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
+    if (!this.dashboard) return { status: 500, body: { error: 'Dashboard no configurado' } }
+    return { status: 200, body: await this.dashboard.get(hotelId) }
   }
 }

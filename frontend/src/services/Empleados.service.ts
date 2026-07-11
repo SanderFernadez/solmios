@@ -184,4 +184,17 @@ export const EmpleadosService = {
 
   // Org Chart
   async getOrgChart(): Promise<{ departments: OrgChartNode[]; totalEmployees: number }> { return http.get('/api/org-chart') },
+
+  // Dashboard RRHH (resumen consolidado)
+  async getDashboard(): Promise<HrDashboard> { return http.get('/api/hr-dashboard') },
+}
+
+export interface HrDashboard {
+  headcount: number
+  byDepartment: { departmentId: string; name: string; count: number }[]
+  contracts: { active: number; expiringSoon: number }
+  documentsExpiring: number
+  leaves: { pending: number; upcomingApproved: number }
+  reviews: { pending: number; avgScore: number | null }
+  newHiresThisMonth: number
 }
