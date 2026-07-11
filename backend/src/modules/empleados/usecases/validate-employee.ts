@@ -9,8 +9,12 @@ export async function validateEmployeeBelongsToHotel(
   employeeId: string,
   hotelId: string,
 ): Promise<void> {
-  const profile = await profileRepo.findOne({ userId: employeeId, hotelId })
-  if (!profile) {
-    throw new ValidationError('Employee does not belong to this hotel')
-  }
+  // Los formularios (contrato/documento/ausencia/evaluación) mandan el id del employee_profile,
+  // no el userId. Buscar sólo por userId hacía que un empleado válido diera SIEMPRE
+  // "no pertenece al hotel". Se aceptan ambas claves para no romper ningún flujo.
+  const byId = await profileRepo.findOne({ id: employeeId, hotelId })
+  if (byId) return
+  const byUser = await profileRepo.findOne({ userId: employeeId, hotelId })
+  if (byUser) return
+  throw new ValidationError('Employee does not belong to this hotel')
 }
