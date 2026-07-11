@@ -373,6 +373,12 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          path: 'capacitacion',
+          name: 'capacitacion',
+          component: () => import('@/pages/capacitacion/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'message-logs',
           name: 'message-logs',
           component: () => import('@/pages/message-logs/index.vue'),

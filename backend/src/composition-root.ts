@@ -94,6 +94,7 @@ import { EmpleadosModule } from './modules/empleados'
 import { PayrollModule } from './modules/payroll'
 import { AttendanceModule } from './modules/attendance'
 import { ActivosModule } from './modules/activos'
+import { CapacitacionModule } from './modules/capacitacion'
 import { CrmModule } from './modules/crm'
 import { MarketingModule } from './modules/marketing'
 import { AiRecepcionistaModule } from './modules/ai-recepcionista'
@@ -121,7 +122,7 @@ const mods = [
   GruposModule(), HotelesModule(), RolesModule(), DispositivosModule(),
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),
   CanalesModule(), OpinionesModule(), GastosModule(), FoliosModule(), PaymentsModule(),
-  EmpleadosModule(), PayrollModule(), AttendanceModule(), ActivosModule(), CrmModule(), MarketingModule(),
+  EmpleadosModule(), PayrollModule(), AttendanceModule(), ActivosModule(), CapacitacionModule(), CrmModule(), MarketingModule(),
   AiRecepcionistaModule(), AiGerenteModule(), BookingengineModule({ pushAvailability }),
   CashModule(), PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
