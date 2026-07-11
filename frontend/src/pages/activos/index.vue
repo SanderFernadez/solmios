@@ -133,19 +133,24 @@ function openNew() {
     title: 'Nuevo Activo', submitLabel: 'Crear',
     fields: [
       { key: 'name', label: 'Nombre del bien', required: true, minLength: 2, maxLength: 120, placeholder: 'Radio Motorola, Uniforme talle M, Laptop Dell…',
-        hint: 'Qué objeto es. Acá solo lo registrás; asignárselo a un empleado es otro paso (botón "Asignar" en la lista).' },
+        hint: 'Qué objeto es (el bien que vas a entregar).' },
       { key: 'category', label: 'Categoría', type: 'select', default: 'equipment', options: Object.entries(ASSET_CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
         hint: 'Qué tipo de bien es (uniforme, llave, equipamiento, dispositivo…).' },
+      // Asignar al empleado en el mismo paso: el punto de Activos es saber quién tiene cada cosa.
+      { key: 'assignTo', label: 'Entregar a (empleado)', type: 'select', options: profiles.value.map((p) => ({ value: p.id, label: p.userName || p.position || p.id.slice(0, 6) })),
+        hint: 'A qué empleado se lo das. Dejalo vacío si todavía no se lo entregás a nadie (queda Disponible).' },
       { key: 'serialNumber', label: 'Número de serie', maxLength: 100,
-        hint: 'Opcional. Para equipos con número de serie (laptops, radios) — así identificás el bien exacto.' },
+        hint: 'Opcional. Para equipos con número de serie (laptops, radios).' },
       { key: 'notes', label: 'Notas', type: 'textarea', maxLength: 500,
         hint: 'Opcional. Estado, color, detalles.' },
     ],
     onSubmit: async (v) => {
       saving.value = true
       try {
-        await AssetsService.create({ name: String(v.name).trim(), category: String(v.category), serialNumber: String(v.serialNumber || '') || undefined, notes: String(v.notes || '') || undefined })
-        toast.success('Activo creado'); modal.value = null; await load()
+        const asset = await AssetsService.create({ name: String(v.name).trim(), category: String(v.category), serialNumber: String(v.serialNumber || '') || undefined, notes: String(v.notes || '') || undefined })
+        // Si eligió empleado, se lo asigna en el mismo paso.
+        if (v.assignTo) await AssetsService.assign(asset.id, String(v.assignTo))
+        toast.success(v.assignTo ? 'Activo creado y entregado' : 'Activo creado'); modal.value = null; await load()
       } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error al crear') }
       finally { saving.value = false }
     },
