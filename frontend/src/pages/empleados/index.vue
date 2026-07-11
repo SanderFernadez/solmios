@@ -287,6 +287,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert } from '@/services/Empleados.service'
+import { TeamService, type TeamMember } from '@/services/Team.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
@@ -325,6 +326,7 @@ const leaveRequests = ref<LeaveRequest[]>([])
 const reviews = ref<PerformanceReview[]>([])
 const departments = ref<Department[]>([])
 const documentAlerts = ref<DocumentExpiryAlert[]>([])
+const users = ref<TeamMember[]>([])
 
 function getDeptName(id: string | null): string {
   if (!id) return '—'
@@ -381,6 +383,7 @@ async function loadData() {
     documentAlerts.value = alertsRes
 
     try { departments.value = await EmpleadosService.listDepartments() } catch { /* optional */ }
+    try { users.value = (await TeamService.list()).data ?? [] } catch { /* optional: para elegir usuario al crear empleado */ }
   } catch { toast.error('Error al cargar datos') }
   finally { loading.value = false }
 }
@@ -390,8 +393,46 @@ onMounted(loadData)
 // ─── Actions ────────────────────────────────────────────
 
 function openOrgChart() { toast.info('Organigrama — use /api/org-chart para renderizar') }
-function openNewEmployee() { toast.info('Crear empleado — requiere perfil + contrato') }
-function openProfile(emp: EmployeeProfile) { toast.info(`Perfil: ${emp.userName || emp.position}`) }
+
+const departmentOptions = () => departments.value.map((d) => ({ value: d.id, label: d.name }))
+/** Usuarios del hotel que todavía no tienen expediente (un usuario = un empleado). */
+const usersWithoutProfile = () => {
+  const taken = new Set(profiles.value.map((p) => p.userId))
+  return users.value.filter((u) => !taken.has(u.id)).map((u) => ({ value: u.id, label: u.email ? `${u.name} · ${u.email}` : u.name }))
+}
+
+function openNewEmployee() {
+  const opts = usersWithoutProfile()
+  if (opts.length === 0) {
+    toast.warning('No hay usuarios sin expediente. Creá primero la cuenta en Equipo.')
+    return
+  }
+  formModal.value = {
+    title: 'Nuevo Empleado', submitLabel: 'Crear Empleado',
+    fields: [
+      { key: 'userId', label: 'Usuario', type: 'select', required: true, options: opts },
+      { key: 'position', label: 'Puesto', placeholder: 'Recepcionista, Camarera…' },
+      { key: 'departmentId', label: 'Departamento', type: 'select', options: departmentOptions() },
+      { key: 'salary', label: 'Salario', type: 'number', min: 0 },
+      { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: new Date().toISOString().slice(0, 10) },
+    ],
+    onSubmit: (v) => EmpleadosService.createProfile(v),
+  }
+}
+
+/** Ver/editar el expediente: abre el mismo modal precargado con los datos del empleado. */
+function openProfile(emp: EmployeeProfile) {
+  formModal.value = {
+    title: `Editar: ${emp.userName || emp.position || 'empleado'}`, submitLabel: 'Guardar',
+    fields: [
+      { key: 'position', label: 'Puesto', default: emp.position || '' },
+      { key: 'departmentId', label: 'Departamento', type: 'select', default: emp.departmentId || '', options: departmentOptions() },
+      { key: 'salary', label: 'Salario', type: 'number', min: 0, default: emp.salary || 0 },
+      { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: (emp.hireDate || '').slice(0, 10) },
+    ],
+    onSubmit: (v) => EmpleadosService.updateProfile(emp.id, v),
+  }
+}
 
 async function deactivateEmployee(emp: EmployeeProfile) {
   if (!confirm(`¿Desactivar a ${emp.userName || emp.position}?`)) return
