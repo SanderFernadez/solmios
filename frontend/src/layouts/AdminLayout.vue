@@ -210,6 +210,7 @@ const nonavItems = [
     children: [
       { label: 'Reservas', path: '/panel/reservations', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Check-in/out', path: '/panel/checkin', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Grupos', path: '/panel/groups', roles: ['hotel_admin'] },
     ]
   },
   {
@@ -236,9 +237,7 @@ const nonavItems = [
   {
     label: 'Ventas', icon: ICONS.link, roles: ['hotel_admin'],
     children: [
-      { label: 'Grupos', path: '/panel/groups', roles: ['hotel_admin'] },
       { label: 'Ofertas', path: '/panel/packages', roles: ['hotel_admin'] },
-      { label: 'Reseñas', path: '/panel/opiniones', roles: ['hotel_admin', 'receptionist'] },
     ]
   },
   {
@@ -252,6 +251,7 @@ const nonavItems = [
     label: 'CRM', icon: ICONS.heart, roles: ['hotel_admin'],
     children: [
       { label: 'Fidelización', path: '/panel/crm', roles: ['hotel_admin'] },
+      { label: 'Reseñas', path: '/panel/opiniones', roles: ['hotel_admin', 'receptionist'] },
     ]
   },
   {
