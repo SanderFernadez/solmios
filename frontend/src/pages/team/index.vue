@@ -6,47 +6,46 @@
         <p class="text-xs text-text-muted mt-0.5">Gestiona los usuarios y roles de tu hotel</p>
       </div>
       <div class="flex gap-2">
-        <button @click="load" :disabled="loading" class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
+        <button @click="load" :disabled="loading" class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-full text-sm font-bold transition-all cursor-pointer disabled:opacity-50">
           {{ loading ? 'Cargando...' : '↻ Refrescar' }}
         </button>
-        <button @click="openInvite" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg cursor-pointer">+ Invitar miembro</button>
+        <button @click="openInvite" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">+ Invitar miembro</button>
       </div>
     </div>
 
     <!-- Stats -->
     <div class="grid grid-cols-3 gap-3 mb-6">
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-navy">{{ members.length }}</div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-2xl font-black text-navy">{{ membersCountAnim }}</div>
         <div class="text-[10px] text-text-muted uppercase font-bold">Miembros</div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-cyan">{{ adminCount }}</div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-2xl font-black text-cyan">{{ adminCountAnim }}</div>
         <div class="text-[10px] text-text-muted uppercase font-bold">Admins</div>
       </div>
-      <div class="card p-4 text-center">
-        <div class="text-2xl font-black text-teal">{{ receptionistCount }}</div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-2xl font-black text-teal">{{ receptionistCountAnim }}</div>
         <div class="text-[10px] text-text-muted uppercase font-bold">Recepcionistas</div>
       </div>
     </div>
 
     <!-- Aviso de seguridad -->
-    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 flex items-start gap-2">
-      <span class="text-base shrink-0">🔒</span>
-      <p class="text-xs text-blue-800">
-        Los miembros solo ven datos de <strong>tu hotel</strong>. Solo tú (admin) puedes gestionar roles.
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) border-l-2 border-l-cyan p-4 mb-6">
+      <p class="text-xs text-text-secondary">
+        Los miembros solo ven datos de <strong class="text-navy">tu hotel</strong>. Solo tú (admin) puedes gestionar roles.
         No puedes degradarte a ti mismo.
       </p>
     </div>
 
     <!-- Lista -->
-    <div v-if="loading && members.length === 0" class="card p-12 text-center text-sm text-text-muted">Cargando equipo...</div>
-    <div v-else-if="members.length === 0" class="card p-12 text-center">
-      <div class="text-4xl mb-3 opacity-50">👥</div>
+    <div v-if="loading && members.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center text-sm text-text-muted">Cargando equipo...</div>
+    <div v-else-if="members.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
+      <span class="w-10 h-10 mx-auto mb-3 block text-navy/30" v-html="ICON_USERS"></span>
       <h3 class="font-bold text-navy mb-1">Sin miembros</h3>
       <p class="text-xs text-text-muted mb-4">Invita al primer miembro de tu equipo</p>
-      <button @click="openInvite" class="px-5 py-2.5 bg-cyan text-navy rounded-xl text-sm font-bold cursor-pointer">+ Invitar</button>
+      <button @click="openInvite" class="px-5 py-2.5 bg-cyan text-navy rounded-full text-sm font-bold hover:shadow-lg transition-all cursor-pointer">+ Invitar</button>
     </div>
-    <div v-else class="bg-white rounded-2xl border border-border overflow-hidden">
+    <div v-else class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <table class="w-full">
         <thead>
           <tr class="border-b border-border bg-surface/50">
@@ -74,8 +73,9 @@
             </td>
             <td class="p-4 text-xs text-text-secondary">{{ m.email }}</td>
             <td class="p-4">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="roleMeta(m.role).class">
-                {{ roleMeta(m.role).icon }} {{ roleMeta(m.role).label }}
+              <span class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full" :class="roleMeta(m.role).class">
+                <span class="w-3 h-3" v-html="roleMeta(m.role).icon"></span>
+                {{ roleMeta(m.role).label }}
               </span>
             </td>
             <td class="p-4">
@@ -89,7 +89,7 @@
               <button
                 v-if="m.id !== currentUser"
                 @click="openChangeRole(m)"
-                class="px-3 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold cursor-pointer hover:bg-navy/20">
+                class="text-[11px] font-bold text-navy/70 hover:text-navy transition-colors cursor-pointer">
                 Cambiar rol
               </button>
               <span v-else class="text-[10px] text-text-muted italic">—</span>
@@ -101,85 +101,97 @@
 
     <!-- Modal cambiar rol -->
     <Teleport to="body">
-      <div v-if="roleModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="roleModal.show=false">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-          <h3 class="text-lg font-black text-navy mb-2">Cambiar rol</h3>
-          <p class="text-xs text-text-muted mb-4">
-            <strong class="text-navy">{{ roleModal.member?.name }}</strong> · {{ roleModal.member?.email }}
-          </p>
-          <div class="space-y-2">
-            <button
-              v-for="role in availableRoles"
-              :key="role.key"
-              @click="selectedRole = role.key"
-              class="w-full text-left p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3"
-              :class="selectedRole === role.key ? 'border-navy bg-navy/5' : 'border-border hover:border-navy/30'"
-            >
-              <span class="text-xl">{{ role.icon }}</span>
-              <div class="flex-1">
-                <div class="text-sm font-bold text-navy">{{ role.label }}</div>
-                <div class="text-[10px] text-text-muted">{{ role.description }}</div>
-              </div>
-              <span v-if="selectedRole === role.key" class="text-navy font-bold">✓</span>
-            </button>
-          </div>
-          <div class="flex gap-3 mt-5">
-            <button @click="roleModal.show=false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="changeRole" :disabled="changing" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
-              {{ changing ? 'Guardando...' : 'Confirmar' }}
-            </button>
+      <Transition name="modal-fade">
+        <div v-if="roleModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="roleModal.show=false">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[85vh]">
+            <div class="shrink-0 p-6 pb-4">
+              <h3 class="text-lg font-black text-navy mb-2">Cambiar rol</h3>
+              <p class="text-xs text-text-muted">
+                <strong class="text-navy">{{ roleModal.member?.name }}</strong> · {{ roleModal.member?.email }}
+              </p>
+            </div>
+            <div class="overflow-y-auto flex-1 px-6 space-y-2">
+              <button
+                v-for="role in availableRoles"
+                :key="role.key"
+                @click="selectedRole = role.key"
+                class="w-full text-left p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3"
+                :class="selectedRole === role.key ? 'border-navy bg-navy/5' : 'border-border hover:border-navy/30'"
+              >
+                <span class="w-5 h-5 text-navy shrink-0" v-html="role.icon"></span>
+                <div class="flex-1">
+                  <div class="text-sm font-bold text-navy">{{ role.label }}</div>
+                  <div class="text-[10px] text-text-muted">{{ role.description }}</div>
+                </div>
+                <span v-if="selectedRole === role.key" class="w-4 h-4 text-navy shrink-0" v-html="ICON_CHECK"></span>
+              </button>
+            </div>
+            <div class="shrink-0 flex items-center justify-end gap-4 p-6 pt-5">
+              <button @click="roleModal.show=false" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+              <button @click="changeRole" :disabled="changing" class="px-4 py-2 bg-navy text-white rounded-full text-[11px] font-bold hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">
+                {{ changing ? 'Guardando...' : 'Confirmar' }}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
-    <!-- Modal invitar (mock - placeholder) -->
+    <!-- Modal invitar -->
     <Teleport to="body">
-      <div v-if="inviteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="inviteModal=false">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-          <h3 class="text-lg font-black text-navy mb-2">Invitar miembro</h3>
-          <p class="text-xs text-text-muted mb-4">Crea un nuevo usuario para tu hotel</p>
-          <div class="space-y-3">
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
-              <input v-model="inviteForm.name" type="text" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+      <Transition name="modal-fade">
+        <div v-if="inviteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="inviteModal=false">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[85vh]">
+            <div class="shrink-0 p-6 pb-4">
+              <h3 class="text-lg font-black text-navy mb-2">Invitar miembro</h3>
+              <p class="text-xs text-text-muted">Crea un nuevo usuario para tu hotel</p>
             </div>
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Email</label>
-              <input v-model="inviteForm.email" type="email" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+            <div class="overflow-y-auto flex-1 px-6 space-y-3">
+              <div>
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
+                <input v-model="inviteForm.name" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Email</label>
+                <input v-model="inviteForm.email" type="email" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Rol inicial</label>
+                <select v-model="inviteForm.role" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
+                  <option value="receptionist">Recepcionista</option>
+                  <option value="hotel_admin">Admin Hotel</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Contraseña temporal</label>
+                <input v-model="inviteForm.password" type="text" placeholder="auto-generada si vacío" class="w-full px-4 py-2.5 rounded-full border border-border text-sm font-mono" />
+              </div>
             </div>
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Rol inicial</label>
-              <select v-model="inviteForm.role" class="w-full px-3 py-2 rounded-lg border border-border text-sm cursor-pointer">
-                <option value="receptionist">🛎️ Recepcionista</option>
-                <option value="hotel_admin">🏨 Admin Hotel</option>
-              </select>
+            <div class="shrink-0 flex items-center justify-end gap-4 p-6 pt-5">
+              <button @click="inviteModal=false" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+              <button @click="sendInvite" :disabled="inviting" class="px-4 py-2 bg-cyan text-navy rounded-full text-[11px] font-bold hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+                {{ inviting ? 'Creando...' : 'Crear y enviar' }}
+              </button>
             </div>
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Contraseña temporal</label>
-              <input v-model="inviteForm.password" type="text" placeholder="auto-generada si vacío" class="w-full px-3 py-2 rounded-lg border border-border text-sm font-mono" />
-            </div>
-          </div>
-          <div class="flex gap-3 mt-5">
-            <button @click="inviteModal=false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="sendInvite" :disabled="inviting" class="flex-1 py-2.5 bg-cyan text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
-              {{ inviting ? 'Creando...' : 'Crear y enviar' }}
-            </button>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { TeamService, roleMeta } from '@/services/Team.service'
+import { TeamService, roleMeta, ICON_BUILDING, ICON_BELL } from '@/services/Team.service'
 import type { TeamMember } from '@/services/Team.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
+
+const ICON_USERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -188,12 +200,16 @@ const currentUser = computed(() => auth.user?.id || '')
 const members = ref<TeamMember[]>([])
 const loading = ref(false)
 
+const membersCount = computed(() => members.value.length)
 const adminCount = computed(() => members.value.filter(m => m.role === 'hotel_admin').length)
 const receptionistCount = computed(() => members.value.filter(m => m.role === 'receptionist').length)
+const membersCountAnim = useCountUp(membersCount)
+const adminCountAnim = useCountUp(adminCount)
+const receptionistCountAnim = useCountUp(receptionistCount)
 
 const availableRoles = [
-  { key: 'hotel_admin', label: 'Admin Hotel', icon: '🏨', description: 'Acceso completo al hotel (no puede eliminarse a sí mismo)' },
-  { key: 'receptionist', label: 'Recepcionista', icon: '🛎️', description: 'Reservas, check-in/out, huéspedes. Sin acceso a finanzas ni equipo' },
+  { key: 'hotel_admin', label: 'Admin Hotel', icon: ICON_BUILDING, description: 'Acceso completo al hotel (no puede eliminarse a sí mismo)' },
+  { key: 'receptionist', label: 'Recepcionista', icon: ICON_BELL, description: 'Reservas, check-in/out, huéspedes. Sin acceso a finanzas ni equipo' },
 ]
 
 async function load() {
@@ -298,3 +314,10 @@ function formatDate(d?: string): string {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel { transition: transform 0.2s ease, opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel { opacity: 0; transform: translateY(8px) scale(0.98); }
+</style>

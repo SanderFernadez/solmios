@@ -62,7 +62,7 @@
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-extrabold text-navy">Habitaciones · {{ todayFormatted }}</h2>
           <button @click="showRoomGrid = !showRoomGrid"
-            class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg transition-colors cursor-pointer"
+            class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-full transition-colors cursor-pointer"
             :class="showRoomGrid ? 'bg-navy text-white' : 'bg-surface text-navy hover:bg-border/30'">
             {{ showRoomGrid ? 'Ocultar' : 'Ver todas' }}
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
@@ -162,7 +162,7 @@
               <div class="text-[10px] text-text-muted">{{ a.checkIn }} → {{ a.checkOut }} · {{ a.nights }}n · ${{ a.totalAmount }}</div>
             </div>
             <button v-if="!a.checkedIn" @click.stop="openCheckinModal(a)" :disabled="processing"
-              class="shrink-0 px-3 py-1.5 bg-teal text-white text-[10px] font-bold rounded-lg hover:bg-teal/80 transition-colors cursor-pointer disabled:opacity-50">
+              class="shrink-0 px-3 py-1.5 bg-teal text-white text-[10px] font-bold rounded-full hover:bg-teal/80 transition-colors cursor-pointer disabled:opacity-50">
               Check-in
             </button>
             <span v-else class="shrink-0 flex items-center gap-1 text-[10px] font-bold text-teal">
@@ -201,7 +201,7 @@
               <div class="text-[10px] text-text-muted">Sale: {{ g.checkOut }} · {{ daysUntil(g.checkOut) }}d restantes</div>
             </div>
             <button @click.stop="openCheckoutModal(g)" :disabled="processing"
-              class="shrink-0 px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-lg hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+              class="shrink-0 px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-full hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
               Check-out
             </button>
           </div>
@@ -237,7 +237,7 @@
               <div class="text-[10px] text-text-muted">Hab {{ d.roomNumber }} · {{ d.channelLabel }}</div>
             </div>
             <button v-if="!d.checkedOut" @click.stop="openCheckoutModal(d)" :disabled="processing"
-              class="shrink-0 px-3 py-1.5 bg-coral text-white text-[10px] font-bold rounded-lg hover:bg-coral/80 transition-colors cursor-pointer disabled:opacity-50">
+              class="shrink-0 px-3 py-1.5 bg-coral text-white text-[10px] font-bold rounded-full hover:bg-coral/80 transition-colors cursor-pointer disabled:opacity-50">
               Check-out
             </button>
             <span v-else class="shrink-0 flex items-center gap-1 text-[10px] font-bold text-text-muted">
@@ -377,52 +377,54 @@
       <div v-if="showCheckinModal && checkinGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCheckinModal">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-[20px] shadow-2xl w-full max-w-md overflow-hidden">
-          <div class="p-5 border-b border-border bg-teal/5">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal/15 text-teal">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H4.5"/>
-                  </svg>
-                </div>
-                <h3 class="text-lg font-black text-navy">Check-in</h3>
-              </div>
-              <button @click="closeCheckinModal" :disabled="processing" class="w-8 h-8 rounded-lg bg-white/80 flex items-center justify-center hover:bg-surface cursor-pointer disabled:opacity-50">✕</button>
-            </div>
+          <div class="p-5 border-b border-border flex items-center justify-between">
+            <h3 class="text-lg font-black text-navy">Check-in</h3>
+            <button @click="closeCheckinModal" :disabled="processing" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer disabled:opacity-50">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
           </div>
-          <div class="p-5 space-y-4">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" :class="checkinGuest.channelColor">{{ checkinGuest.initials }}</div>
+          <div class="p-5">
+            <div class="flex items-center gap-3 pb-5 border-b border-border">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shrink-0" :class="checkinGuest.channelColor">{{ checkinGuest.initials }}</div>
               <div>
                 <div class="text-sm font-bold text-navy">{{ checkinGuest.guestName }}</div>
                 <div class="text-[10px] text-text-muted">{{ checkinGuest.guestEmail }}</div>
               </div>
             </div>
-            <div class="bg-surface rounded-xl p-4 space-y-2">
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Habitación</span><span class="font-bold tabular-nums text-navy">{{ checkinGuest.roomNumber }}</span></div>
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Check-in</span><span class="font-bold tabular-nums text-navy">{{ checkinGuest.checkIn }}</span></div>
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Check-out</span><span class="font-bold tabular-nums text-navy">{{ checkinGuest.checkOut }}</span></div>
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Canal</span><span class="font-bold text-navy">{{ checkinGuest.channelLabel }}</span></div>
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Total</span><span class="font-bold tabular-nums text-teal">${{ checkinGuest.totalAmount }}</span></div>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div class="text-center p-2 bg-surface rounded-lg">
-                <div class="text-[10px] text-text-muted">Adultos</div>
-                <div class="text-sm font-bold tabular-nums">{{ checkinGuest.adults }}</div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-5 border-b border-border">
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide">Habitación</div>
+                <div class="text-sm font-bold tabular-nums text-navy mt-0.5">{{ checkinGuest.roomNumber }}</div>
               </div>
-              <div class="text-center p-2 bg-surface rounded-lg">
-                <div class="text-[10px] text-text-muted">Niños</div>
-                <div class="text-sm font-bold tabular-nums">{{ checkinGuest.children }}</div>
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide">Canal</div>
+                <div class="text-sm font-bold text-navy mt-0.5">{{ checkinGuest.channelLabel }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide">Check-in</div>
+                <div class="text-sm font-bold tabular-nums text-navy mt-0.5">{{ checkinGuest.checkIn }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide">Check-out</div>
+                <div class="text-sm font-bold tabular-nums text-navy mt-0.5">{{ checkinGuest.checkOut }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide">Adultos / Niños</div>
+                <div class="text-sm font-bold tabular-nums text-navy mt-0.5">{{ checkinGuest.adults }} / {{ checkinGuest.children }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide">Total</div>
+                <div class="text-sm font-bold tabular-nums text-teal mt-0.5">${{ checkinGuest.totalAmount }}</div>
               </div>
             </div>
-            <div v-if="processing" class="flex items-center justify-center gap-2 text-xs text-teal font-bold">
+            <div v-if="processing" class="flex items-center justify-center gap-2 text-xs text-teal font-bold pt-4">
               <span class="inline-block w-3 h-3 border-2 border-teal border-t-transparent rounded-full animate-spin"></span>
               Procesando...
             </div>
           </div>
-          <div class="p-5 border-t border-border flex gap-2">
-            <button @click="closeCheckinModal" :disabled="processing" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold hover:bg-surface cursor-pointer disabled:opacity-50">Cancelar</button>
-            <button @click="confirmCheckin" :disabled="processing || !isOnline" class="flex-1 py-2.5 bg-teal text-white rounded-xl text-sm font-bold hover:bg-teal/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <div class="p-5 border-t border-border flex items-center justify-end gap-4">
+            <button @click="closeCheckinModal" :disabled="processing" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer disabled:opacity-50">Cancelar</button>
+            <button @click="confirmCheckin" :disabled="processing || !isOnline" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ processing ? 'Procesando...' : 'Confirmar Check-in' }}
             </button>
           </div>
@@ -435,19 +437,15 @@
       <div v-if="showCheckoutModal && checkoutGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCheckoutModal">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-[20px] shadow-2xl w-full max-w-md overflow-hidden">
-          <div class="p-5 border-b border-border bg-coral/5">
-            <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-coral/15 text-coral">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M9 12h12m0 0l-3-3m3 3l-3 3"/>
-                </svg>
-              </div>
-              <h3 class="text-lg font-black text-navy">Check-out · Hab {{ checkoutGuest.roomNumber }}</h3>
-            </div>
+          <div class="p-5 border-b border-border flex items-center justify-between">
+            <h3 class="text-lg font-black text-navy">Check-out · Hab {{ checkoutGuest.roomNumber }}</h3>
+            <button @click="closeCheckoutModal" :disabled="processing" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer disabled:opacity-50">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
           </div>
-          <div class="p-5 space-y-4">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" :class="checkoutGuest.channelColor">{{ checkoutGuest.initials }}</div>
+          <div class="p-5">
+            <div class="flex items-center gap-3 pb-5 border-b border-border">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shrink-0" :class="checkoutGuest.channelColor">{{ checkoutGuest.initials }}</div>
               <div>
                 <div class="text-sm font-bold text-navy">{{ checkoutGuest.guestName }}</div>
                 <div class="text-[10px] text-text-muted">{{ checkoutGuest.checkIn }} → {{ checkoutGuest.checkOut }} · {{ checkoutGuest.nights }} noche(s)</div>
@@ -455,63 +453,65 @@
             </div>
 
             <!-- Loading folio -->
-            <div v-if="folioLoading" class="bg-surface rounded-xl p-4 flex items-center justify-center gap-2 text-xs text-text-muted">
+            <div v-if="folioLoading" class="flex items-center justify-center gap-2 text-xs text-text-muted py-5 border-b border-border">
               <span class="inline-block w-3 h-3 border-2 border-text-muted border-t-transparent rounded-full animate-spin"></span>
               Cargando cuenta...
             </div>
 
             <!-- Folio balance -->
-            <div v-else-if="checkoutFolio" class="bg-surface rounded-xl p-4 space-y-2">
-              <div class="flex justify-between items-center">
-                <span class="text-xs font-bold text-navy">Cuenta · Folio</span>
+            <div v-else-if="checkoutFolio" class="py-5 border-b border-border">
+              <div class="flex justify-between items-center mb-3">
+                <span class="text-[10px] text-text-muted uppercase tracking-wide">Cuenta · Folio</span>
                 <span class="text-[10px] font-mono text-text-muted">{{ checkoutFolio.id.slice(0, 8) }}</span>
               </div>
-              <div class="flex justify-between text-xs">
-                <span class="text-text-muted">Cargos</span>
-                <span class="font-bold tabular-nums text-navy">${{ (checkoutFolio.chargesTotal || 0).toFixed(2) }}</span>
+              <div class="space-y-2">
+                <div class="flex justify-between text-xs">
+                  <span class="text-text-muted">Cargos</span>
+                  <span class="font-bold tabular-nums text-navy">${{ (checkoutFolio.chargesTotal || 0).toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                  <span class="text-text-muted">Pagos</span>
+                  <span class="font-bold tabular-nums text-teal">-${{ (checkoutFolio.paymentsTotal || 0).toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between text-sm pt-2 border-t border-border">
+                  <span class="font-bold text-navy">Saldo pendiente</span>
+                  <span class="font-bold tabular-nums" :class="(checkoutFolio.balance || 0) > 0 ? 'text-coral' : 'text-teal'">
+                    ${{ (checkoutFolio.balance || 0).toFixed(2) }}
+                  </span>
+                </div>
               </div>
-              <div class="flex justify-between text-xs">
-                <span class="text-text-muted">Pagos</span>
-                <span class="font-bold tabular-nums text-teal">-${{ (checkoutFolio.paymentsTotal || 0).toFixed(2) }}</span>
-              </div>
-              <div class="border-t border-border pt-2 flex justify-between text-sm">
-                <span class="font-bold text-navy">Saldo pendiente</span>
-                <span class="font-bold tabular-nums" :class="(checkoutFolio.balance || 0) > 0 ? 'text-coral' : 'text-teal'">
-                  ${{ (checkoutFolio.balance || 0).toFixed(2) }}
-                </span>
-              </div>
-              <div v-if="(checkoutFolio.balance || 0) <= 0" class="text-[10px] text-teal font-bold">✓ Cuenta saldada</div>
+              <div v-if="(checkoutFolio.balance || 0) <= 0" class="text-[10px] text-teal font-bold mt-2">✓ Cuenta saldada</div>
             </div>
 
             <!-- Payment method selection (only if balance > 0) -->
-            <div v-if="checkoutFolio && (checkoutFolio.balance || 0) > 0" class="space-y-3">
-              <div class="text-xs font-bold text-navy">Método de pago</div>
-              <div class="grid grid-cols-2 gap-2">
+            <div v-if="checkoutFolio && (checkoutFolio.balance || 0) > 0" class="py-5 border-b border-border">
+              <div class="text-[10px] text-text-muted uppercase tracking-wide mb-2.5">Método de pago</div>
+              <div class="flex flex-wrap gap-2">
                 <button v-for="pm in paymentMethods" :key="pm.value"
                   @click="settleMethod = pm.value"
-                  class="flex items-center gap-2 p-3 rounded-xl text-xs font-bold border transition-all cursor-pointer"
-                  :class="settleMethod === pm.value ? 'bg-teal text-white border-teal' : 'bg-white text-navy border-border hover:border-teal/30'">
-                  <span class="w-4 h-4 shrink-0" v-html="PAYMENT_ICONS[pm.value]"></span>
+                  class="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-bold border transition-all cursor-pointer"
+                  :class="settleMethod === pm.value ? 'border-teal bg-teal text-white' : 'border-border text-text-secondary hover:border-teal/30'">
+                  <span class="w-3.5 h-3.5 shrink-0" v-html="PAYMENT_ICONS[pm.value]"></span>
                   <span>{{ pm.label }}</span>
                 </button>
               </div>
             </div>
 
-            <div class="bg-gold/10 border border-gold/20 rounded-xl p-3 flex items-start gap-2">
+            <div class="flex items-start gap-2 pt-5">
               <svg class="w-4 h-4 text-gold shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z"/>
               </svg>
               <div class="text-[10px] font-bold text-gold">La habitación pasará a estado "Sucia" y se creará tarea de limpieza</div>
             </div>
 
-            <div v-if="processing" class="flex items-center justify-center gap-2 text-xs text-coral font-bold">
+            <div v-if="processing" class="flex items-center justify-center gap-2 text-xs text-coral font-bold pt-4">
               <span class="inline-block w-3 h-3 border-2 border-coral border-t-transparent rounded-full animate-spin"></span>
               Procesando...
             </div>
           </div>
-          <div class="p-5 border-t border-border flex gap-2">
-            <button @click="closeCheckoutModal" :disabled="processing" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold hover:bg-surface cursor-pointer disabled:opacity-50">Cancelar</button>
-            <button @click="confirmCheckout" :disabled="processing || folioLoading || !isOnline" class="flex-1 py-2.5 bg-coral text-white rounded-xl text-sm font-bold hover:bg-coral/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <div class="p-5 border-t border-border flex items-center justify-end gap-4">
+            <button @click="closeCheckoutModal" :disabled="processing" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer disabled:opacity-50">Cancelar</button>
+            <button @click="confirmCheckout" :disabled="processing || folioLoading || !isOnline" class="rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ processing ? 'Procesando...' : checkoutSettleLabel }}
             </button>
           </div>

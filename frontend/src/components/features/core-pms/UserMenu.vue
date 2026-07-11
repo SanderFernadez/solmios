@@ -4,8 +4,8 @@
     <button
       type="button"
       @click="open = !open"
-      class="flex items-center gap-2 rounded-lg pl-1.5 pr-2.5 py-1.5 transition-colors cursor-pointer"
-      :class="[transparent ? 'hover:bg-white/5' : 'bg-surface border border-border hover:bg-surface-dark', { 'ring-2 ring-cyan/30': open }]"
+      class="flex items-center gap-2 rounded-full pl-1.5 pr-2.5 py-1.5 transition-colors cursor-pointer"
+      :class="[transparent ? 'hover:bg-white/5' : 'bg-surface hover:bg-surface-dark', { 'ring-2 ring-cyan/30': open }]"
       aria-haspopup="menu"
       :aria-expanded="open"
     >
@@ -28,10 +28,10 @@
     <div
       v-if="open"
       role="menu"
-      class="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-border overflow-hidden z-50"
+      class="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-2xl overflow-hidden z-50"
     >
       <!-- Info usuario -->
-      <div class="px-4 py-3 border-b border-border bg-surface">
+      <div class="px-4 py-3 border-b border-border/60">
         <div class="flex items-center gap-3">
           <div v-if="placeholder" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-navy/10 text-navy/50 overflow-hidden">
             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Zm0 2c-3.866 0-7 2.239-7 5v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1c0-2.761-3.134-5-7-5Z" /></svg>
@@ -62,7 +62,7 @@
       </div>
 
       <!-- Separador + Salir -->
-      <div class="border-t border-border py-1.5">
+      <div class="border-t border-border/60 py-1.5">
         <button
           type="button"
           @click="logout"

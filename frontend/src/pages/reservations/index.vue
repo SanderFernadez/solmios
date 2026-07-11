@@ -16,13 +16,13 @@
         </div>
       </div>
       <div class="flex gap-2.5">
-        <button @click="exportCSV" class="flex items-center gap-2 border border-border bg-white text-text-secondary font-semibold text-sm px-4 py-2.5 rounded-xl hover:bg-surface transition-colors cursor-pointer">
+        <button @click="exportCSV" class="flex items-center gap-2 border border-border bg-white text-text-secondary font-semibold text-sm px-4 py-2.5 rounded-full hover:bg-surface transition-colors cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
           </svg>
           Exportar
         </button>
-        <button @click="openNew" class="flex items-center gap-2 bg-navy text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-navy-light transition-colors cursor-pointer">
+        <button @click="openNew" class="flex items-center gap-2 bg-navy text-white font-bold text-sm px-5 py-2.5 rounded-full hover:bg-navy-light transition-colors cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
           </svg>
@@ -73,9 +73,9 @@
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
           </svg>
-          <input v-model="search" type="text" placeholder="Buscar huésped, reserva, correo..." class="pl-9 pr-4 py-2 text-sm rounded-xl border border-border bg-surface focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 w-64 transition-all" />
+          <input v-model="search" type="text" placeholder="Buscar huésped, reserva, correo..." class="pl-9 pr-4 py-2 text-sm rounded-full border border-border bg-surface focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 w-64 transition-all" />
         </div>
-        <select v-model="filterStatus" class="px-3 py-2 rounded-xl border border-border text-xs font-semibold text-text-secondary bg-white cursor-pointer focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 transition-all">
+        <select v-model="filterStatus" class="px-3 py-2 rounded-full border border-border text-xs font-semibold text-text-secondary bg-white cursor-pointer focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 transition-all">
           <option value="">Todos los estados</option>
           <option value="confirmed">Confirmadas</option>
           <option value="pending">Pendientes</option>
@@ -83,7 +83,7 @@
           <option value="checked_out">Check-out</option>
           <option value="cancelled">Canceladas</option>
         </select>
-        <select v-model="filterChannel" class="px-3 py-2 rounded-xl border border-border text-xs font-semibold text-text-secondary bg-white cursor-pointer focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 transition-all">
+        <select v-model="filterChannel" class="px-3 py-2 rounded-full border border-border text-xs font-semibold text-text-secondary bg-white cursor-pointer focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 transition-all">
           <option value="">Todos los canales</option>
           <option value="direct">Directa</option>
           <option value="booking">Booking</option>
@@ -621,9 +621,9 @@
           <div class="text-3xl mb-3">{{ cfg.icon }}</div>
           <h3 class="text-lg font-black text-navy mb-2">{{ cfg.title }}</h3>
           <p class="text-sm text-text-secondary">{{ cfg.msg }}</p>
-          <div class="flex gap-3 mt-6">
-            <button @click="cfg.show=false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="cfg.fn();cfg.show=false" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white cursor-pointer" :class="cfg.btn">Confirmar</button>
+          <div class="flex items-center justify-center gap-4 mt-6">
+            <button @click="cfg.show=false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+            <button @click="cfg.fn();cfg.show=false" class="rounded-full px-5 py-2.5 text-sm font-extrabold text-white cursor-pointer" :class="cfg.btn">Confirmar</button>
           </div>
         </div>
       </div>

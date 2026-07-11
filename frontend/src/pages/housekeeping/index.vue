@@ -18,7 +18,7 @@
           v-for="view in views"
           :key="view.value"
           @click="switchView(view.value)"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
+          class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer"
           :class="activeView === view.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'"
         >
           <span class="w-4 h-4 shrink-0" v-html="view.icon"></span>
@@ -26,11 +26,11 @@
         </button>
       </div>
       <div class="flex gap-2">
-        <button @click="openAssignModal" class="flex items-center gap-1.5 bg-navy text-white font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <button @click="openAssignModal" class="flex items-center gap-1.5 bg-navy text-white font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
           Asignar Tarea
         </button>
-        <button @click="openNewTask" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <button @click="openNewTask" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
           Nueva Tarea
         </button>
@@ -41,7 +41,7 @@
         v-for="filter in statusFilters"
         :key="filter.value"
         @click="activeFilter = filter.value"
-        class="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
+        class="px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer"
         :class="activeFilter === filter.value ? 'bg-navy/10 text-navy' : 'text-text-secondary hover:bg-surface'"
       >
         {{ filter.label }}
@@ -76,7 +76,7 @@
             v-for="r in statsRanges"
             :key="r"
             @click="changeStatsRange(r)"
-            class="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
+            class="px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer"
             :class="statsRangeDays === r ? 'bg-navy text-white' : 'bg-surface text-text-secondary hover:bg-surface-dark'"
           >
             Últimos {{ r }} días
@@ -176,17 +176,17 @@
       <div class="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
           <div class="relative">
-            <input v-model="listSearch" type="text" placeholder="Buscar habitación, tipo, empleado..." class="pl-9 pr-4 py-2 rounded-xl border border-border text-sm w-64 focus:outline-none focus:border-navy" />
+            <input v-model="listSearch" type="text" placeholder="Buscar habitación, tipo, empleado..." class="pl-9 pr-4 py-2 rounded-full border border-border text-sm w-64 focus:outline-none focus:border-navy" />
             <span class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_SEARCH"></span>
           </div>
-          <select v-model="listPageSize" class="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+          <select v-model="listPageSize" class="px-3 py-2 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
             <option :value="10">10 por página</option>
             <option :value="20">20 por página</option>
             <option :value="50">50 por página</option>
           </select>
         </div>
         <div class="flex items-center gap-3">
-          <button @click="exportCsv" class="flex items-center gap-1.5 px-4 py-2 bg-surface rounded-xl text-sm font-bold text-text-secondary hover:bg-surface-dark transition-colors cursor-pointer">
+          <button @click="exportCsv" class="flex items-center gap-1.5 px-4 py-2 bg-surface rounded-full text-sm font-bold text-text-secondary hover:bg-surface-dark transition-colors cursor-pointer">
             <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
             Exportar CSV
           </button>
@@ -243,13 +243,13 @@
               <span v-else class="text-text-muted">—</span>
             </td>
             <td class="p-4 text-right">
-              <div class="flex gap-1 justify-end flex-wrap">
-                <button @click="openViewTask(task)" class="px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 transition-colors cursor-pointer">Ver</button>
-                <button @click="openEditTask(task)" class="px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 transition-colors cursor-pointer">Editar</button>
+              <div class="flex items-center gap-4 justify-end flex-wrap">
+                <button @click="openViewTask(task)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Ver</button>
+                <button @click="openEditTask(task)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
                 <button
                   v-if="primaryAction(task)"
                   @click="runPrimary(task)"
-                  class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 transition-colors cursor-pointer"
+                  class="rounded-full bg-teal/10 text-teal px-3 py-1 text-[11px] font-bold hover:bg-teal/20 transition-colors cursor-pointer"
                 >{{ primaryAction(task)?.label }}</button>
               </div>
             </td>

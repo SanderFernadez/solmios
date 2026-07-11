@@ -14,7 +14,7 @@
       </div>
       <div class="flex gap-2 items-center flex-wrap">
         <div class="relative">
-          <input v-model="searchQuery" type="text" placeholder="Buscar habitación, tipo, piso..." class="pl-9 pr-8 py-2 rounded-xl border border-border text-xs font-bold w-64 focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 bg-white" />
+          <input v-model="searchQuery" type="text" placeholder="Buscar habitación, tipo, piso..." class="pl-9 pr-8 py-2 rounded-full border border-border text-xs font-bold w-64 focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 bg-white" />
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -22,7 +22,7 @@
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <select v-model="activeFilter" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer bg-white">
+        <select v-model="activeFilter" class="px-3 py-2 rounded-full border border-border text-xs font-bold cursor-pointer bg-white">
           <option value="all">Todas</option>
           <option value="available">Disponibles</option>
           <option value="occupied">Ocupadas</option>
@@ -30,11 +30,11 @@
           <option value="dirty">Sucias</option>
           <option value="out_of_service">F/S</option>
         </select>
-        <button @click="openNew" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition cursor-pointer">
+        <button @click="openNew" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
           Nueva
         </button>
-        <button @click="openBatch" class="flex items-center gap-1.5 bg-surface border border-border text-navy font-bold text-sm px-5 py-2.5 rounded-xl hover:shadow transition cursor-pointer">
+        <button @click="openBatch" class="flex items-center gap-1.5 bg-surface border border-border text-navy font-bold text-sm px-5 py-2.5 rounded-full hover:shadow transition cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
           Crear en Lote
         </button>

@@ -127,36 +127,18 @@
     <!-- Main Content -->
     <div class="flex-1 min-w-0 lg:ml-64 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
       <!-- Header (el dashboard general trae su propia barra oscura de comando) -->
-      <header v-if="!isCommandCenter" class="h-16 bg-white border-b border-border flex items-center gap-3 justify-between px-4 md:px-6 sticky top-0 z-10 shadow-sm">
+      <header v-if="!isCommandCenter" class="h-16 bg-white flex items-center gap-3 justify-between px-4 md:px-6 sticky top-0 z-10 shadow-(--shadow-nav)">
         <div class="flex items-center gap-3 min-w-0">
-          <button @click="mobileMenuOpen = true" class="lg:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface cursor-pointer">
+          <button @click="mobileMenuOpen = true" class="lg:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
             </svg>
           </button>
           <h1 class="text-lg font-black text-navy truncate">{{ pageTitle }}</h1>
         </div>
-        <div class="flex items-center gap-3">
-          <!-- Search -->
-          <div class="relative">
-            <input type="text" placeholder="Buscar..." class="w-64 h-9 pl-9 pr-4 rounded-xl border border-border text-sm bg-surface focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 transition-all" />
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-
+        <div class="flex items-center gap-2.5">
           <!-- Notifications bell (componente dedicado) -->
           <NotificationBell />
-
-          <div class="w-px h-6 bg-border"></div>
-
-          <!-- Hotel Selector -->
-          <div class="flex items-center gap-2 bg-surface rounded-xl px-3 py-1.5 border border-border">
-            <svg class="w-4 h-4 text-cyan shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1" />
-            </svg>
-            <span class="text-sm font-bold text-navy">{{ auth.currentHotel }}</span>
-          </div>
 
           <!-- User Menu (Configuración / Cambiar contraseña / Salir) -->
           <UserMenu />

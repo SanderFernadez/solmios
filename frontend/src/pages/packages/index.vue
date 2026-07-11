@@ -1,205 +1,199 @@
 <template>
-  <div class="min-h-screen bg-surface">
+  <div>
     <!-- Header -->
-    <div class="bg-white border-b border-border px-6 py-4">
-      <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 class="text-xl font-black text-navy">Paquetes & Upsells</h1>
-          <p class="text-xs text-text-muted">Servicios adicionales · Ofertas especiales · Revenue extra</p>
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-xl font-black text-navy">Paquetes &amp; Upsells</h1>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+            </span>
+            En vivo
+          </span>
         </div>
+        <p class="text-xs text-text-muted mt-0.5">Servicios adicionales · Ofertas especiales · Revenue extra</p>
+      </div>
+      <button @click="showCreateModal = true" class="flex items-center gap-1.5 bg-navy text-white text-sm font-extrabold px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
+        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+        Nuevo Paquete
+      </button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
-          <span class="text-xs font-bold px-3 py-1 rounded-full bg-gold/10 text-gold">{{ packages.length }} paquetes disponibles</span>
-          <button @click="showCreateModal = true" class="flex items-center gap-1.5 px-4 py-2 bg-navy text-white text-sm font-bold rounded-xl hover:bg-navy-light transition-colors cursor-pointer">
-            <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
-            Nuevo Paquete
-          </button>
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
+            <span class="w-5 h-5 text-navy" v-html="ICON_BOX"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">{{ Math.round(packagesCountAnim) }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Paquetes Activos</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
+            <span class="w-5 h-5 text-cyan" v-html="ICON_LAYERS"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">{{ new Set(packages.map((p: any) => p.type)).size }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Tipos de Paquete</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
+            <span class="w-5 h-5 text-teal" v-html="ICON_WALLET"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-teal truncate">${{ Math.round(avgPriceAnim).toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Precio Promedio</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
+            <span class="w-5 h-5 text-navy" v-html="ICON_CHART"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">${{ Math.round(totalCatalogAnim).toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Valor Total Catálogo</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto p-6">
-      <!-- KPIs -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-              <span class="w-5 h-5 text-navy" v-html="ICON_BOX"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none text-navy truncate">{{ packages.length }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Paquetes Activos</div>
-            </div>
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6">
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        @click="activeTab = tab.id"
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer"
+        :class="activeTab === tab.id ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- Packages Grid -->
+    <div v-if="activeTab === 'packages'" class="grid md:grid-cols-3 gap-4">
+      <div v-for="pkg in packages" :key="pkg.id" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+        <div class="h-32 bg-gradient-to-br" :class="pkg.gradient"></div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-black text-navy">{{ pkg.name }}</h3>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="pkg.active ? 'bg-teal/10 text-teal' : 'bg-surface text-text-muted'">
+              {{ pkg.active ? 'Activo' : 'Inactivo' }}
+            </span>
           </div>
-        </div>
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-              <span class="w-5 h-5 text-cyan" v-html="ICON_LAYERS"></span>
+          <p class="text-[10px] text-text-muted mb-3">{{ pkg.description }}</p>
+          <div class="flex items-end justify-between mb-3">
+            <div>
+              <span class="text-xl font-black text-navy">${{ pkg.price }}</span>
+              <span class="text-[10px] text-text-muted"> /{{ pkg.unit }}</span>
             </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none text-navy truncate">{{ new Set(packages.map((p: any) => p.type)).size }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Tipos de Paquete</div>
-            </div>
+            <span class="text-[10px] text-teal font-bold">{{ pkg.sold }} vendidos</span>
           </div>
-        </div>
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-              <span class="w-5 h-5 text-teal" v-html="ICON_WALLET"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none text-teal truncate">${{ packages.length ? Math.round(packages.reduce((s: number, p: any) => s + (p.price || 0), 0) / packages.length) : 0 }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Precio Promedio</div>
-            </div>
-          </div>
-        </div>
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-              <span class="w-5 h-5 text-navy" v-html="ICON_CHART"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none text-navy truncate">${{ packages.reduce((s: number, p: any) => s + (p.price || 0), 0).toLocaleString() }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Valor Total Catálogo</div>
-            </div>
+          <div class="flex items-center gap-4 pt-3 border-t border-border">
+            <button class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
+            <button class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">{{ pkg.active ? 'Desactivar' : 'Activar' }}</button>
           </div>
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="flex gap-1 bg-white rounded-xl p-1 border border-border mb-6 w-fit">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          @click="activeTab = tab.id"
-          class="px-4 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer"
-          :class="activeTab === tab.id ? 'bg-navy text-white' : 'text-text-muted hover:bg-surface'"
-        >
-          {{ tab.label }}
+      <!-- Add New Package Card -->
+      <button @click="showCreateModal = true" class="rounded-[20px] border-2 border-dashed border-border bg-white p-6 flex flex-col items-center justify-center min-h-[280px] hover:border-cyan transition-colors cursor-pointer">
+        <div class="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-text-muted mb-3">
+          <span class="w-6 h-6 shrink-0" v-html="ICON_PLUS"></span>
+        </div>
+        <div class="text-sm font-bold text-text-muted">Crear Nuevo Paquete</div>
+      </button>
+    </div>
+
+    <!-- Upsells List -->
+    <div v-if="activeTab === 'upsells'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <h2 class="text-lg font-black text-navy">Servicios Adicionales</h2>
+        <button class="flex items-center gap-1.5 bg-navy text-white text-xs font-extrabold px-4 py-2 rounded-full hover:shadow-lg transition-all cursor-pointer">
+          <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_PLUS"></span>
+          Nuevo Upsell
         </button>
       </div>
-
-      <!-- Packages Grid -->
-      <div v-if="activeTab === 'packages'" class="grid md:grid-cols-3 gap-4">
-        <div v-for="pkg in packages" :key="pkg.id" class="bg-white rounded-2xl border border-border overflow-hidden hover:shadow-md transition-shadow">
-          <div class="h-32 bg-gradient-to-br" :class="pkg.gradient"></div>
-          <div class="p-5">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-black text-navy">{{ pkg.name }}</h3>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="pkg.active ? 'bg-teal/10 text-teal' : 'bg-surface text-text-muted'">
-                {{ pkg.active ? 'Activo' : 'Inactivo' }}
-              </span>
-            </div>
-            <p class="text-[10px] text-text-muted mb-3">{{ pkg.description }}</p>
-            <div class="flex items-end justify-between mb-3">
-              <div>
-                <span class="text-xl font-black text-navy">${{ pkg.price }}</span>
-                <span class="text-[10px] text-text-muted"> /{{ pkg.unit }}</span>
-              </div>
-              <span class="text-[10px] text-teal font-bold">{{ pkg.sold }} vendidos</span>
-            </div>
-            <div class="flex gap-2">
-              <button class="flex-1 flex items-center justify-center gap-1 py-2 bg-surface text-navy text-[10px] font-bold rounded-lg hover:bg-navy hover:text-white transition-all cursor-pointer">
-                <span class="w-3 h-3 shrink-0" v-html="ICON_PENCIL"></span>
-                Editar
-              </button>
-              <button class="flex-1 flex items-center justify-center gap-1 py-2 bg-surface text-coral text-[10px] font-bold rounded-lg hover:bg-coral hover:text-white transition-all cursor-pointer">
-                <span class="w-3 h-3 shrink-0" v-html="ICON_TOGGLE"></span>
-                {{ pkg.active ? 'Desactivar' : 'Activar' }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Add New Package Card -->
-        <button @click="showCreateModal = true" class="bg-white rounded-2xl border-2 border-dashed border-border p-6 flex flex-col items-center justify-center min-h-[280px] hover:border-cyan transition-colors cursor-pointer">
-          <div class="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-text-muted mb-3">
-            <span class="w-6 h-6 shrink-0" v-html="ICON_PLUS"></span>
-          </div>
-          <div class="text-sm font-bold text-text-muted">Crear Nuevo Paquete</div>
-        </button>
+      <div v-if="upsells.length === 0" class="text-center py-12">
+        <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_TAG"></span>
+        <h3 class="font-bold text-navy mb-1">Sin servicios adicionales</h3>
+        <p class="text-xs text-text-muted">Agrega upsells para ofrecer a los huéspedes.</p>
       </div>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-border">
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Servicio</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Categoría</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Precio</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Vendidos (Mes)</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Ingresos</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estado</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="upsell in upsells" :key="upsell.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
+              <td class="py-3">
+                <div class="text-sm font-bold text-navy">{{ upsell.name }}</div>
+                <div class="text-[10px] text-text-muted">{{ upsell.description }}</div>
+              </td>
+              <td class="py-3">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="categoryClass(upsell.category)">
+                  {{ upsell.category }}
+                </span>
+              </td>
+              <td class="py-3 text-sm font-bold text-navy">${{ upsell.price }}</td>
+              <td class="py-3 text-sm text-navy">{{ upsell.sold }}</td>
+              <td class="py-3 text-sm font-bold text-teal">${{ upsell.revenue }}</td>
+              <td class="py-3">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="upsell.active ? 'bg-teal/10 text-teal' : 'bg-surface text-text-muted'">
+                  {{ upsell.active ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="py-3">
+                <button class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-      <!-- Upsells List -->
-      <div v-if="activeTab === 'upsells'" class="bg-white rounded-2xl border border-border p-6">
-        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h2 class="text-lg font-black text-navy">Servicios Adicionales</h2>
-          <button class="flex items-center gap-1.5 px-4 py-2 bg-navy text-white text-xs font-bold rounded-xl hover:bg-navy-light transition-colors cursor-pointer">
-            <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_PLUS"></span>
-            Nuevo Upsell
-          </button>
-        </div>
-        <div v-if="upsells.length === 0" class="text-center py-12">
-          <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_TAG"></span>
-          <h3 class="font-bold text-navy mb-1">Sin servicios adicionales</h3>
-          <p class="text-xs text-text-muted">Agrega upsells para ofrecer a los huéspedes.</p>
-        </div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="border-b border-border">
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Servicio</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Categoría</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Precio</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Vendidos (Mes)</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Ingresos</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estado</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="upsell in upsells" :key="upsell.id" class="border-b border-border/50 hover:bg-surface/50 transition-colors">
-                <td class="py-3">
-                  <div class="text-sm font-bold text-navy">{{ upsell.name }}</div>
-                  <div class="text-[10px] text-text-muted">{{ upsell.description }}</div>
-                </td>
-                <td class="py-3">
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="categoryClass(upsell.category)">
-                    {{ upsell.category }}
-                  </span>
-                </td>
-                <td class="py-3 text-sm font-bold text-navy">${{ upsell.price }}</td>
-                <td class="py-3 text-sm text-navy">{{ upsell.sold }}</td>
-                <td class="py-3 text-sm font-bold text-teal">${{ upsell.revenue }}</td>
-                <td class="py-3">
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="upsell.active ? 'bg-teal/10 text-teal' : 'bg-surface text-text-muted'">
-                    {{ upsell.active ? 'Activo' : 'Inactivo' }}
-                  </span>
-                </td>
-                <td class="py-3">
-                  <button class="inline-flex items-center gap-1 text-[10px] font-bold text-cyan hover:underline cursor-pointer">
-                    <span class="w-3 h-3 shrink-0" v-html="ICON_PENCIL"></span>
-                    Editar
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+    <!-- Top Sellers -->
+    <div v-if="activeTab === 'analytics'" class="grid md:grid-cols-2 gap-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+        <h3 class="text-sm font-black text-navy mb-4">Top Upsells por Ingresos</h3>
+        <div v-if="topSellers.length === 0" class="text-center py-8 text-xs text-text-muted">Sin ventas registradas todavía.</div>
+        <div v-else class="divide-y divide-border">
+          <div v-for="(item, idx) in topSellers" :key="idx" class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0" :class="idx === 0 ? 'bg-gold/20 text-gold' : idx === 1 ? 'bg-gray-200 text-gray-600' : 'bg-coral/20 text-coral'">
+              {{ idx + 1 }}
+            </div>
+            <div class="flex-1">
+              <div class="text-sm font-bold text-navy">{{ item.name }}</div>
+              <div class="text-[10px] text-text-muted">{{ item.sold }} vendidos</div>
+            </div>
+            <div class="text-sm font-bold text-navy">${{ item.revenue }}</div>
+          </div>
         </div>
       </div>
 
-      <!-- Top Sellers -->
-      <div v-if="activeTab === 'analytics'" class="grid md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-2xl border border-border p-6">
-          <h3 class="text-sm font-black text-navy mb-4">Top Upsells por Ingresos</h3>
-          <div v-if="topSellers.length === 0" class="text-center py-8 text-xs text-text-muted">Sin ventas registradas todavía.</div>
-          <div v-else class="space-y-3">
-            <div v-for="(item, idx) in topSellers" :key="idx" class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0" :class="idx === 0 ? 'bg-gold/20 text-gold' : idx === 1 ? 'bg-gray-200 text-gray-600' : 'bg-coral/20 text-coral'">
-                {{ idx + 1 }}
-              </div>
-              <div class="flex-1">
-                <div class="text-sm font-bold text-navy">{{ item.name }}</div>
-                <div class="text-[10px] text-text-muted">{{ item.sold }} vendidos</div>
-              </div>
-              <div class="text-sm font-bold text-navy">${{ item.revenue }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-border p-6">
-          <h3 class="text-sm font-black text-navy mb-4">Ingresos por Categoría</h3>
-          <div class="space-y-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+        <h3 class="text-sm font-black text-navy mb-4">Ingresos por Categoría</h3>
+        <div class="space-y-4">
             <div>
               <div class="flex items-center justify-between mb-1">
                 <span class="flex items-center gap-1.5 text-xs text-navy font-bold"><span class="w-3.5 h-3.5 text-cyan shrink-0" v-html="ICON_UTENSILS"></span>Gastronomía</span>
@@ -239,65 +233,67 @@
           </div>
         </div>
       </div>
-    </div>
 
     <!-- Create Package Modal -->
     <Teleport to="body">
-      <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showCreateModal = false">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="flex items-center gap-2 text-lg font-black text-navy">
-              <span class="w-5 h-5 shrink-0" v-html="ICON_PLUS"></span>
-              Crear Nuevo Paquete
-            </h2>
-            <button @click="showCreateModal = false" class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-surface hover:text-navy">
-              <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-            </button>
-          </div>
-          <div class="space-y-4">
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
-              <input v-model="newPackage.name" type="text" placeholder="Ej: Romantique Weekend" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
+      <Transition name="modal-fade">
+        <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showCreateModal = false">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
+              <h2 class="text-lg font-black text-navy">Crear Nuevo Paquete</h2>
+              <button @click="showCreateModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
+                <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
+              </button>
             </div>
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Descripción</label>
-              <textarea v-model="newPackage.description" rows="2" class="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan resize-none"></textarea>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
               <div>
-                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Precio</label>
-                <input v-model="newPackage.price" type="number" placeholder="0.00" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
+                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Nombre</label>
+                <input v-model="newPackage.name" type="text" placeholder="Ej: Romantique Weekend" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
               </div>
               <div>
-                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Unidad</label>
-                <select v-model="newPackage.unit" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan cursor-pointer">
-                  <option value="estancia">Por estancia</option>
-                  <option value="noche">Por noche</option>
-                  <option value="persona">Por persona</option>
-                </select>
+                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Descripción</label>
+                <textarea v-model="newPackage.description" rows="2" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Precio</label>
+                  <input v-model="newPackage.price" type="number" placeholder="0.00" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Unidad</label>
+                  <select v-model="newPackage.unit" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                    <option value="estancia">Por estancia</option>
+                    <option value="noche">Por noche</option>
+                    <option value="persona">Por persona</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Incluye</label>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="(item, idx) in newPackage.includes"
+                    :key="idx"
+                    type="button"
+                    @click="newPackage.includes[idx].checked = !newPackage.includes[idx].checked"
+                    class="rounded-full px-3.5 py-2 text-[11px] font-bold border transition-all cursor-pointer"
+                    :class="item.checked ? 'border-navy bg-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'"
+                  >
+                    {{ item.label }}
+                  </button>
+                </div>
               </div>
             </div>
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Incluye</label>
-              <div class="space-y-2">
-                <label v-for="(item, idx) in newPackage.includes" :key="idx" class="flex items-center gap-2 text-sm text-navy">
-                  <input type="checkbox" v-model="newPackage.includes[idx].checked" class="w-4 h-4 text-cyan rounded" />
-                  {{ item.label }}
-                </label>
+            <div class="shrink-0 border-t border-border p-5">
+              <div class="flex items-center justify-end gap-4">
+                <button @click="showCreateModal = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="createPackage" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">Crear Paquete</button>
               </div>
             </div>
-          </div>
-          <div class="flex gap-3 mt-6">
-            <button @click="showCreateModal = false" class="flex-1 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl hover:bg-navy hover:text-white transition-all cursor-pointer">
-              Cancelar
-            </button>
-            <button @click="createPackage" class="flex-1 py-2.5 bg-navy text-white text-sm font-bold rounded-xl hover:bg-navy-light transition-colors cursor-pointer">
-              Crear Paquete
-            </button>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
@@ -307,11 +303,10 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
 const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
-const ICON_PENCIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>'
-const ICON_TOGGLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9"/></svg>'
 const ICON_BOX = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5 12 12m0 0L3.75 7.5M12 12v9m8.25-4.5V7.279a1.5 1.5 0 0 0-.75-1.299l-7.5-4.333a1.5 1.5 0 0 0-1.5 0L3 5.98a1.5 1.5 0 0 0-.75 1.3v8.442a1.5 1.5 0 0 0 .75 1.3l7.5 4.332a1.5 1.5 0 0 0 1.5 0l7.5-4.333a1.5 1.5 0 0 0 .75-1.299Z"/></svg>'
 const ICON_LAYERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m12 4 8.5 4.5L12 13 3.5 8.5 12 4Zm-8.5 8 8.5 4.5 8.5-4.5m-17 4 8.5 4.5 8.5-4.5"/></svg>'
 const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5M21 12h-4a1.5 1.5 0 0 0 0 3h4v-3Z"/></svg>'
@@ -336,6 +331,14 @@ const tabs = [
 ]
 
 const packages = reactive<any[]>([])
+
+const packagesCount = computed(() => packages.length)
+const avgPrice = computed(() => (packages.length ? Math.round(packages.reduce((s: number, p: any) => s + (p.price || 0), 0) / packages.length) : 0))
+const totalCatalog = computed(() => packages.reduce((s: number, p: any) => s + (p.price || 0), 0))
+
+const packagesCountAnim = useCountUp(packagesCount)
+const avgPriceAnim = useCountUp(avgPrice)
+const totalCatalogAnim = useCountUp(totalCatalog)
 
 const upsells = ref<any[]>([])
 
@@ -400,3 +403,14 @@ function createPackage() {
   newPackage.price = 0
 }
 </script>
+
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
+  opacity: 0; transform: scale(0.95) translateY(12px);
+}
+</style>

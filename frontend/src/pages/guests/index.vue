@@ -3,10 +3,19 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h2 class="text-xl font-black text-navy">Huéspedes</h2>
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-xl font-black text-navy">Huéspedes</h2>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+            </span>
+            En vivo
+          </span>
+        </div>
         <p class="text-sm text-text-muted mt-0.5">CRM y fidelización de clientes</p>
       </div>
-      <button @click="openNewGuest" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+      <button @click="openNewGuest" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
         <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
         Nuevo Huésped
       </button>
@@ -14,46 +23,46 @@
 
     <!-- Stats -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
             <span class="w-5 h-5 text-navy" v-html="ICON_USERS_GROUP"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-navy">{{ guests.length }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-navy">{{ Math.round(totalGuestsAnim) }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Total Huéspedes</div>
           </div>
         </div>
       </div>
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
             <span class="w-5 h-5 text-cyan" v-html="ICON_HOME"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-cyan">{{ activeToday }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-cyan">{{ Math.round(activeTodayAnim) }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Activos Hoy</div>
           </div>
         </div>
       </div>
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
             <span class="w-5 h-5 text-teal" v-html="ICON_STAR"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-teal">{{ frequentGuests }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-teal">{{ Math.round(frequentGuestsAnim) }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Frecuentes</div>
           </div>
         </div>
       </div>
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
             <span class="w-5 h-5 text-gold" v-html="ICON_WALLET"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-gold">{{ totalPoints.toLocaleString() }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-gold">{{ Math.round(totalPointsAnim).toLocaleString() }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Puntos Otorgados</div>
           </div>
         </div>
@@ -61,11 +70,11 @@
     </div>
 
     <!-- Guest List -->
-    <div class="card overflow-hidden">
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <div class="p-4 border-b border-border">
         <div class="flex items-center gap-3">
-          <input v-model="searchQuery" type="text" placeholder="Buscar por nombre, email o teléfono..." class="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-          <select v-model="filterType" class="px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+          <input v-model="searchQuery" type="text" placeholder="Buscar por nombre, email o teléfono..." class="flex-1 px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+          <select v-model="filterType" class="px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
             <option value="all">Todos</option>
             <option value="frequent">Frecuentes (5+ estadías)</option>
             <option value="new">Nuevos (1 estadía)</option>
@@ -114,9 +123,9 @@
             </td>
             <td class="p-4 text-sm text-text-secondary">{{ guest.lastVisit }}</td>
             <td class="p-4 text-right">
-              <div class="flex gap-1 justify-end">
-                <button @click.stop="openViewGuest(guest)" class="px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 transition-colors cursor-pointer">Ver</button>
-                <button @click.stop="openEditGuest(guest)" class="px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 transition-colors cursor-pointer">Editar</button>
+              <div class="flex items-center justify-end gap-4">
+                <button @click.stop="openViewGuest(guest)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Ver</button>
+                <button @click.stop="openEditGuest(guest)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
               </div>
             </td>
           </tr>
@@ -137,77 +146,76 @@
 
     <!-- View Guest Profile Modal -->
     <Teleport to="body">
+      <Transition name="modal-fade">
       <div v-if="showViewModal && viewGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeViewModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeViewModal"></div>
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
           <!-- Header -->
-          <div class="p-6 border-b border-border bg-gradient-to-r from-navy to-navy-light">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div class="w-16 h-16 rounded-full flex items-center justify-center text-xl font-black" :class="viewGuestAvatarClass">
-                  {{ viewGuest.initials }}
-                </div>
-                <div>
-                  <h3 class="text-xl font-black text-white">{{ viewGuest.name }}</h3>
-                  <p class="text-sm text-gray-300">{{ viewGuest.nationality }} · {{ viewGuest.email }}</p>
-                </div>
+          <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
+            <div class="flex items-center gap-4 min-w-0">
+              <div class="w-14 h-14 rounded-full flex items-center justify-center text-lg font-black shrink-0" :class="guestAvatarClass(viewGuest)">
+                {{ viewGuest.initials }}
               </div>
-              <button @click="closeViewModal" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+              <div class="min-w-0">
+                <h3 class="text-xl font-black text-navy truncate">{{ viewGuest.name }}</h3>
+                <p class="text-xs text-text-muted truncate">{{ viewGuest.nationality }} · {{ viewGuest.email }}</p>
+              </div>
             </div>
+            <button @click="closeViewModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
 
           <!-- Body -->
-          <div class="p-6 space-y-6">
+          <div class="px-7 pb-7 overflow-y-auto flex-1">
             <!-- Stats Row -->
-            <div class="grid grid-cols-4 gap-4">
-              <div class="bg-surface rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-navy">{{ viewGuest.stays }}</div>
-                <div class="text-[10px] text-text-muted uppercase">Estadías</div>
+            <div class="grid grid-cols-4 gap-3 pb-6 border-b border-border">
+              <div class="text-center">
+                <div class="text-2xl font-black tabular-nums text-navy">{{ viewGuest.stays }}</div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide mt-0.5">Estadías</div>
               </div>
-              <div class="bg-surface rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-cyan">${{ viewGuest.totalSpent.toLocaleString() }}</div>
-                <div class="text-[10px] text-text-muted uppercase">Total Gastado</div>
+              <div class="text-center">
+                <div class="text-2xl font-black tabular-nums text-cyan">${{ viewGuest.totalSpent.toLocaleString() }}</div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide mt-0.5">Total Gastado</div>
               </div>
-              <div class="bg-surface rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-gold">{{ viewGuest.points.toLocaleString() }}</div>
-                <div class="text-[10px] text-text-muted uppercase">Puntos</div>
+              <div class="text-center">
+                <div class="text-2xl font-black tabular-nums text-gold">{{ viewGuest.points.toLocaleString() }}</div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide mt-0.5">Puntos</div>
               </div>
-              <div class="bg-surface rounded-xl p-4 text-center">
+              <div class="text-center">
                 <div class="text-2xl font-black" :class="viewGuestTier.color">{{ viewGuestTier.label }}</div>
-                <div class="text-[10px] text-text-muted uppercase">Tier</div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide mt-0.5">Tier</div>
               </div>
             </div>
 
             <!-- Información de Ventas / Valor del cliente -->
-            <div>
-              <h4 class="text-sm font-bold text-navy mb-3">Información de Ventas</h4>
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Ticket Promedio</div>
-                  <div class="text-sm font-extrabold text-navy">${{ viewGuest.sales ? viewGuest.sales.avgPerStay.toLocaleString() : '—' }}</div>
+            <div class="py-5 border-b border-border">
+              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Información de Ventas</h4>
+              <div class="grid grid-cols-3 gap-x-4 gap-y-3">
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Ticket Promedio</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">${{ viewGuest.sales ? viewGuest.sales.avgPerStay.toLocaleString() : '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Reservas</div>
-                  <div class="text-sm font-extrabold text-navy">{{ viewGuest.sales ? viewGuest.sales.reservationsCount : '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Reservas</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.sales ? viewGuest.sales.reservationsCount : '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Facturado (reservas)</div>
-                  <div class="text-sm font-extrabold text-navy">${{ viewGuest.sales ? viewGuest.sales.totalResvSpent.toLocaleString() : '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Facturado</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">${{ viewGuest.sales ? viewGuest.sales.totalResvSpent.toLocaleString() : '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Primera visita</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.sales ? fmtDate(viewGuest.sales.firstVisit) : '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Primera visita</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.sales ? fmtDate(viewGuest.sales.firstVisit) : '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Última visita</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.sales ? fmtDate(viewGuest.sales.lastVisit) : '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Última visita</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.sales ? fmtDate(viewGuest.sales.lastVisit) : '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Días desde última</div>
-                  <div class="text-sm font-extrabold" :class="viewGuest.sales?.daysSinceLastVisit != null && viewGuest.sales.daysSinceLastVisit <= RECENT_VISIT_DAYS ? 'text-teal' : 'text-text-secondary'">
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Días desde última</div>
+                  <div class="text-sm font-bold mt-0.5" :class="viewGuest.sales?.daysSinceLastVisit != null && viewGuest.sales.daysSinceLastVisit <= RECENT_VISIT_DAYS ? 'text-teal' : 'text-navy'">
                     {{ viewGuest.sales?.daysSinceLastVisit != null ? viewGuest.sales.daysSinceLastVisit : '—' }}
                   </div>
                 </div>
@@ -215,117 +223,112 @@
             </div>
 
             <!-- Contact Info -->
-            <div>
-              <h4 class="text-sm font-bold text-navy mb-3">Información de Contacto</h4>
-              <div class="grid grid-cols-2 gap-4">
-                <div class="bg-surface rounded-xl p-4">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Email</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.email || '—' }}</div>
+            <div class="py-5 border-b border-border">
+              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Información de Contacto</h4>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Email</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.email || '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-4">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Teléfono</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.phone || '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Teléfono</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.phone || '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-4">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Documento</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.document || '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Documento</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.document || '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-4">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Fecha de Nacimiento</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.birthDate ? fmtDate(viewGuest.birthDate) : '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Fecha de Nacimiento</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.birthDate ? fmtDate(viewGuest.birthDate) : '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-4">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Nacionalidad</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.nationality || '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Nacionalidad</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.nationality || '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-4">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Idioma</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.language || '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Idioma</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.language || '—' }}</div>
                 </div>
               </div>
             </div>
 
             <!-- Datos personales y dirección -->
-            <div>
-              <h4 class="text-sm font-bold text-navy mb-3">Datos Personales y Dirección</h4>
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Sexo</div>
-                  <div class="text-sm font-bold text-navy">{{ sexLabel(viewGuest.sex) }}</div>
+            <div class="py-5 border-b border-border">
+              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Datos Personales y Dirección</h4>
+              <div class="grid grid-cols-3 gap-x-4 gap-y-3">
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Sexo</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ sexLabel(viewGuest.sex) }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">País</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.country || '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">País</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.country || '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Tipo Doc.</div>
-                  <div class="text-sm font-bold text-navy">{{ docTypeLabel(viewGuest.documentType) }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Tipo Doc.</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ docTypeLabel(viewGuest.documentType) }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Exp. Doc.</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.documentIssueDate ? fmtDate(viewGuest.documentIssueDate) : '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Exp. Doc.</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.documentIssueDate ? fmtDate(viewGuest.documentIssueDate) : '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Dirección</div>
-                  <div class="text-sm font-bold text-navy">{{ [viewGuest.address, viewGuest.city, viewGuest.province].filter(Boolean).join(', ') || '—' }}</div>
+                <div class="col-span-2">
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Dirección</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ [viewGuest.address, viewGuest.city, viewGuest.province].filter(Boolean).join(', ') || '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Profesión</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.profession || '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Profesión</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.profession || '—' }}</div>
                 </div>
               </div>
             </div>
 
             <!-- Contacto de emergencia -->
-            <div v-if="viewGuest.emergencyContact && (viewGuest.emergencyContact.name || viewGuest.emergencyContact.phone || viewGuest.emergencyContact.email)">
-              <h4 class="text-sm font-bold text-navy mb-3">Contacto de Emergencia</h4>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Nombre</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.emergencyContact.name || '—' }}</div>
+            <div v-if="viewGuest.emergencyContact && (viewGuest.emergencyContact.name || viewGuest.emergencyContact.phone || viewGuest.emergencyContact.email)" class="py-5 border-b border-border">
+              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Contacto de Emergencia</h4>
+              <div class="grid grid-cols-4 gap-x-4 gap-y-3">
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Nombre</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.emergencyContact.name || '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Teléfono</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.emergencyContact.phone || '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Teléfono</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.emergencyContact.phone || '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Relación</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.emergencyContact.relation || '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Relación</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.emergencyContact.relation || '—' }}</div>
                 </div>
-                <div class="bg-surface rounded-xl p-3">
-                  <div class="text-[10px] text-text-muted uppercase mb-1">Email</div>
-                  <div class="text-sm font-bold text-navy">{{ viewGuest.emergencyContact.email || '—' }}</div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Email</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.emergencyContact.email || '—' }}</div>
                 </div>
               </div>
             </div>
 
             <!-- Preferences -->
-            <div v-if="viewGuest.preferences?.length">
-              <h4 class="text-sm font-bold text-navy mb-3">Preferencias</h4>
-              <div class="flex flex-wrap gap-2">
-                <span v-for="pref in viewGuest.preferences" :key="pref" class="px-3 py-1.5 bg-navy/5 rounded-lg text-[11px] font-bold text-navy">
+            <div v-if="viewGuest.preferences?.length" class="py-5 border-b border-border">
+              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Preferencias</h4>
+              <div class="flex flex-wrap gap-1.5">
+                <span v-for="pref in viewGuest.preferences" :key="pref" class="px-3 py-1 rounded-full border border-border text-xs font-medium text-text-secondary">
                   {{ pref }}
                 </span>
               </div>
             </div>
 
             <!-- Stay History -->
-            <div>
-              <h4 class="text-sm font-bold text-navy mb-3">Historial de Estadías</h4>
-              <div v-if="viewGuest.loadingDetail" class="text-xs text-text-muted py-3">Cargando estadías…</div>
-              <div v-else-if="!viewGuest.history?.length" class="text-xs text-text-muted py-3">Sin estadías registradas</div>
-              <div v-else class="space-y-3">
-                <div v-for="stay in viewGuest.history" :key="stay.id" class="bg-surface rounded-xl p-4 flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div class="w-12 h-10 rounded-lg bg-navy/10 flex items-center justify-center text-[9px] font-bold text-navy uppercase">
-                      {{ stay.channel || '—' }}
-                    </div>
-                    <div>
-                      <div class="text-sm font-bold text-navy">{{ stay.dates }}</div>
-                      <div class="text-[10px] text-text-muted">{{ stay.nights }} noches · ${{ stay.total }}</div>
-                    </div>
+            <div class="py-5 border-b border-border">
+              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Historial de Estadías</h4>
+              <div v-if="viewGuest.loadingDetail" class="text-xs text-text-muted py-1">Cargando estadías…</div>
+              <div v-else-if="!viewGuest.history?.length" class="text-xs text-text-muted py-1">Sin estadías registradas</div>
+              <div v-else class="divide-y divide-border">
+                <div v-for="stay in viewGuest.history" :key="stay.id" class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                  <div class="min-w-0">
+                    <div class="text-sm font-bold text-navy">{{ stay.dates }}</div>
+                    <div class="text-[11px] text-text-muted">{{ stay.nights }} noches · ${{ stay.total }}<template v-if="stay.channel"> · {{ stay.channel }}</template></div>
                   </div>
-                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="stayBadgeClass(stay.status)">
+                  <span class="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0" :class="stayBadgeClass(stay.status)">
                     {{ stayLabel(stay.status) }}
                   </span>
                 </div>
@@ -333,17 +336,17 @@
             </div>
 
             <!-- Points History -->
-            <div>
-              <h4 class="text-sm font-bold text-navy mb-3">Historial de Puntos</h4>
-              <div v-if="viewGuest.loadingDetail" class="text-xs text-text-muted py-3">Cargando puntos…</div>
-              <div v-else-if="!viewGuest.pointsHistory?.length" class="text-xs text-text-muted py-3">Sin movimientos de puntos</div>
-              <div v-else class="space-y-2">
-                <div v-for="tx in viewGuest.pointsHistory" :key="tx.id" class="bg-surface rounded-xl p-3 flex items-center justify-between">
-                  <div>
+            <div class="py-5 border-b border-border">
+              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Historial de Puntos</h4>
+              <div v-if="viewGuest.loadingDetail" class="text-xs text-text-muted py-1">Cargando puntos…</div>
+              <div v-else-if="!viewGuest.pointsHistory?.length" class="text-xs text-text-muted py-1">Sin movimientos de puntos</div>
+              <div v-else class="divide-y divide-border">
+                <div v-for="tx in viewGuest.pointsHistory" :key="tx.id" class="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+                  <div class="min-w-0">
                     <div class="text-xs font-bold text-navy">{{ tx.description || tx.type }}</div>
                     <div class="text-[10px] text-text-muted">{{ fmtDate(tx.createdAt) }}</div>
                   </div>
-                  <span class="text-sm font-black" :class="tx.points >= 0 ? 'text-teal' : 'text-gold'">
+                  <span class="text-sm font-black shrink-0" :class="tx.points >= 0 ? 'text-teal' : 'text-gold'">
                     {{ tx.points >= 0 ? '+' : '' }}{{ tx.points }}
                   </span>
                 </div>
@@ -351,40 +354,38 @@
             </div>
 
             <!-- Notes -->
-            <div v-if="viewGuest.notes">
-              <h4 class="text-sm font-bold text-navy mb-3">Notas</h4>
-              <div class="bg-surface rounded-xl p-4 text-sm text-text-secondary whitespace-pre-wrap">
-                {{ viewGuest.notes }}
-              </div>
+            <div v-if="viewGuest.notes" class="pt-5">
+              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</h4>
+              <div class="text-sm text-text-secondary whitespace-pre-wrap">{{ viewGuest.notes }}</div>
             </div>
           </div>
 
           <!-- Actions -->
-          <div class="p-6 border-t border-border bg-surface/50">
-            <div class="flex gap-3">
-              <button @click="closeViewModal(); openEditGuest(viewGuest)" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
-                Editar Perfil
-              </button>
-              <button @click="closeViewModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
-                Cerrar
-              </button>
-            </div>
+          <div class="flex items-center gap-4 px-7 py-5 border-t border-border shrink-0">
+            <button @click="closeViewModal(); openEditGuest(viewGuest)" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
+              Editar Perfil
+            </button>
+            <button @click="closeViewModal" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">
+              Cerrar
+            </button>
           </div>
         </div>
       </div>
+      </Transition>
     </Teleport>
 
     <!-- New/Edit Guest Modal -->
     <Teleport to="body">
+      <Transition name="modal-fade">
       <div v-if="showFormModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeFormModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeFormModal"></div>
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-          <div class="p-6 border-b border-border sticky top-0 bg-white z-10">
+        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="px-7 pt-7 pb-5 shrink-0">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-black text-navy">{{ editingGuest ? 'Editar Huésped' : 'Nuevo Huésped' }}</h3>
-              <button @click="closeFormModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              <h3 class="text-xl font-black text-navy tracking-tight">{{ editingGuest ? 'Editar huésped' : 'Nuevo huésped' }}</h3>
+              <button @click="closeFormModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <!-- Wizard progress -->
@@ -397,38 +398,38 @@
             </div>
           </div>
 
-          <div class="p-6 space-y-4">
+          <div class="px-7 pb-7 space-y-4 overflow-y-auto flex-1">
             <p v-if="formStep === 1" class="text-[11px] text-text-muted">Los campos marcados con <span class="text-red-500 font-bold">*</span> son obligatorios.</p>
 
             <!-- Paso 1: Datos Personales -->
             <template v-if="formStep === 1">
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nombre Completo <span class="text-red-500">*</span></label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Nombre Completo <span class="text-red-500">*</span></label>
                   <input v-model="form.name" type="text" placeholder="Nombre y apellido" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nacionalidad</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Nacionalidad</label>
                   <SearchSelect v-model="form.nationality" :options="NATIONALITIES" placeholder="Buscar nacionalidad..." />
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Email <span class="text-red-500">*</span></label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Email <span class="text-red-500">*</span></label>
                   <input v-model="form.email" type="email" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Teléfono</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Teléfono</label>
                   <input v-model="form.phone" type="tel" placeholder="+1 809-555-0101" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Documento</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Documento</label>
                   <input v-model="form.document" type="text" placeholder="Pasaporte o ID" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tipo Documento</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Tipo Documento</label>
                   <select v-model="form.documentType" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                     <option value="">—</option>
                     <option v-for="d in DOC_TYPES" :key="d.v" :value="d.v">{{ d.l }}</option>
@@ -437,16 +438,16 @@
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Exp. Documento</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Exp. Documento</label>
                   <input v-model="form.documentIssueDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Fecha de Nacimiento</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Fecha de Nacimiento</label>
                   <input v-model="form.birthDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Sexo</label>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Sexo</label>
                 <select v-model="form.sex" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                   <option value="">—</option>
                   <option value="male">Masculino</option>
@@ -459,31 +460,31 @@
             <!-- Paso 2: Dirección y Profesión -->
             <template v-if="formStep === 2">
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">País</label>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">País</label>
                 <SearchSelect v-model="form.country" :options="COUNTRIES" placeholder="Buscar país..." />
               </div>
               <div class="grid grid-cols-3 gap-4">
                 <div class="col-span-2">
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Dirección</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Dirección</label>
                   <input v-model="form.address" type="text" placeholder="Calle, número..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Ciudad</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Ciudad</label>
                   <input v-model="form.city" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Provincia</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Provincia</label>
                   <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Profesión</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Profesión</label>
                   <input v-model="form.profession" type="text" placeholder="Médico, ingeniero..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Idioma</label>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Idioma</label>
                 <select v-model="form.language" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                   <option value="">Sin preferencia</option>
                   <option v-for="l in LANGUAGES" :key="l.v" :value="l.v">{{ l.l }}</option>
@@ -495,7 +496,7 @@
             <template v-if="formStep === 3">
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tier (fidelización)</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Tier (fidelización)</label>
                   <select v-model="form.tier" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                     <option value="">Sin tier</option>
                     <option value="bronze">Bronce</option>
@@ -505,12 +506,12 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Puntos de Fidelización</label>
+                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Puntos de Fidelización</label>
                   <input v-model.number="form.loyaltyPoints" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Contacto de Emergencia</label>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Contacto de Emergencia</label>
                 <div class="grid grid-cols-2 gap-3">
                   <input v-model="form.emergencyContact.name" type="text" placeholder="Nombre" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                   <input v-model="form.emergencyContact.phone" type="text" placeholder="Teléfono" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
@@ -523,44 +524,44 @@
             <!-- Paso 4: Preferencias y Notas -->
             <template v-if="formStep === 4">
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Preferencias</label>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Preferencias</label>
                 <div class="flex flex-wrap gap-2">
                   <button
                     v-for="pref in allPreferences"
                     :key="pref"
                     @click="togglePreference(pref)"
-                    class="px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer"
-                    :class="form.preferences.includes(pref) ? 'border-navy bg-navy/5 text-navy' : 'border-border text-text-secondary hover:border-navy/30'"
+                    class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors cursor-pointer"
+                    :class="form.preferences.includes(pref) ? 'bg-navy border-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'"
                   >
                     {{ pref }}
                   </button>
                 </div>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Notas</label>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</label>
                 <textarea v-model="form.notes" rows="3" placeholder="Alergias, solicitudes especiales, etc." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
               </div>
             </template>
           </div>
 
-          <div class="p-6 border-t border-border bg-surface/50 sticky bottom-0">
-            <div class="flex gap-3 justify-between">
-              <button v-if="formStep === 1" @click="closeFormModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
-              <button v-else @click="prevFormStep" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Atrás</button>
-              <button v-if="formStep < FORM_STEPS.length" @click="nextFormStep" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">Siguiente</button>
-              <button v-else @click="saveGuest" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
-                {{ editingGuest ? 'Guardar Cambios' : 'Crear Huésped' }}
-              </button>
-            </div>
+          <div class="flex items-center justify-between px-7 py-5 border-t border-border shrink-0">
+            <button v-if="formStep === 1" @click="closeFormModal" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+            <button v-else @click="prevFormStep" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Atrás</button>
+            <button v-if="formStep < FORM_STEPS.length" @click="nextFormStep" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">Siguiente</button>
+            <button v-else @click="saveGuest" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
+              {{ editingGuest ? 'Guardar Cambios' : 'Crear Huésped' }}
+            </button>
           </div>
         </div>
       </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useCountUp } from '@/composables/useCountUp'
 import { GuestService } from '@/services/Guest.service'
 import { ReservationService } from '@/services/Reservation.service'
 import { CrmService } from '@/services/Crm.service'
@@ -757,6 +758,14 @@ onMounted(loadGuests)
 const activeToday = computed(() => guests.value.filter((g: any) => g.isActiveToday).length)
 const frequentGuests = computed(() => guests.value.filter((g: any) => g.stays >= FREQUENT_STAYS_THRESHOLD).length)
 const totalPoints = computed(() => guests.value.reduce((sum: number, g: any) => sum + (g.points ?? 0), 0))
+const totalGuestsCount = computed(() => guests.value.length)
+
+// useCountUp lee `.value` de inmediato al llamarse (a diferencia de un computed normal,
+// que es perezoso) — por eso va DESPUÉS de que `guests` ya esté declarado más arriba.
+const totalGuestsAnim = useCountUp(totalGuestsCount)
+const activeTodayAnim = useCountUp(activeToday)
+const frequentGuestsAnim = useCountUp(frequentGuests)
+const totalPointsAnim = useCountUp(totalPoints)
 
 const filteredGuests = computed(() => {
   let result = guests.value
@@ -798,13 +807,6 @@ function guestAvatarClass(guest: any) {
   if (guest.stays >= FREQUENT_STAYS_THRESHOLD) return 'bg-teal/10 text-teal'
   return 'bg-navy/10 text-navy'
 }
-
-const viewGuestAvatarClass = computed(() => {
-  if (!viewGuest.value) return ''
-  if (viewGuest.value.totalSpent >= VIP_SPEND_THRESHOLD) return 'bg-gold/20 text-gold'
-  if (viewGuest.value.stays >= FREQUENT_STAYS_THRESHOLD) return 'bg-teal/20 text-teal'
-  return 'bg-navy/20 text-navy'
-})
 
 const TIER_META: Record<string, { label: string; color: string }> = {
   bronze: { label: 'Bronce', color: 'text-text-secondary' },
@@ -978,3 +980,24 @@ async function saveGuest() {
   }
 }
 </script>
+
+<style scoped>
+/* Entrada/salida de los modales: backdrop se desvanece, el panel además escala y sube levemente. */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-fade-enter-active .modal-panel,
+.modal-fade-leave-active .modal-panel {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-fade-enter-from .modal-panel,
+.modal-fade-leave-to .modal-panel {
+  opacity: 0;
+  transform: scale(0.95) translateY(12px);
+}
+</style>

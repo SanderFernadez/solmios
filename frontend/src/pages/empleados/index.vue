@@ -1,19 +1,28 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <div>
-        <h2 class="text-xl font-black text-navy">Gestión de Empleados</h2>
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-xl font-black text-navy">Gestión de Empleados</h2>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+            </span>
+            En vivo
+          </span>
+        </div>
         <p class="text-sm text-text-muted mt-0.5">Expedientes, contratos, vacaciones, evaluaciones y organigrama</p>
       </div>
-      <div class="flex gap-2">
-        <button @click="openOrgChart" class="px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">🏢 Organigrama</button>
-        <button @click="openNewEmployee" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">+ Nuevo Empleado</button>
+      <div class="flex items-center gap-4">
+        <button @click="openOrgChart" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Organigrama</button>
+        <button @click="openNewEmployee" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">+ Nuevo Empleado</button>
       </div>
     </div>
 
     <div class="flex gap-2 mb-6 flex-wrap">
       <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value"
-        class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer"
         :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
         {{ tab.label }}
       </button>
@@ -25,7 +34,7 @@
     </div>
 
     <!-- Expedientes -->
-    <div v-if="activeTab === 'profiles' && !loading" class="card overflow-hidden">
+    <div v-if="activeTab === 'profiles' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <table class="w-full">
         <thead>
           <tr class="border-b border-border bg-surface/50">
@@ -48,8 +57,10 @@
             <td class="p-4 text-sm font-bold text-navy">${{ emp.salary?.toLocaleString() || '—' }}</td>
             <td class="p-4 text-sm text-text-secondary">{{ emp.hireDate || '—' }}</td>
             <td class="p-4 text-right">
-              <button @click.stop="openProfile(emp)" class="px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 cursor-pointer">Ver</button>
-              <button @click.stop="deactivateEmployee(emp)" class="ml-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">Desactivar</button>
+              <div class="flex items-center justify-end gap-4">
+                <button @click.stop="openProfile(emp)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Ver</button>
+                <button @click.stop="deactivateEmployee(emp)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Desactivar</button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -58,10 +69,10 @@
     </div>
 
     <!-- Contratos -->
-    <div v-if="activeTab === 'contracts' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between">
+    <div v-if="activeTab === 'contracts' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+      <div class="p-4 border-b border-border flex justify-between items-center">
         <h3 class="font-extrabold text-navy text-sm">Contratos Laborales</h3>
-        <button @click="openNewContract" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">+ Nuevo Contrato</button>
+        <button @click="openNewContract" class="rounded-full bg-cyan text-navy text-[11px] font-extrabold px-3.5 py-1.5 hover:shadow-lg transition-all cursor-pointer">+ Nuevo Contrato</button>
       </div>
       <table class="w-full">
         <thead>
@@ -86,7 +97,7 @@
               <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ c.status === 'active' ? 'Activo' : 'Terminado' }}</span>
             </td>
             <td class="p-4 text-right">
-              <button v-if="c.status === 'active'" @click="terminateContract(c)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">Terminar</button>
+              <button v-if="c.status === 'active'" @click="terminateContract(c)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Terminar</button>
             </td>
           </tr>
         </tbody>
@@ -96,24 +107,23 @@
 
     <!-- Documentos -->
     <div v-if="activeTab === 'documents' && !loading" class="space-y-4">
-      <div v-if="documentAlerts.length" class="card p-4 bg-coral/5 border border-coral/20 rounded-xl mb-4">
-        <h3 class="font-extrabold text-coral text-sm mb-3">⚠ Documentos por Vencer ({{ documentAlerts.length }})</h3>
-        <div v-for="alert in documentAlerts" :key="alert.documentId" class="flex items-center justify-between py-2 border-b border-coral/10 last:border-0">
-          <div class="flex items-center gap-3">
-            <span class="text-lg">📄</span>
+      <div v-if="documentAlerts.length" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
+        <h3 class="font-extrabold text-coral text-sm mb-3">Documentos por Vencer ({{ documentAlerts.length }})</h3>
+        <div class="divide-y divide-border">
+          <div v-for="alert in documentAlerts" :key="alert.documentId" class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 border-l-2 border-coral pl-3">
             <div>
               <div class="text-sm font-bold text-navy">{{ alert.documentName }}</div>
-              <div class="text-[10px] text-text-muted">Vence en {{ alert.daysUntilExpiry }} días — {{ alert.expiryDate }}</div>
+              <div class="text-[10px] text-text-muted mt-0.5">Vence en {{ alert.daysUntilExpiry }} días — {{ alert.expiryDate }}</div>
             </div>
+            <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-coral/10 text-coral">Urgente</span>
           </div>
-          <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-coral/10 text-coral">Urgente</span>
         </div>
       </div>
 
-      <div class="card overflow-hidden">
-        <div class="p-4 border-b border-border flex justify-between">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+        <div class="p-4 border-b border-border flex justify-between items-center">
           <h3 class="font-extrabold text-navy text-sm">Documentos del Expediente</h3>
-          <button @click="openNewDocument" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">+ Nuevo Documento</button>
+          <button @click="openNewDocument" class="rounded-full bg-cyan text-navy text-[11px] font-extrabold px-3.5 py-1.5 hover:shadow-lg transition-all cursor-pointer">+ Nuevo Documento</button>
         </div>
         <table class="w-full">
           <thead>
@@ -132,7 +142,7 @@
               <td class="p-4 text-sm">{{ getEmployeeName(doc.employeeId) }}</td>
               <td class="p-4 text-sm" :class="isExpiringSoon(doc) ? 'text-coral font-bold' : 'text-text-secondary'">{{ doc.expiryDate || '—' }}</td>
               <td class="p-4 text-right">
-                <button @click="deleteDocument(doc)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">Eliminar</button>
+                <button @click="deleteDocument(doc)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Eliminar</button>
               </td>
             </tr>
           </tbody>
@@ -142,10 +152,10 @@
     </div>
 
     <!-- Vacaciones y Permisos -->
-    <div v-if="activeTab === 'leaves' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between">
+    <div v-if="activeTab === 'leaves' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+      <div class="p-4 border-b border-border flex justify-between items-center">
         <h3 class="font-extrabold text-navy text-sm">Solicitudes de Vacaciones y Permisos</h3>
-        <button @click="openNewLeave" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">+ Nueva Solicitud</button>
+        <button @click="openNewLeave" class="rounded-full bg-cyan text-navy text-[11px] font-extrabold px-3.5 py-1.5 hover:shadow-lg transition-all cursor-pointer">+ Nueva Solicitud</button>
       </div>
       <table class="w-full">
         <thead>
@@ -170,9 +180,9 @@
               <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="leaveStatusClass(l.status)">{{ leaveStatusLabel(l.status) }}</span>
             </td>
             <td class="p-4 text-right">
-              <div class="flex gap-1 justify-end" v-if="l.status === 'pending'">
-                <button @click="approveLeave(l)" class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 cursor-pointer">Aprobar</button>
-                <button @click="rejectLeave(l)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">Rechazar</button>
+              <div class="flex items-center gap-4 justify-end" v-if="l.status === 'pending'">
+                <button @click="rejectLeave(l)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Rechazar</button>
+                <button @click="approveLeave(l)" class="rounded-full bg-teal/10 text-teal text-[11px] font-bold px-3 py-1.5 hover:bg-teal/20 transition-colors cursor-pointer">Aprobar</button>
               </div>
             </td>
           </tr>
@@ -182,10 +192,10 @@
     </div>
 
     <!-- Evaluaciones -->
-    <div v-if="activeTab === 'reviews' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between">
+    <div v-if="activeTab === 'reviews' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+      <div class="p-4 border-b border-border flex justify-between items-center">
         <h3 class="font-extrabold text-navy text-sm">Evaluaciones de Desempeño</h3>
-        <button @click="openNewReview" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">+ Nueva Evaluación</button>
+        <button @click="openNewReview" class="rounded-full bg-cyan text-navy text-[11px] font-extrabold px-3.5 py-1.5 hover:shadow-lg transition-all cursor-pointer">+ Nueva Evaluación</button>
       </div>
       <table class="w-full">
         <thead>
@@ -210,7 +220,7 @@
               <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="r.status === 'completed' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">{{ r.status === 'completed' ? 'Completada' : 'Borrador' }}</span>
             </td>
             <td class="p-4 text-right">
-              <button v-if="r.status === 'draft'" @click="completeReview(r)" class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 cursor-pointer">Completar</button>
+              <button v-if="r.status === 'draft'" @click="completeReview(r)" class="rounded-full bg-teal/10 text-teal text-[11px] font-bold px-3 py-1.5 hover:bg-teal/20 transition-colors cursor-pointer">Completar</button>
             </td>
           </tr>
         </tbody>
@@ -233,11 +243,11 @@ const activeTab = ref('profiles')
 const loading = ref(true)
 
 const tabs = [
-  { value: 'profiles', label: '👥 Expedientes' },
-  { value: 'contracts', label: '📝 Contratos' },
-  { value: 'documents', label: '📄 Documentos' },
-  { value: 'leaves', label: '🏖 Vacaciones' },
-  { value: 'reviews', label: '⭐ Evaluaciones' },
+  { value: 'profiles', label: 'Expedientes' },
+  { value: 'contracts', label: 'Contratos' },
+  { value: 'documents', label: 'Documentos' },
+  { value: 'leaves', label: 'Vacaciones' },
+  { value: 'reviews', label: 'Evaluaciones' },
 ]
 
 const profiles = ref<EmployeeProfile[]>([])

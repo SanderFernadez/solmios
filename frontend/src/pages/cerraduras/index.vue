@@ -6,33 +6,33 @@
         <p class="text-xs text-text-muted mt-0.5">Gestión de cerraduras electrónicas y códigos de acceso</p>
       </div>
       <div class="flex gap-2">
-        <button @click="syncLocks" :disabled="syncing" class="px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 cursor-pointer disabled:opacity-50">{{ syncing ? 'Sincronizando...' : '🔄 Sincronizar' }}</button>
+        <button @click="syncLocks" :disabled="syncing" class="px-4 py-2 border border-border rounded-full text-sm font-bold text-text-secondary hover:border-navy/30 transition-all cursor-pointer disabled:opacity-50">{{ syncing ? 'Sincronizando...' : 'Sincronizar' }}</button>
       </div>
     </div>
 
     <!-- TTLock Config -->
-    <div class="card p-6 mb-6">
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 mb-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-extrabold text-navy">Configuración TTLock</h3>
         <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="ttlockConfig.configured ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">{{ ttlockConfig.configured ? 'Configurado' : 'Pendiente' }}</span>
       </div>
       <div class="grid md:grid-cols-2 gap-4">
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client ID</label><input v-model="ttlockConfig.clientId" type="text" placeholder="De open.ttlock.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client Secret</label><input v-model="ttlockConfig.clientSecret" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Usuario TTLock</label><input v-model="ttlockConfig.username" type="text" placeholder="Usuario de la cuenta TTLock del hotel" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Contraseña TTLock</label><input v-model="ttlockConfig.password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Región</label><select v-model="ttlockConfig.region" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer"><option value="eu">Europa (eu)</option><option value="us">EE.UU. (us)</option><option value="cn">China (cn)</option></select></div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Account ID / Email</label><input v-model="ttlockConfig.accountId" type="text" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client ID</label><input v-model="ttlockConfig.clientId" type="text" placeholder="De open.ttlock.com" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client Secret</label><input v-model="ttlockConfig.clientSecret" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Usuario TTLock</label><input v-model="ttlockConfig.username" type="text" placeholder="Usuario de la cuenta TTLock del hotel" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Contraseña TTLock</label><input v-model="ttlockConfig.password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Región</label><select v-model="ttlockConfig.region" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer"><option value="eu">Europa (eu)</option><option value="us">EE.UU. (us)</option><option value="cn">China (cn)</option></select></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Account ID / Email</label><input v-model="ttlockConfig.accountId" type="text" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
         <div class="flex items-end gap-2">
-          <button @click="saveTtlockConfig" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy/80">💾 Guardar Config</button>
-          <button @click="connectTtlock" class="px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-teal/80">🔗 Conectar</button>
+          <button @click="saveTtlockConfig" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-all cursor-pointer">Guardar Config</button>
+          <button @click="connectTtlock" class="px-5 py-2.5 bg-teal text-white rounded-full text-sm font-bold hover:bg-teal-light transition-all cursor-pointer">Conectar</button>
         </div>
       </div>
       <p class="text-[10px] text-text-muted mt-3">Registrate en <a href="https://open.ttlock.com" target="_blank" class="text-cyan underline">open.ttlock.com</a> → Crea una App OAuth → Copia Client ID y Secret aquí</p>
     </div>
 
     <!-- Locks Table -->
-    <div class="card overflow-hidden mb-6">
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden mb-6">
       <div class="p-4 border-b border-border"><h3 class="font-extrabold text-navy">Dispositivos</h3></div>
       <table class="w-full">
         <thead><tr class="border-b border-border bg-surface/50">
@@ -47,7 +47,7 @@
           <tr v-for="lock in locks" :key="lock.id" class="border-b border-border last:border-0 hover:bg-surface/50">
             <td class="p-4 text-sm font-bold text-navy">{{ lock.name || 'Sin nombre' }}</td>
             <td class="p-4">
-              <select @change="mapLock(lock, ($event.target as HTMLSelectElement).value)" class="px-3 py-1.5 rounded-lg border border-border text-xs cursor-pointer">
+              <select @change="mapLock(lock, ($event.target as HTMLSelectElement).value)" class="px-3 py-1.5 rounded-full border border-border text-xs cursor-pointer">
                 <option value="">Sin asignar</option>
                 <option v-for="r in rooms" :key="r.id" :value="r.id" :selected="lock.roomId===r.id">{{ r.number }} - {{ r.type }}</option>
               </select>
@@ -60,7 +60,7 @@
               <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status==='online'?'bg-teal/10 text-teal':'bg-gray-100 text-gray-500'">{{ lock.status || 'offline' }}</span>
             </td>
             <td class="p-4 text-right">
-              <button v-if="lock.roomId" @click="viewCodes(lock)" class="px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold cursor-pointer hover:bg-navy/20">Códigos</button>
+              <button v-if="lock.roomId" @click="viewCodes(lock)" class="text-[11px] font-bold text-navy/70 hover:text-navy transition-colors cursor-pointer">Códigos</button>
             </td>
           </tr>
         </tbody>
@@ -68,7 +68,7 @@
     </div>
 
     <!-- Codes Table -->
-    <div class="card overflow-hidden">
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <div class="p-4 border-b border-border flex items-center justify-between">
         <h3 class="font-extrabold text-navy">Códigos de Acceso</h3>
         <span class="text-xs text-text-muted">{{ lockCodes.length }} códigos</span>
@@ -92,27 +92,36 @@
               <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="code.status==='active'?'bg-teal/10 text-teal':'bg-gray-100 text-gray-500'">{{ code.status }}</span>
             </td>
             <td class="p-4 text-right">
-              <button v-if="code.status==='active'" @click="revokeCode(code)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20">Revocar</button>
+              <button v-if="code.status==='active'" @click="revokeCode(code)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Revocar</button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Códigos de cerradura (modal persistente — reemplaza alert) -->
-    <div v-if="codesModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="codesModal = null">
-      <div class="bg-white rounded-2xl w-full max-w-md p-6">
-        <h3 class="text-lg font-black text-navy mb-3">Códigos de {{ codesModal.lockName }}</h3>
-        <div class="space-y-2 max-h-72 overflow-y-auto">
-          <div v-for="(c, i) in codesModal.codes" :key="i" class="flex items-center gap-2 bg-surface rounded-lg px-3 py-2">
-            <code class="flex-1 text-sm font-mono font-bold text-navy">{{ c.code }}</code>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ c.status }}</span>
-            <span class="text-[10px] text-text-muted shrink-0">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
+    <!-- Códigos de cerradura -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="codesModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="codesModal = null">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[80vh]">
+            <div class="shrink-0 p-6 pb-4">
+              <h3 class="text-lg font-black text-navy">Códigos de {{ codesModal.lockName }}</h3>
+            </div>
+            <div class="overflow-y-auto flex-1 px-6 space-y-2">
+              <div v-for="(c, i) in codesModal.codes" :key="i" class="flex items-center gap-2 bg-surface rounded-full px-3 py-2">
+                <code class="flex-1 text-sm font-mono font-bold text-navy">{{ c.code }}</code>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ c.status }}</span>
+                <span class="text-[10px] text-text-muted shrink-0">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
+              </div>
+            </div>
+            <div class="shrink-0 p-6 pt-5">
+              <button @click="codesModal = null" class="w-full py-2.5 bg-surface text-navy text-sm font-bold rounded-full hover:bg-navy/5 transition-all cursor-pointer">Cerrar</button>
+            </div>
           </div>
         </div>
-        <button @click="codesModal = null" class="w-full mt-4 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cerrar</button>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -199,3 +208,10 @@ function viewCodes(lock: any) {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel { transition: transform 0.2s ease, opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel { opacity: 0; transform: translateY(8px) scale(0.98); }
+</style>

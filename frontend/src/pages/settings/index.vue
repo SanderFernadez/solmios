@@ -11,7 +11,7 @@
       </div>
       <div class="grid lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
-          <div class="card p-6">
+          <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
             <div class="h-5 w-40 bg-surface rounded mb-4 animate-pulse"></div>
             <div class="grid grid-cols-2 gap-4">
               <div v-for="i in 6" :key="i">
@@ -20,7 +20,7 @@
               </div>
             </div>
           </div>
-          <div class="card p-6">
+          <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
             <div class="h-5 w-28 bg-surface rounded mb-4 animate-pulse"></div>
             <div class="grid grid-cols-2 gap-4">
               <div v-for="i in 4" :key="i">
@@ -31,7 +31,7 @@
           </div>
         </div>
         <div class="space-y-6">
-          <div class="card p-6">
+          <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
             <div class="h-5 w-16 bg-surface rounded mb-4 animate-pulse"></div>
             <div class="h-24 w-full bg-surface rounded-xl animate-pulse"></div>
           </div>
@@ -46,33 +46,33 @@
         <h2 class="text-xl font-black text-navy">Configuración</h2>
         <p class="text-sm text-text-muted mt-0.5">Datos del hotel, amenities, tarifas e integraciones</p>
       </div>
-      <button @click="saveAll" :disabled="saving" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
-        {{ saving ? 'Guardando...' : '💾 Guardar' }}
+      <button @click="saveAll" :disabled="saving" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+        {{ saving ? 'Guardando...' : 'Guardar' }}
       </button>
     </div>
 
     <!-- Tabs -->
     <div class="flex gap-2 mb-6 overflow-x-auto">
       <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value"
-        class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap"
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer whitespace-nowrap"
         :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
-        {{ tab.icon }} {{ tab.label }}
+        {{ tab.label }}
       </button>
     </div>
 
     <!-- ========== HOTEL ========== -->
     <div v-if="activeTab === 'hotel'" class="grid lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 space-y-6">
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <h3 class="font-extrabold text-navy mb-4">Datos del Hotel</h3>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nombre *</label>
-              <input v-model="form.name" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.name" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tipo de Alojamiento</label>
-              <select v-model="form.accommodationType" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <select v-model="form.accommodationType" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="">Seleccionar</option>
                 <option value="hotel">Hotel</option>
                 <option value="boutique">Hotel Boutique</option>
@@ -86,7 +86,7 @@
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">País *</label>
-              <select v-model="form.country" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <select v-model="form.country" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="DO">República Dominicana</option>
                 <option value="CO">Colombia</option>
                 <option value="MX">México</option>
@@ -97,7 +97,7 @@
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Clasificación</label>
-              <select v-model="form.starRating" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <select v-model="form.starRating" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="">N/A</option>
                 <option value="1">⭐ 1 Estrella</option>
                 <option value="2">⭐⭐ 2 Estrellas</option>
@@ -108,69 +108,69 @@
             </div>
             <div class="col-span-2">
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Dirección</label>
-              <input v-model="form.address" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.address" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Provincia</label>
-              <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Municipio</label>
-              <input v-model="form.municipality" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.municipality" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
           </div>
         </div>
 
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <h3 class="font-extrabold text-navy mb-4">Contacto</h3>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Teléfono Principal</label>
-              <input v-model="form.phone" type="tel" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.phone" type="tel" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Teléfono 2</label>
-              <input v-model="form.phone2" type="tel" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.phone2" type="tel" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Email</label>
-              <input v-model="form.email" type="email" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.email" type="email" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Sitio Web</label>
-              <input v-model="form.website" type="url" placeholder="https://" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.website" type="url" placeholder="https://" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
           </div>
         </div>
 
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <h3 class="font-extrabold text-navy mb-4">Propietario</h3>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nombre del Propietario</label>
-              <input v-model="form.ownerName" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.ownerName" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">CIF/NIF/RNC</label>
-              <input v-model="form.ownerTaxId" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.ownerTaxId" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
           </div>
         </div>
 
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <h3 class="font-extrabold text-navy mb-4">Check-In / Check-Out</h3>
           <div class="grid grid-cols-4 gap-4">
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Check-In</label>
-              <input v-model="form.checkIn" type="time" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.checkIn" type="time" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Check-Out</label>
-              <input v-model="form.checkOut" type="time" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              <input v-model="form.checkOut" type="time" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Zona Horaria</label>
-              <select v-model="form.timezone" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <select v-model="form.timezone" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="America/Santo_Domingo">Santo Domingo (GMT-4)</option>
                 <option value="America/Bogota">Bogotá (GMT-5)</option>
                 <option value="America/Mexico_City">CDMX (GMT-6)</option>
@@ -181,7 +181,7 @@
             </div>
             <div>
               <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Moneda</label>
-              <select v-model="form.currency" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <select v-model="form.currency" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="USD">USD</option><option value="DOP">DOP</option><option value="COP">COP</option>
                 <option value="MXN">MXN</option><option value="PEN">PEN</option><option value="CLP">CLP</option><option value="ARS">ARS</option>
               </select>
@@ -191,48 +191,48 @@
       </div>
 
       <!-- Conversión de moneda (F3 match-misterplan) -->
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-1">Conversión de moneda</h3>
         <p class="text-xs text-text-muted mb-4">Moneda secundaria para mostrar totales convertidos (ej. en el detalle de reserva).</p>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Moneda secundaria</label>
-            <select v-model="currencyConfig.secondaryCurrency" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+            <select v-model="currencyConfig.secondaryCurrency" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
               <option value="DOP">DOP (Pesos dominicanos)</option><option value="USD">USD</option><option value="EUR">EUR</option>
               <option value="COP">COP</option><option value="MXN">MXN</option><option value="ARS">ARS</option><option value="CLP">CLP</option>
             </select>
           </div>
           <div>
             <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tipo de cambio</label>
-            <input v-model.number="currencyConfig.exchangeRate" type="number" min="0" step="0.01" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+            <input v-model.number="currencyConfig.exchangeRate" type="number" min="0" step="0.01" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
           </div>
         </div>
-        <button @click="saveCurrency" :disabled="currencySaving" class="mt-4 px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+        <button @click="saveCurrency" :disabled="currencySaving" class="mt-4 px-5 py-2.5 bg-teal text-white rounded-full text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
           {{ currencySaving ? 'Guardando…' : 'Guardar conversión' }}
         </button>
       </div>
 
       <!-- PIN de tarjeta de garantía (MisterPlan) -->
-      <div class="card p-6">
-        <h3 class="font-extrabold text-navy mb-1">PIN de tarjeta de garantía 🔒</h3>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+        <h3 class="font-extrabold text-navy mb-1">PIN de tarjeta de garantía</h3>
         <p class="text-xs text-text-muted mb-4">PIN requerido para ver los datos de las tarjetas de garantía en el detalle de reserva.
-          <span v-if="hasGuaranteePin" class="text-teal font-semibold">Configurado ✓</span>
+          <span v-if="hasGuaranteePin" class="text-teal font-semibold">Configurado</span>
           <span v-else class="text-coral font-semibold">Sin configurar</span>
         </p>
         <div class="flex flex-wrap items-end gap-3">
           <div>
             <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nuevo PIN (4-8 dígitos)</label>
-            <input v-model="guaranteePinDraft" type="password" inputmode="numeric" maxlength="8" placeholder="••••" class="px-4 py-2.5 rounded-xl border border-border text-sm font-mono bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-40" />
+            <input v-model="guaranteePinDraft" type="password" inputmode="numeric" maxlength="8" placeholder="••••" class="px-4 py-2.5 rounded-full border border-border text-sm font-mono bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-40" />
           </div>
-          <button @click="saveGuaranteePin" :disabled="guaranteePinSaving || !guaranteePinDraft" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+          <button @click="saveGuaranteePin" :disabled="guaranteePinSaving || !guaranteePinDraft" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
             {{ guaranteePinSaving ? 'Guardando…' : 'Guardar PIN' }}
           </button>
         </div>
       </div>
 
       <!-- Automatización del flujo de reserva (auto/manual) -->
-      <div class="card p-6">
-        <h3 class="font-extrabold text-navy mb-1">Automatización ⚙️</h3>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+        <h3 class="font-extrabold text-navy mb-1">Automatización</h3>
         <p class="text-xs text-text-muted mb-4">Acciones automáticas al confirmar / hacer check-in. Podés apagarlas y hacerlo manual cuando quieras.</p>
         <div class="space-y-3">
           <label class="flex items-center justify-between bg-surface rounded-xl p-3 cursor-pointer">
@@ -244,13 +244,13 @@
             <input type="checkbox" v-model="automation.autoPaymentRequest" class="w-5 h-5 rounded text-cyan" />
           </label>
         </div>
-        <button @click="saveAutomation" :disabled="automationSaving" class="mt-4 px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+        <button @click="saveAutomation" :disabled="automationSaving" class="mt-4 px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
           {{ automationSaving ? 'Guardando…' : 'Guardar automatización' }}
         </button>
       </div>
 
       <div class="space-y-6">
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <h3 class="font-extrabold text-navy mb-4">Plan</h3>
           <div class="bg-purple/10 rounded-xl p-4 text-center">
             <div class="text-[10px] font-bold text-teal uppercase mb-1">Activo</div>
@@ -258,8 +258,8 @@
             <div class="text-2xl font-black text-navy mt-1">{{ planPrice }}<span class="text-sm text-text-muted">/mes</span></div>
           </div>
         </div>
-        <div class="card p-6 text-center">
-          <div class="text-3xl mb-2">🏨</div>
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 text-center">
+          <span class="w-8 h-8 mx-auto mb-2 block text-navy/40" v-html="ICON_BUILDING"></span>
           <div class="text-sm font-bold text-navy">{{ form.name || 'Hotel' }}</div>
           <div class="text-[10px] text-text-muted mt-1">{{ form.country || '' }}</div>
         </div>
@@ -268,40 +268,40 @@
 
     <!-- ========== LOCATION (Leaflet map) ========== -->
     <div v-if="activeTab === 'location'" class="grid lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 card p-6">
+      <div class="lg:col-span-2 rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Mapa Interactivo</h3>
         <div ref="mapEl" class="w-full h-96 rounded-xl border border-border overflow-hidden"></div>
         <p class="text-[11px] text-text-muted mt-2">Click en el mapa para ajustar la ubicación exacta.</p>
       </div>
       <div class="space-y-4">
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <h3 class="font-extrabold text-navy mb-4">Coordenadas</h3>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Latitud</label>
               <input v-model.number="form.latitude" type="number" step="0.000001" @change="syncMarkerFromForm"
-                class="w-full px-3 py-2 rounded-lg border border-border text-sm font-bold text-navy" />
+                class="w-full px-3 py-2 rounded-full border border-border text-sm font-bold text-navy" />
             </div>
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Longitud</label>
               <input v-model.number="form.longitude" type="number" step="0.000001" @change="syncMarkerFromForm"
-                class="w-full px-3 py-2 rounded-lg border border-border text-sm font-bold text-navy" />
+                class="w-full px-3 py-2 rounded-full border border-border text-sm font-bold text-navy" />
             </div>
           </div>
           <button @click="useMyLocation" class="mt-3 w-full text-xs font-bold text-teal hover:underline cursor-pointer">
-            📍 Usar mi ubicación actual
+            Usar mi ubicación actual
           </button>
         </div>
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <h3 class="font-extrabold text-navy mb-4">Dirección Postal</h3>
           <div class="space-y-3">
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Localidad</label>
-              <input v-model="form.locality" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+              <input v-model="form.locality" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
             </div>
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Código Postal</label>
-              <input v-model="form.postalCode" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+              <input v-model="form.postalCode" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
             </div>
           </div>
         </div>
@@ -311,7 +311,7 @@
     <!-- ========== AMENITIES ========== -->
     <div v-if="activeTab === 'amenities'" class="space-y-6">
       <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="(items, category) in amenityCatalog" :key="category" class="card p-6">
+        <div v-for="(items, category) in amenityCatalog" :key="category" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <h3 class="font-extrabold text-navy mb-4 capitalize">{{ categoryLabels[category] || category }}</h3>
           <div class="space-y-2 max-h-96 overflow-y-auto">
             <label v-for="key in items" :key="key" class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface cursor-pointer transition-colors">
@@ -323,16 +323,16 @@
         </div>
       </div>
       <!-- Custom amenity -->
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Agregar Amenity Personalizada</h3>
         <div class="flex gap-3">
-          <select v-model="newAmenityCategory" class="px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer">
+          <select v-model="newAmenityCategory" class="px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
             <option value="interior">Interior</option>
             <option value="exterior">Exterior</option>
             <option value="services">Servicios</option>
           </select>
-          <input v-model="newAmenityName" type="text" placeholder="Nombre de la amenity..." class="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm" @keyup.enter="addCustomAmenity" />
-          <button @click="addCustomAmenity" class="px-5 py-2.5 bg-cyan text-navy rounded-xl text-sm font-bold cursor-pointer hover:shadow-lg">Agregar</button>
+          <input v-model="newAmenityName" type="text" placeholder="Nombre de la amenity..." class="flex-1 px-4 py-2.5 rounded-full border border-border text-sm" @keyup.enter="addCustomAmenity" />
+          <button @click="addCustomAmenity" class="px-5 py-2.5 bg-cyan text-navy rounded-full text-sm font-bold cursor-pointer hover:shadow-lg">Agregar</button>
         </div>
         <div v-if="customAmenities.length > 0" class="mt-3 flex flex-wrap gap-2">
           <span v-for="a in customAmenities" :key="a.key" class="px-3 py-1.5 bg-navy/5 text-navy rounded-full text-xs font-bold flex items-center gap-1">
@@ -345,7 +345,7 @@
 
     <!-- ========== TARIFAS ========== -->
     <div v-if="activeTab === 'rates'" class="space-y-6">
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Temporadas</h3>
         <div class="grid md:grid-cols-4 gap-4">
           <div v-for="(s, i) in seasonsList" :key="i" class="bg-surface rounded-xl p-4">
@@ -356,11 +356,11 @@
             <div class="space-y-2">
               <div>
                 <label class="text-[10px] font-bold text-text-muted uppercase">Inicio</label>
-                <input v-model="s.startDate" type="date" class="w-full mt-1 px-3 py-2 rounded-lg border border-border text-xs focus:outline-none focus:border-navy" />
+                <input v-model="s.startDate" type="date" class="w-full mt-1 px-3 py-2 rounded-full border border-border text-xs focus:outline-none focus:border-navy" />
               </div>
               <div>
                 <label class="text-[10px] font-bold text-text-muted uppercase">Fin</label>
-                <input v-model="s.endDate" type="date" class="w-full mt-1 px-3 py-2 rounded-lg border border-border text-xs focus:outline-none focus:border-navy" />
+                <input v-model="s.endDate" type="date" class="w-full mt-1 px-3 py-2 rounded-full border border-border text-xs focus:outline-none focus:border-navy" />
               </div>
             </div>
           </div>
@@ -368,17 +368,17 @@
       </div>
 
       <!-- Matriz de Tarifas: filas roomType × occupancy, columnas seasons -->
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <div class="flex items-center justify-between mb-6">
           <h3 class="font-extrabold text-navy">Matriz de Tarifas</h3>
           <div class="flex gap-2">
             <button @click="copyRatesNextYear" :disabled="copying"
-              class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
-              {{ copying ? 'Copiando...' : '📅 Copiar al próximo año' }}
+              class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-full text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
+              {{ copying ? 'Copiando...' : 'Copiar al próximo año' }}
             </button>
             <button @click="saveRates" :disabled="savingRates"
-              class="px-4 py-2 bg-cyan text-navy rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
-              {{ savingRates ? 'Guardando...' : '💾 Guardar' }}
+              class="px-4 py-2 bg-cyan text-navy rounded-full text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
+              {{ savingRates ? 'Guardando...' : 'Guardar' }}
             </button>
           </div>
         </div>
@@ -403,14 +403,14 @@
                 <tr class="border-t-2" style="border-color: rgba(13, 43, 78, 0.3)">
                   <td :colspan="seasonsList.length + 1" class="bg-surface px-4 py-2.5">
                     <div class="flex items-center gap-3 flex-wrap">
-                      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-xs font-bold">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-xs font-bold">
                         {{ roomType.charAt(0).toUpperCase() }}
                       </div>
                       <span class="font-extrabold text-navy capitalize">{{ roomType }}</span>
                       <label class="flex items-center gap-2 ml-auto text-[10px] font-bold text-text-muted uppercase">
                         Precio Base $
                         <input :value="getBasePrice(roomType)" @input="setBasePrice(roomType, $event)" type="number" min="0"
-                          class="w-24 px-3 py-1.5 rounded-lg border border-border text-sm font-bold text-navy focus:outline-none focus:border-cyan" />
+                          class="w-24 px-3 py-1.5 rounded-full border border-border text-sm font-bold text-navy focus:outline-none focus:border-cyan" />
                       </label>
                     </div>
                   </td>
@@ -428,14 +428,14 @@
                         <span class="text-xs font-black" :style="{ color: s.color }">+</span>
                         <input :value="getPercentage(roomType, occ, s.name)" @input="setPercentage(roomType, occ, s.name, $event)"
                           type="number" min="0" max="500" step="0.5"
-                          class="w-14 px-2 py-1 rounded-lg border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-cyan" />
+                          class="w-14 px-2 py-1 rounded-full border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-cyan" />
                         <span class="text-xs font-bold text-text-muted">%</span>
                       </div>
                       <div class="text-xs font-extrabold text-navy">= ${{ getCalculatedPrice(roomType, occ, s.name) }}</div>
                       <button @click="toggleClosed(roomType, occ, s.name)"
                         class="text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors cursor-pointer"
                         :class="isCellClosed(roomType, occ, s.name) ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-surface text-text-muted hover:bg-surface-dark'">
-                        {{ isCellClosed(roomType, occ, s.name) ? '🔒 Cerrado' : '✓ Abierto' }}
+                        {{ isCellClosed(roomType, occ, s.name) ? 'Cerrado' : 'Abierto' }}
                       </button>
                     </div>
                   </td>
@@ -458,7 +458,7 @@
 
     <!-- ========== CONDICIONES ========== -->
     <div v-if="(activeTab as string) === 'conditions'" class="grid lg:grid-cols-2 gap-6">
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Políticas de Reserva</h3>
         <div class="space-y-4">
           <div class="flex items-center justify-between p-3 bg-surface rounded-xl">
@@ -494,34 +494,34 @@
           </div>
           <div v-if="form.depositRequired" class="flex items-center gap-3 bg-surface rounded-xl p-3">
             <span class="text-sm text-text-secondary">% Depósito</span>
-            <input v-model.number="form.depositPercent" type="number" min="1" max="100" class="w-20 px-3 py-2 rounded-lg border border-border text-sm font-bold text-navy text-right" />
+            <input v-model.number="form.depositPercent" type="number" min="1" max="100" class="w-20 px-3 py-2 rounded-full border border-border text-sm font-bold text-navy text-right" />
             <span class="text-sm text-text-muted">%</span>
           </div>
         </div>
       </div>
 
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Impuestos</h3>
         <div class="space-y-4">
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
-              <input v-model="form.taxName" placeholder="ITBIS" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+              <input v-model="form.taxName" placeholder="ITBIS" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
             </div>
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tasa (%)</label>
-              <input v-model.number="form.taxRate" type="number" min="0" max="100" class="w-full px-3 py-2 rounded-lg border border-border text-sm font-bold text-navy text-right" />
+              <input v-model.number="form.taxRate" type="number" min="0" max="100" class="w-full px-3 py-2 rounded-full border border-border text-sm font-bold text-navy text-right" />
             </div>
           </div>
         </div>
       </div>
 
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Depósito y Fianza</h3>
         <div class="space-y-4">
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tipo de Fianza</label>
-            <select v-model="form.depositType" class="w-full px-3 py-2 rounded-lg border border-border text-sm cursor-pointer">
+            <select v-model="form.depositType" class="w-full px-3 py-2 rounded-full border border-border text-sm cursor-pointer">
               <option value="ninguna">Ninguna</option>
               <option value="fija">Fija</option>
               <option value="porcentaje">Porcentaje</option>
@@ -531,13 +531,13 @@
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Valor</label>
             <div class="flex items-center gap-2">
               <span class="text-sm text-text-muted">{{ form.depositType === 'fija' ? '$' : '' }}</span>
-              <input v-model.number="form.depositFixed" type="number" min="0" class="w-24 px-3 py-2 rounded-lg border border-border text-sm font-bold text-navy text-right" />
+              <input v-model.number="form.depositFixed" type="number" min="0" class="w-24 px-3 py-2 rounded-full border border-border text-sm font-bold text-navy text-right" />
               <span v-if="form.depositType === 'porcentaje'" class="text-sm text-text-muted">%</span>
             </div>
           </div>
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Forma de Pago por Defecto</label>
-            <select v-model="form.defaultPaymentMethod" class="w-full px-3 py-2 rounded-lg border border-border text-sm cursor-pointer">
+            <select v-model="form.defaultPaymentMethod" class="w-full px-3 py-2 rounded-full border border-border text-sm cursor-pointer">
               <option value="transfer">Transferencia</option>
               <option value="card">Tarjeta</option>
               <option value="cash">Efectivo</option>
@@ -548,7 +548,7 @@
         </div>
       </div>
 
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Valoraciones</h3>
         <div class="space-y-3">
           <div class="flex items-center justify-between p-3 bg-surface rounded-xl">
@@ -571,11 +571,11 @@
 
     <!-- ========== DESCRIPTION (multilingüe) ========== -->
     <div v-if="(activeTab as string) === 'description'" class="space-y-6">
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-extrabold text-navy">Descripción Multilingüe</h3>
           <div class="flex gap-2">
-            <select v-model="activeLang" class="px-3 py-1.5 rounded-lg border border-border text-sm font-bold text-navy cursor-pointer">
+            <select v-model="activeLang" class="px-3 py-1.5 rounded-full border border-border text-sm font-bold text-navy cursor-pointer">
               <option v-for="lang in supportedLangs" :key="lang.code" :value="lang.code">{{ lang.flag }} {{ lang.name }}</option>
             </select>
           </div>
@@ -589,39 +589,39 @@
           </button>
         </div>
         <textarea v-model="descriptions[activeLang]" :placeholder="`Descripción del hotel en ${currentLangName}...`"
-          rows="10" class="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-y"></textarea>
+          rows="10" class="w-full px-4 py-3 rounded-full border border-border text-sm focus:outline-none focus:border-navy resize-y"></textarea>
         <div class="flex items-center justify-between mt-2">
           <span class="text-[10px] text-text-muted">{{ (descriptions[activeLang] || '').length }} / 2000 caracteres</span>
           <span class="text-[10px] text-text-muted">{{ completedLangsCount }} / {{ supportedLangs.length }} idiomas completados</span>
         </div>
       </div>
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Logo del Hotel</h3>
         <div class="flex items-center gap-4">
           <div v-if="form.logo" class="w-20 h-20 rounded-xl border border-border overflow-hidden bg-surface flex items-center justify-center">
             <img :src="form.logo" alt="Logo" class="w-full h-full object-contain" />
           </div>
           <div v-else class="w-20 h-20 rounded-xl border-2 border-dashed border-border bg-surface flex items-center justify-center">
-            <span class="text-2xl">🏨</span>
+            <span class="w-6 h-6 text-navy/30" v-html="ICON_BUILDING"></span>
           </div>
           <div class="flex-1">
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">URL del Logo</label>
-            <input v-model="form.logo" type="url" placeholder="https://ejemplo.com/logo.png" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+            <input v-model="form.logo" type="url" placeholder="https://ejemplo.com/logo.png" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
             <p class="text-[10px] text-text-muted mt-1">Se muestra en facturas, pre-checkin y emails</p>
           </div>
         </div>
       </div>
 
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">WiFi (compartido en pre-checkin)</h3>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Red</label>
-            <input v-model="form.wifiNetwork" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+            <input v-model="form.wifiNetwork" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
           </div>
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Contraseña</label>
-            <input v-model="form.wifiPassword" type="password" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
+            <input v-model="form.wifiPassword" type="password" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
           </div>
         </div>
       </div>
@@ -629,26 +629,26 @@
 
     <!-- ========== INTEGRACIONES ========== -->
     <div v-if="(activeTab as string) === 'integrations'" class="grid md:grid-cols-2 gap-6">
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Channel Manager</h3>
         <div class="p-4 bg-surface rounded-xl">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
-              <span class="text-xl">🌐</span>
+              <span class="w-5 h-5 text-navy/50" v-html="ICON_GLOBE"></span>
               <div><div class="text-sm font-bold text-navy">Channex</div><div class="text-[10px] text-text-muted">Sincronización con OTAs</div></div>
             </div>
             <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-teal/10 text-teal">Conectado</span>
           </div>
-          <router-link to="/panel/channel-manager" class="block w-full text-center px-4 py-2 bg-navy/10 text-navy rounded-xl text-sm font-bold hover:bg-navy/20 transition-colors cursor-pointer">Gestionar Canales</router-link>
+          <router-link to="/panel/channel-manager" class="block w-full text-center px-4 py-2 bg-navy/10 text-navy rounded-full text-sm font-bold hover:bg-navy/20 transition-colors cursor-pointer">Gestionar Canales</router-link>
         </div>
       </div>
 
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Pasarela de Pagos</h3>
         <div class="p-4 bg-surface rounded-xl">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
-              <span class="text-xl">💳</span>
+              <span class="w-5 h-5 text-navy/50" v-html="ICON_CARD"></span>
               <div><div class="text-sm font-bold text-navy">Stripe</div><div class="text-[10px] text-text-muted">Pagos con tarjeta</div></div>
             </div>
             <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="stripeConnected ? 'bg-teal/10 text-teal' : 'bg-yellow-100 text-yellow-700'">{{ stripeConnected ? 'Conectado' : 'No configurado' }}</span>
@@ -656,36 +656,36 @@
           <div class="space-y-3">
             <div>
               <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Secret Key</label>
-              <input v-model="stripeConfig.secretKey" type="password" class="w-full px-3 py-2 rounded-lg border border-border text-xs" placeholder="sk_live_... o sk_test_..." autocomplete="off" />
+              <input v-model="stripeConfig.secretKey" type="password" class="w-full px-3 py-2 rounded-full border border-border text-xs" placeholder="sk_live_... o sk_test_..." autocomplete="off" />
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Publishable Key</label>
-                <input v-model="stripeConfig.publishableKey" type="password" class="w-full px-3 py-2 rounded-lg border border-border text-xs" placeholder="pk_live_... o pk_test_..." autocomplete="off" />
+                <input v-model="stripeConfig.publishableKey" type="password" class="w-full px-3 py-2 rounded-full border border-border text-xs" placeholder="pk_live_... o pk_test_..." autocomplete="off" />
               </div>
               <div>
                 <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Moneda</label>
-                <select v-model="stripeConfig.currency" class="w-full px-3 py-2 rounded-lg border border-border text-xs cursor-pointer">
+                <select v-model="stripeConfig.currency" class="w-full px-3 py-2 rounded-full border border-border text-xs cursor-pointer">
                   <option value="usd">USD</option><option value="eur">EUR</option><option value="mxn">MXN</option><option value="ars">ARS</option><option value="cop">COP</option><option value="clp">CLP</option><option value="uyu">UYU</option><option value="dop">DOP</option>
                 </select>
               </div>
             </div>
             <div>
               <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Webhook Secret</label>
-              <input v-model="stripeConfig.webhookSecret" type="password" class="w-full px-3 py-2 rounded-lg border border-border text-xs" placeholder="whsec_..." autocomplete="off" />
+              <input v-model="stripeConfig.webhookSecret" type="password" class="w-full px-3 py-2 rounded-full border border-border text-xs" placeholder="whsec_..." autocomplete="off" />
             </div>
             <p class="text-[10px] text-text-muted">Las keys se guardan por hotel. Sin configurar, los botones de pago Stripe quedan ocultos. Obtené tus keys en dashboard.stripe.com → Developers → API keys.</p>
-            <button @click="saveStripe" :disabled="stripeSaving" class="w-full px-4 py-2 bg-navy text-white rounded-xl text-sm font-bold hover:shadow-lg cursor-pointer disabled:opacity-50">{{ stripeSaving ? 'Guardando...' : 'Guardar configuración Stripe' }}</button>
+            <button @click="saveStripe" :disabled="stripeSaving" class="w-full px-4 py-2 bg-navy text-white rounded-full text-sm font-bold hover:shadow-lg cursor-pointer disabled:opacity-50">{{ stripeSaving ? 'Guardando...' : 'Guardar configuración Stripe' }}</button>
           </div>
         </div>
       </div>
 
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">WhatsApp Business</h3>
         <div class="p-4 bg-surface rounded-xl">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
-              <span class="text-xl">💬</span>
+              <span class="w-5 h-5 text-navy/50" v-html="ICON_MESSAGE"></span>
               <div><div class="text-sm font-bold text-navy">WhatsApp</div><div class="text-[10px] text-text-muted">Mensajes automatizados</div></div>
             </div>
             <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">No configurado</span>
@@ -694,11 +694,11 @@
         </div>
       </div>
 
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Facturación Electrónica</h3>
         <div class="p-4 bg-surface rounded-xl">
           <div class="flex items-center gap-3 mb-3">
-            <span class="text-xl">🧾</span>
+            <span class="w-5 h-5 text-navy/50" v-html="ICON_RECEIPT"></span>
             <div><div class="text-sm font-bold text-navy">DGII - Rep. Dominicana</div><div class="text-[10px] text-text-muted">NCF automático</div></div>
           </div>
           <p class="text-xs text-text-muted">Disponible según el país de operación del hotel.</p>
@@ -731,6 +731,12 @@ leaflet.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
+
+const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>'
+const ICON_GLOBE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>'
+const ICON_CARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>'
+const ICON_MESSAGE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>'
+const ICON_RECEIPT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -838,13 +844,13 @@ const saving = ref(false)
 const loading = ref(true)
 
 const tabs = [
-  { value: 'hotel' as string, label: 'Hotel', icon: '🏨' },
-  { value: 'location' as string, label: 'Ubicación', icon: '📍' },
-  { value: 'amenities' as string, label: 'Amenities', icon: '✨' },
-  { value: 'rates' as string, label: 'Tarifas', icon: '💰' },
-  { value: 'conditions' as string, label: 'Condiciones', icon: '📋' },
-  { value: 'description' as string, label: 'Descripción', icon: '📝' },
-  { value: 'integrations' as string, label: 'Integraciones', icon: '🔗' },
+  { value: 'hotel' as string, label: 'Hotel' },
+  { value: 'location' as string, label: 'Ubicación' },
+  { value: 'amenities' as string, label: 'Amenities' },
+  { value: 'rates' as string, label: 'Tarifas' },
+  { value: 'conditions' as string, label: 'Condiciones' },
+  { value: 'description' as string, label: 'Descripción' },
+  { value: 'integrations' as string, label: 'Integraciones' },
 ]
 
 type HotelForm = Partial<HotelFull> & { cancellationType?: string; freeCancellation?: boolean }
@@ -1183,7 +1189,7 @@ async function copyRatesNextYear() {
   copying.value = true
   try {
     const r = await HotelService.copyRatesNextYear()
-    toast.success(`✅ ${r.copied} tarifas copiadas al próximo año`)
+    toast.success(`${r.copied} tarifas copiadas al próximo año`)
     // Recargar matriz
     const rt = await HotelService.rates()
     rebuildMatrix(rt.data)

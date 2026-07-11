@@ -2,10 +2,19 @@
   <div>
     <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
       <div>
-        <h2 class="text-xl font-black text-navy">Opiniones</h2>
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-xl font-black text-navy">Opiniones</h2>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+            </span>
+            En vivo
+          </span>
+        </div>
         <p class="text-xs text-text-muted mt-0.5">Gestión de reseñas de huéspedes</p>
       </div>
-      <button @click="requestReviews" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg cursor-pointer">
+      <button @click="requestReviews" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
         <span class="w-4 h-4 shrink-0" v-html="ICON_MAIL"></span>
         Solicitar Reseñas
       </button>
@@ -13,46 +22,46 @@
 
     <!-- Stats -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
             <span class="w-5 h-5 text-navy" v-html="ICON_CHAT"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-navy truncate">{{ reviews.length }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">{{ Math.round(totalReviewsAnim) }}</div>
             <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total Reseñas</div>
           </div>
         </div>
       </div>
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
             <span class="w-5 h-5 text-gold" v-html="ICON_STAR"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-gold truncate">{{ avgRating }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-gold truncate">{{ avgRating }}</div>
             <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Calificación Promedio</div>
           </div>
         </div>
       </div>
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
             <span class="w-5 h-5 text-cyan" v-html="ICON_REPLY"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-cyan truncate">{{ respondedCount }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-cyan truncate">{{ Math.round(respondedAnim) }}</div>
             <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Con Respuesta</div>
           </div>
         </div>
       </div>
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
             <span class="w-5 h-5 text-teal" v-html="ICON_CHECK_CIRCLE"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-teal truncate">{{ responseRate }}%</div>
+            <div class="text-xl font-black leading-none tabular-nums text-teal truncate">{{ Math.round(responseRateAnim) }}%</div>
             <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Tasa de Respuesta</div>
           </div>
         </div>
@@ -60,7 +69,7 @@
     </div>
 
     <!-- Config bar -->
-    <div class="card p-4 mb-6 flex items-center flex-wrap gap-x-8 gap-y-3">
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 mb-6 flex items-center flex-wrap gap-x-8 gap-y-3">
       <div class="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase shrink-0">
         <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_SETTINGS"></span>
         Configuración
@@ -90,12 +99,12 @@
 
     <!-- Reviews List -->
     <div class="space-y-4">
-      <div v-if="reviews.length === 0" class="card p-12 text-center">
+      <div v-if="reviews.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
         <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_CHAT"></span>
         <h3 class="font-bold text-navy mb-1">Sin opiniones aún</h3>
         <p class="text-xs text-text-muted">Las reseñas de huéspedes aparecerán acá.</p>
       </div>
-      <div v-for="r in reviews" :key="r.id" class="card p-5">
+      <div v-for="r in reviews" :key="r.id" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
         <div class="flex items-start justify-between mb-2 flex-wrap gap-2">
           <div>
             <div class="flex items-center gap-2">
@@ -105,41 +114,43 @@
             <div class="text-sm font-bold text-navy mt-1">{{ r.guestName || 'Anónimo' }}</div>
             <div class="text-[10px] text-text-muted">{{ r.createdAt?.slice(0,10) || '' }}</div>
           </div>
-          <button @click="openRespond(r)" class="flex items-center gap-1 px-3 py-1.5 bg-navy/5 text-navy rounded-lg text-[10px] font-bold cursor-pointer hover:bg-navy/10">
-            <span class="w-3 h-3 shrink-0" v-html="ICON_REPLY"></span>
+          <button @click="openRespond(r)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">
             {{ r.response ? 'Editar respuesta' : 'Responder' }}
           </button>
         </div>
         <p class="text-sm text-text-secondary mt-2">{{ r.comment || r.title || '' }}</p>
-        <div v-if="r.response" class="mt-3 bg-cyan/5 rounded-xl p-3 text-sm italic text-navy border border-cyan/20">
-          <span class="text-[10px] font-bold text-cyan block mb-1">Respuesta del hotel:</span>
-          {{ r.response }}
+        <div v-if="r.response" class="mt-3 pt-3 border-t border-border">
+          <span class="text-[10px] font-bold text-cyan uppercase tracking-wide block mb-1">Respuesta del hotel</span>
+          <p class="text-sm italic text-navy">{{ r.response }}</p>
         </div>
       </div>
     </div>
 
     <!-- Respond Modal -->
     <Teleport to="body">
-      <div v-if="respondModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="respondModal.show=false">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="flex items-center gap-2 text-lg font-black text-navy">
-              <span class="w-5 h-5 shrink-0" v-html="ICON_REPLY"></span>
-              Responder a {{ respondModal.guest }}
-            </h3>
-            <button @click="respondModal.show=false" class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-surface hover:text-navy">
-              <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-            </button>
-          </div>
-          <div class="bg-surface rounded-xl p-3 mb-4 text-sm text-text-secondary">"{{ respondModal.comment }}"</div>
-          <textarea v-model="respondModal.text" rows="4" placeholder="Escribe tu respuesta..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm resize-none focus:outline-none focus:border-navy"></textarea>
-          <div class="flex gap-3 mt-6">
-            <button @click="respondModal.show=false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="saveResponse" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer">Publicar Respuesta</button>
+      <Transition name="modal-fade">
+        <div v-if="respondModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="respondModal.show=false">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
+              <h3 class="text-lg font-black text-navy">Responder a {{ respondModal.guest }}</h3>
+              <button @click="respondModal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
+                <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
+              </button>
+            </div>
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+              <p class="text-sm text-text-secondary italic pb-4 border-b border-border">"{{ respondModal.comment }}"</p>
+              <textarea v-model="respondModal.text" rows="4" placeholder="Escribe tu respuesta..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm resize-none focus:outline-none focus:border-navy"></textarea>
+            </div>
+            <div class="shrink-0 border-t border-border p-5">
+              <div class="flex items-center justify-end gap-4">
+                <button @click="respondModal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="saveResponse" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">Publicar Respuesta</button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
@@ -149,6 +160,7 @@ import { ref, computed, onMounted } from 'vue'
 import { OpinionesService } from '@/services/Opiniones.service'
 import { ConfigService } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 
 const ICON_MAIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0-.828.672-1.5 1.5-1.5h16.5c.828 0 1.5.672 1.5 1.5v10.5a1.5 1.5 0 0 1-1.5 1.5H3.75a1.5 1.5 0 0 1-1.5-1.5V6.75Zm0 0 9.75 6.75 9.75-6.75"/></svg>'
 const ICON_CHAT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>'
@@ -169,6 +181,11 @@ const avgRating = computed(() => {
 
 const respondedCount = computed(() => reviews.value.filter((r: any) => r.response).length)
 const responseRate = computed(() => (reviews.value.length ? Math.round((respondedCount.value / reviews.value.length) * 100) : 0))
+const totalReviewsCount = computed(() => reviews.value.length)
+
+const totalReviewsAnim = useCountUp(totalReviewsCount)
+const respondedAnim = useCountUp(respondedCount)
+const responseRateAnim = useCountUp(responseRate)
 
 const respondModal = ref({ show: false, id: '', guest: '', comment: '', text: '' })
 
@@ -212,3 +229,14 @@ function requestReviews() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
+  opacity: 0; transform: scale(0.95) translateY(12px);
+}
+</style>

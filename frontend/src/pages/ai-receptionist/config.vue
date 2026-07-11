@@ -177,62 +177,63 @@ onBeforeUnmount(() => { stopPolling() })
     <div class="max-w-4xl mx-auto p-6">
       <!-- Header -->
       <div class="mb-6">
-        <div class="flex items-center gap-3 mb-1">
+        <div class="flex items-center gap-3">
           <div class="w-9 h-9 bg-gradient-to-br from-cyan to-teal rounded-xl flex items-center justify-center shadow-sm text-white">
             <span class="w-5 h-5 shrink-0" v-html="ICON_ROBOT"></span>
           </div>
           <div>
-            <h1 class="text-xl font-extrabold text-navy">Configuración de la Recepcionista IA</h1>
-            <p class="text-xs text-text-muted font-medium">Personalizá el comportamiento de tu recepcionista virtual</p>
+            <h1 class="text-xl font-black text-navy">Configuración de la Recepcionista IA</h1>
+            <p class="text-xs text-text-muted mt-0.5">Personalizá el comportamiento de tu recepcionista virtual</p>
           </div>
         </div>
       </div>
 
       <!-- Tabs -->
-      <div class="flex gap-1 mb-6 border-b border-border">
+      <div class="flex gap-2 mb-6">
         <button v-for="t in [{k:'whatsapp',l:'WhatsApp'},{k:'llm',l:'Modelo IA'},{k:'intents',l:'Intenciones'},{k:'templates',l:'Plantillas'}]" :key="t.k"
           @click="tab = t.k as any"
-          :class="['flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold transition-all -mb-px border-b-2 cursor-pointer', tab === t.k ? 'border-cyan text-cyan' : 'border-transparent text-text-muted hover:text-navy']">
+          class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer"
+          :class="tab === t.k ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
           <span class="w-4 h-4 shrink-0" v-html="TAB_ICONS[t.k]"></span> {{ t.l }}
         </button>
       </div>
 
       <!-- WhatsApp Tab -->
       <div v-if="tab === 'whatsapp'">
-        <div class="bg-white rounded-2xl border border-border shadow-sm p-6">
-          <h2 class="text-lg font-extrabold text-navy mb-1">Conectar WhatsApp</h2>
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+          <h2 class="text-lg font-black text-navy mb-1">Conectar WhatsApp</h2>
           <p class="text-sm text-text-muted mb-6">Escaneá el código QR con tu WhatsApp del celular. No perdés el número, ambos ven los mensajes.</p>
 
-          <div class="flex items-center gap-3 mb-6">
-            <div :class="['w-10 h-10 rounded-xl flex items-center justify-center p-2',
+          <div class="flex items-center gap-3 pb-6 border-b border-border mb-6">
+            <div :class="['w-10 h-10 rounded-full flex items-center justify-center p-2 shrink-0',
               wsStatus.status === 'connected' ? 'bg-success/10 text-success' : wsStatus.status === 'qr_pending' ? 'bg-warning/10 text-warning' : 'bg-surface text-text-muted']">
               <span class="w-full h-full" v-html="wsStatus.status === 'connected' ? ICON_CHECK_CIRCLE : wsStatus.status === 'qr_pending' ? ICON_PHONE : ICON_PAUSE"></span>
             </div>
             <div>
-              <p class="text-sm font-extrabold text-navy">
+              <p class="text-sm font-bold text-navy">
                 {{ wsStatus.status === 'connected' ? `Conectado como ${wsStatus.phone}` : wsStatus.status === 'qr_pending' ? 'Esperando escanear QR...' : 'Desconectado' }}
               </p>
-              <p class="text-[11px] text-text-muted font-medium">{{ wsStatus.status === 'connected' ? 'El bot está respondiendo automáticamente' : 'Conectá para empezar' }}</p>
+              <p class="text-[11px] text-text-muted mt-0.5">{{ wsStatus.status === 'connected' ? 'El bot está respondiendo automáticamente' : 'Conectá para empezar' }}</p>
             </div>
           </div>
 
           <div v-if="wsQR && wsStatus.status === 'qr_pending'" class="mb-6">
-            <div class="bg-white border-2 border-warning/30 rounded-xl p-3 inline-block">
+            <div class="border border-border rounded-xl p-3 inline-block">
               <p class="text-xs font-bold text-navy text-center mb-2">Escaneá este código con WhatsApp</p>
               <QrcodeVue :value="wsQR" :size="192" level="M" render-as="svg" class="rounded-lg" />
             </div>
-            <p class="text-[10px] text-text-muted mt-2 font-medium">Abrí WhatsApp en tu celular → Ajustes → Dispositivos vinculados → Escanear código</p>
+            <p class="text-[10px] text-text-muted mt-2">Abrí WhatsApp en tu celular → Ajustes → Dispositivos vinculados → Escanear código</p>
           </div>
 
-          <div class="flex gap-2">
+          <div class="flex items-center gap-4">
             <button @click="startWhatsapp" :disabled="wsLoading"
-              class="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-extrabold transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+              class="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-extrabold transition-all shadow-sm disabled:opacity-50 cursor-pointer"
               :class="wsStatus.status === 'connected' ? 'bg-navy hover:bg-navy-light text-white' : 'bg-teal hover:bg-teal-light text-white'">
               <span class="w-4 h-4 shrink-0" v-html="wsLoading ? ICON_CLOCK : wsStatus.status === 'disconnected' ? ICON_PHONE : ICON_REFRESH"></span>
               {{ wsLoading ? 'Conectando...' : wsStatus.status === 'disconnected' ? 'Conectar WhatsApp' : 'Reconectar' }}
             </button>
             <button v-if="wsStatus.status === 'connected'" @click="stopWhatsapp"
-              class="px-5 py-2.5 rounded-xl text-sm font-extrabold bg-coral/10 text-coral hover:bg-coral/20 transition-all cursor-pointer">
+              class="text-sm font-bold text-coral hover:text-navy transition-colors cursor-pointer">
               Desconectar
             </button>
           </div>
@@ -241,46 +242,46 @@ onBeforeUnmount(() => { stopPolling() })
 
       <!-- LLM Tab -->
       <div v-if="tab === 'llm'">
-        <div class="bg-white rounded-2xl border border-border shadow-sm p-6">
-          <h2 class="text-lg font-extrabold text-navy mb-1">Cerebro de la IA</h2>
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+          <h2 class="text-lg font-black text-navy mb-1">Cerebro de la IA</h2>
           <p class="text-sm text-text-muted mb-6">Elegí qué modelo de inteligencia artificial usa tu recepcionista. DeepSeek cuesta ~$1.60/mes por hotel.</p>
 
           <div class="grid grid-cols-2 gap-5">
             <div>
-              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Proveedor</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Proveedor</label>
               <select v-model="llmProvider"
-                class="w-full px-3 py-2.5 border border-border rounded-xl text-sm font-medium text-navy bg-white focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/20">
+                class="w-full px-4 py-2.5 border border-border rounded-xl text-sm text-navy bg-white cursor-pointer focus:outline-none focus:border-navy">
                 <option v-for="p in providers" :key="p.value" :value="p.value">{{ p.label }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Modelo</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Modelo</label>
               <input v-model="llmModel" placeholder="deepseek-chat"
-                class="w-full px-3 py-2.5 border border-border rounded-xl text-sm font-medium text-navy focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/20" />
+                class="w-full px-4 py-2.5 border border-border rounded-xl text-sm text-navy focus:outline-none focus:border-navy" />
             </div>
             <div>
-              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">API Key</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">API Key</label>
               <input v-model="llmApiKey" type="password" placeholder="sk-..."
-                class="w-full px-3 py-2.5 border border-border rounded-xl text-sm font-medium text-navy focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/20" />
+                class="w-full px-4 py-2.5 border border-border rounded-xl text-sm text-navy focus:outline-none focus:border-navy" />
             </div>
             <div>
-              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Nombre del Bot</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Nombre del Bot</label>
               <input v-model="botName" placeholder="Sofía"
-                class="w-full px-3 py-2.5 border border-border rounded-xl text-sm font-medium text-navy focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/20" />
+                class="w-full px-4 py-2.5 border border-border rounded-xl text-sm text-navy focus:outline-none focus:border-navy" />
             </div>
             <div>
-              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Horario Inicio</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Horario Inicio</label>
               <input v-model="businessHoursStart" type="time"
-                class="w-full px-3 py-2.5 border border-border rounded-xl text-sm font-medium text-navy focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/20" />
+                class="w-full px-4 py-2.5 border border-border rounded-xl text-sm text-navy focus:outline-none focus:border-navy" />
             </div>
             <div>
-              <label class="block text-[11px] font-extrabold text-navy mb-1.5 uppercase">Horario Fin</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Horario Fin</label>
               <input v-model="businessHoursEnd" type="time"
-                class="w-full px-3 py-2.5 border border-border rounded-xl text-sm font-medium text-navy focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/20" />
+                class="w-full px-4 py-2.5 border border-border rounded-xl text-sm text-navy focus:outline-none focus:border-navy" />
             </div>
           </div>
           <button @click="saveLLMConfig" :disabled="saving"
-            class="flex items-center gap-1.5 mt-6 px-5 py-2.5 bg-navy hover:bg-navy-light text-white rounded-xl text-sm font-extrabold transition-all shadow-sm disabled:opacity-50 cursor-pointer">
+            class="flex items-center gap-1.5 mt-6 rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors shadow-sm disabled:opacity-50 cursor-pointer">
             <span class="w-4 h-4 shrink-0" v-html="ICON_SAVE"></span>
             {{ saving ? 'Guardando...' : 'Guardar Configuración' }}
           </button>
@@ -290,21 +291,21 @@ onBeforeUnmount(() => { stopPolling() })
       <!-- Intents Tab -->
       <div v-if="tab === 'intents'">
         <div class="mb-4">
-          <h2 class="text-lg font-extrabold text-navy">Intenciones ({{ intents.length }})</h2>
-          <p class="text-[11px] text-text-muted font-medium">Activá o desactivá las respuestas automáticas que usa tu recepcionista IA.</p>
+          <h2 class="text-lg font-black text-navy">Intenciones ({{ intents.length }})</h2>
+          <p class="text-[11px] text-text-muted mt-0.5">Activá o desactivá las respuestas automáticas que usa tu recepcionista IA.</p>
         </div>
 
         <!-- Intent List -->
-        <div class="space-y-2">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) px-5">
           <div v-for="intent in intents" :key="intent.id"
-            class="bg-white rounded-xl border border-border p-4 flex items-center justify-between hover:shadow-sm transition-shadow">
-            <div class="flex-1">
+            class="py-4 border-b border-border last:border-0 flex items-center justify-between gap-3">
+            <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-[10px] px-2 py-0.5 rounded-full font-extrabold bg-purple/10 text-purple">Sistema</span>
-                <span class="text-sm font-extrabold text-navy">{{ intent.name }}</span>
-                <span class="text-[10px] text-text-muted bg-surface px-2 py-0.5 rounded-full font-bold">{{ intent.category }}</span>
+                <span class="text-sm font-bold text-navy">{{ intent.name }}</span>
+                <span class="text-[10px] text-text-muted">{{ intent.category }}</span>
               </div>
-              <p class="text-[11px] text-text-muted font-medium truncate max-w-lg">{{ intent.responseTemplate?.substring(0, 80) }}...</p>
+              <p class="text-[11px] text-text-muted truncate max-w-lg">{{ intent.responseTemplate?.substring(0, 80) }}...</p>
             </div>
             <button @click="toggleIntentActive(intent)"
               :class="['relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0', intent.isActive ? 'bg-success' : 'bg-border']">
@@ -316,9 +317,9 @@ onBeforeUnmount(() => { stopPolling() })
 
       <!-- Templates Tab (placeholder) -->
       <div v-if="tab === 'templates'">
-        <div class="bg-white rounded-2xl border border-border shadow-sm p-12 text-center">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
           <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_DOCUMENT"></span>
-          <h3 class="text-lg font-extrabold text-navy mb-1">Plantillas de Respuesta</h3>
+          <h3 class="text-lg font-black text-navy mb-1">Plantillas de Respuesta</h3>
           <p class="text-sm text-text-muted max-w-sm mx-auto">Mensajes predefinidos para check-in, check-out, bienvenida, fuera de horario y más. Próximamente.</p>
         </div>
       </div>

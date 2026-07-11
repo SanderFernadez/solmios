@@ -1,61 +1,57 @@
 <template>
-  <div class="min-h-screen bg-surface">
-    <!-- Header -->
-    <div class="bg-white border-b border-border px-6 py-4">
-      <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div>
-          <h1 class="text-xl font-black text-navy">Dispositivos Conectados</h1>
-          <p class="text-xs text-text-muted">Sesiones activas · Control de acceso</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-xs font-bold px-3 py-1 rounded-full bg-blue/10 text-blue">{{ activeSessions }} sesiones activas</span>
-          <button @click="revokeAll" class="px-4 py-2 bg-coral text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all cursor-pointer">
-            Cerrar Todas las Sesiones
-          </button>
-        </div>
+  <div>
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-xl font-black text-navy">Dispositivos Conectados</h2>
+        <p class="text-sm text-text-muted mt-0.5">Sesiones activas · Control de acceso</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-bold px-3 py-1 rounded-full bg-blue/10 text-blue">{{ activeSessions }} sesiones activas</span>
+        <button @click="revokeAll" class="px-4 py-2 bg-coral text-white text-sm font-bold rounded-full hover:shadow-lg transition-all cursor-pointer">
+          Cerrar Todas las Sesiones
+        </button>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto p-6">
-      <!-- KPIs -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-xl p-4 border border-border">
-          <div class="text-[10px] font-bold text-text-muted uppercase">Sesiones Activas</div>
-          <div class="text-2xl font-black text-navy mt-1">{{ activeSessions }}</div>
-        </div>
-        <div class="bg-white rounded-xl p-4 border border-border">
-          <div class="text-[10px] font-bold text-text-muted uppercase">Usuarios Conectados</div>
-          <div class="text-2xl font-black text-navy mt-1">{{ uniqueUsers }}</div>
-        </div>
-        <div class="bg-white rounded-xl p-4 border border-border">
-          <div class="text-[10px] font-bold text-text-muted uppercase">Dispositivos Móviles</div>
-          <div class="text-2xl font-black text-navy mt-1">{{ mobileCount }}</div>
-        </div>
-        <div class="bg-white rounded-xl p-4 border border-border">
-          <div class="text-[10px] font-bold text-text-muted uppercase">Último Acceso</div>
-          <div class="text-2xl font-black text-teal mt-1">Ahora</div>
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-[10px] font-bold text-text-muted uppercase">Sesiones Activas</div>
+        <div class="text-2xl font-black text-navy mt-1">{{ activeSessions }}</div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-[10px] font-bold text-text-muted uppercase">Usuarios Conectados</div>
+        <div class="text-2xl font-black text-navy mt-1">{{ uniqueUsers }}</div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-[10px] font-bold text-text-muted uppercase">Dispositivos Móviles</div>
+        <div class="text-2xl font-black text-navy mt-1">{{ mobileCount }}</div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-[10px] font-bold text-text-muted uppercase">Último Acceso</div>
+        <div class="text-2xl font-black text-teal mt-1">Ahora</div>
+      </div>
+    </div>
+
+    <!-- Active Sessions -->
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-black text-navy">Sesiones Activas</h2>
+        <div class="flex gap-2">
+          <select v-model="filterRole" class="px-3 py-1.5 border border-border rounded-full text-xs font-bold text-navy cursor-pointer">
+            <option value="all">Todos los roles</option>
+            <option value="hotel_admin">Admin</option>
+            <option value="receptionist">Recepción</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+          <select v-model="filterDevice" class="px-3 py-1.5 border border-border rounded-full text-xs font-bold text-navy cursor-pointer">
+            <option value="all">Todos los dispositivos</option>
+            <option value="desktop">Escritorio</option>
+            <option value="mobile">Móvil</option>
+            <option value="tablet">Tablet</option>
+          </select>
         </div>
       </div>
-
-      <!-- Active Sessions -->
-      <div class="bg-white rounded-2xl border border-border p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-black text-navy">Sesiones Activas</h2>
-          <div class="flex gap-2">
-            <select v-model="filterRole" class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy cursor-pointer">
-              <option value="all">Todos los roles</option>
-              <option value="hotel_admin">Admin</option>
-              <option value="receptionist">Recepción</option>
-              <option value="super_admin">Super Admin</option>
-            </select>
-            <select v-model="filterDevice" class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy cursor-pointer">
-              <option value="all">Todos los dispositivos</option>
-              <option value="desktop">Escritorio</option>
-              <option value="mobile">Móvil</option>
-              <option value="tablet">Tablet</option>
-            </select>
-          </div>
-        </div>
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
@@ -105,7 +101,7 @@
                 </td>
                 <td class="py-3 text-xs text-text-muted">{{ session.lastAccess }}</td>
                 <td class="py-3 text-right">
-                  <button @click="revokeSession(session.id)" class="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-coral/20 text-coral hover:bg-coral hover:text-white transition-all cursor-pointer">
+                  <button @click="revokeSession(session.id)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">
                     Revocar
                   </button>
                 </td>
@@ -116,7 +112,7 @@
       </div>
 
       <!-- Session History -->
-      <div class="bg-white rounded-2xl border border-border p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-black text-navy">Historial de Sesiones</h2>
           <div class="flex items-center gap-2">
@@ -153,9 +149,15 @@
           </table>
         </div>
       </div>
-    </div>
   </div>
 </template>
+
+<!-- eslint-disable -->
+<!--
+  Nota: sessionHistory nunca se popula desde onMounted (solo `sessions` se carga vía OperationsService.dispositivos).
+  La tabla de Historial de Sesiones queda vacía en runtime. Comportamiento preexistente, no introducido por este restyle.
+-->
+
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
