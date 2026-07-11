@@ -26,7 +26,9 @@ export class PayrollConceptUseCase {
 
     const defaults: CreatePayrollConceptDTO[] = [
       { hotelId, code: 'BASIC', name: 'Salario Base', type: 'earning', calculationMethod: 'percentage', value: 100, priority: 1 },
-      { hotelId, code: 'OT15', name: 'Horas Extra (1.5x)', type: 'earning', calculationMethod: 'hours_based', value: 0, priority: 2 },
+      // Fórmula = el monto de extra ya calculado (horas × valor-hora × multiplicador). Antes era
+      // 'hours_based' con value 0 → las horas extra NO pagaban nada por defecto.
+      { hotelId, code: 'OT15', name: 'Horas Extra', type: 'earning', calculationMethod: 'formula', formula: 'overtimeAmount', priority: 2 },
       { hotelId, code: 'BONUS', name: 'Bono', type: 'earning', calculationMethod: 'fixed', value: 0, priority: 10 },
       { hotelId, code: 'COMMISSION', name: 'Comisión', type: 'earning', calculationMethod: 'percentage', value: 0, priority: 11 },
       { hotelId, code: 'HEALTH', name: 'Seguro de Salud', type: 'deduction', calculationMethod: 'percentage', value: 3.04, priority: 20 },

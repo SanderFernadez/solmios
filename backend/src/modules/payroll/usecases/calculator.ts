@@ -30,8 +30,12 @@ function safeEvalFormula(formula: string, vars: Record<string, number>): number 
 
   // 3. Evaluar con parser recursivo (sin eval, sin new Function)
   const tokens = tokenize(expr)
-  const result = parseExpression(tokens, { pos: 0 })
-  if (tokens.length > 0) throw new Error('Unexpected token at end of formula')
+  const ctx = { pos: 0 }
+  const result = parseExpression(tokens, ctx)
+  // Sobran tokens sin consumir → fórmula malformada. (Antes chequeaba `tokens.length > 0`, que es
+  // SIEMPRE verdadero: toda fórmula válida lanzaba y devolvía 0. Ningún concepto usaba fórmulas, por
+  // eso el bug quedó oculto tras el fix de RCE.)
+  if (ctx.pos < tokens.length) throw new Error('Unexpected token at end of formula')
   return result
 }
 
@@ -107,6 +111,20 @@ function parseFactor(tokens: Token[], ctx: { pos: number }): number {
 
 interface TaxBracket { from: number; to?: number; rate: number }
 
+/**
+ * Porción del sueldo MENSUAL que se paga en una liquidación según la frecuencia. El sueldo del legajo
+ * se guarda mensual; una corrida semanal paga ~1/4.33, una quincenal la mitad, una mensual el total.
+ * (semanal = mensual×12/52 ≈ /4.333 — 52 semanas al año, no 4 por mes.)
+ */
+export function periodBaseFor(monthlySalary: number, frequency?: string): number {
+  switch (frequency) {
+    case 'weekly': return (monthlySalary * 12) / 52
+    case 'biweekly': return monthlySalary / 2
+    case 'monthly':
+    default: return monthlySalary
+  }
+}
+
 export class PayrollCalculatorUseCase {
   constructor(
     private readonly conceptRepo: RepositoryAdapter<PayrollConceptDTO>,
@@ -139,13 +157,16 @@ export class PayrollCalculatorUseCase {
     let totalDeductions = 0
     let totalNet = 0
 
-    for (const emp of employees) {
-      const dailyRate = emp.daysWorked > 0
-        ? emp.baseSalary / this.totalDaysInPeriod(period)
-        : 0
-      const proportionalBase = dailyRate * emp.daysWorked
+    const frequency = config.paymentFrequency || 'monthly'
 
-      // Calculate overtime
+    for (const emp of employees) {
+      // Sueldo del período según la frecuencia (mensual FIJO: no se prorratea por días fichados; los
+      // fines de semana no restan). Las faltas reales SÍ se descuentan a día de sueldo (mensual/30).
+      const periodBase = periodBaseFor(emp.baseSalary, frequency)
+      const dailyRate = emp.baseSalary / 30
+      const effectiveBase = Math.max(0, periodBase - dailyRate * emp.absences)
+
+      // Horas extra: el monto ya multiplicado. El concepto OT (formula: overtimeAmount) lo cobra solo.
       const overtimeRate = (emp.baseSalary / 30 / 8) * config.overtimeMultiplier
       const overtimeAmount = emp.overtimeHours * overtimeRate
 
@@ -155,7 +176,7 @@ export class PayrollCalculatorUseCase {
 
       for (const concept of earnings) {
         const amt = this.calculateConceptAmount(concept, {
-          base: proportionalBase,
+          base: effectiveBase,
           overtimeAmount,
           overtimeHours: emp.overtimeHours,
           daysWorked: emp.daysWorked,
@@ -268,15 +289,5 @@ export class PayrollCalculatorUseCase {
     }
 
     return Math.round((tax / 12) * 100) / 100 // Monthly tax
-  }
-
-  private totalDaysInPeriod(period: string): number {
-    const parts = period.split('-')
-    if (parts.length === 3) {
-      const year = parseInt(parts[0])
-      const month = parseInt(parts[1])
-      return new Date(year, month, 0).getDate()
-    }
-    return 30
   }
 }

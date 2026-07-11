@@ -31,7 +31,8 @@ export const MarkAsPaidSchema: Record<string, ValidationRule> = {
 }
 
 export const UpdateConfigSchema: Record<string, ValidationRule> = {
-  paymentFrequency: { type: 'string' as const },
+  // La frecuencia define cuánto del sueldo mensual se paga por liquidación (ver periodBaseFor).
+  paymentFrequency: { type: 'string' as const, enum: ['weekly', 'biweekly', 'monthly'] },
   paymentDay: { type: 'number' as const, min: 1, max: 31 },
   overtimeMultiplier: { type: 'number' as const, min: 1 },
   nightShiftMultiplier: { type: 'number' as const, min: 1 },

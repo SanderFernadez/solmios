@@ -96,7 +96,15 @@
     <div v-if="activeTab === 'config' && !loading" class="card p-5">
       <h3 class="font-extrabold text-navy text-sm mb-4">Configuración de Nómina</h3>
       <div v-if="config" class="grid md:grid-cols-2 gap-4">
-        <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Frecuencia</label><input v-model="config.paymentFrequency" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy"></div>
+        <div>
+          <label class="block text-[11px] font-bold text-navy uppercase mb-1">Frecuencia de pago</label>
+          <select v-model="config.paymentFrequency" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quincenal</option>
+            <option value="monthly">Mensual</option>
+          </select>
+          <p class="text-[10px] text-text-muted mt-1">Define cuánto del sueldo mensual se paga por liquidación (semanal ≈ ¼, quincenal ½, mensual completo).</p>
+        </div>
         <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Día de Pago</label><input v-model.number="config.paymentDay" type="number" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy"></div>
         <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Horas Extra (x)</label><input v-model.number="config.overtimeMultiplier" type="number" step="0.1" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy"></div>
         <div><label class="block text-[11px] font-bold text-navy uppercase mb-1">Seguridad Social (%)</label><input v-model.number="config.socialSecurityRate" type="number" step="0.01" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy"></div>
