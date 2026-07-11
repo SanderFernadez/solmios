@@ -24,6 +24,11 @@ export const CreateContractSchema: Record<string, ValidationRule> = {
   type: { type: 'string' as const, required: true },
   startDate: { type: 'string' as const, required: true },
   salary: { type: 'number' as const, required: true, min: 0 },
+  // Sin declarar acá, validateSchema los descarta y el contrato pierde estos datos (mem 1805).
+  endDate: { type: 'string' as const },
+  currency: { type: 'string' as const },
+  position: { type: 'string' as const },
+  departmentId: { type: 'string' as const },
 }
 
 export const CreateDocumentSchema: Record<string, ValidationRule> = {
@@ -31,6 +36,8 @@ export const CreateDocumentSchema: Record<string, ValidationRule> = {
   employeeId: { type: 'string' as const, required: true },
   type: { type: 'string' as const, required: true },
   name: { type: 'string' as const, required: true },
+  fileUrl: { type: 'string' as const },
+  expiryDate: { type: 'string' as const },
 }
 
 export const CreateLeaveRequestSchema: Record<string, ValidationRule> = {
@@ -40,6 +47,7 @@ export const CreateLeaveRequestSchema: Record<string, ValidationRule> = {
   startDate: { type: 'string' as const, required: true },
   endDate: { type: 'string' as const, required: true },
   days: { type: 'number' as const, required: true, min: 1 },
+  reason: { type: 'string' as const },
 }
 
 export const CreateReviewSchema: Record<string, ValidationRule> = {
@@ -48,6 +56,9 @@ export const CreateReviewSchema: Record<string, ValidationRule> = {
   reviewerId: { type: 'string' as const, required: true },
   reviewDate: { type: 'string' as const, required: true },
   score: { type: 'number' as const, min: 1, max: 10 },
+  period: { type: 'string' as const },
+  strengths: { type: 'string' as const },
+  improvements: { type: 'string' as const },
 }
 
 export const UpdateDepartmentSchema: Record<string, ValidationRule> = {
