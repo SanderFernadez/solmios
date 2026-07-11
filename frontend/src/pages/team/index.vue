@@ -111,7 +111,7 @@
 
     <!-- Modal cambiar rol -->
     <Teleport to="body">
-      <div v-if="roleModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="roleModal.show=false">
+      <div v-if="roleModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
           <h3 class="text-lg font-black text-navy mb-2">Cambiar rol</h3>
@@ -146,7 +146,7 @@
 
     <!-- Modal invitar (mock - placeholder) -->
     <Teleport to="body">
-      <div v-if="inviteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="inviteModal=false">
+      <div v-if="inviteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
           <h3 class="text-lg font-black text-navy mb-2">Invitar miembro</h3>
