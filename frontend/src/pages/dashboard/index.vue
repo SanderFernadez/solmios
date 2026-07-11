@@ -54,8 +54,8 @@
     </div>
 
     <!-- 3. Calendario + actividad/canales/estados -->
-    <div class="grid min-w-0 gap-4 xl:grid-cols-3">
-      <div class="min-w-0 xl:col-span-2">
+    <div class="grid min-w-0 gap-4 xl:grid-cols-[1.3fr_1fr_1fr_1.25fr]">
+      <div class="min-w-0 xl:col-span-3">
         <ReservationsGantt
           :rooms="roomStore.rooms"
           :reservations="reservationStore.reservations"
