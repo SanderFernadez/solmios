@@ -36,9 +36,9 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const log = logger.child('usuarios')
       const service = new UsuariosService(repo, log, cache, auth, hotelRepo)
-      const controller = new UsuariosController(service, log, opts.storage)
-
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const controller = new UsuariosController(service, log, opts.storage, roleRepo)
+
       const guard = createPermissionGuard(auth, roleRepo)
 
       // Auth (públicas) — con rate limiting en login

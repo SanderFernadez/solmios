@@ -1,16 +1,20 @@
 // usuarios/controller.ts — Adaptador HTTP
-import type { HttpRequest, Logger } from 'arckode-framework'
+import type { HttpRequest, Logger, RepositoryAdapter } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { StorageService } from 'arckode-framework/modules/storage'
 import { CreateUsuarioSchema, UpdateUsuarioSchema, LoginSchema, ChangePasswordSchema, ForgotPasswordSchema, ResetPasswordSchema, UpdateProfileSchema } from './validators/schema'
 import type { UsuariosService } from './service'
 import { parseDataUrl, isImage } from '../../shared/utils/data-url'
+import { canAssignRole, systemRolesForCreator } from './usecases/assignable-role'
 
 export class UsuariosController {
   constructor(
     private readonly service: UsuariosService,
     private readonly logger: Logger,
     private readonly storage?: StorageService,
+    // Tabla `roles` del hotel: para dejar asignar roles PERSONALIZADOS al crear un usuario, no solo
+    // los del sistema. Sin esto, un rol custom se crea pero no se puede asignar a nadie.
+    private readonly roleRepo?: RepositoryAdapter<any>,
   ) {}
 
   async login(req: HttpRequest) {
@@ -99,10 +103,15 @@ export class UsuariosController {
     // hotel_admin/recepcionista se anclan a su propio hotel (multi-tenant seguro, leído del token).
     if (!isSuperAdmin) data.hotelId = (req.user as any).hotelId
     if (data.role && !isSuperAdmin) {
-      // Non-superAdmins can only create users with roles at or below their level
       const callerRole = (req.user as any).role
-      const allowedRoles = this.getAllowedRolesForCreator(callerRole)
-      if (!allowedRoles.includes(data.role)) {
+      // Un rol del sistema va por jerarquía; si no lo es, se busca como rol personalizado del propio
+      // hotel (scoped por hotelId → nadie asigna el rol de otro hotel).
+      let customNames: string[] = []
+      if (this.roleRepo && data.hotelId && !systemRolesForCreator(callerRole).includes(data.role)) {
+        const rows = await this.roleRepo.findMany({ hotelId: data.hotelId, name: data.role })
+        customNames = rows.map((r: any) => r.name)
+      }
+      if (!canAssignRole(callerRole, data.role, customNames)) {
         return { status: 403, body: { error: `No puede crear usuarios con rol ${data.role}` } }
       }
     } else if (!isSuperAdmin && !data.role) {
@@ -111,15 +120,6 @@ export class UsuariosController {
     }
     const item = await this.service.create(data)
     return { status: 201, body: item }
-  }
-
-  private getAllowedRolesForCreator(callerRole: string): string[] {
-    switch (callerRole) {
-      case 'super_admin': return ['super_admin', 'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor']
-      case 'hotel_admin': return ['receptionist', 'housekeeper', 'maintenance', 'supervisor']
-      case 'receptionist': return ['housekeeper', 'maintenance']
-      default: return []
-    }
   }
 
   async update(req: HttpRequest) {
