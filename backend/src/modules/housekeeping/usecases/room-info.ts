@@ -32,13 +32,26 @@ export async function withRoomInfo<T extends { roomId?: string }>(
   return tasks.map((task) => {
     const room = task.roomId ? byId.get(String(task.roomId)) : undefined
     if (!room) return task
+    const number = room.number != null ? String(room.number) : ''
     return {
       ...task,
-      roomNumber: room.number != null ? String(room.number) : '',
-      // `floor` viene null en habitaciones viejas: 0 es un piso real, pero es
-      // mejor que `null` rompiendo el parseo de la app.
-      floor: typeof room.floor === 'number' ? room.floor : 0,
+      roomNumber: number,
+      // El piso sale ya calculado del endpoint: si la habitación no lo tiene
+      // guardado (viene null en casi todas), se deriva del número —el primer
+      // grupo de dígitos: 204→2, 103→1, 101→1—. Así la app no tiene que
+      // adivinarlo y sale igual en web y móvil.
+      floor: resolveFloor(room.floor, number),
       roomType: room.type != null ? String(room.type) : '',
     }
   })
+}
+
+/** Piso guardado si es válido; si no, derivado del número de habitación. */
+function resolveFloor(stored: unknown, number: string): number {
+  if (typeof stored === 'number' && stored > 0) return stored
+  const digits = number.match(/\d+/)?.[0]
+  const n = digits ? parseInt(digits, 10) : 0
+  if (n >= 100) return Math.floor(n / 100)
+  if (n >= 10) return Math.floor(n / 10)
+  return n > 0 ? 1 : 0
 }
