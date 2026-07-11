@@ -18,7 +18,11 @@ import { requirePermission } from './require-permission'
 export function createPermissionGuard(
   auth: Auth,
   roleRepo: RepositoryAdapter<any>,
-  allowedRoles: string[] = ['hotel_admin', 'receptionist', 'super_admin', 'supervisor', 'housekeeper', 'maintenance'],
+  // Autorización por PERMISO, no por nombre de rol. Antes esto era una whitelist fija de 6 roles del
+  // sistema: un rol personalizado (ej "Cajero") lo rechazaba `authenticate` ANTES de mirar permisos,
+  // así que los roles custom no servían para nada. `authenticate()` sin roles exige token válido y deja
+  // que `requirePermission` decida. Un rol sin el permiso igual recibe 403 — falla cerrado.
+  allowedRoles: string[] = [],
 ) {
   return (module: string, action: string): [MiddlewareHandler, MiddlewareHandler, MiddlewareHandler] => {
     return [

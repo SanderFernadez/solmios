@@ -2,6 +2,12 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { RolesService } from './service'
 import { CreateRolesSchema, UpdateRolesSchema } from './validators/schema'
+import { parseRolePermissions } from '../../shared/usecases/parse-role-permissions'
+import { MODULES, ACTIONS } from '../../shared/permissions'
+
+// Acciones que la matriz de la UI ofrece por módulo. checkin/checkout viven en el rol de recepción por
+// defecto y son casos borde: no ensuciamos la matriz custom con ellas.
+const MATRIX_ACTIONS = ['view', 'create', 'edit', 'delete', 'export'] as const
 
 export class RolesController {
   constructor(
@@ -15,6 +21,14 @@ export class RolesController {
     return { status: 200, body: result }
   }
 
+  /** Catálogo de módulos y acciones para armar la matriz de permisos en la UI (server-driven, sin
+   *  duplicar la lista en el frontend). */
+  async catalog(_req: HttpRequest) {
+    const modules = Object.entries(MODULES).map(([key, label]) => ({ key, label }))
+    const actions = MATRIX_ACTIONS.map((key) => ({ key, label: ACTIONS[key] }))
+    return { status: 200, body: { modules, actions } }
+  }
+
   async show(req: HttpRequest) {
     const currentUser = req.user as any
     const item = await this.service.getById(req.params.id, currentUser)
@@ -23,27 +37,25 @@ export class RolesController {
 
   async store(req: HttpRequest) {
     const currentUser = req.user as any
-    const data = validateSchema(CreateRolesSchema, req.body)
-    const item = await this.service.create(data as any, currentUser)
+    // `hotelId` sale del token, no del body; el schema descarta `permissions` (validateSchema no soporta
+    // arrays), así que se parsean aparte a `modulo:accion` válido antes de crear.
+    const body = (req.body ?? {}) as Record<string, unknown>
+    const data = validateSchema(CreateRolesSchema, { ...body, hotelId: currentUser?.hotelId ?? body.hotelId })
+    const payload = { ...data } as any
+    payload.permissions = body.permissions !== undefined ? parseRolePermissions(body.permissions) : []
+    const item = await this.service.create(payload, currentUser)
     return { status: 201, body: item }
   }
 
   async update(req: HttpRequest) {
     const currentUser = req.user as any
+    const body = (req.body ?? {}) as Record<string, unknown>
     const data = validateSchema(UpdateRolesSchema, req.body)
     const payload = { ...data } as any
-    if (req.body && (req.body as any).permissions !== undefined) {
-      const perms = (req.body as any).permissions
-      // Validate permissions structure: must be array of {module: string, actions: string[]}
-      if (!Array.isArray(perms)) {
-        return { status: 400, body: { error: 'permissions must be an array' } }
-      }
-      for (const p of perms) {
-        if (!p.module || !Array.isArray(p.actions)) {
-          return { status: 400, body: { error: 'Each permission must have module (string) and actions (array)' } }
-        }
-      }
-      payload.permissions = perms
+    // Solo se tocan los permisos si vienen en el body; se validan a `modulo:accion` (el formato que
+    // entiende hasPermission), no el objeto {module, actions} viejo que no otorgaba acceso.
+    if (body.permissions !== undefined) {
+      payload.permissions = parseRolePermissions(body.permissions)
     }
     const item = await this.service.update(req.params.id, payload, currentUser)
     return { status: 200, body: item }

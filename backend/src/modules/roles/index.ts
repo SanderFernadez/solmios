@@ -38,6 +38,8 @@ export function RolesModule() {
       const guard = createPermissionGuard(auth, roleRepo)
 
       router.get('/api/roles', guard('users', 'view'), (req) => controller.index(req))
+      // /catalog ANTES de /:id o la ruta con param lo captura como id='catalog'.
+      router.get('/api/roles/catalog', guard('users', 'view'), (req) => controller.catalog(req))
       router.get('/api/roles/:id', guard('users', 'view'), (req) => controller.show(req))
       router.post('/api/roles', guard('users', 'create'), (req) => controller.store(req))
       router.put('/api/roles/:id', guard('users', 'edit'), (req) => controller.update(req))

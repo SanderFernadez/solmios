@@ -1,10 +1,7 @@
-export type PermissionAction = 'create' | 'read' | 'update' | 'delete'
-export type PermissionModule = 'reservations' | 'rooms' | 'guests' | 'billing' | 'housekeeping' | 'maintenance' | 'reports' | 'settings' | 'users' | 'roles'
-
-export interface Permission {
-  module: PermissionModule
-  actions: PermissionAction[]
-}
+// Un permiso es un string plano `modulo:accion` (ej: "reservations:view"), el MISMO formato que
+// entiende hasPermission. Antes era un objeto {module, actions[]} que no matcheaba con el motor de
+// permisos → guardar permisos no otorgaba acceso. Ver shared/usecases/parse-role-permissions.ts.
+export type RolePermission = string
 
 export interface RolesDTO {
   id: string
@@ -13,7 +10,7 @@ export interface RolesDTO {
   color?: string
   system?: number
   hotelId?: string
-  permissions?: Permission[]
+  permissions?: RolePermission[]
   users?: number
   createdAt: string
   updatedAt: string
@@ -25,7 +22,7 @@ export interface CreateRolesDTO {
   color?: string
   system?: number
   hotelId?: string
-  permissions?: Permission[]
+  permissions?: RolePermission[]
   users?: number
 }
 
@@ -35,7 +32,7 @@ export interface UpdateRolesDTO {
   color?: string
   // NOTE: hotelId intentionally NOT here — cannot move role between hotels
   // NOTE: system NOT here — system roles cannot be modified
-  permissions?: Permission[]
+  permissions?: RolePermission[]
 }
 
 export interface RolesQuery {

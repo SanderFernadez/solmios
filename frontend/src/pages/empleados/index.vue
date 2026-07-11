@@ -288,6 +288,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert } from '@/services/Empleados.service'
 import { TeamService } from '@/services/Team.service'
+import { RolesService, type Role } from '@/services/Roles.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
@@ -326,6 +327,20 @@ const leaveRequests = ref<LeaveRequest[]>([])
 const reviews = ref<PerformanceReview[]>([])
 const departments = ref<Department[]>([])
 const documentAlerts = ref<DocumentExpiryAlert[]>([])
+const customRoles = ref<Role[]>([])
+
+// Roles del sistema (nombre-máquina) + los personalizados del hotel. El valor es el `name` que se
+// guarda en users.role: para los del sistema es la máquina (receptionist…), para los custom es su nombre.
+const SYSTEM_ROLE_OPTIONS = [
+  { value: 'receptionist', label: 'Recepcionista' },
+  { value: 'housekeeper', label: 'Limpieza' },
+  { value: 'maintenance', label: 'Mantenimiento' },
+  { value: 'supervisor', label: 'Supervisor' },
+]
+const roleOptions = () => [
+  ...SYSTEM_ROLE_OPTIONS,
+  ...customRoles.value.map((r) => ({ value: r.name, label: `${r.icon ?? '👤'} ${r.name}` })),
+]
 
 function getDeptName(id: string | null): string {
   if (!id) return '—'
@@ -382,6 +397,7 @@ async function loadData() {
     documentAlerts.value = alertsRes
 
     try { departments.value = await EmpleadosService.listDepartments() } catch { /* optional */ }
+    try { customRoles.value = await RolesService.list() } catch { /* optional */ }
   } catch { toast.error('Error al cargar datos') }
   finally { loading.value = false }
 }
@@ -408,10 +424,7 @@ function openNewEmployee() {
       { key: 'phone', label: 'Teléfono', type: 'tel', maxLength: 20, placeholder: '809-555-0000' },
       { key: 'password', label: 'Contraseña temporal', type: 'password', required: true, minLength: 6, maxLength: 72, placeholder: 'Mínimo 6 caracteres' },
       // El puesto lo define el Rol (feedback #169): un solo lugar para la función del empleado.
-      { key: 'role', label: 'Rol', type: 'select', required: true, default: 'receptionist', options: [
-        { value: 'receptionist', label: 'Recepcionista' }, { value: 'housekeeper', label: 'Limpieza' },
-        { value: 'maintenance', label: 'Mantenimiento' }, { value: 'supervisor', label: 'Supervisor' },
-      ] },
+      { key: 'role', label: 'Rol', type: 'select', required: true, default: 'receptionist', options: roleOptions() },
       { key: 'departmentId', label: 'Departamento', type: 'select', options: departmentOptions() },
       { key: 'salary', label: 'Salario', type: 'number', min: 0 },
       { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: new Date().toISOString().slice(0, 10) },

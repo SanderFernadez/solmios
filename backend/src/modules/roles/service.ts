@@ -53,7 +53,21 @@ export class RolesService {
     if (cached) return cached as RolesPaginated
 
     const result = await this.repo.paginate(filters, { offset, limit })
-    const response = { data: result.data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
+
+    // Conteo real de usuarios por rol: la columna `users` de la tabla nunca se mantiene. Se cuenta
+    // desde los usuarios del hotel (un solo query, se tallan por nombre de rol). Solo cuando hay hotelId
+    // acotado — para el listado global de super_admin se deja el valor guardado.
+    let data = result.data
+    if (hotelId) {
+      const users = await this.userRepo.findMany({ hotelId })
+      const countByRole = new Map<string, number>()
+      for (const u of users as Array<{ role?: string }>) {
+        if (u.role) countByRole.set(u.role, (countByRole.get(u.role) ?? 0) + 1)
+      }
+      data = result.data.map((r) => ({ ...r, users: countByRole.get(r.name) ?? 0 }))
+    }
+
+    const response = { data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
     await this.cache.set(cacheKey, response, CACHE_TTL)
     return response
   }
@@ -71,7 +85,16 @@ export class RolesService {
     if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
       throw new AuthError('No autorizado para crear en otro hotel')
     }
-    const item = await this.repo.create(dto as any)
+    // Un merchant NO puede crear roles del sistema (system:1 los protege de borrado/edición). El id lo
+    // genera el server: el modelo lo exige y el ORM no lo autogenera para esta tabla.
+    const payload = {
+      ...dto,
+      id: crypto.randomUUID(),
+      system: currentUser.role === 'super_admin' ? (dto.system ?? 0) : 0,
+      permissions: dto.permissions ?? [],
+      users: 0,
+    }
+    const item = await this.repo.create(payload as any)
     await this.sockets.onRolesCreated?.(item)
     await this.cache.delete(`roles:list:${dto.hotelId}`)
     return item

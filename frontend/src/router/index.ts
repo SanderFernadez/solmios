@@ -355,6 +355,12 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          path: 'roles',
+          name: 'roles',
+          component: () => import('@/pages/roles/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'message-logs',
           name: 'message-logs',
           component: () => import('@/pages/message-logs/index.vue'),

@@ -22,7 +22,7 @@ const baseRole: RolesDTO = {
   color: '#ff0000',
   system: 0,
   hotelId: 'h1',
-  permissions: [{ module: 'rooms', actions: ['create', 'read', 'update', 'delete'] }],
+  permissions: ['rooms:view', 'rooms:create', 'rooms:edit', 'rooms:delete'],
   users: 5,
   createdAt: '2026-06-21T00:00:00Z',
   updatedAt: '2026-06-21T00:00:00Z',
@@ -62,8 +62,11 @@ function makeCache(): CacheAdapter & { deleted: string[] } {
 
 // ─── LIST ─────────────────────────────────────────────────────────────────────
 
-function makeUserRepo() {
-  return { findById: async () => ({ id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }) } as unknown as RepositoryAdapter<any>
+function makeUserRepo(users: Array<{ role?: string }> = []) {
+  return {
+    findById: async () => ({ id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }),
+    findMany: async () => users,
+  } as unknown as RepositoryAdapter<any>
 }
 
 const mockUser = { id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }
@@ -86,6 +89,15 @@ describe('RolesService', () => {
       const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.list({ page: 1, limit: 20 }, hotelAdmin)
       expect(result.data).toHaveLength(1)
+    })
+
+    it('cuenta usuarios reales por rol (nombre de rol → usuarios del hotel)', async () => {
+      const roles = [{ ...baseRole, name: 'Cajero', hotelId: 'h1' }]
+      const repo = makeRepo({ paginate: async () => ({ data: roles, total: 1, limit: 20, offset: 0, pages: 1 }) })
+      const usersOfHotel = [{ role: 'Cajero' }, { role: 'Cajero' }, { role: 'receptionist' }]
+      const svc = new RolesService(repo, log, silentCache, makeUserRepo(usersOfHotel), fakeAuth)
+      const result = await svc.list({ page: 1, limit: 20 }, hotelAdmin)
+      expect(result.data[0].users).toBe(2)
     })
 
     it('throws AuthError when hotel_admin has no hotelId', async () => {
@@ -172,8 +184,24 @@ describe('RolesService', () => {
     it('creates role in own hotel', async () => {
       const svc = new RolesService(makeRepo(), log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.create({ name: 'Staff', hotelId: 'h1' }, hotelAdmin)
-      expect(result.id).toBe('role-new')
+      expect(result.id).toBeTruthy()   // el server genera el id (UUID)
       expect(result.name).toBe('Staff')
+    })
+
+    it('forces system:0 — un merchant no puede crear un rol del sistema', async () => {
+      let created: any
+      const repo = makeRepo({ create: async (data) => { created = data; return { id: 'x', ...data } as RolesDTO } })
+      const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await svc.create({ name: 'Cajero', hotelId: 'h1', system: 1 } as any, hotelAdmin)
+      expect(created.system).toBe(0)
+    })
+
+    it('defaults permissions to [] when none provided', async () => {
+      let created: any
+      const repo = makeRepo({ create: async (data) => { created = data; return { id: 'x', ...data } as RolesDTO } })
+      const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await svc.create({ name: 'Cajero', hotelId: 'h1' }, hotelAdmin)
+      expect(created.permissions).toEqual([])
     })
 
     it('super_admin can create in any hotel', async () => {
@@ -212,7 +240,7 @@ describe('RolesService', () => {
         icon: 'broom',
         color: '#00ff00',
         hotelId: 'h1',
-        permissions: [{ module: 'rooms', actions: ['read'] }],
+        permissions: ['rooms:view'],
       }
       const result = await svc.create(dto, hotelAdmin)
       expect(result.icon).toBe('broom')
