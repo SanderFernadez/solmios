@@ -4,6 +4,8 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema, NotFoundError } from 'arckode-framework'
 import type { EmpleadosService } from './service'
 import type { DashboardUseCase } from './usecases/dashboard'
+import type { StorageService } from 'arckode-framework/modules/storage'
+import { parseDataUrl } from '../../shared/utils/data-url'
 import type {
   CreateDepartmentDTO, CreateEmployeeProfileDTO,
   CreateContractDTO, CreateDocumentDTO,
@@ -33,6 +35,8 @@ export class EmpleadosController {
     private readonly logger: Logger,
     // Agregación de solo-lectura: va directo al usecase para no engordar el service (gate 200 líneas).
     private readonly dashboard?: DashboardUseCase,
+    // Para subir el archivo del documento (base64 → storage), en vez de pegar una URL.
+    private readonly storage?: StorageService,
   ) {}
 
   // ─── Departments ──────────────────────────────────────
@@ -152,7 +156,22 @@ export class EmpleadosController {
 
   async createDocument(req: HttpRequest) {
     this.logger.info('POST /api/employee-documents')
-    const data = validateSchema(CreateDocumentSchema, withHotelId(req)) as unknown as CreateDocumentDTO
+    const raw = (req.body ?? {}) as any
+    // El archivo llega como data URL base64 (`fileData`); se guarda en storage y su URL va a `fileUrl`.
+    // Se mantiene soporte de `fileUrl` directo por compatibilidad.
+    let fileUrl = raw.fileUrl
+    if (raw.fileData) {
+      if (!this.storage) return { status: 500, body: { error: 'Almacenamiento no configurado' } }
+      const parsed = parseDataUrl(raw.fileData)
+      if (!parsed) return { status: 400, body: { error: 'Archivo inválido' } }
+      const stored = await this.storage.upload({
+        fieldName: 'file', originalName: raw.fileName || `documento.${parsed.ext}`,
+        buffer: parsed.buffer, mimeType: parsed.mimeType, size: parsed.buffer.length,
+      }, 'employee-documents')
+      fileUrl = stored.url
+    }
+    const fromReq = (req as any).user?.hotelId ?? (req.query as any)?.hotelId
+    const data = validateSchema(CreateDocumentSchema, { ...raw, hotelId: fromReq ?? raw.hotelId, fileUrl, fileData: undefined }) as unknown as CreateDocumentDTO
     const doc = await this.service.createDocument(data)
     return { status: 201, body: doc }
   }

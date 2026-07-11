@@ -159,7 +159,10 @@
                 <td class="px-4 py-2.5 text-text-secondary">{{ doc.type }}</td>
                 <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ getEmployeeName(doc.employeeId) }}</td>
                 <td class="px-4 py-2.5 whitespace-nowrap" :class="isExpiringSoon(doc) ? 'text-coral font-bold' : 'text-text-secondary'">{{ doc.expiryDate || '—' }}</td>
-                <td class="px-4 py-2.5 text-right">
+                <td class="px-4 py-2.5 text-right whitespace-nowrap">
+                  <a v-if="doc.fileUrl" :href="doc.fileUrl" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 cursor-pointer mr-1">
+                    <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Ver
+                  </a>
                   <button @click="deleteDocument(doc)" class="inline-flex items-center gap-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">
                     <span class="w-3 h-3 shrink-0" v-html="ICON_TRASH"></span>Eliminar
                   </button>
@@ -540,11 +543,14 @@ function openNewDocument() {
         { value: 'id', label: 'Identificación' }, { value: 'contract', label: 'Contrato' },
         { value: 'certificate', label: 'Certificado' }, { value: 'other', label: 'Otro' },
       ] },
-      { key: 'name', label: 'Nombre', required: true, placeholder: 'Cédula, Título…' },
-      { key: 'fileUrl', label: 'URL del archivo', placeholder: 'https://…' },
+      { key: 'name', label: 'Nombre', required: true, maxLength: 120, placeholder: 'Cédula, Título…' },
+      { key: 'fileData', label: 'Archivo', type: 'file', required: true, accept: '.pdf,image/*' },
       { key: 'expiryDate', label: 'Vence (opcional)', type: 'date' },
     ],
-    onSubmit: (v) => EmpleadosService.createDocument(v),
+    onSubmit: (v) => EmpleadosService.createDocument({
+      employeeId: v.employeeId, type: v.type, name: v.name, expiryDate: v.expiryDate,
+      fileData: v.fileData, fileName: v.fileDataName,
+    }),
   }
 }
 

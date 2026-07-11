@@ -31,6 +31,13 @@
               @input="clearError(f.key)"
               class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none" :class="borderClass(f.key)" />
 
+            <div v-else-if="f.type === 'file'">
+              <input type="file" :accept="f.accept" @change="onFile($event, f.key)"
+                class="w-full text-sm text-text-secondary file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-navy file:text-white file:text-xs file:font-bold file:cursor-pointer cursor-pointer"
+                :class="fieldErrors[f.key] ? 'text-coral' : ''" />
+              <p v-if="values[f.key]" class="text-[10px] font-bold text-teal mt-1">✓ {{ values[f.key + 'Name'] || 'archivo cargado' }}</p>
+            </div>
+
             <input v-else :type="f.type || 'text'" v-model="values[f.key]" :placeholder="f.placeholder"
               :maxlength="f.maxLength"
               @input="clearError(f.key)" @blur="onBlur(f)"
@@ -59,7 +66,9 @@ import { reactive, ref, watch } from 'vue'
 export interface FormField {
   key: string
   label: string
-  type?: 'text' | 'number' | 'date' | 'month' | 'select' | 'textarea' | 'email' | 'tel' | 'password'
+  type?: 'text' | 'number' | 'date' | 'month' | 'select' | 'textarea' | 'email' | 'tel' | 'password' | 'file'
+  /** Solo para type 'file': filtro de tipos (ej: '.pdf,image/*'). El archivo se envía como data URL base64. */
+  accept?: string
   required?: boolean
   options?: { value: string; label: string }[]
   placeholder?: string
@@ -100,6 +109,16 @@ function borderClass(key: string): string {
 /** Al escribir en un campo, se limpia su error para que el rojo no quede pegado. */
 function clearError(key: string): void {
   if (fieldErrors[key]) { fieldErrors[key] = ''; error.value = '' }
+}
+
+/** Lee el archivo como data URL base64 (el backend no acepta multipart — va en JSON). Guarda el
+ *  contenido en `values[key]` y el nombre en `values[key+'Name']`. */
+function onFile(e: Event, key: string): void {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) { values[key] = ''; return }
+  const reader = new FileReader()
+  reader.onload = () => { values[key] = String(reader.result); values[`${key}Name`] = file.name; clearError(key) }
+  reader.readAsDataURL(file)
 }
 
 /** Formatea un teléfono dominicano de 10 dígitos como 809-555-0000 al salir del campo. */

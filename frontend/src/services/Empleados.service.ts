@@ -156,7 +156,7 @@ export const EmpleadosService = {
     return http.get(`/api/employee-documents${qs}`)
   },
   async getDocument(id: string): Promise<EmployeeDocument> { return http.get(`/api/employee-documents/${id}`) },
-  async createDocument(data: Partial<EmployeeDocument>): Promise<EmployeeDocument> { return http.post('/api/employee-documents', data) },
+  async createDocument(data: Partial<EmployeeDocument> & { fileData?: string; fileName?: string }): Promise<EmployeeDocument> { return http.post('/api/employee-documents', data) },
   async deleteDocument(id: string): Promise<void> { return http.delete(`/api/employee-documents/${id}`) },
   async getExpiringDocuments(days?: number): Promise<DocumentExpiryAlert[]> {
     return http.get(`/api/employee-documents/expiring?days=${days ?? 30}`)

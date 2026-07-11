@@ -3,10 +3,15 @@
 // ⚠ REGLA: Append-only. No sacar ni modificar exports existentes.
 
 import { createModule, OrmRepository } from 'arckode-framework'
+import { bodyLimit } from 'arckode-framework/middlewares'
+import type { StorageService } from 'arckode-framework/modules/storage'
 import { registerEmpleadosModels } from './model'
 import { EmpleadosService } from './service'
 import { EmpleadosController } from './controller'
 import { DashboardUseCase } from './usecases/dashboard'
+
+/** Un documento del expediente (PDF/imagen) en base64: 10 MB de sobra. */
+const DOCUMENT_UPLOAD_LIMIT = 10 * 1024 * 1024
 import type {
   DepartmentDTO, EmployeeProfileDTO, ContractDTO,
   DocumentDTO, LeaveRequestDTO, PerformanceReviewDTO,
@@ -28,7 +33,7 @@ export type {
 } from './types'
 export type { EmpleadosSockets } from './sockets'
 
-export function EmpleadosModule() {
+export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
   return createModule({
     name: 'empleados',
     version: '1.0.0',
@@ -75,7 +80,7 @@ export function EmpleadosModule() {
         log, cache, userRepo, auth,
       )
       const dashboard = new DashboardUseCase(profileRepo, contractRepo, documentRepo, leaveRepo, reviewRepo, departmentRepo, log)
-      const controller = new EmpleadosController(service, log, dashboard)
+      const controller = new EmpleadosController(service, log, dashboard, opts.storage)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
@@ -105,7 +110,7 @@ export function EmpleadosModule() {
       router.post('/api/employee-contracts/:id/terminate', guard('users', 'edit'), (req) => controller.terminateContract(req))
 
       // ─── Documents ────────────────────────────────────
-      router.post('/api/employee-documents', guard('users', 'create'), (req) => controller.createDocument(req))
+      router.post('/api/employee-documents', [...guard('users', 'create'), bodyLimit(DOCUMENT_UPLOAD_LIMIT)], (req) => controller.createDocument(req))
       router.get('/api/employee-documents', guard('users', 'view'), (req) => controller.listDocuments(req))
       router.get('/api/employee-documents/expiring', guard('users', 'view'), (req) => controller.getExpiringDocuments(req))
       router.get('/api/employee-documents/:id', guard('users', 'view'), (req) => controller.getDocument(req))
