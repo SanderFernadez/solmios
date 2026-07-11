@@ -257,14 +257,14 @@ const nonavItems = [
   {
     label: 'RRHH', icon: ICONS.usergroup, roles: ['hotel_admin', 'receptionist'],
     children: [
-      { label: 'Panel RRHH', path: '/panel/rrhh-dashboard', roles: ['hotel_admin'] },
-      { label: 'Empleados', path: '/panel/empleados', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Asistencia', path: '/panel/attendance', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Nómina', path: '/panel/payroll', roles: ['hotel_admin'] },
-      { label: 'Equipo', path: '/panel/team', roles: ['hotel_admin'] },
-      { label: 'Equipo y Activos', path: '/panel/activos', roles: ['hotel_admin'] },
-      { label: 'Capacitación', path: '/panel/capacitacion', roles: ['hotel_admin'] },
-      { label: 'Roles y Permisos', path: '/panel/roles', roles: ['hotel_admin'] },
+      { label: 'Panel RRHH', path: '/panel/rrhh/dashboard', roles: ['hotel_admin'] },
+      { label: 'Empleados', path: '/panel/rrhh/empleados', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Asistencia', path: '/panel/rrhh/attendance', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Nómina', path: '/panel/rrhh/payroll', roles: ['hotel_admin'] },
+      { label: 'Equipo', path: '/panel/rrhh/team', roles: ['hotel_admin'] },
+      { label: 'Activos', path: '/panel/rrhh/activos', roles: ['hotel_admin'] },
+      { label: 'Capacitación', path: '/panel/rrhh/capacitacion', roles: ['hotel_admin'] },
+      { label: 'Roles y Permisos', path: '/panel/rrhh/roles', roles: ['hotel_admin'] },
     ]
   },
   {
