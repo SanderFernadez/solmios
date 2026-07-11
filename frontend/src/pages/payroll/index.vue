@@ -201,6 +201,12 @@
       </div>
     </Teleport>
 
+    <PayrollDetailModal
+      v-if="detailRun"
+      :run="detailRun"
+      @close="detailRun = null"
+    />
+
     <CalculatePayrollModal
       v-if="calcRun"
       :run="calcRun"
@@ -225,6 +231,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { PayrollService, type PayrollRun, type PayrollConfig, type PayrollConcept } from '@/services/Payroll.service'
 import CalculatePayrollModal from '@/components/features/CalculatePayrollModal.vue'
+import PayrollDetailModal from '@/components/features/PayrollDetailModal.vue'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
@@ -261,6 +268,7 @@ const config = ref<PayrollConfig | null>(null)
 const concepts = ref<PayrollConcept[]>([])
 
 const calcRun = ref<PayrollRun | null>(null)
+const detailRun = ref<PayrollRun | null>(null)
 const showNewRunModal = ref(false)
 const creatingRun = ref(false)
 const newRunError = ref('')
@@ -340,7 +348,7 @@ async function cancelRun(run: PayrollRun) {
   catch { toast.error('Error al cancelar') }
 }
 
-function viewDetails(run: PayrollRun) { toast.info(`Detalle de ${run.period} — ${run.employeeCount} empleados, $${run.totalNet.toLocaleString()} neto`) }
+function viewDetails(run: PayrollRun) { detailRun.value = run }
 async function saveConfig() { try { await PayrollService.updateConfig(hotelId.value!, config.value!); toast.success('Configuración guardada') } catch { toast.error('Error') } }
 
 const conceptModal = ref(false)
