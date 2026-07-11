@@ -287,7 +287,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert } from '@/services/Empleados.service'
-import { TeamService, type TeamMember } from '@/services/Team.service'
+import { TeamService } from '@/services/Team.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
@@ -326,7 +326,6 @@ const leaveRequests = ref<LeaveRequest[]>([])
 const reviews = ref<PerformanceReview[]>([])
 const departments = ref<Department[]>([])
 const documentAlerts = ref<DocumentExpiryAlert[]>([])
-const users = ref<TeamMember[]>([])
 
 function getDeptName(id: string | null): string {
   if (!id) return '—'
@@ -383,7 +382,6 @@ async function loadData() {
     documentAlerts.value = alertsRes
 
     try { departments.value = await EmpleadosService.listDepartments() } catch { /* optional */ }
-    try { users.value = (await TeamService.list()).data ?? [] } catch { /* optional: para elegir usuario al crear empleado */ }
   } catch { toast.error('Error al cargar datos') }
   finally { loading.value = false }
 }
@@ -395,28 +393,44 @@ onMounted(loadData)
 function openOrgChart() { toast.info('Organigrama — use /api/org-chart para renderizar') }
 
 const departmentOptions = () => departments.value.map((d) => ({ value: d.id, label: d.name }))
-/** Usuarios del hotel que todavía no tienen expediente (un usuario = un empleado). */
-const usersWithoutProfile = () => {
-  const taken = new Set(profiles.value.map((p) => p.userId))
-  return users.value.filter((u) => !taken.has(u.id)).map((u) => ({ value: u.id, label: u.email ? `${u.name} · ${u.email}` : u.name }))
-}
 
+/**
+ * Registra un empleado de cero: crea la CUENTA (usuario) y su EXPEDIENTE en un paso.
+ * Si el expediente falla tras crear la cuenta, se borra la cuenta para no dejarla huérfana
+ * (así el admin puede reintentar sin chocar con "email ya existe").
+ */
 function openNewEmployee() {
-  const opts = usersWithoutProfile()
-  if (opts.length === 0) {
-    toast.warning('No hay usuarios sin expediente. Creá primero la cuenta en Equipo.')
-    return
-  }
   formModal.value = {
-    title: 'Nuevo Empleado', submitLabel: 'Crear Empleado',
+    title: 'Nuevo Empleado', submitLabel: 'Registrar Empleado',
     fields: [
-      { key: 'userId', label: 'Usuario', type: 'select', required: true, options: opts },
+      { key: 'name', label: 'Nombre', required: true, placeholder: 'María Pérez' },
+      { key: 'email', label: 'Email', required: true, placeholder: 'maria@hotel.com' },
+      { key: 'password', label: 'Contraseña temporal', required: true, placeholder: 'Mínimo 6 caracteres' },
+      { key: 'role', label: 'Rol', type: 'select', required: true, default: 'receptionist', options: [
+        { value: 'receptionist', label: 'Recepcionista' }, { value: 'housekeeper', label: 'Limpieza' },
+        { value: 'maintenance', label: 'Mantenimiento' }, { value: 'supervisor', label: 'Supervisor' },
+      ] },
       { key: 'position', label: 'Puesto', placeholder: 'Recepcionista, Camarera…' },
       { key: 'departmentId', label: 'Departamento', type: 'select', options: departmentOptions() },
       { key: 'salary', label: 'Salario', type: 'number', min: 0 },
       { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: new Date().toISOString().slice(0, 10) },
     ],
-    onSubmit: (v) => EmpleadosService.createProfile(v),
+    onSubmit: async (v) => {
+      const newUser = await TeamService.create({
+        name: String(v.name).trim(), email: String(v.email).trim(),
+        password: String(v.password), role: String(v.role), hotelId: hotelId.value ?? '',
+      })
+      try {
+        await EmpleadosService.createProfile({
+          userId: newUser.id, position: String(v.position || ''),
+          departmentId: (v.departmentId as string) || undefined,
+          salary: Number(v.salary) || 0, hireDate: String(v.hireDate || ''),
+        })
+      } catch (e) {
+        await TeamService.remove(newUser.id).catch(() => {})   // rollback de la cuenta huérfana
+        throw e
+      }
+    },
   }
 }
 
