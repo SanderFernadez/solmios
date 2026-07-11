@@ -490,6 +490,15 @@ const formModal = ref<{ title: string; submitLabel: string; fields: FormField[];
 const savingForm = ref(false)
 
 const employeeOptions = () => profiles.value.map((p) => ({ value: p.id, label: p.userName || p.position || p.id }))
+/** Monedas para elegir en un contrato. DOP primero (salario local). */
+const CURRENCIES = [
+  { value: 'DOP', label: 'DOP — Peso Dominicano' },
+  { value: 'USD', label: 'USD — Dólar' },
+  { value: 'EUR', label: 'EUR — Euro' },
+  { value: 'CAD', label: 'CAD — Dólar Canadiense' },
+  { value: 'GBP', label: 'GBP — Libra' },
+  { value: 'MXN', label: 'MXN — Peso Mexicano' },
+]
 
 function openNewContract() {
   formModal.value = {
@@ -503,7 +512,7 @@ function openNewContract() {
       { key: 'startDate', label: 'Fecha inicio', type: 'date', required: true },
       { key: 'endDate', label: 'Fecha fin (opcional)', type: 'date' },
       { key: 'salary', label: 'Salario', type: 'number', required: true, min: 0 },
-      { key: 'currency', label: 'Moneda', default: 'DOP' },
+      { key: 'currency', label: 'Moneda', type: 'select', default: 'DOP', options: CURRENCIES },
       { key: 'position', label: 'Puesto' },
     ],
     onSubmit: (v) => EmpleadosService.createContract(v),
