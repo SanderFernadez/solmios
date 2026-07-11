@@ -30,7 +30,7 @@ export const TeamService = {
   changeRole: (userId: string, role: string) =>
     http.put<TeamMember>(`/usuarios/${userId}`, { role }),
   /** Crea un nuevo miembro del equipo */
-  create: (data: { name: string; email: string; role: string; hotelId: string; password?: string }) =>
+  create: (data: { name: string; email: string; role: string; hotelId: string; password?: string; phone?: string }) =>
     http.post<TeamMember>('/usuarios', data),
   /** Activa/desactiva un miembro (opcional — según backend) */
   update: (userId: string, patch: Partial<Pick<TeamMember, 'name' | 'email' | 'role'>>) =>

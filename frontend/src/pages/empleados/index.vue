@@ -405,6 +405,7 @@ function openNewEmployee() {
     fields: [
       { key: 'name', label: 'Nombre', required: true, placeholder: 'María Pérez' },
       { key: 'email', label: 'Email', required: true, placeholder: 'maria@hotel.com' },
+      { key: 'phone', label: 'Teléfono', placeholder: '809-555-0000' },
       { key: 'password', label: 'Contraseña temporal', required: true, placeholder: 'Mínimo 6 caracteres' },
       { key: 'role', label: 'Rol', type: 'select', required: true, default: 'receptionist', options: [
         { value: 'receptionist', label: 'Recepcionista' }, { value: 'housekeeper', label: 'Limpieza' },
@@ -418,6 +419,7 @@ function openNewEmployee() {
     onSubmit: async (v) => {
       const newUser = await TeamService.create({
         name: String(v.name).trim(), email: String(v.email).trim(),
+        phone: String(v.phone || '').trim() || undefined,
         password: String(v.password), role: String(v.role), hotelId: hotelId.value ?? '',
       })
       try {
