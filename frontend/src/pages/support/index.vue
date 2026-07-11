@@ -75,7 +75,7 @@
     </div>
 
     <!-- Modal: Ver Ticket -->
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showViewModal = false">
+    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <div>
@@ -131,7 +131,7 @@
     </div>
 
     <!-- Modal: Responder -->
-    <div v-if="showReplyModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showReplyModal = false">
+    <div v-if="showReplyModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Responder Ticket #{{ selectedTicket.id }}</h3>
@@ -151,7 +151,7 @@
     </div>
 
     <!-- Modal: Nuevo Ticket -->
-    <div v-if="showNewTicketModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showNewTicketModal = false">
+    <div v-if="showNewTicketModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Nuevo Ticket de Soporte</h3>

@@ -184,7 +184,7 @@
 
     <!-- Block dialog -->
     <Teleport to="body">
-      <div v-if="blockDlg.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="blockDlg.show = false">
+      <div v-if="blockDlg.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-md p-6">
           <h3 class="text-lg font-black text-navy mb-4">🚫 Bloquear</h3>
           <div class="space-y-4">
@@ -206,7 +206,7 @@
 
     <!-- Unblock confirm -->
     <Teleport to="body">
-      <div v-if="unblock.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="unblock.show = false">
+      <div v-if="unblock.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
           <div class="text-3xl mb-3">🚫</div>
           <h3 class="text-lg font-black text-navy mb-2">¿Desbloquear?</h3>
@@ -370,7 +370,7 @@
 
     <!-- Quote / Cotización Modal -->
     <Teleport to="body">
-      <div v-if="quote.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="quote.show = false">
+      <div v-if="quote.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-4 no-print">
             <h3 class="text-lg font-black text-navy">📄 Cotización</h3>

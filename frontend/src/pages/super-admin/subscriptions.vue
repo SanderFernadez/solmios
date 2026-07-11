@@ -67,7 +67,7 @@
     </div>
 
     <!-- Modal: Editar Plan -->
-    <div v-if="showEditPlanModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showEditPlanModal = false">
+    <div v-if="showEditPlanModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">{{ editingPlan.id ? 'Editar Plan' : 'Nuevo Plan' }}</h3>

@@ -130,7 +130,7 @@
     </div>
 
     <!-- Create API Key Modal -->
-    <div v-if="showCreateKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showCreateKey = false">
+    <div v-if="showCreateKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl w-full max-w-sm p-6">
         <h3 class="text-lg font-black text-navy mb-4">Nueva API Key</h3>
         <div class="space-y-3">
@@ -166,7 +166,7 @@
     </div>
 
     <!-- Reveal new API Key (one-time secret — persistente, no toast) -->
-    <div v-if="revealKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="revealKey = null">
+    <div v-if="revealKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl w-full max-w-md p-6">
         <div class="flex items-center gap-2 mb-3">
           <span class="text-2xl">🔑</span>

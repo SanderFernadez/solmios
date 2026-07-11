@@ -559,7 +559,7 @@
 
     <!-- Confirm Dialog -->
     <Teleport to="body">
-      <div v-if="cfg.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="cfg.show=false">
+      <div v-if="cfg.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
           <div class="text-3xl mb-3">{{ cfg.icon }}</div>
           <h3 class="text-lg font-black text-navy mb-2">{{ cfg.title }}</h3>

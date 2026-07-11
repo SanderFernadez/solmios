@@ -120,7 +120,7 @@
 
     <!-- Respond Modal -->
     <Teleport to="body">
-      <div v-if="respondModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="respondModal.show=false">
+      <div v-if="respondModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
           <div class="flex items-center justify-between mb-4">

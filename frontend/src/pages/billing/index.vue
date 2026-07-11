@@ -395,8 +395,8 @@
 
     <!-- New Payment Modal -->
     <Teleport to="body">
-      <div v-if="showPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closePaymentModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closePaymentModal"></div>
+      <div v-if="showPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
           <div class="p-5 border-b border-border">
@@ -458,8 +458,8 @@
 
     <!-- Add Charge Modal -->
     <Teleport to="body">
-      <div v-if="showChargeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeChargeModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeChargeModal"></div>
+      <div v-if="showChargeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
           <div class="p-5 border-b border-border">
@@ -509,8 +509,8 @@
 
     <!-- New Invoice Modal -->
     <Teleport to="body">
-      <div v-if="showNewInvoiceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeNewInvoiceModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeNewInvoiceModal"></div>
+      <div v-if="showNewInvoiceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
           <div class="sticky top-0 bg-white z-10 p-5 border-b border-border rounded-t-2xl">
@@ -624,8 +624,8 @@
 
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
-      <div v-if="showDeleteModal && deleteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeDeleteModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeDeleteModal"></div>
+      <div v-if="showDeleteModal && deleteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
           <div class="text-center mb-4">
             <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-coral/10 flex items-center justify-center">
@@ -647,8 +647,8 @@
 
     <!-- Close Folio + Invoice Modal -->
     <Teleport to="body">
-      <div v-if="showCloseFolioModal && closeFolioTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCloseFolioModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeCloseFolioModal"></div>
+      <div v-if="showCloseFolioModal && closeFolioTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
           <div class="text-center mb-4">
             <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-cyan/10 flex items-center justify-center">
@@ -673,8 +673,8 @@
 
     <!-- Credit Note Modal -->
     <Teleport to="body">
-      <div v-if="showCreditNoteModal && creditNoteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCreditNoteModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeCreditNoteModal"></div>
+      <div v-if="showCreditNoteModal && creditNoteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
           <div class="p-5 border-b border-border">
             <div class="flex items-center justify-between">

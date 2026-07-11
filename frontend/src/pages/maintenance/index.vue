@@ -184,7 +184,7 @@
     </div>
 
     <!-- Modal: Ver Orden -->
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showViewModal = false">
+    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-md card-shadow max-h-[85vh] flex flex-col">
         <!-- Header compacto -->
         <div class="flex items-center justify-between px-5 py-3 border-b border-border">
@@ -264,7 +264,7 @@
     </div>
 
     <!-- Modal: Nueva Orden -->
-    <div v-if="showNewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showNewModal = false">
+    <div v-if="showNewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">{{ editingOrder ? 'Editar Orden' : 'Nueva Orden de Mantenimiento' }}</h3>
@@ -378,7 +378,7 @@
     </div>
 
     <!-- Modal: Cambiar Estado -->
-    <div v-if="showStatusModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showStatusModal = false">
+    <div v-if="showStatusModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-md card-shadow">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Cambiar Estado</h3>

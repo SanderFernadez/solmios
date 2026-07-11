@@ -334,7 +334,7 @@ function editar() { if (d.value) emit('edit', d.value) }
 <template>
   <Teleport to="body">
     <div v-if="!loading && d" class="fixed inset-0 z-50 flex items-center justify-center p-4" :class="'print-' + printMode">
-      <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm rm-no-print" @click="emit('close')"></div>
+      <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm rm-no-print"></div>
 
       <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
 
@@ -668,7 +668,7 @@ function editar() { if (d.value) emit('edit', d.value) }
         </div>
 
         <!-- Confirm Anular (inline) -->
-        <div v-if="showCancel" class="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-10 rm-no-print" @click.self="showCancel = false">
+        <div v-if="showCancel" class="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-10 rm-no-print">
           <div class="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
             <div class="text-3xl mb-3">⚠️</div>
             <h3 class="text-lg font-black text-navy mb-2">¿Anular reserva?</h3>

@@ -260,7 +260,7 @@
     </div>
 
     <!-- Modal: Ver Tarea -->
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showViewModal = false">
+    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-white">
           <h3 class="text-lg font-black text-navy">Detalle de Tarea</h3>
@@ -348,7 +348,7 @@
     </div>
 
     <!-- Modal: Nueva / Editar Tarea -->
-    <div v-if="showNewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showNewModal = false">
+    <div v-if="showNewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">{{ editingId ? 'Editar Tarea' : 'Nueva Tarea' }}</h3>
@@ -402,7 +402,7 @@
     </div>
 
     <!-- Modal: Asignar Tareas Rápidas -->
-    <div v-if="showAssignModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showAssignModal = false">
+    <div v-if="showAssignModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Asignar Tareas Rápidas</h3>

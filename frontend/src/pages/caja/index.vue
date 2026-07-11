@@ -302,7 +302,7 @@ const fmtDiff = (d: number) => (d >= 0 ? `+$${d.toLocaleString()}` : `-$${Math.a
 
     <!-- Modal registrar movimiento -->
     <Teleport to="body">
-      <div v-if="showMov" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showMov = false">
+      <div v-if="showMov" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
           <div class="flex items-center justify-between mb-4">
@@ -351,7 +351,7 @@ const fmtDiff = (d: number) => (d >= 0 ? `+$${d.toLocaleString()}` : `-$${Math.a
 
     <!-- Modal cerrar turno (arqueo) -->
     <Teleport to="body">
-      <div v-if="showClose && reconcile" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showClose = false">
+      <div v-if="showClose && reconcile" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
           <div class="flex items-center justify-between mb-4">

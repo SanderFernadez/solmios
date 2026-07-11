@@ -192,7 +192,7 @@
     </div>
 
     <!-- Modal: Ver Hotel -->
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showViewModal = false">
+    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-2xl card-shadow max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Detalle del Hotel</h3>
@@ -229,7 +229,7 @@
     </div>
 
     <!-- Modal: Nuevo/Editar Hotel -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showEditModal = false">
+    <div v-if="showEditModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">{{ editingHotel.id ? 'Editar Hotel' : 'Registrar Nuevo Hotel' }}</h3>
@@ -266,7 +266,7 @@
     </div>
 
     <!-- Modal: Suspender -->
-    <div v-if="showSuspendModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showSuspendModal = false">
+    <div v-if="showSuspendModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-md card-shadow">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">{{ selectedHotel.status === 'Suspendido' ? 'Reactivar' : 'Suspender' }} Hotel</h3>

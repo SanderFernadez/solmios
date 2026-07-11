@@ -106,7 +106,7 @@
     </div>
 
     <!-- Códigos de cerradura (modal persistente — reemplaza alert) -->
-    <div v-if="codesModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="codesModal = null">
+    <div v-if="codesModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl w-full max-w-md p-6">
         <h3 class="text-lg font-black text-navy mb-3">Códigos de {{ codesModal.lockName }}</h3>
         <div class="space-y-2 max-h-72 overflow-y-auto">

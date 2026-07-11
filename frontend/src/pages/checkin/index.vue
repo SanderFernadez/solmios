@@ -243,7 +243,7 @@
 
     <!-- Room Detail Popover -->
     <Teleport to="body">
-      <div v-if="showRoomDetail && selectedRoom" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeRoomDetail">
+      <div v-if="showRoomDetail && selectedRoom" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/30 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
           <!-- Header -->
@@ -355,7 +355,7 @@
 
     <!-- Checkin Modal -->
     <Teleport to="body">
-      <div v-if="showCheckinModal && checkinGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCheckinModal">
+      <div v-if="showCheckinModal && checkinGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
           <div class="p-5 border-b border-border bg-teal/5">
@@ -406,7 +406,7 @@
 
     <!-- Checkout Modal -->
     <Teleport to="body">
-      <div v-if="showCheckoutModal && checkoutGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCheckoutModal">
+      <div v-if="showCheckoutModal && checkoutGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
           <div class="p-5 border-b border-border bg-coral/5">

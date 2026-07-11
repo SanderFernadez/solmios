@@ -137,8 +137,8 @@
 
     <!-- View Guest Profile Modal -->
     <Teleport to="body">
-      <div v-if="showViewModal && viewGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeViewModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeViewModal"></div>
+      <div v-if="showViewModal && viewGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <!-- Header -->
@@ -376,8 +376,8 @@
 
     <!-- New/Edit Guest Modal -->
     <Teleport to="body">
-      <div v-if="showFormModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeFormModal">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeFormModal"></div>
+      <div v-if="showFormModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
           <div class="p-6 border-b border-border sticky top-0 bg-white z-10">

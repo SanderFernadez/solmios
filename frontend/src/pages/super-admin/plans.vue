@@ -40,7 +40,7 @@
     <!-- Modal -->
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="showModal=false"></div>
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto">
           <div class="p-6 border-b border-border flex items-center justify-between">
             <h3 class="text-lg font-black text-navy">{{ editing ? 'Editar' : 'Nuevo' }} Plan</h3>

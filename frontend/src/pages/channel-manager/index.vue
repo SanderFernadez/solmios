@@ -25,7 +25,7 @@
     </div>
 
     <!-- Connection Dialog -->
-    <div v-if="connectDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 backdrop-blur-sm" @click.self="cancelConnect">
+    <div v-if="connectDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 backdrop-blur-sm">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 mx-4">
         <h2 class="text-lg font-black text-navy mb-4">Conectar {{ connectDialog.channelName }}</h2>
 
@@ -53,7 +53,7 @@
     </div>
 
     <!-- Config Dialog -->
-    <div v-if="configDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 backdrop-blur-sm" @click.self="closeConfig">
+    <div v-if="configDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 backdrop-blur-sm">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 mx-4">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-black text-navy">{{ configDialog.name }}</h2>

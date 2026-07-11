@@ -220,7 +220,7 @@
     </div>
 
     <!-- Huéspedes del segmento -->
-    <div v-if="openSegment" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 p-4" @click.self="openSegment = null">
+    <div v-if="openSegment" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 p-4">
       <div class="card w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
         <div class="p-4 border-b border-border flex justify-between items-center shrink-0">
           <div>

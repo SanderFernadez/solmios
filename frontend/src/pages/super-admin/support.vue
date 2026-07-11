@@ -136,7 +136,7 @@
     </div>
 
     <!-- Modal: Ver Imagen -->
-    <div v-if="showImageModal" class="fixed inset-0 bg-navy/80 flex items-center justify-center z-50" @click.self="showImageModal = false">
+    <div v-if="showImageModal" class="fixed inset-0 bg-navy/80 flex items-center justify-center z-50">
       <div class="relative max-w-4xl max-h-[90vh]">
         <button @click="showImageModal = false" class="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center text-text-muted hover:text-navy shadow-lg cursor-pointer">✕</button>
         <img :src="imageModalSrc" class="max-h-[85vh] rounded-xl">

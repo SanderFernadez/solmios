@@ -111,7 +111,7 @@
     </div>
 
     <!-- Create Modal -->
-    <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showCreateModal = false">
+    <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl w-full max-w-lg p-6">
         <h3 class="text-lg font-black text-navy mb-4">Nuevo Anuncio</h3>
         <div class="space-y-4">

@@ -137,7 +137,7 @@
 
     <!-- ====================== DETAIL MODAL ====================== -->
     <Teleport to="body">
-      <div v-if="detailModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="detailModal.show=false">
+      <div v-if="detailModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
           <div class="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white z-10">
@@ -240,7 +240,7 @@
 
     <!-- ====================== BATCH MODAL ====================== -->
     <Teleport to="body">
-      <div v-if="batchModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="batchModal.show=false">
+      <div v-if="batchModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
           <div class="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white z-10">
@@ -332,7 +332,7 @@
 
     <!-- ====================== EDIT MODAL ====================== -->
     <Teleport to="body">
-      <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="modal.show=false">
+      <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <div class="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white z-10">

@@ -156,7 +156,7 @@
     </div>
 
     <!-- Create Role Modal -->
-    <div v-if="showCreateRole" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showCreateRole = false">
+    <div v-if="showCreateRole" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl w-full max-w-sm p-6">
         <h3 class="text-lg font-black text-navy mb-4">Crear Nuevo Rol</h3>
         <div class="space-y-3">

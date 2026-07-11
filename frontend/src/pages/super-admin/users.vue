@@ -117,7 +117,7 @@
     </div>
 
     <!-- Modal: Ver Usuario -->
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showViewModal = false">
+    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Detalle del Cliente</h3>
@@ -158,7 +158,7 @@
     </div>
 
     <!-- Modal: Invitar/Editar -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showEditModal = false">
+    <div v-if="showEditModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">{{ editingUser.id ? 'Editar Cliente' : 'Invitar Nuevo Cliente' }}</h3>
@@ -199,7 +199,7 @@
     </div>
 
     <!-- Modal: Activity Log -->
-    <div v-if="showActivityModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showActivityModal = false">
+    <div v-if="showActivityModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-md card-shadow max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <div>

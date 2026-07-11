@@ -133,9 +133,9 @@
 
     <!-- Room Detail Modal -->
     <Teleport to="body">
-      <div v-if="selectedRoom" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeRoomModal">
+      <div v-if="selectedRoom" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="closeRoomModal"></div>
+        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
         <!-- Modal -->
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">

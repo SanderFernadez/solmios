@@ -91,7 +91,7 @@
     </div>
 
     <!-- Booking Modal -->
-    <div v-if="showBookingModal" class="fixed inset-0 bg-navy/80 flex items-center justify-center z-50 p-4" @click.self="showBookingModal = false">
+    <div v-if="showBookingModal" class="fixed inset-0 bg-navy/80 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <div>

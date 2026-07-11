@@ -143,7 +143,7 @@
 
     <!-- Modal: Ver Grupo -->
     <Teleport to="body">
-      <div v-if="showViewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showViewModal = false">
+      <div v-if="showViewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl card-shadow max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-6 border-b border-border">
@@ -255,7 +255,7 @@
 
     <!-- Modal: Nuevo Grupo -->
     <Teleport to="body">
-      <div v-if="showNewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showNewModal = false">
+      <div v-if="showNewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl card-shadow max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-6 border-b border-border">

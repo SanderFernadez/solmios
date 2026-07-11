@@ -110,7 +110,7 @@
     </div>
 
     <!-- Modal: Detalle Factura -->
-    <div v-if="showDetailModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showDetailModal = false">
+    <div v-if="showDetailModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Factura #{{ selectedInvoice.id }}</h3>
@@ -153,7 +153,7 @@
     </div>
 
     <!-- Modal: Recordatorio -->
-    <div v-if="showReminderModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showReminderModal = false">
+    <div v-if="showReminderModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-md card-shadow">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Enviar Recordatorio</h3>
@@ -181,7 +181,7 @@
     </div>
 
     <!-- Modal: Confirmar Pago -->
-    <div v-if="showConfirmModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showConfirmModal = false">
+    <div v-if="showConfirmModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-md card-shadow">
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-black text-navy">Confirmar Pago</h3>
