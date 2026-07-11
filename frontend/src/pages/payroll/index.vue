@@ -207,6 +207,17 @@
       @close="detailRun = null"
     />
 
+    <ConfirmModal
+      v-if="confirmDialog"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-label="confirmDialog.confirmLabel"
+      :danger="confirmDialog.danger"
+      :loading="confirmLoading"
+      @confirm="runConfirm"
+      @close="confirmDialog = null"
+    />
+
     <CalculatePayrollModal
       v-if="calcRun"
       :run="calcRun"
@@ -232,6 +243,7 @@ import { ref, computed, onMounted } from 'vue'
 import { PayrollService, type PayrollRun, type PayrollConfig, type PayrollConcept } from '@/services/Payroll.service'
 import CalculatePayrollModal from '@/components/features/CalculatePayrollModal.vue'
 import PayrollDetailModal from '@/components/features/PayrollDetailModal.vue'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
@@ -330,22 +342,51 @@ function onCalculated(result: { employeeCount: number; totalNet: number }) {
   loadData()
 }
 
-async function approveRun(run: PayrollRun) {
-  if (!confirm(`¿Aprobar liquidación ${run.period} por $${run.totalNet.toLocaleString()}?`)) return
-  try { await PayrollService.approve(run.id); toast.success('Nómina aprobada — recibos generados'); loadData() }
-  catch { toast.error('Error al aprobar') }
+// Confirmaciones con modal propio (no el alert del navegador).
+const confirmDialog = ref<{ title: string; message: string; confirmLabel: string; danger?: boolean; onConfirm: () => Promise<void> } | null>(null)
+const confirmLoading = ref(false)
+
+async function runConfirm() {
+  if (!confirmDialog.value) return
+  confirmLoading.value = true
+  try { await confirmDialog.value.onConfirm() }
+  finally { confirmLoading.value = false; confirmDialog.value = null }
 }
 
-async function markAsPaid(run: PayrollRun) {
-  if (!confirm(`¿Marcar como pagada la liquidación ${run.period}?`)) return
-  try { await PayrollService.markAsPaid(run.id); toast.success('Pago registrado'); loadData() }
-  catch { toast.error('Error') }
+function approveRun(run: PayrollRun) {
+  confirmDialog.value = {
+    title: 'Aprobar liquidación',
+    message: `¿Aprobar la liquidación del período ${run.period} por $${run.totalNet.toLocaleString()} neto? Se generan los recibos.`,
+    confirmLabel: 'Aprobar',
+    onConfirm: async () => {
+      try { await PayrollService.approve(run.id); toast.success('Nómina aprobada — recibos generados'); loadData() }
+      catch { toast.error('Error al aprobar') }
+    },
+  }
 }
 
-async function cancelRun(run: PayrollRun) {
-  if (!confirm(`¿Cancelar liquidación ${run.period}?`)) return
-  try { await PayrollService.cancel(run.id); toast.success('Liquidación cancelada'); loadData() }
-  catch { toast.error('Error al cancelar') }
+function markAsPaid(run: PayrollRun) {
+  confirmDialog.value = {
+    title: 'Marcar como pagada',
+    message: `¿Marcar como pagada la liquidación del período ${run.period}? Se asienta el egreso en gastos.`,
+    confirmLabel: 'Marcar pagada',
+    onConfirm: async () => {
+      try { await PayrollService.markAsPaid(run.id); toast.success('Pago registrado'); loadData() }
+      catch { toast.error('Error') }
+    },
+  }
+}
+
+function cancelRun(run: PayrollRun) {
+  confirmDialog.value = {
+    title: 'Cancelar liquidación',
+    message: `¿Cancelar la liquidación del período ${run.period}? Esta acción no se puede deshacer.`,
+    confirmLabel: 'Sí, cancelar', danger: true,
+    onConfirm: async () => {
+      try { await PayrollService.cancel(run.id); toast.success('Liquidación cancelada'); loadData() }
+      catch { toast.error('Error al cancelar') }
+    },
+  }
 }
 
 function viewDetails(run: PayrollRun) { detailRun.value = run }
