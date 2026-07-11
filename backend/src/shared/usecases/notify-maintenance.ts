@@ -13,16 +13,29 @@ interface MaintenanceOrder {
   status?: string
   assignedTo?: string
   roomNumber?: string
+  priority?: string
 }
 
 const sysUserFor = (hotelId: string) => ({ id: 'system', role: 'super_admin', hotelId })
+
+/** Prioridad legible. `medium` es lo esperado y no avisa. */
+const PRIORITY_LABELS: Record<string, string> = {
+  urgent: 'Urgente',
+  high: 'Prioridad alta',
+  low: 'Prioridad baja',
+}
+
+function priorityTag(priority?: string): string {
+  const label = priority ? PRIORITY_LABELS[priority] : ''
+  return label ? ` · ${label}` : ''
+}
 
 /** Nueva orden creada: aviso general al hotel. */
 export async function notifyMaintenanceCreated(notificaciones: NotificacionesPort, order: MaintenanceOrder): Promise<void> {
   await notificaciones.create({
     hotelId: order.hotelId,
     title: 'Nueva orden de mantenimiento',
-    message: order.title ?? '',
+    message: `${order.title ?? ''}${priorityTag(order.priority)}`.trim(),
     type: 'maintenance',
     read: 0,
     date: new Date().toISOString(),
@@ -34,7 +47,7 @@ export async function notifyMaintenanceUpdated(notificaciones: NotificacionesPor
   await notificaciones.create({
     hotelId: order.hotelId,
     title: `Orden actualizada: ${order.status ?? ''}`.trim(),
-    message: order.title ?? '',
+    message: `${order.title ?? ''}${priorityTag(order.priority)}`.trim(),
     type: 'maintenance',
     read: 0,
     date: new Date().toISOString(),
@@ -49,7 +62,7 @@ export async function notifyMaintenanceAssigned(notificaciones: NotificacionesPo
     hotelId: order.hotelId,
     userId: order.assignedTo,
     title: 'Nuevo ticket asignado',
-    message: `${where} · ${order.title ?? ''}`.trim(),
+    message: `${where} · ${order.title ?? ''}${priorityTag(order.priority)}`.trim(),
     type: 'maintenance',
     read: 0,
     date: new Date().toISOString(),

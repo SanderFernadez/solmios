@@ -17,6 +17,19 @@ export interface AssignedTask {
   staffId?: string
   roomId?: string
   type?: string
+  priority?: string
+}
+
+/** Prioridad legible. `medium` es lo esperado y no avisa: ensuciaría el mensaje. */
+const PRIORITY_LABELS: Record<string, string> = {
+  urgent: 'Urgente',
+  high: 'Prioridad alta',
+  low: 'Prioridad baja',
+}
+
+function priorityTag(priority?: string): string {
+  const label = priority ? PRIORITY_LABELS[priority] : ''
+  return label ? ` · ${label}` : ''
 }
 
 export interface NotificacionesPort {
@@ -55,7 +68,7 @@ export async function notifyTaskAssigned(
       // El destinatario. Sin esto sería un aviso para todo el hotel.
       userId: task.staffId,
       title: 'Nueva tarea asignada',
-      message: `${where} · ${what}`,
+      message: `${where} · ${what}${priorityTag(task.priority)}`,
       type: 'cleaning',
       read: 0,
       date: new Date().toISOString(),

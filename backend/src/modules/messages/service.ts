@@ -73,11 +73,17 @@ export class MessagesService {
     return staff.filter((u) => u.id !== currentUser.id)
   }
 
-  /** Índice id → contacto, para resolver el remitente de cada mensaje. */
-  private async staffById(hotelId: string): Promise<Map<string, ContactDTO>> {
+  /** Índice id → contacto de los remitentes que aparecen en [messages].
+   *
+   * Usa `resolveNames` (que trae a TODOS los usuarios, sin filtrar por hotel)
+   * en vez de `listStaff(hotelId)`: así un super_admin o alguien con `hotelId`
+   * distinto al del hilo igual muestra su nombre, igual que en la lista. Antes
+   * el hilo filtraba por hotel y esos nombres quedaban vacíos. */
+  private async sendersFor(messages: MessageDTO[]): Promise<Map<string, ContactDTO>> {
     if (!this.directory) return new Map()
-    const staff = await this.directory.listStaff(hotelId)
-    return new Map(staff.map((u) => [u.id, u]))
+    const ids = [...new Set(messages.map((m) => m.fromUserId).filter(Boolean))]
+    if (ids.length === 0) return new Map()
+    return this.directory.resolveNames(ids)
   }
 
   /** Agrega nombre/foto/cargo del remitente. Campos de lectura: jamás van a `create`. */
@@ -105,21 +111,22 @@ export class MessagesService {
    * hotelId sale del token, nunca del cliente.
    */
   async getMessagesWith(peerId: string, currentUser: MessageUser): Promise<MessageWithSender[]> {
-    const staff = await this.staffById(currentUser.hotelId)
-
+    let messages: MessageDTO[]
     if (peerId === TEAM_ALIAS) {
       const team = await this.repo.findMany({
         hotelId: currentUser.hotelId,
         toUserId: teamIdFor(currentUser.hotelId),
       })
-      return this.withSenders([...team].sort(byCreatedAtAsc), staff)
+      messages = [...team].sort(byCreatedAtAsc)
+    } else {
+      const [sent, received] = await Promise.all([
+        this.repo.findMany({ hotelId: currentUser.hotelId, fromUserId: currentUser.id, toUserId: peerId }),
+        this.repo.findMany({ hotelId: currentUser.hotelId, fromUserId: peerId, toUserId: currentUser.id }),
+      ])
+      messages = [...sent, ...received].sort(byCreatedAtAsc)
     }
-
-    const [sent, received] = await Promise.all([
-      this.repo.findMany({ hotelId: currentUser.hotelId, fromUserId: currentUser.id, toUserId: peerId }),
-      this.repo.findMany({ hotelId: currentUser.hotelId, fromUserId: peerId, toUserId: currentUser.id }),
-    ])
-    return this.withSenders([...sent, ...received].sort(byCreatedAtAsc), staff)
+    const staff = await this.sendersFor(messages)
+    return this.withSenders(messages, staff)
   }
 
   async sendMessage(toUserId: string, message: string, photoUrl: string | null, currentUser: MessageUser): Promise<MessageDTO> {
