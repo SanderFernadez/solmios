@@ -152,13 +152,6 @@
   </div>
 </template>
 
-<!-- eslint-disable -->
-<!--
-  Nota: sessionHistory nunca se popula desde onMounted (solo `sessions` se carga vía OperationsService.dispositivos).
-  La tabla de Historial de Sesiones queda vacía en runtime. Comportamiento preexistente, no introducido por este restyle.
--->
-
-
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { OperationsService } from '@/services/Operations.service'

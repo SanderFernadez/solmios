@@ -6,25 +6,25 @@
         <h1 class="text-xl font-black text-navy">Soporte</h1>
         <p class="text-sm text-text-muted">Centro de ayuda y tickets de soporte</p>
       </div>
-      <button @click="showNewTicketModal = true" class="flex items-center gap-2 px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-all cursor-pointer">
-        <span>＋</span> Nuevo Ticket
+      <button @click="showNewTicketModal = true" class="flex items-center gap-2 px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold hover:shadow-lg transition-all cursor-pointer">
+        + Nuevo Ticket
       </button>
     </div>
 
     <!-- Métricas -->
     <div class="grid grid-cols-4 gap-4 mb-6">
-      <div v-for="stat in metrics" :key="stat.label" class="bg-white rounded-xl p-4 border border-border card-shadow text-center">
+      <div v-for="stat in metrics" :key="stat.label" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
         <div class="text-2xl font-black" :class="stat.color">{{ stat.value }}</div>
         <div class="text-[10px] text-text-muted font-bold uppercase">{{ stat.label }}</div>
       </div>
     </div>
 
     <!-- Quick Links -->
-    <div class="bg-white rounded-2xl border border-border card-shadow p-6 mb-6">
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 mb-6">
       <div class="text-[10px] font-bold text-text-muted uppercase mb-4">Recursos Rápidos</div>
       <div class="grid grid-cols-4 gap-3">
-        <div v-for="link in quickLinks" :key="link.title" class="p-4 bg-surface rounded-xl hover:bg-cyan/10 hover:border-cyan/30 border border-transparent transition-all cursor-pointer">
-          <div class="text-lg mb-2">{{ link.icon }}</div>
+        <div v-for="link in quickLinks" :key="link.title" class="p-4 rounded-2xl hover:bg-cyan/10 hover:border-cyan/30 border border-border transition-all cursor-pointer">
+          <span class="w-5 h-5 mb-2 block text-navy/50" v-html="link.icon"></span>
           <div class="text-sm font-bold text-navy">{{ link.title }}</div>
           <div class="text-[10px] text-text-muted mt-1">{{ link.desc }}</div>
         </div>
@@ -34,19 +34,19 @@
     <!-- Filtros -->
     <div class="flex items-center justify-between mb-4">
       <div class="flex gap-2">
-        <button v-for="f in statusFilters" :key="f.value" @click="activeFilter = f.value" class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer" :class="activeFilter === f.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">{{ f.label }}</button>
+        <button v-for="f in statusFilters" :key="f.value" @click="activeFilter = f.value" class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer" :class="activeFilter === f.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">{{ f.label }}</button>
       </div>
       <div class="relative">
-        <input v-model="searchQuery" type="text" placeholder="Buscar tickets..." class="w-64 h-9 pl-9 pr-4 rounded-lg border border-border text-sm bg-white focus:outline-none focus:border-cyan">
+        <input v-model="searchQuery" type="text" placeholder="Buscar tickets..." class="w-64 h-9 pl-9 pr-4 rounded-full border border-border text-sm bg-white focus:outline-none focus:border-cyan">
         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
       </div>
     </div>
 
     <!-- Mis Tickets -->
-    <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <div class="p-4 border-b border-border"><div class="text-sm font-extrabold text-navy">Mis Tickets ({{ filteredTickets.length }})</div></div>
       <div v-if="filteredTickets.length === 0" class="p-12 text-center">
-        <div class="text-4xl mb-3">🎫</div>
+        <span class="w-10 h-10 mx-auto mb-3 block text-navy/30" v-html="ICON_TICKET"></span>
         <div class="text-sm font-bold text-text-muted">No hay tickets</div>
         <div class="text-[10px] text-text-muted">Crea un ticket si necesitas ayuda</div>
       </div>
@@ -63,7 +63,7 @@
               <div class="text-sm font-bold text-navy mb-1">{{ ticket.subject }}</div>
               <div class="text-xs text-text-muted line-clamp-2">{{ ticket.description }}</div>
             </div>
-            <div class="text-right ml-4 flex-shrink-0">
+            <div class="text-right ml-4 shrink-0">
               <div class="text-[10px] text-text-muted">{{ ticket.createdAt }}</div>
               <div class="text-[10px] text-text-muted mt-1">{{ ticket.replies.length }} respuesta{{ ticket.replies.length !== 1 ? 's' : '' }}</div>
             </div>
@@ -73,115 +73,146 @@
     </div>
 
     <!-- Modal: Ver Ticket -->
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showViewModal = false">
-      <div class="bg-white rounded-2xl w-full max-w-2xl card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <div>
-            <div class="flex items-center gap-3">
-              <h3 class="text-lg font-black text-navy">Ticket #{{ selectedTicket.id }}</h3>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="priorityClass(selectedTicket.priority)">{{ selectedTicket.priority }}</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="statusClass(selectedTicket.status)">{{ selectedTicket.status }}</span>
-            </div>
-            <div class="text-sm text-text-muted mt-1">{{ selectedTicket.createdAt }}</div>
-          </div>
-          <button @click="showViewModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
-          <div class="bg-surface rounded-xl p-4 mb-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Asunto</div>
-            <div class="text-sm font-bold">{{ selectedTicket.subject }}</div>
-          </div>
-          <div class="bg-surface rounded-xl p-4 mb-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Descripción</div>
-            <div class="text-sm text-text-secondary whitespace-pre-wrap">{{ selectedTicket.description }}</div>
-          </div>
-          <div v-if="selectedTicket.assignedTo" class="bg-surface rounded-xl p-4 mb-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Asignado a</div>
-            <div class="text-sm font-bold">{{ selectedTicket.assignedTo }}</div>
-          </div>
-          <div v-if="selectedTicket.replies && selectedTicket.replies.length">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-3">Conversación ({{ selectedTicket.replies.length }})</div>
-            <div class="space-y-3">
-              <div v-for="(reply, i) in selectedTicket.replies" :key="i" class="flex gap-3" :class="reply.author === 'Soporte Arckode' ? 'flex-row-reverse' : ''">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" :class="reply.author === 'Soporte Arckode' ? 'bg-red/20 text-red' : 'bg-cyan/20 text-cyan'">
-                  {{ reply.author === 'Soporte Arckode' ? 'SA' : reply.author[0] }}
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showViewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showViewModal = false">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]">
+            <div class="shrink-0 flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <div class="flex items-center gap-3">
+                  <h3 class="text-lg font-black text-navy">Ticket #{{ selectedTicket.id }}</h3>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="priorityClass(selectedTicket.priority)">{{ selectedTicket.priority }}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="statusClass(selectedTicket.status)">{{ selectedTicket.status }}</span>
                 </div>
-                <div class="max-w-[70%]">
-                  <div class="flex items-center gap-2 mb-1" :class="reply.author === 'Soporte Arckode' ? 'justify-end' : ''">
-                    <span class="text-[10px] font-bold text-navy">{{ reply.author }}</span>
-                    <span class="text-[9px] text-text-muted">{{ reply.date }}</span>
+                <div class="text-sm text-text-muted mt-1">{{ selectedTicket.createdAt }}</div>
+              </div>
+              <button @click="showViewModal = false" class="w-4 h-4 text-text-muted hover:text-navy transition-colors cursor-pointer" v-html="ICON_X"></button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-6">
+              <div class="py-4 border-b border-border">
+                <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Asunto</div>
+                <div class="text-sm font-bold">{{ selectedTicket.subject }}</div>
+              </div>
+              <div class="py-4 border-b border-border">
+                <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Descripción</div>
+                <div class="text-sm text-text-secondary whitespace-pre-wrap">{{ selectedTicket.description }}</div>
+              </div>
+              <div v-if="selectedTicket.assignedTo" class="py-4 border-b border-border">
+                <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Asignado a</div>
+                <div class="text-sm font-bold">{{ selectedTicket.assignedTo }}</div>
+              </div>
+              <div v-if="selectedTicket.replies && selectedTicket.replies.length" class="pt-4">
+                <div class="text-[10px] font-bold text-text-muted uppercase mb-3">Conversación ({{ selectedTicket.replies.length }})</div>
+                <div class="space-y-3">
+                  <div v-for="(reply, i) in selectedTicket.replies" :key="i" class="flex gap-3" :class="reply.author === 'Soporte Arckode' ? 'flex-row-reverse' : ''">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" :class="reply.author === 'Soporte Arckode' ? 'bg-red/20 text-red' : 'bg-cyan/20 text-cyan'">
+                      {{ reply.author === 'Soporte Arckode' ? 'SA' : reply.author[0] }}
+                    </div>
+                    <div class="max-w-[70%]">
+                      <div class="flex items-center gap-2 mb-1" :class="reply.author === 'Soporte Arckode' ? 'justify-end' : ''">
+                        <span class="text-[10px] font-bold text-navy">{{ reply.author }}</span>
+                        <span class="text-[9px] text-text-muted">{{ reply.date }}</span>
+                      </div>
+                      <div class="p-3 rounded-2xl text-sm" :class="reply.author === 'Soporte Arckode' ? 'bg-navy text-white' : 'bg-surface text-text-secondary'">{{ reply.message }}</div>
+                    </div>
                   </div>
-                  <div class="p-3 rounded-xl text-sm" :class="reply.author === 'Soporte Arckode' ? 'bg-navy text-white' : 'bg-surface text-text-secondary'">{{ reply.message }}</div>
                 </div>
               </div>
             </div>
+            <div class="shrink-0 flex items-center gap-4 p-6 border-t border-border">
+              <button v-if="selectedTicket.status !== 'Cerrado'" @click="closeTicket" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cerrar Ticket</button>
+              <div class="flex-1"></div>
+              <button @click="showViewModal = false" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cerrar</button>
+              <button v-if="selectedTicket.status !== 'Cerrado'" @click="showViewModal = false; openReplyTicket(selectedTicket)" class="px-4 py-2 bg-navy text-white rounded-full text-[11px] font-extrabold hover:shadow-lg transition-all cursor-pointer">Responder</button>
+            </div>
           </div>
         </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button v-if="selectedTicket.status !== 'Cerrado'" @click="closeTicket" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar Ticket</button>
-          <div class="flex-1"></div>
-          <button @click="showViewModal = false" class="px-6 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
-          <button v-if="selectedTicket.status !== 'Cerrado'" @click="showViewModal = false; openReplyTicket(selectedTicket)" class="px-6 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Responder</button>
-        </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
 
     <!-- Modal: Responder -->
-    <div v-if="showReplyModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showReplyModal = false">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">Responder Ticket #{{ selectedTicket.id }}</h3>
-          <button @click="showReplyModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showReplyModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showReplyModal = false">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[85vh]">
+            <div class="shrink-0 flex items-center justify-between p-6 border-b border-border">
+              <h3 class="text-lg font-black text-navy">Responder Ticket #{{ selectedTicket.id }}</h3>
+              <button @click="showReplyModal = false" class="w-4 h-4 text-text-muted hover:text-navy transition-colors cursor-pointer" v-html="ICON_X"></button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-6">
+              <div class="py-4 border-b border-border mb-4"><div class="text-sm font-bold text-navy">{{ selectedTicket.subject }}</div></div>
+              <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Tu Respuesta *</label><textarea v-model="replyMessage" rows="4" class="w-full px-4 py-2.5 rounded-2xl border border-border text-sm focus:outline-none focus:border-navy resize-none" placeholder="Escriba su respuesta..."></textarea></div>
+            </div>
+            <div class="shrink-0 flex items-center gap-4 justify-end p-6 border-t border-border">
+              <button @click="showReplyModal = false" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+              <button @click="sendReply" class="px-4 py-2 bg-navy text-white rounded-full text-[11px] font-extrabold hover:shadow-lg transition-all cursor-pointer">Enviar</button>
+            </div>
+          </div>
         </div>
-        <div class="p-6">
-          <div class="bg-surface rounded-xl p-3 mb-4"><div class="text-sm font-bold text-navy">{{ selectedTicket.subject }}</div></div>
-          <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Tu Respuesta *</label><textarea v-model="replyMessage" rows="4" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Escriba su respuesta..."></textarea></div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showReplyModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
-          <button @click="sendReply" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Enviar</button>
-        </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
 
     <!-- Modal: Nuevo Ticket -->
-    <div v-if="showNewTicketModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50" @click.self="showNewTicketModal = false">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">Nuevo Ticket de Soporte</h3>
-          <button @click="showNewTicketModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
-          <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Categoría *</label>
-            <select v-model="newTicket.category" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
-              <option value="">Seleccionar categoría</option>
-              <option value="Técnico">Técnico</option>
-              <option value="Integraciones">Integraciones (Channex, OTAs)</option>
-              <option value="Facturación">Facturación Electrónica</option>
-              <option value="Configuración">Configuración del Sistema</option>
-              <option value="Capacitación">Capacitación / Ayuda</option>
-              <option value="Sugerencia">Sugerencia de Mejora</option>
-              <option value="Otro">Otro</option>
-            </select>
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showNewTicketModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showNewTicketModal = false">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh]">
+            <div class="shrink-0 flex items-center justify-between p-6 border-b border-border">
+              <h3 class="text-lg font-black text-navy">Nuevo Ticket de Soporte</h3>
+              <button @click="showNewTicketModal = false" class="w-4 h-4 text-text-muted hover:text-navy transition-colors cursor-pointer" v-html="ICON_X"></button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-6 space-y-4">
+              <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Categoría *</label>
+                <select v-model="newTicket.category" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <option value="">Seleccionar categoría</option>
+                  <option value="Técnico">Técnico</option>
+                  <option value="Integraciones">Integraciones (Channex, OTAs)</option>
+                  <option value="Facturación">Facturación Electrónica</option>
+                  <option value="Configuración">Configuración del Sistema</option>
+                  <option value="Capacitación">Capacitación / Ayuda</option>
+                  <option value="Sugerencia">Sugerencia de Mejora</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Prioridad *</label>
+                <select v-model="newTicket.priority" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <option value="Baja">Baja — Sugerencia o mejora</option>
+                  <option value="Normal">Normal — Duda o configuración</option>
+                  <option value="Alta">Alta — Funcionalidad bloqueada</option>
+                  <option value="Urgente">Urgente — Sistema caído o overbooking</option>
+                </select>
+              </div>
+              <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Asunto *</label><input v-model="newTicket.subject" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" placeholder="Descripción corta del problema"></div>
+              <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Descripción Detallada *</label><textarea v-model="newTicket.description" rows="5" class="w-full px-4 py-2.5 rounded-2xl border border-border text-sm focus:outline-none focus:border-navy resize-none" placeholder="Explique con detalle el problema o solicitud..."></textarea></div>
+              <div class="py-4 border-t border-border">
+                <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Archivos Adjuntos (opcional)</div>
+                <div class="flex items-center gap-3">
+                  <label class="flex items-center gap-1.5 px-4 py-2 border border-border rounded-full text-sm font-bold hover:border-navy/30 transition-colors cursor-pointer">
+                    <span class="w-3.5 h-3.5" v-html="ICON_PAPERCLIP"></span>
+                    Adjuntar archivo
+                    <input type="file" class="hidden" @change="handleFileUpload" multiple>
+                  </label>
+                  <span class="text-[10px] text-text-muted">PNG, JPG, PDF, LOG (máx 5MB)</span>
+                </div>
+                <div v-if="newTicket.files.length" class="mt-2 flex flex-wrap gap-2">
+                  <span v-for="(f, i) in newTicket.files" :key="i" class="flex items-center gap-1.5 bg-surface px-2.5 py-1 rounded-full text-[10px] font-bold">
+                    {{ f }}
+                    <button @click="removeFile(i)" class="w-2.5 h-2.5 text-coral hover:text-navy transition-colors cursor-pointer" v-html="ICON_X"></button>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="shrink-0 flex items-center gap-4 justify-end p-6 border-t border-border">
+              <button @click="showNewTicketModal = false" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+              <button @click="createTicket" class="px-4 py-2 bg-navy text-white rounded-full text-[11px] font-extrabold hover:shadow-lg transition-all cursor-pointer">Crear Ticket</button>
+            </div>
           </div>
-          <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Prioridad *</label>
-            <select v-model="newTicket.priority" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
-              <option value="Baja">Baja — Sugerencia o mejora</option>
-              <option value="Normal">Normal — Duda o configuración</option>
-              <option value="Alta">Alta — Funcionalidad bloqueada</option>
-              <option value="Urgente">Urgente — Sistema caído o overbooking</option>
-            </select>
-          </div>
-          <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Asunto *</label><input v-model="newTicket.subject" type="text" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Descripción corta del problema"></div>
-          <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Descripción Detallada *</label><textarea v-model="newTicket.description" rows="5" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Explique con detalle el problema o solicitud..."></textarea></div>
-          <div class="bg-surface rounded-xl p-3 mb-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-2">Archivos Adjuntos (opcional)</div><div class="flex items-center gap-3"><label class="px-4 py-2 bg-white border border-border rounded-lg text-sm font-bold hover:border-navy/30 transition-colors cursor-pointer">📎 Adjuntar archivo<input type="file" class="hidden" @change="handleFileUpload" multiple></label><span class="text-[10px] text-text-muted">PNG, JPG, PDF, LOG (máx 5MB)</span></div><div v-if="newTicket.files.length" class="mt-2 flex flex-wrap gap-2"><span v-for="(f, i) in newTicket.files" :key="i" class="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-border text-[10px] font-bold">{{ f }} <button @click="removeFile(i)" class="text-red cursor-pointer">✕</button></span></div></div>
         </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showNewTicketModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
-          <button @click="createTicket" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Crear Ticket</button>
-        </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -190,6 +221,15 @@ import { ref, computed, onMounted } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+
+const SVG_OPEN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+const ICON_X = `${SVG_OPEN}<path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`
+const ICON_TICKET = `${SVG_OPEN}<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>`
+const ICON_PAPERCLIP = `${SVG_OPEN}<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>`
+const ICON_BOOK = `${SVG_OPEN}<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>`
+const ICON_VIDEO = `${SVG_OPEN}<path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>`
+const ICON_MESSAGE = `${SVG_OPEN}<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>`
+const ICON_MAIL = `${SVG_OPEN}<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>`
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -232,10 +272,10 @@ const metrics = computed(() => {
 })
 
 const quickLinks = [
-  { icon: '📖', title: 'Guía Rápida', desc: 'Aprende lo básico del sistema' },
-  { icon: '🎥', title: 'Video Tutoriales', desc: 'Paso a paso en video' },
-  { icon: '💬', title: 'Chat en Vivo', desc: 'Habla con soporte ahora' },
-  { icon: '📧', title: 'Email Directo', desc: 'soporte@arckode.com' }
+  { icon: ICON_BOOK, title: 'Guía Rápida', desc: 'Aprende lo básico del sistema' },
+  { icon: ICON_VIDEO, title: 'Video Tutoriales', desc: 'Paso a paso en video' },
+  { icon: ICON_MESSAGE, title: 'Chat en Vivo', desc: 'Habla con soporte ahora' },
+  { icon: ICON_MAIL, title: 'Email Directo', desc: 'soporte@arckode.com' }
 ]
 
 const tickets = ref<any[]>([])
@@ -341,3 +381,10 @@ const createTicket = async () => {
   } catch { toast.error('Error al crear ticket') }
 }
 </script>
+
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel { transition: transform 0.2s ease, opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel { opacity: 0; transform: translateY(8px) scale(0.98); }
+</style>
