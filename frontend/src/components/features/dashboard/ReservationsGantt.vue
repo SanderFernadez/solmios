@@ -1,36 +1,36 @@
 <template>
-  <div class="cc-card flex flex-col overflow-hidden rounded-[20px] border border-white/8">
+  <div class="cc-card flex flex-col overflow-hidden rounded-[20px] border border-border shadow-(--shadow-card)">
     <!-- Toolbar -->
-    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 px-5 py-4">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
       <div class="flex items-center gap-2.5">
-        <span class="grid h-8 w-8 place-items-center rounded-xl bg-[#2563EB]/15 text-[#60A5FA]">
+        <span class="grid h-8 w-8 place-items-center rounded-xl bg-[#2563EB]/10 text-[#2563EB]">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z"/></svg>
         </span>
-        <h2 class="text-sm font-black uppercase tracking-wider text-white">Calendario de Reservas</h2>
+        <h2 class="text-sm font-black uppercase tracking-wider text-navy">Calendario de Reservas</h2>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
         <!-- Navegación -->
-        <div class="flex items-center gap-1 rounded-xl border border-white/10 bg-white/3 px-1 py-1">
+        <div class="flex items-center gap-1 rounded-xl border border-border bg-surface px-1 py-1">
           <button @click="shift(-1)" class="cc-nav-btn" title="Anterior">‹</button>
-          <button @click="goToday" class="rounded-lg px-3 py-1 text-[11px] font-extrabold text-white hover:bg-white/10 cursor-pointer">Hoy</button>
+          <button @click="goToday" class="rounded-lg px-3 py-1 text-[11px] font-extrabold text-navy hover:bg-black/5 cursor-pointer">Hoy</button>
           <button @click="shift(1)" class="cc-nav-btn" title="Siguiente">›</button>
         </div>
-        <span class="min-w-[150px] text-center text-xs font-bold text-slate-300 tabular-nums">{{ rangeLabel }}</span>
+        <span class="min-w-[150px] text-center text-xs font-bold text-text-secondary tabular-nums">{{ rangeLabel }}</span>
 
         <!-- Vista -->
-        <div class="flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/3 p-1">
+        <div class="flex items-center gap-0.5 rounded-xl border border-border bg-surface p-1">
           <button v-for="v in VIEWS" :key="v.days" @click="viewDays = v.days"
             class="rounded-lg px-3 py-1 text-[11px] font-extrabold transition-colors cursor-pointer"
-            :class="viewDays === v.days ? 'bg-[#2563EB] text-white' : 'text-slate-400 hover:text-white'">
+            :class="viewDays === v.days ? 'bg-[#2563EB] text-white' : 'text-text-secondary hover:text-navy'">
             {{ v.label }}
           </button>
         </div>
 
         <!-- Zoom -->
-        <div class="flex items-center gap-1 rounded-xl border border-white/10 bg-white/3 px-1 py-1">
+        <div class="flex items-center gap-1 rounded-xl border border-border bg-surface px-1 py-1">
           <button @click="zoomBy(-1)" class="cc-nav-btn" title="Alejar">−</button>
-          <span class="min-w-[44px] text-center text-[11px] font-extrabold tabular-nums text-slate-300">{{ zoomPct }}%</span>
+          <span class="min-w-[44px] text-center text-[11px] font-extrabold tabular-nums text-text-secondary">{{ zoomPct }}%</span>
           <button @click="zoomBy(1)" class="cc-nav-btn" title="Acercar">+</button>
         </div>
       </div>
@@ -40,16 +40,16 @@
     <div class="cc-scroll relative overflow-x-auto">
       <div class="min-w-max select-none">
         <!-- Header de días -->
-        <div class="sticky top-0 z-20 flex border-b border-white/8 bg-[#0B1526]/95 backdrop-blur">
-          <div class="sticky left-0 z-10 w-44 shrink-0 border-r border-white/8 bg-[#0B1526] px-4 py-3">
-            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Habitaciones</span>
+        <div class="sticky top-0 z-20 flex border-b border-border bg-white/95 backdrop-blur">
+          <div class="sticky left-0 z-10 w-44 shrink-0 border-r border-border bg-white px-4 py-3">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">Habitaciones</span>
           </div>
-          <div v-for="day in days" :key="day.dateStr" class="shrink-0 border-r border-white/15 px-1 py-1.5 text-center"
-            :style="{ width: `${cellW}px` }" :class="!day.isToday && day.isWeekend ? 'bg-[#2563EB]/14' : ''">
+          <div v-for="day in days" :key="day.dateStr" class="shrink-0 border-r border-slate-300 px-1 py-1.5 text-center"
+            :style="{ width: `${cellW}px` }" :class="!day.isToday && day.isWeekend ? 'bg-[#2563EB]/8' : ''">
             <div class="mx-auto inline-flex min-w-[44px] flex-col items-center rounded-lg px-2 py-1"
-              :class="day.isToday ? 'bg-[#2563EB] shadow-[0_0_14px_rgba(37,99,235,0.55)]' : ''">
-              <div class="text-[9px] font-extrabold uppercase tracking-wide" :class="day.isToday ? 'text-white/80' : 'text-slate-500'">{{ day.dayName }}</div>
-              <div class="text-sm font-black tabular-nums leading-tight" :class="day.isToday ? 'text-white' : 'text-slate-200'">{{ day.dayNum }}</div>
+              :class="day.isToday ? 'bg-[#2563EB] shadow-[0_0_14px_rgba(37,99,235,0.35)]' : ''">
+              <div class="text-[9px] font-extrabold uppercase tracking-wide" :class="day.isToday ? 'text-white/80' : 'text-text-muted'">{{ day.dayName }}</div>
+              <div class="text-sm font-black tabular-nums leading-tight" :class="day.isToday ? 'text-white' : 'text-navy'">{{ day.dayNum }}</div>
             </div>
           </div>
         </div>
@@ -58,21 +58,21 @@
         <div class="relative">
           <!-- Línea "ahora" -->
           <div v-if="nowOffsetPx !== null" class="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-[#3B82F6]"
-            :style="{ left: `${176 + nowOffsetPx}px`, boxShadow: '0 0 8px rgba(59,130,246,0.9)' }"></div>
+            :style="{ left: `${176 + nowOffsetPx}px`, boxShadow: '0 0 8px rgba(59,130,246,0.5)' }"></div>
 
-          <div v-for="row in rows" :key="row.room.id" class="flex border-b border-white/12 hover:bg-white/2 transition-colors">
+          <div v-for="row in rows" :key="row.room.id" class="flex border-b border-slate-200 hover:bg-surface transition-colors">
             <!-- Etiqueta habitación -->
-            <div class="sticky left-0 z-10 flex w-44 shrink-0 items-center gap-2.5 border-r border-white/8 bg-[#0B1526] px-4 py-1.5">
+            <div class="sticky left-0 z-10 flex w-44 shrink-0 items-center gap-2.5 border-r border-border bg-white px-4 py-1.5">
               <span class="h-2 w-2 shrink-0 rounded-full" :class="ROOM_DOT[row.room.status] ?? 'bg-slate-500'"></span>
               <div class="min-w-0">
-                <div class="text-sm font-black tabular-nums text-white">{{ row.room.number }}</div>
-                <div class="truncate text-[9px] font-semibold uppercase tracking-wide text-slate-500">{{ row.room.name || row.room.type }}</div>
+                <div class="text-sm font-black tabular-nums text-navy">{{ row.room.number }}</div>
+                <div class="truncate text-[9px] font-semibold uppercase tracking-wide text-text-muted">{{ row.room.name || row.room.type }}</div>
               </div>
             </div>
 
             <!-- Celdas (drop targets) -->
             <div class="relative flex" :style="{ width: `${days.length * cellW}px`, height: '46px' }">
-              <div v-for="day in days" :key="day.dateStr" class="h-full shrink-0 border-r border-white/12"
+              <div v-for="day in days" :key="day.dateStr" class="h-full shrink-0 border-r border-slate-200"
                 :style="{ width: `${cellW}px` }" :class="day.isToday ? 'bg-[#2563EB]/6' : day.isWeekend ? 'bg-[#2563EB]/8' : ''"
                 :data-date="day.dateStr" :data-rid="row.room.id"
                 @dragover.prevent @drop="onDrop(row.room, day.dateStr)"></div>
@@ -95,35 +95,35 @@
             </div>
           </div>
 
-          <div v-if="!rows.length && !loading" class="px-6 py-10 text-center text-sm text-slate-500">Sin habitaciones para mostrar</div>
+          <div v-if="!rows.length && !loading" class="px-6 py-10 text-center text-sm text-text-muted">Sin habitaciones para mostrar</div>
         </div>
       </div>
     </div>
 
     <!-- Leyenda -->
-    <div class="flex flex-wrap items-center gap-4 border-t border-white/8 px-5 py-3">
-      <span v-for="l in LEGEND" :key="l.label" class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+    <div class="flex flex-wrap items-center gap-4 border-t border-border px-5 py-3">
+      <span v-for="l in LEGEND" :key="l.label" class="flex items-center gap-1.5 text-[10px] font-bold text-text-secondary">
         <span class="h-2.5 w-2.5 rounded" :style="{ background: l.color }"></span>{{ l.label }}
       </span>
-      <span class="ml-auto text-[10px] text-slate-500">Arrastrá una reserva para moverla · Estirá el borde derecho para extenderla</span>
+      <span class="ml-auto text-[10px] text-text-muted">Arrastrá una reserva para moverla · Estirá el borde derecho para extenderla</span>
     </div>
 
     <!-- Tooltip -->
     <Teleport to="body">
-      <div v-if="tip.show && tip.bar" class="pointer-events-none fixed z-[80] w-60 rounded-xl border border-white/10 bg-[#0E1B33] p-3 shadow-2xl"
+      <div v-if="tip.show && tip.bar" class="pointer-events-none fixed z-[80] w-60 rounded-xl border border-border bg-white p-3 shadow-xl"
         :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
         <div class="flex items-center justify-between gap-2">
-          <span class="truncate text-sm font-black text-white">{{ tip.bar.res.guestName || 'Huésped' }}</span>
+          <span class="truncate text-sm font-black text-navy">{{ tip.bar.res.guestName || 'Huésped' }}</span>
           <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase text-white" :style="{ background: STATUS_COLOR[tip.bar.res.status] }">
             {{ STATUS_LABEL[tip.bar.res.status] ?? tip.bar.res.status }}
           </span>
         </div>
-        <div class="mt-2 space-y-1 text-[11px] text-slate-300">
-          <div class="flex justify-between"><span class="text-slate-500">Habitación</span><span class="font-bold tabular-nums">{{ tip.bar.res.roomNumber ?? tip.bar.roomNumber }}</span></div>
-          <div class="flex justify-between"><span class="text-slate-500">Estancia</span><span class="font-bold tabular-nums">{{ fmtDate(tip.bar.checkIn) }} → {{ fmtDate(tip.bar.checkOut) }}</span></div>
-          <div class="flex justify-between"><span class="text-slate-500">Noches</span><span class="font-bold tabular-nums">{{ tip.bar.nights }}</span></div>
-          <div class="flex justify-between"><span class="text-slate-500">Canal</span><span class="font-bold capitalize">{{ SOURCE_LABEL[tip.bar.res.source] ?? tip.bar.res.source }}</span></div>
-          <div class="flex justify-between"><span class="text-slate-500">Total</span><span class="font-bold tabular-nums">${{ (tip.bar.res.totalAmount ?? 0).toLocaleString() }}</span></div>
+        <div class="mt-2 space-y-1 text-[11px] text-text-secondary">
+          <div class="flex justify-between"><span class="text-text-muted">Habitación</span><span class="font-bold tabular-nums">{{ tip.bar.res.roomNumber ?? tip.bar.roomNumber }}</span></div>
+          <div class="flex justify-between"><span class="text-text-muted">Estancia</span><span class="font-bold tabular-nums">{{ fmtDate(tip.bar.checkIn) }} → {{ fmtDate(tip.bar.checkOut) }}</span></div>
+          <div class="flex justify-between"><span class="text-text-muted">Noches</span><span class="font-bold tabular-nums">{{ tip.bar.nights }}</span></div>
+          <div class="flex justify-between"><span class="text-text-muted">Canal</span><span class="font-bold capitalize">{{ SOURCE_LABEL[tip.bar.res.source] ?? tip.bar.res.source }}</span></div>
+          <div class="flex justify-between"><span class="text-text-muted">Total</span><span class="font-bold tabular-nums">${{ (tip.bar.res.totalAmount ?? 0).toLocaleString() }}</span></div>
         </div>
       </div>
     </Teleport>
@@ -398,19 +398,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.cc-card { background: #0B1526; }
+.cc-card { background: white; }
 .cc-nav-btn {
   width: 26px; height: 26px;
   display: grid; place-items: center;
   border-radius: 8px;
-  color: rgb(148 163 184);
+  color: rgb(100 116 139);
   font-weight: 800;
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.cc-nav-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
-.cc-bar:hover { filter: brightness(1.15); }
+.cc-nav-btn:hover { background: rgba(0, 0, 0, 0.06); color: #0D2B4E; }
+.cc-bar:hover { filter: brightness(1.1); }
 .cc-scroll { max-height: 460px; overflow-y: auto; }
-.cc-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); }
-.cc-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+.cc-scroll::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.02); }
+.cc-scroll::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.12); }
 </style>

@@ -162,8 +162,8 @@
           <UserMenu />
         </div>
       </header>
-      <!-- Toggle móvil para el dashboard general (trae su propia barra oscura sin header claro) -->
-      <button v-else @click="mobileMenuOpen = true" class="lg:hidden fixed top-3 left-3 z-20 w-9 h-9 flex items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 cursor-pointer">
+      <!-- Toggle móvil para el dashboard general (trae su propia barra clara sin header estándar) -->
+      <button v-else @click="mobileMenuOpen = true" class="lg:hidden fixed top-3 left-3 z-20 w-9 h-9 flex items-center justify-center rounded-lg border border-border bg-white text-navy shadow-(--shadow-card) hover:bg-surface cursor-pointer">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
         </svg>

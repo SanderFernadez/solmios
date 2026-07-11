@@ -86,10 +86,10 @@
       </div>
     </div>
 
-    <!-- Herramientas — sin card propia, se integra con el fondo del dashboard -->
-    <div class="cc-usertools ml-auto flex items-center gap-1.5 py-1">
+    <!-- Herramientas — sin card propia, se integra con el fondo claro del dashboard -->
+    <div class="ml-auto flex items-center gap-1.5 py-1">
       <NotificationBell />
-      <UserMenu transparent placeholder dark />
+      <UserMenu placeholder transparent />
     </div>
   </div>
 </template>
@@ -148,22 +148,17 @@ const syncAgoShort = computed(() => {
   min-width: 0;
 }
 .cc-glow-green {
-  box-shadow: 0 0 6px 1px rgba(34, 197, 94, 0.9), 0 0 14px 4px rgba(34, 197, 94, 0.45);
+  box-shadow: 0 0 6px 1px rgba(34, 197, 94, 0.6), 0 0 14px 4px rgba(34, 197, 94, 0.3);
 }
 .cc-pill-label {
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: rgb(148 163 184);
+  color: var(--color-text-muted);
 }
 .cc-pill-sub {
   font-size: 10px;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
-
-/* NotificationBell viene del header claro — su trigger necesita override para la barra oscura.
-   Su dropdown va por Teleport a body, así que no lo alcanza este selector (y no debe alcanzarlo). */
-.cc-usertools :deep(.text-text-secondary) { color: rgb(148 163 184); }
-.cc-usertools :deep(button:hover.hover\:bg-surface) { background: rgba(255, 255, 255, 0.1); }
 </style>

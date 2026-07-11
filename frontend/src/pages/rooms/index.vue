@@ -2,7 +2,16 @@
   <div>
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
-      <h2 class="text-xl font-black text-navy">Habitaciones</h2>
+      <div class="flex items-center gap-2.5">
+        <h2 class="text-xl font-black text-navy">Habitaciones</h2>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+          <span class="relative flex h-1.5 w-1.5">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+            <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+          </span>
+          En vivo
+        </span>
+      </div>
       <div class="flex gap-2 items-center flex-wrap">
         <div class="relative">
           <input v-model="searchQuery" type="text" placeholder="Buscar habitación, tipo, piso..." class="pl-9 pr-8 py-2 rounded-xl border border-border text-xs font-bold w-64 focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 bg-white" />
@@ -34,13 +43,13 @@
 
     <!-- Stats -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-      <div v-for="s in stats" :key="s.label" class="card p-4">
+      <div v-for="s in stats" :key="s.label" class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="s.bg">
             <span class="w-5 h-5" :class="s.color" v-html="s.icon"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none" :class="s.color">{{ s.value }}</div>
+            <div class="text-xl font-black leading-none tabular-nums" :class="s.color">{{ Math.round(s.value) }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">{{ s.label }}</div>
           </div>
         </div>
@@ -48,7 +57,7 @@
     </div>
 
     <!-- Empty state -->
-    <div v-if="rooms.length === 0 && !loading" class="card p-12 text-center">
+    <div v-if="rooms.length === 0 && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
       <svg class="w-10 h-10 mx-auto mb-3 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1" />
       </svg>
@@ -64,54 +73,41 @@
     </div>
 
     <!-- Rooms by Type -->
-    <div v-for="rt in paginatedRoomTypes" :key="rt.type" class="mb-6">
-      <div class="flex items-center gap-2.5 mb-3 px-1 flex-wrap">
-        <span class="w-5 h-5 flex items-center justify-center text-navy shrink-0" v-html="rt.icon"></span>
-        <h3 class="text-sm font-black text-navy">{{ rt.type }}</h3>
-        <span class="text-xs text-text-muted">({{ rt.rooms.length }})</span>
-        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal/10 text-teal">{{ rt.available }} disponibles</span>
-        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-coral/10 text-coral">{{ rt.occupied }} ocupadas</span>
-        <span v-if="rt.cleaning" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan/10 text-cyan">{{ rt.cleaning }} limpieza</span>
+    <div v-for="rt in paginatedRoomTypes" :key="rt.type" class="mb-9">
+      <div class="flex items-baseline gap-2 mb-4 px-0.5 flex-wrap">
+        <h3 class="text-sm font-bold text-navy">{{ rt.type }}</h3>
+        <span class="text-xs text-text-muted">
+          {{ rt.rooms.length }} habitaciones · {{ rt.available }} disponibles<template v-if="rt.occupied"> · {{ rt.occupied }} ocupadas</template><template v-if="rt.cleaning"> · {{ rt.cleaning }} limpieza</template>
+        </span>
       </div>
-      <div class="card p-4">
-        <div class="grid gap-3.5" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))">
-          <div v-for="room in rt.rooms" :key="room.id" @click="openDetail(room)"
-            class="rounded-xl border p-4 cursor-pointer hover:shadow-md transition-all relative bg-white"
-            :class="roomCardClass(room.status)">
-            <div class="absolute top-3 right-3 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full" :class="statusDot(room.status)"></span>
-              <span class="text-[11px] font-semibold uppercase text-text-muted">{{ statusLabel(room.status) }}</span>
-            </div>
-            <div class="mb-2">
-              <span class="text-xl font-black text-navy" :class="{ 'line-through opacity-50': room.status === 'out_of_service' }">
-                {{ room.number }}
-              </span>
-            </div>
-            <div class="flex items-baseline gap-1 mb-3">
-              <span class="text-sm font-black text-navy">${{ room.basePrice }}</span>
-              <span class="text-[11px] text-text-muted font-medium">/noche</span>
-            </div>
-            <div class="flex items-center gap-3 text-[11px] text-text-muted mb-3">
-              <span class="flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>
-                {{ room.maxGuests }}p
-              </span>
-              <span class="flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>
-                Piso {{ room.floor }}
-              </span>
-              <span v-if="room.surfaceArea">{{ room.surfaceArea }}m²</span>
-            </div>
-            <div class="flex flex-wrap gap-1.5 mt-2">
-              <span v-for="a in (room.amenities||[]).slice(0, 4)" :key="a"
-                class="px-2 py-0.5 border border-border rounded-md text-[10px] text-text-secondary font-medium">
-                {{ amenityLabel(a) }}
-              </span>
-              <span v-if="(room.amenities||[]).length > 4"
-                class="px-2 py-0.5 bg-surface rounded-md text-[10px] text-text-muted">
-                +{{ room.amenities.length - 4 }}
-              </span>
-            </div>
+      <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))">
+        <div v-for="room in rt.rooms" :key="room.id" @click="openDetail(room)"
+          class="rounded-2xl border border-border p-4 cursor-pointer transition-colors hover:border-navy/25 bg-white">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xl font-black text-navy" :class="{ 'line-through opacity-40': room.status === 'out_of_service' }">
+              {{ room.number }}
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="statusDot(room.status)"></span>
+              <span class="text-[10px] font-semibold uppercase tracking-wide text-text-muted">{{ statusLabel(room.status) }}</span>
+            </span>
+          </div>
+          <div class="text-sm font-bold text-navy mb-3">
+            ${{ room.basePrice }} <span class="text-[11px] font-normal text-text-muted">/noche</span>
+          </div>
+          <div class="flex items-center gap-3 text-[11px] text-text-muted">
+            <span class="flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>
+              {{ room.maxGuests }}p
+            </span>
+            <span class="flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>
+              Piso {{ room.floor }}
+            </span>
+            <span v-if="room.surfaceArea">{{ room.surfaceArea }}m²</span>
+          </div>
+          <div v-if="(room.amenities||[]).length" class="mt-3 pt-3 border-t border-border text-[11px] text-text-muted truncate">
+            {{ (room.amenities||[]).slice(0, 3).map(amenityLabel).join(' · ') }}<template v-if="room.amenities.length > 3"> +{{ room.amenities.length - 3 }}</template>
           </div>
         </div>
       </div>
@@ -137,136 +133,131 @@
 
     <!-- ====================== DETAIL MODAL ====================== -->
     <Teleport to="body">
+      <Transition name="modal-fade">
       <div v-if="detailModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="detailModal.show=false">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-          <div class="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white z-10">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl font-black text-navy">{{ detailRoom?.number }}</span>
-              <span class="w-2.5 h-2.5 rounded-full" :class="statusDot(detailRoom?.status||'')"></span>
-              <span class="text-sm font-bold text-text-muted uppercase">{{ statusLabel(detailRoom?.status||'') }}</span>
+        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="px-7 pt-7 pb-5 flex items-center justify-between shrink-0">
+            <div class="flex items-baseline gap-3">
+              <span class="text-3xl font-black leading-none tracking-tight text-navy">{{ detailRoom?.number }}</span>
+              <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide" :class="statusText(detailRoom?.status||'')">
+                <span class="w-1.5 h-1.5 rounded-full" :class="statusDot(detailRoom?.status||'')"></span>
+                {{ statusLabel(detailRoom?.status||'') }}
+              </span>
             </div>
-            <button @click="detailModal.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center hover:bg-gray-200 cursor-pointer">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            <button @click="detailModal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
 
-          <div class="p-6 space-y-5">
-            <!-- Room info -->
-            <div class="grid grid-cols-2 gap-3">
-              <div class="bg-surface rounded-xl p-3.5">
-                <div class="text-[11px] text-text-muted uppercase font-bold">Tipo</div>
-                <div class="text-sm font-black text-navy">{{ typeLabel(detailRoom?.type||'') }}</div>
+          <div class="px-7 pb-7 space-y-6 overflow-y-auto flex-1">
+            <!-- Room info: lista tipográfica, sin cajas -->
+            <div class="grid grid-cols-3 gap-x-4 gap-y-5 pb-6 border-b border-border">
+              <div>
+                <div class="text-[11px] text-text-muted uppercase tracking-wide">Tipo</div>
+                <div class="text-sm font-bold text-navy mt-1">{{ typeLabel(detailRoom?.type||'') }}</div>
               </div>
-              <div class="bg-surface rounded-xl p-3.5">
-                <div class="text-[11px] text-text-muted uppercase font-bold">Precio</div>
-                <div class="text-sm font-black text-navy">${{ detailRoom?.basePrice }} <span class="text-xs font-medium text-text-muted">/noche</span></div>
+              <div>
+                <div class="text-[11px] text-text-muted uppercase tracking-wide">Precio</div>
+                <div class="text-sm font-bold text-navy mt-1">${{ detailRoom?.basePrice }} <span class="text-xs font-normal text-text-muted">/noche</span></div>
               </div>
-              <div class="bg-surface rounded-xl p-3.5">
-                <div class="text-[11px] text-text-muted uppercase font-bold">Piso</div>
-                <div class="text-sm font-bold text-navy">{{ detailRoom?.floor }}</div>
+              <div>
+                <div class="text-[11px] text-text-muted uppercase tracking-wide">Piso</div>
+                <div class="text-sm font-bold text-navy mt-1">{{ detailRoom?.floor }}</div>
               </div>
-              <div class="bg-surface rounded-xl p-3.5">
-                <div class="text-[11px] text-text-muted uppercase font-bold">Capacidad</div>
-                <div class="text-sm font-bold text-navy">{{ detailRoom?.maxGuests }} personas</div>
+              <div>
+                <div class="text-[11px] text-text-muted uppercase tracking-wide">Capacidad</div>
+                <div class="text-sm font-bold text-navy mt-1">{{ detailRoom?.maxGuests }} pers.</div>
               </div>
-              <div class="bg-surface rounded-xl p-3.5">
-                <div class="text-[11px] text-text-muted uppercase font-bold">Baños</div>
-                <div class="text-sm font-bold text-navy">{{ detailRoom?.bathrooms }}</div>
+              <div>
+                <div class="text-[11px] text-text-muted uppercase tracking-wide">Baños</div>
+                <div class="text-sm font-bold text-navy mt-1">{{ detailRoom?.bathrooms }}</div>
               </div>
-              <div class="bg-surface rounded-xl p-3.5">
-                <div class="text-[11px] text-text-muted uppercase font-bold">Superficie</div>
-                <div class="text-sm font-bold text-navy">{{ detailRoom?.surfaceArea || '-' }} m²</div>
+              <div>
+                <div class="text-[11px] text-text-muted uppercase tracking-wide">Superficie</div>
+                <div class="text-sm font-bold text-navy mt-1">{{ detailRoom?.surfaceArea || '—' }} m²</div>
               </div>
             </div>
 
-            <!-- Guest info if occupied -->
-            <div v-if="detailRoom?.status === 'occupied' && detailRoom?.guestName" class="bg-coral/5 border border-coral/20 rounded-xl p-4">
-              <div class="text-[11px] text-coral uppercase font-bold mb-1">Huésped en Casa</div>
-              <div class="text-sm font-black text-navy">{{ detailRoom.guestName }}</div>
-              <div v-if="detailRoom.guestEmail" class="text-xs text-text-muted">{{ detailRoom.guestEmail }}</div>
+            <!-- Guest info if occupied: acento de borde, sin caja rellena -->
+            <div v-if="detailRoom?.status === 'occupied' && detailRoom?.guestName" class="border-l-2 border-coral pl-4">
+              <div class="text-[11px] text-coral uppercase font-bold tracking-wide mb-1">Huésped en casa</div>
+              <div class="text-sm font-bold text-navy">{{ detailRoom.guestName }}</div>
+              <div v-if="detailRoom.guestEmail" class="text-xs text-text-muted mt-0.5">{{ detailRoom.guestEmail }}</div>
             </div>
 
-            <!-- Amenities -->
+            <!-- Amenities: pills en contorno -->
             <div>
-              <div class="text-[11px] font-bold text-navy uppercase mb-2">Incluye</div>
+              <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Incluye</div>
               <div class="flex flex-wrap gap-1.5">
                 <span v-for="a in (detailRoom?.amenities||[])" :key="a"
-                  class="px-2.5 py-1 bg-surface rounded-lg border border-border text-xs text-navy font-medium">
+                  class="px-3 py-1 rounded-full border border-border text-xs text-text-secondary font-medium">
                   {{ amenityLabel(a) }}
                 </span>
                 <span v-if="!detailRoom?.amenities?.length" class="text-xs text-text-muted">Sin amenities configurados</span>
               </div>
             </div>
 
-            <!-- Quick Status Change -->
+            <!-- Quick Status Change: fila de pills, sin descripciones -->
             <div>
-              <div class="text-[11px] font-bold text-navy uppercase mb-3">Cambiar Estado</div>
-              <div class="grid grid-cols-2 gap-2">
+              <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Cambiar estado</div>
+              <div class="flex flex-wrap gap-2">
                 <button v-for="opt in statusOptions" :key="opt.value"
                   @click="changeStatus(opt.value)"
                   :disabled="detailRoom?.status === opt.value || statusChanging"
-                  class="p-3 rounded-xl border text-left transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:shadow-sm"
-                  :class="detailRoom?.status === opt.value ? 'border-navy bg-navy/5' : 'border-border'">
-                  <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full shrink-0" :class="statusDot(opt.value)"></span>
-                    <div>
-                      <div class="text-xs font-extrabold text-navy">{{ opt.label }}</div>
-                      <div class="text-[10px] text-text-muted leading-tight">{{ opt.desc }}</div>
-                    </div>
-                  </div>
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="detailRoom?.status === opt.value ? [statusHeaderBg(opt.value), statusBorder(opt.value), statusText(opt.value)] : 'border-border text-text-secondary hover:border-navy/30'">
+                  <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="statusDot(opt.value)"></span>
+                  {{ opt.label }}
                 </button>
               </div>
             </div>
           </div>
 
-          <div class="p-6 border-t border-border bg-surface/50 flex gap-3 justify-between sticky bottom-0">
+          <div class="px-7 py-5 border-t border-border flex items-center gap-3 justify-between shrink-0">
             <button @click="deleteRoomFromDetail"
-              class="flex items-center gap-1.5 px-4 py-2.5 border border-coral/30 text-coral rounded-xl text-sm font-bold cursor-pointer hover:bg-coral/5">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+              class="text-sm font-bold text-coral hover:opacity-70 cursor-pointer transition-opacity">
               Eliminar
             </button>
-            <div class="flex gap-2">
-              <button @click="detailModal.show=false" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cerrar</button>
-              <button @click="openEditFromDetail" class="flex items-center gap-1.5 px-4 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy/90">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
+            <div class="flex items-center gap-4">
+              <button @click="detailModal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
+              <button @click="openEditFromDetail" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer hover:bg-navy/90 transition-colors">
                 Editar
               </button>
             </div>
           </div>
         </div>
       </div>
+      </Transition>
     </Teleport>
 
     <!-- ====================== BATCH MODAL ====================== -->
     <Teleport to="body">
+      <Transition name="modal-fade">
       <div v-if="batchModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="batchModal.show=false">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-          <div class="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white z-10">
-            <h3 class="text-lg font-black text-navy flex items-center gap-2.5">
-              <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
-              Crear Habitaciones en Lote
-            </h3>
-            <button @click="batchModal.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center hover:bg-gray-200 cursor-pointer">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="px-7 pt-7 pb-5 flex items-center justify-between shrink-0">
+            <h3 class="text-xl font-black text-navy tracking-tight">Crear en lote</h3>
+            <button @click="batchModal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
 
-          <div class="p-6 space-y-5">
+          <div class="px-7 pb-7 space-y-6 overflow-y-auto flex-1">
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase mb-3">Tipo de Habitación</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Tipo de habitación</label>
               <div class="grid grid-cols-2 gap-2">
                 <button v-for="opt in typeOptions" :key="opt.value"
                   @click="batchForm.type = opt.value"
-                  class="p-3 rounded-xl border text-left transition cursor-pointer"
+                  class="p-3 rounded-xl border text-left transition-colors cursor-pointer"
                   :class="batchForm.type === opt.value
                     ? 'border-navy bg-navy/5'
                     : 'border-border hover:border-navy/30'">
                   <div class="flex items-center gap-2.5">
-                    <span class="w-5 h-5 shrink-0 text-navy" v-html="opt.icon"></span>
+                    <span class="w-5 h-5 shrink-0" :class="batchForm.type === opt.value ? 'text-navy' : 'text-text-muted'" v-html="opt.icon"></span>
                     <div>
-                      <div class="text-sm font-extrabold text-navy">{{ opt.label }}</div>
+                      <div class="text-sm font-bold text-navy">{{ opt.label }}</div>
                       <div class="text-[11px] text-text-muted">{{ opt.desc }}</div>
                     </div>
                   </div>
@@ -275,7 +266,7 @@
             </div>
 
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase mb-3">Rango de Números</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Rango de números</label>
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-[11px] text-text-muted font-bold mb-1">Desde N°</label>
@@ -286,103 +277,109 @@
                   <input v-model.number="batchForm.to" type="number" min="1" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold" placeholder="110" />
                 </div>
               </div>
-              <div v-if="batchCount > 0 && batchCount <= 100" class="mt-3 bg-teal/5 border border-teal/20 rounded-xl p-3 flex items-center gap-2">
-                <svg class="w-4 h-4 text-teal shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                <span class="text-xs font-bold text-teal">{{ batchCount }} habitaciones</span>
-                <span class="text-[11px] text-teal/80">{{ batchPreview }}</span>
+              <div v-if="batchCount > 0 && batchCount <= 100" class="mt-2.5 flex items-center gap-1.5 text-xs">
+                <svg class="w-3.5 h-3.5 text-teal shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                <span class="font-bold text-teal">{{ batchCount }} habitaciones</span>
+                <span class="text-text-muted">{{ batchPreview }}</span>
               </div>
-              <div v-else-if="batchCount > 100" class="mt-3 bg-coral/5 border border-coral/20 rounded-xl p-3">
-                <span class="text-xs font-bold text-coral">Máximo 100 por lote</span>
-              </div>
+              <div v-else-if="batchCount > 100" class="mt-2.5 text-xs font-bold text-coral">Máximo 100 por lote</div>
             </div>
 
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase mb-3">Configuración</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Configuración</label>
               <div class="grid grid-cols-3 gap-3">
                 <div><label class="block text-[11px] text-text-muted font-bold mb-1">Precio Base $</label><input v-model.number="batchForm.basePrice" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm font-bold text-navy" /></div>
                 <div><label class="block text-[11px] text-text-muted font-bold mb-1">Capacidad</label><input v-model.number="batchForm.capacity" type="number" min="1" max="20" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
                 <div><label class="block text-[11px] text-text-muted font-bold mb-1">Piso</label><input v-model.number="batchForm.floor" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
                 <div><label class="block text-[11px] text-text-muted font-bold mb-1">Baños</label><input v-model.number="batchForm.bathrooms" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
                 <div><label class="block text-[11px] text-text-muted font-bold mb-1">Superficie m²</label><input v-model.number="batchForm.surfaceArea" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                <div class="flex items-end"><label class="flex items-center gap-2 cursor-pointer bg-surface rounded-xl px-3 py-2 w-full"><input v-model="batchForm.onlineBooking" type="checkbox" class="w-4 h-4 rounded text-cyan" /><span class="text-[11px] font-bold text-navy">Venta Online</span></label></div>
+                <label class="flex items-center gap-2 cursor-pointer self-end pb-2"><input v-model="batchForm.onlineBooking" type="checkbox" class="w-4 h-4 rounded text-cyan" /><span class="text-[11px] font-bold text-navy">Venta Online</span></label>
               </div>
             </div>
 
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase mb-3">¿Qué incluye?</label>
-              <div class="grid grid-cols-2 gap-1.5 bg-surface rounded-xl p-3">
-                <label v-for="a in batchAmenities" :key="a.key" class="flex items-center gap-2 cursor-pointer hover:bg-white rounded-lg px-2 py-1.5 transition">
-                  <input type="checkbox" :value="a.key" v-model="batchForm.amenities" class="w-3.5 h-3.5 rounded text-cyan" />
-                  <span class="text-xs text-navy">{{ a.label }}</span>
-                </label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">¿Qué incluye?</label>
+              <div class="flex flex-wrap gap-2">
+                <button v-for="a in batchAmenities" :key="a.key" type="button"
+                  @click="toggleAmenity(batchForm.amenities, a.key)"
+                  class="px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer"
+                  :class="batchForm.amenities.includes(a.key) ? 'bg-navy border-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'">
+                  {{ a.label }}
+                </button>
               </div>
             </div>
           </div>
 
-          <div class="p-6 border-t border-border bg-surface/50 flex gap-3 justify-end sticky bottom-0">
-            <button @click="batchModal.show=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
+          <div class="px-7 py-5 border-t border-border flex items-center gap-4 justify-end shrink-0">
+            <button @click="batchModal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
             <button @click="executeBatch" :disabled="batchSaving || batchCount <= 0 || batchCount > 100"
-              class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+              class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
               {{ batchSaving ? 'Creando...' : `Crear ${batchCount} habitaciones` }}
             </button>
           </div>
         </div>
       </div>
+      </Transition>
     </Teleport>
 
     <!-- ====================== EDIT MODAL ====================== -->
     <Teleport to="body">
+      <Transition name="modal-fade">
       <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="modal.show=false">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-          <div class="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white z-10">
-            <h3 class="text-lg font-black text-navy">{{ modal.edit ? 'Editar' : 'Nueva' }} Habitación</h3>
-            <button @click="modal.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center hover:bg-gray-200 cursor-pointer">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="px-7 pt-7 pb-5 flex items-center justify-between shrink-0">
+            <h3 class="text-xl font-black text-navy tracking-tight">{{ modal.edit ? 'Editar' : 'Nueva' }} habitación</h3>
+            <button @click="modal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
-          <div class="p-6 space-y-4">
+          <div class="px-7 pb-7 space-y-5 overflow-y-auto flex-1">
             <div class="grid grid-cols-3 gap-4">
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Número *</label><input v-model="form.number" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Tipo</label>
+              <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Número *</label><input v-model="form.number" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+              <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Tipo</label>
                 <select v-model="form.type" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer">
                   <option value="single">Individual</option><option value="double">Doble</option><option value="twin">Twin</option><option value="suite">Suite</option><option value="deluxe">Deluxe</option><option value="presidential">Presidencial</option><option value="family">Familiar</option>
                 </select>
               </div>
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Estado</label>
+              <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Estado</label>
                 <select v-model="form.status" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer">
                   <option value="available">Disponible</option><option value="occupied">Ocupada</option><option value="cleaning">Limpieza</option><option value="dirty">Sucia</option><option value="out_of_service">F/S</option>
                 </select>
               </div>
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Piso</label><input v-model.number="form.floor" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Capacidad</label><input v-model.number="form.maxGuests" type="number" min="1" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Precio Base $</label><input v-model.number="form.basePrice" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy" /></div>
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Superficie m²</label><input v-model.number="form.surfaceArea" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-              <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Baños</label><input v-model.number="form.bathrooms" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
-              <div class="flex items-end"><label class="flex items-center gap-2 cursor-pointer bg-surface rounded-xl p-3 w-full"><input v-model="form.onlineBooking" type="checkbox" class="w-4 h-4 rounded text-cyan" /><span class="text-[11px] font-bold text-navy">Venta Online</span></label></div>
+              <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Piso</label><input v-model.number="form.floor" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+              <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Capacidad</label><input v-model.number="form.maxGuests" type="number" min="1" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+              <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Precio Base $</label><input v-model.number="form.basePrice" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy" /></div>
+              <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Superficie m²</label><input v-model.number="form.surfaceArea" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+              <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Baños</label><input v-model.number="form.bathrooms" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
+              <label class="flex items-center gap-2 cursor-pointer self-end pb-2"><input v-model="form.onlineBooking" type="checkbox" class="w-4 h-4 rounded text-cyan" /><span class="text-[11px] font-bold text-navy">Venta Online</span></label>
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase mb-2">Amenities</label>
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-2 bg-surface rounded-xl p-3">
-                <label v-for="a in amenityOptions" :key="a.key" class="flex items-center gap-2 cursor-pointer hover:bg-white rounded-lg px-2 py-1.5">
-                  <input type="checkbox" :value="a.key" v-model="form.amenities" class="w-3.5 h-3.5 rounded text-cyan" />
-                  <span class="text-xs text-navy">{{ a.label }}</span>
-                </label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Amenities</label>
+              <div class="flex flex-wrap gap-2">
+                <button v-for="a in amenityOptions" :key="a.key" type="button"
+                  @click="toggleAmenity(form.amenities, a.key)"
+                  class="px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer"
+                  :class="form.amenities.includes(a.key) ? 'bg-navy border-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'">
+                  {{ a.label }}
+                </button>
               </div>
             </div>
           </div>
-          <div class="p-6 border-t border-border bg-surface/50 flex gap-3 justify-end sticky bottom-0">
-            <button @click="modal.show=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="save" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer">{{ saving?'Guardando...':'Guardar' }}</button>
+          <div class="px-7 py-5 border-t border-border flex items-center gap-4 justify-end shrink-0">
+            <button @click="modal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+            <button @click="save" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer transition-colors disabled:opacity-40">{{ saving?'Guardando...':'Guardar' }}</button>
           </div>
         </div>
       </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useCountUp } from '@/composables/useCountUp'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { ApiError } from '@/services/http'
@@ -533,21 +530,30 @@ const KPI_ICON_SPARKLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="n
 const KPI_ICON_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z"/></svg>'
 const KPI_ICON_XCIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
 
-const stats = computed(() => [
-  { label:'Total', value:rooms.value.length, color:'text-navy', bg:'bg-navy/10', icon: ICON_BED },
-  { label:'Disp.', value:rooms.value.filter(r=>r.status==='available').length, color:'text-teal', bg:'bg-teal/10', icon: KPI_ICON_CHECK },
-  { label:'Ocup.', value:rooms.value.filter(r=>r.status==='occupied').length, color:'text-coral', bg:'bg-coral/10', icon: KPI_ICON_USER },
-  { label:'Limpieza', value:rooms.value.filter(r=>r.status==='cleaning').length, color:'text-cyan', bg:'bg-cyan/10', icon: KPI_ICON_SPARKLE },
-  { label:'Sucias', value:rooms.value.filter(r=>r.status==='dirty').length, color:'text-gold', bg:'bg-gold/10', icon: KPI_ICON_ALERT },
-  { label:'F/S', value:rooms.value.filter(r=>r.status==='out_of_service').length, color:'text-gray-400', bg:'bg-gray-100', icon: KPI_ICON_XCIRCLE },
-])
+// Fuentes numéricas — separadas de `stats` para poder animarlas con useCountUp
+// (el composable debe llamarse en el cuerpo de setup, no dentro del computed que arma las cards).
+const totalCount = computed(() => rooms.value.length)
+const availableCount = computed(() => rooms.value.filter(r => r.status === 'available').length)
+const occupiedCount = computed(() => rooms.value.filter(r => r.status === 'occupied').length)
+const cleaningCount = computed(() => rooms.value.filter(r => r.status === 'cleaning').length)
+const dirtyCount = computed(() => rooms.value.filter(r => r.status === 'dirty').length)
+const outOfServiceCount = computed(() => rooms.value.filter(r => r.status === 'out_of_service').length)
 
-const TYPE_ICON: Record<string, string> = {
-  single: ICON_DOOR, dorm: ICON_DOOR,
-  double: ICON_BED, twin: ICON_BED,
-  triple: ICON_USERS, quad: ICON_USERS, family: ICON_USERS,
-  suite: ICON_CROWN, deluxe: ICON_CROWN, presidential: ICON_CROWN, villa: ICON_CROWN,
-}
+const totalAnim = useCountUp(totalCount)
+const availableAnim = useCountUp(availableCount)
+const occupiedAnim = useCountUp(occupiedCount)
+const cleaningAnim = useCountUp(cleaningCount)
+const dirtyAnim = useCountUp(dirtyCount)
+const outOfServiceAnim = useCountUp(outOfServiceCount)
+
+const stats = computed(() => [
+  { label:'Total', value:totalAnim.value, color:'text-navy', bg:'bg-navy/10', icon: ICON_BED },
+  { label:'Disp.', value:availableAnim.value, color:'text-teal', bg:'bg-teal/10', icon: KPI_ICON_CHECK },
+  { label:'Ocup.', value:occupiedAnim.value, color:'text-coral', bg:'bg-coral/10', icon: KPI_ICON_USER },
+  { label:'Limpieza', value:cleaningAnim.value, color:'text-cyan', bg:'bg-cyan/10', icon: KPI_ICON_SPARKLE },
+  { label:'Sucias', value:dirtyAnim.value, color:'text-gold', bg:'bg-gold/10', icon: KPI_ICON_ALERT },
+  { label:'F/S', value:outOfServiceAnim.value, color:'text-gray-400', bg:'bg-gray-100', icon: KPI_ICON_XCIRCLE },
+])
 
 const ROOM_STATUS_LEGEND = [
   { status: 'available', label: 'Disponible', dot: 'bg-teal' },
@@ -581,7 +587,6 @@ const paginatedRoomTypes = computed(() => {
   for (const r of list) { const t = r.type || 'double'; if (!g[t]) g[t] = []; g[t].push(r) }
   return Object.entries(g).map(([t, rs]) => ({
     type: (t.charAt(0).toUpperCase() + t.slice(1)).replace('Presidential', 'Presidencial'),
-    icon: TYPE_ICON[t] || ICON_BED,
     available: rs.filter(r => r.status === 'available').length,
     occupied: rs.filter(r => r.status === 'occupied').length,
     cleaning: rs.filter(r => r.status === 'cleaning').length,
@@ -591,12 +596,18 @@ const paginatedRoomTypes = computed(() => {
 
 watch([activeFilter, searchQuery], () => { page.value = 1 })
 
-function roomCardClass(s: string) {
-  const m: Record<string,string> = { available:'border-teal/20 bg-teal/[0.02]', occupied:'border-coral/20 bg-coral/[0.02]', cleaning:'border-cyan/20 bg-cyan/[0.02]', dirty:'border-gold/20 bg-gold/[0.02]', out_of_service:'border-gray-200 bg-gray-50' }
-  return m[s] || 'border-border'
-}
 function statusDot(s: string) { const m: Record<string,string> = { available:'bg-teal', occupied:'bg-coral', cleaning:'bg-cyan', dirty:'bg-gold', out_of_service:'bg-gray-400' }; return m[s]||'bg-gray-300' }
 function statusLabel(s: string) { const m: Record<string,string> = { available:'Disponible', occupied:'Ocupada', cleaning:'En Limpieza', dirty:'Sucia', out_of_service:'F/S' }; return m[s]||s }
+function statusText(s: string) { const m: Record<string,string> = { available:'text-teal', occupied:'text-coral', cleaning:'text-cyan', dirty:'text-gold', out_of_service:'text-gray-400' }; return m[s]||'text-gray-400' }
+function statusHeaderBg(s: string) { const m: Record<string,string> = { available:'bg-teal/5', occupied:'bg-coral/5', cleaning:'bg-cyan/5', dirty:'bg-gold/5', out_of_service:'bg-gray-50' }; return m[s]||'bg-surface' }
+function statusBorder(s: string) { const m: Record<string,string> = { available:'border-teal/40', occupied:'border-coral/40', cleaning:'border-cyan/40', dirty:'border-gold/40', out_of_service:'border-gray-300' }; return m[s]||'border-border' }
+
+// Toggle de amenities como "chips" (Batch y Edit comparten la misma lógica sobre arrays distintos)
+function toggleAmenity(list: string[], key: string) {
+  const i = list.indexOf(key)
+  if (i >= 0) list.splice(i, 1)
+  else list.push(key)
+}
 
 async function load() {
   loading.value = true
@@ -777,4 +788,22 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Entrada/salida de los modales: backdrop se desvanece, el panel además escala y sube levemente. */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-fade-enter-active .modal-panel,
+.modal-fade-leave-active .modal-panel {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-fade-enter-from .modal-panel,
+.modal-fade-leave-to .modal-panel {
+  opacity: 0;
+  transform: scale(0.95) translateY(12px);
+}
 </style>

@@ -4,19 +4,27 @@
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-black text-navy">Recepción Digital</h1>
-        <p class="text-sm text-text-muted mt-0.5">{{ todayFormatted }}</p>
+        <div class="mt-0.5 flex items-center gap-2.5">
+          <p class="text-sm text-text-muted">{{ todayFormatted }}</p>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+            </span>
+            En vivo
+          </span>
+        </div>
       </div>
     </div>
 
     <!-- KPIs -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-      <div v-for="kpi in kpis" :key="kpi.key" class="card p-6">
-        <div class="flex items-start gap-3.5">
-          <div class="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" :class="kpi.classes" v-html="kpi.icon"></div>
-          <div class="flex-1 pt-0.5 min-w-0">
-            <div class="text-[13px] text-text-secondary font-medium mb-1.5 truncate">{{ kpi.label }}</div>
-            <div class="text-[28px] leading-none font-extrabold text-navy">{{ kpi.value }}</div>
-          </div>
+      <div v-for="kpi in kpis" :key="kpi.key"
+        class="group flex items-start gap-3.5 rounded-[20px] border border-border bg-white p-6 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" :style="{ background: kpi.bg, color: kpi.accent }" v-html="kpi.icon"></div>
+        <div class="flex-1 pt-0.5 min-w-0">
+          <div class="text-[13px] text-text-secondary font-medium mb-1.5 truncate">{{ kpi.label }}</div>
+          <div class="text-[28px] leading-none font-extrabold tabular-nums text-navy">{{ kpi.value }}</div>
         </div>
       </div>
     </div>
@@ -24,9 +32,9 @@
     <!-- Loading skeleton -->
     <template v-if="loading">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div v-for="i in 3" :key="i" class="card p-6 animate-pulse">
+        <div v-for="i in 3" :key="i" class="rounded-[20px] border border-border bg-white p-6 shadow-(--shadow-card) animate-pulse">
           <div class="flex items-start gap-3.5">
-            <div class="w-14 h-14 rounded-2xl bg-surface-dark shrink-0"></div>
+            <div class="w-14 h-14 rounded-full bg-surface-dark shrink-0"></div>
             <div class="flex-1 space-y-2 pt-1">
               <div class="h-3 w-20 bg-surface-dark rounded"></div>
               <div class="h-6 w-12 bg-surface-dark rounded"></div>
@@ -34,14 +42,14 @@
           </div>
         </div>
       </div>
-      <div class="card p-6 animate-pulse">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 animate-pulse">
         <div class="h-4 w-48 bg-surface-dark rounded mb-3"></div>
         <div class="space-y-2">
           <div v-for="i in 4" :key="i" class="h-10 bg-surface-dark rounded-lg"></div>
         </div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div v-for="i in 3" :key="i" class="card p-6 animate-pulse">
+        <div v-for="i in 3" :key="i" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 animate-pulse">
           <div class="h-4 w-32 bg-surface-dark rounded mb-4"></div>
           <div v-for="j in 3" :key="j" class="h-14 bg-surface-dark rounded-xl mb-2"></div>
         </div>
@@ -50,7 +58,7 @@
 
     <template v-else>
       <!-- Room Summary -->
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-extrabold text-navy">Habitaciones · {{ todayFormatted }}</h2>
           <button @click="showRoomGrid = !showRoomGrid"
@@ -125,7 +133,7 @@
       <!-- 3 Columns -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Arrivals Today -->
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
@@ -165,7 +173,7 @@
         </div>
 
         <!-- In House -->
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-xl bg-teal/10 flex items-center justify-center shrink-0">
@@ -200,7 +208,7 @@
         </div>
 
         <!-- Departures Today -->
-        <div class="card p-6">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-xl bg-coral/10 flex items-center justify-center shrink-0">
@@ -245,9 +253,9 @@
     <Teleport to="body">
       <div v-if="showRoomDetail && selectedRoom" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeRoomDetail">
         <div class="absolute inset-0 bg-navy/30 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+        <div class="relative bg-white rounded-[20px] shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
           <!-- Header -->
-          <div class="sticky top-0 bg-white border-b border-border p-6 z-10 rounded-t-2xl">
+          <div class="sticky top-0 bg-white border-b border-border p-6 z-10 rounded-t-[20px]">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <div class="w-11 h-11 rounded-xl bg-surface flex items-center justify-center text-navy shrink-0">
@@ -267,86 +275,97 @@
             </div>
           </div>
 
-          <!-- Guest info — garantizado si está ocupada -->
-          <div v-if="selectedRoom.status === 'occupied'" class="p-6 border-b border-border bg-surface/30">
-            <div class="text-[11px] font-bold text-text-muted uppercase mb-3">Huésped</div>
-            <div class="flex items-center gap-3">
-              <div class="w-11 h-11 rounded-full bg-navy/10 flex items-center justify-center text-sm font-bold text-navy shrink-0">
-                {{ guestInitials(String(selectedRoomGuest?.guestName || selectedRoom.guestName || '?')) }}
+          <!-- Body: layout horizontal — huésped/disponibilidad a la izquierda, specs+amenities a la derecha -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
+            <!-- ═══ IZQUIERDA: Huésped (ocupada) o estado disponible ═══ -->
+            <div class="p-6 bg-surface/30 flex flex-col">
+              <!-- Guest info — garantizado si está ocupada -->
+              <div v-if="selectedRoom.status === 'occupied'" class="flex-1 flex flex-col">
+                <div class="text-[11px] font-bold text-text-muted uppercase mb-3">Huésped</div>
+                <div class="flex items-center gap-3">
+                  <div class="w-11 h-11 rounded-full bg-navy/10 flex items-center justify-center text-sm font-bold text-navy shrink-0">
+                    {{ guestInitials(String(selectedRoomGuest?.guestName || selectedRoom.guestName || '?')) }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-base font-bold text-navy truncate">{{ selectedRoomGuest?.guestName || selectedRoom.guestName || 'Sin nombre' }}</div>
+                    <div v-if="selectedRoomGuest?.guestEmail || selectedRoom.guestEmail" class="text-xs text-text-muted truncate">{{ selectedRoomGuest?.guestEmail || selectedRoom.guestEmail }}</div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                  <div class="bg-white rounded-xl p-3 text-center">
+                    <div class="text-[11px] text-text-muted mb-0.5">Check-in</div>
+                    <div class="text-sm font-bold tabular-nums text-navy">{{ String(selectedRoomGuest?.checkIn || selectedRoom.checkIn || '').slice(0, 10) || '—' }}</div>
+                  </div>
+                  <div class="bg-white rounded-xl p-3 text-center">
+                    <div class="text-[11px] text-text-muted mb-0.5">Check-out</div>
+                    <div class="text-sm font-bold tabular-nums text-navy">{{ String(selectedRoomGuest?.checkOut || selectedRoom.checkOut || '').slice(0, 10) || '—' }}</div>
+                  </div>
+                </div>
+                <div class="flex gap-2 mt-auto pt-4 border-t border-border/60">
+                  <button @click="checkoutFromRoom(selectedRoom)" :disabled="processing" class="flex-1 py-2.5 bg-coral text-white text-xs font-bold rounded-xl hover:bg-coral/80 disabled:opacity-50 cursor-pointer">
+                    Check-out
+                  </button>
+                  <button v-if="selectedRoom.resId || selectedRoomGuest?.id" @click="viewReservation((selectedRoom.resId || selectedRoomGuest?.id) as string)" class="flex-1 py-2.5 bg-navy text-white text-xs font-bold rounded-xl hover:bg-navy-light cursor-pointer">
+                    Ver Reserva
+                  </button>
+                </div>
               </div>
-              <div class="min-w-0">
-                <div class="text-base font-bold text-navy truncate">{{ selectedRoomGuest?.guestName || selectedRoom.guestName || 'Sin nombre' }}</div>
-                <div v-if="selectedRoomGuest?.guestEmail || selectedRoom.guestEmail" class="text-xs text-text-muted truncate">{{ selectedRoomGuest?.guestEmail || selectedRoom.guestEmail }}</div>
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-3 mt-4">
-              <div class="bg-white rounded-xl p-3 text-center">
-                <div class="text-[11px] text-text-muted mb-0.5">Check-in</div>
-                <div class="text-sm font-bold text-navy">{{ String(selectedRoomGuest?.checkIn || selectedRoom.checkIn || '').slice(0, 10) || '—' }}</div>
-              </div>
-              <div class="bg-white rounded-xl p-3 text-center">
-                <div class="text-[11px] text-text-muted mb-0.5">Check-out</div>
-                <div class="text-sm font-bold text-navy">{{ String(selectedRoomGuest?.checkOut || selectedRoom.checkOut || '').slice(0, 10) || '—' }}</div>
-              </div>
-            </div>
-            <div class="flex gap-2 mt-4">
-              <button @click="checkoutFromRoom(selectedRoom)" :disabled="processing" class="flex-1 py-2.5 bg-coral text-white text-xs font-bold rounded-xl hover:bg-coral/80 disabled:opacity-50 cursor-pointer">
-                Check-out
-              </button>
-              <button v-if="selectedRoom.resId || selectedRoomGuest?.id" @click="viewReservation((selectedRoom.resId || selectedRoomGuest?.id) as string)" class="flex-1 py-2.5 bg-navy text-white text-xs font-bold rounded-xl hover:bg-navy-light cursor-pointer">
-                Ver Reserva
-              </button>
-            </div>
-          </div>
 
-          <!-- Empty state for non-occupied -->
-          <div v-else class="p-6 border-b border-border bg-surface/30">
-            <div class="text-center py-2">
-              <div class="w-11 h-11 mx-auto mb-2 text-teal" v-html="ROOM_ICONS.standard"></div>
-              <div class="text-sm font-bold text-teal">Disponible</div>
-              <div class="text-xs text-text-muted mt-0.5">Sin huésped asignado</div>
+              <!-- Empty state for non-occupied -->
+              <div v-else class="flex-1 flex flex-col items-center justify-center text-center py-4">
+                <div class="w-14 h-14 mx-auto mb-2 rounded-2xl bg-teal/10 grid place-items-center text-teal">
+                  <span class="w-7 h-7" v-html="ROOM_ICONS.standard"></span>
+                </div>
+                <div class="text-sm font-bold text-teal">Disponible</div>
+                <div class="text-xs text-text-muted mt-0.5">Sin huésped asignado</div>
+              </div>
             </div>
-          </div>
 
-          <!-- Room specs -->
-          <div class="p-6 border-b border-border">
-            <div class="text-[11px] font-bold text-text-muted uppercase mb-3">Detalles</div>
-            <div class="grid grid-cols-2 gap-3">
-              <div class="bg-surface rounded-xl p-3">
-                <div class="text-[11px] text-text-muted mb-0.5">Piso</div>
-                <div class="text-sm font-bold text-navy">{{ selectedRoom.floor || '—' }}</div>
+            <!-- ═══ DERECHA: Specs + Amenities ═══ -->
+            <div class="p-6 space-y-6">
+              <!-- Room specs -->
+              <div>
+                <div class="text-[11px] font-bold text-text-muted uppercase mb-3">Detalles</div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-surface rounded-xl p-3">
+                    <div class="text-[11px] text-text-muted mb-0.5">Piso</div>
+                    <div class="text-sm font-bold tabular-nums text-navy">{{ selectedRoom.floor || '—' }}</div>
+                  </div>
+                  <div class="bg-surface rounded-xl p-3">
+                    <div class="text-[11px] text-text-muted mb-0.5">Capacidad</div>
+                    <div class="text-sm font-bold tabular-nums text-navy">{{ selectedRoom.capacity || 2 }} pers</div>
+                  </div>
+                  <div class="bg-surface rounded-xl p-3">
+                    <div class="text-[11px] text-text-muted mb-0.5">Baños</div>
+                    <div class="text-sm font-bold tabular-nums text-navy">{{ selectedRoom.bathrooms || 1 }}</div>
+                  </div>
+                  <div class="bg-surface rounded-xl p-3">
+                    <div class="text-[11px] text-text-muted mb-0.5">Superficie</div>
+                    <div class="text-sm font-bold tabular-nums text-navy">{{ selectedRoom.surfaceArea ? selectedRoom.surfaceArea + ' m²' : '—' }}</div>
+                  </div>
+                </div>
+                <div class="mt-3 bg-surface rounded-xl p-3 flex justify-between items-center">
+                  <span class="text-[11px] text-text-muted">Precio base / noche</span>
+                  <span class="text-sm font-bold tabular-nums text-teal">${{ selectedRoom.basePrice || 0 }}</span>
+                </div>
               </div>
-              <div class="bg-surface rounded-xl p-3">
-                <div class="text-[11px] text-text-muted mb-0.5">Capacidad</div>
-                <div class="text-sm font-bold text-navy">{{ selectedRoom.capacity || 2 }} pers</div>
-              </div>
-              <div class="bg-surface rounded-xl p-3">
-                <div class="text-[11px] text-text-muted mb-0.5">Baños</div>
-                <div class="text-sm font-bold text-navy">{{ selectedRoom.bathrooms || 1 }}</div>
-              </div>
-              <div class="bg-surface rounded-xl p-3">
-                <div class="text-[11px] text-text-muted mb-0.5">Superficie</div>
-                <div class="text-sm font-bold text-navy">{{ selectedRoom.surfaceArea ? selectedRoom.surfaceArea + ' m²' : '—' }}</div>
-              </div>
-            </div>
-            <div class="mt-3 bg-surface rounded-xl p-3 flex justify-between items-center">
-              <span class="text-[11px] text-text-muted">Precio base / noche</span>
-              <span class="text-sm font-bold text-teal">${{ selectedRoom.basePrice || 0 }}</span>
-            </div>
-          </div>
 
-          <!-- Amenities -->
-          <div class="p-6">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-[11px] font-bold text-text-muted uppercase">Amenities</span>
-              <span v-if="loadingAmenities" class="text-xs text-text-muted">cargando...</span>
-            </div>
-            <div v-if="activeAmenities.length === 0 && !loadingAmenities" class="text-xs text-text-muted text-center py-3">Sin amenities registrados</div>
-            <div v-else class="flex flex-wrap gap-2">
-              <span v-for="a in activeAmenities" :key="a.key"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal/10 text-teal">
-                {{ a.label }}
-              </span>
+              <!-- Amenities -->
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-[11px] font-bold text-text-muted uppercase">Amenities</span>
+                  <span v-if="loadingAmenities" class="text-xs text-text-muted">cargando...</span>
+                </div>
+                <div v-if="activeAmenities.length === 0 && !loadingAmenities" class="text-xs text-text-muted text-center py-3">Sin amenities registrados</div>
+                <!-- Scroll propio y acotado: con muchos amenities (catálogo tiene ~35) no debe estirar
+                     la columna derecha más allá de la izquierda ni empujar los botones de acción fuera de vista. -->
+                <div v-else class="flex flex-wrap content-start gap-2 max-h-42 overflow-y-auto pr-1">
+                  <span v-for="a in activeAmenities" :key="a.key"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal/10 text-teal shrink-0">
+                    {{ a.label }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -357,10 +376,17 @@
     <Teleport to="body">
       <div v-if="showCheckinModal && checkinGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCheckinModal">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="relative bg-white rounded-[20px] shadow-2xl w-full max-w-md overflow-hidden">
           <div class="p-5 border-b border-border bg-teal/5">
             <div class="flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Check-in</h3>
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal/15 text-teal">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H4.5"/>
+                  </svg>
+                </div>
+                <h3 class="text-lg font-black text-navy">Check-in</h3>
+              </div>
               <button @click="closeCheckinModal" :disabled="processing" class="w-8 h-8 rounded-lg bg-white/80 flex items-center justify-center hover:bg-surface cursor-pointer disabled:opacity-50">✕</button>
             </div>
           </div>
@@ -373,20 +399,20 @@
               </div>
             </div>
             <div class="bg-surface rounded-xl p-4 space-y-2">
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Habitación</span><span class="font-bold text-navy">{{ checkinGuest.roomNumber }}</span></div>
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Check-in</span><span class="font-bold text-navy">{{ checkinGuest.checkIn }}</span></div>
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Check-out</span><span class="font-bold text-navy">{{ checkinGuest.checkOut }}</span></div>
+              <div class="flex justify-between text-xs"><span class="text-text-muted">Habitación</span><span class="font-bold tabular-nums text-navy">{{ checkinGuest.roomNumber }}</span></div>
+              <div class="flex justify-between text-xs"><span class="text-text-muted">Check-in</span><span class="font-bold tabular-nums text-navy">{{ checkinGuest.checkIn }}</span></div>
+              <div class="flex justify-between text-xs"><span class="text-text-muted">Check-out</span><span class="font-bold tabular-nums text-navy">{{ checkinGuest.checkOut }}</span></div>
               <div class="flex justify-between text-xs"><span class="text-text-muted">Canal</span><span class="font-bold text-navy">{{ checkinGuest.channelLabel }}</span></div>
-              <div class="flex justify-between text-xs"><span class="text-text-muted">Total</span><span class="font-bold text-teal">${{ checkinGuest.totalAmount }}</span></div>
+              <div class="flex justify-between text-xs"><span class="text-text-muted">Total</span><span class="font-bold tabular-nums text-teal">${{ checkinGuest.totalAmount }}</span></div>
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div class="text-center p-2 bg-surface rounded-lg">
                 <div class="text-[10px] text-text-muted">Adultos</div>
-                <div class="text-sm font-bold">{{ checkinGuest.adults }}</div>
+                <div class="text-sm font-bold tabular-nums">{{ checkinGuest.adults }}</div>
               </div>
               <div class="text-center p-2 bg-surface rounded-lg">
                 <div class="text-[10px] text-text-muted">Niños</div>
-                <div class="text-sm font-bold">{{ checkinGuest.children }}</div>
+                <div class="text-sm font-bold tabular-nums">{{ checkinGuest.children }}</div>
               </div>
             </div>
             <div v-if="processing" class="flex items-center justify-center gap-2 text-xs text-teal font-bold">
@@ -408,9 +434,16 @@
     <Teleport to="body">
       <div v-if="showCheckoutModal && checkoutGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="closeCheckoutModal">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="relative bg-white rounded-[20px] shadow-2xl w-full max-w-md overflow-hidden">
           <div class="p-5 border-b border-border bg-coral/5">
-            <h3 class="text-lg font-black text-navy">Check-out · Hab {{ checkoutGuest.roomNumber }}</h3>
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-coral/15 text-coral">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M9 12h12m0 0l-3-3m3 3l-3 3"/>
+                </svg>
+              </div>
+              <h3 class="text-lg font-black text-navy">Check-out · Hab {{ checkoutGuest.roomNumber }}</h3>
+            </div>
           </div>
           <div class="p-5 space-y-4">
             <div class="flex items-center gap-3">
@@ -435,15 +468,15 @@
               </div>
               <div class="flex justify-between text-xs">
                 <span class="text-text-muted">Cargos</span>
-                <span class="font-bold text-navy">${{ (checkoutFolio.chargesTotal || 0).toFixed(2) }}</span>
+                <span class="font-bold tabular-nums text-navy">${{ (checkoutFolio.chargesTotal || 0).toFixed(2) }}</span>
               </div>
               <div class="flex justify-between text-xs">
                 <span class="text-text-muted">Pagos</span>
-                <span class="font-bold text-teal">-${{ (checkoutFolio.paymentsTotal || 0).toFixed(2) }}</span>
+                <span class="font-bold tabular-nums text-teal">-${{ (checkoutFolio.paymentsTotal || 0).toFixed(2) }}</span>
               </div>
               <div class="border-t border-border pt-2 flex justify-between text-sm">
                 <span class="font-bold text-navy">Saldo pendiente</span>
-                <span class="font-bold" :class="(checkoutFolio.balance || 0) > 0 ? 'text-coral' : 'text-teal'">
+                <span class="font-bold tabular-nums" :class="(checkoutFolio.balance || 0) > 0 ? 'text-coral' : 'text-teal'">
                   ${{ (checkoutFolio.balance || 0).toFixed(2) }}
                 </span>
               </div>
@@ -491,6 +524,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useCountUp } from '@/composables/useCountUp'
 import { OperationsService } from '@/services/Operations.service'
 import { RoomService } from '@/services/Room.service'
 import { ReservationService } from '@/services/Reservation.service'
@@ -770,14 +804,20 @@ const arrivalsToday = computed(() => arrivals.value.length)
 const departuresToday = computed(() => departures.value.length)
 const inHouse = computed(() => inHouseList.value.length)
 
-const KPI_ICON_BED = '<svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 18v2M3 18h18M21 18v2M5 13V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>'
-const KPI_ICON_ARRIVAL = '<svg viewBox="0 0 24 24" class="w-7 h-7" fill="none"><rect x="3" y="3" width="12" height="18" rx="1.5" fill="currentColor" opacity="0.55"/><circle cx="11" cy="12" r="1.2" fill="white"/><path d="M14 12h7m0 0-3-3m3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
-const KPI_ICON_DEPARTURE = '<svg viewBox="0 0 24 24" class="w-7 h-7" fill="none"><rect x="9" y="3" width="12" height="18" rx="1.5" fill="currentColor" opacity="0.55"/><circle cx="17" cy="12" r="1.2" fill="white"/><path d="M10 12H3m0 0 3-3m-3 3 3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+const KPI_ICON_BED = '<svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 18v2M3 18h18M21 18v2M5 13V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>'
+const KPI_ICON_ARRIVAL = '<svg viewBox="0 0 24 24" class="w-6 h-6" fill="none"><rect x="3" y="3" width="12" height="18" rx="1.5" fill="currentColor" opacity="0.55"/><circle cx="11" cy="12" r="1.2" fill="white"/><path d="M14 12h7m0 0-3-3m3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+const KPI_ICON_DEPARTURE = '<svg viewBox="0 0 24 24" class="w-6 h-6" fill="none"><rect x="9" y="3" width="12" height="18" rx="1.5" fill="currentColor" opacity="0.55"/><circle cx="17" cy="12" r="1.2" fill="white"/><path d="M10 12H3m0 0 3-3m-3 3 3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+
+// Números animados (mismo patrón que reservations/index.vue) — useCountUp debe llamarse
+// en el cuerpo de setup, no dentro del computed que arma las cards.
+const inHouseAnim = useCountUp(inHouse)
+const arrivalsAnim = useCountUp(arrivalsToday)
+const departuresAnim = useCountUp(departuresToday)
 
 const kpis = computed(() => [
-  { key: 'inhouse', label: 'En Casa', value: String(inHouse.value), icon: KPI_ICON_BED, classes: 'bg-teal/10 text-teal' },
-  { key: 'arrivals', label: 'Por Llegar Hoy', value: String(arrivalsToday.value), icon: KPI_ICON_ARRIVAL, classes: 'bg-gold/10 text-gold' },
-  { key: 'departures', label: 'Por Salir Hoy', value: String(departuresToday.value), icon: KPI_ICON_DEPARTURE, classes: 'bg-coral/10 text-coral' },
+  { key: 'inhouse', label: 'En Casa', value: Math.round(inHouseAnim.value), icon: KPI_ICON_BED, bg: '#D1FAE5', accent: '#117A65' },
+  { key: 'arrivals', label: 'Por Llegar Hoy', value: Math.round(arrivalsAnim.value), icon: KPI_ICON_ARRIVAL, bg: '#FEF3C7', accent: '#B7950B' },
+  { key: 'departures', label: 'Por Salir Hoy', value: Math.round(departuresAnim.value), icon: KPI_ICON_DEPARTURE, bg: '#FEE2E2', accent: '#E74C3C' },
 ])
 
 function daysUntil(dateStr: string) {

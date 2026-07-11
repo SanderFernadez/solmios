@@ -19,8 +19,8 @@
         :trend="occupancyTrend"
         :sub-stats="[
           { label: 'Habitaciones', value: dashboard.stats.totalRooms },
-          { label: 'Disponibles', value: availableRooms, tone: 'text-[#4ADE80]' },
-          { label: 'Mantenimiento', value: maintenanceRooms, tone: 'text-[#FBBF24]' },
+          { label: 'Disponibles', value: availableRooms, tone: 'text-[#16A34A]' },
+          { label: 'Mantenimiento', value: maintenanceRooms, tone: 'text-[#D97706]' },
         ]"
       />
       <KpiHeroCard
@@ -30,8 +30,8 @@
         :progress="arrivalsProgress"
         :show-bar="false"
         :sub-stats="[
-          { label: 'Realizados', value: arrivalsDone, tone: 'text-[#4ADE80]' },
-          { label: 'Pendientes', value: arrivalsPending, tone: 'text-[#FBBF24]' },
+          { label: 'Realizados', value: arrivalsDone, tone: 'text-[#16A34A]' },
+          { label: 'Pendientes', value: arrivalsPending, tone: 'text-[#D97706]' },
         ]"
       />
       <KpiHeroCard
@@ -41,8 +41,8 @@
         :progress="departuresProgress"
         :show-bar="false"
         :sub-stats="[
-          { label: 'Realizados', value: departuresDone, tone: 'text-[#A78BFA]' },
-          { label: 'Pendientes', value: departuresPending, tone: 'text-[#FBBF24]' },
+          { label: 'Realizados', value: departuresDone, tone: 'text-[#7C3AED]' },
+          { label: 'Pendientes', value: departuresPending, tone: 'text-[#D97706]' },
         ]"
       />
       <KpiHeroCard
@@ -100,63 +100,63 @@
     <!-- Modal de habitación (heat map) -->
     <Teleport to="body">
       <div v-if="selectedRoom" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="selectedRoom = null">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="selectedRoom = null"></div>
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="selectedRoom = null"></div>
 
-        <div class="relative w-full max-w-md overflow-hidden rounded-[20px] border border-white/10 bg-[#0E1B33] shadow-2xl">
-          <div class="border-b border-white/8 p-5">
+        <div class="relative w-full max-w-md overflow-hidden rounded-[20px] border border-border bg-white shadow-2xl">
+          <div class="border-b border-border p-5">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="grid h-12 w-12 place-items-center rounded-xl text-xl font-black text-white" :style="{ background: `${roomAccent}33`, color: roomAccent }">
+                <div class="grid h-12 w-12 place-items-center rounded-xl text-xl font-black" :style="{ background: `${roomAccent}22`, color: roomAccent }">
                   {{ selectedRoom.number }}
                 </div>
                 <div>
-                  <h3 class="text-lg font-black text-white">Habitación {{ selectedRoom.number }}</h3>
-                  <p class="text-sm capitalize text-slate-400">{{ selectedRoom.type }} · Piso {{ selectedRoom.floor }}</p>
+                  <h3 class="text-lg font-black text-navy">Habitación {{ selectedRoom.number }}</h3>
+                  <p class="text-sm capitalize text-text-secondary">{{ selectedRoom.type }} · Piso {{ selectedRoom.floor }}</p>
                 </div>
               </div>
-              <button @click="selectedRoom = null" class="grid h-8 w-8 place-items-center rounded-lg bg-white/5 text-slate-400 transition-colors hover:text-white cursor-pointer">✕</button>
+              <button @click="selectedRoom = null" class="grid h-8 w-8 place-items-center rounded-lg bg-surface text-text-secondary transition-colors hover:text-navy cursor-pointer">✕</button>
             </div>
           </div>
 
           <div class="space-y-4 p-5">
-            <div class="flex items-center justify-between rounded-xl bg-white/4 p-3">
-              <span class="text-sm font-bold text-slate-400">Estado</span>
-              <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :style="{ background: `${roomAccent}22`, color: roomAccent }">
+            <div class="flex items-center justify-between rounded-xl bg-surface p-3">
+              <span class="text-sm font-bold text-text-secondary">Estado</span>
+              <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :style="{ background: `${roomAccent}1A`, color: roomAccent }">
                 {{ ROOM_STATUS_LABEL[selectedRoom.status] }}
               </span>
             </div>
 
-            <div v-if="selectedRoom.status === 'occupied' && roomGuest" class="rounded-xl bg-white/4 p-4">
-              <div class="mb-3 text-[10px] font-bold uppercase tracking-wide text-slate-500">Huésped Actual</div>
+            <div v-if="selectedRoom.status === 'occupied' && roomGuest" class="rounded-xl bg-surface p-4">
+              <div class="mb-3 text-[10px] font-bold uppercase tracking-wide text-text-muted">Huésped Actual</div>
               <div class="flex items-center gap-3">
-                <div class="grid h-11 w-11 place-items-center rounded-full bg-[#2563EB]/20 text-sm font-bold text-[#60A5FA]">{{ roomGuest.initials }}</div>
+                <div class="grid h-11 w-11 place-items-center rounded-full bg-[#2563EB]/12 text-sm font-bold text-[#2563EB]">{{ roomGuest.initials }}</div>
                 <div class="flex-1">
-                  <div class="text-sm font-bold text-white">{{ roomGuest.name }}</div>
-                  <div class="text-[10px] text-slate-400">{{ roomGuest.checkIn }} → {{ roomGuest.checkOut }}</div>
+                  <div class="text-sm font-bold text-navy">{{ roomGuest.name }}</div>
+                  <div class="text-[10px] text-text-secondary">{{ roomGuest.checkIn }} → {{ roomGuest.checkOut }}</div>
                 </div>
               </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-              <div class="rounded-xl bg-white/4 p-3 text-center">
-                <div class="text-lg font-black tabular-nums text-white">${{ selectedRoom.basePrice }}</div>
-                <div class="text-[10px] text-slate-500">Tarifa/Noche</div>
+              <div class="rounded-xl bg-surface p-3 text-center">
+                <div class="text-lg font-black tabular-nums text-navy">${{ selectedRoom.basePrice }}</div>
+                <div class="text-[10px] text-text-muted">Tarifa/Noche</div>
               </div>
-              <div class="rounded-xl bg-white/4 p-3 text-center">
-                <div class="text-lg font-black tabular-nums text-white">{{ selectedRoom.maxGuests }}</div>
-                <div class="text-[10px] text-slate-500">Max. Ocupantes</div>
+              <div class="rounded-xl bg-surface p-3 text-center">
+                <div class="text-lg font-black tabular-nums text-navy">{{ selectedRoom.maxGuests }}</div>
+                <div class="text-[10px] text-text-muted">Max. Ocupantes</div>
               </div>
             </div>
           </div>
 
-          <div class="border-t border-white/8 bg-white/2 p-5">
+          <div class="border-t border-border bg-surface p-5">
             <div class="flex gap-2">
               <button v-if="selectedRoom.status === 'available'" @click="setRoomStatus('occupied')" class="cc-modal-btn flex-1 bg-[#22C55E] text-[#052E16]">Check-in</button>
               <button v-if="selectedRoom.status === 'occupied'" @click="setRoomStatus('cleaning')" class="cc-modal-btn flex-1 bg-[#EF4444] text-white">Check-out</button>
               <button v-if="selectedRoom.status === 'cleaning' || selectedRoom.status === 'dirty'" @click="setRoomStatus('available')" class="cc-modal-btn flex-1 bg-[#06B6D4] text-[#083344]">Marcar Limpia</button>
-              <button v-if="selectedRoom.status !== 'out_of_service'" @click="setRoomStatus('out_of_service')" class="cc-modal-btn border border-white/10 bg-white/5 text-slate-300">F/S</button>
-              <button v-else @click="setRoomStatus('available')" class="cc-modal-btn border border-white/10 bg-white/5 text-slate-300">Reactivar</button>
-              <button @click="selectedRoom = null" class="cc-modal-btn border border-white/10 bg-white/5 text-slate-300">Cerrar</button>
+              <button v-if="selectedRoom.status !== 'out_of_service'" @click="setRoomStatus('out_of_service')" class="cc-modal-btn border border-border bg-white text-text-secondary">F/S</button>
+              <button v-else @click="setRoomStatus('available')" class="cc-modal-btn border border-border bg-white text-text-secondary">Reactivar</button>
+              <button @click="selectedRoom = null" class="cc-modal-btn border border-border bg-white text-text-secondary">Cerrar</button>
             </div>
           </div>
         </div>
@@ -569,9 +569,9 @@ async function setRoomStatus(status: RoomStatus) {
 <style scoped>
 .cc-dashboard {
   background:
-    radial-gradient(1000px 500px at 80% -10%, rgba(37, 99, 235, 0.1), transparent),
-    radial-gradient(800px 400px at 0% 110%, rgba(6, 182, 212, 0.06), transparent),
-    #04070F;
+    radial-gradient(1000px 500px at 80% -10%, rgba(37, 99, 235, 0.05), transparent),
+    radial-gradient(800px 400px at 0% 110%, rgba(6, 182, 212, 0.04), transparent),
+    #F8FAFC;
 }
 .cc-modal-btn {
   padding: 10px 16px;
