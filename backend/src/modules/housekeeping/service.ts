@@ -76,7 +76,14 @@ export class HousekeepingService {
   }
 
   async getById(id: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
-    const item = await this.repo.findById(id)
+    // NO `findById`: en este ORM la lectura de UNA fila devuelve los campos
+    // json/text (`cleaningItems`, `notes`, `supervisorNote`, `photos`) en null,
+    // mientras que la lectura en lote (`paginate`, que usa el listado) los
+    // deserializa bien. El detalle de la app se sirve de acá, así que sin esto la
+    // camarera abría una tarea SIN checklist tildado y SIN el motivo de rechazo.
+    // Se lee por el mismo camino que el listado, filtrando por id.
+    const result = await this.repo.paginate({ id }, { offset: 0, limit: 1 })
+    const item = result.data[0]
     if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
     if (currentUser.role !== 'super_admin' && item.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
     // El detalle también muestra "Hab. X": sin esto el título quedaba vacío.

@@ -50,6 +50,10 @@ export interface HousekeepingDTO {
   pausedAt?: string | null
   pausedSeconds?: number
   photos?: PhotoEvidence[]
+  supervisorId?: string
+  /** Motivo con el que el supervisor/admin DEVOLVIÓ la limpieza (reject). La app lo muestra a la camarera. */
+  supervisorNote?: string | null
+  supOnSiteTime?: string
   createdAt: string
   updatedAt: string
 }
