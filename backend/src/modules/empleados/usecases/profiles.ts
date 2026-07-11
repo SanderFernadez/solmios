@@ -70,15 +70,18 @@ export class ProfileUseCase {
     const result = await this.repo.paginate(filters, { limit, offset })
     const data = result.data ?? []
     if (this.userRepo && data.length) {
-      // Batch-fetch users to avoid N+1 queries
-      const userIds = data.map(p => p.userId).filter(Boolean)
-      let usersMap = new Map<string, any>()
-      if (userIds.length) {
-        try {
-          const users = await this.userRepo!.findMany({ id: userIds })
-          for (const u of users) usersMap.set(u.id, u)
-        } catch { /* fallback to per-profile lookup */ }
-      }
+      // Traer los usuarios para poner el NOMBRE (no el userId). OJO: `findMany({ id: [array] })` NO
+      // hace un WHERE IN — el ORM bindea el array como un solo valor, falla, y el nombre caía al userId
+      // (por eso el listado mostraba el UUID). Se traen los usuarios del hotel en UN query; si no hay
+      // hotelId acotado (super_admin global), se buscan por id en paralelo.
+      const userIds = [...new Set(data.map(p => p.userId).filter(Boolean))]
+      const usersMap = new Map<string, any>()
+      try {
+        const users = query.hotelId
+          ? await this.userRepo.findMany({ hotelId: query.hotelId })
+          : (await Promise.all(userIds.map(id => this.userRepo!.findById(id).catch(() => null)))).filter(Boolean)
+        for (const u of users as any[]) usersMap.set(u.id, u)
+      } catch { /* si falla, se usa el userId como último recurso */ }
       const enriched = data.map(p => {
         const u = usersMap.get(p.userId)
         return { ...p, userName: u?.name ?? u?.email ?? p.userId }

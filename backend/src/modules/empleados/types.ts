@@ -25,6 +25,8 @@ export interface CreateDepartmentDTO {
 export interface EmployeeProfileDTO {
   id: string
   userId: string
+  /** Nombre del usuario (join con la tabla users). Lo agrega `list()` — no es columna de la tabla. */
+  userName?: string
   hotelId: string
   departmentId: string | null
   position: string
