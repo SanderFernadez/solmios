@@ -54,6 +54,11 @@ export function CapacitacionModule() {
       router.post('/api/training/enrollments/:id/complete', guard('users', 'edit'), (req) => controller.completeEnrollment(req))
       router.delete('/api/training/enrollments/:id', guard('users', 'delete'), (req) => controller.deleteEnrollment(req))
 
+      // Confirmación pública desde el link del correo (sin login: el token es la llave).
+      // GET muestra la página con el botón; POST marca completado.
+      router.get('/api/training/confirm/:token', (req) => controller.confirmPage(req))
+      router.post('/api/training/confirm/:token', (req) => controller.confirmSubmit(req))
+
       log.info('Módulo capacitacion listo — 2 tablas, 8 endpoints')
       return service
     },

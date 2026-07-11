@@ -6,6 +6,7 @@ export const CreateCourseSchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const, required: true, min: 2, max: 150 },
   type: { type: 'string' as const, enum: ['course', 'certification', 'onboarding'] },
   description: { type: 'string' as const, max: 1000 },
+  materialUrl: { type: 'string' as const, max: 500 },
   durationHours: { type: 'number' as const, min: 0 },
   validityMonths: { type: 'number' as const, min: 0 },
 }
@@ -14,6 +15,7 @@ export const UpdateCourseSchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const, min: 2, max: 150 },
   type: { type: 'string' as const, enum: ['course', 'certification', 'onboarding'] },
   description: { type: 'string' as const, max: 1000 },
+  materialUrl: { type: 'string' as const, max: 500 },
   durationHours: { type: 'number' as const, min: 0 },
   validityMonths: { type: 'number' as const, min: 0 },
   active: { type: 'number' as const },

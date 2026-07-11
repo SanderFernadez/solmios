@@ -8,6 +8,7 @@ const TrainingCourseModel: ModelDefinition = {
     name: { type: 'string', required: true },
     type: { type: 'string', required: true, default: 'course' }, // course | certification | onboarding
     description: { type: 'string' },
+    materialUrl: { type: 'string' }, // link al contenido (video/PDF/plataforma) que va en el correo
     durationHours: { type: 'number' },
     validityMonths: { type: 'number' }, // vigencia de la certificación (null = no vence)
     active: { type: 'boolean', default: 1 },
@@ -22,6 +23,8 @@ const TrainingEnrollmentModel: ModelDefinition = {
     courseId: { type: 'string', required: true, indexed: true },
     employeeId: { type: 'string', required: true, indexed: true },
     status: { type: 'string', required: true, default: 'enrolled' }, // enrolled | completed
+    // Token del link de confirmación que se le manda al empleado por correo (para autoconfirmar).
+    confirmToken: { type: 'string', indexed: true },
     enrolledAt: { type: 'string' },
     completedAt: { type: 'string' },
     expiresAt: { type: 'string' },

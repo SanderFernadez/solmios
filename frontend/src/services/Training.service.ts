@@ -6,6 +6,7 @@ export type CourseType = 'course' | 'certification' | 'onboarding'
 export interface Course {
   id: string; hotelId: string; name: string
   type: CourseType | string; description: string | null
+  materialUrl: string | null
   durationHours: number | null; validityMonths: number | null; active: number
 }
 

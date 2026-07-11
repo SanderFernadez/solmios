@@ -78,4 +78,23 @@ describe('CapacitacionService', () => {
     await svc.deleteCourse('c1', 'h1')
     expect(enrollRepo._rows).toHaveLength(0)
   })
+
+  // ─── Autoconfirmación por token (el empleado confirma que lo tomó) ───
+  it('confirmByToken marca la inscripción como completada', async () => {
+    const { svc, enrollRepo } = make({ courses: [COURSE], enrollments: [{ id: 'en1', hotelId: 'h1', courseId: 'c1', employeeId: 'e1', status: 'enrolled', confirmToken: 'tok-123' }] })
+    const res = await svc.confirmByToken('tok-123')
+    expect(res?.alreadyDone).toBe(false)
+    expect(enrollRepo._rows[0].status).toBe('completed')
+    expect(enrollRepo._rows[0].expiresAt).toBeTruthy()   // COURSE vence en 12 meses
+  })
+
+  it('confirmByToken con token inválido devuelve null', async () => {
+    const { svc } = make({ enrollments: [] })
+    expect(await svc.confirmByToken('no-existe')).toBeNull()
+  })
+
+  it('confirmByToken sobre algo ya completado no rompe (alreadyDone=true)', async () => {
+    const { svc } = make({ courses: [COURSE], enrollments: [{ id: 'en1', hotelId: 'h1', courseId: 'c1', employeeId: 'e1', status: 'completed', confirmToken: 'tok-9' }] })
+    expect((await svc.confirmByToken('tok-9'))?.alreadyDone).toBe(true)
+  })
 })

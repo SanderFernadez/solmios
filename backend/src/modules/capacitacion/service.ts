@@ -7,15 +7,40 @@ import { NotFoundError, ValidationError } from 'arckode-framework'
 import type {
   CourseDTO, CreateCourseDTO, EnrollmentDTO, CreateEnrollmentDTO,
 } from './types'
+import { buildEnrollmentEmail } from './usecases/emails'
+
+/** Puerto de email (lo cablea email-bootstrap con setEmailDeps). */
+export interface EmailPort {
+  enqueue(input: { to: string; subject: string; html: string; hotelId: string; relatedType?: string; relatedId?: string }): Promise<string>
+}
 
 export class CapacitacionService {
+  private emailSender?: EmailPort
+  private userRepo?: RepositoryAdapter<{ id: string; name?: string; email?: string }>
+  private publicUrl?: string
+
   constructor(
     private readonly courseRepo: RepositoryAdapter<CourseDTO>,
     private readonly enrollRepo: RepositoryAdapter<EnrollmentDTO>,
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
-    private readonly profileRepo?: RepositoryAdapter<{ id: string; hotelId: string }>,
+    private readonly profileRepo?: RepositoryAdapter<{ id: string; hotelId: string; userId?: string }>,
   ) {}
+
+  /** email-bootstrap cablea el envío de correo + cómo resolver el email del empleado. */
+  setEmailDeps(emailSender: EmailPort, userRepo: RepositoryAdapter<any>, publicUrl?: string): void {
+    this.emailSender = emailSender
+    this.userRepo = userRepo
+    this.publicUrl = publicUrl
+  }
+
+  /** Vencimiento de una certificación: hoy + validityMonths. null si el curso no vence. */
+  private expiresFor(course: CourseDTO | null): string | null {
+    const validity = Number(course?.validityMonths ?? 0)
+    if (validity <= 0) return null
+    const exp = new Date(); exp.setMonth(exp.getMonth() + validity)
+    return exp.toISOString()
+  }
 
   // ─── Cursos ───────────────────────────────────────────
   async listCourses(hotelId: string): Promise<CourseDTO[]> { return this.courseRepo.findMany({ hotelId }) }
@@ -52,14 +77,32 @@ export class CapacitacionService {
 
   /** Inscribe a un empleado en un curso. Valida curso y empleado del hotel; no duplica inscripción activa. */
   async enroll(dto: CreateEnrollmentDTO): Promise<EnrollmentDTO> {
-    await this.getCourse(dto.courseId, dto.hotelId)   // curso del hotel
+    const course = await this.getCourse(dto.courseId, dto.hotelId)   // curso del hotel
+    let profile: { userId?: string } | null = null
     if (this.profileRepo) {
-      const emp = await this.profileRepo.findOne({ id: dto.employeeId, hotelId: dto.hotelId })
-      if (!emp) throw new ValidationError('El empleado no pertenece a este hotel')
+      profile = await this.profileRepo.findOne({ id: dto.employeeId, hotelId: dto.hotelId })
+      if (!profile) throw new ValidationError('El empleado no pertenece a este hotel')
     }
     const dup = await this.enrollRepo.findOne({ hotelId: dto.hotelId, courseId: dto.courseId, employeeId: dto.employeeId, status: 'enrolled' })
     if (dup) throw new ValidationError('El empleado ya está inscripto en este curso')
-    return this.enrollRepo.create({ ...dto, status: 'enrolled', enrolledAt: new Date().toISOString() } as any)
+    const confirmToken = crypto.randomUUID()
+    const enrollment = await this.enrollRepo.create({ ...dto, status: 'enrolled', confirmToken, enrolledAt: new Date().toISOString() } as any)
+    // Correo best-effort: si el email falla o no está configurado, la inscripción NO se rompe.
+    this.notifyEnrolled(enrollment, course, profile?.userId).catch((e) => this.logger.warn('capacitacion: email de inscripción falló', { error: String(e) }))
+    return enrollment
+  }
+
+  /** Manda el correo de inscripción con el material y el link para autoconfirmar. */
+  private async notifyEnrolled(enrollment: EnrollmentDTO, course: CourseDTO, userId?: string): Promise<void> {
+    if (!this.emailSender || !this.userRepo || !userId) return
+    const user = await this.userRepo.findById(userId)
+    if (!user?.email) return
+    const confirmUrl = this.publicUrl && enrollment.confirmToken
+      ? `${this.publicUrl.replace(/\/$/, '')}/api/training/confirm/${enrollment.confirmToken}` : null
+    const { subject, html } = buildEnrollmentEmail({
+      employeeName: user.name ?? '', courseName: course.name, materialUrl: course.materialUrl, confirmUrl,
+    })
+    await this.emailSender.enqueue({ to: user.email, subject, html, hotelId: enrollment.hotelId, relatedType: 'training', relatedId: enrollment.id })
   }
 
   /** Marca la inscripción como completada; si el curso vence, calcula expiresAt. */
@@ -67,15 +110,31 @@ export class CapacitacionService {
     const enrollment = await this.enrollRepo.findOne({ id, hotelId })
     if (!enrollment) throw new NotFoundError('Inscripción no encontrada')
     const course = await this.courseRepo.findOne({ id: enrollment.courseId, hotelId })
-    const now = new Date()
-    let expiresAt: string | null = null
-    const validity = Number(course?.validityMonths ?? 0)
-    if (validity > 0) {
-      const exp = new Date(now); exp.setMonth(exp.getMonth() + validity); expiresAt = exp.toISOString()
-    }
     return this.enrollRepo.update(id, {
-      status: 'completed', completedAt: now.toISOString(), expiresAt, score: score ?? null,
+      status: 'completed', completedAt: new Date().toISOString(), expiresAt: this.expiresFor(course), score: score ?? null,
     } as any) as Promise<EnrollmentDTO>
+  }
+
+  /** Solo lectura: nombre del curso de un token (para la PÁGINA de confirmación; no marca nada). */
+  async peekByToken(token: string): Promise<string | null> {
+    if (!token) return null
+    const enrollment = await this.enrollRepo.findOne({ confirmToken: token })
+    if (!enrollment) return null
+    const course = await this.courseRepo.findOne({ id: enrollment.courseId, hotelId: enrollment.hotelId })
+    return course?.name ?? '—'
+  }
+
+  /** Confirmación del empleado desde el link del correo (público, sin login: el token es la llave). */
+  async confirmByToken(token: string): Promise<{ courseName: string | null; alreadyDone: boolean } | null> {
+    if (!token) return null
+    const enrollment = await this.enrollRepo.findOne({ confirmToken: token })
+    if (!enrollment) return null
+    const course = await this.courseRepo.findOne({ id: enrollment.courseId, hotelId: enrollment.hotelId })
+    const alreadyDone = enrollment.status === 'completed'
+    if (!alreadyDone) {
+      await this.enrollRepo.update(enrollment.id, { status: 'completed', completedAt: new Date().toISOString(), expiresAt: this.expiresFor(course) } as any)
+    }
+    return { courseName: course?.name ?? null, alreadyDone }
   }
 
   async deleteEnrollment(id: string, hotelId: string): Promise<void> {

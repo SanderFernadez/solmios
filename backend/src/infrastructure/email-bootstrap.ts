@@ -26,6 +26,13 @@ export function bootstrapEmail(orm: any, logger: Logger, resolveModule: <T>(name
     facturasForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Hotels'))
   }
 
+  // Capacitación: correo de inscripción con material + link de autoconfirmación. PUBLIC_URL arma el
+  // link absoluto del correo (ej: https://hotel.zx89.site); sin él, el correo va sin botón de confirmar.
+  const capacitacionForEmail = resolveModule<{ setEmailDeps(es: EmailSender, ur: any, publicUrl?: string): void }>('capacitacion')
+  if (capacitacionForEmail && typeof capacitacionForEmail.setEmailDeps === 'function') {
+    capacitacionForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Users'), process.env.PUBLIC_URL)
+  }
+
   const marketingSvc = resolveModule<{ setTriggerDeps(deps: any): void }>('marketing')
   if (marketingSvc && typeof marketingSvc.setTriggerDeps === 'function') {
     marketingSvc.setTriggerDeps({

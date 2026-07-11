@@ -18,6 +18,13 @@
       </button>
     </div>
 
+    <div class="mb-5 p-4 rounded-xl bg-navy/5 border border-navy/10 text-xs text-text-secondary leading-relaxed">
+      <b class="text-navy">💡 Cómo funciona:</b> creá el curso (podés cargar un <b>link al material</b>: video, PDF o plataforma).
+      Cuando <b>inscribís</b> a un empleado, le llega un <b>correo</b> con el curso y el link. Cuando lo termina, confirma
+      desde el correo y acá lo vas a ver como <b>Completado</b> — así sabés quién lo tomó y quién no. También podés marcarlo
+      vos a mano con el botón "Completar".
+    </div>
+
     <div v-if="loading" class="flex items-center justify-center py-20">
       <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
     </div>
@@ -37,7 +44,11 @@
         </thead>
         <tbody>
           <tr v-for="c in courses" :key="c.id" class="border-b border-border/50 last:border-0 hover:bg-surface/30">
-            <td class="px-4 py-2.5 font-bold text-navy">{{ c.name }}</td>
+            <td class="px-4 py-2.5">
+              <div class="font-bold text-navy">{{ c.name }}</div>
+              <a v-if="c.materialUrl" :href="c.materialUrl" target="_blank" rel="noopener" class="text-[10px] font-bold text-cyan hover:underline">🔗 Ver material</a>
+              <span v-else class="text-[10px] text-text-muted">Sin material cargado</span>
+            </td>
             <td class="px-4 py-2.5"><span class="text-[10px] font-bold px-2 py-1 rounded-full bg-navy/5 text-navy">{{ typeLabel(c.type) }}</span></td>
             <td class="px-4 py-2.5 text-right text-text-secondary">{{ c.durationHours ? c.durationHours + 'h' : '—' }}</td>
             <td class="px-4 py-2.5 text-right text-text-secondary">{{ c.validityMonths ? c.validityMonths + ' meses' : 'No vence' }}</td>
@@ -129,6 +140,8 @@ function openNewCourse() {
     fields: [
       { key: 'name', label: 'Nombre', required: true, minLength: 2, maxLength: 150, placeholder: 'Manejo de alimentos' },
       { key: 'type', label: 'Tipo', type: 'select', default: 'course', options: Object.entries(COURSE_TYPE_LABELS).map(([value, label]) => ({ value, label })) },
+      { key: 'materialUrl', label: 'Link del material (opcional)', maxLength: 500, placeholder: 'https://…',
+        hint: 'Link al video, PDF o plataforma del curso. Se lo mandamos por correo al empleado cuando lo inscribís.' },
       { key: 'durationHours', label: 'Duración (horas)', type: 'number', min: 0 },
       { key: 'validityMonths', label: 'Vigencia (meses, 0 = no vence)', type: 'number', min: 0 },
       { key: 'description', label: 'Descripción', type: 'textarea', maxLength: 1000 },
@@ -136,7 +149,7 @@ function openNewCourse() {
     onSubmit: async (v) => {
       saving.value = true
       try {
-        await TrainingService.createCourse({ name: String(v.name).trim(), type: String(v.type), durationHours: Number(v.durationHours) || undefined, validityMonths: Number(v.validityMonths) || undefined, description: String(v.description || '') || undefined } as Partial<Course>)
+        await TrainingService.createCourse({ name: String(v.name).trim(), type: String(v.type), materialUrl: String(v.materialUrl || '') || undefined, durationHours: Number(v.durationHours) || undefined, validityMonths: Number(v.validityMonths) || undefined, description: String(v.description || '') || undefined } as Partial<Course>)
         toast.success('Curso creado'); modal.value = null; await load()
       } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Error al crear') }
       finally { saving.value = false }

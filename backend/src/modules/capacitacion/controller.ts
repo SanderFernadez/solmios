@@ -3,8 +3,10 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { CapacitacionService } from './service'
 import { CreateCourseSchema, UpdateCourseSchema, EnrollSchema, CompleteEnrollmentSchema } from './validators/schema'
+import { confirmPageHtml, confirmDoneHtml } from './usecases/emails'
 
 const hotelOf = (req: HttpRequest): string => (req as any).user?.hotelId ?? (req.query as any)?.hotelId ?? ''
+const HTML = { 'content-type': 'text/html; charset=utf-8' }
 
 export class CapacitacionController {
   constructor(
@@ -49,5 +51,22 @@ export class CapacitacionController {
   async deleteEnrollment(req: HttpRequest) {
     await this.service.deleteEnrollment(req.params.id, hotelOf(req))
     return { status: 204, body: null }
+  }
+
+  // ─── Confirmación por link de correo (público, token-based) ──────────────
+  /** GET: muestra la página con el botón. NO marca nada (evita que el preview del mail confirme solo). */
+  async confirmPage(req: HttpRequest) {
+    const token = String(req.params.token || '')
+    const courseName = await this.service.peekByToken(token)
+    if (courseName === null) return { status: 404, body: '<!doctype html><p style="font-family:sans-serif;text-align:center;padding:40px">Link inválido o vencido.</p>', headers: HTML }
+    return { status: 200, body: confirmPageHtml({ courseName, confirmUrl: `/api/training/confirm/${encodeURIComponent(token)}` }), headers: HTML }
+  }
+
+  /** POST: el empleado confirmó → marca la inscripción como completada. */
+  async confirmSubmit(req: HttpRequest) {
+    const token = String(req.params.token || '')
+    const res = await this.service.confirmByToken(token)
+    if (!res) return { status: 404, body: '<!doctype html><p style="font-family:sans-serif;text-align:center;padding:40px">Link inválido o vencido.</p>', headers: HTML }
+    return { status: 200, body: confirmDoneHtml(res.courseName), headers: HTML }
   }
 }

@@ -6,18 +6,20 @@ export type EnrollmentStatus = 'enrolled' | 'completed'
 export interface CourseDTO {
   id: string; hotelId: string; name: string
   type: CourseType | string; description: string | null
+  materialUrl: string | null
   durationHours: number | null; validityMonths: number | null; active: number
   createdAt: string; updatedAt: string
 }
 
 export interface CreateCourseDTO {
   hotelId: string; name: string; type?: string
-  description?: string; durationHours?: number; validityMonths?: number
+  description?: string; materialUrl?: string; durationHours?: number; validityMonths?: number
 }
 
 export interface EnrollmentDTO {
   id: string; hotelId: string; courseId: string; employeeId: string
   status: EnrollmentStatus | string
+  confirmToken: string | null
   enrolledAt: string | null; completedAt: string | null; expiresAt: string | null
   score: number | null; notes: string | null
   createdAt: string; updatedAt: string
