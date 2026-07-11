@@ -1,5 +1,7 @@
 import type { HttpRequest } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+// El validador COMPARTIDO (no el del framework): el del framework colapsa los
+// saltos de línea del mensaje; este los preserva con `type: 'text'`.
+import { validateSchema } from '../../shared/validators/validate-body'
 import type { FileUpload, StorageService } from 'arckode-framework/modules/storage'
 import type { MessagesService } from './service'
 import { SendMessageSchema } from './validators/schema'
