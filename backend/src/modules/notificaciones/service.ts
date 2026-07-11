@@ -106,7 +106,15 @@ export class NotificacionesService {
   async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Notificación no encontrada')
-    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+    const isSuper = currentUser.role === 'super_admin'
+    if (!isSuper && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
+    // Cualquiera puede borrar SU propia notificación o una del hotel (sin
+    // dueño). Lo que NO puede es borrar la notificación personal de otra
+    // persona; solo el super_admin puede borrar cualquiera.
+    const ownerId = (existing as any).userId as string | undefined
+    if (!isSuper && ownerId && ownerId !== currentUser.id) {
       throw new AuthError('No autorizado')
     }
     const deleted = await this.repo.delete(id)

@@ -44,7 +44,11 @@ export function NotificacionesModule() {
       router.get('/api/notificaciones/:id', [auth.authenticate()], (req) => controller.show(req))
       router.post('/api/notificaciones', guard('dashboard', 'create'), (req) => controller.store(req))
       router.put('/api/notificaciones/:id', guard('dashboard', 'create'), (req) => controller.update(req))
-      router.delete('/api/notificaciones/:id', guard('dashboard', 'delete'), (req) => controller.destroy(req))
+      // Borrar la PROPIA notificación no exige `dashboard:delete` (camarera/
+      // mantenimiento no lo tienen): así la campanita se puede vaciar de verdad
+      // en el servidor y no reaparece. El service impide borrar la de otra
+      // persona; el guard de rol quedaba impidiendo hasta borrar la propia.
+      router.delete('/api/notificaciones/:id', [auth.authenticate()], (req) => controller.destroy(req))
 
       log.info('Módulo notificaciones v2 listo')
       return service
