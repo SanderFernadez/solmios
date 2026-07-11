@@ -1,56 +1,66 @@
 <template>
   <div>
-    <h2 class="text-xl font-black text-navy mb-6">Housekeeping</h2>
+    <div class="flex items-center gap-2.5 mb-6">
+      <h2 class="text-xl font-black text-navy">Housekeeping</h2>
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+        <span class="relative flex h-1.5 w-1.5">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+          <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+        </span>
+        En vivo
+      </span>
+    </div>
 
-    <!-- Toolbar -->
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-      <div class="flex flex-wrap items-center gap-2">
+    <!-- Toolbar: fila 1 = navegación + acciones primarias, fila 2 = filtros -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <div class="flex items-center gap-2">
         <button
           v-for="view in views"
           :key="view.value"
           @click="switchView(view.value)"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
+          class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer"
           :class="activeView === view.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'"
         >
           <span class="w-4 h-4 shrink-0" v-html="view.icon"></span>
           {{ view.label }}
         </button>
-        <div class="w-px h-6 bg-border mx-2"></div>
-        <button
-          v-for="filter in statusFilters"
-          :key="filter.value"
-          @click="activeFilter = filter.value"
-          class="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
-          :class="activeFilter === filter.value ? 'bg-navy/10 text-navy' : 'text-text-secondary hover:bg-surface'"
-        >
-          {{ filter.label }}
-        </button>
-        <label class="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary cursor-pointer ml-2 select-none">
-          <input type="checkbox" v-model="hideCompleted" class="accent-navy w-3.5 h-3.5 cursor-pointer" />
-          Ocultar terminadas
-        </label>
       </div>
       <div class="flex gap-2">
-        <button @click="openAssignModal" class="flex items-center gap-1.5 bg-navy text-white font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <button @click="openAssignModal" class="flex items-center gap-1.5 bg-navy text-white font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
           Asignar Tarea
         </button>
-        <button @click="openNewTask" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <button @click="openNewTask" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
           Nueva Tarea
         </button>
       </div>
     </div>
+    <div class="flex flex-wrap items-center gap-2 mb-6">
+      <button
+        v-for="filter in statusFilters"
+        :key="filter.value"
+        @click="activeFilter = filter.value"
+        class="px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer"
+        :class="activeFilter === filter.value ? 'bg-navy/10 text-navy' : 'text-text-secondary hover:bg-surface'"
+      >
+        {{ filter.label }}
+      </button>
+      <label class="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary cursor-pointer ml-auto select-none">
+        <input type="checkbox" v-model="hideCompleted" class="accent-navy w-3.5 h-3.5 cursor-pointer" />
+        Ocultar terminadas
+      </label>
+    </div>
 
     <!-- Stats cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-      <div v-for="stat in stats" :key="stat.label" class="card p-4">
+      <div v-for="stat in stats" :key="stat.label" class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="stat.bg">
             <span class="w-5 h-5" :class="stat.color" v-html="stat.icon"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none" :class="stat.color">{{ stat.value }}</div>
+            <div class="text-xl font-black leading-none tabular-nums" :class="stat.color">{{ Math.round(stat.value) }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">{{ stat.label }}</div>
           </div>
         </div>
@@ -58,7 +68,7 @@
     </div>
 
     <!-- Dashboard de Estadísticas -->
-    <div v-if="activeView === 'stats'" class="card p-6">
+    <div v-if="activeView === 'stats'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h3 class="text-lg font-black text-navy">Rendimiento por Empleado</h3>
         <div class="flex gap-2">
@@ -66,7 +76,7 @@
             v-for="r in statsRanges"
             :key="r"
             @click="changeStatsRange(r)"
-            class="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
+            class="px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer"
             :class="statsRangeDays === r ? 'bg-navy text-white' : 'bg-surface text-text-secondary hover:bg-surface-dark'"
           >
             Últimos {{ r }} días
@@ -161,22 +171,22 @@
     </div>
 
     <!-- List View -->
-    <div v-else class="card overflow-hidden">
+    <div v-else class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <!-- Search & Controls -->
       <div class="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
           <div class="relative">
-            <input v-model="listSearch" type="text" placeholder="Buscar habitación, tipo, empleado..." class="pl-9 pr-4 py-2 rounded-xl border border-border text-sm w-64 focus:outline-none focus:border-navy" />
+            <input v-model="listSearch" type="text" placeholder="Buscar habitación, tipo, empleado..." class="pl-9 pr-4 py-2 rounded-full border border-border text-sm w-64 focus:outline-none focus:border-navy" />
             <span class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_SEARCH"></span>
           </div>
-          <select v-model="listPageSize" class="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+          <select v-model="listPageSize" class="px-3 py-2 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
             <option :value="10">10 por página</option>
             <option :value="20">20 por página</option>
             <option :value="50">50 por página</option>
           </select>
         </div>
         <div class="flex items-center gap-3">
-          <button @click="exportCsv" class="flex items-center gap-1.5 px-4 py-2 bg-surface rounded-xl text-sm font-bold text-text-secondary hover:bg-surface-dark transition-colors cursor-pointer">
+          <button @click="exportCsv" class="flex items-center gap-1.5 px-4 py-2 bg-surface rounded-full text-sm font-bold text-text-secondary hover:bg-surface-dark transition-colors cursor-pointer">
             <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
             Exportar CSV
           </button>
@@ -233,13 +243,13 @@
               <span v-else class="text-text-muted">—</span>
             </td>
             <td class="p-4 text-right">
-              <div class="flex gap-1 justify-end flex-wrap">
-                <button @click="openViewTask(task)" class="px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 transition-colors cursor-pointer">Ver</button>
-                <button @click="openEditTask(task)" class="px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 transition-colors cursor-pointer">Editar</button>
+              <div class="flex items-center gap-4 justify-end flex-wrap">
+                <button @click="openViewTask(task)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Ver</button>
+                <button @click="openEditTask(task)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
                 <button
                   v-if="primaryAction(task)"
                   @click="runPrimary(task)"
-                  class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 transition-colors cursor-pointer"
+                  class="rounded-full bg-teal/10 text-teal px-3 py-1 text-[11px] font-bold hover:bg-teal/20 transition-colors cursor-pointer"
                 >{{ primaryAction(task)?.label }}</button>
               </div>
             </td>
@@ -260,66 +270,74 @@
     </div>
 
     <!-- Modal: Ver Tarea -->
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-white">
-          <h3 class="text-lg font-black text-navy">Detalle de Tarea</h3>
-          <button @click="showViewModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+    <Transition name="modal-fade">
+    <div v-if="showViewModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
+          <h3 class="text-xl font-black text-navy tracking-tight">Detalle de tarea</h3>
+          <button @click="showViewModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
-        <div class="p-6">
-          <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="px-7 pb-7 overflow-y-auto flex-1">
+          <div class="grid grid-cols-2 gap-x-4 gap-y-5 pb-6 border-b border-border">
             <div>
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Habitación</div>
-              <div class="text-lg font-black text-navy">{{ selectedTask.roomNumber }}</div>
+              <div class="text-[11px] text-text-muted uppercase tracking-wide">Habitación</div>
+              <div class="text-lg font-black text-navy mt-1">{{ selectedTask.roomNumber }}</div>
             </div>
             <div>
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Tipo de Tarea</div>
-              <div class="text-sm font-bold">{{ selectedTask.type }}</div>
+              <div class="text-[11px] text-text-muted uppercase tracking-wide">Tipo de tarea</div>
+              <div class="text-sm font-bold text-navy mt-1">{{ selectedTask.type }}</div>
             </div>
             <div>
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Piso</div>
-              <div class="text-sm">{{ selectedTask.floor }}</div>
+              <div class="text-[11px] text-text-muted uppercase tracking-wide">Piso</div>
+              <div class="text-sm font-bold text-navy mt-1">{{ selectedTask.floor }}</div>
             </div>
             <div>
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Estado</div>
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="statusClass(selectedTask.status)">
-                {{ statusLabel(selectedTask.status) }}
-              </span>
+              <div class="text-[11px] text-text-muted uppercase tracking-wide">Estado</div>
+              <div class="mt-1.5">
+                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="statusClass(selectedTask.status)">
+                  {{ statusLabel(selectedTask.status) }}
+                </span>
+              </div>
             </div>
             <div>
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Asignado a</div>
-              <div class="text-sm font-bold">{{ selectedTask.assignedTo }}</div>
+              <div class="text-[11px] text-text-muted uppercase tracking-wide">Asignado a</div>
+              <div class="text-sm font-bold text-navy mt-1">{{ selectedTask.assignedTo }}</div>
             </div>
             <div>
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Duración</div>
-              <div class="text-sm text-cyan font-bold">{{ selectedTask.time || '—' }}</div>
+              <div class="text-[11px] text-text-muted uppercase tracking-wide">Duración</div>
+              <div class="text-sm font-bold text-cyan mt-1">{{ taskTime(selectedTask) || '—' }}</div>
             </div>
             <div>
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Inicio</div>
-              <div class="text-sm">{{ selectedTask.startTime ? formatTime(selectedTask.startTime) : '—' }}</div>
+              <div class="text-[11px] text-text-muted uppercase tracking-wide">Inicio</div>
+              <div class="text-sm text-navy mt-1">{{ selectedTask.startTime ? formatTime(selectedTask.startTime) : '—' }}</div>
             </div>
             <div>
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Fin</div>
-              <div class="text-sm">{{ selectedTask.endTime ? formatTime(selectedTask.endTime) : '—' }}</div>
+              <div class="text-[11px] text-text-muted uppercase tracking-wide">Fin</div>
+              <div class="text-sm text-navy mt-1">{{ selectedTask.endTime ? formatTime(selectedTask.endTime) : '—' }}</div>
             </div>
           </div>
-          <div v-if="selectedTask.notes" class="bg-surface rounded-xl p-4 mb-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Notas</div>
+
+          <div v-if="selectedTask.notes" class="py-5 border-b border-border">
+            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</div>
             <div class="text-sm text-text-secondary">{{ selectedTask.notes }}</div>
           </div>
-          <div v-if="selectedTask.items.length" class="bg-surface rounded-xl p-4 mb-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Items de Limpieza</div>
-            <div class="flex flex-wrap gap-2">
-              <span v-for="item in selectedTask.items" :key="item" class="text-[10px] bg-white px-2 py-1 rounded-full border border-border">
+
+          <div v-if="selectedTask.items.length" class="py-5 border-b border-border">
+            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Items de limpieza</div>
+            <div class="flex flex-wrap gap-1.5">
+              <span v-for="item in selectedTask.items" :key="item" class="text-xs font-medium text-text-secondary px-3 py-1 rounded-full border border-border">
                 {{ item }}
               </span>
             </div>
           </div>
+
           <!-- Fotos -->
-          <div class="bg-surface rounded-xl p-4">
-            <div class="flex items-center justify-between mb-2">
-              <div class="text-[10px] font-bold text-text-muted uppercase">Evidencia fotográfica</div>
-              <label class="text-[10px] font-bold text-cyan cursor-pointer hover:underline">
+          <div class="pt-5">
+            <div class="flex items-center justify-between mb-2.5">
+              <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide">Evidencia fotográfica</div>
+              <label class="text-[11px] font-bold text-cyan cursor-pointer hover:underline">
                 + Subir foto
                 <input type="file" accept="image/*" class="hidden" @change="onPhotoSelect" />
               </label>
@@ -333,35 +351,39 @@
                 >✕</button>
               </div>
             </div>
-            <div v-else class="text-[11px] text-text-muted py-2">Sin fotos.</div>
+            <div v-else class="text-xs text-text-muted py-1">Sin fotos.</div>
           </div>
         </div>
-        <div class="flex gap-3 p-6 border-t border-border sticky bottom-0 bg-white">
-          <button @click="showViewModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
+        <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
+          <button @click="showViewModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
           <button
             v-if="primaryAction(selectedTask)"
             @click="runPrimary(selectedTask)"
-            class="flex-1 py-2.5 bg-cyan text-navy rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer"
+            class="px-5 py-2.5 bg-cyan text-navy rounded-full text-sm font-extrabold hover:shadow-lg transition-all cursor-pointer"
           >{{ primaryAction(selectedTask)?.label }}</button>
         </div>
       </div>
     </div>
+    </Transition>
 
     <!-- Modal: Nueva / Editar Tarea -->
-    <div v-if="showNewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">{{ editingId ? 'Editar Tarea' : 'Nueva Tarea' }}</h3>
-          <button @click="showNewModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+    <Transition name="modal-fade">
+    <div v-if="showNewModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
+          <h3 class="text-xl font-black text-navy tracking-tight">{{ editingId ? 'Editar tarea' : 'Nueva tarea' }}</h3>
+          <button @click="showNewModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
-        <div class="p-6">
+        <div class="px-7 pb-7 overflow-y-auto flex-1">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Habitación *</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Habitación *</label>
               <SearchSelect v-model="newTask.roomNumber" :options="roomOptions" placeholder="Buscar habitación..." />
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Tipo de Tarea *</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Tipo de tarea *</label>
               <select v-model="newTask.type" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="">Seleccionar...</option>
                 <option value="full_cleaning">Limpieza completa</option>
@@ -372,7 +394,7 @@
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Prioridad</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Prioridad</label>
               <select v-model="newTask.priority" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="medium">Normal</option>
                 <option value="high">Alta</option>
@@ -380,69 +402,75 @@
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Asignar a</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Asignar a</label>
               <select v-model="newTask.staffId" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="">Seleccionar...</option>
                 <option v-for="emp in assignableStaff" :key="emp.id" :value="emp.userId">{{ emp.userName || emp.userId }}</option>
               </select>
             </div>
             <div class="col-span-2">
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Notas</label>
+              <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Notas</label>
               <textarea v-model="newTask.notes" rows="3" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Instrucciones especiales..."></textarea>
             </div>
           </div>
         </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showNewModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
-          <button @click="saveTask" :disabled="saving" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer disabled:opacity-50">
+        <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
+          <button @click="showNewModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+          <button @click="saveTask" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50">
             {{ saving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Tarea') }}
           </button>
         </div>
       </div>
     </div>
+    </Transition>
 
     <!-- Modal: Asignar Tareas Rápidas -->
-    <div v-if="showAssignModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">Asignar Tareas Rápidas</h3>
-          <button @click="showAssignModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+    <Transition name="modal-fade">
+    <div v-if="showAssignModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
+          <h3 class="text-xl font-black text-navy tracking-tight">Asignar tareas rápidas</h3>
+          <button @click="showAssignModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
-        <div class="p-6">
-          <div class="mb-4">
-            <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Seleccionar Personal</label>
+        <div class="px-7 pb-7 overflow-y-auto flex-1">
+          <div class="mb-5">
+            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Seleccionar personal</label>
             <select v-model="assignStaff" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
               <option value="">Seleccionar...</option>
               <option v-for="emp in assignableStaff" :key="emp.id" :value="emp.userId">{{ emp.userName || emp.userId }} — {{ emp.position || 'Staff' }}</option>
             </select>
           </div>
-          <div v-if="assignStaff" class="bg-surface rounded-xl p-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-3">Tareas pendientes sin asignar</div>
-            <div v-if="assignableTasks.length === 0" class="text-[11px] text-text-muted py-2">No hay tareas pendientes para asignar.</div>
+          <div v-if="assignStaff">
+            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Tareas pendientes sin asignar</div>
+            <div v-if="assignableTasks.length === 0" class="text-xs text-text-muted py-2">No hay tareas pendientes para asignar.</div>
             <div v-else class="space-y-2">
-              <label v-for="task in assignableTasks" :key="task.id" class="flex items-center gap-3 bg-white rounded-lg p-3 border border-border cursor-pointer hover:border-navy/30">
+              <label v-for="task in assignableTasks" :key="task.id" class="flex items-center gap-3 rounded-xl p-3 border border-border cursor-pointer transition-colors hover:border-navy/30">
                 <input type="checkbox" :value="task.id" v-model="assignSelection" class="w-4 h-4 accent-navy" />
                 <span class="text-sm font-black text-navy">{{ task.roomNumber }}</span>
-                <span class="text-[10px] text-text-muted">{{ task.type }}</span>
+                <span class="text-xs text-text-muted">{{ task.type }}</span>
               </label>
             </div>
           </div>
         </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showAssignModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
+        <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
+          <button @click="showAssignModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
           <button
             @click="assignSelected"
             :disabled="assignSelection.length === 0 || !assignStaff"
-            class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer disabled:opacity-50"
+            class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50"
           >Asignar {{ assignSelection.length || '' }}</button>
         </div>
       </div>
     </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useCountUp } from '@/composables/useCountUp'
 import { useHousekeepingStore, humanizeMs, type HousekeepingViewTask } from '@/stores/housekeeping.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -531,17 +559,27 @@ function blankTask(): HousekeepingViewTask {
   return { id: '', roomNumber: '', type: '', floor: '', status: 'pending', priority: 'Normal', priorityRaw: 'medium', assignedTo: 'Sin asignar', staffId: '', time: '', notes: '', items: [], photos: [] }
 }
 
-const stats = computed(() => {
-  const t = store.tasks
-  const en = (s: string) => t.filter(x => x.status === s).length
-  return [
-    { label: 'Pendientes', value: en('pending'), color: 'text-orange', bg: 'bg-orange/10', icon: ICON_INBOX },
-    { label: 'En Progreso', value: en('in_progress'), color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_SPARKLE },
-    { label: 'Completadas', value: en('completed'), color: 'text-teal', bg: 'bg-teal/10', icon: ICON_CHECK_PLAIN },
-    { label: 'Inspeccionadas', value: en('inspected'), color: 'text-purple', bg: 'bg-purple/10', icon: ICON_SEARCH },
-    { label: 'Total', value: t.length, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_BOARD },
-  ]
-})
+// Fuentes numéricas separadas de `stats` para poder animarlas con useCountUp
+// (el composable debe llamarse en el cuerpo de setup, no dentro del computed que arma las cards).
+const pendingCount = computed(() => store.tasks.filter(t => t.status === 'pending').length)
+const inProgressCount = computed(() => store.tasks.filter(t => t.status === 'in_progress').length)
+const completedCount = computed(() => store.tasks.filter(t => t.status === 'completed').length)
+const inspectedCount = computed(() => store.tasks.filter(t => t.status === 'inspected').length)
+const totalCount = computed(() => store.tasks.length)
+
+const pendingAnim = useCountUp(pendingCount)
+const inProgressAnim = useCountUp(inProgressCount)
+const completedAnim = useCountUp(completedCount)
+const inspectedAnim = useCountUp(inspectedCount)
+const totalAnim = useCountUp(totalCount)
+
+const stats = computed(() => [
+  { label: 'Pendientes', value: pendingAnim.value, color: 'text-orange', bg: 'bg-orange/10', icon: ICON_INBOX },
+  { label: 'En Progreso', value: inProgressAnim.value, color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_SPARKLE },
+  { label: 'Completadas', value: completedAnim.value, color: 'text-teal', bg: 'bg-teal/10', icon: ICON_CHECK_PLAIN },
+  { label: 'Inspeccionadas', value: inspectedAnim.value, color: 'text-purple', bg: 'bg-purple/10', icon: ICON_SEARCH },
+  { label: 'Total', value: totalAnim.value, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_BOARD },
+])
 
 const availableRooms = computed(() =>
   store.rooms.map(r => ({ id: r.id, number: r.number, type: r.type || 'Standard' })),
@@ -851,4 +889,22 @@ onMounted(() => store.load(hotelId.value))
 </script>
 
 <style scoped>
+/* Entrada/salida de los modales: backdrop se desvanece, el panel además escala y sube levemente. */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-fade-enter-active .modal-panel,
+.modal-fade-leave-active .modal-panel {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-fade-enter-from .modal-panel,
+.modal-fade-leave-to .modal-panel {
+  opacity: 0;
+  transform: scale(0.95) translateY(12px);
+}
 </style>

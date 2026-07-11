@@ -1,13 +1,13 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div class="flex items-center justify-between mb-6">
       <div>
         <h2 class="text-xl font-black text-navy">Dispositivos Conectados</h2>
         <p class="text-sm text-text-muted mt-0.5">Sesiones activas · Control de acceso</p>
       </div>
       <div class="flex items-center gap-3">
         <span class="text-xs font-bold px-3 py-1 rounded-full bg-blue/10 text-blue">{{ activeSessions }} sesiones activas</span>
-        <button @click="revokeAll" class="px-4 py-2 bg-coral text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <button @click="revokeAll" class="px-4 py-2 bg-coral text-white text-sm font-bold rounded-full hover:shadow-lg transition-all cursor-pointer">
           Cerrar Todas las Sesiones
         </button>
       </div>
@@ -15,51 +15,43 @@
 
     <!-- KPIs -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10"><span class="w-5 h-5 text-navy" v-html="ICON_SIGNAL"></span></div>
-          <div class="min-w-0"><div class="text-xl font-black leading-none text-navy truncate">{{ activeSessions }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Sesiones Activas</div></div>
-        </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-[10px] font-bold text-text-muted uppercase">Sesiones Activas</div>
+        <div class="text-2xl font-black text-navy mt-1">{{ activeSessions }}</div>
       </div>
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10"><span class="w-5 h-5 text-cyan" v-html="ICON_USERS"></span></div>
-          <div class="min-w-0"><div class="text-xl font-black leading-none text-cyan truncate">{{ uniqueUsers }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Usuarios Conectados</div></div>
-        </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-[10px] font-bold text-text-muted uppercase">Usuarios Conectados</div>
+        <div class="text-2xl font-black text-navy mt-1">{{ uniqueUsers }}</div>
       </div>
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10"><span class="w-5 h-5 text-gold" v-html="ICON_MOBILE"></span></div>
-          <div class="min-w-0"><div class="text-xl font-black leading-none text-gold truncate">{{ mobileCount }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Dispositivos Móviles</div></div>
-        </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-[10px] font-bold text-text-muted uppercase">Dispositivos Móviles</div>
+        <div class="text-2xl font-black text-navy mt-1">{{ mobileCount }}</div>
       </div>
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10"><span class="w-5 h-5 text-teal" v-html="ICON_CLOCK"></span></div>
-          <div class="min-w-0"><div class="text-xl font-black leading-none text-teal truncate">Ahora</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Último Acceso</div></div>
-        </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-[10px] font-bold text-text-muted uppercase">Último Acceso</div>
+        <div class="text-2xl font-black text-teal mt-1">Ahora</div>
       </div>
     </div>
 
-      <!-- Active Sessions -->
-      <div class="card p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-black text-navy">Sesiones Activas</h2>
-          <div class="flex gap-2">
-            <select v-model="filterRole" class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy cursor-pointer">
-              <option value="all">Todos los roles</option>
-              <option value="hotel_admin">Admin</option>
-              <option value="receptionist">Recepción</option>
-              <option value="super_admin">Super Admin</option>
-            </select>
-            <select v-model="filterDevice" class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy cursor-pointer">
-              <option value="all">Todos los dispositivos</option>
-              <option value="desktop">Escritorio</option>
-              <option value="mobile">Móvil</option>
-              <option value="tablet">Tablet</option>
-            </select>
-          </div>
+    <!-- Active Sessions -->
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-black text-navy">Sesiones Activas</h2>
+        <div class="flex gap-2">
+          <select v-model="filterRole" class="px-3 py-1.5 border border-border rounded-full text-xs font-bold text-navy cursor-pointer">
+            <option value="all">Todos los roles</option>
+            <option value="hotel_admin">Admin</option>
+            <option value="receptionist">Recepción</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+          <select v-model="filterDevice" class="px-3 py-1.5 border border-border rounded-full text-xs font-bold text-navy cursor-pointer">
+            <option value="all">Todos los dispositivos</option>
+            <option value="desktop">Escritorio</option>
+            <option value="mobile">Móvil</option>
+            <option value="tablet">Tablet</option>
+          </select>
         </div>
+      </div>
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
@@ -109,7 +101,7 @@
                 </td>
                 <td class="py-3 text-xs text-text-muted">{{ session.lastAccess }}</td>
                 <td class="py-3 text-right">
-                  <button @click="revokeSession(session.id)" class="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-coral/20 text-coral hover:bg-coral hover:text-white transition-all cursor-pointer">
+                  <button @click="revokeSession(session.id)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">
                     Revocar
                   </button>
                 </td>
@@ -120,7 +112,7 @@
       </div>
 
       <!-- Session History -->
-      <div class="card p-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-black text-navy">Historial de Sesiones</h2>
           <div class="flex items-center gap-2">

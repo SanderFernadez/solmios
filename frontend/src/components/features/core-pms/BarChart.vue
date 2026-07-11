@@ -1,5 +1,5 @@
 <template>
-  <div class="card p-5">
+  <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
     <div class="flex items-center justify-between mb-3">
       <h4 class="text-xs font-black text-navy uppercase">{{ label }}</h4>
       <span v-if="data.length > 0" class="text-[10px] text-text-muted">{{ data.length }} días</span>

@@ -1,49 +1,103 @@
 <template>
   <div>
-    <h2 class="text-xl font-black text-navy mb-6">Night Audit</h2>
-
-    <!-- Toolbar -->
+    <!-- Header -->
     <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
-      <div class="flex gap-2">
-        <button
-          v-for="view in views"
-          :key="view.value"
-          @click="activeView = view.value"
-          class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
-          :class="activeView === view.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'"
-        >
-          {{ view.label }}
-        </button>
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-xl font-black text-navy">Night Audit</h2>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+            </span>
+            En vivo
+          </span>
+        </div>
+        <p class="text-xs text-text-muted mt-0.5">Cierre operativo diario — verificación, cargos y reporte</p>
       </div>
-      <div class="flex gap-2">
-        <button @click="startAudit" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+      <div class="flex items-center gap-4">
+        <button @click="viewLastReport" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Último Reporte</button>
+        <button @click="startAudit" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_PLAY"></span>
           Iniciar Night Audit
-        </button>
-        <button @click="viewLastReport" class="flex items-center gap-1.5 bg-white text-text-secondary border border-border font-bold text-sm px-5 py-2.5 rounded-xl hover:border-navy/30 transition-all cursor-pointer">
-          <span class="w-4 h-4 shrink-0" v-html="ICON_DOCUMENT"></span>
-          Último Reporte
         </button>
       </div>
     </div>
 
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6">
+      <button
+        v-for="view in views"
+        :key="view.value"
+        @click="activeView = view.value"
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer"
+        :class="activeView === view.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'"
+      >
+        {{ view.label }}
+      </button>
+    </div>
+
     <!-- Stats -->
     <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-      <div v-for="stat in stats" :key="stat.label" class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="stat.bg">
-            <span class="w-5 h-5" :class="stat.color" v-html="stat.icon"></span>
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
+            <span class="w-5 h-5 text-teal" v-html="ICON_BED"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none truncate" :class="stat.color">{{ stat.value }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">{{ stat.label }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-teal truncate">{{ Math.round(habOcupadasAnim) }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Hab. Ocupadas</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
+            <span class="w-5 h-5 text-gold" v-html="ICON_DOOR"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-gold truncate">{{ Math.round(checkoutsAnim) }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Check-outs</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
+            <span class="w-5 h-5 text-cyan" v-html="ICON_LOGIN"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-cyan truncate">{{ Math.round(checkinsAnim) }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Check-ins</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
+            <span class="w-5 h-5 text-cyan" v-html="ICON_CHART"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-cyan truncate">{{ Math.round(ocupacionAnim) }}%</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Ocupación</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
+            <span class="w-5 h-5 text-navy" v-html="ICON_WALLET"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">${{ Math.round(ingresosAnim).toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Ingresos Día</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Progreso del Audit -->
-    <div v-if="auditInProgress" class="bg-white rounded-2xl border border-border card-shadow p-6 mb-6">
+    <div v-if="auditInProgress" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 mb-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-black text-navy">Night Audit en Progreso</h3>
         <span class="text-[10px] font-bold px-3 py-1 rounded-full bg-cyan/10 text-cyan">Paso {{ currentStep }}/{{ totalSteps }}</span>
@@ -64,7 +118,7 @@
     <!-- Resumen de Actividad -->
     <div v-if="activeView === 'activity'" class="grid grid-cols-2 gap-6">
       <!-- Movimientos de Hoy -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
         <div class="p-4 border-b border-border flex items-center gap-2">
           <span class="w-4 h-4 shrink-0 text-navy" v-html="ICON_ACTIVITY"></span>
           <h3 class="text-sm font-black text-navy">Movimientos de Hoy</h3>
@@ -74,10 +128,10 @@
             <span class="w-8 h-8 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_ACTIVITY"></span>
             <p class="text-xs text-text-muted">Sin movimientos registrados hoy</p>
           </div>
-          <div v-else class="space-y-3">
-            <div v-for="movement in todayMovements" :key="movement.id" class="flex items-center justify-between p-3 bg-surface rounded-xl">
+          <div v-else class="divide-y divide-border">
+            <div v-for="movement in todayMovements" :key="movement.id" class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
               <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" :class="movement.kind === 'checkin' ? 'bg-cyan/10' : 'bg-navy/10'">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="movement.kind === 'checkin' ? 'bg-cyan/10' : 'bg-navy/10'">
                   <span class="w-4 h-4" :class="movement.kind === 'checkin' ? 'text-cyan' : 'text-navy'" v-html="movement.kind === 'checkin' ? ICON_LOGIN : ICON_LOGOUT"></span>
                 </div>
                 <div>
@@ -94,7 +148,7 @@
       </div>
 
       <!-- Habitaciones por Estado -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
         <div class="p-4 border-b border-border flex items-center gap-2">
           <span class="w-4 h-4 shrink-0 text-navy" v-html="ICON_BED"></span>
           <h3 class="text-sm font-black text-navy">Estado de Habitaciones</h3>
@@ -103,8 +157,8 @@
           <div v-if="roomStatuses.length === 0" class="text-center py-8">
             <p class="text-xs text-text-muted">Sin datos de habitaciones</p>
           </div>
-          <div v-else class="space-y-3">
-            <div v-for="status in roomStatuses" :key="status.label" class="flex items-center justify-between">
+          <div v-else class="divide-y divide-border">
+            <div v-for="status in roomStatuses" :key="status.label" class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
               <div class="flex items-center gap-3">
                 <span class="w-3 h-3 rounded-full shrink-0" :class="status.dot"></span>
                 <span class="text-sm">{{ status.label }}</span>
@@ -121,7 +175,7 @@
       </div>
 
       <!-- Alertas -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
         <div class="p-4 border-b border-border flex items-center gap-2">
           <span class="w-4 h-4 shrink-0 text-navy" v-html="ICON_BELL"></span>
           <h3 class="text-sm font-black text-navy">Alertas Pendientes</h3>
@@ -131,8 +185,8 @@
             <span class="w-8 h-8 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_CHECK_CIRCLE"></span>
             <p class="text-xs text-text-muted">Sin alertas pendientes</p>
           </div>
-          <div v-else class="space-y-3">
-            <div v-for="alert in alerts" :key="alert.id" class="flex items-start gap-3 p-3 bg-surface rounded-xl">
+          <div v-else class="divide-y divide-border">
+            <div v-for="alert in alerts" :key="alert.id" class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
               <span class="w-5 h-5 mt-0.5 shrink-0" :class="alert.type === 'warning' ? 'text-gold' : 'text-coral'" v-html="ICON_ALERT"></span>
               <div class="flex-1">
                 <div class="text-sm font-bold text-navy">{{ alert.title }}</div>
@@ -147,50 +201,45 @@
       </div>
 
       <!-- Resumen Financiero -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
         <div class="p-4 border-b border-border flex items-center gap-2">
           <span class="w-4 h-4 shrink-0 text-navy" v-html="ICON_WALLET"></span>
           <h3 class="text-sm font-black text-navy">Resumen Financiero</h3>
         </div>
-        <div class="p-4">
-          <div class="space-y-4">
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-text-secondary">Ingresos por Habitaciones</span>
-              <span class="text-sm font-bold text-teal">${{ ((auditData as any)?.ingresosHabitaciones ?? 0).toLocaleString() }}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-text-secondary">Ingresos por Servicios</span>
-              <span class="text-sm font-bold text-teal">${{ ((auditData as any)?.ingresosServicios ?? 0).toLocaleString() }}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-text-secondary">Impuestos (ITBIS)</span>
-              <span class="text-sm font-bold text-coral">${{ ((auditData as any)?.impuestos ?? 0).toLocaleString() }}</span>
-            </div>
-            <div class="border-t border-border pt-3">
-              <div class="flex justify-between items-center">
-                <span class="text-sm font-bold text-navy">Total del Día</span>
-                <span class="text-lg font-black text-navy">${{ ((auditData as any)?.totalDia ?? 0).toLocaleString() }}</span>
-              </div>
-            </div>
+        <div class="p-4 divide-y divide-border">
+          <div class="flex justify-between items-center py-2.5 first:pt-0">
+            <span class="text-sm text-text-secondary">Ingresos por Habitaciones</span>
+            <span class="text-sm font-bold text-teal">${{ ((auditData as any)?.ingresosHabitaciones ?? 0).toLocaleString() }}</span>
+          </div>
+          <div class="flex justify-between items-center py-2.5">
+            <span class="text-sm text-text-secondary">Ingresos por Servicios</span>
+            <span class="text-sm font-bold text-teal">${{ ((auditData as any)?.ingresosServicios ?? 0).toLocaleString() }}</span>
+          </div>
+          <div class="flex justify-between items-center py-2.5">
+            <span class="text-sm text-text-secondary">Impuestos (ITBIS)</span>
+            <span class="text-sm font-bold text-coral">${{ ((auditData as any)?.impuestos ?? 0).toLocaleString() }}</span>
+          </div>
+          <div class="flex justify-between items-center pt-2.5 last:pb-0">
+            <span class="text-sm font-extrabold text-navy">Total del Día</span>
+            <span class="text-lg font-black text-navy">${{ ((auditData as any)?.totalDia ?? 0).toLocaleString() }}</span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Último Reporte -->
-    <div v-if="activeView === 'report'" class="bg-white rounded-2xl border border-border card-shadow">
+    <div v-if="activeView === 'report'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <div class="p-6 border-b border-border">
         <div class="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h3 class="text-lg font-black text-navy">Reporte Night Audit</h3>
             <div class="text-sm text-text-muted">{{ (auditData as any)?.fecha || '—' }} — Generado ahora</div>
           </div>
-          <div class="flex gap-2">
-            <button class="flex items-center gap-1.5 px-4 py-2 bg-surface rounded-lg text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">
-              <span class="w-4 h-4 shrink-0" v-html="ICON_PRINTER"></span>
+          <div class="flex items-center gap-4">
+            <button class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">
               Imprimir
             </button>
-            <button class="flex items-center gap-1.5 px-4 py-2 bg-navy text-white rounded-lg text-sm font-bold hover:shadow-lg transition-colors cursor-pointer">
+            <button class="flex items-center gap-1.5 rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">
               <span class="w-4 h-4 shrink-0" v-html="ICON_MAIL"></span>
               Enviar
             </button>
@@ -198,19 +247,19 @@
         </div>
       </div>
       <div class="p-6">
-        <div class="grid grid-cols-3 gap-6 mb-6">
-          <div class="bg-surface rounded-xl p-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Noches Vendidas</div>
+        <div class="grid grid-cols-3 gap-6 pb-6 border-b border-border">
+          <div>
+            <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2">Noches Vendidas</div>
             <div class="text-2xl font-black text-navy">{{ (auditData as any)?.nochesVendidas ?? 0 }}</div>
-            <div class="text-[10px] text-teal font-bold">{{ (auditData as any)?.ocupacion ?? 0 }}% ocupación</div>
+            <div class="text-[10px] text-teal font-bold mt-1">{{ (auditData as any)?.ocupacion ?? 0 }}% ocupación</div>
           </div>
-          <div class="bg-surface rounded-xl p-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">ADR (Tarifa Promedio)</div>
+          <div>
+            <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2">ADR (Tarifa Promedio)</div>
             <div class="text-2xl font-black text-navy">${{ ((auditData as any)?.adr ?? 0).toLocaleString() }}</div>
-            <div class="text-[10px] text-teal font-bold">{{ ((auditData as any)?.adr ?? 0) > ((auditData as any)?.adrAyer ?? 0) ? '▲' : '▼' }}${{ Math.abs(((auditData as any)?.adr ?? 0) - ((auditData as any)?.adrAyer ?? 0)).toLocaleString() }} vs ayer</div>
+            <div class="text-[10px] text-teal font-bold mt-1">{{ ((auditData as any)?.adr ?? 0) > ((auditData as any)?.adrAyer ?? 0) ? '▲' : '▼' }}${{ Math.abs(((auditData as any)?.adr ?? 0) - ((auditData as any)?.adrAyer ?? 0)).toLocaleString() }} vs ayer</div>
           </div>
-          <div class="bg-surface rounded-xl p-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-2">RevPAR</div>
+          <div>
+            <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2">RevPAR</div>
             <div class="text-2xl font-black text-navy">${{ ((auditData as any)?.revpar ?? 0).toLocaleString() }}</div>
             <div class="text-[10px] text-text-muted">—</div>
           </div>
@@ -219,20 +268,20 @@
         <div class="grid grid-cols-2 gap-6">
           <div>
             <h4 class="text-sm font-black text-navy mb-3">Resumen de Check-ins</h4>
-            <div class="space-y-2">
-              <div class="flex justify-between text-sm">
+            <div class="divide-y divide-border">
+              <div class="flex justify-between text-sm py-2 first:pt-0">
                 <span class="text-text-secondary">Check-ins realizados</span>
                 <span class="font-bold text-navy">{{ (auditData as any)?.checkins ?? 0 }}</span>
               </div>
-              <div class="flex justify-between text-sm">
+              <div class="flex justify-between text-sm py-2">
                 <span class="text-text-secondary">Check-outs realizados</span>
                 <span class="font-bold text-navy">{{ (auditData as any)?.checkouts ?? 0 }}</span>
               </div>
-              <div class="flex justify-between text-sm">
+              <div class="flex justify-between text-sm py-2">
                 <span class="text-text-secondary">No-shows</span>
                 <span class="font-bold text-coral">{{ (auditData as any)?.noShows ?? 0 }}</span>
               </div>
-              <div class="flex justify-between text-sm">
+              <div class="flex justify-between text-sm py-2 last:pb-0">
                 <span class="text-text-secondary">Cancelaciones</span>
                 <span class="font-bold text-gold">{{ (auditData as any)?.cancelaciones ?? 0 }}</span>
               </div>
@@ -240,20 +289,20 @@
           </div>
           <div>
             <h4 class="text-sm font-black text-navy mb-3">Resumen de Pagos</h4>
-            <div class="space-y-2">
-              <div class="flex justify-between text-sm">
+            <div class="divide-y divide-border">
+              <div class="flex justify-between text-sm py-2 first:pt-0">
                 <span class="text-text-secondary">Pagos recibidos</span>
                 <span class="font-bold text-teal">${{ ((auditData as any)?.pagosRecibidos ?? 0).toLocaleString() }}</span>
               </div>
-              <div class="flex justify-between text-sm">
+              <div class="flex justify-between text-sm py-2">
                 <span class="text-text-secondary">Pagos pendientes</span>
                 <span class="font-bold text-gold">${{ ((auditData as any)?.pagosPendientes ?? 0).toLocaleString() }}</span>
               </div>
-              <div class="flex justify-between text-sm">
+              <div class="flex justify-between text-sm py-2">
                 <span class="text-text-secondary">Depósitos de seguridad</span>
                 <span class="font-bold text-navy">${{ ((auditData as any)?.depositos ?? 0).toLocaleString() }}</span>
               </div>
-              <div class="flex justify-between text-sm">
+              <div class="flex justify-between text-sm py-2 last:pb-0">
                 <span class="text-text-secondary">Reembolsos</span>
                 <span class="font-bold text-coral">${{ ((auditData as any)?.reembolsos ?? 0).toLocaleString() }}</span>
               </div>
@@ -271,10 +320,9 @@ import { OperationsService } from '@/services/Operations.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="currentColor"><path d="M5 3.87v16.26a1 1 0 0 0 1.53.85l13.14-8.13a1 1 0 0 0 0-1.7L6.53 3.02A1 1 0 0 0 5 3.87Z"/></svg>'
-const ICON_DOCUMENT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m1 5H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l4.414 4.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>'
-const ICON_PRINTER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5V3.75h10.5V7.5m-10.5 0h10.5m-10.5 0H3.75A1.5 1.5 0 0 0 2.25 9v6a1.5 1.5 0 0 0 1.5 1.5h1.5m13.5-9h1.5A1.5 1.5 0 0 1 21.75 9v6a1.5 1.5 0 0 1-1.5 1.5h-1.5m-10.5 0v3.75h10.5V16.5m-10.5 0h10.5"/></svg>'
 const ICON_MAIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0-.828.672-1.5 1.5-1.5h16.5c.828 0 1.5.672 1.5 1.5v10.5a1.5 1.5 0 0 1-1.5 1.5H3.75a1.5 1.5 0 0 1-1.5-1.5V6.75Zm0 0 9.75 6.75 9.75-6.75"/></svg>'
 const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'
 const ICON_LOGIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V4.5A1.5 1.5 0 0 1 10.5 3h6A1.5 1.5 0 0 1 18 4.5v15a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 9 19.5v-2.25M12 12h9m0 0-3-3m3 3-3 3"/></svg>'
@@ -325,16 +373,17 @@ const views = [
 
 const auditData = ref<Awaited<ReturnType<typeof OperationsService.nightAudit>> | null>(null)
 
-const stats = computed(() => {
-  const d = auditData.value as any
-  return [
-    { label: 'Hab. Ocupadas', value: d?.habitacionesOcupadas ?? 0, color: 'text-teal', bg: 'bg-teal/10', icon: ICON_BED },
-    { label: 'Check-outs', value: d?.checkouts ?? 0, color: 'text-gold', bg: 'bg-gold/10', icon: ICON_DOOR },
-    { label: 'Check-ins', value: d?.checkins ?? 0, color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_LOGIN },
-    { label: 'Ocupación', value: `${d?.ocupacion ?? 0}%`, color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_CHART },
-    { label: 'Ingresos Día', value: `$${(d?.totalDia ?? 0).toLocaleString()}`, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_WALLET },
-  ]
-})
+const habOcupadas = computed(() => (auditData.value as any)?.habitacionesOcupadas ?? 0)
+const checkoutsCount = computed(() => (auditData.value as any)?.checkouts ?? 0)
+const checkinsCount = computed(() => (auditData.value as any)?.checkins ?? 0)
+const ocupacionPct = computed(() => (auditData.value as any)?.ocupacion ?? 0)
+const ingresosDia = computed(() => (auditData.value as any)?.totalDia ?? 0)
+
+const habOcupadasAnim = useCountUp(habOcupadas)
+const checkoutsAnim = useCountUp(checkoutsCount)
+const checkinsAnim = useCountUp(checkinsCount)
+const ocupacionAnim = useCountUp(ocupacionPct)
+const ingresosAnim = useCountUp(ingresosDia)
 
 const auditSteps = [
   'Verificar disponibilidad de habitaciones',

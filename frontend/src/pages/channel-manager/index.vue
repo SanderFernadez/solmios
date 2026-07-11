@@ -1,201 +1,217 @@
 <template>
-  <div class="min-h-screen bg-surface">
+  <div>
     <!-- Header -->
-    <div class="bg-white border-b border-border px-6 py-4">
-      <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div>
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div>
+        <div class="flex items-center gap-2.5">
           <h1 class="text-xl font-black text-navy">Channel Manager</h1>
-          <p class="text-xs text-text-muted">Canales conectados · Disponibilidad en tiempo real</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-xs font-bold px-3 py-1 rounded-full bg-teal/10 text-teal inline-flex items-center gap-1">
-            <span class="w-2 h-2 bg-teal rounded-full animate-pulse"></span>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+            </span>
             Sincronizando cada 15 min
           </span>
-          <button @click="syncNow" :disabled="syncing" class="flex items-center gap-1.5 px-4 py-2 bg-navy text-white text-sm font-bold rounded-xl hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
-            <span class="w-4 h-4 shrink-0" v-html="ICON_REFRESH"></span>
-            {{ syncing ? 'Sincronizando...' : 'Forzar Sync Ahora' }}
-          </button>
-          <button @click="ingestBookings" :disabled="ingesting" class="flex items-center gap-1.5 px-4 py-2 bg-teal text-white text-sm font-bold rounded-xl hover:bg-teal/80 transition-colors cursor-pointer disabled:opacity-50">
-            <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
-            {{ ingesting ? 'Ingestando...' : 'Recibir Reservas' }}
-          </button>
         </div>
+        <p class="text-xs text-text-muted mt-0.5">Canales conectados · Disponibilidad en tiempo real</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button @click="syncNow" :disabled="syncing" class="flex items-center gap-1.5 bg-navy text-white text-sm font-extrabold px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_REFRESH"></span>
+          {{ syncing ? 'Sincronizando...' : 'Forzar Sync Ahora' }}
+        </button>
+        <button @click="ingestBookings" :disabled="ingesting" class="flex items-center gap-1.5 bg-teal text-white text-sm font-extrabold px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
+          {{ ingesting ? 'Ingestando...' : 'Recibir Reservas' }}
+        </button>
       </div>
     </div>
 
     <!-- Connection Dialog -->
-    <div v-if="connectDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 mx-4">
-        <h2 class="text-lg font-black text-navy mb-4">Conectar {{ connectDialog.channelName }}</h2>
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="connectDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 class="text-lg font-black text-navy mb-4">Conectar {{ connectDialog.channelName }}</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Código OTA</label>
+                <input :value="connectDialog.channelCode" readonly class="w-full px-4 py-2.5 bg-surface rounded-xl text-sm text-navy font-mono" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Título del canal</label>
+                <input v-model="connectDialog.title" class="w-full px-4 py-2.5 border border-border rounded-xl text-sm text-navy focus:border-cyan focus:ring-1 focus:ring-cyan outline-none" />
+              </div>
 
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-text-muted mb-1">Código OTA</label>
-            <input :value="connectDialog.channelCode" readonly class="w-full px-3 py-2 bg-surface rounded-xl text-sm text-navy font-mono" />
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-text-muted mb-1">Título del canal</label>
-            <input v-model="connectDialog.title" class="w-full px-3 py-2 border border-border rounded-xl text-sm text-navy focus:border-cyan focus:ring-1 focus:ring-cyan outline-none" />
-          </div>
+              <div v-if="connectError" class="text-xs font-bold text-coral">{{ connectError }}</div>
+              <div v-if="connectResult" class="text-xs font-bold text-teal">{{ connectResult }}</div>
 
-          <div v-if="connectError" class="text-xs font-bold text-coral bg-coral/10 rounded-xl px-3 py-2">{{ connectError }}</div>
-          <div v-if="connectResult" class="text-xs font-bold text-teal bg-teal/10 rounded-xl px-3 py-2">{{ connectResult }}</div>
-
-          <div class="flex gap-3 pt-2">
-            <button @click="cancelConnect" class="flex-1 py-2.5 border border-border text-text-muted text-xs font-bold rounded-xl hover:bg-surface transition-colors cursor-pointer">Cancelar</button>
-            <button @click="confirmConnect" :disabled="connecting" class="flex-1 py-2.5 bg-cyan text-navy text-xs font-bold rounded-xl hover:shadow-lg hover:shadow-cyan/30 transition-all cursor-pointer disabled:opacity-60">
-              {{ connecting ? 'Conectando...' : 'Conectar' }}
-            </button>
+              <div class="flex items-center justify-end gap-4 pt-2">
+                <button @click="cancelConnect" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="confirmConnect" :disabled="connecting" class="rounded-full bg-cyan text-navy text-sm font-extrabold px-5 py-2.5 hover:shadow-lg transition-all cursor-pointer disabled:opacity-60">
+                  {{ connecting ? 'Conectando...' : 'Conectar' }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
 
     <!-- Config Dialog -->
-    <div v-if="configDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 mx-4">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-black text-navy">{{ configDialog.name }}</h2>
-          <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full', configDialog.active ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral']">{{ configDialog.active ? 'Activo' : 'Inactivo' }}</span>
-        </div>
-        <div class="space-y-3">
-          <div>
-            <span class="text-[10px] text-text-muted uppercase">ID en Channex</span>
-            <p class="text-xs font-mono text-navy mt-0.5 truncate">{{ configDialog.id }}</p>
-          </div>
-          <div>
-            <span class="text-[10px] text-text-muted uppercase">Código OTA</span>
-            <p class="text-xs font-bold text-navy mt-0.5">{{ configDialog.otaCode }}</p>
-          </div>
-          <div class="flex gap-4">
-            <div>
-              <span class="text-[10px] text-text-muted uppercase">Reservas</span>
-              <p class="text-sm font-black text-navy mt-0.5">{{ configDialog.bookings }}</p>
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="configDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-black text-navy">{{ configDialog.name }}</h2>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="configDialog.active ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ configDialog.active ? 'Activo' : 'Inactivo' }}</span>
             </div>
-            <div>
-              <span class="text-[10px] text-text-muted uppercase">Última Sync</span>
-              <p class="text-xs text-teal mt-0.5">{{ configDialog.lastSync }}</p>
+            <div class="space-y-3 pb-4 border-b border-border">
+              <div>
+                <span class="text-[10px] text-text-muted uppercase tracking-wide">ID en Channex</span>
+                <p class="text-xs font-mono text-navy mt-0.5 truncate">{{ configDialog.id }}</p>
+              </div>
+              <div>
+                <span class="text-[10px] text-text-muted uppercase tracking-wide">Código OTA</span>
+                <p class="text-xs font-bold text-navy mt-0.5">{{ configDialog.otaCode }}</p>
+              </div>
+              <div class="flex gap-6">
+                <div>
+                  <span class="text-[10px] text-text-muted uppercase tracking-wide">Reservas</span>
+                  <p class="text-sm font-black text-navy mt-0.5">{{ configDialog.bookings }}</p>
+                </div>
+                <div>
+                  <span class="text-[10px] text-text-muted uppercase tracking-wide">Última Sync</span>
+                  <p class="text-xs text-teal mt-0.5">{{ configDialog.lastSync }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center justify-end pt-4">
+              <button @click="closeConfig" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cerrar</button>
             </div>
           </div>
-          <button @click="closeConfig" class="w-full py-2.5 bg-navy text-white text-xs font-bold rounded-xl hover:bg-navy-light transition-colors cursor-pointer mt-2">Cerrar</button>
         </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
 
     <!-- Channex iFrame -->
-    <div v-if="showIframe" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] mx-4 flex flex-col">
-        <div class="flex items-center justify-between px-6 py-3 border-b border-border">
-          <h2 class="text-lg font-black text-navy">Channex — Conectar Canales</h2>
-          <button @click="showIframe = false; loadStatus()" class="px-4 py-2 bg-navy text-white text-xs font-bold rounded-xl hover:bg-navy-light transition-colors cursor-pointer">Cerrar y Refrescar</button>
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showIframe" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+            <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 class="text-lg font-black text-navy">Channex — Conectar Canales</h2>
+              <button @click="showIframe = false; loadStatus()" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">Cerrar y Refrescar</button>
+            </div>
+            <iframe v-if="iframeUrl" :src="iframeUrl" class="flex-1 w-full" frameborder="0" />
+            <div v-else class="flex-1 flex items-center justify-center text-text-muted text-sm">Cargando...</div>
+          </div>
         </div>
-        <iframe v-if="iframeUrl" :src="iframeUrl" class="flex-1 w-full rounded-b-2xl" frameborder="0" />
-        <div v-else class="flex-1 flex items-center justify-center text-text-muted text-sm">Cargando...</div>
+      </Transition>
+    </Teleport>
+
+    <!-- Connected Channels -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-black text-navy">Canales Conectados</h2>
+        <span class="text-xs font-bold text-text-muted">{{ connectedChannels.filter(c => c.connected).length }} de {{ connectedChannels.length }}</span>
+      </div>
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div v-for="channel in connectedChannels" :key="channel.id"
+          class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 transition-transform duration-300 hover:-translate-y-0.5">
+          <!-- Channel Icon -->
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center" :class="channel.bgColor"><span class="w-7 h-7" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span></div>
+            <div class="flex items-center gap-1">
+              <span class="w-2.5 h-2.5 rounded-full" :class="channel.connected ? 'bg-teal animate-pulse' : 'bg-gray-300'"></span>
+              <span class="text-[10px] font-bold" :class="channel.connected ? 'text-teal' : 'text-text-muted'">{{ channel.connected ? 'Conectado' : 'Disponible' }}</span>
+            </div>
+          </div>
+          <h3 class="text-sm font-black text-navy mb-1">{{ channel.name }}</h3>
+          <p class="text-[10px] text-text-muted mb-3">{{ channel.description }}</p>
+          <template v-if="channel.connected">
+            <div class="py-3 border-t border-border space-y-2 mb-3">
+              <div class="flex justify-between text-[10px]">
+                <span class="text-text-muted">Reservas (mes)</span>
+                <span class="font-bold text-navy">{{ channel.bookings }}</span>
+              </div>
+              <div class="flex justify-between text-[10px]">
+                <span class="text-text-muted">Última Sync</span>
+                <span class="font-bold text-teal">{{ channel.lastSync }}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <button @click="configChannel(channel)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Configurar</button>
+              <button @click="disconnectChannel(channel.id)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Desconectar</button>
+            </div>
+          </template>
+          <template v-else>
+            <button @click="connectChannel(channel.id)" class="w-full py-2.5 bg-cyan text-navy text-xs font-extrabold rounded-full hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 005.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              Conectar
+            </button>
+          </template>
+        </div>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto p-6">
-      <!-- Connected Channels -->
-      <div class="mb-8">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-black text-navy">Canales Conectados</h2>
-          <span class="text-xs font-bold text-text-muted">{{ connectedChannels.filter(c => c.connected).length }} de {{ connectedChannels.length }}</span>
-        </div>
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div v-for="channel in connectedChannels" :key="channel.id"
-            class="bg-white rounded-2xl border-2 p-5 transition-all hover:shadow-lg cursor-pointer"
-            :class="[channel.connected ? 'border-transparent' : 'border-dashed border-border hover:border-cyan/50']">
-            <!-- Channel Icon -->
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm" :class="channel.bgColor"><span class="w-7 h-7" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span></div>
-              <div class="flex items-center gap-1">
-                <span class="w-2.5 h-2.5 rounded-full" :class="channel.connected ? 'bg-teal animate-pulse' : 'bg-gray-300'"></span>
-                <span class="text-[10px] font-bold" :class="channel.connected ? 'text-teal' : 'text-text-muted'">{{ channel.connected ? 'Conectado' : 'Disponible' }}</span>
-              </div>
+    <!-- Available Channels -->
+    <div class="mb-8">
+      <h2 class="text-lg font-black text-navy mb-4">Canales Disponibles para Conectar</h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div v-for="channel in availableChannels" :key="channel.id"
+          class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 transition-transform duration-300 hover:-translate-y-0.5 group">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" :class="channel.bgColor"><span class="w-5 h-5" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span></div>
+            <div>
+              <div class="text-sm font-bold text-navy">{{ channel.name }}</div>
+              <div class="text-[10px] text-text-muted">{{ channel.category }}</div>
             </div>
-            <h3 class="text-sm font-black text-navy mb-1">{{ channel.name }}</h3>
-            <p class="text-[10px] text-text-muted mb-3">{{ channel.description }}</p>
-            <template v-if="channel.connected">
-              <div class="bg-surface rounded-xl p-3 space-y-2 mb-3">
-                <div class="flex justify-between text-[10px]">
-                  <span class="text-text-muted">Reservas (mes)</span>
-                  <span class="font-bold text-navy">{{ channel.bookings }}</span>
-                </div>
-                <div class="flex justify-between text-[10px]">
-                  <span class="text-text-muted">Última Sync</span>
-                  <span class="font-bold text-teal">{{ channel.lastSync }}</span>
-                </div>
-              </div>
-              <div class="flex gap-2">
-                <button @click="configChannel(channel)" class="flex-1 py-2 bg-surface text-navy text-[10px] font-bold rounded-lg hover:bg-navy hover:text-white transition-all cursor-pointer">Configurar</button>
-                <button @click="disconnectChannel(channel.id)" class="py-2 px-3 bg-surface text-coral text-[10px] font-bold rounded-lg hover:bg-coral hover:text-white transition-all cursor-pointer">Desconectar</button>
-              </div>
-            </template>
-            <template v-else>
-              <button @click="connectChannel(channel.id)" class="w-full py-2.5 bg-cyan text-navy text-xs font-bold rounded-xl hover:shadow-lg hover:shadow-cyan/30 transition-all cursor-pointer flex items-center justify-center gap-2">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 005.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                Conectar
-              </button>
-            </template>
           </div>
+          <button class="w-full py-2 text-[11px] font-bold rounded-full border border-border text-text-secondary group-hover:border-cyan group-hover:text-cyan transition-all cursor-pointer">
+            Solicitar Conexión
+          </button>
         </div>
       </div>
+    </div>
 
-      <!-- Available Channels -->
-      <div class="mb-8">
-        <h2 class="text-lg font-black text-navy mb-4">Canales Disponibles para Conectar</h2>
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div v-for="channel in availableChannels" :key="channel.id"
-            class="bg-white rounded-2xl border border-border p-5 hover:border-cyan/30 hover:shadow-md transition-all cursor-pointer group">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 rounded-xl flex items-center justify-center" :class="channel.bgColor"><span class="w-5 h-5" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span></div>
-              <div>
-                <div class="text-sm font-bold text-navy">{{ channel.name }}</div>
-                <div class="text-[10px] text-text-muted">{{ channel.category }}</div>
-              </div>
-            </div>
-            <button class="w-full py-2 text-[10px] font-bold rounded-lg border border-border text-text-muted group-hover:border-cyan group-hover:text-cyan transition-all cursor-pointer">
-              Solicitar Conexión
-            </button>
-          </div>
-        </div>
+    <!-- Sync Log -->
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-black text-navy">Historial de Sincronización</h2>
+        <span class="text-[10px] text-text-muted">{{ syncLog.length }} registros</span>
       </div>
-
-      <!-- Sync Log -->
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-black text-navy">Historial de Sincronización</h2>
-          <span class="text-[10px] text-text-muted">{{ syncLog.length }} registros</span>
-        </div>
-        <div v-if="syncLog.length === 0" class="text-center py-8 text-text-muted text-sm">
-          Sin sincronizaciones registradas
-        </div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="border-b border-border">
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Acción</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Canal</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Detalle</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="log in syncLog" :key="log.id" class="border-b border-border/50 hover:bg-surface/50 transition-colors">
-                <td class="py-3 text-sm font-bold text-navy">{{ log.action }}</td>
-                <td class="py-3 text-xs text-text-muted">{{ log.channel || '—' }}</td>
-                <td class="py-3 text-xs text-text-muted">{{ log.createdAt?.slice(0, 16)?.replace('T', ' ') }}</td>
-                <td class="py-3">
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="log.status === 'success' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ log.status === 'success' ? 'Exitoso' : 'Error' }}</span>
-                </td>
-                <td class="py-3 text-xs text-text-muted max-w-xs truncate">{{ log.details }}</td>
-                <td class="py-3 text-xs text-text-muted">{{ log.detail }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <div v-if="syncLog.length === 0" class="text-center py-8 text-text-muted text-sm">
+        Sin sincronizaciones registradas
+      </div>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-border">
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Acción</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Canal</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Estado</th>
+              <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase">Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="log in syncLog" :key="log.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
+              <td class="py-3 text-sm font-bold text-navy">{{ log.action }}</td>
+              <td class="py-3 text-xs text-text-muted">{{ log.channel || '—' }}</td>
+              <td class="py-3 text-xs text-text-muted">{{ log.createdAt?.slice(0, 16)?.replace('T', ' ') }}</td>
+              <td class="py-3">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="log.status === 'success' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ log.status === 'success' ? 'Exitoso' : 'Error' }}</span>
+              </td>
+              <td class="py-3 text-xs text-text-muted max-w-xs truncate">{{ log.details }}</td>
+              <td class="py-3 text-xs text-text-muted">{{ log.detail }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -396,3 +412,14 @@ async function disconnectChannel(id: string) {
   }
 }
 </script>
+
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
+  opacity: 0; transform: scale(0.95) translateY(12px);
+}
+</style>

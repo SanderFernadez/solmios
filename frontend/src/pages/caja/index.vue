@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { CajaService, type CashMovement, type CashShift, type CashStats, type Reconcile } from '@/services/Caja.service'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 
 const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5M21 12h-4a1.5 1.5 0 0 0 0 3h4v-3Z"/></svg>'
 const ICON_CALENDAR = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3.75 8.25h16.5M4.5 6h15a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-15a.75.75 0 0 1-.75-.75V6.75A.75.75 0 0 1 4.5 6Z"/></svg>'
@@ -12,8 +13,20 @@ const ICON_LOCK_CLOSED = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="n
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
 const ICON_MINUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15"/></svg>'
 const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
-const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h12M9.75 7.5v-1.5a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 1.5 1.5v1.5m-8.25 0 .75 11.25a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5L17.25 7.5"/></svg>'
 const ICON_SCALE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18M5 7l-2.5 6a2.5 2.5 0 0 0 5 0L5 7Zm14 0-2.5 6a2.5 2.5 0 0 0 5 0L19 7ZM4 7h16M8 21h8"/></svg>'
+const ICON_CASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path stroke-linecap="round" d="M6 9v.01M18 15v.01"/></svg>'
+const ICON_CARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="5" width="20" height="14" rx="2"/><path stroke-linecap="round" d="M2 10h20"/></svg>'
+const ICON_BANK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10 12 3l9 7M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9M9 20v-6h6v6"/></svg>'
+const ICON_LINK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5 21 3M16.5 3H21v4.5M10.5 13.5 3 21M7.5 21H3v-4.5"/></svg>'
+const ICON_DOTS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>'
+
+const movMethods = [
+  { value: 'cash', label: 'Efectivo', icon: ICON_CASH },
+  { value: 'card', label: 'Tarjeta', icon: ICON_CARD },
+  { value: 'transfer', label: 'Transferencia', icon: ICON_BANK },
+  { value: 'link', label: 'Link', icon: ICON_LINK },
+  { value: 'other', label: 'Otro', icon: ICON_DOTS },
+]
 
 const toast = useToast()
 
@@ -149,89 +162,76 @@ const liveDifference = computed(() => {
   return countedAmount.value - reconcile.value.expected
 })
 const fmtDiff = (d: number) => (d >= 0 ? `+$${d.toLocaleString()}` : `-$${Math.abs(d).toLocaleString()}`)
+
+const todayAmount = computed(() => stats.value?.today ?? 0)
+const weekAmount = computed(() => stats.value?.week ?? 0)
+const monthAmount = computed(() => stats.value?.month ?? 0)
+const movCount = computed(() => stats.value?.count ?? 0)
+
+const todayAnim = useCountUp(todayAmount)
+const weekAnim = useCountUp(weekAmount)
+const monthAnim = useCountUp(monthAmount)
+const movCountAnim = useCountUp(movCount)
 </script>
 
 <template>
   <div class="space-y-6">
-    <div>
-      <h2 class="text-xl font-black text-navy">Caja</h2>
-      <p class="text-xs text-text-muted mt-0.5">Movimientos, turnos y arqueo</p>
-    </div>
-
-    <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-            <span class="w-5 h-5 text-teal" v-html="ICON_WALLET"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-teal truncate">${{ (stats?.today ?? 0).toLocaleString() }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Hoy</div>
-          </div>
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-xl font-black text-navy">Caja</h2>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+            </span>
+            En vivo
+          </span>
         </div>
+        <p class="text-xs text-text-muted mt-0.5">Movimientos, turnos y arqueo</p>
       </div>
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-            <span class="w-5 h-5 text-navy" v-html="ICON_CALENDAR"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-navy truncate">${{ (stats?.week ?? 0).toLocaleString() }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Esta semana</div>
-          </div>
-        </div>
-      </div>
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-            <span class="w-5 h-5 text-cyan" v-html="ICON_TRENDING"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-navy truncate">${{ (stats?.month ?? 0).toLocaleString() }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Este mes</div>
-          </div>
-        </div>
-      </div>
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-            <span class="w-5 h-5 text-navy" v-html="ICON_DOCUMENT"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-navy truncate">{{ stats?.count ?? 0 }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Movimientos</div>
-          </div>
-        </div>
+      <div class="flex gap-2">
+        <button @click="openMovModal('income')" class="flex items-center gap-1.5 bg-teal text-white font-extrabold text-sm px-4 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+          Ingreso
+        </button>
+        <button @click="openMovModal('expense')" class="flex items-center gap-1.5 bg-coral text-white font-extrabold text-sm px-4 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_MINUS"></span>
+          Egreso
+        </button>
       </div>
     </div>
 
-    <!-- Turno actual -->
-    <div class="card p-5">
-      <div class="flex items-center justify-between flex-wrap gap-3">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="currentShift ? 'bg-teal/10' : 'bg-navy/5'">
-            <span class="w-5 h-5" :class="currentShift ? 'text-teal' : 'text-navy/40'" v-html="currentShift ? ICON_LOCK_OPEN : ICON_LOCK_CLOSED"></span>
+    <!-- Turno actual — hero, gatea el resto de la operación -->
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0" :class="currentShift ? 'bg-teal/10' : 'bg-navy/5'">
+            <span class="w-6 h-6" :class="currentShift ? 'text-teal' : 'text-navy/40'" v-html="currentShift ? ICON_LOCK_OPEN : ICON_LOCK_CLOSED"></span>
           </div>
           <div>
-            <h3 class="font-extrabold text-navy">Turno actual</h3>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-black text-navy">Turno actual</h3>
+              <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full" :class="currentShift ? 'bg-teal/10 text-teal' : 'bg-navy/5 text-text-muted'">
+                {{ currentShift ? 'Abierto' : 'Cerrado' }}
+              </span>
+            </div>
             <p v-if="currentShift" class="text-xs text-text-muted mt-0.5">
-              Apertura ${{ currentShift.openingAmount.toLocaleString() }} ·
-              <span class="text-teal font-bold">ABIERTO</span> ·
-              {{ (currentShift.openedAt || '').slice(0, 16).replace('T', ' ') }}
+              Apertura ${{ currentShift.openingAmount.toLocaleString() }} · {{ (currentShift.openedAt || '').slice(0, 16).replace('T', ' ') }}
             </p>
-            <p v-else class="text-xs text-text-muted mt-0.5">No hay turno abierto</p>
+            <p v-else class="text-xs text-text-muted mt-0.5">Abrí un turno para empezar a registrar movimientos</p>
           </div>
         </div>
-        <div v-if="currentShift" class="flex gap-2">
-          <button @click="openCloseModal" class="flex items-center gap-1.5 px-4 py-2 bg-coral text-white text-sm font-bold rounded-xl cursor-pointer hover:shadow-lg">
+        <div v-if="currentShift">
+          <button @click="openCloseModal" class="flex items-center gap-1.5 rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:shadow-lg transition-all cursor-pointer">
             <span class="w-4 h-4 shrink-0" v-html="ICON_SCALE"></span>
             Cerrar turno (arqueo)
           </button>
         </div>
         <div v-else class="flex items-center gap-2">
-          <input v-model.number="openingAmount" type="number" min="0" step="0.01" placeholder="Fondo inicial" class="w-32 px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
-          <button @click="doOpenShift" :disabled="opening" class="flex items-center gap-1.5 px-4 py-2 bg-teal text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50">
+          <input v-model.number="openingAmount" type="number" min="0" step="0.01" placeholder="Fondo inicial" class="w-36 px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+          <button @click="doOpenShift" :disabled="opening" class="flex items-center gap-1.5 rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
             <span class="w-4 h-4 shrink-0" v-html="ICON_LOCK_OPEN"></span>
             {{ opening ? 'Abriendo...' : 'Abrir turno' }}
           </button>
@@ -239,150 +239,217 @@ const fmtDiff = (d: number) => (d >= 0 ? `+$${d.toLocaleString()}` : `-$${Math.a
       </div>
     </div>
 
-    <!-- Acciones -->
-    <div class="flex justify-between items-center flex-wrap gap-3">
-      <h3 class="font-extrabold text-navy">Movimientos</h3>
-      <div class="flex gap-2">
-        <button @click="openMovModal('income')" class="flex items-center gap-1.5 px-4 py-2 bg-teal text-white text-sm font-bold rounded-xl cursor-pointer hover:shadow-lg">
-          <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
-          Ingreso
-        </button>
-        <button @click="openMovModal('expense')" class="flex items-center gap-1.5 px-4 py-2 bg-coral text-white text-sm font-bold rounded-xl cursor-pointer hover:shadow-lg">
-          <span class="w-4 h-4 shrink-0" v-html="ICON_MINUS"></span>
-          Egreso
-        </button>
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
+            <span class="w-5 h-5 text-teal" v-html="ICON_WALLET"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-teal truncate">${{ Math.round(todayAnim).toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Hoy</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
+            <span class="w-5 h-5 text-navy" v-html="ICON_CALENDAR"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">${{ Math.round(weekAnim).toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Esta semana</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
+            <span class="w-5 h-5 text-cyan" v-html="ICON_TRENDING"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">${{ Math.round(monthAnim).toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Este mes</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
+            <span class="w-5 h-5 text-navy" v-html="ICON_DOCUMENT"></span>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">{{ Math.round(movCountAnim) }}</div>
+            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Movimientos</div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Tabla -->
-    <div class="card overflow-hidden">
-      <table class="w-full" v-if="movements.length">
-        <thead><tr class="border-b bg-surface/50">
-          <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Fecha</th>
-          <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Concepto</th>
-          <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tipo</th>
-          <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Método</th>
-          <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Origen</th>
-          <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Monto</th>
-          <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acción</th>
-        </tr></thead>
-        <tbody>
-          <tr v-for="m in movements" :key="m.id" class="border-b border-border/50 last:border-0">
-            <td class="p-3 text-xs text-text-muted">{{ (m.createdAt || '').slice(0, 16).replace('T', ' ') }}</td>
-            <td class="p-3 text-sm font-bold text-navy">{{ m.concept || '—' }}<span v-if="m.guestName" class="block text-[10px] font-normal text-text-muted">{{ m.guestName }}</span></td>
-            <td class="p-3"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="m.type === 'income' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ m.type === 'income' ? 'Ingreso' : 'Egreso' }}</span></td>
-            <td class="p-3 text-xs">{{ METHOD_LABEL[m.method || ''] || m.method || '—' }}</td>
-            <td class="p-3"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="m.source === 'payment_connector' ? 'bg-blue/10 text-blue' : 'bg-gray-100 text-gray-500'">{{ m.source === 'payment_connector' ? 'Auto' : m.source === 'migrated' ? 'Migrado' : 'Manual' }}</span></td>
-            <td class="p-3 text-right text-sm font-black" :class="m.type === 'income' ? 'text-teal' : 'text-coral'">{{ m.type === 'income' ? '+' : '-' }}${{ (m.amount || 0).toLocaleString() }}</td>
-            <td class="p-3 text-right">
-              <button v-if="m.source !== 'payment_connector'" @click="removeMov(m)" class="inline-flex items-center gap-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20">
-                <span class="w-3 h-3 shrink-0" v-html="ICON_TRASH"></span>
-                Eliminar
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-else-if="!loading" class="text-center py-12">
-        <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_WALLET"></span>
-        <h3 class="font-bold text-navy mb-1">Sin movimientos registrados</h3>
-        <p class="text-xs text-text-muted">Registra un ingreso o egreso para empezar.</p>
-      </div>
-      <div v-else class="text-center text-text-muted text-sm py-10">Cargando...</div>
-    </div>
+    <!-- Movimientos -->
+    <div>
+      <h3 class="text-base font-extrabold text-navy mb-3">Movimientos</h3>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+        <table class="w-full" v-if="movements.length">
+          <thead><tr class="border-b border-border bg-surface/50">
+            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Fecha</th>
+            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Concepto</th>
+            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tipo</th>
+            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Método</th>
+            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Origen</th>
+            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Monto</th>
+            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acción</th>
+          </tr></thead>
+          <tbody>
+            <tr v-for="m in movements" :key="m.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
+              <td class="p-4 text-xs text-text-muted">{{ (m.createdAt || '').slice(0, 16).replace('T', ' ') }}</td>
+              <td class="p-4 text-sm font-bold text-navy">{{ m.concept || '—' }}<span v-if="m.guestName" class="block text-[10px] font-normal text-text-muted">{{ m.guestName }}</span></td>
+              <td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="m.type === 'income' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ m.type === 'income' ? 'Ingreso' : 'Egreso' }}</span></td>
+              <td class="p-4 text-xs text-text-secondary">{{ METHOD_LABEL[m.method || ''] || m.method || '—' }}</td>
+              <td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="m.source === 'payment_connector' ? 'bg-blue/10 text-blue' : 'bg-gray-100 text-gray-500'">{{ m.source === 'payment_connector' ? 'Auto' : m.source === 'migrated' ? 'Migrado' : 'Manual' }}</span></td>
+              <td class="p-4 text-right text-sm font-black" :class="m.type === 'income' ? 'text-teal' : 'text-coral'">{{ m.type === 'income' ? '+' : '-' }}${{ (m.amount || 0).toLocaleString() }}</td>
+              <td class="p-4 text-right">
+                <button v-if="m.source !== 'payment_connector'" @click="removeMov(m)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Eliminar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else-if="!loading" class="text-center py-12">
+          <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_WALLET"></span>
+          <h3 class="font-bold text-navy mb-1">Sin movimientos registrados</h3>
+          <p class="text-xs text-text-muted">Registra un ingreso o egreso para empezar.</p>
+        </div>
+        <div v-else class="text-center text-text-muted text-sm py-10">Cargando...</div>
 
-    <!-- Paginación -->
-    <div v-if="pages > 1" class="flex items-center justify-between">
-      <span class="text-xs text-text-muted">Página {{ page }} de {{ pages }}</span>
-      <div class="flex gap-2">
-        <button @click="loadMovements(page - 1)" :disabled="page <= 1" class="px-3 py-1.5 bg-surface rounded-lg text-xs font-bold border cursor-pointer disabled:opacity-40">‹ Anterior</button>
-        <button @click="loadMovements(page + 1)" :disabled="page >= pages" class="px-3 py-1.5 bg-surface rounded-lg text-xs font-bold border cursor-pointer disabled:opacity-40">Siguiente ›</button>
+        <!-- Paginación -->
+        <div v-if="pages > 1" class="flex items-center justify-between p-4 border-t border-border">
+          <span class="text-[10px] text-text-muted font-bold">Página {{ page }} de {{ pages }}</span>
+          <div class="flex items-center gap-1">
+            <button @click="loadMovements(page - 1)" :disabled="page <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
+            <button @click="loadMovements(page + 1)" :disabled="page >= pages" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">›</button>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Modal registrar movimiento -->
     <Teleport to="body">
-      <div v-if="showMov" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="flex items-center gap-2 text-lg font-black text-navy">
-              <span class="w-5 h-5 shrink-0" :class="movForm.type === 'income' ? 'text-teal' : 'text-coral'" v-html="movForm.type === 'income' ? ICON_PLUS : ICON_MINUS"></span>
-              {{ movForm.type === 'income' ? 'Registrar ingreso' : 'Registrar egreso' }}
-            </h3>
-            <button @click="showMov = false" class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-surface hover:text-navy">
-              <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-            </button>
-          </div>
-          <div class="space-y-3">
-            <div class="flex gap-3">
-              <div class="w-32 shrink-0">
-                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Importe</label>
-                <input v-model.number="movForm.amount" type="number" min="0" step="0.01" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-navy" />
+      <Transition name="modal-fade">
+        <div v-if="showMov" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
+              <h3 class="text-lg font-black text-navy">{{ movForm.type === 'income' ? 'Registrar Ingreso' : 'Registrar Egreso' }}</h3>
+              <button @click="showMov = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
+                <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
+              </button>
+            </div>
+
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Importe</label>
+                <input v-model.number="movForm.amount" type="number" min="0" step="0.01" placeholder="0.00" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-navy" />
               </div>
-              <div class="flex-1">
-                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Método</label>
-                <select v-model="movForm.method" class="w-full px-3 py-2 rounded-lg border border-border text-sm cursor-pointer focus:outline-none focus:border-navy">
-                  <option value="cash">Efectivo</option><option value="card">Tarjeta</option>
-                  <option value="transfer">Transferencia</option><option value="link">Link de pago</option>
-                  <option value="other">Otro</option>
-                </select>
+              <div>
+                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Método</label>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="method in movMethods"
+                    :key="method.value"
+                    type="button"
+                    @click="movForm.method = method.value as typeof movForm.method"
+                    class="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-bold border transition-all cursor-pointer"
+                    :class="movForm.method === method.value ? 'border-navy bg-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'"
+                  >
+                    <span class="w-3.5 h-3.5 shrink-0" v-html="method.icon"></span>
+                    {{ method.label }}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Concepto</label>
+                <input v-model="movForm.concept" placeholder="Ej: Compra de insumos" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                <div class="col-span-2">
+                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Huésped (opcional)</label>
+                  <input v-model="movForm.guestName" placeholder="Nombre" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
+                <div>
+                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Hab.</label>
+                  <input v-model="movForm.roomNumber" placeholder="—" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                </div>
               </div>
             </div>
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Concepto</label>
-              <input v-model="movForm.concept" placeholder="Ej: Compra de insumos" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
-            </div>
-            <div class="flex gap-3">
-              <div class="flex-1">
-                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Huésped (opcional)</label>
-                <input v-model="movForm.guestName" placeholder="Nombre" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-              <div class="w-24 shrink-0">
-                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Hab.</label>
-                <input v-model="movForm.roomNumber" placeholder="—" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
+
+            <div class="shrink-0 border-t border-border p-5">
+              <div class="flex items-center justify-end gap-4">
+                <button @click="showMov = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="saveMov" :disabled="submitting" class="rounded-full text-white text-sm font-extrabold px-5 py-2.5 transition-colors cursor-pointer disabled:opacity-50" :class="movForm.type === 'income' ? 'bg-teal hover:bg-teal-light' : 'bg-coral hover:opacity-90'">
+                  {{ submitting ? 'Guardando...' : 'Guardar' }}
+                </button>
               </div>
             </div>
-            <button @click="saveMov" :disabled="submitting" class="w-full px-4 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">{{ submitting ? 'Guardando...' : 'Guardar' }}</button>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- Modal cerrar turno (arqueo) -->
     <Teleport to="body">
-      <div v-if="showClose && reconcile" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="flex items-center gap-2 text-lg font-black text-navy">
-              <span class="w-5 h-5 shrink-0 text-coral" v-html="ICON_SCALE"></span>
-              Cerrar turno — Arqueo
-            </h3>
-            <button @click="showClose = false" class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-surface hover:text-navy">
-              <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-            </button>
-          </div>
-          <div class="space-y-2 mb-4 bg-surface rounded-xl p-4 text-sm">
-            <div class="flex justify-between"><span class="text-text-muted">Fondo inicial</span><span class="font-bold">${{ reconcile.opening.toLocaleString() }}</span></div>
-            <div class="flex justify-between"><span class="text-text-muted">Ingresos</span><span class="font-bold text-teal">+${{ reconcile.income.toLocaleString() }}</span></div>
-            <div class="flex justify-between"><span class="text-text-muted">Egresos</span><span class="font-bold text-coral">-${{ reconcile.expense.toLocaleString() }}</span></div>
-            <div class="flex justify-between border-t border-border pt-2"><span class="font-bold">Esperado en caja</span><span class="font-black text-navy">${{ reconcile.expected.toLocaleString() }}</span></div>
-          </div>
-          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Monto contado (real)</label>
-          <input v-model.number="countedAmount" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg border border-border text-sm font-bold text-navy text-right mb-2 focus:outline-none focus:border-navy" />
-          <div class="flex justify-between mb-4 p-3 rounded-xl" :class="liveDifference >= 0 ? 'bg-teal/10' : 'bg-coral/10'">
-            <span class="text-sm font-bold">{{ liveDifference >= 0 ? 'Sobrante' : 'Faltante' }}</span>
-            <span class="text-lg font-black" :class="liveDifference >= 0 ? 'text-teal' : 'text-coral'">{{ fmtDiff(liveDifference) }}</span>
-          </div>
-          <div class="flex gap-3">
-            <button @click="showClose = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="doCloseShift" :disabled="closing" class="flex-1 py-2.5 bg-coral text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">{{ closing ? 'Cerrando...' : 'Confirmar cierre' }}</button>
+      <Transition name="modal-fade">
+        <div v-if="showClose && reconcile" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
+              <h3 class="text-lg font-black text-navy">Cerrar Turno — Arqueo</h3>
+              <button @click="showClose = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
+                <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
+              </button>
+            </div>
+
+            <div class="p-5 overflow-y-auto flex-1">
+              <div class="space-y-2.5 pb-5 border-b border-border text-sm">
+                <div class="flex justify-between"><span class="text-text-muted">Fondo inicial</span><span class="font-bold text-navy">${{ reconcile.opening.toLocaleString() }}</span></div>
+                <div class="flex justify-between"><span class="text-text-muted">Ingresos</span><span class="font-bold text-teal">+${{ reconcile.income.toLocaleString() }}</span></div>
+                <div class="flex justify-between"><span class="text-text-muted">Egresos</span><span class="font-bold text-coral">-${{ reconcile.expense.toLocaleString() }}</span></div>
+                <div class="flex justify-between pt-2.5 border-t border-border"><span class="font-extrabold text-navy">Esperado en caja</span><span class="font-extrabold text-navy text-base">${{ reconcile.expected.toLocaleString() }}</span></div>
+              </div>
+
+              <div class="py-5 border-b border-border">
+                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Monto contado (real)</label>
+                <input v-model.number="countedAmount" type="number" min="0" step="0.01" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-navy" />
+              </div>
+
+              <div class="flex justify-between items-center pt-5">
+                <span class="text-sm font-bold text-text-secondary">{{ liveDifference >= 0 ? 'Sobrante' : 'Faltante' }}</span>
+                <span class="text-xl font-black" :class="liveDifference >= 0 ? 'text-teal' : 'text-coral'">{{ fmtDiff(liveDifference) }}</span>
+              </div>
+            </div>
+
+            <div class="shrink-0 border-t border-border p-5">
+              <div class="flex items-center justify-end gap-4">
+                <button @click="showClose = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="doCloseShift" :disabled="closing" class="rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
+                  {{ closing ? 'Cerrando...' : 'Confirmar cierre' }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
+  opacity: 0; transform: scale(0.95) translateY(12px);
+}
+</style>

@@ -6,53 +6,45 @@
         <p class="text-sm text-text-muted mt-0.5">Trazabilidad de emails, WhatsApp y SMS enviados a huéspedes</p>
       </div>
       <div class="flex gap-2">
-        <button @click="load" :disabled="loading" class="flex items-center gap-1.5 px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
-          <span class="w-4 h-4 shrink-0" v-html="ICON_REFRESH"></span>{{ loading ? 'Cargando...' : 'Refrescar' }}
+        <button @click="load" :disabled="loading" class="px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-full text-sm font-bold transition-all cursor-pointer disabled:opacity-50">
+          {{ loading ? 'Cargando...' : '↻ Refrescar' }}
         </button>
-        <button @click="exportCsv" :disabled="logs.length === 0" class="flex items-center gap-1.5 px-4 py-2 bg-cyan text-navy font-bold text-sm rounded-xl hover:shadow-lg cursor-pointer disabled:opacity-50">
-          <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>Exportar CSV
+        <button @click="exportCsv" :disabled="logs.length === 0" class="px-4 py-2 bg-cyan text-navy font-bold text-sm rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+          Exportar CSV
         </button>
       </div>
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10"><span class="w-5 h-5 text-navy" v-html="ICON_MAIL"></span></div>
-          <div class="min-w-0"><div class="text-xl font-black leading-none text-navy truncate">{{ stats.total }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total</div></div>
-        </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-2xl font-black text-navy">{{ stats.total }}</div>
+        <div class="text-[10px] text-text-muted uppercase font-bold">Total</div>
       </div>
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10"><span class="w-5 h-5 text-teal" v-html="ICON_CHECK_CIRCLE"></span></div>
-          <div class="min-w-0"><div class="text-xl font-black leading-none text-teal truncate">{{ stats.sent }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Enviados</div></div>
-        </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-2xl font-black text-teal">{{ stats.sent }}</div>
+        <div class="text-[10px] text-text-muted uppercase font-bold">Enviados</div>
       </div>
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10"><span class="w-5 h-5 text-gold" v-html="ICON_CLOCK"></span></div>
-          <div class="min-w-0"><div class="text-xl font-black leading-none text-gold truncate">{{ stats.pending }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Pendientes</div></div>
-        </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-2xl font-black text-gold">{{ stats.pending }}</div>
+        <div class="text-[10px] text-text-muted uppercase font-bold">Pendientes</div>
       </div>
-      <div class="card p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-coral/10"><span class="w-5 h-5 text-coral" v-html="ICON_XCIRCLE"></span></div>
-          <div class="min-w-0"><div class="text-xl font-black leading-none text-coral truncate">{{ stats.failed }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Fallidos</div></div>
-        </div>
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
+        <div class="text-2xl font-black text-coral">{{ stats.failed }}</div>
+        <div class="text-[10px] text-text-muted uppercase font-bold">Fallidos</div>
       </div>
     </div>
 
     <!-- Filtros -->
     <div class="flex items-center gap-2 mb-4 flex-wrap">
-      <input v-model="search" type="text" placeholder="Buscar destinatario..." class="px-4 py-2 rounded-xl border border-border text-sm w-56 focus:outline-none focus:border-navy" />
-      <select v-model="filterType" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer">
+      <input v-model="search" type="text" placeholder="Buscar destinatario..." class="px-4 py-2 rounded-full border border-border text-sm w-56 focus:outline-none focus:border-navy" />
+      <select v-model="filterType" class="px-3 py-2 rounded-full border border-border text-xs font-bold cursor-pointer">
         <option value="">Todos los canales</option>
         <option value="email">Email</option>
         <option value="whatsapp">WhatsApp</option>
         <option value="sms">SMS</option>
       </select>
-      <select v-model="filterStatus" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer">
+      <select v-model="filterStatus" class="px-3 py-2 rounded-full border border-border text-xs font-bold cursor-pointer">
         <option value="">Todos los estados</option>
         <option value="sent">Enviados</option>
         <option value="pending">Pendientes</option>
@@ -63,13 +55,13 @@
     </div>
 
     <!-- Lista -->
-    <div v-if="loading && logs.length === 0" class="card p-12 text-center text-sm text-text-muted">Cargando...</div>
-    <div v-else-if="filtered.length === 0" class="card p-12 text-center">
-      <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_MAIL"></span>
+    <div v-if="loading && logs.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center text-sm text-text-muted">Cargando...</div>
+    <div v-else-if="filtered.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
+      <span class="w-10 h-10 mx-auto mb-3 block text-navy/30" v-html="ICON_INBOX"></span>
       <h3 class="font-bold text-navy mb-1">Sin envíos registrados</h3>
       <p class="text-xs text-text-muted">Cuando se disparen auto-messages o envíos manuales, aparecerán aquí.</p>
     </div>
-    <div v-else class="bg-white rounded-2xl border border-border overflow-hidden">
+    <div v-else class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <table class="w-full">
         <thead>
           <tr class="border-b border-border bg-surface/50">
@@ -89,7 +81,10 @@
               <div class="text-[10px] text-text-muted">{{ formatTime(log.sentAt || log.createdAt) }}</div>
             </td>
             <td class="p-3">
-              <span class="text-xs text-text-secondary font-bold">{{ msgTypeMeta(log.messageType).label }}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="w-3.5 h-3.5 text-text-muted" v-html="msgTypeMeta(log.messageType).icon"></span>
+                <span class="text-[10px] text-text-muted">{{ msgTypeMeta(log.messageType).label }}</span>
+              </div>
             </td>
             <td class="p-3">
               <div class="text-xs font-bold text-navy">{{ log.guestName || '—' }}</div>
@@ -100,7 +95,8 @@
               <span v-else class="text-[10px] text-text-muted">—</span>
             </td>
             <td class="p-3">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="msgStatusMeta(log.status).class">
+              <span class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full" :class="msgStatusMeta(log.status).class">
+                <span class="w-3 h-3" v-html="msgStatusMeta(log.status).icon"></span>
                 {{ msgStatusMeta(log.status).label }}
               </span>
             </td>
@@ -114,75 +110,70 @@
 
     <!-- Modal detalle -->
     <Teleport to="body">
-      <div v-if="detailModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
-          <div class="flex items-start justify-between mb-4">
-            <div>
-              <h3 class="text-lg font-black text-navy">Detalle de envío</h3>
-              <p class="text-xs text-text-muted">
-                {{ msgTypeMeta(detailModal.log?.messageType || '').label }} ·
-                <span :class="msgStatusMeta(detailModal.log?.status || '').class">{{ msgStatusMeta(detailModal.log?.status || '').label }}</span>
-              </p>
-            </div>
-            <button @click="detailModal.show=false" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-muted hover:text-navy cursor-pointer">
-              <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-            </button>
-          </div>
-          <div v-if="detailModal.log" class="space-y-3 text-xs">
-            <div class="grid grid-cols-2 gap-3 bg-surface rounded-lg p-3">
+      <Transition name="modal-fade">
+        <div v-if="detailModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[85vh]">
+            <div class="shrink-0 p-6 pb-4 flex items-start justify-between">
               <div>
-                <div class="text-[10px] font-bold text-text-muted uppercase">Destinatario</div>
-                <div class="text-navy font-bold">{{ detailModal.log.guestName || '—' }}</div>
-                <div class="text-text-muted">{{ detailModal.log.recipient || '—' }}</div>
+                <h3 class="text-lg font-black text-navy">Detalle de envío</h3>
+                <p class="text-xs text-text-muted flex items-center gap-1.5 mt-1">
+                  <span class="w-3.5 h-3.5" v-html="msgTypeMeta(detailModal.log?.messageType || '').icon"></span>
+                  {{ msgTypeMeta(detailModal.log?.messageType || '').label }} ·
+                  <span :class="msgStatusMeta(detailModal.log?.status || '').class">{{ msgStatusMeta(detailModal.log?.status || '').label }}</span>
+                </p>
               </div>
-              <div>
-                <div class="text-[10px] font-bold text-text-muted uppercase">Fecha</div>
-                <div class="text-navy font-bold">{{ formatDate(detailModal.log.sentAt || detailModal.log.createdAt) }}</div>
-                <div class="text-text-muted">{{ formatTime(detailModal.log.sentAt || detailModal.log.createdAt) }}</div>
-              </div>
-              <div v-if="detailModal.log.reservationId">
-                <div class="text-[10px] font-bold text-text-muted uppercase">Reserva</div>
-                <div class="text-navy font-mono">{{ detailModal.log.reservationId.slice(0, 12) }}</div>
-              </div>
-              <div v-if="detailModal.log.messageId">
-                <div class="text-[10px] font-bold text-text-muted uppercase">ID interno</div>
-                <div class="text-navy font-mono text-[10px]">{{ detailModal.log.messageId }}</div>
-              </div>
+              <button @click="detailModal.show=false" class="w-4 h-4 text-text-muted hover:text-navy transition-colors cursor-pointer" v-html="ICON_X"></button>
             </div>
-            <div v-if="detailModal.log.subject">
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Asunto</div>
-              <div class="text-navy bg-surface rounded-lg p-2">{{ detailModal.log.subject }}</div>
-            </div>
-            <div v-if="detailModal.log.body">
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Cuerpo</div>
-              <pre class="text-navy bg-surface rounded-lg p-2 whitespace-pre-wrap text-[11px] font-sans">{{ detailModal.log.body }}</pre>
-            </div>
-            <div v-if="detailModal.log.response">
-              <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Respuesta del proveedor</div>
-              <pre class="bg-coral/5 text-coral rounded-lg p-2 whitespace-pre-wrap text-[10px] font-mono">{{ detailModal.log.response }}</pre>
+            <div v-if="detailModal.log" class="overflow-y-auto flex-1 px-6 pb-6 space-y-3 text-xs">
+              <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-4 border-t border-b border-border">
+                <div>
+                  <div class="text-[10px] font-bold text-text-muted uppercase">Destinatario</div>
+                  <div class="text-navy font-bold">{{ detailModal.log.guestName || '—' }}</div>
+                  <div class="text-text-muted">{{ detailModal.log.recipient || '—' }}</div>
+                </div>
+                <div>
+                  <div class="text-[10px] font-bold text-text-muted uppercase">Fecha</div>
+                  <div class="text-navy font-bold">{{ formatDate(detailModal.log.sentAt || detailModal.log.createdAt) }}</div>
+                  <div class="text-text-muted">{{ formatTime(detailModal.log.sentAt || detailModal.log.createdAt) }}</div>
+                </div>
+                <div v-if="detailModal.log.reservationId">
+                  <div class="text-[10px] font-bold text-text-muted uppercase">Reserva</div>
+                  <div class="text-navy font-mono">{{ detailModal.log.reservationId.slice(0, 12) }}</div>
+                </div>
+                <div v-if="detailModal.log.messageId">
+                  <div class="text-[10px] font-bold text-text-muted uppercase">ID interno</div>
+                  <div class="text-navy font-mono text-[10px]">{{ detailModal.log.messageId }}</div>
+                </div>
+              </div>
+              <div v-if="detailModal.log.subject">
+                <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Asunto</div>
+                <div class="text-navy bg-surface rounded-xl p-2">{{ detailModal.log.subject }}</div>
+              </div>
+              <div v-if="detailModal.log.body">
+                <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Cuerpo</div>
+                <pre class="text-navy bg-surface rounded-xl p-2 whitespace-pre-wrap text-[11px] font-sans">{{ detailModal.log.body }}</pre>
+              </div>
+              <div v-if="detailModal.log.response">
+                <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Respuesta del proveedor</div>
+                <pre class="bg-coral/5 text-coral rounded-xl p-2 whitespace-pre-wrap text-[10px] font-mono">{{ detailModal.log.response }}</pre>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { MessageLogsService, msgStatusMeta, msgTypeMeta } from '@/services/MessageLogs.service'
+import { MessageLogsService, msgStatusMeta, msgTypeMeta, ICON_INBOX } from '@/services/MessageLogs.service'
 import type { MessageLog } from '@/services/MessageLogs.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 
-const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
-const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M7.5 12l4.5 4.5m0 0 4.5-4.5m-4.5 4.5V3"/></svg>'
-const ICON_MAIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0a2.25 2.25 0 0 0-2.25-2.25H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>'
-const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 2.25 2.25 4.5-4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
-const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
-const ICON_XCIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
-const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
+const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -267,3 +258,10 @@ function formatTime(d?: string): string {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel { transition: transform 0.2s ease, opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel { opacity: 0; transform: translateY(8px) scale(0.98); }
+</style>

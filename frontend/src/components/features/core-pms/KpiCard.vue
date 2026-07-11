@@ -1,5 +1,5 @@
 <template>
-  <div class="card p-4">
+  <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
     <div class="flex items-center gap-3">
       <div v-if="icon" class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="iconBg || 'bg-navy/10'">
         <span class="w-5 h-5" :class="iconColor || 'text-navy'" v-html="icon"></span>

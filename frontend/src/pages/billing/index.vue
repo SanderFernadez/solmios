@@ -3,7 +3,16 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h2 class="text-xl font-black text-navy">Facturación</h2>
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-xl font-black text-navy">Facturación</h2>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
+            </span>
+            En vivo
+          </span>
+        </div>
         <p class="text-sm text-text-muted mt-0.5">Pagos, facturación electrónica LATAM y folios</p>
       </div>
       <div class="flex gap-2">
@@ -20,49 +29,49 @@
 
     <!-- Stats -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
             <span class="w-5 h-5 text-navy" v-html="ICON_WALLET"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-navy truncate">${{ totalMonth.toLocaleString() }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">${{ Math.round(totalMonthAnim).toLocaleString() }}</div>
             <div v-if="formatSecondary(totalMonth)" class="text-[10px] text-text-muted truncate">{{ formatSecondary(totalMonth) }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-0.5 truncate">Ingresos del Mes</div>
           </div>
         </div>
       </div>
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
             <span class="w-5 h-5 text-teal" v-html="ICON_CHECK_PLAIN"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-teal truncate">${{ totalToday.toLocaleString() }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-teal truncate">${{ Math.round(totalTodayAnim).toLocaleString() }}</div>
             <div v-if="formatSecondary(totalToday)" class="text-[10px] text-text-muted truncate">{{ formatSecondary(totalToday) }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-0.5 truncate">Cobrado Hoy</div>
           </div>
         </div>
       </div>
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
             <span class="w-5 h-5 text-gold" v-html="ICON_CLOCK"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-gold truncate">${{ totalPending.toLocaleString() }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-gold truncate">${{ Math.round(totalPendingAnim).toLocaleString() }}</div>
             <div v-if="formatSecondary(totalPending)" class="text-[10px] text-text-muted truncate">{{ formatSecondary(totalPending) }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-0.5 truncate">Pendiente</div>
           </div>
         </div>
       </div>
-      <div class="card p-4">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
             <span class="w-5 h-5 text-cyan" v-html="ICON_DOCUMENT"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black leading-none text-cyan">{{ stats.total }}</div>
+            <div class="text-xl font-black leading-none tabular-nums text-cyan">{{ Math.round(totalInvoicesAnim) }}</div>
             <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Facturas Emitidas</div>
           </div>
         </div>
@@ -75,7 +84,7 @@
         v-for="tab in tabs"
         :key="tab.value"
         @click="activeTab = tab.value"
-        class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
+        class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer"
         :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'"
       >
         <span class="w-4 h-4 shrink-0" v-html="tab.icon"></span>
@@ -90,7 +99,7 @@
     </div>
 
     <!-- Invoices Tab -->
-    <div v-if="activeTab === 'invoices' && !loading" class="card overflow-hidden">
+    <div v-if="activeTab === 'invoices' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <div class="p-4 border-b border-border">
         <div class="flex items-center justify-between">
           <h3 class="font-extrabold text-navy text-sm">Facturas</h3>
@@ -168,7 +177,7 @@
     </div>
 
     <!-- Payments Tab -->
-    <div v-if="activeTab === 'payments' && !loading" class="card overflow-hidden">
+    <div v-if="activeTab === 'payments' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <div class="p-4 border-b border-border">
         <h3 class="font-extrabold text-navy text-sm">Pagos Recientes</h3>
       </div>
@@ -211,39 +220,40 @@
     </div>
 
     <!-- Folios Tab -->
-    <div v-if="activeTab === 'folios' && !loading" class="card overflow-hidden">
+    <div v-if="activeTab === 'folios' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
       <div class="p-4 border-b border-border">
         <h3 class="font-extrabold text-navy text-sm">Folios de Habitación</h3>
         <p class="text-[10px] text-text-muted mt-0.5">Cargos pendientes por habitación</p>
       </div>
-      <div class="p-4 space-y-3">
-        <div v-if="folios.length === 0" class="p-8 text-center text-text-muted text-sm">No hay folios</div>
-        <div v-for="folio in folios" :key="folio.id" class="bg-surface rounded-xl p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-lg bg-navy/10 flex items-center justify-center text-sm font-bold text-navy">
-                {{ folio.roomNumber || '—' }}
+      <div class="px-5">
+        <div v-if="folios.length === 0" class="py-8 text-center text-text-muted text-sm">No hay folios</div>
+        <div v-for="folio in folios" :key="folio.id" class="py-5 border-b border-border last:border-0">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-navy">Hab {{ folio.roomNumber || '—' }}</span>
+                <span class="text-text-muted">·</span>
+                <span class="text-sm font-bold text-navy truncate">{{ folio.guestName || 'Huésped' }}</span>
               </div>
-              <div>
-                <div class="text-sm font-bold text-navy">{{ folio.guestName || 'Huésped' }}</div>
-                <div class="text-[10px] text-text-muted">
-                  Folio · {{ folio.status === 'open' ? 'Abierto' : 'Cerrado' }}
-                  <span v-if="folio.chargeCount"> · {{ folio.chargeCount }} cargo(s)</span>
-                </div>
+              <div class="text-[10px] text-text-muted mt-0.5">
+                {{ folio.status === 'open' ? 'Abierto' : 'Cerrado' }}
+                <span v-if="folio.chargeCount"> · {{ folio.chargeCount }} cargo(s)</span>
               </div>
             </div>
-            <div class="text-right">
+            <div class="text-right shrink-0">
               <div class="text-lg font-black text-navy">${{ (folio.chargesTotal || 0).toLocaleString() }}</div>
               <div class="text-[10px] font-bold" :class="(folio.balance || 0) > 0 ? 'text-orange' : 'text-teal'">
                 Saldo: ${{ (folio.balance || 0).toLocaleString() }}
               </div>
             </div>
           </div>
-          <div class="mt-3 pt-3 border-t border-border flex justify-end gap-2">
-            <button v-if="folio.status === 'open'" @click="openAddCharge(folio)" class="px-3 py-1.5 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 transition-colors cursor-pointer">+ Cargo</button>
-            <button v-if="folio.status === 'open'" @click="openRecordPaymentForFolio(folio)" class="px-3 py-1.5 bg-teal text-white rounded-lg text-[10px] font-bold hover:bg-teal-light transition-colors cursor-pointer">Registrar Pago</button>
-            <button v-if="folio.status === 'open'" @click="openCloseFolioModal(folio)" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg transition-colors cursor-pointer">Cerrar y Facturar</button>
-            <span v-if="folio.status === 'closed' && folio.invoiceId" class="text-[10px] text-teal font-bold self-center">✓ Facturado</span>
+          <div class="mt-3 flex justify-end items-center gap-4">
+            <template v-if="folio.status === 'open'">
+              <button @click="openAddCharge(folio)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">+ Cargo</button>
+              <button @click="openRecordPaymentForFolio(folio)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Registrar Pago</button>
+              <button @click="openCloseFolioModal(folio)" class="rounded-full bg-cyan text-navy text-[11px] font-extrabold px-4 py-1.5 hover:shadow-lg transition-all cursor-pointer">Cerrar y Facturar</button>
+            </template>
+            <span v-else-if="folio.status === 'closed' && folio.invoiceId" class="text-[10px] text-teal font-bold">✓ Facturado</span>
           </div>
         </div>
       </div>
@@ -251,459 +261,435 @@
 
     <!-- View Invoice Modal -->
     <Teleport to="body">
-      <div v-if="showViewModal && viewInvoice" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.stop>
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click.stop></div>
+      <Transition name="modal-fade">
+        <div v-if="showViewModal && viewInvoice" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
-          <!-- Header -->
-          <div class="sticky top-0 bg-white z-10 p-5 border-b border-border rounded-t-2xl">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div>
-                  <div class="flex items-center gap-2">
-                    <h3 class="text-lg font-black text-navy">{{ typeLabel(viewInvoice.type) }} #{{ viewInvoice.number }}</h3>
-                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="invoiceStatusClass(viewInvoice.status)">
-                      {{ invoiceStatusLabel(viewInvoice.status) }}
-                    </span>
-                  </div>
-                  <p class="text-xs text-text-muted mt-0.5">Emitida: {{ viewInvoice.date }} {{ viewInvoice.dueDate ? `· Vence: ${viewInvoice.dueDate}` : '' }}</p>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <!-- Header -->
+            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-lg font-black text-navy">{{ typeLabel(viewInvoice.type) }} #{{ viewInvoice.number }}</h3>
+                  <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="invoiceStatusClass(viewInvoice.status)">
+                    {{ invoiceStatusLabel(viewInvoice.status) }}
+                  </span>
                 </div>
+                <p class="text-xs text-text-muted mt-0.5">Emitida: {{ viewInvoice.date }} {{ viewInvoice.dueDate ? `· Vence: ${viewInvoice.dueDate}` : '' }}</p>
               </div>
-              <button @click="closeViewModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+              <button @click="closeViewModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-          </div>
 
-          <!-- Body -->
-          <div class="p-6 space-y-4">
-            <!-- NCF -->
-            <div v-if="viewInvoice.ncf" class="bg-gold/10 border border-gold/20 rounded-xl p-3 flex items-center justify-between">
-              <span class="text-[10px] font-bold text-gold uppercase">NCF</span>
-              <span class="text-sm font-extrabold text-navy">{{ viewInvoice.ncf }}</span>
-            </div>
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto flex-1">
+              <!-- NCF -->
+              <div v-if="viewInvoice.ncf" class="flex items-center justify-between pb-5 border-b border-border">
+                <span class="text-[10px] font-bold text-text-muted uppercase tracking-wide">NCF</span>
+                <span class="text-sm font-extrabold text-navy">{{ viewInvoice.ncf }}</span>
+              </div>
 
-            <!-- Guest & Room -->
-            <div class="grid grid-cols-3 gap-3">
-              <div class="bg-surface rounded-xl p-3">
-                <div class="text-[10px] text-text-muted uppercase mb-1">Huésped</div>
-                <div class="text-sm font-bold text-navy">{{ viewInvoice.guest || '—' }}</div>
+              <!-- Guest & Room -->
+              <div class="grid grid-cols-3 gap-3 py-5 border-b border-border">
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Huésped</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewInvoice.guest || '—' }}</div>
+                </div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Habitación</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewInvoice.room || '—' }}</div>
+                </div>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Moneda</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ currencySymbol(viewInvoice.currency) }} {{ viewInvoice.currency }}</div>
+                </div>
               </div>
-              <div class="bg-surface rounded-xl p-3">
-                <div class="text-[10px] text-text-muted uppercase mb-1">Habitación</div>
-                <div class="text-sm font-bold text-navy">{{ viewInvoice.room || '—' }}</div>
-              </div>
-              <div class="bg-surface rounded-xl p-3">
-                <div class="text-[10px] text-text-muted uppercase mb-1">Moneda</div>
-                <div class="text-sm font-bold text-navy">{{ currencySymbol(viewInvoice.currency) }} {{ viewInvoice.currency }}</div>
-              </div>
-            </div>
 
-            <!-- Items -->
-            <div>
-              <div class="text-[10px] font-bold text-navy uppercase tracking-wide mb-2">Conceptos Facturados</div>
-              <div class="border border-border rounded-xl overflow-hidden">
-                <table class="w-full">
-                  <thead>
-                    <tr class="bg-navy/5 border-b border-border">
-                      <th class="text-left p-2.5 text-[10px] font-bold text-text-muted uppercase">#</th>
-                      <th class="text-left p-2.5 text-[10px] font-bold text-text-muted uppercase">Descripción</th>
-                      <th class="text-right p-2.5 text-[10px] font-bold text-text-muted uppercase">Monto</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(item, idx) in viewInvoice.items" :key="idx" class="border-b border-border last:border-0">
-                      <td class="p-2.5 text-[11px] text-text-muted">{{ Number(idx) + 1 }}</td>
-                      <td class="p-2.5 text-sm font-bold text-navy">{{ item.description }}</td>
-                      <td class="p-2.5 text-sm font-bold text-navy text-right">{{ currencySymbol(viewInvoice.currency) }}{{ Number(item.amount).toFixed(2) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <!-- Items -->
+              <div class="py-5 border-b border-border">
+                <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-3">Conceptos Facturados</div>
+                <div class="divide-y divide-border">
+                  <div v-for="(item, idx) in viewInvoice.items" :key="idx" class="flex items-center justify-between py-2">
+                    <span class="text-sm font-bold text-navy">{{ item.description }}</span>
+                    <span class="text-sm font-bold text-navy">{{ currencySymbol(viewInvoice.currency) }}{{ Number(item.amount).toFixed(2) }}</span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <!-- Financial Summary -->
-            <div class="bg-navy/5 rounded-xl p-4 space-y-2.5">
-              <div class="flex justify-between text-sm">
-                <span class="text-text-secondary">Subtotal</span>
-                <span class="font-bold">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.subtotal.toFixed(2) }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-text-secondary">Impuestos ({{ viewInvoice.taxRate }}%)</span>
-                <span class="font-bold">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.tax.toFixed(2) }}</span>
-              </div>
-              <div class="border-t border-border pt-2.5">
-                <div class="flex justify-between">
+              <!-- Financial Summary -->
+              <div class="py-5 border-b border-border space-y-2.5">
+                <div class="flex justify-between text-sm">
+                  <span class="text-text-secondary">Subtotal</span>
+                  <span class="font-bold text-navy">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.subtotal.toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-text-secondary">Impuestos ({{ viewInvoice.taxRate }}%)</span>
+                  <span class="font-bold text-navy">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.tax.toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between pt-2.5 border-t border-border">
                   <span class="font-extrabold text-navy">Total</span>
                   <span class="font-extrabold text-navy text-xl">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.total.toFixed(2) }}</span>
                 </div>
+                <template v-if="viewInvoice.amountPaid > 0">
+                  <div class="flex justify-between text-sm text-teal pt-2.5 border-t border-border">
+                    <span class="font-bold">Pagado</span>
+                    <span class="font-bold">-{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.amountPaid.toFixed(2) }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="font-extrabold text-gold">Saldo Pendiente</span>
+                    <span class="font-extrabold text-gold">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.balance.toFixed(2) }}</span>
+                  </div>
+                </template>
               </div>
-              <div v-if="viewInvoice.amountPaid > 0" class="border-t border-border pt-2.5 space-y-1.5">
-                <div class="flex justify-between text-sm text-teal">
-                  <span class="font-bold">Pagado</span>
-                  <span class="font-bold">-{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.amountPaid.toFixed(2) }}</span>
+
+              <!-- Payment Method -->
+              <div v-if="viewInvoice.method" class="flex items-center gap-3 py-5 border-b border-border">
+                <span class="w-5 h-5 text-navy shrink-0" v-html="paymentMethodIcon(viewInvoice.method)"></span>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Método de Pago</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ paymentMethodLabel(viewInvoice.method) }}</div>
                 </div>
-                <div class="flex justify-between text-sm">
-                  <span class="font-extrabold text-gold">Saldo Pendiente</span>
-                  <span class="font-extrabold text-gold">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.balance.toFixed(2) }}</span>
-                </div>
+              </div>
+
+              <!-- Notes -->
+              <div v-if="viewInvoice.notes" class="pt-5">
+                <div class="text-[10px] text-text-muted uppercase tracking-wide mb-1">Notas</div>
+                <div class="text-sm text-text-secondary whitespace-pre-wrap">{{ viewInvoice.notes }}</div>
               </div>
             </div>
 
-            <!-- Payment Method -->
-            <div v-if="viewInvoice.method" class="flex items-center gap-3 p-3 bg-surface rounded-xl">
-              <span class="w-5 h-5 text-navy shrink-0" v-html="paymentMethodIcon(viewInvoice.method)"></span>
-              <div>
-                <div class="text-[10px] text-text-muted uppercase">Método de Pago</div>
-                <div class="text-sm font-bold text-navy">{{ paymentMethodLabel(viewInvoice.method) }}</div>
+            <!-- Actions -->
+            <div class="shrink-0 border-t border-border p-5">
+              <div class="flex items-center gap-4">
+                <button @click="printInvoice" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Imprimir</button>
+                <button @click="emailInvoice" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Enviar email</button>
+                <button @click="downloadPdf" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">PDF</button>
+                <div class="flex-1"></div>
+                <button v-if="viewInvoice.status === 'pending' || viewInvoice.balance > 0" @click="closeViewModal(); openRecordPayment(viewInvoice)" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer">
+                  Registrar Pago
+                </button>
+                <button @click="closeViewModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cerrar</button>
               </div>
-            </div>
-
-            <!-- Notes -->
-            <div v-if="viewInvoice.notes" class="bg-surface rounded-xl p-3">
-              <div class="text-[10px] text-text-muted uppercase mb-1">Notas</div>
-              <div class="text-sm text-text-secondary whitespace-pre-wrap">{{ viewInvoice.notes }}</div>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="sticky bottom-0 bg-white border-t border-border p-6 rounded-b-2xl">
-            <div class="flex gap-2">
-              <button @click="printInvoice" class="flex items-center gap-1.5 px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
-                <span class="w-4 h-4 shrink-0" v-html="ICON_PRINTER"></span>
-                Imprimir
-              </button>
-              <button @click="emailInvoice" class="flex items-center gap-1.5 px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
-                <span class="w-4 h-4 shrink-0" v-html="ICON_ENVELOPE"></span>
-                Enviar email
-              </button>
-              <button @click="downloadPdf" class="flex items-center gap-1.5 px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
-                <span class="w-4 h-4 shrink-0" v-html="ICON_DOCUMENT"></span>
-                PDF
-              </button>
-              <button v-if="viewInvoice.status === 'pending' || viewInvoice.balance > 0" @click="closeViewModal(); openRecordPayment(viewInvoice)" class="flex-1 px-4 py-2.5 bg-teal text-white rounded-xl text-sm font-bold hover:bg-teal-light transition-colors cursor-pointer">
-                Registrar Pago
-              </button>
-              <button @click="closeViewModal" class="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
-                Cerrar
-              </button>
             </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- New Payment Modal -->
     <Teleport to="body">
-      <div v-if="showPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+      <Transition name="modal-fade">
+        <div v-if="showPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
-          <div class="p-5 border-b border-border">
-            <div class="flex items-center justify-between">
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
               <h3 class="text-lg font-black text-navy">Registrar Pago</h3>
-              <button @click="closePaymentModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+              <button @click="closePaymentModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-          </div>
 
-          <div class="p-5 space-y-4">
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Huésped</label>
-              <input :value="paymentForm.guest" type="text" disabled class="w-full px-4 py-2.5 rounded-xl border border-border text-sm bg-surface" />
-            </div>
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Huésped</label>
+                <input :value="paymentForm.guest" type="text" disabled class="w-full px-4 py-2.5 rounded-xl border border-border text-sm bg-surface" />
+              </div>
 
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Monto ($)</label>
-              <input v-model.number="paymentForm.amount" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-            </div>
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Monto ($)</label>
+                <input v-model.number="paymentForm.amount" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
 
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Método de Pago</label>
-              <div class="grid grid-cols-2 gap-2">
-                <button
-                  v-for="method in paymentMethods"
-                  :key="method.value"
-                  @click="paymentForm.method = method.value"
-                  class="p-3 rounded-xl border text-center transition-all cursor-pointer"
-                  :class="paymentForm.method === method.value ? 'border-navy bg-navy/5' : 'border-border hover:border-navy/30'"
-                >
-                  <span class="w-5 h-5 mx-auto mb-1 block" :class="paymentForm.method === method.value ? 'text-navy' : 'text-text-secondary'" v-html="method.icon"></span>
-                  <span class="text-[10px] font-bold" :class="paymentForm.method === method.value ? 'text-navy' : 'text-text-secondary'">{{ method.label }}</span>
-                </button>
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Método de Pago</label>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="method in paymentMethods"
+                    :key="method.value"
+                    @click="paymentForm.method = method.value"
+                    class="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-bold border transition-all cursor-pointer"
+                    :class="paymentForm.method === method.value ? 'border-navy bg-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'"
+                  >
+                    <span class="w-3.5 h-3.5 shrink-0" v-html="method.icon"></span>
+                    {{ method.label }}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Referencia</label>
+                <input v-model="paymentForm.reference" type="text" placeholder="N° transacción, comprobante, etc." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</label>
+                <textarea v-model="paymentForm.notes" rows="2" placeholder="Opcional..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
               </div>
             </div>
 
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Referencia</label>
-              <input v-model="paymentForm.reference" type="text" placeholder="N° transacción, comprobante, etc." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-            </div>
-
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Notas</label>
-              <textarea v-model="paymentForm.notes" rows="2" placeholder="Opcional..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
-            </div>
-          </div>
-
-          <div class="p-5 border-t border-border bg-surface/50">
-            <div class="flex gap-3 justify-end">
-              <button @click="closePaymentModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
-              <button @click="savePayment" :disabled="savingPayment" class="px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-bold hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">{{ savingPayment ? 'Guardando...' : 'Confirmar Pago' }}</button>
+            <div class="shrink-0 border-t border-border p-5">
+              <div class="flex items-center justify-end gap-4">
+                <button @click="closePaymentModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="savePayment" :disabled="savingPayment" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">{{ savingPayment ? 'Guardando...' : 'Confirmar Pago' }}</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- Add Charge Modal -->
     <Teleport to="body">
-      <div v-if="showChargeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+      <Transition name="modal-fade">
+        <div v-if="showChargeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
-          <div class="p-5 border-b border-border">
-            <div class="flex items-center justify-between">
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
               <h3 class="text-lg font-black text-navy">Agregar Cargo — Hab {{ chargeRoom }}</h3>
-              <button @click="closeChargeModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+              <button @click="closeChargeModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-          </div>
 
-          <div class="p-5 space-y-4">
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Concepto</label>
-              <select v-model="chargeForm.description" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-                <option value="">Seleccionar...</option>
-                <option value="Minibar">Minibar</option>
-                <option value="Servicio de habitación">Servicio de habitación</option>
-                <option value="Lavandería">Lavandería</option>
-                <option value="Spa">Spa</option>
-                <option value="Restaurante">Restaurante</option>
-                <option value="Telefonía">Telefonía</option>
-                <option value="Otro">Otro</option>
-              </select>
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Concepto</label>
+                <select v-model="chargeForm.description" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <option value="">Seleccionar...</option>
+                  <option value="Minibar">Minibar</option>
+                  <option value="Servicio de habitación">Servicio de habitación</option>
+                  <option value="Lavandería">Lavandería</option>
+                  <option value="Spa">Spa</option>
+                  <option value="Restaurante">Restaurante</option>
+                  <option value="Telefonía">Telefonía</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Monto ($)</label>
+                <input v-model.number="chargeForm.amount" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</label>
+                <textarea v-model="chargeForm.notes" rows="2" placeholder="Detalle del cargo..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
+              </div>
             </div>
 
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Monto ($)</label>
-              <input v-model.number="chargeForm.amount" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-            </div>
-
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Notas</label>
-              <textarea v-model="chargeForm.notes" rows="2" placeholder="Detalle del cargo..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
-            </div>
-          </div>
-
-          <div class="p-5 border-t border-border bg-surface/50">
-            <div class="flex gap-3 justify-end">
-              <button @click="closeChargeModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
-              <button @click="saveCharge" :disabled="savingCharge" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">{{ savingCharge ? 'Agregando...' : 'Agregar' }}</button>
+            <div class="shrink-0 border-t border-border p-5">
+              <div class="flex items-center justify-end gap-4">
+                <button @click="closeChargeModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="saveCharge" :disabled="savingCharge" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">{{ savingCharge ? 'Agregando...' : 'Agregar' }}</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- New Invoice Modal -->
     <Teleport to="body">
-      <div v-if="showNewInvoiceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+      <Transition name="modal-fade">
+        <div v-if="showNewInvoiceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
 
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-          <div class="sticky top-0 bg-white z-10 p-5 border-b border-border rounded-t-2xl">
-            <div class="flex items-center justify-between">
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
               <h3 class="text-lg font-black text-navy">Nueva Factura</h3>
-              <button @click="closeNewInvoiceModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+              <button @click="closeNewInvoiceModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-          </div>
 
-          <div class="p-6 space-y-4">
-            <!-- Room Search -->
-            <div>
-              <label class="flex items-center gap-1.5 text-[11px] font-bold text-navy uppercase tracking-wide mb-2">
-                <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_SEARCH"></span>
-                Buscar Habitación
-              </label>
-              <div class="relative">
-                <input v-model="newInvoice.roomSearch" @input="filterRooms" @focus="showRoomDropdown = true" @blur="closeRoomDropdown" type="text" placeholder="Escribí número de hab, nombre del huésped..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-                <div v-if="showRoomDropdown && filteredRooms.length" class="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg max-h-56 overflow-y-auto">
-                  <div v-for="room in filteredRooms" :key="room.id" @mousedown.prevent="selectRoom(room)" class="px-4 py-3 hover:bg-surface cursor-pointer border-b border-border last:border-0">
-                    <div class="flex justify-between items-center">
-                      <div>
-                        <span class="text-sm font-bold text-navy">Hab {{ room.number }}</span>
-                        <span class="text-[10px] text-text-muted ml-1.5 px-1.5 py-0.5 bg-surface rounded">{{ room.type }}</span>
-                      </div>
-                      <div class="text-right">
-                        <div v-if="room.guestName" class="text-xs font-bold text-teal">{{ room.guestName }}</div>
-                        <div v-else class="text-[10px] text-text-muted">Sin huésped</div>
-                        <div class="text-[10px] text-text-muted">${{ room.basePrice }}/noche</div>
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+              <!-- Room Search -->
+              <div>
+                <label class="flex items-center gap-1.5 text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">
+                  <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_SEARCH"></span>
+                  Buscar Habitación
+                </label>
+                <div class="relative">
+                  <input v-model="newInvoice.roomSearch" @input="filterRooms" @focus="showRoomDropdown = true" @blur="closeRoomDropdown" type="text" placeholder="Escribí número de hab, nombre del huésped..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <div v-if="showRoomDropdown && filteredRooms.length" class="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg max-h-56 overflow-y-auto">
+                    <div v-for="room in filteredRooms" :key="room.id" @mousedown.prevent="selectRoom(room)" class="px-4 py-3 hover:bg-surface cursor-pointer border-b border-border last:border-0">
+                      <div class="flex justify-between items-center">
+                        <div>
+                          <span class="text-sm font-bold text-navy">Hab {{ room.number }}</span>
+                          <span class="text-[10px] text-text-muted ml-1.5 px-1.5 py-0.5 bg-surface rounded">{{ room.type }}</span>
+                        </div>
+                        <div class="text-right">
+                          <div v-if="room.guestName" class="text-xs font-bold text-teal">{{ room.guestName }}</div>
+                          <div v-else class="text-[10px] text-text-muted">Sin huésped</div>
+                          <div class="text-[10px] text-text-muted">${{ room.basePrice }}/noche</div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Guest (auto-filled) -->
-            <div v-if="newInvoice.guestName" class="flex items-center gap-3 p-3 bg-teal/5 border border-teal/20 rounded-xl">
-              <span class="w-5 h-5 text-teal shrink-0" v-html="ICON_USER"></span>
-              <div>
-                <div class="text-[10px] text-text-muted uppercase">Huésped</div>
-                <div class="text-sm font-bold text-navy">{{ newInvoice.guestName }}</div>
-              </div>
-            </div>
-
-            <!-- Line Items -->
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <label class="text-[11px] font-bold text-navy uppercase tracking-wide">Conceptos</label>
-                <button @click="addInvoiceItem" class="text-[10px] font-bold text-cyan hover:text-navy transition-colors cursor-pointer">+ Agregar</button>
-              </div>
-              <div class="space-y-2">
-                <div v-for="(item, idx) in newInvoice.items" :key="idx" class="flex gap-2 items-start">
-                  <select v-model="item.description" class="flex-1 px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-                    <option value="">Concepto...</option>
-                    <option value="Hospedaje">Hospedaje</option>
-                    <option value="Minibar">Minibar</option>
-                    <option value="Restaurante">Restaurante</option>
-                    <option value="Spa">Spa</option>
-                    <option value="Lavandería">Lavandería</option>
-                    <option value="Servicio de habitación">Serv. habitación</option>
-                    <option value="Telefonía">Telefonía</option>
-                    <option value="Otros">Otros</option>
-                  </select>
-                  <input v-model.number="item.amount" type="number" min="0" step="0.01" placeholder="Monto" class="w-24 px-3 py-2 rounded-xl border border-border text-sm text-right focus:outline-none focus:border-navy" />
-                  <button v-if="newInvoice.items.length > 1" @click="removeInvoiceItem(idx)" class="w-8 h-8 rounded-lg bg-coral/10 text-coral flex items-center justify-center hover:bg-coral/20 transition-colors cursor-pointer">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
+              <!-- Guest (auto-filled) -->
+              <div v-if="newInvoice.guestName" class="flex items-center gap-3 py-3 border-b border-border">
+                <span class="w-5 h-5 text-teal shrink-0" v-html="ICON_USER"></span>
+                <div>
+                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Huésped</div>
+                  <div class="text-sm font-bold text-navy mt-0.5">{{ newInvoice.guestName }}</div>
                 </div>
               </div>
-            </div>
 
-            <!-- Notes -->
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Notas</label>
-              <textarea v-model="newInvoice.notes" rows="2" placeholder="Detalle adicional..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
-            </div>
+              <!-- Line Items -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide">Conceptos</label>
+                  <button @click="addInvoiceItem" class="text-[10px] font-bold text-cyan hover:text-navy transition-colors cursor-pointer">+ Agregar</button>
+                </div>
+                <div class="space-y-2">
+                  <div v-for="(item, idx) in newInvoice.items" :key="idx" class="flex gap-2 items-start">
+                    <select v-model="item.description" class="flex-1 px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                      <option value="">Concepto...</option>
+                      <option value="Hospedaje">Hospedaje</option>
+                      <option value="Minibar">Minibar</option>
+                      <option value="Restaurante">Restaurante</option>
+                      <option value="Spa">Spa</option>
+                      <option value="Lavandería">Lavandería</option>
+                      <option value="Servicio de habitación">Serv. habitación</option>
+                      <option value="Telefonía">Telefonía</option>
+                      <option value="Otros">Otros</option>
+                    </select>
+                    <input v-model.number="item.amount" type="number" min="0" step="0.01" placeholder="Monto" class="w-24 px-3 py-2 rounded-xl border border-border text-sm text-right focus:outline-none focus:border-navy" />
+                    <button v-if="newInvoice.items.length > 1" @click="removeInvoiceItem(idx)" class="w-8 h-8 rounded-full bg-coral/10 text-coral flex items-center justify-center hover:bg-coral/20 transition-colors cursor-pointer">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-            <!-- Total Preview -->
-            <div class="bg-navy/5 rounded-xl p-4">
-              <div class="flex justify-between text-sm">
-                <span class="text-text-secondary">Subtotal</span>
-                <span class="font-bold">${{ invoiceSubtotal.toFixed(2) }}</span>
+              <!-- Notes -->
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</label>
+                <textarea v-model="newInvoice.notes" rows="2" placeholder="Detalle adicional..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
               </div>
-              <div v-if="hotelTaxRate > 0" class="flex justify-between text-sm">
-                <span class="text-text-secondary">Impuestos ({{ hotelTaxRate }}%)</span>
-                <span class="font-bold">${{ invoiceTaxes.toFixed(2) }}</span>
-              </div>
-              <div class="border-t border-border pt-2 mt-2">
-                <div class="flex justify-between">
+
+              <!-- Total Preview -->
+              <div class="pt-4 border-t border-border">
+                <div class="flex justify-between text-sm">
+                  <span class="text-text-secondary">Subtotal</span>
+                  <span class="font-bold text-navy">${{ invoiceSubtotal.toFixed(2) }}</span>
+                </div>
+                <div v-if="hotelTaxRate > 0" class="flex justify-between text-sm mt-1.5">
+                  <span class="text-text-secondary">Impuestos ({{ hotelTaxRate }}%)</span>
+                  <span class="font-bold text-navy">${{ invoiceTaxes.toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between pt-2.5 mt-2 border-t border-border">
                   <span class="font-extrabold text-navy">Total</span>
                   <span class="font-extrabold text-navy text-lg">${{ invoiceTotal.toFixed(2) }}</span>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="sticky bottom-0 bg-white border-t border-border p-6 rounded-b-2xl">
-            <div class="flex gap-3 justify-end">
-              <button @click="closeNewInvoiceModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
-              <button @click="saveNewInvoice" :disabled="savingInvoice || invoiceTotal <= 0" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
-                {{ savingInvoice ? 'Creando...' : 'Crear Factura' }}
-              </button>
+            <div class="shrink-0 border-t border-border p-5">
+              <div class="flex items-center justify-end gap-4">
+                <button @click="closeNewInvoiceModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="saveNewInvoice" :disabled="savingInvoice || invoiceTotal <= 0" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+                  {{ savingInvoice ? 'Creando...' : 'Crear Factura' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
-      <div v-if="showDeleteModal && deleteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-          <div class="text-center mb-4">
-            <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-coral/10 flex items-center justify-center">
-              <span class="w-5 h-5 text-coral" v-html="ICON_ALERT_TRIANGLE"></span>
+      <Transition name="modal-fade">
+        <div v-if="showDeleteModal && deleteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div class="text-center mb-4">
+              <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-coral/10 flex items-center justify-center">
+                <span class="w-5 h-5 text-coral" v-html="ICON_ALERT_TRIANGLE"></span>
+              </div>
+              <h3 class="text-lg font-black text-navy">Eliminar Factura</h3>
+              <p class="text-sm text-text-secondary mt-2">¿Estás seguro de eliminar la factura <strong>#{{ deleteTarget.number }}</strong>?</p>
+              <p class="text-xs text-text-muted mt-1">Esta acción no se puede deshacer.</p>
             </div>
-            <h3 class="text-lg font-black text-navy">Eliminar Factura</h3>
-            <p class="text-sm text-text-secondary mt-2">¿Estás seguro de eliminar la factura <strong>#{{ deleteTarget.number }}</strong>?</p>
-            <p class="text-xs text-text-muted mt-1">Esta acción no se puede deshacer.</p>
-          </div>
-          <div class="flex gap-3">
-            <button @click="closeDeleteModal" class="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
-            <button @click="confirmDelete" :disabled="deleting" class="flex-1 px-4 py-2.5 bg-coral text-white rounded-xl text-sm font-bold hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
-              {{ deleting ? 'Eliminando...' : 'Eliminar' }}
-            </button>
+            <div class="flex items-center justify-center gap-4">
+              <button @click="closeDeleteModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+              <button @click="confirmDelete" :disabled="deleting" class="rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
+                {{ deleting ? 'Eliminando...' : 'Eliminar' }}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- Close Folio + Invoice Modal -->
     <Teleport to="body">
-      <div v-if="showCloseFolioModal && closeFolioTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-          <div class="text-center mb-4">
-            <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-cyan/10 flex items-center justify-center">
-              <span class="w-5 h-5 text-cyan" v-html="ICON_DOCUMENT"></span>
+      <Transition name="modal-fade">
+        <div v-if="showCloseFolioModal && closeFolioTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div class="text-center mb-4">
+              <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-cyan/10 flex items-center justify-center">
+                <span class="w-5 h-5 text-cyan" v-html="ICON_DOCUMENT"></span>
+              </div>
+              <h3 class="text-lg font-black text-navy">Cerrar y Facturar</h3>
+              <p class="text-sm text-text-secondary mt-2">
+                Se cerrará el folio de <strong>{{ closeFolioTarget.guestName || 'huésped' }}</strong> y se emitirá la factura por
+                <strong>${{ (closeFolioTarget.chargesTotal || 0).toLocaleString() }}</strong>.
+              </p>
+              <p class="text-xs text-text-muted mt-1">El folio no admite más cargos después de cerrarse.</p>
             </div>
-            <h3 class="text-lg font-black text-navy">Cerrar y Facturar</h3>
-            <p class="text-sm text-text-secondary mt-2">
-              Se cerrará el folio de <strong>{{ closeFolioTarget.guestName || 'huésped' }}</strong> y se emitirá la factura por
-              <strong>${{ (closeFolioTarget.chargesTotal || 0).toLocaleString() }}</strong>.
-            </p>
-            <p class="text-xs text-text-muted mt-1">El folio no admite más cargos después de cerrarse.</p>
-          </div>
-          <div class="flex gap-3">
-            <button @click="closeCloseFolioModal" class="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
-            <button @click="confirmCloseAndInvoice" :disabled="closingFolio" class="flex-1 px-4 py-2.5 bg-cyan text-navy rounded-xl text-sm font-bold hover:shadow-lg transition-colors cursor-pointer disabled:opacity-50">
-              {{ closingFolio ? 'Facturando...' : 'Cerrar y Facturar' }}
-            </button>
+            <div class="flex items-center justify-center gap-4">
+              <button @click="closeCloseFolioModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+              <button @click="confirmCloseAndInvoice" :disabled="closingFolio" class="rounded-full bg-cyan text-navy text-sm font-extrabold px-5 py-2.5 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+                {{ closingFolio ? 'Facturando...' : 'Cerrar y Facturar' }}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- Credit Note Modal -->
     <Teleport to="body">
-      <div v-if="showCreditNoteModal && creditNoteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
-          <div class="p-5 border-b border-border">
-            <div class="flex items-center justify-between">
+      <Transition name="modal-fade">
+        <div v-if="showCreditNoteModal && creditNoteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="p-5 border-b border-border flex items-center justify-between">
               <h3 class="text-lg font-black text-navy">Anular Factura #{{ creditNoteTarget.number }}</h3>
-              <button @click="closeCreditNoteModal" class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-text-secondary hover:text-navy transition-colors cursor-pointer">
+              <button @click="closeCreditNoteModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-          </div>
-          <div class="p-5 space-y-4">
-            <p class="text-sm text-text-secondary">
-              Esta factura ya tiene efectos contables, así que no se elimina: se emite una
-              <strong>nota de crédito</strong> por ${{ creditNoteTarget.total.toLocaleString() }} que la anula dejando el rastro.
-            </p>
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Motivo de la anulación</label>
-              <textarea v-model="creditNoteReason" rows="3" placeholder="Ej: error en el monto facturado, servicio no prestado..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
+            <div class="p-5 space-y-4">
+              <p class="text-sm text-text-secondary">
+                Esta factura ya tiene efectos contables, así que no se elimina: se emite una
+                <strong>nota de crédito</strong> por ${{ creditNoteTarget.total.toLocaleString() }} que la anula dejando el rastro.
+              </p>
+              <div>
+                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Motivo de la anulación</label>
+                <textarea v-model="creditNoteReason" rows="3" placeholder="Ej: error en el monto facturado, servicio no prestado..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
+              </div>
             </div>
-          </div>
-          <div class="p-5 border-t border-border bg-surface/50">
-            <div class="flex gap-3 justify-end">
-              <button @click="closeCreditNoteModal" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">Cancelar</button>
-              <button @click="confirmCreditNote" :disabled="issuingCreditNote" class="px-5 py-2.5 bg-gold text-white rounded-xl text-sm font-bold hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
-                {{ issuingCreditNote ? 'Emitiendo...' : 'Emitir Nota de Crédito' }}
-              </button>
+            <div class="p-5 border-t border-border">
+              <div class="flex items-center justify-end gap-4">
+                <button @click="closeCreditNoteModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="confirmCreditNote" :disabled="issuingCreditNote" class="rounded-full bg-gold text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
+                  {{ issuingCreditNote ? 'Emitiendo...' : 'Emitir Nota de Crédito' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- Invoice Print Frame (oculto) -->
@@ -717,6 +703,7 @@ import { BillingService, isDeletable, type BillingStats, type Invoice, type Invo
 import { RoomService } from '@/services/Room.service'
 import { SettingsService } from '@/services/Settings.service'
 import { useCurrency } from '@/composables/useCurrency'
+import { useCountUp } from '@/composables/useCountUp'
 import { FoliosService, type Folio } from '@/services/Folios.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -745,8 +732,6 @@ const ICON_CHECK_PLAIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="n
 const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
 const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 12m0 0l4.5-4.5M12 12V3"/></svg>'
-const ICON_PRINTER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0M6.34 18l-.229 2.523a1.125 1.125 0 0 0 1.12 1.227h9.539a1.125 1.125 0 0 0 1.12-1.227L17.66 18M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0c.646.049 1.288.11 1.913.247C19.232 7.441 20 8.375 20 9.456v6.294A2.25 2.25 0 0 1 17.75 18h-1.09M8.25 7.034V3.375c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Z"/></svg>'
-const ICON_ENVELOPE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>'
 const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>'
 const ICON_USER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>'
 const ICON_ALERT_TRIANGLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z"/></svg>'
@@ -894,6 +879,12 @@ onMounted(async () => {
 const totalMonth = computed(() => stats.value.monthlyRevenue)
 const totalToday = computed(() => stats.value.todayRevenue)
 const totalPending = computed(() => stats.value.pendingAmount + stats.value.overdueAmount)
+const totalInvoices = computed(() => stats.value.total)
+
+const totalMonthAnim = useCountUp(totalMonth)
+const totalTodayAnim = useCountUp(totalToday)
+const totalPendingAnim = useCountUp(totalPending)
+const totalInvoicesAnim = useCountUp(totalInvoices)
 
 function methodClass(method: string) {
   const m = String(method).toLowerCase()
@@ -1240,3 +1231,14 @@ async function confirmCreditNote() {
   finally { issuingCreditNote.value = false }
 }
 </script>
+
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
+  opacity: 0; transform: scale(0.95) translateY(12px);
+}
+</style>

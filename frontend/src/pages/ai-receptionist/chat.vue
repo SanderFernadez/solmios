@@ -167,13 +167,13 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); if (msgPollIn
           </div>
         </div>
         <input v-model="searchQuery" placeholder="Buscar huésped o teléfono..."
-          class="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm placeholder-text-muted focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/20 text-navy" />
+          class="w-full px-3 py-2 bg-surface border border-border rounded-full text-sm placeholder-text-muted focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/20 text-navy" />
       </header>
 
       <nav class="px-3 py-2 border-b border-border flex gap-1">
         <button v-for="f in [{k:'all',l:'Todas'},{k:'active',l:'Bot'},{k:'transferred',l:'Agente'},{k:'waiting',l:'Espera'}]" :key="f.k"
           @click="filter = f.k as any"
-          :class="['px-3 py-1.5 text-xs rounded-lg font-bold transition-all cursor-pointer', filter === f.k ? 'bg-navy text-white shadow-sm' : 'text-text-secondary hover:text-navy hover:bg-surface']">
+          :class="['px-3 py-1.5 text-xs rounded-full font-bold transition-all cursor-pointer', filter === f.k ? 'bg-navy text-white shadow-sm' : 'text-text-secondary hover:text-navy hover:bg-surface']">
           {{ f.l }}</button>
       </nav>
 
@@ -237,17 +237,17 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); if (msgPollIn
             </div>
 
             <button v-if="isAutoMode" @click="takeConversation"
-              class="flex items-center gap-1.5 px-4 py-2 bg-purple hover:bg-purple-light text-white text-xs font-extrabold rounded-xl transition-all shadow-sm cursor-pointer">
+              class="flex items-center gap-1.5 px-4 py-2 bg-purple hover:bg-purple-light text-white text-xs font-extrabold rounded-full transition-all shadow-sm cursor-pointer">
               <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_HAND"></span>
               Tomar yo
             </button>
             <button v-if="isHumanMode" @click="returnToBot"
-              class="flex items-center gap-1.5 px-4 py-2 bg-teal hover:bg-teal-light text-white text-xs font-extrabold rounded-xl transition-all shadow-sm cursor-pointer">
+              class="flex items-center gap-1.5 px-4 py-2 bg-teal hover:bg-teal-light text-white text-xs font-extrabold rounded-full transition-all shadow-sm cursor-pointer">
               <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_ROBOT"></span>
               Devolver IA
             </button>
             <button v-if="!isResolved" @click="closeConversation"
-              class="px-3 py-2 text-xs font-bold text-text-muted hover:text-coral hover:bg-coral/5 rounded-xl transition-colors cursor-pointer">
+              class="px-3 py-2 text-xs font-bold text-text-secondary hover:text-coral transition-colors cursor-pointer">
               Cerrar
             </button>
           </div>
@@ -297,7 +297,7 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); if (msgPollIn
               <input v-model="newMessage" @keyup.enter="sendMessage"
                 :placeholder="isAutoMode ? 'La IA está respondiendo automáticamente...' : isWaiting ? 'Esperando que un agente disponible tome la conversación...' : 'Escribe un mensaje...'"
                 :disabled="isAutoMode || isWaiting"
-                class="w-full px-4 py-2.5 border rounded-xl text-sm font-medium transition-all"
+                class="w-full px-4 py-2.5 border rounded-full text-sm font-medium transition-all"
                 :class="isAutoMode ? 'bg-surface border-success/30 text-text-muted cursor-not-allowed' : isHumanMode ? 'bg-white border-purple/30 text-navy placeholder-text-muted focus:outline-none focus:border-purple focus:ring-1 focus:ring-purple/20' : 'bg-white border-border text-navy placeholder-text-muted focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/20'" />
               <div v-if="isAutoMode" class="absolute right-3 top-1/2 -translate-y-1/2 flex gap-0.5">
                 <span class="w-1 h-1 bg-success rounded-full animate-bounce [animation-delay:0ms] opacity-60" />
@@ -306,7 +306,7 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); if (msgPollIn
               </div>
             </div>
             <button @click="sendMessage" :disabled="isAutoMode || isWaiting || !newMessage.trim()"
-              class="px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              class="px-5 py-2.5 rounded-full text-xs font-extrabold transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
               :class="isHumanMode ? 'bg-purple hover:bg-purple-light text-white' : 'bg-navy hover:bg-navy-light text-white'">
               Enviar
             </button>

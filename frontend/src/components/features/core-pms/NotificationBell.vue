@@ -1,6 +1,6 @@
 <template>
   <div ref="root" class="relative">
-    <button @click="open = !open" class="relative p-2 rounded-xl hover:bg-surface transition-colors cursor-pointer" aria-label="Notificaciones">
+    <button @click="open = !open" class="relative p-2 rounded-full hover:bg-surface transition-colors cursor-pointer" aria-label="Notificaciones">
       <svg class="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
         <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
       </svg>
@@ -11,10 +11,10 @@
 
     <Teleport to="body">
       <div v-if="open" class="fixed inset-0 z-40" @click="open = false"></div>
-      <div v-if="open" class="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-border z-50 overflow-hidden"
+      <div v-if="open" class="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl z-50 overflow-hidden"
         :style="{ top: bellRect.bottom + 8 + 'px', left: bellRect.right - 384 + 'px' }">
         <!-- Header -->
-        <div class="px-4 py-3 border-b border-border flex items-center justify-between bg-surface">
+        <div class="px-4 py-3 border-b border-border/60 flex items-center justify-between">
           <div class="flex items-center gap-2">
             <h3 class="text-sm font-black text-navy">Notificaciones</h3>
             <span v-if="unread > 0" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-coral/10 text-coral">{{ unread }} nuevas</span>
@@ -38,7 +38,7 @@
           </div>
           <div v-else>
             <button v-for="n in recent" :key="n.id" @click="handleClick(n)"
-              class="w-full text-left px-4 py-3 border-b border-border/50 last:border-0 hover:bg-surface cursor-pointer transition-colors flex items-start gap-3"
+              class="w-full text-left px-4 py-3 border-b border-border/40 last:border-0 hover:bg-surface cursor-pointer transition-colors flex items-start gap-3"
               :class="!n.read ? 'bg-cyan/[0.03]' : ''">
               <div class="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0" :class="notifMeta(n.type).color">
                 {{ notifMeta(n.type).icon }}
@@ -56,7 +56,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="px-4 py-2.5 border-t border-border bg-surface/50 text-center">
+        <div class="px-4 py-2.5 border-t border-border/60 text-center">
           <router-link to="/panel/notifications" @click="open = false" class="text-xs font-bold text-navy hover:underline cursor-pointer">
             Ver todas →
           </router-link>

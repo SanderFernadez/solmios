@@ -16,73 +16,74 @@
     <div v-if="mobileMenuOpen" class="fixed inset-0 bg-navy/50 z-20 lg:hidden" @click="mobileMenuOpen = false"></div>
 
     <!-- Sidebar -->
-    <aside class="w-72 bg-[#11233E] text-[#C4C8D0] flex flex-col shrink-0 fixed h-full z-30 transition-transform duration-300 lg:translate-x-0"
+    <aside class="cc-sidebar w-64 text-[#C4C8D0] flex flex-col shrink-0 fixed h-full z-30 border-r border-white/8 transition-transform duration-300 lg:translate-x-0"
       :class="[auth.impersonating ? 'top-10' : '', mobileMenuOpen ? 'translate-x-0' : '-translate-x-full']">
       <!-- Logo -->
-      <div class="h-20 flex items-center gap-3 px-5 border-b border-white/10">
-        <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-2xl shadow-lg shrink-0">S</div>
+      <div class="h-16 flex items-center gap-3 px-5 border-b border-white/8 shrink-0">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-lg shadow-[0_0_16px_rgba(37,99,235,0.45)]">S</div>
         <div>
-          <div class="font-black text-2xl leading-tight">Solmi<span class="text-cyan">OS</span></div>
-          <div class="text-[10px] font-bold tracking-[2px] text-[#C4C8D0] uppercase">{{ roleLabel }}</div>
+          <div class="font-black text-lg leading-tight text-white">Solmi<span class="text-cyan">OS</span></div>
+          <div class="text-[9px] font-bold tracking-[2px] text-[#7C8AA5] uppercase">{{ roleLabel }}</div>
         </div>
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto scrollbar-hide">
+      <nav class="flex-1 py-5 px-3 space-y-1.5 overflow-y-auto scrollbar-hide">
         <template v-for="item in visibleItems" :key="item.path || item.label">
           <!-- Parent with children -->
           <template v-if="item.children">
-            <button @click="toggleSection(item.label)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-semibold cursor-pointer transition-all"
-              :class="isSectionActive(item) ? 'bg-white/15 text-white' : 'text-[#C4C8D0] hover:bg-white/5 hover:text-white'">
-              <span class="w-5 h-5 shrink-0 text-[#C4C8D0]" v-html="item.icon"></span>
+            <button @click="toggleSection(item.label)" class="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-[13.5px] font-bold cursor-pointer transition-all"
+              :class="isSectionActive(item) ? 'bg-[#2563EB]/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]' : 'text-[#C4C8D0] hover:bg-white/6 hover:text-white'">
+              <span class="w-[22px] h-[22px] shrink-0" :class="isSectionActive(item) ? 'text-[#60A5FA]' : 'text-[#7C8AA5]'" v-html="item.icon"></span>
               <span class="flex-1 text-left">{{ item.label }}</span>
-              <span class="text-[10px]">{{ item.expanded ? '▾' : '▸' }}</span>
+              <span class="text-[10px] transition-transform" :class="item.expanded ? 'text-[#60A5FA]' : 'text-[#7C8AA5]'">{{ item.expanded ? '▾' : '▸' }}</span>
             </button>
             <router-link
               v-for="child in item.children"
               :key="child.path"
               :to="child.path"
               v-show="item.expanded"
-              class="flex items-center gap-2.5 pl-11 pr-3 py-2 rounded-lg text-base font-semibold transition-all cursor-pointer"
-              :class="isActive(child.path) ? 'bg-white/8 text-white' : 'text-[#C4C8D0] hover:bg-white/5 hover:text-white'"
+              class="flex items-center gap-2.5 pl-12 pr-3 py-2.5 rounded-lg text-[12.5px] font-semibold transition-all cursor-pointer"
+              :class="isActive(child.path) ? 'bg-[#2563EB]/14 text-white' : 'text-[#8A96AD] hover:bg-white/6 hover:text-white'"
             >
-              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isActive(child.path) ? 'bg-cyan' : 'bg-[#C4C8D0]'"></span>
+              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isActive(child.path) ? 'bg-cyan cc-glow-dot' : 'bg-[#5A6684]'"></span>
               <span>{{ child.label }}</span>
             </router-link>
           </template>
           <!-- Simple item (no children) -->
           <router-link v-else :to="item.path"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-semibold transition-all cursor-pointer"
-            :class="isActive(item.path) ? 'bg-white/15 text-white' : 'text-[#C4C8D0] hover:bg-white/5 hover:text-white'">
-            <span class="w-5 h-5 shrink-0 text-[#C4C8D0]" v-html="item.icon"></span>
+            class="flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-[13.5px] font-bold transition-all cursor-pointer"
+            :class="isActive(item.path) ? 'bg-[#2563EB]/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]' : 'text-[#C4C8D0] hover:bg-white/6 hover:text-white'">
+            <span class="w-[22px] h-[22px] shrink-0" :class="isActive(item.path) ? 'text-[#60A5FA]' : 'text-[#7C8AA5]'" v-html="item.icon"></span>
             <span>{{ item.label }}</span>
           </router-link>
         </template>
 
         <!-- Ocupación Hoy (dentro del nav: scrollea junto al menú cuando los submenus expandidos exceden el alto disponible) -->
-        <div class="mt-3 p-4 rounded-xl bg-white/5 border border-white/10">
-          <div class="text-xs font-bold tracking-wider text-[#C4C8D0] uppercase mb-3">Ocupación Hoy</div>
-          <div class="flex items-center gap-4">
-            <div class="relative w-20 h-20 shrink-0">
-              <svg viewBox="0 0 36 36" class="w-20 h-20 -rotate-90">
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3.5" />
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#22D3EE" stroke-width="3.5" stroke-linecap="round"
-                  :stroke-dasharray="`${occupancyPct * 0.974} 100`" />
+        <div class="relative mt-3 overflow-hidden rounded-2xl border border-white/8 p-4" style="background: linear-gradient(155deg, rgba(6,182,212,0.16) 0%, rgba(10,19,34,0.95) 60%);">
+          <div class="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-cyan/20 blur-3xl"></div>
+          <div class="relative text-[10px] font-bold tracking-wider text-[#C4C8D0] uppercase mb-3">Ocupación Hoy</div>
+          <div class="relative flex items-center gap-4">
+            <div class="relative h-20 w-20 shrink-0">
+              <svg viewBox="0 0 36 36" class="h-20 w-20 -rotate-90" style="filter: drop-shadow(0 0 6px rgba(34,211,238,0.5));">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3.2" />
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#22D3EE" stroke-width="3.2" stroke-linecap="round"
+                  :stroke-dasharray="`${occupancyPct * 0.974} 100`" class="transition-[stroke-dasharray] duration-700 ease-out" />
               </svg>
-              <div class="absolute inset-0 flex items-center justify-center text-lg font-black">{{ occupancyPct }}%</div>
+              <div class="absolute inset-0 flex items-center justify-center text-xl font-black text-white">{{ occupancyPct }}%</div>
             </div>
             <div class="flex-1 space-y-2">
-              <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center justify-between text-[11px]">
                 <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-2 h-2 rounded-full bg-cyan"></span>Ocupadas</span>
-                <span class="font-bold">{{ occupancyBreakdown.occupied }}</span>
+                <span class="font-black text-white">{{ occupancyBreakdown.occupied }}</span>
               </div>
-              <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center justify-between text-[11px]">
                 <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-2 h-2 rounded-full bg-blue"></span>Disponibles</span>
-                <span class="font-bold">{{ occupancyBreakdown.available }}</span>
+                <span class="font-black text-white">{{ occupancyBreakdown.available }}</span>
               </div>
-              <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center justify-between text-[11px]">
                 <span class="flex items-center gap-1.5 text-[#C4C8D0]"><span class="w-2 h-2 rounded-full bg-gray-400"></span>Mantenimiento</span>
-                <span class="font-bold">{{ occupancyBreakdown.maintenance }}</span>
+                <span class="font-black text-white">{{ occupancyBreakdown.maintenance }}</span>
               </div>
             </div>
           </div>
@@ -90,21 +91,31 @@
       </nav>
 
       <!-- PC-2 Multi-property: Hotel Switcher -->
-      <div class="border-t border-white/10 py-2 px-3">
+      <div class="border-t border-white/8 py-2 px-3 shrink-0">
         <HotelSwitcher />
       </div>
 
+      <!-- Reloj en vivo (estilo centro de operaciones) -->
+      <div class="border-t border-white/8 px-4 py-3 shrink-0">
+        <div class="text-[9px] font-bold uppercase tracking-wider text-[#7C8AA5]">{{ sidebarDate }}</div>
+        <div class="mt-0.5 flex items-center justify-between">
+          <span class="font-mono text-2xl font-black tabular-nums text-white tracking-tight">{{ sidebarClock }}</span>
+          <span class="w-5 h-5 shrink-0" :class="isNight ? 'text-[#7C8AA5]' : 'text-[#FBBF24]'"
+            :style="!isNight ? 'filter: drop-shadow(0 0 5px rgba(251,191,36,0.6))' : ''" v-html="isNight ? ICON_MOON : ICON_SUN"></span>
+        </div>
+      </div>
+
       <!-- User -->
-      <div class="p-4 border-t border-white/10">
+      <div class="p-4 border-t border-white/8 shrink-0">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" :class="avatarClass">
             {{ userInitials }}
           </div>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-bold truncate">{{ auth.user?.name ?? 'Admin' }}</div>
-            <div class="text-[10px] text-[#C4C8D0]">{{ auth.currentHotel }}</div>
+            <div class="text-sm font-bold text-white truncate">{{ auth.user?.name ?? 'Admin' }}</div>
+            <div class="text-[10px] text-[#7C8AA5]">{{ auth.currentHotel }}</div>
           </div>
-          <button @click="handleLogout" class="text-[#C4C8D0] hover:text-white transition-colors cursor-pointer">
+          <button @click="handleLogout" class="text-[#7C8AA5] hover:text-white transition-colors cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
@@ -114,36 +125,31 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 min-w-0 lg:ml-72 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
-      <!-- Header -->
-      <header class="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 gap-3">
+    <div class="flex-1 min-w-0 lg:ml-64 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
+      <!-- Header (el dashboard general trae su propia barra oscura de comando) -->
+      <header v-if="!isCommandCenter" class="h-16 bg-white flex items-center gap-3 justify-between px-4 md:px-6 sticky top-0 z-10 shadow-(--shadow-nav)">
         <div class="flex items-center gap-3 min-w-0">
-          <button @click="mobileMenuOpen = true" class="lg:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface cursor-pointer">
-            <span class="w-5 h-5 shrink-0 block" v-html="ICON_MENU"></span>
-          </button>
-          <div class="min-w-0">
-            <h1 class="text-lg font-black text-navy truncate leading-tight">{{ pageTitle }}</h1>
-            <p class="text-[11px] text-text-muted truncate hidden sm:block">{{ auth.currentHotel }}</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2">
-          <!-- Search -->
-          <div class="relative hidden md:block">
-            <input type="text" placeholder="Buscar..." class="w-56 h-9 pl-9 pr-4 rounded-xl border border-transparent text-sm bg-surface focus:outline-none focus:bg-white focus:border-cyan focus:ring-2 focus:ring-cyan/20 transition-all" />
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <button @click="mobileMenuOpen = true" class="lg:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
             </svg>
-          </div>
-
+          </button>
+          <h1 class="text-lg font-black text-navy truncate">{{ pageTitle }}</h1>
+        </div>
+        <div class="flex items-center gap-2.5">
           <!-- Notifications bell (componente dedicado) -->
           <NotificationBell />
-
-          <div class="w-px h-6 bg-border"></div>
 
           <!-- User Menu (Configuración / Cambiar contraseña / Salir) -->
           <UserMenu />
         </div>
       </header>
+      <!-- Toggle móvil para el dashboard general (trae su propia barra clara sin header estándar) -->
+      <button v-else @click="mobileMenuOpen = true" class="lg:hidden fixed top-3 left-3 z-20 w-9 h-9 flex items-center justify-center rounded-lg border border-border bg-white text-navy shadow-(--shadow-card) hover:bg-surface cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+        </svg>
+      </button>
 
       <!-- Anuncios internos del sistema (FC-B1) -->
       <AnnouncementBanner />
@@ -162,6 +168,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useRoomStore } from '@/stores/room.store'
+import { useNow } from '@/composables/useNow'
 import NotificationBell from '@/components/features/core-pms/NotificationBell.vue'
 import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanner.vue'
 import OfflineBanner from '@/components/features/core-pms/OfflineBanner.vue'
@@ -180,6 +187,19 @@ const mobileMenuOpen = ref(false)
 // Cierra el drawer mobile al navegar a otra ruta
 watch(() => route.path, () => { mobileMenuOpen.value = false })
 
+// El dashboard general es un "centro de operaciones" full-dark con barra propia
+const isCommandCenter = computed(() => route.name === 'dashboard-general')
+
+const { now } = useNow(1000)
+const sidebarClock = computed(() =>
+  new Date(now.value).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }))
+const sidebarDate = computed(() =>
+  new Date(now.value).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+const isNight = computed(() => {
+  const h = new Date(now.value).getHours()
+  return h >= 19 || h < 7
+})
+
 const ICONS = {
   dashboard: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5h4.5V21H3v-7.5ZM9.75 8.25h4.5V21h-4.5V8.25ZM16.5 3h4.5v18h-4.5V3Z"/></svg>',
   calendar: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z"/></svg>',
@@ -193,7 +213,11 @@ const ICONS = {
   cog: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.397-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.241.437-.613.43-.991a7.66 7.66 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>',
   support: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"/></svg>',
   tools: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>',
+  ticket: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a2.25 2.25 0 0 0-2.25-2.25V8.25A2.25 2.25 0 0 0 16.5 6h-9a2.25 2.25 0 0 0-2.25 2.25v1.5a2.25 2.25 0 0 1 0 4.5v1.5A2.25 2.25 0 0 0 7.5 18h9a2.25 2.25 0 0 0 2.25-2.25v-1.5A2.25 2.25 0 0 0 21 12Z"/></svg>',
 }
+
+const ICON_SUN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.22 4.22l1.77 1.77M18 18l1.78 1.78M2.5 12H5M19 12h2.5M4.22 19.78 6 18M18 6l1.78-1.78"/></svg>'
+const ICON_MOON = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="currentColor"><path d="M20.354 15.354A9 9 0 0 1 8.646 3.646a9.003 9.003 0 1 0 11.708 11.708Z"/></svg>'
 
 const nonavItems = [
   {
@@ -422,3 +446,12 @@ async function handleLogout() {
   router.push('/login')
 }
 </script>
+
+<style scoped>
+.cc-sidebar {
+  background: linear-gradient(180deg, #0C1830 0%, #0A1426 100%);
+}
+.cc-glow-dot {
+  box-shadow: 0 0 6px 1px rgba(34, 211, 238, 0.8);
+}
+</style>

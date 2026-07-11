@@ -6,19 +6,19 @@
         <p class="text-xs text-text-muted mt-0.5">Análisis de rendimiento del hotel</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <select v-model="range" @change="onRangeChange" class="px-3 py-2 rounded-xl border border-border text-xs font-bold cursor-pointer">
-          <option value="thisMonth">Este mes</option>
-          <option value="lastMonth">Mes pasado</option>
-          <option value="thisQuarter">Este trimestre</option>
-          <option value="thisYear">Este año</option>
-          <option value="custom">Personalizado</option>
-        </select>
+        <div class="flex items-center gap-1 rounded-full border border-border p-1">
+          <button v-for="opt in RANGE_OPTIONS" :key="opt.value" @click="setRange(opt.value)"
+            class="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+            :class="range === opt.value ? 'bg-navy text-white' : 'text-text-secondary hover:text-navy'">
+            {{ opt.label }}
+          </button>
+        </div>
         <template v-if="range === 'custom'">
-          <input v-model="from" type="date" class="px-3 py-2 rounded-xl border border-border text-xs" @change="load" />
+          <input v-model="from" type="date" class="px-3 py-2 rounded-xl border border-border text-xs focus:outline-none focus:border-navy" @change="load" />
           <span class="text-text-muted text-xs">→</span>
-          <input v-model="to" type="date" class="px-3 py-2 rounded-xl border border-border text-xs" @change="load" />
+          <input v-model="to" type="date" class="px-3 py-2 rounded-xl border border-border text-xs focus:outline-none focus:border-navy" @change="load" />
         </template>
-        <button @click="exportCsv" :disabled="!data" class="flex items-center gap-1.5 px-3 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50">
+        <button @click="exportCsv" :disabled="!data" class="flex items-center gap-1.5 px-4 py-2 border border-border rounded-full text-xs font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer disabled:opacity-50">
           <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_DOWNLOAD"></span>
           Exportar CSV
         </button>
@@ -28,7 +28,7 @@
     <!-- Tabs -->
     <div class="flex gap-2 mb-6 overflow-x-auto">
       <button v-for="(meta, key) in REPORT_META" :key="key" @click="changeTab(key as ReportType)"
-        class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-2"
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-2"
         :class="activeTab === key ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
         <span class="w-4 h-4 shrink-0" v-html="TAB_ICON_MAP[meta.icon]"></span>
         <span>{{ meta.label }}</span>
@@ -38,7 +38,7 @@
     <p class="text-xs text-text-muted mb-4">{{ REPORT_META[activeTab].description }}</p>
 
     <!-- Loading -->
-    <div v-if="loading" class="card p-12 text-center text-sm text-text-muted">Cargando reporte...</div>
+    <div v-if="loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center text-sm text-text-muted">Cargando reporte...</div>
 
     <!-- Balance — base caja: solo plata que se movió -->
     <div v-else-if="activeTab === 'balance' && data" class="space-y-4">
@@ -113,37 +113,11 @@
         <KpiCard label="Gastos (devengado)" :value="formatMoney((data as FacturacionReport).gastos)" class="text-coral" :icon="ICON_RECEIPT" />
         <KpiCard label="Resultado (devengado)" :value="formatMoney((data as FacturacionReport).resultado)" class="text-navy" :icon="ICON_TRENDING" />
       </div>
-
-      <!-- Devengado vs cobrado: la brecha es la cuenta por cobrar, no un descuadre. -->
-      <div class="card p-5">
-        <h4 class="text-xs font-black text-navy uppercase mb-3">Facturado vs cobrado</h4>
-        <div class="space-y-2">
-          <div class="flex items-center justify-between text-xs">
-            <span class="text-navy font-bold">Facturado <span class="text-text-muted font-normal">(devengado)</span></span>
-            <span class="font-black text-navy">{{ formatMoney((data as FacturacionReport).facturado) }}</span>
-          </div>
-          <div class="flex items-center justify-between text-xs">
-            <span class="text-navy font-bold">Ingresado <span class="text-text-muted font-normal">(cobrado)</span></span>
-            <span class="font-black text-teal">{{ formatMoney((data as FacturacionReport).ingresado) }}</span>
-          </div>
-          <div class="flex items-center justify-between text-sm pt-2 border-t border-border">
-            <span class="font-black text-navy">{{ (data as FacturacionReport).porCobrar >= 0 ? 'Por cobrar' : 'Cobrado por adelantado' }}</span>
-            <span class="font-black" :class="(data as FacturacionReport).porCobrar >= 0 ? 'text-gold' : 'text-teal'">
-              {{ formatMoney(Math.abs((data as FacturacionReport).porCobrar)) }}
-            </span>
-          </div>
-        </div>
-        <p class="text-[11px] text-text-muted mt-3">
-          Lo ingresado sale de los pagos registrados, así que cuadra contra Caja y Conciliación.
-          Lo facturado es lo que el hotel tiene derecho a cobrar en el período.
-        </p>
-      </div>
-
-      <div class="card p-5">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
         <h4 class="text-xs font-black text-navy uppercase mb-3">Extras por categoría</h4>
         <div v-if="Object.keys((data as FacturacionReport).extrasByCategory).length === 0" class="text-xs text-text-muted">Sin extras facturados en el período.</div>
-        <div v-else class="space-y-2">
-          <div v-for="(val, cat) in (data as FacturacionReport).extrasByCategory" :key="cat" class="flex items-center justify-between text-xs">
+        <div v-else class="divide-y divide-border">
+          <div v-for="(val, cat) in (data as FacturacionReport).extrasByCategory" :key="cat" class="flex items-center justify-between text-xs py-2 first:pt-0 last:pb-0">
             <span class="text-navy font-bold capitalize">{{ cat }}</span>
             <span class="text-text-secondary">{{ formatMoney(val as number) }}</span>
           </div>
@@ -160,7 +134,7 @@
         <KpiCard label="Ocupadas/día" :value="String(ocupAvgOccupied)" :icon="ICON_CHECK" />
         <KpiCard label="Libres/día" :value="String(ocupAvgFree)" class="text-teal" :icon="ICON_DOOR" icon-bg="bg-teal/10" icon-color="text-teal" />
       </div>
-      <div class="card p-5">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
         <h4 class="text-xs font-black text-navy uppercase mb-3">Hab. por tipo</h4>
         <div class="flex flex-wrap gap-2">
           <span v-for="(cnt, type) in (data as OcupacionReport).byRoomType" :key="type"
@@ -170,7 +144,7 @@
         </div>
       </div>
       <BarChart :data="series((data as OcupacionReport).daily.map(d => ({ date: d.date, value: d.realOccupiedPct })), 'avg')" :format="(v: number) => `${v}%`" :label="longRange ? 'Ocupación mensual (%)' : 'Ocupación diaria (%)'" />
-      <div class="card p-5 overflow-x-auto">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 overflow-x-auto">
         <table class="w-full text-xs">
           <thead><tr class="border-b border-border">
             <th class="text-left p-2 text-text-muted uppercase">Fecha</th>
@@ -180,7 +154,7 @@
             <th class="text-right p-2 text-text-muted uppercase">Ocup. %</th>
           </tr></thead>
           <tbody>
-            <tr v-for="d in (data as OcupacionReport).daily" :key="d.date" class="border-b border-border/30">
+            <tr v-for="d in (data as OcupacionReport).daily" :key="d.date" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
               <td class="p-2 text-navy">{{ formatDate(d.date) }}</td>
               <td class="p-2 text-right">{{ d.occupied }}</td>
               <td class="p-2 text-right text-text-muted">{{ d.blocked }}</td>
@@ -213,7 +187,7 @@
         <KpiCard label="Noches vendidas" :value="String((data as RendimientoReport).nightsSold)" :icon="ICON_BED" />
         <KpiCard label="Hab-disponibles" :value="String((data as RendimientoReport).availableRoomNights)" :icon="ICON_DOOR" />
       </div>
-      <div class="card p-5 overflow-x-auto">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 overflow-x-auto">
         <h4 class="text-xs font-black text-navy uppercase mb-3">ADR por tipo de habitación</h4>
         <table class="w-full text-xs">
           <thead><tr class="border-b border-border">
@@ -223,7 +197,7 @@
             <th class="text-right p-2 text-text-muted uppercase">ADR</th>
           </tr></thead>
           <tbody>
-            <tr v-for="(v, type) in (data as RendimientoReport).adrByType" :key="type" class="border-b border-border/30">
+            <tr v-for="(v, type) in (data as RendimientoReport).adrByType" :key="type" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
               <td class="p-2 text-navy font-bold">{{ type }}</td>
               <td class="p-2 text-right">{{ v.nights }}</td>
               <td class="p-2 text-right">{{ formatMoney(v.revenue) }}</td>
@@ -242,7 +216,7 @@
         <KpiCard label="Canales" :value="String((data as ProcedenciaReport).byChannel.length)" :icon="ICON_SHARE" />
         <KpiCard label="Revenue total" :value="formatMoney(procTotalRevenue)" class="text-teal" :icon="ICON_WALLET" icon-bg="bg-teal/10" icon-color="text-teal" />
       </div>
-      <div class="card p-5">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
         <h4 class="text-xs font-black text-navy uppercase mb-3">Revenue por canal</h4>
         <div v-if="(data as ProcedenciaReport).byChannel.length === 0" class="text-xs text-text-muted">Sin datos.</div>
         <div v-else class="space-y-2">
@@ -256,7 +230,7 @@
         </div>
       </div>
       <div class="grid md:grid-cols-2 gap-4">
-        <div class="card p-5">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
           <h4 class="text-xs font-black text-navy uppercase mb-3">Por país</h4>
           <div v-if="(data as ProcedenciaReport).byCountry.length === 0" class="text-xs text-text-muted">Sin datos.</div>
           <table v-else class="w-full text-xs">
@@ -266,7 +240,7 @@
               <th class="text-right p-2 text-text-muted uppercase">Revenue</th>
             </tr></thead>
             <tbody>
-              <tr v-for="c in (data as ProcedenciaReport).byCountry" :key="c.country" class="border-b border-border/30">
+              <tr v-for="c in (data as ProcedenciaReport).byCountry" :key="c.country" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
                 <td class="p-2 text-navy font-bold">{{ c.country }}</td>
                 <td class="p-2 text-right">{{ c.guests }}</td>
                 <td class="p-2 text-right">{{ formatMoney(c.revenue) }}</td>
@@ -274,7 +248,7 @@
             </tbody>
           </table>
         </div>
-        <div class="card p-5">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
           <h4 class="text-xs font-black text-navy uppercase mb-3">Por canal</h4>
           <div v-if="(data as ProcedenciaReport).byChannel.length === 0" class="text-xs text-text-muted">Sin datos.</div>
           <table v-else class="w-full text-xs">
@@ -284,7 +258,7 @@
               <th class="text-right p-2 text-text-muted uppercase">Revenue</th>
             </tr></thead>
             <tbody>
-              <tr v-for="c in (data as ProcedenciaReport).byChannel" :key="c.channel" class="border-b border-border/30">
+              <tr v-for="c in (data as ProcedenciaReport).byChannel" :key="c.channel" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
                 <td class="p-2 text-navy font-bold capitalize">{{ c.channel }}</td>
                 <td class="p-2 text-right">{{ c.count }}</td>
                 <td class="p-2 text-right">{{ formatMoney(c.revenue) }}</td>
@@ -304,19 +278,19 @@
         <KpiCard label="Canceladas" :value="`${(data as ReservasReport).cancelled} (${(data as ReservasReport).cancellationRate}%)`" class="text-coral" :icon="ICON_XCIRCLE" icon-bg="bg-coral/10" icon-color="text-coral" />
       </div>
       <div class="grid md:grid-cols-2 gap-4">
-        <div class="card p-5">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
           <h4 class="text-xs font-black text-navy uppercase mb-3">Por estado</h4>
-          <div class="space-y-2">
-            <div v-for="(cnt, status) in (data as ReservasReport).byStatus" :key="status" class="flex items-center justify-between text-xs">
+          <div class="divide-y divide-border">
+            <div v-for="(cnt, status) in (data as ReservasReport).byStatus" :key="status" class="flex items-center justify-between text-xs py-2 first:pt-0 last:pb-0">
               <span class="text-navy font-bold capitalize">{{ status }}</span>
               <span class="text-text-secondary">{{ cnt }}</span>
             </div>
           </div>
         </div>
-        <div class="card p-5">
+        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
           <h4 class="text-xs font-black text-navy uppercase mb-3">Por canal</h4>
-          <div class="space-y-2">
-            <div v-for="(cnt, ch) in (data as ReservasReport).byChannel" :key="ch" class="flex items-center justify-between text-xs">
+          <div class="divide-y divide-border">
+            <div v-for="(cnt, ch) in (data as ReservasReport).byChannel" :key="ch" class="flex items-center justify-between text-xs py-2 first:pt-0 last:pb-0">
               <span class="text-navy font-bold capitalize">{{ ch }}</span>
               <span class="text-text-secondary">{{ cnt }}</span>
             </div>
@@ -326,7 +300,7 @@
       <BarChart :data="series((data as ReservasReport).dailyCreated)" :format="String" :label="longRange ? 'Reservas creadas por mes' : 'Reservas creadas por día'" />
     </div>
 
-    <div v-else-if="!loading && !data" class="card p-12 text-center text-sm text-text-muted">
+    <div v-else-if="!loading && !data" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center text-sm text-text-muted">
       Sin datos para el período seleccionado
     </div>
   </div>
@@ -381,9 +355,23 @@ const toast = useToast()
 const activeTab = ref<ReportType>('facturacion')
 const data = ref<AnyReport | null>(null)
 const loading = ref(false)
-const range = ref<'thisMonth' | 'lastMonth' | 'thisQuarter' | 'thisYear' | 'custom'>('thisMonth')
+type RangeOption = 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'thisYear' | 'custom'
+const range = ref<RangeOption>('thisMonth')
 const from = ref('')
 const to = ref('')
+
+const RANGE_OPTIONS: { value: RangeOption; label: string }[] = [
+  { value: 'thisMonth', label: 'Este mes' },
+  { value: 'lastMonth', label: 'Mes pasado' },
+  { value: 'thisQuarter', label: 'Este trimestre' },
+  { value: 'thisYear', label: 'Este año' },
+  { value: 'custom', label: 'Personalizado' },
+]
+
+function setRange(r: RangeOption) {
+  range.value = r
+  onRangeChange()
+}
 
 function computeRange() {
   const now = new Date()
