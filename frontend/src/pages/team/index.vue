@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <div>
         <h2 class="text-xl font-black text-navy">Equipo</h2>
-        <p class="text-sm text-text-muted mt-0.5">Gestiona los usuarios y roles de tu hotel</p>
+        <p class="text-sm text-text-muted mt-0.5">Las cuentas del personal de tu hotel (usuarios y roles). Para los bienes físicos que les prestás, ver <b>Activos</b>.</p>
       </div>
       <div class="flex gap-2">
         <button @click="load" :disabled="loading" class="flex items-center gap-1.5 px-4 py-2 bg-navy/5 hover:bg-navy/10 text-navy rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">

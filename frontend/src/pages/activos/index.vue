@@ -1,13 +1,31 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
       <div>
-        <h2 class="text-xl font-black text-navy">Equipo y Activos</h2>
-        <p class="text-sm text-text-muted mt-0.5">Inventario de bienes del hotel y su asignación a empleados</p>
+        <h2 class="text-xl font-black text-navy">Activos</h2>
+        <p class="text-sm text-text-muted mt-0.5">Bienes físicos del hotel y a qué empleado están asignados</p>
       </div>
       <button @click="openNew" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
         <span class="text-lg leading-none">+</span>Nuevo Activo
       </button>
+    </div>
+
+    <!-- Nota explicativa: qué es Activos y en qué se diferencia de Equipo -->
+    <div class="mb-5 p-4 rounded-xl bg-navy/5 border border-navy/10">
+      <div class="flex items-start gap-2.5">
+        <span class="text-lg leading-none">💡</span>
+        <div class="text-xs text-text-secondary leading-relaxed">
+          <b class="text-navy">¿Qué es esto?</b> Acá registrás los <b>bienes físicos del hotel</b> (uniformes, llaves,
+          radios, laptops, tablets) y a qué empleado se los entregaste.
+          <span class="block mt-1">
+            No confundir con <b class="text-navy">Equipo</b>, que son las <b>cuentas del personal</b> (quién trabaja acá).
+            <b class="text-navy">Activos</b> son <b>las cosas</b> que le prestás a esa gente.
+          </span>
+          <span class="block mt-1 text-text-muted">
+            Sirve para saber, cuando un empleado se va, qué tiene que <b>devolver</b> (su llave maestra, el uniforme, el radio).
+          </span>
+        </div>
+      </div>
     </div>
 
     <div class="flex gap-2 mb-4 flex-wrap">
@@ -114,10 +132,14 @@ function openNew() {
   modal.value = {
     title: 'Nuevo Activo', submitLabel: 'Crear',
     fields: [
-      { key: 'name', label: 'Nombre', required: true, minLength: 2, maxLength: 120, placeholder: 'Radio, uniforme, laptop…' },
-      { key: 'category', label: 'Categoría', type: 'select', default: 'equipment', options: Object.entries(ASSET_CATEGORY_LABELS).map(([value, label]) => ({ value, label })) },
-      { key: 'serialNumber', label: 'Número de serie', maxLength: 100 },
-      { key: 'notes', label: 'Notas', type: 'textarea', maxLength: 500 },
+      { key: 'name', label: 'Nombre del bien', required: true, minLength: 2, maxLength: 120, placeholder: 'Radio Motorola, Uniforme talle M, Laptop Dell…',
+        hint: 'Qué objeto es. Acá solo lo registrás; asignárselo a un empleado es otro paso (botón "Asignar" en la lista).' },
+      { key: 'category', label: 'Categoría', type: 'select', default: 'equipment', options: Object.entries(ASSET_CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
+        hint: 'Qué tipo de bien es (uniforme, llave, equipamiento, dispositivo…).' },
+      { key: 'serialNumber', label: 'Número de serie', maxLength: 100,
+        hint: 'Opcional. Para equipos con número de serie (laptops, radios) — así identificás el bien exacto.' },
+      { key: 'notes', label: 'Notas', type: 'textarea', maxLength: 500,
+        hint: 'Opcional. Estado, color, detalles.' },
     ],
     onSubmit: async (v) => {
       saving.value = true

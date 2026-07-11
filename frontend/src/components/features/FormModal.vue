@@ -44,6 +44,7 @@
               class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none" :class="borderClass(f.key)" />
 
             <p v-if="fieldErrors[f.key]" class="text-[10px] font-bold text-coral mt-1">{{ fieldErrors[f.key] }}</p>
+            <p v-else-if="f.hint" class="text-[10px] text-text-muted mt-1">{{ f.hint }}</p>
           </div>
 
           <p v-if="error" class="text-xs font-bold text-coral">{{ error }}</p>
@@ -69,6 +70,8 @@ export interface FormField {
   type?: 'text' | 'number' | 'date' | 'month' | 'select' | 'textarea' | 'email' | 'tel' | 'password' | 'file'
   /** Solo para type 'file': filtro de tipos (ej: '.pdf,image/*'). El archivo se envía como data URL base64. */
   accept?: string
+  /** Texto de ayuda gris bajo el campo (explica qué poner). */
+  hint?: string
   required?: boolean
   options?: { value: string; label: string }[]
   placeholder?: string

@@ -30,7 +30,7 @@ export const AssetsService = {
 }
 
 export const ASSET_CATEGORY_LABELS: Record<string, string> = {
-  uniform: 'Uniforme', key: 'Llave', equipment: 'Equipo', device: 'Dispositivo', other: 'Otro',
+  uniform: 'Uniforme', key: 'Llave', equipment: 'Equipamiento', device: 'Dispositivo', other: 'Otro',
 }
 export const ASSET_STATUS_LABELS: Record<string, string> = {
   available: 'Disponible', assigned: 'Asignado', retired: 'Retirado',
