@@ -5,6 +5,7 @@ import type { ConnectorContext } from 'arckode-framework'
 import {
   notifyTaskAssigned,
   type NotificacionesPort,
+  type PushPort,
   type RoomsPort,
 } from '../shared/usecases/notify-task-assigned'
 
@@ -20,7 +21,15 @@ export function housekeepingNotificacionesConnector(ctx: ConnectorContext): void
       } catch {
         // Sin el número, el aviso igual llega: es peor no avisar.
       }
-      await notifyTaskAssigned(notificaciones, rooms, task)
+      // El push para la app cerrada. Si no está (Firebase sin config), se
+      // manda solo el aviso in-app.
+      let push: PushPort | null = null
+      try {
+        push = ctx.resolveModule<PushPort>('pushtokens')
+      } catch {
+        // Sin push.
+      }
+      await notifyTaskAssigned(notificaciones, rooms, task, push)
     },
   })
 }

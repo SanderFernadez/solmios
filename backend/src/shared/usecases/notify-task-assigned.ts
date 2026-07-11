@@ -40,6 +40,15 @@ export interface RoomsPort {
   getById(id: string, user: { id: string; role: string }): Promise<{ number?: string | number } | null>
 }
 
+/** Envío de push al teléfono de la persona (para que llegue con la app cerrada). */
+export interface PushPort {
+  notifyUser(
+    userId: string,
+    hotelId: string,
+    notification: { title: string; body: string; data?: Record<string, string> },
+  ): Promise<number>
+}
+
 /** El número visible. Un aviso sin habitación no manda a nadie a ningún lado. */
 async function resolveRoomNumber(rooms: RoomsPort | null, roomId?: string): Promise<string | undefined> {
   if (!roomId || !rooms) return undefined
@@ -55,24 +64,42 @@ export async function notifyTaskAssigned(
   notificaciones: NotificacionesPort,
   rooms: RoomsPort | null,
   task: AssignedTask,
+  push?: PushPort | null,
 ): Promise<void> {
   if (!task.staffId) return
 
   const roomNumber = await resolveRoomNumber(rooms, task.roomId)
   const where = roomNumber ? `Habitación ${roomNumber}` : 'Sin habitación'
   const what = CLEANING_LABELS[task.type ?? ''] ?? 'Limpieza'
+  const title = 'Nueva tarea asignada'
+  const message = `${where} · ${what}${priorityTag(task.priority)}`
 
+  // 1) Aviso IN-APP (la campanita), aunque no haya push configurado.
   await notificaciones.create(
     {
       hotelId: task.hotelId,
       // El destinatario. Sin esto sería un aviso para todo el hotel.
       userId: task.staffId,
-      title: 'Nueva tarea asignada',
-      message: `${where} · ${what}${priorityTag(task.priority)}`,
+      title,
+      message,
       type: 'cleaning',
       read: 0,
       date: new Date().toISOString(),
     },
     { id: 'system', role: 'super_admin', hotelId: task.hotelId },
   )
+
+  // 2) PUSH al teléfono, para que llegue con la app CERRADA. Si Firebase no está
+  //    configurado o falla, no rompe la asignación: el aviso in-app ya quedó.
+  if (push) {
+    try {
+      await push.notifyUser(task.staffId, task.hotelId, {
+        title,
+        body: message,
+        data: {'type': 'cleaning'},
+      })
+    } catch {
+      // Sin push, igual quedó el aviso in-app.
+    }
+  }
 }
