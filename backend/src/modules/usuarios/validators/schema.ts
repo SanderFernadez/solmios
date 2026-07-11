@@ -5,17 +5,17 @@ export const CreateUsuarioSchema: Record<string, ValidationRule> = {
     name: { type: 'string', required: true, min: 2, max: 100 },
   email: { type: 'string', required: true, min: 5, max: 200 },
   password: { type: 'string', required: true, min: 6, max: 100 },
-  role: { type: 'string' },
-  hotelId: { type: 'string' },
-    phone: { type: 'string' },
+  role: { type: 'string', max: 50 },
+  hotelId: { type: 'string', max: 100 },
+  phone: { type: 'string', max: 30 },
 }
 
 export const UpdateUsuarioSchema: Record<string, ValidationRule> = {
     name: { type: 'string', min: 2, max: 100 },
   email: { type: 'string', min: 5, max: 200 },
   password: { type: 'string', min: 6, max: 100 },
-  role: { type: 'string' },
-    phone: { type: 'string' },
+  role: { type: 'string', max: 50 },
+  phone: { type: 'string', max: 30 },
     active: { type: 'number' },
 }
 
@@ -33,8 +33,8 @@ export const UpdateProfileSchema: Record<string, ValidationRule> = {
 }
 
 export const LoginSchema: Record<string, ValidationRule> = {
-  email: { type: 'string' as const, required: true },
-  password: { type: 'string' as const, required: true },
+  email: { type: 'string' as const, required: true, max: 200 },
+  password: { type: 'string' as const, required: true, max: 200 },
 }
 
 export const ChangePasswordSchema: Record<string, ValidationRule> = {

@@ -403,15 +403,15 @@ function openNewEmployee() {
   formModal.value = {
     title: 'Nuevo Empleado', submitLabel: 'Registrar Empleado',
     fields: [
-      { key: 'name', label: 'Nombre', required: true, placeholder: 'María Pérez' },
-      { key: 'email', label: 'Email', required: true, placeholder: 'maria@hotel.com' },
-      { key: 'phone', label: 'Teléfono', placeholder: '809-555-0000' },
-      { key: 'password', label: 'Contraseña temporal', required: true, placeholder: 'Mínimo 6 caracteres' },
+      { key: 'name', label: 'Nombre', required: true, maxLength: 80, placeholder: 'María Pérez' },
+      { key: 'email', label: 'Email', type: 'email', required: true, maxLength: 120, placeholder: 'maria@hotel.com' },
+      { key: 'phone', label: 'Teléfono', type: 'tel', maxLength: 20, placeholder: '809-555-0000' },
+      { key: 'password', label: 'Contraseña temporal', type: 'password', required: true, minLength: 6, maxLength: 72, placeholder: 'Mínimo 6 caracteres' },
+      // El puesto lo define el Rol (feedback #169): un solo lugar para la función del empleado.
       { key: 'role', label: 'Rol', type: 'select', required: true, default: 'receptionist', options: [
         { value: 'receptionist', label: 'Recepcionista' }, { value: 'housekeeper', label: 'Limpieza' },
         { value: 'maintenance', label: 'Mantenimiento' }, { value: 'supervisor', label: 'Supervisor' },
       ] },
-      { key: 'position', label: 'Puesto', placeholder: 'Recepcionista, Camarera…' },
       { key: 'departmentId', label: 'Departamento', type: 'select', options: departmentOptions() },
       { key: 'salary', label: 'Salario', type: 'number', min: 0 },
       { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: new Date().toISOString().slice(0, 10) },
@@ -424,7 +424,7 @@ function openNewEmployee() {
       })
       try {
         await EmpleadosService.createProfile({
-          userId: newUser.id, position: String(v.position || ''),
+          userId: newUser.id,
           departmentId: (v.departmentId as string) || undefined,
           salary: Number(v.salary) || 0, hireDate: String(v.hireDate || ''),
         })
@@ -441,7 +441,6 @@ function openProfile(emp: EmployeeProfile) {
   formModal.value = {
     title: `Editar: ${emp.userName || emp.position || 'empleado'}`, submitLabel: 'Guardar',
     fields: [
-      { key: 'position', label: 'Puesto', default: emp.position || '' },
       { key: 'departmentId', label: 'Departamento', type: 'select', default: emp.departmentId || '', options: departmentOptions() },
       { key: 'salary', label: 'Salario', type: 'number', min: 0, default: emp.salary || 0 },
       { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: (emp.hireDate || '').slice(0, 10) },

@@ -16,20 +16,27 @@
               {{ f.label }}<span v-if="f.required" class="text-coral"> *</span>
             </label>
 
-            <select v-if="f.type === 'select'" v-model="values[f.key]"
-              class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+            <select v-if="f.type === 'select'" v-model="values[f.key]" @change="clearError(f.key)"
+              class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none cursor-pointer"
+              :class="borderClass(f.key)">
               <option value="" disabled>Seleccionar…</option>
               <option v-for="o in f.options || []" :key="o.value" :value="o.value">{{ o.label }}</option>
             </select>
 
             <textarea v-else-if="f.type === 'textarea'" v-model="values[f.key]" :placeholder="f.placeholder"
-              rows="3" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy"></textarea>
+              :maxlength="f.maxLength" @input="clearError(f.key)"
+              rows="3" class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none" :class="borderClass(f.key)"></textarea>
 
-            <input v-else-if="f.type === 'number'" v-model.number="values[f.key]" type="number" :min="f.min" :placeholder="f.placeholder"
-              class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
+            <input v-else-if="f.type === 'number'" v-model.number="values[f.key]" type="number" :min="f.min" :max="f.max" :placeholder="f.placeholder"
+              @input="clearError(f.key)"
+              class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none" :class="borderClass(f.key)" />
 
             <input v-else :type="f.type || 'text'" v-model="values[f.key]" :placeholder="f.placeholder"
-              class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
+              :maxlength="f.maxLength"
+              @input="clearError(f.key)" @blur="onBlur(f)"
+              class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none" :class="borderClass(f.key)" />
+
+            <p v-if="fieldErrors[f.key]" class="text-[10px] font-bold text-coral mt-1">{{ fieldErrors[f.key] }}</p>
           </div>
 
           <p v-if="error" class="text-xs font-bold text-coral">{{ error }}</p>
@@ -52,12 +59,17 @@ import { reactive, ref, watch } from 'vue'
 export interface FormField {
   key: string
   label: string
-  type?: 'text' | 'number' | 'date' | 'month' | 'select' | 'textarea'
+  type?: 'text' | 'number' | 'date' | 'month' | 'select' | 'textarea' | 'email' | 'tel' | 'password'
   required?: boolean
   options?: { value: string; label: string }[]
   placeholder?: string
   default?: string | number
   min?: number
+  max?: number
+  /** Tope de caracteres del input (evita reventar la columna en la DB). */
+  maxLength?: number
+  /** Mínimo de caracteres exigido al enviar (ej: contraseña). */
+  minLength?: number
   full?: boolean
 }
 
@@ -67,22 +79,62 @@ const emit = defineEmits<{ close: []; submit: [values: Record<string, string | n
 const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
 
 const values = reactive<Record<string, string | number>>({})
+const fieldErrors = reactive<Record<string, string>>({})
 const error = ref('')
 
 // Los defaults se siembran al montar y cada vez que cambia el esquema (reutilizamos un solo modal).
 watch(() => props.fields, (fields) => {
   for (const key of Object.keys(values)) delete values[key]
+  for (const key of Object.keys(fieldErrors)) delete fieldErrors[key]
   for (const f of fields) values[f.key] = f.default ?? (f.type === 'number' ? 0 : '')
   error.value = ''
 }, { immediate: true })
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const digitCount = (s: string): number => (s.match(/\d/g) || []).length
+
+function borderClass(key: string): string {
+  return fieldErrors[key] ? 'border-coral focus:border-coral' : 'border-border focus:border-navy'
+}
+
+/** Al escribir en un campo, se limpia su error para que el rojo no quede pegado. */
+function clearError(key: string): void {
+  if (fieldErrors[key]) { fieldErrors[key] = ''; error.value = '' }
+}
+
+/** Formatea un teléfono dominicano de 10 dígitos como 809-555-0000 al salir del campo. */
+function onBlur(f: FormField): void {
+  if (f.type !== 'tel') return
+  const digitsOnly = String(values[f.key] || '').replace(/\D/g, '')
+  if (digitsOnly.length === 10) values[f.key] = `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`
+}
+
+/** Devuelve el mensaje de error del campo, o '' si es válido. */
+function validateField(f: FormField, raw: string | number): string {
+  const str = typeof raw === 'string' ? raw.trim() : String(raw ?? '')
+  const isEmpty = str === '' || raw === null || raw === undefined
+  if (f.required && isEmpty) return `${f.label} es requerido`
+  if (isEmpty) return ''   // campo opcional y vacío → válido
+  if (f.type === 'email' && !EMAIL_RE.test(str)) return 'Email inválido (ej: nombre@hotel.com)'
+  if (f.type === 'tel') {
+    const d = digitCount(str)
+    if (d < 10 || d > 15) return 'Teléfono inválido (10 dígitos, ej: 809-555-0000)'
+  }
+  if (f.minLength && str.length < f.minLength) return `Mínimo ${f.minLength} caracteres`
+  if (f.maxLength && str.length > f.maxLength) return `Máximo ${f.maxLength} caracteres`
+  return ''
+}
+
 function submit() {
+  let hasError = false
   for (const f of props.fields) {
-    const v = values[f.key]
-    if (f.required && (v === '' || v === null || v === undefined)) {
-      error.value = `${f.label} es requerido`
-      return
-    }
+    const msg = validateField(f, values[f.key])
+    fieldErrors[f.key] = msg
+    if (msg) hasError = true
+  }
+  if (hasError) {
+    error.value = 'Revisá los campos marcados en rojo.'
+    return
   }
   error.value = ''
   emit('submit', { ...values })
