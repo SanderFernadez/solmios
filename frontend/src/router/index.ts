@@ -367,6 +367,12 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          path: 'activos',
+          name: 'activos',
+          component: () => import('@/pages/activos/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'message-logs',
           name: 'message-logs',
           component: () => import('@/pages/message-logs/index.vue'),

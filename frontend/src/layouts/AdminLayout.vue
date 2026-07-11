@@ -262,6 +262,7 @@ const nonavItems = [
       { label: 'Asistencia', path: '/panel/attendance', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Nómina', path: '/panel/payroll', roles: ['hotel_admin'] },
       { label: 'Equipo', path: '/panel/team', roles: ['hotel_admin'] },
+      { label: 'Equipo y Activos', path: '/panel/activos', roles: ['hotel_admin'] },
       { label: 'Roles y Permisos', path: '/panel/roles', roles: ['hotel_admin'] },
     ]
   },
