@@ -31,6 +31,22 @@ export class MessagesService {
     await markTeamRead(this.readsRepo, currentUser)
   }
 
+  /**
+   * Marca TODO como leído de una: los mensajes personales dirigidos al usuario
+   * y el canal del equipo. Evita tener que abrir cada chat para bajar el globo.
+   * Filtra `isRead` en memoria para no pasar un booleano a la query (Postgres lo
+   * rechaza en columnas numéricas).
+   */
+  async markAllRead(currentUser: MessageUser): Promise<void> {
+    const mine = await this.repo.findMany({ hotelId: currentUser.hotelId, toUserId: currentUser.id })
+    for (const m of mine) {
+      if (!(m as any).isRead) {
+        await this.repo.update(m.id, { isRead: true } as Partial<Omit<MessageDTO, 'id'>>)
+      }
+    }
+    await markTeamRead(this.readsRepo, currentUser)
+  }
+
   setUserDirectory(directory: UserDirectory): void {
     this.directory = directory
   }

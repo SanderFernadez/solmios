@@ -63,6 +63,12 @@ export class MessagesController {
     return { status: 200, body: { message: 'Grupo marcado como leído' } }
   }
 
+  async markAllRead(req: HttpRequest) {
+    const user = req.user as any
+    await this.service.markAllRead(user)
+    return { status: 200, body: { message: 'Todo marcado como leído' } }
+  }
+
   async allConversations(req: HttpRequest) {
     const user = req.user as any
     const result = await this.service.getAllConversations(user)

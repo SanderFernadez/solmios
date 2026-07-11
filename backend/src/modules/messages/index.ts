@@ -59,6 +59,7 @@ export function MessagesModule(opts: { storage?: StorageService } = {}) {
       router.post('/api/messages/upload', [...staff, bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.uploadPhoto(req))
       // Literal antes de '/:userId', si no el param captura 'team'.
       router.post('/api/messages/team/read', staff, (req) => controller.markTeamRead(req))
+      router.post('/api/messages/read-all', staff, (req) => controller.markAllRead(req))
       router.get('/api/messages/:userId', staff, (req) => controller.messagesWith(req))
       router.post('/api/messages', staff, (req) => controller.send(req))
       router.put('/api/messages/:id/read', staff, (req) => controller.markRead(req))
