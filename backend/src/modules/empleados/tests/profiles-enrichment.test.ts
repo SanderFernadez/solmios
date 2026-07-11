@@ -42,11 +42,19 @@ describe('ProfileUseCase.list — enriquecido de nombre', () => {
     expect(res.data[1].userName).toBe('María Gómez')
   })
 
-  it('cae al userId sólo si el usuario no existe', async () => {
+  it('deja userName vacío si el usuario no existe (legajo huérfano) — el front muestra el cargo, no el UUID', async () => {
     const uc = new ProfileUseCase(repoWith([
       { id: 'p3', userId: 'huerfano', hotelId: 'h1', active: 1 },
     ]), log, userRepo)
     const res = await uc.list({ hotelId: 'h1' })
-    expect(res.data[0].userName).toBe('huerfano')
+    expect(res.data[0].userName).toBeUndefined()
+  })
+
+  it('resuelve por id un user que no está en el hotel (super_admin con otro hotelId)', async () => {
+    // u3 tiene hotelId 'platform' → no aparece en findMany({hotelId:'h1'}), pero sí por findById.
+    const extra = { findMany: userRepo.findMany, findById: async (id: string) => (id === 'u3' ? { id: 'u3', name: 'Súper Admin', hotelId: 'platform' } : null) } as any
+    const uc = new ProfileUseCase(repoWith([{ id: 'p4', userId: 'u3', hotelId: 'h1', active: 1 }]), log, extra)
+    const res = await uc.list({ hotelId: 'h1' })
+    expect(res.data[0].userName).toBe('Súper Admin')
   })
 })

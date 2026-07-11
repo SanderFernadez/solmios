@@ -77,14 +77,22 @@ export class ProfileUseCase {
       const userIds = [...new Set(data.map(p => p.userId).filter(Boolean))]
       const usersMap = new Map<string, any>()
       try {
-        const users = query.hotelId
-          ? await this.userRepo.findMany({ hotelId: query.hotelId })
-          : (await Promise.all(userIds.map(id => this.userRepo!.findById(id).catch(() => null)))).filter(Boolean)
-        for (const u of users as any[]) usersMap.set(u.id, u)
-      } catch { /* si falla, se usa el userId como último recurso */ }
+        if (query.hotelId) {
+          for (const u of await this.userRepo.findMany({ hotelId: query.hotelId })) usersMap.set(u.id, u)
+        }
+        // Fallback por id para los userId que no estén en el set del hotel (ej: un super_admin con
+        // hotelId 'platform', o un user movido de hotel). findMany({id:[array]}) NO sirve (sin WHERE IN).
+        const missing = userIds.filter(id => !usersMap.has(id))
+        if (missing.length) {
+          const found = (await Promise.all(missing.map(id => this.userRepo!.findById(id).catch(() => null)))).filter(Boolean)
+          for (const u of found as any[]) usersMap.set(u.id, u)
+        }
+      } catch { /* si falla, el front cae al cargo/userId */ }
       const enriched = data.map(p => {
         const u = usersMap.get(p.userId)
-        return { ...p, userName: u?.name ?? u?.email ?? p.userId }
+        // Si el user no existe (legajo huérfano), userName queda undefined → el front muestra el cargo,
+        // no el UUID crudo.
+        return { ...p, userName: u?.name ?? u?.email ?? undefined }
       })
       return { data: enriched.map(p => stripSensitive(p, user?.role)), total: result.total ?? 0, page, limit }
     }
