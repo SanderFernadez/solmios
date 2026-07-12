@@ -100,7 +100,9 @@ const error = ref('')
 watch(() => props.fields, (fields) => {
   for (const key of Object.keys(values)) delete values[key]
   for (const key of Object.keys(fieldErrors)) delete fieldErrors[key]
-  for (const f of fields) values[f.key] = f.default ?? (f.type === 'number' ? 0 : '')
+  // Los numéricos arrancan VACÍOS (no 0): un 0 fallaba validaciones con min ≥ 1 (ej: puntaje 1-10)
+  // aunque el campo fuera opcional. Vacío + opcional = válido; vacío + requerido = "es requerido".
+  for (const f of fields) values[f.key] = f.default ?? ''
   error.value = ''
 }, { immediate: true })
 
@@ -172,6 +174,13 @@ function submit() {
     return
   }
   error.value = ''
-  emit('submit', { ...values })
+  // Un numérico vacío se omite (no se manda '' — el backend espera número o nada).
+  const payload: Record<string, string | number> = {}
+  const numberKeys = new Set(props.fields.filter((f) => f.type === 'number').map((f) => f.key))
+  for (const [k, v] of Object.entries(values)) {
+    if (numberKeys.has(k) && (v === '' || v === null || v === undefined)) continue
+    payload[k] = v
+  }
+  emit('submit', payload)
 }
 </script>
