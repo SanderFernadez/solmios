@@ -6,6 +6,7 @@ import { AuthService } from '@/services/Auth.service'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const token = ref<string | null>(localStorage.getItem('token'))
+  const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'))
   const loading = ref(false)
   const impersonating = ref(false)
   const originalUser = ref<User | null>(null)
@@ -21,14 +22,23 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(email: string, password: string) {
     loading.value = true
     try {
-      const { token: tkn, user: usr } = await AuthService.login(email, password)
+      const { token: tkn, refreshToken: rt, user: usr } = await AuthService.login(email, password)
       token.value = tkn
+      refreshToken.value = rt
       user.value = usr
       localStorage.setItem('token', tkn)
+      localStorage.setItem('refreshToken', rt)
       localStorage.setItem('user', JSON.stringify(usr))
     } finally {
       loading.value = false
     }
+  }
+
+  function setTokens(newToken: string, newRefreshToken: string) {
+    token.value = newToken
+    refreshToken.value = newRefreshToken
+    localStorage.setItem('token', newToken)
+    localStorage.setItem('refreshToken', newRefreshToken)
   }
 
   async function restoreSession() {
@@ -71,17 +81,19 @@ export const useAuthStore = defineStore('auth', () => {
       // ignore — clear local state regardless
     }
     token.value = null
+    refreshToken.value = null
     user.value = null
     originalUser.value = null
     impersonating.value = false
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
   }
 
   return {
-    user, token, loading, impersonating,
+    user, token, refreshToken, loading, impersonating,
     isAuthenticated, userRole, isSuperAdmin, isHotelAdmin, isReceptionist,
     canAccessSuperAdmin, currentHotel,
-    login, loginAs, stopImpersonation, logout, restoreSession
+    login, loginAs, stopImpersonation, logout, restoreSession, setTokens
   }
 })

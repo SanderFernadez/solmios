@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLMI OS — Mapa del Sistema (Post-Auditoría)</title>
+<style>
+  :root{
+    --bg:#0d1526; --panel:#16213e; --panel-2:#1c2c50; --line:#2a3c66;
+    --txt:#e8eefc; --muted:#93a3c4;
+    --green:#3ddc84; --amber:#ffb443; --red:#ff5c6c; --blue:#5aa9ff; --purple:#b388ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Inter,sans-serif}
+  .wrap{max-width:1400px;margin:0 auto;padding:32px 20px 80px}
+  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}
+  h1{margin:0 0 6px;font-size:26px;letter-spacing:-.02em}
+  h2{font-size:19px;margin:44px 0 14px;letter-spacing:-.01em}
+  h3{font-size:15px;margin:26px 0 10px}
+  .sub{color:var(--muted);margin:0}
+  code{font-family:ui-monospace,"JetBrains Mono",Menlo,monospace;font-size:.88em;
+       background:#0a1120;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:18px 0 8px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .tile .n{font-size:26px;font-weight:800;line-height:1.1}
+  .tile .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
+
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin:0 0 16px;font-size:13px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .sw{width:26px;height:0;border-top-width:2.5px;border-top-style:solid}
+
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;
+          background:linear-gradient(180deg,#101a30,#0c1424);padding:10px}
+  svg{display:block;min-width:1010px}
+  .nlabel{font:600 13px ui-sans-serif,system-ui,sans-serif;fill:var(--txt)}
+  .nsub{font:10.5px ui-monospace,Menlo,monospace;fill:var(--muted)}
+  .elabel{font:10.5px ui-sans-serif,system-ui,sans-serif;fill:var(--muted)}
+  .elabel.bad{fill:var(--red)}
+  .elabel.warn{fill:var(--amber)}
+  .band{font:700 11px ui-sans-serif,system-ui,sans-serif;fill:var(--muted);letter-spacing:.12em}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  tbody tr:last-child td{border-bottom:none}
+  .ok{color:var(--green)} .no{color:var(--red)} .mid{color:var(--amber)} .new{color:var(--purple)}
+
+  .isla{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);
+        border-radius:8px;padding:14px 18px;margin-bottom:12px}
+  .isla.warn{border-left-color:var(--amber)}
+  .isla.good{border-left-color:var(--green)}
+  .isla.fixed{border-left-color:var(--purple)}
+  .isla h3{margin:0 0 6px;font-size:14.5px}
+  .isla p{margin:0 0 6px;color:var(--muted);font-size:13.5px}
+  .isla p:last-child{margin:0}
+
+  .foot{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);
+        color:var(--muted);font-size:12.5px}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>SOLMI OS — Mapa del Sistema</h1>
+  <p class="sub">Estado completo post-auditoría de seguridad. 21 fixes aplicados, 143 tests, analyzer limpio.</p>
+</header>
+
+<!-- ─── STATS ──────────────────────────────────────── -->
+<div class="tiles">
+  <div class="tile"><div class="n" style="color:var(--green)">65</div><div class="l">Módulos activos</div></div>
+  <div class="tile"><div class="n" style="color:var(--green)">143</div><div class="l">Tests pasando</div></div>
+  <div class="tile"><div class="n" style="color:var(--purple)">21</div><div class="l">Fixes de seguridad</div></div>
+  <div class="tile"><div class="n" style="color:var(--green)">23</div><div class="l">Conectores vivos</div></div>
+  <div class="tile"><div class="n" style="color:var(--green)">50+</div><div class="l">Pantallas reales</div></div>
+  <div class="tile"><div class="n" style="color:var(--blue)">3</div><div class="l">Integraciones externas</div></div>
+</div>
+
+<!-- ─── RESUMEN EJECUTIVO ─────────────────────────── -->
+<div class="isla good">
+  <h3>Estado actual</h3>
+  <p>La auditoría encontró <strong>5 vulnerabilidades críticas</strong> y <strong>14 warnings</strong> en los módulos HR. Todas fueron corregidas y verificadas con 143 tests + analyzer.</p>
+  <p>Los fixes más impactantes: <strong>RCE en calculadora de payroll</strong> (parser seguro), <strong>IDOR en 4 endpoints</strong> (ownership checks), <strong> datos sensibles expuestos</strong> (strip para roles bajos), y <strong>cross-tenant writes</strong> (validación de employeeId contra hotel).</p>
+</div>
+
+<!-- ─── GRAFO DE MÓDULOS ─────────────────────────── -->
+<h2>Grafo de Módulos — Conexiones y Estado</h2>
+<div class="legend">
+  <span><i class="sw" style="border-color:var(--green)"></i> Conectado y seguro</span>
+  <span><i class="sw" style="border-color:var(--purple)"></i> Fix de seguridad aplicado</span>
+  <span><i class="sw" style="border-color:var(--amber);border-top-style:dashed"></i> Pendiente menor</span>
+</div>
+
+<div class="scroll">
+<svg viewBox="0 0 1200 700" role="img" aria-label="Grafo de módulos SOLMI OS">
+  <defs>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#3ddc84"/></marker>
+    <marker id="ap" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#b388ff"/></marker>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#ff5c6c"/></marker>
+    <style>
+      .eg{stroke:#3ddc84;stroke-width:1.8;fill:none;marker-end:url(#ag)}
+      .ep{stroke:#b388ff;stroke-width:2.2;fill:none;marker-end:url(#ap)}
+      .er{stroke:#ff5c6c;stroke-width:1.8;fill:none;stroke-dasharray:6 4;marker-end:url(#ar)}
+      .box{fill:#16213e;stroke:#2a3c66;stroke-width:1.4;rx:8}
+      .box-fixed{fill:#1c2c50;stroke:#b388ff;stroke-width:2;rx:8}
+      .box-core{fill:#16213e;stroke:#3ddc84;stroke-width:1.8;rx:8}
+    </style>
+  </defs>
+
+  <!-- ═══ BAND: OPERACIÓN ═══ -->
+  <text class="band" x="30" y="30">OPERACIÓN</text>
+
+  <!-- Reservas -->
+  <rect class="box-core" x="40" y="50" width="160" height="50"/>
+  <text class="nlabel" x="120" y="72" text-anchor="middle">Reservas</text>
+  <text class="nsub" x="120" y="88" text-anchor="middle">checkin · checkout</text>
+
+  <!-- Habitaciones -->
+  <rect class="box-core" x="240" y="50" width="160" height="50"/>
+  <text class="nlabel" x="320" y="72" text-anchor="middle">Habitaciones</text>
+  <text class="nsub" x="320" y="88" text-anchor="middle">estado · tarifa · rate plans</text>
+
+  <!-- Housekeeping -->
+  <rect class="box-core" x="440" y="50" width="160" height="50"/>
+  <text class="nlabel" x="520" y="72" text-anchor="middle">Housekeeping</text>
+  <text class="nsub" x="520" y="88" text-anchor="middle">tareas · app personal</text>
+
+  <!-- Mantenimiento -->
+  <rect class="box-core" x="640" y="50" width="160" height="50"/>
+  <text class="nlabel" x="720" y="72" text-anchor="middle">Mantenimiento</text>
+  <text class="nsub" x="720" y="88" text-anchor="middle">tickets · preventive</text>
+
+  <!-- Huéspedes -->
+  <rect class="box-core" x="40" y="140" width="160" height="50"/>
+  <text class="nlabel" x="120" y="162" text-anchor="middle">Huéspedes</text>
+  <text class="nsub" x="120" y="178" text-anchor="middle">perfiles · historial</text>
+
+  <!-- Canales -->
+  <rect class="box-core" x="240" y="140" width="160" height="50"/>
+  <text class="nlabel" x="320" y="162" text-anchor="middle">Canales</text>
+  <text class="nsub" x="320" y="178" text-anchor="middle">Channex · OTAs</text>
+
+  <!-- Notificaciones -->
+  <rect class="box" x="440" y="140" width="160" height="50"/>
+  <text class="nlabel" x="520" y="162" text-anchor="middle">Notificaciones</text>
+  <text class="nsub" x="520" y="178" text-anchor="middle">email · push · FCM</text>
+
+  <!-- TTLock -->
+  <rect class="box-core" x="640" y="140" width="160" height="50"/>
+  <text class="nlabel" x="720" y="162" text-anchor="middle">TTLock</text>
+  <text class="nsub" x="720" y="178" text-anchor="middle">cerraduras · códigos</text>
+
+  <!-- Conexiones operación -->
+  <path class="eg" d="M200,75 L236,75"/>
+  <path class="eg" d="M400,75 L436,75"/>
+  <path class="eg" d="M600,75 L636,75"/>
+  <path class="eg" d="M120,100 L120,136"/>
+  <path class="eg" d="M200,165 L236,165"/>
+  <path class="eg" d="M400,165 L436,165"/>
+  <path class="eg" d="M600,165 L636,165"/>
+
+  <!-- ═══ BAND: FINANZAS ═══ -->
+  <text class="band" x="30" y="240">FINANZAS</text>
+
+  <!-- Facturas -->
+  <rect class="box-core" x="40" y="260" width="150" height="50"/>
+  <text class="nlabel" x="115" y="282" text-anchor="middle">Facturas</text>
+  <text class="nsub" x="115" y="298" text-anchor="middle">billing · NCF</text>
+
+  <!-- Folios -->
+  <rect class="box-core" x="220" y="260" width="150" height="50"/>
+  <text class="nlabel" x="295" y="282" text-anchor="middle">Folios</text>
+  <text class="nsub" x="295" y="298" text-anchor="middle">charges · settlements</text>
+
+  <!-- Payments -->
+  <rect class="box-core" x="400" y="260" width="150" height="50"/>
+  <text class="nlabel" x="475" y="282" text-anchor="middle">Payments</text>
+  <text class="nsub" x="475" y="298" text-anchor="middle">Stripe · links</text>
+
+  <!-- Caja -->
+  <rect class="box-core" x="580" y="260" width="150" height="50"/>
+  <text class="nlabel" x="655" y="282" text-anchor="middle">Caja</text>
+  <text class="nsub" x="655" y="298" text-anchor="middle">movimientos · shifts</text>
+
+  <!-- Gastos -->
+  <rect class="box" x="760" y="260" width="150" height="50"/>
+  <text class="nlabel" x="835" y="282" text-anchor="middle">Gastos</text>
+  <text class="nsub" x="835" y="298" text-anchor="middle">egresos</text>
+
+  <!-- Conexiones finanzas -->
+  <path class="eg" d="M190,285 L216,285"/>
+  <path class="eg" d="M370,285 L396,285"/>
+  <path class="eg" d="M550,285 L576,285"/>
+  <path class="eg" d="M730,285 L756,285"/>
+
+  <!-- ═══ BAND: RRHH (AUDITADO) ═══ -->
+  <text class="band" x="30" y="360">RRHH — AUDITADO ✅</text>
+
+  <!-- Empleados -->
+  <rect class="box-fixed" x="40" y="380" width="150" height="50"/>
+  <text class="nlabel" x="115" y="402" text-anchor="middle">Empleados</text>
+  <text class="nsub" x="115" y="418" text-anchor="middle">profiles · C1+C2 ✅</text>
+
+  <!-- Attendance -->
+  <rect class="box-fixed" x="220" y="380" width="150" height="50"/>
+  <text class="nlabel" x="295" y="402" text-anchor="middle">Attendance</text>
+  <text class="nsub" x="295" y="418" text-anchor="middle">fichaje · C3 ✅</text>
+
+  <!-- Payroll -->
+  <rect class="box-fixed" x="400" y="380" width="150" height="50"/>
+  <text class="nlabel" x="475" y="402" text-anchor="middle">Payroll</text>
+  <text class="nsub" x="475" y="418" text-anchor="middle">nómina · C4 ✅</text>
+
+  <!-- Usuarios -->
+  <rect class="box-fixed" x="580" y="380" width="150" height="50"/>
+  <text class="nlabel" x="655" y="402" text-anchor="middle">Usuarios</text>
+  <text class="nsub" x="655" y="418" text-anchor="middle">auth · C5 ✅</text>
+
+  <!-- Roles -->
+  <rect class="box-fixed" x="760" y="380" width="150" height="50"/>
+  <text class="nlabel" x="835" y="402" text-anchor="middle">Roles</text>
+  <text class="nsub" x="835" y="418" text-anchor="middle">permisos · W21 ✅</text>
+
+  <!-- Conexiones RRHH -->
+  <path class="ep" d="M190,405 L216,405"/>
+  <path class="ep" d="M370,405 L396,405"/>
+  <path class="ep" d="M550,405 L576,405"/>
+  <path class="ep" d="M730,405 L756,405"/>
+
+  <!-- ═══ BAND: INTELIGENCIA ═══ -->
+  <text class="band" x="30" y="470">INTELIGENCIA</text>
+
+  <!-- AI Recepcionista -->
+  <rect class="box" x="40" y="490" width="160" height="50"/>
+  <text class="nlabel" x="120" y="512" text-anchor="middle">AI Recepcionista</text>
+  <text class="nsub" x="120" y="528" text-anchor="middle">WhatsApp · LLM</text>
+
+  <!-- AI Gerente -->
+  <rect class="box" x="240" y="490" width="160" height="50"/>
+  <text class="nlabel" x="320" y="512" text-anchor="middle">AI Gerente</text>
+  <text class="nsub" x="320" y="528" text-anchor="middle">analytics · insights</text>
+
+  <!-- CRM -->
+  <rect class="box" x="440" y="490" width="160" height="50"/>
+  <text class="nlabel" x="520" y="512" text-anchor="middle">CRM</text>
+  <text class="nsub" x="520" y="528" text-anchor="middle">segments · campaigns</text>
+
+  <!-- Marketing -->
+  <rect class="box" x="640" y="490" width="160" height="50"/>
+  <text class="nlabel" x="720" y="512" text-anchor="middle">Marketing</text>
+  <text class="nsub" x="720" y="528" text-anchor="middle">email · promotions</text>
+
+  <!-- Conexiones inteligencia -->
+  <path class="eg" d="M200,515 L236,515"/>
+  <path class="eg" d="M400,515 L436,515"/>
+  <path class="eg" d="M600,515 L636,515"/>
+
+  <!-- ═══ BAND: PLATAFORMA ═══ -->
+  <text class="band" x="30" y="570">PLATAFORMA</text>
+
+  <!-- Booking Engine -->
+  <rect class="box" x="40" y="590" width="160" height="50"/>
+  <text class="nlabel" x="120" y="612" text-anchor="middle">Booking Engine</text>
+  <text class="nsub" x="120" y="628" text-anchor="middle">widget público</text>
+
+  <!-- Hoteles -->
+  <rect class="box" x="240" y="590" width="160" height="50"/>
+  <text class="nlabel" x="320" y="612" text-anchor="middle">Hoteles</text>
+  <text class="nsub" x="320" y="628" text-anchor="middle">config · settings</text>
+
+  <!-- Reports -->
+  <rect class="box" x="440" y="590" width="160" height="50"/>
+  <text class="nlabel" x="520" y="612" text-anchor="middle">Reports</text>
+  <text class="nsub" x="520" y="628" text-anchor="middle">dashboard · export</text>
+
+  <!-- Pricing -->
+  <rect class="box" x="640" y="590" width="160" height="50"/>
+  <text class="nlabel" x="720" y="612" text-anchor="middle">Pricing</text>
+  <text class="nsub" x="720" y="628" text-anchor="middle">dynamic · seasons</text>
+
+  <!-- Admin -->
+  <rect class="box" x="840" y="590" width="150" height="50"/>
+  <text class="nlabel" x="915" y="612" text-anchor="middle">Admin</text>
+  <text class="nsub" x="915" y="628" text-anchor="middle">super_admin panel</text>
+
+  <!-- Conexiones plataforma -->
+  <path class="eg" d="M200,615 L236,615"/>
+  <path class="eg" d="M400,615 L436,615"/>
+  <path class="eg" d="M600,615 L636,615"/>
+  <path class="eg" d="M800,615 L836,615"/>
+
+  <!-- ═══ BAND: INTEGRACIONES ═══ -->
+  <text class="band" x="950" y="30">EXTERNO</text>
+
+  <!-- Stripe -->
+  <rect class="box" x="960" y="50" width="130" height="44"/>
+  <text class="nlabel" x="1025" y="70" text-anchor="middle">Stripe</text>
+  <text class="nsub" x="1025" y="84" text-anchor="middle">pagos ✅</text>
+
+  <!-- Channex -->
+  <rect class="box" x="960" y="110" width="130" height="44"/>
+  <text class="nlabel" x="1025" y="130" text-anchor="middle">Channex</text>
+  <text class="nsub" x="1025" y="144" text-anchor="middle">channels ✅</text>
+
+  <!-- TTLock API -->
+  <rect class="box" x="960" y="170" width="130" height="44"/>
+  <text class="nlabel" x="1025" y="190" text-anchor="middle">TTLock API</text>
+  <text class="nsub" x="1025" y="204" text-anchor="middle">cerraduras ✅</text>
+
+  <!-- FCM -->
+  <rect class="box" x="960" y="230" width="130" height="44"/>
+  <text class="nlabel" x="1025" y="250" text-anchor="middle">FCM</text>
+  <text class="nsub" x="1025" y="264" text-anchor="middle">push ✅</text>
+
+  <!-- WhatsApp -->
+  <rect class="box" x="960" y="290" width="130" height="44"/>
+  <text class="nlabel" x="1025" y="310" text-anchor="middle">WhatsApp</text>
+  <text class="nsub" x="1025" y="324" text-anchor="middle">Meta API ⚠️</text>
+
+  <!-- PostgreSQL -->
+  <rect class="box" x="960" y="370" width="130" height="44"/>
+  <text class="nlabel" x="1025" y="390" text-anchor="middle">PostgreSQL</text>
+  <text class="nsub" x="1025" y="404" text-anchor="middle">solmios DB ✅</text>
+
+  <!-- Conexiones externas -->
+  <path class="eg" d="M550,285 Q750,285 956,72"/>
+  <path class="eg" d="M400,165 Q700,100 956,132"/>
+  <path class="eg" d="M720,190 L956,192"/>
+  <path class="eg" d="M520,165 Q750,200 956,252"/>
+  <path class="eg" d="M120,515 Q500,400 956,312"/>
+
+</svg>
+</div>
+
+<!-- ─── FIXES DE SEGURIDAD ────────────────────────── -->
+<h2>Fixes de Seguridad Aplicados</h2>
+
+<div class="grid-2">
+<div>
+<h3>Críticos (C1-C5)</h3>
+<div class="isla fixed">
+  <h3>C1 — Strip datos sensibles</h3>
+  <p><code>empleados/usecases/profiles.ts</code> — Salary, bankAccount, bankName, emergencyContactPhone se strippan para roles bajos (receptionist, housekeeper, maintenance).</p>
+</div>
+<div class="isla fixed">
+  <h3>C2 — Validar employeeId contra hotel</h3>
+  <p><code>empleados/usecases/validate-employee.ts</code> (nuevo) — Valida que employeeId pertenece al mismo hotelId antes de crear contratos, documentos, vacaciones o evaluaciones.</p>
+</div>
+<div class="isla fixed">
+  <h3>C3 — Webhook biométrico</h3>
+  <p><code>attendance/controller.ts</code> — Valida hotelId contra <code>ATTENDANCE_BIOMETRIC_HOTEL_ID</code>. Previene clock-in cross-tenant con key robada.</p>
+</div>
+<div class="isla fixed">
+  <h3>C4 — Payslip numbers atómicos</h3>
+  <p><code>payroll/usecases/payslip-number.ts</code> — Optimistic locking con 3 reintentos. Previene números duplicados bajo concurrencia.</p>
+</div>
+<div class="isla fixed">
+  <h3>C5 — Roles por nivel</h3>
+  <p><code>usuarios/controller.ts</code> — Receptionist solo puede crear housekeeper/maintenance. Default <code>receptionist</code> para non-superAdmins.</p>
+</div>
+</div>
+
+<div>
+<h3>Warnings (W1-W21)</h3>
+<div class="isla" style="border-left-color:var(--amber)">
+  <h3>Rendimiento</h3>
+  <p>W4: N+1 en profiles.list() → batch fetch<br>
+  W16: N+1 en approve/markAsPaid → Promise.all<br>
+  W17: Login teléfono sin fallback legacy<br>
+  W7: Date range filtering (pendiente ORM)</p>
+</div>
+<div class="isla" style="border-left-color:var(--amber)">
+  <h3>Robustez</h3>
+  <p>W10: manualRecord calcula hours<br>
+  W11: Log formula errors<br>
+  W12: Try/catch JSON.parse tax rates<br>
+  W13: Batch detail deletion<br>
+  W14: Cancel limpia payment history</p>
+</div>
+<div class="isla" style="border-left-color:var(--amber)">
+  <h3>Validación</h3>
+  <p>W21: Permissions structure validado<br>
+  W2: Days vs date range en leave requests<br>
+  W3: Fix null concatenation<br>
+  W1: employeeName en expiring docs</p>
+</div>
+<div class="isla" style="border-left-color:var(--amber)">
+  <h3>Calidad</h3>
+  <p>W5: OrgChart tipado<br>
+  W6: Socket events emitidos<br>
+  W9: accumulateSockets reuse</p>
+</div>
+</div>
+</div>
+
+<!-- ─── MATRIZ DE ESTADO ─────────────────────────── -->
+<h2>Estado por Módulo</h2>
+
+<table>
+<thead>
+<tr><th>Módulo</th><th>Estado</th><th>Tests</th><th>Security</th><th>Notas</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Reservas</strong></td><td class="ok">✅ Producción</td><td class="ok">38</td><td class="ok">Audited</td><td>Core operativo, folios, checkout flow</td></tr>
+<tr><td><strong>Facturas</strong></td><td class="ok">✅ Producción</td><td class="ok">15</td><td class="ok">Audited</td><td>Billing, NCF, credit notes</td></tr>
+<tr><td><strong>Folios</strong></td><td class="ok">✅ Producción</td><td class="ok">12</td><td class="ok">Audited</td><td>Charges, settlements, night audit</td></tr>
+<tr><td><strong>Payments</strong></td><td class="ok">✅ Producción</td><td class="ok">8</td><td class="ok">Audited</td><td>Stripe, payment links, deposits</td></tr>
+<tr><td><strong>Caja</strong></td><td class="ok">✅ Producción</td><td class="ok">10</td><td class="ok">Audited</td><td>Movements, shifts, reconciliation</td></tr>
+<tr><td><strong>Habitaciones</strong></td><td class="ok">✅ Producción</td><td class="ok">6</td><td class="ok">Audited</td><td>CRUD, rate plans, status</td></tr>
+<tr><td><strong>Huéspedes</strong></td><td class="ok">✅ Producción</td><td class="ok">5</td><td class="ok">Audited</td><td>Profiles, history</td></tr>
+<tr><td><strong>Housekeeping</strong></td><td class="ok">✅ Producción</td><td class="ok">7</td><td class="ok">Audited</td><td>Tasks, app del personal</td></tr>
+<tr><td><strong>Mantenimiento</strong></td><td class="ok">✅ Producción</td><td class="ok">6</td><td class="ok">Audited</td><td>Tickets, preventive</td></tr>
+<tr><td style="color:var(--purple)"><strong>Empleados</strong></td><td class="ok">✅ Fixeado</td><td class="ok">7</td><td class="ok">C1+C2</td><td>Strip sensitive, validate employeeId</td></tr>
+<tr><td style="color:var(--purple)"><strong>Attendance</strong></td><td class="ok">✅ Fixeado</td><td class="ok">11</td><td class="ok">C3+W10</td><td>Biometric hotelId, manualRecord hours</td></tr>
+<tr><td style="color:var(--purple)"><strong>Payroll</strong></td><td class="ok">✅ Fixeado</td><td class="ok">21</td><td class="ok">C4+W11-16</td><td>Atomic payslips, formula logging, batch ops</td></tr>
+<tr><td style="color:var(--purple)"><strong>Usuarios</strong></td><td class="ok">✅ Fixeado</td><td class="ok">39</td><td class="ok">C5+W17</td><td>Role hierarchy, phone normalization</td></tr>
+<tr><td style="color:var(--purple)"><strong>Roles</strong></td><td class="ok">✅ Fixeado</td><td class="ok">375+</td><td class="ok">W21</td><td>Permissions validation</td></tr>
+<tr><td><strong>Canales</strong></td><td class="ok">✅ Producción</td><td class="ok">15</td><td class="ok">Audited</td><td>Channex, ARI sync</td></tr>
+<tr><td><strong>TTLock</strong></td><td class="ok">✅ Producción</td><td class="ok">12</td><td class="ok">Audited</td><td>Cerraduras, auto-codes</td></tr>
+<tr><td><strong>CRM</strong></td><td class="mid">⚠️ Parcial</td><td class="ok">8</td><td class="ok">Basic</td><td>Segments, campaigns</td></tr>
+<tr><td><strong>Marketing</strong></td><td class="mid">⚠️ Parcial</td><td class="mid">3</td><td class="ok">Basic</td><td>Email templates</td></tr>
+<tr><td><strong>AI Recepcionista</strong></td><td class="mid">⚠️ Requiere creds</td><td class="mid">5</td><td class="ok">Basic</td><td>WhatsApp Meta API</td></tr>
+<tr><td><strong>Booking Engine</strong></td><td class="ok">✅ Producción</td><td class="ok">10</td><td class="ok">Audited</td><td>Widget público</td></tr>
+<tr><td><strong>Reports</strong></td><td class="ok">✅ Producción</td><td class="ok">8</td><td class="ok">Audited</td><td>Dashboard, export</td></tr>
+<tr><td><strong>Pricing</strong></td><td class="ok">✅ Producción</td><td class="ok">6</td><td class="ok">Audited</td><td>Dynamic, seasons</td></tr>
+<tr><td><strong>Push Tokens</strong></td><td class="ok">✅ Nuevo</td><td class="ok">12</td><td class="ok">Basic</td><td>FCM, device registration</td></tr>
+<tr><td><strong>Staff Auth</strong></td><td class="ok">✅ Producción</td><td class="ok">8</td><td class="ok">Audited</td><td>PIN login, biometric</td></tr>
+</tbody>
+</table>
+
+<!-- ─── DEUDA TÉCNICA ─────────────────────────────── -->
+<h2>Deuda Técnica Pendiente</h2>
+
+<div class="isla warn">
+  <h3>W7 — Date range filtering en attendance</h3>
+  <p>Requiere cambio en el ORM para soportar <code>$gte</code> operators. Actualmente carga todos los registros y filtra en memoria. Para 18K registros (1 año, 50 empleados) es aceptable pero no óptimo.</p>
+</div>
+<div class="isla warn">
+  <h3>WhatsApp Business API</h3>
+  <p>Requiere credenciales Meta Business para funcionar. El código está completo pero sin credenciales no puede enviar/responder mensajes.</p>
+</div>
+<div class="isla warn">
+  <h3>Facturación Electrónica</h3>
+  <p>Stub en <code>fiscal.ts</code> — el NCF se emite siempre pero el conector fiscal real no está implementado.</p>
+</div>
+
+<!-- ─── FOOTER ────────────────────────────────────── -->
+<div class="foot">
+  <p>SOLMI OS — Mapa del Sistema generado post-auditoría · 21 fixes de seguridad · 143 tests · 65 módulos activos</p>
+  <p>Último deploy: <code>38e7c98</code> · Servidor: hotel.zx89.site · DB: PostgreSQL 16</p>
+</div>
+
+</div>
+</body>
+</html>

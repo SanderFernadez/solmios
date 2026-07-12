@@ -25,6 +25,33 @@
         </div>
       </div>
 
+      <!-- Ocupación del personal (3 estados) -->
+      <div class="card p-5 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-extrabold text-navy text-sm">Estado de ocupación del personal</h3>
+          <span class="text-xs text-text-muted">{{ data.occupancy.total }} total</span>
+        </div>
+        <div class="h-3 rounded-full bg-surface overflow-hidden flex mb-3">
+          <div class="h-full bg-teal" :style="{ width: occPct(data.occupancy.available) }" title="Disponibles"></div>
+          <div class="h-full bg-gold" :style="{ width: occPct(data.occupancy.onLeave) }" title="De licencia"></div>
+          <div class="h-full bg-text-muted/40" :style="{ width: occPct(data.occupancy.inactive) }" title="Inactivos"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-teal shrink-0"></span>
+            <div><div class="text-lg font-black leading-none text-navy">{{ data.occupancy.available }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Disponibles</div></div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-gold shrink-0"></span>
+            <div><div class="text-lg font-black leading-none text-navy">{{ data.occupancy.onLeave }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">De licencia</div></div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-text-muted/40 shrink-0"></span>
+            <div><div class="text-lg font-black leading-none text-navy">{{ data.occupancy.inactive }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Inactivos</div></div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid lg:grid-cols-2 gap-6">
         <!-- Por departamento -->
         <div class="card p-5">
@@ -58,6 +85,46 @@
           <div class="mt-4 flex items-center justify-between p-3 rounded-xl bg-navy/5">
             <span class="text-xs font-bold text-navy">Puntaje promedio de evaluaciones</span>
             <span class="text-sm font-black text-teal">{{ data.reviews.avgScore ?? '—' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cumpleaños · Licencias hoy · Top desempeño -->
+      <div class="grid md:grid-cols-3 gap-6 mt-6">
+        <!-- Cumpleaños del mes -->
+        <div class="card p-5">
+          <h3 class="font-extrabold text-navy text-sm mb-4">🎂 Cumpleaños del mes</h3>
+          <div v-if="!data.birthdaysThisMonth.length" class="text-sm text-text-muted py-6 text-center">Sin cumpleaños este mes</div>
+          <div v-else class="space-y-2.5">
+            <div v-for="b in data.birthdaysThisMonth" :key="b.employeeId" class="flex items-center justify-between">
+              <span class="text-xs font-bold text-navy truncate">{{ b.name }}</span>
+              <span class="text-xs text-text-muted shrink-0 ml-2">{{ b.day }} {{ monthName }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Colaboradores de licencia hoy -->
+        <div class="card p-5">
+          <h3 class="font-extrabold text-navy text-sm mb-4">🌴 De licencia hoy</h3>
+          <div v-if="!data.onLeaveToday.length" class="text-sm text-text-muted py-6 text-center">Nadie de licencia hoy</div>
+          <div v-else class="space-y-2.5">
+            <div v-for="l in data.onLeaveToday" :key="l.employeeId + l.startDate" class="flex items-center justify-between">
+              <span class="text-xs font-bold text-navy truncate">{{ l.name }}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gold/10 text-gold shrink-0 ml-2">{{ leaveTypeLabel(l.type) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top desempeño -->
+        <div class="card p-5">
+          <h3 class="font-extrabold text-navy text-sm mb-4">⭐ Top desempeño</h3>
+          <div v-if="!data.topPerformers.length" class="text-sm text-text-muted py-6 text-center">Sin evaluaciones completadas</div>
+          <div v-else class="space-y-2.5">
+            <div v-for="(t, i) in data.topPerformers" :key="t.employeeId" class="flex items-center gap-2.5">
+              <span class="w-5 h-5 rounded-full bg-teal/10 text-teal text-[10px] font-black flex items-center justify-center shrink-0">{{ i + 1 }}</span>
+              <span class="text-xs font-bold text-navy truncate flex-1">{{ t.name }}</span>
+              <span class="text-xs font-black text-teal shrink-0">{{ t.avgScore }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -105,4 +172,17 @@ const alerts = computed(() => data.value ? [
 
 const maxDept = computed(() => Math.max(1, ...(data.value?.byDepartment.map((d) => d.count) ?? [1])))
 function barWidth(count: number): string { return `${Math.round((count / maxDept.value) * 100)}%` }
+
+const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+const monthName = MONTHS[new Date().getMonth()]
+
+function occPct(n: number): string {
+  const total = data.value?.occupancy.total || 1
+  return `${(n / total) * 100}%`
+}
+
+const LEAVE_LABELS: Record<string, string> = {
+  vacation: 'Vacaciones', permission: 'Permiso', sick_leave: 'Licencia médica', maternity: 'Maternidad', other: 'Otro',
+}
+function leaveTypeLabel(type: string): string { return LEAVE_LABELS[type] ?? type }
 </script>

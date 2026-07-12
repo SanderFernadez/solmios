@@ -60,8 +60,12 @@
                   <td class="py-2 px-2 text-right text-navy font-bold">{{ money(d.grossPay) }}</td>
                   <td class="py-2 px-2 text-right text-coral">{{ money(d.totalDeductions) }}</td>
                   <td class="py-2 px-2 text-right text-teal font-black">{{ money(d.netPay) }}</td>
-                  <td class="py-2 pl-2 text-right">
-                    <button @click="toggle(d.id)" class="text-[10px] font-bold text-cyan hover:underline cursor-pointer">{{ expanded === d.id ? 'Ocultar' : 'Conceptos' }}</button>
+                  <td class="py-2 pl-2 text-right whitespace-nowrap">
+                    <div class="inline-flex items-center gap-2">
+                      <button @click="toggle(d.id)" class="text-[10px] font-bold text-cyan hover:underline cursor-pointer">{{ expanded === d.id ? 'Ocultar' : 'Conceptos' }}</button>
+                      <button @click="openPayslip(d)" :disabled="busy === d.id" class="text-[10px] font-bold text-navy hover:underline cursor-pointer disabled:opacity-50">Recibo</button>
+                      <button @click="emailPayslip(d)" :disabled="busy === d.id" class="text-[10px] font-bold text-teal hover:underline cursor-pointer disabled:opacity-50">Email</button>
+                    </div>
                   </td>
                 </tr>
                 <tr v-if="expanded === d.id" class="bg-surface/40">
@@ -101,9 +105,36 @@
 import { ref, onMounted } from 'vue'
 import { PayrollService, type PayrollRun, type PayrollRunDetail } from '@/services/Payroll.service'
 import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.service'
+import { useToast } from '@/composables/useToast'
 
 const props = defineProps<{ run: PayrollRun }>()
 defineEmits<{ close: [] }>()
+const toast = useToast()
+const busy = ref<string | null>(null)
+
+// #157 Recibo imprimible: trae el HTML con auth y lo abre en pestaña nueva (el navegador imprime a PDF).
+async function openPayslip(d: PayrollRunDetail) {
+  busy.value = d.id
+  try {
+    const html = await PayrollService.payslipHtml(props.run.id, d.id, employeeName(d.employeeId))
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Permití las ventanas emergentes para ver el recibo'); return }
+    w.document.open(); w.document.write(html); w.document.close()
+  } catch { toast.error('No se pudo generar el recibo') }
+  finally { busy.value = null }
+}
+
+// #157 Envío por email.
+async function emailPayslip(d: PayrollRunDetail) {
+  const to = prompt('Enviar el recibo a:')?.trim()
+  if (!to) return
+  busy.value = d.id
+  try {
+    await PayrollService.emailPayslip(props.run.id, d.id, to, employeeName(d.employeeId))
+    toast.success(`Recibo enviado a ${to}`)
+  } catch (e) { toast.error(e instanceof Error ? e.message : 'No se pudo enviar el recibo') }
+  finally { busy.value = null }
+}
 
 const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
 

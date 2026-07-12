@@ -9,12 +9,17 @@ import { registerEmpleadosModels } from './model'
 import { EmpleadosService } from './service'
 import { EmpleadosController } from './controller'
 import { DashboardUseCase } from './usecases/dashboard'
+import { LeaveConfigUseCase } from './usecases/leave-config'
+import { AppraisalConfigUseCase } from './usecases/appraisal-config'
+import { HrCatalogUseCase } from './usecases/hr-catalog'
 
 /** Un documento del expediente (PDF/imagen) en base64: 10 MB de sobra. */
 const DOCUMENT_UPLOAD_LIMIT = 10 * 1024 * 1024
 import type {
   DepartmentDTO, EmployeeProfileDTO, ContractDTO,
   DocumentDTO, LeaveRequestDTO, PerformanceReviewDTO,
+  LeaveTypeDTO, LeaveAllocationDTO, PublicHolidayDTO, AppraisalTemplateDTO,
+  JobPositionDTO, ContractTypeDTO, WorkLocationDTO,
 } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
@@ -49,14 +54,22 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
         'createContract', 'listContracts', 'getContract', 'terminateContract',
         'createDocument', 'listDocuments', 'getDocument', 'deleteDocument',
         'createLeaveRequest', 'listLeaveRequests', 'approveLeaveRequest', 'rejectLeaveRequest',
-        'createReview', 'listReviews', 'getReview', 'completeReview',
+        'createReview', 'listReviews', 'getReview', 'updateReview', 'completeReview',
+        'listAppraisalTemplates', 'createAppraisalTemplate', 'updateAppraisalTemplate', 'deleteAppraisalTemplate',
+        'listJobPositions', 'createJobPosition', 'updateJobPosition', 'deleteJobPosition',
+        'listContractTypes', 'createContractType', 'deleteContractType',
+        'listWorkLocations', 'createWorkLocation', 'deleteWorkLocation',
         'getExpiringDocuments', 'getOrgChart',
+        'listLeaveTypes', 'createLeaveType', 'updateLeaveType', 'deleteLeaveType',
+        'listLeaveAllocations', 'createLeaveAllocation', 'deleteLeaveAllocation',
+        'listPublicHolidays', 'createPublicHoliday', 'deletePublicHoliday',
+        'getLeaveBalance', 'getLeaveCalendar',
       ],
       events: [
         'onEmployeeCreated', 'onEmployeeDeactivated',
         'onDocumentExpiring', 'onLeaveRequestPending',
       ],
-      tables: ['departments', 'employee_profiles', 'employee_contracts', 'employee_documents', 'leave_requests', 'performance_reviews'],
+      tables: ['departments', 'employee_profiles', 'employee_contracts', 'employee_documents', 'leave_requests', 'performance_reviews', 'leave_types', 'leave_allocations', 'public_holidays', 'appraisal_templates', 'job_positions', 'contract_types', 'work_locations'],
       dependencies: [],
       rules: ['No importar de otros módulos'],
     },
@@ -71,16 +84,27 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       const documentRepo = new OrmRepository<DocumentDTO>(orm, 'EmployeeDocument')
       const leaveRepo = new OrmRepository<LeaveRequestDTO>(orm, 'LeaveRequest')
       const reviewRepo = new OrmRepository<PerformanceReviewDTO>(orm, 'PerformanceReview')
+      const leaveTypeRepo = new OrmRepository<LeaveTypeDTO>(orm, 'LeaveType')
+      const allocationRepo = new OrmRepository<LeaveAllocationDTO>(orm, 'LeaveAllocation')
+      const holidayRepo = new OrmRepository<PublicHolidayDTO>(orm, 'PublicHoliday')
+      const templateRepo = new OrmRepository<AppraisalTemplateDTO>(orm, 'AppraisalTemplate')
+      const jobRepo = new OrmRepository<JobPositionDTO>(orm, 'JobPosition')
+      const contractTypeRepo = new OrmRepository<ContractTypeDTO>(orm, 'ContractType')
+      const locationRepo = new OrmRepository<WorkLocationDTO>(orm, 'WorkLocation')
 
       const log = logger.child('empleados')
       const userRepo = new OrmRepository<any>(orm, 'Users')
+      const leaveConfig = new LeaveConfigUseCase(leaveTypeRepo, allocationRepo, holidayRepo, leaveRepo, log)
+      const appraisalConfig = new AppraisalConfigUseCase(templateRepo, log)
+      const hrCatalog = new HrCatalogUseCase(jobRepo, contractTypeRepo, locationRepo, log)
       const service = new EmpleadosService(
         departmentRepo, profileRepo, contractRepo,
         documentRepo, leaveRepo, reviewRepo,
         log, cache, userRepo, auth,
+        leaveConfig,
       )
-      const dashboard = new DashboardUseCase(profileRepo, contractRepo, documentRepo, leaveRepo, reviewRepo, departmentRepo, log)
-      const controller = new EmpleadosController(service, log, dashboard, opts.storage)
+      const dashboard = new DashboardUseCase(profileRepo, contractRepo, documentRepo, leaveRepo, reviewRepo, departmentRepo, log, userRepo)
+      const controller = new EmpleadosController(service, log, dashboard, opts.storage, leaveConfig, appraisalConfig, hrCatalog)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
@@ -123,11 +147,49 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       router.post('/api/leave-requests/:id/approve', guard('users', 'edit'), (req) => controller.approveLeaveRequest(req))
       router.post('/api/leave-requests/:id/reject', guard('users', 'edit'), (req) => controller.rejectLeaveRequest(req))
 
+      // ─── Time Off: tipos, asignaciones, festivos, saldo, calendario ──
+      router.get('/api/leave-types', guard('users', 'view'), (req) => controller.listLeaveTypes(req))
+      router.post('/api/leave-types', guard('users', 'create'), (req) => controller.createLeaveType(req))
+      router.put('/api/leave-types/:id', guard('users', 'edit'), (req) => controller.updateLeaveType(req))
+      router.delete('/api/leave-types/:id', guard('users', 'delete'), (req) => controller.deleteLeaveType(req))
+
+      router.get('/api/leave-allocations', guard('users', 'view'), (req) => controller.listLeaveAllocations(req))
+      router.post('/api/leave-allocations', guard('users', 'create'), (req) => controller.createLeaveAllocation(req))
+      router.delete('/api/leave-allocations/:id', guard('users', 'delete'), (req) => controller.deleteLeaveAllocation(req))
+
+      router.get('/api/public-holidays', guard('users', 'view'), (req) => controller.listPublicHolidays(req))
+      router.post('/api/public-holidays', guard('users', 'create'), (req) => controller.createPublicHoliday(req))
+      router.delete('/api/public-holidays/:id', guard('users', 'delete'), (req) => controller.deletePublicHoliday(req))
+
+      router.get('/api/leave-balance/:employeeId', guard('users', 'view'), (req) => controller.getLeaveBalance(req))
+      router.get('/api/leave-calendar', guard('users', 'view'), (req) => controller.getLeaveCalendar(req))
+
       // ─── Performance Reviews ──────────────────────────
       router.post('/api/performance-reviews', guard('users', 'create'), (req) => controller.createReview(req))
       router.get('/api/performance-reviews', guard('users', 'view'), (req) => controller.listReviews(req))
       router.get('/api/performance-reviews/:id', guard('users', 'view'), (req) => controller.getReview(req))
+      router.put('/api/performance-reviews/:id', guard('users', 'edit'), (req) => controller.updateReview(req))
       router.post('/api/performance-reviews/:id/complete', guard('users', 'edit'), (req) => controller.completeReview(req))
+
+      // ─── Appraisal Templates (formularios de evaluación) ──
+      router.get('/api/appraisal-templates', guard('users', 'view'), (req) => controller.listAppraisalTemplates(req))
+      router.post('/api/appraisal-templates', guard('users', 'create'), (req) => controller.createAppraisalTemplate(req))
+      router.put('/api/appraisal-templates/:id', guard('users', 'edit'), (req) => controller.updateAppraisalTemplate(req))
+      router.delete('/api/appraisal-templates/:id', guard('users', 'delete'), (req) => controller.deleteAppraisalTemplate(req))
+
+      // ─── Catálogos: puestos, tipos de contrato, ubicaciones ──
+      router.get('/api/job-positions', guard('users', 'view'), (req) => controller.listJobPositions(req))
+      router.post('/api/job-positions', guard('users', 'create'), (req) => controller.createJobPosition(req))
+      router.put('/api/job-positions/:id', guard('users', 'edit'), (req) => controller.updateJobPosition(req))
+      router.delete('/api/job-positions/:id', guard('users', 'delete'), (req) => controller.deleteJobPosition(req))
+
+      router.get('/api/contract-types', guard('users', 'view'), (req) => controller.listContractTypes(req))
+      router.post('/api/contract-types', guard('users', 'create'), (req) => controller.createContractType(req))
+      router.delete('/api/contract-types/:id', guard('users', 'delete'), (req) => controller.deleteContractType(req))
+
+      router.get('/api/work-locations', guard('users', 'view'), (req) => controller.listWorkLocations(req))
+      router.post('/api/work-locations', guard('users', 'create'), (req) => controller.createWorkLocation(req))
+      router.delete('/api/work-locations/:id', guard('users', 'delete'), (req) => controller.deleteWorkLocation(req))
 
       // ─── Org Chart ────────────────────────────────────
       router.get('/api/org-chart', guard('users', 'view'), (req) => controller.getOrgChart(req))
@@ -135,7 +197,7 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       // ─── Dashboard RRHH (resumen consolidado de talento) ──
       router.get('/api/hr-dashboard', guard('users', 'view'), (req) => controller.getDashboard(req))
 
-      log.info('Módulo empleados listo — 6 tablas, 27 endpoints')
+      log.info('Módulo empleados listo — 9 tablas, Time Off Odoo (tipos/asignaciones/festivos/saldo/calendario)')
       return service
     },
   })

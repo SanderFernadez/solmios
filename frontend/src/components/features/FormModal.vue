@@ -16,20 +16,20 @@
               {{ f.label }}<span v-if="f.required" class="text-coral"> *</span>
             </label>
 
-            <select v-if="f.type === 'select'" v-model="values[f.key]" @change="clearError(f.key)"
-              class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none cursor-pointer"
+            <select v-if="f.type === 'select'" v-model="values[f.key]" @change="clearError(f.key)" :disabled="readOnly"
+              class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none cursor-pointer disabled:bg-surface disabled:cursor-default"
               :class="borderClass(f.key)">
               <option value="" disabled>Seleccionar…</option>
               <option v-for="o in f.options || []" :key="o.value" :value="o.value">{{ o.label }}</option>
             </select>
 
-            <textarea v-else-if="f.type === 'textarea'" v-model="values[f.key]" :placeholder="f.placeholder"
+            <textarea v-else-if="f.type === 'textarea'" v-model="values[f.key]" :placeholder="f.placeholder" :disabled="readOnly"
               :maxlength="f.maxLength" @input="clearError(f.key)"
-              rows="3" class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none" :class="borderClass(f.key)"></textarea>
+              rows="3" class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none disabled:bg-surface" :class="borderClass(f.key)"></textarea>
 
-            <input v-else-if="f.type === 'number'" v-model.number="values[f.key]" type="number" :min="f.min" :max="f.max" :placeholder="f.placeholder"
+            <input v-else-if="f.type === 'number'" v-model.number="values[f.key]" type="number" :min="f.min" :max="f.max" :placeholder="f.placeholder" :disabled="readOnly"
               @input="clearError(f.key)"
-              class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none" :class="borderClass(f.key)" />
+              class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none disabled:bg-surface" :class="borderClass(f.key)" />
 
             <div v-else-if="f.type === 'file'">
               <input type="file" :accept="f.accept" @change="onFile($event, f.key)"
@@ -38,10 +38,10 @@
               <p v-if="values[f.key]" class="text-[10px] font-bold text-teal mt-1">✓ {{ values[f.key + 'Name'] || 'archivo cargado' }}</p>
             </div>
 
-            <input v-else :type="f.type || 'text'" v-model="values[f.key]" :placeholder="f.placeholder"
+            <input v-else :type="f.type || 'text'" v-model="values[f.key]" :placeholder="f.placeholder" :disabled="readOnly"
               :maxlength="f.maxLength"
               @input="clearError(f.key)" @blur="onBlur(f)"
-              class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none" :class="borderClass(f.key)" />
+              class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none disabled:bg-surface" :class="borderClass(f.key)" />
 
             <p v-if="fieldErrors[f.key]" class="text-[10px] font-bold text-coral mt-1">{{ fieldErrors[f.key] }}</p>
             <p v-else-if="f.hint" class="text-[10px] text-text-muted mt-1">{{ f.hint }}</p>
@@ -51,8 +51,8 @@
         </div>
 
         <div class="flex gap-3 p-6 pt-4 shrink-0">
-          <button @click="$emit('close')" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-          <button @click="submit" :disabled="loading" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
+          <button @click="$emit('close')" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">{{ readOnly ? 'Cerrar' : 'Cancelar' }}</button>
+          <button v-if="!readOnly" @click="submit" :disabled="loading" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
             {{ loading ? 'Guardando…' : (submitLabel || 'Guardar') }}
           </button>
         </div>
@@ -85,7 +85,7 @@ export interface FormField {
   full?: boolean
 }
 
-const props = defineProps<{ title: string; fields: FormField[]; submitLabel?: string; loading?: boolean }>()
+const props = defineProps<{ title: string; fields: FormField[]; submitLabel?: string; loading?: boolean; readOnly?: boolean }>()
 const emit = defineEmits<{ close: []; submit: [values: Record<string, string | number>] }>()
 
 const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
@@ -144,6 +144,12 @@ function validateField(f: FormField, raw: string | number): string {
   }
   if (f.minLength && str.length < f.minLength) return `Mínimo ${f.minLength} caracteres`
   if (f.maxLength && str.length > f.maxLength) return `Máximo ${f.maxLength} caracteres`
+  if (f.type === 'number') {
+    const n = Number(raw)
+    if (Number.isNaN(n)) return 'Debe ser un número'
+    if (f.min != null && n < f.min) return `Mínimo ${f.min}`
+    if (f.max != null && n > f.max) return `Máximo ${f.max}`
+  }
   return ''
 }
 

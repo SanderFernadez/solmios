@@ -3,6 +3,7 @@ import type { User, UserRole } from '@/types'
 
 interface LoginResponse {
   token: string
+  refreshToken: string
   user: {
     id: string
     name: string
@@ -39,9 +40,9 @@ function mapUser(raw: LoginResponse['user'] | MeResponse): User {
 }
 
 export const AuthService = {
-  async login(email: string, password: string): Promise<{ token: string; user: User }> {
+  async login(email: string, password: string): Promise<{ token: string; refreshToken: string; user: User }> {
     const data = await http.post<LoginResponse>('/auth/login', { email, password })
-    return { token: data.token, user: mapUser(data.user) }
+    return { token: data.token, refreshToken: data.refreshToken, user: mapUser(data.user) }
   },
 
   async me(): Promise<User> {
@@ -71,8 +72,12 @@ export const AuthService = {
     return data.data || []
   },
 
-  async switchHotel(hotelId: string): Promise<{ token: string; user: LoginResponse['user'] }> {
-    const data = await http.post<{ token: string; user: LoginResponse['user'] }>(`/auth/switch-hotel/${hotelId}`)
+  async switchHotel(hotelId: string): Promise<{ token: string; refreshToken: string; user: LoginResponse['user'] }> {
+    const data = await http.post<{ token: string; refreshToken: string; user: LoginResponse['user'] }>(`/auth/switch-hotel/${hotelId}`)
     return data
+  },
+
+  async refresh(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
+    return http.post<{ token: string; refreshToken: string }>('/auth/refresh', { refreshToken })
   },
 }

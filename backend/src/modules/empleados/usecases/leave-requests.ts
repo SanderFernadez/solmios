@@ -5,6 +5,9 @@ import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { LeaveRequestDTO, CreateLeaveRequestDTO } from '../types'
 import type { SimpleUser } from './ownership'
 import { validateEmployeeBelongsToHotel } from './validate-employee'
+import { countLeaveDays, type LeaveConfigUseCase } from './leave-config'
+
+const MS_PER_DAY = 86_400_000
 
 export class LeaveRequestUseCase {
   constructor(
@@ -12,21 +15,26 @@ export class LeaveRequestUseCase {
     private readonly profileRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly auth?: Auth,
+    private readonly config?: LeaveConfigUseCase,
   ) {}
 
   async create(dto: CreateLeaveRequestDTO): Promise<LeaveRequestDTO> {
-    if (dto.days <= 0) throw new ValidationError('Days must be positive')
+    if (!dto.startDate || !dto.endDate) throw new ValidationError('startDate y endDate son obligatorios')
+    if (dto.endDate < dto.startDate) throw new ValidationError('endDate no puede ser anterior a startDate')
     await validateEmployeeBelongsToHotel(this.profileRepo, dto.employeeId, dto.hotelId)
-    // Validate days against date range
-    if (dto.startDate && dto.endDate) {
-      const start = new Date(dto.startDate)
-      const end = new Date(dto.endDate)
-      const diffDays = Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1
-      if (dto.days !== diffDays) {
-        throw new ValidationError(`Days (${dto.days}) doesn't match date range (${diffDays} days)`)
-      }
+
+    // Días AUTO desde el rango, descontando festivos (#188). El `days` del cliente se ignora — el
+    // servidor es la fuente de verdad, así no hay desajuste entre lo que el usuario tipeó y lo real.
+    let days: number
+    if (this.config) {
+      const { exact, recurring } = await this.config.holidaySets(dto.hotelId)
+      days = countLeaveDays(dto.startDate, dto.endDate, exact, recurring)
+    } else {
+      days = Math.ceil((new Date(dto.endDate).getTime() - new Date(dto.startDate).getTime()) / MS_PER_DAY) + 1
     }
-    return this.repo.create({ ...dto, status: 'pending' } as any)
+    if (!(days > 0)) throw new ValidationError('El rango de fechas no genera días hábiles (¿todo festivo?)')
+
+    return this.repo.create({ ...dto, days, status: 'pending' } as any)
   }
 
   async getById(id: string, user?: SimpleUser): Promise<LeaveRequestDTO> {

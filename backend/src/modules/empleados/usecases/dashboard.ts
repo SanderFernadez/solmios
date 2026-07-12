@@ -1,8 +1,11 @@
 // empleados/usecases/dashboard.ts — Resumen consolidado de RRHH (talento).
 //
 // Agrega SOLO desde tablas que el módulo empleados posee (perfiles, contratos, documentos, ausencias,
-// evaluaciones, departamentos): sin cross-module. Todo filtra por hotelId (multi-tenant). Datasets
-// chicos → se traen y se agregan en memoria.
+// evaluaciones, departamentos) + nombres de la tabla users (join de lectura): sin cross-module. Todo
+// filtra por hotelId (multi-tenant). Datasets chicos → se traen y se agregan en memoria.
+//
+// El resumen de asistencia EN VIVO (presente/ausente hoy) NO vive acá: requiere el módulo attendance
+// y se cablea por connector en su propia ola. Acá la "ocupación" se deriva de las ausencias aprobadas.
 
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type {
@@ -18,9 +21,16 @@ export interface HrDashboard {
   leaves: { pending: number; upcomingApproved: number }
   reviews: { pending: number; avgScore: number | null }
   newHiresThisMonth: number
+  // ── Widgets Odoo + pedidos del cliente ──
+  birthdaysThisMonth: { employeeId: string; name: string; date: string; day: number }[]   // #196
+  onLeaveToday: { employeeId: string; name: string; type: string; startDate: string; endDate: string }[] // #197
+  topPerformers: { employeeId: string; name: string; avgScore: number; reviews: number }[] // #202
+  occupancy: { total: number; available: number; onLeave: number; inactive: number }        // #200
+  pending: { contractsExpiring: number; documentsExpiring: number; leavesPending: number; reviewsPending: number } // #205
 }
 
 const MS_PER_DAY = 86_400_000
+const TOP_PERFORMERS = 5
 const day = (d: Date): string => d.toISOString().slice(0, 10)
 const truthy = (v: unknown): boolean => v === 1 || v === true || v === '1'
 
@@ -33,6 +43,7 @@ export class DashboardUseCase {
     private readonly reviewRepo: RepositoryAdapter<PerformanceReviewDTO>,
     private readonly departmentRepo: RepositoryAdapter<DepartmentDTO>,
     private readonly logger: Logger,
+    private readonly userRepo?: RepositoryAdapter<{ id: string; name?: string; email?: string }>,
   ) {}
 
   async get(hotelId: string): Promise<HrDashboard> {
@@ -40,6 +51,7 @@ export class DashboardUseCase {
     const today = day(now)
     const in30 = day(new Date(now.getTime() + 30 * MS_PER_DAY))
     const monthStart = today.slice(0, 8) + '01'
+    const currentMonth = today.slice(5, 7)
 
     const [profiles, contracts, documents, leaves, reviews, departments] = await Promise.all([
       this.profileRepo.findMany({ hotelId }),
@@ -51,6 +63,20 @@ export class DashboardUseCase {
     ])
 
     const active = profiles.filter((p) => truthy((p as any).active))
+
+    // ── Nombres: el userId no sirve en la UI. Se traen los users del hotel en un query y se mapean.
+    const nameByProfileId = new Map<string, string>()
+    if (this.userRepo) {
+      try {
+        const users = await this.userRepo.findMany({ hotelId })
+        const userName = new Map(users.map((u) => [u.id, u.name || u.email || '']))
+        for (const p of profiles) {
+          nameByProfileId.set((p as any).id, userName.get((p as any).userId) || (p as any).position || 'Empleado')
+        }
+      } catch { /* si falla, se cae al cargo/id abajo */ }
+    }
+    const nameOf = (profileId: string, fallback = 'Empleado'): string =>
+      nameByProfileId.get(profileId) || fallback
 
     const deptName = new Map(departments.map((d) => [d.id, d.name]))
     const deptCount = new Map<string, number>()
@@ -87,6 +113,56 @@ export class DashboardUseCase {
 
     const newHiresThisMonth = active.filter((p) => String((p as any).hireDate || '') >= monthStart).length
 
+    // ── #196 Cumpleaños del mes: perfiles activos cuyo mes de nacimiento es el corriente, ordenados por día.
+    const birthdaysThisMonth = active
+      .filter((p) => String((p as any).birthDate || '').slice(5, 7) === currentMonth)
+      .map((p) => {
+        const date = String((p as any).birthDate)
+        return { employeeId: (p as any).id, name: nameOf((p as any).id, (p as any).position || 'Empleado'), date, day: Number(date.slice(8, 10)) }
+      })
+      .sort((a, b) => a.day - b.day)
+
+    // ── #197 Colaboradores de ausencia HOY: licencias aprobadas que abarcan la fecha de hoy.
+    const onLeaveToday = leaves
+      .filter((l) => (l as any).status === 'approved'
+        && String((l as any).startDate || '') <= today
+        && String((l as any).endDate || '') >= today)
+      .map((l) => ({
+        employeeId: (l as any).employeeId,
+        name: nameOf((l as any).employeeId),
+        type: (l as any).type,
+        startDate: (l as any).startDate,
+        endDate: (l as any).endDate,
+      }))
+
+    // ── #202 Top desempeño: promedio por empleado sobre evaluaciones COMPLETADAS con score.
+    const scoreAgg = new Map<string, { sum: number; count: number }>()
+    for (const r of completedReviews) {
+      const id = (r as any).employeeId
+      const agg = scoreAgg.get(id) ?? { sum: 0, count: 0 }
+      agg.sum += Number((r as any).score); agg.count += 1
+      scoreAgg.set(id, agg)
+    }
+    const topPerformers = [...scoreAgg.entries()]
+      .map(([employeeId, { sum, count }]) => ({
+        employeeId,
+        name: nameOf(employeeId),
+        avgScore: Math.round((sum / count) * 10) / 10,
+        reviews: count,
+      }))
+      .sort((a, b) => b.avgScore - a.avgScore || b.reviews - a.reviews)
+      .slice(0, TOP_PERFORMERS)
+
+    // ── #200 Ocupación del personal (3 estados): activos disponibles vs de licencia hoy vs inactivos.
+    const onLeaveIds = new Set(onLeaveToday.map((l) => l.employeeId))
+    const onLeaveCount = active.filter((p) => onLeaveIds.has((p as any).id)).length
+    const occupancy = {
+      total: profiles.length,
+      available: active.length - onLeaveCount,
+      onLeave: onLeaveCount,
+      inactive: profiles.length - active.length,
+    }
+
     return {
       headcount: active.length,
       byDepartment,
@@ -95,6 +171,16 @@ export class DashboardUseCase {
       leaves: { pending: pendingLeaves, upcomingApproved },
       reviews: { pending: pendingReviews, avgScore },
       newHiresThisMonth,
+      birthdaysThisMonth,
+      onLeaveToday,
+      topPerformers,
+      occupancy,
+      pending: {
+        contractsExpiring: expiringContracts.length,
+        documentsExpiring,
+        leavesPending: pendingLeaves,
+        reviewsPending: pendingReviews,
+      },
     }
   }
 }

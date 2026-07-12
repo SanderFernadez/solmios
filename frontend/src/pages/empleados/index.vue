@@ -261,9 +261,19 @@
                 <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="r.status === 'completed' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">{{ r.status === 'completed' ? 'Completada' : 'Borrador' }}</span>
               </td>
               <td class="px-4 py-2.5 text-right whitespace-nowrap">
-                <button v-if="r.status === 'draft'" @click="completeReview(r)" class="inline-flex items-center gap-1 px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 cursor-pointer">
-                  <span class="w-3 h-3 shrink-0" v-html="ICON_CHECK"></span>Completar
-                </button>
+                <div class="inline-flex items-center gap-1.5">
+                  <template v-if="r.status === 'draft'">
+                    <button @click="openEditReview(r)" class="inline-flex items-center gap-1 px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 cursor-pointer">
+                      <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Editar
+                    </button>
+                    <button @click="completeReview(r)" class="inline-flex items-center gap-1 px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 cursor-pointer">
+                      <span class="w-3 h-3 shrink-0" v-html="ICON_CHECK"></span>Completar
+                    </button>
+                  </template>
+                  <button v-else @click="openViewReview(r)" class="inline-flex items-center gap-1 px-2 py-1 bg-surface text-text-secondary rounded-lg text-[10px] font-bold hover:bg-border/40 cursor-pointer">
+                    <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Ver
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -281,6 +291,7 @@
       :fields="formModal.fields"
       :submit-label="formModal.submitLabel"
       :loading="savingForm"
+      :read-only="formModal.readOnly"
       @close="formModal = null"
       @submit="submitForm"
     />
@@ -289,7 +300,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert } from '@/services/Empleados.service'
+import { useRouter } from 'vue-router'
+import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert, type LeaveType, type JobPosition, type ContractType } from '@/services/Empleados.service'
 import { TeamService } from '@/services/Team.service'
 import { RolesService, type Role } from '@/services/Roles.service'
 import { useAuthStore } from '@/stores/auth.store'
@@ -310,6 +322,7 @@ const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" s
 const ICON_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"/></svg>'
 
 const auth = useAuthStore()
+const router = useRouter()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 const toast = useToast()
 const activeTab = ref('profiles')
@@ -319,7 +332,7 @@ const tabs = [
   { value: 'profiles', label: 'Expedientes', icon: ICON_USERS },
   { value: 'contracts', label: 'Contratos', icon: ICON_DOCUMENT },
   { value: 'documents', label: 'Documentos', icon: ICON_DOCUMENT },
-  { value: 'leaves', label: 'Vacaciones', icon: ICON_BEACH },
+  { value: 'leaves', label: 'Vacaciones y permisos', icon: ICON_BEACH },
   { value: 'reviews', label: 'Evaluaciones', icon: ICON_STAR },
 ]
 
@@ -327,6 +340,9 @@ const profiles = ref<EmployeeProfile[]>([])
 const contracts = ref<Contract[]>([])
 const documents = ref<EmployeeDocument[]>([])
 const leaveRequests = ref<LeaveRequest[]>([])
+const leaveTypes = ref<LeaveType[]>([])
+const jobPositions = ref<JobPosition[]>([])
+const contractTypes = ref<ContractType[]>([])
 const reviews = ref<PerformanceReview[]>([])
 const departments = ref<Department[]>([])
 const documentAlerts = ref<DocumentExpiryAlert[]>([])
@@ -357,7 +373,9 @@ function getEmployeeName(userId: string): string {
 }
 
 function leaveTypeLabel(type: string) {
-  return { vacation: 'Vacaciones', permission: 'Permiso', sick_leave: 'Enfermedad', maternity: 'Maternidad', other: 'Otro' }[type] ?? type
+  const configured = leaveTypes.value.find((t) => t.code === type)
+  if (configured) return configured.name
+  return { vacation: 'Vacaciones', permission: 'Permiso', sick_leave: 'Licencia médica', maternity: 'Maternidad', other: 'Otro' }[type] ?? type
 }
 
 function leaveStatusLabel(status: string) {
@@ -401,6 +419,9 @@ async function loadData() {
 
     try { departments.value = await EmpleadosService.listDepartments() } catch { /* optional */ }
     try { customRoles.value = await RolesService.list() } catch { /* optional */ }
+    try { leaveTypes.value = await EmpleadosService.listLeaveTypes() } catch { /* optional */ }
+    try { jobPositions.value = await EmpleadosService.listJobPositions() } catch { /* optional */ }
+    try { contractTypes.value = await EmpleadosService.listContractTypes() } catch { /* optional */ }
   } catch { toast.error('Error al cargar datos') }
   finally { loading.value = false }
 }
@@ -409,7 +430,7 @@ onMounted(loadData)
 
 // ─── Actions ────────────────────────────────────────────
 
-function openOrgChart() { toast.info('Organigrama — use /api/org-chart para renderizar') }
+function openOrgChart() { router.push('/panel/rrhh/organigrama') }
 
 const departmentOptions = () => departments.value.map((d) => ({ value: d.id, label: d.name }))
 
@@ -458,12 +479,27 @@ function openProfile(emp: EmployeeProfile) {
     title: `Editar: ${emp.userName || emp.position || 'empleado'}`, submitLabel: 'Guardar',
     fields: [
       { key: 'departmentId', label: 'Departamento', type: 'select', default: emp.departmentId || '', options: departmentOptions() },
+      { key: 'jobPositionId', label: 'Puesto', type: 'select', default: emp.jobPositionId || '', options: jobPositionOptions() },
       { key: 'salary', label: 'Salario', type: 'number', min: 0, default: emp.salary || 0 },
       { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: (emp.hireDate || '').slice(0, 10) },
+      { key: 'birthDate', label: 'Fecha de nacimiento', type: 'date', default: (emp.birthDate || '').slice(0, 10) },
+      { key: 'nationality', label: 'Nacionalidad', maxLength: 60, default: emp.nationality || '' },
+      { key: 'maritalStatus', label: 'Estado civil', type: 'select', default: emp.maritalStatus || '', options: MARITAL_OPTIONS },
+      { key: 'gender', label: 'Género', type: 'select', default: emp.gender || '', options: GENDER_OPTIONS },
+      { key: 'education', label: 'Educación', maxLength: 100, default: emp.education || '' },
     ],
     onSubmit: (v) => EmpleadosService.updateProfile(emp.id, v),
   }
 }
+
+const jobPositionOptions = () => jobPositions.value.map((j) => ({ value: j.id, label: j.name }))
+const MARITAL_OPTIONS = [
+  { value: 'single', label: 'Soltero/a' }, { value: 'married', label: 'Casado/a' },
+  { value: 'divorced', label: 'Divorciado/a' }, { value: 'widowed', label: 'Viudo/a' },
+]
+const GENDER_OPTIONS = [
+  { value: 'female', label: 'Femenino' }, { value: 'male', label: 'Masculino' }, { value: 'other', label: 'Otro' },
+]
 
 async function deactivateEmployee(emp: EmployeeProfile) {
   if (!confirm(`¿Desactivar a ${emp.userName || emp.position}?`)) return
@@ -488,10 +524,13 @@ async function approveLeave(l: LeaveRequest) {
   catch { toast.error('Error al aprobar') }
 }
 
-async function rejectLeave(l: LeaveRequest) {
-  const reason = prompt('Motivo de rechazo (opcional):')
-  try { await EmpleadosService.rejectLeaveRequest(l.id, reason || undefined); toast.success('Solicitud rechazada'); loadData() }
-  catch { toast.error('Error al rechazar') }
+function rejectLeave(l: LeaveRequest) {
+  // Modal con motivo OBLIGATORIO (#190/#191): no se rechaza sin justificar.
+  formModal.value = {
+    title: 'Rechazar solicitud', submitLabel: 'Rechazar',
+    fields: [{ key: 'reason', label: 'Motivo del rechazo', type: 'textarea', required: true, placeholder: 'Explicá por qué se rechaza…' }],
+    onSubmit: (v) => EmpleadosService.rejectLeaveRequest(l.id, String(v.reason ?? '')),
+  }
 }
 
 async function completeReview(r: PerformanceReview) {
@@ -501,10 +540,13 @@ async function completeReview(r: PerformanceReview) {
 
 // ─── Formularios (modal genérico dirigido por estado) ───
 type FormValues = Record<string, string | number>
-const formModal = ref<{ title: string; submitLabel: string; fields: FormField[]; onSubmit: (v: FormValues) => Promise<unknown> } | null>(null)
+const formModal = ref<{ title: string; submitLabel: string; fields: FormField[]; onSubmit?: (v: FormValues) => Promise<unknown>; readOnly?: boolean } | null>(null)
 const savingForm = ref(false)
 
 const employeeOptions = () => profiles.value.map((p) => ({ value: p.id, label: p.userName || p.position || p.id }))
+const contractTypeOptions = () => contractTypes.value.length
+  ? contractTypes.value.map((t) => ({ value: t.code, label: t.name }))
+  : [{ value: 'full_time', label: 'Tiempo completo' }, { value: 'part_time', label: 'Medio tiempo' }]
 /** Monedas para elegir en un contrato. DOP primero (salario local). */
 const CURRENCIES = [
   { value: 'DOP', label: 'DOP — Peso Dominicano' },
@@ -520,10 +562,7 @@ function openNewContract() {
     title: 'Nuevo Contrato', submitLabel: 'Crear Contrato',
     fields: [
       { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions() },
-      { key: 'type', label: 'Tipo', type: 'select', required: true, default: 'full_time', options: [
-        { value: 'full_time', label: 'Tiempo completo' }, { value: 'part_time', label: 'Medio tiempo' },
-        { value: 'temporary', label: 'Temporal' }, { value: 'contractor', label: 'Por servicios' },
-      ] },
+      { key: 'type', label: 'Tipo', type: 'select', required: true, default: contractTypes.value[0]?.code ?? 'full_time', options: contractTypeOptions() },
       { key: 'startDate', label: 'Fecha inicio', type: 'date', required: true },
       { key: 'endDate', label: 'Fecha fin (opcional)', type: 'date' },
       { key: 'salary', label: 'Salario', type: 'number', required: true, min: 0 },
@@ -554,41 +593,75 @@ function openNewDocument() {
   }
 }
 
+function leaveTypeOptions() {
+  const opts = leaveTypes.value.map((t) => ({ value: t.code, label: t.name }))
+  return opts.length ? opts : [
+    { value: 'vacation', label: 'Vacaciones' }, { value: 'permission', label: 'Permiso' },
+    { value: 'sick_leave', label: 'Licencia médica' }, { value: 'maternity', label: 'Maternidad' }, { value: 'other', label: 'Otro' },
+  ]
+}
+
 function openNewLeave() {
   formModal.value = {
     title: 'Nueva Solicitud de Ausencia', submitLabel: 'Crear Solicitud',
+    // Sin campo "Días": el servidor lo calcula desde el rango, descontando festivos (#188).
     fields: [
       { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions() },
-      { key: 'type', label: 'Tipo', type: 'select', required: true, default: 'vacation', options: [
-        { value: 'vacation', label: 'Vacaciones' }, { value: 'permission', label: 'Permiso' },
-        { value: 'sick_leave', label: 'Enfermedad' }, { value: 'maternity', label: 'Maternidad' }, { value: 'other', label: 'Otro' },
-      ] },
+      { key: 'type', label: 'Tipo', type: 'select', required: true, default: 'vacation', options: leaveTypeOptions() },
       { key: 'startDate', label: 'Desde', type: 'date', required: true },
       { key: 'endDate', label: 'Hasta', type: 'date', required: true },
-      { key: 'days', label: 'Días', type: 'number', required: true, min: 1, default: 1 },
       { key: 'reason', label: 'Motivo', type: 'textarea' },
     ],
-    onSubmit: (v) => EmpleadosService.createLeaveRequest(v),
+    onSubmit: (v) => {
+      const leaveTypeId = leaveTypes.value.find((t) => t.code === v.type)?.id
+      return EmpleadosService.createLeaveRequest({ ...v, leaveTypeId })
+    },
   }
+}
+
+function reviewFields(r?: PerformanceReview): FormField[] {
+  return [
+    { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions(), default: r?.employeeId },
+    { key: 'reviewDate', label: 'Fecha', type: 'date', required: true, default: r?.reviewDate ?? new Date().toISOString().slice(0, 10) },
+    { key: 'period', label: 'Período', placeholder: '2026-Q3', default: r?.period },
+    // Puntaje 1-10 con tope validado en el modal y en el backend (#192).
+    { key: 'score', label: 'Puntaje del evaluador (1-10)', type: 'number', min: 1, max: 10, default: r?.score ?? undefined },
+    { key: 'strengths', label: 'Fortalezas', type: 'textarea', default: r?.strengths },
+    { key: 'improvements', label: 'A mejorar', type: 'textarea', default: r?.improvements },
+    { key: 'goals', label: 'Objetivos del próximo período', type: 'textarea', default: r?.goals },
+    { key: 'selfScore', label: 'Auto-evaluación del empleado (1-10)', type: 'number', min: 1, max: 10, default: r?.selfScore ?? undefined },
+    { key: 'selfComments', label: 'Comentarios del empleado', type: 'textarea', default: r?.selfComments },
+  ]
 }
 
 function openNewReview() {
   formModal.value = {
     title: 'Nueva Evaluación', submitLabel: 'Crear Evaluación',
-    fields: [
-      { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions() },
-      { key: 'reviewDate', label: 'Fecha', type: 'date', required: true, default: new Date().toISOString().slice(0, 10) },
-      { key: 'period', label: 'Período', placeholder: '2026-Q3' },
-      { key: 'score', label: 'Puntaje (1-10)', type: 'number', min: 1 },
-      { key: 'strengths', label: 'Fortalezas', type: 'textarea' },
-      { key: 'improvements', label: 'A mejorar', type: 'textarea' },
-    ],
+    fields: reviewFields(),
     onSubmit: (v) => EmpleadosService.createReview({ ...v, reviewerId: auth.user?.id ?? '' } as FormValues),
   }
 }
 
+// #193 Borrador editable
+function openEditReview(r: PerformanceReview) {
+  formModal.value = {
+    title: 'Editar Evaluación (borrador)', submitLabel: 'Guardar cambios',
+    fields: reviewFields(r),
+    onSubmit: (v) => EmpleadosService.updateReview(r.id, v),
+  }
+}
+
+// #194 Completada = solo lectura
+function openViewReview(r: PerformanceReview) {
+  formModal.value = {
+    title: 'Evaluación (solo lectura)', submitLabel: '',
+    fields: reviewFields(r),
+    readOnly: true,
+  }
+}
+
 async function submitForm(values: FormValues) {
-  if (!formModal.value) return
+  if (!formModal.value || !formModal.value.onSubmit) return
   savingForm.value = true
   try {
     await formModal.value.onSubmit(values)

@@ -26,6 +26,12 @@ export function bootstrapEmail(orm: any, logger: Logger, resolveModule: <T>(name
     facturasForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Hotels'))
   }
 
+  // Payroll: envío de recibos de nómina por email (#157) + nombre del hotel para el A4.
+  const payrollForEmail = resolveModule<{ setEmailDeps(ep: any, hr: any): void }>('payroll')
+  if (payrollForEmail && typeof payrollForEmail.setEmailDeps === 'function') {
+    payrollForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Hotels'))
+  }
+
   // Capacitación: correo de inscripción con material + link de autoconfirmación. PUBLIC_URL arma el
   // link absoluto del correo (ej: https://hotel.zx89.site); sin él, el correo va sin botón de confirmar.
   const capacitacionForEmail = resolveModule<{ setEmailDeps(es: EmailSender, ur: any, publicUrl?: string): void }>('capacitacion')

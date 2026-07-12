@@ -18,8 +18,14 @@ export interface EmployeeProfile {
   hotelId: string
   departmentId: string | null
   position: string
+  jobPositionId: string | null
   managerId: string | null
   hireDate: string
+  birthDate: string
+  nationality: string
+  maritalStatus: string
+  gender: string
+  education: string
   salary: number
   contractType: string
   documentNumber: string
@@ -73,6 +79,7 @@ export interface LeaveRequest {
   hotelId: string
   employeeId: string
   type: string
+  leaveTypeId: string | null
   startDate: string
   endDate: string
   days: number
@@ -81,6 +88,47 @@ export interface LeaveRequest {
   approvedBy: string | null
   approvedAt: string | null
   notes: string
+}
+
+export interface LeaveType {
+  id: string
+  hotelId: string
+  code: string
+  name: string
+  color: string
+  paid: number
+  requiresApproval: number
+  maxDaysPerYear: number
+  active: number
+}
+
+export interface LeaveAllocation {
+  id: string
+  hotelId: string
+  employeeId: string
+  leaveTypeId: string
+  year: number
+  days: number
+  notes: string
+}
+
+export interface PublicHoliday {
+  id: string
+  hotelId: string
+  date: string
+  name: string
+  recurring: number
+}
+
+export interface LeaveBalance {
+  leaveTypeId: string
+  code: string
+  name: string
+  color: string
+  allocated: number
+  used: number
+  pending: number
+  remaining: number
 }
 
 export interface PerformanceReview {
@@ -95,7 +143,46 @@ export interface PerformanceReview {
   improvements: string
   goals: string
   notes: string
+  selfScore: number | null
+  selfComments: string
+  templateId: string | null
+  answers: string
+  acknowledged: number
   status: string
+}
+
+export interface AppraisalTemplate {
+  id: string
+  hotelId: string
+  name: string
+  questions: string
+  active: number
+}
+
+export interface JobPosition {
+  id: string
+  hotelId: string
+  name: string
+  departmentId: string | null
+  description: string
+  expectedEmployees: number
+  active: number
+}
+
+export interface ContractType {
+  id: string
+  hotelId: string
+  code: string
+  name: string
+  active: number
+}
+
+export interface WorkLocation {
+  id: string
+  hotelId: string
+  name: string
+  address: string
+  active: number
 }
 
 export interface OrgChartNode {
@@ -169,7 +256,24 @@ export const EmpleadosService = {
   },
   async createLeaveRequest(data: Partial<LeaveRequest>): Promise<LeaveRequest> { return http.post('/api/leave-requests', data) },
   async approveLeaveRequest(id: string): Promise<LeaveRequest> { return http.post(`/api/leave-requests/${id}/approve`) },
-  async rejectLeaveRequest(id: string, reason?: string): Promise<LeaveRequest> { return http.post(`/api/leave-requests/${id}/reject`, { reason }) },
+  async rejectLeaveRequest(id: string, reason: string): Promise<LeaveRequest> { return http.post(`/api/leave-requests/${id}/reject`, { reason }) },
+
+  // ── Time Off config (Odoo parity) ──
+  async listLeaveTypes(): Promise<LeaveType[]> { return http.get('/api/leave-types') },
+  async createLeaveType(data: Partial<LeaveType>): Promise<LeaveType> { return http.post('/api/leave-types', data) },
+  async updateLeaveType(id: string, data: Partial<LeaveType>): Promise<LeaveType> { return http.put(`/api/leave-types/${id}`, data) },
+  async deleteLeaveType(id: string): Promise<void> { return http.delete(`/api/leave-types/${id}`) },
+  async listLeaveAllocations(params?: Record<string, any>): Promise<LeaveAllocation[]> {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+    return http.get(`/api/leave-allocations${qs}`)
+  },
+  async createLeaveAllocation(data: Partial<LeaveAllocation>): Promise<LeaveAllocation> { return http.post('/api/leave-allocations', data) },
+  async deleteLeaveAllocation(id: string): Promise<void> { return http.delete(`/api/leave-allocations/${id}`) },
+  async listPublicHolidays(year?: number): Promise<PublicHoliday[]> { return http.get(`/api/public-holidays${year ? `?year=${year}` : ''}`) },
+  async createPublicHoliday(data: Partial<PublicHoliday>): Promise<PublicHoliday> { return http.post('/api/public-holidays', data) },
+  async deletePublicHoliday(id: string): Promise<void> { return http.delete(`/api/public-holidays/${id}`) },
+  async getLeaveBalance(employeeId: string, year?: number): Promise<LeaveBalance[]> { return http.get(`/api/leave-balance/${employeeId}${year ? `?year=${year}` : ''}`) },
+  async getLeaveCalendar(from: string, to: string): Promise<LeaveRequest[]> { return http.get(`/api/leave-calendar?from=${from}&to=${to}`) },
 
   // Performance Reviews
   async listReviews(employeeId?: string, hotelId?: string): Promise<PerformanceReview[]> {
@@ -180,7 +284,20 @@ export const EmpleadosService = {
     return http.get(`/api/performance-reviews${qs}`)
   },
   async createReview(data: Partial<PerformanceReview>): Promise<PerformanceReview> { return http.post('/api/performance-reviews', data) },
+  async updateReview(id: string, data: Partial<PerformanceReview>): Promise<PerformanceReview> { return http.put(`/api/performance-reviews/${id}`, data) },
   async completeReview(id: string): Promise<PerformanceReview> { return http.post(`/api/performance-reviews/${id}/complete`) },
+  async listAppraisalTemplates(): Promise<AppraisalTemplate[]> { return http.get('/api/appraisal-templates') },
+  async createAppraisalTemplate(data: { name: string; questions: string[] }): Promise<AppraisalTemplate> { return http.post('/api/appraisal-templates', data) },
+  async deleteAppraisalTemplate(id: string): Promise<void> { return http.delete(`/api/appraisal-templates/${id}`) },
+
+  // ── Catálogos RRHH (Odoo parity) ──
+  async listJobPositions(): Promise<JobPosition[]> { return http.get('/api/job-positions') },
+  async createJobPosition(data: Partial<JobPosition>): Promise<JobPosition> { return http.post('/api/job-positions', data) },
+  async deleteJobPosition(id: string): Promise<void> { return http.delete(`/api/job-positions/${id}`) },
+  async listContractTypes(): Promise<ContractType[]> { return http.get('/api/contract-types') },
+  async createContractType(data: { code: string; name: string }): Promise<ContractType> { return http.post('/api/contract-types', data) },
+  async listWorkLocations(): Promise<WorkLocation[]> { return http.get('/api/work-locations') },
+  async createWorkLocation(data: { name: string; address?: string }): Promise<WorkLocation> { return http.post('/api/work-locations', data) },
 
   // Org Chart
   async getOrgChart(): Promise<{ departments: OrgChartNode[]; totalEmployees: number }> { return http.get('/api/org-chart') },
@@ -197,4 +314,9 @@ export interface HrDashboard {
   leaves: { pending: number; upcomingApproved: number }
   reviews: { pending: number; avgScore: number | null }
   newHiresThisMonth: number
+  birthdaysThisMonth: { employeeId: string; name: string; date: string; day: number }[]
+  onLeaveToday: { employeeId: string; name: string; type: string; startDate: string; endDate: string }[]
+  topPerformers: { employeeId: string; name: string; avgScore: number; reviews: number }[]
+  occupancy: { total: number; available: number; onLeave: number; inactive: number }
+  pending: { contractsExpiring: number; documentsExpiring: number; leavesPending: number; reviewsPending: number }
 }

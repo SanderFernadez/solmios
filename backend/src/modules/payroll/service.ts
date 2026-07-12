@@ -18,6 +18,14 @@ import { PayrollConfigUseCase } from './usecases/config'
 import { PayrollConceptUseCase } from './usecases/concepts'
 import { PayrollRunUseCase } from './usecases/runs'
 import { buildPayrollPrefill } from '../../shared/usecases/build-payroll-prefill'
+import { renderPayslipHtml } from './usecases/payslip-template'
+import { NotFoundError, ValidationError } from 'arckode-framework'
+
+/** Puerto de email por duck typing — lo cablea email-bootstrap con el EmailService. */
+export interface PayslipEmailPort {
+  isConfigured(hotelId: string): Promise<boolean>
+  enqueue(input: { to: string; subject: string; html: string; hotelId: string }): Promise<string>
+}
 
 export class PayrollService {
   private sockets: PayrollSockets = {}
@@ -26,6 +34,8 @@ export class PayrollService {
   private concepts: PayrollConceptUseCase
   private runs: PayrollRunUseCase
   private prefillPort?: PayrollPrefillPort
+  private emailPort: PayslipEmailPort | null = null
+  private hotelRepo: RepositoryAdapter<{ id: string; name?: string; currency?: string }> | null = null
 
   constructor(
     configRepo: RepositoryAdapter<PayrollConfigDTO>,
@@ -85,6 +95,39 @@ export class PayrollService {
     return run
   }
   async cancelRun(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.cancel(id, currentUser) }
+
+  // ─── Recibos (PDF imprimible + email) — #157 ──────────
+  /** email-bootstrap cablea el EmailService y el repo de hoteles (para el nombre del hotel). */
+  setEmailDeps(emailPort: PayslipEmailPort, hotelRepo: RepositoryAdapter<{ id: string; name?: string; currency?: string }>): void {
+    this.emailPort = emailPort
+    this.hotelRepo = hotelRepo
+  }
+
+  private async buildPayslip(runId: string, detailId: string, currentUser?: PayrollCurrentUser) {
+    const run = await this.runs.getById(runId, currentUser)          // existencia + ownership
+    const details = await this.runs.getDetails(runId, currentUser)
+    const detail = details.find((d) => d.id === detailId)
+    if (!detail) throw new NotFoundError('Recibo no encontrado en esta liquidación')
+    const hotel = this.hotelRepo ? await this.hotelRepo.findById(run.hotelId).catch(() => null) : null
+    return { run, detail, hotelName: hotel?.name || 'Hotel', currency: hotel?.currency || 'DOP' }
+  }
+
+  /** HTML A4 del recibo — el navegador lo imprime a PDF (mismo enfoque que la factura). */
+  async getPayslipHtml(runId: string, detailId: string, employeeName?: string, currentUser?: PayrollCurrentUser): Promise<string> {
+    const { run, detail, hotelName, currency } = await this.buildPayslip(runId, detailId, currentUser)
+    return renderPayslipHtml({ detail, run, hotelName, employeeName, currency })
+  }
+
+  /** Envía el recibo por email (cola del EmailService). Requiere email configurado en el hotel. */
+  async emailPayslip(runId: string, detailId: string, to: string, employeeName: string | undefined, currentUser?: PayrollCurrentUser): Promise<{ queued: true; to: string }> {
+    if (!this.emailPort) throw new NotFoundError('Servicio de email no configurado')
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new ValidationError('Email de destino inválido')
+    const { run, detail, hotelName, currency } = await this.buildPayslip(runId, detailId, currentUser)
+    if (!(await this.emailPort.isConfigured(run.hotelId))) throw new ValidationError('El hotel no tiene email configurado')
+    const html = renderPayslipHtml({ detail, run, hotelName, employeeName, currency })
+    await this.emailPort.enqueue({ to, subject: `Recibo de nómina — ${run.period || run.startDate}`, html, hotelId: run.hotelId })
+    return { queued: true, to }
+  }
 
   // ─── Calculate ────────────────────────────────────────
   async calculateRun(runId: string, employees: PayrollEmployeeInput[], currentUser?: PayrollCurrentUser): Promise<PayrollCalculationResult> {

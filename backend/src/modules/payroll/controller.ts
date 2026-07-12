@@ -84,6 +84,21 @@ export class PayrollController {
     return { status: 200, body: await this.service.getPrefill(req.params.id, user) }
   }
 
+  // ─── Recibo imprimible (PDF vía navegador) + email — #157 ──
+  async printPayslip(req: HttpRequest) {
+    const user = (req as any).user
+    const employeeName = (req.query as any)?.employeeName
+    const html = await this.service.getPayslipHtml(req.params.id, req.params.detailId, employeeName, user)
+    return { status: 200, body: html, headers: { 'content-type': 'text/html; charset=utf-8' } }
+  }
+
+  async emailPayslip(req: HttpRequest) {
+    this.logger.info('POST /api/payroll/runs/:id/details/:detailId/payslip/email')
+    const user = (req as any).user
+    const body = (req.body ?? {}) as { to?: string; employeeName?: string }
+    return { status: 200, body: await this.service.emailPayslip(req.params.id, req.params.detailId, String(body.to ?? ''), body.employeeName, user) }
+  }
+
   async calculate(req: HttpRequest) {
     const employees = parseEmployeeInputs((req.body as { employees?: unknown } ?? {}).employees)
     const user = (req as any).user

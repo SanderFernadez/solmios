@@ -16,6 +16,11 @@ export class ContractUseCase {
 
   async create(dto: CreateContractDTO): Promise<ContractDTO> {
     if (dto.salary <= 0) throw new ValidationError('Salary must be positive')
+    // #177: la fecha de inicio no puede ser a futuro (un contrato se registra al arrancar, no antes),
+    // y el fin nunca puede ser anterior al inicio.
+    const today = new Date().toISOString().slice(0, 10)
+    if (dto.startDate && dto.startDate > today) throw new ValidationError('La fecha de inicio no puede ser futura')
+    if (dto.endDate && dto.startDate && dto.endDate < dto.startDate) throw new ValidationError('La fecha de fin no puede ser anterior al inicio')
     await validateEmployeeBelongsToHotel(this.profileRepo, dto.employeeId, dto.hotelId)
     return this.repo.create({
       ...dto,

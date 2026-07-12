@@ -15,7 +15,13 @@ export const CreateProfileSchema: Record<string, ValidationRule> = {
   position: { type: 'string' as const, max: 100 },
   salary: { type: 'number' as const, min: 0 },
   hireDate: { type: 'string' as const },
+  birthDate: { type: 'string' as const },
   departmentId: { type: 'string' as const },
+  jobPositionId: { type: 'string' as const },
+  nationality: { type: 'string' as const, max: 60 },
+  maritalStatus: { type: 'string' as const, max: 20 },
+  gender: { type: 'string' as const, max: 20 },
+  education: { type: 'string' as const, max: 100 },
 }
 
 export const CreateContractSchema: Record<string, ValidationRule> = {
@@ -43,11 +49,14 @@ export const CreateDocumentSchema: Record<string, ValidationRule> = {
 export const CreateLeaveRequestSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
   employeeId: { type: 'string' as const, required: true },
-  type: { type: 'string' as const, required: true, enum: ['vacation','permission','sick_leave','maternity','other'] },
+  type: { type: 'string' as const, required: true },
+  // Referencia opcional al tipo configurable (leave_types).
+  leaveTypeId: { type: 'string' as const },
   startDate: { type: 'string' as const, required: true },
   endDate: { type: 'string' as const, required: true },
-  days: { type: 'number' as const, required: true, min: 1 },
-  reason: { type: 'string' as const },
+  // `days` lo calcula el servidor desde el rango (#188). Opcional acá; si viene, se ignora.
+  days: { type: 'number' as const, min: 0 },
+  reason: { type: 'string' as const, max: 500 },
 }
 
 export const CreateReviewSchema: Record<string, ValidationRule> = {
@@ -55,10 +64,59 @@ export const CreateReviewSchema: Record<string, ValidationRule> = {
   employeeId: { type: 'string' as const, required: true },
   reviewerId: { type: 'string' as const, required: true },
   reviewDate: { type: 'string' as const, required: true },
+  // Puntaje 1-10 (#192). Sin declarar los demás, validateSchema los descarta (mem 1805).
   score: { type: 'number' as const, min: 1, max: 10 },
   period: { type: 'string' as const },
   strengths: { type: 'string' as const },
   improvements: { type: 'string' as const },
+  goals: { type: 'string' as const },
+  notes: { type: 'string' as const },
+  selfScore: { type: 'number' as const, min: 1, max: 10 },
+  selfComments: { type: 'string' as const },
+  templateId: { type: 'string' as const },
+  answers: { type: 'string' as const },
+}
+
+// Editar borrador (#193). Mismo rango de puntaje; sin hotelId/employeeId (no se reasigna dueño).
+export const UpdateReviewSchema: Record<string, ValidationRule> = {
+  reviewDate: { type: 'string' as const },
+  score: { type: 'number' as const, min: 1, max: 10 },
+  period: { type: 'string' as const },
+  strengths: { type: 'string' as const },
+  improvements: { type: 'string' as const },
+  goals: { type: 'string' as const },
+  notes: { type: 'string' as const },
+  selfScore: { type: 'number' as const, min: 1, max: 10 },
+  selfComments: { type: 'string' as const },
+  templateId: { type: 'string' as const },
+  answers: { type: 'string' as const },
+  acknowledged: { type: 'boolean' as const },
+}
+
+export const CreateAppraisalTemplateSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  name: { type: 'string' as const, required: true, min: 2, max: 80 },
+  // questions llega como array; el usecase lo serializa a JSON. Se valida presencia en el usecase.
+}
+
+export const CreateJobPositionSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  name: { type: 'string' as const, required: true, min: 2, max: 80 },
+  departmentId: { type: 'string' as const },
+  description: { type: 'string' as const, max: 500 },
+  expectedEmployees: { type: 'number' as const, min: 0 },
+}
+
+export const CreateContractTypeSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  code: { type: 'string' as const, required: true, min: 2, max: 40 },
+  name: { type: 'string' as const, required: true, min: 2, max: 60 },
+}
+
+export const CreateWorkLocationSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  name: { type: 'string' as const, required: true, min: 2, max: 80 },
+  address: { type: 'string' as const, max: 200 },
 }
 
 export const UpdateDepartmentSchema: Record<string, ValidationRule> = {
@@ -72,9 +130,51 @@ export const UpdateProfileSchema: Record<string, ValidationRule> = {
   position: { type: 'string' as const, max: 100 },
   salary: { type: 'number' as const, min: 0 },
   hireDate: { type: 'string' as const },
+  birthDate: { type: 'string' as const },
   departmentId: { type: 'string' as const },
+  jobPositionId: { type: 'string' as const },
+  nationality: { type: 'string' as const, max: 60 },
+  maritalStatus: { type: 'string' as const, max: 20 },
+  gender: { type: 'string' as const, max: 20 },
+  education: { type: 'string' as const, max: 100 },
 }
 
 export const RejectLeaveRequestSchema: Record<string, ValidationRule> = {
-  reason: { type: 'string' as const, max: 500 },
+  // Motivo OBLIGATORIO al rechazar (#190/#191): no se rechaza sin justificar.
+  reason: { type: 'string' as const, required: true, min: 3, max: 500 },
+}
+
+// ─── Time Off config ────────────────────────────────────
+export const CreateLeaveTypeSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  code: { type: 'string' as const, required: true, min: 2, max: 40 },
+  name: { type: 'string' as const, required: true, min: 2, max: 60 },
+  color: { type: 'string' as const, max: 20 },
+  paid: { type: 'boolean' as const },
+  requiresApproval: { type: 'boolean' as const },
+  maxDaysPerYear: { type: 'number' as const, min: 0 },
+}
+
+export const UpdateLeaveTypeSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, min: 2, max: 60 },
+  color: { type: 'string' as const, max: 20 },
+  paid: { type: 'boolean' as const },
+  requiresApproval: { type: 'boolean' as const },
+  maxDaysPerYear: { type: 'number' as const, min: 0 },
+}
+
+export const CreateLeaveAllocationSchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  employeeId: { type: 'string' as const, required: true },
+  leaveTypeId: { type: 'string' as const, required: true },
+  year: { type: 'number' as const, required: true, min: 2000 },
+  days: { type: 'number' as const, required: true, min: 0 },
+  notes: { type: 'string' as const, max: 200 },
+}
+
+export const CreatePublicHolidaySchema: Record<string, ValidationRule> = {
+  hotelId: { type: 'string' as const, required: true },
+  date: { type: 'string' as const, required: true },
+  name: { type: 'string' as const, required: true, min: 2, max: 80 },
+  recurring: { type: 'boolean' as const },
 }

@@ -291,6 +291,24 @@ const router = createRouter({
           meta: { requiresHotelAuth: true },
         },
         {
+          path: 'rrhh/reclutamiento',
+          name: 'reclutamiento',
+          component: () => import('@/pages/reclutamiento/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'rrhh/reembolsos',
+          name: 'reembolsos',
+          component: () => import('@/pages/reembolsos/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'rrhh/organigrama',
+          name: 'organigrama',
+          component: () => import('@/pages/organigrama/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'crm',
           name: 'crm',
           component: () => import('@/pages/crm/index.vue'),

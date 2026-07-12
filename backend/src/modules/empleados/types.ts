@@ -30,8 +30,14 @@ export interface EmployeeProfileDTO {
   hotelId: string
   departmentId: string | null
   position: string
+  jobPositionId: string | null
   managerId: string | null
   hireDate: string
+  birthDate: string
+  nationality: string
+  maritalStatus: string
+  gender: string
+  education: string
   salary: number
   contractType: string
   documentNumber: string
@@ -60,6 +66,12 @@ export interface CreateEmployeeProfileDTO {
   position?: string
   managerId?: string
   hireDate?: string
+  birthDate?: string
+  jobPositionId?: string
+  nationality?: string
+  maritalStatus?: string
+  gender?: string
+  education?: string
   salary?: number
   contractType?: string
   documentNumber?: string
@@ -142,6 +154,7 @@ export interface LeaveRequestDTO {
   hotelId: string
   employeeId: string
   type: string
+  leaveTypeId: string | null
   startDate: string
   endDate: string
   days: number
@@ -158,11 +171,87 @@ export interface CreateLeaveRequestDTO {
   hotelId: string
   employeeId: string
   type: string
+  leaveTypeId?: string
   startDate: string
   endDate: string
-  days: number
+  /** Opcional: si no viene, el servidor lo calcula desde el rango (días calendario − festivos). */
+  days?: number
   reason?: string
   notes?: string
+}
+
+// ─── Leave Type (tipo de ausencia configurable) ─────────
+export interface LeaveTypeDTO {
+  id: string
+  hotelId: string
+  code: string
+  name: string
+  color: string
+  paid: number
+  requiresApproval: number
+  maxDaysPerYear: number
+  active: number
+  createdAt: string
+  updatedAt: string
+}
+export interface CreateLeaveTypeDTO {
+  hotelId: string
+  code: string
+  name: string
+  color?: string
+  paid?: boolean
+  requiresApproval?: boolean
+  maxDaysPerYear?: number
+}
+
+// ─── Leave Allocation (asignación de días) ──────────────
+export interface LeaveAllocationDTO {
+  id: string
+  hotelId: string
+  employeeId: string
+  leaveTypeId: string
+  year: number
+  days: number
+  notes: string
+  createdAt: string
+  updatedAt: string
+}
+export interface CreateLeaveAllocationDTO {
+  hotelId: string
+  employeeId: string
+  leaveTypeId: string
+  year: number
+  days: number
+  notes?: string
+}
+
+// ─── Public Holiday (día festivo) ───────────────────────
+export interface PublicHolidayDTO {
+  id: string
+  hotelId: string
+  date: string
+  name: string
+  recurring: number
+  createdAt: string
+  updatedAt: string
+}
+export interface CreatePublicHolidayDTO {
+  hotelId: string
+  date: string
+  name: string
+  recurring?: boolean
+}
+
+// ─── Leave Balance (saldo por tipo, calculado) ──────────
+export interface LeaveBalanceDTO {
+  leaveTypeId: string
+  code: string
+  name: string
+  color: string
+  allocated: number
+  used: number
+  pending: number
+  remaining: number
 }
 
 // ─── Performance Review ─────────────────────────────────
@@ -178,6 +267,11 @@ export interface PerformanceReviewDTO {
   improvements: string
   goals: string
   notes: string
+  selfScore: number | null
+  selfComments: string
+  templateId: string | null
+  answers: string
+  acknowledged: number
   status: string
   createdAt: string
   updatedAt: string
@@ -194,6 +288,94 @@ export interface CreatePerformanceReviewDTO {
   improvements?: string
   goals?: string
   notes?: string
+  selfScore?: number
+  selfComments?: string
+  templateId?: string
+  answers?: string
+}
+
+/** Editar una evaluación en borrador (#193). Sin hotelId/employeeId: no se reasigna dueño. */
+export interface UpdatePerformanceReviewDTO {
+  period?: string
+  reviewDate?: string
+  score?: number
+  strengths?: string
+  improvements?: string
+  goals?: string
+  notes?: string
+  selfScore?: number
+  selfComments?: string
+  templateId?: string
+  answers?: string
+  acknowledged?: boolean
+}
+
+// ─── Appraisal Template (formulario de evaluación) ──────
+export interface AppraisalTemplateDTO {
+  id: string
+  hotelId: string
+  name: string
+  questions: string
+  active: number
+  createdAt: string
+  updatedAt: string
+}
+export interface CreateAppraisalTemplateDTO {
+  hotelId: string
+  name: string
+  questions: string[] | string
+}
+
+// ─── Job Position (puesto) ──────────────────────────────
+export interface JobPositionDTO {
+  id: string
+  hotelId: string
+  name: string
+  departmentId: string | null
+  description: string
+  expectedEmployees: number
+  active: number
+  createdAt: string
+  updatedAt: string
+}
+export interface CreateJobPositionDTO {
+  hotelId: string
+  name: string
+  departmentId?: string
+  description?: string
+  expectedEmployees?: number
+}
+
+// ─── Contract Type (tipo de contrato) ───────────────────
+export interface ContractTypeDTO {
+  id: string
+  hotelId: string
+  code: string
+  name: string
+  active: number
+  createdAt: string
+  updatedAt: string
+}
+export interface CreateContractTypeDTO {
+  hotelId: string
+  code: string
+  name: string
+}
+
+// ─── Work Location (ubicación de trabajo) ───────────────
+export interface WorkLocationDTO {
+  id: string
+  hotelId: string
+  name: string
+  address: string
+  active: number
+  createdAt: string
+  updatedAt: string
+}
+export interface CreateWorkLocationDTO {
+  hotelId: string
+  name: string
+  address?: string
 }
 
 // ─── Queries ────────────────────────────────────────────

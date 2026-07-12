@@ -8,7 +8,7 @@ import type {
   ContractDTO, CreateContractDTO,
   DocumentDTO, CreateDocumentDTO,
   LeaveRequestDTO, CreateLeaveRequestDTO,
-  PerformanceReviewDTO, CreatePerformanceReviewDTO,
+  PerformanceReviewDTO, CreatePerformanceReviewDTO, UpdatePerformanceReviewDTO,
   EmpleadosQuery, EmpleadosPaginated,
   DocumentExpiryAlert,
 } from './types'
@@ -19,6 +19,7 @@ import { ProfileUseCase } from './usecases/profiles'
 import { ContractUseCase } from './usecases/contracts'
 import { DocumentUseCase } from './usecases/documents'
 import { LeaveRequestUseCase } from './usecases/leave-requests'
+import { LeaveConfigUseCase } from './usecases/leave-config'
 import { ReviewUseCase } from './usecases/reviews'
 import { OrgChartUseCase } from './usecases/org-chart'
 import type { SimpleUser } from './usecases/ownership'
@@ -44,14 +45,15 @@ export class EmpleadosService {
     cache: CacheAdapter,
     userRepo?: RepositoryAdapter<any>,
     auth?: Auth,
+    leaveConfig?: LeaveConfigUseCase,
   ) {
     this.departments = new DepartmentUseCase(departmentRepo, logger, auth)
     this.profiles = new ProfileUseCase(profileRepo, logger, userRepo, auth)
     this.contracts = new ContractUseCase(contractRepo, profileRepo, logger, auth)
     this.documents = new DocumentUseCase(documentRepo, profileRepo, userRepo, logger, auth)
-    this.leaveRequests = new LeaveRequestUseCase(leaveRepo, profileRepo, logger, auth)
+    this.leaveRequests = new LeaveRequestUseCase(leaveRepo, profileRepo, logger, auth, leaveConfig)
     this.reviews = new ReviewUseCase(reviewRepo, profileRepo, logger, auth)
-    this.orgChart = new OrgChartUseCase(departmentRepo, profileRepo, logger)
+    this.orgChart = new OrgChartUseCase(departmentRepo, profileRepo, logger, userRepo)
   }
 
   setSockets(s: Partial<EmpleadosSockets>): void {
@@ -117,17 +119,9 @@ export class EmpleadosService {
     return this.contracts.create(dto)
   }
 
-  async getContract(id: string, user?: SimpleUser): Promise<ContractDTO> {
-    return this.contracts.getById(id, user)
-  }
-
-  async listContracts(hotelId: string, employeeId?: string): Promise<ContractDTO[]> {
-    return this.contracts.list(hotelId, employeeId)
-  }
-
-  async terminateContract(id: string, user?: SimpleUser): Promise<ContractDTO> {
-    return this.contracts.terminate(id, user)
-  }
+  async getContract(id: string, user?: SimpleUser): Promise<ContractDTO> { return this.contracts.getById(id, user) }
+  async listContracts(hotelId: string, employeeId?: string): Promise<ContractDTO[]> { return this.contracts.list(hotelId, employeeId) }
+  async terminateContract(id: string, user?: SimpleUser): Promise<ContractDTO> { return this.contracts.terminate(id, user) }
 
   // ─── Documents ────────────────────────────────────────
 
@@ -171,21 +165,11 @@ export class EmpleadosService {
 
   // ─── Performance Reviews ──────────────────────────────
 
-  async createReview(dto: CreatePerformanceReviewDTO): Promise<PerformanceReviewDTO> {
-    return this.reviews.create(dto)
-  }
-
-  async getReview(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> {
-    return this.reviews.getById(id, user)
-  }
-
-  async listReviews(hotelId: string, employeeId?: string): Promise<PerformanceReviewDTO[]> {
-    return this.reviews.list(hotelId, employeeId)
-  }
-
-  async completeReview(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> {
-    return this.reviews.complete(id, user)
-  }
+  async createReview(dto: CreatePerformanceReviewDTO): Promise<PerformanceReviewDTO> { return this.reviews.create(dto) }
+  async getReview(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> { return this.reviews.getById(id, user) }
+  async listReviews(hotelId: string, employeeId?: string): Promise<PerformanceReviewDTO[]> { return this.reviews.list(hotelId, employeeId) }
+  async updateReview(id: string, data: UpdatePerformanceReviewDTO, user?: SimpleUser): Promise<PerformanceReviewDTO> { return this.reviews.update(id, data, user) }
+  async completeReview(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> { return this.reviews.complete(id, user) }
 
   // ─── Alerts & Org Chart ───────────────────────────────
 

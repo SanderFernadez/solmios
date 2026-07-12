@@ -68,6 +68,15 @@ export class UsuariosController {
     return { status: 200, body: { message: 'Sesión cerrada' } }
   }
 
+  async refresh(req: HttpRequest) {
+    const body = (req.body || {}) as { refreshToken?: string }
+    if (!body.refreshToken) {
+      return { status: 400, body: { error: 'refreshToken requerido' } }
+    }
+    const result = await this.service.refreshToken(body.refreshToken)
+    return { status: 200, body: result }
+  }
+
   async changePassword(req: HttpRequest) {
     const data = validateSchema(ChangePasswordSchema, req.body) as any
     await this.service.changePassword((req.user as any).id, data.currentPassword, data.newPassword)

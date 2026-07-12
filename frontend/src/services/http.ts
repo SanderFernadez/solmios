@@ -11,11 +11,16 @@ function getToken(): string | null {
   return localStorage.getItem('token')
 }
 
+function getRefreshToken(): string | null {
+  return localStorage.getItem('refreshToken')
+}
+
 let _redirecting = false
 function forceLogout() {
   if (_redirecting) return
   _redirecting = true
   localStorage.removeItem('token')
+  localStorage.removeItem('refreshToken')
   localStorage.removeItem('user')
   // Evitar loop: no redirigir si ya estamos en /login
   if (!location.pathname.startsWith('/login')) {
@@ -23,7 +28,46 @@ function forceLogout() {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+// --- Token refresh queue ---
+let isRefreshing = false
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = []
+
+function processQueue(error: unknown, token: string | null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error || !token) {
+      reject(error)
+    } else {
+      resolve(token)
+    }
+  })
+  failedQueue = []
+}
+
+async function refreshAccessToken(): Promise<string> {
+  const rt = getRefreshToken()
+  if (!rt) throw new Error('No refresh token')
+
+  const res = await fetch('/api/auth/refresh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken: rt }),
+  })
+
+  if (!res.ok) throw new Error('Refresh failed')
+
+  const data = await res.json()
+  const newToken = data.data?.token ?? data.token
+  const newRefreshToken = data.data?.refreshToken ?? data.refreshToken
+
+  if (!newToken || !newRefreshToken) throw new Error('Invalid refresh response')
+
+  localStorage.setItem('token', newToken)
+  localStorage.setItem('refreshToken', newRefreshToken)
+
+  return newToken
+}
+
+async function request<T>(method: string, path: string, body?: unknown, _isRetry = false): Promise<T> {
   // FormData (multipart): el browser setea el boundary; NO forzar Content-Type ni stringificar.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
   const headers: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
@@ -36,6 +80,57 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     headers,
     body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
   })
+
+  if (res.status === 401 && !_isRetry) {
+    // Si ya estamos refrestando, encolar esta request
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        failedQueue.push({ resolve, reject })
+      }).then((newToken) => {
+        // Reintentar con el nuevo token
+        const retryHeaders: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
+        retryHeaders['Authorization'] = `Bearer ${newToken}`
+        return fetch(url, {
+          method,
+          headers: retryHeaders,
+          body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
+        })
+      }).then(async (retryRes) => {
+        if (!retryRes.ok) {
+          const text = await retryRes.text()
+          const raw = text ? JSON.parse(text) : null
+          const errObj = raw?.error ?? raw
+          const msg = (typeof errObj === 'object' && errObj?.message) || raw?.error || raw?.message || `Error ${retryRes.status}`
+          throw new ApiError(retryRes.status, msg)
+        }
+        const text = await retryRes.text()
+        const raw = text ? JSON.parse(text) : null
+        if (raw && typeof raw === 'object' && 'success' in raw && 'data' in raw) {
+          const pagination = (raw as any).meta?.pagination
+          if (pagination && Array.isArray((raw as any).data)) {
+            return { data: (raw as any).data, total: pagination.total ?? (raw as any).data.length } as unknown as T
+          }
+          return (raw as any).data as T
+        }
+        return raw as T
+      }) as Promise<T>
+    }
+
+    // Intentar refresh
+    isRefreshing = true
+    try {
+      const newToken = await refreshAccessToken()
+      processQueue(null, newToken)
+      // Reintentar la request original con el nuevo token
+      return request<T>(method, path, body, true)
+    } catch (refreshError) {
+      processQueue(refreshError, null)
+      forceLogout()
+      throw new ApiError(401, 'Sesión expirada')
+    } finally {
+      isRefreshing = false
+    }
+  }
 
   if (res.status === 401) {
     forceLogout()

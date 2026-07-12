@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa del sistema RRHH — SolmiOS</title>
+<style>
+  :root{
+    --ground:#0b1620; --panel:#11212e; --panel2:#0e1b26; --line:#223a4a;
+    --ink:#e9f2f6; --muted:#89a4b2; --faint:#5f7d8c;
+    --teal:#34d3c0; --teal-dim:#1c8a80;
+    --amber:#f5b544; --amber-dim:#8a6a24;
+    --rose:#f2607a; --rose-dim:#8a3546;
+    --chip:#0c1a24;
+    --shadow:0 8px 30px rgba(0,0,0,.35);
+    --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --ground:#eef4f6; --panel:#ffffff; --panel2:#f3f8f9; --line:#d3e0e5;
+      --ink:#0e2430; --muted:#4a6675; --faint:#7c95a2;
+      --teal:#0e9c8c; --teal-dim:#7fd8ce;
+      --amber:#c98a12; --amber-dim:#e8cf9a;
+      --rose:#d63e5c; --rose-dim:#efb3bf;
+      --chip:#e9f1f3;
+      --shadow:0 8px 26px rgba(20,50,65,.12);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0b1620; --panel:#11212e; --panel2:#0e1b26; --line:#223a4a;
+    --ink:#e9f2f6; --muted:#89a4b2; --faint:#5f7d8c;
+    --teal:#34d3c0; --teal-dim:#1c8a80; --amber:#f5b544; --amber-dim:#8a6a24;
+    --rose:#f2607a; --rose-dim:#8a3546; --chip:#0c1a24; --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"]{
+    --ground:#eef4f6; --panel:#ffffff; --panel2:#f3f8f9; --line:#d3e0e5;
+    --ink:#0e2430; --muted:#4a6675; --faint:#7c95a2;
+    --teal:#0e9c8c; --teal-dim:#7fd8ce; --amber:#c98a12; --amber-dim:#e8cf9a;
+    --rose:#d63e5c; --rose-dim:#efb3bf; --chip:#e9f1f3; --shadow:0 8px 26px rgba(20,50,65,.12);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.55;
+    background-image:radial-gradient(circle at 18% -5%,rgba(52,211,192,.08),transparent 45%),
+                     radial-gradient(circle at 92% 8%,rgba(242,96,122,.06),transparent 42%);}
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 22px 64px}
+
+  /* ---- header ---- */
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);
+    display:flex;align-items:center;gap:9px;margin:0 0 12px}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--teal);display:inline-block}
+  h1{font-size:clamp(28px,5vw,44px);line-height:1.04;margin:0;letter-spacing:-.02em;text-wrap:balance;font-weight:800}
+  h1 .hl{color:var(--teal)}
+  .sub{color:var(--muted);max-width:60ch;margin:14px 0 0;font-size:15.5px}
+  .themetog{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:9px 15px;cursor:pointer;white-space:nowrap}
+  .themetog:hover{color:var(--ink);border-color:var(--teal-dim)}
+
+  /* ---- verdict strip ---- */
+  .verdict{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:26px 0 8px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px}
+  .stat .n{font-size:26px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+  .stat .n.g{color:var(--teal)} .stat .n.a{color:var(--amber)} .stat .n.r{color:var(--rose)}
+  .stat .l{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:8px}
+  @media(max-width:720px){.verdict{grid-template-columns:repeat(2,1fr)}}
+
+  /* ---- legend ---- */
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin:22px 0 10px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .lg{display:flex;align-items:center;gap:8px}
+  .swatch{width:22px;height:0;border-top:3px solid var(--teal);border-radius:2px}
+  .swatch.weak{border-top:3px dashed var(--amber)}
+  .swatch.miss{border-top:3px dashed var(--rose)}
+  .swatch.node{width:13px;height:13px;border-top:none;border-radius:4px;border:2px solid var(--teal);background:transparent}
+
+  /* ---- map ---- */
+  .maphead{display:flex;justify-content:space-between;align-items:baseline;margin:30px 0 12px;gap:12px;flex-wrap:wrap}
+  .maphead h2{font-size:19px;margin:0;letter-spacing:-.01em}
+  .maphead .hint{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.05em}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:18px;background:
+    linear-gradient(var(--panel2),var(--panel2)),
+    repeating-linear-gradient(0deg,transparent 0 39px,rgba(120,150,165,.05) 39px 40px),
+    repeating-linear-gradient(90deg,transparent 0 39px,rgba(120,150,165,.05) 39px 40px);
+    background-blend-mode:normal;box-shadow:var(--shadow)}
+  .stage{position:relative;width:1000px;height:720px;margin:0 auto}
+  .wires{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .wires path{fill:none;stroke-linecap:round}
+  .w-flow{stroke:var(--teal);stroke-width:2.4}
+  .w-weak{stroke:var(--amber);stroke-width:2.2;stroke-dasharray:2 7}
+  .w-miss{stroke:var(--rose);stroke-width:2.2;stroke-dasharray:2 7}
+
+  .node{position:absolute;transform:translate(-50%,-50%);width:150px;min-height:60px;
+    background:var(--panel);border:1.6px solid var(--teal-dim);border-radius:13px;
+    padding:11px 13px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:3px;
+    color:var(--ink);font-family:var(--sans);box-shadow:0 4px 14px rgba(0,0,0,.18);transition:transform .12s,box-shadow .12s,border-color .12s}
+  .node:hover{transform:translate(-50%,-50%) translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.28)}
+  .node:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+  .node .nlabel{font-weight:700;font-size:14px;letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+  .node .ntag{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase}
+  .node .dot{width:9px;height:9px;border-radius:50%;background:var(--teal);flex:none;box-shadow:0 0 0 3px rgba(52,211,192,.15)}
+  .node.weak{border-color:var(--amber-dim);border-style:dashed}
+  .node.weak .dot{background:var(--amber);box-shadow:0 0 0 3px rgba(245,181,68,.15)}
+  .node.broken{border-color:var(--amber-dim)} .node.broken .dot{background:var(--amber)}
+  .node.missing{border-style:dashed;border-color:var(--rose-dim);opacity:.92}
+  .node.missing .nlabel{color:var(--rose)} .node.missing .dot{background:var(--rose);box-shadow:0 0 0 3px rgba(242,96,122,.15)}
+  .node.ext{border-color:var(--line);border-style:dotted}
+  .node.ext .dot{background:var(--faint);box-shadow:none}
+  .node.active{border-color:var(--ink);box-shadow:0 0 0 2px var(--teal),0 10px 24px rgba(0,0,0,.3)}
+  .node.hub{width:172px;background:linear-gradient(160deg,var(--panel),var(--panel2));border-width:2px}
+  .node.hub .nlabel{font-size:15.5px}
+
+  .elabel{position:absolute;transform:translate(-50%,-50%);font-family:var(--mono);font-size:9.5px;
+    letter-spacing:.03em;background:var(--chip);border:1px solid var(--line);color:var(--muted);
+    padding:2.5px 7px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:3}
+  .elabel.weak{color:var(--amber);border-color:var(--amber-dim)}
+  .elabel.miss{color:var(--rose);border-color:var(--rose-dim)}
+
+  /* ---- detail panel ---- */
+  .detail{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:20px 22px;min-height:150px;box-shadow:var(--shadow)}
+  .detail .dh{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .detail h3{margin:0;font-size:20px;letter-spacing:-.01em}
+  .badge{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+    padding:4px 10px;border-radius:999px;border:1px solid var(--line)}
+  .badge.b-built{color:var(--teal);border-color:var(--teal-dim);background:rgba(52,211,192,.08)}
+  .badge.b-weak,.badge.b-broken{color:var(--amber);border-color:var(--amber-dim);background:rgba(245,181,68,.08)}
+  .badge.b-missing{color:var(--rose);border-color:var(--rose-dim);background:rgba(242,96,122,.08)}
+  .badge.b-ext{color:var(--muted)}
+  .detail .db{color:var(--muted);margin:13px 0 0;font-size:15px;max-width:78ch}
+  .detail .issues{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+  .issues .iss{font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--chip);
+    border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+  .issues .iss.done{color:var(--faint);text-decoration:line-through}
+  .detail .why{margin-top:15px;padding:12px 14px;border-left:3px solid var(--rose);background:rgba(242,96,122,.06);
+    border-radius:0 10px 10px 0;font-size:14.5px}
+  .detail .why.ok{border-left-color:var(--teal);background:rgba(52,211,192,.06)}
+  .detail .why.warn{border-left-color:var(--amber);background:rgba(245,181,68,.06)}
+  .detail .why b{color:var(--ink)}
+
+  /* ---- disconnections ---- */
+  .sec{margin-top:52px}
+  .sec > h2{font-size:22px;margin:0 0 4px;letter-spacing:-.015em}
+  .sec > .seclead{color:var(--muted);margin:0 0 22px;max-width:70ch}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 19px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--rose)}
+  .card.warn::before{background:var(--amber)}
+  .card .ct{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15.5px;margin-bottom:3px}
+  .card .flow{font-family:var(--mono);font-size:11px;letter-spacing:.03em;color:var(--faint);margin-bottom:9px}
+  .card .flow .x{color:var(--rose);font-weight:700}
+  .card .flow .x.w{color:var(--amber)}
+  .card p{margin:0;color:var(--muted);font-size:14px}
+  .card .tag{position:absolute;top:15px;right:16px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--rose)}
+  .card.warn .tag{color:var(--amber)}
+
+  /* ---- gap table ---- */
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+  th,td{text-align:left;padding:12px 15px;border-bottom:1px solid var(--line)}
+  thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--panel2)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--panel2)}
+  td .pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+  .pill.ok{color:var(--teal);border-color:var(--teal-dim)}
+  .pill.wr{color:var(--amber);border-color:var(--amber-dim)}
+  .pill.no{color:var(--rose);border-color:var(--rose-dim)}
+  td.mod{font-weight:600}
+  td .mono{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.03em;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+  @media (prefers-reduced-motion:no-preference){
+    .node{animation:pop .5s cubic-bezier(.2,.7,.3,1) backwards}
+    .wires path{animation:draw .9s ease forwards}
+    @keyframes pop{from{opacity:0;transform:translate(-50%,-50%) translateY(10px)}}
+    @keyframes draw{from{stroke-dashoffset:var(--len,600)}to{stroke-dashoffset:0}}
+  }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <p class="eyebrow">SolmiOS · Módulo RRHH · Auditoría vs Odoo HR</p>
+      <h1>Mapa del sistema de <span class="hl">Recursos Humanos</span></h1>
+      <p class="sub">Qué está construido, qué es un enlace débil, qué está roto y qué falta — y <b>por qué no está conectado</b>. Cada nodo es un módulo real del backend; cada línea es un flujo de datos que existe (o debería existir).</p>
+    </div>
+    <button class="themetog" id="themeBtn" aria-label="Cambiar tema">◐ Tema</button>
+  </div>
+
+  <div class="verdict">
+    <div class="stat"><div class="n g">10 / 14</div><div class="l">Áreas Odoo cubiertas</div></div>
+    <div class="stat"><div class="n a">3</div><div class="l">Enlaces rotos / débiles</div></div>
+    <div class="stat"><div class="n r">2</div><div class="l">Módulos ausentes</div></div>
+    <div class="stat"><div class="n">39</div><div class="l">Issues abiertas (GitLab)</div></div>
+  </div>
+
+  <div class="legend">
+    <div class="lg"><span class="swatch node"></span> Construido</div>
+    <div class="lg"><span class="swatch"></span> Flujo de datos activo</div>
+    <div class="lg"><span class="swatch weak"></span> Enlace débil / roto</div>
+    <div class="lg"><span class="swatch miss"></span> Falta (no existe)</div>
+  </div>
+
+  <div class="maphead">
+    <h2>Grafo de módulos y flujos</h2>
+    <span class="hint">▸ tocá un nodo para ver el detalle</span>
+  </div>
+
+  <div class="scroll">
+    <div class="stage" id="stage">
+      <svg class="wires" id="wires" aria-hidden="true">
+        <defs>
+          <marker id="mFlow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--teal)"/></marker>
+          <marker id="mWeak" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--amber)"/></marker>
+          <marker id="mMiss" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--rose)"/></marker>
+        </defs>
+      </svg>
+      <div id="elabels"></div>
+
+      <button class="node hub built" style="left:540px;top:80px" data-id="dashboard">
+        <span class="nlabel"><span class="dot"></span>Panel RRHH</span><span class="ntag">dashboard · consume todo</span></button>
+
+      <button class="node built" style="left:360px;top:250px" data-id="empleados">
+        <span class="nlabel"><span class="dot"></span>Empleados</span><span class="ntag">expediente · 6 tablas</span></button>
+      <button class="node built" style="left:600px;top:250px" data-id="asistencia">
+        <span class="nlabel"><span class="dot"></span>Asistencia</span><span class="ntag">fichaje · turnos</span></button>
+      <button class="node built" style="left:840px;top:250px" data-id="nomina">
+        <span class="nlabel"><span class="dot"></span>Nómina</span><span class="ntag">payroll · liquidaciones</span></button>
+
+      <button class="node built" style="left:130px;top:440px" data-id="capacitacion">
+        <span class="nlabel"><span class="dot"></span>Capacitación</span><span class="ntag">cursos · certif.</span></button>
+      <button class="node built" style="left:360px;top:440px" data-id="activos">
+        <span class="nlabel"><span class="dot"></span>Activos</span><span class="ntag">bienes asignados</span></button>
+      <button class="node built" style="left:600px;top:440px" data-id="equipo">
+        <span class="nlabel"><span class="dot"></span>Equipo</span><span class="ntag">usuarios · RBAC</span></button>
+      <button class="node ext" style="left:840px;top:440px" data-id="caja">
+        <span class="nlabel"><span class="dot"></span>Caja</span><span class="ntag">externo · efectivo</span></button>
+
+      <button class="node broken" style="left:150px;top:620px" data-id="organigrama">
+        <span class="nlabel"><span class="dot"></span>Organigrama</span><span class="ntag">⚠ UI rota · #199</span></button>
+      <button class="node missing" style="left:470px;top:620px" data-id="reclutamiento">
+        <span class="nlabel"><span class="dot"></span>Reclutamiento</span><span class="ntag">✕ no existe</span></button>
+      <button class="node weak" style="left:660px;top:620px" data-id="portal">
+        <span class="nlabel"><span class="dot"></span>Autoservicio</span><span class="ntag">◑ parcial</span></button>
+      <button class="node missing" style="left:850px;top:620px" data-id="expenses">
+        <span class="nlabel"><span class="dot"></span>Reembolsos</span><span class="ntag">✕ no existe</span></button>
+    </div>
+  </div>
+
+  <div class="detail" id="detail"><!-- filled by JS --></div>
+
+  <!-- WHY NOT CONNECTED -->
+  <div class="sec">
+    <h2>Por qué no está conectado</h2>
+    <p class="seclead">El núcleo operativo (Empleados ⇄ Asistencia → Nómina → Caja) está cableado y funcionando. Las fracturas están en los bordes: donde un módulo debería alimentar a otro pero el puente no se construyó o se rompió.</p>
+    <div class="grid">
+      <div class="card">
+        <span class="tag">falta</span>
+        <div class="ct">Reclutamiento → Empleados</div>
+        <div class="flow">candidato <span class="x">✕</span> contratación <span class="x">✕</span> expediente</div>
+        <p>No hay módulo de selección: vacantes, candidatos ni pipeline. El alta del empleado se hace 100% a mano en Empleados. Es el único módulo <b>core</b> de Odoo que no existe.</p>
+      </div>
+      <div class="card warn">
+        <span class="tag">enlace débil</span>
+        <div class="ct">Equipo ⇄ Empleados</div>
+        <div class="flow">Users <span class="x w">⇢ débil ⇠</span> employee_profiles</div>
+        <p>Son <b>dos entidades distintas</b> (cuenta de usuario vs. expediente) ligadas solo por <span class="mono">userId</span>. Crear un usuario en Equipo <b>no</b> genera su expediente en Empleados. Sin UI que los vincule automáticamente.</p>
+      </div>
+      <div class="card warn">
+        <span class="tag">roto</span>
+        <div class="ct">Organigrama (dentro de Empleados)</div>
+        <div class="flow">backend <span class="x w">/org-chart ✓</span> · frontend <span class="x w">✕ no dibuja</span></div>
+        <p>El backend ya devuelve el árbol jerárquico de departamentos por <span class="mono">/org-chart</span>, pero el front no lo renderiza. Reporte del cliente #199: “el organigrama no hace nada”. Fix de frontend, la data ya existe.</p>
+      </div>
+      <div class="card">
+        <span class="tag">falta</span>
+        <div class="ct">Reembolsos de empleado → Caja</div>
+        <div class="flow">gasto del empleado <span class="x">✕</span> reembolso</div>
+        <p>Existe <span class="mono">/gastos</span> pero es el gasto <b>operativo del hotel</b>, no el reembolso al empleado (viáticos, compras). Gap conceptual: en Odoo es el módulo Expenses ligado a la nómina.</p>
+      </div>
+      <div class="card warn">
+        <span class="tag">incompleto</span>
+        <div class="ct">Dashboard ← alimentadores</div>
+        <div class="flow">data <span class="x w">✓ existe</span> · widgets <span class="x w">✕ no se muestran</span></div>
+        <p>El dashboard vive pero le faltan 9 widgets que pide el cliente: cumpleaños del mes (#196), colaboradores en vacaciones (#197), resumen de asistencia (#198), top desempeño (#202), pendientes (#205). El backend ya expone casi todo.</p>
+      </div>
+      <div class="card warn">
+        <span class="tag">parcial</span>
+        <div class="ct">Portal de autoservicio</div>
+        <div class="flow">app móvil PIN <span class="x w">✓</span> · portal web <span class="x w">✕</span></div>
+        <p>El endpoint <span class="mono">employee-profiles/me</span> y el login PIN de la app móvil existen, pero no hay portal web donde el empleado vea sus recibos, pida vacaciones o consulte su ficha.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAP TABLE -->
+  <div class="sec">
+    <h2>Paridad con Odoo HR</h2>
+    <p class="seclead">De las 14 áreas relevantes de Odoo para un hotel (Fleet no aplica): 10 completas, 1 parcial, 1 rota, 2 ausentes.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Área Odoo HR</th><th>Estado en SolmiOS</th><th>Dónde vive</th></tr></thead>
+        <tbody>
+          <tr><td class="mod">Employees</td><td><span class="pill ok">construido</span></td><td class="mono">empleados › expedientes</td></tr>
+          <tr><td class="mod">Contracts</td><td><span class="pill ok">construido</span></td><td class="mono">empleados › contratos</td></tr>
+          <tr><td class="mod">Time Off (ausencias)</td><td><span class="pill ok">construido</span></td><td class="mono">empleados › vacaciones</td></tr>
+          <tr><td class="mod">Attendances</td><td><span class="pill ok">construido · superior</span></td><td class="mono">attendance (PIN/facial/geofence)</td></tr>
+          <tr><td class="mod">Payroll</td><td><span class="pill ok">construido</span></td><td class="mono">payroll › liquidaciones</td></tr>
+          <tr><td class="mod">Appraisals</td><td><span class="pill ok">construido</span></td><td class="mono">empleados › evaluaciones</td></tr>
+          <tr><td class="mod">Skills / Training</td><td><span class="pill ok">construido</span></td><td class="mono">capacitacion</td></tr>
+          <tr><td class="mod">Planning / Shifts</td><td><span class="pill ok">construido</span></td><td class="mono">attendance › calendario</td></tr>
+          <tr><td class="mod">Equipment / Assets</td><td><span class="pill ok">construido</span></td><td class="mono">activos</td></tr>
+          <tr><td class="mod">Documents</td><td><span class="pill ok">construido</span></td><td class="mono">empleados › documentos</td></tr>
+          <tr><td class="mod">Org Chart</td><td><span class="pill wr">roto · UI</span></td><td class="mono">empleados › organigrama · #199</td></tr>
+          <tr><td class="mod">Employee Self-Service</td><td><span class="pill wr">parcial</span></td><td class="mono">app móvil PIN, sin portal web</td></tr>
+          <tr><td class="mod">Recruitment</td><td><span class="pill no">no existe</span></td><td class="mono">—</td></tr>
+          <tr><td class="mod">Expenses (reembolso)</td><td><span class="pill no">no existe</span></td><td class="mono">/gastos ≠ reembolso empleado</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    <span>Fuente: código backend + dashboard en vivo (hotel.zx89.site) + 56 issues GitLab (underworf1/solmios)</span>
+    <span>39 abiertas · 17 cerradas · auditoría 2026-07-11</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var NODES = {
+    dashboard:{t:"Panel RRHH",st:"built",bd:"Consume la data de todos los módulos: KPIs (empleados activos, altas del mes, contratos, ausencias), plantilla por departamento y panel de alertas. El backend ya devuelve casi todo por /hr-dashboard.",
+      why:{k:"warn",h:"Le faltan widgets",t:"El dashboard existe pero el cliente pide 9 tarjetas más (cumpleaños, vacaciones activas, top desempeño, pendientes). Es trabajo de frontend: la data ya está expuesta."},
+      iss:[["#196"],["#197"],["#198"],["#200"],["#202"],["#205"],["#183"]]},
+    empleados:{t:"Empleados",st:"built",bd:"Núcleo del RRHH. 6 tablas: departments, employee_profiles, contracts, documents, leave_requests, performance_reviews. 5 tabs en la UI (Expedientes, Contratos, Documentos, Vacaciones, Evaluaciones) + organigrama. CRUD completo con aprobaciones.",
+      why:{k:"warn",h:"Alta manual, validaciones flojas",t:"Sin reclutamiento, el alta se hace a mano. ~13 issues abiertas son pulido de formularios (delimitar caracteres, formato de fecha, 'desactivar' que elimina, textos en inglés)."},
+      iss:[["#161","done"],["#169","done"],["#170"],["#174"],["#177"],["#182"]]},
+    asistencia:{t:"Asistencia",st:"built",bd:"Fichaje por PIN, facial, huella y móvil. Geofence, webhook biométrico (ZKTeco), calendario de turnos (roster), horarios plantilla, reportes y config de overtime. Más completo que el Attendances básico de Odoo.",
+      why:{k:"ok",h:"Conectado a Nómina",t:"Alimenta la nómina por PayrollPrefillPort: horas trabajadas, ausencias y tardanzas se pre-cargan en la liquidación. Los IDOR de seguridad ya se cerraron."},
+      iss:[["#160","done"],["#162","done"]]},
+    nomina:{t:"Nómina",st:"built",bd:"Nómina automatizada: config, conceptos configurables (devengos/deducciones), liquidaciones con flujo draft → calculate → approve → pay, recibos (payslips) e historial de pagos. Prefill desde asistencia.",
+      why:{k:"ok",h:"Cableado a Asistencia y Caja",t:"Recibe horas desde Asistencia y asienta el pago en efectivo en Caja. Bugs graves (RCE #159, recibos duplicados #164) ya cerrados. Abierto: PDF de recibos + envío por email (#157)."},
+      iss:[["#152","done"],["#153","done"],["#159","done"],["#164","done"],["#165","done"],["#157"]]},
+    caja:{t:"Caja",st:"ext",bd:"Módulo de caja del hotel (no es RRHH puro). La nómina pagada en efectivo asienta el egreso acá; las transferencias no tocan la caja.",
+      why:{k:"ok",h:"Punto de integración",t:"Recibe el egreso de nómina en efectivo. Aquí debería enchufarse también el reembolso de gastos del empleado, que hoy no existe."},iss:[]},
+    capacitacion:{t:"Capacitación",st:"built",bd:"Cursos, certificaciones y onboarding con inscripciones y autoconfirmación por email. Vigencia de certificación por meses.",
+      why:{k:"ok",h:"Construido a pedido",t:"Nació de la issue #155 (módulo faltante). Ligado a Empleados por employeeId."},iss:[["#155","done"]]},
+    activos:{t:"Activos",st:"built",bd:"Inventario de bienes físicos asignados al personal (equipos, herramientas, uniformes). Agrupado bajo el menú RRHH.",
+      why:{k:"ok",h:"Construido a pedido",t:"Nació de la issue #154 (asignación de bienes a empleados)."},iss:[["#154","done"]]},
+    equipo:{t:"Equipo (Usuarios)",st:"built",bd:"Cuentas de usuario del personal (tabla Users) + roles y permisos RBAC. Invitar miembro, cambiar rol. OJO: es una entidad DISTINTA de Empleados.",
+      why:{k:"warn",h:"Enlace débil con Empleados",t:"Users y employee_profiles se ligan solo por userId. Crear un usuario acá NO crea su expediente en Empleados, y no hay UI que los vincule. Fuente de datos huérfanos (ej: 'Invalid Date' en creado)."},iss:[["#163","done"]]},
+    organigrama:{t:"Organigrama",st:"broken",bd:"Vive dentro de Empleados. El backend devuelve el árbol jerárquico de departamentos (parentId) por el endpoint /org-chart.",
+      why:{k:"warn",h:"Backend OK, frontend roto",t:"El front no dibuja el árbol. Reporte del cliente #199: 'el organigrama no hace nada, hay que hacerlo'. Alto impacto visual, bajo costo — la data ya está lista."},iss:[["#199"]]},
+    reclutamiento:{t:"Reclutamiento",st:"missing",bd:"NO existe. En Odoo: publicación de vacantes, base de candidatos, pipeline de selección (kanban por etapa) y conversión candidato → empleado.",
+      why:{k:"bad",h:"Módulo ausente",t:"Es el único módulo core de Odoo HR que falta entero. Sin él, cada alta de empleado se carga a mano. Requiere backend + frontend desde cero."},iss:[]},
+    portal:{t:"Autoservicio",st:"weak",bd:"Portal del empleado. Existe el endpoint employee-profiles/me y el login PIN de la app móvil, pero no hay portal web.",
+      why:{k:"warn",h:"Parcial",t:"Falta el portal donde el empleado vea sus recibos, pida vacaciones y consulte su ficha por sí mismo. Hoy todo pasa por el admin."},iss:[]},
+    expenses:{t:"Reembolsos",st:"missing",bd:"NO existe. Reembolso de gastos del empleado (viáticos, compras, adelantos) con aprobación y pago vía nómina o caja.",
+      why:{k:"bad",h:"Módulo ausente",t:"/gastos es el gasto operativo del hotel, NO el reembolso al empleado. En Odoo es el módulo Expenses, ligado a la nómina. Gap conceptual."},iss:[]}
+  };
+
+  var EDGES = [
+    ["empleados","dashboard","flow","headcount · alertas"],
+    ["asistencia","dashboard","flow",""],
+    ["nomina","dashboard","flow",""],
+    ["asistencia","nomina","flow","prefill horas · ausencias"],
+    ["nomina","caja","flow","pago efectivo"],
+    ["capacitacion","empleados","flow",""],
+    ["activos","empleados","flow",""],
+    ["equipo","empleados","weak","userId · no auto-vincula"],
+    ["organigrama","empleados","weak","UI rota #199"],
+    ["portal","empleados","weak","self-service parcial"],
+    ["reclutamiento","empleados","miss","contratación: no existe"],
+    ["expenses","caja","miss","reembolso: no existe"]
+  ];
+
+  var stage=document.getElementById("stage");
+  var wires=document.getElementById("wires");
+  var elabels=document.getElementById("elabels");
+  var HW=76, HH=32; // node half-size approx
+
+  function center(id){
+    var el=stage.querySelector('[data-id="'+id+'"]');
+    return {x:el.offsetLeft, y:el.offsetTop, el:el};
+  }
+  // point where line from center C toward T exits C's box
+  function border(c,t){
+    var dx=t.x-c.x, dy=t.y-c.y;
+    if(dx===0&&dy===0) return {x:c.x,y:c.y};
+    var sx = dx!==0 ? HW/Math.abs(dx) : Infinity;
+    var sy = dy!==0 ? HH/Math.abs(dy) : Infinity;
+    var s = Math.min(sx,sy);
+    return {x:c.x+dx*s, y:c.y+dy*s};
+  }
+  var MARK={flow:"url(#mFlow)",weak:"url(#mWeak)",miss:"url(#mMiss)"};
+  var CLS={flow:"w-flow",weak:"w-weak",miss:"w-miss"};
+
+  function draw(){
+    // clear (keep defs)
+    var defs=wires.querySelector("defs");
+    wires.innerHTML="";
+    wires.appendChild(defs);
+    elabels.innerHTML="";
+    EDGES.forEach(function(e){
+      var a=center(e[0]), b=center(e[1]);
+      var p1=border(a,b), p2=border(b,a);
+      // pull arrow slightly off the box
+      var kind=e[2];
+      var dx=p2.x-p1.x, dy=p2.y-p1.y, len=Math.sqrt(dx*dx+dy*dy)||1;
+      var gx=dx/len*6, gy=dy/len*6;
+      p2={x:p2.x-gx,y:p2.y-gy};
+      var tf=0.32; // label near source node, off the mid-row nodes
+      var mx=p1.x+(p2.x-p1.x)*tf, my=p1.y+(p2.y-p1.y)*tf;
+      var horiz=Math.abs(p2.x-p1.x)>=Math.abs(p2.y-p1.y);
+      var c1,c2;
+      if(horiz){c1=(p1.x+p2.x)/2+" "+p1.y; c2=(p1.x+p2.x)/2+" "+p2.y;}
+      else{c1=p1.x+" "+(p1.y+p2.y)/2; c2=p2.x+" "+(p1.y+p2.y)/2;}
+      var d="M"+p1.x+" "+p1.y+" C"+c1+", "+c2+", "+p2.x+" "+p2.y;
+      var path=document.createElementNS("http://www.w3.org/2000/svg","path");
+      path.setAttribute("d",d);
+      path.setAttribute("class",CLS[kind]);
+      path.setAttribute("marker-end",MARK[kind]);
+      var L=Math.round(len*1.4);
+      path.style.setProperty("--len",L);
+      if(kind==="flow"){path.style.strokeDasharray=L;path.style.strokeDashoffset="0";}
+      wires.appendChild(path);
+      if(e[3]){
+        var lab=document.createElement("div");
+        lab.className="elabel"+(kind==="weak"?" weak":kind==="miss"?" miss":"");
+        lab.textContent=e[3];
+        lab.style.left=mx+"px"; lab.style.top=my+"px";
+        elabels.appendChild(lab);
+      }
+    });
+  }
+
+  function render(id){
+    var n=NODES[id]; if(!n) return;
+    Array.prototype.forEach.call(stage.querySelectorAll(".node"),function(el){
+      el.classList.toggle("active", el.getAttribute("data-id")===id);
+    });
+    var stName={built:"Construido",weak:"Enlace débil",broken:"Roto",missing:"No existe",ext:"Externo"}[n.st];
+    var bcl={built:"b-built",weak:"b-weak",broken:"b-broken",missing:"b-missing",ext:"b-ext"}[n.st];
+    var wcl=n.why.k==="ok"?"ok":n.why.k==="warn"?"warn":"";
+    var issues=n.iss.map(function(i){return '<span class="iss'+(i[1]?" done":"")+'">'+i[0]+(i[1]?" ✓":"")+'</span>';}).join("");
+    document.getElementById("detail").innerHTML=
+      '<div class="dh"><h3>'+n.t+'</h3><span class="badge '+bcl+'">'+stName+'</span></div>'+
+      '<p class="db">'+n.bd+'</p>'+
+      (issues?'<div class="issues">'+issues+'</div>':'')+
+      '<div class="why '+wcl+'"><b>'+n.why.h+'.</b> '+n.why.t+'</div>';
+  }
+
+  Array.prototype.forEach.call(stage.querySelectorAll(".node"),function(el){
+    el.addEventListener("click",function(){render(el.getAttribute("data-id"));});
+  });
+
+  // theme toggle
+  var root=document.documentElement;
+  document.getElementById("themeBtn").addEventListener("click",function(){
+    var cur=root.getAttribute("data-theme");
+    if(!cur) cur=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
+    root.setAttribute("data-theme", cur==="dark"?"light":"dark");
+  });
+
+  window.addEventListener("resize",draw);
+  draw();
+  render("empleados");
+})();
+</script>
+
+</body>
+</html>

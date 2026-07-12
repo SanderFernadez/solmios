@@ -28,7 +28,7 @@ export class UsuariosService {
     return hotels.filter((h: any) => h.id === user.hotelId)
   }
 
-  async switchHotel(userId: string, targetHotelId: string, currentRole: string): Promise<{ token: string; user: any }> {
+  async switchHotel(userId: string, targetHotelId: string, currentRole: string): Promise<{ token: string; refreshToken: string; user: any }> {
     if (!this.hotelRepo) throw new AuthError('HotelRepo no disponible')
     const hotels = await this.hotelRepo.findMany({})
     const hotel = hotels.find((h: any) => h.id === targetHotelId)
@@ -41,10 +41,13 @@ export class UsuariosService {
     }
     // Mantener rol original; si es super_admin y cambia a otro hotel, queda super_admin
     // Si es hotel_admin, ya validamos que targetHotelId === user.hotelId
-    const token = (this.auth as any).createToken({ id: userId, role: currentRole, hotelId: targetHotelId, userType: 'merchant' })
+    const tokenPayload = { id: userId, role: currentRole, hotelId: targetHotelId, userType: 'merchant' }
+    const token = (this.auth as any).createToken(tokenPayload)
+    const refreshToken = (this.auth as any).createRefreshToken(tokenPayload)
     await this.repo.update(userId, { token })
     return {
       token,
+      refreshToken,
       user: {
         id: user.id,
         name: user.name,
@@ -56,7 +59,7 @@ export class UsuariosService {
     }
   }
 
-  async login(emailOrPhone: string, password: string): Promise<{ token: string; user: any }> {
+  async login(emailOrPhone: string, password: string): Promise<{ token: string; refreshToken: string; user: any }> {
     const trimmed = emailOrPhone.trim()
     let user: any = null
     if (looksLikePhone(trimmed)) {
@@ -74,7 +77,9 @@ export class UsuariosService {
     if (!String(user.password).startsWith('$2') && !String(user.password).startsWith('$argon2') && !String(user.password).includes(':')) {
       await this.repo.update(user.id, { password: await this.hashPassword(password) })
     }
-    const token = (this.auth as any).createToken({ id: user.id, role: user.role, hotelId: user.hotelId, userType: user.userType || 'merchant' })
+    const tokenPayload = { id: user.id, role: user.role, hotelId: user.hotelId, userType: user.userType || 'merchant' }
+    const token = (this.auth as any).createToken(tokenPayload)
+    const refreshToken = (this.auth as any).createRefreshToken(tokenPayload)
     await this.repo.update(user.id, { token })
     let hotelName = ''
     if (user.hotelId && this.hotelRepo) {
@@ -84,7 +89,7 @@ export class UsuariosService {
         hotelName = (hotel as any)?.name || ''
       } catch { /* graceful */ }
     }
-    return { token, user: { id: user.id, name: user.name, email: user.email, role: user.role, hotelId: user.hotelId, hotelName } }
+    return { token, refreshToken, user: { id: user.id, name: user.name, email: user.email, role: user.role, hotelId: user.hotelId, hotelName } }
   }
 
   async me(id: string): Promise<any> {
@@ -125,6 +130,10 @@ export class UsuariosService {
 
   async logout(id: string): Promise<void> {
     await this.repo.update(id, { token: null })
+  }
+
+  async refreshToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
+    return (this.auth as any).refresh(refreshToken)
   }
 
   async forgotPassword(email: string): Promise<void> {

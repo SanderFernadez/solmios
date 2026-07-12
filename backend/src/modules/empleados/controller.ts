@@ -4,18 +4,26 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema, NotFoundError } from 'arckode-framework'
 import type { EmpleadosService } from './service'
 import type { DashboardUseCase } from './usecases/dashboard'
+import type { LeaveConfigUseCase } from './usecases/leave-config'
+import type { AppraisalConfigUseCase } from './usecases/appraisal-config'
+import type { HrCatalogUseCase } from './usecases/hr-catalog'
 import type { StorageService } from 'arckode-framework/modules/storage'
 import { parseDataUrl } from '../../shared/utils/data-url'
 import type {
   CreateDepartmentDTO, CreateEmployeeProfileDTO,
   CreateContractDTO, CreateDocumentDTO,
-  CreateLeaveRequestDTO, CreatePerformanceReviewDTO,
+  CreateLeaveRequestDTO, CreatePerformanceReviewDTO, UpdatePerformanceReviewDTO,
+  CreateLeaveTypeDTO, CreateLeaveAllocationDTO, CreatePublicHolidayDTO,
+  CreateJobPositionDTO, CreateContractTypeDTO, CreateWorkLocationDTO,
 } from './types'
 import {
   CreateDepartmentSchema, CreateProfileSchema,
   CreateContractSchema, CreateDocumentSchema,
   CreateLeaveRequestSchema, CreateReviewSchema,
   UpdateDepartmentSchema, UpdateProfileSchema, RejectLeaveRequestSchema,
+  CreateLeaveTypeSchema, UpdateLeaveTypeSchema, CreateLeaveAllocationSchema, CreatePublicHolidaySchema,
+  UpdateReviewSchema, CreateAppraisalTemplateSchema,
+  CreateJobPositionSchema, CreateContractTypeSchema, CreateWorkLocationSchema,
 } from './validators/schema'
 
 /**
@@ -37,7 +45,28 @@ export class EmpleadosController {
     private readonly dashboard?: DashboardUseCase,
     // Para subir el archivo del documento (base64 → storage), en vez de pegar una URL.
     private readonly storage?: StorageService,
+    // Time Off (tipos/asignaciones/festivos/saldo): usecase directo, mismo criterio que dashboard.
+    private readonly leaveConfig?: LeaveConfigUseCase,
+    // Plantillas de evaluación: idem.
+    private readonly appraisalConfig?: AppraisalConfigUseCase,
+    // Catálogos RRHH (puestos, tipos de contrato, ubicaciones): idem.
+    private readonly hrCatalog?: HrCatalogUseCase,
   ) {}
+
+  private catalog(): HrCatalogUseCase {
+    if (!this.hrCatalog) throw new NotFoundError('Catálogos RRHH no configurados')
+    return this.hrCatalog
+  }
+
+  private cfg(): LeaveConfigUseCase {
+    if (!this.leaveConfig) throw new NotFoundError('Time Off no configurado')
+    return this.leaveConfig
+  }
+
+  private appraisal(): AppraisalConfigUseCase {
+    if (!this.appraisalConfig) throw new NotFoundError('Evaluaciones no configuradas')
+    return this.appraisalConfig
+  }
 
   // ─── Departments ──────────────────────────────────────
 
@@ -235,6 +264,78 @@ export class EmpleadosController {
     return { status: 200, body: request }
   }
 
+  // ─── Time Off: tipos, asignaciones, festivos, saldo, calendario ──
+
+  private hotelOf(req: HttpRequest): string {
+    return (req as any).user?.hotelId ?? (req.query as any)?.hotelId ?? ''
+  }
+
+  async listLeaveTypes(req: HttpRequest) {
+    return { status: 200, body: await this.cfg().listTypes(this.hotelOf(req)) }
+  }
+
+  async createLeaveType(req: HttpRequest) {
+    this.logger.info('POST /api/leave-types')
+    const data = validateSchema(CreateLeaveTypeSchema, withHotelId(req)) as unknown as CreateLeaveTypeDTO
+    return { status: 201, body: await this.cfg().createType(data) }
+  }
+
+  async updateLeaveType(req: HttpRequest) {
+    const data = validateSchema(UpdateLeaveTypeSchema, req.body) as Partial<CreateLeaveTypeDTO>
+    return { status: 200, body: await this.cfg().updateType(req.params.id, this.hotelOf(req), data) }
+  }
+
+  async deleteLeaveType(req: HttpRequest) {
+    await this.cfg().deleteType(req.params.id, this.hotelOf(req))
+    return { status: 204, body: null }
+  }
+
+  async listLeaveAllocations(req: HttpRequest) {
+    const q = req.query as any
+    const year = q.year ? parseInt(q.year, 10) : undefined
+    return { status: 200, body: await this.cfg().listAllocations(this.hotelOf(req), q.employeeId, year) }
+  }
+
+  async createLeaveAllocation(req: HttpRequest) {
+    this.logger.info('POST /api/leave-allocations')
+    const data = validateSchema(CreateLeaveAllocationSchema, withHotelId(req)) as unknown as CreateLeaveAllocationDTO
+    return { status: 201, body: await this.cfg().createAllocation(data) }
+  }
+
+  async deleteLeaveAllocation(req: HttpRequest) {
+    await this.cfg().deleteAllocation(req.params.id, this.hotelOf(req))
+    return { status: 204, body: null }
+  }
+
+  async listPublicHolidays(req: HttpRequest) {
+    const q = req.query as any
+    const year = q.year ? parseInt(q.year, 10) : undefined
+    return { status: 200, body: await this.cfg().listHolidays(this.hotelOf(req), year) }
+  }
+
+  async createPublicHoliday(req: HttpRequest) {
+    this.logger.info('POST /api/public-holidays')
+    const data = validateSchema(CreatePublicHolidaySchema, withHotelId(req)) as unknown as CreatePublicHolidayDTO
+    return { status: 201, body: await this.cfg().createHoliday(data) }
+  }
+
+  async deletePublicHoliday(req: HttpRequest) {
+    await this.cfg().deleteHoliday(req.params.id, this.hotelOf(req))
+    return { status: 204, body: null }
+  }
+
+  async getLeaveBalance(req: HttpRequest) {
+    const q = req.query as any
+    const year = q.year ? parseInt(q.year, 10) : new Date().getFullYear()
+    return { status: 200, body: await this.cfg().getBalance(this.hotelOf(req), req.params.employeeId, year) }
+  }
+
+  async getLeaveCalendar(req: HttpRequest) {
+    const q = req.query as any
+    if (!q.from || !q.to) return { status: 400, body: { error: 'from y to son obligatorios (YYYY-MM-DD)' } }
+    return { status: 200, body: await this.cfg().getCalendar(this.hotelOf(req), q.from, q.to) }
+  }
+
   // ─── Performance Reviews ──────────────────────────────
 
   async createReview(req: HttpRequest) {
@@ -258,10 +359,80 @@ export class EmpleadosController {
     return { status: 200, body: reviews }
   }
 
+  async updateReview(req: HttpRequest) {
+    this.logger.info('PUT /api/performance-reviews/:id')
+    const data = validateSchema(UpdateReviewSchema, req.body) as unknown as UpdatePerformanceReviewDTO
+    const review = await this.service.updateReview(req.params.id, data, (req as any).user)
+    return { status: 200, body: review }
+  }
+
   async completeReview(req: HttpRequest) {
     this.logger.info('POST /api/performance-reviews/:id/complete')
     const review = await this.service.completeReview(req.params.id, (req as any).user)
     return { status: 200, body: review }
+  }
+
+  // ─── Appraisal Templates (formularios de evaluación) ──
+  async listAppraisalTemplates(req: HttpRequest) {
+    return { status: 200, body: await this.appraisal().list(this.hotelOf(req)) }
+  }
+
+  async createAppraisalTemplate(req: HttpRequest) {
+    this.logger.info('POST /api/appraisal-templates')
+    const base = validateSchema(CreateAppraisalTemplateSchema, withHotelId(req)) as any
+    // `questions` (array) va aparte: validateSchema descartaría un campo no declarado (mem 1805).
+    const questions = (req.body as any)?.questions
+    return { status: 201, body: await this.appraisal().create({ ...base, questions }) }
+  }
+
+  async updateAppraisalTemplate(req: HttpRequest) {
+    const body = (req.body ?? {}) as any
+    return { status: 200, body: await this.appraisal().update(req.params.id, this.hotelOf(req), { name: body.name, questions: body.questions }) }
+  }
+
+  async deleteAppraisalTemplate(req: HttpRequest) {
+    await this.appraisal().remove(req.params.id, this.hotelOf(req))
+    return { status: 204, body: null }
+  }
+
+  // ─── Catálogos: puestos, tipos de contrato, ubicaciones ──
+  async listJobPositions(req: HttpRequest) {
+    return { status: 200, body: await this.catalog().listJobs(this.hotelOf(req)) }
+  }
+  async createJobPosition(req: HttpRequest) {
+    const data = validateSchema(CreateJobPositionSchema, withHotelId(req)) as unknown as CreateJobPositionDTO
+    return { status: 201, body: await this.catalog().createJob(data) }
+  }
+  async updateJobPosition(req: HttpRequest) {
+    return { status: 200, body: await this.catalog().updateJob(req.params.id, this.hotelOf(req), (req.body ?? {}) as any) }
+  }
+  async deleteJobPosition(req: HttpRequest) {
+    await this.catalog().deleteJob(req.params.id, this.hotelOf(req))
+    return { status: 204, body: null }
+  }
+
+  async listContractTypes(req: HttpRequest) {
+    return { status: 200, body: await this.catalog().listContractTypes(this.hotelOf(req)) }
+  }
+  async createContractType(req: HttpRequest) {
+    const data = validateSchema(CreateContractTypeSchema, withHotelId(req)) as unknown as CreateContractTypeDTO
+    return { status: 201, body: await this.catalog().createContractType(data) }
+  }
+  async deleteContractType(req: HttpRequest) {
+    await this.catalog().deleteContractType(req.params.id, this.hotelOf(req))
+    return { status: 204, body: null }
+  }
+
+  async listWorkLocations(req: HttpRequest) {
+    return { status: 200, body: await this.catalog().listLocations(this.hotelOf(req)) }
+  }
+  async createWorkLocation(req: HttpRequest) {
+    const data = validateSchema(CreateWorkLocationSchema, withHotelId(req)) as unknown as CreateWorkLocationDTO
+    return { status: 201, body: await this.catalog().createLocation(data) }
+  }
+  async deleteWorkLocation(req: HttpRequest) {
+    await this.catalog().deleteLocation(req.params.id, this.hotelOf(req))
+    return { status: 204, body: null }
   }
 
   // ─── Alerts & Org Chart ───────────────────────────────

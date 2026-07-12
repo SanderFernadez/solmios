@@ -71,6 +71,9 @@ export function PayrollModule() {
       router.get('/api/payroll/runs/:id', guard('payroll', 'view'), (req) => controller.getRun(req))
       router.get('/api/payroll/runs/:id/details', guard('payroll', 'view'), (req) => controller.getRunDetails(req))
       router.get('/api/payroll/runs/:id/prefill', guard('payroll', 'view'), (req) => controller.prefill(req))
+      // Recibo de nómina: HTML A4 imprimible (→ PDF desde el navegador) + envío por email — #157
+      router.get('/api/payroll/runs/:id/details/:detailId/payslip', guard('payroll', 'view'), (req) => controller.printPayslip(req))
+      router.post('/api/payroll/runs/:id/details/:detailId/payslip/email', guard('payroll', 'create'), (req) => controller.emailPayslip(req))
       router.post('/api/payroll/runs/:id/calculate', guard('payroll', 'edit'), (req) => controller.calculate(req))
       router.post('/api/payroll/runs/:id/approve', guard('payroll', 'edit'), (req) => controller.approve(req))
       router.post('/api/payroll/runs/:id/pay', guard('payroll', 'edit'), (req) => controller.markAsPaid(req))

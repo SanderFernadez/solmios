@@ -70,4 +70,10 @@ export const PayrollService = {
   approve: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/approve`),
   markAsPaid: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/pay`),
   cancel: (id: string): Promise<PayrollRun> => http.post(`/api/payroll/runs/${id}/cancel`),
+  // Recibo de nómina (#157): el endpoint devuelve el HTML A4 (envuelto en {data} por el framework);
+  // http.get extrae el string. El componente lo escribe en una pestaña nueva → PDF desde el navegador.
+  payslipHtml: (runId: string, detailId: string, employeeName?: string): Promise<string> =>
+    http.get(`/api/payroll/runs/${runId}/details/${detailId}/payslip${employeeName ? `?employeeName=${encodeURIComponent(employeeName)}` : ''}`),
+  emailPayslip: (runId: string, detailId: string, to: string, employeeName?: string): Promise<{ queued: boolean; to: string }> =>
+    http.post(`/api/payroll/runs/${runId}/details/${detailId}/payslip/email`, { to, employeeName }),
 }

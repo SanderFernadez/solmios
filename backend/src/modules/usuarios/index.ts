@@ -68,6 +68,8 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       router.post('/api/auth/change-password', [auth.authenticate()], (req) => controller.changePassword(req))
       router.post('/api/auth/forgot-password', (req) => controller.forgotPassword(req))
       router.post('/api/auth/reset-password', (req) => controller.resetPassword(req))
+      // Refresh token — pública (el access token ya expiró)
+      router.post('/api/auth/refresh', (req) => controller.refresh(req))
 
       router.get('/api/auth/hotels', guard('users', 'view'), (req) => controller.hotels(req))
       router.post('/api/auth/switch-hotel/:id', guard('users', 'edit'), (req) => controller.switchHotel(req))
