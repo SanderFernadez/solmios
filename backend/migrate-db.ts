@@ -40,26 +40,37 @@ let ROOMS: RoomRow[] = []
 let GUESTS: GuestRow[] = []
 
 // ─── Helpers universales (async sobre DbAdapter) ───────────────────────────
+// Postgres SQLSTATE — locale-independent (el texto del mensaje cambia según
+// lc_messages del servidor, ej. "ya existe la columna..." en instalaciones en
+// español; el código no). Ver mem discovery 2026-07-12.
+const PG_DUPLICATE_TABLE = '42P07'
+const PG_DUPLICATE_COLUMN = '42701'
+const PG_DUPLICATE_OBJECT = '42710' // índices/constraints ya existentes
+
+function isAlreadyExistsError(e: unknown): boolean {
+  const code = (e as { code?: string } | null)?.code
+  if (code === PG_DUPLICATE_TABLE || code === PG_DUPLICATE_COLUMN || code === PG_DUPLICATE_OBJECT) return true
+  const msg = (e instanceof Error ? e.message : String(e)).toLowerCase()
+  // SQLite (sin .code): mensajes en inglés siempre.
+  return msg.includes('already exists') || msg.includes('duplicate column')
+}
+
 // DDL/CREATE: ignora errores de "ya existe" (defensivo; IF NOT EXISTS ya protege).
 async function exec(sql: string): Promise<void> {
   try {
     await db.run(sql)
   } catch (e: unknown) {
-    const msg = (e instanceof Error ? e.message : String(e)).toLowerCase()
-    // SQLite: "already exists" | Postgres: 'already exists'
-    if (!msg.includes('already exists')) throw e
+    if (!isAlreadyExistsError(e)) throw e
   }
 }
 
 // ALTER TABLE ADD COLUMN portátil: reintenta el ALTER y descarta el error cuando
-// la columna ya existe (SQLite: "duplicate column name" | Postgres: "already exists").
-// Reemplaza los antiguos PRAGMA table_info(...) del código SQLite-only.
+// la columna ya existe. Reemplaza los antiguos PRAGMA table_info(...) del código SQLite-only.
 async function addColumnIfMissing(table: string, column: string, def: string): Promise<void> {
   try {
     await db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`)
   } catch (e: unknown) {
-    const msg = (e instanceof Error ? e.message : String(e)).toLowerCase()
-    if (!msg.includes('already exists') && !msg.includes('duplicate column')) throw e
+    if (!isAlreadyExistsError(e)) throw e
   }
 }
 
@@ -943,8 +954,17 @@ async function createHousekeepingMobileTables(): Promise<void> {
       { areaId: 'kitchen', areaName: 'Cocina', icon: 'kitchen', required: 0, tipText: 'Solo si tiene cocina' },
       { areaId: 'living', areaName: 'Sala', icon: 'weekend', required: 0, tipText: 'Solo si tiene sala' },
     ]
-    for (const area of defaultAreas) {
-      await exec(`INSERT OR IGNORE INTO photo_requirements (id, hotelId, areaId, areaName, icon, required, tipText, roomType, active) VALUES ('${uuid()}', '${hid}', '${area.areaId}', '${area.areaName}', '${area.icon}', ${area.required}, '${area.tipText}', 'all', 1)`)
+    const photoReqCount = await countRows("SELECT COUNT(*) as c FROM photo_requirements WHERE hotelId = ?", [hid])
+    if (photoReqCount > 0) {
+      console.log("photo_requirements: ya tiene datos")
+    } else {
+      for (const area of defaultAreas) {
+        await run(
+          `INSERT INTO photo_requirements (id, hotelId, areaId, areaName, icon, required, tipText, roomType, active) VALUES (?,?,?,?,?,?,?,?,?)`,
+          [uuid(), hid, area.areaId, area.areaName, area.icon, area.required, area.tipText, 'all', 1],
+        )
+      }
+      console.log(`photo_requirements: ${defaultAreas.length} insertados`)
     }
 
     // Seed default supply lists
@@ -968,10 +988,21 @@ async function createHousekeepingMobileTables(): Promise<void> {
         { name: 'Bolsa de basura', quantity: 3 },
       ],
     }
-    for (const [roomType, items] of Object.entries(supplySets)) {
-      for (const item of items) {
-        await exec(`INSERT OR IGNORE INTO supply_items (id, hotelId, roomType, name, quantity, unit) VALUES ('${uuid()}', '${hid}', '${roomType}', '${item.name}', ${item.quantity}, 'pieza')`)
+    const supplyItemsCount = await countRows("SELECT COUNT(*) as c FROM supply_items WHERE hotelId = ?", [hid])
+    if (supplyItemsCount > 0) {
+      console.log("supply_items: ya tiene datos")
+    } else {
+      let inserted = 0
+      for (const [roomType, items] of Object.entries(supplySets)) {
+        for (const item of items) {
+          await run(
+            `INSERT INTO supply_items (id, hotelId, roomType, name, quantity, unit) VALUES (?,?,?,?,?,?)`,
+            [uuid(), hid, roomType, item.name, item.quantity, 'pieza'],
+          )
+          inserted++
+        }
       }
+      console.log(`supply_items: ${inserted} insertados`)
     }
     console.log("seed housekeeping mobile: photo_requirements + supply_items listos")
   }

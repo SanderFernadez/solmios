@@ -2,6 +2,7 @@ import { NotFoundError, AuthError, ConflictError } from 'arckode-framework'
 import { assertRoomAvailable } from './availability'
 import { assertUpdateValidations } from './validate-update'
 import { safeEmit } from './safe-emit'
+import { reservasListCacheKey, invalidateReservasCaches } from './cache'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from '../types'
 
 const CACHE_TTL = 300
@@ -28,7 +29,7 @@ export async function listReservations(repo: any, userRepo: any, cache: any, log
   const page = Math.max(query.page || 1, 1)
   const limit = Math.min(Math.max(query.limit || DEFAULT_LIMIT, 1), MAX_LIMIT)
   const offset = (page - 1) * limit
-  const cacheKey = `reservas:list:${hotelId || 'all'}:${JSON.stringify(filters)}:${page}:${limit}`
+  const cacheKey = await reservasListCacheKey(cache, hotelId, { filters, page, limit, search: query.search })
   const cached = await cache.get(cacheKey)
   if (cached) return cached as ReservasPaginated
   const result = query.search
@@ -58,7 +59,7 @@ export async function createReservation(repo: any, blockRepo: any | undefined, l
   }
   const item = await repo.create(dto as any)
   await safeEmit(logger, 'onReservasCreated', sockets.onReservasCreated, item)
-  await cache.delete(`reservas:list:${dto.hotelId}`)
+  await invalidateReservasCaches(cache, dto.hotelId)
   return item
 }
 
@@ -70,7 +71,7 @@ export async function updateReservation(repo: any, logger: any, cache: any, sock
   const item = await repo.update(id, dto as any)
   if (!item) throw new NotFoundError('Reserva no encontrada')
   await safeEmit(logger, 'onReservasUpdated', sockets.onReservasUpdated, item)
-  await cache.delete(`reservas:list:${existing.hotelId}`)
+  await invalidateReservasCaches(cache, existing.hotelId)
   return item
 }
 
@@ -81,5 +82,5 @@ export async function deleteReservation(repo: any, logger: any, cache: any, sock
   const deleted = await repo.delete(id)
   if (!deleted) throw new NotFoundError('Reserva no encontrada')
   await safeEmit(logger, 'onReservasDeleted', sockets.onReservasDeleted, id)
-  await cache.delete(`reservas:list:${existing.hotelId}`)
+  await invalidateReservasCaches(cache, existing.hotelId)
 }

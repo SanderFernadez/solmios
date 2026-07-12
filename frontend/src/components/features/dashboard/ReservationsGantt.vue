@@ -197,10 +197,11 @@ function toDateStr(d: Date) {
   const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const dd = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${dd}`
 }
-function mondayOf(d: Date) {
-  const copy = new Date(d); const dow = (copy.getDay() + 6) % 7
-  copy.setDate(copy.getDate() - dow); copy.setHours(0, 0, 0, 0)
-  return copy
+// Arranca en "hoy" (no en el lunes de la semana) — mismo criterio que Planning
+// (planning/index.vue), así ambos calendarios muestran por defecto el mismo
+// rango de reservas visibles en vez de ventanas desalineadas.
+function startOfToday(): Date {
+  return new Date(new Date().setHours(0, 0, 0, 0))
 }
 function fmtDate(ds: string) {
   const d = new Date(`${ds}T00:00:00`)
@@ -208,7 +209,7 @@ function fmtDate(ds: string) {
 }
 
 const viewDays = ref(7)
-const anchor = ref(mondayOf(new Date()))
+const anchor = ref(startOfToday())
 const cellW = ref(BASE_CELL_W)
 const zoomPct = computed(() => Math.round((cellW.value / BASE_CELL_W) * 100))
 
@@ -222,7 +223,7 @@ function shift(dir: 1 | -1) {
   anchor.value = d
 }
 function goToday() {
-  anchor.value = viewDays.value === 7 ? mondayOf(new Date()) : new Date(new Date().setHours(0, 0, 0, 0))
+  anchor.value = startOfToday()
 }
 
 const days = computed(() => {
