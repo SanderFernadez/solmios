@@ -119,7 +119,7 @@ function openNew() {
       { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions() },
       { key: 'description', label: 'Descripción', required: true, maxLength: 300, placeholder: 'Taxi al aeropuerto' },
       { key: 'category', label: 'Categoría', placeholder: 'transporte, comida…', maxLength: 40 },
-      { key: 'amount', label: 'Monto', type: 'number', required: true, min: 0 },
+      { key: 'amount', label: 'Monto', type: 'number', required: true, min: 0, max: 99_999_999 },
       { key: 'date', label: 'Fecha del gasto', type: 'date', required: true, default: new Date().toISOString().slice(0, 10) },
     ],
     onSubmit: (v) => ReembolsosService.create(v),
