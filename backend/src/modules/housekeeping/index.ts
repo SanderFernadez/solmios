@@ -46,7 +46,10 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       // La tarea guarda `roomId`; la app muestra "Hab. 201 · Piso 2". Sin este
       // repo la camarera veía tarjetas que decían "Hab." y "Piso 0".
       const roomRepo = new OrmRepository<any>(orm, 'Rooms')
-      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo, roomRepo, checklistRepo)
+      // KV por hotel (tabla `configuration`): guarda los ajustes de housekeeping,
+      // como si el supervisor debe tomar foto de presencia para revisar.
+      const configRepo = new OrmRepository<any>(orm, 'Configuration')
+      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo, roomRepo, checklistRepo, configRepo)
       const controller = new HousekeepingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -62,6 +65,9 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       router.put('/api/housekeeping/supply-lists', guard('housekeeping', 'edit'), (req) => controller.updateSupplyLists(req))
       router.get('/api/housekeeping/checklist', guard('housekeeping', 'view'), (req) => controller.checklist(req))
       router.put('/api/housekeeping/checklist', guard('housekeeping', 'edit'), (req) => controller.updateChecklist(req))
+      // Ajustes del hotel (literal ANTES de `/:id`, si no `:id` captura "settings").
+      router.get('/api/housekeeping/settings', guard('housekeeping', 'view'), (req) => controller.settings(req))
+      router.put('/api/housekeeping/settings', guard('housekeeping', 'edit'), (req) => controller.updateSettings(req))
       router.get('/api/housekeeping/:id', guard('housekeeping', 'view'), (req) => controller.show(req))
       router.post('/api/housekeeping', guard('housekeeping', 'create'), (req) => controller.store(req))
       router.put('/api/housekeeping/:id', guard('housekeeping', 'edit'), (req) => controller.update(req))

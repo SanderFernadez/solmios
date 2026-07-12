@@ -49,11 +49,12 @@ describe('withRoomInfo', () => {
     expect(task.roomType).toBe('suite')
   })
 
-  // `floor: null` rompía el parseo de la app, que espera int.
-  it('un piso null se normaliza a 0', async () => {
+  // `floor: null` se DERIVA del número (305 → piso 3): así la app no muestra
+  // "Piso 0" cuando el dato no vino cargado en la habitación.
+  it('un piso null se deriva del número de habitación', async () => {
     const [task] = await withRoomInfo(roomRepo, [{ roomId: 'r2' }])
 
-    expect(task.floor).toBe(0)
+    expect(task.floor).toBe(3)
     expect(task.roomNumber).toBe('305')
   })
 

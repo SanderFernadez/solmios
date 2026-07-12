@@ -67,3 +67,8 @@ export const UploadPhotoSchema: Record<string, ValidationRule> = {
 export const RemovePhotoSchema: Record<string, ValidationRule> = {
   url: { type: 'string' as const, required: true },
 }
+
+/** Ajustes de housekeeping del hotel. Merge parcial: todos los flags opcionales. */
+export const UpdateHousekeepingSettingsSchema: Record<string, ValidationRule> = {
+  requireSupervisorPhoto: { type: 'boolean' as const },
+}

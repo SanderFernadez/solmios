@@ -13,6 +13,7 @@ import { PhotosUseCase } from './usecases/photos'
 import { StatsUseCase } from './usecases/stats'
 import { ApproveUseCase } from './usecases/approve'
 import { ConfigListsUseCase } from './usecases/config-lists'
+import { HousekeepingSettingsUseCase, type HousekeepingSettings } from './usecases/settings'
 
 const CACHE_TTL = 300
 
@@ -23,6 +24,7 @@ export class HousekeepingService {
   private readonly statsUc: StatsUseCase
   private readonly approveUc: ApproveUseCase
   private readonly configLists?: ConfigListsUseCase
+  private readonly settingsUc?: HousekeepingSettingsUseCase
   private readonly listUc: ListUseCase
   private readonly employeeRepo?: RepositoryAdapter<any>
 
@@ -38,6 +40,7 @@ export class HousekeepingService {
     supplyRepo?: RepositoryAdapter<any>,
     private readonly roomRepo?: RepositoryAdapter<any>,
     checklistRepo?: RepositoryAdapter<any>,
+    configRepo?: RepositoryAdapter<any>,
   ) {
     this.employeeRepo = employeeRepo
     this.timings = new TimingsUseCase(
@@ -53,6 +56,7 @@ export class HousekeepingService {
     if (photoReqRepo && supplyRepo) {
       this.configLists = new ConfigListsUseCase(photoReqRepo, supplyRepo, logger, checklistRepo)
     }
+    if (configRepo) this.settingsUc = new HousekeepingSettingsUseCase(configRepo)
   }
 
   setSockets(s: Partial<HousekeepingSockets>): void {
@@ -167,16 +171,13 @@ export class HousekeepingService {
   async upsertSupplyLists(h: string, rt: string, items: any[]) { return this.configLists?.upsertSupplyLists(h, rt, items) ?? [] }
   async getChecklist(h: string, rt?: string) { return this.configLists?.getChecklist(h, rt) ?? [] }
   async upsertChecklist(h: string, rt: string, items: any[]) { return this.configLists?.upsertChecklist(h, rt, items) ?? [] }
+  async getSettings(h: string): Promise<HousekeepingSettings> { return this.settingsUc?.get(h) ?? { requireSupervisorPhoto: false } }
+  async updateSettings(h: string, patch: Partial<HousekeepingSettings>): Promise<HousekeepingSettings> { return this.settingsUc?.update(h, patch) ?? { requireSupervisorPhoto: false } }
 
   /**
-   * `staffId` es el id de un USUARIO, no el de un `employee_profile`.
-   *
-   * Así lo manda la app (`?staffId=<users.id>`) y así lo compara `list()` contra
-   * la columna `housekeeping.staffId`. Validarlo con `employeeRepo.findById()`
-   * lo buscaba por la clave primaria de otra tabla: no coincidía nunca, y
-   * asignarle una tarea a una camarera real fallaba siempre con
-   * "staffId no corresponde a un empleado válido". Con `employee_profiles`
-   * prácticamente vacío en producción, no había forma de asignar ninguna tarea.
+   * `staffId` es el id de un USUARIO (`users.id`), no el de un `employee_profile`.
+   * Así lo manda la app y lo compara `list()` contra `housekeeping.staffId`.
+   * Validarlo contra `employeeRepo` (otra PK) hacía fallar TODA asignación.
    */
   private async assertStaffExists(staffId: string | undefined, currentUser: HousekeepingUser): Promise<void> {
     if (!staffId) return

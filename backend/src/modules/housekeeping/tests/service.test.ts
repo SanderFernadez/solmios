@@ -69,9 +69,11 @@ describe('HousekeepingService', () => {
   })
 
   describe('getById', () => {
+    // `getById` lee con `paginate({id})`, NO `findById`: en este ORM la lectura
+    // de una sola fila recorta los campos json/text. Los mocks reflejan eso.
     it('returns task for super_admin', async () => {
       const task = { id: 'hk1', roomId: 'r1', hotelId: 'h1' } as HousekeepingDTO
-      const repo = makeRepo({ findById: async () => task })
+      const repo = makeRepo({ paginate: async () => ({ data: [task], total: 1, limit: 1, offset: 0, pages: 1 }) })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       const result = await svc.getById('hk1', adminUser)
       expect(result.roomId).toBe('r1')
@@ -79,7 +81,7 @@ describe('HousekeepingService', () => {
 
     it('rejects other hotel task', async () => {
       const task = { id: 'hk1', roomId: 'r1', hotelId: 'h2' } as HousekeepingDTO
-      const repo = makeRepo({ findById: async () => task })
+      const repo = makeRepo({ paginate: async () => ({ data: [task], total: 1, limit: 1, offset: 0, pages: 1 }) })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
       await expect(svc.getById('hk1', hotelAdmin)).rejects.toThrow('No autorizado')
     })

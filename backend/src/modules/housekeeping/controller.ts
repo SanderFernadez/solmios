@@ -2,7 +2,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from '../../shared/validators/validate-body'
 import type { FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingService } from './service'
-import { CreateHousekeepingSchema, UpdateHousekeepingSchema, UploadPhotoSchema, RemovePhotoSchema, ReportIssueSchema } from './validators/schema'
+import { CreateHousekeepingSchema, UpdateHousekeepingSchema, UploadPhotoSchema, RemovePhotoSchema, ReportIssueSchema, UpdateHousekeepingSettingsSchema } from './validators/schema'
 
 // Decodifica un data URL base64 (data:<mime>;base64,<data>) → buffer + metadata.
 // Necesario porque el router del framework no propaga req.files al handler,
@@ -161,6 +161,20 @@ export class HousekeepingController {
     const items = (body.items || []) as any[]
     const result = await this.service.upsertChecklist(hotelId, roomType, items)
     return { status: 200, body: { data: result } }
+  }
+
+  // ─── Ajustes del hotel (foto de presencia del supervisor, etc.) ────────────
+  async settings(req: HttpRequest) {
+    const hotelId = (req.user as any).hotelId
+    const data = await this.service.getSettings(hotelId)
+    return { status: 200, body: { data } }
+  }
+
+  async updateSettings(req: HttpRequest) {
+    const hotelId = (req.user as any).hotelId
+    const patch = validateSchema(UpdateHousekeepingSettingsSchema, req.body ?? {}) as Record<string, unknown>
+    const data = await this.service.updateSettings(hotelId, patch)
+    return { status: 200, body: { data } }
   }
 
   async updateSupplyLists(req: HttpRequest) {
