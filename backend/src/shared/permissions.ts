@@ -106,6 +106,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'dashboard:view',
     'rooms:view',
     'housekeeping:view', 'housekeeping:edit',
+    // Supervisa el mantenimiento del hotel: ve los tickets y los asigna a un
+    // técnico. `edit` cubre la asignación (PUT /mantenimiento/:id con assignedTo).
+    'maintenance:view', 'maintenance:edit',
     // Ficha, y además corrige fichajes y arma turnos del equipo.
     'attendance:view', 'attendance:create', 'attendance:edit',
   ],
