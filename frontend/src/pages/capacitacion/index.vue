@@ -92,6 +92,9 @@
 
     <FormModal v-if="modal" :title="modal.title" :fields="modal.fields" :loading="saving" :submit-label="modal.submitLabel"
       @close="modal = null" @submit="modal.onSubmit" />
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -100,10 +103,13 @@ import { ref, onMounted, computed } from 'vue'
 import { TrainingService, type Course, type Enrollment, COURSE_TYPE_LABELS } from '@/services/Training.service'
 import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.service'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
 
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({ onDone: () => load(), onError: (e) => toast.error(e instanceof Error ? e.message : 'La acción falló') })
 const auth = useAuthStore()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 const loading = ref(true)
@@ -188,14 +194,16 @@ function openComplete(e: Enrollment) {
   }
 }
 
-async function delCourse(c: Course) {
-  if (!confirm(`¿Eliminar el curso "${c.name}"? Se quitan también sus inscripciones.`)) return
-  try { await TrainingService.deleteCourse(c.id); toast.success('Curso eliminado'); await load() }
-  catch { toast.error('Error al eliminar') }
+function delCourse(c: Course) {
+  askConfirm({
+    title: 'Eliminar curso', message: `¿Eliminar el curso "${c.name}"? Se quitan también sus inscripciones.`, confirmLabel: 'Eliminar', danger: true,
+    run: async () => { await TrainingService.deleteCourse(c.id); toast.success('Curso eliminado') },
+  })
 }
-async function delEnrollment(e: Enrollment) {
-  if (!confirm('¿Quitar esta inscripción?')) return
-  try { await TrainingService.removeEnrollment(e.id); toast.success('Inscripción quitada'); await load() }
-  catch { toast.error('Error') }
+function delEnrollment(e: Enrollment) {
+  askConfirm({
+    title: 'Quitar inscripción', message: '¿Quitar esta inscripción?', confirmLabel: 'Quitar', danger: true,
+    run: async () => { await TrainingService.removeEnrollment(e.id); toast.success('Inscripción quitada') },
+  })
 }
 </script>

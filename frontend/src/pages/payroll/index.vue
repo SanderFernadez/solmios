@@ -424,9 +424,10 @@ async function createConcept(values: Record<string, string | number>) {
   }
 }
 
-async function deleteConcept(c: PayrollConcept) {
-  if (!confirm(`¿Eliminar el concepto "${c.code}"?`)) return
-  try { await PayrollService.deleteConcept(c.id); toast.success('Concepto eliminado'); loadData() }
-  catch { toast.error('Error al eliminar el concepto') }
+function deleteConcept(c: PayrollConcept) {
+  confirmDialog.value = {
+    title: 'Eliminar concepto', message: `¿Eliminar el concepto "${c.code}"?`, confirmLabel: 'Eliminar', danger: true,
+    onConfirm: async () => { await PayrollService.deleteConcept(c.id); toast.success('Concepto eliminado'); loadData() },
+  }
 }
 </script>

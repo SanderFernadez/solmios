@@ -320,6 +320,9 @@
       @close="scheduleModal = false"
       @submit="createSchedule"
     />
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -330,6 +333,8 @@ import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.ser
 import { useToast } from '@/composables/useToast'
 import CameraCapture from '@/components/features/CameraCapture.vue'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
 const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 1.5 1.5 3.75-3.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
@@ -350,6 +355,7 @@ const ICON_ALARM = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" s
 const ICON_CHEVRON_DOWN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>'
 
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({ onDone: () => loadData(), onError: (e) => toast.error(e instanceof Error ? e.message : 'La acción falló') })
 const activeTab = ref('clock')
 const loading = ref(true)
 const now = ref(''); const today = ref('')
@@ -507,9 +513,10 @@ async function createSchedule(values: Record<string, string | number>) {
   }
 }
 
-async function deleteSchedule(s: AttendanceSchedule) {
-  if (!confirm(`¿Eliminar el turno "${s.name}"?`)) return
-  try { await AttendanceService.deleteSchedule(s.id); toast.success('Turno eliminado'); loadData() }
-  catch { toast.error('Error al eliminar el turno') }
+function deleteSchedule(s: AttendanceSchedule) {
+  askConfirm({
+    title: 'Eliminar turno', message: `¿Eliminar el turno "${s.name}"?`, confirmLabel: 'Eliminar', danger: true,
+    run: async () => { await AttendanceService.deleteSchedule(s.id); toast.success('Turno eliminado') },
+  })
 }
 </script>

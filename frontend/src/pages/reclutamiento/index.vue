@@ -48,6 +48,9 @@
       @close="formModal = null"
       @submit="submitForm"
     />
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -56,10 +59,13 @@ import { ref, onMounted } from 'vue'
 import { ReclutamientoService, type Applicant } from '@/services/Reclutamiento.service'
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import { useConfirm } from '@/composables/useConfirm'
 
 type FormValues = Record<string, string | number>
 
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({ onDone: () => load(), onError: (e) => toast.error(e instanceof Error ? e.message : 'La acción falló') })
 const loading = ref(true)
 const applicants = ref<Applicant[]>([])
 const saving = ref(false)
@@ -123,10 +129,13 @@ function reject(a: Applicant) {
   }
 }
 
-async function hire(a: Applicant) {
-  if (!confirm(`¿Marcar a ${a.name} como contratado?`)) return
-  try { await ReclutamientoService.hire(a.id); toast.success('Postulante contratado'); load() }
-  catch (e) { toast.error(e instanceof Error ? e.message : 'No se pudo contratar') }
+function hire(a: Applicant) {
+  askConfirm({
+    title: 'Contratar postulante',
+    message: `${a.name} pasará a "Contratado". Después podés crear su expediente de empleado desde Empleados.`,
+    confirmLabel: 'Contratar',
+    run: async () => { await ReclutamientoService.hire(a.id); toast.success('Postulante contratado') },
+  })
 }
 
 async function submitForm(values: FormValues) {

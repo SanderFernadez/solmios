@@ -99,6 +99,16 @@
       </div>
     </div>
   </Teleport>
+
+  <FormModal
+    v-if="emailModal"
+    :title="emailModal.title"
+    :fields="emailModal.fields"
+    :submit-label="emailModal.submitLabel"
+    :loading="emailSaving"
+    @close="emailModal = null"
+    @submit="submitEmail"
+  />
 </template>
 
 <script setup lang="ts">
@@ -106,11 +116,14 @@ import { ref, onMounted } from 'vue'
 import { PayrollService, type PayrollRun, type PayrollRunDetail } from '@/services/Payroll.service'
 import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.service'
 import { useToast } from '@/composables/useToast'
+import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 
 const props = defineProps<{ run: PayrollRun }>()
 defineEmits<{ close: [] }>()
 const toast = useToast()
 const busy = ref<string | null>(null)
+const emailModal = ref<{ title: string; submitLabel: string; fields: FormField[]; onSubmit: (v: Record<string, string | number>) => Promise<unknown> } | null>(null)
+const emailSaving = ref(false)
 
 // #157 Recibo imprimible: trae el HTML con auth y lo abre en pestaña nueva (el navegador imprime a PDF).
 async function openPayslip(d: PayrollRunDetail) {
@@ -124,16 +137,24 @@ async function openPayslip(d: PayrollRunDetail) {
   finally { busy.value = null }
 }
 
-// #157 Envío por email.
-async function emailPayslip(d: PayrollRunDetail) {
-  const to = prompt('Enviar el recibo a:')?.trim()
-  if (!to) return
-  busy.value = d.id
-  try {
-    await PayrollService.emailPayslip(props.run.id, d.id, to, employeeName(d.employeeId))
-    toast.success(`Recibo enviado a ${to}`)
-  } catch (e) { toast.error(e instanceof Error ? e.message : 'No se pudo enviar el recibo') }
-  finally { busy.value = null }
+// #157 Envío por email — modal con campo validado (sin prompt() nativo).
+function emailPayslip(d: PayrollRunDetail) {
+  emailModal.value = {
+    title: `Enviar recibo de ${employeeName(d.employeeId)}`, submitLabel: 'Enviar',
+    fields: [{ key: 'to', label: 'Correo del destinatario', type: 'email', required: true, maxLength: 120, placeholder: 'empleado@mail.com' }],
+    onSubmit: async (v: Record<string, string | number>) => {
+      await PayrollService.emailPayslip(props.run.id, d.id, String(v.to), employeeName(d.employeeId))
+      toast.success(`Recibo enviado a ${v.to}`)
+    },
+  }
+}
+
+async function submitEmail(values: Record<string, string | number>) {
+  if (!emailModal.value) return
+  emailSaving.value = true
+  try { await emailModal.value.onSubmit(values); emailModal.value = null }
+  catch (e) { toast.error(e instanceof Error ? e.message : 'No se pudo enviar el recibo') }
+  finally { emailSaving.value = false }
 }
 
 const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
