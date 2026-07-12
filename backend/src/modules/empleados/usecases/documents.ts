@@ -1,7 +1,7 @@
 // empleados/usecases/documents.ts — Document management + expiry alerts
 
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import { NotFoundError, ConflictError } from 'arckode-framework'
 import type { DocumentDTO, CreateDocumentDTO, DocumentExpiryAlert } from '../types'
 import type { SimpleUser } from './ownership'
 import { validateEmployeeBelongsToHotel } from './validate-employee'
@@ -17,6 +17,12 @@ export class DocumentUseCase {
 
   async create(dto: CreateDocumentDTO): Promise<DocumentDTO> {
     await validateEmployeeBelongsToHotel(this.profileRepo, dto.employeeId, dto.hotelId)
+    // #181: dos documentos del mismo empleado no pueden tener el mismo nombre (case-insensitive).
+    const existing = await this.repo.findMany({ hotelId: dto.hotelId, employeeId: dto.employeeId })
+    const wanted = String(dto.name ?? '').trim().toLowerCase()
+    if (existing.some((d) => String(d.name ?? '').trim().toLowerCase() === wanted)) {
+      throw new ConflictError('Ya existe un documento con ese nombre para este empleado')
+    }
     return this.repo.create({ ...dto, alertSent: 0 } as any)
   }
 

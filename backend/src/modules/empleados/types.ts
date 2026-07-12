@@ -27,6 +27,8 @@ export interface EmployeeProfileDTO {
   userId: string
   /** Nombre del usuario (join con la tabla users). Lo agrega `list()` — no es columna de la tabla. */
   userName?: string
+  /** Rol del usuario (join). Lo agrega `list()`. Permite mostrar el rol en la UI (#172). */
+  userRole?: string
   hotelId: string
   departmentId: string | null
   position: string

@@ -40,6 +40,8 @@
 
             <input v-else :type="f.type || 'text'" v-model="values[f.key]" :placeholder="f.placeholder" :disabled="readOnly"
               :maxlength="f.maxLength"
+              :max="f.type === 'date' ? '9999-12-31' : (f.type === 'month' ? '9999-12' : undefined)"
+              :min="f.type === 'date' ? '1900-01-01' : (f.type === 'month' ? '1900-01' : undefined)"
               @input="clearError(f.key)" @blur="onBlur(f)"
               class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none disabled:bg-surface" :class="borderClass(f.key)" />
 
@@ -149,6 +151,11 @@ function validateField(f: FormField, raw: string | number): string {
     if (Number.isNaN(n)) return 'Debe ser un número'
     if (f.min != null && n < f.min) return `Mínimo ${f.min}`
     if (f.max != null && n > f.max) return `Máximo ${f.max}`
+  }
+  if (f.type === 'date') {
+    // El año debe ser de 4 dígitos y en un rango sensato (evita fechas rotas en la DB) — #171/#178.
+    const year = Number(str.slice(0, 4))
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(str) || year < 1900 || year > 9999) return 'Fecha inválida (año de 4 dígitos)'
   }
   return ''
 }

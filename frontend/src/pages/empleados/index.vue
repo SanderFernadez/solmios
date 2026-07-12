@@ -43,7 +43,7 @@
           <thead>
             <tr class="border-b border-border bg-surface/50">
               <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Empleado</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Cargo</th>
+              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Rol</th>
               <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Depto</th>
               <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Contrato</th>
               <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Salario</th>
@@ -55,9 +55,9 @@
             <tr v-for="emp in profiles" :key="emp.id" @click="openProfile(emp)"
               class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors cursor-pointer" :class="{ 'opacity-60': !emp.active }">
               <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ emp.userName || emp.position || emp.userId }}</td>
-              <td class="px-4 py-2.5 text-text-secondary">{{ emp.position || '—' }}</td>
+              <td class="px-4 py-2.5 text-text-secondary">{{ roleLabel(emp.userRole) }}</td>
               <td class="px-4 py-2.5 text-text-secondary">{{ getDeptName(emp.departmentId) }}</td>
-              <td class="px-4 py-2.5 text-text-secondary">{{ emp.contractType || '—' }}</td>
+              <td class="px-4 py-2.5 text-text-secondary">{{ contractTypeName(emp.contractType) }}</td>
               <td class="px-4 py-2.5 text-right font-bold text-navy whitespace-nowrap">${{ emp.salary?.toLocaleString() || '—' }}</td>
               <td class="px-4 py-2.5">
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="emp.active ? 'bg-teal/10 text-teal' : 'bg-text-muted/15 text-text-muted'">{{ emp.active ? 'Activo' : 'Inactivo' }}</span>
@@ -107,7 +107,7 @@
           <tbody>
             <tr v-for="c in contracts" :key="c.id" class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors">
               <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ getEmployeeName(c.employeeId) }}</td>
-              <td class="px-4 py-2.5 text-text-secondary">{{ c.type }}</td>
+              <td class="px-4 py-2.5 text-text-secondary">{{ contractTypeName(c.type) }}</td>
               <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ c.startDate }}</td>
               <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ c.endDate || 'Indefinido' }}</td>
               <td class="px-4 py-2.5 text-right font-bold text-navy whitespace-nowrap">${{ c.salary.toLocaleString() }}</td>
@@ -386,6 +386,16 @@ const roleOptions = () => [
   ...customRoles.value.map((r) => ({ value: r.name, label: `${r.icon ?? '👤'} ${r.name}` })),
 ]
 
+// #172: mostrar el ROL (no el cargo) en el listado. hotel_admin/super_admin incluidos.
+const ROLE_LABELS: Record<string, string> = {
+  hotel_admin: 'Admin Hotel', super_admin: 'Super Admin', receptionist: 'Recepcionista',
+  housekeeper: 'Limpieza', maintenance: 'Mantenimiento', supervisor: 'Supervisor',
+}
+function roleLabel(role?: string): string {
+  if (!role) return '—'
+  return ROLE_LABELS[role] ?? customRoles.value.find((r) => r.name === role)?.name ?? role
+}
+
 function getDeptName(id: string | null): string {
   if (!id) return '—'
   return departments.value.find(d => d.id === id)?.name || id
@@ -476,7 +486,7 @@ function openNewEmployee() {
       // El puesto lo define el Rol (feedback #169): un solo lugar para la función del empleado.
       { key: 'role', label: 'Rol', type: 'select', required: true, default: 'receptionist', options: roleOptions() },
       { key: 'departmentId', label: 'Departamento', type: 'select', options: departmentOptions() },
-      { key: 'salary', label: 'Salario', type: 'number', min: 0 },
+      { key: 'salary', label: 'Salario', type: 'number', min: 0, max: MAX_SALARY },
       { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: new Date().toISOString().slice(0, 10) },
     ],
     onSubmit: async (v) => {
@@ -504,9 +514,11 @@ function openProfile(emp: EmployeeProfile) {
   formModal.value = {
     title: `Editar: ${emp.userName || emp.position || 'empleado'}`, submitLabel: 'Guardar',
     fields: [
+      // #170: el nombre vive en la cuenta (users), no en el legajo — editable acá y se guarda ahí.
+      { key: 'name', label: 'Nombre', maxLength: 80, default: emp.userName || '' },
       { key: 'departmentId', label: 'Departamento', type: 'select', default: emp.departmentId || '', options: departmentOptions() },
       { key: 'jobPositionId', label: 'Puesto', type: 'select', default: emp.jobPositionId || '', options: jobPositionOptions() },
-      { key: 'salary', label: 'Salario', type: 'number', min: 0, default: emp.salary || 0 },
+      { key: 'salary', label: 'Salario', type: 'number', min: 0, max: MAX_SALARY, default: emp.salary || 0 },
       { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: (emp.hireDate || '').slice(0, 10) },
       { key: 'birthDate', label: 'Fecha de nacimiento', type: 'date', default: (emp.birthDate || '').slice(0, 10) },
       { key: 'nationality', label: 'Nacionalidad', maxLength: 60, default: emp.nationality || '' },
@@ -514,9 +526,19 @@ function openProfile(emp: EmployeeProfile) {
       { key: 'gender', label: 'Género', type: 'select', default: emp.gender || '', options: GENDER_OPTIONS },
       { key: 'education', label: 'Educación', maxLength: 100, default: emp.education || '' },
     ],
-    onSubmit: (v) => EmpleadosService.updateProfile(emp.id, v),
+    onSubmit: async (v) => {
+      // El nombre va a la cuenta (Team/Users); el resto al legajo. Solo actualiza el nombre si cambió.
+      const name = String(v.name ?? '').trim()
+      if (emp.userId && name && name !== (emp.userName || '')) {
+        await TeamService.update(emp.userId, { name })
+      }
+      const { name: _drop, ...profileData } = v as Record<string, unknown>
+      await EmpleadosService.updateProfile(emp.id, profileData)
+    },
   }
 }
+
+const MAX_SALARY = 99_999_999   // tope sensato de salario → evita overflow en la DB (#173/#176)
 
 const jobPositionOptions = () => jobPositions.value.map((j) => ({ value: j.id, label: j.name }))
 const MARITAL_OPTIONS = [
@@ -600,6 +622,16 @@ const employeeOptions = () => profiles.value.map((p) => ({ value: p.id, label: p
 const contractTypeOptions = () => contractTypes.value.length
   ? contractTypes.value.map((t) => ({ value: t.code, label: t.name }))
   : [{ value: 'full_time', label: 'Tiempo completo' }, { value: 'part_time', label: 'Medio tiempo' }]
+
+// #182: mostrar el tipo en español, nunca el código crudo ("Contract"/"full_time").
+const CONTRACT_TYPE_ES: Record<string, string> = {
+  full_time: 'Tiempo completo', part_time: 'Medio tiempo', temporary: 'Temporal',
+  seasonal: 'Por temporada', internship: 'Pasantía', contractor: 'Por servicios', contract: 'Contrato',
+}
+function contractTypeName(code?: string): string {
+  if (!code) return '—'
+  return contractTypes.value.find((t) => t.code === code)?.name ?? CONTRACT_TYPE_ES[code.toLowerCase()] ?? code
+}
 /** Monedas para elegir en un contrato. DOP primero (salario local). */
 const CURRENCIES = [
   { value: 'DOP', label: 'DOP — Peso Dominicano' },

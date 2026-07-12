@@ -15,6 +15,7 @@ export interface EmployeeProfile {
   id: string
   userId: string
   userName?: string
+  userRole?: string
   hotelId: string
   departmentId: string | null
   position: string

@@ -94,8 +94,8 @@ export class ProfileUseCase {
       const enriched = data.map(p => {
         const u = usersMap.get(p.userId)
         // Si el user no existe (legajo huérfano), userName queda undefined → el front muestra el cargo,
-        // no el UUID crudo.
-        return { ...p, userName: u?.name ?? u?.email ?? undefined }
+        // no el UUID crudo. userRole permite mostrar el ROL en el listado (#172), no el puesto.
+        return { ...p, userName: u?.name ?? u?.email ?? undefined, userRole: u?.role ?? undefined }
       })
       return { data: enriched.map(p => stripSensitive(p, user?.role)), total: result.total ?? 0, page, limit }
     }
