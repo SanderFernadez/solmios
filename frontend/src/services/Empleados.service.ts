@@ -221,6 +221,7 @@ export const EmpleadosService = {
   async createProfile(data: Partial<EmployeeProfile>): Promise<EmployeeProfile> { return http.post('/api/employee-profiles', data) },
   async updateProfile(id: string, data: Partial<EmployeeProfile>): Promise<EmployeeProfile> { return http.put(`/api/employee-profiles/${id}`, data) },
   async deactivateProfile(id: string): Promise<void> { return http.delete(`/api/employee-profiles/${id}`) },
+  async reactivateProfile(id: string): Promise<EmployeeProfile> { return http.post(`/api/employee-profiles/${id}/reactivate`) },
 
   // Contracts
   async listContracts(employeeId?: string, hotelId?: string): Promise<Contract[]> {

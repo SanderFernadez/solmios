@@ -135,6 +135,8 @@ export class EmpleadosController {
     if (user?.role !== 'super_admin' && !query.hotelId) {
       return { status: 400, body: { error: 'hotelId requerido' } }
     }
+    // El query param llega como string ('true'/'1') → normalizar a booleano.
+    query.includeInactive = query.includeInactive === 'true' || query.includeInactive === '1'
     const result = await this.service.listProfiles(query, user)
     return { status: 200, body: result }
   }
@@ -150,6 +152,12 @@ export class EmpleadosController {
     this.logger.info('DELETE /api/employee-profiles/:id')
     await this.service.deactivateProfile(req.params.id, (req as any).user)
     return { status: 204, body: null }
+  }
+
+  async reactivateProfile(req: HttpRequest) {
+    this.logger.info('POST /api/employee-profiles/:id/reactivate')
+    const profile = await this.service.reactivateProfile(req.params.id, (req as any).user)
+    return { status: 200, body: profile }
   }
 
   // ─── Contracts ────────────────────────────────────────

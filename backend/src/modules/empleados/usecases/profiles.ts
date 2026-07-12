@@ -61,7 +61,10 @@ export class ProfileUseCase {
   }
 
   async list(query: EmpleadosQuery, user?: SimpleUser): Promise<EmpleadosPaginated> {
-    const filters: Record<string, any> = { active: 1 }
+    // Por defecto solo activos. Con includeInactive se ven los desactivados (para reactivarlos) — así
+    // "desactivar" no parece "borrar" (#174): el legajo sigue existiendo, solo hay que mostrarlo.
+    const filters: Record<string, any> = {}
+    if (!query.includeInactive) filters.active = 1
     if (query.hotelId) filters.hotelId = query.hotelId
     if (query.departmentId) filters.departmentId = query.departmentId
     const page = query.page ?? 1
@@ -107,5 +110,11 @@ export class ProfileUseCase {
   async deactivate(id: string, user?: SimpleUser): Promise<void> {
     await this.getById(id, user)
     await this.repo.update(id, { active: 0 } as any)
+  }
+
+  /** Reactivar un legajo desactivado (#174: desactivar es reversible, no un borrado). */
+  async reactivate(id: string, user?: SimpleUser): Promise<EmployeeProfileDTO> {
+    await this.getById(id, user)
+    return this.repo.update(id, { active: 1 } as any) as Promise<EmployeeProfileDTO>
   }
 }

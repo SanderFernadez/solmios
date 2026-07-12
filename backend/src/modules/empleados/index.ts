@@ -50,7 +50,7 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       description: 'Gestión RRHH completa',
       actions: [
         'createDepartment', 'listDepartments', 'getDepartment', 'updateDepartment', 'deleteDepartment',
-        'createProfile', 'listProfiles', 'getProfile', 'updateProfile', 'deactivateProfile',
+        'createProfile', 'listProfiles', 'getProfile', 'updateProfile', 'deactivateProfile', 'reactivateProfile',
         'createContract', 'listContracts', 'getContract', 'terminateContract',
         'createDocument', 'listDocuments', 'getDocument', 'deleteDocument',
         'createLeaveRequest', 'listLeaveRequests', 'approveLeaveRequest', 'rejectLeaveRequest',
@@ -126,6 +126,7 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       router.get('/api/employee-profiles/:id', guard('users', 'view'), (req) => controller.getProfile(req))
       router.put('/api/employee-profiles/:id', guard('users', 'edit'), (req) => controller.updateProfile(req))
       router.delete('/api/employee-profiles/:id', guard('users', 'delete'), (req) => controller.deactivateProfile(req))
+      router.post('/api/employee-profiles/:id/reactivate', guard('users', 'edit'), (req) => controller.reactivateProfile(req))
 
       // ─── Contracts ────────────────────────────────────
       router.post('/api/employee-contracts', guard('users', 'create'), (req) => controller.createContract(req))

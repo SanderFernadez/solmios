@@ -31,6 +31,13 @@
 
     <!-- Expedientes -->
     <div v-if="activeTab === 'profiles' && !loading" class="card overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 border-b border-border">
+        <span class="text-[11px] text-text-muted">{{ profiles.length }} {{ showInactive ? 'empleados (incluye inactivos)' : 'empleados activos' }}</span>
+        <label class="inline-flex items-center gap-2 cursor-pointer text-[11px] font-bold text-text-secondary select-none">
+          <input type="checkbox" v-model="showInactive" @change="loadData" class="accent-cyan cursor-pointer" />
+          Ver inactivos
+        </label>
+      </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -40,25 +47,30 @@
               <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Depto</th>
               <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Contrato</th>
               <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Salario</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Fecha Ingreso</th>
+              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estado</th>
               <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="emp in profiles" :key="emp.id" @click="openProfile(emp)"
-              class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors cursor-pointer">
+              class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors cursor-pointer" :class="{ 'opacity-60': !emp.active }">
               <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ emp.userName || emp.position || emp.userId }}</td>
               <td class="px-4 py-2.5 text-text-secondary">{{ emp.position || '—' }}</td>
               <td class="px-4 py-2.5 text-text-secondary">{{ getDeptName(emp.departmentId) }}</td>
               <td class="px-4 py-2.5 text-text-secondary">{{ emp.contractType || '—' }}</td>
               <td class="px-4 py-2.5 text-right font-bold text-navy whitespace-nowrap">${{ emp.salary?.toLocaleString() || '—' }}</td>
-              <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ emp.hireDate || '—' }}</td>
+              <td class="px-4 py-2.5">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="emp.active ? 'bg-teal/10 text-teal' : 'bg-text-muted/15 text-text-muted'">{{ emp.active ? 'Activo' : 'Inactivo' }}</span>
+              </td>
               <td class="px-4 py-2.5 text-right whitespace-nowrap">
                 <button @click.stop="openProfile(emp)" class="inline-flex items-center gap-1 px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 cursor-pointer">
                   <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Ver
                 </button>
-                <button @click.stop="deactivateEmployee(emp)" class="inline-flex items-center gap-1 ml-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">
+                <button v-if="emp.active" @click.stop="deactivateEmployee(emp)" class="inline-flex items-center gap-1 ml-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">
                   <span class="w-3 h-3 shrink-0" v-html="ICON_POWER"></span>Desactivar
+                </button>
+                <button v-else @click.stop="reactivateEmployee(emp)" class="inline-flex items-center gap-1 ml-1 px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 cursor-pointer">
+                  <span class="w-3 h-3 shrink-0" v-html="ICON_POWER"></span>Reactivar
                 </button>
               </td>
             </tr>
@@ -295,6 +307,17 @@
       @close="formModal = null"
       @submit="submitForm"
     />
+
+    <ConfirmModal
+      v-if="confirmModal"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel"
+      :danger="confirmModal.danger"
+      :loading="confirmBusy"
+      @confirm="runConfirm"
+      @close="confirmModal = null"
+    />
   </div>
 </template>
 
@@ -307,6 +330,7 @@ import { RolesService, type Role } from '@/services/Roles.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 
 const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
@@ -340,6 +364,7 @@ const profiles = ref<EmployeeProfile[]>([])
 const contracts = ref<Contract[]>([])
 const documents = ref<EmployeeDocument[]>([])
 const leaveRequests = ref<LeaveRequest[]>([])
+const showInactive = ref(false)
 const leaveTypes = ref<LeaveType[]>([])
 const jobPositions = ref<JobPosition[]>([])
 const contractTypes = ref<ContractType[]>([])
@@ -401,9 +426,10 @@ async function loadData() {
   loading.value = true
   const hid = hotelId.value
   const qs = hid ? { hotelId: hid } : undefined
+  const profileQs = { ...(qs ?? {}), ...(showInactive.value ? { includeInactive: 'true' } : {}) }
   try {
     const [profilesRes, contractsRes, documentsRes, leavesRes, reviewsRes, alertsRes] = await Promise.all([
-      EmpleadosService.listProfiles(qs),
+      EmpleadosService.listProfiles(profileQs),
       EmpleadosService.listContracts(undefined, hid),
       EmpleadosService.listDocuments(undefined, hid),
       EmpleadosService.listLeaveRequests(qs),
@@ -501,22 +527,37 @@ const GENDER_OPTIONS = [
   { value: 'female', label: 'Femenino' }, { value: 'male', label: 'Masculino' }, { value: 'other', label: 'Otro' },
 ]
 
-async function deactivateEmployee(emp: EmployeeProfile) {
-  if (!confirm(`¿Desactivar a ${emp.userName || emp.position}?`)) return
-  try { await EmpleadosService.deactivateProfile(emp.id); toast.success('Empleado desactivado'); loadData() }
-  catch { toast.error('Error al desactivar') }
+// #174: modal estilado (no confirm() nativo). Desactivar es reversible → aclara que NO borra la cuenta.
+function deactivateEmployee(emp: EmployeeProfile) {
+  askConfirm({
+    title: 'Desactivar empleado',
+    message: `${emp.userName || emp.position} pasará a inactivo. No se borra: la cuenta y el legajo se conservan y podés reactivarlo cuando quieras.`,
+    confirmLabel: 'Desactivar', danger: true,
+    run: async () => { await EmpleadosService.deactivateProfile(emp.id); toast.success('Empleado desactivado') },
+  })
 }
 
-async function terminateContract(c: Contract) {
-  if (!confirm(`¿Terminar contrato de ${getEmployeeName(c.employeeId)}?`)) return
-  try { await EmpleadosService.terminateContract(c.id); toast.success('Contrato terminado'); loadData() }
-  catch { toast.error('Error al terminar contrato') }
+async function reactivateEmployee(emp: EmployeeProfile) {
+  try { await EmpleadosService.reactivateProfile(emp.id); toast.success('Empleado reactivado'); loadData() }
+  catch { toast.error('Error al reactivar') }
 }
 
-async function deleteDocument(doc: EmployeeDocument) {
-  if (!confirm(`¿Eliminar documento "${doc.name}"?`)) return
-  try { await EmpleadosService.deleteDocument(doc.id); toast.success('Documento eliminado'); loadData() }
-  catch { toast.error('Error al eliminar documento') }
+function terminateContract(c: Contract) {
+  askConfirm({
+    title: 'Terminar contrato',
+    message: `¿Terminar el contrato de ${getEmployeeName(c.employeeId)}?`,
+    confirmLabel: 'Terminar', danger: true,
+    run: async () => { await EmpleadosService.terminateContract(c.id); toast.success('Contrato terminado') },
+  })
+}
+
+function deleteDocument(doc: EmployeeDocument) {
+  askConfirm({
+    title: 'Eliminar documento',
+    message: `¿Eliminar el documento "${doc.name}"? Esta acción no se puede deshacer.`,
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => { await EmpleadosService.deleteDocument(doc.id); toast.success('Documento eliminado') },
+  })
 }
 
 async function approveLeave(l: LeaveRequest) {
@@ -542,6 +583,18 @@ async function completeReview(r: PerformanceReview) {
 type FormValues = Record<string, string | number>
 const formModal = ref<{ title: string; submitLabel: string; fields: FormField[]; onSubmit?: (v: FormValues) => Promise<unknown>; readOnly?: boolean } | null>(null)
 const savingForm = ref(false)
+
+// Confirmación estilada (reemplaza confirm() nativo, #174).
+const confirmModal = ref<{ title: string; message: string; confirmLabel?: string; danger?: boolean; run: () => Promise<unknown> } | null>(null)
+const confirmBusy = ref(false)
+function askConfirm(cfg: { title: string; message: string; confirmLabel?: string; danger?: boolean; run: () => Promise<unknown> }) { confirmModal.value = cfg }
+async function runConfirm() {
+  if (!confirmModal.value) return
+  confirmBusy.value = true
+  try { await confirmModal.value.run(); confirmModal.value = null; loadData() }
+  catch (e) { toast.error(e instanceof Error ? e.message : 'La acción falló') }
+  finally { confirmBusy.value = false }
+}
 
 const employeeOptions = () => profiles.value.map((p) => ({ value: p.id, label: p.userName || p.position || p.id }))
 const contractTypeOptions = () => contractTypes.value.length

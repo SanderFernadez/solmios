@@ -383,6 +383,7 @@ export interface EmpleadosQuery {
   hotelId?: string
   departmentId?: string
   active?: boolean
+  includeInactive?: boolean
   search?: string
   page?: number
   limit?: number

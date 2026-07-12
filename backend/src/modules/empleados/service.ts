@@ -113,6 +113,10 @@ export class EmpleadosService {
     this.sockets.onEmployeeDeactivated?.(profile)
   }
 
+  async reactivateProfile(id: string, user?: SimpleUser): Promise<EmployeeProfileDTO> {
+    return this.profiles.reactivate(id, user)
+  }
+
   // ─── Contracts ────────────────────────────────────────
 
   async createContract(dto: CreateContractDTO): Promise<ContractDTO> {

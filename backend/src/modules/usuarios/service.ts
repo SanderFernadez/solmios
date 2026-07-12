@@ -133,7 +133,9 @@ export class UsuariosService {
   }
 
   async refreshToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
-    return (this.auth as any).refresh(refreshToken)
+    const result = (this.auth as any).refresh(refreshToken)
+    // hotelAuth.refresh() returns { accessToken, refreshToken } — map to { token, refreshToken }
+    return { token: result.accessToken, refreshToken: result.refreshToken }
   }
 
   async forgotPassword(email: string): Promise<void> {
