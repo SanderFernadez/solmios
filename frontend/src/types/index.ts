@@ -419,3 +419,121 @@ export interface CreateFeedbackPayload {
   viewportHeight: number
   browser: string
 }
+
+// === MARKETING (auto-messages, plantillas WhatsApp, message logs — backend/src/modules/marketing) ===
+export type MarketingChannel = 'email' | 'whatsapp' | 'both' | string
+
+export interface MarketingAutoMessage {
+  id: string
+  hotelId: string
+  title: string
+  color: string
+  emailSubject?: string
+  emailBody?: string
+  whatsappBody?: string
+  channel: MarketingChannel
+  triggerEvent: string
+  triggerOffset: number
+  variables?: string | null
+  isActive: boolean | number
+  event?: string
+  language?: string
+  triggerType?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface CreateMarketingAutoMessage {
+  hotelId?: string
+  title: string
+  color?: string
+  emailSubject?: string
+  emailBody?: string
+  whatsappBody?: string
+  channel?: MarketingChannel
+  triggerEvent?: string
+  triggerOffset?: number
+  variables?: string
+  isActive?: boolean
+  event?: string
+  language?: string
+  triggerType?: string
+}
+
+export interface MarketingWhatsappTemplate {
+  id: string
+  hotelId: string
+  name: string
+  body: string
+  category: string
+  isActive: boolean | number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface CreateMarketingWhatsappTemplate {
+  hotelId?: string
+  name: string
+  body?: string
+  category?: string
+  isActive?: boolean
+}
+
+export interface MarketingMessageLog {
+  id: string
+  hotelId: string
+  reservationId?: string | null
+  messageId?: string | null
+  messageType: string
+  status: string
+  recipient?: string | null
+  response?: string | null
+  sentAt?: string | null
+  createdAt?: string
+}
+
+// === AUDIT LOG — plataforma (backend/src/modules/auditlog, distinto de AuditLogEntry de reserva) ===
+export interface AuditLogRecord {
+  id: string
+  hotelId?: string
+  userId?: string
+  userName?: string
+  action: string
+  entity?: string
+  entityId?: string
+  detail?: string
+  ip?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AuditLogQuery {
+  hotelId?: string
+  status?: string
+  type?: string
+  category?: string
+  search?: string
+  page?: number
+  limit?: number
+}
+
+export interface AuditLogListResponse {
+  data: AuditLogRecord[]
+  total: number
+}
+
+// === PUSH TOKENS (backend/src/modules/pushtokens — alta/baja del propio dispositivo) ===
+export interface PushToken {
+  id: string
+  hotelId: string
+  userId: string
+  token: string
+  platform: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RegisterPushTokenPayload {
+  token: string
+  platform?: string
+}

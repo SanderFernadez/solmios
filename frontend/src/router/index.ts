@@ -410,6 +410,12 @@ const router = createRouter({
           component: () => import('@/pages/message-logs/index.vue'),
           meta: { requiresHotelAuth: true },
         },
+        {
+          path: 'push-tokens',
+          name: 'push-tokens',
+          component: () => import('@/pages/push-tokens/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
       ],
     },
     {
