@@ -3,11 +3,13 @@ import type { PushToken, RegisterPushTokenPayload } from '@/types'
 
 /**
  * Espeja backend/src/modules/pushtokens/index.ts.
- * Solo 2 endpoints registrados, ambos sobre el token del dispositivo actual
- * (el dueño sale del JWT, nunca de query/body): no existe un GET de listado
- * en el backend — por eso el módulo no puede enumerar tokens de terceros.
+ * - GET (list): tokens del hotel del usuario (solo hotel_admin/super_admin, filtrado por hotelId).
+ * - POST/DELETE: sobre el token del dispositivo actual (el dueño sale del JWT, nunca de query/body).
  */
 export const PushTokensService = {
+  /** Lista los tokens registrados del hotel (multi-tenant por hotelId en el backend). */
+  list: () => http.get<PushToken[]>('/push-tokens'),
+
   /** Registra (o transfiere de dueño) el token de push de este dispositivo. */
   register: (data: RegisterPushTokenPayload) => http.post<PushToken>('/push-tokens', data),
 

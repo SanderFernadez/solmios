@@ -12,9 +12,44 @@
       <span class="w-5 h-5 text-gold shrink-0 mt-0.5" v-html="ICON_INFO"></span>
       <p class="text-xs text-navy/80">
         Los dispositivos se registran automáticamente desde la app móvil al iniciar sesión.
-        Este panel es para <strong>soporte manual</strong>: el backend expone solo alta y baja del
-        propio token (no hay un listado de todos los dispositivos registrados).
+        Este panel lista los dispositivos de tu hotel y permite alta/baja manual para <strong>soporte</strong>.
       </p>
+    </div>
+
+    <!-- Listado de dispositivos del hotel -->
+    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-black text-navy">Dispositivos registrados ({{ tokens.length }})</h3>
+        <button @click="loadTokens" :disabled="loading" class="text-xs font-bold text-cyan hover:underline cursor-pointer disabled:opacity-50">
+          {{ loading ? 'Cargando…' : 'Actualizar' }}
+        </button>
+      </div>
+      <p v-if="loading" class="text-xs text-text-muted">Cargando dispositivos…</p>
+      <p v-else-if="!tokens.length" class="text-xs text-text-muted">No hay dispositivos registrados en este hotel.</p>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-left text-text-muted border-b border-border">
+              <th class="py-2 pr-3 font-bold">Token</th>
+              <th class="py-2 pr-3 font-bold">Plataforma</th>
+              <th class="py-2 pr-3 font-bold">Usuario</th>
+              <th class="py-2 pr-3 font-bold">Registrado</th>
+              <th class="py-2 font-bold text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in tokens" :key="t.id" class="border-b border-border/50">
+              <td class="py-2 pr-3 font-mono text-navy">{{ t.token.slice(0, 20) }}…</td>
+              <td class="py-2 pr-3 text-navy">{{ t.platform || '—' }}</td>
+              <td class="py-2 pr-3 text-text-muted">{{ t.userId.slice(0, 8) }}</td>
+              <td class="py-2 pr-3 text-text-muted">{{ new Date(t.createdAt).toLocaleString() }}</td>
+              <td class="py-2 text-right">
+                <button @click="unregisterToken(t.token)" class="text-coral font-bold hover:underline cursor-pointer">Dar de baja</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="grid md:grid-cols-2 gap-6">
@@ -73,8 +108,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { PushTokensService } from '@/services/PushTokens.service'
+import type { PushToken } from '@/types'
 import { useToast } from '@/composables/useToast'
 
 const SVG_OPEN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
@@ -89,6 +125,36 @@ const unregistering = ref(false)
 
 interface ActivityEntry { time: string; message: string; ok: boolean }
 const activity = ref<ActivityEntry[]>([])
+
+const tokens = ref<PushToken[]>([])
+const loading = ref(false)
+
+async function loadTokens() {
+  loading.value = true
+  try {
+    tokens.value = await PushTokensService.list()
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Error al cargar dispositivos'
+    toast.error(message)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function unregisterToken(token: string) {
+  try {
+    await PushTokensService.unregister(token)
+    toast.success('Dispositivo dado de baja')
+    logActivity(`Dado de baja: ${token.slice(0, 16)}…`, true)
+    await loadTokens()
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Error al dar de baja'
+    toast.error(message)
+    logActivity(`Error al dar de baja: ${message}`, false)
+  }
+}
+
+onMounted(loadTokens)
 
 function logActivity(message: string, ok: boolean) {
   activity.value.unshift({ time: new Date().toLocaleTimeString(), message, ok })
@@ -108,6 +174,7 @@ async function register() {
     toast.success('Dispositivo registrado')
     logActivity(`Registrado: ${registerForm.value.token.trim().slice(0, 16)}…`, true)
     registerForm.value = { token: '', platform: '' }
+    await loadTokens()
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Error al registrar'
     toast.error(message)
@@ -128,6 +195,7 @@ async function unregister() {
     toast.success('Dispositivo dado de baja')
     logActivity(`Dado de baja: ${unregisterForm.value.token.trim().slice(0, 16)}…`, true)
     unregisterForm.value = { token: '' }
+    await loadTokens()
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Error al dar de baja'
     toast.error(message)

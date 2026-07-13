@@ -20,6 +20,13 @@ export class PushTokensController {
    * cliente, cualquiera registraría su teléfono a nombre de otro y le leería
    * los avisos.
    */
+  /** Lista los tokens del hotel del usuario (admin de dispositivos). Multi-tenant por hotelId en el service. */
+  async list(req: HttpRequest) {
+    const user = req.user as unknown as PushUser
+    const items = await this.service.list(user)
+    return { status: 200, body: items }
+  }
+
   async register(req: HttpRequest) {
     const user = req.user as unknown as PushUser
     const data = validateSchema(RegisterPushTokenSchema, req.body) as unknown as RegisterPushTokenDTO
