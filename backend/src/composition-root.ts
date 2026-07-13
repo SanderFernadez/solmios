@@ -154,6 +154,7 @@ import { foliosPaymentsConnector } from './connectors/folios-payments'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
 import { gastosCajaConnector } from './connectors/gastos-caja'
 import { payrollGastosConnector } from './connectors/payroll-gastos'
+import { reembolsosGastosConnector } from './connectors/reembolsos-gastos'
 import { attendancePayrollConnector } from './connectors/attendance-payroll'
 import { bookingenginePaymentsConnector } from './connectors/bookingengine-payments'
 import { messagesUsuariosConnector } from './connectors/messages-usuarios'
@@ -176,6 +177,8 @@ system.addConnector('gastos-caja', gastosCajaConnector)
 // Pagar la nómina es un gasto. Cae en `gastos` y de ahí, si fue en efectivo, en la caja.
 // Se registra después de gastos-caja para que el egreso encuentre el socket ya inyectado.
 system.addConnector('payroll-gastos', payrollGastosConnector)
+// Un reembolso pagado es un gasto del hotel; en efectivo cae en la caja (vía gastos-caja).
+system.addConnector('reembolsos-gastos', reembolsosGastosConnector)
 // Cablea el prefill de nómina: payroll lee horas de attendance y salarios de empleados.
 system.addConnector('attendance-payroll', attendancePayrollConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)

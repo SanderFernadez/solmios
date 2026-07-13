@@ -323,7 +323,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert, type LeaveType, type JobPosition, type ContractType } from '@/services/Empleados.service'
 import { TeamService } from '@/services/Team.service'
 import { RolesService, type Role } from '@/services/Roles.service'
@@ -347,6 +347,7 @@ const ICON_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" s
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 const toast = useToast()
 const activeTab = ref('profiles')
@@ -462,7 +463,16 @@ async function loadData() {
   finally { loading.value = false }
 }
 
-onMounted(loadData)
+onMounted(async () => {
+  await loadData()
+  // Handoff desde Reclutamiento: al contratar un postulante se llega acá con sus datos para
+  // crear el expediente (la conexión candidato→empleado).
+  const q = route.query
+  if (q.newName || q.newEmail) {
+    openNewEmployee({ name: q.newName as string, email: q.newEmail as string })
+    router.replace({ query: {} })   // limpiar el query para que no reabra al recargar
+  }
+})
 
 // ─── Actions ────────────────────────────────────────────
 
@@ -475,12 +485,12 @@ const departmentOptions = () => departments.value.map((d) => ({ value: d.id, lab
  * Si el expediente falla tras crear la cuenta, se borra la cuenta para no dejarla huérfana
  * (así el admin puede reintentar sin chocar con "email ya existe").
  */
-function openNewEmployee() {
+function openNewEmployee(prefill?: { name?: string; email?: string }) {
   formModal.value = {
     title: 'Nuevo Empleado', submitLabel: 'Registrar Empleado',
     fields: [
-      { key: 'name', label: 'Nombre', required: true, maxLength: 80, placeholder: 'María Pérez' },
-      { key: 'email', label: 'Email', type: 'email', required: true, maxLength: 120, placeholder: 'maria@hotel.com' },
+      { key: 'name', label: 'Nombre', required: true, maxLength: 80, placeholder: 'María Pérez', default: prefill?.name },
+      { key: 'email', label: 'Email', type: 'email', required: true, maxLength: 120, placeholder: 'maria@hotel.com', default: prefill?.email },
       { key: 'phone', label: 'Teléfono', type: 'tel', maxLength: 20, placeholder: '809-555-0000' },
       { key: 'password', label: 'Contraseña temporal', type: 'password', required: true, minLength: 6, maxLength: 72, placeholder: 'Mínimo 6 caracteres' },
       // El puesto lo define el Rol (feedback #169): un solo lugar para la función del empleado.

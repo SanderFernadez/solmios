@@ -56,6 +56,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ReclutamientoService, type Applicant } from '@/services/Reclutamiento.service'
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
@@ -65,6 +66,7 @@ import { useConfirm } from '@/composables/useConfirm'
 type FormValues = Record<string, string | number>
 
 const toast = useToast()
+const router = useRouter()
 const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({ onDone: () => load(), onError: (e) => toast.error(e instanceof Error ? e.message : 'La acción falló') })
 const loading = ref(true)
 const applicants = ref<Applicant[]>([])
@@ -132,9 +134,14 @@ function reject(a: Applicant) {
 function hire(a: Applicant) {
   askConfirm({
     title: 'Contratar postulante',
-    message: `${a.name} pasará a "Contratado". Después podés crear su expediente de empleado desde Empleados.`,
+    message: `${a.name} pasará a "Contratado" y te llevamos a crear su expediente de empleado con sus datos ya cargados.`,
     confirmLabel: 'Contratar',
-    run: async () => { await ReclutamientoService.hire(a.id); toast.success('Postulante contratado') },
+    run: async () => {
+      await ReclutamientoService.hire(a.id)
+      toast.success('Postulante contratado')
+      // Conexión candidato→empleado: handoff a Empleados con el nombre y email precargados.
+      router.push({ path: '/panel/rrhh/empleados', query: { newName: a.name, newEmail: a.email || '' } })
+    },
   })
 }
 
