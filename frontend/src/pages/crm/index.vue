@@ -316,7 +316,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { CrmService, type Coupon, type GuestSegment, type GuestLTV, type CrmDashboard, type SegmentGuest } from '@/services/Crm.service'
 import { useToast } from '@/composables/useToast'
 import { useCountUp } from '@/composables/useCountUp'
