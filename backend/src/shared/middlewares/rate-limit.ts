@@ -43,17 +43,20 @@ export function resetAttempts(key: string): void {
 }
 
 /**
- * IP real del cliente detrás de nginx (reverse proxy): nginx reenvía la conexión
- * TCP original desde localhost, así que `req.remoteAddress` sería siempre 127.0.0.1
- * para TODOS los clientes — inútil como key de rate limit. `X-Forwarded-For` trae la
- * cadena de IPs que atravesó el request; la primera es la del cliente real.
- * Fallback a `remoteAddress` cuando no hay proxy (dev local) o el header viene vacío.
+ * IP real del cliente para el rate limit. Orden de confianza (SEC-4.1):
+ * 1. `CF-Connecting-IP`: Cloudflare la setea con la IP real y la sobrescribe en el borde
+ *    (no forjable a través de CF). Es la fuente correcta en este deploy (Cloudflare → nginx).
+ * 2. ÚLTIMA IP de `X-Forwarded-For`: la agrega el proxy confiable (nginx). La PRIMERA la puede
+ *    forjar el cliente para rotar el bucket y saltarse el límite → NO se usa la primera.
+ * 3. `remoteAddress`: fallback en dev/local sin proxy.
  */
 export function getClientIp(req: HttpRequest): string {
+  const cf = req.headers?.['cf-connecting-ip']
+  if (cf) { const ip = String(cf).trim(); if (ip) return ip }
   const xff = req.headers?.['x-forwarded-for']
   if (xff) {
-    const first = xff.split(',')[0]?.trim()
-    if (first) return first
+    const parts = String(xff).split(',').map((s) => s.trim()).filter(Boolean)
+    if (parts.length) return parts[parts.length - 1]
   }
   return req.remoteAddress || 'unknown'
 }
