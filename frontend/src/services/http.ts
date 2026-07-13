@@ -43,15 +43,33 @@ function processQueue(error: unknown, token: string | null) {
   failedQueue = []
 }
 
+const REFRESH_TIMEOUT_MS = 10_000
+
 async function refreshAccessToken(): Promise<string> {
   const rt = getRefreshToken()
   if (!rt) throw new Error('No refresh token')
 
-  const res = await fetch('/api/auth/refresh', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken: rt }),
-  })
+  // Timeout duro con AbortController: sin esto, una conexión TCP stale (laptop dormida,
+  // red caída tras mucho idle) deja este fetch colgado indefinidamente. Como TODA request
+  // 401 espera a que este refresh resuelva (isRefreshing + failedQueue), un refresh colgado
+  // congela la app entera hasta un F5 — el `finally` que resetea isRefreshing nunca corre.
+  // El abort garantiza que el await SIEMPRE termina (resuelve o rechaza).
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS)
+  let res: Response
+  try {
+    res = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: rt }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    // AbortError (timeout) o fallo de red → refresh no pudo completarse.
+    throw new Error(controller.signal.aborted ? 'Refresh timeout' : 'Refresh network error')
+  } finally {
+    clearTimeout(timer)
+  }
 
   if (!res.ok) throw new Error('Refresh failed')
 
