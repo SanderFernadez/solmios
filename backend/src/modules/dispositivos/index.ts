@@ -40,7 +40,8 @@ export function DispositivosModule() {
       router.get('/api/dispositivos', guard('settings', 'view'), (req) => controller.index(req))
       router.get('/api/dispositivos/:id', guard('settings', 'view'), (req) => controller.show(req))
       router.post('/api/dispositivos', guard('settings', 'create'), (req) => controller.store(req))
-      router.put('/api/dispositivos/:id', guard('settings', 'create'), (req) => controller.update(req))
+      // SC-03: el PUT (actualizar) exigía `settings:create` en vez de `settings:edit`.
+      router.put('/api/dispositivos/:id', guard('settings', 'edit'), (req) => controller.update(req))
       router.delete('/api/dispositivos/:id', guard('settings', 'delete'), (req) => controller.destroy(req))
 
       log.info('Modulo dispositivos v2 listo')

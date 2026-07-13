@@ -36,14 +36,17 @@ export function FeedbackModule() {
       const guard = createPermissionGuard(auth, roleRepo)
 
       // CRUD feedback pins
+      // SC-03: los cuatro verbos exigían solo `feedback:view` — cualquiera con acceso de lectura
+      // podía crear/editar/borrar. Separados por acción real (ver permissions.ts: hotel_admin
+      // recibió feedback:create/edit/delete para no perder la función que ya usaba de hecho).
       router.get('/api/feedback', guard('feedback', 'view'), (req: any) => controller.listPins(req))
       router.get('/api/feedback/:id', guard('feedback', 'view'), (req: any) => controller.getPin(req))
-      router.post('/api/feedback', guard('feedback', 'view'), (req: any) => controller.createPin(req))
-      router.patch('/api/feedback/:id', guard('feedback', 'view'), (req: any) => controller.updatePin(req))
-      router.delete('/api/feedback/:id', guard('feedback', 'view'), (req: any) => controller.deletePin(req))
+      router.post('/api/feedback', guard('feedback', 'create'), (req: any) => controller.createPin(req))
+      router.patch('/api/feedback/:id', guard('feedback', 'edit'), (req: any) => controller.updatePin(req))
+      router.delete('/api/feedback/:id', guard('feedback', 'delete'), (req: any) => controller.deletePin(req))
 
       // GitLab issue creation
-      router.post('/api/feedback/gitlab-issue', guard('feedback', 'view'), (req: any) => controller.createGitLabIssue(req))
+      router.post('/api/feedback/gitlab-issue', guard('feedback', 'edit'), (req: any) => controller.createGitLabIssue(req))
 
       log.info('Módulo feedback v2 listo (CRUD + GitLab)')
       return service

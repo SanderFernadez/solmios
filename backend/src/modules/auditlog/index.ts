@@ -47,7 +47,8 @@ export function AuditlogModule() {
 
       router.get('/api/auditlog', guard('reports', 'view'), (req) => controller.index(req))
       router.get('/api/auditlog/:id', guard('reports', 'view'), (req) => controller.show(req))
-      router.post('/api/auditlog', guard('reports', 'view'), (req) => controller.store(req))
+      // SC-03: crear una entrada de auditoría exigía `reports:view` en vez de `reports:create`.
+      router.post('/api/auditlog', guard('reports', 'create'), (req) => controller.store(req))
 
       log.info('Módulo auditlog listo')
       return service

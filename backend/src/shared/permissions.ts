@@ -62,7 +62,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'attendance:view', 'attendance:create', 'attendance:edit',
     // Nómina es del dueño del hotel, no de recepción: por eso payroll:* NO está en receptionist.
     'payroll:view', 'payroll:create', 'payroll:edit', 'payroll:delete',
-    'feedback:view',
+    // SC-03: el guard de /api/feedback exigía SOLO `feedback:view` en post/patch/delete (cualquiera
+    // con acceso de lectura podía crear/editar/borrar pines). Al separar los guards por acción real
+    // (create/edit/delete), hotel_admin necesita los cuatro permisos para no perder la funcionalidad
+    // que ya usaba de hecho.
+    'feedback:view', 'feedback:create', 'feedback:edit', 'feedback:delete',
     'channel-manager:view', 'channel-manager:edit',
     'ttlock:view', 'ttlock:edit',
     'ai:view', 'ai:edit',

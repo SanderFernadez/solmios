@@ -1,4 +1,6 @@
 // Simple in-memory rate limiter for login attempts
+import type { HttpRequest } from 'arckode-framework'
+
 const attempts = new Map<string, { count: number; resetAt: number }>()
 
 const MAX_ATTEMPTS = 20
@@ -38,4 +40,20 @@ export function recordFailedAttempt(key: string): { allowed: boolean; retryAfter
 
 export function resetAttempts(key: string): void {
   attempts.delete(key)
+}
+
+/**
+ * IP real del cliente detrás de nginx (reverse proxy): nginx reenvía la conexión
+ * TCP original desde localhost, así que `req.remoteAddress` sería siempre 127.0.0.1
+ * para TODOS los clientes — inútil como key de rate limit. `X-Forwarded-For` trae la
+ * cadena de IPs que atravesó el request; la primera es la del cliente real.
+ * Fallback a `remoteAddress` cuando no hay proxy (dev local) o el header viene vacío.
+ */
+export function getClientIp(req: HttpRequest): string {
+  const xff = req.headers?.['x-forwarded-for']
+  if (xff) {
+    const first = xff.split(',')[0]?.trim()
+    if (first) return first
+  }
+  return req.remoteAddress || 'unknown'
 }

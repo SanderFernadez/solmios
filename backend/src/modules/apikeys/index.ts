@@ -39,7 +39,8 @@ export function ApikeysModule() {
       router.get('/api/apikeys', guard('settings', 'view'), (req) => controller.index(req))
       router.get('/api/apikeys/:id', guard('settings', 'view'), (req) => controller.show(req))
       router.post('/api/apikeys', guard('settings', 'create'), (req) => controller.store(req))
-      router.put('/api/apikeys/:id', guard('settings', 'create'), (req) => controller.update(req))
+      // SC-03: el PUT (actualizar) exigía `settings:create` en vez de `settings:edit`.
+      router.put('/api/apikeys/:id', guard('settings', 'edit'), (req) => controller.update(req))
       router.delete('/api/apikeys/:id', guard('settings', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo apikeys v2 listo')
