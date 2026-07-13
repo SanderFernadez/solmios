@@ -2,7 +2,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from '../../shared/validators/validate-body'
 import type { FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingService } from './service'
-import { CreateHousekeepingSchema, UpdateHousekeepingSchema, UploadPhotoSchema, RemovePhotoSchema, ReportIssueSchema, UpdateHousekeepingSettingsSchema } from './validators/schema'
+import { CreateHousekeepingSchema, UpdateHousekeepingSchema, UploadPhotoSchema, RemovePhotoSchema, ReportIssueSchema, UpdateHousekeepingSettingsSchema, ApproveHousekeepingSchema } from './validators/schema'
 
 // Decodifica un data URL base64 (data:<mime>;base64,<data>) → buffer + metadata.
 // Necesario porque el router del framework no propaga req.files al handler,
@@ -96,9 +96,8 @@ export class HousekeepingController {
 
   // ─── Aprobación y presencia (F4/F5) ───────────────────────────────────────
   async approve(req: HttpRequest) {
-    const body = (req.body || {}) as Record<string, unknown>
-    const note = body.note as string | undefined
-    const result = await this.service.approve(req.params.id, (req.user as any).id, note)
+    const data = validateSchema(ApproveHousekeepingSchema, req.body ?? {}) as { rating: number; note?: string }
+    const result = await this.service.approve(req.params.id, (req.user as any).id, data.note, data.rating)
     return { status: 200, body: result }
   }
 

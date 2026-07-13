@@ -54,6 +54,8 @@ export interface HousekeepingDTO {
   /** Motivo con el que el supervisor/admin DEVOLVIÓ la limpieza (reject). La app lo muestra a la camarera. */
   supervisorNote?: string | null
   supOnSiteTime?: string
+  /** Calificación 1–10 que el supervisor le puso a la limpieza al aprobarla. */
+  rating?: number | null
   createdAt: string
   updatedAt: string
 }

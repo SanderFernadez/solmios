@@ -68,6 +68,20 @@ export const RemovePhotoSchema: Record<string, ValidationRule> = {
   url: { type: 'string' as const, required: true },
 }
 
+/** Calificación de la limpieza: entero de 1 a 10. El supervisor la pone al aprobar. */
+export const RATING_MIN = 1
+export const RATING_MAX = 10
+
+/**
+ * Body de `POST /:id/approve`. `rating` es obligatorio: no se aprueba una limpieza
+ * sin calificarla. El rango entero 1–10 se refuerza además en el usecase (el validador
+ * del framework no garantiza min/max para números).
+ */
+export const ApproveHousekeepingSchema: Record<string, ValidationRule> = {
+  rating: { type: 'number' as const, required: true, min: RATING_MIN, max: RATING_MAX },
+  note: { type: 'text' as const, max: MAX_TEXT_LENGTH },
+}
+
 /** Ajustes de housekeeping del hotel. Merge parcial: todos los flags opcionales. */
 export const UpdateHousekeepingSettingsSchema: Record<string, ValidationRule> = {
   requireSupervisorPhoto: { type: 'boolean' as const },

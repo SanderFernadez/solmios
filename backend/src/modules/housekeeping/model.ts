@@ -29,6 +29,10 @@ export const HousekeepingModel: ModelDefinition = {
     supervisorId: { type: 'string' },
     supervisorNote: { type: 'text' },
     supOnSiteTime: { type: 'string' },
+    // Calificación 1–10 que el supervisor le pone a la limpieza al aprobarla (F: rating manual).
+    // Sin declararlo acá el ORM lo descarta en silencio (anti-patrón mem 1805). Nullable: las
+    // tareas viejas y las devueltas (reject) no tienen nota.
+    rating: { type: 'number' },
   },
   timestamps: true,
 }

@@ -211,6 +211,46 @@ describe('HousekeepingService', () => {
     })
   })
 
+  describe('approve (rating 1–10)', () => {
+    // Una tarea lista para aprobar: completada + presencia marcada.
+    const readyTask = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'completed', supOnSiteTime: '2026-06-01T10:00:00.000Z' } as HousekeepingDTO
+
+    it('approves a completed task and persists the rating', async () => {
+      const repo = makeRepo({ findById: async () => readyTask, update: async (id, data) => ({ ...readyTask, ...data, id } as HousekeepingDTO) })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      const result = await svc.approve('hk1', 'sup1', 'buen trabajo', 8)
+      expect(result.status).toBe('inspected')
+      expect(result.rating).toBe(8)
+    })
+
+    it('accepts the boundary values 1 and 10', async () => {
+      const repo = makeRepo({ findById: async () => readyTask, update: async (id, data) => ({ ...readyTask, ...data, id } as HousekeepingDTO) })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      expect((await svc.approve('hk1', 'sup1', undefined, 1)).rating).toBe(1)
+      expect((await svc.approve('hk1', 'sup1', undefined, 10)).rating).toBe(10)
+    })
+
+    it('rejects a rating below 1 or above 10', async () => {
+      const repo = makeRepo({ findById: async () => readyTask })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.approve('hk1', 'sup1', undefined, 0)).rejects.toThrow('entre 1 y 10')
+      await expect(svc.approve('hk1', 'sup1', undefined, 11)).rejects.toThrow('entre 1 y 10')
+    })
+
+    it('rejects a non-integer rating', async () => {
+      const repo = makeRepo({ findById: async () => readyTask })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.approve('hk1', 'sup1', undefined, 7.5)).rejects.toThrow('entero')
+    })
+
+    it('rejects approving without physical presence marked', async () => {
+      const noPresence = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'completed' } as HousekeepingDTO
+      const repo = makeRepo({ findById: async () => noPresence })
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.approve('hk1', 'sup1', undefined, 8)).rejects.toThrow('presencia física')
+    })
+  })
+
   describe('photos (addPhoto)', () => {
     it('uploads an image photo', async () => {
       const repo = makeRepo({

@@ -145,8 +145,8 @@ export class HousekeepingService {
   async stats(q: StaffStatsQuery, u: HousekeepingUser) { return this.statsUc.stats(q, u) }
 
   // ─── Aprobación y presencia ───────────────────────────────────────────────
-  async approve(id: string, userId: string, note?: string) {
-    const result = await this.approveUc.approve(id, userId, note)
+  async approve(id: string, userId: string, note: string | undefined, rating: number) {
+    const result = await this.approveUc.approve(id, userId, note, rating)
     await this.sockets.onHousekeepingUpdated?.(result)
     await this.invalidateCache(result.hotelId)
     return result

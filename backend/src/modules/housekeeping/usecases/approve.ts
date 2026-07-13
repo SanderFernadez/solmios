@@ -1,18 +1,25 @@
 // approve.ts — Usecase: Supervisor aprueba limpieza
 import type { RepositoryAdapter } from 'arckode-framework'
-import { NotFoundError, AuthError } from 'arckode-framework'
+import { NotFoundError, AuthError, ValidationError } from 'arckode-framework'
 import type { HousekeepingDTO } from '../types'
 import type { IssueReport } from '../sockets'
 import { assertTransition } from './timings'
+import { RATING_MIN, RATING_MAX } from '../validators/schema'
 
 export class ApproveUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<HousekeepingDTO>,
   ) {}
 
-  async approve(taskId: string, userId: string, note?: string): Promise<HousekeepingDTO> {
+  async approve(taskId: string, userId: string, note: string | undefined, rating: number): Promise<HousekeepingDTO> {
     const task = await this.repo.findById(taskId)
     if (!task) throw new NotFoundError('Tarea no encontrada')
+
+    // No se aprueba una limpieza sin calificarla. Se refuerza acá el rango entero,
+    // porque el validador del framework no garantiza min/max para números.
+    if (!Number.isInteger(rating) || rating < RATING_MIN || rating > RATING_MAX) {
+      throw new ValidationError(`La calificación debe ser un entero entre ${RATING_MIN} y ${RATING_MAX}`)
+    }
 
     // Verificar que esté completada
     if (task.status !== 'completed') {
@@ -31,6 +38,7 @@ export class ApproveUseCase {
       status: 'inspected',
       supervisorId: userId,
       supervisorNote: note || null,
+      rating,
       completedDate: new Date().toISOString(),
     } as any)
 
