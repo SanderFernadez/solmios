@@ -65,8 +65,8 @@
                 <span class="text-[10px] font-bold text-text-muted uppercase">Habitaciones</span>
               </div>
               <div v-for="day in visibleDays" :key="day.dateStr"
-                class="flex-1 min-w-[68px] px-2 py-3 text-center border-r border-border/50 shrink-0"
-                :class="day.isToday ? 'bg-cyan/5' : day.isWeekend ? 'bg-surface/80' : ''">
+                class="flex-1 min-w-[68px] px-2 py-3 text-center border-r border-navy/15 shrink-0"
+                :class="day.isToday ? 'bg-cyan/20' : day.isWeekend ? 'bg-cyan/10' : ''">
                 <div class="text-[10px] font-bold" :class="day.isToday ? 'text-cyan' : 'text-text-muted'">{{ day.dayName }}</div>
                 <div class="text-xs font-black mt-0.5" :class="day.isToday ? 'text-cyan' : 'text-navy'">{{ day.dayNum }}</div>
                 <div class="text-[9px] text-text-muted mt-0.5">{{ day.monthShort }}</div>
@@ -87,7 +87,7 @@
                 </div>
               </div>
 
-              <div v-for="room in rt.rooms" :key="room.id" class="flex border-b border-border/30 hover:bg-surface/30">
+              <div v-for="room in rt.rooms" :key="room.id" class="flex border-b border-navy/10 hover:bg-surface/30">
                 <div class="w-56 flex-shrink-0 px-4 py-3 border-r border-border flex items-center gap-3">
                   <span class="font-bold text-sm text-navy">{{ room.number }}</span>
                   <span class="text-[10px] text-text-muted truncate">{{ room.type }}</span>
@@ -96,11 +96,11 @@
 
                 <div v-for="day in visibleDays" :key="day.dateStr + room.id"
                   :data-rid="room.id" :data-date="day.dateStr"
-                  class="flex-1 min-w-[68px] h-12 border-r border-border/30 relative cursor-pointer shrink-0"
+                  class="flex-1 min-w-[68px] h-12 border-r border-navy/15 relative cursor-pointer shrink-0"
                   :class="[
-                    day.isToday ? 'bg-cyan/[0.04]' : '',
-                    day.isWeekend ? 'bg-surface/40' : '',
-                    isInRange(room.id, day.dateStr) ? 'bg-cyan/20 ring-1 ring-cyan/50 ring-inset' : '',
+                    day.isToday ? 'bg-cyan/[0.16]' : '',
+                    !day.isToday && day.isWeekend ? 'bg-cyan/10' : '',
+                    isInRange(room.id, day.dateStr) ? 'bg-cyan/30 ring-1 ring-cyan/60 ring-inset' : '',
                     dragRoom?.id === room.id && !isInRange(room.id, day.dateStr) ? 'hover:bg-cyan/5' : '',
                   ]"
                   @mousedown.prevent="onMouseDown(room, day, $event)">
