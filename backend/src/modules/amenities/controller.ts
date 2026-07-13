@@ -9,9 +9,11 @@ export class AmenitiesController {
 
   private async hotelOf(req: any): Promise<string | undefined> {
     const q = req?.query || {}
-    if (q.hotelId) return q.hotelId as string
+    // Seguridad (IDOR cross-tenant): el hotel sale del TOKEN, no de la query. Un usuario de hotel
+    // NO puede apuntar a otro hotel pasando ?hotelId=. Solo super_admin (platform) puede cross-hotel.
     const userHotel = req?.user?.hotelId
     if (userHotel && userHotel !== 'platform') return userHotel as string
+    if (req?.user?.role === 'super_admin' && q.hotelId) return q.hotelId as string
     if (req?.user?.id && req?.user?.role !== 'super_admin') {
       const uRows = await (this.service as any).orm?.findMany?.('Users', { id: req.user.id }) || []
       const u: any = uRows?.[0]
