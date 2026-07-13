@@ -77,6 +77,10 @@ const storage = new StorageService(
 // El estático local sigue sirviendo lo ya subido a disco aunque se active B2.
 serveStatic(router, './uploads', { prefix: '/uploads' })
 
+// DEP-05: endpoint público de salud (/api/health) para monitoreo externo.
+import { registerHealthRoute } from './infrastructure/health'
+registerHealthRoute(router, orm)
+
 // ─── Módulos ───────────────────────────────────────────────────────────────
 import { HabitacionesModule } from './modules/habitaciones'
 import { ReservasModule } from './modules/reservas'
