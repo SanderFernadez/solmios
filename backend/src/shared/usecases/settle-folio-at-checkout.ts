@@ -47,7 +47,9 @@ export async function settleFolioAtCheckout(
     }, user)
   }
 
-  const balance = await folios.getBalance(folio.id, user)
+  // El balance viene del folio enriquecido (getById lo computa). No existe folios.getBalance().
+  const folioAfterPayment = await folios.getById(folio.id, user)
+  const balance = Number(folioAfterPayment?.balance ?? 0)
   if (balance <= 0) {
     await folios.close(folio.id, user)
     return {

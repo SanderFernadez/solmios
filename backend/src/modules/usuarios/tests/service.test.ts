@@ -12,6 +12,7 @@ const cache: CacheAdapter = { get: async () => null, set: async () => {}, delete
 function makeAuth(overrides: Partial<Auth> = {}): Auth {
   return {
     createToken: () => 'jwt-token-fake',
+    createRefreshToken: () => 'jwt-refresh-fake',
     assertOwnership: () => {},
     authenticate: () => [],
     hashPassword: async (p: string) => p,
