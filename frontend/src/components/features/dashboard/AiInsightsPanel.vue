@@ -25,7 +25,7 @@
             <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full" :class="TONE_BG[ins.tone]">
               <span class="block h-3 w-3" :class="TONE_TEXT[ins.tone]" v-html="TONE_ICON[ins.tone]"></span>
             </span>
-            <span class="pt-0.5 text-text-secondary" v-html="ins.text"></span>
+            <span class="pt-0.5 text-text-secondary">{{ ins.text }}</span>
           </li>
         </ul>
       </div>

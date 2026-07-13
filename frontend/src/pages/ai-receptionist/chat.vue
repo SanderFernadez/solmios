@@ -10,6 +10,18 @@ const ICON_USER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
 const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'
 
+// Seguridad (SC-06): msg.content puede venir del huésped. Se escapa el HTML ANTES de aplicar
+// el formato (**bold**, saltos), si no un mensaje con `<img onerror=...>` ejecutaría en el
+// navegador del staff (XSS almacenado). El formato intencional sigue funcionando sobre el texto escapado.
+function formatMessage(content: string): string {
+  const escaped = String(content ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+  return escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')
+}
+
 const conversations = ref<AiConversation[]>([])
 const selectedId = ref<string | null>(null)
 const messages = ref<AiMessage[]>([])
@@ -282,7 +294,7 @@ onUnmounted(() => { if (pollInterval) clearInterval(pollInterval); if (msgPollIn
               <div :class="['px-4 py-2.5 rounded-2xl text-sm leading-relaxed',
                 msg.sender === 'guest' ? 'bg-white border border-border text-navy rounded-br-sm shadow-sm' :
                 msg.sender === 'bot' ? 'bg-success/5 text-navy rounded-bl-sm border border-success/15' :
-                'bg-purple/5 text-navy rounded-bl-sm border border-purple/15']" v-html="msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')" />
+                'bg-purple/5 text-navy rounded-bl-sm border border-purple/15']" v-html="formatMessage(msg.content)" />
             </div>
             <div v-if="msg.sender === 'guest'"
               class="w-7 h-7 rounded-lg shrink-0 bg-navy/5 flex items-center justify-center text-[11px] text-text-secondary font-extrabold">
