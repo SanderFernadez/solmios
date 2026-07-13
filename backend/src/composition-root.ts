@@ -6,6 +6,7 @@ import {
 } from 'arckode-framework'
 import { cors, rateLimit, requestLogger, bodyLimit, timeout, compression } from 'arckode-framework/middlewares'
 import { securityHeaders } from './shared/middlewares/security-headers'
+import { getClientIp } from './shared/middlewares/rate-limit'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { PostgresAdapter } from 'arckode-framework/adapters/postgres'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
@@ -53,7 +54,9 @@ router.use(cors({ origins: CORS_ORIGINS }))
 router.use(securityHeaders())
 router.use(bodyLimit(5 * 1024 * 1024))
 router.use(requestLogger(logger))
-router.use(rateLimit({ windowMs: 60_000, max: 200 }))
+// SEC-4.2: keyBy getClientIp (CF-Connecting-IP / última-XFF). Sin esto el limiter keyeaba por
+// remoteAddress = 127.0.0.1 detrás de nginx → un solo bucket para TODOS (inútil o bloquea a todos).
+router.use(rateLimit({ windowMs: 60_000, max: 200, keyBy: getClientIp }))
 router.use(timeout(30000))
 router.use(compression({ threshold: 1024 }))
 
