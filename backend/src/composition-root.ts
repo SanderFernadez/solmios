@@ -61,10 +61,17 @@ const http = new NodeServer(PORT, logger)
 const system = new System({ config, container, logger, orm, router, http, cache, auth })
 
 // ─── Storage ───────────────────────────────────────────────────────────────
+// Con credenciales de Backblaze B2 en el entorno se sube a B2 (S3-compatible);
+// si no, al disco local. Mismo patrón que DATABASE_URL para Postgres vs SQLite.
 import { StorageService } from 'arckode-framework/modules/storage'
 import { LocalStorageAdapter } from 'arckode-framework/modules/storage/local-adapter'
 import { serveStatic } from 'arckode-framework/static'
-const storage = new StorageService(new LocalStorageAdapter('./uploads', '/uploads'))
+import { S3StorageAdapter, s3ConfigFromEnv } from './infrastructure/storage/s3-adapter'
+const s3Config = s3ConfigFromEnv()
+const storage = new StorageService(
+  s3Config ? new S3StorageAdapter(s3Config) : new LocalStorageAdapter('./uploads', '/uploads'),
+)
+// El estático local sigue sirviendo lo ya subido a disco aunque se active B2.
 serveStatic(router, './uploads', { prefix: '/uploads' })
 
 // ─── Módulos ───────────────────────────────────────────────────────────────
