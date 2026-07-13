@@ -5,10 +5,11 @@
 // en la correlatividad del numerador. Solo se elimina lo que nunca llegó a existir
 // contablemente: una factura recién creada, sin cobros y sin comprobante fiscal emitido.
 //
-// ⚠ El NCF no sirve como criterio por sí solo: hoy `create()` asigna `NCF-{número}` a toda
-// factura aunque el hotel no tenga facturación electrónica activa (ver usecases/fiscal.ts,
-// que define buildNcf pero no está cableado). Por eso el criterio fiscal es la config
-// `electronic_invoicing.enabled` del hotel, no la mera presencia del campo `ncf`.
+// El criterio fiscal es la config `electronic_invoicing.enabled` del hotel (no la mera presencia
+// del campo `ncf`): un hotel con facturación electrónica activa emite comprobantes irrevocables,
+// así que ninguna de sus facturas es borrable. Desde DT-03 el NCF solo se asigna cuando esa
+// config está activa (ver usecases/fiscal.ts::nextNcf), pero el guard sigue mirando la config
+// para cubrir facturas viejas que quedaron con `NCF-{n}` del comportamiento anterior.
 
 import { ConflictError } from 'arckode-framework'
 import type { RepositoryAdapter } from 'arckode-framework'

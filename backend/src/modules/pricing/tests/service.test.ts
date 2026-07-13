@@ -185,3 +185,29 @@ describe('PricingService', () => {
     })
   })
 })
+
+// SEC-2.2 — regresión IDOR: deleteBlock solo borra bloqueos del hotel del token.
+describe('PricingService — tenancy (SEC-2.2)', () => {
+  function ormWithBlock(blockHotelId: string) {
+    let deleted = false
+    const orm: any = {
+      ...makeOrm(),
+      findById: async (table: string, id: string) =>
+        table === 'RoomBlocks' && id === 'b1' ? { id: 'b1', hotelId: blockHotelId } : null,
+      delete: async (_table: string, _id: string) => { deleted = true },
+    }
+    return { orm, wasDeleted: () => deleted }
+  }
+
+  it('borra el bloqueo si es del hotel del token', async () => {
+    const { orm, wasDeleted } = ormWithBlock('h1')
+    await makeService(orm).deleteBlock('b1', 'h1')
+    expect(wasDeleted()).toBe(true)
+  })
+
+  it('NO borra un bloqueo de otro hotel (lanza)', async () => {
+    const { orm, wasDeleted } = ormWithBlock('h2')
+    await expect(makeService(orm).deleteBlock('b1', 'h1')).rejects.toThrow()
+    expect(wasDeleted()).toBe(false)
+  })
+})

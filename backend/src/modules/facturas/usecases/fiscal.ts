@@ -7,6 +7,7 @@
 // La implementación live requiere credenciales y certificados del país — acá se deja la
 // estructura con un adapter de prueba (stub) que simula el envío.
 
+import type { RepositoryAdapter } from 'arckode-framework'
 import type { FacturasDTO } from '../types'
 
 export interface NcfConfig {
@@ -22,6 +23,31 @@ export interface FiscalResult {
   ack?: string
   xml?: string
   message?: string
+}
+
+/**
+ * DT-03: Emite el próximo NCF SOLO si el hotel tiene facturación electrónica activa
+ * (configuration key='electronic_invoicing', value.enabled). Si no está activa, devuelve
+ * `null` — la factura no lleva comprobante fiscal (antes se asignaba `NCF-{n}` a todas,
+ * lo que ensuciaba el criterio de borrado y simulaba comprobantes inexistentes).
+ *
+ * Incrementa la secuencia de forma atómica sobre la misma config row (correlatividad fiscal).
+ */
+export async function nextNcf(
+  configRepo: RepositoryAdapter<any>,
+  hotelId: string,
+): Promise<string | null> {
+  try {
+    const cfgRow = await configRepo.findOne({ hotelId, key: 'electronic_invoicing' })
+    const cfg = cfgRow?.value as NcfConfig | undefined
+    if (!cfg?.enabled) return null
+
+    const nextSeq = (Number(cfg.sequence) || 0) + 1
+    if (cfgRow) await configRepo.update(cfgRow.id, { value: { ...cfg, sequence: nextSeq } } as any)
+    return buildNcf(cfg, nextSeq)
+  } catch {
+    return null
+  }
 }
 
 /** Construye el próximo NCF según la config del hotel. No muta la secuencia (eso lo hace el adapter al enviar). */

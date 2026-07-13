@@ -53,24 +53,34 @@ export async function listInvoices(
   const cached = await cache.get(cacheKey)
   if (cached) return cached as FacturasListResult
 
+  // DT-07: con `search`, el filtro se aplica sobre TODA la tabla filtrada (no una sola página),
+  // así un match en cualquier página aparece. El adapter no soporta LIKE (sin SQL crudo en módulos),
+  // por eso se trae el conjunto del hotel y se filtra/pagina en memoria. Coste acotado por hotel;
+  // la búsqueda es una acción deliberada del usuario (perf profunda: ver PF-01/PF-02).
+  if (query?.search) {
+    const q = String(query.search).toLowerCase()
+    const allRows = await repo.findMany(filters)
+    const allData = await Promise.all(allRows.map(async (r) => attachItems(itemRepo, await enrichInvoice(r, enrichDeps))))
+    const matched = allData.filter((d) =>
+      (d.invoiceNumber || '').toLowerCase().includes(q) ||
+      (d.guest || '').toLowerCase().includes(q) ||
+      (d.notes || '').toLowerCase().includes(q),
+    )
+    const pages = Math.max(1, Math.ceil(matched.length / limit))
+    const finalResult = {
+      data: matched.slice(offset, offset + limit),
+      total: matched.length, limit, offset, pages,
+      hasNext: page < pages, hasPrev: page > 1,
+    }
+    await cache.set(cacheKey, finalResult, LIST_TTL_SECONDS)
+    return finalResult
+  }
+
   const result = await repo.paginate(filters, { offset, limit })
   const data = await Promise.all(result.data.map(async (r) => attachItems(itemRepo, await enrichInvoice(r, enrichDeps))))
   const pages = Math.ceil(result.total / limit)
   const response = { data, total: result.total, limit, offset, pages, hasNext: page < pages, hasPrev: page > 1 }
 
-  let finalResult = response
-  if (query?.search) {
-    // ⚠ El search filtra la página ya traída, no la tabla: un match en la página 3 no aparece
-    // buscando desde la 1. Mover a WHERE del repo cuando el adapter soporte LIKE.
-    const q = String(query.search).toLowerCase()
-    const filtered = data.filter((d) =>
-      (d.invoiceNumber || '').toLowerCase().includes(q) ||
-      (d.guest || '').toLowerCase().includes(q) ||
-      (d.notes || '').toLowerCase().includes(q),
-    )
-    finalResult = { data: filtered, total: filtered.length, limit, offset, pages, hasNext: false, hasPrev: page > 1 }
-  }
-
-  await cache.set(cacheKey, finalResult, LIST_TTL_SECONDS)
-  return finalResult
+  await cache.set(cacheKey, response, LIST_TTL_SECONDS)
+  return response
 }

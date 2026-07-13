@@ -90,7 +90,10 @@ export class HotelesController {
   }
 
   private async resolveHotel(req: any): Promise<string | undefined> {
-    const q = req?.query || {}; if (q.hotelId) return q.hotelId
+    // Seguridad (IDOR cross-tenant): el hotel sale del usuario/token. Solo super_admin (platform)
+    // puede apuntar a otro hotel via ?hotelId=; un usuario de hotel NO puede overridearlo.
+    const q = req?.query || {}
+    if (req?.user?.role === 'super_admin' && q.hotelId) return q.hotelId
     if (!this.queries) return undefined
     return this.queries.resolveHotelId(req?.user)
   }

@@ -30,6 +30,10 @@ export class DashboardQueries {
   }
 
   async getPublicUsers(): Promise<any[]> {
+    // Seguridad (V6): endpoint público sin auth (alimenta los botones de login demo, pre-auth).
+    // Solo expone usuarios DEMO (name/email/role, sin id ni credenciales). En producción queda
+    // deshabilitado por defecto; para mostrar los botones demo en prod, setear DEMO_LOGIN=1.
+    if (process.env.NODE_ENV === 'production' && process.env.DEMO_LOGIN !== '1') return []
     const rows = (await this.orm.findMany('Users', { isDemo: 1, active: 1 })) as any[]
     return rows.filter((u: any) => u && u.email).map((u: any) => ({ name: u.name, email: u.email, role: u.role }))
   }
