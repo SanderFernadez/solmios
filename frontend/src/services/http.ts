@@ -44,6 +44,8 @@ function processQueue(error: unknown, token: string | null) {
 }
 
 const REFRESH_TIMEOUT_MS = 10_000
+// Margen antes del `exp` del token para renovarlo proactivamente (1 min).
+const TOKEN_EXPIRY_THRESHOLD_MS = 60_000
 
 async function refreshAccessToken(): Promise<string> {
   const rt = getRefreshToken()
@@ -83,6 +85,51 @@ async function refreshAccessToken(): Promise<string> {
   localStorage.setItem('refreshToken', newRefreshToken)
 
   return newToken
+}
+
+// --- Refresh proactivo ---
+// Renovar ANTES de que el token venza, así al volver a la pestaña tras mucho idle
+// no se dispara el 401 reactivo (que, aun con timeout, mete un ida y vuelta y puede
+// cortar la sesión). Decodifica el `exp` del JWT (base64url).
+function tokenExpiresAt(token: string): number | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(b64)) as { exp?: number }
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
+function tokenExpiringSoon(thresholdMs = TOKEN_EXPIRY_THRESHOLD_MS): boolean {
+  const token = getToken()
+  if (!token) return false
+  const exp = tokenExpiresAt(token)
+  if (exp === null) return false
+  return exp - Date.now() < thresholdMs
+}
+
+// Comparte isRefreshing/failedQueue con el flujo del 401 → nunca corren dos refresh a la vez.
+async function ensureFreshToken(): Promise<void> {
+  if (isRefreshing || !getRefreshToken() || !tokenExpiringSoon()) return
+  isRefreshing = true
+  try {
+    const newToken = await refreshAccessToken()
+    processQueue(null, newToken)
+  } catch (err) {
+    processQueue(err, null)
+  } finally {
+    isRefreshing = false
+  }
+}
+
+// Al recuperar foco la pestaña (tras idle/sleep), revalidar proactivamente el token.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void ensureFreshToken()
+  })
 }
 
 async function request<T>(method: string, path: string, body?: unknown, _isRetry = false): Promise<T> {
