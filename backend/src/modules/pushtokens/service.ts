@@ -28,6 +28,15 @@ export class PushTokensService {
     private readonly logger: Logger,
   ) {}
 
+  /**
+   * Lista los tokens de push del hotel del usuario (multi-tenant por `hotelId`).
+   * Para la pantalla de administración de dispositivos; el filtro por hotelId
+   * evita que un hotel vea los tokens de otro.
+   */
+  async list(user: PushUser): Promise<PushTokenDTO[]> {
+    return this.repo.findMany({ hotelId: user.hotelId })
+  }
+
   setSender(sender: PushSender): void {
     this.sender = sender
   }

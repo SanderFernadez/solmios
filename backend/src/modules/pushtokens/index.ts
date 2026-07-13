@@ -51,6 +51,9 @@ export function PushTokensModule() {
       // sesión. El dueño sale del JWT, así que nadie toca el de otro.
       router.post('/api/push-tokens', [auth.authenticate()], (req) => controller.register(req))
       router.delete('/api/push-tokens', [auth.authenticate()], (req) => controller.unregister(req))
+      // Listado para administrar dispositivos del hotel. Restringido a admin del hotel
+      // (falla cerrado); el service filtra por hotelId del token → multi-tenant.
+      router.get('/api/push-tokens', [auth.authenticate('hotel_admin', 'super_admin')], (req) => controller.list(req))
 
       log.info('Módulo pushtokens listo')
       return service

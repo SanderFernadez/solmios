@@ -6,7 +6,7 @@ import { bodyLimit } from 'arckode-framework/middlewares'
 import { registerUsuariosModels } from './model'
 import { UsuariosService } from './service'
 import { UsuariosController } from './controller'
-import { rateLimit, resetAttempts } from '../../shared/middlewares/rate-limit'
+import { rateLimit, resetAttempts, getClientIp } from '../../shared/middlewares/rate-limit'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { UsuariosService }
@@ -43,15 +43,18 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
 
       // Auth (públicas) — con rate limiting en login
       router.post('/api/auth/login', async (req) => {
-        const ip = (req as any).ip || 'unknown'
-        const { allowed, retryAfter } = rateLimit(ip as string)
+        // `req.remoteAddress` detrás de nginx es siempre localhost: la IP real del
+        // cliente viaja en X-Forwarded-For (getClientIp la extrae con fallback).
+        const ip = getClientIp(req)
+        const key = `login:${ip}`
+        const { allowed, retryAfter } = rateLimit(key)
         if (!allowed) {
           return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
         }
         // Un login fallido lanza, así que no llega a resetear el contador.
         // Antes se reseteaba con cualquier resultado y el límite nunca se alcanzaba.
         const result = await controller.login(req)
-        resetAttempts(ip as string)
+        resetAttempts(key)
         return result
       })
       // `me` y `logout` operan sobre el propio usuario del token, no sobre la
@@ -66,8 +69,31 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       // Cambia la contraseña del `req.user.id` del token y exige la actual:
       // `users:edit` es el permiso para editar a OTROS, no a uno mismo.
       router.post('/api/auth/change-password', [auth.authenticate()], (req) => controller.changePassword(req))
-      router.post('/api/auth/forgot-password', (req) => controller.forgotPassword(req))
-      router.post('/api/auth/reset-password', (req) => controller.resetPassword(req))
+      // forgot-password SIEMPRE responde 200 con el mismo mensaje genérico exista o no
+      // el email (anti-enumeración, ver controller.forgotPassword). Por eso NO se resetea
+      // el contador nunca acá: si se reseteara en cada respuesta "exitosa" (que es
+      // prácticamente cualquier request bien formado) el rate limit quedaría anulado.
+      // Solo decae por la ventana de tiempo del propio middleware.
+      router.post('/api/auth/forgot-password', async (req) => {
+        const key = `forgot-password:${getClientIp(req)}`
+        const { allowed, retryAfter } = rateLimit(key)
+        if (!allowed) {
+          return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
+        }
+        return controller.forgotPassword(req)
+      })
+      router.post('/api/auth/reset-password', async (req) => {
+        const key = `reset-password:${getClientIp(req)}`
+        const { allowed, retryAfter } = rateLimit(key)
+        if (!allowed) {
+          return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
+        }
+        // Token inválido/expirado lanza AuthError (service.resetPassword), así que no
+        // llega a resetear el contador. Solo un reset exitoso lo hace.
+        const result = await controller.resetPassword(req)
+        resetAttempts(key)
+        return result
+      })
       // Refresh token — pública (el access token ya expiró)
       router.post('/api/auth/refresh', (req) => controller.refresh(req))
 
@@ -75,7 +101,19 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       router.post('/api/auth/switch-hotel/:id', guard('users', 'edit'), (req) => controller.switchHotel(req))
 
       router.get('/api/usuarios', guard('users', 'view'), (req) => controller.index(req))
-      router.post('/api/usuarios', guard('users', 'create'), (req) => controller.store(req))
+      // Creación de usuarios: además del permiso `users:create`, rate limit por IP
+      // contra spam/abuso de alta de cuentas. `store()` puede "fallar" sin lanzar
+      // (403 por rol no asignable), así que el reset solo dispara con status < 400.
+      router.post('/api/usuarios', guard('users', 'create'), async (req) => {
+        const key = `create-user:${getClientIp(req)}`
+        const { allowed, retryAfter } = rateLimit(key)
+        if (!allowed) {
+          return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
+        }
+        const result = await controller.store(req)
+        if (result.status < 400) resetAttempts(key)
+        return result
+      })
       router.put('/api/usuarios/:id', guard('users', 'edit'), (req) => controller.update(req))
       router.delete('/api/usuarios/:id', guard('users', 'delete'), (req) => controller.destroy(req))
 

@@ -48,7 +48,8 @@ export function PaquetesModule() {
       router.get('/api/paquetes', guard('rooms', 'view'), (req) => controller.index(req))
       router.get('/api/paquetes/:id', guard('rooms', 'view'), (req) => controller.show(req))
       router.post('/api/paquetes', guard('rooms', 'create'), (req) => controller.store(req))
-      router.put('/api/paquetes/:id', guard('rooms', 'create'), (req) => controller.update(req))
+      // SC-03: el PUT (actualizar) exigía `rooms:create` en vez de `rooms:edit`.
+      router.put('/api/paquetes/:id', guard('rooms', 'edit'), (req) => controller.update(req))
       router.delete('/api/paquetes/:id', guard('rooms', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo paquetes listo')

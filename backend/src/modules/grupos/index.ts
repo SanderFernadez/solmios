@@ -48,7 +48,8 @@ export function GruposModule() {
       router.get('/api/grupos', guard('reservations', 'view'), (req) => controller.index(req))
       router.get('/api/grupos/:id', guard('reservations', 'view'), (req) => controller.show(req))
       router.post('/api/grupos', guard('reservations', 'create'), (req) => controller.store(req))
-      router.put('/api/grupos/:id', guard('reservations', 'create'), (req) => controller.update(req))
+      // SC-03: el PUT (actualizar) exigía `reservations:create` en vez de `reservations:edit`.
+      router.put('/api/grupos/:id', guard('reservations', 'edit'), (req) => controller.update(req))
       router.delete('/api/grupos/:id', guard('reservations', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo grupos listo')

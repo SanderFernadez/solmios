@@ -1068,12 +1068,13 @@ const AVATAR_PALETTE = [
 ]
 function avatarStyle(i: number) { return AVATAR_PALETTE[i % AVATAR_PALETTE.length] }
 
-function trendClass(pct: number) {
+// pct opcional: algunos stats (link/caption) no traen trend → default 0 = neutral.
+function trendClass(pct = 0) {
   if (pct > 0) return 'text-[#16A34A]'
   if (pct < 0) return 'text-[#DC2626]'
   return 'text-text-muted'
 }
-function trendLabel(pct: number) {
+function trendLabel(pct = 0) {
   if (pct > 0) return `+${pct}% vs ayer`
   return `${pct}% vs ayer`
 }

@@ -24,7 +24,8 @@ export interface AttendanceReportRow {
 export interface AttendanceConfig {
   id: string; hotelId: string; autoClockOut: number; autoClockOutTime: string
   overtimeEnabled: number; overtimeMultiplier: number; allowMobileClockIn: number
-  weeklyHoursLimit: number
+  weeklyHoursLimit: number; defaultScheduleId?: string
+  requirePhotoOnClockIn: number; requireLocationOnClockIn: number; geoFenceRadiusMeters: number
 }
 
 export interface ShiftAssignment {

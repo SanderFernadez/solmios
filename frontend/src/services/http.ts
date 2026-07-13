@@ -43,15 +43,35 @@ function processQueue(error: unknown, token: string | null) {
   failedQueue = []
 }
 
+const REFRESH_TIMEOUT_MS = 10_000
+// Margen antes del `exp` del token para renovarlo proactivamente (1 min).
+const TOKEN_EXPIRY_THRESHOLD_MS = 60_000
+
 async function refreshAccessToken(): Promise<string> {
   const rt = getRefreshToken()
   if (!rt) throw new Error('No refresh token')
 
-  const res = await fetch('/api/auth/refresh', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken: rt }),
-  })
+  // Timeout duro con AbortController: sin esto, una conexión TCP stale (laptop dormida,
+  // red caída tras mucho idle) deja este fetch colgado indefinidamente. Como TODA request
+  // 401 espera a que este refresh resuelva (isRefreshing + failedQueue), un refresh colgado
+  // congela la app entera hasta un F5 — el `finally` que resetea isRefreshing nunca corre.
+  // El abort garantiza que el await SIEMPRE termina (resuelve o rechaza).
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS)
+  let res: Response
+  try {
+    res = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: rt }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    // AbortError (timeout) o fallo de red → refresh no pudo completarse.
+    throw new Error(controller.signal.aborted ? 'Refresh timeout' : 'Refresh network error')
+  } finally {
+    clearTimeout(timer)
+  }
 
   if (!res.ok) throw new Error('Refresh failed')
 
@@ -65,6 +85,51 @@ async function refreshAccessToken(): Promise<string> {
   localStorage.setItem('refreshToken', newRefreshToken)
 
   return newToken
+}
+
+// --- Refresh proactivo ---
+// Renovar ANTES de que el token venza, así al volver a la pestaña tras mucho idle
+// no se dispara el 401 reactivo (que, aun con timeout, mete un ida y vuelta y puede
+// cortar la sesión). Decodifica el `exp` del JWT (base64url).
+function tokenExpiresAt(token: string): number | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(b64)) as { exp?: number }
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
+function tokenExpiringSoon(thresholdMs = TOKEN_EXPIRY_THRESHOLD_MS): boolean {
+  const token = getToken()
+  if (!token) return false
+  const exp = tokenExpiresAt(token)
+  if (exp === null) return false
+  return exp - Date.now() < thresholdMs
+}
+
+// Comparte isRefreshing/failedQueue con el flujo del 401 → nunca corren dos refresh a la vez.
+async function ensureFreshToken(): Promise<void> {
+  if (isRefreshing || !getRefreshToken() || !tokenExpiringSoon()) return
+  isRefreshing = true
+  try {
+    const newToken = await refreshAccessToken()
+    processQueue(null, newToken)
+  } catch (err) {
+    processQueue(err, null)
+  } finally {
+    isRefreshing = false
+  }
+}
+
+// Al recuperar foco la pestaña (tras idle/sleep), revalidar proactivamente el token.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void ensureFreshToken()
+  })
 }
 
 async function request<T>(method: string, path: string, body?: unknown, _isRetry = false): Promise<T> {
@@ -171,7 +236,7 @@ export const http = {
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
-  delete: <T>(path: string) => request<T>('DELETE', path),
+  delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, body),
   /** Descarga binaria (PDF, etc.) con el mismo token JWT. Devuelve Blob para descarga/preview. */
   async getBlob(path: string): Promise<Blob> {
     const headers: Record<string, string> = {}

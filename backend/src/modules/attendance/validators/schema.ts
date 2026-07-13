@@ -42,9 +42,18 @@ export const CreateShiftAssignmentSchema: Record<string, ValidationRule> = {
   notes: { type: 'string' as const, max: 500 },
 }
 
+// Los nombres DEBEN coincidir con los fields de `AttendanceConfigModel` (model.ts).
+// El ORM descarta silenciosamente cualquier key no declarada y `validateSchema` es
+// whitelist: nombres desalineados = update no-op. Booleanos van como number (0/1).
 export const UpdateConfigSchema: Record<string, ValidationRule> = {
-  requireGeolocation: { type: 'number' as const },
-  geolocationRadius: { type: 'number' as const, min: 10, max: GEOLOCATION_RADIUS_MAX },
-  allowManualClockIn: { type: 'number' as const },
-  requirePhoto: { type: 'number' as const },
+  defaultScheduleId: { type: 'string' as const },
+  requirePhotoOnClockIn: { type: 'number' as const },
+  requireLocationOnClockIn: { type: 'number' as const },
+  geoFenceRadiusMeters: { type: 'number' as const, min: 10, max: GEOLOCATION_RADIUS_MAX },
+  allowMobileClockIn: { type: 'number' as const },
+  autoClockOut: { type: 'number' as const },
+  autoClockOutTime: { type: 'string' as const, min: 4, max: 5 },
+  overtimeEnabled: { type: 'number' as const },
+  overtimeMultiplier: { type: 'number' as const },
+  weeklyHoursLimit: { type: 'number' as const },
 }

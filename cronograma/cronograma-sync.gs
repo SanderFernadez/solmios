@@ -3,10 +3,15 @@
  * =========================================
  * Planificas en Google Sheets, se sincroniza a GitLab Issues.
  *
- * CONFIGURACION INICIAL:
- *   GITLAB_URL  = "https://gitlab.com"
- *   PROJECT_ID  = "underworf1/solmios"
- *   TOKEN       = "glpat-..." (GitLab Personal Access Token, scope: api)
+ * CONFIGURACION INICIAL (una sola vez):
+ *   El token NUNCA va hardcodeado en el codigo (queda en el historial de git = fuga de secreto).
+ *   Se guarda en Script Properties (cifrado, no versionado). Para cargarlo:
+ *     1. Menu "Cronograma" -> "Configurar credenciales", o
+ *     2. Editor Apps Script -> corré setupCredentials() una vez con tus valores, o
+ *     3. Proyecto -> Configuracion -> Propiedades del script:
+ *          GITLAB_TOKEN       = "glpat-..." (Personal Access Token, scope: api)
+ *          GITLAB_PROJECT_ID  = "underworf1/solmios"   (opcional, default abajo)
+ *          GITLAB_URL         = "https://gitlab.com"    (opcional, default abajo)
  *
  * ESTRUCTURA DE LA HOJA (Fila 1 = encabezado):
  *   A: ID      | B: Modulo | C: Submodulo | D: Tarea
@@ -14,9 +19,40 @@
  *   I: Sprint  | J: GitLab Issue URL
  */
 
-var GITLAB_URL = "https://gitlab.com";
-var PROJECT_ID = "underworf1/solmios";
-var TOKEN      = "glpat-cj2lR08p_nXYoRwU0PiokGM6MQpvOjEKdTo1eWZwbA8.01.171n19uxt";
+var GITLAB_URL_DEFAULT = "https://gitlab.com";
+var PROJECT_ID_DEFAULT = "underworf1/solmios";
+
+/**
+ * Lee las credenciales desde Script Properties. El token NO se hardcodea.
+ * Lanza si falta el token para no fallar silenciosamente con 401.
+ */
+function getGitLabConfig() {
+  var props = PropertiesService.getScriptProperties();
+  var token = props.getProperty("GITLAB_TOKEN");
+  if (!token) {
+    throw new Error(
+      "Falta GITLAB_TOKEN en Script Properties. Corré setupCredentials() una vez " +
+      "(Editor Apps Script) o cargalo en Proyecto -> Configuracion -> Propiedades del script."
+    );
+  }
+  return {
+    url: props.getProperty("GITLAB_URL") || GITLAB_URL_DEFAULT,
+    project: props.getProperty("GITLAB_PROJECT_ID") || PROJECT_ID_DEFAULT,
+    token: token
+  };
+}
+
+/**
+ * Setup one-off: pega tu token acá, corré esta funcion UNA vez desde el editor, y BORRÁ el token
+ * de esta linea despues (queda guardado en Script Properties, no en el codigo).
+ */
+function setupCredentials() {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty("GITLAB_TOKEN", "PEGAR_TOKEN_ACA_Y_BORRAR_DESPUES");
+  props.setProperty("GITLAB_PROJECT_ID", PROJECT_ID_DEFAULT);
+  props.setProperty("GITLAB_URL", GITLAB_URL_DEFAULT);
+  SpreadsheetApp.getUi().alert("Credenciales guardadas en Script Properties. Borrá el token del codigo.");
+}
 
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
@@ -24,6 +60,7 @@ function onOpen() {
     .addItem("Push a GitLab", "pushToGitLab")
     .addItem("Pull desde GitLab", "pullFromGitLab")
     .addSeparator()
+    .addItem("Configurar credenciales", "setupCredentials")
     .addItem("Generar Gantt", "generateGantt")
     .addItem("Resumen equipo", "generateTeamSummary")
     .addSeparator()
@@ -130,11 +167,12 @@ function extractIssueId(url) {
 }
 
 function gitLabApi(path, method, payload) {
-  var url = GITLAB_URL + "/api/v4/projects/" + encodeURIComponent(PROJECT_ID) + path;
+  var cfg = getGitLabConfig();
+  var url = cfg.url + "/api/v4/projects/" + encodeURIComponent(cfg.project) + path;
   var options = {
     method: method || "GET",
     headers: {
-      "PRIVATE-TOKEN": TOKEN,
+      "PRIVATE-TOKEN": cfg.token,
       "Content-Type": "application/json"
     },
     muteHttpExceptions: true
@@ -159,9 +197,11 @@ function createGitLabIssue(title, desc, labels) {
 
 function updateGitLabIssue(id, title, desc, labels, status) {
   var state = (status === "Completado") ? "close" : "open";
+  // NO se sincroniza `description` en el update: la descripcion es propiedad de GitLab
+  // (specs que otro dev necesita para tomar la tarea). El Sheet solo maneja titulo,
+  // labels de planificacion y estado. La `desc` del template solo siembra el CREATE.
   gitLabApi("/issues/" + id, "PUT", {
     title: title,
-    description: desc,
     labels: labels.join(","),
     state_event: state
   });

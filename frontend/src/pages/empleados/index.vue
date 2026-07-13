@@ -9,7 +9,7 @@
         <button @click="openOrgChart" class="flex items-center gap-1.5 px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_BUILDING"></span>Organigrama
         </button>
-        <button @click="openNewEmployee" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <button @click="() => openNewEmployee()" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>Nuevo Empleado
         </button>
       </div>
@@ -682,8 +682,9 @@ function openNewDocument() {
       { key: 'expiryDate', label: 'Vence (opcional)', type: 'date' },
     ],
     onSubmit: (v) => EmpleadosService.createDocument({
-      employeeId: v.employeeId, type: v.type, name: v.name, expiryDate: v.expiryDate,
-      fileData: v.fileData, fileName: v.fileDataName,
+      employeeId: String(v.employeeId ?? ''), type: String(v.type ?? ''), name: String(v.name ?? ''),
+      expiryDate: v.expiryDate ? String(v.expiryDate) : undefined,
+      fileData: v.fileData ? String(v.fileData) : undefined, fileName: v.fileDataName ? String(v.fileDataName) : undefined,
     }),
   }
 }

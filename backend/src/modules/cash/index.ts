@@ -53,8 +53,10 @@ export function CashModule() {
       router.get('/api/caja/movements', guard('billing', 'view'), (req) => controller.index(req))
       router.get('/api/caja/movements/:id', guard('billing', 'view'), (req) => controller.show(req))
       router.post('/api/caja/movements', guard('billing', 'create'), (req) => controller.store(req))
-      router.put('/api/caja/movements/:id', guard('billing', 'create'), (req) => controller.update(req))
-      router.delete('/api/caja/movements/:id', guard('billing', 'create'), (req) => controller.destroy(req))
+      // SC-03: PUT y DELETE exigían `billing:create` — receptionist (billing:view+create, SIN
+      // edit/delete por diseño, ver permissions.ts) podía editar y BORRAR movimientos de caja.
+      router.put('/api/caja/movements/:id', guard('billing', 'edit'), (req) => controller.update(req))
+      router.delete('/api/caja/movements/:id', guard('billing', 'delete'), (req) => controller.destroy(req))
       // Turnos
       router.get('/api/caja/shifts', guard('billing', 'view'), (req) => controller.listShifts(req))
       router.get('/api/caja/shifts/current', guard('billing', 'view'), (req) => controller.currentShift(req))

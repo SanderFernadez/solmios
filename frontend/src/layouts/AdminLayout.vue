@@ -304,6 +304,7 @@ const nonavItems = [
       { label: 'Plantillas WhatsApp', path: '/panel/whatsapp-templates', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Cerraduras', path: '/panel/cerraduras', roles: ['hotel_admin'] },
       { label: 'Dispositivos', path: '/panel/devices', roles: ['hotel_admin'] },
+      { label: 'Notificaciones Push', path: '/panel/push-tokens', roles: ['hotel_admin'] },
     ]
   },
   {
@@ -428,6 +429,7 @@ const pageTitle = computed(() => {
     caja: 'Caja',
     cerraduras: 'Cerraduras TTLock',
     devices: 'Dispositivos',
+    'push-tokens': 'Notificaciones Push',
     support: 'Soporte',
     settings: 'Configuración',
     team: 'Equipo',

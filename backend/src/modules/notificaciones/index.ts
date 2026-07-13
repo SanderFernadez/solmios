@@ -43,7 +43,8 @@ export function NotificacionesModule() {
       router.get('/api/notificaciones', [auth.authenticate()], (req) => controller.index(req))
       router.get('/api/notificaciones/:id', [auth.authenticate()], (req) => controller.show(req))
       router.post('/api/notificaciones', guard('dashboard', 'create'), (req) => controller.store(req))
-      router.put('/api/notificaciones/:id', guard('dashboard', 'create'), (req) => controller.update(req))
+      // SC-03: el PUT (actualizar) exigía `dashboard:create` en vez de `dashboard:edit`.
+      router.put('/api/notificaciones/:id', guard('dashboard', 'edit'), (req) => controller.update(req))
       // Borrar la PROPIA notificación no exige `dashboard:delete` (camarera/
       // mantenimiento no lo tienen): así la campanita se puede vaciar de verdad
       // en el servidor y no reaparece. El service impide borrar la de otra

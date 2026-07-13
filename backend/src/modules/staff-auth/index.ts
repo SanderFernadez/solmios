@@ -3,6 +3,7 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerStaffAuthModels } from './model'
 import { StaffAuthService } from './service'
 import { StaffAuthController } from './controller'
+import { rateLimit, resetAttempts, getClientIp } from '../../shared/middlewares/rate-limit'
 
 export { StaffAuthService }
 export { PinLoginSchema, PinSetSchema } from './validators/schema'
@@ -29,8 +30,21 @@ export function StaffAuthModule() {
       const service = new StaffAuthService(userRepo, logger, auth)
       const controller = new StaffAuthController(service, logger)
 
-      // PIN login — NO requiere autenticación
-      router.post('/api/housekeeping/auth/pin', (req) => controller.loginByPin(req))
+      // PIN login — NO requiere autenticación. Rate limit por IP además del lockout
+      // por cuenta que ya hace el service (pinAttempts/pinLockedUntil): esto cubre el
+      // caso de un atacante probando PINs contra MUCHOS teléfonos distintos desde la
+      // misma IP, que el lockout por cuenta no frena.
+      router.post('/api/housekeeping/auth/pin', async (req) => {
+        const key = `pin-login:${getClientIp(req)}`
+        const { allowed, retryAfter } = rateLimit(key)
+        if (!allowed) {
+          return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
+        }
+        // phone/pin faltantes o PIN incorrecto: 400/AuthError, no llega a resetear.
+        const result = await controller.loginByPin(req)
+        if (result.status < 400) resetAttempts(key)
+        return result
+      })
 
       // PIN management — requiere autenticación de admin del hotel
       const adminOnly = [auth.authenticate('hotel_admin', 'super_admin')]
