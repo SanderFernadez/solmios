@@ -13,6 +13,7 @@ import { listReservations, getReservationById, createReservation, updateReservat
 import { getPreCheckinData as getPreCheckinDataUsecase, submitPreCheckin as submitPreCheckinUsecase } from './usecases/pre-checkin'
 import { getExtendedDetail as getExtendedDetailUsecase, getAuditTrail as getAuditTrailUsecase } from './usecases/detail'
 import { getBookingEngineDashboard as getBookingEngineDashboardUsecase } from './usecases/booking-engine'
+import { quoteReschedule as quoteRescheduleUsecase, commitReschedule as commitRescheduleUsecase, type RescheduleInput, type RescheduleChargePort } from './usecases/reschedule'
 import type { ReservasQueries } from './usecases/reservas-queries'
 
 const MS_PER_DAY = 86_400_000
@@ -30,6 +31,7 @@ export class ReservasService {
     sendCheckinEmail?: (deps: any, data: any) => Promise<void>
     dispatchLifecycleEmail?: (deps: any, data: any) => Promise<void>
     settleFolio?: (params: { reservationId: string; hotelId: string; guestId: string | null; roomId: string | null; settle?: { amount: number; method: string; reference?: string } | null }, user: any) => Promise<{ folioId: string; invoiceId: string | null; balance: number; amountPaid: number; invoiceNumber: string | null }>
+    chargeReschedule?: RescheduleChargePort
   } = {}
   setOrchestrationDeps(deps: typeof ReservasService.prototype.orchestrationDeps): void {
     Object.assign(this.orchestrationDeps, deps)
@@ -131,6 +133,18 @@ export class ReservasService {
       roomId: reservation.roomId,
       settle: settle || null,
     }, user)
+  }
+
+  // ── RESCHEDULE (mover/extender desde planning) ──────────────────────────
+  async quoteReschedule(id: string, input: RescheduleInput, user: { id: string; role: string; hotelId?: string }): Promise<any> {
+    return quoteRescheduleUsecase({ repo: this.repo, roomRepo: this.roomRepo }, id, input, user)
+  }
+
+  async reschedule(id: string, input: RescheduleInput, user: { id: string; role: string; hotelId?: string }): Promise<any> {
+    return commitRescheduleUsecase(
+      { repo: this.repo, roomRepo: this.roomRepo, logger: this.logger, cache: this.cache, sockets: this.sockets, chargePort: this.orchestrationDeps.chargeReschedule, audit: (e) => this.queries.createAuditLog({ id: crypto.randomUUID(), entity: 'Reservations', entityId: id, action: 'reschedule', userId: user.id, hotelId: String(e.hotelId), detail: JSON.stringify(e), createdAt: new Date().toISOString() }) },
+      id, input, user,
+    )
   }
 
   // ── PRE-CHECKIN (público) ──────────────────────────────────────────────

@@ -55,7 +55,7 @@
     </div>
 
     <!-- Grid -->
-    <div class="px-6 pb-6" @mouseup="onMouseUp" @mousemove="onMouseMove" @mouseleave="onMouseUp">
+    <div class="px-6 pb-6" :class="dragCursorClass" @mouseup="onMouseUp" @mousemove="onMouseMove" @mouseleave="onMouseUp">
       <div class="bg-white rounded-2xl border border-border overflow-hidden">
         <div class="overflow-x-auto">
           <div class="min-w-max select-none">
@@ -103,17 +103,14 @@
                     isInRange(room.id, day.dateStr) ? 'bg-cyan/20 ring-1 ring-cyan/50 ring-inset' : '',
                     dragRoom?.id === room.id && !isInRange(room.id, day.dateStr) ? 'hover:bg-cyan/5' : '',
                   ]"
-                  @mousedown.prevent="onMouseDown(room, day, $event)"
-                  @dragover.prevent
-                  @drop="onResDrop(room)">
+                  @mousedown.prevent="onMouseDown(room, day, $event)">
 
                   <!-- Reservation -->
                   <div v-if="gRes(room.id, day.dateStr) && isResFirst(room.id, day.dateStr)"
-                    class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-pointer hover:brightness-90"
-                    :class="gRes(room.id, day.dateStr)!.bg"
+                    class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-move hover:brightness-90 select-none"
+                    :class="[gRes(room.id, day.dateStr)!.bg, resDrag?.id === gRes(room.id, day.dateStr)!.id ? 'ring-2 ring-white/80 shadow-lg z-30' : '', resDrag?.id === gRes(room.id, day.dateStr)!.id && resDrag?.moved ? 'pointer-events-none opacity-90' : '']"
                     :style="{ width: resSpan(room.id, day) + 'px', minWidth: '60px' }"
-                    draggable="true"
-                    @dragstart="onResDrag($event, gRes(room.id, day.dateStr)!)"
+                    @mousedown.stop="onResDown(gRes(room.id, day.dateStr)!, $event)"
                     @click.stop="openContext($event, gRes(room.id, day.dateStr)!, room)"
                     @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
                     <span class="text-[11px] leading-none mr-1.5 shrink-0" :title="'Canal: ' + gRes(room.id, day.dateStr)!.ch">{{ chIcon(gRes(room.id, day.dateStr)!.chKey) }}</span>
@@ -123,6 +120,14 @@
                       <span :title="`Pago: ${gRes(room.id, day.dateStr)!.paymentStatus}`">{{ PAY_ICON[gRes(room.id, day.dateStr)!.paymentStatus] }}</span>
                       <span>${{ gRes(room.id, day.dateStr)!.amt }}</span>
                     </span>
+                    <!-- Handle para extender/acortar (arrastrar el borde derecho) — #204/#207 -->
+                    <div class="absolute right-0 inset-y-0 w-4 cursor-ew-resize bg-white/25 hover:bg-white/60 z-20 flex items-center justify-center gap-0.5 rounded-r-md"
+                      title="Arrastrá para extender o acortar la estadía"
+                      @mousedown.stop.prevent="onResizeDown(gRes(room.id, day.dateStr)!, $event)"
+                      @click.stop>
+                      <span class="w-0.5 h-4 bg-white/90 rounded"></span>
+                      <span class="w-0.5 h-4 bg-white/90 rounded"></span>
+                    </div>
                   </div>
 
                   <!-- Block -->
@@ -169,6 +174,12 @@
         </button>
         <button v-if="popup.res" @click="popupViewRes" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
           <span>📋</span> Ver Reserva
+        </button>
+        <button v-if="popup.res" @click="popupExtend" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
+          <span>📅</span> Extender estadía
+        </button>
+        <button v-if="popup.res" @click="popupDuplicate" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
+          <span>📄</span> Duplicar reserva
         </button>
         <button v-if="popup.res" @click="popupCheckin" class="w-full text-left px-4 py-2.5 text-sm font-bold text-teal hover:bg-surface cursor-pointer flex items-center gap-2">
           <span>🛎️</span> Hacer Check-in
@@ -508,6 +519,100 @@
       </div>
     </Teleport>
 
+    <!-- Modal: mover / extender reserva + cobro de diferencia (#204/#207) -->
+    <Teleport to="body">
+      <div v-if="reschedule.show" class="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4" @click.self="closeReschedule">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+            <h3 class="font-black text-navy text-base">Mover / Extender reserva</h3>
+            <button @click="closeReschedule" class="text-text-muted hover:text-coral font-bold text-lg cursor-pointer">✕</button>
+          </div>
+
+          <!-- Modo "Extender" desde el menú: elegir la nueva fecha de salida -->
+          <div v-if="reschedule.editable && reschedule.target" class="px-5 pt-4">
+            <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Nueva fecha de salida</label>
+            <input type="date" :value="reschedule.target.checkOut" :min="reschedule.target.checkIn"
+              @change="onExtendDateChange(($event.target as HTMLInputElement).value)"
+              class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
+          </div>
+
+          <div v-if="reschedule.loading" class="px-5 py-10 text-center text-sm text-text-muted">Calculando cambio…</div>
+
+          <div v-else-if="reschedule.quote" class="px-5 py-4 space-y-4">
+            <!-- Resumen del cambio -->
+            <div class="text-sm text-navy font-bold">{{ reschedule.res?.name || 'Reserva' }}</div>
+            <div class="flex items-center gap-2 text-xs bg-surface rounded-xl px-3 py-2.5">
+              <div class="flex-1">
+                <div class="text-[10px] text-text-muted uppercase font-bold">Antes</div>
+                <div class="font-bold text-navy">Hab. {{ roomNumberOf(String(reschedule.res?.roomId)) }}</div>
+                <div class="text-text-muted">{{ String(reschedule.res?.checkIn).slice(0,10) }} → {{ String(reschedule.res?.checkOut).slice(0,10) }} · {{ reschedule.quote.oldNights }}n</div>
+              </div>
+              <span class="text-teal text-lg">→</span>
+              <div class="flex-1 text-right">
+                <div class="text-[10px] text-text-muted uppercase font-bold">Después</div>
+                <div class="font-bold text-navy">Hab. {{ roomNumberOf(reschedule.quote.roomId) }}</div>
+                <div class="text-text-muted">{{ reschedule.quote.checkIn }} → {{ reschedule.quote.checkOut }} · {{ reschedule.quote.newNights }}n</div>
+              </div>
+            </div>
+
+            <!-- No disponible -->
+            <div v-if="!reschedule.quote.available" class="bg-coral/10 border border-coral/30 rounded-xl px-3 py-2.5 text-xs text-coral font-bold">
+              🚫 {{ reschedule.quote.reason || 'La habitación no está disponible en esas fechas.' }}
+            </div>
+
+            <template v-else>
+              <!-- Precio -->
+              <div class="space-y-1 text-sm">
+                <div class="flex justify-between text-text-muted"><span>Total anterior</span><span>{{ reschedule.quote.currency }} {{ reschedule.quote.previousTotal }}</span></div>
+                <div class="flex justify-between font-black" :class="reschedule.quote.difference > 0 ? 'text-coral' : reschedule.quote.difference < 0 ? 'text-teal' : 'text-text-muted'">
+                  <span>{{ reschedule.quote.newNights - reschedule.quote.oldNights > 0 ? '+' : '' }}{{ reschedule.quote.newNights - reschedule.quote.oldNights }} noche(s) × {{ reschedule.quote.basePrice }}</span>
+                  <span>{{ reschedule.quote.difference > 0 ? '+' : '' }}{{ reschedule.quote.currency }} {{ reschedule.quote.difference }}</span>
+                </div>
+                <div class="flex justify-between text-navy font-bold pt-1 border-t border-border/50"><span>Nuevo total</span><span>{{ reschedule.quote.currency }} {{ reschedule.quote.quotedNewPrice }}</span></div>
+              </div>
+
+              <!-- Cobro (solo si hay diferencia a favor del hotel) -->
+              <div v-if="reschedule.quote.difference > 0" class="space-y-3 pt-1 border-t border-border">
+                <div>
+                  <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Cómo se cobra</label>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button v-for="m in [{k:'folio',l:'Folio'},{k:'cash',l:'Efectivo'},{k:'card',l:'Tarjeta'}]" :key="m.k"
+                      @click="reschedule.method = m.k as any"
+                      class="px-2 py-2 rounded-xl text-xs font-bold border cursor-pointer transition"
+                      :class="reschedule.method === m.k ? 'bg-navy text-white border-navy' : 'bg-white text-navy border-border hover:border-navy/40'">
+                      {{ m.l }}
+                    </button>
+                  </div>
+                  <p v-if="reschedule.method === 'folio'" class="text-[10px] text-text-muted mt-1">Se agrega a la cuenta abierta; se salda en el checkout.</p>
+                  <p v-else-if="reschedule.method === 'cash'" class="text-[10px] text-text-muted mt-1">Se registra un pago en efectivo (entra a caja).</p>
+                  <p v-else class="text-[10px] text-text-muted mt-1">Genera un link de pago Stripe (el huésped paga con su tarjeta).</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Monto a cobrar</label>
+                    <input v-model="reschedule.amount" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Motivo (opcional)</label>
+                    <input v-model="reschedule.reason" type="text" maxlength="300" placeholder="ej. descuento" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-xs text-text-muted italic">Sin diferencia a cobrar.</div>
+            </template>
+          </div>
+
+          <div class="px-5 py-3 border-t border-border flex justify-end gap-2">
+            <button @click="closeReschedule" class="px-4 py-2 rounded-xl text-sm font-bold text-navy hover:bg-surface cursor-pointer">Cancelar</button>
+            <button @click="confirmReschedule" :disabled="reschedule.loading || reschedule.submitting || !reschedule.quote?.available"
+              class="px-5 py-2 rounded-xl text-sm font-black text-white bg-teal hover:brightness-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+              {{ reschedule.submitting ? 'Aplicando…' : 'Confirmar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Reservation detail — ReservationModal (F3 match-misterplan) -->
     <ReservationModal
       v-if="detailId"
@@ -521,7 +626,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
-import { ReservationService } from '@/services/Reservation.service'
+import { ReservationService, type RescheduleQuote, type RescheduleCommitInput } from '@/services/Reservation.service'
 import { GuestService } from '@/services/Guest.service'
 import { HotelService } from '@/services/Hotel.service'
 import { http } from '@/services/http'
@@ -552,6 +657,17 @@ const isDragging = ref(false)
 const dragRoom = ref<any>(null)
 const dragStart = ref('')
 const dragEnd = ref('')
+
+// Mover/extender reserva — preview reactivo en vivo (#204/#207).
+// Mientras se arrastra, este override reemplaza roomId/checkIn/checkOut de la reserva
+// para que el bloque se estire (extender) o se mueva (mover) siguiendo el cursor.
+const resDrag = ref<{ id: string; mode: 'move' | 'resize'; roomId: string; checkIn: string; checkOut: string; origRoomId: string; origCheckIn: string; origCheckOut: string; moved: boolean } | null>(null)
+// Reservas efectivas para el render: aplica el preview del drag sobre planReservas.
+const dispReservas = computed(() => {
+  const rd = resDrag.value
+  if (!rd) return planReservas.value
+  return planReservas.value.map((r: any) => r.id === rd.id ? { ...r, roomId: rd.roomId, checkIn: rd.checkIn, checkOut: rd.checkOut } : r)
+})
 let dragStarted = false
 
 // Last selection (persists until dismissed)
@@ -670,7 +786,7 @@ const PAY_METHODS: readonly { v: string; l: string }[] = [
 ]
 
 function gRes(rid: any, ds: string) {
-  const r = planReservas.value.find((b: any) => String(b.roomId) === String(rid) && ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10))
+  const r = dispReservas.value.find((b: any) => String(b.roomId) === String(rid) && ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10))
   if (!r) return null
   const ch = (r.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: r.channel || 'Directa', bg: 'bg-gray-400' }
   const status = r.status || 'pending'
@@ -688,7 +804,7 @@ function isResFirst(rid: any, ds: string) {
   const res = gRes(rid, ds)
   if (!res) return false
   // The block renders on the earliest VISIBLE date that falls within the reservation
-  const orig = planReservas.value.find((b: any) => b.id === res.id)
+  const orig = dispReservas.value.find((b: any) => b.id === res.id)
   if (!orig) return false
   const ci = String(orig.checkIn || '').slice(0, 10)
   const firstVisible = visibleDays.value[0]?.dateStr
@@ -699,7 +815,7 @@ function isResFirst(rid: any, ds: string) {
 function resSpan(rid: any, day: DI) {
   const res = gRes(rid, day.dateStr)
   if (!res) return 68
-  const orig = planReservas.value.find((b: any) => b.id === res.id)
+  const orig = dispReservas.value.find((b: any) => b.id === res.id)
   if (!orig) return 68
   const ci = String(orig.checkIn || '').slice(0, 10)
   const co = String(orig.checkOut || '').slice(0, 10)
@@ -718,7 +834,7 @@ function blkSpan(rid: any, day: DI) {
 }
 function dayOcc(ds: string) {
   const n = planRooms.value.length; if (!n) return 0; const o = new Set<string>()
-  planReservas.value.forEach((b: any) => { if (ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10)) o.add(String(b.roomId)) })
+  dispReservas.value.forEach((b: any) => { if (ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10)) o.add(String(b.roomId)) })
   planBlocks.value.forEach((b: any) => { if (ds >= b.startDate && ds <= b.endDate) o.add(String(b.roomId)) })
   return Math.round((o.size / n) * 100)
 }
@@ -754,6 +870,7 @@ function onMouseDown(room: any, day: DI, e: MouseEvent) {
 }
 
 function onMouseMove(e: MouseEvent) {
+  if (onResDragMove(e)) return
   if (!isDragging.value) return
   const el = document.elementFromPoint(e.clientX, e.clientY)
   if (!el) return
@@ -767,6 +884,7 @@ function onMouseMove(e: MouseEvent) {
 }
 
 function onMouseUp(ev: MouseEvent) {
+  if (onResDragEnd()) return
   if (!isDragging.value) return
   isDragging.value = false
 
@@ -805,6 +923,7 @@ function onEditFromPlanning(d: { id: string }) {
 
 /** Context menu (right-click) sobre una reserva existente */
 function openContext(ev: MouseEvent, rb: any, room: any) {
+  if (suppressClick) { suppressClick = false; return } // venía de un drag, no de un click
   const orig = planReservas.value.find((b: any) => b.id === rb.id)
   if (!orig) return
   const ci = String(orig.checkIn || '').slice(0, 10)
@@ -818,15 +937,137 @@ function openContext(ev: MouseEvent, rb: any, room: any) {
     res: orig, blk: null,
   }
 }
-let draggedResId: string | null = null
-function onResDrag(e: DragEvent, rb: any) { draggedResId = rb.id; e.dataTransfer!.effectAllowed = 'move' }
-async function onResDrop(room: any) {
-  if (!draggedResId) return
-  const r = planReservas.value.find((x: any) => x.id === draggedResId)
-  if (!r || String(r.roomId) === String(room.id)) { draggedResId = null; return }
-  try { await ReservationService.update(draggedResId, { roomId: room.id } as any); r.roomId = room.id; r.roomNumber = room.number; toast.success(`Movida a Hab. ${room.number}`) }
-  catch { toast.error('Error') }
-  draggedResId = null
+// ── Mover / extender reserva por drag de puntero, con preview en vivo (#204/#207) ──
+function addDaysStr(ds: string, n: number): string { const d = new Date(ds + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
+function nightsBetween(a: string, b: string): number { return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / MS_PER_DAY)) }
+let suppressClick = false
+
+// mousedown en el cuerpo del bloque → arrastrar para mover (empieza a moverse al cambiar de celda).
+function onResDown(rb: any, e: MouseEvent) {
+  e.stopPropagation()
+  const orig = planReservas.value.find((x: any) => x.id === rb.id)
+  if (!orig) return
+  const ci = String(orig.checkIn || '').slice(0, 10), co = String(orig.checkOut || '').slice(0, 10)
+  resDrag.value = { id: rb.id, mode: 'move', roomId: String(orig.roomId), checkIn: ci, checkOut: co, origRoomId: String(orig.roomId), origCheckIn: ci, origCheckOut: co, moved: false }
+}
+// mousedown en el borde derecho → arrastrar para extender/acortar.
+function onResizeDown(rb: any, e: MouseEvent) {
+  e.stopPropagation(); e.preventDefault()
+  const orig = planReservas.value.find((x: any) => x.id === rb.id)
+  if (!orig) return
+  const ci = String(orig.checkIn || '').slice(0, 10), co = String(orig.checkOut || '').slice(0, 10)
+  resDrag.value = { id: rb.id, mode: 'resize', roomId: String(orig.roomId), checkIn: ci, checkOut: co, origRoomId: String(orig.roomId), origCheckIn: ci, origCheckOut: co, moved: false }
+}
+// Actualiza el preview según la celda bajo el cursor. Devuelve true si consumió el evento.
+function onResDragMove(e: MouseEvent): boolean {
+  const rd = resDrag.value
+  if (!rd) return false
+  const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+  const cell = el?.closest('[data-rid]') as HTMLElement | null
+  if (!cell) return true
+  const rid = cell.dataset.rid, date = cell.dataset.date
+  if (!rid || !date) return true
+  if (rd.mode === 'resize') {
+    const newCo = addDaysStr(date, 1) // el borde cae sobre la última noche → checkout exclusivo
+    if (newCo > rd.checkIn) { if (newCo !== rd.checkOut) rd.moved = true; rd.checkOut = newCo }
+  } else {
+    const nights = nightsBetween(rd.origCheckIn, rd.origCheckOut)
+    if (date !== rd.checkIn || String(rid) !== rd.roomId) rd.moved = true
+    rd.roomId = String(rid); rd.checkIn = date; rd.checkOut = addDaysStr(date, nights)
+  }
+  return true
+}
+// Al soltar: si hubo cambio real, abre el modal de cobro; si no, deja pasar el click (context menu).
+function onResDragEnd(): boolean {
+  const rd = resDrag.value
+  if (!rd) return false
+  resDrag.value = null
+  if (!rd.moved) return true // fue un click, no un drag → onResDown ya frenó; el click abrirá el context
+  if (rd.roomId === rd.origRoomId && rd.checkIn === rd.origCheckIn && rd.checkOut === rd.origCheckOut) return true
+  suppressClick = true
+  const orig = planReservas.value.find((x: any) => x.id === rd.id)
+  if (orig) openReschedule(orig, { roomId: rd.roomId, checkIn: rd.checkIn, checkOut: rd.checkOut })
+  return true
+}
+
+// ── Modal de reprogramación / cobro de diferencia ──
+const reschedule = ref<{
+  show: boolean; res: any; target: { roomId: string; checkIn: string; checkOut: string } | null
+  quote: RescheduleQuote | null; loading: boolean; submitting: boolean; editable: boolean
+  method: 'folio' | 'cash' | 'card'; amount: string; reason: string
+}>({ show: false, res: null, target: null, quote: null, loading: false, submitting: false, editable: false, method: 'folio', amount: '', reason: '' })
+
+// Cursor global durante el arrastre: ✥ para mover, ↔ para extender. Sin esto, al poner el
+// bloque en pointer-events-none el cursor "cae" a la celda (👆 pointer) durante todo el drag.
+const dragCursorClass = computed(() => resDrag.value ? (resDrag.value.mode === 'resize' ? 'planning-dragging-resize' : 'planning-dragging-move') : '')
+
+function roomNumberOf(id: string): string { return planRooms.value.find((r: any) => String(r.id) === String(id))?.number || id }
+function closeReschedule() { reschedule.value.show = false }
+
+async function openReschedule(res: any, target: { roomId: string; checkIn: string; checkOut: string }, editable = false) {
+  reschedule.value = { show: true, res, target, quote: null, loading: true, submitting: false, editable, method: 'folio', amount: '', reason: '' }
+  await refreshQuote()
+}
+
+// Recalcula la cotización con el target actual (se usa al abrir y al cambiar la fecha en modo editable).
+async function refreshQuote() {
+  const rv = reschedule.value
+  if (!rv.res || !rv.target) return
+  rv.loading = true
+  try {
+    const q = await ReservationService.rescheduleQuote(rv.res.id, rv.target)
+    rv.quote = q
+    rv.amount = q.difference > 0 ? String(q.difference) : ''
+  } catch (e: any) {
+    toast.error(e?.message || 'No se pudo calcular el cambio')
+  } finally {
+    rv.loading = false
+  }
+}
+
+// Cambio de la fecha de salida desde el modal (modo "Extender" del menú).
+function onExtendDateChange(newCheckOut: string) {
+  const rv = reschedule.value
+  if (!rv.target || !newCheckOut) return
+  if (newCheckOut <= rv.target.checkIn) { toast.error('La salida debe ser posterior a la entrada'); return }
+  rv.target = { ...rv.target, checkOut: newCheckOut }
+  refreshQuote()
+}
+
+async function confirmReschedule() {
+  const rv = reschedule.value; const q = rv.quote
+  if (!rv.res || !rv.target || !q || !q.available) return
+  rv.submitting = true
+  try {
+    const body: RescheduleCommitInput = { ...rv.target }
+    const amountNum = rv.amount === '' ? null : Number(rv.amount)
+    const wantsCharge = (amountNum ?? q.difference) > 0
+    if (wantsCharge) {
+      body.charge = { method: rv.method, reason: rv.reason || undefined }
+      if (amountNum !== null && amountNum !== q.difference) body.charge.amount = amountNum
+      if (rv.method === 'card') { body.successUrl = window.location.href; body.cancelUrl = window.location.href }
+    }
+    const result = await ReservationService.reschedule(rv.res.id, body)
+    // Actualización optimista del bloque en el planning.
+    const r = planReservas.value.find((x: any) => x.id === rv.res.id)
+    if (r) {
+      r.roomId = rv.target.roomId; r.checkIn = rv.target.checkIn; r.checkOut = rv.target.checkOut
+      r.amt = result.reservation.totalAmount
+    }
+    if (result.charge?.method === 'card') {
+      if (result.charge.applied && result.charge.checkoutUrl) { window.open(result.charge.checkoutUrl, '_blank'); toast.success('Cambio aplicado — link de pago abierto') }
+      else { toast.error(result.charge.message || 'No se pudo generar el cobro con tarjeta; cobrá en efectivo/POS') }
+    } else if (result.charge?.applied) {
+      toast.success(result.charge.target === 'folio' ? 'Cambio aplicado — cargado al folio' : 'Cambio aplicado — cobrado en efectivo')
+    } else {
+      toast.success('Reserva actualizada')
+    }
+    rv.show = false
+  } catch (e: any) {
+    toast.error(e?.message || 'Error al aplicar el cambio')
+  } finally {
+    rv.submitting = false
+  }
 }
 
 // Popup actions
@@ -926,6 +1167,37 @@ function popupViewRes() {
   viewResDetail(r)
 }
 function popupUnblock() { const b = popup.value.blk; if (b) { lastSel.value = null; popup.value.show = false; confirmUnblock(b) } }
+
+// Extender desde el menú: abre el modal con la fecha de salida editable (+1 noche por defecto).
+function popupExtend() {
+  const r = popup.value.res; if (!r) return
+  lastSel.value = null; popup.value.show = false
+  const ci = String(r.checkIn).slice(0, 10), co = String(r.checkOut).slice(0, 10)
+  openReschedule(r, { roomId: String(r.roomId), checkIn: ci, checkOut: addDaysStr(co, 1) }, true)
+}
+
+// Duplicar: crea una copia de la reserva justo después (mismas noches, misma habitación).
+async function popupDuplicate() {
+  const r = popup.value.res; if (!r) return
+  lastSel.value = null; popup.value.show = false
+  const ci = String(r.checkIn).slice(0, 10), co = String(r.checkOut).slice(0, 10)
+  const nights = nightsBetween(ci, co)
+  const newCheckIn = co // arranca donde terminaba la original (sin solape)
+  const newCheckOut = addDaysStr(newCheckIn, nights)
+  try {
+    await ReservationService.create({
+      hotelId: r.hotelId || hid.value || '', roomId: String(r.roomId),
+      checkIn: newCheckIn, checkOut: newCheckOut, totalAmount: Number(r.totalAmount) || 0,
+      guestId: r.guestId || undefined, channel: r.channel || 'direct',
+      adults: r.adults ?? 2, children: r.children ?? 0,
+    } as any)
+    toast.success(`Reserva duplicada (${newCheckIn} → ${newCheckOut})`)
+    const d = await OperationsService.planning(hid.value)
+    planRooms.value = d.rooms ?? planRooms.value; planReservas.value = d.reservas ?? planReservas.value
+  } catch (e: any) {
+    toast.error(e?.message?.includes('disponible') || e?.message?.includes('409') ? 'No hay disponibilidad para duplicar en esas fechas' : (e?.message || 'No se pudo duplicar'))
+  }
+}
 
 // Block / Unblock
 async function saveBlock() {
@@ -1027,6 +1299,9 @@ function goToday() { weekOffset.value = 0; lastSel.value = null; popup.value.sho
 </script>
 
 <style>
+/* Cursor consistente durante el arrastre de reservas (mover / extender). */
+.planning-dragging-move, .planning-dragging-move * { cursor: move !important; }
+.planning-dragging-resize, .planning-dragging-resize * { cursor: ew-resize !important; }
 @media screen { .print-only { display: none !important; } }
 @media print { .no-print, .screen-only { display: none !important; } .print-only { display: block !important; } body { background: white !important; } }
 </style>

@@ -155,6 +155,7 @@ import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-
 import { gastosCajaConnector } from './connectors/gastos-caja'
 import { payrollGastosConnector } from './connectors/payroll-gastos'
 import { reembolsosGastosConnector } from './connectors/reembolsos-gastos'
+import { reservasRescheduleChargeConnector } from './connectors/reservas-reschedule-charge'
 import { attendanceDashboardConnector } from './connectors/attendance-dashboard'
 import { attendancePayrollConnector } from './connectors/attendance-payroll'
 import { bookingenginePaymentsConnector } from './connectors/bookingengine-payments'
@@ -180,6 +181,8 @@ system.addConnector('gastos-caja', gastosCajaConnector)
 system.addConnector('payroll-gastos', payrollGastosConnector)
 // Un reembolso pagado es un gasto del hotel; en efectivo cae en la caja (vía gastos-caja).
 system.addConnector('reembolsos-gastos', reembolsosGastosConnector)
+// Mover/extender una reserva desde el planning cobra la diferencia: folio, efectivo (→caja) o tarjeta (Stripe).
+system.addConnector('reservas-reschedule-charge', reservasRescheduleChargeConnector)
 // Cablea el prefill de nómina: payroll lee horas de attendance y salarios de empleados.
 system.addConnector('attendance-payroll', attendancePayrollConnector)
 // El dashboard de RRHH muestra el fichaje real de hoy (presentes/ausentes/tarde) — #198.

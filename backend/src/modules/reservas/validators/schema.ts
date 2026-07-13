@@ -105,6 +105,22 @@ export const AddonSchema: Record<string, ValidationRule> = {
   quantity: { type: 'number' as const, min: 1, max: 100 },
 }
 
+// ── Reschedule (planning): mover/extender reserva ──
+// El objeto `charge` se valida aparte con RescheduleChargeSchema (validateSchema no anida objetos).
+export const RescheduleSchema: Record<string, ValidationRule> = {
+  roomId: { type: 'string' as const },
+  checkIn: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+  checkOut: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+  successUrl: { type: 'string' as const, max: 500 },
+  cancelUrl: { type: 'string' as const, max: 500 },
+}
+
+export const RescheduleChargeSchema: Record<string, ValidationRule> = {
+  method: { type: 'string' as const, required: true, enum: ['folio', 'cash', 'card'] },
+  amount: { type: 'number' as const, min: 0 },
+  reason: { type: 'string' as const, max: 300 },
+}
+
 // ── Settlement en checkout (F?): datos financieros del cierre de folio ──
 export const SettleSchema: Record<string, ValidationRule> = {
   method: { type: 'string' as const, required: true, max: 50 },

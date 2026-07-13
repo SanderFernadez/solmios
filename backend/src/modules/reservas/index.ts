@@ -66,6 +66,10 @@ export function ReservasModule() {
       router.post('/api/reservations/:id/addons', guard('reservations', 'edit'), (req) => controller.createAddon(req))
       router.delete('/api/addons/:id', guard('reservations', 'delete'), (req) => controller.deleteAddon(req))
 
+      // ── Reschedule (mover/extender desde planning) ── quote antes que commit (orden de registro) ──
+      router.post('/api/reservas/:id/reschedule/quote', guard('reservations', 'edit'), (req) => controller.rescheduleQuote(req))
+      router.post('/api/reservas/:id/reschedule', guard('reservations', 'edit'), (req) => controller.reschedule(req))
+
       // ── Check-in / Check-out ──
       router.post('/api/reservas/:id/checkin', guard('reservations', 'checkin'), (req) => controller.checkin(req))
       router.post('/api/reservas/:id/checkout', guard('reservations', 'checkout'), (req) => controller.checkout(req))

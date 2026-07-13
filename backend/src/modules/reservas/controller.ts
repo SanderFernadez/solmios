@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger, Auth, RepositoryAdapter } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { ReservasService } from './service'
-import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema, PreCheckinSchema, SettleSchema } from './validators/schema'
+import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema, PreCheckinSchema, SettleSchema, RescheduleSchema, RescheduleChargeSchema } from './validators/schema'
 import { listCompanions, createCompanion, updateCompanion, deleteCompanion } from './usecases/companions'
 import { listAddons, createAddon, deleteAddon } from './usecases/addons'
 import { hashGuaranteePin, verifyGuaranteePin } from '../../services/guarantee-pin'
@@ -125,6 +125,36 @@ export class ReservasController {
       if (e.name === 'ValidationError') return { status: 400, body: { error: e.message, fields: e.fields } }
       return { status: 500, body: { error: e.message } }
     }
+  }
+
+  // ── RESCHEDULE (mover/extender desde planning) ────────────────────────
+  async rescheduleQuote(req: HttpRequest) {
+    try {
+      const data = validateSchema(RescheduleSchema, req.body) as any
+      return { status: 200, body: await this.service.quoteReschedule(req.params.id, data, req.user as any) }
+    } catch (e: any) {
+      return this.mapRescheduleError(e)
+    }
+  }
+
+  async reschedule(req: HttpRequest) {
+    try {
+      const body = req.body as Record<string, any> | undefined
+      const move = validateSchema(RescheduleSchema, body) as any
+      const charge = body?.charge ? validateSchema(RescheduleChargeSchema, body.charge) : undefined
+      const result = await this.service.reschedule(req.params.id, { ...move, charge }, req.user as any)
+      return { status: 200, body: result }
+    } catch (e: any) {
+      return this.mapRescheduleError(e)
+    }
+  }
+
+  private mapRescheduleError(e: any) {
+    if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
+    if (e.name === 'AuthError' || e.name === 'ForbiddenError') return { status: 403, body: { error: e.message } }
+    if (e.name === 'ConflictError') return { status: 409, body: { error: e.message } }
+    if (e.name === 'ValidationError') return { status: 400, body: { error: e.message, fields: e.fields } }
+    return { status: 500, body: { error: e.message } }
   }
 
   private pushChannex(hotelId: string, roomId: string): void {

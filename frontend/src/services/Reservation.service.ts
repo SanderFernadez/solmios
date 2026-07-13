@@ -155,8 +155,64 @@ export const ReservationService = {
     return http.post(`/reservas/${id}/checkout`, { settle })
   },
 
+  /**
+   * Cotiza (dry-run) mover/extender una reserva: NO escribe. Devuelve noches, diferencia de precio
+   * y disponibilidad de la habitación en el rango nuevo, para armar el modal del planning (#204/#207).
+   */
+  async rescheduleQuote(id: string, input: RescheduleInput): Promise<RescheduleQuote> {
+    return http.post<RescheduleQuote>(`/reservas/${id}/reschedule/quote`, input)
+  },
+
+  /**
+   * Aplica el cambio de habitación/fechas y cobra la diferencia según el método elegido
+   * (folio / efectivo / tarjeta). El cobro lo orquesta el servidor en una sola operación.
+   */
+  async reschedule(id: string, input: RescheduleCommitInput): Promise<RescheduleResult> {
+    return http.post<RescheduleResult>(`/reservas/${id}/reschedule`, input)
+  },
+
   /** Elimina una reserva (la UI lo limita a pendientes/canceladas). */
   async remove(id: string): Promise<void> {
     await http.delete(`/reservas/${id}`)
   },
+}
+
+// ── Reschedule (planning: mover/extender) ──
+export interface RescheduleInput { roomId?: string; checkIn?: string; checkOut?: string }
+export interface RescheduleCommitInput extends RescheduleInput {
+  charge?: { method: 'folio' | 'cash' | 'card'; amount?: number; reason?: string }
+  successUrl?: string
+  cancelUrl?: string
+}
+export interface RescheduleQuote {
+  reservationId: string
+  roomId: string
+  checkIn: string
+  checkOut: string
+  basePrice: number
+  oldNights: number
+  newNights: number
+  previousTotal: number
+  quotedNewPrice: number
+  difference: number
+  roomChanged: boolean
+  datesChanged: boolean
+  currency: string
+  available: boolean
+  reason: string
+}
+export interface RescheduleCharge {
+  method: 'folio' | 'cash' | 'card'
+  applied: boolean
+  target: string
+  folioId?: string
+  chargeId?: string
+  paymentId?: string
+  checkoutUrl?: string
+  message?: string
+}
+export interface RescheduleResult {
+  reservation: RawReservation
+  quote: RescheduleQuote & { chargeAmount: number; newTotal: number }
+  charge: RescheduleCharge | null
 }
