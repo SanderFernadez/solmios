@@ -4,7 +4,7 @@ import type { ValidationRule } from 'arckode-framework'
 export const CreateDepartmentSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
   name: { type: 'string' as const, required: true, min: 2, max: 100 },
-  description: { type: 'string' as const },
+  description: { type: 'string' as const, max: 500 },
   managerId: { type: 'string' as const },
   parentId: { type: 'string' as const },
 }
@@ -27,21 +27,21 @@ export const CreateProfileSchema: Record<string, ValidationRule> = {
 export const CreateContractSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
   employeeId: { type: 'string' as const, required: true },
-  type: { type: 'string' as const, required: true },
+  type: { type: 'string' as const, required: true, max: 40 },
   startDate: { type: 'string' as const, required: true },
-  salary: { type: 'number' as const, required: true, min: 0 },
+  salary: { type: 'number' as const, required: true, min: 0, max: 99_999_999 },
   // Sin declarar acá, validateSchema los descarta y el contrato pierde estos datos (mem 1805).
   endDate: { type: 'string' as const },
-  currency: { type: 'string' as const },
-  position: { type: 'string' as const },
+  currency: { type: 'string' as const, max: 8 },
+  position: { type: 'string' as const, max: 100 },
   departmentId: { type: 'string' as const },
 }
 
 export const CreateDocumentSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
   employeeId: { type: 'string' as const, required: true },
-  type: { type: 'string' as const, required: true },
-  name: { type: 'string' as const, required: true },
+  type: { type: 'string' as const, required: true, max: 40 },
+  name: { type: 'string' as const, required: true, min: 2, max: 120 },
   fileUrl: { type: 'string' as const },
   expiryDate: { type: 'string' as const },
 }
@@ -66,13 +66,13 @@ export const CreateReviewSchema: Record<string, ValidationRule> = {
   reviewDate: { type: 'string' as const, required: true },
   // Puntaje 1-10 (#192). Sin declarar los demás, validateSchema los descarta (mem 1805).
   score: { type: 'number' as const, min: 1, max: 10 },
-  period: { type: 'string' as const },
-  strengths: { type: 'string' as const },
-  improvements: { type: 'string' as const },
-  goals: { type: 'string' as const },
-  notes: { type: 'string' as const },
+  period: { type: 'string' as const, max: 20 },
+  strengths: { type: 'string' as const, max: 2000 },
+  improvements: { type: 'string' as const, max: 2000 },
+  goals: { type: 'string' as const, max: 2000 },
+  notes: { type: 'string' as const, max: 2000 },
   selfScore: { type: 'number' as const, min: 1, max: 10 },
-  selfComments: { type: 'string' as const },
+  selfComments: { type: 'string' as const, max: 2000 },
   templateId: { type: 'string' as const },
   answers: { type: 'string' as const },
 }
@@ -81,13 +81,13 @@ export const CreateReviewSchema: Record<string, ValidationRule> = {
 export const UpdateReviewSchema: Record<string, ValidationRule> = {
   reviewDate: { type: 'string' as const },
   score: { type: 'number' as const, min: 1, max: 10 },
-  period: { type: 'string' as const },
-  strengths: { type: 'string' as const },
-  improvements: { type: 'string' as const },
-  goals: { type: 'string' as const },
-  notes: { type: 'string' as const },
+  period: { type: 'string' as const, max: 20 },
+  strengths: { type: 'string' as const, max: 2000 },
+  improvements: { type: 'string' as const, max: 2000 },
+  goals: { type: 'string' as const, max: 2000 },
+  notes: { type: 'string' as const, max: 2000 },
   selfScore: { type: 'number' as const, min: 1, max: 10 },
-  selfComments: { type: 'string' as const },
+  selfComments: { type: 'string' as const, max: 2000 },
   templateId: { type: 'string' as const },
   answers: { type: 'string' as const },
   acknowledged: { type: 'boolean' as const },

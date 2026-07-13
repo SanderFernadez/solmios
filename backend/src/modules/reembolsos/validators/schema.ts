@@ -6,7 +6,7 @@ export const CreateReembolsosSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
   employeeId: { type: 'string' as const, required: true },
   description: { type: 'string' as const, required: true, min: 2, max: 300 },
-  amount: { type: 'number' as const, required: true, min: 0 },
+  amount: { type: 'number' as const, required: true, min: 0, max: 99_999_999 },
   date: { type: 'string' as const, required: true },
   category: { type: 'string' as const, max: 40 },
   currency: { type: 'string' as const, max: 8 },
@@ -16,7 +16,7 @@ export const CreateReembolsosSchema: Record<string, ValidationRule> = {
 
 export const UpdateReembolsosSchema: Record<string, ValidationRule> = {
   description: { type: 'string' as const, min: 2, max: 300 },
-  amount: { type: 'number' as const, min: 0 },
+  amount: { type: 'number' as const, min: 0, max: 99_999_999 },
   date: { type: 'string' as const },
   category: { type: 'string' as const, max: 40 },
   currency: { type: 'string' as const, max: 8 },

@@ -4,7 +4,7 @@ import type { ValidationRule } from 'arckode-framework'
 export const CreateConceptSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
   code: { type: 'string' as const, required: true, max: 20 },
-  name: { type: 'string' as const, required: true },
+  name: { type: 'string' as const, required: true, max: 80 },
   type: { type: 'string' as const, required: true, enum: ['earning','deduction','contribution','tax'] },
   calculationMethod: { type: 'string' as const, required: true, enum: ['fixed','percentage','formula','hours_based'] },
   value: { type: 'number' as const },
@@ -41,7 +41,7 @@ export const UpdateConfigSchema: Record<string, ValidationRule> = {
   healthInsuranceRate: { type: 'number' as const, min: 0, max: 100 },
   minimumWage: { type: 'number' as const, min: 0 },
   maxOvertimeHoursWeekly: { type: 'number' as const, min: 0 },
-  provisionType: { type: 'string' as const },
+  provisionType: { type: 'string' as const, max: 40 },
   yearEndBonusEnabled: { type: 'number' as const },
   yearEndBonusMonths: { type: 'number' as const, min: 1, max: 12 },
 }
