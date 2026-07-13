@@ -1,3 +1,4 @@
+import { AuthError } from 'arckode-framework'
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type { PricingQueries } from './usecases/pricing-queries'
 
@@ -74,7 +75,12 @@ export class PricingService {
     return created
   }
 
-  async deleteBlock(id: string): Promise<void> {
+  async deleteBlock(id: string, hotelId: string): Promise<void> {
+    // Seguridad (IDOR): solo se borra un bloqueo del hotel del token. Sin este check, cualquier
+    // usuario con settings:delete borraba bloqueos de otro hotel pasando su id.
+    const block = await this.blocksRepo.findById(id) as any
+    if (!block) return
+    if (block.hotelId !== hotelId) throw new AuthError('Sin acceso a este bloqueo')
     await this.blocksRepo.delete(id)
   }
 

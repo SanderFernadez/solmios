@@ -66,7 +66,8 @@ export class PricingController {
   }
 
   async deleteBlock(req: HttpRequest) {
-    await this.service.deleteBlock(req.params.id)
+    const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
+    await this.service.deleteBlock(req.params.id, id)
     return { status: 200, body: { success: true } }
   }
 
