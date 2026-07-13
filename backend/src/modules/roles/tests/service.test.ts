@@ -401,3 +401,24 @@ describe('RolesService', () => {
     })
   })
 })
+
+// SC-05 — los cambios de roles/permisos dejan rastro en el audit log.
+describe('RolesService — auditlog (SC-05)', () => {
+  it('registra role.delete al borrar un rol', async () => {
+    const repo = makeRepo({ findById: async () => baseRole, delete: async () => true })
+    const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+    const recorded: any[] = []
+    svc.setAuditDeps({ record: async (e) => { recorded.push(e) } })
+    await svc.delete('role-1', hotelAdmin)
+    expect(recorded).toHaveLength(1)
+    expect(recorded[0].action).toBe('role.delete')
+    expect(recorded[0].entityId).toBe('role-1')
+  })
+
+  it('un fallo del audit NO tumba la operación', async () => {
+    const repo = makeRepo({ findById: async () => baseRole, delete: async () => true })
+    const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+    svc.setAuditDeps({ record: async () => { throw new Error('audit caído') } })
+    await expect(svc.delete('role-1', hotelAdmin)).resolves.toBeUndefined()
+  })
+})
