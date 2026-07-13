@@ -155,6 +155,7 @@ import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-
 import { gastosCajaConnector } from './connectors/gastos-caja'
 import { payrollGastosConnector } from './connectors/payroll-gastos'
 import { reembolsosGastosConnector } from './connectors/reembolsos-gastos'
+import { attendanceDashboardConnector } from './connectors/attendance-dashboard'
 import { attendancePayrollConnector } from './connectors/attendance-payroll'
 import { bookingenginePaymentsConnector } from './connectors/bookingengine-payments'
 import { messagesUsuariosConnector } from './connectors/messages-usuarios'
@@ -181,6 +182,8 @@ system.addConnector('payroll-gastos', payrollGastosConnector)
 system.addConnector('reembolsos-gastos', reembolsosGastosConnector)
 // Cablea el prefill de nómina: payroll lee horas de attendance y salarios de empleados.
 system.addConnector('attendance-payroll', attendancePayrollConnector)
+// El dashboard de RRHH muestra el fichaje real de hoy (presentes/ausentes/tarde) — #198.
+system.addConnector('attendance-dashboard', attendanceDashboardConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)
 system.addConnector('facturas-auditlog', facturasAuditlogConnector)
 // El dinero se asienta en `payments` → payments-caja lo lleva al arqueo y a la conciliación.

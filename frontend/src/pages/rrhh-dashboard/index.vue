@@ -52,6 +52,28 @@
         </div>
       </div>
 
+      <!-- Resumen de asistencia de hoy (#198) -->
+      <div v-if="data.attendance" class="card p-5 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-extrabold text-navy text-sm">Asistencia de hoy</h3>
+          <span class="text-xs text-text-muted">fichaje en vivo</span>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="p-3 rounded-xl bg-teal/5 flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-teal shrink-0"></span>
+            <div><div class="text-lg font-black leading-none text-navy">{{ data.attendance.present }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Presentes</div></div>
+          </div>
+          <div class="p-3 rounded-xl bg-coral/5 flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-coral shrink-0"></span>
+            <div><div class="text-lg font-black leading-none text-navy">{{ data.attendance.absent }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Ausentes</div></div>
+          </div>
+          <div class="p-3 rounded-xl bg-gold/5 flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-gold shrink-0"></span>
+            <div><div class="text-lg font-black leading-none text-navy">{{ data.attendance.late }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Tarde</div></div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid lg:grid-cols-2 gap-6">
         <!-- Por departamento -->
         <div class="card p-5">

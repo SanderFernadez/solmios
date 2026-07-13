@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RRHH — Mapa de conexiones (connectors)</title>
+<style>
+  :root{
+    --ground:#0b1620; --panel:#11212e; --panel2:#0e1b26; --line:#223a4a;
+    --ink:#e9f2f6; --muted:#89a4b2; --faint:#5f7d8c;
+    --teal:#34d3c0; --teal-dim:#1c8a80; --amber:#f5b544; --amber-dim:#8a6a24;
+    --rose:#f2607a; --rose-dim:#8a3546; --chip:#0c1a24;
+    --shadow:0 8px 30px rgba(0,0,0,.35);
+    --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --ground:#eef4f6; --panel:#fff; --panel2:#f3f8f9; --line:#d3e0e5;
+      --ink:#0e2430; --muted:#4a6675; --faint:#7c95a2; --teal:#0e9c8c; --teal-dim:#7fd8ce;
+      --amber:#c98a12; --amber-dim:#e8cf9a; --rose:#d63e5c; --rose-dim:#efb3bf; --chip:#e9f1f3;
+      --shadow:0 8px 26px rgba(20,50,65,.12); }
+  }
+  :root[data-theme="light"]{ --ground:#eef4f6; --panel:#fff; --panel2:#f3f8f9; --line:#d3e0e5;
+    --ink:#0e2430; --muted:#4a6675; --faint:#7c95a2; --teal:#0e9c8c; --teal-dim:#7fd8ce;
+    --amber:#c98a12; --amber-dim:#e8cf9a; --rose:#d63e5c; --rose-dim:#efb3bf; --chip:#e9f1f3; }
+  :root[data-theme="dark"]{ --ground:#0b1620; --panel:#11212e; --panel2:#0e1b26; --line:#223a4a;
+    --ink:#e9f2f6; --muted:#89a4b2; --faint:#5f7d8c; --teal:#34d3c0; --teal-dim:#1c8a80;
+    --amber:#f5b544; --amber-dim:#8a6a24; --rose:#f2607a; --rose-dim:#8a3546; --chip:#0c1a24; }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.55}
+  .wrap{max-width:1120px;margin:0 auto;padding:32px 20px 60px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);
+    display:flex;align-items:center;gap:9px;margin:0 0 10px}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--teal);display:inline-block}
+  h1{font-size:clamp(26px,5vw,40px);line-height:1.05;margin:0;letter-spacing:-.02em;font-weight:800}
+  .sub{color:var(--muted);max-width:64ch;margin:12px 0 0;font-size:15px}
+  .themetog{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:9px 15px;cursor:pointer;white-space:nowrap}
+
+  .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0 6px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .kpi .n{font-size:24px;font-weight:800;line-height:1}
+  .kpi .n.g{color:var(--teal)} .kpi .n.a{color:var(--amber)}
+  .kpi .l{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:7px}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 8px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .lg{display:flex;align-items:center;gap:8px}
+  .sw{width:22px;border-top:3px solid var(--teal);border-radius:2px}
+  .sw.pend{border-top:3px dashed var(--amber)}
+
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);
+    background:linear-gradient(var(--panel2),var(--panel2)),
+      repeating-linear-gradient(0deg,transparent 0 39px,rgba(120,150,165,.05) 39px 40px),
+      repeating-linear-gradient(90deg,transparent 0 39px,rgba(120,150,165,.05) 39px 40px);}
+  .stage{position:relative;width:1040px;height:560px;margin:0 auto}
+  .wires{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .wires path{fill:none;stroke-linecap:round}
+  .w-flow{stroke:var(--teal);stroke-width:2.6}
+  .w-pend{stroke:var(--amber);stroke-width:2.2;stroke-dasharray:2 7}
+
+  .node{position:absolute;transform:translate(-50%,-50%);width:150px;min-height:56px;background:var(--panel);
+    border:1.6px solid var(--teal-dim);border-radius:13px;padding:10px 12px;cursor:pointer;text-align:left;
+    display:flex;flex-direction:column;gap:2px;color:var(--ink);font-family:var(--sans);
+    box-shadow:0 4px 14px rgba(0,0,0,.18);transition:transform .12s,box-shadow .12s,border-color .12s}
+  .node:hover{transform:translate(-50%,-50%) translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.28)}
+  .node.hub{border-width:2px;background:linear-gradient(160deg,var(--panel),var(--panel2))}
+  .node.ext{border-color:var(--line);border-style:dotted}
+  .node .nl{font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px}
+  .node .nt{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase}
+  .node .dot{width:9px;height:9px;border-radius:50%;background:var(--teal);flex:none;box-shadow:0 0 0 3px rgba(52,211,192,.15)}
+  .node.ext .dot{background:var(--faint);box-shadow:none}
+  .node.active{border-color:var(--ink);box-shadow:0 0 0 2px var(--teal),0 10px 24px rgba(0,0,0,.3)}
+
+  .elabel{position:absolute;transform:translate(-50%,-50%);font-family:var(--mono);font-size:9.5px;letter-spacing:.02em;
+    background:var(--chip);border:1px solid var(--line);color:var(--muted);padding:2.5px 7px;border-radius:6px;
+    white-space:nowrap;cursor:pointer;z-index:3}
+  .elabel:hover{color:var(--ink);border-color:var(--teal-dim)}
+  .elabel.pend{color:var(--amber);border-color:var(--amber-dim)}
+  .elabel.active{color:var(--ink);border-color:var(--teal);box-shadow:0 0 0 2px rgba(52,211,192,.25)}
+
+  .detail{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-height:120px;box-shadow:var(--shadow)}
+  .detail .dh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .detail h3{margin:0;font-size:18px}
+  .badge{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid var(--line)}
+  .badge.ok{color:var(--teal);border-color:var(--teal-dim);background:rgba(52,211,192,.08)}
+  .badge.pend{color:var(--amber);border-color:var(--amber-dim);background:rgba(245,181,68,.08)}
+  .detail .grid{display:grid;grid-template-columns:120px 1fr;gap:6px 14px;margin-top:12px;font-size:14px}
+  .detail .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+  .detail .v{color:var(--ink)}
+  .detail .v code{font-family:var(--mono);font-size:12.5px;background:var(--chip);border:1px solid var(--line);padding:1px 6px;border-radius:5px}
+  .detail .db{color:var(--muted);margin:12px 0 0;font-size:14.5px}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;margin-top:34px;box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:13.5px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line)}
+  thead th{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);background:var(--panel2)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--panel2)}
+  td .pill{font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:3px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+  .pill.ok{color:var(--teal);border-color:var(--teal-dim)} .pill.pend{color:var(--amber);border-color:var(--amber-dim)}
+  td .mono{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  h2{font-size:19px;margin:34px 0 6px}
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-family:var(--mono);font-size:11px;letter-spacing:.03em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <p class="eyebrow">SolmiOS · RRHH · Mapa de connectors</p>
+      <h1>¿Qué se conecta con qué</h1>
+      <p class="sub">Cada línea es un <b>connector real</b> (o handoff) del código. Tocá una etiqueta de flujo o un módulo para ver qué archivo lo cablea y cómo está verificado. <b>Todas las conexiones están activas y verificadas.</b></p>
+    </div>
+    <button class="themetog" id="themeBtn">◐ Tema</button>
+  </div>
+
+  <div class="stat">
+    <div class="kpi"><div class="n g">8</div><div class="l">Conexiones activas</div></div>
+    <div class="kpi"><div class="n g">0</div><div class="l">Pendientes</div></div>
+    <div class="kpi"><div class="n g">✓</div><div class="l">Verificado E2E + prod</div></div>
+  </div>
+
+  <div class="legend">
+    <div class="lg"><span class="sw"></span> Conectado (connector activo)</div>
+    <div class="lg"><span class="sw pend"></span> Falta conectar</div>
+    <div class="lg">▸ tocá una etiqueta o módulo</div>
+  </div>
+
+  <div class="scroll">
+    <div class="stage" id="stage">
+      <svg class="wires" id="wires" aria-hidden="true">
+        <defs>
+          <marker id="mFlow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--teal)"/></marker>
+          <marker id="mPend" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--amber)"/></marker>
+        </defs>
+      </svg>
+      <div id="elabels"></div>
+
+      <button class="node" style="left:360px;top:80px" data-id="asistencia"><span class="nl"><span class="dot"></span>Asistencia</span><span class="nt">fichaje · turnos</span></button>
+      <button class="node" style="left:95px;top:255px" data-id="reclutamiento"><span class="nl"><span class="dot"></span>Reclutamiento</span><span class="nt">postulantes</span></button>
+      <button class="node hub" style="left:320px;top:255px" data-id="empleados"><span class="nl"><span class="dot"></span>Empleados</span><span class="nt">expediente · hub</span></button>
+      <button class="node" style="left:565px;top:255px" data-id="nomina"><span class="nl"><span class="dot"></span>Nómina</span><span class="nt">liquidaciones</span></button>
+      <button class="node ext" style="left:785px;top:255px" data-id="gastos"><span class="nl"><span class="dot"></span>Gastos</span><span class="nt">egresos del hotel</span></button>
+      <button class="node ext" style="left:955px;top:255px" data-id="caja"><span class="nl"><span class="dot"></span>Caja</span><span class="nt">arqueo del turno</span></button>
+      <button class="node" style="left:565px;top:435px" data-id="reembolsos"><span class="nl"><span class="dot"></span>Reembolsos</span><span class="nt">gastos del empleado</span></button>
+      <button class="node" style="left:250px;top:435px" data-id="dashboard"><span class="nl"><span class="dot"></span>Dashboard</span><span class="nt">resumen RRHH</span></button>
+    </div>
+  </div>
+
+  <div class="detail" id="detail"></div>
+
+  <h2>Todos los connectors del flujo RRHH</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Conexión</th><th>Cableado por</th><th>Qué fluye</th><th>Estado</th></tr></thead>
+      <tbody id="ctable"></tbody>
+    </table>
+  </div>
+
+  <footer>Fuente: <span class="mono">backend/src/connectors/</span> + <span class="mono">composition-root.ts</span> + <span class="mono">scripts/e2e/</span> · generado 2026-07-12</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var NODES = {
+    asistencia:{t:"Asistencia",st:"ok",bd:"Fichaje (PIN/facial/huella/móvil), turnos, reportes. Alimenta la nómina con las horas reales del período."},
+    reclutamiento:{t:"Reclutamiento",st:"ok",bd:"Pipeline de selección. Al contratar hace un handoff a Empleados con los datos del postulante."},
+    empleados:{t:"Empleados",st:"ok",bd:"Núcleo del RRHH: expedientes, contratos, documentos, vacaciones, evaluaciones. Provee salarios a la nómina y alimenta el dashboard."},
+    nomina:{t:"Nómina",st:"ok",bd:"Liquidaciones. Lee salarios de Empleados y horas de Asistencia; el pago se asienta como gasto del hotel."},
+    gastos:{t:"Gastos",st:"ok",bd:"Egresos operativos del hotel. Punto de paso: nómina y reembolsos caen acá, y de acá a la caja si son en efectivo."},
+    caja:{t:"Caja",st:"ok",bd:"Arqueo del turno. Recibe todo egreso en efectivo (gastos, nómina cash, reembolsos cash)."},
+    reembolsos:{t:"Reembolsos",st:"ok",bd:"Gastos adelantados por el empleado. Al pagarse se asienta como gasto → caja si es efectivo."},
+    dashboard:{t:"Dashboard RRHH",st:"ok",bd:"Resumen consolidado: headcount, alertas, ocupación, cumpleaños, top desempeño. Consume datos de Empleados."}
+  };
+
+  // from, to, kind, label, {conn, flujo, verif, desc}
+  var EDGES = [
+    ["reclutamiento","empleados","flow","contratar → alta precargada",
+      {conn:"handoff (frontend)", flujo:"nombre + email del postulante", verif:"verificado visual (form precargado)", desc:"Al confirmar la contratación, te lleva a “Nuevo Empleado” con el nombre y email ya cargados."}],
+    ["asistencia","nomina","flow","prefill horas · ausencias",
+      {conn:"attendance-payroll.ts", flujo:"horas trabajadas, extras, tardanzas, ausencias", verif:"prefill port", desc:"La liquidación se pre-carga con los fichajes reales del período (no a mano)."}],
+    ["empleados","nomina","flow","salarios",
+      {conn:"attendance-payroll.ts (listEmployees)", flujo:"salario base del legajo", verif:"prefill port", desc:"El salario de cada empleado sale del expediente, no se tipea."}],
+    ["nomina","gastos","flow","pago = gasto staff",
+      {conn:"payroll-gastos.ts", flujo:"totalNet del run como gasto categoría staff", verif:"onRunPaid", desc:"Pagar la nómina asienta el costo laboral como gasto del hotel."}],
+    ["reembolsos","gastos","flow","reembolso pagado = gasto",
+      {conn:"reembolsos-gastos.ts  (NUEVO)", flujo:"monto del reembolso como gasto staff", verif:"E2E reimbursement-caja 7/7 + PROD", desc:"Al pagar un reembolso se asienta como gasto. Antes no aparecía en ningún lado."}],
+    ["gastos","caja","flow","efectivo → arqueo",
+      {conn:"gastos-caja.ts", flujo:"egreso en efectivo al cajón físico", verif:"idempotente por expenseId", desc:"Solo el efectivo mueve la caja (tarjeta/transferencia ya están bancarizadas)."}],
+    ["empleados","dashboard","flow","headcount · alertas · ocupación",
+      {conn:"hr-dashboard usecase", flujo:"perfiles, contratos, docs, licencias, evaluaciones", verif:"E2E hr-dashboard 26/26", desc:"El panel agrega todo lo que Empleados posee: KPIs, cumpleaños, en-licencia-hoy, top desempeño."}],
+    ["asistencia","dashboard","flow","resumen presentes/ausentes (#198)",
+      {conn:"attendance-dashboard.ts  (NUEVO)", flujo:"fichajes de HOY → presentes / ausentes / tarde", verif:"E2E dashboard-attendance 7/7", desc:"El panel muestra el fichaje real del día (presentes/ausentes/tarde), no solo la ocupación por licencias. Cierra el #198."},
+      {t:0.74, plain:true}]
+  ];
+
+  var stage=document.getElementById("stage"), wires=document.getElementById("wires"), elabels=document.getElementById("elabels");
+  var HW=76, HH=30;
+  function center(id){ var el=stage.querySelector('[data-id="'+id+'"]'); return {x:el.offsetLeft,y:el.offsetTop}; }
+  function border(c,t){ var dx=t.x-c.x,dy=t.y-c.y; if(!dx&&!dy)return c; var s=Math.min(dx?HW/Math.abs(dx):1e9, dy?HH/Math.abs(dy):1e9); return {x:c.x+dx*s,y:c.y+dy*s}; }
+  var MARK={flow:"url(#mFlow)",pend:"url(#mPend)"}, CLS={flow:"w-flow",pend:"w-pend"};
+
+  function draw(){
+    var defs=wires.querySelector("defs"); wires.innerHTML=""; wires.appendChild(defs); elabels.innerHTML="";
+    EDGES.forEach(function(e,i){
+      var a=center(e[0]), b=center(e[1]), p1=border(a,b), p2=border(b,a);
+      var dx=p2.x-p1.x,dy=p2.y-p1.y,len=Math.sqrt(dx*dx+dy*dy)||1; p2={x:p2.x-dx/len*6,y:p2.y-dy/len*6};
+      var horiz=Math.abs(p2.x-p1.x)>=Math.abs(p2.y-p1.y), c1,c2;
+      if(horiz){c1=(p1.x+p2.x)/2+" "+p1.y;c2=(p1.x+p2.x)/2+" "+p2.y;} else {c1=p1.x+" "+(p1.y+p2.y)/2;c2=p2.x+" "+(p1.y+p2.y)/2;}
+      var path=document.createElementNS("http://www.w3.org/2000/svg","path");
+      path.setAttribute("d","M"+p1.x+" "+p1.y+" C"+c1+", "+c2+", "+p2.x+" "+p2.y);
+      path.setAttribute("class",CLS[e[2]]); path.setAttribute("marker-end",MARK[e[2]]); wires.appendChild(path);
+      // Etiqueta: por defecto en el medio, corrida perpendicular para no pisar los nodos.
+      var hint=e[5]||{}, tf=hint.t!=null?hint.t:0.5;
+      var mx=p1.x+(p2.x-p1.x)*tf, my=p1.y+(p2.y-p1.y)*tf;
+      if(!hint.plain){ if(Math.abs(p2.x-p1.x)>=Math.abs(p2.y-p1.y)) my-=40; else mx+=46; }
+      var lab=document.createElement("button");
+      lab.className="elabel"+(e[2]==="pend"?" pend":""); lab.textContent=e[3];
+      lab.style.left=mx+"px"; lab.style.top=my+"px"; lab.dataset.edge=i;
+      lab.addEventListener("click",function(){ renderEdge(i); });
+      elabels.appendChild(lab);
+    });
+  }
+
+  function clearActive(){ [].forEach.call(document.querySelectorAll('.active'),function(x){x.classList.remove('active');}); }
+
+  function renderEdge(i){
+    clearActive(); document.querySelector('.elabel[data-edge="'+i+'"]').classList.add('active');
+    var e=EDGES[i], d=e[4], stName=e[2]==="pend"?"Falta conectar":"Conectado", bcl=e[2]==="pend"?"pend":"ok";
+    document.getElementById("detail").innerHTML=
+      '<div class="dh"><h3>'+NODES[e[0]].t+' → '+NODES[e[1]].t+'</h3><span class="badge '+bcl+'">'+stName+'</span></div>'+
+      '<div class="grid">'+
+        '<div class="k">Cableado por</div><div class="v"><code>'+d.conn+'</code></div>'+
+        '<div class="k">Qué fluye</div><div class="v">'+d.flujo+'</div>'+
+        '<div class="k">Verificado</div><div class="v">'+d.verif+'</div>'+
+      '</div><p class="db">'+d.desc+'</p>';
+  }
+
+  function renderNode(id){
+    clearActive(); stage.querySelector('[data-id="'+id+'"]').classList.add('active');
+    var n=NODES[id];
+    var ins=EDGES.filter(function(e){return e[1]===id;}).map(function(e){return NODES[e[0]].t;});
+    var outs=EDGES.filter(function(e){return e[0]===id;}).map(function(e){return NODES[e[1]].t+(e[2]==="pend"?" (falta)":"");});
+    document.getElementById("detail").innerHTML=
+      '<div class="dh"><h3>'+n.t+'</h3><span class="badge ok">Módulo</span></div>'+
+      '<div class="grid">'+
+        '<div class="k">Recibe de</div><div class="v">'+(ins.length?ins.join(", "):"—")+'</div>'+
+        '<div class="k">Envía a</div><div class="v">'+(outs.length?outs.join(", "):"—")+'</div>'+
+      '</div><p class="db">'+n.bd+'</p>';
+  }
+
+  [].forEach.call(stage.querySelectorAll(".node"),function(el){ el.addEventListener("click",function(){ renderNode(el.getAttribute("data-id")); }); });
+
+  // Tabla
+  var tb=document.getElementById("ctable");
+  EDGES.forEach(function(e){
+    var d=e[4], tr=document.createElement("tr");
+    tr.innerHTML='<td><b>'+NODES[e[0]].t+'</b> → <b>'+NODES[e[1]].t+'</b></td>'+
+      '<td class="mono">'+d.conn+'</td><td>'+e[3]+'</td>'+
+      '<td><span class="pill '+(e[2]==="pend"?"pend":"ok")+'">'+(e[2]==="pend"?"falta":"activo")+'</span></td>';
+    tb.appendChild(tr);
+  });
+
+  var root=document.documentElement;
+  document.getElementById("themeBtn").addEventListener("click",function(){
+    var cur=root.getAttribute("data-theme"); if(!cur) cur=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
+    root.setAttribute("data-theme", cur==="dark"?"light":"dark");
+  });
+
+  window.addEventListener("resize",draw);
+  draw(); renderEdge(7); // arranca mostrando la conexión recién cerrada (asistencia→dashboard #198)
+})();
+</script>
+</body>
+</html>

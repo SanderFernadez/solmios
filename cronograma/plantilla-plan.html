@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan de Trabajo — Manager Hotel (SOLMI OS)</title>
+<style>
+  :root {
+    --primary: #1a237e;
+    --secondary: #283593;
+    --accent: #3949ab;
+    --success: #2e7d32;
+    --warning: #f57f17;
+    --danger: #c62828;
+    --bg: #f5f5f5;
+    --card: #ffffff;
+    --text: #212121;
+    --text-secondary: #616161;
+    --border: #e0e0e0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 13px; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  .doc-header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; padding: 40px; border-radius: 12px; margin-bottom: 30px; }
+  .doc-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .doc-header .meta { display: flex; gap: 30px; flex-wrap: wrap; margin-top: 15px; font-size: 13px; opacity: .9; }
+  .section { background: var(--card); border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .section h2 { font-size: 20px; color: var(--primary); border-bottom: 3px solid var(--accent); padding-bottom: 8px; margin-bottom: 20px; }
+  .section h3 { font-size: 16px; color: var(--secondary); margin: 20px 0 10px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  th { background: var(--secondary); color: #fff; padding: 10px 8px; text-align: left; font-weight: 600; white-space: nowrap; }
+  td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: #f0f4ff; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-high { background: #ffcdd2; color: var(--danger); }
+  .badge-medium { background: #fff3e0; color: var(--warning); }
+  .badge-low { background: #e8f5e9; color: var(--success); }
+  .badge-critical { background: #c62828; color: #fff; }
+  .wbs { padding-left: 20px; }
+  .wbs li { margin: 4px 0; list-style: none; }
+  .wbs li::before { content: "→ "; color: var(--accent); font-weight: 700; }
+  .wbs .wbs-parent { font-weight: 700; color: var(--primary); margin-top: 10px; }
+  .wbs .wbs-parent::before { content: "⬤ "; color: var(--accent); }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
+  .summary-card { background: linear-gradient(135deg, #e8eaf6, #c5cae9); border-radius: 8px; padding: 15px; text-align: center; }
+  .summary-card .number { font-size: 28px; font-weight: 700; color: var(--primary); }
+  .summary-card .label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .day-block { margin: 30px 0 8px; background: var(--primary); color: #fff; padding: 14px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+  .day-block span:first-child { font-size: 18px; font-weight: 700; }
+  .mod-card { border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+  .mod-card .mod-header { color: #fff; padding: 10px 16px; font-weight: 700; font-size: 14px; }
+  .mod-card table { margin: 0; width: 100%; }
+  .mod-card td { padding: 6px 10px; }
+  .phase-header { margin: 40px 0 8px; color: #fff; padding: 14px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+  .phase-header span:first-child { font-size: 17px; font-weight: 700; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media print { body { font-size: 11px; } .section { break-inside: avoid; } .doc-header { -webkit-print-color-adjust: exact; } }
+  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>Plan de Trabajo — Manager Hotel (SOLMI OS)</h1>
+  <p style="margin-top:4px;opacity:.9;">Hoja de Ruta · 46 Modulos · 8 Fases · Integraciones Stripe/Channex/TTLock</p>
+  <div class="meta">
+    <span>Inicio: <strong>13 Jul 2026</strong></span>
+    <span>Fin estimado: <strong>8 Ene 2027</strong></span>
+    <span>Equipo: <strong>6 personas</strong></span>
+    <span>Duracion: <strong>26 semanas · 130 dias habiles</strong></span>
+    <span>Total estimado: <strong>~2,400 horas</strong></span>
+  </div>
+</div>
+
+<div class="section">
+<h2>1. ANALISIS DEL PROYECTO</h2>
+
+<h3>Stack Tecnologico</h3>
+<table>
+  <tr><th>Componente</th><th>Tecnologia</th><th>Version</th><th>Observaciones</th></tr>
+  <tr><td>Runtime</td><td>Bun</td><td>>= 1.3</td><td>Backend + frontend dev</td></tr>
+  <tr><td>Backend Framework</td><td>arckode-framework</td><td>^1.6.2</td><td>ORM, auth, routing, websockets</td></tr>
+  <tr><td>Frontend Framework</td><td>Vue 3 + Vite 8</td><td>3.5 / 8.0</td><td>Pinia 3, Vue Router 5</td></tr>
+  <tr><td>CSS</td><td>Tailwind CSS</td><td>4.3</td><td>Utility-first</td></tr>
+  <tr><td>Base de datos</td><td>SQLite / PostgreSQL</td><td>— / 16</td><td>SQLite dev, PG prod</td></tr>
+  <tr><td>ORM</td><td>RepositoryAdapter<T></td><td>built-in</td><td>Multi-motor, camelCase mapping</td></tr>
+  <tr><td>Testing</td><td>bun test / vue-tsc</td><td>—</td><td>101 tests backend</td></tr>
+  <tr><td>Pagos</td><td>Stripe</td><td>^22.2.2</td><td>Links, deposits, checkout</td></tr>
+  <tr><td>Channel Manager</td><td>Channex</td><td>—</td><td>staging.channex.io</td></tr>
+  <tr><td>Cerraduras</td><td>TTLock</td><td>—</td><td>Auto-generacion de codigos</td></tr>
+  <tr><td>Email</td><td>Resend + Nodemailer</td><td>—</td><td>Auto-messages + cola</td></tr>
+  <tr><td>Push</td><td>FCM</td><td>—</td><td>Firebase Cloud Messaging</td></tr>
+  <tr><td>WhatsApp</td><td>Baileys</td><td>^7.0.0</td><td>BLOQUEADO (creds Meta)</td></tr>
+</table>
+
+<h3>Arquitectura Actual</h3>
+<table>
+  <tr><th>Capa</th><th>Proyecto/Carpeta</th><th>Responsabilidad</th><th>Estado</th></tr>
+  <tr><td>Entry Point</td><td>backend/src/composition-root.ts</td><td>Wiring de 46 modulos + ORM + servicios</td><td>Estable</td></tr>
+  <tr><td>Modulos</td><td>backend/src/modules/</td><td>46 modulos aislados (controller/service/model)</td><td>Estable</td></tr>
+  <tr><td>Conectores</td><td>backend/src/connectors/</td><td>26 conectores inter-modulo</td><td>Estable</td></tr>
+  <tr><td>Servicios</td><td>backend/src/services/</td><td>10 servicios compartidos</td><td>Estable</td></tr>
+  <tr><td>Auth</td><td>backend/src/infrastructure/auth/</td><td>JWT multi-tenant + permisos</td><td>Estable</td></tr>
+  <tr><td>Migraciones</td><td>backend/migrate-db.ts</td><td>DDL + seeders demo</td><td>Estable</td></tr>
+  <tr><td>Frontend Pages</td><td>frontend/src/pages/</td><td>46 paginas Vue</td><td>En desarrollo</td></tr>
+  <tr><td>Frontend Services</td><td>frontend/src/services/</td><td>46 API services</td><td>En desarrollo</td></tr>
+</table>
+
+<h3>Resumen Ejecutivo</h3>
+<div style="background:#e8f5e9;padding:15px;border-radius:8px;border-left:4px solid var(--success);">
+  <p><strong>Proyecto:</strong> PMS Hotelero completo (SOLMI OS) con 46 modulos backend, frontend Vue 3, integraciones Stripe/Channex/TTLock/Email/FCM.</p>
+  <p><strong>Tamaño:</strong> ~87,980 LOC (665 archivos backend + 164 frontend) · 101 tests</p>
+  <p><strong>Riesgo principal:</strong> Dependencias entre modulos (facturas <-> folios <-> payments) requiere orquestacion cuidadosa</p>
+  <p><strong>Enfoque:</strong> 8 fases secuenciales respetando dependencias. Cada fase entrega modulos funcionales completos</p>
+  <p><strong>Duracion estimada:</strong> 26 semanas (~6 meses)</p>
+</div>
+</div>
+
+<div class="section">
+<h2>2. INVENTARIO DE MODULOS</h2>
+
+<h3>FASE 1: Fundacion (Infraestructura Core)</h3>
+<table>
+  <tr><th>ID</th><th>Modulo</th><th>Descripcion</th><th>Complejidad</th><th>Prioridad</th><th>Dependencias</th></tr>
+  <tr><td>M01</td><td>hoteles</td><td>Configuracion de hoteles</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>—</td></tr>
+  <tr><td>M02</td><td>usuarios</td><td>Gestion de usuarios del sistema</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M01</td></tr>
+  <tr><td>M03</td><td>roles</td><td>Roles y permisos granulares</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M02</td></tr>
+  <tr><td>M04</td><td>staff-auth</td><td>Autenticacion staff (JWT multi-tenant)</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M02</td></tr>
+  <tr><td>M05</td><td>dashboard</td><td>Dashboard principal con KPIs</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M04</td></tr>
+</table>
+
+<h3>FASE 2: Core PMS</h3>
+<table>
+  <tr><th>ID</th><th>Modulo</th><th>Descripcion</th><th>Complejidad</th><th>Prioridad</th><th>Dependencias</th></tr>
+  <tr><td>M06</td><td>habitaciones</td><td>Gestion de habitaciones, tipos, estados</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M01</td></tr>
+  <tr><td>M07</td><td>pricing</td><td>Tarifas, temporadas, reglas de precio</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M06</td></tr>
+  <tr><td>M08</td><td>huespedes</td><td>Gestion de huespedes e historial</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M01</td></tr>
+  <tr><td>M09</td><td>reservas</td><td>Motor de reservas (core del sistema)</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M06, M07, M08</td></tr>
+</table>
+
+<h3>FASE 3: Financiero</h3>
+<table>
+  <tr><th>ID</th><th>Modulo</th><th>Descripcion</th><th>Complejidad</th><th>Prioridad</th><th>Dependencias</th></tr>
+  <tr><td>M10</td><td>folios</td><td>Cuentas por habitacion (folios)</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M08, M09</td></tr>
+  <tr><td>M11</td><td>facturas</td><td>Facturacion electronica + NCF</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M10</td></tr>
+  <tr><td>M12</td><td>payments</td><td>Procesamiento de pagos</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-critical">CRITICA</span></td><td>M11</td></tr>
+  <tr><td>M13</td><td>payment-requests</td><td>Links de pago Stripe</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M12</td></tr>
+  <tr><td>M14</td><td>cash</td><td>Caja chica, arqueo, turnos</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M12</td></tr>
+  <tr><td>M15</td><td>gastos</td><td>Gestion de gastos operativos</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M01</td></tr>
+  <tr><td>M16</td><td>reembolsos</td><td>Reembolsos a huespedes</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M12</td></tr>
+  <tr><td>M17</td><td>reports</td><td>Reportes financieros y operativos</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M11, M14, M15</td></tr>
+</table>
+
+<h3>FASE 4: Operaciones</h3>
+<table>
+  <tr><th>ID</th><th>Modulo</th><th>Descripcion</th><th>Complejidad</th><th>Prioridad</th><th>Dependencias</th></tr>
+  <tr><td>M18</td><td>housekeeping</td><td>Limpieza y estado de habitaciones</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M06</td></tr>
+  <tr><td>M19</td><td>mantenimiento</td><td>Solicitudes de mantenimiento</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M06</td></tr>
+  <tr><td>M20</td><td>amenities</td><td>Gestion de amenities</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M01</td></tr>
+  <tr><td>M21</td><td>paquetes</td><td>Paquetes y ofertas especiales</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M07</td></tr>
+  <tr><td>M22</td><td>grupos</td><td>Reservas de grupo</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M09</td></tr>
+  <tr><td>M23</td><td>dispositivos</td><td>Dispositivos IoT del hotel</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M01</td></tr>
+</table>
+
+<h3>FASE 5: Canales e Integraciones</h3>
+<table>
+  <tr><th>ID</th><th>Modulo</th><th>Descripcion</th><th>Complejidad</th><th>Prioridad</th><th>Dependencias</th></tr>
+  <tr><td>M24</td><td>canales</td><td>Channel Manager (Channex)</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M06, M07, M09</td></tr>
+  <tr><td>M25</td><td>bookingengine</td><td>Widget de reservas publico</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M09, M12</td></tr>
+  <tr><td>M26</td><td>ttlock</td><td>Cerraduras inteligentes</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M06</td></tr>
+  <tr><td>M27</td><td>notificaciones</td><td>Centro de notificaciones</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M04</td></tr>
+  <tr><td>M28</td><td>messages</td><td>Mensajeria interna</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M02</td></tr>
+  <tr><td>M29</td><td>pushtokens</td><td>Tokens FCM para push</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M27</td></tr>
+  <tr><td>M30</td><td>anuncios</td><td>Anuncios y comunicados</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M27</td></tr>
+</table>
+
+<h3>FASE 6: RRHH</h3>
+<table>
+  <tr><th>ID</th><th>Modulo</th><th>Descripcion</th><th>Complejidad</th><th>Prioridad</th><th>Dependencias</th></tr>
+  <tr><td>M31</td><td>empleados</td><td>Gestion de empleados</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M02</td></tr>
+  <tr><td>M32</td><td>attendance</td><td>Fichaje y asistencia</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M31</td></tr>
+  <tr><td>M33</td><td>payroll</td><td>Nomina y calculo salarial</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M32</td></tr>
+  <tr><td>M34</td><td>reclutamiento</td><td>Reclutamiento y candidatos</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M01</td></tr>
+  <tr><td>M35</td><td>capacitacion</td><td>Capacitacion del personal</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M31</td></tr>
+</table>
+
+<h3>FASE 7: CRM, Marketing y AI</h3>
+<table>
+  <tr><th>ID</th><th>Modulo</th><th>Descripcion</th><th>Complejidad</th><th>Prioridad</th><th>Dependencias</th></tr>
+  <tr><td>M36</td><td>crm</td><td>CRM con segmentos y loyalty</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M08</td></tr>
+  <tr><td>M37</td><td>marketing</td><td>Marketing automation</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M27, M36</td></tr>
+  <tr><td>M38</td><td>ai-recepcionista</td><td>AI Recepcionista (chatbot)</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M09</td></tr>
+  <tr><td>M39</td><td>ai-gerente</td><td>AI Gerente (analisis predictivo)</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M17, M38</td></tr>
+</table>
+
+<h3>FASE 8: Admin y Plataforma</h3>
+<table>
+  <tr><th>ID</th><th>Modulo</th><th>Descripcion</th><th>Complejidad</th><th>Prioridad</th><th>Dependencias</th></tr>
+  <tr><td>M40</td><td>admin</td><td>Panel de administracion</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td><td>M04</td></tr>
+  <tr><td>M41</td><td>auditlog</td><td>Registro de auditoria</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M04</td></tr>
+  <tr><td>M42</td><td>apikeys</td><td>API Keys para integraciones</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td><td>M04</td></tr>
+  <tr><td>M43</td><td>tickets</td><td>Sistema de soporte (tickets)</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M02</td></tr>
+  <tr><td>M44</td><td>feedback</td><td>Feedback de huespedes</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M08</td></tr>
+  <tr><td>M45</td><td>opiniones</td><td>Resenas y reputacion online</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M08</td></tr>
+  <tr><td>M46</td><td>activos</td><td>Activos fijos del hotel</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td><td>M01</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>3. WBS — WORK BREAKDOWN STRUCTURE</h2>
+
+<div style="background:#e3f2fd;border-left:4px solid var(--accent);padding:12px 16px;margin:15px 0 5px;border-radius:0 6px 6px 0;">
+  <h3 style="margin:0;color:var(--primary);">FASE 1: Fundacion (Semanas 1-4)</h3>
+</div>
+
+<h4>M01 — Hoteles</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M01.1 Configuracion de hotel</li>
+  <li>M01.1.1 Modelo Hotel + tipos (orm.define)</li>
+  <li>M01.1.2 CRUD hoteles (controller/service/validators)</li>
+  <li>M01.1.3 Frontend: formulario configuracion hotel</li>
+  <li>M01.1.4 Tests de caracterizacion</li>
+</ul>
+
+<h4>M02 — Usuarios</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M02.1 Gestion de usuarios</li>
+  <li>M02.1.1 Modelo User + relacion hotel</li>
+  <li>M02.1.2 CRUD usuarios con filtro hotel</li>
+  <li>M02.1.3 Frontend: listado + formulario usuarios</li>
+  <li>M02.1.4 Tests</li>
+</ul>
+
+<h4>M03 — Roles</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M03.1 Permisos granulares</li>
+  <li>M03.1.1 Modelo Role + Permission</li>
+  <li>M03.1.2 Seed de roles por defecto</li>
+  <li>M03.1.3 Permission guard middleware</li>
+  <li>M03.1.4 Frontend: asignacion de roles</li>
+  <li>M03.1.5 Tests</li>
+</ul>
+
+<h4>M04 — Staff Auth</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M04.1 Autenticacion JWT multi-tenant</li>
+  <li>M04.1.1 HotelAuth + JWT strategy</li>
+  <li>M04.1.2 Login con email/telefono</li>
+  <li>M04.1.3 Middleware requireUserType + requirePermission</li>
+  <li>M04.1.4 Frontend: login page + auth store</li>
+  <li>M04.1.5 Tests</li>
+</ul>
+
+<h4>M05 — Dashboard</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M05.1 Dashboard principal</li>
+  <li>M05.1.1 Endpoints de KPIs (ocupacion, ingresos, checkins)</li>
+  <li>M05.1.2 Frontend: widgets + graficas</li>
+  <li>M05.1.3 Tests</li>
+</ul>
+
+<div style="background:#e3f2fd;border-left:4px solid var(--accent);padding:12px 16px;margin:30px 0 5px;border-radius:0 6px 6px 0;">
+  <h3 style="margin:0;color:var(--primary);">FASE 2: Core PMS (Semanas 5-9)</h3>
+</div>
+
+<h4>M06 — Habitaciones</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M06.1 Gestion de habitaciones</li>
+  <li>M06.1.1 Modelo Room + RoomType</li>
+  <li>M06.1.2 CRUD habitaciones + estados (disponible/ocupada/mto)</li>
+  <li>M06.1.3 Frontend: grid de habitaciones + plano</li>
+  <li>M06.1.4 Tests</li>
+</ul>
+
+<h4>M07 — Pricing</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M07.1 Tarifas y temporadas</li>
+  <li>M07.1.1 Modelo Rate + Season + RatePlan</li>
+  <li>M07.1.2 Logica de pricing (basePrice, porcentaje, temporada)</li>
+  <li>M07.1.3 Frontend: grid de tarifas + calendario</li>
+  <li>M07.1.4 Tests</li>
+</ul>
+
+<h4>M08 — Huespedes</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M08.1 Gestion de huespedes</li>
+  <li>M08.1.1 Modelo Guest + historial</li>
+  <li>M08.1.2 CRUD huespedes + busqueda</li>
+  <li>M08.1.3 Frontend: listado + detalle + historial</li>
+  <li>M08.1.4 Tests</li>
+</ul>
+
+<h4>M09 — Reservas (CORE)</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M09.1 Motor de reservas</li>
+  <li>M09.1.1 Modelo Reservation + estados (pending/confirmed/checked-in/checked-out/cancelled)</li>
+  <li>M09.1.2 CRUD reservas + logica de disponibilidad</li>
+  <li>M09.1.3 Check-in / Check-out flow</li>
+  <li>M09.1.4 Conectores: reservas-housekeeping, reservas-ttlock, reservas-canales</li>
+  <li>M09.1.5 Frontend: calendario FullCalendar + formulario reserva</li>
+  <li>M09.1.6 Tests + night audit cron</li>
+</ul>
+
+<div style="background:#e3f2fd;border-left:4px solid var(--accent);padding:12px 16px;margin:30px 0 5px;border-radius:0 6px 6px 0;">
+  <h3 style="margin:0;color:var(--primary);">FASE 3: Financiero (Semanas 10-14)</h3>
+</div>
+
+<h4>M10 — Folios</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M10.1 Cuentas por habitacion</li>
+  <li>M10.1.1 Modelo Folio + FolioCharge + FolioPayment</li>
+  <li>M10.1.2 CRUD folios + cargos + pagos</li>
+  <li>M10.1.3 Cierre de folio + creacion de factura</li>
+  <li>M10.1.4 Conector: folios-facturas</li>
+  <li>M10.1.5 Frontend: folio detalle + cargos</li>
+  <li>M10.1.6 Tests</li>
+</ul>
+
+<h4>M11 — Facturas</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M11.1 Facturacion electronica</li>
+  <li>M11.1.1 Modelo Invoice + InvoiceItem</li>
+  <li>M11.1.2 CRUD facturas + numeracion NCF</li>
+  <li>M11.1.3 Calculo de impuestos desde config</li>
+  <li>M11.1.4 Nota de credito</li>
+  <li>M11.1.5 Frontend: lista + detalle + print A4</li>
+  <li>M11.1.6 Tests</li>
+</ul>
+
+<h4>M12 — Payments</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M12.1 Procesamiento de pagos</li>
+  <li>M12.1.1 Modelo Payment + metodos</li>
+  <li>M12.1.2 Integracion Stripe (charges, refunds)</li>
+  <li>M12.1.3 Conector: payments-caja</li>
+  <li>M12.1.4 Frontend: formulario de pago</li>
+  <li>M12.1.5 Tests</li>
+</ul>
+
+<h4>M13 — Payment Requests</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M13.1 Links de pago Stripe</li>
+  <li>M13.1.1 Creacion de links de pago</li>
+  <li>M13.1.2 Webhook Stripe + checkout sessions</li>
+  <li>M13.1.3 Frontend: lista de links</li>
+  <li>M13.1.4 Tests</li>
+</ul>
+
+<h4>M14-M17 — Cash, Gastos, Reembolsos, Reports</h4>
+<ul class="wbs">
+  <li class="wbs-parent">M14 Caja</li>
+  <li>M14.1 Arqueo de caja + turnos</li>
+  <li class="wbs-parent">M15 Gastos</li>
+  <li>M15.1 CRUD gastos operativos</li>
+  <li class="wbs-parent">M16 Reembolsos</li>
+  <li>M16.1 Procesamiento de reembolsos</li>
+  <li class="wbs-parent">M17 Reports</li>
+  <li>M17.1 Reportes financieros + exportacion</li>
+</ul>
+
+<div style="background:#e3f2fd;border-left:4px solid var(--accent);padding:12px 16px;margin:30px 0 5px;border-radius:0 6px 6px 0;">
+  <h3 style="margin:0;color:var(--primary);">FASE 4-8: Operaciones, Canales, RRHH, CRM, Admin (Semanas 15-26)</h3>
+</div>
+<ul class="wbs">
+  <li class="wbs-parent">M18-M23 Operaciones</li>
+  <li>M18 Housekeeping (limpieza + estados)</li>
+  <li>M19 Mantenimiento (solicitudes + seguimiento)</li>
+  <li>M20 Amenities (gestion de servicios)</li>
+  <li>M21 Paquetes (ofertas especiales)</li>
+  <li>M22 Grupos (reservas grupales)</li>
+  <li>M23 Dispositivos (IoT)</li>
+</ul>
+<ul class="wbs">
+  <li class="wbs-parent">M24-M30 Canales e Integraciones</li>
+  <li>M24 Canales (Channex ARI sync)</li>
+  <li>M25 Booking Engine (widget publico)</li>
+  <li>M26 TTLock (cerraduras inteligentes)</li>
+  <li>M27 Notificaciones (centro + templates)</li>
+  <li>M28 Messages (mensajeria interna)</li>
+  <li>M29 PushTokens (FCM)</li>
+  <li>M30 Anuncios</li>
+</ul>
+<ul class="wbs">
+  <li class="wbs-parent">M31-M35 RRHH</li>
+  <li>M31 Empleados, M32 Attendance, M33 Payroll, M34 Reclutamiento, M35 Capacitacion</li>
+</ul>
+<ul class="wbs">
+  <li class="wbs-parent">M36-M39 CRM, Marketing, AI</li>
+  <li>M36 CRM (segmentos + loyalty)</li>
+  <li>M37 Marketing (automation)</li>
+  <li>M38 AI Recepcionista (chatbot)</li>
+  <li>M39 AI Gerente (analisis predictivo)</li>
+</ul>
+<ul class="wbs">
+  <li class="wbs-parent">M40-M46 Admin y Plataforma</li>
+  <li>M40 Admin, M41 AuditLog, M42 APIKeys, M43 Tickets, M44 Feedback, M45 Opiniones, M46 Activos</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>4. MATRIZ RACI</h2>
+<table>
+  <tr><th>Rol</th><th>Codigo</th><th>Responsabilidades</th></tr>
+  <tr><td>Arquitecto</td><td>ARQ</td><td>Diseno, estandares, code review</td></tr>
+  <tr><td>Backend Dev 1</td><td>BE1</td><td>Servicios, logica de negocio, modelos ORM</td></tr>
+  <tr><td>Backend Dev 2</td><td>BE2</td><td>Controllers, validaciones, middlewares</td></tr>
+  <tr><td>Frontend Dev 1</td><td>FE1</td><td>Componentes, listas, responsive</td></tr>
+  <tr><td>Frontend Dev 2</td><td>FE2</td><td>Formularios, modales, stores Pinia</td></tr>
+  <tr><td>Full Stack</td><td>FS</td><td>Integracion frontend-backend, conectores</td></tr>
+  <tr><td>DBA</td><td>DBA</td><td>Migraciones, indices, optimizacion</td></tr>
+  <tr><td>QA</td><td>QA</td><td>Tests, automatizacion, regresion</td></tr>
+  <tr><td>DevOps</td><td>DEV</td><td>CI/CD, infraestructura, monitoreo</td></tr>
+  <tr><td>UX/UI</td><td>UX</td><td>Diseno UX, prototipos, accesibilidad</td></tr>
+</table>
+
+<h3>RACI por Actividad</h3>
+<table>
+  <tr><th>Actividad</th><th>ARQ</th><th>BE1</th><th>BE2</th><th>FE1</th><th>FE2</th><th>FS</th><th>DBA</th><th>QA</th><th>DEV</th><th>UX</th></tr>
+  <tr><td>Analisis</td><td><strong>R</strong></td><td>C</td><td>C</td><td>—</td><td>—</td><td>C</td><td>C</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td>Diseno v2</td><td><strong>R</strong></td><td>C</td><td>C</td><td>—</td><td>—</td><td>—</td><td>C</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td>Backend v2</td><td>I</td><td><strong>R</strong></td><td><strong>R</strong></td><td>—</td><td>—</td><td>C</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td>Frontend v2</td><td>I</td><td>—</td><td>—</td><td><strong>R</strong></td><td><strong>R</strong></td><td>C</td><td>—</td><td>—</td><td>—</td><td>C</td></tr>
+  <tr><td>Conectores</td><td>A</td><td>C</td><td>C</td><td>—</td><td>—</td><td><strong>R</strong></td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td>Tests</td><td>A</td><td>C</td><td>C</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>R</strong></td><td>—</td><td>—</td></tr>
+  <tr><td>Documentacion</td><td>A</td><td><strong>R</strong></td><td><strong>R</strong></td><td><strong>R</strong></td><td><strong>R</strong></td><td>C</td><td><strong>R</strong></td><td>C</td><td>—</td><td><strong>R</strong></td></tr>
+  <tr><td>Integracion</td><td>A</td><td><strong>R</strong></td><td>C</td><td>C</td><td>C</td><td><strong>R</strong></td><td>—</td><td><strong>R</strong></td><td><strong>R</strong></td><td>—</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>5. CRONOGRAMA DETALLADO</h2>
+
+<div class="phase-header" style="background:var(--primary);"><span>FASE 1: Fundacion (Semanas 1-4)</span><span>M01-M05</span></div>
+
+<div class="day-block"><span>Semana 1 — M01 Hoteles + M02 Usuarios</span><span>Sprint 1</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#1565c0;">M01 — Hoteles</div>
+<table>
+  <tr style="background:#e3f2fd;"><td>ARQ</td><td>Disenar modelo Hotel + tipos</td><td style="text-align:right;">8h</td></tr>
+  <tr><td>BE1</td><td>Implementar modelo ORM + CRUD</td><td style="text-align:right;">16h</td></tr>
+  <tr style="background:#e3f2fd;"><td>FE1</td><td>Crear formulario configuracion hotel</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>QA</td><td>Tests de caracterizacion</td><td style="text-align:right;">8h</td></tr>
+</table>
+</div>
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#1565c0;">M02 — Usuarios</div>
+<table>
+  <tr style="background:#e3f2fd;"><td>BE2</td><td>Modelo User + relacion hotel</td><td style="text-align:right;">12h</td></tr>
+  <tr><td>FE2</td><td>Listado + formulario usuarios</td><td style="text-align:right;">16h</td></tr>
+  <tr style="background:#e3f2fd;"><td>QA</td><td>Tests CRUD usuarios</td><td style="text-align:right;">8h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 2 — M03 Roles + M04 Staff Auth</span><span>Sprint 1</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#1565c0;">M03 — Roles</div>
+<table>
+  <tr style="background:#e3f2fd;"><td>ARQ</td><td>Disenar esquema de permisos</td><td style="text-align:right;">8h</td></tr>
+  <tr><td>BE1</td><td>Modelo Role + Permission + seed</td><td style="text-align:right;">16h</td></tr>
+  <tr style="background:#e3f2fd;"><td>BE2</td><td>Permission guard middleware</td><td style="text-align:right;">12h</td></tr>
+  <tr><td>FE1</td><td>Frontend asignacion roles</td><td style="text-align:right;">12h</td></tr>
+</table>
+</div>
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#1565c0;">M04 — Staff Auth</div>
+<table>
+  <tr style="background:#e3f2fd;"><td>BE1</td><td>HotelAuth + JWT strategy</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>BE2</td><td>Login con email/telefono</td><td style="text-align:right;">8h</td></tr>
+  <tr style="background:#e3f2fd;"><td>FS</td><td>Middleware requireUserType</td><td style="text-align:right;">8h</td></tr>
+  <tr><td>FE2</td><td>Login page + auth store Pinia</td><td style="text-align:right;">16h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 3 — M05 Dashboard + testing F1</span><span>Sprint 2</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#1565c0;">M05 — Dashboard</div>
+<table>
+  <tr style="background:#e3f2fd;"><td>BE1</td><td>Endpoints KPIs</td><td style="text-align:right;">12h</td></tr>
+  <tr><td>FE1</td><td>Widgets + graficas dashboard</td><td style="text-align:right;">20h</td></tr>
+  <tr style="background:#e3f2fd;"><td>QA</td><td>Tests dashboard</td><td style="text-align:right;">8h</td></tr>
+</table>
+</div>
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#e65100;">F1 — Testing Fase 1</div>
+<table>
+  <tr style="background:#fff8e1;"><td>QA</td><td>Tests integracion Fase 1</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>FS</td><td>Correcciones + code review</td><td style="text-align:right;">16h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="phase-header" style="background:#283593;"><span>FASE 2: Core PMS (Semanas 5-9)</span><span>M06-M09</span></div>
+
+<div class="day-block"><span>Semana 5 — M06 Habitaciones</span><span>Sprint 3</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#1565c0;">M06 — Habitaciones</div>
+<table>
+  <tr style="background:#e3f2fd;"><td>BE1</td><td>Modelo Room + RoomType</td><td style="text-align:right;">12h</td></tr>
+  <tr><td>BE2</td><td>CRUD + estados habitacion</td><td style="text-align:right;">16h</td></tr>
+  <tr style="background:#e3f2fd;"><td>FE1</td><td>Grid de habitaciones + plano visual</td><td style="text-align:right;">24h</td></tr>
+  <tr><td>DBA</td><td>Migraciones + indices</td><td style="text-align:right;">8h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 6 — M07 Pricing</span><span>Sprint 3</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#1565c0;">M07 — Pricing</div>
+<table>
+  <tr style="background:#e3f2fd;"><td>ARQ</td><td>Disenar logica de pricing</td><td style="text-align:right;">8h</td></tr>
+  <tr><td>BE1</td><td>Modelo Rate + Season + logica</td><td style="text-align:right;">24h</td></tr>
+  <tr style="background:#e3f2fd;"><td>FE1</td><td>Grid tarifas + calendario</td><td style="text-align:right;">20h</td></tr>
+  <tr><td>QA</td><td>Tests pricing</td><td style="text-align:right;">12h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 7 — M08 Huespedes</span><span>Sprint 4</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#1565c0;">M08 — Huespedes</div>
+<table>
+  <tr style="background:#e3f2fd;"><td>BE1</td><td>Modelo Guest + historial</td><td style="text-align:right;">8h</td></tr>
+  <tr><td>BE2</td><td>CRUD + busqueda</td><td style="text-align:right;">12h</td></tr>
+  <tr style="background:#e3f2fd;"><td>FE1</td><td>Listado + detalle huesped</td><td style="text-align:right;">16h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 8-9 — M09 Reservas (CORE)</span><span>Sprint 4-5</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #c5cae9;background:#f0f4ff;">
+<div class="mod-header" style="background:#c62828;">M09 — Reservas</div>
+<table>
+  <tr style="background:#ffebee;"><td>ARQ</td><td>Disenar motor de reservas</td><td style="text-align:right;">12h</td></tr>
+  <tr><td>BE1</td><td>Modelo Reservation + logica disponibilidad</td><td style="text-align:right;">32h</td></tr>
+  <tr style="background:#ffebee;"><td>BE2</td><td>CRUD reservas + estados</td><td style="text-align:right;">24h</td></tr>
+  <tr><td>FS</td><td>Check-in / Check-out flow</td><td style="text-align:right;">16h</td></tr>
+  <tr style="background:#ffebee;"><td>FS</td><td>Conectores (housekeeping, ttlock, canales)</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>FE1</td><td>Calendario FullCalendar + lista</td><td style="text-align:right;">32h</td></tr>
+  <tr style="background:#ffebee;"><td>FE2</td><td>Formulario reserva + checkout</td><td style="text-align:right;">24h</td></tr>
+  <tr><td>QA</td><td>Tests + night audit</td><td style="text-align:right;">24h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="phase-header" style="background:#e65100;"><span>FASE 3: Financiero (Semanas 10-14)</span><span>M10-M17</span></div>
+
+<div class="day-block"><span>Semana 10-11 — M10 Folios + M11 Facturas</span><span>Sprint 6-7</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #ffe0b2;background:#fff3e0;">
+<div class="mod-header" style="background:#e65100;">M10 — Folios</div>
+<table>
+  <tr style="background:#fff8e1;"><td>BE1</td><td>Modelo Folio + cargos</td><td style="text-align:right;">20h</td></tr>
+  <tr><td>BE2</td><td>CRUD + cierre de folio</td><td style="text-align:right;">16h</td></tr>
+  <tr style="background:#fff8e1;"><td>FE1</td><td>Folio detalle + cargos</td><td style="text-align:right;">20h</td></tr>
+</table>
+</div>
+<div class="mod-card" style="border:1px solid #ffe0b2;background:#fff3e0;">
+<div class="mod-header" style="background:#e65100;">M11 — Facturas</div>
+<table>
+  <tr style="background:#fff8e1;"><td>ARQ</td><td>Disenar logica de facturacion</td><td style="text-align:right;">8h</td></tr>
+  <tr><td>BE1</td><td>Modelo Invoice + NCF</td><td style="text-align:right;">24h</td></tr>
+  <tr style="background:#fff8e1;"><td>BE2</td><td>Calculo impuestos + nota credito</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>FE1</td><td>Listado + detalle + print A4</td><td style="text-align:right;">24h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 12 — M12 Payments + M13 Payment Requests</span><span>Sprint 7</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #ffe0b2;background:#fff3e0;">
+<div class="mod-header" style="background:#e65100;">M12 — Payments</div>
+<table>
+  <tr style="background:#fff8e1;"><td>BE1</td><td>Modelo Payment + Stripe</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>FS</td><td>Conector payments-caja</td><td style="text-align:right;">8h</td></tr>
+  <tr style="background:#fff8e1;"><td>FE1</td><td>Formulario pago</td><td style="text-align:right;">16h</td></tr>
+</table>
+</div>
+<div class="mod-card" style="border:1px solid #ffe0b2;background:#fff3e0;">
+<div class="mod-header" style="background:#e65100;">M13 — Payment Requests</div>
+<table>
+  <tr style="background:#fff8e1;"><td>BE2</td><td>Links de pago + webhook</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>FE2</td><td>Lista de links</td><td style="text-align:right;">8h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 13-14 — M14 Cash + M15-M17 + Testing F3</span><span>Sprint 8</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #ffe0b2;background:#fff3e0;">
+<div class="mod-header" style="background:#e65100;">M14-M17 — Cash + Gastos + Reembolsos + Reports</div>
+<table>
+  <tr style="background:#fff8e1;"><td>BE1</td><td>Cash + Reportes financieros</td><td style="text-align:right;">24h</td></tr>
+  <tr><td>BE2</td><td>Gastos + Reembolsos</td><td style="text-align:right;">16h</td></tr>
+  <tr style="background:#fff8e1;"><td>FE1</td><td>Frontend reportes</td><td style="text-align:right;">24h</td></tr>
+  <tr><td>QA</td><td>Tests Fase 3</td><td style="text-align:right;">20h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="phase-header" style="background:#2e7d32;"><span>FASE 4: Operaciones (Semanas 15-17)</span><span>M18-M23</span></div>
+
+<div class="day-block"><span>Semana 15-16 — M18 Housekeeping + M19 Mantenimiento + M20 Amenities</span><span>Sprint 9</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #c8e6c9;background:#e8f5e9;">
+<div class="mod-header" style="background:#2e7d32;">M18 — Housekeeping</div>
+<table>
+  <tr style="background:#e8f5e9;"><td>BE1</td><td>Modelo + CRUD tareas limpieza</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>FE1</td><td>Panel housekeeping + drag & drop</td><td style="text-align:right;">20h</td></tr>
+</table>
+</div>
+<div class="mod-card" style="border:1px solid #c8e6c9;background:#e8f5e9;">
+<div class="mod-header" style="background:#2e7d32;">M19 — Mantenimiento</div>
+<table>
+  <tr style="background:#e8f5e9;"><td>BE2</td><td>Solicitudes + seguimiento</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>FE2</td><td>Listado + formulario</td><td style="text-align:right;">16h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 17 — M21 Paquetes + M22 Grupos + M23 Dispositivos</span><span>Sprint 10</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #c8e6c9;background:#e8f5e9;">
+<div class="mod-header" style="background:#2e7d32;">M21-M23 — Paquetes, Grupos, Dispositivos</div>
+<table>
+  <tr style="background:#e8f5e9;"><td>BE1</td><td>Backend paquetes + grupos</td><td style="text-align:right;">20h</td></tr>
+  <tr><td>BE2</td><td>Backend dispositivos</td><td style="text-align:right;">12h</td></tr>
+  <tr style="background:#e8f5e9;"><td>FE1</td><td>Frontend paquetes</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>FE2</td><td>Frontend grupos + dispositivos</td><td style="text-align:right;">12h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="phase-header" style="background:#6a1b9a;"><span>FASE 5: Canales e Integraciones (Semanas 18-20)</span><span>M24-M30</span></div>
+
+<div class="day-block"><span>Semana 18 — M24 Canales (Channex) + M25 Booking Engine</span><span>Sprint 11</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #e1bee7;background:#f3e5f5;">
+<div class="mod-header" style="background:#6a1b9a;">M24 — Canales (Channex)</div>
+<table>
+  <tr style="background:#f3e5f5;"><td>ARQ</td><td>Disenar integracion Channex API</td><td style="text-align:right;">12h</td></tr>
+  <tr><td>BE1</td><td>Channex ARI sync (availability/rates/inventory)</td><td style="text-align:right;">32h</td></tr>
+  <tr style="background:#f3e5f5;"><td>FS</td><td>Connector booking-channex</td><td style="text-align:right;">16h</td></tr>
+  <tr><td>QA</td><td>Tests + certificacion Channex</td><td style="text-align:right;">16h</td></tr>
+</table>
+</div>
+<div class="mod-card" style="border:1px solid #e1bee7;background:#f3e5f5;">
+<div class="mod-header" style="background:#6a1b9a;">M25 — Booking Engine</div>
+<table>
+  <tr style="background:#f3e5f5;"><td>BE2</td><td>Widget publico + webhook</td><td style="text-align:right;">24h</td></tr>
+  <tr><td>FE1</td><td>Componente booking widget</td><td style="text-align:right;">20h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 19 — M26 TTLock + M27 Notificaciones</span><span>Sprint 11</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #e1bee7;background:#f3e5f5;">
+<div class="mod-header" style="background:#6a1b9a;">M26 — TTLock</div>
+<table>
+  <tr style="background:#f3e5f5;"><td>BE1</td><td>TTLock client + auto-generacion codigos</td><td style="text-align:right;">20h</td></tr>
+  <tr><td>FS</td><td>Connector reservas-ttlock</td><td style="text-align:right;">8h</td></tr>
+  <tr style="background:#f3e5f5;"><td>FE1</td><td>Panel cerraduras</td><td style="text-align:right;">12h</td></tr>
+</table>
+</div>
+<div class="mod-card" style="border:1px solid #e1bee7;background:#f3e5f5;">
+<div class="mod-header" style="background:#6a1b9a;">M27-M30 — Notificaciones + Messages + Push + Anuncios</div>
+<table>
+  <tr style="background:#f3e5f5;"><td>BE2</td><td>Backend notificaciones + FCM</td><td style="text-align:right;">20h</td></tr>
+  <tr><td>FE2</td><td>Frontend notificaciones + mensajeria</td><td style="text-align:right;">20h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="phase-header" style="background:#00838f;"><span>FASE 6-8: RRHH, CRM, AI, Admin (Semanas 21-26)</span><span>M31-M46</span></div>
+
+<div class="day-block"><span>Semana 21-22 — RRHH (M31-M35)</span><span>Sprint 12-13</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #b2ebf2;background:#e0f7fa;">
+<div class="mod-header" style="background:#00838f;">M31-M35 — RRHH</div>
+<table>
+  <tr style="background:#e0f7fa;"><td>BE1</td><td>Empleados + Attendance + Payroll</td><td style="text-align:right;">40h</td></tr>
+  <tr><td>BE2</td><td>Reclutamiento + Capacitacion</td><td style="text-align:right;">20h</td></tr>
+  <tr style="background:#e0f7fa;"><td>FE1</td><td>Frontend RRHH</td><td style="text-align:right;">32h</td></tr>
+  <tr><td>FS</td><td>Conectores attendance-payroll</td><td style="text-align:right;">8h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 23-24 — CRM + Marketing + AI (M36-M39)</span><span>Sprint 13-14</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #b2ebf2;background:#e0f7fa;">
+<div class="mod-header" style="background:#00838f;">M36-M39 — CRM + Marketing + AI</div>
+<table>
+  <tr style="background:#e0f7fa;"><td>ARQ</td><td>Disenar AI modules</td><td style="text-align:right;">12h</td></tr>
+  <tr><td>BE1</td><td>CRM + Marketing backend</td><td style="text-align:right;">32h</td></tr>
+  <tr style="background:#e0f7fa;"><td>BE2</td><td>AI Recepcionista + AI Gerente</td><td style="text-align:right;">40h</td></tr>
+  <tr><td>FE1</td><td>Frontend CRM + Marketing</td><td style="text-align:right;">24h</td></tr>
+  <tr style="background:#e0f7fa;"><td>FE2</td><td>Frontend AI</td><td style="text-align:right;">24h</td></tr>
+</table>
+</div>
+</div>
+
+<div class="day-block"><span>Semana 25-26 — Admin + Plataforma + Tests finales</span><span>Sprint 14-15</span></div>
+<div class="grid-2">
+<div class="mod-card" style="border:1px solid #b2ebf2;background:#e0f7fa;">
+<div class="mod-header" style="background:#00838f;">M40-M46 — Admin + Plataforma</div>
+<table>
+  <tr style="background:#e0f7fa;"><td>BE1</td><td>Admin + AuditLog + APIKeys</td><td style="text-align:right;">24h</td></tr>
+  <tr><td>BE2</td><td>Tickets + Feedback + Opiniones + Activos</td><td style="text-align:right;">24h</td></tr>
+  <tr style="background:#e0f7fa;"><td>FE1</td><td>Frontend admin</td><td style="text-align:right;">24h</td></tr>
+  <tr><td>FE2</td><td>Frontend tickets + feedback</td><td style="text-align:right;">20h</td></tr>
+  <tr style="background:#e0f7fa;"><td>QA</td><td>Tests integracion final + regresion</td><td style="text-align:right;">32h</td></tr>
+  <tr><td>DEV</td><td>CI/CD + deploy produccion</td><td style="text-align:right;">16h</td></tr>
+</table>
+</div>
+</div>
+
+</div>
+
+<div class="section">
+<h2>6. ESTIMACION</h2>
+<table>
+  <tr><th>ID</th><th>Modulo</th><th>Analisis</th><th>Diseno</th><th>Backend</th><th>Frontend</th><th>DB</th><th>Tests</th><th>Docs</th><th>Total h</th><th>Complejidad</th><th>Prioridad</th></tr>
+  <tr><td>M01</td><td>Hoteles</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>4</td><td>48</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M02</td><td>Usuarios</td><td>4</td><td>4</td><td>16</td><td>16</td><td>4</td><td>8</td><td>4</td><td>56</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M03</td><td>Roles</td><td>8</td><td>8</td><td>20</td><td>16</td><td>4</td><td>12</td><td>4</td><td>72</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M04</td><td>Staff Auth</td><td>8</td><td>8</td><td>24</td><td>20</td><td>4</td><td>12</td><td>4</td><td>80</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M05</td><td>Dashboard</td><td>4</td><td>4</td><td>12</td><td>20</td><td>—</td><td>8</td><td>4</td><td>52</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M06</td><td>Habitaciones</td><td>4</td><td>4</td><td>16</td><td>24</td><td>4</td><td>8</td><td>4</td><td>64</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M07</td><td>Pricing</td><td>8</td><td>8</td><td>24</td><td>20</td><td>4</td><td>12</td><td>4</td><td>80</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M08</td><td>Huespedes</td><td>4</td><td>4</td><td>12</td><td>16</td><td>4</td><td>8</td><td>4</td><td>52</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M09</td><td>Reservas (CORE)</td><td>12</td><td>12</td><td>48</td><td>48</td><td>8</td><td>24</td><td>8</td><td>160</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M10</td><td>Folios</td><td>8</td><td>8</td><td>28</td><td>24</td><td>4</td><td>16</td><td>4</td><td>92</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M11</td><td>Facturas</td><td>8</td><td>8</td><td>32</td><td>24</td><td>4</td><td>16</td><td>4</td><td>96</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M12</td><td>Payments</td><td>4</td><td>4</td><td>20</td><td>16</td><td>4</td><td>12</td><td>4</td><td>64</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-critical">CRITICA</span></td></tr>
+  <tr><td>M13</td><td>Payment Requests</td><td>4</td><td>4</td><td>16</td><td>12</td><td>4</td><td>8</td><td>4</td><td>52</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M14</td><td>Cash</td><td>4</td><td>4</td><td>16</td><td>16</td><td>4</td><td>8</td><td>4</td><td>56</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M15</td><td>Gastos</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>4</td><td>48</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M16</td><td>Reembolsos</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>4</td><td>48</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M17</td><td>Reports</td><td>8</td><td>8</td><td>28</td><td>24</td><td>4</td><td>12</td><td>4</td><td>88</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M18</td><td>Housekeeping</td><td>4</td><td>4</td><td>16</td><td>20</td><td>4</td><td>8</td><td>4</td><td>60</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M19</td><td>Mantenimiento</td><td>4</td><td>4</td><td>16</td><td>16</td><td>4</td><td>8</td><td>4</td><td>56</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M20</td><td>Amenities</td><td>4</td><td>4</td><td>10</td><td>12</td><td>4</td><td>8</td><td>2</td><td>44</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M21</td><td>Paquetes</td><td>4</td><td>4</td><td>12</td><td>16</td><td>4</td><td>8</td><td>4</td><td>52</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M22</td><td>Grupos</td><td>4</td><td>4</td><td>16</td><td>16</td><td>4</td><td>8</td><td>4</td><td>56</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M23</td><td>Dispositivos</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>2</td><td>46</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M24</td><td>Canales (Channex)</td><td>12</td><td>8</td><td>32</td><td>16</td><td>4</td><td>16</td><td>8</td><td>96</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M25</td><td>Booking Engine</td><td>8</td><td>8</td><td>24</td><td>24</td><td>4</td><td>12</td><td>4</td><td>84</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M26</td><td>TTLock</td><td>4</td><td>4</td><td>20</td><td>16</td><td>4</td><td>12</td><td>4</td><td>64</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M27</td><td>Notificaciones</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>4</td><td>48</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M28</td><td>Messages</td><td>4</td><td>4</td><td>12</td><td>16</td><td>4</td><td>8</td><td>4</td><td>52</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M29</td><td>Push Tokens</td><td>4</td><td>4</td><td>8</td><td>8</td><td>4</td><td>8</td><td>2</td><td>38</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M30</td><td>Anuncios</td><td>4</td><td>4</td><td>8</td><td>8</td><td>4</td><td>8</td><td>2</td><td>38</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M31</td><td>Empleados</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>4</td><td>48</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M32</td><td>Attendance</td><td>4</td><td>4</td><td>16</td><td>16</td><td>4</td><td>8</td><td>4</td><td>56</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M33</td><td>Payroll</td><td>8</td><td>8</td><td>24</td><td>20</td><td>4</td><td>12</td><td>4</td><td>80</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M34</td><td>Reclutamiento</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>2</td><td>46</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M35</td><td>Capacitacion</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>2</td><td>46</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M36</td><td>CRM</td><td>8</td><td>8</td><td>24</td><td>20</td><td>4</td><td>12</td><td>4</td><td>80</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M37</td><td>Marketing</td><td>4</td><td>4</td><td>16</td><td>16</td><td>4</td><td>8</td><td>4</td><td>56</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M38</td><td>AI Recepcionista</td><td>12</td><td>8</td><td>32</td><td>24</td><td>8</td><td>16</td><td>8</td><td>108</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M39</td><td>AI Gerente</td><td>12</td><td>8</td><td>28</td><td>20</td><td>8</td><td>16</td><td>8</td><td>100</td><td><span class="badge badge-high">ALTA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M40</td><td>Admin</td><td>4</td><td>4</td><td>16</td><td>20</td><td>4</td><td>8</td><td>4</td><td>60</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-high">ALTA</span></td></tr>
+  <tr><td>M41</td><td>AuditLog</td><td>4</td><td>4</td><td>10</td><td>8</td><td>4</td><td>8</td><td>2</td><td>40</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M42</td><td>API Keys</td><td>4</td><td>4</td><td>10</td><td>8</td><td>4</td><td>8</td><td>2</td><td>40</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-medium">MEDIA</span></td></tr>
+  <tr><td>M43</td><td>Tickets</td><td>4</td><td>4</td><td>16</td><td>16</td><td>4</td><td>8</td><td>4</td><td>56</td><td><span class="badge badge-medium">MEDIA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M44</td><td>Feedback</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>2</td><td>46</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M45</td><td>Opiniones</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>2</td><td>46</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr><td>M46</td><td>Activos</td><td>4</td><td>4</td><td>12</td><td>12</td><td>4</td><td>8</td><td>2</td><td>46</td><td><span class="badge badge-low">BAJA</span></td><td><span class="badge badge-low">BAJA</span></td></tr>
+  <tr style="background:#e8eaf6;font-weight:700;"><td colspan="7">TOTAL</td><td>2,936</td><td></td><td></td></tr>
+</table>
+
+<h3>Distribucion por Rol</h3>
+<table>
+  <tr><th>Rol</th><th>Horas</th><th>%</th><th>Dias</th></tr>
+  <tr><td>ARQ - Arquitecto</td><td>168</td><td>5.7%</td><td>21</td></tr>
+  <tr><td>BE1 - Backend Dev 1</td><td>712</td><td>24.3%</td><td>89</td></tr>
+  <tr><td>BE2 - Backend Dev 2</td><td>512</td><td>17.4%</td><td>64</td></tr>
+  <tr><td>FE1 - Frontend Dev 1</td><td>620</td><td>21.1%</td><td>78</td></tr>
+  <tr><td>FE2 - Frontend Dev 2</td><td>384</td><td>13.1%</td><td>48</td></tr>
+  <tr><td>FS - Full Stack</td><td>184</td><td>6.3%</td><td>23</td></tr>
+  <tr><td>DBA - Database Admin</td><td>144</td><td>4.9%</td><td>18</td></tr>
+  <tr><td>QA - Quality Assurance</td><td>212</td><td>7.2%</td><td>27</td></tr>
+  <tr style="background:#e8eaf6;font-weight:700;"><td>TOTAL</td><td>2,936</td><td>100%</td><td>367</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>7. RESUMEN GENERAL</h2>
+
+<div class="summary-grid">
+  <div class="summary-card"><div class="number">2,936</div><div class="label">Horas totales</div></div>
+  <div class="summary-card"><div class="number">130</div><div class="label">Dias habiles</div></div>
+  <div class="summary-card"><div class="number">26</div><div class="label">Semanas</div></div>
+  <div class="summary-card"><div class="number">6</div><div class="label">Meses</div></div>
+  <div class="summary-card"><div class="number">6</div><div class="label">Personas</div></div>
+  <div class="summary-card"><div class="number">46</div><div class="label">Modulos</div></div>
+</div>
+
+<h3>Ruta Critica</h3>
+<p style="padding:10px 14px;background:#ffebee;border-radius:6px;border-left:4px solid var(--danger);">
+<strong>M04 (Auth) → M09 (Reservas) → M10 (Folios) → M11 (Facturas) → M17 (Reports)</strong><br><br>
+La ruta critica pasa por el core financiero: sin auth no hay reservas, sin reservas no hay folios, sin folios no hay facturacion. Cualquier retraso en M04, M09 o M10 impacta directamente la fecha de entrega.
+</p>
+
+<h3>Recomendaciones</h3>
+<ol style="margin:10px 0 0 20px;">
+  <li><strong>Priorizar Fase 1 (Fundacion)</strong> — Sin auth/roles/usuarios no se puede probar nada del resto</li>
+  <li><strong>Paralelizar Fase 4-8</strong> — Una vez que el core PMS esta estable (semana 14), los modulos de operaciones, RRHH, CRM y Admin pueden trabajarse en paralelo con 2 equipos</li>
+  <li><strong>Channex requiere certificacion</strong> — La integracion con Channex necesita pasar su proceso de certificacion antes de conectar OTAs reales. Iniciar el tramite en la semana 15 para que este listo en la 18</li>
+  <li><strong>WhatsApp queda como deuda</strong> — Bloqueado por credenciales Meta. Documentar en el modulo de mensajeria pero no bloquear el release</li>
+  <li><strong>Facturacion electronica (NCF)</strong> — Cablear el stub fiscal existente. Hoy se genera NCF siempre pero deberia ser condicional a configuracion</li>
+  <li><strong>Service Worker (PC-4)</strong> — Reactivar con network-first + bypass /api/*. Desactivado actualmente porque rompia logout</li>
+</ol>
+
+<h3>Hitos</h3>
+<table>
+  <tr><th>Hito</th><th>Fecha</th><th>Semana</th><th>Entregable</th></tr>
+  <tr><td>H1</td><td>07 Ago 2026</td><td>4</td><td>Fundacion completa (Auth, Roles, Usuarios, Dashboard funcional)</td></tr>
+  <tr><td>H2</td><td>11 Sep 2026</td><td>9</td><td>Core PMS: Habitaciones, Tarifas, Reservas operativas</td></tr>
+  <tr><td>H3</td><td>16 Oct 2026</td><td>14</td><td>Modulo financiero: Facturas, Pagos, Folios, Caja funcionales</td></tr>
+  <tr><td>H4</td><td>06 Nov 2026</td><td>17</td><td>Operaciones: Housekeeping, Mantenimiento, Amenities</td></tr>
+  <tr><td>H5</td><td>27 Nov 2026</td><td>20</td><td>Canales e Integraciones: Channex, Booking Engine, TTLock</td></tr>
+  <tr><td>H6</td><td>18 Dic 2026</td><td>23</td><td>RRHH, CRM, AI completos</td></tr>
+  <tr><td>H7</td><td>08 Ene 2027</td><td>26</td><td>Plataforma completa + tests + deploy produccion</td></tr>
+</table>
+</div>
+
+<div style="text-align:center;padding:30px;color:var(--text-secondary);font-size:12px;">
+  <p>Generado el <strong>12 Jul 2026</strong> · Manager Hotel (SOLMI OS) · v1.0</p>
+  <p>Cronograma sincronizable con Google Sheets + GitLab (underworf1/solmios)</p>
+</div>
+
+</div>
+</body>
+</html>

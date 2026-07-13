@@ -49,6 +49,15 @@ export class AttendanceService {
   async listRecords(query: AttendanceQuery) { return this.clock.list(query.hotelId ?? '', query.from, query.to, query.employeeId) }
   async getReport(hotelId: string, from: string, to: string) { return this.clock.getReport(hotelId, from, to) }
 
+  /** Resumen de asistencia de HOY para el dashboard (#198): presentes (con fichaje) y tardanzas. */
+  async getTodaySummary(hotelId: string): Promise<{ present: number; late: number }> {
+    const today = new Date().toISOString().slice(0, 10)
+    const records = await this.clock.list(hotelId, today, today)
+    const present = new Set(records.filter((r) => r.clockIn).map((r) => r.employeeId)).size
+    const late = records.filter((r) => r.status === 'late').length
+    return { present, late }
+  }
+
   // ─── Schedules ────────────────────────────────────────
   async createSchedule(dto: CreateAttendanceScheduleDTO) { return this.scheduleRepo.create({ ...dto, active: 1 } as any) }
   async getSchedule(id: string, hotelId?: string) {

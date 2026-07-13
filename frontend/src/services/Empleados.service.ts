@@ -321,4 +321,5 @@ export interface HrDashboard {
   topPerformers: { employeeId: string; name: string; avgScore: number; reviews: number }[]
   occupancy: { total: number; available: number; onLeave: number; inactive: number }
   pending: { contractsExpiring: number; documentsExpiring: number; leavesPending: number; reviewsPending: number }
+  attendance: { present: number; absent: number; late: number } | null
 }

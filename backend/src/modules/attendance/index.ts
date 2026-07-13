@@ -18,7 +18,7 @@ export function AttendanceModule() {
     contract: {
       name: 'attendance', version: '1.0.0',
       description: 'Ponche digital + horarios',
-      actions: ['clockIn','clockOut','startBreak','endBreak','manualRecord','getToday','listRecords','getReport','createSchedule','listSchedules','deleteSchedule','getConfig','updateConfig'],
+      actions: ['clockIn','clockOut','startBreak','endBreak','manualRecord','getToday','listRecords','getReport','getTodaySummary','createSchedule','listSchedules','deleteSchedule','getConfig','updateConfig'],
       events: ['onClockIn','onClockOut'],
       tables: ['attendance_records','attendance_schedules','attendance_config'],
       dependencies: [],

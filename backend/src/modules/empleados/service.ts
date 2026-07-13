@@ -22,6 +22,7 @@ import { LeaveRequestUseCase } from './usecases/leave-requests'
 import { LeaveConfigUseCase } from './usecases/leave-config'
 import { ReviewUseCase } from './usecases/reviews'
 import { OrgChartUseCase } from './usecases/org-chart'
+import type { DashboardUseCase, AttendanceSummaryPort } from './usecases/dashboard'
 import type { SimpleUser } from './usecases/ownership'
 
 export class EmpleadosService {
@@ -59,6 +60,12 @@ export class EmpleadosService {
   setSockets(s: Partial<EmpleadosSockets>): void {
     accumulateSockets(this.sockets, s)
   }
+
+  // El dashboard vive en un usecase aparte (gate 200 líneas). El connector attendance-dashboard
+  // inyecta el fichaje de hoy vía este puerto (#198).
+  private dashboard?: DashboardUseCase
+  attachDashboard(d: DashboardUseCase): void { this.dashboard = d }
+  setAttendancePort(port: AttendanceSummaryPort): void { this.dashboard?.setAttendancePort(port) }
 
   // ─── Departments ──────────────────────────────────────
 

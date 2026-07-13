@@ -104,6 +104,7 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
         leaveConfig,
       )
       const dashboard = new DashboardUseCase(profileRepo, contractRepo, documentRepo, leaveRepo, reviewRepo, departmentRepo, log, userRepo)
+      service.attachDashboard(dashboard)   // permite inyectar el puerto de asistencia (#198) por connector
       const controller = new EmpleadosController(service, log, dashboard, opts.storage, leaveConfig, appraisalConfig, hrCatalog)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

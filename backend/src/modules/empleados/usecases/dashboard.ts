@@ -27,6 +27,12 @@ export interface HrDashboard {
   topPerformers: { employeeId: string; name: string; avgScore: number; reviews: number }[] // #202
   occupancy: { total: number; available: number; onLeave: number; inactive: number }        // #200
   pending: { contractsExpiring: number; documentsExpiring: number; leavesPending: number; reviewsPending: number } // #205
+  attendance: { present: number; absent: number; late: number } | null                       // #198 (vía connector)
+}
+
+/** Puerto que el connector `attendance-dashboard` cablea para traer el fichaje de hoy. */
+export interface AttendanceSummaryPort {
+  getTodaySummary(hotelId: string): Promise<{ present: number; late: number }>
 }
 
 const MS_PER_DAY = 86_400_000
@@ -45,6 +51,10 @@ export class DashboardUseCase {
     private readonly logger: Logger,
     private readonly userRepo?: RepositoryAdapter<{ id: string; name?: string; email?: string }>,
   ) {}
+
+  private attendancePort?: AttendanceSummaryPort
+  /** El connector `attendance-dashboard` inyecta el fichaje de hoy. Sin él, `attendance` va null. */
+  setAttendancePort(port: AttendanceSummaryPort): void { this.attendancePort = port }
 
   async get(hotelId: string): Promise<HrDashboard> {
     const now = new Date()
@@ -163,6 +173,15 @@ export class DashboardUseCase {
       inactive: profiles.length - active.length,
     }
 
+    // ── #198 Resumen de asistencia de HOY (vía connector attendance-dashboard). Ausentes = activos − presentes.
+    let attendance: HrDashboard['attendance'] = null
+    if (this.attendancePort) {
+      try {
+        const t = await this.attendancePort.getTodaySummary(hotelId)
+        attendance = { present: t.present, absent: Math.max(0, active.length - t.present), late: t.late }
+      } catch { attendance = null }
+    }
+
     return {
       headcount: active.length,
       byDepartment,
@@ -181,6 +200,7 @@ export class DashboardUseCase {
         leavesPending: pendingLeaves,
         reviewsPending: pendingReviews,
       },
+      attendance,
     }
   }
 }
