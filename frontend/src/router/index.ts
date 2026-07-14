@@ -351,6 +351,12 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          path: 'pagos',
+          name: 'pagos',
+          component: () => import('@/pages/pagos/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'caja',
           name: 'caja',
           component: () => import('@/pages/caja/index.vue'),

@@ -303,6 +303,7 @@ const nonavItems = [
       { label: 'Historial Envíos', path: '/panel/message-logs', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Plantillas WhatsApp', path: '/panel/whatsapp-templates', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Cerraduras', path: '/panel/cerraduras', roles: ['hotel_admin'] },
+      { label: 'Pasarelas de Pago', path: '/panel/pagos', roles: ['hotel_admin'] },
       { label: 'Dispositivos', path: '/panel/devices', roles: ['hotel_admin'] },
       { label: 'Notificaciones Push', path: '/panel/push-tokens', roles: ['hotel_admin'] },
     ]
@@ -428,6 +429,7 @@ const pageTitle = computed(() => {
     'whatsapp-templates': 'Plantillas WhatsApp',
     caja: 'Caja',
     cerraduras: 'Cerraduras TTLock',
+    pagos: 'Pasarelas de Pago',
     devices: 'Dispositivos',
     'push-tokens': 'Notificaciones Push',
     support: 'Soporte',
