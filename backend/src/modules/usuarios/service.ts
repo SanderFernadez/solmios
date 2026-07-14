@@ -10,6 +10,7 @@ import {
   hashPassword, verifyPassword, forgotPassword, resetPassword, changePassword,
 } from './usecases/password'
 import { assertOwnership, pickDefined } from './usecases/ownership'
+import { jtiOf, refreshSession } from './usecases/token-session'
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required')
@@ -58,7 +59,9 @@ export class UsuariosService {
     const tokenPayload = { id: userId, role: currentRole, hotelId: targetHotelId, userType: 'merchant' }
     const token = (this.auth as any).createToken(tokenPayload)
     const refreshToken = (this.auth as any).createRefreshToken(tokenPayload)
-    await this.repo.update(userId, { token })
+    // Guardar el jti del refresh vigente (no el access), igual que login: cambiar de hotel emite una
+    // sesión nueva y su refresh debe quedar habilitado para renovar.
+    await this.repo.update(userId, { token: jtiOf(refreshToken) ?? null })
     return {
       token,
       refreshToken,
@@ -94,7 +97,9 @@ export class UsuariosService {
     const tokenPayload = { id: user.id, role: user.role, hotelId: user.hotelId, userType: user.userType || 'merchant' }
     const token = (this.auth as any).createToken(tokenPayload)
     const refreshToken = (this.auth as any).createRefreshToken(tokenPayload)
-    await this.repo.update(user.id, { token })
+    // Se guarda el jti del refresh vigente (no el access, que no se consultaba): habilita revocar
+    // la sesión de refresh en logout. Single-session: un login nuevo invalida el refresh anterior.
+    await this.repo.update(user.id, { token: jtiOf(refreshToken) ?? null })
     let hotelName = ''
     if (user.hotelId && this.hotelRepo) {
       try {
@@ -168,9 +173,9 @@ export class UsuariosService {
   }
 
   async refreshToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
-    const result = (this.auth as any).refresh(refreshToken)
-    // hotelAuth.refresh() returns { accessToken, refreshToken } — map to { token, refreshToken }
-    return { token: result.accessToken, refreshToken: result.refreshToken }
+    return refreshSession(this.repo, this.auth as any, refreshToken, () => {
+      throw new AuthError('Sesión expirada, iniciá sesión de nuevo')
+    })
   }
 
   async forgotPassword(email: string): Promise<void> {
