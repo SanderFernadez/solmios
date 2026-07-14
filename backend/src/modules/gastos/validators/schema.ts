@@ -20,7 +20,9 @@ export const CreateGastosSchema: Record<string, ValidationRule> = {
 
 export const UpdateGastosSchema: Record<string, ValidationRule> = {
     concept: { type: 'string' as const },
-    amount: { type: 'number' as const },
+    // min: el create bloquea negativos pero el update no lo hacía → un PUT con amount:-50
+    // metía un gasto negativo que restaba del total y falseaba el neto.
+    amount: { type: 'number' as const, min: 0 },
     category: { type: 'string' as const },
   date: { type: 'string' as const },
     provider: { type: 'string' as const },

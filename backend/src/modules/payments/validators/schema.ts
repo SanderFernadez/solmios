@@ -50,7 +50,9 @@ export const CreateDepositSchema: Record<string, ValidationRule> = {
 }
 
 export const RefundDepositSchema: Record<string, ValidationRule> = {
-  amount: { type: 'number' as const },
+  // min: un refund negativo pasaba el guard de over-refund (−500 < deposit) y envenenaba el
+  // ledger de refundAmount. Mismo min que RefundSchema (refund de pago).
+  amount: { type: 'number' as const, min: 0.01 },
   reason: { type: 'string' as const },
 }
 

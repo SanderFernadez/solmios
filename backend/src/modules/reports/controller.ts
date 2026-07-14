@@ -33,7 +33,10 @@ export class ReportsController {
         else rows.push(`${k},${csvValue(v)}`)
       }
     }
-    return { status: 200, headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="reporte-${data.type || 'export'}-${new Date().toISOString().slice(0, 10)}.csv"` }, body: rows.join('\n') }
+    // Body como Buffer, NO string: el framework envuelve todo body no-Buffer en el envelope JSON
+    // {success,data} (server.ts), y el .csv salía como un blob JSON con `\n` literales, inservible
+    // en Excel. Un Buffer se escribe crudo, respetando el Content-Type text/csv.
+    return { status: 200, headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="reporte-${data.type || 'export'}-${new Date().toISOString().slice(0, 10)}.csv"` }, body: Buffer.from(rows.join('\n'), 'utf-8') }
   }
 
   async getNightAudit(req: HttpRequest) {
