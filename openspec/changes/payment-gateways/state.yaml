@@ -1,0 +1,149 @@
+# SDD State: payment-gateways
+
+change_name: payment-gateways
+created: 2026-07-14
+status: proposed
+current_phase: design
+parent_changes: [seguridad-multitenant]
+trigger: >
+  El dueño pidió que la integración de pagos tenga página propia y soporte varios proveedores
+  (incluidos bancos locales RD), señalando que la configuración es de CADA hotel, no de la
+  plataforma. La auditoría confirmó el problema de fondo: 2 de los 3 flujos de Stripe
+  (payments, bookingengine) resuelven las llaves desde process.env — una cuenta global para
+  todos los hoteles. Con dos hoteles con llaves cargadas, la plata de uno puede cobrarse en la
+  cuenta del otro. Hoy no explota solo porque las vars del .env de prod están vacías.
+
+sprints:
+  pg-0-rawbody:
+    title: "Prerequisito: req.rawBody en el framework"
+    status: proposed
+    tasks_total: 3
+    tasks_done: 0
+    priority: critical
+    manual_h: 7
+    ia_h: 5
+    nota: >
+      BLOQUEANTE. kernel/http/server.ts:201 hace JSON.parse y descarta los bytes crudos;
+      grep rawBody en el kernel = 0 hits. Sin esto NINGUNA firma (Stripe HMAC, PayPal RSA,
+      Azul HMAC-SHA512) puede verificarse. Fix upstream en arckode-framework, como el remap
+      camelCase de 1.6.2.
+
+  pg-1-credenciales:
+    title: Credenciales de pasarela por hotel, cifradas
+    status: proposed
+    tasks_total: 3
+    tasks_done: 0
+    priority: high
+    manual_h: 11
+    ia_h: 7
+
+  pg-2-puerto:
+    title: Puerto PaymentGateway + registry
+    status: proposed
+    tasks_total: 2
+    tasks_done: 0
+    priority: high
+    manual_h: 7
+    ia_h: 5
+
+  pg-3-stripe-migracion:
+    title: Adapter Stripe + migración de los 3 flujos
+    status: proposed
+    tasks_total: 5
+    tasks_done: 0
+    priority: critical
+    manual_h: 19
+    ia_h: 12
+    nota: Cierra el agujero de cobro cruzado. PG-3.5 (test de tenancy) es el que lo demuestra.
+
+  pg-4-confirmacion:
+    title: Confirmación unificada (push/return/pull) e idempotente
+    status: proposed
+    tasks_total: 5
+    tasks_done: 0
+    priority: high
+    manual_h: 16
+    ia_h: 10
+    depende_de: pg-0-rawbody
+
+  pg-5-pagina:
+    title: Página /panel/pagos
+    status: proposed
+    tasks_total: 5
+    tasks_done: 0
+    priority: high
+    manual_h: 15
+    ia_h: 9
+
+  pg-6-metodo-canonico:
+    title: Método de pago canónico (8 enums → 1)
+    status: proposed
+    tasks_total: 2
+    tasks_done: 0
+    priority: medium
+    manual_h: 8
+    ia_h: 5
+
+  pg-7-adapters:
+    title: Adapters PayPal y Azul (CardNet bloqueado)
+    status: proposed
+    tasks_total: 4
+    tasks_done: 0
+    priority: medium
+    manual_h: 20
+    ia_h: 13
+
+total_manual_h: 103
+total_ia_h: 66
+total_tasks: 29
+tasks_done: 0
+
+hallazgos:
+  H1:
+    sev: critica
+    file: "modules/payments/index.ts:77-80"
+    tipo: multi-tenancy
+    desc: cobro con tarjeta usa process.env.STRIPE_SECRET_KEY (cuenta global, no la del hotel)
+  H2:
+    sev: critica
+    file: "modules/bookingengine/index.ts:72-75"
+    tipo: multi-tenancy
+    desc: motor de reservas público usa la misma cuenta global del .env
+  H3:
+    sev: alta
+    file: "kernel/http/server.ts:201"
+    tipo: framework
+    desc: rawBody descartado → ninguna firma de webhook puede verificarse
+  H4:
+    sev: media
+    file: "modules/payments/usecases/deposits.ts:33"
+    tipo: feature-falsa
+    desc: "stripePaymentId: '' hardcodeado — la garantía no es una retención real"
+  H5:
+    sev: media
+    file: "payments|folios|facturas|cash|hoteles|payroll|gastos/types.ts"
+    tipo: duplicacion
+    desc: 8 enums distintos de método de pago
+  H6:
+    sev: media
+    tipo: duplicacion
+    desc: StripeUseCase duplicada en payments y bookingengine, con apiVersions distintas
+          (2026-05-27.dahlia vs 2025-08-27.basil)
+
+proveedores:
+  stripe:   { webhook: firmado-hmac, refund: si, sdk_node: si, estado: a-migrar }
+  paypal:   { webhook: firmado-rsa,  refund: si, sdk_node: si, estado: por-hacer }
+  azul_pp:  { webhook: NO, confirmacion: return-hash-sha512, refund: NO, sdk_node: no, estado: por-hacer }
+  azul_ws:  { webhook: NO, confirmacion: sincrona, refund: si, mtls: si, estado: fuera-de-scope }
+  cardnet:  { estado: BLOQUEADO, motivo: "doc pública expone 2 plataformas con auth incompatibles (Ztrans vs tokenización); requiere confirmar contrato real con el ejecutivo de cuenta" }
+
+verificado_en_prod:
+  - "2026-07-14: STRIPE_SECRET_KEY / PUBLISHABLE / WEBHOOK_SECRET = todas VACÍAS en el .env"
+  - "2026-07-14: no existe fila stripe_config en la tabla configuration"
+  - "Conclusión: hoy no se pierde ni se cobra mal ninguna plata por Stripe — el riesgo es latente,
+     se activa el día que alguien cargue una llave global"
+
+open_questions:
+  - "CardNet: ¿el hotel tiene contrato Ztrans o tokenización? Bloquea PG-7.5"
+  - "Azul: ¿Payment Page, Webservices o ambos? Payment Page NO permite reembolsos"
+  - "Cobro en recepción: ¿checkout web por redirect, o datáfono físico (implica PCI, no pasarela web)?"
