@@ -170,6 +170,15 @@ export const BillingService = {
     return http.post(`/facturas/${invoiceId}/email`, { to })
   },
 
+  /**
+   * Tasa fiscal vigente del hotel, calculada por el backend con la misma función que emite la
+   * factura. No recalcular la tasa acá: dos fuentes de verdad hacen que el preview mienta.
+   */
+  async taxRate(): Promise<number> {
+    const res = await http.get<{ rate: number }>('/facturas/tax-rate')
+    return Number(res?.rate ?? 0)
+  },
+
   /** Descarga el PDF de una factura (endpoint con auth JWT). Devuelve Blob para descarga. */
   async downloadPdf(invoiceId: string): Promise<Blob> {
     return http.getBlob(`/facturas/${invoiceId}/pdf`)

@@ -2,10 +2,12 @@
 // Delega la lógica pura a ./usecases/ para mantenerse < 200 líneas.
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError, ConflictError } from 'arckode-framework'
+import { NotFoundError } from 'arckode-framework'
 import type { FacturasDTO, CreateFacturasDTO, UpdateFacturasDTO, PayFacturasDTO, FacturasQuery, FacturasListResult, CurrentUser, FacturasStats } from './types'
 import type { FacturasSockets } from './sockets'
 import { enrichInvoice, assertOwnership, hotelFilterFor, type EnrichDeps } from './usecases/billing'
+import { getTaxRateForUser } from './usecases/tax-rate'
+import { creditNoteFlow } from './usecases/credit-note-flow'
 import { createInvoice } from './usecases/create-invoice'
 import { getStatsForUser } from './usecases/stats'
 import { invalidateFacturasCaches } from './usecases/cache'
@@ -14,7 +16,7 @@ import { auditSafely, type AuditPort } from './usecases/audit'
 import { assertDeletable, isElectronicInvoicingEnabled } from './usecases/deletable'
 import { payInvoice } from './usecases/pay-invoice'
 import type { PaymentPort } from './usecases/payment-port'
-import { generateCreditNote, type CreditNoteResult } from './usecases/credit-note'
+import type { CreditNoteResult } from './usecases/credit-note'
 import { generateTaxReport, type TaxReport } from './usecases/tax-report'
 import { attachItems, deleteItems } from './usecases/invoice-items'
 import { sendInvoiceByEmail, type InvoiceEmailPort, type EmailInvoiceResult } from './usecases/email-invoice'
@@ -155,22 +157,11 @@ export class FacturasService {
   }
 
   async creditNote(id: string, reason: string, user: CurrentUser): Promise<CreditNoteResult> {
-    this.logger.info('Generando nota de crédito', { id })
-    const inv = await this.repo.findById(id)
-    if (!inv) throw new NotFoundError('Factura no encontrada')
-    await assertOwnership(this.userRepo, this.auth,inv.hotelId, user.id, user.role)
-    if (inv.status === 'cancelled') throw new ConflictError('La factura ya está cancelada')
-    const result = await generateCreditNote(this.repo, inv, reason, user.id)
-    this.logger.info('Nota de crédito generada', {
-      id, invoiceNumber: inv.invoiceNumber, amount: inv.amount, reason,
-    })
-    await auditSafely(this.auditPort, this.logger, {
-      hotelId: inv.hotelId, userId: user.id, action: 'invoice.credit_note', entityId: id,
-      detail: `${inv.invoiceNumber} · ${inv.amount} ${inv.currency} · motivo: ${reason}`,
-    })
-    await this.sockets.onFacturasUpdated?.(result.originalInvoice)
-    await invalidateFacturasCaches(this.cache, inv.hotelId)
-    return result
+    return creditNoteFlow({
+      repo: this.repo, userRepo: this.userRepo, auth: this.auth, logger: this.logger,
+      cache: this.cache, auditPort: this.auditPort,
+      onUpdated: (inv) => this.sockets.onFacturasUpdated?.(inv),
+    }, id, reason, user)
   }
 
   async getStats(user: CurrentUser): Promise<FacturasStats> {
@@ -178,6 +169,9 @@ export class FacturasService {
   }
   async taxReport(user: CurrentUser, from?: string, to?: string): Promise<TaxReport> {
     return generateTaxReport(this.repo, hotelFilterFor(user), from, to)
+  }
+  async getTaxRate(user: CurrentUser): Promise<{ rate: number }> {
+    return getTaxRateForUser(this.configRepo, user)
   }
 
   async emailInvoice(id: string, to: string, user: CurrentUser): Promise<EmailInvoiceResult> {

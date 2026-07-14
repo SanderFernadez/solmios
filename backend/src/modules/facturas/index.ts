@@ -57,6 +57,8 @@ export function FacturasModule() {
       router.get('/api/facturas', guard('billing', 'view'), (req) => controller.index(req))
       router.get('/api/facturas/stats', guard('billing', 'view'), (req) => controller.stats(req))
       router.get('/api/facturas/tax-report', guard('billing', 'view'), (req) => controller.taxReport(req))
+      // Antes de '/:id': el router matchea por orden de registro y 'tax-rate' caería como un id.
+      router.get('/api/facturas/tax-rate', guard('billing', 'view'), (req) => controller.taxRate(req))
       router.get('/api/facturas/:id', guard('billing', 'view'), (req) => controller.show(req))
       router.get('/api/facturas/:id/print', guard('billing', 'view'), (req) => controller.printInvoice(req))
       router.get('/api/facturas/:id/pdf', guard('billing', 'view'), (req) => controller.pdf(req))

@@ -363,7 +363,7 @@
             <div class="shrink-0 border-t border-border p-5">
               <div class="flex items-center gap-4">
                 <button @click="printInvoice" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Imprimir</button>
-                <button @click="emailInvoice" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Enviar email</button>
+                <button @click="openEmailModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Enviar email</button>
                 <button @click="downloadPdf" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">PDF</button>
                 <div class="flex-1"></div>
                 <button v-if="viewInvoice.status === 'pending' || viewInvoice.balance > 0" @click="closeViewModal(); openRecordPayment(viewInvoice)" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer">
@@ -692,6 +692,47 @@
       </Transition>
     </Teleport>
 
+    <!-- Enviar factura por email -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showEmailModal && emailTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="p-5 border-b border-border flex items-center justify-between">
+              <h3 class="text-lg font-black text-navy">Enviar Factura #{{ emailTarget.number }}</h3>
+              <button @click="closeEmailModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <form class="p-5 space-y-4" @submit.prevent="confirmEmail">
+              <div>
+                <label for="email-to" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Email del destinatario</label>
+                <input
+                  id="email-to"
+                  v-model.trim="emailTo"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="huesped@ejemplo.com"
+                  class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none transition-colors"
+                  :class="emailError ? 'border-red-400 focus:border-red-500' : 'border-border focus:border-navy'"
+                  @input="emailError = ''"
+                />
+                <p v-if="emailError" class="mt-2 text-xs font-bold text-red-500">{{ emailError }}</p>
+              </div>
+            </form>
+            <div class="p-5 border-t border-border">
+              <div class="flex items-center justify-end gap-4">
+                <button @click="closeEmailModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+                <button @click="confirmEmail" :disabled="sendingEmail || !emailTo" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">
+                  {{ sendingEmail ? 'Enviando...' : 'Enviar' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Invoice Print Frame (oculto) -->
     <iframe ref="printFrame" class="hidden" style="position:absolute;width:0;height:0;border:0;"></iframe>
   </div>
@@ -701,7 +742,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { BillingService, isDeletable, type BillingStats, type Invoice, type InvoiceStatus } from '@/services/Billing.service'
 import { RoomService } from '@/services/Room.service'
-import { SettingsService } from '@/services/Settings.service'
 import { useCurrency } from '@/composables/useCurrency'
 import { useCountUp } from '@/composables/useCountUp'
 import { FoliosService, type Folio } from '@/services/Folios.service'
@@ -782,6 +822,13 @@ const showCreditNoteModal = ref(false)
 const creditNoteTarget = ref<any>(null)
 const creditNoteReason = ref('')
 const issuingCreditNote = ref(false)
+
+// Envío de factura por email
+const showEmailModal = ref(false)
+const emailTarget = ref<Invoice | null>(null)
+const emailTo = ref('')
+const emailError = ref('')
+const sendingEmail = ref(false)
 
 // New Invoice state
 const showNewInvoiceModal = ref(false)
@@ -963,15 +1010,47 @@ async function printInvoice() {
   } catch { toast.error('Error al generar impresión') }
 }
 
-async function emailInvoice() {
+// Un `prompt()` no valida nada y no distingue "cancelé" de "escribí cualquier cosa": el email salía
+// al backend sin chequear formato. El modal valida antes de gastar el request.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+function openEmailModal() {
   if (!viewInvoice.value) return
-  const to = window.prompt('Email del destinatario:', '')
-  if (!to) return
+  emailTarget.value = viewInvoice.value
+  emailTo.value = ''
+  emailError.value = ''
+  showEmailModal.value = true
+}
+
+function closeEmailModal() {
+  showEmailModal.value = false
+  emailTarget.value = null
+  emailTo.value = ''
+  emailError.value = ''
+}
+
+async function confirmEmail() {
+  if (!emailTarget.value || sendingEmail.value) return
+  const to = emailTo.value.trim()
+  if (!to) { emailError.value = 'Ingresá un email'; return }
+  if (!EMAIL_RE.test(to)) { emailError.value = 'El email no tiene un formato válido'; return }
+
+  sendingEmail.value = true
+  emailError.value = ''
   try {
-    const res = await BillingService.emailInvoice(viewInvoice.value.id, to)
-    if (!res.configured) { toast.warning('El hotel no tiene email configurado (SMTP/Resend). Configurarlo en Settings.'); return }
+    const res = await BillingService.emailInvoice(emailTarget.value.id, to)
+    if (!res.configured) {
+      toast.warning('El hotel no tiene email configurado (SMTP/Resend). Configurarlo en Settings.')
+      closeEmailModal()
+      return
+    }
     toast.success(`Factura enviada a ${to}`)
-  } catch { toast.error('Error al enviar la factura') }
+    closeEmailModal()
+  } catch {
+    emailError.value = 'No se pudo enviar la factura. Intentá de nuevo.'
+  } finally {
+    sendingEmail.value = false
+  }
 }
 
 async function downloadPdf() {
@@ -992,9 +1071,9 @@ async function openNewInvoice() {
   showNewInvoiceModal.value = true
   showRoomDropdown.value = false
   // Load rooms + tax rate in parallel
-  const [roomsRes, configRes] = await Promise.all([
+  const [roomsRes, rate] = await Promise.all([
     RoomService.list().catch(() => null),
-    SettingsService.full().catch(() => null),
+    BillingService.taxRate().catch(() => 0),
   ])
   // Rooms — solo habitaciones con huésped (guestId o guestName)
   const roomList = roomsRes?.rooms || []
@@ -1006,12 +1085,10 @@ async function openNewInvoice() {
       guestName: r.guestName || '', reservationId: r.reservationId || null,
     }))
   filteredRooms.value = rooms.value
-  // Tax rate from config
-  try {
-    const taxes = configRes?.taxes || configRes?.impuestos || []
-    const parsed = typeof taxes === 'string' ? JSON.parse(taxes) : taxes
-    hotelTaxRate.value = parsed.filter((t: any) => t.activo ?? t.active).reduce((s: number, t: any) => s + Number(t.tasa ?? t.rate ?? 0), 0)
-  } catch { hotelTaxRate.value = 0 }
+  // La tasa la calcula el backend con la misma función que emite la factura (GET /facturas/tax-rate).
+  // Recalcularla acá sobre la config creaba una segunda fuente de verdad: el preview podía mostrar
+  // un total distinto del que terminaba facturado.
+  hotelTaxRate.value = rate
 }
 
 function filterRooms() {

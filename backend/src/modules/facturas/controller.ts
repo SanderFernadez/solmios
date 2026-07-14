@@ -62,6 +62,12 @@ export class FacturasController {
     return { status: 200, body: result }
   }
 
+  async taxRate(req: HttpRequest) {
+    this.logger.info('GET /facturas/tax-rate')
+    const result = await this.service.getTaxRate(req.user as any)
+    return { status: 200, body: result }
+  }
+
   async printInvoice(req: HttpRequest) {
     this.logger.info('GET /facturas/:id/print', { id: req.params.id })
     const invoice = await this.service.getById(req.params.id, req.user as any)
