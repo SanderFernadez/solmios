@@ -104,9 +104,7 @@ export class BookingengineController {
    * de firma ANTES de creerle al body. Sin verificación, cualquiera podría confirmar una reserva
    * sin pagarla mandando un POST acá.
    *
-   * ⚠ Mientras el framework no exponga `rawBody` (kernel/http/server.ts hace JSON.parse y tira
-   * los bytes), la firma no puede validarse y el endpoint rechaza todo. Es lo correcto: mejor no
-   * confirmar una reserva paga que confirmar una falsa.
+   * La firma se verifica contra los bytes CRUDOS (`req.rawBody`, framework >= 1.6.3).
    */
   async handleStripeWebhook(req: HttpRequest) {
     const hotelId = String(req.params?.hotelId || '')
@@ -114,10 +112,7 @@ export class BookingengineController {
 
     const signature = (req as any).headers?.['stripe-signature'] || ''
     const rawBody = (req as any).rawBody
-    if (!rawBody) {
-      this.logger.error('Webhook de reservas sin rawBody: la firma no puede verificarse (ver PG-0)')
-      return { status: 503, body: { error: 'Verificación de firma no disponible' } }
-    }
+    if (!rawBody) return { status: 400, body: { error: 'Webhook sin body' } }
 
     try {
       const result = await this.service.handleStripeWebhook(hotelId, rawBody, signature)

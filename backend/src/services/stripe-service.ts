@@ -121,7 +121,9 @@ export const StripeService = {
     if (!cfg.webhookSecret) throw new Error('El hotel no tiene webhookSecret configurado')
     const stripe = await this.getClient(hotelId)
     if (!stripe) throw new Error('El hotel no tiene Stripe configurado')
-    return stripe.webhooks.constructEvent(rawBody, signature, cfg.webhookSecret)
+    // `constructEventAsync`, NO `constructEvent`: bajo Bun el sincrónico lanza
+    // "SubtleCryptoProvider cannot be used in a synchronous context" y rechaza TODO evento.
+    return stripe.webhooks.constructEventAsync(rawBody, signature, cfg.webhookSecret)
   },
 
   /** Tira el cliente cacheado de un hotel (tras cambiar sus llaves, sino sigue usando la vieja). */

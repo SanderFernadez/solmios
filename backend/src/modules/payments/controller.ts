@@ -76,9 +76,8 @@ export class PaymentsController {
    * Webhook de Stripe. El hotel va en la RUTA porque su secreto de firma es lo que autentica
    * el mensaje: hay que saber de quién es ANTES de creerle al contenido.
    *
-   * ⚠ `rawBody` todavía no lo expone el framework (kernel/http/server.ts hace JSON.parse y
-   * descarta los bytes). Mientras eso no se arregle, la firma NO puede validar y este endpoint
-   * rechaza todo — que es lo correcto: es preferible no asentar un cobro a asentar uno falso.
+   * La firma se verifica contra los bytes CRUDOS (`req.rawBody`, framework >= 1.6.3):
+   * `JSON.stringify(req.body)` no los reproduce y la firma nunca validaría.
    */
   async handleWebhook(req: HttpRequest) {
     const hotelId = String(req.params?.hotelId || '')
@@ -86,13 +85,7 @@ export class PaymentsController {
 
     const signature = (req as any).headers?.['stripe-signature'] || ''
     const rawBody = (req as any).rawBody
-    if (!rawBody) {
-      this.logger.error(
-        'Webhook Stripe recibido sin rawBody: el framework descarta los bytes crudos y la firma ' +
-        'no puede verificarse. Ver PG-0 (exponer req.rawBody).',
-      )
-      return { status: 503, body: { error: 'Verificación de firma no disponible' } }
-    }
+    if (!rawBody) return { status: 400, body: { error: 'Webhook sin body' } }
 
     try {
       const result = await this.service.handleStripeWebhook(hotelId, rawBody, signature)

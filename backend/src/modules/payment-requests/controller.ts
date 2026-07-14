@@ -58,12 +58,9 @@ export class PaymentRequestsController {
     const hotelId = String(req.params?.hotelId || '')
     const signature = (req.headers as any)?.['stripe-signature'] || ''
     // Los bytes CRUDOS: JSON.stringify(req.body) NO reproduce la firma (orden de claves,
-    // espacios, unicode). Mientras el framework no exponga rawBody, esto no puede validar.
+    // espacios, unicode). Framework >= 1.6.3 los expone como req.rawBody.
     const rawBody = (req as any).rawBody
-    if (!rawBody) {
-      this.logger.error('Webhook de cobros sin rawBody: la firma no puede verificarse (ver PG-0)')
-      return { status: 503, body: { error: 'Verificación de firma no disponible' } }
-    }
+    if (!rawBody) return { status: 400, body: { error: 'Webhook sin body' } }
     const result = await this.service.handleWebhook(hotelId, rawBody, signature)
     if (result && typeof (result as any).status === 'number') return result as { status: number; body: any }
     return { status: 200, body: result }

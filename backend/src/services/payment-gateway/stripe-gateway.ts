@@ -92,7 +92,9 @@ export class StripeGateway implements RefundableGateway {
 
     let event: Stripe.Event
     try {
-      event = this.stripe.webhooks.constructEvent(ctx.rawBody, signature, this.creds.webhookSecret)
+      // `constructEventAsync`, NO `constructEvent`: bajo Bun el sincrónico lanza
+      // "SubtleCryptoProvider cannot be used in a synchronous context" y rechaza TODO evento.
+      event = await this.stripe.webhooks.constructEventAsync(ctx.rawBody, signature, this.creds.webhookSecret)
     } catch {
       return null // firma inválida → impostor
     }
