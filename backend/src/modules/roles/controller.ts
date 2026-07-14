@@ -4,6 +4,7 @@ import type { RolesService } from './service'
 import { CreateRolesSchema, UpdateRolesSchema } from './validators/schema'
 import { parseRolePermissions } from '../../shared/usecases/parse-role-permissions'
 import { MODULES, ACTIONS } from '../../shared/permissions'
+import { assertGrantablePermissions } from './usecases/assert-grantable'
 
 // Acciones que la matriz de la UI ofrece por módulo. checkin/checkout viven en el rol de recepción por
 // defecto y son casos borde: no ensuciamos la matriz custom con ellas.
@@ -43,6 +44,8 @@ export class RolesController {
     const data = validateSchema(CreateRolesSchema, { ...body, hotelId: currentUser?.hotelId ?? body.hotelId })
     const payload = { ...data } as any
     payload.permissions = body.permissions !== undefined ? parseRolePermissions(body.permissions) : []
+    // S-A2: no se puede crear un rol con permisos que el creador no tiene (escalada).
+    assertGrantablePermissions(currentUser?.permissions, payload.permissions)
     const item = await this.service.create(payload, currentUser)
     return { status: 201, body: item }
   }
@@ -56,6 +59,8 @@ export class RolesController {
     // entiende hasPermission), no el objeto {module, actions} viejo que no otorgaba acceso.
     if (body.permissions !== undefined) {
       payload.permissions = parseRolePermissions(body.permissions)
+      // S-A2: no se puede editar un rol para otorgarle permisos que el editor no tiene (escalada).
+      assertGrantablePermissions(currentUser?.permissions, payload.permissions)
     }
     const item = await this.service.update(req.params.id, payload, currentUser)
     return { status: 200, body: item }
