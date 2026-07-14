@@ -1,13 +1,15 @@
-// bookingengine/usecases/stripe.ts — Stripe Checkout Session integration
+// bookingengine/usecases/stripe.ts — Cobro de la reserva pública contra la pasarela DEL HOTEL.
+//
+// ANTES: creaba su propio cliente de Stripe con process.env.STRIPE_SECRET_KEY. Un huésped que
+// reservaba en el widget del Hotel A pagaba a la cuenta de Stripe del servidor, no a la del
+// Hotel A. Este módulo era el más expuesto: es el que le cobra a huéspedes reales por internet.
+//
+// AHORA: la pasarela se resuelve con el hotelId de LA PROPIA RESERVA.
 
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type { PublicBookingDTO } from '../types'
-
-interface StripeConfig {
-  secretKey: string
-  webhookSecret: string
-}
+import type { PaymentGatewayRegistry } from '../../../services/payment-gateway/registry'
 
 interface StripeSession {
   id: string
@@ -16,98 +18,86 @@ interface StripeSession {
 }
 
 export class StripeUseCase {
-  private stripe: any = null
-  private config: StripeConfig | null = null
-
   constructor(
     private readonly bookingRepo: RepositoryAdapter<PublicBookingDTO>,
     private readonly logger: Logger,
+    private readonly registry: PaymentGatewayRegistry,
   ) {}
 
-  async initialize(secretKey: string, webhookSecret: string): Promise<void> {
-    if (!secretKey) {
-      this.logger.warn('Stripe secret key not configured')
-      return
-    }
-    
-    try {
-      // Dynamic import to avoid hard dependency
-      const Stripe = (await import('stripe')).default
-      this.stripe = new Stripe(secretKey, { apiVersion: '2026-05-27.dahlia' })
-      this.config = { secretKey, webhookSecret }
-      this.logger.info('Stripe initialized')
-    } catch (err) {
-      this.logger.error('Failed to initialize Stripe', { error: err })
-    }
+  async isConfigured(hotelId: string): Promise<boolean> {
+    return this.registry.isConfigured(hotelId)
   }
 
-  async createCheckoutSession(booking: PublicBookingDTO, successUrl: string, cancelUrl: string): Promise<StripeSession> {
-    if (!this.stripe) {
-      throw new ValidationError('Stripe not configured')
-    }
+  async createCheckoutSession(
+    booking: PublicBookingDTO,
+    successUrl: string,
+    cancelUrl: string,
+  ): Promise<StripeSession> {
+    // El hotel sale de la reserva: el dinero va a la cuenta del hotel que se está reservando.
+    const gw = await this.registry.resolve(booking.hotelId)
+    if (!gw) throw new ValidationError('El hotel no tiene una pasarela de pago configurada')
 
-    const session = await this.stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: booking.currency.toLowerCase(),
-          product_data: {
-            name: `Reserva - ${booking.roomType}`,
-            description: `Check-in: ${booking.checkIn} | Check-out: ${booking.checkOut}`,
-          },
-          unit_amount: Math.round(booking.totalAmount * 100),
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: {
-        bookingId: booking.id,
-        hotelId: booking.hotelId,
-      },
+    const result = await gw.createCharge({
+      hotelId: booking.hotelId,
+      amountMinor: Math.round(booking.totalAmount * 100),
+      currency: booking.currency,
+      description: `Reserva - ${booking.roomType} | Check-in: ${booking.checkIn} | Check-out: ${booking.checkOut}`,
+      reference: booking.id,
+      successUrl,
+      cancelUrl,
+      metadata: { bookingId: booking.id, hotelId: booking.hotelId },
     })
 
-    return {
-      id: session.id,
-      url: session.url || '',
-      payment_status: session.payment_status,
+    if (result.status === 'redirect') {
+      return { id: result.providerRef, url: result.redirectUrl, payment_status: 'unpaid' }
     }
+    if (result.status === 'succeeded') {
+      return { id: result.providerRef, url: '', payment_status: 'paid' }
+    }
+    if (result.status === 'failed') throw new ValidationError(result.reason)
+    throw new ValidationError('La pasarela pidió un paso adicional que todavía no está soportado')
   }
 
-  async handleWebhook(payload: Buffer, signature: string): Promise<{ type: string; bookingId?: string }> {
-    if (!this.stripe || !this.config) {
-      throw new ValidationError('Stripe not configured')
-    }
+  /**
+   * Confirma la reserva SOLO si la firma valida contra el secreto de ese hotel.
+   * Devuelve null si el evento no es auténtico: sin esto, cualquiera podría confirmar una
+   * reserva sin haber pagado, mandando un POST al webhook.
+   */
+  async handleWebhook(
+    hotelId: string,
+    payload: Buffer | string,
+    signature: string,
+  ): Promise<{ type: string; bookingId?: string } | null> {
+    const gw = await this.registry.resolve(hotelId)
+    if (!gw) throw new ValidationError('El hotel no tiene una pasarela de pago configurada')
 
-    let event
-    try {
-      event = this.stripe.webhooks.constructEvent(payload, signature, this.config.webhookSecret)
-    } catch (err) {
-      this.logger.error('Webhook signature verification failed', { error: err })
-      throw new ValidationError('Invalid webhook signature')
-    }
+    const outcome = await gw.confirm({
+      hotelId,
+      rawBody: payload,
+      headers: { 'stripe-signature': signature },
+    })
+    if (!outcome) return null // firma inválida
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object
-      const bookingId = session.metadata?.bookingId
-      
-      if (bookingId) {
-        await this.bookingRepo.update(bookingId, {
-          status: 'confirmed',
-          paymentStatus: 'paid',
-          paymentRef: session.id,
-        } as any)
-        
-        this.logger.info('Booking confirmed via Stripe', { bookingId, sessionId: session.id })
-        return { type: 'booking_confirmed', bookingId }
+    if (outcome.status === 'paid' && outcome.reference) {
+      const bookingId = outcome.reference
+      const booking = await this.bookingRepo.findById(bookingId)
+      // Ownership: el webhook del Hotel A no puede confirmar una reserva del Hotel B.
+      if (!booking || booking.hotelId !== hotelId) {
+        this.logger.error(`Webhook del hotel ${hotelId} quiso confirmar la reserva ${bookingId}, que no es suya`)
+        return null
       }
+      // Idempotencia: Stripe reintenta. Confirmar dos veces no debe re-disparar nada.
+      if ((booking as any).paymentStatus === 'paid') return { type: 'already_processed', bookingId }
+
+      await this.bookingRepo.update(bookingId, {
+        status: 'confirmed',
+        paymentStatus: 'paid',
+        paymentRef: outcome.providerRef,
+      } as any)
+      this.logger.info(`Reserva ${bookingId} confirmada por pago (hotel ${hotelId})`)
+      return { type: 'booking_confirmed', bookingId }
     }
 
-    return { type: event.type }
-  }
-
-  isConfigured(): boolean {
-    return this.stripe !== null
+    return { type: outcome.status }
   }
 }

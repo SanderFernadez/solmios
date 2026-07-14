@@ -72,12 +72,36 @@ export class PaymentsController {
     return { status: 200, body: result }
   }
 
+  /**
+   * Webhook de Stripe. El hotel va en la RUTA porque su secreto de firma es lo que autentica
+   * el mensaje: hay que saber de quién es ANTES de creerle al contenido.
+   *
+   * ⚠ `rawBody` todavía no lo expone el framework (kernel/http/server.ts hace JSON.parse y
+   * descarta los bytes). Mientras eso no se arregle, la firma NO puede validar y este endpoint
+   * rechaza todo — que es lo correcto: es preferible no asentar un cobro a asentar uno falso.
+   */
   async handleWebhook(req: HttpRequest) {
-    this.logger.info('POST /api/webhooks/stripe')
+    const hotelId = String(req.params?.hotelId || '')
+    if (!hotelId) return { status: 400, body: { error: 'Falta el hotel en la ruta del webhook' } }
+
     const signature = (req as any).headers?.['stripe-signature'] || ''
-    const payload = (req as any).rawBody || Buffer.from(JSON.stringify(req.body))
-    const result = await this.service.handleStripeWebhook(payload, signature)
-    return { status: 200, body: result }
+    const rawBody = (req as any).rawBody
+    if (!rawBody) {
+      this.logger.error(
+        'Webhook Stripe recibido sin rawBody: el framework descarta los bytes crudos y la firma ' +
+        'no puede verificarse. Ver PG-0 (exponer req.rawBody).',
+      )
+      return { status: 503, body: { error: 'Verificación de firma no disponible' } }
+    }
+
+    try {
+      const result = await this.service.handleStripeWebhook(hotelId, rawBody, signature)
+      if (!result) return { status: 400, body: { error: 'Firma inválida' } }
+      return { status: 200, body: result }
+    } catch (e: any) {
+      this.logger.error(`Webhook Stripe (hotel ${hotelId}): ${e?.message}`)
+      return { status: 400, body: { error: e?.message || 'Webhook rechazado' } }
+    }
   }
 
   // ─── Payment Links ───────────────────────────────────

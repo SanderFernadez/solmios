@@ -9,9 +9,15 @@ import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { PaymentsService } from '../service'
 import type { AuditEntry } from '../usecases/audit'
+import { PaymentGatewayRegistry } from '../../../services/payment-gateway/registry'
 
 const log = silentLogger()
 const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
+
+// Registry de pasarelas: estos tests no cobran por pasarela, pero el service lo exige para que
+// NINGUNA operación de dinero pueda correr sin decir de qué hotel es (multi-tenancy).
+const emptyGatewayRepo: any = { findMany: async () => [], findById: async () => null, create: async (d: any) => d, update: async () => {}, delete: async () => {}, count: async () => 0 }
+const testRegistry = new PaymentGatewayRegistry(emptyGatewayRepo, log)
 
 function makeRepo(overrides: Partial<RepositoryAdapter<any>> = {}): RepositoryAdapter<any> {
   return {
@@ -45,7 +51,7 @@ describe('payments — audit log (SC-05)', () => {
         findById: async () => ({ ...DEPOSIT }),
         update: async (id, data) => ({ ...DEPOSIT, id, ...data }),
       })
-      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache)
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
       service.setAuditDeps(audit.port)
 
       await service.refundDeposit('dep-1', { refundAmount: 200 } as any, { id: 'u-9', role: 'hotel_admin' })
@@ -66,7 +72,7 @@ describe('payments — audit log (SC-05)', () => {
         findById: async () => ({ ...DEPOSIT }),
         update: async (id, data) => ({ ...DEPOSIT, id, ...data }),
       })
-      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache)
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
       service.setAuditDeps(audit.port)
 
       await service.releaseDeposit('dep-1', { id: 'u-9', role: 'hotel_admin' })
@@ -82,7 +88,7 @@ describe('payments — audit log (SC-05)', () => {
         findById: async () => ({ ...DEPOSIT }),
         update: async (id, data) => ({ ...DEPOSIT, id, ...data }),
       })
-      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache)
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
       service.setAuditDeps({ record: async () => { throw new Error('auditlog caído') } })
 
       // No debe propagar: un audit log roto no puede impedir devolverle la plata al huésped.
@@ -95,7 +101,7 @@ describe('payments — audit log (SC-05)', () => {
         findById: async () => ({ ...DEPOSIT }),
         update: async (id, data) => ({ ...DEPOSIT, id, ...data }),
       })
-      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache)
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
       // sin setAuditDeps() a propósito
 
       const deposit = await service.releaseDeposit('dep-1', { id: 'u-9' })

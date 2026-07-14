@@ -99,12 +99,34 @@ export class BookingengineController {
     return { status: 200, body: session }
   }
 
+  /**
+   * Webhook del motor de reservas. El hotel va en la RUTA: hay que saber de quién es el secreto
+   * de firma ANTES de creerle al body. Sin verificación, cualquiera podría confirmar una reserva
+   * sin pagarla mandando un POST acá.
+   *
+   * ⚠ Mientras el framework no exponga `rawBody` (kernel/http/server.ts hace JSON.parse y tira
+   * los bytes), la firma no puede validarse y el endpoint rechaza todo. Es lo correcto: mejor no
+   * confirmar una reserva paga que confirmar una falsa.
+   */
   async handleStripeWebhook(req: HttpRequest) {
-    this.logger.info('POST /api/public/webhook/stripe')
+    const hotelId = String(req.params?.hotelId || '')
+    if (!hotelId) return { status: 400, body: { error: 'Falta el hotel en la ruta del webhook' } }
+
     const signature = (req as any).headers?.['stripe-signature'] || ''
-    const payload = (req as any).rawBody || Buffer.from(JSON.stringify(req.body))
-    const result = await this.service.handleStripeWebhook(payload, signature)
-    return { status: 200, body: result }
+    const rawBody = (req as any).rawBody
+    if (!rawBody) {
+      this.logger.error('Webhook de reservas sin rawBody: la firma no puede verificarse (ver PG-0)')
+      return { status: 503, body: { error: 'Verificación de firma no disponible' } }
+    }
+
+    try {
+      const result = await this.service.handleStripeWebhook(hotelId, rawBody, signature)
+      if (!result) return { status: 400, body: { error: 'Firma inválida' } }
+      return { status: 200, body: result }
+    } catch (e: any) {
+      this.logger.error(`Webhook de reservas (hotel ${hotelId}): ${e?.message}`)
+      return { status: 400, body: { error: e?.message || 'Webhook rechazado' } }
+    }
   }
 
   async getBooking(req: HttpRequest) {

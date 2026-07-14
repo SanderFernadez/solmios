@@ -174,8 +174,11 @@ export class PaymentRequestsService {
     }
   }
 
-  /** Webhook público Stripe. Delega al usecase (verifica firma + aplica pago a reserva/folio). */
-  async handleWebhook(rawBody: string, signature: string): Promise<WebhookResult> {
+  /**
+   * Webhook público Stripe. El hotel viene en la RUTA: su secreto de firma es lo que autentica
+   * el mensaje, así que hay que saber de quién es antes de creerle al body.
+   */
+  async handleWebhook(hotelId: string, rawBody: string | Buffer, signature: string): Promise<WebhookResult> {
     return processStripeWebhook(
       {
         repo: this.repo, reservationRepo: this.reservationRepo,
@@ -183,7 +186,7 @@ export class PaymentRequestsService {
         logger: this.logger, sockets: this.sockets, paymentPort: this.paymentPort,
         audit: (entry) => this.audit(entry),
       },
-      rawBody, signature,
+      hotelId, rawBody, signature,
     )
   }
 }

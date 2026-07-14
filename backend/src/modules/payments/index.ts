@@ -7,6 +7,7 @@ import { PaymentsService } from './service'
 import { PaymentsController } from './controller'
 import type { PaymentDTO, PaymentLinkDTO, DepositDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 
 export { PaymentsService }
 export type { PaymentDTO, CreatePaymentDTO, ChargeCardDTO, PaymentLinkDTO, CreatePaymentLinkDTO, DepositDTO, CreateDepositDTO, RefundDepositDTO, PaymentsQuery, PaymentsPaginated, ReconciliationEntry, ReconciliationResult } from './types'
@@ -39,7 +40,13 @@ export function PaymentsModule() {
 
       const log = logger.child('payments')
       const userRepo = new OrmRepository<any>(orm, 'Users')
-      const service = new PaymentsService(paymentRepo, linkRepo, depositRepo, log, cache, auth, userRepo)
+
+      // La pasarela se resuelve POR HOTEL (tabla payment_gateways), ya no desde process.env.
+      // El registry vive en services/ (compartido), no en otro módulo: no rompe el aislamiento.
+      const gatewayRepo = new OrmRepository<any>(orm, 'PaymentGateways')
+      const registry = new PaymentGatewayRegistry(gatewayRepo as any, log)
+
+      const service = new PaymentsService(paymentRepo, linkRepo, depositRepo, log, cache, auth, userRepo, registry)
       const controller = new PaymentsController(service, log)
 
       // Admin routes (protegidas con auth)
@@ -72,14 +79,13 @@ export function PaymentsModule() {
 
       // Public routes
       router.get('/api/public/payment-links/:token', (req: any) => controller.getLinkByToken(req))
-      router.post('/api/webhooks/stripe', (req: any) => controller.handleWebhook(req))
+      // El hotel va en la RUTA: su secreto de firma es lo que autentica el webhook, y hay que
+      // saber de quién es ANTES de creerle al body. Su auth ES la firma (el proveedor no tiene JWT).
+      router.post('/api/webhooks/stripe/:hotelId', (req: any) => controller.handleWebhook(req))
 
-      // Initialize Stripe if configured
-      const stripeKey = process.env.STRIPE_SECRET_KEY
-      const stripeWebhook = process.env.STRIPE_WEBHOOK_SECRET
-      if (stripeKey && stripeWebhook) {
-        service.initStripe(stripeKey, stripeWebhook).catch(() => {})
-      }
+      // Ya no se inicializa Stripe con process.env: cada hotel tiene su pasarela en
+      // payment_gateways. Un hotel sin configurar cae al ENV global desde el registry, que lo
+      // avisa por warning — ese fallback se borra cuando ningún hotel dependa de él.
 
       log.info('Payments module ready')
       return service

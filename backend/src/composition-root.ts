@@ -123,6 +123,7 @@ import { AiGerenteModule } from './modules/ai-gerente'
 import { BookingengineModule } from './modules/bookingengine'
 import { CashModule } from './modules/cash'
 import { PaymentRequestsModule } from './modules/payment-requests'
+import { PaymentGatewaysModule } from './modules/payment-gateways'
 import { AdminModule } from './modules/admin'
 import { ReportsModule } from './modules/reports'
 import { PricingModule } from './modules/pricing'
@@ -138,6 +139,7 @@ import { FcmClient } from './services/fcm-client'
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
 
 const mods = [
+  PaymentGatewaysModule(),
   UsuariosModule({ storage }), HabitacionesModule(), ReservasModule(), HuespedesModule(),
   FacturasModule(), HousekeepingModule({ storage, videoStorage: s3Adapter }), MantenimientoModule({ storage }), PaquetesModule(),
   GruposModule(), HotelesModule(), RolesModule(), DispositivosModule(),
@@ -308,7 +310,7 @@ system.addConnector('housekeeping-mantenimiento', housekeepingMantenimientoConne
 system.addConnector('housekeeping-notificaciones', housekeepingNotificacionesConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
-configureStripe(orm)
+configureStripe(orm, logger)
 
 // ─── Schema sync (modo migrate-only) ────────────────────────────────────────
 // RUN_MIGRATE=1: crea tablas faltantes desde los modelos registrados (para módulos

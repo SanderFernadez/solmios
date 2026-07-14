@@ -69,7 +69,7 @@ export function PaymentRequestsModule() {
       router.get('/api/stripe/status', guard('billing', 'view'), (req) => controller.stripeStatus(req))
       router.post('/api/payment-requests/:id/create-checkout', guard('billing', 'create'), (req) => controller.createCheckout(req))
       // Webhook público: sin auth, firma Stripe verificada en el service.
-      router.post('/api/stripe/webhook', (req) => controller.webhook(req))
+      router.post('/api/stripe/webhook/:hotelId', (req) => controller.webhook(req))
 
       log.info('Módulo payment-requests listo')
       return service

@@ -31,14 +31,17 @@ export async function chargeCard(
     guestId: dto.guestId,
   } as CreatePaymentDTO)
 
-  if (!deps.stripe.isConfigured()) {
-    throw new ValidationError('Stripe not configured - use cash or transfer method')
+  // La pasarela se resuelve para ESTE hotel: cobra contra su cuenta, no contra una global.
+  if (!(await deps.stripe.isConfigured(dto.hotelId))) {
+    throw new ValidationError('El hotel no tiene pasarela de pago configurada — usá efectivo o transferencia')
   }
 
   const session = await deps.stripe.createCheckoutSession({
+    hotelId: dto.hotelId,
     amount: dto.amount,
     currency: dto.currency ?? 'USD',
     description: dto.description,
+    reference: payment.id,
     metadata: { paymentId: payment.id, hotelId: dto.hotelId },
     successUrl: dto.successUrl,
     cancelUrl: dto.cancelUrl,

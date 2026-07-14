@@ -24,9 +24,16 @@ export async function refundPayment(
   const payment = await deps.crud.getById(paymentId, user?.id, user?.role)
   if (payment.status !== 'completed') throw new ValidationError('Payment not completed')
   if (payment.method !== 'card') throw new ValidationError('Only card payments can be refunded via Stripe')
-  if (!deps.stripe.isConfigured()) throw new ValidationError('Stripe not configured')
+  // El reembolso sale de la cuenta DEL HOTEL que cobró, no de una cuenta global.
+  if (!(await deps.stripe.isConfigured(payment.hotelId))) {
+    throw new ValidationError('El hotel no tiene pasarela de pago configurada')
+  }
 
-  const refund = await deps.stripe.refund({ paymentId: payment.stripePaymentId, amount })
+  const refund = await deps.stripe.refund({
+    hotelId: payment.hotelId,
+    paymentId: payment.stripePaymentId,
+    amount,
+  })
 
   const refundPaymentDoc = await deps.createPayment({
     hotelId: payment.hotelId,

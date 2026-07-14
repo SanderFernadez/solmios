@@ -11,6 +11,7 @@ import type {
 } from './types'
 import type { PaymentsSockets } from './sockets'
 import { StripeUseCase } from './usecases/stripe'
+import type { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 import { PaymentCrudUseCase } from './usecases/payment-crud'
 import { PaymentLinksUseCase } from './usecases/payment-links'
 import { DepositsUseCase } from './usecases/deposits'
@@ -40,8 +41,10 @@ export class PaymentsService {
     cache: CacheAdapter,
     private readonly auth?: any,
     userRepo?: RepositoryAdapter<any>,
+    registry?: PaymentGatewayRegistry,
   ) {
-    this.stripe = new StripeUseCase(logger)
+    if (!registry) throw new Error('payments: PaymentGatewayRegistry es requerido (pasarela por hotel)')
+    this.stripe = new StripeUseCase(registry, logger)
     this.crud = new PaymentCrudUseCase(paymentRepo, logger, auth, userRepo)
     this.links = new PaymentLinksUseCase(linkRepo, auth, userRepo)
     this.deposits = new DepositsUseCase(depositRepo, logger, auth, userRepo)
@@ -68,9 +71,8 @@ export class PaymentsService {
     return auditSafely(this.auditPort, this.logger, entry)
   }
 
-  async initStripe(secretKey: string, webhookSecret: string): Promise<void> {
-    await this.stripe.initialize(secretKey, webhookSecret)
-  }
+  // initStripe() eliminado: inicializaba UNA cuenta global desde process.env para todos los
+  // hoteles. Ahora la pasarela se resuelve por hotel en cada operación (ver StripeUseCase).
 
   // ─── Payments ────────────────────────────────────────
 
@@ -99,21 +101,36 @@ export class PaymentsService {
     return refunded
   }
 
-  async handleStripeWebhook(payload: Buffer, signature: string): Promise<{ type: string; paymentId?: string }> {
-    const { type, data } = await this.stripe.handleWebhook(payload, signature)
+  /**
+   * El `hotelId` viene en la RUTA, no en el body: para verificar la firma hay que saber de qué
+   * hotel es el secreto ANTES de poder confiar en el contenido. Leer el hotel del body sería
+   * creerle a un mensaje que todavía no autenticamos.
+   *
+   * Devuelve null si la firma no valida → el controller responde 400 y NO se mueve un peso.
+   */
+  async handleStripeWebhook(
+    hotelId: string,
+    payload: Buffer | string,
+    signature: string,
+  ): Promise<{ type: string; paymentId?: string } | null> {
+    const outcome = await this.stripe.handleWebhook(hotelId, payload, signature)
+    if (!outcome) return null // firma inválida o evento que no nos interesa
 
-    if (type === 'checkout.session.completed') {
-      const paymentId = data.metadata?.paymentId
-      if (paymentId) {
-        await this.crud.updateStatus(paymentId, 'completed', data.payment_intent || '')
-        const payment = await this.crud.getById(paymentId)
-        await this.audit(webhookCompletedEntry(payment))
-        await this.sockets.onPaymentCompleted?.(payment)
-        return { type: 'payment_completed', paymentId }
+    if (outcome.status === 'paid' && outcome.reference) {
+      const paymentId = outcome.reference
+      const existing = await this.crud.getById(paymentId).catch(() => null)
+      // Idempotencia: Stripe reintenta. Un cobro ya asentado no se vuelve a asentar.
+      if (existing && existing.status === 'completed') {
+        return { type: 'already_processed', paymentId }
       }
+      await this.crud.updateStatus(paymentId, 'completed', outcome.providerRef || '')
+      const payment = await this.crud.getById(paymentId)
+      await this.audit(webhookCompletedEntry(payment))
+      await this.sockets.onPaymentCompleted?.(payment)
+      return { type: 'payment_completed', paymentId }
     }
 
-    return { type }
+    return { type: outcome.status }
   }
 
   async getPayment(id: string, user?: { id?: string; role?: string }): Promise<PaymentDTO> {

@@ -23,15 +23,22 @@ export interface WebhookDeps {
 }
 
 /** Procesa el webhook Stripe: marca el PaymentRequest paid + aplica el pago a reserva/folio. */
-export async function processStripeWebhook(deps: WebhookDeps, rawBody: string, signature: string): Promise<WebhookResult> {
+export async function processStripeWebhook(
+  deps: WebhookDeps,
+  hotelId: string,
+  rawBody: string | Buffer,
+  signature: string,
+): Promise<WebhookResult> {
   const { repo, reservationRepo, folioRepo, folioChargeRepo, logger, sockets, paymentPort, audit } = deps
 
-  if (!StripeService.isConfigured()) return { status: 503, error: 'Stripe no configurado' } as any
+  if (!hotelId) return { status: 400, error: 'Falta el hotel en la ruta del webhook' } as any
+  if (!(await StripeService.isConfigured(hotelId))) return { status: 503, error: 'El hotel no tiene Stripe configurado' } as any
   if (!signature) return { status: 400, error: 'Falta stripe-signature' } as any
 
   let event: any
   try {
-    event = await StripeService.verifyWebhook(rawBody, signature)
+    // La firma se verifica contra el secreto DE ESTE HOTEL (antes: uno global para todos).
+    event = await StripeService.verifyWebhook(hotelId, rawBody, signature)
   } catch (e: any) {
     logger.warn('Stripe webhook signature failed', { error: e.message })
     return { status: 400, error: 'Firma inválida', detail: e.message } as any
@@ -44,6 +51,11 @@ export async function processStripeWebhook(deps: WebhookDeps, rawBody: string, s
         const paymentRequestId = session.metadata?.paymentRequestId
         if (paymentRequestId) {
           const pr = await repo.findById(paymentRequestId)
+          // El webhook del Hotel A no puede marcar como pagado un cobro del Hotel B.
+          if (pr && pr.hotelId !== hotelId) {
+            logger.error(`Webhook del hotel ${hotelId} quiso pagar el request ${paymentRequestId}, que no es suyo`)
+            return { status: 403, error: 'El cobro no pertenece a este hotel' } as any
+          }
           if (pr && pr.status !== 'paid') {
             const amountPaid = amountOf(session, pr)
             const hotelId = session.metadata?.hotelId || pr.hotelId

@@ -1,127 +1,99 @@
-// payments/usecases/stripe.ts — Stripe integration for payments
+// payments/usecases/stripe.ts — Puente entre `payments` y la pasarela DEL HOTEL.
+//
+// ANTES: esta clase creaba su propio cliente de Stripe con process.env.STRIPE_SECRET_KEY, o sea
+// UNA cuenta global para todos los hoteles. El cobro del Hotel A se procesaba contra la cuenta
+// configurada en el servidor, no contra la suya. Con dos hoteles con llaves cargadas, la plata
+// de uno podía terminar en la cuenta del otro.
+//
+// AHORA: cada operación recibe el `hotelId` y el registry resuelve LA pasarela de ESE hotel.
+// Ninguna operación de dinero puede ejecutarse sin decir de qué hotel es.
 
 import type { Logger } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
-
-interface StripeConfig {
-  secretKey: string
-  webhookSecret: string
-}
+import type { PaymentGatewayRegistry } from '../../../services/payment-gateway/registry'
+import type { PaymentOutcome } from '../../../services/payment-gateway/types'
+import { isRefundable } from '../../../services/payment-gateway/types'
+import type { StripeGateway } from '../../../services/payment-gateway/stripe-gateway'
 
 export class StripeUseCase {
-  private stripe: any = null
-  private config: StripeConfig | null = null
+  constructor(
+    private readonly registry: PaymentGatewayRegistry,
+    private readonly logger: Logger,
+  ) {}
 
-  constructor(private readonly logger: Logger) {}
+  async isConfigured(hotelId: string): Promise<boolean> {
+    return this.registry.isConfigured(hotelId)
+  }
 
-  async initialize(secretKey: string, webhookSecret: string): Promise<void> {
-    if (!secretKey) {
-      this.logger.warn('Stripe secret key not configured')
-      return
-    }
-    try {
-      const Stripe = (await import('stripe')).default
-      this.stripe = new Stripe(secretKey, { apiVersion: '2026-05-27.dahlia' })
-      this.config = { secretKey, webhookSecret }
-      this.logger.info('Stripe initialized for payments')
-    } catch (err) {
-      this.logger.error('Failed to initialize Stripe', { error: err })
-    }
+  private async gatewayOf(hotelId: string) {
+    const gw = await this.registry.resolve(hotelId)
+    if (!gw) throw new ValidationError('El hotel no tiene una pasarela de pago configurada')
+    return gw
   }
 
   async createCheckoutSession(params: {
+    hotelId: string
     amount: number
     currency: string
     description: string
     metadata: Record<string, string>
     successUrl: string
     cancelUrl: string
+    reference: string
   }): Promise<{ id: string; url: string }> {
-    if (!this.stripe) throw new ValidationError('Stripe not configured')
-
-    const session = await this.stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: params.currency.toLowerCase(),
-          product_data: { name: params.description },
-          unit_amount: Math.round(params.amount * 100),
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      success_url: params.successUrl,
-      cancel_url: params.cancelUrl,
+    const gw = await this.gatewayOf(params.hotelId)
+    const result = await gw.createCharge({
+      hotelId: params.hotelId,
+      // El puerto habla en unidades menores (centavos). La conversión ocurre UNA vez, acá.
+      amountMinor: Math.round(params.amount * 100),
+      currency: params.currency,
+      description: params.description,
+      reference: params.reference,
+      successUrl: params.successUrl,
+      cancelUrl: params.cancelUrl,
       metadata: params.metadata,
     })
 
-    return { id: session.id, url: session.url || '' }
+    if (result.status === 'redirect') return { id: result.providerRef, url: result.redirectUrl }
+    if (result.status === 'succeeded') return { id: result.providerRef, url: '' }
+    if (result.status === 'failed') throw new ValidationError(result.reason)
+    throw new ValidationError('La pasarela pidió un paso adicional que todavía no está soportado')
   }
 
-  async createPaymentIntent(params: {
-    amount: number
-    currency: string
-    metadata: Record<string, string>
-  }): Promise<{ id: string; clientSecret: string }> {
-    if (!this.stripe) throw new ValidationError('Stripe not configured')
-
-    const intent = await this.stripe.paymentIntents.create({
-      amount: Math.round(params.amount * 100),
-      currency: params.currency.toLowerCase(),
-      metadata: params.metadata,
-      automatic_payment_methods: { enabled: true },
-    })
-
-    return { id: intent.id, clientSecret: intent.client_secret || '' }
+  async refund(params: { hotelId: string; paymentId: string; amount?: number }): Promise<{ id: string; status: string }> {
+    const gw = await this.gatewayOf(params.hotelId)
+    if (!isRefundable(gw)) {
+      // Azul Payment Page, por ejemplo, no soporta reembolsos: mejor decirlo que fallar raro.
+      throw new ValidationError(`La pasarela ${gw.provider} no soporta reembolsos`)
+    }
+    const r = await gw.refund(params.paymentId, params.amount ? Math.round(params.amount * 100) : undefined)
+    return { id: r.refundId, status: r.status }
   }
 
-  async refund(params: { paymentId: string; amount?: number }): Promise<{ id: string; status: string }> {
-    if (!this.stripe) throw new ValidationError('Stripe not configured')
-
-    const refund = await this.stripe.refunds.create({
-      payment_intent: params.paymentId,
-      ...(params.amount ? { amount: Math.round(params.amount * 100) } : {}),
-    })
-
-    return { id: refund.id, status: refund.status }
+  /**
+   * Verifica la firma contra el secreto DE ESE HOTEL. Devuelve null si el evento no es auténtico
+   * — un webhook no verificado no puede mover dinero.
+   */
+  async handleWebhook(hotelId: string, rawBody: Buffer | string, signature: string): Promise<PaymentOutcome | null> {
+    const gw = await this.gatewayOf(hotelId)
+    return gw.confirm({ hotelId, rawBody, headers: { 'stripe-signature': signature } })
   }
 
+  /** Payment Links: capacidad propia de Stripe, no del puerto (Azul/CardNet no la tienen). */
   async createPaymentLink(params: {
+    hotelId: string
     amount: number
     currency: string
     description: string
   }): Promise<{ id: string; url: string }> {
-    if (!this.stripe) throw new ValidationError('Stripe not configured')
-
-    const link = await this.stripe.paymentLinks.create({
-      line_items: [{
-        price_data: {
-          currency: params.currency.toLowerCase(),
-          product_data: { name: params.description },
-          unit_amount: Math.round(params.amount * 100),
-        },
-        quantity: 1,
-      }],
-    })
-
-    return { id: link.id, url: link.url }
-  }
-
-  async handleWebhook(payload: Buffer, signature: string): Promise<{ type: string; data: any }> {
-    if (!this.stripe || !this.config) throw new ValidationError('Stripe not configured')
-
-    let event
-    try {
-      event = this.stripe.webhooks.constructEvent(payload, signature, this.config.webhookSecret)
-    } catch (err) {
-      this.logger.error('Webhook signature verification failed', { error: err })
-      throw new ValidationError('Invalid webhook signature')
+    const gw = await this.gatewayOf(params.hotelId)
+    if (!gw.capabilities.paymentLinks) {
+      throw new ValidationError(`La pasarela ${gw.provider} no soporta links de pago`)
     }
-
-    return { type: event.type, data: event.data.object }
-  }
-
-  isConfigured(): boolean {
-    return this.stripe !== null
+    return (gw as StripeGateway).createPaymentLink({
+      amountMinor: Math.round(params.amount * 100),
+      currency: params.currency,
+      description: params.description,
+    })
   }
 }

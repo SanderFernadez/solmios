@@ -108,18 +108,25 @@ export const StripeService = {
   },
 
   /**
-   * Verifica firma del webhook. Usa el webhookSecret del ENV (global) — no por hotel —
-   * porque la verificación requiere el secret ANTES de parsear el evento (que contiene el hotelId).
-   * Para multi-cuenta real (cada hotel con su webhook), haría falta un endpoint por hotel
-   * (/api/stripe/webhook/:hotelId). MVP: firma global + checkout por hotel.
+   * Verifica la firma del webhook con el secreto DE ESE HOTEL.
+   *
+   * Antes usaba el webhookSecret global del ENV, con este razonamiento: "hace falta el secret
+   * ANTES de parsear el evento, que es donde viene el hotelId". El razonamiento era correcto,
+   * la conclusión no: la solución es poner el hotel en la RUTA
+   * (/api/stripe/webhook/:hotelId), no renunciar al aislamiento entre hoteles.
    */
-  async verifyWebhook(rawBody: string | Buffer, signature: string): Promise<Stripe.Event> {
-    const cfg = envConfig()
-    if (!cfg.secretKey) throw new Error('Stripe no configurado')
-    if (!cfg.webhookSecret) throw new Error('STRIPE_WEBHOOK_SECRET no configurado')
-    const stripe = await this.getClient()
-    if (!stripe) throw new Error('Stripe no configurado')
+  async verifyWebhook(hotelId: string, rawBody: string | Buffer, signature: string): Promise<Stripe.Event> {
+    const cfg = await this.getConfig(hotelId)
+    if (!cfg.secretKey) throw new Error('El hotel no tiene Stripe configurado')
+    if (!cfg.webhookSecret) throw new Error('El hotel no tiene webhookSecret configurado')
+    const stripe = await this.getClient(hotelId)
+    if (!stripe) throw new Error('El hotel no tiene Stripe configurado')
     return stripe.webhooks.constructEvent(rawBody, signature, cfg.webhookSecret)
+  },
+
+  /** Tira el cliente cacheado de un hotel (tras cambiar sus llaves, sino sigue usando la vieja). */
+  invalidate(hotelId: string): void {
+    clients.delete(hotelId)
   },
 
   async getSession(sessionId: string, hotelId?: string): Promise<Stripe.Checkout.Session | null> {

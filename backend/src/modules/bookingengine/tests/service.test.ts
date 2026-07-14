@@ -5,10 +5,15 @@ import { describe, it, expect } from 'bun:test'
 import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { BookingengineService } from '../service'
+import { PaymentGatewayRegistry } from '../../../services/payment-gateway/registry'
 import type { BookingConfigDTO, PublicBookingDTO, ConversionEventDTO } from '../types'
 
 const log = silentLogger()
 const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
+
+// El registry es obligatorio: ninguna reserva puede cobrarse sin decir a qué hotel le paga.
+const emptyGatewayRepo: any = { findMany: async () => [], findById: async () => null, create: async (d: any) => d, update: async () => {}, delete: async () => {}, count: async () => 0 }
+const testRegistry = new PaymentGatewayRegistry(emptyGatewayRepo, log)
 
 function makeConfigRepo(overrides: Partial<RepositoryAdapter<BookingConfigDTO>> = {}): RepositoryAdapter<BookingConfigDTO> {
   return {
@@ -74,6 +79,7 @@ function makeService(overrides = {}) {
     makeEventsRepo(),
     log,
     silentCache,
+    testRegistry,
   )
 }
 

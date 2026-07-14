@@ -15,6 +15,7 @@ import { AvailabilityUseCase } from './usecases/availability'
 import { BookingUseCase } from './usecases/booking'
 import { AnalyticsUseCase } from './usecases/analytics'
 import { StripeUseCase } from './usecases/stripe'
+import type { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 
 export class BookingengineService {
   private sockets: BookingengineSockets = {}
@@ -31,12 +32,14 @@ export class BookingengineService {
     eventsRepo: RepositoryAdapter<ConversionEventDTO>,
     private readonly logger: Logger,
     cache: CacheAdapter,
+    registry?: PaymentGatewayRegistry,
   ) {
+    if (!registry) throw new Error('bookingengine: PaymentGatewayRegistry es requerido (pasarela por hotel)')
     this.config = new ConfigUseCase(configRepo, cache)
     this.availability = new AvailabilityUseCase(availabilityRepo, cache)
     this.booking = new BookingUseCase(bookingRepo, this.availability)
     this.analytics = new AnalyticsUseCase(eventsRepo)
-    this.stripe = new StripeUseCase(bookingRepo, logger)
+    this.stripe = new StripeUseCase(bookingRepo, logger, registry)
   }
 
   setSockets(s: Partial<BookingengineSockets>): void {
@@ -50,9 +53,8 @@ export class BookingengineService {
     }
   }
 
-  async initStripe(secretKey: string, webhookSecret: string): Promise<void> {
-    await this.stripe.initialize(secretKey, webhookSecret)
-  }
+  // initStripe() eliminado: inicializaba UNA cuenta global (process.env) para todos los hoteles.
+  // Ahora la pasarela se resuelve con el hotelId de la propia reserva.
 
   async getConfig(hotelId: string): Promise<BookingConfigDTO> {
     return this.config.get(hotelId)
@@ -82,8 +84,10 @@ export class BookingengineService {
    * El cobro del widget es plata real que entra por Stripe. Sin emitir el evento, quedaba solo en la
    * fila de `bookings`: fuera de `payments`, de la conciliación bancaria y del balance.
    */
-  async handleStripeWebhook(payload: Buffer, signature: string) {
-    const result = await this.stripe.handleWebhook(payload, signature)
+  /** El hotel viene en la RUTA: su secreto de firma es lo que autentica el webhook. */
+  async handleStripeWebhook(hotelId: string, payload: Buffer | string, signature: string) {
+    const result = await this.stripe.handleWebhook(hotelId, payload, signature)
+    if (!result) return null // firma inválida → el controller responde 400
     if (result.type === 'booking_confirmed' && result.bookingId) {
       const booking = await this.booking.getById(result.bookingId)
       await this.sockets.onBookingPaid?.(booking)

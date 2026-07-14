@@ -8,6 +8,7 @@ import { BookingengineService } from './service'
 import { BookingengineController } from './controller'
 import type { BookingConfigDTO, PublicBookingDTO, ConversionEventDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 
 export { BookingengineService }
 export type { BookingConfigDTO, UpdateBookingConfigDTO, AvailabilityQuery, AvailabilityResult, PublicBookingDTO, CreatePublicBookingDTO, ConversionEventDTO, CreateConversionEventDTO, BookingAnalytics } from './types'
@@ -40,7 +41,11 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       const eventsRepo = new OrmRepository<ConversionEventDTO>(orm, 'ConversionEvents')
 
       const log = logger.child('bookingengine')
-      const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache)
+      // La pasarela se resuelve POR HOTEL: el huésped que reserva en el widget del Hotel A le
+      // paga a la cuenta del Hotel A, no a la del .env del servidor.
+      const gatewayRepo = new OrmRepository<any>(orm, 'PaymentGateways')
+      const registry = new PaymentGatewayRegistry(gatewayRepo as any, log)
+      const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache, registry)
       const controller = new BookingengineController(service, log, orm, auth, opts?.pushAvailability)
 
       // Admin routes (protegidas con auth)
@@ -62,18 +67,13 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       router.post('/api/public/bookings', (req: any) => controller.createBooking(req))
       router.get('/api/public/bookings/:id', (req: any) => controller.getBooking(req))
       router.post('/api/public/bookings/:id/checkout', (req: any) => controller.createCheckoutSession(req))
-      router.post('/api/public/webhook/stripe', (req: any) => controller.handleStripeWebhook(req))
+      router.post('/api/public/webhook/stripe/:hotelId', (req: any) => controller.handleStripeWebhook(req))
       router.post('/api/public/events', (req: any) => controller.trackEvent(req))
 
       // Widget endpoints
       router.get('/api/widgets/availability/:hotelId', (req: any) => controller.checkAvailability(req))
 
-      // Initialize Stripe if configured
-      const stripeKey = process.env.STRIPE_SECRET_KEY
-      const stripeWebhook = process.env.STRIPE_WEBHOOK_SECRET
-      if (stripeKey && stripeWebhook) {
-        service.initStripe(stripeKey, stripeWebhook).catch(() => {})
-      }
+      // Ya no se inicializa Stripe con process.env: la pasarela sale de payment_gateways del hotel.
 
       log.info('BookingEngine module ready')
       return service
