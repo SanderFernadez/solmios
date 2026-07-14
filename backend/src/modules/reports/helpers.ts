@@ -28,7 +28,11 @@ export function eachDay(from: string, to: string): string[] {
 
 export function csvValue(v: any): string {
   if (v === null || v === undefined) return ''
-  if (typeof v === 'object') return JSON.stringify(v).replace(/"/g, '""')
-  const s = String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  let s = typeof v === 'object' ? JSON.stringify(v) : String(v)
+  // CSV/Formula injection: Excel/Sheets interpreta como fórmula toda celda que empieza con
+  // = + - @ (o tab/CR). Un nombre de huésped `=cmd|...` se ejecutaría al abrir el export. Se
+  // neutraliza prefijando con comilla simple (recomendación OWASP).
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+  s = s.replace(/"/g, '""')
+  return /[",\n]/.test(s) ? `"${s}"` : s
 }

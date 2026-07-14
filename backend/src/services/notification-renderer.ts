@@ -85,8 +85,11 @@ export class NotificationRenderer {
    */
   private applyLogo(html: string, variables: Record<string, string | number>): string {
     const logo = String(variables.logo_url || '').trim()
-    if (!logo) return html
-    return html.replace('🏨 ', `<img src="${logo}" alt="logo" style="height:36px;vertical-align:middle"> `)
+    // logo_url lo controla el merchant (hotel.logo). Sin validar, un logo `x"><script>...` hacía
+    // attribute breakout → XSS en los emails a sus huéspedes. Solo se admiten URLs http(s), y aun
+    // así se escapa antes de meterla en el atributo.
+    if (!/^https?:\/\//i.test(logo)) return html
+    return html.replace('🏨 ', `<img src="${escapeHtml(logo)}" alt="logo" style="height:36px;vertical-align:middle"> `)
   }
 
   private async resolveTemplate(

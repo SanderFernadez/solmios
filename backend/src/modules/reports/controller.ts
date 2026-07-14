@@ -28,9 +28,11 @@ export class ReportsController {
       else { const keys = Object.keys(data.daily[0]); rows.push(keys.join(',')); for (const d of data.daily) rows.push(keys.map(k => csvValue(d[k])).join(',')) }
     } else {
       rows.push(`Reporte ${data.type || ''} — sin datos tabulares`)
+      // Las CLAVES también pueden ser datos de usuario (categoría de gasto, país del huésped):
+      // pasan por csvValue igual que los valores, o serían un vector de fórmula.
       for (const [k, v] of Object.entries(data)) {
-        if (typeof v === 'object' && v !== null && !Array.isArray(v)) for (const [k2, v2] of Object.entries(v as any)) rows.push(`${k}.${k2},${csvValue(v2)}`)
-        else rows.push(`${k},${csvValue(v)}`)
+        if (typeof v === 'object' && v !== null && !Array.isArray(v)) for (const [k2, v2] of Object.entries(v as any)) rows.push(`${csvValue(`${k}.${k2}`)},${csvValue(v2)}`)
+        else rows.push(`${csvValue(k)},${csvValue(v)}`)
       }
     }
     // Body como Buffer, NO string: el framework envuelve todo body no-Buffer en el envelope JSON
