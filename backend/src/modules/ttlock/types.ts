@@ -7,8 +7,13 @@ export interface TTLockConfigDTO {
   accountId?: string
   accessToken?: string
   refreshToken?: string
+  /** Entrega del PIN a la cerradura: 1 bluetooth · 2 gateway · 3 NB-IoT */
+  addType?: number
   configured?: boolean
   connected?: boolean
+  /** El secret/password nunca se devuelven; estos flags dicen si están guardados. */
+  hasSecret?: boolean
+  hasPassword?: boolean
 }
 
 export interface LockDeviceDTO {

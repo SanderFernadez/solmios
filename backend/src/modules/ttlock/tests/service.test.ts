@@ -16,7 +16,8 @@ function makeOrm(overrides: Partial<Record<string, any>> = {}) {
     },
     findById: async (table: string, _id: string) => {
       if (table === 'Reservations') return { id: 'res1', hotelId: 'h1', roomId: 'rm1', checkIn: '2026-06-01', checkOut: '2026-06-03' }
-      if (table === 'LockDevices') return { id: 'l1', name: 'Door 1', roomId: 'rm1' }
+      if (table === 'LockDevices') return { id: 'l1', hotelId: 'h1', name: 'Door 1', roomId: 'rm1' }
+      if (table === 'LockCodes') return { id: 'c1', lockId: 'l1', hotelId: 'h1', code: '1234', status: 'active' }
       return null
     },
     create: async (_table: string, data: any) => data,
@@ -86,8 +87,59 @@ describe('TtlockService', () => {
       const orm = makeOrm({ update: async () => { updated = true } })
       const queries = new TtlockQueries(orm)
       const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
-      await svc.revokeCode('c1')
+      await svc.revokeCode('c1', 'h1')
       expect(updated).toBe(true)
+    })
+
+    it('borra el PIN de la cerradura FÍSICA, no solo la fila', async () => {
+      const calls: string[] = []
+      const orm = makeOrm({
+        findById: async (table: string, _id: string) => {
+          if (table === 'LockCodes') return { id: 'c1', lockId: 'l1', hotelId: 'h1', code: '1234', status: 'active', ttlockKeyboardPwdId: '999' }
+          if (table === 'LockDevices') return { id: 'l1', hotelId: 'h1', ttlockLockId: '123' }
+          return null
+        },
+        update: async () => { calls.push('db-update') },
+      })
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async (url: any, init: any) => {
+        calls.push(`fetch:${String(url)}`)
+        calls.push(`body:${String(init?.body)}`)
+        return new Response(JSON.stringify({ errcode: 0 }))
+      }) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+        await svc.revokeCode('c1', 'h1')
+      } finally {
+        globalThis.fetch = realFetch
+      }
+      expect(calls.some(c => c.includes('/v3/keyboardPwd/delete'))).toBe(true)
+      expect(calls.some(c => c.includes('keyboardPwdId=999'))).toBe(true)
+      expect(calls).toContain('db-update')
+    })
+
+    it('NO marca revocado si la cerradura rechaza el borrado', async () => {
+      let updated = false
+      const orm = makeOrm({
+        findById: async (table: string, _id: string) => {
+          if (table === 'LockCodes') return { id: 'c1', lockId: 'l1', hotelId: 'h1', status: 'active', ttlockKeyboardPwdId: '999' }
+          if (table === 'LockDevices') return { id: 'l1', hotelId: 'h1', ttlockLockId: '123' }
+          return null
+        },
+        update: async () => { updated = true },
+      })
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => new Response(JSON.stringify({ errcode: 10003, errmsg: 'invalid token' }))) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+        await expect(svc.revokeCode('c1', 'h1')).rejects.toThrow(/TTLock/)
+      } finally {
+        globalThis.fetch = realFetch
+      }
+      // Si el PIN sigue vivo en la puerta, la fila no puede decir "revocado".
+      expect(updated).toBe(false)
     })
   })
 })

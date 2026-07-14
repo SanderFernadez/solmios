@@ -1,3 +1,5 @@
+import { DEFAULT_ADD_TYPE } from '../../../services/ttlock-client'
+
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
 
 export class TtlockQueries {
@@ -9,6 +11,10 @@ export class TtlockQueries {
     return {
       clientId: parsed?.clientId || '', username: parsed?.username || '',
       region: parsed?.region || 'eu', accountId: parsed?.accountId || '',
+      addType: Number(parsed?.addType) || DEFAULT_ADD_TYPE,
+      // El secret y el password NUNCA se devuelven. Pero la UI necesita saber que EXISTEN,
+      // sino los inputs se ven vacíos al recargar y parece que la config no se guardó.
+      hasSecret: !!parsed?.clientSecret, hasPassword: !!parsed?.password,
       configured: !!(parsed?.clientId && parsed?.clientSecret), connected: !!parsed?.accessToken,
     }
   }
@@ -22,10 +28,17 @@ export class TtlockQueries {
       username: keep('username'), password: keep('password'),
       region: body.region ?? prev.region ?? 'eu',
       accountId: body.accountId ?? prev.accountId ?? '',
+      addType: Number(body.addType ?? prev.addType) || DEFAULT_ADD_TYPE,
       accessToken: keep('accessToken'), refreshToken: keep('refreshToken'),
     })
     if (cfg.length > 0) await this.orm.update('Configuration', cfg[0].id, { value })
     else await this.orm.create('Configuration', { id: crypto.randomUUID(), hotelId, key: 'ttlock_config', value })
+  }
+
+  /** Códigos del hotel, más nuevos primero. Sin esto la tabla de la UI queda siempre vacía. */
+  async listCodesByHotel(hotelId: string): Promise<any[]> {
+    const codes = await this.orm.findMany('LockCodes', { hotelId }) as any[]
+    return codes.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
   }
 
   async connectConfig(hotelId: string, body: any, getAccessToken: Function): Promise<void> {

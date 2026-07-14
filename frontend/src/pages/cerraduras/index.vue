@@ -14,18 +14,35 @@
     <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 mb-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-extrabold text-navy">Configuración TTLock</h3>
-        <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="ttlockConfig.configured ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">{{ ttlockConfig.configured ? 'Configurado' : 'Pendiente' }}</span>
+        <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="ttlockConfig.connected ? 'bg-teal/10 text-teal' : ttlockConfig.configured ? 'bg-gold/10 text-gold' : 'bg-coral/10 text-coral'">{{ ttlockConfig.connected ? 'Conectado' : ttlockConfig.configured ? 'Configurado — falta conectar' : 'Pendiente' }}</span>
       </div>
       <div class="grid md:grid-cols-2 gap-4">
         <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client ID</label><input v-model="ttlockConfig.clientId" type="text" placeholder="De open.ttlock.com" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client Secret</label><input v-model="ttlockConfig.clientSecret" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
+        <div>
+          <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client Secret</label>
+          <input v-model="ttlockConfig.clientSecret" type="password" :placeholder="ttlockConfig.hasSecret ? '•••••••• (guardado)' : 'Pegá el Client Secret'" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
+          <p v-if="ttlockConfig.hasSecret" class="text-[10px] text-text-muted mt-1 ml-4">Guardado. Dejalo vacío para conservarlo.</p>
+        </div>
         <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Usuario TTLock</label><input v-model="ttlockConfig.username" type="text" placeholder="Usuario de la cuenta TTLock del hotel" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Contraseña TTLock</label><input v-model="ttlockConfig.password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
+        <div>
+          <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Contraseña TTLock</label>
+          <input v-model="ttlockConfig.password" type="password" :placeholder="ttlockConfig.hasPassword ? '•••••••• (guardada)' : 'Contraseña de la cuenta TTLock'" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
+          <p v-if="ttlockConfig.hasPassword" class="text-[10px] text-text-muted mt-1 ml-4">Guardada. Dejala vacía para conservarla.</p>
+        </div>
         <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Región</label><select v-model="ttlockConfig.region" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer"><option value="eu">Europa (eu)</option><option value="us">EE.UU. (us)</option><option value="cn">China (cn)</option></select></div>
         <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Account ID / Email</label><input v-model="ttlockConfig.accountId" type="text" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
+        <div>
+          <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Entrega del código</label>
+          <select v-model.number="ttlockConfig.addType" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
+            <option :value="2">Gateway (remoto)</option>
+            <option :value="1">Bluetooth (app en la puerta)</option>
+            <option :value="3">NB-IoT</option>
+          </select>
+          <p class="text-[10px] text-text-muted mt-1 ml-4">Sin gateway, el PIN solo llega con un teléfono al lado de la cerradura.</p>
+        </div>
         <div class="flex items-end gap-2">
-          <button @click="saveTtlockConfig" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-all cursor-pointer">Guardar Config</button>
-          <button @click="connectTtlock" class="px-5 py-2.5 bg-teal text-white rounded-full text-sm font-bold hover:bg-teal-light transition-all cursor-pointer">Conectar</button>
+          <button @click="saveTtlockConfig" :disabled="saving || connecting" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ saving ? 'Guardando...' : 'Guardar Config' }}</button>
+          <button @click="connectTtlock" :disabled="saving || connecting" class="px-5 py-2.5 bg-teal text-white rounded-full text-sm font-bold hover:bg-teal-light transition-all cursor-pointer disabled:opacity-50">{{ connecting ? 'Conectando...' : 'Conectar' }}</button>
         </div>
       </div>
       <p class="text-[10px] text-text-muted mt-3">Registrate en <a href="https://open.ttlock.com" target="_blank" class="text-cyan underline">open.ttlock.com</a> → Crea una App OAuth → Copia Client ID y Secret aquí</p>
@@ -95,6 +112,9 @@
               <button v-if="code.status==='active'" @click="revokeCode(code)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Revocar</button>
             </td>
           </tr>
+          <tr v-if="!lockCodes.length">
+            <td colspan="6" class="p-8 text-center text-sm text-text-muted">Todavía no se generó ningún código. Se crean al hacer check-in en una habitación con cerradura asignada.</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -129,63 +149,104 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { TTLockService } from '@/services/TTLock.service'
+import { TTLockService, type TTLockConfig } from '@/services/TTLock.service'
 
 const auth = useAuthStore()
 const toast = useToast()
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 const syncing = ref(false)
+const saving = ref(false)
 const locks = ref<any[]>([])
 const rooms = ref<any[]>([])
 const lockCodes = ref<any[]>([])
-const ttlockConfig = ref({ clientId: '', clientSecret: '', username: '', password: '', region: 'eu', accountId: '', accessToken: '', configured: false, connected: false })
+const ttlockConfig = ref({ clientId: '', clientSecret: '', username: '', password: '', region: 'eu', accountId: '', addType: 2, configured: false, connected: false, hasSecret: false, hasPassword: false })
 const connecting = ref(false)
 
 const codesModal = ref<{ lockName: string; codes: { code: string; status: string; startDate: string; endDate: string }[] } | null>(null)
 
 async function load() {
-  try { const cfg = await TTLockService.getConfig(); ttlockConfig.value = { ...ttlockConfig.value, ...cfg } } catch {}
+  try { const cfg = await TTLockService.getConfig(); ttlockConfig.value = { ...ttlockConfig.value, ...cfg, clientSecret: '', password: '' } } catch {}
   try { const r = await TTLockService.listLocks(); locks.value = r.data||[] } catch {}
+  try { const r = await TTLockService.listCodes(); lockCodes.value = r.data||[] } catch {}
   try { const { RoomService } = await import('@/services/Room.service'); const res = await RoomService.list({ hotelId: hid.value }).catch(()=>({rooms:[],total:0})); rooms.value = res.rooms||[] } catch {}
-  // Lock codes: filtramos localmente desde locks (no hay endpoint dedicado todavía)
-  lockCodes.value = []
 }
 
-async function saveTtlockConfig() {
-  try { await TTLockService.saveConfig(ttlockConfig.value); toast.success('Config guardada') } catch { toast.error('Error') }
+/** El secret/password vacíos significan "no lo toques": el backend conserva el guardado. */
+function configPayload(): Partial<TTLockConfig> {
+  const c = ttlockConfig.value
+  const payload: Partial<TTLockConfig> = {
+    clientId: c.clientId, username: c.username, region: c.region,
+    accountId: c.accountId, addType: c.addType,
+  }
+  if (c.clientSecret) payload.clientSecret = c.clientSecret
+  if (c.password) payload.password = c.password
+  return payload
 }
+
+async function saveTtlockConfig(): Promise<boolean> {
+  saving.value = true
+  try {
+    await TTLockService.saveConfig(configPayload())
+    await load()
+    toast.success('Configuración guardada')
+    return true
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo guardar la configuración')
+    return false
+  } finally {
+    saving.value = false
+  }
+}
+
 async function connectTtlock() {
-  await saveTtlockConfig()
+  if (!(await saveTtlockConfig())) return
   connecting.value = true
   try {
-    await TTLockService.connect({
-      username: ttlockConfig.value.username,
-      password: ttlockConfig.value.password,
-      clientId: ttlockConfig.value.clientId,
-      clientSecret: ttlockConfig.value.clientSecret,
-      region: ttlockConfig.value.region,
-    })
-    ttlockConfig.value.connected = true
+    await TTLockService.connect(configPayload())
     toast.success('TTLock conectado — sincronizando cerraduras…')
     await syncLocks()
   } catch (e) {
-    ttlockConfig.value.connected = false
     toast.error((e as Error).message || 'No se pudo conectar con TTLock')
   } finally {
     connecting.value = false
+    await load()
   }
 }
+
 async function syncLocks() {
   syncing.value = true
-  try { await TTLockService.sync(); toast.success('Sincronización solicitada'); await load() } catch { toast.error('Error') }
-  syncing.value = false
+  try {
+    const r = await TTLockService.sync()
+    toast.success(r.message || 'Cerraduras sincronizadas')
+    await load()
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudieron sincronizar las cerraduras')
+  } finally {
+    syncing.value = false
+  }
 }
+
 async function mapLock(lock: any, roomId: string) {
-  try { await TTLockService.updateLock(lock.id, { roomId: roomId || undefined }); lock.roomId = roomId || null; toast.success('Mapeado') } catch { toast.error('Error') }
+  // roomId '' desasigna: mandar undefined haría que el backend ignore el campo.
+  try {
+    await TTLockService.updateLock(lock.id, { roomId })
+    lock.roomId = roomId
+    toast.success(roomId ? 'Cerradura asignada' : 'Cerradura desasignada')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo asignar la cerradura')
+  }
 }
+
 async function revokeCode(code: any) {
-  try { await TTLockService.revokeCode(code.id); code.status = 'revoked'; toast.success('Código revocado') } catch { toast.error('Error') }
+  try {
+    await TTLockService.revokeCode(code.id)
+    code.status = 'revoked'
+    toast.success('Código revocado y borrado de la cerradura')
+  } catch (e) {
+    // Si TTLock rechazó el borrado, el PIN sigue abriendo la puerta: no mentir con un éxito.
+    toast.error((e as Error).message || 'No se pudo borrar el código de la cerradura')
+  }
 }
 
 function getLockName(lockId: string) {

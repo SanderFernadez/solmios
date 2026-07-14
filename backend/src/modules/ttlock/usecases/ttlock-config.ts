@@ -20,7 +20,7 @@ export async function generateCodeForReservation(
   if (!lock?.ttlockLockId) throw new Error('La habitación no tiene cerradura TTLock')
   const parsed = await getConfigFn(hotelId)
   if (!parsed?.accessToken) throw new Error('TTLock no conectado')
-  const creds = { clientId: parsed.clientId, accessToken: parsed.accessToken, region: parsed.region }
+  const creds = { clientId: parsed.clientId, accessToken: parsed.accessToken, region: parsed.region, addType: parsed.addType }
   const password = randomPinFn()
   const startMs = new Date(res.checkIn).getTime(); const endMs = new Date(res.checkOut).getTime()
   let pwdId = ''
