@@ -1,0 +1,89 @@
+# SDD State: seguridad-multitenant
+
+change_name: seguridad-multitenant
+created: 2026-07-13
+status: proposed
+current_phase: proposal
+parent_changes: []
+trigger: >
+  Auditoría de código (2026-07-13) sobre la tarea SC-06 "Revisar OWASP Top 10", que
+  figuraba cerrada en GitLab. La revisión encontró IDOR cross-tenant explotables en
+  producción, uno con impacto físico (apertura de cerraduras ajenas). SC-06 y SC-04
+  reabiertas: no están terminadas mientras estos hallazgos sigan abiertos.
+
+sprints:
+  sec-1-hotelof:
+    title: Fix patrón hotelOf (IDOR lectura/escritura)
+    vulns: [V1, V3, V5]
+    status: proposed
+    tasks_total: 4
+    tasks_done: 0
+    priority: high
+    manual_h: 9
+    ia_h: 6
+
+  sec-2-ownership:
+    title: Ownership real por ID (IDOR crítico)
+    vulns: [V2, V4]
+    status: proposed
+    tasks_total: 2
+    tasks_done: 0
+    priority: critical
+    manual_h: 7
+    ia_h: 5
+    nota: V2 = apertura física de cerraduras de otro hotel. Ejecutar PRIMERO.
+
+  sec-3-public-users:
+    title: Endpoint público de usuarios
+    vulns: [V6]
+    status: proposed
+    tasks_total: 1
+    tasks_done: 0
+    priority: medium
+    manual_h: 2
+    ia_h: 1.5
+
+  sec-4-ratelimit:
+    title: Rate limit hardening
+    vulns: [V7, V8]
+    status: proposed
+    tasks_total: 2
+    tasks_done: 0
+    priority: medium
+    manual_h: 6
+    ia_h: 4
+
+  sec-5-tests:
+    title: Tests de tenancy
+    status: proposed
+    tasks_total: 3
+    tasks_done: 0
+    priority: high
+    manual_h: 12
+    ia_h: 7
+
+total_manual_h: 36
+total_ia_h: 24
+total_tasks: 12
+tasks_done: 0
+
+vulnerabilidades:
+  V1: { sev: alta,    file: "ttlock/controller.ts:14",        tipo: IDOR }
+  V2: { sev: critica, file: "ttlock/usecases/ttlock-config.ts:17", tipo: IDOR-fisico }
+  V3: { sev: alta,    file: "pricing/controller.ts:12",       tipo: IDOR }
+  V4: { sev: alta,    file: "pricing/service.ts:77",          tipo: IDOR-por-id }
+  V5: { sev: media,   file: "amenities/controller.ts:12",     tipo: IDOR }
+  V6: { sev: media,   file: "admin/index.ts:51",              tipo: auth-faltante }
+  V7: { sev: media,   file: "rate-limit.ts:53",               tipo: rate-limit-bypass }
+  V8: { sev: media,   file: "composition-root.ts:56",         tipo: rate-limit-inutil }
+
+reabre_tareas:
+  - { id: SC-06, issue: 226, motivo: "OWASP marcado hecho con IDOR crítico abierto" }
+  - { id: SC-04, issue: 223, motivo: "admin protegido salvo GET /api/public/users (V6)" }
+
+controllers_seguros_verificados:
+  - habitaciones/service.ts
+  - huespedes/service.ts
+  - folios/service.ts
+  - facturas/service.ts
+  - activos/controller.ts  # patrón correcto de referencia
