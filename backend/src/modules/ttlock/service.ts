@@ -1,6 +1,6 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type { LockDeviceDTO, LockCodeDTO } from './types'
-import { getAccessToken, listLocks, addKeyboardPassword, randomPin } from '../../services/ttlock-client'
+import { getAccessToken, listLocks, addKeyboardPassword, deleteKeyboardPassword, randomPin } from '../../services/ttlock-client'
 import { generateCodeForReservation } from './usecases/ttlock-config'
 import type { TtlockQueries } from './usecases/ttlock-queries'
 
@@ -62,14 +62,48 @@ export class TtlockService {
     )
   }
 
-  async revokeCode(codeId: string): Promise<void> {
+  async listCodes(hotelId: string): Promise<any[]> {
+    return this.queries.listCodesByHotel(hotelId)
+  }
+
+  /**
+   * Borra el PIN de la cerradura FÍSICA. Si TTLock falla, propagamos: marcar el código como
+   * revocado en la base mientras la puerta sigue abriéndose con ese PIN es peor que fallar fuerte.
+   */
+  private async removePinFromLock(code: any): Promise<void> {
+    if (!code?.ttlockKeyboardPwdId || !code?.hotelId) return
+    const lock = await this.lockDevicesRepo.findById(code.lockId) as any
+    if (this.auth && lock) this.auth.assertOwnership(lock.hotelId, code.hotelId, undefined, 'super_admin')
+    if (!lock?.ttlockLockId) return
+    const cfg = await this.queries.getTtlockConfig(code.hotelId)
+    if (!cfg?.accessToken) throw new Error('TTLock no conectado: no se pudo borrar el PIN de la cerradura')
+    await deleteKeyboardPassword(
+      { clientId: cfg.clientId, accessToken: cfg.accessToken, region: cfg.region, addType: cfg.addType },
+      Number(lock.ttlockLockId),
+      String(code.ttlockKeyboardPwdId),
+    )
+  }
+
+  async revokeCode(codeId: string, hotelId?: string): Promise<void> {
+    const code = await this.lockCodesRepo.findById(codeId) as any
+    if (!code) throw new Error('Código no encontrado')
+    if (this.auth) this.auth.assertOwnership(code.hotelId, hotelId, undefined, 'super_admin')
+    await this.removePinFromLock(code)
     await this.lockCodesRepo.update(codeId, { status: 'revoked' })
   }
 
   async expireCodesByReservation(reservationId: string): Promise<void> {
     const codes = await this.lockCodesRepo.findMany({ reservationId }) as any[]
     for (const c of codes) {
-      if (c.status === 'active') await this.lockCodesRepo.update(c.id, { status: 'expired' })
+      if (c.status !== 'active') continue
+      // El checkout no puede fallar porque una cerradura no responda: logueamos y seguimos,
+      // pero el código igual queda marcado como expirado para que no se muestre como vigente.
+      try {
+        await this.removePinFromLock(c)
+      } catch (e: any) {
+        this.logger.error(`No se pudo borrar el PIN ${c.id} de la cerradura: ${e?.message || e}`)
+      }
+      await this.lockCodesRepo.update(c.id, { status: 'expired' })
     }
   }
 

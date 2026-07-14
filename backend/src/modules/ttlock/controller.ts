@@ -81,9 +81,23 @@ export class TtlockController {
     }
   }
 
+  async listCodes(req: HttpRequest) {
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 200, body: { data: [] } }
+    return { status: 200, body: { data: await this.service.listCodes(id) } }
+  }
+
   async revokeCode(req: HttpRequest) {
-    await this.service.revokeCode(req.params.id)
-    return { status: 200, body: { success: true } }
+    // Sin el hotel del token, revokeCode aceptaba cualquier codeId de cualquier hotel (IDOR).
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    try {
+      await this.service.revokeCode(req.params.id, id)
+      return { status: 200, body: { success: true } }
+    } catch (e: any) {
+      if (e.message?.includes('no encontrado')) return { status: 404, body: { error: e.message } }
+      return { status: 400, body: { error: e.message || 'No se pudo revocar el código' } }
+    }
   }
 
   async updateLock(req: HttpRequest) {

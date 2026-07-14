@@ -7,6 +7,8 @@ export const UpdateTTLockConfigSchema: Record<string, ValidationRule> = {
   password: { type: 'string' as const, max: 200 },
   region: { type: 'string' as const, min: 2, max: 10 },
   accountId: { type: 'string' as const, max: 100 },
+  // Entrega del PIN: 1 bluetooth · 2 gateway · 3 NB-IoT
+  addType: { type: 'number' as const, min: 1, max: 3 },
 }
 
 export const ConnectTTLockSchema: Record<string, ValidationRule> = {

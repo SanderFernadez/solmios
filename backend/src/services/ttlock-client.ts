@@ -5,11 +5,22 @@
 // Las credenciales viven en `configuration` (key: ttlock_config), NUNCA en código.
 // Regiones: eu (euapi.sciener.com) · us (api.us.sciener.com) · cn (api.sciener.com).
 
+import { createHash } from 'node:crypto'
+
 const REGION_BASE: Record<string, string> = {
   eu: 'https://euapi.sciener.com',
   us: 'https://api.us.sciener.com',
   cn: 'https://api.sciener.com',
 }
+
+/**
+ * Cómo se entrega el PIN a la cerradura física.
+ * 1 = bluetooth (requiere un teléfono con la app al lado de la puerta)
+ * 2 = gateway (remoto: el hotel tiene un gateway TTLock en la red)
+ * 3 = NB-IoT
+ */
+export type TTLockAddType = 1 | 2 | 3
+export const DEFAULT_ADD_TYPE: TTLockAddType = 2
 
 /** Genera un PIN numérico aleatorio de seis dígitos para una cerradura TTLock. */
 export function randomPin(): string {
@@ -47,6 +58,17 @@ export interface TTLockCreds {
   password?: string
   accessToken?: string
   region?: string
+  addType?: TTLockAddType
+}
+
+/**
+ * Sciener exige el password como MD5 hex de 32 chars en minúsculas
+ * (doc oficial /oauth2/token: "Password(32 chars, low case, md5 encrypted)").
+ * Si ya viene hasheado se respeta, para no re-hashear un valor migrado.
+ */
+function md5Password(password: string): string {
+  if (/^[a-f0-9]{32}$/.test(password)) return password
+  return createHash('md5').update(password, 'utf8').digest('hex')
 }
 
 /** OAuth2 Resource Owner Password → { accessToken, refreshToken, uid }. */
@@ -61,7 +83,7 @@ export async function getAccessToken(c: TTLockCreds): Promise<{ accessToken: str
       clientId: c.clientId,
       clientSecret: c.clientSecret,
       username: c.username,
-      password: c.password,
+      password: md5Password(c.password),
     }),
   })
   const data = await readJson(res)
@@ -109,22 +131,11 @@ export async function listLocks(c: TTLockCreds): Promise<TTLockDevice[]> {
   return all
 }
 
-/** Versión del teclado de la cerradura (requerida antes de crear un PIN). */
-export async function getKeyboardPwdVersion(c: TTLockCreds, lockId: number): Promise<number> {
-  const qs = new URLSearchParams({
-    clientId: c.clientId, accessToken: c.accessToken!, lockId: String(lockId), date: String(nowMs()),
-  })
-  const data = await readJson(await fetch(`${base(c.region)}/v3/lock/getKeyboardPwdVersion?${qs}`))
-  assertOk(data, 'obtener versión de teclado')
-  return Number(data?.keyboardPwdVersion ?? data?.version ?? 1)
-}
-
 /** Crea un PIN temporal en la cerradura FÍSICA. Devuelve { keyboardPwdId }. */
 export async function addKeyboardPassword(
   c: TTLockCreds, lockId: number, password: string, startMs: number, endMs: number,
 ): Promise<{ keyboardPwdId?: string }> {
-  const keyboardPwdVersion = await getKeyboardPwdVersion(c, lockId)
-  const res = await fetch(`${base(c.region)}/v3/lock/addKeyboardPassword`, {
+  const res = await fetch(`${base(c.region)}/v3/keyboardPwd/add`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -132,13 +143,36 @@ export async function addKeyboardPassword(
       accessToken: c.accessToken!,
       lockId: String(lockId),
       keyboardPwd: password,
-      keyboardPwdVersion: String(keyboardPwdVersion),
       startDate: String(startMs),
       endDate: String(endMs),
+      addType: String(c.addType ?? DEFAULT_ADD_TYPE),
       date: String(nowMs()),
     }),
   })
   const data = await readJson(res)
   assertOk(data, 'crear PIN de cerradura')
   return { keyboardPwdId: data?.keyboardPwdId != null ? String(data.keyboardPwdId) : undefined }
+}
+
+/**
+ * Borra el PIN de la cerradura FÍSICA. Sin esto, revocar/expirar un código solo cambia
+ * una fila en la base y el huésped que ya se fue puede seguir abriendo la puerta.
+ * `deleteType` usa la misma semántica que `addType` (2 = gateway).
+ */
+export async function deleteKeyboardPassword(
+  c: TTLockCreds, lockId: number, keyboardPwdId: string,
+): Promise<void> {
+  const res = await fetch(`${base(c.region)}/v3/keyboardPwd/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      clientId: c.clientId,
+      accessToken: c.accessToken!,
+      lockId: String(lockId),
+      keyboardPwdId: String(keyboardPwdId),
+      deleteType: String(c.addType ?? DEFAULT_ADD_TYPE),
+      date: String(nowMs()),
+    }),
+  })
+  assertOk(await readJson(res), 'borrar PIN de cerradura')
 }
