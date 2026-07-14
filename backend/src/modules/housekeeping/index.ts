@@ -1,6 +1,7 @@
 import { createModule, OrmRepository } from 'arckode-framework'
 import { bodyLimit } from 'arckode-framework/middlewares'
 import type { StorageService } from 'arckode-framework/modules/storage'
+import type { S3StorageAdapter } from '../../infrastructure/storage/s3-adapter'
 import { registerHousekeepingModels } from './model'
 import { HousekeepingService } from './service'
 import { HousekeepingController } from './controller'
@@ -18,7 +19,15 @@ export type { HousekeepingDTO, CreateHousekeepingDTO, UpdateHousekeepingDTO, Hou
 export type { HousekeepingSockets } from './sockets'
 export { HousekeepingValidator, CreateHousekeepingSchema, UpdateHousekeepingSchema } from './validators/schema'
 
-export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
+export function HousekeepingModule(
+  opts: {
+    storage?: StorageService
+    /** Adapter S3 (Backblaze). Sin él, el modo de evidencia en VIDEO no funciona:
+     *  la app sube el archivo directo al bucket con una URL prefirmada, porque un
+     *  video no entra en el body del backend (base64, tope de 10 MB). */
+    videoStorage?: S3StorageAdapter
+  } = {},
+) {
   return createModule({
     name: 'housekeeping',
     version: '2.1.0',
@@ -49,7 +58,7 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       // KV por hotel (tabla `configuration`): guarda los ajustes de housekeeping,
       // como si el supervisor debe tomar foto de presencia para revisar.
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
-      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo, roomRepo, checklistRepo, configRepo)
+      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo, roomRepo, checklistRepo, configRepo, opts.videoStorage)
       const controller = new HousekeepingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -79,6 +88,14 @@ export function HousekeepingModule(opts: { storage?: StorageService } = {}) {
       router.put('/api/housekeeping/:id/complete', guard('housekeeping', 'edit'), (req) => controller.complete(req))
       router.post('/api/housekeeping/:id/photos', [...guard('housekeeping', 'edit'), bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.uploadPhoto(req))
       router.delete('/api/housekeeping/:id/photos', guard('housekeeping', 'edit'), (req) => controller.removePhoto(req))
+
+      // ─── Evidencia en VIDEO (modo `video`) ──────────────────────────────
+      // Los bytes NO pasan por acá: `upload-url` firma un permiso temporal y la
+      // app hace PUT directo al bucket; después confirma con `video`. Por eso
+      // estas rutas no llevan `bodyLimit`: el JSON que reciben es diminuto.
+      router.post('/api/housekeeping/:id/video/upload-url', guard('housekeeping', 'edit'), (req) => controller.videoUploadUrl(req))
+      router.post('/api/housekeeping/:id/video', guard('housekeeping', 'edit'), (req) => controller.attachVideo(req))
+      router.delete('/api/housekeeping/:id/video', guard('housekeeping', 'edit'), (req) => controller.removeVideo(req))
 
       // ─── Aprobación y presencia (F4/F5) ─────────────────────────────────
       router.post('/api/housekeeping/:id/approve', guard('housekeeping', 'edit'), (req) => controller.approve(req))

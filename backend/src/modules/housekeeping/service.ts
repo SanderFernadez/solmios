@@ -1,23 +1,33 @@
 // service.ts — Facade del módulo housekeeping.
 // CRUD base acá; operaciones de tiempos/fotos/stats delegadas a usecases/ (D2/D5).
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError, AuthError } from 'arckode-framework'
+import { NotFoundError, AuthError, ValidationError } from 'arckode-framework'
 import type { StorageService, FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingDTO, CreateHousekeepingDTO, UpdateHousekeepingDTO, HousekeepingQuery, HousekeepingPaginated, StaffStats, StaffStatsQuery, HousekeepingUser } from './types'
 import type { HousekeepingSockets } from './sockets'
 import { bumpListVersion } from './usecases/cache'
 import { ListUseCase } from './usecases/list'
+import { CrudUseCase } from './usecases/crud'
 import { withRoomInfo } from './usecases/room-info'
 import { TimingsUseCase, assertTransition } from './usecases/timings'
 import { PhotosUseCase } from './usecases/photos'
 import { StatsUseCase } from './usecases/stats'
 import { ApproveUseCase } from './usecases/approve'
 import { ConfigListsUseCase } from './usecases/config-lists'
-import { HousekeepingSettingsUseCase, type HousekeepingSettings } from './usecases/settings'
+import { HousekeepingSettingsUseCase, type HousekeepingSettings, DEFAULT_MAX_VIDEO_SECONDS } from './usecases/settings'
+import { VideoUseCase, type VideoUploadTicket } from './usecases/video'
+import type { S3StorageAdapter } from '../../infrastructure/storage/s3-adapter'
 import { assertStaffExists } from './usecases/staff'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const CACHE_TTL = 300
+
+/** Sin `configRepo` no hay settings del hotel: se responde el default de fábrica. */
+const FALLBACK_SETTINGS: HousekeepingSettings = {
+  requireSupervisorPhoto: false,
+  completionEvidence: 'photos',
+  maxVideoSeconds: DEFAULT_MAX_VIDEO_SECONDS,
+}
 
 export class HousekeepingService {
   private sockets: HousekeepingSockets = {}
@@ -28,7 +38,10 @@ export class HousekeepingService {
   private readonly approveUc: ApproveUseCase
   private readonly configLists?: ConfigListsUseCase
   private readonly settingsUc?: HousekeepingSettingsUseCase
+  /** Solo existe si hay settings (necesita leer el modo/duración del hotel). */
+  private readonly videoUc?: VideoUseCase
   private readonly listUc: ListUseCase
+  private readonly crud: CrudUseCase
   private readonly employeeRepo?: RepositoryAdapter<any>
 
   constructor(
@@ -44,6 +57,9 @@ export class HousekeepingService {
     private readonly roomRepo?: RepositoryAdapter<any>,
     checklistRepo?: RepositoryAdapter<any>,
     configRepo?: RepositoryAdapter<any>,
+    /** Adapter S3 (Backblaze). Sin él, el modo video no se puede usar: la app
+     *  sube el archivo directo al bucket con una URL prefirmada. */
+    videoStorage?: S3StorageAdapter,
   ) {
     this.employeeRepo = employeeRepo
     this.timings = new TimingsUseCase(
@@ -52,6 +68,26 @@ export class HousekeepingService {
       (h) => this.invalidateCache(h),
       this.employeeRepo,
     )
+    this.crud = new CrudUseCase(
+      repo,
+      userRepo,
+      {
+        onCreated: (i) => this.sockets.onHousekeepingCreated?.(i) ?? Promise.resolve(),
+        onUpdated: (i) => this.sockets.onHousekeepingUpdated?.(i) ?? Promise.resolve(),
+        onDeleted: (id) => this.sockets.onHousekeepingDeleted?.(id) ?? Promise.resolve(),
+        onAssigned: (i) => this.sockets.onTaskAssigned?.(i) ?? Promise.resolve(),
+        invalidate: (h) => this.invalidateCache(h),
+        audit: (existing, user, id) =>
+          auditSafely(this.auditPort, this.logger, {
+            hotelId: existing.hotelId, userId: user.id, action: 'housekeeping.delete',
+            entity: 'housekeeping_task', entityId: id,
+            detail: `Tarea de limpieza eliminada · habitación ${existing.roomId}` +
+              `${existing.status ? ` · estado ${existing.status}` : ''}` +
+              `${existing.staffId ? ` · asignada a ${existing.staffId}` : ''}`,
+          }),
+      },
+      roomRepo,
+    )
     this.photos = new PhotosUseCase(repo, logger, (h) => this.invalidateCache(h), storage)
     this.statsUc = new StatsUseCase(repo, cache, userRepo)
     this.listUc = new ListUseCase(repo, cache, userRepo, roomRepo)
@@ -59,7 +95,10 @@ export class HousekeepingService {
     if (photoReqRepo && supplyRepo) {
       this.configLists = new ConfigListsUseCase(photoReqRepo, supplyRepo, logger, checklistRepo)
     }
-    if (configRepo) this.settingsUc = new HousekeepingSettingsUseCase(configRepo)
+    if (configRepo) {
+      this.settingsUc = new HousekeepingSettingsUseCase(configRepo)
+      this.videoUc = new VideoUseCase(repo, this.settingsUc, videoStorage)
+    }
   }
 
   /** Conecta el audit log. Lo inyecta el connector `housekeeping-auditlog`. */
@@ -85,71 +124,12 @@ export class HousekeepingService {
     return this.listUc.list(query, currentUser)
   }
 
-  async getById(id: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
-    // NO `findById`: en este ORM la lectura de UNA fila devuelve los campos
-    // json/text (`cleaningItems`, `notes`, `supervisorNote`, `photos`) en null,
-    // mientras que la lectura en lote (`paginate`, que usa el listado) los
-    // deserializa bien. El detalle de la app se sirve de acá, así que sin esto la
-    // camarera abría una tarea SIN checklist tildado y SIN el motivo de rechazo.
-    // Se lee por el mismo camino que el listado, filtrando por id.
-    const result = await this.repo.paginate({ id }, { offset: 0, limit: 1 })
-    const item = result.data[0]
-    if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
-    if (currentUser.role !== 'super_admin' && item.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
-    // El detalle también muestra "Hab. X": sin esto el título quedaba vacío.
-    const [enriched] = await withRoomInfo(this.roomRepo, [item])
-    return enriched as HousekeepingDTO
-  }
-
-  async create(dto: CreateHousekeepingDTO, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
-    if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
-      throw new AuthError('No autorizado para crear en otro hotel')
-    }
-    await assertStaffExists(this.userRepo, dto.staffId, currentUser)
-    const item = await this.repo.create(dto as any)
-    await this.sockets.onHousekeepingCreated?.(item)
-    // Nace ya asignada: la camarera tiene que enterarse.
-    if (dto.staffId) await this.sockets.onTaskAssigned?.(item)
-    await this.invalidateCache(dto.hotelId)
-    return item
-  }
-
-  async update(id: string, dto: UpdateHousekeepingDTO, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
-    const existing = await this.repo.findById(id)
-    if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
-    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
-    if (dto.status && dto.status !== existing.status) assertTransition(existing.status, dto.status)
-    await assertStaffExists(this.userRepo, dto.staffId, currentUser)
-    const item = await this.repo.update(id, dto as any)
-    if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
-    await this.sockets.onHousekeepingUpdated?.(item)
-    // Solo cuando cambia de dueño: un `update` de estado no es una asignación.
-    if (dto.staffId && dto.staffId !== existing.staffId) {
-      await this.sockets.onTaskAssigned?.(item)
-    }
-    await this.invalidateCache(existing.hotelId)
-    return item
-  }
-
-  async delete(id: string, currentUser: HousekeepingUser): Promise<void> {
-    const existing = await this.repo.findById(id)
-    if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
-    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
-    const deleted = await this.repo.delete(id)
-    if (!deleted) throw new NotFoundError('Tarea de housekeeping no encontrada')
-    await this.sockets.onHousekeepingDeleted?.(id)
-    await this.invalidateCache(existing.hotelId)
-    // Con la tarea se van sus tiempos, fotos y checklist: es la evidencia de la limpieza.
-    await auditSafely(this.auditPort, this.logger, {
-      hotelId: existing.hotelId, userId: currentUser.id, action: 'housekeeping.delete',
-      entity: 'housekeeping_task', entityId: id,
-      detail: `Tarea de limpieza eliminada · habitación ${existing.roomId}` +
-        `${existing.status ? ` · estado ${existing.status}` : ''}` +
-        `${existing.staffId ? ` · asignada a ${existing.staffId}` : ''}`,
-    })
-  }
-
   // ─── Delegaciones a usecases ───────────────────────────────────────────────
+  async getById(id: string, u: HousekeepingUser) { return this.crud.getById(id, u) }
+  async create(dto: CreateHousekeepingDTO, u: HousekeepingUser) { return this.crud.create(dto, u) }
+  async update(id: string, dto: UpdateHousekeepingDTO, u: HousekeepingUser) { return this.crud.update(id, dto, u) }
+  async delete(id: string, u: HousekeepingUser) { return this.crud.delete(id, u) }
+
   async start(id: string, u: HousekeepingUser) { return this.timings.start(id, u) }
   async pause(id: string, u: HousekeepingUser) { return this.timings.pause(id, u) }
   async resume(id: string, u: HousekeepingUser) { return this.timings.resume(id, u) }
@@ -185,8 +165,19 @@ export class HousekeepingService {
   async upsertSupplyLists(h: string, rt: string, items: any[]) { return this.configLists?.upsertSupplyLists(h, rt, items) ?? [] }
   async getChecklist(h: string, rt?: string) { return this.configLists?.getChecklist(h, rt) ?? [] }
   async upsertChecklist(h: string, rt: string, items: any[]) { return this.configLists?.upsertChecklist(h, rt, items) ?? [] }
-  async getSettings(h: string): Promise<HousekeepingSettings> { return this.settingsUc?.get(h) ?? { requireSupervisorPhoto: false } }
-  async updateSettings(h: string, patch: Partial<HousekeepingSettings>): Promise<HousekeepingSettings> { return this.settingsUc?.update(h, patch) ?? { requireSupervisorPhoto: false } }
+  async getSettings(h: string): Promise<HousekeepingSettings> { return this.settingsUc?.get(h) ?? { ...FALLBACK_SETTINGS } }
+  async updateSettings(h: string, patch: Partial<HousekeepingSettings>): Promise<HousekeepingSettings> { return this.settingsUc?.update(h, patch) ?? { ...FALLBACK_SETTINGS } }
+
+  // ─── Evidencia en video ───────────────────────────────────────────────────
+  // Los bytes NO pasan por acá: se firma un permiso y la app sube directo al bucket.
+  private video(): VideoUseCase {
+    if (!this.videoUc) throw new ValidationError('Evidencia en video no disponible en este servidor')
+    return this.videoUc
+  }
+  private async afterVideo(r: HousekeepingDTO) { await this.sockets.onHousekeepingUpdated?.(r); await this.invalidateCache(r.hotelId); return r }
+  async requestVideoUploadUrl(id: string, i: { contentType: string; durationSeconds: number }, u: HousekeepingUser): Promise<VideoUploadTicket> { return this.video().requestUploadUrl(id, i, u) }
+  async attachVideo(id: string, i: { url: string; path: string; durationSeconds: number; mimeType: string }, u: HousekeepingUser) { return this.afterVideo(await this.video().attachVideo(id, i, u)) }
+  async removeVideo(id: string, u: HousekeepingUser) { return this.afterVideo(await this.video().removeVideo(id, u)) }
 
   private async invalidateCache(hotelId?: string) {
     // `delete` de una clave exacta ya no alcanza: la clave del listado incluye

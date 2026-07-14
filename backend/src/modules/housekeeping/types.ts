@@ -19,6 +19,19 @@ export interface PhotoEvidence {
   uploadedAt: string
 }
 
+/**
+ * Video de evidencia de fin, cuando el hotel usa el modo `video`. Uno solo por
+ * tarea. Los bytes NO pasan por el backend: la app los sube directo al bucket con
+ * una URL prefirmada y después confirma acá la url + la duración.
+ */
+export interface VideoEvidence {
+  url: string
+  path: string
+  durationSeconds: number
+  mimeType: string
+  uploadedAt: string
+}
+
 export interface StaffStats {
   staffId: string
   completed: number
@@ -56,6 +69,8 @@ export interface HousekeepingDTO {
   supOnSiteTime?: string
   /** Calificación 1–10 que el supervisor le puso a la limpieza al aprobarla. */
   rating?: number | null
+  /** Video de evidencia de fin (solo si el hotel usa el modo `video`). */
+  video?: VideoEvidence | null
   createdAt: string
   updatedAt: string
 }

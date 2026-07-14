@@ -71,8 +71,11 @@ import { LocalStorageAdapter } from 'arckode-framework/modules/storage/local-ada
 import { serveStatic } from 'arckode-framework/static'
 import { S3StorageAdapter, s3ConfigFromEnv } from './infrastructure/storage/s3-adapter'
 const s3Config = s3ConfigFromEnv()
+// Se guarda la referencia al adapter S3: housekeeping la necesita para FIRMAR la
+// subida del video directo al bucket (un video no entra en el body del backend).
+const s3Adapter = s3Config ? new S3StorageAdapter(s3Config) : undefined
 const storage = new StorageService(
-  s3Config ? new S3StorageAdapter(s3Config) : new LocalStorageAdapter('./uploads', '/uploads'),
+  s3Adapter ?? new LocalStorageAdapter('./uploads', '/uploads'),
 )
 // El estático local sigue sirviendo lo ya subido a disco aunque se active B2.
 serveStatic(router, './uploads', { prefix: '/uploads' })
@@ -134,7 +137,7 @@ const pushAvailability = createPushAvailability((name) => system.resolveModule(n
 
 const mods = [
   UsuariosModule({ storage }), HabitacionesModule(), ReservasModule(), HuespedesModule(),
-  FacturasModule(), HousekeepingModule({ storage }), MantenimientoModule({ storage }), PaquetesModule(),
+  FacturasModule(), HousekeepingModule({ storage, videoStorage: s3Adapter }), MantenimientoModule({ storage }), PaquetesModule(),
   GruposModule(), HotelesModule(), RolesModule(), DispositivosModule(),
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),
   CanalesModule(), OpinionesModule(), GastosModule(), FoliosModule(), PaymentsModule(),
