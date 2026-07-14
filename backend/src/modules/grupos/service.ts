@@ -13,9 +13,16 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError } from 'arckode-framework'
 import type { GruposDTO, CreateGruposDTO, UpdateGruposDTO, GruposQuery, GruposPaginated, CurrentUser } from './types'
 import type { GruposSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export class GruposService {
   private sockets: GruposSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `grupos-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   constructor(
     private readonly repo: RepositoryAdapter<GruposDTO>,
@@ -107,5 +114,12 @@ export class GruposService {
     if (!deleted) throw new NotFoundError('Grupos no encontrado')
     await this.sockets.onGruposDeleted?.(id)
     await this.cache.delete('grupos:list')
+    // Borrar un grupo desarma un bloque de reservas: queda quién lo borró y qué grupo era.
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: user.id, action: 'group.delete',
+      entity: 'group', entityId: id,
+      detail: `Grupo "${existing.name}" eliminado · ${existing.totalRooms ?? 0} habitaciones` +
+        `${existing.checkIn ? ` · check-in ${existing.checkIn}` : ''}`,
+    })
   }
 }

@@ -12,12 +12,17 @@ import { LtvUseCase } from './usecases/ltv'
 import { CouponUseCase } from './usecases/coupons'
 import { applyPoints, nextTier, pointsForStay } from './usecases/loyalty'
 import { SegmentUseCase } from './usecases/segments'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export class CrmService {
   private sockets: CrmSockets = {}
   private ltvCalculator: LtvUseCase
   private coupons: CouponUseCase
   private segments: SegmentUseCase
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `crm-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly loyaltyRepo: RepositoryAdapter<LoyaltyTransactionDTO>,
@@ -143,7 +148,12 @@ export class CrmService {
   listCoupons(hotelId: string): Promise<CouponDTO[]> { return this.coupons.list(hotelId) }
   validateCoupon(code: string, hotelId: string, purchaseAmount: number): Promise<CouponDTO> { return this.coupons.validate(code, hotelId, purchaseAmount) }
   useCoupon(id: string, hotelId: string, role?: string): Promise<CouponDTO> { return this.coupons.use(id, hotelId, role) }
-  deleteCoupon(id: string, hotelId: string, role?: string): Promise<void> { return this.coupons.deactivate(id, hotelId, role) }
+  /** Baja de cupón (lógica). Deja rastro en el audit log: quién lo dio de baja y cuál era (SC-05). */
+  async deleteCoupon(id: string, hotelId: string, role?: string, actor?: { id?: string; role?: string }): Promise<void> {
+    const coupon = await this.coupons.deactivate(id, hotelId, role)
+    await auditSafely(this.auditPort, this.logger, { hotelId: coupon.hotelId, userId: actor?.id, action: 'coupon.delete',
+      entity: 'coupon', entityId: id, detail: `Cupón "${coupon.code}" dado de baja (${coupon.useCount ?? 0} uso/s)` })
+  }
 
   // ─── Segments (delegan a usecases/segments) ───────────
   createSegment(dto: CreateSegmentDTO): Promise<GuestSegmentDTO> { return this.segments.create(dto) }

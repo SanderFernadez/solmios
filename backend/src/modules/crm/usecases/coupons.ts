@@ -67,9 +67,13 @@ export class CouponUseCase {
     return (updated ?? coupon) as CouponDTO
   }
 
-  /** Baja lógica: el cupón queda inactivo, no se borra. Su historial de usos sigue existiendo. */
-  async deactivate(id: string, hotelId: string, role?: string): Promise<void> {
-    await findOrFail(this.deps, id, hotelId, role)
+  /**
+   * Baja lógica: el cupón queda inactivo, no se borra. Su historial de usos sigue existiendo.
+   * Devuelve el cupón tal como estaba: el service lo necesita para el audit log (SC-05).
+   */
+  async deactivate(id: string, hotelId: string, role?: string): Promise<CouponDTO> {
+    const coupon = await findOrFail(this.deps, id, hotelId, role)
     await this.deps.repo.update(id, { active: 0 } as any)
+    return coupon
   }
 }

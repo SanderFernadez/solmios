@@ -1,7 +1,13 @@
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import type { FeedbackPinDTO, CreateFeedbackPinDTO, UpdateFeedbackPinDTO } from './types'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export class FeedbackService {
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `feedback-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
+
   constructor(
     private readonly pinsRepo: RepositoryAdapter<FeedbackPinDTO>,
     private readonly logger: Logger,
@@ -51,7 +57,16 @@ export class FeedbackService {
     const existing = (await this.pinsRepo.findById(id)) as FeedbackPinDTO | null
     if (!existing) return false
     if (this.auth && user) this.auth.assertOwnership(existing.hotelId ?? '', user.hotelId, user.role, 'super_admin')
-    return await this.pinsRepo.delete(id)
+    const deleted = await this.pinsRepo.delete(id)
+    if (deleted) {
+      const comment = existing.comment ?? ''
+      await auditSafely(this.auditPort, this.logger, {
+        hotelId: existing.hotelId, userId: user?.id, action: 'feedback.delete',
+        entity: 'feedback_pin', entityId: id,
+        detail: `Pin de feedback en ${existing.route} eliminado: "${comment.length > 60 ? `${comment.slice(0, 60)}…` : comment}"`,
+      })
+    }
+    return deleted
   }
 
   // ── GitLab Issue ────────────────────────────────────────────────────────

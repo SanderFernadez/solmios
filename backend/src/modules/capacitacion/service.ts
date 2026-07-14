@@ -8,6 +8,7 @@ import type {
   CourseDTO, CreateCourseDTO, EnrollmentDTO, CreateEnrollmentDTO,
 } from './types'
 import { buildEnrollmentEmail } from './usecases/emails'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 /** Puerto de email (lo cablea email-bootstrap con setEmailDeps). */
 export interface EmailPort {
@@ -18,6 +19,10 @@ export class CapacitacionService {
   private emailSender?: EmailPort
   private userRepo?: RepositoryAdapter<{ id: string; name?: string; email?: string }>
   private publicUrl?: string
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `capacitacion-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly courseRepo: RepositoryAdapter<CourseDTO>,
@@ -60,11 +65,16 @@ export class CapacitacionService {
     return this.courseRepo.update(id, dto as any) as Promise<CourseDTO>
   }
 
-  async deleteCourse(id: string, hotelId: string): Promise<void> {
-    await this.getCourse(id, hotelId)
+  async deleteCourse(id: string, hotelId: string, actor?: { id?: string; role?: string }): Promise<void> {
+    const course = await this.getCourse(id, hotelId)
     const enrolled = await this.enrollRepo.findMany({ courseId: id, hotelId })
     await Promise.all(enrolled.map((r) => this.enrollRepo.delete(r.id)))
     await this.courseRepo.delete(id)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId, userId: actor?.id, action: 'course.delete',
+      entity: 'course', entityId: id,
+      detail: `Curso "${course.name}" eliminado (${enrolled.length} inscripción/es dadas de baja)`,
+    })
   }
 
   // ─── Inscripciones ────────────────────────────────────
@@ -137,9 +147,14 @@ export class CapacitacionService {
     return { courseName: course?.name ?? null, alreadyDone }
   }
 
-  async deleteEnrollment(id: string, hotelId: string): Promise<void> {
+  async deleteEnrollment(id: string, hotelId: string, actor?: { id?: string; role?: string }): Promise<void> {
     const e = await this.enrollRepo.findOne({ id, hotelId })
     if (!e) throw new NotFoundError('Inscripción no encontrada')
     await this.enrollRepo.delete(id)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId, userId: actor?.id, action: 'enrollment.delete',
+      entity: 'enrollment', entityId: id,
+      detail: `Inscripción del empleado ${e.employeeId} al curso ${e.courseId} eliminada`,
+    })
   }
 }

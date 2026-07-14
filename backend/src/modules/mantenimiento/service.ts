@@ -14,9 +14,13 @@ import { PhotosUseCase } from './usecases/photos'
 import { StatsUseCase } from './usecases/stats'
 import { ListUseCase } from './usecases/list'
 import { assertOwnership } from './helpers'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export class MantenimientoService {
   private sockets: MantenimientoSockets = {}
+  // Audit log GLOBAL del sistema. NO confundir con `audit` (AuditUseCase): ese es el historial
+  // interno del ticket (tabla maintenance_audit) y muere junto con el ticket al borrarlo.
+  private auditPort: AuditPort | null = null
   private readonly timings: TimingsUseCase
   private readonly audit: AuditUseCase
   private readonly photos: PhotosUseCase
@@ -46,6 +50,9 @@ export class MantenimientoService {
     this.statsUc = new StatsUseCase(repo)
     this.listUc = new ListUseCase(repo, cache, userRepo)
   }
+
+  /** Conecta el audit log. Lo inyecta el connector `mantenimiento-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   setSockets(s: Partial<MantenimientoSockets>): void {
     const next = s as Record<string, any>
@@ -132,6 +139,13 @@ export class MantenimientoService {
     await this.repo.delete(id)
     await this.sockets.onMantenimientoDeleted?.(id)
     await this.listUc.invalidate(existing.hotelId)
+    // El historial del ticket (maintenance_audit) muere con el ticket: sin esta entrada,
+    // borrar una orden de trabajo no deja rastro de QUIÉN la hizo desaparecer.
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'maintenance.delete',
+      entity: 'maintenance_order', entityId: id,
+      detail: `Ticket "${existing.title}" (${existing.status ?? 'sin estado'}) eliminado · Hab. ${existing.roomNumber ?? '—'}`,
+    })
   }
 
   // ─── Timer ────────────────────────────────────────────

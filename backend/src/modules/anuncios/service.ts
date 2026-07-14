@@ -2,11 +2,16 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { AnunciosDTO, CreateAnunciosDTO, UpdateAnunciosDTO, AnunciosQuery, AnunciosPaginated } from './types'
 import type { AnunciosSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const CACHE_TTL = 300
 
 export class AnunciosService {
   private sockets: AnunciosSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `anuncios-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly repo: RepositoryAdapter<AnunciosDTO>,
@@ -109,5 +114,9 @@ export class AnunciosService {
     if (!deleted) throw new NotFoundError('Anuncio no encontrado')
     await this.sockets.onAnunciosDeleted?.(id)
     await this.cache.delete(`anuncios:list:${existing.hotelId}`)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'announcement.delete',
+      entity: 'announcement', entityId: id, detail: `Anuncio "${existing.title}" eliminado`,
+    })
   }
 }

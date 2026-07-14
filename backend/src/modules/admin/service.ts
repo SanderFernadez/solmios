@@ -1,6 +1,9 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type { AdminAnalyticsDTO, MonitoringDTO, PlanDTO, AmenityCatalogDTO } from './types'
 import type { DashboardQueries } from './usecases/dashboard-queries'
+import {
+  auditSafely, planDeleteEntry, amenityCatalogDeleteEntry, type AuditPort,
+} from './usecases/audit'
 
 /**
  * Planes y catálogo de amenities son recursos de la plataforma: no pertenecen a ningún hotel ni
@@ -14,6 +17,13 @@ import type { DashboardQueries } from './usecases/dashboard-queries'
 const PLATFORM_RESOURCE = '__platform__'
 
 export class AdminService {
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `admin-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
+
   constructor(
     private readonly plansRepo: RepositoryAdapter<PlanDTO>,
     private readonly amenitiesRepo: RepositoryAdapter<AmenityCatalogDTO>,
@@ -65,6 +75,7 @@ export class AdminService {
     if (!existing) throw new Error('Plan no encontrado')
     if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
     await this.plansRepo.delete(id)
+    await auditSafely(this.auditPort, this.logger, planDeleteEntry(existing, user))
   }
 
   async listAmenitiesCatalog(): Promise<{ data: any[]; total: number }> {
@@ -99,5 +110,6 @@ export class AdminService {
     if (!existing) throw new Error('Amenity no encontrado')
     if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
     await this.amenitiesRepo.delete(id)
+    await auditSafely(this.auditPort, this.logger, amenityCatalogDeleteEntry(existing, user))
   }
 }

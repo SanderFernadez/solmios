@@ -40,7 +40,7 @@ export class CrmController {
     const b = validateSchema(ValidateCouponSchema, req.body) as any
     return { status: 200, body: await this.service.validateCoupon(b.code, (req as any).user?.hotelId, b.amount) }
   }
-  async deleteCoupon(req: HttpRequest) { await this.service.deleteCoupon(req.params.id, (req as any).user?.hotelId, (req as any).user?.role); return { status: 204, body: null } }
+  async deleteCoupon(req: HttpRequest) { const u = (req as any).user; await this.service.deleteCoupon(req.params.id, u?.hotelId, u?.role, u); return { status: 204, body: null } }
 
   async createSegment(req: HttpRequest) {
     const d = validateSchema(CreateSegmentSchema, withHotelId(req)) as any

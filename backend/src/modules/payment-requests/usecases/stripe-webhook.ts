@@ -8,6 +8,7 @@ import { StripeService } from '../../../services/stripe-service'
 import type { PaymentRequestDTO, WebhookResult } from '../types'
 import type { PaymentRequestsSockets } from '../sockets'
 import { recordStripePayment, type StripePaymentPort } from './payment-port'
+import { webhookPaidEntry, type AuditEntry } from './audit'
 
 export interface WebhookDeps {
   repo: RepositoryAdapter<PaymentRequestDTO>
@@ -17,11 +18,13 @@ export interface WebhookDeps {
   logger: Logger
   sockets: PaymentRequestsSockets
   paymentPort: StripePaymentPort | null
+  /** SC-05: registra el cobro en el audit log. Lo pasa el service (`auditSafely` absorbe fallos). */
+  audit?: (entry: AuditEntry) => Promise<void>
 }
 
 /** Procesa el webhook Stripe: marca el PaymentRequest paid + aplica el pago a reserva/folio. */
 export async function processStripeWebhook(deps: WebhookDeps, rawBody: string, signature: string): Promise<WebhookResult> {
-  const { repo, reservationRepo, folioRepo, folioChargeRepo, logger, sockets, paymentPort } = deps
+  const { repo, reservationRepo, folioRepo, folioChargeRepo, logger, sockets, paymentPort, audit } = deps
 
   if (!StripeService.isConfigured()) return { status: 503, error: 'Stripe no configurado' } as any
   if (!signature) return { status: 400, error: 'Falta stripe-signature' } as any
@@ -70,6 +73,7 @@ export async function processStripeWebhook(deps: WebhookDeps, rawBody: string, s
             } as Partial<PaymentRequestDTO>)
             const updated = await repo.findById(paymentRequestId) as PaymentRequestDTO
             await sockets.onPaymentRequestPaid?.(updated)
+            await audit?.(webhookPaidEntry(updated, amountPaid))
             logger.info('Stripe payment completed + applied', { paymentRequestId, amountPaid })
           }
         }

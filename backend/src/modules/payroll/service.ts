@@ -19,6 +19,10 @@ import { PayrollConceptUseCase } from './usecases/concepts'
 import { PayrollRunUseCase } from './usecases/runs'
 import { buildPayrollPrefill } from '../../shared/usecases/build-payroll-prefill'
 import { renderPayslipHtml } from './usecases/payslip-template'
+import {
+  auditSafely, runEntry, conceptDeleteEntry,
+  type AuditPort, type RunAction,
+} from './usecases/audit'
 import { NotFoundError, ValidationError } from 'arckode-framework'
 
 /** Puerto de email por duck typing — lo cablea email-bootstrap con el EmailService. */
@@ -36,6 +40,7 @@ export class PayrollService {
   private prefillPort?: PayrollPrefillPort
   private emailPort: PayslipEmailPort | null = null
   private hotelRepo: RepositoryAdapter<{ id: string; name?: string; currency?: string }> | null = null
+  private auditPort: AuditPort | null = null
 
   constructor(
     configRepo: RepositoryAdapter<PayrollConfigDTO>,
@@ -66,6 +71,17 @@ export class PayrollService {
     }
   }
 
+  /** Conecta el audit log. Lo inyecta el connector `payroll-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
+
+  /** Registra el movimiento de la liquidación y devuelve el run intacto (auditar no puede romperlo). */
+  private async auditRun(run: PayrollRunDTO, action: RunAction, actor?: PayrollCurrentUser): Promise<PayrollRunDTO> {
+    await auditSafely(this.auditPort, this.logger, runEntry(run, action, actor))
+    return run
+  }
+
   // ─── Config ───────────────────────────────────────────
   async getConfig(hotelId: string): Promise<PayrollConfigDTO> { return this.config.getOrCreate(hotelId) }
   async updateConfig(hotelId: string, data: Partial<CreatePayrollConfigDTO>): Promise<PayrollConfigDTO> { return this.config.update(hotelId, data) }
@@ -76,14 +92,20 @@ export class PayrollService {
   async listConcepts(hotelId: string): Promise<PayrollConceptDTO[]> { return this.concepts.list(hotelId) }
   async createConcept(dto: CreatePayrollConceptDTO): Promise<PayrollConceptDTO> { return this.concepts.create(dto) }
   async updateConcept(id: string, data: Partial<CreatePayrollConceptDTO>, currentUser?: PayrollCurrentUser): Promise<PayrollConceptDTO> { return this.concepts.update(id, data, currentUser) }
-  async deleteConcept(id: string, currentUser?: PayrollCurrentUser): Promise<void> { return this.concepts.delete(id, currentUser) }
+  async deleteConcept(id: string, currentUser?: PayrollCurrentUser): Promise<void> {
+    const concept = await this.concepts.getById(id, currentUser) // existencia + ownership
+    await this.concepts.delete(id, currentUser)
+    await auditSafely(this.auditPort, this.logger, conceptDeleteEntry(concept, currentUser))
+  }
 
   // ─── Runs ─────────────────────────────────────────────
   async createRun(dto: CreatePayrollRunDTO): Promise<PayrollRunDTO> { return this.runs.create(dto) }
   async getRun(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.getById(id, currentUser) }
   async listRuns(hotelId: string): Promise<PayrollRunDTO[]> { return this.runs.list(hotelId) }
   async getRunDetails(runId: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDetailDTO[]> { return this.runs.getDetails(runId, currentUser) }
-  async approveRun(id: string, approvedBy: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.approve(id, approvedBy, currentUser) }
+  async approveRun(id: string, approvedBy: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> {
+    return this.auditRun(await this.runs.approve(id, approvedBy, currentUser), 'payroll.run_approve', currentUser)
+  }
   /**
    * Pagar la nómina saca plata del hotel. El conector `payroll-gastos` escucha `onRunPaid` y asienta
    * el egreso; antes el evento estaba declarado y nunca se emitía, así que el costo laboral no
@@ -92,9 +114,12 @@ export class PayrollService {
   async markRunAsPaid(id: string, currentUser?: PayrollCurrentUser, paymentMethod?: PayrollPaymentMethod): Promise<PayrollRunDTO> {
     const run = await this.runs.markAsPaid(id, currentUser, paymentMethod)
     await this.sockets.onRunPaid?.(run)
-    return run
+    return this.auditRun(run, 'payroll.run_pay', currentUser)
   }
-  async cancelRun(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> { return this.runs.cancel(id, currentUser) }
+
+  async cancelRun(id: string, currentUser?: PayrollCurrentUser): Promise<PayrollRunDTO> {
+    return this.auditRun(await this.runs.cancel(id, currentUser), 'payroll.run_cancel', currentUser)
+  }
 
   // ─── Recibos (PDF imprimible + email) — #157 ──────────
   /** email-bootstrap cablea el EmailService y el repo de hoteles (para el nombre del hotel). */

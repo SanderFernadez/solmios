@@ -2,11 +2,16 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { TicketsDTO, CreateTicketsDTO, UpdateTicketsDTO, TicketsQuery, TicketsPaginated } from './types'
 import type { TicketsSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const CACHE_TTL = 300
 
 export class TicketsService {
   private sockets: TicketsSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `tickets-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly repo: RepositoryAdapter<TicketsDTO>,
@@ -105,5 +110,9 @@ export class TicketsService {
     if (!deleted) throw new NotFoundError('Ticket no encontrado')
     await this.sockets.onTicketsDeleted?.(id)
     await this.cache.delete(`tickets:list:${existing.hotelId}`)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'ticket.delete',
+      entity: 'ticket', entityId: id, detail: `Ticket "${existing.subject}" eliminado`,
+    })
   }
 }

@@ -14,9 +14,11 @@ import { ChannelApiUseCase } from './usecases/channel-api'
 import { BookingsUseCase } from './usecases/bookings'
 import { ConfigUseCase } from './usecases/config'
 import type { CanalesQueries } from './usecases/canales-queries'
+import { auditSafely, channelDeleteEntry, type AuditPort } from './usecases/audit'
 
 export class CanalesService {
   private sockets: CanalesSockets = {}
+  private auditPort: AuditPort | null = null
   private readonly channex: ChannexUseCase
   private readonly crud: CanalesCrudUseCase
   private readonly channelApi: ChannelApiUseCase
@@ -38,6 +40,9 @@ export class CanalesService {
     this.bookings = new BookingsUseCase(this.channex, queries)
     this.config = new ConfigUseCase(repo, queries)
   }
+
+  /** Conecta el audit log. Lo inyecta el connector `canales-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   setSockets(s: Partial<CanalesSockets>): void {
     const next = s as Record<string, any>
@@ -187,7 +192,8 @@ export class CanalesService {
   }
 
   async delete(id: string, user: CurrentUser): Promise<void> {
-    await this.crud.delete(id, user as any)
+    const existing = await this.crud.delete(id, user as any)
     await this.cache.delete('canales:list')
+    await auditSafely(this.auditPort, this.logger, channelDeleteEntry(existing, user))
   }
 }

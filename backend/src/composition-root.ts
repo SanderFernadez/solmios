@@ -165,6 +165,7 @@ import { facturasAuditlogConnector } from './connectors/facturas-auditlog'
 import { rolesAuditlogConnector } from './connectors/roles-auditlog'
 import { paymentsAuditlogConnector } from './connectors/payments-auditlog'
 import { usuariosAuditlogConnector } from './connectors/usuarios-auditlog'
+import { adminAuditlogConnector } from './connectors/admin-auditlog'
 import { apikeysAuditlogConnector } from './connectors/apikeys-auditlog'
 import { hotelesAuditlogConnector } from './connectors/hoteles-auditlog'
 import { dispositivosAuditlogConnector } from './connectors/dispositivos-auditlog'
@@ -175,6 +176,26 @@ import { huespedesAuditlogConnector } from './connectors/huespedes-auditlog'
 import { reservasAuditlogConnector } from './connectors/reservas-auditlog'
 import { gastosAuditlogConnector } from './connectors/gastos-auditlog'
 import { paquetesAuditlogConnector } from './connectors/paquetes-auditlog'
+import { canalesAuditlogConnector } from './connectors/canales-auditlog'
+import { gruposAuditlogConnector } from './connectors/grupos-auditlog'
+import { housekeepingAuditlogConnector } from './connectors/housekeeping-auditlog'
+import { mantenimientoAuditlogConnector } from './connectors/mantenimiento-auditlog'
+import { attendanceAuditlogConnector } from './connectors/attendance-auditlog'
+import { activosAuditlogConnector } from './connectors/activos-auditlog'
+import { anunciosAuditlogConnector } from './connectors/anuncios-auditlog'
+import { capacitacionAuditlogConnector } from './connectors/capacitacion-auditlog'
+import { crmAuditlogConnector } from './connectors/crm-auditlog'
+import { feedbackAuditlogConnector } from './connectors/feedback-auditlog'
+import { marketingAuditlogConnector } from './connectors/marketing-auditlog'
+import { notificacionesAuditlogConnector } from './connectors/notificaciones-auditlog'
+import { opinionesAuditlogConnector } from './connectors/opiniones-auditlog'
+import { reclutamientoAuditlogConnector } from './connectors/reclutamiento-auditlog'
+import { ticketsAuditlogConnector } from './connectors/tickets-auditlog'
+import { aiRecepcionistaAuditlogConnector } from './connectors/ai-recepcionista-auditlog'
+import { cashAuditlogConnector } from './connectors/cash-auditlog'
+import { paymentRequestsAuditlogConnector } from './connectors/payment-requests-auditlog'
+import { pricingAuditlogConnector } from './connectors/pricing-auditlog'
+import { payrollAuditlogConnector } from './connectors/payroll-auditlog'
 import { facturasPaymentsConnector } from './connectors/facturas-payments'
 import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { foliosPaymentsConnector } from './connectors/folios-payments'
@@ -219,6 +240,12 @@ system.addConnector('facturas-auditlog', facturasAuditlogConnector)
 system.addConnector('roles-auditlog', rolesAuditlogConnector)
 system.addConnector('payments-auditlog', paymentsAuditlogConnector)
 system.addConnector('usuarios-auditlog', usuariosAuditlogConnector)
+system.addConnector('admin-auditlog', adminAuditlogConnector)
+// SC-05 (plata): efectivo del cajón, solicitudes de pago, tarifario y nómina.
+system.addConnector('cash-auditlog', cashAuditlogConnector)
+system.addConnector('payment-requests-auditlog', paymentRequestsAuditlogConnector)
+system.addConnector('pricing-auditlog', pricingAuditlogConnector)
+system.addConnector('payroll-auditlog', payrollAuditlogConnector)
 // SC-05: borrados sensibles — credenciales, tenant entero, sesiones, RRHH y plata.
 system.addConnector('apikeys-auditlog', apikeysAuditlogConnector)
 system.addConnector('hoteles-auditlog', hotelesAuditlogConnector)
@@ -231,6 +258,27 @@ system.addConnector('huespedes-auditlog', huespedesAuditlogConnector)
 system.addConnector('reservas-auditlog', reservasAuditlogConnector)
 system.addConnector('gastos-auditlog', gastosAuditlogConnector)
 system.addConnector('paquetes-auditlog', paquetesAuditlogConnector)
+// SC-05: borrados que rompen operación. Un canal borrado corta la distribución a las OTAs (el hotel
+// se sigue vendiendo con inventario viejo → overbooking) y un fichaje/turno borrado cambia la nómina.
+system.addConnector('canales-auditlog', canalesAuditlogConnector)
+system.addConnector('grupos-auditlog', gruposAuditlogConnector)
+system.addConnector('housekeeping-auditlog', housekeepingAuditlogConnector)
+system.addConnector('mantenimiento-auditlog', mantenimientoAuditlogConnector)
+system.addConnector('attendance-auditlog', attendanceAuditlogConnector)
+// SC-05: borrados de contenido y RRHH. No mueven plata, pero borran evidencia (opiniones, tickets,
+// pins de feedback), cortan comunicación (anuncios, notificaciones, auto-mensajes, intents de la IA)
+// o tiran historial de personas (postulantes, cursos, activos asignados) — todo con actor y detalle.
+system.addConnector('activos-auditlog', activosAuditlogConnector)
+system.addConnector('anuncios-auditlog', anunciosAuditlogConnector)
+system.addConnector('capacitacion-auditlog', capacitacionAuditlogConnector)
+system.addConnector('crm-auditlog', crmAuditlogConnector)
+system.addConnector('feedback-auditlog', feedbackAuditlogConnector)
+system.addConnector('marketing-auditlog', marketingAuditlogConnector)
+system.addConnector('notificaciones-auditlog', notificacionesAuditlogConnector)
+system.addConnector('opiniones-auditlog', opinionesAuditlogConnector)
+system.addConnector('reclutamiento-auditlog', reclutamientoAuditlogConnector)
+system.addConnector('tickets-auditlog', ticketsAuditlogConnector)
+system.addConnector('ai-recepcionista-auditlog', aiRecepcionistaAuditlogConnector)
 // El dinero se asienta en `payments` → payments-caja lo lleva al arqueo y a la conciliación.
 system.addConnector('facturas-payments', facturasPaymentsConnector)
 system.addConnector('folios-payments', foliosPaymentsConnector)

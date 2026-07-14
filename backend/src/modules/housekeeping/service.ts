@@ -1,7 +1,7 @@
 // service.ts — Facade del módulo housekeeping.
 // CRUD base acá; operaciones de tiempos/fotos/stats delegadas a usecases/ (D2/D5).
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError, AuthError, ValidationError } from 'arckode-framework'
+import { NotFoundError, AuthError } from 'arckode-framework'
 import type { StorageService, FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingDTO, CreateHousekeepingDTO, UpdateHousekeepingDTO, HousekeepingQuery, HousekeepingPaginated, StaffStats, StaffStatsQuery, HousekeepingUser } from './types'
 import type { HousekeepingSockets } from './sockets'
@@ -14,11 +14,14 @@ import { StatsUseCase } from './usecases/stats'
 import { ApproveUseCase } from './usecases/approve'
 import { ConfigListsUseCase } from './usecases/config-lists'
 import { HousekeepingSettingsUseCase, type HousekeepingSettings } from './usecases/settings'
+import { assertStaffExists } from './usecases/staff'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const CACHE_TTL = 300
 
 export class HousekeepingService {
   private sockets: HousekeepingSockets = {}
+  private auditPort: AuditPort | null = null
   private readonly timings: TimingsUseCase
   private readonly photos: PhotosUseCase
   private readonly statsUc: StatsUseCase
@@ -58,6 +61,9 @@ export class HousekeepingService {
     }
     if (configRepo) this.settingsUc = new HousekeepingSettingsUseCase(configRepo)
   }
+
+  /** Conecta el audit log. Lo inyecta el connector `housekeeping-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   setSockets(s: Partial<HousekeepingSockets>): void {
     const next = s as Record<string, any>
@@ -99,7 +105,7 @@ export class HousekeepingService {
     if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
       throw new AuthError('No autorizado para crear en otro hotel')
     }
-    await this.assertStaffExists(dto.staffId, currentUser)
+    await assertStaffExists(this.userRepo, dto.staffId, currentUser)
     const item = await this.repo.create(dto as any)
     await this.sockets.onHousekeepingCreated?.(item)
     // Nace ya asignada: la camarera tiene que enterarse.
@@ -113,7 +119,7 @@ export class HousekeepingService {
     if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
     if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
     if (dto.status && dto.status !== existing.status) assertTransition(existing.status, dto.status)
-    await this.assertStaffExists(dto.staffId, currentUser)
+    await assertStaffExists(this.userRepo, dto.staffId, currentUser)
     const item = await this.repo.update(id, dto as any)
     if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
     await this.sockets.onHousekeepingUpdated?.(item)
@@ -133,6 +139,14 @@ export class HousekeepingService {
     if (!deleted) throw new NotFoundError('Tarea de housekeeping no encontrada')
     await this.sockets.onHousekeepingDeleted?.(id)
     await this.invalidateCache(existing.hotelId)
+    // Con la tarea se van sus tiempos, fotos y checklist: es la evidencia de la limpieza.
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'housekeeping.delete',
+      entity: 'housekeeping_task', entityId: id,
+      detail: `Tarea de limpieza eliminada · habitación ${existing.roomId}` +
+        `${existing.status ? ` · estado ${existing.status}` : ''}` +
+        `${existing.staffId ? ` · asignada a ${existing.staffId}` : ''}`,
+    })
   }
 
   // ─── Delegaciones a usecases ───────────────────────────────────────────────
@@ -173,20 +187,6 @@ export class HousekeepingService {
   async upsertChecklist(h: string, rt: string, items: any[]) { return this.configLists?.upsertChecklist(h, rt, items) ?? [] }
   async getSettings(h: string): Promise<HousekeepingSettings> { return this.settingsUc?.get(h) ?? { requireSupervisorPhoto: false } }
   async updateSettings(h: string, patch: Partial<HousekeepingSettings>): Promise<HousekeepingSettings> { return this.settingsUc?.update(h, patch) ?? { requireSupervisorPhoto: false } }
-
-  /**
-   * `staffId` es el id de un USUARIO (`users.id`), no el de un `employee_profile`.
-   * Así lo manda la app y lo compara `list()` contra `housekeeping.staffId`.
-   * Validarlo contra `employeeRepo` (otra PK) hacía fallar TODA asignación.
-   */
-  private async assertStaffExists(staffId: string | undefined, currentUser: HousekeepingUser): Promise<void> {
-    if (!staffId) return
-    const staff = await this.userRepo.findById(staffId).catch(() => null)
-    if (!staff) throw new ValidationError('staffId no corresponde a un empleado válido')
-    if (currentUser.role !== 'super_admin' && staff.hotelId !== currentUser.hotelId) {
-      throw new AuthError('staffId no pertenece a tu hotel')
-    }
-  }
 
   private async invalidateCache(hotelId?: string) {
     // `delete` de una clave exacta ya no alcanza: la clave del listado incluye

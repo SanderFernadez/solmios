@@ -17,19 +17,26 @@ import {
   sendMessage, getBookingFlow, createBookingFlow,
 } from './usecases/conversations'
 import {
-  listIntents, getIntent, createIntent, updateIntent, deleteIntent,
+  listIntents, getIntent, createIntent, updateIntent,
   processIncomingMessage,
 } from './usecases/intents'
 import {
-  listTemplates, createTemplate, updateTemplate, deleteTemplate,
+  listTemplates, createTemplate, updateTemplate,
 } from './usecases/templates'
 import { getWhatsappConfig, updateWhatsappConfig } from './usecases/whatsapp-config'
 import { getMetrics, getDashboardMetrics } from './usecases/metrics'
+import { deleteIntentAudited, deleteTemplateAudited } from './usecases/audit-deletes'
+import { accumulateSockets } from '../../shared/utils/accumulate-sockets'
+import type { AuditPort } from '../../shared/usecases/audit'
 
 export class AiRecepcionistaService {
   private sockets: AiRecepcionistaSockets = {}
+  private auditPort: AuditPort | null = null
   /** Pusher de availability a Channex al crear una reserva desde la IA. Inyectado desde composition-root. */
   channexPusher: ((hotelId: string, roomId: string) => void) | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `ai-recepcionista-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly conversationRepo: any,
@@ -54,15 +61,7 @@ export class AiRecepcionistaService {
     private readonly onReservationCreated?: (hotelId: string, roomId: string) => Promise<void>,
   ) {}
 
-  setSockets(s: Partial<AiRecepcionistaSockets>): void {
-    const next = s as Record<string, any>
-    const cur = this.sockets as Record<string, any>
-    for (const key of Object.keys(next)) {
-      const h = next[key]; if (!h) continue
-      const prev = cur[key]
-      cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
-    }
-  }
+  setSockets(s: Partial<AiRecepcionistaSockets>): void { accumulateSockets(this.sockets as any, s as any) }
 
   private async resolveHotelId(user: { id: string; role: string; hotelId?: string }, dtoHotelId?: string): Promise<string> {
     if (user.role === 'super_admin' && dtoHotelId) return dtoHotelId
@@ -119,7 +118,7 @@ export class AiRecepcionistaService {
   async updateIntent(id: string, dto: UpdateAiIntentDTO, u: any) {
     return updateIntent(this.intentRepo, this.cache, id, dto, this.userHotel(u), this.userRole(u))
   }
-  async deleteIntent(id: string, u: any) { return deleteIntent(this.intentRepo, this.cache, id, this.userHotel(u), this.userRole(u)) }
+  async deleteIntent(id: string, u: any) { return deleteIntentAudited({ repo: this.intentRepo, cache: this.cache, logger: this.logger, auditPort: this.auditPort }, id, u, this.userHotel(u), this.userRole(u)) }
   async testIntent(id: string, message: string, u: any): Promise<NlpResult> {
     const { getIntent } = await import('./usecases/intents')
     const intent = await getIntent(this.intentRepo, id, this.userHotel(u), this.userRole(u))
@@ -136,7 +135,7 @@ export class AiRecepcionistaService {
   async updateTemplate(id: string, dto: UpdateAiTemplateDTO, u: any) {
     return updateTemplate(this.templateRepo, id, dto, this.userHotel(u), this.userRole(u))
   }
-  async deleteTemplate(id: string, u: any) { return deleteTemplate(this.templateRepo, id, this.userHotel(u), this.userRole(u)) }
+  async deleteTemplate(id: string, u: any) { return deleteTemplateAudited({ repo: this.templateRepo, logger: this.logger, auditPort: this.auditPort }, id, u, this.userHotel(u), this.userRole(u)) }
 
   async getWhatsappConfig(hotelId: string, u: any): Promise<AiWhatsappConfigDTO | null> {
     return getWhatsappConfig(this.whatsappConfigRepo, await this.resolveHotelId(u, hotelId))

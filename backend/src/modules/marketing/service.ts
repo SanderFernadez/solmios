@@ -10,6 +10,7 @@ import type {
 import type { MarketingSockets } from './sockets'
 import type { EmailSender } from '../../services/email-sender'
 import type { NotificationEvent, NotificationLanguage } from '../../services/notification-defaults'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export interface TriggerDeps {
   emailSender: EmailSender
@@ -20,6 +21,10 @@ export interface TriggerDeps {
 
 export class MarketingService {
   private sockets: MarketingSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `marketing-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly autoMsgRepo: RepositoryAdapter<AutoMessageDTO>,
@@ -61,6 +66,8 @@ export class MarketingService {
     if (!existing) throw new NotFoundError('Auto-mensaje no encontrado')
     if (this.auth) this.auth.assertOwnership(existing.hotelId, user?.hotelId ?? '', user?.role, 'super_admin')
     await this.autoMsgRepo.delete(id)
+    await auditSafely(this.auditPort, this.logger, { hotelId: existing.hotelId, userId: user?.id, action: 'auto_message.delete',
+      entity: 'auto_message', entityId: id, detail: `Auto-mensaje "${existing.title}" eliminado` })
   }
 
   // ─── Message Logs ──────────────────────────────────────
@@ -93,6 +100,8 @@ export class MarketingService {
     if (!existing) throw new NotFoundError('Plantilla no encontrada')
     if (this.auth) this.auth.assertOwnership(existing.hotelId, user?.hotelId ?? '', user?.role, 'super_admin')
     await this.templateRepo.delete(id)
+    await auditSafely(this.auditPort, this.logger, { hotelId: existing.hotelId, userId: user?.id, action: 'whatsapp_template.delete',
+      entity: 'whatsapp_template', entityId: id, detail: `Plantilla de WhatsApp "${existing.name}" eliminada` })
   }
 
   // ─── Trigger Auto-Messages ────────────────────────────

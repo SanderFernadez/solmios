@@ -2,11 +2,16 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { OpinionesDTO, CreateOpinionesDTO, UpdateOpinionesDTO, OpinionesQuery, OpinionesPaginated } from './types'
 import type { OpinionesSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const CACHE_TTL = 300
 
 export class OpinionesService {
   private sockets: OpinionesSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `opiniones-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly repo: RepositoryAdapter<OpinionesDTO>,
@@ -102,5 +107,10 @@ export class OpinionesService {
     if (!deleted) throw new NotFoundError('Opinión no encontrada')
     await this.sockets.onOpinionesDeleted?.(id)
     await this.cache.delete(`opiniones:list:${existing.hotelId}`)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'review.delete',
+      entity: 'review', entityId: id,
+      detail: `Opinión de ${existing.rating}★ eliminada${existing.title ? `: "${existing.title}"` : ''}`,
+    })
   }
 }

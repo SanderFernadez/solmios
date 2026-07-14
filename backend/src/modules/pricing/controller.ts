@@ -7,6 +7,12 @@ export class PricingController {
     private readonly logger: Logger,
   ) {}
 
+  /** SC-05: quién ejecuta el cambio de tarifa. Sin esto el audit log no sirve de nada. */
+  private actorOf(req: any): { id?: string; role?: string } | undefined {
+    const user = req?.user
+    return user ? { id: user.id, role: user.role } : undefined
+  }
+
   private async hotelOf(req: any): Promise<string | undefined> {
     const q = req?.query || {}
     // Seguridad (IDOR cross-tenant): el hotel sale del TOKEN, no de la query. Un usuario de hotel
@@ -31,7 +37,7 @@ export class PricingController {
     const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
     const { seasons } = req.body as any
     if (!Array.isArray(seasons)) return { status: 400, body: { error: 'seasons debe ser un array' } }
-    return { status: 200, body: { success: true, count: await this.service.updateSeasons(id, seasons) } }
+    return { status: 200, body: { success: true, count: await this.service.updateSeasons(id, seasons, this.actorOf(req)) } }
   }
 
   async listRates(req: HttpRequest) {
@@ -43,12 +49,12 @@ export class PricingController {
     const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
     const { rates } = req.body as any
     if (!Array.isArray(rates)) return { status: 400, body: { error: 'rates debe ser un array' } }
-    return { status: 200, body: { success: true, count: await this.service.updateRates(id, rates) } }
+    return { status: 200, body: { success: true, count: await this.service.updateRates(id, rates, this.actorOf(req)) } }
   }
 
   async copyRatesNextYear(req: HttpRequest) {
     const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
-    return { status: 200, body: { success: true, ...await this.service.copyRatesNextYear(id) } }
+    return { status: 200, body: { success: true, ...await this.service.copyRatesNextYear(id, this.actorOf(req)) } }
   }
 
   async listBlocks(req: HttpRequest) {
@@ -67,7 +73,7 @@ export class PricingController {
 
   async deleteBlock(req: HttpRequest) {
     const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
-    await this.service.deleteBlock(req.params.id, id)
+    await this.service.deleteBlock(req.params.id, id, this.actorOf(req))
     return { status: 200, body: { success: true } }
   }
 
@@ -80,7 +86,7 @@ export class PricingController {
     const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
     const { restrictions } = req.body as any
     if (!Array.isArray(restrictions)) return { status: 400, body: { error: 'restrictions debe ser un array' } }
-    return { status: 200, body: { success: true, count: await this.service.updateRateRestrictions(id, restrictions) } }
+    return { status: 200, body: { success: true, count: await this.service.updateRateRestrictions(id, restrictions, this.actorOf(req)) } }
   }
 
   async getChannelMetrics(req: HttpRequest) {

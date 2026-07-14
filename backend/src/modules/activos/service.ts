@@ -7,9 +7,14 @@ import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { ActivosDTO, CreateActivosDTO, UpdateActivosDTO, ActivosQuery, ActivosSummary } from './types'
 import type { ActivosSockets } from './sockets'
 import { accumulateSockets } from '../../shared/utils/accumulate-sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export class ActivosService {
   private sockets: ActivosSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `activos-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly repo: RepositoryAdapter<ActivosDTO>,
@@ -49,10 +54,14 @@ export class ActivosService {
     return item
   }
 
-  async delete(id: string, hotelId: string): Promise<void> {
-    await this.getById(id, hotelId)   // ownership
+  async delete(id: string, hotelId: string, actor?: { id?: string; role?: string }): Promise<void> {
+    const existing = await this.getById(id, hotelId)   // ownership
     await this.repo.delete(id)
     await this.sockets.onActivosDeleted?.(id)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId, userId: actor?.id, action: 'asset.delete',
+      entity: 'asset', entityId: id, detail: `Activo "${existing.name}" eliminado`,
+    })
   }
 
   /** Asigna el activo a un empleado del hotel. Valida pertenencia del empleado. */

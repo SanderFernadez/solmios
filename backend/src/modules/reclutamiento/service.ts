@@ -9,11 +9,16 @@ import type {
 } from './types'
 import { APPLICANT_STAGES } from './types'
 import type { ReclutamientoSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 interface SimpleUser { id?: string; hotelId?: string; role?: string }
 
 export class ReclutamientoService {
   private sockets: ReclutamientoSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `reclutamiento-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly repo: RepositoryAdapter<ApplicantDTO>,
@@ -93,8 +98,13 @@ export class ReclutamientoService {
   }
 
   async delete(id: string, user?: SimpleUser): Promise<void> {
-    await this.getById(id, user)
+    const existing = await this.getById(id, user)
     await this.repo.update(id, { active: 0 } as any) // soft-delete: conservar el historial de selección
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: user?.id, action: 'applicant.delete',
+      entity: 'applicant', entityId: id,
+      detail: `Postulante "${existing.name}" dado de baja (etapa: ${existing.stage})`,
+    })
   }
 
   /** Conteo de postulantes por etapa (para el board del pipeline). */

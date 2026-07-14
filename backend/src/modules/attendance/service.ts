@@ -10,9 +10,14 @@ import type { AttendanceSockets } from './sockets'
 import { ClockUseCase } from './usecases/clock'
 import { ShiftAssignmentUseCase } from './usecases/shift-assignments'
 import { accumulateSockets } from '../../shared/utils/accumulate-sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
+
+/** Quién ejecuta la acción. Llega del token (`req.user`); el webhook biométrico no tiene usuario. */
+type Actor = { id?: string; role?: string } | undefined
 
 export class AttendanceService {
   private sockets: AttendanceSockets = {}
+  private auditPort: AuditPort | null = null
   private clock: ClockUseCase
   private shifts: ShiftAssignmentUseCase
 
@@ -30,10 +35,24 @@ export class AttendanceService {
     this.shifts = new ShiftAssignmentUseCase(assignmentRepo as any, scheduleRepo as any, profileRepo as any, logger)
   }
 
+  /** Conecta el audit log. Lo inyecta el connector `attendance-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
+
   // ─── Calendario de Turnos ─────────────────────────────
   async listShiftAssignments(hotelId: string, from?: string, to?: string, employeeId?: string) { return this.shifts.list(hotelId, from, to, employeeId) }
   async assignShift(dto: CreateShiftAssignmentDTO) { return this.shifts.assign(dto) }
-  async removeShiftAssignment(id: string, hotelId: string) { return this.shifts.remove(id, hotelId) }
+
+  /** Sacar a alguien del roster cambia las horas que se le van a pagar → queda auditado. */
+  async removeShiftAssignment(id: string, hotelId: string, actor?: Actor): Promise<void> {
+    const row = await this.shifts.remove(id, hotelId)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: row.hotelId, userId: actor?.id, action: 'attendance.shift.delete',
+      entity: 'shift_assignment', entityId: id,
+      detail: `Turno del ${row.date} quitado del roster · empleado ${row.employeeId}`,
+    })
+  }
 
   setSockets(s: Partial<AttendanceSockets>): void {
     accumulateSockets(this.sockets, s)
@@ -68,12 +87,18 @@ export class AttendanceService {
     return s
   }
   async listSchedules(hotelId: string) { return this.scheduleRepo.findMany({ hotelId, active: 1 }) }
-  async deleteSchedule(id: string, hotelId?: string) {
+  async deleteSchedule(id: string, hotelId?: string, actor?: Actor) {
     const s = await this.scheduleRepo.findById(id)
     if (!s) throw new NotFoundError('Schedule not found')
     if (hotelId && s.hotelId !== hotelId) throw new AuthError('Not authorized to delete this schedule')
     this.auth?.assertOwnership(s.hotelId, hotelId ?? s.hotelId, undefined, 'super_admin')
     await this.scheduleRepo.update(id, { active: 0 } as any)
+    // Baja lógica (active=0), pero el turno deja de existir para el roster y para el cálculo de horas.
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: s.hotelId, userId: actor?.id, action: 'attendance.schedule.delete',
+      entity: 'attendance_schedule', entityId: id,
+      detail: `Turno "${s.name}" (${s.startTime}–${s.endTime}) dado de baja`,
+    })
   }
 
   // ─── Config ───────────────────────────────────────────

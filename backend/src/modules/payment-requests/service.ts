@@ -19,6 +19,10 @@ import type {
 import type { PaymentRequestsSockets } from './sockets'
 import { processStripeWebhook } from './usecases/stripe-webhook'
 import type { StripePaymentPort } from './usecases/payment-port'
+import {
+  auditSafely, deleteEntry, statusChangeEntry, isSensitiveStatus,
+  type AuditEntry, type AuditPort,
+} from './usecases/audit'
 
 /** Puerto por defecto para el fallback de URLs de checkout en dev (sin header Origin). */
 const DEFAULT_PORT = 3000
@@ -26,6 +30,7 @@ const DEFAULT_PORT = 3000
 export class PaymentRequestsService {
   private sockets: PaymentRequestsSockets = {}
   private paymentPort: StripePaymentPort | null = null
+  private auditPort: AuditPort | null = null
 
   constructor(
     private readonly repo: RepositoryAdapter<PaymentRequestDTO>,
@@ -49,6 +54,15 @@ export class PaymentRequestsService {
   /** Inyectado por el conector `payment-requests-payments`. Sin él, el cobro no se asienta. */
   setPaymentDeps(deps: { paymentPort: StripePaymentPort }): void {
     this.paymentPort = deps.paymentPort
+  }
+
+  /** Conecta el audit log. Lo inyecta el connector `payment-requests-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
+
+  private audit(entry: AuditEntry): Promise<void> {
+    return auditSafely(this.auditPort, this.logger, entry)
   }
 
   /** super_admin puede especificar hotelId; resto usa el del JWT. */
@@ -95,7 +109,7 @@ export class PaymentRequestsService {
   }
 
   async update(id: string, dto: UpdatePaymentRequestDTO, user: CurrentUser): Promise<PaymentRequestDTO> {
-    await this.assertOwned(id, user) // IDOR CR-26: ownership antes de mutar
+    const previous = await this.assertOwned(id, user) // IDOR CR-26: ownership antes de mutar
     const patch: Partial<PaymentRequestDTO> = {}
     for (const k of ['amount', 'status', 'stripeSessionId', 'stripePaymentUrl', 'sentTo', 'sentVia', 'paidAt'] as (keyof UpdatePaymentRequestDTO)[]) {
       if (dto[k] !== undefined) (patch as any)[k] = dto[k]
@@ -103,14 +117,19 @@ export class PaymentRequestsService {
     const item = await this.repo.update(id, patch)
     if (!item) throw new NotFoundError('Payment request no encontrado')
     await this.sockets.onPaymentRequestUpdated?.(item)
+    // Marcar "paid"/"cancelled" a mano perdona una deuda sin que Stripe cobre nada: necesita rastro.
+    if (isSensitiveStatus(dto.status) && dto.status !== previous.status) {
+      await this.audit(statusChangeEntry(item, previous.status, user))
+    }
     return item
   }
 
   async delete(id: string, user: CurrentUser): Promise<void> {
-    await this.assertOwned(id, user) // IDOR CR-25: ownership antes de borrar
+    const existing = await this.assertOwned(id, user) // IDOR CR-25: ownership antes de borrar
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Payment request no encontrado')
     await this.sockets.onPaymentRequestDeleted?.(id)
+    await this.audit(deleteEntry(existing, user))
   }
 
   // ─── Stripe ────────────────────────────────────────────
@@ -162,6 +181,7 @@ export class PaymentRequestsService {
         repo: this.repo, reservationRepo: this.reservationRepo,
         folioRepo: this.folioRepo, folioChargeRepo: this.folioChargeRepo,
         logger: this.logger, sockets: this.sockets, paymentPort: this.paymentPort,
+        audit: (entry) => this.audit(entry),
       },
       rawBody, signature,
     )

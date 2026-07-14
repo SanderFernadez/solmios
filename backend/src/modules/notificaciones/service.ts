@@ -2,11 +2,16 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { NotificacionesDTO, CreateNotificacionesDTO, UpdateNotificacionesDTO, NotificacionesQuery, NotificacionesPaginated } from './types'
 import type { NotificacionesSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const CACHE_TTL = 300
 
 export class NotificacionesService {
   private sockets: NotificacionesSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `notificaciones-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
   constructor(
     private readonly repo: RepositoryAdapter<NotificacionesDTO>,
@@ -121,5 +126,9 @@ export class NotificacionesService {
     if (!deleted) throw new NotFoundError('Notificación no encontrada')
     await this.sockets.onNotificacionesDeleted?.(id)
     await this.cache.delete(`notificaciones:list:${existing.hotelId}`)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'notification.delete',
+      entity: 'notification', entityId: id, detail: `Notificación "${existing.title}" eliminada`,
+    })
   }
 }

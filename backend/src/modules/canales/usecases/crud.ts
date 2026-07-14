@@ -46,12 +46,14 @@ export class CanalesCrudUseCase {
     return item
   }
 
-  async delete(id: string, user: { id: string; role?: string; hotelId?: string }): Promise<void> {
+  /** Devuelve la config borrada: el service la necesita para auditar QUÉ conexión se cortó. */
+  async delete(id: string, user: { id: string; role?: string; hotelId?: string }): Promise<CanalesDTO> {
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Canales no encontrado')
     const me = await this.userRepo.findById(user.id)
     this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Canales no encontrado')
+    return existing
   }
 }

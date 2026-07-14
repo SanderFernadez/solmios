@@ -40,11 +40,13 @@ export class ShiftAssignmentUseCase {
     return this.repo.create({ ...dto, notes: dto.notes ?? null } as any)
   }
 
-  async remove(id: string, hotelId: string): Promise<void> {
+  /** Devuelve la asignación borrada: el service la necesita para auditar QUÉ se borró (fecha, empleado). */
+  async remove(id: string, hotelId: string): Promise<ShiftAssignmentDTO> {
     // findOne con hotelId scopea por hotel por construcción: sin findById → sin IDOR. Una asignación
     // de otro hotel simplemente no matchea y da 404.
     const row = await this.repo.findOne({ id, hotelId })
     if (!row) throw new NotFoundError('Asignación no encontrada')
     await this.repo.delete(id)
+    return row
   }
 }

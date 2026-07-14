@@ -29,7 +29,7 @@ export class CapacitacionController {
     return { status: 200, body: await this.service.updateCourse(req.params.id, hotelOf(req), data) }
   }
   async deleteCourse(req: HttpRequest) {
-    await this.service.deleteCourse(req.params.id, hotelOf(req))
+    await this.service.deleteCourse(req.params.id, hotelOf(req), (req as any).user)
     return { status: 204, body: null }
   }
 
@@ -49,7 +49,7 @@ export class CapacitacionController {
     return { status: 200, body: await this.service.complete(req.params.id, hotelOf(req), score) }
   }
   async deleteEnrollment(req: HttpRequest) {
-    await this.service.deleteEnrollment(req.params.id, hotelOf(req))
+    await this.service.deleteEnrollment(req.params.id, hotelOf(req), (req as any).user)
     return { status: 204, body: null }
   }
 

@@ -34,7 +34,7 @@ export class ActivosController {
   }
 
   async destroy(req: HttpRequest) {
-    await this.service.delete(req.params.id, hotelOf(req))
+    await this.service.delete(req.params.id, hotelOf(req), (req as any).user)
     return { status: 204, body: null }
   }
 

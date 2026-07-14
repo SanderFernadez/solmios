@@ -14,12 +14,18 @@ import * as shiftsUc from './usecases/shifts'
 import type { ShiftDeps } from './usecases/shifts'
 import { registerPaymentIncome, registerExpenseOutflow, removeExpenseOutflow } from './usecases/auto-movements'
 import type { AutoMovementDeps, PaymentIncomeInput, ExpenseOutflowInput } from './usecases/auto-movements'
+import { listMovements } from './usecases/list'
+import {
+  auditSafely, movementDeleteEntry, shiftOpenEntry, shiftCloseEntry, shiftReconcileEntry,
+  type AuditEntry, type AuditPort,
+} from './usecases/audit'
 
 const MOVEMENT_TYPES: MovementType[] = ['income', 'expense', 'opening', 'closing']
 
 export class CashService {
   private sockets: CashSockets = {}
   private listVersion = 0 // cache versioning: mutaciones bump → cacheKey viejas expiran a 300s
+  private auditPort: AuditPort | null = null
 
   constructor(
     private readonly repo: RepositoryAdapter<CashMovementDTO>,
@@ -37,6 +43,15 @@ export class CashService {
       const prev = cur[key]
       cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
     }
+  }
+
+  /** Conecta el audit log. Lo inyecta el connector `cash-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
+
+  private audit(entry: AuditEntry): Promise<void> {
+    return auditSafely(this.auditPort, this.logger, entry)
   }
 
   private hotelOfUser(user: CurrentUser, dtoHotelId?: string): string {
@@ -65,41 +80,7 @@ export class CashService {
   // ─── Movimientos ───────────────────────────────────────
   async list(query: MovementQuery, user: CurrentUser): Promise<CashPaginated> {
     const hotelId = this.hotelOfUser(user, query.hotelId)
-    const page = Math.max(query.page || 1, 1)
-    const limit = Math.min(Math.max(query.limit || 20, 1), 100)
-    const offset = (page - 1) * limit
-
-    const cacheKey = `caja:mov:v${this.listVersion}:${hotelId}:${JSON.stringify(query || {})}`
-    const cached = await this.cache.get(cacheKey)
-    if (cached) return cached as CashPaginated
-
-    const isDateFilter = query.from || query.to
-    if (isDateFilter) {
-      const filters: Record<string, unknown> = { hotelId: hotelId || '__none__' }
-      if (query.shiftId) filters.shiftId = query.shiftId
-      if (query.type) filters.type = query.type
-      if (query.method) filters.method = query.method
-      let rows = await this.repo.findMany(filters)
-      if (query.from) rows = rows.filter(r => (r.createdAt || '') >= query.from!)
-      if (query.to) rows = rows.filter(r => (r.createdAt || '') <= query.to! + 'T23:59:59')
-      const total = rows.length
-      const data = rows.slice(offset, offset + limit)
-      const response: CashPaginated = { data, total, limit, offset, pages: Math.ceil(total / limit) || 1, hasNext: offset + limit < total, hasPrev: page > 1 }
-      await this.cache.set(cacheKey, response, 300)
-      return response
-    }
-
-    const filters: Record<string, unknown> = { hotelId: hotelId || '__none__' }
-    if (query.shiftId) filters.shiftId = query.shiftId
-    if (query.type) filters.type = query.type
-    if (query.method) filters.method = query.method
-    const result = await this.repo.paginate(filters, { limit, offset })
-    const response: CashPaginated = {
-      data: result.data, total: result.total, limit, offset,
-      pages: result.pages, hasNext: offset + limit < result.total, hasPrev: page > 1,
-    }
-    await this.cache.set(cacheKey, response, 300)
-    return response
+    return listMovements({ repo: this.repo, cache: this.cache, version: this.listVersion }, hotelId, query)
   }
 
   async getById(id: string, user: CurrentUser): Promise<CashMovementDTO> {
@@ -151,6 +132,7 @@ export class CashService {
     if (!deleted) throw new NotFoundError('Movimiento no encontrado')
     await this.sockets.onCashMovementDeleted?.(id)
     this.listVersion++
+    await this.audit(movementDeleteEntry(existing, user))
   }
 
   // ─── Movimientos automáticos (delegan a usecases/auto-movements) ──
@@ -178,9 +160,24 @@ export class CashService {
   // ─── Turnos (delegan a usecases/shifts) ────────────────
   listShifts(hotelId: string | undefined, user: CurrentUser) { return shiftsUc.listShifts(this.shiftDeps(), hotelId, user) }
   getCurrentShift(user: CurrentUser) { return shiftsUc.getCurrentShift(this.shiftDeps(), user) }
-  openShift(dto: OpenShiftLike, user: CurrentUser) { return shiftsUc.openShift(this.shiftDeps(), dto, user) }
-  closeShift(id: string, dto: CloseShiftLike, user: CurrentUser) { return shiftsUc.closeShift(this.shiftDeps(), id, dto, user) }
-  reconcile(id: string, user: CurrentUser) { return shiftsUc.reconcile(this.shiftDeps(), id, user) }
+
+  async openShift(dto: OpenShiftLike, user: CurrentUser) {
+    const shift = await shiftsUc.openShift(this.shiftDeps(), dto, user)
+    await this.audit(shiftOpenEntry(shift, user))
+    return shift
+  }
+
+  async closeShift(id: string, dto: CloseShiftLike, user: CurrentUser) {
+    const shift = await shiftsUc.closeShift(this.shiftDeps(), id, dto, user)
+    await this.audit(shiftCloseEntry(shift, user))
+    return shift
+  }
+
+  async reconcile(id: string, user: CurrentUser) {
+    const result = await shiftsUc.reconcile(this.shiftDeps(), id, user)
+    await this.audit(shiftReconcileEntry(result, user))
+    return result
+  }
 
   // ─── Stats ─────────────────────────────────────────────
   async stats(hotelId: string | undefined, user: CurrentUser) {

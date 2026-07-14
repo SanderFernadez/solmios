@@ -65,7 +65,7 @@ export class AttendanceController {
   }
   async getSchedule(req: HttpRequest) { return { status: 200, body: await this.service.getSchedule(req.params.id, (req as any).user?.hotelId) } }
   async listSchedules(req: HttpRequest) { return { status: 200, body: await this.service.listSchedules((req as any).user?.hotelId ?? (req.query as any).hotelId) } }
-  async deleteSchedule(req: HttpRequest) { await this.service.deleteSchedule(req.params.id, (req as any).user?.hotelId); return { status: 204, body: null } }
+  async deleteSchedule(req: HttpRequest) { await this.service.deleteSchedule(req.params.id, (req as any).user?.hotelId, req.user as any); return { status: 204, body: null } }
 
   // ─── Calendario de Turnos ─────────────────────────────
   async listShiftAssignments(req: HttpRequest) {
@@ -78,7 +78,7 @@ export class AttendanceController {
     return { status: 201, body: await this.service.assignShift(data) }
   }
   async removeShiftAssignment(req: HttpRequest) {
-    await this.service.removeShiftAssignment(req.params.id, (req as any).user?.hotelId)
+    await this.service.removeShiftAssignment(req.params.id, (req as any).user?.hotelId, req.user as any)
     return { status: 204, body: null }
   }
 
