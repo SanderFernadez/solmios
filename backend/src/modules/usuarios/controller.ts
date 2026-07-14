@@ -137,10 +137,19 @@ export class UsuariosController {
     if (!isSuperAdmin && existing.hotelId !== (req.user as any).hotelId) {
       return { status: 403, body: { error: 'No autorizado' } }
     }
-    const data = validateSchema(UpdateUsuarioSchema, req.body)
-    // FC-B2 Seguridad: hotel_admin no puede asignar ni quitar rol super_admin (privilege escalation)
-    if (!isSuperAdmin && data.role === 'super_admin') {
-      return { status: 403, body: { error: 'No autorizado para asignar rol super_admin' } }
+    const data = validateSchema(UpdateUsuarioSchema, req.body) as any
+    // Escalada por UPDATE: el alta ya validaba el rol asignable, pero el update no — un `users:edit`
+    // promovía a hotel_admin por PUT. Se aplica el MISMO canAssignRole que en store().
+    if (data.role && !isSuperAdmin) {
+      const callerRole = (req.user as any).role
+      let customNames: string[] = []
+      if (this.roleRepo && existing.hotelId && !systemRolesForCreator(callerRole).includes(data.role)) {
+        const rows = await this.roleRepo.findMany({ hotelId: existing.hotelId, name: data.role })
+        customNames = rows.map((r: any) => r.name)
+      }
+      if (!canAssignRole(callerRole, data.role, customNames)) {
+        return { status: 403, body: { error: `No puede asignar el rol ${data.role}` } }
+      }
     }
     const item = await this.service.update(req.params.id, data, req.user as any)
     return { status: 200, body: item }

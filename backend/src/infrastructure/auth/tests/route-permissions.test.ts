@@ -205,9 +205,10 @@ const suites: ModuleSuite[] = [
   {
     suiteName: 'auditlog [FIX]',
     factory: AuditlogModule,
-    customRoles: { [REPORTS_VIEW_ONLY]: ['reports:view'] },
     cases: [
-      { label: 'POST crear entrada (bug: antes pedía reports:view)', method: 'POST', path: '/api/auditlog', permission: 'reports:create', deniedRole: REPORTS_VIEW_ONLY, allowedRole: 'hotel_admin', body: {} },
+      // El POST se ELIMINÓ (S-C2): se podía forjar entradas cross-tenant. El log solo lo escribe
+      // el sistema por el puerto directo. Acá se verifica el permiso del GET (ruta real que queda).
+      { label: 'GET listado', method: 'GET', path: '/api/auditlog', permission: 'reports:view', deniedRole: NO_PERMS_ROLE, allowedRole: 'hotel_admin' },
     ],
   },
   {
@@ -283,3 +284,15 @@ for (const suite of suites) {
     }
   })
 }
+
+// S-C2: el POST /api/auditlog fue eliminado (era forjable cross-tenant). Ninguna ruta debe aceptarlo.
+describe('auditlog — POST cerrado (S-C2)', () => {
+  const { router, auth } = mountModule(AuditlogModule)
+  it('POST /api/auditlog no existe (404), ni siquiera para hotel_admin', async () => {
+    const res = await router.resolve('POST', '/api/auditlog', {
+      headers: bearer(auth, 'hotel_admin'),
+      body: { hotelId: 'otro', action: 'forged' },
+    })
+    expect(res.status).toBe(404)
+  })
+})

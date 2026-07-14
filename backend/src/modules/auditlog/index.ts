@@ -47,8 +47,10 @@ export function AuditlogModule() {
 
       router.get('/api/auditlog', guard('reports', 'view'), (req) => controller.index(req))
       router.get('/api/auditlog/:id', guard('reports', 'view'), (req) => controller.show(req))
-      // SC-03: crear una entrada de auditoría exigía `reports:view` en vez de `reports:create`.
-      router.post('/api/auditlog', guard('reports', 'create'), (req) => controller.store(req))
+      // NO hay POST HTTP: el audit log lo escribe SOLO el sistema, vía el puerto directo
+      // (`service.create`, inyectado por los connectors `*-auditlog`). El endpoint POST tomaba
+      // hotelId/userId/ip del body → un merchant forjaba entradas en el log de otro hotel
+      // (evidencia falsa, cross-tenant). Ningún cliente legítimo lo usaba: el frontend solo hace GET.
 
       log.info('Módulo auditlog listo')
       return service

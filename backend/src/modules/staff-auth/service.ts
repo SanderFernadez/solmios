@@ -2,6 +2,7 @@
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { AuthError, NotFoundError, ValidationError } from 'arckode-framework'
 import type { PinLoginDTO, PinLoginResponse, StaffUser } from './types'
+import { assertCanManagePin } from './usecases/pin-authority'
 
 const MAX_ATTEMPTS = 5
 const LOCKOUT_MINUTES = 15
@@ -104,6 +105,12 @@ export class StaffAuthService {
       throw new AuthError('Solo el administrador puede configurar PIN')
     }
 
+    // 1b. Ownership: el destino debe ser de su hotel y de rol inferior (ver pin-authority).
+    // Sin esto, un hotel_admin planta un PIN en el super_admin y se loguea como él (escalada).
+    const target = await this.userRepo.findOne({ id: userId }) as any
+    if (!target) throw new NotFoundError('Usuario no encontrado')
+    assertCanManagePin(admin, target)
+
     // 2. Validar PIN (6 dígitos)
     if (!/^\d{6}$/.test(pin)) {
       throw new ValidationError('El PIN debe tener 6 dígitos')
@@ -129,6 +136,10 @@ export class StaffAuthService {
     if (!admin || (admin.role !== 'hotel_admin' && admin.role !== 'super_admin')) {
       throw new AuthError('Solo el administrador puede resetear PIN')
     }
+
+    const target = await this.userRepo.findOne({ id: userId }) as any
+    if (!target) throw new NotFoundError('Usuario no encontrado')
+    assertCanManagePin(admin, target)
 
     await this.userRepo.update(userId, {
       pinHash: null,
