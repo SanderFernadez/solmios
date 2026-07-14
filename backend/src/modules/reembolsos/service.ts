@@ -8,11 +8,18 @@ import type {
   ReembolsosQuery, ClaimTotals,
 } from './types'
 import type { ReembolsosSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 interface SimpleUser { id?: string; hotelId?: string; role?: string }
 
 export class ReembolsosService {
   private sockets: ReembolsosSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `reembolsos-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   constructor(
     private readonly repo: RepositoryAdapter<ExpenseClaimDTO>,
@@ -100,6 +107,12 @@ export class ReembolsosService {
     const current = await this.getById(id, user)
     if (current.status === 'paid') throw new ValidationError('Un reembolso pagado no se elimina')
     await this.repo.update(id, { active: 0 } as any)
+    // SC-05: es plata que se le iba a reintegrar a un empleado — el borrado deja rastro con el monto.
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: current.hotelId, userId: user?.id, action: 'expense-claim.delete',
+      entity: 'expense-claim', entityId: id,
+      detail: `Reembolso de ${current.amount} ${current.currency} (${current.category || 'sin categoría'}, estado ${current.status}) del empleado ${current.employeeId} eliminado`,
+    })
   }
 
   /** Totales por estado (para el resumen: cuánto falta pagar). */

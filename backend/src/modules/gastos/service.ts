@@ -13,9 +13,11 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { GastosDTO, CreateGastosDTO, UpdateGastosDTO, GastosQuery, GastosPaginated, CurrentUser } from './types'
 import type { GastosSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export class GastosService {
   private sockets: GastosSockets = {}
+  private auditPort: AuditPort | null = null
   // Versionado de cache (V-06): cada mutación bumpa → las cacheKey viejas (con query distinto)
   // dejan de matchear y expiran solas a los 300s. CacheAdapter no tiene deletePrefix.
   private listVersion = 0
@@ -27,6 +29,11 @@ export class GastosService {
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
   ) {}
+
+  /** Conecta el audit log. Lo inyecta el connector `gastos-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   // ACUMULA handlers — nunca pisa el anterior.
   // Si dos conectores registran el mismo evento, ambos corren en cadena (secuencial).
@@ -135,5 +142,10 @@ export class GastosService {
     if (!deleted) throw new NotFoundError('Gastos no encontrado')
     await this.sockets.onGastosDeleted?.(id)
     this.listVersion++ // V-06: invalida todas las variantes de cacheKey
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: user.id, action: 'expense.delete',
+      entity: 'expense', entityId: id,
+      detail: `Gasto "${existing.concept}" por ${existing.amount}${existing.provider ? ` — proveedor ${existing.provider}` : ''} eliminado`,
+    })
   }
 }

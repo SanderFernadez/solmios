@@ -13,9 +13,11 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError } from 'arckode-framework'
 import type { PaquetesDTO, CreatePaquetesDTO, UpdatePaquetesDTO, PaquetesQuery, PaquetesPaginated, CurrentUser } from './types'
 import type { PaquetesSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export class PaquetesService {
   private sockets: PaquetesSockets = {}
+  private auditPort: AuditPort | null = null
 
   constructor(
     private readonly repo: RepositoryAdapter<PaquetesDTO>,
@@ -24,6 +26,11 @@ export class PaquetesService {
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
   ) {}
+
+  /** Conecta el audit log. Lo inyecta el connector `paquetes-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   // ACUMULA handlers — nunca pisa el anterior.
   // Si dos conectores registran el mismo evento, ambos corren en cadena (secuencial).
@@ -107,5 +114,10 @@ export class PaquetesService {
     if (!deleted) throw new NotFoundError('Paquetes no encontrado')
     await this.sockets.onPaquetesDeleted?.(id)
     await this.cache.delete('paquetes:list')
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: user.id, action: 'package.delete',
+      entity: 'package', entityId: id,
+      detail: `Paquete "${existing.name}" (${existing.price}) eliminado`,
+    })
   }
 }

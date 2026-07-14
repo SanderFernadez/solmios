@@ -163,6 +163,18 @@ import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-
 import { facturasReservasConnector } from './connectors/facturas-reservas'
 import { facturasAuditlogConnector } from './connectors/facturas-auditlog'
 import { rolesAuditlogConnector } from './connectors/roles-auditlog'
+import { paymentsAuditlogConnector } from './connectors/payments-auditlog'
+import { usuariosAuditlogConnector } from './connectors/usuarios-auditlog'
+import { apikeysAuditlogConnector } from './connectors/apikeys-auditlog'
+import { hotelesAuditlogConnector } from './connectors/hoteles-auditlog'
+import { dispositivosAuditlogConnector } from './connectors/dispositivos-auditlog'
+import { empleadosAuditlogConnector } from './connectors/empleados-auditlog'
+import { reembolsosAuditlogConnector } from './connectors/reembolsos-auditlog'
+import { habitacionesAuditlogConnector } from './connectors/habitaciones-auditlog'
+import { huespedesAuditlogConnector } from './connectors/huespedes-auditlog'
+import { reservasAuditlogConnector } from './connectors/reservas-auditlog'
+import { gastosAuditlogConnector } from './connectors/gastos-auditlog'
+import { paquetesAuditlogConnector } from './connectors/paquetes-auditlog'
 import { facturasPaymentsConnector } from './connectors/facturas-payments'
 import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { foliosPaymentsConnector } from './connectors/folios-payments'
@@ -205,6 +217,20 @@ system.addConnector('attendance-dashboard', attendanceDashboardConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)
 system.addConnector('facturas-auditlog', facturasAuditlogConnector)
 system.addConnector('roles-auditlog', rolesAuditlogConnector)
+system.addConnector('payments-auditlog', paymentsAuditlogConnector)
+system.addConnector('usuarios-auditlog', usuariosAuditlogConnector)
+// SC-05: borrados sensibles — credenciales, tenant entero, sesiones, RRHH y plata.
+system.addConnector('apikeys-auditlog', apikeysAuditlogConnector)
+system.addConnector('hoteles-auditlog', hotelesAuditlogConnector)
+system.addConnector('dispositivos-auditlog', dispositivosAuditlogConnector)
+system.addConnector('empleados-auditlog', empleadosAuditlogConnector)
+system.addConnector('reembolsos-auditlog', reembolsosAuditlogConnector)
+// SC-05: borrar una habitación, un huésped, una reserva, un gasto o un paquete deja rastro.
+system.addConnector('habitaciones-auditlog', habitacionesAuditlogConnector)
+system.addConnector('huespedes-auditlog', huespedesAuditlogConnector)
+system.addConnector('reservas-auditlog', reservasAuditlogConnector)
+system.addConnector('gastos-auditlog', gastosAuditlogConnector)
+system.addConnector('paquetes-auditlog', paquetesAuditlogConnector)
 // El dinero se asienta en `payments` → payments-caja lo lleva al arqueo y a la conciliación.
 system.addConnector('facturas-payments', facturasPaymentsConnector)
 system.addConnector('folios-payments', foliosPaymentsConnector)

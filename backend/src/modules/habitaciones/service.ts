@@ -1,23 +1,20 @@
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth, ORM } from 'arckode-framework'
-import { NotFoundError, AuthError, ValidationError, OrmRepository } from 'arckode-framework'
+import { NotFoundError, AuthError } from 'arckode-framework'
 import type { HabitacionesDTO, CreateHabitacionesDTO, UpdateHabitacionesDTO, HabitacionesQuery, HabitacionesPaginated } from './types'
 import type { HabitacionesSockets } from './sockets'
+import { batchCreateRooms, type BatchCreateInput } from './usecases/batch-create'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
-export interface BatchCreateInput {
-  hotelId: string
-  type: string
-  basePrice: number
-  from: number
-  to: number
-  floor?: number
-  capacity?: number
-  bathrooms?: number
-  surfaceArea?: number
-  onlineBookingEnabled?: boolean
-}
+export type { BatchCreateInput }
 
 export class HabitacionesService {
   private sockets: HabitacionesSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `habitaciones-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   constructor(
     private readonly repo: RepositoryAdapter<HabitacionesDTO>,
@@ -115,65 +112,17 @@ export class HabitacionesService {
   }
 
   async batchCreate(input: BatchCreateInput, currentUser: { id: string; role: string; hotelId?: string }): Promise<HabitacionesDTO[]> {
-    if (currentUser.role !== 'super_admin' && input.hotelId !== currentUser.hotelId) {
-      throw new AuthError('No autorizado para crear en otro hotel')
-    }
-    if (input.from > input.to) {
-      throw new ValidationError('"from" debe ser menor o igual que "to"')
-    }
-    const count = input.to - input.from + 1
-    if (count > 500) {
-      throw new ValidationError('Máximo 500 habitaciones por lote')
-    }
-
-    const created: HabitacionesDTO[] = []
-
-    const doCreate = async (repo: RepositoryAdapter<HabitacionesDTO>) => {
-      const existing = await repo.findMany({ hotelId: input.hotelId })
-      const existingNumbers = new Set(existing.map(r => r.number))
-
-      for (let i = input.from; i <= input.to; i++) {
-        const number = String(i)
-        if (existingNumbers.has(number)) {
-          this.logger.warn(`batch create: skipping duplicate number ${number}`)
-          continue
-        }
-        const dto: any = {
-          number,
-          type: input.type,
-          basePrice: input.basePrice,
-          hotelId: input.hotelId,
-          status: 'available',
-          floor: input.floor ?? 1,
-          capacity: input.capacity ?? 2,
-          bathrooms: input.bathrooms ?? 1,
-          surfaceArea: input.surfaceArea ?? 0,
-          onlineBookingEnabled: input.onlineBookingEnabled !== false,
-        }
-        const item = await repo.create(dto)
-        created.push(item)
-      }
-
-      if (created.length === 0 && count > 0) {
-        throw new ValidationError('Todos los números ya existen')
-      }
-    }
-
-    if (this.orm) {
-      await this.orm.transaction(async (tx) => {
-        const txRepo = new OrmRepository<HabitacionesDTO>(tx, 'Rooms')
-        await doCreate(txRepo)
-      })
-    } else {
-      await doCreate(this.repo)
-    }
-
-    for (const item of created) {
-      await this.sockets.onHabitacionesCreated?.(item)
-    }
-
-    await this.cache.delete(`habitaciones:list:${input.hotelId}`)
-    return created
+    return batchCreateRooms(
+      {
+        repo: this.repo,
+        logger: this.logger,
+        cache: this.cache,
+        orm: this.orm,
+        onCreated: (item) => this.sockets.onHabitacionesCreated?.(item),
+      },
+      input,
+      currentUser,
+    )
   }
 
   async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
@@ -186,5 +135,10 @@ export class HabitacionesService {
     if (!deleted) throw new NotFoundError('Habitación no encontrada')
     await this.sockets.onHabitacionesDeleted?.(id)
     await this.cache.delete(`habitaciones:list:${existing.hotelId}`)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'room.delete',
+      entity: 'room', entityId: id,
+      detail: `Habitación "${existing.number}"${existing.name ? ` (${existing.name})` : ''} eliminada`,
+    })
   }
 }

@@ -2,11 +2,18 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { DispositivosDTO, CreateDispositivosDTO, UpdateDispositivosDTO, DispositivosQuery, DispositivosPaginated } from './types'
 import type { DispositivosSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const CACHE_TTL = 300
 
 export class DispositivosService {
   private sockets: DispositivosSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `dispositivos-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   constructor(
     private readonly repo: RepositoryAdapter<DispositivosDTO>,
@@ -102,5 +109,11 @@ export class DispositivosService {
     if (!deleted) throw new NotFoundError('Dispositivo no encontrado')
     await this.sockets.onDispositivosDeleted?.(id)
     await this.cache.delete(`dispositivos:list:${existing.hotelId}`)
+    // SC-05: revocar una sesión/dispositivo es un evento de seguridad → queda registrado.
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'device.delete',
+      entity: 'device', entityId: id,
+      detail: `Dispositivo "${existing.device ?? 'desconocido'}" (${existing.browser ?? '?'} / ${existing.os ?? '?'}) de ${existing.userName ?? existing.userId ?? 'usuario desconocido'} eliminado`,
+    })
   }
 }

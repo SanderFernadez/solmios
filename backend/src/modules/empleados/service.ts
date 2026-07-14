@@ -24,6 +24,7 @@ import { ReviewUseCase } from './usecases/reviews'
 import { OrgChartUseCase } from './usecases/org-chart'
 import type { DashboardUseCase, AttendanceSummaryPort } from './usecases/dashboard'
 import type { SimpleUser } from './usecases/ownership'
+import type { AuditPort } from '../../shared/usecases/audit'
 
 export class EmpleadosService {
   private sockets: EmpleadosSockets = {}
@@ -60,6 +61,9 @@ export class EmpleadosService {
   setSockets(s: Partial<EmpleadosSockets>): void {
     accumulateSockets(this.sockets, s)
   }
+
+  /** Conecta el audit log. Lo inyecta el connector `empleados-auditlog`. Las bajas (legajo, departamento, documento) se auditan dentro de los usecases: el service no puede pasar de 200 líneas. */
+  setAuditDeps(port: AuditPort): void { this.profiles.setAuditPort(port); this.departments.setAuditPort(port); this.documents.setAuditPort(port) }
 
   // El dashboard vive en un usecase aparte (gate 200 líneas). El connector attendance-dashboard
   // inyecta el fichaje de hoy vía este puerto (#198).

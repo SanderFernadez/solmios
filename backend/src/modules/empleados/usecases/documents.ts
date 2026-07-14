@@ -5,8 +5,11 @@ import { NotFoundError, ConflictError } from 'arckode-framework'
 import type { DocumentDTO, CreateDocumentDTO, DocumentExpiryAlert } from '../types'
 import type { SimpleUser } from './ownership'
 import { validateEmployeeBelongsToHotel } from './validate-employee'
+import { auditSafely, type AuditPort } from '../../../shared/usecases/audit'
 
 export class DocumentUseCase {
+  private auditPort: AuditPort | null = null
+
   constructor(
     private readonly repo: RepositoryAdapter<DocumentDTO>,
     private readonly profileRepo: RepositoryAdapter<any>,
@@ -14,6 +17,11 @@ export class DocumentUseCase {
     private readonly logger?: Logger,
     private readonly auth?: Auth,
   ) {}
+
+  /** Conecta el audit log. Lo inyecta el connector `empleados-auditlog` vía el service. */
+  setAuditPort(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   async create(dto: CreateDocumentDTO): Promise<DocumentDTO> {
     await validateEmployeeBelongsToHotel(this.profileRepo, dto.employeeId, dto.hotelId)
@@ -41,8 +49,15 @@ export class DocumentUseCase {
   }
 
   async delete(id: string, user?: SimpleUser): Promise<void> {
-    await this.getById(id, user)
+    const doc = await this.getById(id, user)
     await this.repo.delete(id)
+    // SC-05: borrar documentación de un legajo (contratos, IDs, permisos) deja rastro.
+    // `logger` es opcional en este usecase → fallback no-op: auditar nunca puede tumbar el borrado.
+    await auditSafely(this.auditPort, this.logger ?? ({ error: () => {} } as unknown as Logger), {
+      hotelId: doc.hotelId, userId: user?.id, action: 'employee-document.delete',
+      entity: 'employee-document', entityId: id,
+      detail: `Documento "${doc.name}" (${doc.type || 'sin tipo'}) del empleado ${doc.employeeId} eliminado`,
+    })
   }
 
   async getExpiring(hotelId: string, daysAhead = 30): Promise<DocumentExpiryAlert[]> {

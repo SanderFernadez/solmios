@@ -15,11 +15,15 @@ import { getExtendedDetail as getExtendedDetailUsecase, getAuditTrail as getAudi
 import { getBookingEngineDashboard as getBookingEngineDashboardUsecase } from './usecases/booking-engine'
 import { quoteReschedule as quoteRescheduleUsecase, commitReschedule as commitRescheduleUsecase, type RescheduleInput, type RescheduleChargePort } from './usecases/reschedule'
 import type { ReservasQueries } from './usecases/reservas-queries'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const MS_PER_DAY = 86_400_000
 
 export class ReservasService {
   private sockets: ReservasSockets = {}
+  private auditPort: AuditPort | null = null
+  /** Conecta el audit log. Lo inyecta el connector `reservas-auditlog`. */
+  setAuditDeps(port: AuditPort): void { this.auditPort = port }
   private emailSender: EmailSender = new NullEmailSender()
   private messageLogRepo: RepositoryAdapter<any> | null = null
   setEmailDeps(es: EmailSender, r: RepositoryAdapter<any>): void { this.emailSender = es; this.messageLogRepo = r }
@@ -87,7 +91,13 @@ export class ReservasService {
 
   async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
     this.logger.info('Eliminando reserva', { id, userId: currentUser.id })
-    return deleteReservation(this.repo, this.logger, this.cache, this.sockets, id, currentUser)
+    const existing = await deleteReservation(this.repo, this.logger, this.cache, this.sockets, id, currentUser)
+    const locator = existing?.externalLocator ? ` (${existing.externalLocator})` : ''
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing?.hotelId, userId: currentUser.id, action: 'reservation.delete',
+      entity: 'reservation', entityId: id,
+      detail: `Reserva${locator} ${existing?.checkIn} → ${existing?.checkOut}, habitación ${existing?.roomId}, monto ${existing?.totalAmount} — eliminada`,
+    })
   }
 
   // ── CHECK-IN ─────────────────────────────────────────────────────────────

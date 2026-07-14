@@ -4,13 +4,21 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { DepartmentDTO, CreateDepartmentDTO } from '../types'
 import type { SimpleUser } from './ownership'
+import { auditSafely, type AuditPort } from '../../../shared/usecases/audit'
 
 export class DepartmentUseCase {
+  private auditPort: AuditPort | null = null
+
   constructor(
     private readonly repo: RepositoryAdapter<DepartmentDTO>,
     private readonly logger: Logger,
     private readonly auth?: Auth,
   ) {}
+
+  /** Conecta el audit log. Lo inyecta el connector `empleados-auditlog` vía el service. */
+  setAuditPort(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   async create(dto: CreateDepartmentDTO): Promise<DepartmentDTO> {
     if (!dto.name || dto.name.length < 2) throw new ValidationError('Department name required (min 2 chars)')
@@ -36,7 +44,13 @@ export class DepartmentUseCase {
   }
 
   async delete(id: string, user?: SimpleUser): Promise<void> {
-    await this.getById(id, user)
+    const dept = await this.getById(id, user)
     await this.repo.update(id, { active: 0 } as any)
+    // SC-05: baja de una unidad organizativa de RRHH → queda registrada.
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: dept.hotelId, userId: user?.id, action: 'department.delete',
+      entity: 'department', entityId: id,
+      detail: `Departamento "${dept.name}" eliminado`,
+    })
   }
 }

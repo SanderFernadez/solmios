@@ -4,6 +4,7 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { EmployeeProfileDTO, CreateEmployeeProfileDTO, EmpleadosQuery, EmpleadosPaginated } from '../types'
 import type { SimpleUser } from './ownership'
+import { auditSafely, type AuditPort } from '../../../shared/usecases/audit'
 
 const SENSITIVE_FIELDS = ['salary', 'bankAccount', 'bankName', 'emergencyContactPhone'] as const
 const PRIVILEGED_ROLES = ['hotel_admin', 'super_admin']
@@ -18,12 +19,19 @@ function stripSensitive(profile: any, userRole?: string): any {
 }
 
 export class ProfileUseCase {
+  private auditPort: AuditPort | null = null
+
   constructor(
     private readonly repo: RepositoryAdapter<EmployeeProfileDTO>,
     private readonly logger: Logger,
     private readonly userRepo?: RepositoryAdapter<any>,
     private readonly auth?: Auth,
   ) {}
+
+  /** Conecta el audit log. Lo inyecta el connector `empleados-auditlog` vía el service. */
+  setAuditPort(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   /**
    * El perfil del propio usuario. Autoservicio: la app del personal necesita su `profile.id` para
@@ -108,8 +116,14 @@ export class ProfileUseCase {
   }
 
   async deactivate(id: string, user?: SimpleUser): Promise<void> {
-    await this.getById(id, user)
+    const profile = await this.getById(id, user)
     await this.repo.update(id, { active: 0 } as any)
+    // SC-05: es la baja del legajo (DELETE /api/employee-profiles/:id) — dato de RRHH → se audita.
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: profile.hotelId, userId: user?.id, action: 'employee.delete',
+      entity: 'employee', entityId: id,
+      detail: `Legajo de ${profile.userName ?? profile.userId} (${profile.position || 'sin puesto'}) dado de baja`,
+    })
   }
 
   /** Reactivar un legajo desactivado (#174: desactivar es reversible, no un borrado). */

@@ -2,11 +2,18 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { ApikeysDTO, CreateApikeysDTO, UpdateApikeysDTO, ApikeysQuery, ApikeysPaginated } from './types'
 import type { ApikeysSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const CACHE_TTL = 300
 
 export class ApikeysService {
   private sockets: ApikeysSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `apikeys-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   constructor(
     private readonly repo: RepositoryAdapter<ApikeysDTO>,
@@ -93,5 +100,12 @@ export class ApikeysService {
     if (!deleted) throw new NotFoundError('API Key no encontrada')
     await this.sockets.onApikeysDeleted?.(id)
     await this.cache.delete(`apikeys:list:${existing.hotelId}`)
+    // SC-05: revocar una credencial deja rastro. NUNCA se loguea el secreto (secretHash/token):
+    // solo el nombre y el alcance, que es lo que un auditor necesita para saber QUÉ se revocó.
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'apikey.delete',
+      entity: 'apikey', entityId: id,
+      detail: `API Key "${existing.name}" (scope: ${existing.scope ?? 'sin scope'}) eliminada`,
+    })
   }
 }

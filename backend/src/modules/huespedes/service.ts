@@ -13,9 +13,16 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, ConflictError, ValidationError } from 'arckode-framework'
 import type { HuespedesDTO, CreateHuespedesDTO, UpdateHuespedesDTO, HuespedesQuery, HuespedesPaginated, CurrentUser } from './types'
 import type { HuespedesSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export class HuespedesService {
   private sockets: HuespedesSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `huespedes-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   constructor(
     private readonly repo: RepositoryAdapter<HuespedesDTO>,
@@ -134,5 +141,10 @@ export class HuespedesService {
     if (!deleted) throw new NotFoundError('Huespedes no encontrado')
     await this.sockets.onHuespedesDeleted?.(id)
     await this.cache.delete('huespedes:list')
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: user.id, action: 'guest.delete',
+      entity: 'guest', entityId: id,
+      detail: `Huésped "${existing.name}"${existing.document ? ` (doc ${existing.document})` : ''} eliminado`,
+    })
   }
 }

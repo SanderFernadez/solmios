@@ -3,11 +3,20 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import { normalizePhone, looksLikePhone, toStoredPhone } from './usecases/normalize-phone'
 import { getProfile, updateProfile, type ProfilePatch } from './usecases/profile'
+import {
+  auditSafely, roleChangeEntry, userDeleteEntry, type AuditPort, type Actor,
+} from './usecases/audit'
+import {
+  hashPassword, verifyPassword, forgotPassword, resetPassword, changePassword,
+} from './usecases/password'
+import { assertOwnership, pickDefined } from './usecases/ownership'
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required')
 
 export class UsuariosService {
+  private auditPort: AuditPort | null = null
+
   constructor(
     private readonly repo: RepositoryAdapter<any>,
     private readonly logger: Logger,
@@ -15,6 +24,11 @@ export class UsuariosService {
     private readonly auth: Auth,
     private readonly hotelRepo?: RepositoryAdapter<any>,
   ) {}
+
+  /** Conecta el audit log. Lo inyecta el connector `usuarios-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   async getHotels(userId: string, role: string): Promise<any[]> {
     if (!this.hotelRepo) return []
@@ -115,17 +129,38 @@ export class UsuariosService {
     return rest
   }
 
-  async update(id: string, data: any): Promise<any> {
-    const allowed = (({ name, email, password, phone, avatar, role }) => ({ name, email, password, phone, avatar, role }))(data)
+  async update(id: string, data: any, actor?: Actor): Promise<any> {
+    // El destructuring materializa TODAS las claves, así que un PUT parcial (ej. solo {role})
+    // llegaba al ORM con name/password en undefined y los escribía como NULL → NOT NULL violado.
+    // Se descartan las ausentes: un campo que no vino no es un campo que se quiere borrar.
+    const allowed = pickDefined(data, ['name', 'email', 'password', 'phone', 'avatar', 'role'])
     if (allowed.password) allowed.password = await this.hashPassword(allowed.password)
     Object.assign(allowed, toStoredPhone(allowed.phone))
+    // El estado anterior se lee ANTES del update por dos razones: valida que el usuario sea del
+    // hotel de quien lo edita (IDOR), y sin el rol viejo la auditoría diría "cambió el rol" sin
+    // decir desde cuál.
+    const before = await this.repo.findById(id)
+    if (before && actor?.id) {
+      await assertOwnership(this.repo, this.auth, before.hotelId ?? '', actor.id, actor.role)
+    }
     const updated = await this.repo.update(id, allowed)
+    if (before && allowed.role && allowed.role !== before.role) {
+      await auditSafely(this.auditPort, this.logger, roleChangeEntry(before, allowed.role, actor))
+    }
     const { password: _, token: __, resetToken: ___, resetExpires: ____, ...rest } = updated
     return rest
   }
 
-  async delete(id: string): Promise<boolean> {
-    return this.repo.delete(id)
+  async delete(id: string, actor?: Actor): Promise<boolean> {
+    const before = await this.repo.findById(id)
+    if (before && actor?.id) {
+      await assertOwnership(this.repo, this.auth, before.hotelId ?? '', actor.id, actor.role)
+    }
+    const deleted = await this.repo.delete(id)
+    if (deleted && before) {
+      await auditSafely(this.auditPort, this.logger, userDeleteEntry(before, actor))
+    }
+    return deleted
   }
 
   async logout(id: string): Promise<void> {
@@ -139,40 +174,21 @@ export class UsuariosService {
   }
 
   async forgotPassword(email: string): Promise<void> {
-    const normalizedEmail = email.trim().toLowerCase()
-    const user = await this.repo.findOne({ email: normalizedEmail })
-    if (!user) return
-    const resetToken = crypto.randomUUID()
-    const resetExpires = Date.now() + 60 * 60 * 1000
-    await this.repo.update(user.id, { resetToken, resetExpires })
+    return forgotPassword(this.repo, email)
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    const user = await this.repo.findOne({ resetToken: token })
-    if (!user || user.resetExpires < Date.now()) throw new AuthError('Token inválido o expirado')
-    const hashed = await this.hashPassword(newPassword)
-    await this.repo.update(user.id, { password: hashed, token: null, resetToken: null, resetExpires: null })
+    return resetPassword(this.repo, token, newPassword)
   }
 
   async changePassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
-    // Ownership: callerUserId === id se valida en el controller vía auth.assertOwnership(req.user.userId, id).
-    // Aquí además se verifica con currentPassword (re-autenticación implícita).
-    if (!id) throw new AuthError('userId requerido')
-    const user = await this.repo.findById(id)
-    if (!user) throw new NotFoundError('Usuario no encontrado')
-    const valid = await this.verifyPassword(currentPassword, user.password)
-    if (!valid) throw new AuthError('Contraseña actual incorrecta')
-    const hashed = await this.hashPassword(newPassword)
-    await this.repo.update(id, { password: hashed, token: null })
+    return changePassword(this.repo, id, currentPassword, newPassword)
   }
 
   private async hashPassword(p: string): Promise<string> {
-    return Bun.password.hash(p, 'bcrypt')
+    return hashPassword(p)
   }
   private async verifyPassword(plain: string, stored: string): Promise<boolean> {
-    if (stored.startsWith('$2') || stored.startsWith('$argon2')) {
-      try { return await Bun.password.verify(plain, stored) } catch { return false }
-    }
-    return stored === plain
+    return verifyPassword(plain, stored)
   }
 }

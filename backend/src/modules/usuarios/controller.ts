@@ -142,7 +142,7 @@ export class UsuariosController {
     if (!isSuperAdmin && data.role === 'super_admin') {
       return { status: 403, body: { error: 'No autorizado para asignar rol super_admin' } }
     }
-    const item = await this.service.update(req.params.id, data)
+    const item = await this.service.update(req.params.id, data, req.user as any)
     return { status: 200, body: item }
   }
 
@@ -152,7 +152,7 @@ export class UsuariosController {
     if (!isSuperAdmin && existing.hotelId !== (req.user as any).hotelId) {
       return { status: 403, body: { error: 'No autorizado' } }
     }
-    await this.service.delete(req.params.id)
+    await this.service.delete(req.params.id, req.user as any)
     return { status: 204, body: null }
   }
 

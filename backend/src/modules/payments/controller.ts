@@ -45,7 +45,7 @@ export class PaymentsController {
     this.logger.info('POST /api/payments/charge')
     const data = validateSchema(ChargeCardSchema, req.body) as unknown as ChargeCardDTO
     data.hotelId = this.forceHotelId(data, req.user as any) // V2 IDOR: forzar del JWT
-    const result = await this.service.chargeCard(data)
+    const result = await this.service.chargeCard(data, this.userInfo(req.user))
     return { status: 200, body: result }
   }
 

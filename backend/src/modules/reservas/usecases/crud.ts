@@ -74,7 +74,8 @@ export async function updateReservation(repo: any, logger: any, cache: any, sock
   return item
 }
 
-export async function deleteReservation(repo: any, logger: any, cache: any, sockets: any, id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
+/** Devuelve la reserva borrada (SC-05: el service la necesita para el audit log). */
+export async function deleteReservation(repo: any, logger: any, cache: any, sockets: any, id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<any> {
   const existing = await repo.findById(id)
   if (!existing) throw new NotFoundError('Reserva no encontrada')
   if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
@@ -82,4 +83,5 @@ export async function deleteReservation(repo: any, logger: any, cache: any, sock
   if (!deleted) throw new NotFoundError('Reserva no encontrada')
   await safeEmit(logger, 'onReservasDeleted', sockets.onReservasDeleted, id)
   await cache.delete(`reservas:list:${existing.hotelId}`)
+  return existing
 }

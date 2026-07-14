@@ -15,11 +15,18 @@ import type { HotelesDTO, CreateHotelesDTO, UpdateHotelesDTO, HotelesQuery, Hote
 import type { HotelesSockets } from './sockets'
 import type { SettingsFullUseCase } from './usecases/settings-full'
 import type { HotelesQueries } from './usecases/hoteles-queries'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
 
 export class HotelesService {
   private sockets: HotelesSockets = {}
+  private auditPort: AuditPort | null = null
+
+  /** Conecta el audit log. Lo inyecta el connector `hoteles-auditlog`. */
+  setAuditDeps(port: AuditPort): void {
+    this.auditPort = port
+  }
 
   constructor(
     private readonly repo: RepositoryAdapter<HotelesDTO>,
@@ -122,10 +129,18 @@ export class HotelesService {
       throw new AuthError('Solo super_admin puede eliminar hoteles')
     }
 
+    // Se lee ANTES de borrar: se pierde un tenant entero, el audit log tiene que decir CUÁL.
+    const existing = await this.repo.findById(id)
+
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Hotel no encontrado')
     await this.sockets.onHotelesDeleted?.(id)
     await this.cache.delete('hoteles:list')
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: id, userId: currentUser.id, action: 'hotel.delete',
+      entity: 'hotel', entityId: id,
+      detail: `Hotel "${existing?.name ?? id}" eliminado`,
+    })
   }
 
   // ── Settings (delegated to queries) ───────────────────────────────────
