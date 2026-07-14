@@ -45,10 +45,29 @@ export class S3StorageAdapter implements StorageAdapter {
   }
 
   /** Misma convención que el adapter local: `<dir>/<timestamp>-<rand><ext>`. */
-  private keyFor(directory: string | undefined, originalName: string): string {
+  keyFor(directory: string | undefined, originalName: string): string {
     const dir = directory ?? 'general'
     const ext = extname(originalName)
     return `${dir}/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
+  }
+
+  /**
+   * URL prefirmada para que el CLIENTE suba el archivo DIRECTO al bucket.
+   *
+   * Es lo que hace posible subir un video: los archivos hoy viajan como base64
+   * dentro del JSON, con tope de 10 MB de body — un video de 30 s no entra ni
+   * cerca. Con esto el backend NO toca los bytes: solo firma un permiso temporal
+   * y la app hace `PUT` contra Backblaze.
+   */
+  presignPut(
+    key: string,
+    opts: { contentType: string; expiresInSeconds?: number },
+  ): string {
+    return this.client.presign(key, {
+      method: 'PUT',
+      type: opts.contentType,
+      expiresIn: opts.expiresInSeconds ?? 900,
+    })
   }
 
   async upload(file: FileUpload, directory?: string): Promise<StoredFile> {

@@ -2,7 +2,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from '../../shared/validators/validate-body'
 import type { FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingService } from './service'
-import { CreateHousekeepingSchema, UpdateHousekeepingSchema, UploadPhotoSchema, RemovePhotoSchema, ReportIssueSchema, UpdateHousekeepingSettingsSchema, ApproveHousekeepingSchema } from './validators/schema'
+import { CreateHousekeepingSchema, UpdateHousekeepingSchema, UploadPhotoSchema, RemovePhotoSchema, ReportIssueSchema, UpdateHousekeepingSettingsSchema, ApproveHousekeepingSchema, VideoUploadUrlSchema, AttachVideoSchema } from './validators/schema'
 
 // Decodifica un data URL base64 (data:<mime>;base64,<data>) → buffer + metadata.
 // Necesario porque el router del framework no propaga req.files al handler,
@@ -174,6 +174,33 @@ export class HousekeepingController {
     const patch = validateSchema(UpdateHousekeepingSettingsSchema, req.body ?? {}) as Record<string, unknown>
     const data = await this.service.updateSettings(hotelId, patch)
     return { status: 200, body: { data } }
+  }
+
+  // ─── Evidencia en video ───────────────────────────────────────────────────
+  // El backend NO recibe los bytes: firma un permiso temporal y la app sube el
+  // video directo al bucket. Un video de 30 s no entra en el body (base64, 10 MB).
+
+  async videoUploadUrl(req: HttpRequest) {
+    const data = validateSchema(VideoUploadUrlSchema, req.body ?? {}) as {
+      contentType: string
+      durationSeconds: number
+    }
+    const ticket = await this.service.requestVideoUploadUrl(req.params.id, data, req.user as any)
+    return { status: 200, body: { data: ticket } }
+  }
+
+  async attachVideo(req: HttpRequest) {
+    const data = validateSchema(AttachVideoSchema, req.body ?? {}) as {
+      url: string
+      path: string
+      durationSeconds: number
+      mimeType: string
+    }
+    return { status: 200, body: await this.service.attachVideo(req.params.id, data, req.user as any) }
+  }
+
+  async removeVideo(req: HttpRequest) {
+    return { status: 200, body: await this.service.removeVideo(req.params.id, req.user as any) }
   }
 
   async updateSupplyLists(req: HttpRequest) {

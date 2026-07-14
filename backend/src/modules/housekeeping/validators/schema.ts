@@ -85,4 +85,22 @@ export const ApproveHousekeepingSchema: Record<string, ValidationRule> = {
 /** Ajustes de housekeeping del hotel. Merge parcial: todos los flags opcionales. */
 export const UpdateHousekeepingSettingsSchema: Record<string, ValidationRule> = {
   requireSupervisorPhoto: { type: 'boolean' as const },
+  // Evidencia de FIN: las fotos por área o UN video. Excluyente. La foto de inicio
+  // no la afecta. El usecase normaliza cualquier valor raro al default.
+  completionEvidence: { type: 'string' as const, enum: ['photos', 'video'] },
+  maxVideoSeconds: { type: 'number' as const },
+}
+
+/** Pedido de URL prefirmada para subir el video directo al bucket. */
+export const VideoUploadUrlSchema: Record<string, ValidationRule> = {
+  contentType: { type: 'string' as const, required: true },
+  durationSeconds: { type: 'number' as const, required: true },
+}
+
+/** La app confirma que el video ya está en el bucket. */
+export const AttachVideoSchema: Record<string, ValidationRule> = {
+  url: { type: 'string' as const, required: true },
+  path: { type: 'string' as const, required: true },
+  durationSeconds: { type: 'number' as const, required: true },
+  mimeType: { type: 'string' as const, required: true },
 }

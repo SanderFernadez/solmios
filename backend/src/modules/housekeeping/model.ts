@@ -33,6 +33,10 @@ export const HousekeepingModel: ModelDefinition = {
     // Sin declararlo acá el ORM lo descarta en silencio (anti-patrón mem 1805). Nullable: las
     // tareas viejas y las devueltas (reject) no tienen nota.
     rating: { type: 'number' },
+    // Video de evidencia de fin, cuando el hotel usa el modo `video` en vez de las
+    // fotos por área. Un solo video por tarea. Mismo aviso: sin declararlo, el ORM
+    // lo descarta en silencio.
+    video: { type: 'json' },
   },
   timestamps: true,
 }

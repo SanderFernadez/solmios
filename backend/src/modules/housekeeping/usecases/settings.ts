@@ -1,15 +1,32 @@
 // settings.ts — Ajustes de housekeeping por hotel (KV en la tabla `configuration`).
 //
-// Hoy guarda un solo flag: si el supervisor debe tomar una foto para probar que
-// está en la habitación al revisar. Vive en `configuration` (no en una tabla
-// nueva) para que lo que configura el admin llegue al dispositivo del supervisor,
-// igual que las fotos requeridas y el checklist.
+// Vive en `configuration` (no en una tabla nueva) para que lo que configura el
+// admin llegue al dispositivo de la camarera y del supervisor, igual que las
+// fotos requeridas y el checklist.
 
 import type { RepositoryAdapter } from 'arckode-framework'
+
+/** Con qué prueba la camarera que TERMINÓ la limpieza. Es excluyente. */
+export type CompletionEvidence = 'photos' | 'video'
+
+export const COMPLETION_EVIDENCE: readonly CompletionEvidence[] = ['photos', 'video']
+
+/** Tope duro del video de evidencia. El cliente además corta la grabación acá. */
+export const MAX_VIDEO_SECONDS_LIMIT = 120
+export const DEFAULT_MAX_VIDEO_SECONDS = 30
 
 export interface HousekeepingSettings {
   /** Si está en true, el supervisor DEBE subir una foto de presencia para revisar. */
   requireSupervisorPhoto: boolean
+
+  /**
+   * Evidencia de FIN de limpieza: las fotos por área (como siempre) o UN video.
+   * Excluyente. La foto de INICIO no la afecta: sigue siendo obligatoria en ambos
+   * modos para poder arrancar.
+   */
+  completionEvidence: CompletionEvidence
+  /** Duración máxima del video, en segundos. */
+  maxVideoSeconds: number
 }
 
 interface ConfigRow {
@@ -20,7 +37,11 @@ interface ConfigRow {
 }
 
 const KEY = 'housekeeping_settings'
-const DEFAULTS: HousekeepingSettings = { requireSupervisorPhoto: false }
+const DEFAULTS: HousekeepingSettings = {
+  requireSupervisorPhoto: false,
+  completionEvidence: 'photos',
+  maxVideoSeconds: DEFAULT_MAX_VIDEO_SECONDS,
+}
 
 export class HousekeepingSettingsUseCase {
   constructor(private readonly configRepo: RepositoryAdapter<ConfigRow>) {}
@@ -37,6 +58,12 @@ export class HousekeepingSettingsUseCase {
     const next: HousekeepingSettings = {
       requireSupervisorPhoto:
         patch.requireSupervisorPhoto ?? current.requireSupervisorPhoto,
+      completionEvidence: this.normalizeEvidence(
+        patch.completionEvidence ?? current.completionEvidence,
+      ),
+      maxVideoSeconds: this.normalizeSeconds(
+        patch.maxVideoSeconds ?? current.maxVideoSeconds,
+      ),
     }
     const rows = await this.configRepo.findMany({ hotelId, key: KEY })
     const value = JSON.stringify(next)
@@ -48,12 +75,28 @@ export class HousekeepingSettingsUseCase {
     return next
   }
 
+  private normalizeEvidence(v: unknown): CompletionEvidence {
+    return COMPLETION_EVIDENCE.includes(v as CompletionEvidence)
+      ? (v as CompletionEvidence)
+      : DEFAULTS.completionEvidence
+  }
+
+  private normalizeSeconds(v: unknown): number {
+    const n = Math.trunc(Number(v))
+    if (!Number.isFinite(n) || n <= 0) return DEFAULT_MAX_VIDEO_SECONDS
+    return Math.min(n, MAX_VIDEO_SECONDS_LIMIT)
+  }
+
   private parse(raw: unknown): HousekeepingSettings {
     try {
       const obj = typeof raw === 'string' ? JSON.parse(raw) : raw
       return {
         requireSupervisorPhoto:
           obj?.requireSupervisorPhoto === true || obj?.requireSupervisorPhoto === 1,
+        completionEvidence: this.normalizeEvidence(obj?.completionEvidence),
+        maxVideoSeconds: this.normalizeSeconds(
+          obj?.maxVideoSeconds ?? DEFAULT_MAX_VIDEO_SECONDS,
+        ),
       }
     } catch {
       return { ...DEFAULTS }
