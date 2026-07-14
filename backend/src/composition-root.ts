@@ -162,6 +162,7 @@ import { paymentsCajaConnector } from './connectors/payments-caja'
 import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-payments'
 import { facturasReservasConnector } from './connectors/facturas-reservas'
 import { facturasAuditlogConnector } from './connectors/facturas-auditlog'
+import { rolesAuditlogConnector } from './connectors/roles-auditlog'
 import { facturasPaymentsConnector } from './connectors/facturas-payments'
 import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { foliosPaymentsConnector } from './connectors/folios-payments'
@@ -203,6 +204,7 @@ system.addConnector('attendance-payroll', attendancePayrollConnector)
 system.addConnector('attendance-dashboard', attendanceDashboardConnector)
 system.addConnector('facturas-reservas', facturasReservasConnector)
 system.addConnector('facturas-auditlog', facturasAuditlogConnector)
+system.addConnector('roles-auditlog', rolesAuditlogConnector)
 // El dinero se asienta en `payments` → payments-caja lo lleva al arqueo y a la conciliación.
 system.addConnector('facturas-payments', facturasPaymentsConnector)
 system.addConnector('folios-payments', foliosPaymentsConnector)

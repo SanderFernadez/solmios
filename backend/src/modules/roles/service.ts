@@ -2,11 +2,19 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import type { RolesDTO, CreateRolesDTO, UpdateRolesDTO, RolesQuery, RolesPaginated } from './types'
 import type { RolesSockets } from './sockets'
+import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 const CACHE_TTL = 300
 
 export class RolesService {
   private sockets: RolesSockets = {}
+  private auditPort: AuditPort | null = null
+
+  // SC-05: el connector roles-auditlog inyecta el puerto. Los cambios de roles/permisos
+  // son operaciones sensibles → dejan rastro en el audit log.
+  setAuditDeps(auditPort: AuditPort): void {
+    this.auditPort = auditPort
+  }
 
   constructor(
     private readonly repo: RepositoryAdapter<RolesDTO>,
@@ -97,6 +105,10 @@ export class RolesService {
     const item = await this.repo.create(payload as any)
     await this.sockets.onRolesCreated?.(item)
     await this.cache.delete(`roles:list:${dto.hotelId}`)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: item.hotelId, userId: currentUser.id, action: 'role.create',
+      entity: 'role', entityId: item.id, detail: `Rol "${(item as any).name ?? ''}" creado`,
+    })
     return item
   }
 
@@ -119,6 +131,11 @@ export class RolesService {
     if (!item) throw new NotFoundError('Rol no encontrado')
     await this.sockets.onRolesUpdated?.(item)
     await this.cache.delete(`roles:list:${existing.hotelId}`)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'role.update',
+      entity: 'role', entityId: id,
+      detail: dto.permissions ? 'Permisos del rol modificados' : 'Rol actualizado',
+    })
     return item
   }
 
@@ -136,5 +153,9 @@ export class RolesService {
     if (!deleted) throw new NotFoundError('Rol no encontrado')
     await this.sockets.onRolesDeleted?.(id)
     await this.cache.delete(`roles:list:${existing.hotelId}`)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'role.delete',
+      entity: 'role', entityId: id, detail: `Rol "${(existing as any).name ?? ''}" eliminado`,
+    })
   }
 }
