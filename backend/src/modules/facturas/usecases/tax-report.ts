@@ -31,7 +31,10 @@ export async function generateTaxReport(
   const fromDate = from || new Date().toISOString().slice(0, 7) + '-01'
   const toDate = to || new Date().toISOString().split('T')[0]
 
-  const all = await repo.findMany(hotelFilter)
+  // SOLO type:'invoice'. La tabla `invoices` mezcla 3 tipos de documento y un `type:'payment'`
+  // (rastro de un cobro) nace con status:'paid' — sumarlo contaría cada cobro dos veces e
+  // inflaría el reporte fiscal que va a la DGII. Mismo filtro que stats.ts.
+  const all = await repo.findMany({ ...hotelFilter, type: 'invoice' })
 
   const paid = all.filter(inv =>
     inv.status === 'paid' &&

@@ -7,7 +7,8 @@ export class ProcedenciaStrategy implements ReportStrategy {
     const guestById = new Map(ctx.guests.map((g: any) => [g.id, g]))
     const byCountry: Record<string, { guests: number; revenue: number }> = {}
     const byChannel: Record<string, { count: number; revenue: number }> = {}
-    for (const r of ctx.reservations) {
+    // Solo reservas que generaron ingreso: una cancelada no aporta revenue por país/canal.
+    for (const r of ctx.revenueReservations) {
       const g = guestById.get(r.guestId)
       const country = g?.nationality || g?.country || 'Desconocido'
       if (!byCountry[country]) byCountry[country] = { guests: 0, revenue: 0 }

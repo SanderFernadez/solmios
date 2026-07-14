@@ -8,13 +8,18 @@ import { BalanceStrategy } from '../strategies/balance'
 import type { ReportContext } from '../strategies/types'
 
 function ctx(over: Partial<ReportContext> = {}): ReportContext {
-  return {
+  const base = {
     from: '2026-07-01', to: '2026-07-31',
     totalRooms: 10, taxRate: 0,
-    reservations: [], rooms: [], guests: [],
-    expenses: [], payments: [], folioCharges: [], blocks: [], hotel: {},
+    reservations: [] as any[], rooms: [], guests: [],
+    expenses: [], payments: [], folioCharges: [], folios: [] as any[], blocks: [], hotel: {},
     ...over,
   }
+  const revenueReservations = over.revenueReservations
+    ?? base.reservations.filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show')
+  const folioToReservation = over.folioToReservation
+    ?? new Map<string, string>(base.folios.filter((f: any) => f.reservationId).map((f: any) => [f.id, f.reservationId]))
+  return { ...base, revenueReservations, folioToReservation }
 }
 
 const pago = (amount: number, over: any = {}) => ({ type: 'charge', status: 'completed', method: 'cash', amount, ...over })
@@ -93,15 +98,28 @@ describe('BalanceStrategy — devengado como referencia', () => {
     expect(r.resultado).toBe(7510)
   })
 
-  it('los extras del folio suman al devengado, pero el pago del folio no', () => {
+  it('los extras del folio suman al devengado, pero el pago del folio no (A3: link por folio)', () => {
+    // El cargo se vincula a la reserva por su folio, NO por charge.reservationId (columna
+    // inexistente en folio_charges). Sin folios que mapeen, los extras quedan fuera — que era el bug.
     const r = strategy.execute(ctx({
       reservations: [{ id: 'r1', totalAmount: 1000 }],
+      folios: [{ id: 'f1', reservationId: 'r1' }],
       folioCharges: [
-        { reservationId: 'r1', category: 'minibar', amount: 50, quantity: 2 },
-        { reservationId: 'r1', category: 'payment', kind: 'payment', amount: -300, quantity: 1 },
+        { folioId: 'f1', category: 'minibar', amount: 50, quantity: 2 },
+        { folioId: 'f1', category: 'payment', kind: 'payment', amount: -300, quantity: 1 },
       ],
     }))
 
-    expect(r.facturado).toBe(1100)
+    expect(r.facturado).toBe(1100)  // 1000 room + 100 minibar; el pago -300 NO resta
+  })
+
+  it('A1: una reserva cancelada no suma al facturado', () => {
+    const r = strategy.execute(ctx({
+      reservations: [
+        { id: 'r1', totalAmount: 1000, status: 'checked_out' },
+        { id: 'r2', totalAmount: 5000, status: 'cancelled' },
+      ],
+    }))
+    expect(r.facturado).toBe(1000)  // la cancelada de 5000 no cuenta
   })
 })

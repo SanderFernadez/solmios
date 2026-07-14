@@ -8,13 +8,19 @@ import { FacturacionStrategy } from '../strategies/facturacion'
 import type { ReportContext } from '../strategies/types'
 
 function ctx(over: Partial<ReportContext> = {}): ReportContext {
-  return {
+  const base = {
     from: '2026-07-01', to: '2026-07-31',
     totalRooms: 10, taxRate: 0,
-    reservations: [], rooms: [], guests: [],
-    expenses: [], payments: [], folioCharges: [], blocks: [], hotel: {},
+    reservations: [] as any[], rooms: [], guests: [],
+    expenses: [], payments: [], folioCharges: [], folios: [] as any[], blocks: [], hotel: {},
     ...over,
   }
+  // Derivados igual que report-queries.ts, salvo que el test los fije explícito.
+  const revenueReservations = over.revenueReservations
+    ?? base.reservations.filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show')
+  const folioToReservation = over.folioToReservation
+    ?? new Map<string, string>(base.folios.filter((f: any) => f.reservationId).map((f: any) => [f.id, f.reservationId]))
+  return { ...base, revenueReservations, folioToReservation }
 }
 
 const reserva = (totalAmount: number, over: any = {}) => ({ id: 'r1', totalAmount, checkIn: '2026-07-05', ...over })

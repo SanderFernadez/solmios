@@ -27,10 +27,12 @@ export class BalanceStrategy implements ReportStrategy {
     const egresosPendientes = sumExpenses(ctx.expenses.filter((e: any) => !isPaid(e)))
 
     // Devengado, solo como referencia: lo que el hotel tiene derecho a cobrar en el período.
-    const roomRevenue = ctx.reservations.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
-    const reservationIds = new Set(ctx.reservations.map((r: any) => r.id))
+    // revenueReservations excluye cancelled/no_show; el cargo se vincula por su folio (folio_charges
+    // no trae reservationId).
+    const roomRevenue = ctx.revenueReservations.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
+    const reservationIds = new Set(ctx.revenueReservations.map((r: any) => r.id))
     const extrasRevenue = ctx.folioCharges
-      .filter((c: any) => reservationIds.has(c.reservationId) && c.category !== 'room' && c.kind !== 'payment')
+      .filter((c: any) => reservationIds.has(ctx.folioToReservation.get(c.folioId)) && c.category !== 'room' && c.kind !== 'payment')
       .reduce((s: number, c: any) => s + Number(c.amount || 0) * Number(c.quantity || 1), 0)
     const facturado = roomRevenue + extrasRevenue
 

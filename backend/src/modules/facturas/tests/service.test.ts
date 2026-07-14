@@ -32,8 +32,9 @@ function makeRepo(overrides: Partial<RepositoryAdapter<FacturasDTO>> = {}): Repo
 }
 
 const enrichDeps = { guest: emptyRepo(), reservation: emptyRepo(), room: emptyRepo() }
-// Users mock: el usuario u1 pertenece al hotel h1.
-const userRepo = { ...emptyRepo(), findById: async () => ({ id: 'u1', hotelId: 'h1' }) } as RepositoryAdapter<any>
+// Users mock: el usuario u1 pertenece al hotel h1. (findById para ownership, findOne para
+// resolve-hotel en el alta.)
+const userRepo = { ...emptyRepo(), findById: async () => ({ id: 'u1', hotelId: 'h1' }), findOne: async () => ({ id: 'u1', hotelId: 'h1' }) } as RepositoryAdapter<any>
 
 describe('FacturasService', () => {
   describe('getById', () => {
@@ -84,6 +85,27 @@ describe('FacturasService', () => {
       expect(result.taxes).toBe(18)
       expect(result.amount).toBe(118)
       expect(result.invoiceNumber).toMatch(/^INV-\d{4}-/)
+    })
+
+    it('C1 IDOR: un hotel_admin que manda hotelId ajeno factura en SU hotel, no en el ajeno', async () => {
+      const configRepo = { ...emptyRepo(), findOne: async () => null }
+      // Capturamos lo que se persiste para ver con qué hotelId se creó.
+      let persisted: any = null
+      const repo = makeRepo({ create: async (d: any) => { persisted = { id: 'x', ...d }; return persisted } })
+      const service = new FacturasService(repo, configRepo as any, enrichDeps, userRepo, log, silentCache, mockAuth, emptyRepo())
+      // user (u1) es hotel_admin de h1; intenta facturar en 'hotel-victima'.
+      await service.create({ hotelId: 'hotel-victima', amount: 666, type: 'invoice' } as any, user)
+      expect(persisted.hotelId).toBe('h1')        // se forzó su propio hotel
+      expect(persisted.hotelId).not.toBe('hotel-victima')
+    })
+
+    it('C1: super_admin SÍ puede facturar en un hotel arbitrario', async () => {
+      const configRepo = { ...emptyRepo(), findOne: async () => null }
+      let persisted: any = null
+      const repo = makeRepo({ create: async (d: any) => { persisted = { id: 'x', ...d }; return persisted } })
+      const service = new FacturasService(repo, configRepo as any, enrichDeps, userRepo, log, silentCache, mockAuth, emptyRepo())
+      await service.create({ hotelId: 'cualquier-hotel', amount: 100, type: 'invoice' } as any, { id: 'sa', role: 'super_admin' })
+      expect(persisted.hotelId).toBe('cualquier-hotel')
     })
   })
 

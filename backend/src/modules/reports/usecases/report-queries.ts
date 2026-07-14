@@ -36,10 +36,15 @@ export class ReportQueries {
       this.orm.findMany('Rooms', { hotelId }) as Promise<any[]>,
       this.orm.findMany('Guests', { hotelId }) as Promise<any[]>,
     ])
-    const totalRevenue = res.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
-    const byChannel = res.reduce((a: any, r: any) => { const c = r.channel || 'direct'; a[c] = (a[c] || 0) + r.totalAmount; return a }, {})
-    const channelBookings = res.reduce((a: any, r: any) => { const c = r.channel || 'direct'; a[c] = (a[c] || 0) + 1; return a }, {})
-    const dailyRevenue = Object.entries(res.reduce((a: any, r: any) => { const d = String(r.checkIn).slice(0, 10); if (d) a[d] = (a[d] || 0) + r.totalAmount; return a }, {})).map(([date, value]) => ({ date, value }))
+    // Una reserva cancelada o no-show NUNCA fue plata: excluirla de todo agregado de dinero.
+    // Contarla inflaba el revenue del dashboard (medido: +75%). Los CONTEOS (totalReservations,
+    // canceledReservations) sí van sobre `res` completo. `byChannel` y `channelBookings` comparten
+    // esta base para que el ADR (revenue/bookings) sea consistente.
+    const revenueRes = res.filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show')
+    const totalRevenue = revenueRes.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
+    const byChannel = revenueRes.reduce((a: any, r: any) => { const c = r.channel || 'direct'; a[c] = (a[c] || 0) + r.totalAmount; return a }, {})
+    const channelBookings = revenueRes.reduce((a: any, r: any) => { const c = r.channel || 'direct'; a[c] = (a[c] || 0) + 1; return a }, {})
+    const dailyRevenue = Object.entries(revenueRes.reduce((a: any, r: any) => { const d = String(r.checkIn).slice(0, 10); if (d) a[d] = (a[d] || 0) + r.totalAmount; return a }, {})).map(([date, value]) => ({ date, value }))
     const occupancyByType = (() => {
       const types: Record<string, { total: number; occupied: number }> = {}
       for (const r of rooms) { if (!types[r.type]) types[r.type] = { total: 0, occupied: 0 }; types[r.type].total++; if (r.status === 'occupied') types[r.type].occupied++ }
@@ -63,7 +68,7 @@ export class ReportQueries {
     const type = String(q.type || 'facturacion')
     const to = String(q.to || new Date().toISOString().slice(0, 10))
     const from = String(q.from || new Date(Date.now() - 30 * MS_PER_DAY).toISOString().slice(0, 10))
-    const [reservations, rooms, guests, expenses, payments, folioCharges, blocks, hotel] = await Promise.all([
+    const [reservations, rooms, guests, expenses, payments, folioCharges, folios, blocks, hotel] = await Promise.all([
       this.orm.findMany('Reservations', { hotelId }) as Promise<any[]>,
       this.orm.findMany('Rooms', { hotelId }) as Promise<any[]>,
       this.orm.findMany('Guests', { hotelId }) as Promise<any[]>,
@@ -71,6 +76,7 @@ export class ReportQueries {
       // El modelo se registra en singular (`orm.define('Payment', ...)`), no 'Payments'.
       this.orm.findMany('Payment', { hotelId }) as Promise<any[]>,
       this.orm.findMany('FolioCharges', { hotelId }) as Promise<any[]>,
+      this.orm.findMany('Folios', { hotelId }) as Promise<any[]>,
       this.orm.findMany('RoomBlocks', { hotelId }) as Promise<any[]>,
       (await this.orm.findMany('Hotels', { id: hotelId }))[0] as any,
     ])
@@ -82,9 +88,15 @@ export class ReportQueries {
     const expensesInRange = inDateRange(expenses, from, to, expenseDate)
     const paymentsInRange = inDateRange(payments, from, to, paymentDate)
 
+    const revenueReservations = inRange.filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show')
+    // Un folio_charge NO tiene columna `reservationId` (la tabla física no la trae); el vínculo
+    // cargo→reserva pasa por su folio. Este mapa lo resuelve una vez para las strategies.
+    const folioToReservation = new Map<string, string>(
+      folios.filter((f: any) => f.reservationId).map((f: any) => [f.id, f.reservationId]),
+    )
     const ctx: ReportContext = {
-      from, to, totalRooms, taxRate, reservations: inRange, rooms, guests,
-      expenses: expensesInRange, payments: paymentsInRange, folioCharges, blocks, hotel,
+      from, to, totalRooms, taxRate, reservations: inRange, revenueReservations, rooms, guests,
+      expenses: expensesInRange, payments: paymentsInRange, folioCharges, folios, folioToReservation, blocks, hotel,
     }
     const strategy = reportStrategies.find(s => s.type === type)
     if (!strategy) throw new Error(`Tipo de reporte desconocido: ${type}`)

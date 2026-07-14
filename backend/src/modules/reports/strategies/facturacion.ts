@@ -6,11 +6,14 @@ export class FacturacionStrategy implements ReportStrategy {
   readonly type = 'facturacion'
 
   execute(ctx: ReportContext) {
-    const roomRevenue = ctx.reservations.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
-    const reservationIds = new Set(ctx.reservations.map((r: any) => r.id))
-    const charges = ctx.folioCharges.filter((c: any) => reservationIds.has(c.reservationId))
+    // revenueReservations excluye cancelled/no_show (nunca fueron plata).
+    const roomRevenue = ctx.revenueReservations.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
+    const reservationIds = new Set(ctx.revenueReservations.map((r: any) => r.id))
+    // El cargo se vincula a la reserva por su folio, NO por c.reservationId (columna que no existe
+    // en folio_charges → antes daba undefined y TODOS los extras quedaban fuera del facturado).
+    const charges = ctx.folioCharges.filter((c: any) => reservationIds.has(ctx.folioToReservation.get(c.folioId)) && c.kind !== 'payment')
     const extrasRevenue = charges.filter((c: any) => c.category !== 'room' && c.createdAt >= ctx.from).reduce((s: number, c: any) => s + (c.amount * (c.quantity || 1)), 0)
-    const commissionOTA = ctx.reservations.reduce((s: number, r: any) => s + (r.commissionAmount || 0), 0)
+    const commissionOTA = ctx.revenueReservations.reduce((s: number, r: any) => s + (r.commissionAmount || 0), 0)
     const taxes = Math.round(roomRevenue * ctx.taxRate)
 
     // Devengado: lo que el hotel tiene derecho a cobrar en el período.
@@ -32,7 +35,7 @@ export class FacturacionStrategy implements ReportStrategy {
       taxes, commissionOTA, total: facturado, net,
       facturado, ingresado, porCobrar,
       gastos, resultado: net - gastos,
-      daily: bucketByDay(ctx.reservations, ctx.from, ctx.to, (r: any) => r.totalAmount || 0),
+      daily: bucketByDay(ctx.revenueReservations, ctx.from, ctx.to, (r: any) => r.totalAmount || 0),
     }
   }
 }

@@ -7,6 +7,7 @@ import type { FacturasDTO, CreateFacturasDTO, UpdateFacturasDTO, PayFacturasDTO,
 import type { FacturasSockets } from './sockets'
 import { enrichInvoice, assertOwnership, hotelFilterFor, type EnrichDeps } from './usecases/billing'
 import { getTaxRateForUser } from './usecases/tax-rate'
+import { resolveInvoiceHotelId } from './usecases/resolve-hotel'
 import { creditNoteFlow } from './usecases/credit-note-flow'
 import { createInvoice } from './usecases/create-invoice'
 import { getStatsForUser } from './usecases/stats'
@@ -83,7 +84,8 @@ export class FacturasService {
   }
 
   async create(dto: CreateFacturasDTO, user: CurrentUser): Promise<FacturasDTO> {
-    const hotelId = dto.hotelId ?? user.hotelId ?? ''
+    // Ownership en el ALTA (ver resolveInvoiceHotelId): el hotel sale del JWT, no de dto.hotelId.
+    const hotelId = await resolveInvoiceHotelId(this.userRepo, user, dto.hotelId)
     const { item, invoiceNumber, amount, currency } = await createInvoice(
       { repo: this.repo, configRepo: this.configRepo, itemRepo: this.itemRepo, logger: this.logger },
       dto,

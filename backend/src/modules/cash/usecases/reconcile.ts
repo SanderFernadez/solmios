@@ -1,26 +1,37 @@
 // cash/usecases/reconcile.ts — Arqueo de turno (funciones puras, sin side-effects).
-// Expected = opening + income − expense. Difference = counted − expected.
+//
+// El arqueo compara el EFECTIVO esperado contra lo contado en el cajón. Un cobro con tarjeta o
+// transferencia NUNCA entra al cajón, así que NO puede contar para el `expected`: si lo hiciera,
+// un cobro con tarjeta de 500 haría que el arqueo reclame 500 de más y acuse al cajero de un
+// faltante que no existe. Por eso `expected` suma solo `method === 'cash'` (un movimiento sin
+// method se asume efectivo). `income`/`expense` siguen siendo los totales de TODOS los métodos,
+// para información; el desglose por método va en `byMethod`.
 
 import type { CashMovementDTO, CashShiftDTO, ReconcileResult } from '../types'
 
-/** Suma ingresos/egresos y desglose por método de una lista de movimientos. Pura. */
+const isCash = (m: CashMovementDTO): boolean => (m.method || 'cash') === 'cash'
+
+/** Suma ingresos/egresos (todos los métodos) + solo-efectivo + desglose por método. Pura. */
 export function summarizeMovements(movs: CashMovementDTO[]) {
-  let income = 0, expense = 0
+  let income = 0, expense = 0, cashIncome = 0, cashExpense = 0
   const byMethod: Record<string, number> = {}
   for (const m of movs) {
-    if (m.type === 'income' || m.type === 'opening') income += m.amount
-    else if (m.type === 'expense' || m.type === 'closing') expense += m.amount
+    const isIn = m.type === 'income' || m.type === 'opening'
+    const isOut = m.type === 'expense' || m.type === 'closing'
+    if (isIn) { income += m.amount; if (isCash(m)) cashIncome += m.amount }
+    else if (isOut) { expense += m.amount; if (isCash(m)) cashExpense += m.amount }
     const mk = m.method || 'cash'
     byMethod[mk] = (byMethod[mk] || 0) + m.amount
   }
-  return { income, expense, byMethod }
+  return { income, expense, cashIncome, cashExpense, byMethod }
 }
 
 /** Calcula el arqueo completo de un turno. Pura. */
 export function reconcileShift(shift: CashShiftDTO, movs: CashMovementDTO[]): ReconcileResult {
-  const { income, expense, byMethod } = summarizeMovements(movs)
+  const { income, expense, cashIncome, cashExpense, byMethod } = summarizeMovements(movs)
   const opening = shift.openingAmount || 0
-  const expected = opening + income - expense
+  // Solo el efectivo está en el cajón físico → solo el efectivo forma el esperado.
+  const expected = opening + cashIncome - cashExpense
   const counted = shift.countedAmount ?? 0
   return { shift, opening, income, expense, expected, counted, difference: counted - expected, byMethod }
 }
