@@ -14,6 +14,10 @@ export const MantenimientoModel: ModelDefinition = {
     priority: { type: 'string', default: "medium" },
     status: { type: 'string', default: "open" },
     assignedTo: { type: 'string' },
+    /** Proveedor EXTERNO al que se le pasó el ticket (maintenance_providers.id),
+     *  cuando no lo arregla el equipo interno. Es alternativo a `assignedTo`.
+     *  Sin declararlo acá el ORM lo descarta en silencio (anti-patrón mem 1805). */
+    providerId: { type: 'string' },
     /** Quién marcó el ticket como resuelto (users.id). Lo setea `complete()` con el
      *  usuario del token. Puede diferir de `assignedTo` (otro técnico lo cierra). */
     resolvedBy: { type: 'string' },
@@ -53,7 +57,32 @@ export const MantenimientoAuditModel: ModelDefinition = {
   timestamps: false,
 }
 
+/**
+ * SERVICIOS EXTERNOS: a quién llama el hotel cuando algo no se arregla adentro
+ * (plomero, electricista, técnico de A/C). Un ticket se le puede asignar a uno de
+ * estos en vez de a un técnico interno (`maintenance.providerId`).
+ *
+ * `active` es una baja LÓGICA: un ticket viejo puede seguir apuntando al proveedor,
+ * y borrarlo de verdad dejaría el historial señalando a la nada.
+ */
+export const MaintenanceProviderModel: ModelDefinition = {
+  table: 'maintenance_providers',
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    name: { type: 'string', required: true },
+    /** Rubro: plomería, electricidad, refrigeración… */
+    specialty: { type: 'string' },
+    phone: { type: 'string' },
+    email: { type: 'string' },
+    notes: { type: 'text' },
+    active: { type: 'boolean', default: true },
+  },
+  timestamps: true,
+}
+
 export function registerMantenimientoModels(orm: ORM): void {
   orm.define('Maintenance', MantenimientoModel)
   orm.define('MaintenanceAudit', MantenimientoAuditModel)
+  orm.define('MaintenanceProvider', MaintenanceProviderModel)
 }

@@ -4,7 +4,7 @@ import type { StorageService } from 'arckode-framework/modules/storage'
 import { registerMantenimientoModels } from './model'
 import { MantenimientoService } from './service'
 import { MantenimientoController } from './controller'
-import type { MantenimientoDTO, MaintenanceAuditDTO } from './types'
+import type { MantenimientoDTO, MaintenanceAuditDTO, MaintenanceProviderDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { MantenimientoService }
@@ -38,13 +38,24 @@ export function MantenimientoModule(opts?: { storage?: StorageService }) {
       const auditRepo = new OrmRepository<MaintenanceAuditDTO>(orm, 'MaintenanceAudit')
       const log = logger.child('mantenimiento')
       const userRepo = new OrmRepository<any>(orm, 'Users')
-      const service = new MantenimientoService(repo, log, cache, userRepo, auth, auditRepo, opts?.storage)
+      // Catálogo de servicios externos (plomero, electricista…). Vive en este
+      // módulo para que el ticket pueda referenciarlo sin necesitar un connector.
+      const providerRepo = new OrmRepository<MaintenanceProviderDTO>(orm, 'MaintenanceProvider')
+      const service = new MantenimientoService(repo, log, cache, userRepo, auth, auditRepo, opts?.storage, providerRepo)
       const controller = new MantenimientoController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
 
       router.get('/api/mantenimiento/stats', guard('maintenance', 'view'), (req) => controller.stats(req))
+
+      // ─── Servicios externos (proveedores) ───────────────────────────────
+      // ⚠️ ANTES de `/:id`: si van después, `:id` captura "proveedores" y estas
+      // rutas nunca se alcanzan.
+      router.get('/api/mantenimiento/proveedores', guard('maintenance', 'view'), (req) => controller.listProviders(req))
+      router.post('/api/mantenimiento/proveedores', guard('maintenance', 'create'), (req) => controller.storeProvider(req))
+      router.put('/api/mantenimiento/proveedores/:id', guard('maintenance', 'edit'), (req) => controller.updateProvider(req))
+      router.delete('/api/mantenimiento/proveedores/:id', guard('maintenance', 'delete'), (req) => controller.destroyProvider(req))
 
       router.get('/api/mantenimiento', guard('maintenance', 'view'), (req) => controller.index(req))
       router.get('/api/mantenimiento/:id', guard('maintenance', 'view'), (req) => controller.show(req))

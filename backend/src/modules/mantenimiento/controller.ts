@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from '../../shared/validators/validate-body'
 import type { MantenimientoService } from './service'
-import { CreateMantenimientoSchema, UpdateMantenimientoSchema, AddNotesSchema, CompleteMantenimientoSchema, AddPhotoMantenimientoSchema } from './validators/schema'
+import { CreateMantenimientoSchema, UpdateMantenimientoSchema, AddNotesSchema, CompleteMantenimientoSchema, AddPhotoMantenimientoSchema, CreateProviderSchema, UpdateProviderSchema } from './validators/schema'
 
 export class MantenimientoController {
   constructor(
@@ -98,5 +98,28 @@ export class MantenimientoController {
     if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
     const stats = await this.service.getStats(hotelId)
     return { status: 200, body: stats }
+  }
+
+  // ─── Servicios externos (proveedores) ─────────────────────────────────────
+  // El hotel carga acá a quién llama cuando algo no se arregla adentro. Después,
+  // al crear o editar un ticket, se le puede asignar uno en vez de un técnico.
+
+  async listProviders(req: HttpRequest) {
+    return { status: 200, body: { data: await this.service.listProviders(req.user as any) } }
+  }
+
+  async storeProvider(req: HttpRequest) {
+    const data = validateSchema(CreateProviderSchema, req.body ?? {}) as any
+    return { status: 201, body: { data: await this.service.createProvider(data, req.user as any) } }
+  }
+
+  async updateProvider(req: HttpRequest) {
+    const data = validateSchema(UpdateProviderSchema, req.body ?? {}) as any
+    return { status: 200, body: { data: await this.service.updateProvider(req.params.id, data, req.user as any) } }
+  }
+
+  async destroyProvider(req: HttpRequest) {
+    await this.service.removeProvider(req.params.id, req.user as any)
+    return { status: 204, body: null }
   }
 }

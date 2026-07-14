@@ -4,17 +4,21 @@ import { NotFoundError } from 'arckode-framework'
 import type {
   MantenimientoDTO, CreateMantenimientoDTO, UpdateMantenimientoDTO,
   MantenimientoQuery, MantenimientoPaginated,
-  MaintenanceAuditDTO,
+  MaintenanceAuditDTO, MaintenanceProviderDTO,
 } from './types'
 import type { MantenimientoSockets } from './sockets'
 import type { StorageService, FileUpload } from 'arckode-framework/modules/storage'
-import { TimingsUseCase, assertTransition } from './usecases/timings'
+import { TimingsUseCase } from './usecases/timings'
 import { AuditUseCase } from './usecases/audit'
 import { PhotosUseCase } from './usecases/photos'
 import { StatsUseCase } from './usecases/stats'
 import { ListUseCase } from './usecases/list'
-import { assertOwnership } from './helpers'
+import { CrudUseCase } from './usecases/crud'
+import { ProvidersUseCase } from './usecases/providers'
+import { findOwnedTicket } from './helpers'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
+
+type User = { id: string; role: string; hotelId?: string }
 
 export class MantenimientoService {
   private sockets: MantenimientoSockets = {}
@@ -26,6 +30,8 @@ export class MantenimientoService {
   private readonly photos: PhotosUseCase
   private readonly statsUc: StatsUseCase
   private readonly listUc: ListUseCase
+  private readonly crud: CrudUseCase
+  private readonly providers: ProvidersUseCase
 
   constructor(
     private readonly repo: RepositoryAdapter<MantenimientoDTO>,
@@ -35,6 +41,8 @@ export class MantenimientoService {
     private readonly auth: Auth,
     private readonly auditRepo: RepositoryAdapter<MaintenanceAuditDTO>,
     storage?: StorageService,
+    /** Catálogo de servicios externos (plomero, electricista…). */
+    providerRepo?: RepositoryAdapter<MaintenanceProviderDTO>,
   ) {
     this.timings = new TimingsUseCase(
       repo,
@@ -49,6 +57,20 @@ export class MantenimientoService {
     )
     this.statsUc = new StatsUseCase(repo)
     this.listUc = new ListUseCase(repo, cache, userRepo)
+    this.crud = new CrudUseCase(repo, this.audit, {
+      onCreated: (i) => this.sockets.onMantenimientoCreated?.(i) ?? Promise.resolve(),
+      onUpdated: (i) => this.sockets.onMantenimientoUpdated?.(i) ?? Promise.resolve(),
+      onDeleted: (id) => this.sockets.onMantenimientoDeleted?.(id) ?? Promise.resolve(),
+      onAssigned: (i) => this.sockets.onMantenimientoAssigned?.(i) ?? Promise.resolve(),
+      invalidate: (h) => this.listUc.invalidate(h),
+      auditDelete: (existing, user, id) =>
+        auditSafely(this.auditPort, this.logger, {
+          hotelId: existing.hotelId, userId: user.id, action: 'maintenance.delete',
+          entity: 'maintenance_order', entityId: id,
+          detail: `Ticket "${existing.title}" (${existing.status ?? 'sin estado'}) eliminado · Hab. ${existing.roomNumber ?? '—'}`,
+        }),
+    })
+    this.providers = new ProvidersUseCase(providerRepo as RepositoryAdapter<MaintenanceProviderDTO>)
   }
 
   /** Conecta el audit log. Lo inyecta el connector `mantenimiento-auditlog`. */
@@ -65,37 +87,16 @@ export class MantenimientoService {
     }
   }
 
-  private async assertOrderAccess(id: string, user: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
-    const item = await this.repo.findById(id)
-    if (!item) throw new NotFoundError('Ticket de mantenimiento no encontrado')
-    assertOwnership(item.hotelId, user)
-    return item
+  private assertOrderAccess(id: string, user: User): Promise<MantenimientoDTO> {
+    return findOwnedTicket(this.repo, id, user)
   }
 
-  private async logUpdateAudit(
-    id: string, hotelId: string, userId: string,
-    existing: MantenimientoDTO, dto: UpdateMantenimientoDTO,
-  ): Promise<void> {
-    if (dto.status && dto.status !== existing.status) {
-      assertTransition(existing.status, dto.status)
-      await this.audit.log(id, hotelId, userId, 'status_change', existing.status, dto.status)
-    }
-    if (dto.assignedTo !== undefined && dto.assignedTo !== existing.assignedTo) {
-      await this.audit.log(id, hotelId, userId, 'assignment', existing.assignedTo ?? null, dto.assignedTo ?? null)
-    }
-    if (dto.priority && dto.priority !== existing.priority) {
-      await this.audit.log(id, hotelId, userId, 'priority_change', existing.priority ?? null, dto.priority)
-    }
-  }
-
-  // ─── CRUD ─────────────────────────────────────────────
-  async list(query: MantenimientoQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoPaginated> {
-    return this.listUc.list(query, currentUser)
-  }
-
-  async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
-    return this.assertOrderAccess(id, currentUser)
-  }
+  // ─── CRUD (delegado: el gate rechaza un service > 200 líneas) ──────────
+  async list(query: MantenimientoQuery, u: User): Promise<MantenimientoPaginated> { return this.listUc.list(query, u) }
+  async getById(id: string, u: User): Promise<MantenimientoDTO> { return this.assertOrderAccess(id, u) }
+  async create(dto: CreateMantenimientoDTO, u: User): Promise<MantenimientoDTO> { return this.crud.create(dto, u) }
+  async update(id: string, dto: UpdateMantenimientoDTO, u: User): Promise<MantenimientoDTO> { return this.crud.update(id, dto, u) }
+  async delete(id: string, u: User): Promise<void> { return this.crud.delete(id, u) }
 
   /**
    * Tickets abiertos desde una tarea de limpieza. Lo usa el conector
@@ -106,47 +107,11 @@ export class MantenimientoService {
     return this.repo.findMany({ hotelId, sourceTaskId })
   }
 
-  async create(dto: CreateMantenimientoDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
-    if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) {
-      throw new NotFoundError('No autorizado para crear en otro hotel')
-    }
-    // `reportedBy` sale del token, nunca del cliente: es trazabilidad de quién reportó.
-    const item = await this.repo.create({ ...dto, reportedBy: currentUser.id } as any)
-    await this.audit.log(item.id, dto.hotelId, currentUser.id, 'created', null, item.title)
-    await this.sockets.onMantenimientoCreated?.(item)
-    // Si nace ya asignado a un técnico, avisale a esa persona.
-    if (item.assignedTo) await this.sockets.onMantenimientoAssigned?.(item)
-    await this.listUc.invalidate(dto.hotelId)
-    return item
-  }
-
-  async update(id: string, dto: UpdateMantenimientoDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {
-    const existing = await this.assertOrderAccess(id, currentUser)
-    await this.logUpdateAudit(id, existing.hotelId, currentUser.id, existing, dto)
-    const item = await this.repo.update(id, dto as any)
-    if (!item) throw new NotFoundError('Ticket de mantenimiento no encontrado')
-    await this.sockets.onMantenimientoUpdated?.(item)
-    // Aviso dirigido: solo cuando el ticket cambia de técnico, no en cada edición.
-    if (dto.assignedTo && dto.assignedTo !== existing.assignedTo) {
-      await this.sockets.onMantenimientoAssigned?.(item)
-    }
-    await this.listUc.invalidate(existing.hotelId)
-    return item
-  }
-
-  async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
-    const existing = await this.assertOrderAccess(id, currentUser)
-    await this.repo.delete(id)
-    await this.sockets.onMantenimientoDeleted?.(id)
-    await this.listUc.invalidate(existing.hotelId)
-    // El historial del ticket (maintenance_audit) muere con el ticket: sin esta entrada,
-    // borrar una orden de trabajo no deja rastro de QUIÉN la hizo desaparecer.
-    await auditSafely(this.auditPort, this.logger, {
-      hotelId: existing.hotelId, userId: currentUser.id, action: 'maintenance.delete',
-      entity: 'maintenance_order', entityId: id,
-      detail: `Ticket "${existing.title}" (${existing.status ?? 'sin estado'}) eliminado · Hab. ${existing.roomNumber ?? '—'}`,
-    })
-  }
+  // ─── Servicios externos (proveedores) ─────────────────
+  async listProviders(u: User) { return this.providers.list(u) }
+  async createProvider(dto: Partial<MaintenanceProviderDTO>, u: User) { return this.providers.create(dto, u) }
+  async updateProvider(id: string, dto: Partial<MaintenanceProviderDTO>, u: User) { return this.providers.update(id, dto, u) }
+  async removeProvider(id: string, u: User) { return this.providers.remove(id, u) }
 
   // ─── Timer ────────────────────────────────────────────
   async start(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<MantenimientoDTO> {

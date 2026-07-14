@@ -24,6 +24,8 @@ export interface MantenimientoDTO {
   priority?: MaintenancePriority
   status?: MaintenanceStatus
   assignedTo?: string
+  /** Proveedor EXTERNO al que se le pasó el ticket. Alternativo a `assignedTo`. */
+  providerId?: string
   /** users.id de quien cerró el ticket (lo setea `complete()`). */
   resolvedBy?: string
   estimatedCost?: number
@@ -50,6 +52,8 @@ export interface CreateMantenimientoDTO {
   priority?: MaintenancePriority
   status?: MaintenanceStatus
   assignedTo?: string
+  /** Proveedor EXTERNO al que se le pasó el ticket. Alternativo a `assignedTo`. */
+  providerId?: string
   estimatedCost?: number
   reportedDate?: string
   resolvedDate?: string
@@ -70,6 +74,8 @@ export interface UpdateMantenimientoDTO {
   priority?: MaintenancePriority
   status?: MaintenanceStatus
   assignedTo?: string
+  /** Proveedor EXTERNO al que se le pasó el ticket. Alternativo a `assignedTo`. */
+  providerId?: string
   estimatedCost?: number
   reportedDate?: string
   resolvedDate?: string
@@ -124,4 +130,24 @@ export interface CreateMaintenanceAuditDTO {
   action: MaintenanceAuditAction
   oldValue?: string | null
   newValue?: string | null
+}
+
+/**
+ * SERVICIO EXTERNO: a quién llama el hotel cuando algo no se arregla adentro
+ * (plomero, electricista, técnico de A/C). Un ticket se le asigna a uno de estos
+ * en vez de a un técnico interno.
+ */
+export interface MaintenanceProviderDTO {
+  id: string
+  hotelId: string
+  name: string
+  /** Rubro: plomería, electricidad, refrigeración… */
+  specialty?: string
+  phone?: string
+  email?: string
+  notes?: string
+  /** Baja lógica: los tickets viejos siguen apuntando al proveedor dado de baja. */
+  active?: boolean
+  createdAt?: string
+  updatedAt?: string
 }

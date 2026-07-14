@@ -18,6 +18,8 @@ export const CreateMantenimientoSchema: Record<string, ValidationRule> = {
   priority: { type: 'string' as const, enum: PRIORITY_ENUM },
   status: { type: 'string' as const, enum: STATUS_ENUM },
   assignedTo: { type: 'string' as const, max: 100 },
+  // Proveedor EXTERNO: alternativo a `assignedTo` (el ticket lo resuelve alguien de afuera).
+  providerId: { type: 'string' as const, max: 100 },
   estimatedCost: { type: 'number' as const, min: 0 },
   reportedDate: { type: 'string' as const },
   resolvedDate: { type: 'string' as const },
@@ -35,6 +37,8 @@ export const UpdateMantenimientoSchema: Record<string, ValidationRule> = {
   priority: { type: 'string' as const, enum: PRIORITY_ENUM },
   status: { type: 'string' as const, enum: STATUS_ENUM },
   assignedTo: { type: 'string' as const, max: 100 },
+  // Proveedor EXTERNO: alternativo a `assignedTo` (el ticket lo resuelve alguien de afuera).
+  providerId: { type: 'string' as const, max: 100 },
   estimatedCost: { type: 'number' as const, min: 0 },
   reportedDate: { type: 'string' as const },
   resolvedDate: { type: 'string' as const },
@@ -54,4 +58,23 @@ export const CompleteMantenimientoSchema: Record<string, ValidationRule> = {
 
 export const AddPhotoMantenimientoSchema: Record<string, ValidationRule> = {
   type: { type: 'string' as const, enum: PHOTO_TYPE_ENUM },
+}
+
+/** Alta de un SERVICIO EXTERNO (proveedor/contratista). */
+export const CreateProviderSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, required: true, min: MIN_TEXT_LENGTH, max: 120 },
+  specialty: { type: 'string' as const, max: 80 },
+  phone: { type: 'string' as const, max: 40 },
+  email: { type: 'string' as const, max: 120 },
+  notes: { type: 'text' as const, max: NOTES_MAX_LENGTH },
+}
+
+/** Edición: todo opcional (merge parcial). */
+export const UpdateProviderSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, min: MIN_TEXT_LENGTH, max: 120 },
+  specialty: { type: 'string' as const, max: 80 },
+  phone: { type: 'string' as const, max: 40 },
+  email: { type: 'string' as const, max: 120 },
+  notes: { type: 'text' as const, max: NOTES_MAX_LENGTH },
+  active: { type: 'boolean' as const },
 }
