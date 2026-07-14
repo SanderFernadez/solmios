@@ -2,8 +2,8 @@
 
 change_name: payment-gateways
 created: 2026-07-14
-status: proposed
-current_phase: design
+status: in-progress
+current_phase: apply
 parent_changes: [seguridad-multitenant]
 trigger: >
   El dueño pidió que la integración de pagos tenga página propia y soporte varios proveedores
@@ -30,27 +30,27 @@ sprints:
 
   pg-1-credenciales:
     title: Credenciales de pasarela por hotel, cifradas
-    status: proposed
+    status: done
     tasks_total: 3
-    tasks_done: 0
+    tasks_done: 3
     priority: high
     manual_h: 11
     ia_h: 7
 
   pg-2-puerto:
     title: Puerto PaymentGateway + registry
-    status: proposed
+    status: done
     tasks_total: 2
-    tasks_done: 0
+    tasks_done: 2
     priority: high
     manual_h: 7
     ia_h: 5
 
   pg-3-stripe-migracion:
     title: Adapter Stripe + migración de los 3 flujos
-    status: proposed
+    status: done
     tasks_total: 5
-    tasks_done: 0
+    tasks_done: 5
     priority: critical
     manual_h: 19
     ia_h: 12
@@ -68,9 +68,9 @@ sprints:
 
   pg-5-pagina:
     title: Página /panel/pagos
-    status: proposed
+    status: done
     tasks_total: 5
-    tasks_done: 0
+    tasks_done: 5
     priority: high
     manual_h: 15
     ia_h: 9
@@ -96,7 +96,7 @@ sprints:
 total_manual_h: 103
 total_ia_h: 66
 total_tasks: 29
-tasks_done: 0
+tasks_done: 15
 
 hallazgos:
   H1:
@@ -136,6 +136,27 @@ proveedores:
   azul_pp:  { webhook: NO, confirmacion: return-hash-sha512, refund: NO, sdk_node: no, estado: por-hacer }
   azul_ws:  { webhook: NO, confirmacion: sincrona, refund: si, mtls: si, estado: fuera-de-scope }
   cardnet:  { estado: BLOQUEADO, motivo: "doc pública expone 2 plataformas con auth incompatibles (Ztrans vs tokenización); requiere confirmar contrato real con el ejecutivo de cuenta" }
+
+implementado_2026_07_14:
+  - "PG-1 ✅ payment_gateways cifrada AES-256-GCM; la API nunca devuelve un secreto"
+  - "PG-2 ✅ puerto PaymentGateway + RefundableGateway + registry con fallback a env (con warning)"
+  - "PG-3 ✅ los 3 flujos (payments, bookingengine, payment-requests) resuelven la pasarela DEL HOTEL"
+  - "PG-5 ✅ /panel/pagos; la card de Stripe salió de settings (había 2 fuentes de verdad)"
+  - "Gates: 1122/1122 tests · arckode analyze VÁLIDO · vue-tsc 0 · build ✅"
+  - "PENDIENTE: PG-0 (rawBody) — sin él los webhooks devuelven 503 y NINGUNA firma valida"
+  - "PENDIENTE: PG-4 (settlePayment idempotente + tabla payment_events ya creada, sin usar aún)"
+  - "PENDIENTE: PG-6 (8 enums de método de pago) y PG-7 (adapters PayPal/Azul)"
+  - "NO verificado: smoke HTTP end-to-end en local (puerto 3000 ocupado por otro proyecto)"
+
+hallazgo_nuevo:
+  H7:
+    sev: alta
+    file: "settings/index.vue (eliminado) + hoteles/controller.ts:78"
+    tipo: exposicion-de-secreto
+    desc: >
+      ConfigService.get('stripe_config') devolvía el JSON entero al navegador: la secretKey de
+      Stripe viajaba EN CLARO a cualquiera con permiso de ver settings. El endpoint genérico
+      /api/configuracion/:key sigue existiendo y devuelve cualquier key sin filtrar secretos.
 
 verificado_en_prod:
   - "2026-07-14: STRIPE_SECRET_KEY / PUBLISHABLE / WEBHOOK_SECRET = todas VACÍAS en el .env"
