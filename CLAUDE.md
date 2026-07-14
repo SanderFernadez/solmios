@@ -242,7 +242,7 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 | Integración | Estado |
 |-------------|--------|
 | Channex (Channel Manager) | ✅ Conectado |
-| Stripe (pagos) | ✅ Links + deposits + checkout sessions |
+| Stripe (pagos) | ✅ Links + deposits + checkout sessions · ⚠️ **webhooks rotos en prod** (firma, ver deudas) |
 | TTLock (cerraduras) | ✅ Auto-generate/send/delete codes |
 | Email (SMTP/Resend) | ✅ Auto-messages |
 | WhatsApp Business API | ⚠️ Requiere creds Meta |
@@ -258,11 +258,12 @@ cd frontend && npx vue-tsc --noEmit && bun run build
 | Anti-patrón ORM | Ver sección "Anti-patrón ORM" en Reglas Backend. 6 casos fixeados. Vigilar al tocar modelos. |
 | WhatsApp | Requiere creds Meta Business. |
 | Facturación electrónica | Stub, sin conector fiscal real. |
-| NCF se emite siempre | `create()` asigna `NCF-{número}` a toda factura aunque `electronic_invoicing.enabled` sea false. `usecases/fiscal.ts` (`buildNcf`) existe pero no está cableado. Por eso el guard de borrado usa la config, no la presencia del campo `ncf`. |
-| Search de facturas | `?search=` filtra la página ya traída, no la tabla: un match en la página 3 no aparece buscando desde la 1. Mover a WHERE del repo. |
-| Impuesto duplicado en UI | `billing/index.vue` recalcula la tasa sumando `taxes` activos; el backend hace su propio cálculo (`taxRateFor`). Dos fuentes de verdad → el preview puede diferir del total emitido. |
-| Email de factura por `prompt()` | `emailInvoice()` pide el destinatario con `window.prompt`, sin validar el formato. |
+| **Webhook Stripe roto** | `constructEvent` verifica la firma sobre los bytes crudos, pero el framework hace `JSON.parse(raw)` en `readBody` (kernel/http/server.ts) y **descarta el rawBody**. Los controllers caen a `Buffer.from(JSON.stringify(req.body))`, que no reproduce los bytes → firma inválida → 400 para TODO evento. Con `STRIPE_WEBHOOK_SECRET` seteado, **ningún cobro por Stripe se asienta** en prod. Fix es en el framework (exponer `req.rawBody`), no local. Ver mem `stripe-webhook-rawbody-broken`. |
+| `electronic_invoicing.enabled` inalcanzable | `fiscal.ts` y `deletable.ts` leen `config.value.enabled`, pero el `value` seedeado es un **array** de autoridades (`[{code:'DGII',...}]`), no `{enabled:true}` → `.enabled` siempre undefined. El fix DT-03 (NCF null si !enabled) funciona, pero como `enabled` nunca es true, NCF **nunca** se emite aunque la UI muestre DGII conectado. |
+| Search de facturas | `?search=` trae todas las filas del hotel y filtra en JS (ya no solo la página: un match en cualquier página aparece). Correcto pero O(n) con enrich por fila. Deuda de PERF, no de correctitud. Mover a WHERE del repo. |
 | PC-4 Service Worker | Desactivado (commit `c79e8f9`, rompía logout). Reactivar requiere network-first + bypass `/api/*`. |
+| Sobrepago de factura sin tope | `PayFacturasSchema.amount` no tiene max: un pago > total marca `paid` y asienta el excedente completo en `payments`, sin vuelto ni alerta. Descuadra caja vs saldo. |
+| Depósitos = ledger desconectado | `createDeposit/refund/release` no tocan Stripe ni la tabla `payments` (son flags de estado, `stripePaymentId=''`). Un depósito "held" no es plata capturada; su "refund" no devuelve dinero real. La garantía no está integrada al flujo de cobro. |
 
 ## Settlement Flow (checkout)
 ```
