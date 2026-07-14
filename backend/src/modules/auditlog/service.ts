@@ -51,15 +51,12 @@ export class AuditlogService {
     if (query?.type !== undefined) filters.type = query.type
     if (query?.category !== undefined) filters.category = query.category
 
-    const cacheKey = `auditlog:list:${page}:${limit}:${JSON.stringify(filters)}`
-    const cached = await this.cache.get<AuditlogPaginated>(cacheKey)
-    if (cached) return cached
-
+    // El listado NO se cachea: es un log forense y la frescura es un requisito, no un lujo — un
+    // admin revisando un incidente tiene que ver las entradas al instante, no con delay. (Antes se
+    // cacheaba con TTL 60_000: ese arg son SEGUNDOS → 16,6 h, y la invalidación por clave fija
+    // `auditlog:list` nunca matcheaba las claves reales `auditlog:list:${page}:...`.)
     const result = await this.repo.paginate(filters, { limit, offset })
-    const paginated: AuditlogPaginated = { data: result.data, total: result.total }
-
-    await this.cache.set(cacheKey, paginated, 60_000)
-    return paginated
+    return { data: result.data, total: result.total }
   }
 
   async getById(id: string, user: AuditlogUser): Promise<AuditlogDTO> {
@@ -76,8 +73,6 @@ export class AuditlogService {
     this.logger.info('Creando auditlog')
     const item = await this.repo.create(dto as Omit<AuditlogDTO, 'id'>)
     await this.sockets.onAuditlogCreated?.(item)
-    // Invalidar solo el listado, no todo el cache
-    await this.cache.delete('auditlog:list')
     return item
   }
 }
