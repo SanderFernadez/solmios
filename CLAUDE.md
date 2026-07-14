@@ -37,6 +37,7 @@ bun run migrate-db.ts
 | `scripts/seed-default-roles.ts` | Roles por defecto (permisos) | ✅ |
 | `scripts/create-plans-table.ts` | Tabla `plans` (SaaS subscriptions) | ✅ |
 | `scripts/add-user-type-{pg,}.ts` | ALTER `users.userType` | ✅ `addColumnIfMissing` |
+| `scripts/drop-users-role-check.ts` | Elimina el CHECK vestigial de `users.role` (bloqueaba roles custom y 'housekeeper'/'supervisor' → 500). SQLite recrea la tabla sin el CHECK; PG imprime el `ALTER DROP CONSTRAINT`. **Correr en prod PG.** | ✅ (no-op si no hay CHECK) |
 | ~~`scripts/patch-orm-postgres.sh`~~ | **ELIMINADO** — el remap camelCase↔lowercase se upstreameó al framework 1.6.2 (nativo en `kernel/db/orm-utils.ts`, "Remap lowercase → camelCase"). Sin postinstall. | — |
 
 ### Portabilidad Postgres
