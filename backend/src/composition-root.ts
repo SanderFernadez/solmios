@@ -33,7 +33,9 @@ config.load(process.env)
 const PORT = config.get<number>('PORT')
 
 // ─── Infraestructura ───────────────────────────────────────────────────────
-const logger = new Logger('info')
+// Logger(source, level): el 1er arg es el NOMBRE del componente, no el nivel. Antes decía
+// `new Logger('info')` → todos los logs salían con source="info" en vez de identificar el origen.
+const logger = new Logger('solmios', 'info')
 // Multi-motor: DATABASE_URL -> Postgres, sino SQLite (DB_PATH). Migración SQLite→Postgres.
 const DATABASE_URL = process.env.DATABASE_URL
 const db = DATABASE_URL
