@@ -47,7 +47,9 @@ export class TtlockController {
       await this.service.connect(id, data)
       return { status: 200, body: { success: true, connected: true } }
     } catch (e: any) {
-      return { status: 502, body: { error: e.message || 'No se pudo conectar con TTLock' } }
+      // 400, no 502: credenciales mal cargadas son un error del input. Además nginx/Cloudflare
+      // reescriben el body de un 502 y el usuario perdía el motivo real del rechazo.
+      return { status: 400, body: { error: e.message || 'No se pudo conectar con TTLock' } }
     }
   }
 
