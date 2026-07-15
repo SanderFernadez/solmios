@@ -273,58 +273,51 @@
     <Transition name="modal-fade">
     <div v-if="showViewModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-        <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
-          <h3 class="text-xl font-black text-navy tracking-tight">Detalle de tarea</h3>
+        <div class="flex items-start justify-between px-7 pt-7 pb-4 shrink-0">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <h3 class="text-xl font-black text-navy tracking-tight">Habitación {{ selectedTask.roomNumber }}</h3>
+              <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="statusClass(selectedTask.status)">
+                {{ statusLabel(selectedTask.status) }}
+              </span>
+            </div>
+            <div class="text-xs text-text-muted mt-1 font-semibold">
+              {{ selectedTask.type }}<span v-if="selectedTask.floor"> · Piso {{ selectedTask.floor }}</span>
+            </div>
+          </div>
           <button @click="showViewModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <div class="px-7 pb-7 overflow-y-auto flex-1">
-          <div class="grid grid-cols-2 gap-x-4 gap-y-5 pb-6 border-b border-border">
-            <div>
-              <div class="text-[11px] text-text-muted uppercase tracking-wide">Habitación</div>
-              <div class="text-lg font-black text-navy mt-1">{{ selectedTask.roomNumber }}</div>
-            </div>
-            <div>
-              <div class="text-[11px] text-text-muted uppercase tracking-wide">Tipo de tarea</div>
-              <div class="text-sm font-bold text-navy mt-1">{{ selectedTask.type }}</div>
-            </div>
-            <div>
-              <div class="text-[11px] text-text-muted uppercase tracking-wide">Piso</div>
-              <div class="text-sm font-bold text-navy mt-1">{{ selectedTask.floor }}</div>
-            </div>
-            <div>
-              <div class="text-[11px] text-text-muted uppercase tracking-wide">Estado</div>
-              <div class="mt-1.5">
-                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="statusClass(selectedTask.status)">
-                  {{ statusLabel(selectedTask.status) }}
-                </span>
+        <div class="px-7 pb-7 overflow-y-auto flex-1 space-y-4">
+          <!-- Asignación y tiempos -->
+          <div class="rounded-2xl border border-border p-4">
+            <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide font-bold">Asignada a</div>
+                <div class="text-sm font-bold text-navy mt-0.5">{{ selectedTask.assignedTo }}</div>
               </div>
-            </div>
-            <div>
-              <div class="text-[11px] text-text-muted uppercase tracking-wide">Asignado a</div>
-              <div class="text-sm font-bold text-navy mt-1">{{ selectedTask.assignedTo }}</div>
-            </div>
-            <div>
-              <div class="text-[11px] text-text-muted uppercase tracking-wide">Duración</div>
-              <div class="text-sm font-bold text-cyan mt-1">{{ taskTime(selectedTask) || '—' }}</div>
-            </div>
-            <div>
-              <div class="text-[11px] text-text-muted uppercase tracking-wide">Inicio</div>
-              <div class="text-sm text-navy mt-1">{{ selectedTask.startTime ? formatTime(selectedTask.startTime) : '—' }}</div>
-            </div>
-            <div>
-              <div class="text-[11px] text-text-muted uppercase tracking-wide">Fin</div>
-              <div class="text-sm text-navy mt-1">{{ selectedTask.endTime ? formatTime(selectedTask.endTime) : '—' }}</div>
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide font-bold">Duración</div>
+                <div class="text-sm font-bold text-cyan mt-0.5">{{ taskTime(selectedTask) || '—' }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide font-bold">Inicio</div>
+                <div class="text-sm text-navy mt-0.5">{{ selectedTask.startTime ? formatTime(selectedTask.startTime) : '—' }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-text-muted uppercase tracking-wide font-bold">Fin</div>
+                <div class="text-sm text-navy mt-0.5">{{ selectedTask.endTime ? formatTime(selectedTask.endTime) : '—' }}</div>
+              </div>
             </div>
           </div>
 
-          <!-- Calificación del supervisor (1–10) -->
-          <div v-if="selectedTask.rating != null" class="py-5 border-b border-border">
-            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Calificación del supervisor</div>
-            <div class="flex items-center flex-wrap gap-3">
+          <!-- Revisión del supervisor: puntos + quién aprobó + nota, todo junto -->
+          <div v-if="selectedTask.rating != null || selectedTask.supervisorName || selectedTask.supervisorNote" class="rounded-2xl border border-border p-4">
+            <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-3">Revisión del supervisor</div>
+            <div v-if="selectedTask.rating != null" class="flex items-center flex-wrap gap-3 mb-3">
               <div class="text-2xl font-black text-navy leading-none tabular-nums">
-                {{ selectedTask.rating }}<span class="text-base font-bold text-text-muted"> / 10</span>
+                {{ selectedTask.rating }}<span class="text-sm font-bold text-text-muted"> / 10</span>
               </div>
               <div class="flex items-center gap-0.5 text-lg leading-none">
                 <span v-for="n in 10" :key="n" :class="n <= (selectedTask.rating || 0) ? 'text-cyan' : 'text-border'">★</span>
@@ -333,37 +326,18 @@
                 {{ ratingLabel(selectedTask.rating) }}
               </span>
             </div>
-          </div>
-
-          <!-- Revisión del supervisor: quién aprobó, cuándo estuvo y su nota -->
-          <div v-if="selectedTask.supervisorName || selectedTask.supervisorNote" class="py-5 border-b border-border">
-            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Revisión del supervisor</div>
-            <div v-if="selectedTask.supervisorName" class="flex items-center flex-wrap gap-2 mb-2">
+            <div v-if="selectedTask.supervisorName" class="flex items-center flex-wrap gap-2 text-sm">
               <svg class="w-4 h-4 text-teal shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span class="text-sm font-bold text-navy">Aprobada por {{ selectedTask.supervisorName }}</span>
+              <span class="font-bold text-navy">Aprobada por {{ selectedTask.supervisorName }}</span>
               <span v-if="selectedTask.supOnSiteTime" class="text-[11px] text-text-muted">· en la habitación {{ formatTime(selectedTask.supOnSiteTime) }}</span>
             </div>
-            <div v-if="selectedTask.supervisorNote" class="text-sm text-text-secondary bg-surface rounded-lg px-3 py-2 italic">"{{ selectedTask.supervisorNote }}"</div>
+            <div v-if="selectedTask.supervisorNote" class="text-sm text-text-secondary bg-surface rounded-lg px-3 py-2 italic mt-2">"{{ selectedTask.supervisorNote }}"</div>
           </div>
 
-          <div v-if="selectedTask.notes" class="py-5 border-b border-border">
-            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas / comentarios</div>
-            <div class="text-sm text-text-secondary">{{ selectedTask.notes }}</div>
-          </div>
-
-          <div v-if="selectedTask.items.length" class="py-5 border-b border-border">
-            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Items de limpieza</div>
-            <div class="flex flex-wrap gap-1.5">
-              <span v-for="item in selectedTask.items" :key="item" class="text-xs font-medium text-text-secondary px-3 py-1 rounded-full border border-border">
-                {{ item }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Fotos -->
-          <div class="pt-5">
-            <div class="flex items-center justify-between mb-2.5">
-              <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide">Evidencia fotográfica</div>
+          <!-- Evidencia: fotos + video juntos -->
+          <div class="rounded-2xl border border-border p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide">Evidencia</div>
               <label class="text-[11px] font-bold text-cyan cursor-pointer hover:underline">
                 + Subir foto
                 <input type="file" accept="image/*" class="hidden" @change="onPhotoSelect" />
@@ -378,25 +352,40 @@
                 >✕</button>
               </div>
             </div>
-            <div v-else class="text-xs text-text-muted py-1">Sin fotos.</div>
+            <div v-else class="text-xs text-text-muted">Sin fotos.</div>
+
+            <div v-if="selectedTask.video" class="mt-4 pt-4 border-t border-border">
+              <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2">Video</div>
+              <div v-if="videoLoading" class="flex items-center gap-2 text-xs text-text-muted py-3">
+                <span class="w-3.5 h-3.5 rounded-full border-2 border-border border-t-cyan animate-spin"></span>
+                Cargando video…
+              </div>
+              <div v-else-if="videoError" class="text-xs text-red py-3">{{ videoError }}</div>
+              <video
+                v-else-if="videoUrl"
+                :src="videoUrl"
+                controls
+                playsinline
+                preload="metadata"
+                class="w-full rounded-xl border border-border bg-black max-h-80"
+              ></video>
+            </div>
           </div>
 
-          <!-- Video de evidencia de fin (modo `video`) -->
-          <div v-if="selectedTask.video" class="pt-5 mt-5 border-t border-border">
-            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Video de evidencia</div>
-            <div v-if="videoLoading" class="flex items-center gap-2 text-xs text-text-muted py-3">
-              <span class="w-3.5 h-3.5 rounded-full border-2 border-border border-t-cyan animate-spin"></span>
-              Cargando video…
+          <!-- Checklist -->
+          <div v-if="selectedTask.items.length" class="rounded-2xl border border-border p-4">
+            <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Items de limpieza</div>
+            <div class="flex flex-wrap gap-1.5">
+              <span v-for="item in selectedTask.items" :key="item" class="text-xs font-medium text-text-secondary px-3 py-1 rounded-full border border-border">
+                {{ item }}
+              </span>
             </div>
-            <div v-else-if="videoError" class="text-xs text-red py-3">{{ videoError }}</div>
-            <video
-              v-else-if="videoUrl"
-              :src="videoUrl"
-              controls
-              playsinline
-              preload="metadata"
-              class="w-full rounded-xl border border-border bg-black max-h-80"
-            ></video>
+          </div>
+
+          <!-- Notas -->
+          <div v-if="selectedTask.notes" class="rounded-2xl border border-border p-4">
+            <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas / comentarios</div>
+            <div class="text-sm text-text-secondary">{{ selectedTask.notes }}</div>
           </div>
         </div>
         <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
