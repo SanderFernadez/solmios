@@ -6,7 +6,7 @@
       "name": "managerhotel-backend",
       "dependencies": {
         "@whiskeysockets/baileys": "^7.0.0-rc13",
-        "arckode-framework": "^1.6.2",
+        "arckode-framework": "^1.6.3",
         "nodemailer": "^9.0.1",
         "pg": "^8.22.0",
         "puppeteer": "^25.3.0",
@@ -138,7 +138,7 @@
 
     "ansi-styles": ["ansi-styles@6.2.3", "", {}, "sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg=="],
 
-    "arckode-framework": ["arckode-framework@1.6.2", "", { "dependencies": { "jsonwebtoken": "^9.0.0" }, "peerDependencies": { "mysql2": ">=3.0.0", "nodemailer": ">=6.0.0", "pg": "^8.0.0", "redis": "" }, "optionalPeers": ["mysql2", "nodemailer", "pg", "redis"], "bin": { "arckode": "bin/arckode.js" } }, "sha512-PJm8ecAjF8fz/nk0+nSsPey/8s1FfZ/ad0ps6hBoOfWUaBx2NjDaGtLRLXesr66A/dd/W+ahnZu2QytRrcgUew=="],
+    "arckode-framework": ["arckode-framework@1.6.3", "", { "dependencies": { "jsonwebtoken": "^9.0.0" }, "peerDependencies": { "mysql2": ">=3.0.0", "nodemailer": ">=6.0.0", "pg": "^8.0.0", "redis": "" }, "optionalPeers": ["mysql2", "nodemailer", "pg", "redis"], "bin": { "arckode": "bin/arckode.js" } }, "sha512-EDSHEvmh/S09DkABTOGpE/QFZAVjAmf6DouKHdIotr0P/WM/62JfAnIOT0pac4zi+YI0u+1ix5tQIQJZQcEaIA=="],
 
     "async-mutex": ["async-mutex@0.5.0", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-1A94B18jkJ3DYq284ohPxoXbfTA5HsQ7/Mf4DEhcyLx3Bz27Rh59iScbB6EPiP+B+joue6YCxcMXSbFC1tZKwA=="],
 

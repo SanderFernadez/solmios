@@ -21,7 +21,7 @@
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc13",
     "pg": "^8.22.0",
-    "arckode-framework": "^1.6.2",
+    "arckode-framework": "^1.6.3",
     "nodemailer": "^9.0.1",
     "puppeteer": "^25.3.0",
     "resend": "^6.16.0",
