@@ -635,7 +635,7 @@
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
               <span class="w-5 h-5 text-navy/50" v-html="ICON_GLOBE"></span>
-              <div><div class="text-sm font-bold text-navy">Channex</div><div class="text-[10px] text-text-muted">Sincronización con OTAs</div></div>
+              <div><div class="text-sm font-bold text-navy">Channel Manager</div><div class="text-[10px] text-text-muted">Sincronización con OTAs</div></div>
             </div>
             <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-teal/10 text-teal">Conectado</span>
           </div>

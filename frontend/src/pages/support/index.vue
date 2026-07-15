@@ -169,7 +169,7 @@
                 <select v-model="newTicket.category" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                   <option value="">Seleccionar categoría</option>
                   <option value="Técnico">Técnico</option>
-                  <option value="Integraciones">Integraciones (Channex, OTAs)</option>
+                  <option value="Integraciones">Integraciones (Canales, OTAs)</option>
                   <option value="Facturación">Facturación Electrónica</option>
                   <option value="Configuración">Configuración del Sistema</option>
                   <option value="Capacitación">Capacitación / Ayuda</option>

@@ -71,7 +71,7 @@
             </div>
             <div class="space-y-3 pb-4 border-b border-border">
               <div>
-                <span class="text-[10px] text-text-muted uppercase tracking-wide">ID en Channex</span>
+                <span class="text-[10px] text-text-muted uppercase tracking-wide">ID de propiedad</span>
                 <p class="text-xs font-mono text-navy mt-0.5 truncate">{{ configDialog.id }}</p>
               </div>
               <div>
@@ -97,14 +97,14 @@
       </Transition>
     </Teleport>
 
-    <!-- Channex iFrame -->
+    <!-- Conectar canales (iFrame) -->
     <Teleport to="body">
       <Transition name="modal-fade">
         <div v-if="showIframe" class="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
           <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
             <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 class="text-lg font-black text-navy">Channex — Conectar Canales</h2>
+              <h2 class="text-lg font-black text-navy">Conectar Canales</h2>
               <button @click="showIframe = false; loadStatus()" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">Cerrar y Refrescar</button>
             </div>
             <iframe v-if="iframeUrl" :src="iframeUrl" class="flex-1 w-full" frameborder="0" />
@@ -335,11 +335,11 @@ async function confirmConnect() {
   try {
     const groups = await ChannelService.groups(hotelId.value)
     const groupId = groups[0]?.id
-    if (!groupId) { connectError.value = 'No hay grupos configurados en Channex'; return }
+    if (!groupId) { connectError.value = 'No hay grupos de canales configurados'; return }
 
     const st = status.value || await ChannelService.status(hotelId.value)
     const propertyId = st.channexPropertyId
-    if (!propertyId) { connectError.value = 'No hay propiedad configurada en Channex'; return }
+    if (!propertyId) { connectError.value = 'No hay propiedad de canales configurada'; return }
 
     const result = await ChannelService.connect({
       hotelId: hotelId.value,
