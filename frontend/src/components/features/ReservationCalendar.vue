@@ -1,5 +1,14 @@
 <template>
   <div :class="embedded ? '' : 'min-h-screen bg-surface'">
+    <!-- Barra de operaciones rápidas (arriba del todo, imponente — solo vista completa) -->
+    <div v-if="!embedded" class="bg-gradient-to-r from-navy to-navy/90 px-6 py-2.5 flex items-center gap-2 flex-wrap shadow-md">
+      <span class="text-[10px] font-black text-white/45 uppercase tracking-widest mr-1">Operaciones</span>
+      <button v-for="t in QUICK_TOOLBAR" :key="t.key" @click="openQuick(t.key)" :title="t.label"
+        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold transition-all cursor-pointer ring-1 ring-white/10 hover:ring-white/30">
+        <span class="text-base leading-none">{{ t.icon }}</span>
+        <span>{{ t.label }}</span>
+      </button>
+    </div>
     <div class="bg-white border-b border-border px-6 py-4" :class="embedded ? 'rounded-t-2xl border-x border-t' : ''">
       <div class="max-w-full mx-auto flex items-center justify-between gap-3 flex-wrap">
         <div v-if="!embedded">
@@ -23,14 +32,6 @@
             <option :value="7">7 días</option><option :value="14">14 días</option><option :value="30">30 días</option>
           </select>
         </div>
-      </div>
-      <!-- Accesos rápidos: centro de operaciones del planning (solo vista completa) -->
-      <div v-if="!embedded" class="mt-3 flex items-center gap-2 flex-wrap">
-        <span class="text-[10px] font-black text-text-muted uppercase mr-1 tracking-wide">Accesos rápidos:</span>
-        <button v-for="qa in QUICK_ACTIONS" :key="qa.to" @click="router.push(qa.to)" :title="qa.label"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white text-xs font-bold text-navy hover:bg-navy hover:text-white hover:border-navy transition-all cursor-pointer">
-          <span>{{ qa.icon }}</span><span class="hidden sm:inline">{{ qa.label }}</span>
-        </button>
       </div>
     </div>
 
@@ -628,6 +629,85 @@
       </div>
     </Teleport>
 
+    <!-- Modal de operaciones rápidas del planning -->
+    <Teleport to="body">
+      <div v-if="quickAction" class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" @click.self="quickAction = null">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[82vh] flex flex-col">
+          <div class="flex items-center justify-between p-4 border-b border-border shrink-0">
+            <h3 class="text-sm font-black text-navy">
+              <span v-if="quickAction === 'arrivals'">🚪 Llegadas y Salidas de hoy</span>
+              <span v-else-if="quickAction === 'search'">🔍 Buscar reserva</span>
+              <span v-else-if="quickAction === 'locks'">🔐 Cerraduras</span>
+              <span v-else-if="quickAction === 'sync'">🔄 Sincronizar canales</span>
+            </h3>
+            <button @click="quickAction = null" class="text-text-muted hover:text-coral font-bold cursor-pointer">✕</button>
+          </div>
+          <div class="p-4 overflow-y-auto flex-1 space-y-3">
+            <!-- Llegadas / Salidas -->
+            <template v-if="quickAction === 'arrivals'">
+              <div class="text-[10px] font-black text-teal uppercase mb-1">Llegadas de hoy ({{ arrivalsToday.length }})</div>
+              <div v-if="!arrivalsToday.length" class="text-xs text-text-muted">Sin llegadas para hoy.</div>
+              <div v-for="r in arrivalsToday" :key="r.id" class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border">
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
+                  <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }} · {{ (Number(r.adults) || 0) + (Number(r.children) || 0) }}P</div>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button @click="quickOpenRes(r)" class="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-bold text-navy hover:bg-surface cursor-pointer">Ver</button>
+                  <button v-if="r.status !== 'checked_in'" @click="quickCheckin(r)" class="px-2.5 py-1.5 rounded-lg bg-teal text-white text-[11px] font-bold hover:brightness-95 cursor-pointer">Check-in</button>
+                  <span v-else class="px-2.5 py-1.5 rounded-lg bg-teal/10 text-teal text-[11px] font-bold">✓ Ingresado</span>
+                </div>
+              </div>
+              <div class="text-[10px] font-black text-gray-500 uppercase mb-1 pt-2 border-t border-border">Salidas de hoy ({{ departuresToday.length }})</div>
+              <div v-if="!departuresToday.length" class="text-xs text-text-muted">Sin salidas para hoy.</div>
+              <div v-for="r in departuresToday" :key="r.id" class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border">
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
+                  <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }}</div>
+                </div>
+                <button @click="quickOpenRes(r)" class="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-bold text-navy hover:bg-surface cursor-pointer shrink-0">Ver / Check-out</button>
+              </div>
+            </template>
+            <!-- Buscar -->
+            <template v-else-if="quickAction === 'search'">
+              <input v-model="quickSearch" type="text" placeholder="Nombre, localizador o habitación…" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
+              <div v-if="quickSearch && !quickSearchResults.length" class="text-xs text-text-muted">Sin resultados.</div>
+              <div v-for="r in quickSearchResults" :key="r.id" @click="quickOpenRes(r)" class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border hover:border-navy cursor-pointer">
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
+                  <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }} · {{ String(r.checkIn || '').slice(0, 10) }} → {{ String(r.checkOut || '').slice(0, 10) }}</div>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface text-text-muted shrink-0">{{ (ST[r.status] && ST[r.status].l) || r.status }}</span>
+              </div>
+            </template>
+            <!-- Cerraduras -->
+            <template v-else-if="quickAction === 'locks'">
+              <div v-if="!locksList.length" class="text-xs text-text-muted">No hay reservas activas con código de cerradura. Los códigos se generan al hacer el check-in cuando el hotel usa cerraduras inteligentes.</div>
+              <div v-for="r in locksList" :key="r.id" class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border">
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
+                  <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }}</div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="font-mono text-sm font-black text-navy tracking-widest px-2 py-1 rounded-lg bg-surface">🔐 {{ r.lockCode }}</span>
+                  <button @click="quickOpenRes(r)" class="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-bold text-navy hover:bg-surface cursor-pointer">Ver</button>
+                </div>
+              </div>
+            </template>
+            <!-- Sincronizar -->
+            <template v-else-if="quickAction === 'sync'">
+              <p class="text-xs text-text-muted">Fuerza la sincronización con los canales y OTAs conectados, y trae al calendario las reservas nuevas.</p>
+              <button @click="doSync" :disabled="syncing" class="w-full py-2.5 rounded-xl bg-navy text-white text-sm font-black hover:bg-navy/90 disabled:opacity-50 cursor-pointer">{{ syncing ? 'Sincronizando…' : '🔄 Sincronizar ahora' }}</button>
+              <div v-if="syncMsg" class="text-xs font-bold text-center" :class="syncMsg.includes('No se pudo') ? 'text-coral' : 'text-teal'">{{ syncMsg }}</div>
+            </template>
+          </div>
+          <div class="p-3 border-t border-border shrink-0 flex justify-end">
+            <button @click="goAdvanced(quickAdvancedPath)" class="px-4 py-2 rounded-xl bg-surface text-navy text-xs font-black hover:bg-navy hover:text-white transition-colors cursor-pointer">Avanzado → página completa</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Editor de colores de canales (#138) -->
     <Teleport to="body">
       <div v-if="colorPicker" class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" @click.self="colorPicker = false">
@@ -671,6 +751,7 @@ import { ReservationService, type RescheduleQuote, type RescheduleCommitInput } 
 import { GuestService } from '@/services/Guest.service'
 import { HotelService } from '@/services/Hotel.service'
 import { ConfigService } from '@/services/Platform.service'
+import { ChannelService } from '@/services/Channel.service'
 import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -802,17 +883,81 @@ const LEGEND_CH = [
   { k: 'airbnb', l: 'Airbnb', c: 'bg-coral', t: 'text-coral' },
 ]
 
-// Accesos rápidos del planning (centro de operaciones): navegan a las secciones ligadas
-// a reservas. Solo en la vista completa (no en el widget embebido del home).
-const QUICK_ACTIONS = [
-  { icon: '📅', label: 'Reservas', to: '/panel/reservations' },
-  { icon: '🚪', label: 'Check-in / out', to: '/panel/checkin' },
-  { icon: '👥', label: 'Huéspedes', to: '/panel/guests' },
-  { icon: '🔐', label: 'Cerraduras', to: '/panel/cerraduras' },
-  { icon: '🔄', label: 'Canales', to: '/panel/channel-manager' },
-  { icon: '🛏️', label: 'Habitaciones', to: '/panel/rooms' },
-  { icon: '💳', label: 'Facturación', to: '/panel/billing' },
-]
+// ── Barra de operaciones rápidas del planning (centro de operaciones) ─────
+// Cada acción abre un modal para resolver en el momento; con "Avanzado →" a la página.
+// Solo en la vista completa (no en el widget embebido del home).
+const QUICK_TOOLBAR = [
+  { key: 'arrivals', icon: '🚪', label: 'Llegadas / Salidas' },
+  { key: 'search', icon: '🔍', label: 'Buscar' },
+  { key: 'locks', icon: '🔐', label: 'Cerraduras' },
+  { key: 'sync', icon: '🔄', label: 'Sincronizar' },
+] as const
+type QuickKey = typeof QUICK_TOOLBAR[number]['key']
+const quickAction = ref<QuickKey | null>(null)
+const quickSearch = ref('')
+const syncing = ref(false)
+const syncMsg = ref('')
+function todayStr(): string { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+function openQuick(key: QuickKey) { quickAction.value = key; quickSearch.value = ''; syncMsg.value = '' }
+function goAdvanced(path: string) { quickAction.value = null; router.push(path) }
+
+// Llegadas de hoy pendientes de check-in (checkIn = hoy, no canceladas ni ya salidas).
+const arrivalsToday = computed(() => {
+  const t = todayStr()
+  return planReservas.value.filter((r: any) => String(r.checkIn || '').slice(0, 10) === t && r.status !== 'cancelled' && r.status !== 'checked_out')
+})
+// Salidas de hoy (checkOut = hoy, no canceladas).
+const departuresToday = computed(() => {
+  const t = todayStr()
+  return planReservas.value.filter((r: any) => String(r.checkOut || '').slice(0, 10) === t && r.status !== 'cancelled')
+})
+// Buscar por nombre / localizador / habitación / id corto.
+const quickSearchResults = computed(() => {
+  const q = quickSearch.value.trim().toLowerCase()
+  if (!q) return []
+  return planReservas.value.filter((r: any) =>
+    String(r.guestName || '').toLowerCase().includes(q) ||
+    String(r.externalLocator || '').toLowerCase().includes(q) ||
+    String(r.roomNumber || '').toLowerCase().includes(q) ||
+    String(r.id || '').slice(-6).toLowerCase().includes(q),
+  ).slice(0, 25)
+})
+// Reservas activas con código de cerradura.
+const locksList = computed(() => planReservas.value.filter((r: any) => r.lockCode && r.status !== 'cancelled' && r.status !== 'checked_out'))
+function roomNoOf(r: any): string { return r.roomNumber || roomNumberOf(String(r.roomId)) }
+
+async function quickCheckin(res: any) {
+  try {
+    await ReservationService.update(res.id, { status: 'checked_in' } as any)
+    res.status = 'checked_in'
+    toast.success(`Check-in: ${res.guestName || 'Huésped'}`)
+    emit('changed')
+  } catch { toast.error('No se pudo hacer el check-in') }
+}
+function quickOpenRes(res: any) { quickAction.value = null; viewResDetail(res) }
+
+async function doSync() {
+  syncing.value = true; syncMsg.value = ''
+  try {
+    const r = await ChannelService.sync(hid.value)
+    syncMsg.value = r?.message || 'Sincronización completada'
+    const d = await OperationsService.planning(hid.value)   // recargar por si entraron reservas de OTAs
+    planRooms.value = d.rooms ?? planRooms.value; planReservas.value = d.reservas ?? planReservas.value
+    emit('changed')
+    toast.success('Canales sincronizados')
+  } catch { syncMsg.value = 'No se pudo sincronizar en este momento'; toast.error('No se pudo sincronizar los canales') }
+  finally { syncing.value = false }
+}
+// Página dedicada de cada acción rápida (botón "Avanzado").
+const quickAdvancedPath = computed(() => {
+  switch (quickAction.value) {
+    case 'arrivals': return '/panel/checkin'
+    case 'search': return '/panel/reservations'
+    case 'locks': return '/panel/cerraduras'
+    case 'sync': return '/panel/channel-manager'
+    default: return '/panel/planning'
+  }
+})
 const CH_COLOR_ALIAS: Record<string, string> = { directa: 'direct', 'booking.com': 'booking', walk_in: 'direct', email: 'direct' }
 function normCh(key?: string): string { const k = (key || 'direct').toLowerCase().trim(); return CH_COLOR_ALIAS[k] || k }
 // Colores elegidos por el hotel (solo los que difieren del default). Vacío = todo por defecto.
