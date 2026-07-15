@@ -9,6 +9,7 @@ import { CanalesController } from './controller'
 import { CanalesQueries } from './usecases/canales-queries'
 import type { RoomTypeSummary, CanalesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { resolveTenant } from '../../shared/utils/resolve-tenant'
 
 export { CanalesService }
 export type { CanalesDTO, CreateCanalesDTO, UpdateCanalesDTO, CanalesQuery, CanalesPaginated, ChannelsResultDTO, ChannelDTO, SyncResultDTO, RoomTypeSummary, TestConnectionDTO, TestConnectionResultDTO, MappingDetailDTO, MappingRateDTO, OTAChannelCreateDTO, OTAChannelMappingDTO, OTAChannelResultDTO, GroupDTO } from './types'
@@ -49,7 +50,9 @@ export function CanalesModule() {
       const guard = createPermissionGuard(auth, roleRepo)
 
       router.get('/api/channels', guard('channel-manager', 'view'), async (req) => {
-        const hotelId = await queries.resolveHotelId((req.body as any)?.hotelId || (req.query as any)?.hotelId)
+        // resolveTenant (no resolveHotelId del cliente): el merchant queda forzado a su hotel; solo
+        // super_admin puede targetear otro. Antes filtraba el channexPropertyId de cualquier hotel.
+        const hotelId = resolveTenant(req)
         if (!hotelId) return { status: 404, body: { error: 'Hotel no encontrado' } }
         return { status: 200, body: await service.listChannels(hotelId) }
       })
@@ -68,8 +71,10 @@ export function CanalesModule() {
       router.get('/api/channels/iframe-token', guard('channel-manager', 'view'), (req) => controller.iframeToken(req))
 
       router.post('/api/channels/sync', guard('channel-manager', 'edit'), async (req) => {
-        const body = (req.body as any) || {}
-        const hotelId = await queries.resolveHotelId(body.hotelId || (req.query as any)?.hotelId)
+        // resolveTenant, NO el hotelId del cliente: syncProperty es DESTRUCTIVO (borra rate_plans y
+        // room_types en Channex antes de recrear). Con el hotelId del body, un merchant de A lo
+        // disparaba sobre la cuenta Channex de B con las credenciales de B → oversell / caída de OTAs.
+        const hotelId = resolveTenant(req)
         if (!hotelId) return { status: 404, body: { error: 'Hotel no encontrado' } }
         const hotels = await queries.findMany('Hotels', { id: hotelId })
         const hotel = hotels[0] as any
