@@ -58,9 +58,9 @@ sprints:
 
   pg-4-confirmacion:
     title: Confirmación unificada (push/return/pull) e idempotente
-    status: proposed
+    status: partial
     tasks_total: 5
-    tasks_done: 0
+    tasks_done: 3
     priority: high
     manual_h: 16
     ia_h: 10
@@ -96,7 +96,7 @@ sprints:
 total_manual_h: 103
 total_ia_h: 66
 total_tasks: 29
-tasks_done: 15
+tasks_done: 18
 
 hallazgos:
   H1:
@@ -147,6 +147,11 @@ implementado_2026_07_14:
   - "PENDIENTE: PG-4 (settlePayment idempotente + tabla payment_events ya creada, sin usar aún)"
   - "PENDIENTE: PG-6 (8 enums de método de pago) y PG-7 (adapters PayPal/Azul)"
   - "NO verificado: smoke HTTP end-to-end en local (puerto 3000 ocupado por otro proyecto)"
+  - "PG-4 parcial ✅ (2026-07-15): PaymentEventStore idempotente (id=provider:eventId como PK,
+     claim-first con rollback). Cableado en payments + bookingengine. payment-requests con su
+     doble barrera propia. Falta modo pull/return para Azul/CardNet (sin adapter aún)."
+  - "DEPLOY ✅ 2026-07-15: pasarelas por hotel + rawBody (fw 1.6.3) + idempotencia en prod.
+     Verificado: guardar pasarela devuelve máscara, credencial cifrada en PG (v1:...), /panel/pagos 200."
 
 hallazgo_nuevo:
   H7:
