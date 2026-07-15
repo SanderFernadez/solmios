@@ -59,6 +59,7 @@
         <ReservationsGantt
           :rooms="roomStore.rooms"
           :reservations="reservationStore.reservations"
+          :blocks="roomBlocks"
           :loading="reservationStore.loading"
           @open="openReservation"
           @changed="refreshOperationalData"
@@ -206,6 +207,7 @@ const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'pla
 // ── Estado remoto ────────────────────────────────────────────────────────
 const apiOnline = ref(true)
 const hotelData = ref<HotelData | null>(null)
+const roomBlocks = ref<{ id: string; roomId: string; reason: string; startDate: string; endDate: string }[]>([])
 const channelLastSync = ref<string | null>(null)
 const channelConnected = ref(0)
 const channelSyncEnabled = ref(false)
@@ -477,11 +479,19 @@ async function fetchLiveData() {
     .catch(() => { /* sin channel manager configurado */ })
 }
 
+async function fetchBlocks() {
+  try {
+    const r = await HotelService.blocks()
+    roomBlocks.value = r.data ?? []
+  } catch { /* settings:view puede no estar habilitado para el rol — el calendario sigue sin bloqueos */ }
+}
+
 async function refreshOperationalData() {
   await Promise.all([
     roomStore.fetchRooms({ hotelId: hotelId.value }),
     reservationStore.fetchReservations({ hotelId: hotelId.value }),
     dashboard.fetchStats(hotelId.value),
+    fetchBlocks(),
   ])
 }
 
@@ -506,6 +516,7 @@ onMounted(async () => {
     fetchLiveData(),
     roomStore.fetchRooms({ hotelId: hotelId.value }),
     reservationStore.fetchReservations({ hotelId: hotelId.value }),
+    fetchBlocks(),
   ])
   fetchStaticData()
   refreshTimer = window.setInterval(fetchLiveData, REFRESH_INTERVAL_MS)

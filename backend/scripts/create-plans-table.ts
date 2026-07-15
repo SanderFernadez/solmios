@@ -7,6 +7,16 @@ const pool = new Pool({
 async function migrate() {
   const client = await pool.connect()
   try {
+    // `plans`/`amenities_catalog` ya existen como modelos ORM compartidos
+    // (src/shared/models.ts → Plans/AmenitiesCatalog, registrados por
+    // registerSharedModels en composition-root). El ORM crea las columnas SIN
+    // comillas, así que Postgres las pliega a minúsculas (isActive→isactive,
+    // sortOrder→sortorder) y el framework remapea camelCase↔lowercase al leer/escribir.
+    // Este script NO pasa por el ORM (usa `pg` crudo), así que debe usar los
+    // mismos nombres físicos (minúsculas) — antes usaba comillas con camelCase,
+    // lo que rompía contra la tabla ya creada por el ORM (columna "isActive"
+    // no existe, la física es "isactive"). CREATE TABLE IF NOT EXISTS queda
+    // como red de seguridad si este script corriera antes que el ORM.
     await client.query(`
       CREATE TABLE IF NOT EXISTS plans (
         id TEXT PRIMARY KEY,
@@ -17,10 +27,10 @@ async function migrate() {
         description TEXT,
         features TEXT DEFAULT '[]',
         limits TEXT DEFAULT '{}',
-        "isActive" INTEGER DEFAULT 1,
-        "sortOrder" INTEGER DEFAULT 0,
-        "createdAt" TEXT,
-        "updatedAt" TEXT
+        isactive INTEGER DEFAULT 1,
+        sortorder INTEGER DEFAULT 0,
+        createdat TEXT,
+        updatedat TEXT
       )
     `)
     console.log('✅ Tabla plans creada')
@@ -34,8 +44,8 @@ async function migrate() {
 
     for (const [id, name, slug, price, currency, desc, features, limits, active, sort] of plans) {
       await client.query(
-        `INSERT INTO plans (id, name, slug, price, currency, description, features, limits, "isActive", "sortOrder") 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+        `INSERT INTO plans (id, name, slug, price, currency, description, features, limits, isactive, sortorder)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (id) DO NOTHING`,
         [id, name, slug, price, currency, desc, features, limits, active, sort]
       )
@@ -50,10 +60,10 @@ async function migrate() {
         label TEXT NOT NULL,
         category TEXT DEFAULT 'interior',
         icon TEXT,
-        "isActive" INTEGER DEFAULT 1,
-        "sortOrder" INTEGER DEFAULT 0,
-        "createdAt" TEXT,
-        "updatedAt" TEXT
+        isactive INTEGER DEFAULT 1,
+        sortorder INTEGER DEFAULT 0,
+        createdat TEXT,
+        updatedat TEXT
       )
     `)
     console.log('✅ Tabla amenities_catalog creada')

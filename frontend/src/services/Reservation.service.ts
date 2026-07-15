@@ -26,11 +26,11 @@ interface RawReservation {
   guestEmail?: string
 }
 
-const STATUS_MAP: Record<string, ReservationStatus> = {
+export const STATUS_MAP: Record<string, ReservationStatus> = {
   pendiente: 'pending', pending: 'pending',
   confirmada: 'confirmed', confirmed: 'confirmed',
-  check_in: 'checked_in', 'checked-in': 'checked_in', checked_in: 'checked_in',
-  check_out: 'checked_out', 'checked-out': 'checked_out', checked_out: 'checked_out',
+  check_in: 'checked_in', 'checked-in': 'checked_in', checked_in: 'checked_in', checkin: 'checked_in',
+  check_out: 'checked_out', 'checked-out': 'checked_out', checked_out: 'checked_out', checkout: 'checked_out',
   cancelada: 'cancelled', cancelled: 'cancelled', canceled: 'cancelled',
 }
 

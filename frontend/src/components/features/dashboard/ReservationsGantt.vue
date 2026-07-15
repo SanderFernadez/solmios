@@ -85,12 +85,24 @@
                 @dragstart="onDragStart($event, bar)"
                 @click="$emit('open', bar.res)"
                 @mouseenter="showTip($event, bar)" @mousemove="moveTip($event)" @mouseleave="hideTip">
+                <span v-if="getChannelBrand(bar.res.source)" class="flex items-center justify-center h-4 w-4 rounded-full shrink-0 text-white p-0.5"
+                  :style="{ background: getChannelBrand(bar.res.source)!.color }" :title="getChannelBrand(bar.res.source)!.label"
+                  v-html="getChannelBrand(bar.res.source)!.icon"></span>
                 <span class="truncate text-[11px] font-extrabold text-white drop-shadow">{{ bar.res.guestName || 'Huésped' }}</span>
                 <span class="hidden shrink-0 text-[9px] font-semibold text-white/70 md:inline">{{ bar.nights }} noche{{ bar.nights === 1 ? '' : 's' }}</span>
                 <!-- Handle de resize -->
                 <span v-if="!bar.clippedEnd"
                   class="absolute right-0 top-0 h-full w-2 cursor-ew-resize bg-white/0 opacity-0 transition-opacity group-hover:bg-white/25 group-hover:opacity-100"
                   @mousedown.stop.prevent="startResize(bar)"></span>
+              </div>
+
+              <!-- Barras de bloqueo (habitación fuera de venta por mantenimiento/reforma/etc.) -->
+              <div v-for="bb in row.blockBars" :key="bb.blk.id"
+                class="absolute top-1.5 flex h-8 cursor-default items-center gap-1.5 overflow-hidden rounded-lg bg-slate-300/80 px-2.5"
+                :style="blockBarStyle(bb)"
+                @mouseenter="showBlockTip($event, bb)" @mousemove="moveBlockTip($event)" @mouseleave="hideBlockTip">
+                <svg class="h-3 w-3 shrink-0 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"/></svg>
+                <span class="truncate text-[11px] font-extrabold text-slate-700">{{ bb.blk.reason || 'Bloqueado' }}</span>
               </div>
             </div>
           </div>
@@ -104,6 +116,9 @@
     <div class="flex flex-wrap items-center gap-4 border-t border-border px-5 py-3">
       <span v-for="l in LEGEND" :key="l.label" class="flex items-center gap-1.5 text-[10px] font-bold text-text-secondary">
         <span class="h-2.5 w-2.5 rounded" :style="{ background: l.color }"></span>{{ l.label }}
+      </span>
+      <span class="flex items-center gap-1.5 text-[10px] font-bold text-text-secondary">
+        <span class="h-2.5 w-2.5 rounded bg-slate-300"></span>Bloqueo
       </span>
       <span class="ml-auto text-[10px] text-text-muted">Arrastrá una reserva para moverla · Estirá el borde derecho para extenderla</span>
     </div>
@@ -122,8 +137,25 @@
           <div class="flex justify-between"><span class="text-text-muted">Habitación</span><span class="font-bold tabular-nums">{{ tip.bar.res.roomNumber ?? tip.bar.roomNumber }}</span></div>
           <div class="flex justify-between"><span class="text-text-muted">Estancia</span><span class="font-bold tabular-nums">{{ fmtDate(tip.bar.checkIn) }} → {{ fmtDate(tip.bar.checkOut) }}</span></div>
           <div class="flex justify-between"><span class="text-text-muted">Noches</span><span class="font-bold tabular-nums">{{ tip.bar.nights }}</span></div>
-          <div class="flex justify-between"><span class="text-text-muted">Canal</span><span class="font-bold capitalize">{{ SOURCE_LABEL[tip.bar.res.source] ?? tip.bar.res.source }}</span></div>
+          <div class="flex justify-between items-center"><span class="text-text-muted">Canal</span><span class="font-bold capitalize flex items-center gap-1.5">
+            <span v-if="getChannelBrand(tip.bar.res.source)" class="flex items-center justify-center h-3.5 w-3.5 rounded-full shrink-0 text-white p-0.5" :style="{ background: getChannelBrand(tip.bar.res.source)!.color }" v-html="getChannelBrand(tip.bar.res.source)!.icon"></span>
+            {{ SOURCE_LABEL[tip.bar.res.source] ?? tip.bar.res.source }}
+          </span></div>
           <div class="flex justify-between"><span class="text-text-muted">Total</span><span class="font-bold tabular-nums">${{ (tip.bar.res.totalAmount ?? 0).toLocaleString() }}</span></div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Tooltip de bloqueo -->
+    <Teleport to="body">
+      <div v-if="blockTip.show && blockTip.bar" class="pointer-events-none fixed z-[80] w-60 rounded-xl border border-border bg-white p-3 shadow-xl"
+        :style="{ left: `${blockTip.x}px`, top: `${blockTip.y}px` }">
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"/></svg>
+          <span class="truncate text-sm font-black text-navy">{{ blockTip.bar.blk.reason || 'Bloqueado' }}</span>
+        </div>
+        <div class="mt-2 space-y-1 text-[11px] text-text-secondary">
+          <div class="flex justify-between"><span class="text-text-muted">Período</span><span class="font-bold tabular-nums">{{ fmtDate(blockTip.bar.blk.startDate) }} → {{ fmtDate(blockTip.bar.blk.endDate) }}</span></div>
         </div>
       </div>
     </Teleport>
@@ -135,6 +167,7 @@ import { ref, computed, onUnmounted } from 'vue'
 import type { Reservation, Room } from '@/types'
 import { ReservationService } from '@/services/Reservation.service'
 import { useToast } from '@/composables/useToast'
+import { getChannelBrand } from '@/composables/useChannelBrand'
 
 interface Bar {
   res: Reservation
@@ -148,7 +181,23 @@ interface Bar {
   clippedEnd: boolean
 }
 
-const props = defineProps<{ rooms: Room[]; reservations: Reservation[]; loading?: boolean }>()
+interface RoomBlock {
+  id: string
+  roomId: string
+  reason: string
+  startDate: string
+  endDate: string
+}
+
+interface BlockBar {
+  blk: RoomBlock
+  startIdx: number
+  span: number
+  clippedStart: boolean
+  clippedEnd: boolean
+}
+
+const props = defineProps<{ rooms: Room[]; reservations: Reservation[]; blocks?: RoomBlock[]; loading?: boolean }>()
 const emit = defineEmits<{ open: [res: Reservation]; changed: [] }>()
 
 const toast = useToast()
@@ -197,10 +246,11 @@ function toDateStr(d: Date) {
   const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const dd = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${dd}`
 }
-function mondayOf(d: Date) {
-  const copy = new Date(d); const dow = (copy.getDay() + 6) % 7
-  copy.setDate(copy.getDate() - dow); copy.setHours(0, 0, 0, 0)
-  return copy
+// Arranca en "hoy" (no en el lunes de la semana) — mismo criterio que Planning
+// (planning/index.vue), así ambos calendarios muestran por defecto el mismo
+// rango de reservas visibles en vez de ventanas desalineadas.
+function startOfToday(): Date {
+  return new Date(new Date().setHours(0, 0, 0, 0))
 }
 function fmtDate(ds: string) {
   const d = new Date(`${ds}T00:00:00`)
@@ -208,7 +258,7 @@ function fmtDate(ds: string) {
 }
 
 const viewDays = ref(7)
-const anchor = ref(mondayOf(new Date()))
+const anchor = ref(startOfToday())
 const cellW = ref(BASE_CELL_W)
 const zoomPct = computed(() => Math.round((cellW.value / BASE_CELL_W) * 100))
 
@@ -222,7 +272,7 @@ function shift(dir: 1 | -1) {
   anchor.value = d
 }
 function goToday() {
-  anchor.value = viewDays.value === 7 ? mondayOf(new Date()) : new Date(new Date().setHours(0, 0, 0, 0))
+  anchor.value = startOfToday()
 }
 
 const days = computed(() => {
@@ -286,7 +336,26 @@ const rows = computed(() => {
       const nights = Math.max(1, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / MS_DAY))
       bars.push({ res, roomNumber: String(room.number), checkIn: ci, checkOut: co, startIdx: Math.max(0, startIdx), span, nights, clippedStart, clippedEnd })
     }
-    return { room, bars }
+
+    const blockBars: BlockBar[] = []
+    for (const blk of props.blocks ?? []) {
+      if (String(blk.roomId) !== String(room.id)) continue
+      const s = String(blk.startDate ?? '').slice(0, 10)
+      // endDate es inclusivo (bloqueo de un solo día → start === end), a diferencia
+      // del checkOut exclusivo de las reservas — por eso el +1 día al comparar/mapear.
+      const eExcl = toDateStr(new Date(new Date(`${blk.endDate}T00:00:00`).getTime() + MS_DAY))
+      if (!s || !blk.endDate || eExcl <= windowStart || s >= windowEndExcl) continue
+
+      const clippedStart = s < windowStart
+      const clippedEnd = eExcl > windowEndExcl
+      const visStart = clippedStart ? windowStart : s
+      const visEnd = clippedEnd ? windowEndExcl : eExcl
+      const startIdx = days.value.findIndex(d => d.dateStr === visStart)
+      const span = Math.max(1, Math.round((new Date(visEnd).getTime() - new Date(visStart).getTime()) / MS_DAY))
+      blockBars.push({ blk, startIdx: Math.max(0, startIdx), span, clippedStart, clippedEnd })
+    }
+
+    return { room, bars, blockBars }
   })
 })
 
@@ -304,6 +373,17 @@ function barStyle(bar: Bar) {
   }
 }
 
+function blockBarStyle(bar: BlockBar) {
+  return {
+    left: `${bar.startIdx * cellW.value + 3}px`,
+    width: `${bar.span * cellW.value - 6}px`,
+    borderTopLeftRadius: bar.clippedStart ? '0' : undefined,
+    borderBottomLeftRadius: bar.clippedStart ? '0' : undefined,
+    borderTopRightRadius: bar.clippedEnd ? '0' : undefined,
+    borderBottomRightRadius: bar.clippedEnd ? '0' : undefined,
+  }
+}
+
 // ── Tooltip ─────────────────────────────────────────────────────────────
 const tip = ref<{ show: boolean; x: number; y: number; bar: Bar | null }>({ show: false, x: 0, y: 0, bar: null })
 function showTip(e: MouseEvent, bar: Bar) { tip.value = { show: true, x: clampX(e.clientX), y: clampY(e.clientY), bar } }
@@ -311,6 +391,11 @@ function moveTip(e: MouseEvent) { if (tip.value.show) { tip.value.x = clampX(e.c
 function hideTip() { tip.value.show = false }
 function clampX(x: number) { return Math.min(x + 14, window.innerWidth - 260) }
 function clampY(y: number) { return Math.min(y + 14, window.innerHeight - 190) }
+
+const blockTip = ref<{ show: boolean; x: number; y: number; bar: BlockBar | null }>({ show: false, x: 0, y: 0, bar: null })
+function showBlockTip(e: MouseEvent, bar: BlockBar) { blockTip.value = { show: true, x: clampX(e.clientX), y: clampY(e.clientY), bar } }
+function moveBlockTip(e: MouseEvent) { if (blockTip.value.show) { blockTip.value.x = clampX(e.clientX); blockTip.value.y = clampY(e.clientY) } }
+function hideBlockTip() { blockTip.value.show = false }
 
 // ── Drag & drop (mover reserva de habitación/fecha) ─────────────────────
 const dragging = ref<{ id: string; grabOffsetDays: number; nights: number } | null>(null)
