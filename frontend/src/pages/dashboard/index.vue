@@ -56,12 +56,9 @@
     <!-- 3. Calendario + actividad/canales/estados -->
     <div class="grid min-w-0 gap-4 xl:grid-cols-[1.3fr_1fr_1fr_1.25fr]">
       <div class="min-w-0 xl:col-span-3">
-        <ReservationsGantt
-          :rooms="roomStore.rooms"
-          :reservations="reservationStore.reservations"
-          :blocks="roomBlocks"
-          :loading="reservationStore.loading"
-          @open="openReservation"
+        <ReservationCalendar
+          :key="hotelId"
+          embedded
           @changed="refreshOperationalData"
         />
       </div>
@@ -88,15 +85,6 @@
 
     <!-- 5. Heat map de habitaciones -->
     <FloorHeatMap :rooms="roomStore.rooms" @select="selectedRoom = $event" />
-
-    <!-- Detalle de reserva (clic en barra del gantt) -->
-    <ReservationModal
-      v-if="detailId"
-      :reservation-id="detailId"
-      @close="detailId = null"
-      @edit="onEditReservation"
-      @changed="refreshOperationalData"
-    />
 
     <!-- Modal de habitación (heat map) -->
     <Teleport to="body">
@@ -180,7 +168,7 @@ import { HotelService, type HotelData } from '@/services/Hotel.service'
 import { ReportsService, type FacturacionReport } from '@/services/Reports.service'
 import CommandCenterHeader, { type WeatherInfo } from '@/components/features/dashboard/CommandCenterHeader.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
-import ReservationsGantt from '@/components/features/dashboard/ReservationsGantt.vue'
+import ReservationCalendar from '@/components/features/ReservationCalendar.vue'
 import LiveActivityFeed, { type FeedItem } from '@/components/features/dashboard/LiveActivityFeed.vue'
 import ChannelDistributionBars, { type ChannelSlice } from '@/components/features/dashboard/ChannelDistributionBars.vue'
 import RoomsStatusDonut from '@/components/features/dashboard/RoomsStatusDonut.vue'
@@ -188,7 +176,6 @@ import HotelStatusPanel, { type ServiceStatus } from '@/components/features/dash
 import AiInsightsPanel, { type AiInsight } from '@/components/features/dashboard/AiInsightsPanel.vue'
 import RevenueChart, { type DailyPoint } from '@/components/features/dashboard/RevenueChart.vue'
 import FloorHeatMap from '@/components/features/dashboard/FloorHeatMap.vue'
-import ReservationModal from '@/components/features/ReservationModal.vue'
 
 const router = useRouter()
 const dashboard = useDashboardStore()
@@ -531,14 +518,7 @@ watch(hotelId, async (id) => {
   fetchStaticData()
 })
 
-// ── Detalle de reserva / modal de habitación ─────────────────────────────
-const detailId = ref<string | null>(null)
-function openReservation(res: Reservation) { detailId.value = res.id }
-function onEditReservation(d: { id: string }) {
-  detailId.value = null
-  router.push({ path: '/panel/reservations', query: { edit: d.id } })
-}
-
+// ── Modal de habitación (heat map) ────────────────────────────────────────
 const selectedRoom = ref<Room | null>(null)
 
 const ROOM_STATUS_LABEL: Record<RoomStatus, string> = {
