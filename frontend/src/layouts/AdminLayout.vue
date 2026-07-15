@@ -297,8 +297,8 @@ const nonavItems = [
   {
     label: 'Configuración', icon: ICONS.cog, roles: ['hotel_admin'],
     children: [
+      { label: 'Configuración Base', path: '/panel/settings', roles: ['hotel_admin'] },
       { label: 'Habitaciones', path: '/panel/rooms', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Configuración', path: '/panel/settings', roles: ['hotel_admin'] },
       { label: 'Envíos Auto', path: '/panel/auto-messages', roles: ['hotel_admin'] },
       { label: 'Historial Envíos', path: '/panel/message-logs', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Plantillas WhatsApp', path: '/panel/whatsapp-templates', roles: ['hotel_admin', 'receptionist'] },

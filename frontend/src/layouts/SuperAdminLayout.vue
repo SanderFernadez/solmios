@@ -92,7 +92,7 @@
           </button>
 
           <!-- Quick Actions -->
-          <button class="hidden sm:block bg-cyan text-navy font-extrabold text-sm px-4 py-2 rounded-lg hover:shadow-lg transition-all cursor-pointer">
+          <button class="hidden sm:block bg-coral text-white font-extrabold text-sm px-4 py-2 rounded-lg hover:shadow-lg transition-all cursor-pointer">
             + Nuevo Hotel
           </button>
 

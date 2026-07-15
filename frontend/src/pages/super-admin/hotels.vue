@@ -32,7 +32,7 @@
           <span class="text-[10px] font-bold text-text-muted uppercase">Filtros</span>
           <span v-if="activeFiltersCount > 0" class="bg-cyan/20 text-cyan text-[10px] font-bold px-2 py-0.5 rounded-full">{{ activeFiltersCount }} activos</span>
         </div>
-        <button v-if="activeFiltersCount > 0" @click="clearAllFilters" class="text-[10px] font-bold text-red hover:text-red/80 transition-colors cursor-pointer">Limpiar todo</button>
+        <button v-if="activeFiltersCount > 0" @click="clearAllFilters" class="text-[10px] font-bold text-red hover:text-red/80 transition-colors cursor-pointer">Limpiar filtros</button>
       </div>
 
       <!-- Fila 1: Búsqueda + Estado + Plan -->
