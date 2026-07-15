@@ -211,21 +211,13 @@
       <Transition name="modal-fade">
         <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
           <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl sm:rounded-[24px] shadow-2xl w-full max-w-5xl max-h-[95vh] sm:max-h-[92vh] overflow-hidden flex flex-col">
+          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-5xl max-h-[95vh] sm:max-h-[92vh] overflow-hidden flex flex-col">
 
             <!-- Header -->
-            <div class="p-4 sm:p-6 pb-4 sm:pb-5 shrink-0 bg-gradient-to-r from-navy to-navy/85">
-              <div class="flex items-center justify-between gap-3 mb-4 sm:mb-5">
+            <div class="p-5 border-b border-border shrink-0 bg-gradient-to-r from-navy to-navy/90">
+              <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3 min-w-0">
-                  <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
-                    <span class="w-4 h-4 sm:w-5 sm:h-5 text-white" v-html="ICON_CALENDAR_PLUS"></span>
-                  </div>
-                  <div class="min-w-0">
-                    <h3 class="text-base sm:text-lg font-black text-white leading-tight truncate">{{ modal.edit ? 'Editar' : 'Nueva' }} Reserva</h3>
-                    <p class="text-[10px] sm:text-[11px] text-white/60 truncate">Paso {{ wizardStep }} de {{ WIZARD_STEPS.length }} — {{ WIZARD_STEPS[wizardStep-1].label }}</p>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                  <h3 class="text-lg font-black text-white leading-tight truncate">{{ modal.edit ? 'Editar' : 'Nueva' }} Reserva</h3>
                   <div class="hidden md:flex gap-1.5">
                     <button v-for="s in ['confirmed','pending','checked_in','cancelled']" :key="s" @click="form.status=s"
                       class="px-2.5 py-1 rounded-full text-[10px] font-bold border cursor-pointer transition-all"
@@ -233,25 +225,18 @@
                       {{ stLabel(s) }}
                     </button>
                   </div>
-                  <button @click="modal.show=false" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20 transition-colors shrink-0">
-                    <span class="w-4 h-4 block" v-html="ICON_X"></span>
-                  </button>
                 </div>
+                <button @click="modal.show=false" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20 shrink-0">
+                  <span class="w-4 h-4 block" v-html="ICON_X"></span>
+                </button>
               </div>
-
-              <!-- Step indicator -->
-              <div class="flex items-center overflow-x-auto">
-                <template v-for="(step, i) in WIZARD_STEPS" :key="step.n">
-                  <button type="button" @click="goToStep(step.n)" class="flex flex-col items-center gap-1.5 cursor-pointer group shrink-0">
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-black transition-all"
-                      :class="wizardStep === step.n ? 'bg-cyan text-navy' : wizardStep > step.n ? 'bg-teal text-white' : 'bg-white/10 text-white/50 group-hover:bg-white/20'">
-                      <span v-if="wizardStep > step.n" class="w-3.5 h-3.5" v-html="ICON_CHECK"></span>
-                      <span v-else>{{ step.n }}</span>
-                    </div>
-                    <span class="hidden sm:block text-[9px] font-bold uppercase tracking-wide" :class="wizardStep === step.n ? 'text-white' : 'text-white/40'">{{ step.label }}</span>
-                  </button>
-                  <div v-if="i < WIZARD_STEPS.length - 1" class="w-4 sm:flex-1 h-0.5 mx-1.5 sm:mx-2 sm:mb-4 rounded-full transition-all shrink-0 sm:shrink" :class="wizardStep > step.n ? 'bg-teal' : 'bg-white/15'"></div>
-                </template>
+              <!-- Wizard progress -->
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-white">Paso {{ wizardStep }} de {{ WIZARD_STEPS.length }}</span>
+                <span class="text-xs font-bold text-white/60">{{ WIZARD_STEPS[wizardStep-1].label }}</span>
+              </div>
+              <div class="h-1.5 bg-white/15 rounded-full overflow-hidden">
+                <div class="h-full bg-white rounded-full transition-all" :style="{ width: (wizardStep / WIZARD_STEPS.length * 100) + '%' }"></div>
               </div>
             </div>
 
@@ -261,9 +246,7 @@
               <!-- ═══ PASO 1: HUÉSPED ═══ -->
               <div v-if="wizardStep === 1" class="space-y-4">
                 <!-- Buscador de huésped existente -->
-                <div class="flex items-start gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-teal/10 text-teal hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_SEARCH"></span></div>
-                  <div class="flex-1 min-w-0">
+                <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Buscar huésped existente</label>
                     <div class="relative">
                       <input :value="guestSearch" @input="onGuestSearchInput" type="text" maxlength="100" placeholder="Nombre, documento o email…" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" @blur="blurGuestSearch" />
@@ -277,94 +260,64 @@
                     <p v-if="selectedGuestId" class="text-[11px] text-teal mt-1 font-semibold">Huésped existente: se reutiliza (no se crea uno nuevo)</p>
                     <p v-else class="text-[10px] text-text-muted mt-1">Evita duplicar huéspedes ya registrados</p>
                   </div>
-                </div>
 
-                <div class="flex items-start gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-navy/10 text-navy hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_USER"></span></div>
-                  <div class="flex-1 min-w-0">
+                <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nombre completo <span class="text-coral">*</span></label>
                     <input v-model="form.name" type="text" maxlength="80" placeholder="Nombre y apellido" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="nameError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-navy/20 focus:border-navy'" />
                     <p v-if="nameError" class="text-[10px] text-coral font-semibold mt-1">{{ nameError }}</p>
                   </div>
-                </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-cyan/10 text-cyan hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_MAIL"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Email <span class="text-coral">*</span></label>
                       <input v-model="form.email" type="email" maxlength="100" placeholder="correo@ejemplo.com" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="(contactError || emailError) ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-cyan/20 focus:border-cyan'" />
                       <p v-if="emailError" class="text-[10px] text-coral font-semibold mt-1">{{ emailError }}</p>
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-purple/10 text-purple hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_PHONE"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Teléfono <span class="text-coral">*</span></label>
                       <input v-model="form.phone" type="tel" maxlength="20" placeholder="+1 809 000 0000" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="contactError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-purple/20 focus:border-purple'" />
                     </div>
-                  </div>
                   <p v-if="contactError" class="sm:col-span-2 text-[10px] text-coral font-semibold -mt-2">{{ contactError }}</p>
                   <p v-else class="sm:col-span-2 text-[10px] text-text-muted -mt-2">* Se requiere al menos un email o teléfono de contacto</p>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gold/10 text-gold hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_GLOBE"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">País</label>
                       <SearchSelect v-model="form.country" :options="countries" placeholder="Buscar..." />
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-coral/10 text-coral hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_FLAG"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nacionalidad</label>
                       <SearchSelect v-model="form.nationality" :options="nationalities" placeholder="Buscar..." />
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-blue/10 text-blue hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_LANGUAGE"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Idioma</label>
                       <select v-model="form.language" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition">
                         <option v-for="l in languages" :key="l.v" :value="l.v">{{ l.l }}</option>
                       </select>
                     </div>
-                  </div>
                 </div>
               </div>
 
               <!-- ═══ PASO 2: DETALLES ═══ -->
               <div v-if="wizardStep === 2" class="space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-cyan/10 text-cyan hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_MAP_PIN"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Dirección</label>
                       <input v-model="form.address" type="text" maxlength="150" placeholder="Calle, número..." class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan/20 focus:border-cyan transition" />
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-teal/10 text-teal hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_BUILDING"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Ciudad</label>
                       <input v-model="form.city" type="text" maxlength="60" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
                     </div>
-                  </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-purple/10 text-purple hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_MAP"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Provincia</label>
                       <input v-model="form.province" type="text" maxlength="60" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gold/10 text-gold hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_USERS"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Sexo</label>
                       <select v-model="form.sex" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition">
                         <option value="">—</option>
@@ -373,46 +326,31 @@
                         <option value="other">Otro</option>
                       </select>
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-coral/10 text-coral hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_CAKE"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nacimiento</label>
                       <input v-model="form.birthDate" type="date" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition" />
                     </div>
-                  </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-navy/10 text-navy hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_ID"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Tipo documento</label>
                       <select v-model="form.documentType" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
                         <option v-for="d in docTypes" :key="d.v" :value="d.v">{{ d.l }}</option>
                       </select>
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-blue/10 text-blue hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_HASH"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">N° documento</label>
                       <input v-model="form.document" type="text" maxlength="30" placeholder="000-0000000-0" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition" />
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-purple/10 text-purple hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_CALENDAR"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Exp. documento</label>
                       <input v-model="form.documentIssueDate" type="date" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
                     </div>
-                  </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-teal/10 text-teal hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_SEND"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Comunicar al cliente</label>
                       <select v-model="form.communicateClient" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition">
                         <option value="none">No enviar bono</option>
@@ -420,14 +358,10 @@
                         <option value="email_presaless">Enviar email preventa</option>
                       </select>
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-navy/10 text-navy hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_NOTE"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Observaciones</label>
                       <input v-model="form.guestNotes" type="text" maxlength="300" placeholder="Notas para el bono..." class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
                     </div>
-                  </div>
                 </div>
 
                 <!-- Acompañantes -->
@@ -455,20 +389,14 @@
                     <h4 class="text-[11px] font-black text-navy uppercase tracking-wide">Datos del Canal</h4>
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="flex items-start gap-3">
-                      <div class="w-10 h-10 rounded-xl bg-gold/10 text-gold hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_PERCENT"></span></div>
-                      <div class="flex-1 min-w-0">
+                    <div>
                         <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Comisión (%)</label>
                         <input v-model.number="form.commission" type="number" min="0" max="50" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white transition" />
                       </div>
-                    </div>
-                    <div class="flex items-start gap-3">
-                      <div class="w-10 h-10 rounded-xl bg-cyan/10 text-cyan hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_LINK"></span></div>
-                      <div class="flex-1 min-w-0">
+                    <div>
                         <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Locator OTA</label>
                         <input v-model="form.extLocator" type="text" maxlength="50" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white transition" />
                       </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -480,76 +408,53 @@
                   <h4 class="text-[11px] font-black text-coral uppercase tracking-wide">Contacto de Emergencia</h4>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-coral/10 text-coral hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_USER"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nombre completo</label>
                       <input v-model="form.emergencyName" type="text" maxlength="80" placeholder="Contacto de emergencia" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition" />
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gold/10 text-gold hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_PHONE"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Teléfono</label>
                       <input v-model="form.emergencyPhone" type="tel" maxlength="20" placeholder="+1 809 000 0000" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition" />
                     </div>
-                  </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-purple/10 text-purple hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_HEART"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Parentesco</label>
                       <select v-model="form.emergencyRelation" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition">
                         <option value="">Seleccionar...</option>
                         <option v-for="r in relations" :key="r" :value="r">{{ r }}</option>
                       </select>
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-cyan/10 text-cyan hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_MAIL"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Email <span class="text-text-muted font-normal normal-case">(opcional)</span></label>
                       <input v-model="form.emergencyEmail" type="email" maxlength="100" placeholder="contacto@ejemplo.com" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="emergencyEmailFormatError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-cyan/20 focus:border-cyan'" />
                       <p v-if="emergencyEmailFormatError" class="text-[10px] text-coral font-semibold mt-1">{{ emergencyEmailFormatError }}</p>
                     </div>
-                  </div>
                 </div>
               </div>
 
               <!-- ═══ PASO 4: ALOJAMIENTO ═══ -->
               <div v-if="wizardStep === 4" class="space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-teal/10 text-teal hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_CALENDAR"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Check-in <span class="text-coral">*</span></label>
                       <input v-model="form.checkIn" type="date" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="checkInError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-teal/20 focus:border-teal'" />
                       <p v-if="checkInError" class="text-[10px] text-coral font-semibold mt-1">{{ checkInError }}</p>
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-coral/10 text-coral hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_CALENDAR"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Check-out <span class="text-coral">*</span></label>
                       <input v-model="form.checkOut" type="date" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="checkOutError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-coral/20 focus:border-coral'" />
                       <p v-if="checkOutError" class="text-[10px] text-coral font-semibold mt-1">{{ checkOutError }}</p>
                     </div>
-                  </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-navy/10 text-navy hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_BED"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Habitación <span class="text-coral">*</span></label>
                       <SearchSelect v-model="form.roomId" :options="roomOptions" placeholder="Seleccionar..." />
                       <p v-if="roomError" class="text-[10px] text-coral font-semibold mt-1">{{ roomError }}</p>
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-purple/10 text-purple hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_UTENSILS"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Régimen</label>
                       <select v-model="form.regime" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition">
                         <option value="room_only">Solo alojamiento</option>
@@ -559,40 +464,27 @@
                         <option value="all_inclusive">Todo incluido</option>
                       </select>
                     </div>
-                  </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-cyan/10 text-cyan hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_USER"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Adultos</label>
                       <input v-model.number="form.adults" type="number" min="1" max="10" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan/20 focus:border-cyan transition" />
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gold/10 text-gold hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_USERS"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Niños</label>
                       <input v-model.number="form.children" type="number" min="0" max="10" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition" />
                     </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-navy/10 text-navy hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_MOON"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Noches</label>
                       <div class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface font-bold text-navy">{{ nights }}</div>
                     </div>
-                  </div>
                 </div>
 
-                <div class="flex items-start gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-teal/10 text-teal hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_TAG"></span></div>
-                  <div class="flex-1 min-w-0">
+                <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Código promocional</label>
                     <input v-model="form.promoCode" type="text" maxlength="30" placeholder="Opcional" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
                   </div>
-                </div>
 
                 <!-- Resumen precio -->
                 <div v-if="selRoom && form.checkIn && form.checkOut" class="bg-surface rounded-2xl p-4 space-y-2">
@@ -605,9 +497,7 @@
 
               <!-- ═══ PASO 5: PAGO ═══ -->
               <div v-if="wizardStep === 5" class="space-y-4">
-                <div class="flex items-start gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-navy/10 text-navy hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_WALLET"></span></div>
-                  <div class="flex-1 min-w-0">
+                <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Método de pago</label>
                     <select v-model="form.payMethod" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
                       <option value="transfer">Transferencia</option>
@@ -616,7 +506,6 @@
                       <option value="link">Link de pago</option>
                     </select>
                   </div>
-                </div>
 
                 <!-- Tarjeta de garantía -->
                 <div class="pt-3 border-t border-border">
@@ -628,16 +517,11 @@
                     Ya hay una tarjeta de garantía cargada. Para verla abrí <strong>Ver reserva</strong> e ingresá el PIN. Ingresá una nueva tarjeta acá solo si querés <strong>reemplazarla</strong>.
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div class="flex items-start gap-3">
-                      <div class="w-10 h-10 rounded-xl bg-purple/10 text-purple hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_USER"></span></div>
-                      <div class="flex-1 min-w-0">
+                    <div>
                         <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Titular de la tarjeta</label>
                         <input v-model="form.cardHolder" type="text" maxlength="80" placeholder="Nombre como aparece en la tarjeta" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
                       </div>
-                    </div>
-                    <div class="flex items-start gap-3">
-                      <div class="w-10 h-10 rounded-xl bg-gold/10 text-gold hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_CARD"></span></div>
-                      <div class="flex-1 min-w-0">
+                    <div>
                         <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Tipo</label>
                         <select v-model="form.cardBrand" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition">
                           <option value="visa">Visa</option>
@@ -647,31 +531,21 @@
                           <option value="other">Otra</option>
                         </select>
                       </div>
-                    </div>
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div class="flex items-start gap-3">
-                      <div class="w-10 h-10 rounded-xl bg-navy/10 text-navy hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_CARD"></span></div>
-                      <div class="flex-1 min-w-0">
+                    <div>
                         <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">N° tarjeta</label>
                         <input v-model="form.cardNumber" type="text" maxlength="19" placeholder="XXXX XXXX XXXX XXXX" @input="formatCardNumber" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm font-mono bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
                       </div>
-                    </div>
-                    <div class="flex items-start gap-3">
-                      <div class="w-10 h-10 rounded-xl bg-coral/10 text-coral hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_LOCK"></span></div>
-                      <div class="flex-1 min-w-0">
+                    <div>
                         <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">CVV</label>
                         <input v-model="form.cardCvv" type="text" maxlength="4" placeholder="XXX" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm font-mono bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition" />
                       </div>
-                    </div>
                   </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-purple/10 text-purple hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_CALENDAR"></span></div>
-                    <div class="flex-1 min-w-0">
+                  <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Caducidad</label>
                       <input v-model="form.cardExpiry" @input="formatExpiry" type="text" inputmode="numeric" maxlength="7" placeholder="MM/AAAA" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm font-mono bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
                     </div>
-                  </div>
                 </div>
 
                 <!-- Anticipo -->
@@ -681,16 +555,11 @@
                     <h4 class="text-[11px] font-black text-teal uppercase tracking-wide">Anticipo y total</h4>
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div class="flex items-start gap-3">
-                      <div class="w-10 h-10 rounded-xl bg-teal/10 text-teal hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_PERCENT"></span></div>
-                      <div class="flex-1 min-w-0">
+                    <div>
                         <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">% de anticipo</label>
                         <input v-model.number="form.depositPercentage" type="number" min="0" max="100" @input="calcDepositFromPercentage" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
                       </div>
-                    </div>
-                    <div class="flex items-start gap-3">
-                      <div class="w-10 h-10 rounded-xl bg-gold/10 text-gold hidden sm:flex items-center justify-center shrink-0"><span class="w-5 h-5" v-html="ICON_WALLET"></span></div>
-                      <div class="flex-1 min-w-0">
+                    <div>
                         <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Estado</label>
                         <select v-model="form.depositStatus" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition">
                           <option value="unpaid">Sin pagar</option>
@@ -698,7 +567,6 @@
                           <option value="paid">Pagado</option>
                         </select>
                       </div>
-                    </div>
                   </div>
                   <div v-if="selRoom && form.checkIn && form.checkOut" class="bg-surface rounded-2xl border border-border p-4 space-y-1.5 text-sm">
                     <div class="flex justify-between"><span class="text-text-secondary">{{ nights }} noches × ${{ selRoom.basePrice }}</span><span class="font-bold text-navy">${{ subtotal }}</span></div>
@@ -740,12 +608,12 @@
 
             <!-- Footer -->
             <div class="p-4 sm:p-5 border-t border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
-              <div class="text-sm font-extrabold text-navy">Total: <span class="text-xl text-navy">${{ total }}</span></div>
+              <div class="text-sm font-extrabold text-navy">Total: <span class="text-lg">${{ total }}</span></div>
               <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
-                <button @click="modal.show=false" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button v-if="wizardStep > 1" @click="wizardStep--" class="px-4 py-2 border border-border rounded-full text-[11px] font-bold text-text-secondary hover:border-navy/30 transition-all cursor-pointer">Atrás</button>
-                <button v-if="wizardStep < WIZARD_STEPS.length" @click="goNextStep" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-black cursor-pointer hover:shadow-lg transition-all">Siguiente</button>
-                <button v-else @click="save" :disabled="saving" class="px-6 py-2.5 bg-teal text-white rounded-full text-sm font-black cursor-pointer hover:opacity-90 disabled:opacity-50 transition-all">
+                <button @click="modal.show=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition">Cancelar</button>
+                <button v-if="wizardStep > 1" @click="wizardStep--" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition">Atrás</button>
+                <button v-if="wizardStep < WIZARD_STEPS.length" @click="goNextStep" class="px-6 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy-light transition">Siguiente</button>
+                <button v-else @click="save" :disabled="saving" class="px-6 py-2.5 bg-teal text-white rounded-xl text-sm font-black cursor-pointer hover:opacity-90 disabled:opacity-50 transition">
                   {{ saving ? 'Guardando...' : (modal.edit ? 'Actualizar Reserva' : 'Crear Reserva') }}
                 </button>
               </div>

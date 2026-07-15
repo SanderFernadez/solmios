@@ -44,6 +44,18 @@ const folioCharges = ref<{ description?: string; amount?: number; kind?: string 
 type PrintMode = 'detail' | 'voucherLodging' | 'voucherClient'
 const printMode = ref<PrintMode>('detail')
 
+// Wizard de solo lectura: agrupa las secciones en pasos navegables. Sin gating
+// (no hay nada que validar, es una vista de detalle) — Siguiente/Atrás son libres.
+const viewStep = ref(1)
+const VIEW_STEPS = [
+  { n: 1, label: 'Reserva y Cliente' },
+  { n: 2, label: 'Pago' },
+  { n: 3, label: 'Extras y Acceso' },
+  { n: 4, label: 'Comunicación e Historial' },
+]
+function nextViewStep() { viewStep.value = Math.min(viewStep.value + 1, VIEW_STEPS.length) }
+function prevViewStep() { viewStep.value = Math.max(viewStep.value - 1, 1) }
+
 // Tarjeta de garantía (MisterPlan): se revela solo tras ingresar el PIN del hotel.
 const guaranteeUnlocked = ref(false)
 const guaranteePin = ref('')
@@ -75,6 +87,7 @@ function cardBrandLabel(b?: string): string {
 // ── Carga ──
 async function load() {
   loading.value = true
+  viewStep.value = 1
   guaranteeUnlocked.value = false
   guaranteeCard.value = null
   guaranteePin.value = ''
@@ -106,8 +119,8 @@ async function load() {
 // D7 — Historial (audit trail): etiquetas legibles + formato de fecha.
 function auditLabel(action: string): string {
   const m: Record<string, string> = {
-    create: '📝 Reserva creada', update: '✏️ Actualizada', delete: '🗑️ Eliminada',
-    checkin: '🛎️ Check-in', checkout: '🚪 Check-out', no_show: '⏰ No-show',
+    create: 'Reserva creada', update: 'Actualizada', delete: 'Eliminada',
+    checkin: 'Check-in', checkout: 'Check-out', no_show: 'No-show',
   }
   return m[action] || action
 }
@@ -163,17 +176,13 @@ function stLabel(s?: string): string {
   const m: Record<string, string> = { pending: 'Pendiente', confirmed: 'Confirmada', checked_in: 'Check-in', checked_out: 'Check-out', cancelled: 'Cancelada', no_show: 'No-show' }
   return m[s || ''] || s || '—'
 }
-function stClass(s?: string): string {
-  const m: Record<string, string> = { pending: 'bg-gold/10 text-gold', confirmed: 'bg-teal/10 text-teal', checked_in: 'bg-cyan/10 text-cyan', checked_out: 'bg-gray-100 text-gray-500', cancelled: 'bg-coral/10 text-coral', no_show: 'bg-coral/10 text-coral' }
-  return m[s || ''] || 'bg-gray-100 text-gray-500'
-}
 function srcLabel(s?: string): string {
   const m: Record<string, string> = { direct: 'Directa', booking: 'Booking', expedia: 'Expedia', airbnb: 'Airbnb', agoda: 'Agoda', trip: 'Trip', google: 'Google', whatsapp: 'WhatsApp', phone: 'Teléfono', email: 'Email', walk_in: 'Walk-in' }
   return m[s || ''] || (s || '—')
 }
-function srcClass(s?: string): string {
-  const m: Record<string, string> = { direct: 'bg-teal/10 text-teal', booking: 'bg-cyan/10 text-cyan', expedia: 'bg-gold/10 text-gold', airbnb: 'bg-coral/10 text-coral', google: 'bg-blue-100 text-blue-700', whatsapp: 'bg-emerald-100 text-emerald-700', agoda: 'bg-purple-100 text-purple-700', trip: 'bg-pink-100 text-pink-700' }
-  return m[s || ''] || 'bg-gray-100 text-gray-500'
+function srcDot(s?: string): string {
+  const m: Record<string, string> = { direct: 'bg-teal', booking: 'bg-cyan', expedia: 'bg-gold', airbnb: 'bg-coral', google: 'bg-blue-400', whatsapp: 'bg-emerald-400', agoda: 'bg-purple-400', trip: 'bg-pink-400' }
+  return m[s || ''] || 'bg-white/70'
 }
 function regimeLabel(r?: string): string {
   const m: Record<string, string> = { room_only: 'Solo alojamiento', breakfast: 'Desayuno incluido', half_board: 'Media pensión', full_board: 'Pensión completa', all_inclusive: 'Todo incluido' }
@@ -194,12 +203,6 @@ function waLink(phone?: string | null, body?: string | null): string | null {
   if (!phone) return null
   const digits = phone.replace(/\D/g, '')
   return digits ? `https://wa.me/${digits}${body ? `?text=${encodeURIComponent(body)}` : ''}` : null
-}
-/** Iconos de servicios según tipo de habitación (visual, como MisterPlan). */
-function serviceIcons(type?: string): string[] {
-  const base = ['🛏️', '🚿', '📺', '📶']
-  const m: Record<string, string[]> = { suite: ['🥂', '🛁'], villa: ['🏊', '🌳'], family: ['👨‍👩‍👧', '🧸'], double: ['👥'], single: ['☕'] }
-  return [...base, ...(m[type || ''] || [])]
 }
 
 // ── Acciones ──
@@ -333,58 +336,94 @@ function editar() { if (d.value) emit('edit', d.value) }
 
 <template>
   <Teleport to="body">
+    <Transition name="modal-fade">
     <div v-if="!loading && d" class="fixed inset-0 z-50 flex items-center justify-center p-4" :class="'print-' + printMode">
       <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm rm-no-print"></div>
 
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
+      <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
 
         <!-- ═══ HEADER ═══ -->
-        <div class="p-5 border-b border-border flex items-center justify-between shrink-0 bg-gradient-to-r from-navy to-navy/90 rm-no-print">
-          <div class="flex items-center gap-3 flex-wrap">
-            <div>
-              <div class="text-[10px] uppercase font-bold text-white/50">Reserva</div>
-              <h3 class="text-lg font-black text-white leading-tight">{{ locator }}</h3>
+        <div class="p-5 shrink-0 bg-gradient-to-r from-navy to-navy/90 shadow-[0_6px_16px_-8px_rgba(13,43,78,0.45)] rm-no-print">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 flex-wrap">
+              <div>
+                <div class="text-[10px] uppercase font-bold text-white/50">Reserva</div>
+                <h3 class="text-lg font-black text-white leading-tight">{{ locator }}</h3>
+              </div>
+              <span class="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                {{ stLabel(d.status) }}
+              </span>
+              <span class="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
+                <span class="w-1.5 h-1.5 rounded-full" :class="srcDot(d.source || d.channel)"></span>
+                {{ srcLabel(d.source || d.channel) }}
+              </span>
             </div>
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="stClass(d.status)">{{ stLabel(d.status) }}</span>
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="srcClass(d.source || d.channel)">{{ srcLabel(d.source || d.channel) }}</span>
+            <div class="flex items-center gap-2">
+              <button v-if="d.status === 'pending'" @click="setStatus('confirmed')" :disabled="saving" class="flex items-center gap-1.5 px-3 py-1.5 bg-teal text-white rounded-lg text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                Confirmar
+              </button>
+              <button v-if="d.status !== 'cancelled' && d.status !== 'checked_out'" @click="showCancel = true" :disabled="saving" class="flex items-center gap-1.5 px-3 py-1.5 bg-coral/90 text-white rounded-lg text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                Anular
+              </button>
+              <button @click="printAs('detail')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-white/20">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.83a42.5 42.5 0 0110.56 0M6.34 18l-.34 3.72a1.12 1.12 0 001.12 1.23h9.4a1.12 1.12 0 001.12-1.23L17.66 18M17.66 18h1.09c1.06 0 1.98-.72 2-1.78a72 72 0 000-3.45c-.02-1.06-.94-1.77-2-1.77H5.25c-1.06 0-1.98.71-2 1.77a72 72 0 000 3.45c.02 1.06.94 1.78 2 1.78h1.09M17.66 18H6.34M17.66 18v-4.5a2.25 2.25 0 00-2.25-2.25h-6.5a2.25 2.25 0 00-2.25 2.25V18"/></svg>
+                Imprimir
+              </button>
+              <button @click="editar" class="flex items-center gap-1.5 px-3 py-1.5 bg-cyan text-navy rounded-lg text-xs font-black cursor-pointer hover:opacity-90">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.932zM19.5 21H4.5a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5h9"/></svg>
+                Editar
+              </button>
+              <button @click="emit('close')" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button v-if="d.status === 'pending'" @click="setStatus('confirmed')" :disabled="saving" class="px-3 py-1.5 bg-teal text-white rounded-lg text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">✓ Confirmar</button>
-            <button v-if="d.status !== 'cancelled' && d.status !== 'checked_out'" @click="showCancel = true" :disabled="saving" class="px-3 py-1.5 bg-coral/90 text-white rounded-lg text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">✕ Anular</button>
-            <button @click="printAs('detail')" class="px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-white/20">🖨 Imprimir</button>
-            <button @click="editar" class="px-3 py-1.5 bg-cyan text-navy rounded-lg text-xs font-black cursor-pointer hover:opacity-90">✎ Editar</button>
-            <button @click="emit('close')" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20">✕</button>
+          <!-- Progreso del wizard: stepper numerado, navegación libre (sin gating) -->
+          <div class="mt-4">
+            <span class="text-[11px] font-bold text-white/70">Paso {{ viewStep }} de {{ VIEW_STEPS.length }} · {{ VIEW_STEPS[viewStep - 1].label }}</span>
+            <div class="mt-2 flex items-center">
+              <template v-for="(step, i) in VIEW_STEPS" :key="step.n">
+                <button type="button" @click="viewStep = step.n" class="flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-black shrink-0 cursor-pointer transition-colors"
+                  :class="step.n === viewStep ? 'bg-cyan text-navy' : step.n < viewStep ? 'bg-white text-navy' : 'bg-white/15 text-white/60 hover:bg-white/25'">
+                  <svg v-if="step.n < viewStep" class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  <span v-else>{{ step.n }}</span>
+                </button>
+                <div v-if="i < VIEW_STEPS.length - 1" class="flex-1 h-px mx-1.5" :class="step.n < viewStep ? 'bg-white/60' : 'bg-white/20'"></div>
+              </template>
+            </div>
           </div>
         </div>
 
-        <!-- ═══ BODY two-panel (área de impresión) ═══ -->
+        <!-- ═══ BODY paginado por pasos (área de impresión) ═══ -->
         <div class="flex-1 overflow-y-auto rm-print-area">
-          <div class="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
 
-            <!-- ═══ PANEL IZQUIERDO ═══ -->
+          <!-- Paso 1: Reserva y Cliente -->
+          <div v-show="viewStep === 1" class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
             <div class="p-5 space-y-4">
-
               <!-- Datos de la Reserva -->
-              <details open class="bg-navy/5 border border-navy/10 rounded-xl overflow-hidden">
+              <details open class="bg-white border border-border/70 border-l-[3px] border-l-navy/60 rounded-2xl overflow-hidden shadow-card">
                 <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
-                  <span class="w-6 h-6 rounded-lg bg-navy/10 flex items-center justify-center text-xs">📋</span> Datos de la Reserva
-                  <span class="ml-auto text-text-muted text-xs">▾</span>
+                  <span class="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center text-navy"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg></span> Datos de la Reserva
+                  <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
                 </summary>
                 <div class="px-4 pb-4 pt-1 space-y-2 text-sm">
                   <div class="flex justify-between gap-3"><span class="text-text-muted">Origen</span><span class="font-bold text-right">{{ srcLabel(d.source || d.channel) }}</span></div>
                   <div class="flex justify-between gap-3"><span class="text-text-muted">Comisión</span><span class="font-bold text-right">{{ d.commission ? `${d.commission}%` : '—' }}{{ d.commissionAmount ? ` (${money(d.commissionAmount)})` : '' }}</span></div>
                   <div class="flex justify-between gap-3"><span class="text-text-muted">Localizador interno</span><span class="font-mono text-right text-xs">{{ d.id.slice(-8) }}</span></div>
                   <div v-if="d.externalLocator" class="flex justify-between gap-3"><span class="text-text-muted">Localizador OTA</span><span class="font-mono text-right text-xs">{{ d.externalLocator }}</span></div>
-                  <div class="flex justify-between gap-3"><span class="text-text-muted">Creada</span><span class="text-right">{{ fmtDateTime(d.createdAt) }}</span></div>
-                  <div class="flex justify-between gap-3"><span class="text-text-muted">Entrada – Salida</span><span class="font-bold text-right">{{ fmtDate(d.checkIn) }} – {{ fmtDate(d.checkOut) }} <span class="text-text-muted">({{ nights }}n)</span></span></div>
+                  <div class="flex justify-between gap-3"><span class="text-text-muted">Creada</span><span class="text-right flex items-center gap-1"><svg class="h-3 w-3 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>{{ fmtDateTime(d.createdAt) }}</span></div>
+                  <div class="flex justify-between gap-3 items-center bg-cyan/8 rounded-xl px-3 py-2 -mx-1"><span class="text-text-muted flex items-center gap-1.5"><svg class="h-3.5 w-3.5 text-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>Entrada – Salida</span><span class="font-bold text-right text-navy">{{ fmtDate(d.checkIn) }} – {{ fmtDate(d.checkOut) }} <span class="text-text-muted font-normal">({{ nights }}n)</span></span></div>
                   <div v-if="d.promoCode" class="flex justify-between gap-3"><span class="text-text-muted">Código promo</span><span class="font-bold text-right">{{ d.promoCode }}</span></div>
                   <div v-if="d.otaNotes" class="pt-2 border-t border-border/50">
                     <div class="text-text-muted text-xs mb-1">Comentario del canal (OTA)</div>
-                    <div class="text-xs bg-white rounded-lg p-2 border border-border whitespace-pre-wrap">{{ d.otaNotes }}</div>
+                    <div class="text-xs bg-surface rounded-lg p-2 border border-border/70 whitespace-pre-wrap">{{ d.otaNotes }}</div>
                   </div>
                   <div v-if="d.notes" class="pt-2 border-t border-border/50">
                     <div class="text-text-muted text-xs mb-1">Notas</div>
-                    <div class="text-xs bg-white rounded-lg p-2 border border-border whitespace-pre-wrap">{{ d.notes }}</div>
+                    <div class="text-xs bg-surface rounded-lg p-2 border border-border/70 whitespace-pre-wrap">{{ d.notes }}</div>
                   </div>
                   <div v-if="d.ownerNotes" class="pt-2 border-t border-border/50">
                     <div class="text-text-muted text-xs mb-1">Notas del propietario</div>
@@ -394,10 +433,10 @@ function editar() { if (d.value) emit('edit', d.value) }
               </details>
 
               <!-- Condiciones de la Reserva -->
-              <details class="bg-surface border border-border rounded-xl overflow-hidden">
+              <details class="bg-white border border-border/70 border-l-[3px] border-l-gold/60 rounded-2xl overflow-hidden shadow-card">
                 <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
-                  <span class="w-6 h-6 rounded-lg bg-gold/10 flex items-center justify-center text-xs">✅</span> Condiciones de la Reserva
-                  <span class="ml-auto text-text-muted text-xs">▾</span>
+                  <span class="w-7 h-7 rounded-lg bg-gold/10 flex items-center justify-center text-gold"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span> Condiciones de la Reserva
+                  <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
                 </summary>
                 <div class="px-4 pb-4 pt-1 space-y-2 text-sm">
                   <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" :checked="conditions.gdpr" @change="toggleCondition('gdpr')" class="w-4 h-4 accent-navy" /> Protección de datos (LOPD)</label>
@@ -405,69 +444,39 @@ function editar() { if (d.value) emit('edit', d.value) }
                   <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" :checked="conditions.terms" @change="toggleCondition('terms')" class="w-4 h-4 accent-navy" /> Normas de Uso y Seguridad</label>
                 </div>
               </details>
+            </div>
 
-              <!-- Comunicaciones -->
-              <details class="bg-surface border border-border rounded-xl overflow-hidden">
-                <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
-                  <span class="w-6 h-6 rounded-lg bg-teal/10 flex items-center justify-center text-xs">📨</span> Comunicaciones
-                  <span class="ml-auto text-text-muted text-xs">▾</span>
-                </summary>
-                <div class="px-4 pb-4 pt-1 space-y-2 text-sm">
-                  <button @click="printAs('voucherLodging')" class="w-full text-left px-3 py-2 bg-white rounded-lg border border-border hover:border-teal hover:text-teal cursor-pointer">📄 Bono del alojamiento</button>
-                  <button @click="printAs('voucherClient')" class="w-full text-left px-3 py-2 bg-white rounded-lg border border-border hover:border-teal hover:text-teal cursor-pointer">📄 Bono para el Cliente</button>
-                  <a v-if="checkinUrl" :href="checkinUrl" target="_blank" class="block w-full text-left px-3 py-2 bg-white rounded-lg border border-border hover:border-teal hover:text-teal">🔗 Autocheckin (check-in digital)</a>
+            <div class="p-5 space-y-4">
+              <!-- Datos del Cliente (bandera + idioma) -->
+              <div class="bg-white border border-border/70 border-l-[3px] border-l-navy/60 rounded-2xl p-4 shadow-card">
+                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-border/50">
+                  <span class="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center text-navy"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 0115 0"/></svg></span>
+                  <h4 class="text-sm font-black text-navy">Datos del Cliente</h4>
                 </div>
-              </details>
-
-              <!-- Comunicación con el Cliente -->
-              <details class="bg-surface border border-border rounded-xl overflow-hidden">
-                <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
-                  <span class="w-6 h-6 rounded-lg bg-purple/10 flex items-center justify-center text-xs">⚙️</span> Comunicación con el Cliente
-                  <span class="ml-auto text-text-muted text-xs">▾</span>
-                </summary>
-                <div class="px-4 pb-4 pt-1">
-                  <label class="flex items-center justify-between gap-3 text-sm py-2 cursor-pointer">
-                    <span class="text-text-secondary">Los envíos de esta reserva se enviarán automáticamente</span>
-                    <button type="button" @click="toggleAutoSend" :disabled="saving" class="relative w-11 h-6 rounded-full transition-colors shrink-0 cursor-pointer disabled:opacity-50" :class="autoSend ? 'bg-teal' : 'bg-gray-300'">
-                      <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow" :class="autoSend ? 'translate-x-5' : ''"></span>
-                    </button>
-                  </label>
-                  <div v-if="d.messageLogs && d.messageLogs.length" class="mt-2 pt-2 border-t border-border/50">
-                    <div class="text-text-muted text-xs mb-1">Envíos registrados</div>
-                    <div v-for="(log, i) in d.messageLogs.slice(0, 5)" :key="i" class="text-xs flex justify-between gap-2 py-0.5">
-                      <span class="truncate">{{ log.messageType || 'Mensaje' }}</span>
-                      <span class="font-bold shrink-0" :class="log.status === 'sent' ? 'text-teal' : 'text-gold'">{{ log.status }}</span>
-                    </div>
-                  </div>
+                <div v-if="d.guest" class="space-y-2 text-sm">
+                  <div class="flex justify-between gap-3 items-center"><span class="text-text-muted">Nombre</span><span class="font-bold text-navy text-lg">{{ nationalityToFlag(d.guest.nationality) }} {{ d.guest.name }}</span></div>
+                  <div v-if="d.guest.email" class="flex justify-between gap-3"><span class="text-text-muted">Email</span><a :href="`mailto:${d.guest.email}`" class="text-teal hover:underline truncate text-right">{{ d.guest.email }}</a></div>
+                  <div v-if="d.guest.phone" class="flex justify-between gap-3"><span class="text-text-muted">Teléfono</span><a :href="`tel:${d.guest.phone}`" class="text-teal hover:underline">{{ d.guest.phone }}</a></div>
+                  <div class="flex justify-between gap-3"><span class="text-text-muted">WhatsApp</span><a v-if="waLink(d.guest.phone)" :href="waLink(d.guest.phone)!" target="_blank" class="text-emerald-600 hover:underline">Escribir →</a><span v-else class="text-text-muted">—</span></div>
+                  <div v-if="d.guest.nationality" class="flex justify-between gap-3"><span class="text-text-muted">Nacionalidad</span><span class="text-right">{{ nationalityToFlag(d.guest.nationality) }} {{ d.guest.nationality }}</span></div>
+                  <div v-if="d.guest.language" class="flex justify-between gap-3"><span class="text-text-muted">Idioma</span><span class="font-bold text-right">{{ languageToFlag(d.guest.language) }} {{ d.guest.language }}</span></div>
+                  <div v-if="d.guest.document" class="flex justify-between gap-3"><span class="text-text-muted">Documento</span><span class="font-mono text-right text-xs">{{ d.guest.document }}</span></div>
                 </div>
-              </details>
+                <div v-else class="text-sm text-text-muted italic py-2">Sin huésped asociado</div>
+              </div>
 
-              <!-- Plantillas WhatsApp -->
-              <details v-if="waTemplates.length" class="bg-emerald-50 border border-emerald-200 rounded-xl overflow-hidden">
-                <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-emerald-700 select-none">
-                  <span class="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center text-xs">💬</span> Plantillas de WhatsApp Web
-                  <span class="ml-auto text-text-muted text-xs">▾</span>
-                </summary>
-                <div class="px-4 pb-4 pt-1 space-y-2 text-sm">
-                  <button v-for="t in waTemplates" :key="t.id" @click="waSend(t.whatsappBody)" class="w-full flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-emerald-200 hover:border-emerald-400 cursor-pointer">
-                    <span>{{ t.title }}</span><span class="text-emerald-600 text-xs">Enviar →</span>
-                  </button>
-                </div>
-              </details>
-
-              <!-- Elementos de la Reserva (MOVIDA al panel izquierdo, como MisterPlan) -->
-              <details open class="bg-navy/5 border border-navy/10 rounded-xl overflow-hidden">
+              <!-- Elementos de la Reserva -->
+              <details open class="bg-white border border-border/70 border-l-[3px] border-l-navy/60 rounded-2xl overflow-hidden shadow-card">
                 <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
-                  <span class="w-6 h-6 rounded-lg bg-navy/10 flex items-center justify-center text-xs">🏨</span> Elementos de la Reserva
-                  <span class="ml-auto text-text-muted text-xs">▾</span>
+                  <span class="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center text-navy"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l8-4v18M13 21V9l6 3v9M9 9h.01M9 13h.01M9 17h.01"/></svg></span> Elementos de la Reserva
+                  <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
                 </summary>
                 <div class="px-4 pb-4 pt-1 space-y-3 text-sm">
                   <div v-if="d.room">
                     <div class="font-bold text-navy">Habitación {{ d.room.number }} <span class="text-text-muted font-normal">{{ d.room.name || d.room.type }}</span></div>
                     <div class="text-xs text-text-muted">Asignada: ({{ fmtDate(d.checkIn) }})</div>
                   </div>
-                  <div class="flex flex-wrap gap-1 text-lg">{{ serviceIcons(d.room?.type).map((i) => i).join(' ') }}</div>
-                  <div class="grid grid-cols-2 gap-2 text-xs bg-white rounded-lg p-3 border border-border">
+                  <div class="grid grid-cols-2 gap-2 text-xs bg-surface rounded-lg p-3 border border-border/70">
                     <div><span class="text-text-muted">Régimen:</span> <span class="font-bold">{{ regimeLabel(d.regime) }}</span></div>
                     <div><span class="text-text-muted">Huéspedes:</span> <span class="font-bold">{{ d.adults ?? 0 }} pax{{ d.children ? ` +${d.children}n` : '' }}</span></div>
                     <div><span class="text-text-muted">Noches:</span> <span class="font-bold">{{ nights }}</span></div>
@@ -475,41 +484,24 @@ function editar() { if (d.value) emit('edit', d.value) }
                   </div>
                   <div class="flex justify-between items-center pt-2 border-t border-border/50">
                     <span class="text-text-muted text-xs">{{ nights }} noches × {{ money(pricePerNight) }}</span>
-                    <span class="font-black text-teal text-lg flex items-center gap-1">✓ {{ money(d.totalAmount) }}</span>
+                    <span class="font-black text-teal text-lg flex items-center gap-1">{{ money(d.totalAmount) }}</span>
                   </div>
                 </div>
               </details>
             </div>
+          </div>
 
-            <!-- ═══ PANEL DERECHO ═══ -->
+          <!-- Paso 2: Pago -->
+          <div v-show="viewStep === 2" class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
             <div class="p-5 space-y-4">
-
-              <!-- Datos del Cliente (bandera + idioma) -->
-              <div class="bg-navy/5 border border-navy/10 rounded-xl p-4">
-                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-border/50">
-                  <span class="w-6 h-6 rounded-lg bg-navy/10 flex items-center justify-center text-xs">👤</span>
-                  <h4 class="text-sm font-black text-navy">Datos del Cliente</h4>
-                </div>
-                <div v-if="d.guest" class="space-y-2 text-sm">
-                  <div class="flex justify-between gap-3 items-center"><span class="text-text-muted">Nombre</span><span class="font-bold text-navy text-lg">{{ nationalityToFlag(d.guest.nationality) }} {{ d.guest.name }}</span></div>
-                  <div v-if="d.guest.email" class="flex justify-between gap-3"><span class="text-text-muted">✉️ Email</span><a :href="`mailto:${d.guest.email}`" class="text-teal hover:underline truncate text-right">{{ d.guest.email }}</a></div>
-                  <div v-if="d.guest.phone" class="flex justify-between gap-3"><span class="text-text-muted">📞 Teléfono</span><a :href="`tel:${d.guest.phone}`" class="text-teal hover:underline">{{ d.guest.phone }}</a></div>
-                  <div class="flex justify-between gap-3"><span class="text-text-muted">💬 WhatsApp</span><a v-if="waLink(d.guest.phone)" :href="waLink(d.guest.phone)!" target="_blank" class="text-emerald-600 hover:underline">Escribir →</a><span v-else class="text-text-muted">—</span></div>
-                  <div v-if="d.guest.nationality" class="flex justify-between gap-3"><span class="text-text-muted">Nacionalidad</span><span class="text-right">{{ nationalityToFlag(d.guest.nationality) }} {{ d.guest.nationality }}</span></div>
-                  <div v-if="d.guest.language" class="flex justify-between gap-3"><span class="text-text-muted">🗣️ Idioma</span><span class="font-bold text-right">{{ languageToFlag(d.guest.language) }} {{ d.guest.language }}</span></div>
-                  <div v-if="d.guest.document" class="flex justify-between gap-3"><span class="text-text-muted">Documento</span><span class="font-mono text-right text-xs">{{ d.guest.document }}</span></div>
-                </div>
-                <div v-else class="text-sm text-text-muted italic py-2">Sin huésped asociado</div>
-              </div>
-
               <!-- Importe y Pago -->
-              <div class="bg-teal/5 border border-teal/15 rounded-xl p-4">
-                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-teal/20">
-                  <span class="w-6 h-6 rounded-lg bg-teal/10 flex items-center justify-center text-xs">💰</span>
+              <div class="bg-white border border-border/70 border-l-[3px] border-l-teal/60 rounded-2xl p-4 shadow-card">
+                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-border/50">
+                  <span class="w-7 h-7 rounded-lg bg-teal/10 flex items-center justify-center text-teal"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
                   <h4 class="text-sm font-black text-navy">Importe y Pago</h4>
                 </div>
                 <div class="space-y-1.5 text-sm">
-                  <button @click="viewMovements" class="flex justify-between w-full hover:text-teal cursor-pointer"><span class="text-text-muted">📦 Caja</span><span class="text-teal font-bold">Ver movimientos →</span></button>
+                  <button @click="viewMovements" class="flex justify-between w-full hover:text-teal cursor-pointer"><span class="text-text-muted">Caja</span><span class="text-teal font-bold">Ver movimientos →</span></button>
                   <div class="flex justify-between"><span class="text-text-muted">Forma de pago</span><span class="text-right">{{ payMethodLabel(d.paymentMethod) }}</span></div>
                   <div class="flex justify-between bg-teal/5 rounded px-2 py-1"><span class="text-text-muted">Importe de la reserva</span><span class="font-bold text-navy">{{ money(d.totalAmount) }}</span></div>
                   <div class="flex justify-between"><span class="text-text-muted">Anticipo</span><span class="font-bold" :class="payStatusBadge(d.deposit, d.totalAmount).cls">{{ d.deposit && d.deposit > 0 ? money(d.deposit) : 'Sin anticipo' }}</span></div>
@@ -518,12 +510,17 @@ function editar() { if (d.value) emit('edit', d.value) }
                     <span class="text-text-muted">Otros cobros</span>
                     <span class="flex items-center gap-1">
                       <input v-model="otherChargesDraft" type="number" min="0" step="0.01" class="w-20 px-2 py-0.5 text-right rounded border border-border text-xs" @keyup.enter="saveOtherCharges" />
-                      <button @click="saveOtherCharges" :disabled="saving" class="text-xs text-teal font-bold hover:underline cursor-pointer disabled:opacity-50">✓</button>
+                      <button @click="saveOtherCharges" :disabled="saving" class="text-teal hover:underline cursor-pointer disabled:opacity-50">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                      </button>
                     </span>
                   </div>
                   <div class="flex justify-between border-t border-border/50 pt-1.5"><span class="font-bold text-text-secondary">Pendiente de cobro</span><span class="font-black" :class="pending > 0 ? 'text-coral' : 'text-teal'">{{ money(pending) }}</span></div>
                   <div v-if="secondaryTotal !== null" class="flex justify-between"><span class="text-text-muted">Total ({{ secondaryCurrency }})</span><span class="font-bold text-purple">{{ moneySecondary(secondaryTotal) }}</span></div>
-                  <button @click="requirePayment" :disabled="saving || pending <= 0" class="w-full mt-2 py-2 bg-cyan text-navy rounded-lg text-xs font-black cursor-pointer hover:opacity-90 disabled:opacity-50">💳 Crear link de pago Stripe</button>
+                  <button @click="requirePayment" :disabled="saving || pending <= 0" class="w-full mt-2 flex items-center justify-center gap-1.5 py-2 bg-cyan text-navy rounded-lg text-xs font-black cursor-pointer hover:opacity-90 disabled:opacity-50">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 6.75h19.5A1.5 1.5 0 0123.25 8.25v9a1.5 1.5 0 01-1.5 1.5H2.25a1.5 1.5 0 01-1.5-1.5v-9a1.5 1.5 0 011.5-1.5zM6 15h3"/></svg>
+                    Crear link de pago Stripe
+                  </button>
                 </div>
                 <!-- Movimientos del folio (inline) -->
                 <div v-if="folioCharges" class="mt-3 pt-3 border-t border-teal/20">
@@ -534,11 +531,13 @@ function editar() { if (d.value) emit('edit', d.value) }
                   <div v-else class="text-xs text-text-muted italic">Sin movimientos</div>
                 </div>
               </div>
+            </div>
 
+            <div class="p-5 space-y-4">
               <!-- Tarjeta de garantía (MisterPlan): protegida con PIN -->
-              <div v-if="d.hasGuaranteeCard" class="bg-coral/5 border border-coral/20 rounded-xl p-4">
-                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-coral/20">
-                  <span class="w-6 h-6 rounded-lg bg-coral/10 flex items-center justify-center text-sm">🔒</span>
+              <div v-if="d.hasGuaranteeCard" class="bg-white border border-border/70 border-l-[3px] border-l-coral/60 rounded-2xl p-4 shadow-card">
+                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-border/50">
+                  <span class="w-7 h-7 rounded-lg bg-coral/10 flex items-center justify-center text-coral"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"/></svg></span>
                   <h4 class="text-sm font-black text-navy">Tarjeta de garantía</h4>
                 </div>
                 <!-- Bloqueada: pedir PIN -->
@@ -559,11 +558,17 @@ function editar() { if (d.value) emit('edit', d.value) }
                   <button @click="guaranteeUnlocked = false; guaranteePin = ''" class="mt-2 text-[11px] text-text-muted underline">Volver a bloquear</button>
                 </div>
               </div>
+              <p v-else class="text-xs text-text-muted italic px-1">Sin tarjeta de garantía cargada</p>
+            </div>
+          </div>
 
+          <!-- Paso 3: Extras y Acceso -->
+          <div v-show="viewStep === 3" class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
+            <div class="p-5 space-y-4">
               <!-- Otros servicios y descuentos -->
-              <div class="bg-purple/5 border border-purple/15 rounded-xl p-4">
+              <div class="bg-white border border-border/70 border-l-[3px] border-l-purple/60 rounded-2xl p-4 shadow-card">
                 <div class="flex items-center gap-2 mb-3 pb-2 border-b border-border/50">
-                  <span class="w-6 h-6 rounded-lg bg-purple/10 flex items-center justify-center text-xs">➕</span>
+                  <span class="w-7 h-7 rounded-lg bg-purple/10 flex items-center justify-center text-purple"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg></span>
                   <h4 class="text-sm font-black text-navy">Otros servicios y descuentos</h4>
                 </div>
                 <div class="space-y-1.5 text-sm mb-3">
@@ -575,7 +580,9 @@ function editar() { if (d.value) emit('edit', d.value) }
                     </span>
                     <span class="flex items-center gap-2 shrink-0">
                       <span class="font-bold" :class="a.kind === 'discount' ? 'text-coral' : 'text-navy'">{{ money((a.kind === 'discount' ? -1 : 1) * (a.amount ?? 0) * (a.quantity ?? 1)) }}</span>
-                      <button @click="removeAddon(a.id)" class="text-coral hover:underline text-xs cursor-pointer">✕</button>
+                      <button @click="removeAddon(a.id)" class="text-coral hover:underline cursor-pointer">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
                     </span>
                   </div>
                   <div v-if="!addons.length" class="text-xs text-text-muted italic">Sin servicios adicionales</div>
@@ -592,9 +599,9 @@ function editar() { if (d.value) emit('edit', d.value) }
               </div>
 
               <!-- Acompañantes -->
-              <div class="bg-surface border border-border rounded-xl p-4">
+              <div class="bg-white border border-border/70 border-l-[3px] border-l-navy/60 rounded-2xl p-4 shadow-card">
                 <div class="flex items-center gap-2 mb-3 pb-2 border-b border-border/50">
-                  <span class="w-6 h-6 rounded-lg bg-navy/10 flex items-center justify-center text-xs">👥</span>
+                  <span class="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center text-navy"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.943-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/></svg></span>
                   <h4 class="text-sm font-black text-navy">Acompañantes <span class="text-text-muted font-normal">({{ d.companions?.length || 0 }})</span></h4>
                 </div>
                 <div v-if="d.companions && d.companions.length" class="space-y-1.5 text-sm">
@@ -605,14 +612,16 @@ function editar() { if (d.value) emit('edit', d.value) }
                 </div>
                 <div v-else class="text-xs text-text-muted italic">Sin acompañantes</div>
               </div>
+            </div>
 
+            <div class="p-5 space-y-4">
               <!-- Check-in digital (mapeo de QScanPro de MisterPlan) -->
-              <div v-if="d.checkinCode" class="bg-cyan/5 border border-cyan/20 rounded-xl p-4">
+              <div v-if="d.checkinCode" class="bg-white border border-border/70 border-l-[3px] border-l-cyan/60 rounded-2xl p-4 shadow-card">
                 <div class="flex items-center gap-2 mb-2">
-                  <span class="w-6 h-6 rounded-lg bg-cyan/10 flex items-center justify-center text-xs">🔑</span>
+                  <span class="w-7 h-7 rounded-lg bg-cyan/10 flex items-center justify-center text-cyan"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg></span>
                   <h4 class="text-sm font-black text-navy">Check-in digital</h4>
                 </div>
-                <div class="text-center py-2 bg-white rounded-lg border-2 border-dashed border-cyan">
+                <div class="text-center py-2 bg-cyan/5 rounded-lg border-2 border-dashed border-cyan">
                   <div class="text-[10px] font-bold text-text-muted uppercase">Código de conexión</div>
                   <div class="text-2xl font-black text-cyan tracking-wider mt-1 font-mono">{{ d.checkinCode }}</div>
                 </div>
@@ -620,13 +629,13 @@ function editar() { if (d.value) emit('edit', d.value) }
               </div>
 
               <!-- Cerradura (si hay código) -->
-              <details v-if="d.lockCodes && d.lockCodes.length" class="bg-teal/5 border border-teal/15 rounded-xl overflow-hidden">
+              <details v-if="d.lockCodes && d.lockCodes.length" open class="bg-white border border-border/70 border-l-[3px] border-l-teal/60 rounded-2xl overflow-hidden shadow-card">
                 <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
-                  <span class="w-6 h-6 rounded-lg bg-teal/10 flex items-center justify-center text-xs">🔐</span> Cerradura
-                  <span class="ml-auto text-text-muted text-xs">▾</span>
+                  <span class="w-7 h-7 rounded-lg bg-teal/10 flex items-center justify-center text-teal"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"/></svg></span> Cerradura
+                  <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
                 </summary>
                 <div class="px-4 pb-4 pt-1 space-y-2">
-                  <div v-for="(lc, i) in d.lockCodes" :key="i" class="flex items-center justify-between bg-white rounded-lg p-3 border border-border">
+                  <div v-for="(lc, i) in d.lockCodes" :key="i" class="flex items-center justify-between bg-surface rounded-lg p-3 border border-border/70">
                     <div>
                       <div class="text-[10px] uppercase font-bold text-text-muted">Código de acceso</div>
                       <div class="text-xl font-black text-teal tracking-wider">{{ lc.code || '—' }}</div>
@@ -635,12 +644,78 @@ function editar() { if (d.value) emit('edit', d.value) }
                   </div>
                 </div>
               </details>
+              <p v-if="!d.checkinCode && !(d.lockCodes && d.lockCodes.length)" class="text-xs text-text-muted italic px-1">Sin check-in digital ni cerradura asignados</p>
+            </div>
+          </div>
 
-              <!-- Historial de cambios (D7 audit trail) -->
-              <details class="bg-surface border border-border rounded-xl overflow-hidden">
+          <!-- Paso 4: Comunicación e Historial -->
+          <div v-show="viewStep === 4" class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
+            <div class="p-5 space-y-4">
+              <!-- Comunicaciones -->
+              <details open class="bg-white border border-border/70 border-l-[3px] border-l-teal/60 rounded-2xl overflow-hidden shadow-card">
                 <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
-                  <span class="w-6 h-6 rounded-lg bg-navy/10 flex items-center justify-center text-xs">🕘</span> Historial
-                  <span class="ml-auto text-text-muted text-xs">▾</span>
+                  <span class="w-7 h-7 rounded-lg bg-teal/10 flex items-center justify-center text-teal"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg></span> Comunicaciones
+                  <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
+                </summary>
+                <div class="px-4 pb-4 pt-1 space-y-2 text-sm">
+                  <button @click="printAs('voucherLodging')" class="flex w-full items-center gap-2 text-left px-3 py-2 bg-surface rounded-lg border border-border/70 hover:border-teal hover:text-teal cursor-pointer">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
+                    Bono del alojamiento
+                  </button>
+                  <button @click="printAs('voucherClient')" class="flex w-full items-center gap-2 text-left px-3 py-2 bg-surface rounded-lg border border-border/70 hover:border-teal hover:text-teal cursor-pointer">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
+                    Bono para el Cliente
+                  </button>
+                  <a v-if="checkinUrl" :href="checkinUrl" target="_blank" class="flex w-full items-center gap-2 text-left px-3 py-2 bg-surface rounded-lg border border-border/70 hover:border-teal hover:text-teal">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+                    Autocheckin (check-in digital)
+                  </a>
+                </div>
+              </details>
+
+              <!-- Comunicación con el Cliente -->
+              <details class="bg-white border border-border/70 border-l-[3px] border-l-purple/60 rounded-2xl overflow-hidden shadow-card">
+                <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
+                  <span class="w-7 h-7 rounded-lg bg-purple/10 flex items-center justify-center text-purple"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.216.456a1.125 1.125 0 01-1.37-.49l-1.296-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span> Comunicación con el Cliente
+                  <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
+                </summary>
+                <div class="px-4 pb-4 pt-1">
+                  <label class="flex items-center justify-between gap-3 text-sm py-2 cursor-pointer">
+                    <span class="text-text-secondary">Los envíos de esta reserva se enviarán automáticamente</span>
+                    <button type="button" @click="toggleAutoSend" :disabled="saving" class="relative w-11 h-6 rounded-full transition-colors shrink-0 cursor-pointer disabled:opacity-50" :class="autoSend ? 'bg-teal' : 'bg-gray-300'">
+                      <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow" :class="autoSend ? 'translate-x-5' : ''"></span>
+                    </button>
+                  </label>
+                  <div v-if="d.messageLogs && d.messageLogs.length" class="mt-2 pt-2 border-t border-border/50">
+                    <div class="text-text-muted text-xs mb-1">Envíos registrados</div>
+                    <div v-for="(log, i) in d.messageLogs.slice(0, 5)" :key="i" class="text-xs flex justify-between gap-2 py-0.5">
+                      <span class="truncate">{{ log.messageType || 'Mensaje' }}</span>
+                      <span class="font-bold shrink-0" :class="log.status === 'sent' ? 'text-teal' : 'text-gold'">{{ log.status }}</span>
+                    </div>
+                  </div>
+                </div>
+              </details>
+
+              <!-- Plantillas WhatsApp -->
+              <details v-if="waTemplates.length" class="bg-white border border-border/70 border-l-[3px] border-l-emerald-400 rounded-2xl overflow-hidden shadow-card">
+                <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-emerald-700 select-none">
+                  <span class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg></span> Plantillas de WhatsApp Web
+                  <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
+                </summary>
+                <div class="px-4 pb-4 pt-1 space-y-2 text-sm">
+                  <button v-for="t in waTemplates" :key="t.id" @click="waSend(t.whatsappBody)" class="w-full flex items-center justify-between px-3 py-2 bg-surface rounded-lg border border-emerald-200 hover:border-emerald-400 cursor-pointer">
+                    <span>{{ t.title }}</span><span class="text-emerald-600 text-xs">Enviar →</span>
+                  </button>
+                </div>
+              </details>
+            </div>
+
+            <div class="p-5 space-y-4">
+              <!-- Historial de cambios (D7 audit trail) -->
+              <details open class="bg-white border border-border/70 border-l-[3px] border-l-navy/60 rounded-2xl overflow-hidden shadow-card">
+                <summary class="flex items-center gap-2 p-4 cursor-pointer list-none font-black text-sm text-navy select-none">
+                  <span class="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center text-navy"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span> Historial
+                  <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
                 </summary>
                 <div class="px-4 pb-4 pt-1 space-y-1">
                   <p v-if="!auditLogs.length" class="text-xs text-text-muted italic">Sin eventos registrados</p>
@@ -654,28 +729,44 @@ function editar() { if (d.value) emit('edit', d.value) }
           </div>
         </div>
 
-        <!-- ═══ FOOTER ═══ -->
-        <div class="p-4 border-t border-border bg-surface/80 shrink-0 flex items-center justify-between rm-no-print">
-          <div class="text-sm">
-            <span class="text-text-muted">Total: </span>
-            <span class="font-black text-navy text-lg">{{ money(grandTotal) }}</span>
-            <span v-if="secondaryTotal !== null" class="text-purple font-bold ml-2">≈ {{ moneySecondary(secondaryTotal) }}</span>
+        <!-- ═══ FOOTER — navegación del wizard (Atrás/Cerrar ⇄ Siguiente/Editar) ═══ -->
+        <div class="p-4 shadow-[0_-6px_16px_-10px_rgba(13,43,78,0.15)] bg-surface/60 shrink-0 flex items-center justify-between rm-no-print">
+          <div class="flex items-center gap-2 text-sm">
+            <span class="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center text-navy shrink-0"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg></span>
+            <span>
+              <span class="text-text-muted">Total: </span>
+              <span class="font-black text-navy text-lg">{{ money(grandTotal) }}</span>
+              <span v-if="secondaryTotal !== null" class="text-purple font-bold ml-2">≈ {{ moneySecondary(secondaryTotal) }}</span>
+            </span>
           </div>
           <div class="flex gap-3">
-            <button @click="emit('close')" class="px-5 py-2.5 border border-border rounded-lg text-sm font-bold text-text-secondary cursor-pointer hover:bg-white transition">Cerrar</button>
-            <button @click="editar" class="px-6 py-2.5 bg-teal text-white rounded-lg text-sm font-black cursor-pointer hover:opacity-90 transition">✎ Editar Reserva</button>
+            <button v-if="viewStep === 1" @click="emit('close')" class="px-5 py-2.5 border border-border/60 rounded-full text-sm font-bold text-text-secondary cursor-pointer hover:bg-white transition">Cerrar</button>
+            <button v-else @click="prevViewStep" class="flex items-center gap-1.5 px-5 py-2.5 border border-border/60 rounded-full text-sm font-bold text-text-secondary cursor-pointer hover:bg-white transition">
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+              Atrás
+            </button>
+            <button v-if="viewStep < VIEW_STEPS.length" @click="nextViewStep" class="flex items-center gap-1.5 px-6 py-2.5 bg-navy text-white rounded-full text-sm font-black cursor-pointer hover:bg-navy-light transition">
+              Siguiente
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <button v-else @click="editar" class="flex items-center gap-1.5 px-6 py-2.5 bg-teal text-white rounded-full text-sm font-black cursor-pointer hover:opacity-90 transition">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.932zM19.5 21H4.5a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5h9"/></svg>
+              Editar Reserva
+            </button>
           </div>
         </div>
 
         <!-- Confirm Anular (inline) -->
-        <div v-if="showCancel" class="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-10 rm-no-print">
-          <div class="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
-            <div class="text-3xl mb-3">⚠️</div>
+        <div v-if="showCancel" class="absolute inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center p-4 z-10 rm-no-print">
+          <div class="bg-white rounded-[20px] shadow-2xl w-full max-w-sm p-6 text-center">
+            <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-coral/10 text-coral">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+            </span>
             <h3 class="text-lg font-black text-navy mb-2">¿Anular reserva?</h3>
             <p class="text-sm text-text-secondary">La reserva <strong>{{ locator }}</strong> pasará a estado cancelada. Se puede revertir editando.</p>
             <div class="flex gap-3 mt-6">
-              <button @click="showCancel = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-              <button @click="setStatus('cancelled')" :disabled="saving" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-coral cursor-pointer disabled:opacity-50">Anular</button>
+              <button @click="showCancel = false" class="flex-1 py-2.5 border border-border/60 rounded-full text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
+              <button @click="setStatus('cancelled')" :disabled="saving" class="flex-1 py-2.5 rounded-full text-sm font-bold text-white bg-coral cursor-pointer disabled:opacity-50">Anular</button>
             </div>
           </div>
         </div>
@@ -708,9 +799,10 @@ function editar() { if (d.value) emit('edit', d.value) }
         </div>
       </div>
     </div>
+    </Transition>
 
     <!-- Loading -->
-    <div v-else-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 backdrop-blur-sm">
+    <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 backdrop-blur-sm">
       <div class="bg-white rounded-2xl px-8 py-6 flex items-center gap-3">
         <div class="w-5 h-5 border-2 border-navy border-t-transparent rounded-full animate-spin"></div>
         <span class="text-sm font-bold text-navy">Cargando reserva…</span>
@@ -733,6 +825,10 @@ details[open] > summary .ml-auto { transform: rotate(180deg); }
   .rm-print-area, .rm-print-area * { visibility: visible; }
   .rm-print-area { position: absolute; left: 0; top: 0; width: 100%; max-height: none; overflow: visible; }
   .rm-no-print { display: none !important; }
+  /* El detalle se pagina en pasos (v-show) para la vista en pantalla — al imprimir se
+     fuerzan todos los pasos visibles para no perder contenido fuera del paso activo. */
+  .rm-print-area .wizard-step { display: grid !important; }
+  .rm-print-area .wizard-step + .wizard-step { margin-top: 16px; padding-top: 16px; border-top: 1px solid #ddd; }
 
   /* Modo bono alojamiento */
   .print-voucherLodging .rm-print-area { display: none !important; }

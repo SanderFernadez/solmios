@@ -85,6 +85,9 @@
                 @dragstart="onDragStart($event, bar)"
                 @click="$emit('open', bar.res)"
                 @mouseenter="showTip($event, bar)" @mousemove="moveTip($event)" @mouseleave="hideTip">
+                <span v-if="getChannelBrand(bar.res.source)" class="flex items-center justify-center h-4 w-4 rounded-full shrink-0 text-white p-0.5"
+                  :style="{ background: getChannelBrand(bar.res.source)!.color }" :title="getChannelBrand(bar.res.source)!.label"
+                  v-html="getChannelBrand(bar.res.source)!.icon"></span>
                 <span class="truncate text-[11px] font-extrabold text-white drop-shadow">{{ bar.res.guestName || 'Huésped' }}</span>
                 <span class="hidden shrink-0 text-[9px] font-semibold text-white/70 md:inline">{{ bar.nights }} noche{{ bar.nights === 1 ? '' : 's' }}</span>
                 <!-- Handle de resize -->
@@ -134,7 +137,10 @@
           <div class="flex justify-between"><span class="text-text-muted">Habitación</span><span class="font-bold tabular-nums">{{ tip.bar.res.roomNumber ?? tip.bar.roomNumber }}</span></div>
           <div class="flex justify-between"><span class="text-text-muted">Estancia</span><span class="font-bold tabular-nums">{{ fmtDate(tip.bar.checkIn) }} → {{ fmtDate(tip.bar.checkOut) }}</span></div>
           <div class="flex justify-between"><span class="text-text-muted">Noches</span><span class="font-bold tabular-nums">{{ tip.bar.nights }}</span></div>
-          <div class="flex justify-between"><span class="text-text-muted">Canal</span><span class="font-bold capitalize">{{ SOURCE_LABEL[tip.bar.res.source] ?? tip.bar.res.source }}</span></div>
+          <div class="flex justify-between items-center"><span class="text-text-muted">Canal</span><span class="font-bold capitalize flex items-center gap-1.5">
+            <span v-if="getChannelBrand(tip.bar.res.source)" class="flex items-center justify-center h-3.5 w-3.5 rounded-full shrink-0 text-white p-0.5" :style="{ background: getChannelBrand(tip.bar.res.source)!.color }" v-html="getChannelBrand(tip.bar.res.source)!.icon"></span>
+            {{ SOURCE_LABEL[tip.bar.res.source] ?? tip.bar.res.source }}
+          </span></div>
           <div class="flex justify-between"><span class="text-text-muted">Total</span><span class="font-bold tabular-nums">${{ (tip.bar.res.totalAmount ?? 0).toLocaleString() }}</span></div>
         </div>
       </div>
@@ -161,6 +167,7 @@ import { ref, computed, onUnmounted } from 'vue'
 import type { Reservation, Room } from '@/types'
 import { ReservationService } from '@/services/Reservation.service'
 import { useToast } from '@/composables/useToast'
+import { getChannelBrand } from '@/composables/useChannelBrand'
 
 interface Bar {
   res: Reservation
