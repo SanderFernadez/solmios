@@ -52,10 +52,15 @@ export function MantenimientoModule(opts?: { storage?: StorageService }) {
       // ─── Servicios externos (proveedores) ───────────────────────────────
       // ⚠️ ANTES de `/:id`: si van después, `:id` captura "proveedores" y estas
       // rutas nunca se alcanzan.
+      //
+      // El catálogo se gestiona con `maintenance:edit` (no create/delete): así el
+      // SUPERVISOR —que reparte el mantenimiento pero no crea/borra tickets— puede
+      // cargar y quitar servicios externos, sin darle poder sobre los tickets. La
+      // baja de un proveedor es lógica igual (no borra data), por eso `edit` alcanza.
       router.get('/api/mantenimiento/proveedores', guard('maintenance', 'view'), (req) => controller.listProviders(req))
-      router.post('/api/mantenimiento/proveedores', guard('maintenance', 'create'), (req) => controller.storeProvider(req))
+      router.post('/api/mantenimiento/proveedores', guard('maintenance', 'edit'), (req) => controller.storeProvider(req))
       router.put('/api/mantenimiento/proveedores/:id', guard('maintenance', 'edit'), (req) => controller.updateProvider(req))
-      router.delete('/api/mantenimiento/proveedores/:id', guard('maintenance', 'delete'), (req) => controller.destroyProvider(req))
+      router.delete('/api/mantenimiento/proveedores/:id', guard('maintenance', 'edit'), (req) => controller.destroyProvider(req))
 
       router.get('/api/mantenimiento', guard('maintenance', 'view'), (req) => controller.index(req))
       router.get('/api/mantenimiento/:id', guard('maintenance', 'view'), (req) => controller.show(req))
