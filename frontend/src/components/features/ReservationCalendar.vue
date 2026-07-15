@@ -33,10 +33,11 @@
         <button @click="colorMode = 'status'" class="px-2 py-0.5 rounded text-[10px] cursor-pointer" :class="colorMode === 'status' ? 'bg-navy text-white' : 'text-text-muted'">Por Estado</button>
       </div>
       <template v-if="colorMode === 'channel'">
-        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-teal"></span><span class="text-teal">Directa</span></span>
-        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-cyan"></span><span class="text-cyan">Booking</span></span>
-        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gold"></span><span class="text-gold">Expedia</span></span>
-        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-coral"></span><span class="text-coral">Airbnb</span></span>
+        <span v-for="lc in LEGEND_CH" :key="lc.k" class="flex items-center gap-1">
+          <span class="w-3 h-3 rounded" :class="chOverride(lc.k) ? '' : lc.c" :style="chOverride(lc.k) ? { background: chOverride(lc.k)! } : {}"></span>
+          <span :class="chOverride(lc.k) ? '' : lc.t" :style="chOverride(lc.k) ? { color: chOverride(lc.k)! } : {}">{{ lc.l }}</span>
+        </span>
+        <button v-if="!embedded" @click="openColorPicker" class="ml-1 px-2 py-0.5 rounded border border-border text-[10px] font-bold text-text-muted hover:text-navy hover:border-navy transition-colors cursor-pointer" title="Elegir el color de cada canal">🎨 Colores</button>
       </template>
       <template v-else>
         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span>Pendiente</span>
@@ -115,7 +116,7 @@
                   <div v-if="gRes(room.id, day.dateStr) && isResFirst(room.id, day.dateStr)"
                     class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-move hover:brightness-90 select-none"
                     :class="[gRes(room.id, day.dateStr)!.bg, resDrag?.id === gRes(room.id, day.dateStr)!.id ? 'ring-2 ring-white/80 shadow-lg z-30' : '', resDrag?.id === gRes(room.id, day.dateStr)!.id && resDrag?.moved ? 'pointer-events-none opacity-90' : '']"
-                    :style="{ width: `calc(${resSpan(room.id, day)} * 100%)`, minWidth: '60px' }"
+                    :style="barStyle(room.id, day)"
                     @mousedown.stop="onResDown(gRes(room.id, day.dateStr)!, $event)"
                     @click.stop="openContext($event, gRes(room.id, day.dateStr)!, room)"
                     @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
@@ -619,6 +620,32 @@
       </div>
     </Teleport>
 
+    <!-- Editor de colores de canales (#138) -->
+    <Teleport to="body">
+      <div v-if="colorPicker" class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" @click.self="colorPicker = false">
+        <div class="bg-white rounded-2xl border border-border shadow-2xl w-full max-w-sm">
+          <div class="flex items-center justify-between p-4 border-b border-border">
+            <h3 class="text-sm font-black text-navy">🎨 Colores de los canales</h3>
+            <button @click="colorPicker = false" class="text-text-muted hover:text-coral font-bold cursor-pointer">✕</button>
+          </div>
+          <div class="p-4 space-y-2.5 max-h-[60vh] overflow-y-auto">
+            <p class="text-[11px] text-text-muted mb-1">Elegí con qué color se ven en el calendario las reservas de cada canal.</p>
+            <div v-for="c in CH_LIST" :key="c.key" class="flex items-center justify-between gap-3">
+              <span class="text-sm font-bold text-navy">{{ c.label }}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono text-text-muted uppercase">{{ colorDraft[c.key] }}</span>
+                <input type="color" v-model="colorDraft[c.key]" class="w-9 h-9 rounded cursor-pointer border border-border bg-white p-0.5">
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-2 p-4 border-t border-border">
+            <button @click="resetChannelColors" class="px-3 py-2 rounded-xl text-xs font-bold text-text-muted hover:text-navy cursor-pointer">Restablecer</button>
+            <button @click="saveChannelColors" class="px-5 py-2 rounded-xl text-sm font-black text-white bg-teal hover:brightness-95 cursor-pointer">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Reservation detail — ReservationModal (F3 match-misterplan) -->
     <ReservationModal
       v-if="detailId"
@@ -635,6 +662,7 @@ import { OperationsService } from '@/services/Operations.service'
 import { ReservationService, type RescheduleQuote, type RescheduleCommitInput } from '@/services/Reservation.service'
 import { GuestService } from '@/services/Guest.service'
 import { HotelService } from '@/services/Hotel.service'
+import { ConfigService } from '@/services/Platform.service'
 import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -742,6 +770,65 @@ const CHANNEL_ICON: Record<string, string> = {
   booking: '📘', 'booking.com': '📘',
   expedia: '✈️', airbnb: '🏡',
   google: '🌐', whatsapp: '💬', phone: '📞',
+}
+
+// ── Colores de canal personalizables (#138) ──────────────────────────────
+// El hotel elige el color de cada canal; se guarda en config `channel_colors`.
+// SIN personalización, el calendario usa los colores por defecto (clases del theme):
+// chOverride() devuelve null → el template cae a las clases bg-teal/bg-cyan/... de siempre.
+const CH_DEFAULT: Record<string, string> = {
+  direct: '#117A65', booking: '#00B4D8', expedia: '#B7950B', airbnb: '#E74C3C',
+  google: '#3B82F6', whatsapp: '#10B981', phone: '#6B7280',
+}
+const CH_LIST = [
+  { key: 'direct', label: 'Directa' }, { key: 'booking', label: 'Booking' },
+  { key: 'expedia', label: 'Expedia' }, { key: 'airbnb', label: 'Airbnb' },
+  { key: 'google', label: 'Google' }, { key: 'whatsapp', label: 'WhatsApp' },
+  { key: 'phone', label: 'Teléfono' },
+]
+// Canales de la leyenda con su clase por defecto (fallback cuando no hay color custom).
+const LEGEND_CH = [
+  { k: 'direct', l: 'Directa', c: 'bg-teal', t: 'text-teal' },
+  { k: 'booking', l: 'Booking', c: 'bg-cyan', t: 'text-cyan' },
+  { k: 'expedia', l: 'Expedia', c: 'bg-gold', t: 'text-gold' },
+  { k: 'airbnb', l: 'Airbnb', c: 'bg-coral', t: 'text-coral' },
+]
+const CH_COLOR_ALIAS: Record<string, string> = { directa: 'direct', 'booking.com': 'booking', walk_in: 'direct', email: 'direct' }
+function normCh(key?: string): string { const k = (key || 'direct').toLowerCase().trim(); return CH_COLOR_ALIAS[k] || k }
+// Colores elegidos por el hotel (solo los que difieren del default). Vacío = todo por defecto.
+const channelColors = ref<Record<string, string>>({})
+// Hex custom de un canal, o null si usa el color por defecto (clase del theme).
+function chOverride(key?: string): string | null { return channelColors.value[normCh(key)] || null }
+
+const colorPicker = ref(false)
+const colorDraft = ref<Record<string, string>>({})
+function openColorPicker() {
+  const d: Record<string, string> = {}
+  for (const c of CH_LIST) d[c.key] = channelColors.value[c.key] || CH_DEFAULT[c.key]
+  colorDraft.value = d
+  colorPicker.value = true
+}
+function resetChannelColors() { for (const c of CH_LIST) colorDraft.value[c.key] = CH_DEFAULT[c.key] }
+async function saveChannelColors() {
+  // Guardar solo lo que difiere del default → config chica y "restablecer" vuelve al theme.
+  const out: Record<string, string> = {}
+  for (const c of CH_LIST) { const v = (colorDraft.value[c.key] || '').toLowerCase(); if (v && v !== CH_DEFAULT[c.key].toLowerCase()) out[c.key] = v }
+  try {
+    await ConfigService.set('channel_colors', out, hid.value)
+    channelColors.value = out
+    toast.success('Colores de canales guardados')
+    colorPicker.value = false
+  } catch { toast.error('No se pudieron guardar los colores') }
+}
+// Estilo de la barra de reserva: ancho (calc de celdas) + color custom del canal si lo hay.
+function barStyle(rid: any, day: DI) {
+  const s: Record<string, string> = { width: `calc(${resSpan(rid, day)} * 100%)`, minWidth: '60px' }
+  if (colorMode.value === 'channel') {
+    const res = gRes(rid, day.dateStr)
+    const c = res && chOverride(res.chKey)
+    if (c) s.background = c
+  }
+  return s
 }
 const chIcon = (key: string): string => CHANNEL_ICON[key] || '🔗'
 const ST: Record<string, any> = {
@@ -1314,6 +1401,7 @@ onMounted(async () => {
     const h = (s as any).hotel || {}
     hotelInfo.value = { name: h.name || auth.user?.hotelName || '', address: h.address || '', phone: h.phone || '', email: h.email || '' }
   } catch {}
+  try { const c = await ConfigService.get('channel_colors', hid.value); if (c && typeof c === 'object' && !Array.isArray(c)) channelColors.value = c } catch {}
 })
 function prevWeek() { weekOffset.value--; lastSel.value = null; popup.value.show = false }
 function nextWeek() { weekOffset.value++; lastSel.value = null; popup.value.show = false }
