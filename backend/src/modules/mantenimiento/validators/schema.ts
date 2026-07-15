@@ -60,21 +60,29 @@ export const AddPhotoMantenimientoSchema: Record<string, ValidationRule> = {
   type: { type: 'string' as const, enum: PHOTO_TYPE_ENUM },
 }
 
-/** Alta de un SERVICIO EXTERNO (proveedor/contratista). */
-export const CreateProviderSchema: Record<string, ValidationRule> = {
-  name: { type: 'string' as const, required: true, min: MIN_TEXT_LENGTH, max: 120 },
+// Campos del perfil del proveedor, compartidos por alta y edición.
+const PROVIDER_PROFILE_FIELDS: Record<string, ValidationRule> = {
   specialty: { type: 'string' as const, max: 80 },
   phone: { type: 'string' as const, max: 40 },
   email: { type: 'string' as const, max: 120 },
   notes: { type: 'text' as const, max: NOTES_MAX_LENGTH },
+  address: { type: 'string' as const, max: 200 },
+  rate: { type: 'string' as const, max: 80 },
+  // Días CSV en inglés ("mon,tue,…"); el frontend arma la cadena. Formato "HH:mm".
+  workDays: { type: 'string' as const, max: 40 },
+  workStart: { type: 'string' as const, max: 5 },
+  workEnd: { type: 'string' as const, max: 5 },
+}
+
+/** Alta de un SERVICIO EXTERNO (proveedor/contratista). */
+export const CreateProviderSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, required: true, min: MIN_TEXT_LENGTH, max: 120 },
+  ...PROVIDER_PROFILE_FIELDS,
 }
 
 /** Edición: todo opcional (merge parcial). */
 export const UpdateProviderSchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const, min: MIN_TEXT_LENGTH, max: 120 },
-  specialty: { type: 'string' as const, max: 80 },
-  phone: { type: 'string' as const, max: 40 },
-  email: { type: 'string' as const, max: 120 },
-  notes: { type: 'text' as const, max: NOTES_MAX_LENGTH },
+  ...PROVIDER_PROFILE_FIELDS,
   active: { type: 'boolean' as const },
 }

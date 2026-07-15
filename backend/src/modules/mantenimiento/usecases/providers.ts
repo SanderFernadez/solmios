@@ -14,6 +14,12 @@ import { assertOwnership } from '../helpers'
 
 type User = { id: string; role: string; hotelId?: string }
 
+/** Campos del perfil que la edición puede tocar (nunca id/hotelId). */
+const PROVIDER_EDITABLE_FIELDS = [
+  'name', 'specialty', 'phone', 'email', 'notes',
+  'address', 'rate', 'workDays', 'workStart', 'workEnd',
+] as const satisfies readonly (keyof MaintenanceProviderDTO)[]
+
 export class ProvidersUseCase {
   constructor(private readonly repo: RepositoryAdapter<MaintenanceProviderDTO>) {}
 
@@ -38,6 +44,11 @@ export class ProvidersUseCase {
       phone: dto.phone ?? '',
       email: dto.email ?? '',
       notes: dto.notes ?? '',
+      address: dto.address ?? '',
+      rate: dto.rate ?? '',
+      workDays: dto.workDays ?? '',
+      workStart: dto.workStart ?? '',
+      workEnd: dto.workEnd ?? '',
       active: true,
     } as any)
   }
@@ -45,7 +56,7 @@ export class ProvidersUseCase {
   async update(id: string, dto: Partial<MaintenanceProviderDTO>, user: User): Promise<MaintenanceProviderDTO> {
     const existing = await this.owned(id, user)
     const patch: Record<string, unknown> = {}
-    for (const key of ['name', 'specialty', 'phone', 'email', 'notes'] as const) {
+    for (const key of PROVIDER_EDITABLE_FIELDS) {
       if (dto[key] !== undefined) patch[key] = dto[key]
     }
     if (typeof dto.active === 'boolean') patch.active = dto.active

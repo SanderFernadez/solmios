@@ -76,6 +76,15 @@ export const MaintenanceProviderModel: ModelDefinition = {
     phone: { type: 'string' },
     email: { type: 'string' },
     notes: { type: 'text' },
+    /** Dirección o zona de cobertura. */
+    address: { type: 'string' },
+    /** Tarifa como texto libre ("RD$1500 por visita", "por hora"). */
+    rate: { type: 'string' },
+    /** Días que trabaja, CSV en inglés: "mon,tue,wed,thu,fri". */
+    workDays: { type: 'string' },
+    /** Horario de disponibilidad "HH:mm". */
+    workStart: { type: 'string' },
+    workEnd: { type: 'string' },
     active: { type: 'boolean', default: true },
   },
   timestamps: true,

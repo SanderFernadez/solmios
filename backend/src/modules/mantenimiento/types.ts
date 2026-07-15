@@ -146,6 +146,15 @@ export interface MaintenanceProviderDTO {
   phone?: string
   email?: string
   notes?: string
+  /** Dirección o zona de cobertura del proveedor. */
+  address?: string
+  /** Tarifa como texto libre: "RD$1500 por visita", "por hora", etc. */
+  rate?: string
+  /** Días que trabaja, CSV en inglés: "mon,tue,wed,thu,fri". Vacío = sin definir. */
+  workDays?: string
+  /** Horario de disponibilidad, formato "HH:mm". */
+  workStart?: string
+  workEnd?: string
   /** Baja lógica: los tickets viejos siguen apuntando al proveedor dado de baja. */
   active?: boolean
   createdAt?: string
