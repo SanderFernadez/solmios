@@ -97,19 +97,19 @@ export class HousekeepingController {
   // ─── Aprobación y presencia (F4/F5) ───────────────────────────────────────
   async approve(req: HttpRequest) {
     const data = validateSchema(ApproveHousekeepingSchema, req.body ?? {}) as { rating: number; note?: string }
-    const result = await this.service.approve(req.params.id, (req.user as any).id, data.note, data.rating)
+    const result = await this.service.approve(req.params.id, req.user as any, data.note, data.rating)
     return { status: 200, body: result }
   }
 
   async reject(req: HttpRequest) {
     const body = (req.body || {}) as Record<string, unknown>
     const note = body.note as string | undefined
-    const result = await this.service.reject(req.params.id, (req.user as any).id, note)
+    const result = await this.service.reject(req.params.id, req.user as any, note)
     return { status: 200, body: result }
   }
 
   async presence(req: HttpRequest) {
-    await this.service.markPresence(req.params.id, (req.user as any).id)
+    await this.service.markPresence(req.params.id, req.user as any)
     return { status: 200, body: { message: 'Presencia registrada' } }
   }
 

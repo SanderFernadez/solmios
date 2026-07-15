@@ -20,10 +20,10 @@ export const CreateHuespedesSchema: Record<string, ValidationRule> = {
     profession: { type: 'string' as const },
     emergencyContact: { type: 'json' as any },
     preferences: { type: 'json' as any },
-    loyaltyPoints: { type: 'number' as const },
-    totalStays: { type: 'number' as const },
-    totalSpent: { type: 'number' as const },
-  tier: { type: 'string' as const },
+    // loyaltyPoints/totalStays/totalSpent/tier NO son editables por API: son derivados del ledger
+    // `loyalty_transactions` y la lógica del CRM (nextTier/pointsForStay). Aceptarlos acá permitía
+    // ponerse tier "platinum" y puntos arbitrarios saltándose el ledger. El modelo los mantiene con
+    // sus defaults; el CRM los actualiza por su vía. (Quitar `tier` además evita el 500 por CHECK.)
     birthDate: { type: 'string' as const },
     notes: { type: 'text' as any },
     active: { type: 'number' as const },
@@ -46,10 +46,10 @@ export const UpdateHuespedesSchema: Record<string, ValidationRule> = {
     profession: { type: 'string' as const },
     emergencyContact: { type: 'json' as any },
     preferences: { type: 'json' as any },
-    loyaltyPoints: { type: 'number' as const },
-    totalStays: { type: 'number' as const },
-    totalSpent: { type: 'number' as const },
-  tier: { type: 'string' as const },
+    // loyaltyPoints/totalStays/totalSpent/tier NO son editables por API: son derivados del ledger
+    // `loyalty_transactions` y la lógica del CRM (nextTier/pointsForStay). Aceptarlos acá permitía
+    // ponerse tier "platinum" y puntos arbitrarios saltándose el ledger. El modelo los mantiene con
+    // sus defaults; el CRM los actualiza por su vía. (Quitar `tier` además evita el 500 por CHECK.)
     birthDate: { type: 'string' as const },
     notes: { type: 'text' as any },
     active: { type: 'number' as const },

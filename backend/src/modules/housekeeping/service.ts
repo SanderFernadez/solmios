@@ -139,21 +139,21 @@ export class HousekeepingService {
   async stats(q: StaffStatsQuery, u: HousekeepingUser) { return this.statsUc.stats(q, u) }
 
   // ─── Aprobación y presencia ───────────────────────────────────────────────
-  async approve(id: string, userId: string, note: string | undefined, rating: number) {
-    const result = await this.approveUc.approve(id, userId, note, rating)
+  async approve(id: string, user: { id: string; role?: string; hotelId?: string }, note: string | undefined, rating: number) {
+    const result = await this.approveUc.approve(id, user, note, rating)
     await this.sockets.onHousekeepingUpdated?.(result)
     await this.invalidateCache(result.hotelId)
     return result
   }
-  async reject(id: string, userId: string, note?: string) {
-    const result = await this.approveUc.reject(id, userId, note)
+  async reject(id: string, user: { id: string; role?: string; hotelId?: string }, note?: string) {
+    const result = await this.approveUc.reject(id, user, note)
     await this.sockets.onHousekeepingUpdated?.(result)
     // La camarera tiene que enterarse de que su limpieza volvió.
     if (result.staffId) await this.sockets.onTaskAssigned?.(result)
     await this.invalidateCache(result.hotelId)
     return result
   }
-  async markPresence(id: string, userId: string) { return this.approveUc.markPresence(id, userId) }
+  async markPresence(id: string, user: { id: string; role?: string; hotelId?: string }) { return this.approveUc.markPresence(id, user) }
   async reportIssue(id: string, desc: string, type: string, reporter: { id: string; hotelId?: string; role: string }) {
     return this.approveUc.reportIssue(id, desc, type, reporter, this.sockets.onIssueReported)
   }

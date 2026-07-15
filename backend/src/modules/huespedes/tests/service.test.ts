@@ -49,8 +49,18 @@ describe('HuespedesService', () => {
   describe('create', () => {
     it('crea y retorna el item', async () => {
       const service = new HuespedesService(makeRepo(), makeUserRepo(), log, silentCache, mockAuth)
-      const result = await service.create({} as any)
+      const result = await service.create({} as any, mockUser)
       expect(result.id).toBe('test-id')
+    })
+
+    it('OP-C1: fuerza el hotelId del JWT, ignora el dto.hotelId del cliente', async () => {
+      let persisted: any = null
+      const repo = makeRepo({ create: async (d: any) => { persisted = { id: 'x', ...d }; return persisted } })
+      const service = new HuespedesService(repo, makeUserRepo(), log, silentCache, mockAuth)
+      // mockUser es hotel_admin de su hotel; intenta crear en 'hotel-ajeno'.
+      await service.create({ hotelId: 'hotel-ajeno' } as any, mockUser)
+      expect(persisted.hotelId).toBe(mockUser.hotelId)
+      expect(persisted.hotelId).not.toBe('hotel-ajeno')
     })
   })
 

@@ -16,6 +16,12 @@ export async function assertUpdateValidations(
 ): Promise<void> {
   // Máquina de estados (super_admin puede forzar).
   if (dto.status && currentUser.role !== 'super_admin') {
+    // checked_in/checked_out tienen efecto físico (folio, cuarto ocupado): SOLO se logran vía
+    // POST /checkin y /checkout. Por el PUT genérico cambiaban el estado dejando el cuarto libre y
+    // sin folio (desync + estadía sin cobrar).
+    if (dto.status === 'checked_in' || dto.status === 'checked_out') {
+      throw new ConflictError(`El estado "${dto.status}" se logra con POST /checkin o /checkout, no editando la reserva`)
+    }
     assertValidTransition(existing.status, dto.status)
   }
   // Coherencia de fechas.

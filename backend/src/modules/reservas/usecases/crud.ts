@@ -46,8 +46,25 @@ export async function getReservationById(repo: any, id: string, currentUser: { i
   return item
 }
 
-export async function createReservation(repo: any, blockRepo: any | undefined, logger: any, cache: any, sockets: any, notifyDeps: any, dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
+export async function createReservation(repo: any, blockRepo: any | undefined, logger: any, cache: any, sockets: any, notifyDeps: any, dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }, roomRepo?: any, guestRepo?: any): Promise<ReservasDTO> {
   if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado para crear en otro hotel')
+  // El estado inicial no puede ser checked_in/checked_out/etc: esos se logran vía /checkin y
+  // /checkout (que crean folio y ocupan el cuarto). Una reserva nace confirmada o pendiente.
+  if (dto.status && dto.status !== 'confirmed' && dto.status !== 'pending') {
+    throw new ConflictError(`Estado inicial no permitido: ${dto.status} (usar confirmed o pending)`)
+  }
+  // IDOR: el cuarto y el huésped deben ser del MISMO hotel que la reserva. Sin esto, un hotel
+  // ocupaba/cobraba cuartos de otro pasando un roomId ajeno (el hotelId ya se forzó arriba).
+  // Se lee por `findOne({id})` — la pertenencia es lo que se está verificando, no un recurso
+  // protegido que requiera assertOwnership del usuario sobre él.
+  if (roomRepo) {
+    const room = await roomRepo.findOne({ id: dto.roomId })
+    if (!room || room.hotelId !== dto.hotelId) throw new ConflictError('La habitación no pertenece a este hotel')
+  }
+  if (guestRepo && dto.guestId) {
+    const guest = await guestRepo.findOne({ id: dto.guestId })
+    if (!guest || guest.hotelId !== dto.hotelId) throw new ConflictError('El huésped no pertenece a este hotel')
+  }
   if (dto.checkIn >= dto.checkOut) throw new ConflictError('checkIn debe ser anterior a checkOut')
   await assertRoomAvailable(repo, dto.roomId, dto.checkIn, dto.checkOut)
   if (blockRepo) {
@@ -79,7 +96,17 @@ export async function deleteReservation(repo: any, logger: any, cache: any, sock
   const existing = await repo.findById(id)
   if (!existing) throw new NotFoundError('Reserva no encontrada')
   if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
-  const deleted = await repo.delete(id)
+  // Una reserva con folio/check-in no se borra: el FK lo frena, pero como 500 de motor. Se mapea a
+  // un 409 claro (regla "anular ≠ borrar": cancelar la reserva, no eliminar el registro).
+  let deleted: boolean
+  try {
+    deleted = await repo.delete(id)
+  } catch (e) {
+    if (/FOREIGN KEY|constraint/i.test((e as Error).message)) {
+      throw new ConflictError('No se puede eliminar una reserva con folio o check-in: cancelala en su lugar')
+    }
+    throw e
+  }
   if (!deleted) throw new NotFoundError('Reserva no encontrada')
   await safeEmit(logger, 'onReservasDeleted', sockets.onReservasDeleted, id)
   await cache.delete(`reservas:list:${existing.hotelId}`)

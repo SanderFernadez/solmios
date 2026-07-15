@@ -218,7 +218,7 @@ describe('HousekeepingService', () => {
     it('approves a completed task and persists the rating', async () => {
       const repo = makeRepo({ findById: async () => readyTask, update: async (id, data) => ({ ...readyTask, ...data, id } as HousekeepingDTO) })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
-      const result = await svc.approve('hk1', 'sup1', 'buen trabajo', 8)
+      const result = await svc.approve('hk1', { id: 'sup1', role: 'hotel_admin', hotelId: 'h1' }, 'buen trabajo', 8)
       expect(result.status).toBe('inspected')
       expect(result.rating).toBe(8)
     })
@@ -226,28 +226,38 @@ describe('HousekeepingService', () => {
     it('accepts the boundary values 1 and 10', async () => {
       const repo = makeRepo({ findById: async () => readyTask, update: async (id, data) => ({ ...readyTask, ...data, id } as HousekeepingDTO) })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
-      expect((await svc.approve('hk1', 'sup1', undefined, 1)).rating).toBe(1)
-      expect((await svc.approve('hk1', 'sup1', undefined, 10)).rating).toBe(10)
+      expect((await svc.approve('hk1', { id: 'sup1', role: 'hotel_admin', hotelId: 'h1' }, undefined, 1)).rating).toBe(1)
+      expect((await svc.approve('hk1', { id: 'sup1', role: 'hotel_admin', hotelId: 'h1' }, undefined, 10)).rating).toBe(10)
     })
 
     it('rejects a rating below 1 or above 10', async () => {
       const repo = makeRepo({ findById: async () => readyTask })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
-      await expect(svc.approve('hk1', 'sup1', undefined, 0)).rejects.toThrow('entre 1 y 10')
-      await expect(svc.approve('hk1', 'sup1', undefined, 11)).rejects.toThrow('entre 1 y 10')
+      await expect(svc.approve('hk1', { id: 'sup1', role: 'hotel_admin', hotelId: 'h1' }, undefined, 0)).rejects.toThrow('entre 1 y 10')
+      await expect(svc.approve('hk1', { id: 'sup1', role: 'hotel_admin', hotelId: 'h1' }, undefined, 11)).rejects.toThrow('entre 1 y 10')
     })
 
     it('rejects a non-integer rating', async () => {
       const repo = makeRepo({ findById: async () => readyTask })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
-      await expect(svc.approve('hk1', 'sup1', undefined, 7.5)).rejects.toThrow('entero')
+      await expect(svc.approve('hk1', { id: 'sup1', role: 'hotel_admin', hotelId: 'h1' }, undefined, 7.5)).rejects.toThrow('entero')
     })
 
     it('rejects approving without physical presence marked', async () => {
       const noPresence = { id: 'hk1', roomId: 'r1', hotelId: 'h1', status: 'completed' } as HousekeepingDTO
       const repo = makeRepo({ findById: async () => noPresence })
       const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
-      await expect(svc.approve('hk1', 'sup1', undefined, 8)).rejects.toThrow('presencia física')
+      await expect(svc.approve('hk1', { id: 'sup1', role: 'hotel_admin', hotelId: 'h1' }, undefined, 8)).rejects.toThrow('presencia física')
+    })
+
+    it('OP-C3 IDOR: no se puede aprobar la tarea de OTRO hotel', async () => {
+      const repo = makeRepo({ findById: async () => readyTask }) // tarea de h1
+      const svc = new HousekeepingService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      // supervisor del hotel h2 intenta aprobar una tarea de h1
+      await expect(svc.approve('hk1', { id: 'sup2', role: 'hotel_admin', hotelId: 'h2' }, undefined, 8))
+        .rejects.toThrow('no pertenece a tu hotel')
+      await expect(svc.reject('hk1', { id: 'sup2', role: 'hotel_admin', hotelId: 'h2' }))
+        .rejects.toThrow('no pertenece a tu hotel')
     })
   })
 

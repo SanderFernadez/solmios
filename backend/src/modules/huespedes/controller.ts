@@ -44,7 +44,7 @@ export class HuespedesController {
   async store(req: HttpRequest) {
     this.logger.info('POST /huespedes')
     const data = withJsonTextFields(validateSchema(CreateHuespedesSchema, req.body), req.body)
-    const item = await this.service.create(data as any)
+    const item = await this.service.create(data as any, req.user as any)
     return { status: 201, body: item }
   }
 

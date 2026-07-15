@@ -6,14 +6,25 @@ import type { IssueReport } from '../sockets'
 import { assertTransition } from './timings'
 import { RATING_MIN, RATING_MAX } from '../validators/schema'
 
+interface HkUser { id: string; role?: string; hotelId?: string }
+
 export class ApproveUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<HousekeepingDTO>,
   ) {}
 
-  async approve(taskId: string, userId: string, note: string | undefined, rating: number): Promise<HousekeepingDTO> {
+  /** Carga la tarea imponiendo ownership: un hotel no aprueba/rechaza limpiezas de otro (IDOR). */
+  private async ownedTask(taskId: string, user: HkUser): Promise<HousekeepingDTO> {
     const task = await this.repo.findById(taskId)
     if (!task) throw new NotFoundError('Tarea no encontrada')
+    if (user.role !== 'super_admin' && (task as any).hotelId !== user.hotelId) {
+      throw new AuthError('La tarea no pertenece a tu hotel')
+    }
+    return task
+  }
+
+  async approve(taskId: string, user: HkUser, note: string | undefined, rating: number): Promise<HousekeepingDTO> {
+    const task = await this.ownedTask(taskId, user)
 
     // No se aprueba una limpieza sin calificarla. Se refuerza acá el rango entero,
     // porque el validador del framework no garantiza min/max para números.
@@ -36,7 +47,7 @@ export class ApproveUseCase {
 
     const updated = await this.repo.update(taskId, {
       status: 'inspected',
-      supervisorId: userId,
+      supervisorId: user.id,
       supervisorNote: note || null,
       rating,
       completedDate: new Date().toISOString(),
@@ -51,9 +62,8 @@ export class ApproveUseCase {
    * Transición completed → pending (permitida) con la nota del motivo. La camarera
    * la vuelve a arrancar; la nota le dice qué corregir.
    */
-  async reject(taskId: string, userId: string, note?: string): Promise<HousekeepingDTO> {
-    const task = await this.repo.findById(taskId)
-    if (!task) throw new NotFoundError('Tarea no encontrada')
+  async reject(taskId: string, user: HkUser, note?: string): Promise<HousekeepingDTO> {
+    const task = await this.ownedTask(taskId, user)
 
     if (task.status !== 'completed') {
       throw new AuthError('Solo se pueden devolver tareas completadas')
@@ -63,7 +73,7 @@ export class ApproveUseCase {
 
     const updated = await this.repo.update(taskId, {
       status: 'pending',
-      supervisorId: userId,
+      supervisorId: user.id,
       supervisorNote: note || null,
     } as any)
 
@@ -71,9 +81,8 @@ export class ApproveUseCase {
     return updated
   }
 
-  async markPresence(taskId: string, userId: string): Promise<void> {
-    const task = await this.repo.findById(taskId)
-    if (!task) throw new NotFoundError('Tarea no encontrada')
+  async markPresence(taskId: string, user: HkUser): Promise<void> {
+    const task = await this.ownedTask(taskId, user)
 
     // Solo supervisor puede marcar presencia
     if (task.status !== 'completed') {
@@ -82,7 +91,7 @@ export class ApproveUseCase {
 
     await this.repo.update(taskId, {
       supOnSiteTime: new Date().toISOString(),
-      supervisorId: userId,
+      supervisorId: user.id,
     } as any)
   }
 

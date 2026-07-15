@@ -102,12 +102,15 @@ export class HuespedesService {
     return item
   }
 
-  async create(dto: CreateHuespedesDTO): Promise<HuespedesDTO> {
+  async create(dto: CreateHuespedesDTO, user: CurrentUser): Promise<HuespedesDTO> {
     this.logger.info('Creando huespedes')
+    // P0 (IDOR/cross-tenant): el hotelId sale del JWT, NUNCA de dto.hotelId (control del cliente).
+    // Un merchant no puede crear huéspedes en otro hotel. super_admin sí puede especificar.
+    const hotelId = user.role === 'super_admin' ? (dto.hotelId || user.hotelId || '') : (user.hotelId || '')
     this.validateEmailFormat(dto.email)
-    await this.assertUniqueField('email', dto.email, dto.hotelId)
-    await this.assertUniqueField('document', dto.document, dto.hotelId)
-    const item = await this.repo.create(dto as Omit<HuespedesDTO, 'id'>)
+    await this.assertUniqueField('email', dto.email, hotelId)
+    await this.assertUniqueField('document', dto.document, hotelId)
+    const item = await this.repo.create({ ...dto, hotelId } as Omit<HuespedesDTO, 'id'>)
     await this.sockets.onHuespedesCreated?.(item)
     await this.cache.delete('huespedes:list')
     return item
@@ -137,7 +140,17 @@ export class HuespedesService {
     if (!existing) throw new NotFoundError('Huespedes no encontrado')
     const me = await this.userRepo.findById(user.id)
     this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    const deleted = await this.repo.delete(id)
+    // Un huésped con reservas/folios no se borra: el FK lo frena, pero como 500 de motor. Se mapea
+    // a un 409 claro. (Guard de app completo — contar reservas vía connector — queda como mejora.)
+    let deleted: boolean
+    try {
+      deleted = await this.repo.delete(id)
+    } catch (e) {
+      if (/FOREIGN KEY|constraint/i.test((e as Error).message)) {
+        throw new ConflictError('No se puede eliminar un huésped con reservas o folios asociados')
+      }
+      throw e
+    }
     if (!deleted) throw new NotFoundError('Huespedes no encontrado')
     await this.sockets.onHuespedesDeleted?.(id)
     await this.cache.delete('huespedes:list')

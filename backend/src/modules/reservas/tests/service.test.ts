@@ -38,8 +38,10 @@ function makeUserRepo() {
 const mockUser = { id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }
 
 // Repos de dependencias del bloque de email (no se ejercitan en estos tests — communicateClient ausente).
-const guestRepo = { findById: async () => null } as unknown as RepositoryAdapter<any>
-const roomRepo = { findById: async () => null } as unknown as RepositoryAdapter<any>
+// findOne devuelve entidades del hotel 'h1' (el de los tests) para pasar la validación de
+// pertenencia room/guest→hotel en create (OP-C2).
+const guestRepo = { findById: async () => null, findOne: async () => ({ id: 'guest1', hotelId: 'h1' }) } as unknown as RepositoryAdapter<any>
+const roomRepo = { findById: async () => null, findOne: async () => ({ id: 'room1', hotelId: 'h1' }) } as unknown as RepositoryAdapter<any>
 const hotelRepo = { findById: async () => null } as unknown as RepositoryAdapter<any>
 
 function makeQueries() {
