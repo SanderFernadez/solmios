@@ -17,6 +17,22 @@ import { findOwnedTicket } from '../helpers'
 
 type User = { id: string; role: string; hotelId?: string }
 
+/**
+ * El dueño del ticket es excluyente: técnico interno (`assignedTo`) O servicio
+ * externo (`providerId`), nunca ambos. Devuelve el patch que DESALOJA al otro
+ * cuando en el dto llega uno no vacío. Si el dto no toca la asignación (o solo
+ * la limpia), devuelve `{}` y no pisa nada.
+ */
+function exclusiveAssignee(
+  dto: { assignedTo?: string; providerId?: string },
+): { assignedTo?: string; providerId?: string } {
+  const toProvider = typeof dto.providerId === 'string' && dto.providerId.length > 0
+  const toInternal = typeof dto.assignedTo === 'string' && dto.assignedTo.length > 0
+  if (toProvider) return { assignedTo: '' }
+  if (toInternal) return { providerId: '' }
+  return {}
+}
+
 export interface CrudEffects {
   onCreated?: (item: MantenimientoDTO) => Promise<void>
   onUpdated?: (item: MantenimientoDTO) => Promise<void>
@@ -40,7 +56,7 @@ export class CrudUseCase {
       throw new NotFoundError('No autorizado para crear en otro hotel')
     }
     // `reportedBy` sale del token, nunca del cliente: es trazabilidad de quién reportó.
-    const item = await this.repo.create({ ...dto, reportedBy: user.id } as any)
+    const item = await this.repo.create({ ...dto, reportedBy: user.id, ...exclusiveAssignee(dto) } as any)
     await this.audit.log(item.id, dto.hotelId, user.id, 'created', null, item.title)
     await this.effects.onCreated?.(item)
     // Si nace ya asignado a un técnico, avisale a esa persona.
@@ -51,12 +67,16 @@ export class CrudUseCase {
 
   async update(id: string, dto: UpdateMantenimientoDTO, user: User): Promise<MantenimientoDTO> {
     const existing = await findOwnedTicket(this.repo, id, user)
-    await this.logChanges(id, existing.hotelId, user.id, existing, dto)
-    const item = await this.repo.update(id, dto as any)
+    // Un ticket tiene UN dueño: técnico interno O servicio externo, nunca los dos.
+    // Asignar uno desaloja al otro acá, en el servidor, sin importar por qué ruta
+    // vino el request (el diálogo de la app lo respeta, pero no es la garantía).
+    const patch = { ...dto, ...exclusiveAssignee(dto) }
+    await this.logChanges(id, existing.hotelId, user.id, existing, patch)
+    const item = await this.repo.update(id, patch as any)
     if (!item) throw new NotFoundError('Ticket de mantenimiento no encontrado')
     await this.effects.onUpdated?.(item)
     // Aviso dirigido: solo cuando el ticket cambia de técnico, no en cada edición.
-    if (dto.assignedTo && dto.assignedTo !== existing.assignedTo) {
+    if (patch.assignedTo && patch.assignedTo !== existing.assignedTo) {
       await this.effects.onAssigned?.(item)
     }
     await this.effects.invalidate(existing.hotelId)

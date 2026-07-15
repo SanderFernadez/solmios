@@ -134,6 +134,56 @@ describe('MantenimientoService', () => {
     })
   })
 
+  // Un ticket tiene UN dueño: técnico interno (assignedTo) O servicio externo
+  // (providerId), nunca ambos. La exclusividad se garantiza en el servidor, no
+  // en el diálogo de la app: asignar uno desaloja al otro.
+  describe('exclusividad técnico ↔ servicio externo', () => {
+    function captureUpdate(existing: MantenimientoDTO) {
+      let patch: Record<string, unknown> = {}
+      const repo = makeRepo({
+        findById: async () => existing,
+        update: async (id, data) => { patch = data as Record<string, unknown>; return { id, ...data } as MantenimientoDTO },
+      })
+      return { repo, patch: () => patch }
+    }
+
+    it('pasar a un servicio externo desaloja al técnico interno', async () => {
+      const existing = { id: 't1', hotelId: 'h1', title: 'Leak', status: 'open', assignedTo: 'tech-9' } as MantenimientoDTO
+      const cap = captureUpdate(existing)
+      const svc = new MantenimientoService(cap.repo, log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo())
+      await svc.update('t1', { providerId: 'prov-1' }, hotelAdmin)
+      expect(cap.patch().providerId).toBe('prov-1')
+      expect(cap.patch().assignedTo).toBe('')
+    })
+
+    it('asignar un técnico interno desaloja al servicio externo', async () => {
+      const existing = { id: 't1', hotelId: 'h1', title: 'Leak', status: 'open', providerId: 'prov-1' } as MantenimientoDTO
+      const cap = captureUpdate(existing)
+      const svc = new MantenimientoService(cap.repo, log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo())
+      await svc.update('t1', { assignedTo: 'tech-9' }, hotelAdmin)
+      expect(cap.patch().assignedTo).toBe('tech-9')
+      expect(cap.patch().providerId).toBe('')
+    })
+
+    it('un update que no toca la asignación no pisa a ninguno de los dos', async () => {
+      const existing = { id: 't1', hotelId: 'h1', title: 'Leak', status: 'open', assignedTo: 'tech-9' } as MantenimientoDTO
+      const cap = captureUpdate(existing)
+      const svc = new MantenimientoService(cap.repo, log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo())
+      await svc.update('t1', { priority: 'high' }, hotelAdmin)
+      expect(cap.patch().assignedTo).toBeUndefined()
+      expect(cap.patch().providerId).toBeUndefined()
+    })
+
+    it('crear ya asignado a un servicio externo nace sin técnico', async () => {
+      let created: Record<string, unknown> = {}
+      const repo = makeRepo({ create: async (data) => { created = data as Record<string, unknown>; return { id: 'maint-1', ...data } as MantenimientoDTO } })
+      const svc = new MantenimientoService(repo, log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo())
+      await svc.create({ hotelId: 'h1', title: 'Leak', providerId: 'prov-1' } as any, hotelAdmin)
+      expect(created.providerId).toBe('prov-1')
+      expect(created.assignedTo).toBe('')
+    })
+  })
+
   describe('delete', () => {
     it('super_admin can delete', async () => {
       const ticket = { id: 't1', hotelId: 'h1', title: 'Leak' } as MantenimientoDTO
