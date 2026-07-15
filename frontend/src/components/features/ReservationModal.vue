@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // components/features/ReservationModal.vue — Detalle de reserva completo (F3 match-misterplan).
 // Modal two-panel en modo LECTURA. Botón "Editar" emite @edit (el padre abre el form existente).
-// Acciones: Confirmar / Anular / Imprimir (detalle + bono alojamiento + bono cliente).
+// Acciones: Confirmar / Anular / Factura (imprimible) + bonos (alojamiento / cliente).
 // Spec: openspec/changes/match-misterplan/specs/reservation-modal/spec.md (REQ-1 a REQ-12).
 
 import { ref, computed, watch } from 'vue'
@@ -12,6 +12,7 @@ import { FoliosService } from '@/services/Folios.service'
 import { AutoMessagesService } from '@/services/AutoMessages.service'
 import { AddonsService } from '@/services/Addons.service'
 import { ConfigService } from '@/services/Platform.service'
+import { HotelService, type HotelData } from '@/services/Hotel.service'
 import { useToast } from '@/composables/useToast'
 import { nationalityToFlag, languageToFlag } from '@/composables/useCountryFlag'
 import type { ReservationDetail, ReservationDetailAddon, CurrencyConfig, GuaranteeCardData, AuditLogEntry } from '@/types'
@@ -41,7 +42,9 @@ const addons = ref<ReservationDetailAddon[]>([])
 const auditLogs = ref<AuditLogEntry[]>([])
 const newAddon = ref({ description: '', amount: 0, kind: 'service' as 'service' | 'discount' })
 const folioCharges = ref<{ description?: string; amount?: number; kind?: string }[] | null>(null)
-type PrintMode = 'detail' | 'voucherLodging' | 'voucherClient'
+// Emisor de la factura (nombre, dirección, RNC, impuesto). Se carga del hotel de la reserva.
+const hotelInfo = ref<HotelData | null>(null)
+type PrintMode = 'detail' | 'voucherLodging' | 'voucherClient' | 'invoice'
 const printMode = ref<PrintMode>('detail')
 
 // Wizard de solo lectura: agrupa las secciones en pasos navegables. Sin gating
@@ -107,6 +110,7 @@ async function load() {
         waTemplates.value = (r.data || []).filter((m) => m.channel === 'whatsapp' || m.channel === 'both')
       }).catch(() => {}),
       ReservationService.getAudit(props.reservationId).then((r) => { auditLogs.value = r.data || [] }).catch(() => {}),
+      HotelService.settings(d?.hotelId).then((s) => { hotelInfo.value = (s as { hotel?: HotelData }).hotel ?? null }).catch(() => {}),
     ]).catch(() => {})
   } catch (e) {
     toast.error((e as Error).message || 'No se pudo cargar la reserva')
@@ -152,6 +156,32 @@ const secondaryTotal = computed(() => {
 })
 const secondaryCurrency = computed(() => currency.value?.secondaryCurrency || 'DOP')
 const checkinUrl = computed(() => d.value?.checkinCode ? `${window.location.origin}/checkin/${d.value.checkinCode}` : null)
+
+// ── Factura ─────────────────────────────────────────────────────────────
+// Impuesto: tasa/nombre del hotel (config real, NO hardcode). En hotelería el precio va
+// con impuesto INCLUIDO: se desglosa la base y el impuesto contenido en el total, sin
+// alterar lo que paga el huésped. Si el hotel no tiene tasa, no se desglosa.
+const invoiceTaxRate = computed(() => Number(hotelInfo.value?.taxRate ?? 0))
+const invoiceTaxName = computed(() => hotelInfo.value?.taxName || 'Impuesto')
+const invoiceTax = computed(() => {
+  const r = invoiceTaxRate.value
+  return r > 0 ? Math.round((grandTotal.value - grandTotal.value / (1 + r / 100)) * 100) / 100 : 0
+})
+const invoiceSubtotal = computed(() => Math.round((grandTotal.value - invoiceTax.value) * 100) / 100)
+const invoiceDate = computed(() => new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }))
+// Conceptos: alojamiento + extras (addons, descuentos en negativo) + otros cargos.
+const invoiceItems = computed(() => {
+  const items: { desc: string; amount: number }[] = []
+  const roomLabel = d.value?.room ? `Alojamiento — Hab. ${d.value.room.number || ''} ${d.value.room.type || ''}`.trim() : 'Alojamiento'
+  items.push({ desc: `${roomLabel} · ${nights.value} noche${nights.value === 1 ? '' : 's'}`, amount: d.value?.totalAmount ?? 0 })
+  for (const a of addons.value) {
+    const sign = a.kind === 'discount' ? -1 : 1
+    const qty = a.quantity ?? 1
+    items.push({ desc: (a.kind === 'discount' ? 'Descuento — ' : '') + (a.description || 'Extra') + (qty > 1 ? ` (×${qty})` : ''), amount: sign * (a.amount ?? 0) * qty })
+  }
+  if ((otherCharges.value || 0) !== 0) items.push({ desc: 'Otros cargos', amount: otherCharges.value })
+  return items
+})
 
 // ── Helpers de formato ──
 function fmtDate(s?: string | null): string {
@@ -368,9 +398,9 @@ function editar() { if (d.value) emit('edit', d.value) }
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 Anular
               </button>
-              <button @click="printAs('detail')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-white/20">
+              <button @click="printAs('invoice')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-white/20" title="Imprimir factura de la reserva">
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.83a42.5 42.5 0 0110.56 0M6.34 18l-.34 3.72a1.12 1.12 0 001.12 1.23h9.4a1.12 1.12 0 001.12-1.23L17.66 18M17.66 18h1.09c1.06 0 1.98-.72 2-1.78a72 72 0 000-3.45c-.02-1.06-.94-1.77-2-1.77H5.25c-1.06 0-1.98.71-2 1.77a72 72 0 000 3.45c.02 1.06.94 1.78 2 1.78h1.09M17.66 18H6.34M17.66 18v-4.5a2.25 2.25 0 00-2.25-2.25h-6.5a2.25 2.25 0 00-2.25 2.25V18"/></svg>
-                Imprimir
+                Factura
               </button>
               <button @click="editar" class="flex items-center gap-1.5 px-3 py-1.5 bg-cyan text-navy rounded-lg text-xs font-black cursor-pointer hover:opacity-90">
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.932zM19.5 21H4.5a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5h9"/></svg>
@@ -797,6 +827,71 @@ function editar() { if (d.value) emit('edit', d.value) }
           </table>
           <p style="text-align:center;font-size:11px;color:#999;margin-top:24px">{{ d.ownerNotes }}</p>
         </div>
+
+        <!-- ═══ FACTURA (oculta en pantalla, visible solo al imprimir) ═══ -->
+        <div v-if="d" class="rm-voucher rm-invoice">
+          <!-- Emisor -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a2b4c;padding-bottom:16px;margin-bottom:20px">
+            <div>
+              <h1 style="font-size:22px;font-weight:900;color:#1a2b4c;margin:0">{{ hotelInfo?.name || 'Hotel' }}</h1>
+              <p v-if="hotelInfo?.address" style="font-size:12px;color:#555;margin:4px 0 0">{{ hotelInfo.address }}<span v-if="hotelInfo?.municipality || hotelInfo?.province">, {{ [hotelInfo.municipality, hotelInfo.province].filter(Boolean).join(', ') }}</span></p>
+              <p style="font-size:12px;color:#555;margin:2px 0 0"><span v-if="hotelInfo?.phone">Tel: {{ hotelInfo.phone }}</span><span v-if="hotelInfo?.email"> · {{ hotelInfo.email }}</span></p>
+              <p v-if="hotelInfo?.ownerTaxId" style="font-size:12px;color:#555;margin:2px 0 0">RNC: {{ hotelInfo.ownerTaxId }}</p>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:20px;font-weight:900;color:#1a2b4c;letter-spacing:1px">FACTURA</div>
+              <div style="font-size:12px;color:#555;margin-top:4px">Nº {{ locator }}</div>
+              <div style="font-size:12px;color:#555">Fecha: {{ invoiceDate }}</div>
+              <div style="font-size:11px;color:#888;margin-top:2px">Estado: {{ stLabel(d.status) }}</div>
+            </div>
+          </div>
+          <!-- Cliente + estadía -->
+          <div style="display:flex;justify-content:space-between;gap:24px;margin-bottom:20px">
+            <div style="flex:1">
+              <div style="font-size:10px;font-weight:bold;color:#999;text-transform:uppercase;margin-bottom:4px">Cliente</div>
+              <div style="font-size:14px;font-weight:bold;color:#1a2b4c">{{ d.guest?.name || 'Consumidor final' }}</div>
+              <div v-if="d.guest?.document" style="font-size:12px;color:#555">{{ d.guest.documentType || 'Doc' }}: {{ d.guest.document }}</div>
+              <div v-if="d.guest?.email" style="font-size:12px;color:#555">{{ d.guest.email }}</div>
+              <div v-if="d.guest?.phone" style="font-size:12px;color:#555">{{ d.guest.phone }}</div>
+            </div>
+            <div style="flex:1;text-align:right">
+              <div style="font-size:10px;font-weight:bold;color:#999;text-transform:uppercase;margin-bottom:4px">Estadía</div>
+              <div style="font-size:12px;color:#555">Entrada: <b style="color:#1a2b4c">{{ fmtDate(d.checkIn) }}</b></div>
+              <div style="font-size:12px;color:#555">Salida: <b style="color:#1a2b4c">{{ fmtDate(d.checkOut) }}</b></div>
+              <div style="font-size:12px;color:#555">{{ nights }} noche(s) · {{ d.adults }} adulto(s){{ d.children ? ', ' + d.children + ' niño(s)' : '' }}</div>
+            </div>
+          </div>
+          <!-- Conceptos -->
+          <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px">
+            <thead>
+              <tr style="border-bottom:2px solid #1a2b4c">
+                <th style="text-align:left;padding:8px 0;font-size:11px;text-transform:uppercase;color:#555">Concepto</th>
+                <th style="text-align:right;padding:8px 0;font-size:11px;text-transform:uppercase;color:#555">Importe</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(it, i) in invoiceItems" :key="i" style="border-bottom:1px solid #eee">
+                <td style="padding:8px 0;color:#333">{{ it.desc }}</td>
+                <td style="padding:8px 0;text-align:right;font-weight:bold;color:#1a2b4c">{{ money(it.amount) }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- Totales -->
+          <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
+            <table style="font-size:13px;min-width:260px">
+              <tr v-if="invoiceTax > 0"><td style="padding:4px 16px 4px 0;color:#555">Subtotal</td><td style="padding:4px 0;text-align:right;font-weight:bold">{{ money(invoiceSubtotal) }}</td></tr>
+              <tr v-if="invoiceTax > 0"><td style="padding:4px 16px 4px 0;color:#555">{{ invoiceTaxName }} ({{ invoiceTaxRate }}%)</td><td style="padding:4px 0;text-align:right;font-weight:bold">{{ money(invoiceTax) }}</td></tr>
+              <tr style="border-top:2px solid #1a2b4c"><td style="padding:8px 16px 4px 0;font-weight:900;color:#1a2b4c;font-size:15px">TOTAL</td><td style="padding:8px 0 4px;text-align:right;font-weight:900;color:#1a2b4c;font-size:15px">{{ money(grandTotal) }}</td></tr>
+              <tr><td style="padding:4px 16px 4px 0;color:#555">Pagado</td><td style="padding:4px 0;text-align:right;color:#16a34a;font-weight:bold">{{ money(d.deposit) }}</td></tr>
+              <tr v-if="pending > 0"><td style="padding:4px 16px 4px 0;color:#555">Pendiente</td><td style="padding:4px 0;text-align:right;color:#d97706;font-weight:bold">{{ money(pending) }}</td></tr>
+            </table>
+          </div>
+          <!-- Pie -->
+          <div style="border-top:1px solid #ddd;padding-top:12px;text-align:center">
+            <p style="font-size:11px;color:#999;margin:0">Gracias por su preferencia · {{ hotelInfo?.name }}</p>
+            <p v-if="invoiceTax === 0" style="font-size:10px;color:#bbb;margin:4px 0 0">Documento sin desglose fiscal</p>
+          </div>
+        </div>
       </div>
     </div>
     </Transition>
@@ -838,5 +933,9 @@ details[open] > summary .ml-auto { transform: rotate(180deg); }
   .print-voucherClient .rm-print-area { display: none !important; }
   .print-voucherClient .rm-voucher-client { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; visibility: visible; }
   .print-voucherClient .rm-voucher-client, .print-voucherClient .rm-voucher-client * { visibility: visible; }
+  /* Modo factura */
+  .print-invoice .rm-print-area { display: none !important; }
+  .print-invoice .rm-invoice { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 32px 40px; visibility: visible; }
+  .print-invoice .rm-invoice, .print-invoice .rm-invoice * { visibility: visible; }
 }
 </style>
