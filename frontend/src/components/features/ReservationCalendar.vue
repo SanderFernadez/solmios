@@ -115,7 +115,7 @@
                   <div v-if="gRes(room.id, day.dateStr) && isResFirst(room.id, day.dateStr)"
                     class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-move hover:brightness-90 select-none"
                     :class="[gRes(room.id, day.dateStr)!.bg, resDrag?.id === gRes(room.id, day.dateStr)!.id ? 'ring-2 ring-white/80 shadow-lg z-30' : '', resDrag?.id === gRes(room.id, day.dateStr)!.id && resDrag?.moved ? 'pointer-events-none opacity-90' : '']"
-                    :style="{ width: resSpan(room.id, day) + 'px', minWidth: '60px' }"
+                    :style="{ width: `calc(${resSpan(room.id, day)} * 100%)`, minWidth: '60px' }"
                     @mousedown.stop="onResDown(gRes(room.id, day.dateStr)!, $event)"
                     @click.stop="openContext($event, gRes(room.id, day.dateStr)!, room)"
                     @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
@@ -139,7 +139,7 @@
                   <!-- Block -->
                   <div v-if="gBlk(room.id, day.dateStr) && isBlkFirst(room.id, day.dateStr)"
                     class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 bg-gray-300/80 cursor-pointer hover:bg-gray-400/80"
-                    :style="{ width: blkSpan(room.id, day) + 'px' }"
+                    :style="{ width: `calc(${blkSpan(room.id, day)} * 100%)` }"
                     @mousedown.stop @click.stop="confirmUnblock(gBlk(room.id, day.dateStr)!)">
                     <span class="text-[9px] font-bold text-gray-600 truncate">🚫 {{ gBlk(room.id, day.dateStr)!.reason || 'Bloqueo' }}</span>
                   </div>
@@ -825,25 +825,29 @@ function isResFirst(rid: any, ds: string) {
   const renderDate = ci > (firstVisible || '') ? ci : (firstVisible || ci)
   return ds === renderDate
 }
+// Devuelve cuántas celdas-día cubre la reserva (NO px). El ancho real se resuelve en el
+// template como calc(N * 100%): las celdas son flex-1 (ancho dinámico), así que la barra
+// abarca los días COMPLETOS. Antes multiplicaba por 68px fijo y quedaba corta cuando la
+// celda se estiraba, cortando la barra a mitad de día.
 function resSpan(rid: any, day: DI) {
   const res = gRes(rid, day.dateStr)
-  if (!res) return 68
+  if (!res) return 1
   const orig = dispReservas.value.find((b: any) => b.id === res.id)
-  if (!orig) return 68
+  if (!orig) return 1
   const ci = String(orig.checkIn || '').slice(0, 10)
   const co = String(orig.checkOut || '').slice(0, 10)
   const firstVisible = visibleDays.value[0]?.dateStr
   const startDate = ci > (firstVisible || '') ? ci : (firstVisible || ci)
   const si = visibleDays.value.findIndex(d => d.dateStr === startDate)
   const ei = visibleDays.value.findIndex(d => d.dateStr === co)
-  return Math.max(1, (ei >= 0 ? ei : viewDays.value) - (si >= 0 ? si : 0)) * 68
+  return Math.max(1, (ei >= 0 ? ei : viewDays.value) - (si >= 0 ? si : 0))
 }
 function gBlk(rid: any, ds: string) { return planBlocks.value.find((b: any) => String(b.roomId) === String(rid) && ds >= b.startDate && ds <= b.endDate) || null }
 function isBlkFirst(rid: any, ds: string) { return planBlocks.value.some((b: any) => String(b.roomId) === String(rid) && b.startDate === ds) }
 function blkSpan(rid: any, day: DI) {
   const b = planBlocks.value.find((b: any) => String(b.roomId) === String(rid) && b.startDate === day.dateStr)
-  if (!b) return 68; const si = visibleDays.value.findIndex(d => d.dateStr === b.startDate); const ei = visibleDays.value.findIndex(d => d.dateStr === b.endDate)
-  return Math.max(1, (ei >= 0 ? ei : viewDays.value) - (si >= 0 ? si : 0) + 1) * 68
+  if (!b) return 1; const si = visibleDays.value.findIndex(d => d.dateStr === b.startDate); const ei = visibleDays.value.findIndex(d => d.dateStr === b.endDate)
+  return Math.max(1, (ei >= 0 ? ei : viewDays.value) - (si >= 0 ? si : 0) + 1)
 }
 function dayOcc(ds: string) {
   const n = planRooms.value.length; if (!n) return 0; const o = new Set<string>()
