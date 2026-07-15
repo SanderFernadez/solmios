@@ -335,6 +335,17 @@
             </div>
           </div>
 
+          <!-- Revisión del supervisor: quién aprobó, cuándo estuvo y su nota -->
+          <div v-if="selectedTask.supervisorName || selectedTask.supervisorNote" class="py-5 border-b border-border">
+            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Revisión del supervisor</div>
+            <div v-if="selectedTask.supervisorName" class="flex items-center flex-wrap gap-2 mb-2">
+              <svg class="w-4 h-4 text-teal shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <span class="text-sm font-bold text-navy">Aprobada por {{ selectedTask.supervisorName }}</span>
+              <span v-if="selectedTask.supOnSiteTime" class="text-[11px] text-text-muted">· en la habitación {{ formatTime(selectedTask.supOnSiteTime) }}</span>
+            </div>
+            <div v-if="selectedTask.supervisorNote" class="text-sm text-text-secondary bg-surface rounded-lg px-3 py-2 italic">"{{ selectedTask.supervisorNote }}"</div>
+          </div>
+
           <div v-if="selectedTask.notes" class="py-5 border-b border-border">
             <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas / comentarios</div>
             <div class="text-sm text-text-secondary">{{ selectedTask.notes }}</div>
@@ -439,7 +450,7 @@
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Asignar a</label>
               <select v-model="newTask.staffId" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
                 <option value="">Seleccionar...</option>
-                <option v-for="emp in assignableStaff" :key="emp.id" :value="emp.userId">{{ emp.userName || emp.userId }}</option>
+                <option v-for="emp in assignableStaff" :key="emp.id" :value="emp.id">{{ emp.name }}</option>
               </select>
             </div>
             <div class="col-span-2">
@@ -472,9 +483,10 @@
           <div class="mb-5">
             <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Seleccionar personal</label>
             <select v-model="assignStaff" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
-              <option value="">Seleccionar...</option>
-              <option v-for="emp in assignableStaff" :key="emp.id" :value="emp.userId">{{ emp.userName || emp.userId }} — {{ emp.position || 'Staff' }}</option>
+              <option value="">Seleccionar camarera...</option>
+              <option v-for="emp in assignableStaff" :key="emp.id" :value="emp.id">{{ emp.name }}</option>
             </select>
+            <p v-if="assignableStaff.length === 0" class="text-[11px] text-text-muted mt-1.5">No hay personal de limpieza (rol camarera) cargado en el hotel.</p>
           </div>
           <div v-if="assignStaff">
             <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Tareas pendientes sin asignar</div>
@@ -596,7 +608,7 @@ const TYPE_ICONS: Record<string, string> = { full_cleaning: ICON_SPARKLE, quick_
 const TYPE_COLORS: Record<string, string> = { full_cleaning: 'border-l-4 border-l-cyan-500', quick_cleaning: 'border-l-4 border-l-teal-500', deep_cleaning: 'border-l-4 border-l-blue-600', inspection: 'border-l-4 border-l-purple-500', maintenance: 'border-l-4 border-l-amber-500' }
 
 function blankTask(): HousekeepingViewTask {
-  return { id: '', roomNumber: '', type: '', floor: '', status: 'pending', priority: 'Normal', priorityRaw: 'medium', assignedTo: 'Sin asignar', staffId: '', time: '', notes: '', items: [], photos: [], rating: null, video: null }
+  return { id: '', roomNumber: '', type: '', floor: '', status: 'pending', priority: 'Normal', priorityRaw: 'medium', assignedTo: 'Sin asignar', staffId: '', time: '', notes: '', items: [], photos: [], rating: null, video: null, supervisorName: '', supervisorNote: '', supOnSiteTime: '' }
 }
 
 // Fuentes numéricas separadas de `stats` para poder animarlas con useCountUp
@@ -660,9 +672,10 @@ const assignableTasks = computed(() =>
   store.tasks.filter(t => t.status === 'pending' && !t.staffId),
 )
 
-// Solo empleados con cuenta de usuario (userId) pueden ser asignados:
-// el backend valida staffId contra users.id, no employee_profiles.id.
-const assignableStaff = computed(() => store.staff.filter(e => e.userId))
+// Solo el personal de LIMPIEZA (rol camarera/housekeeper) se puede asignar a una
+// tarea de housekeeping: no tiene sentido asignarle una habitación a un recepcionista
+// o a mantenimiento. El backend guarda staffId = users.id.
+const assignableStaff = computed(() => store.staff.filter(e => e.role === 'housekeeper'))
 
 const newTask = ref({ roomNumber: '', type: '', priority: 'medium', staffId: '', notes: '' })
 
@@ -728,7 +741,7 @@ function taskTime(task: HousekeepingViewTask): string {
 
 function staffName(staffId: string) {
   if (staffId === 'unassigned') return 'Sin asignar'
-  return store.staff.find(s => s.id === staffId)?.userName || staffId
+  return store.staff.find(s => s.id === staffId)?.name || staffId
 }
 
 // Acción primaria según el estado (respeta la máquina de estados del backend).

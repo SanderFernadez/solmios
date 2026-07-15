@@ -5,8 +5,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { HousekeepingService, type HousekeepingTask, type StaffStats, type PhotoEvidence, type VideoEvidence } from '@/services/Housekeeping.service'
 import { RoomService } from '@/services/Room.service'
-import { EmpleadosService } from '@/services/Empleados.service'
-import type { EmployeeProfile } from '@/services/Empleados.service'
+import { TeamService, type TeamMember } from '@/services/Team.service'
 
 const TYPE_LABELS: Record<string, string> = {
   full_cleaning: 'Full Cleaning', quick_cleaning: 'Quick Clean', deep_cleaning: 'Deep Clean',
@@ -36,6 +35,12 @@ export interface HousekeepingViewTask {
   rating: number | null
   /** Video de evidencia de fin, si el hotel usa el modo `video`. */
   video: VideoEvidence | null
+  /** Nombre del supervisor que aprobó/revisó, o '' si nadie la revisó aún. */
+  supervisorName: string
+  /** Nota que dejó el supervisor al aprobar. */
+  supervisorNote: string
+  /** Hora en que el supervisor estuvo en la habitación. */
+  supOnSiteTime: string
 }
 
 const MS_PER_MINUTE = 60 * 1000
@@ -66,6 +71,7 @@ function mapTask(t: HousekeepingTask, roomMap: Map<string, any>, staffMap: Map<s
   const durationMs = t.startTime && t.endTime
     ? new Date(t.endTime).getTime() - new Date(t.startTime).getTime()
     : undefined
+  const supervisorName = t.supervisorId ? (staffMap.get(t.supervisorId) || '') : ''
   return {
     id: t.id,
     rawType: t.type,
@@ -86,6 +92,9 @@ function mapTask(t: HousekeepingTask, roomMap: Map<string, any>, staffMap: Map<s
     photos: t.photos ?? [],
     rating: typeof t.rating === 'number' ? t.rating : null,
     video: t.video ?? null,
+    supervisorName,
+    supervisorNote: t.supervisorNote || '',
+    supOnSiteTime: t.supOnSiteTime || '',
   }
 }
 
@@ -101,7 +110,9 @@ function fileToDataUrl(file: File): Promise<string> {
 export const useHousekeepingStore = defineStore('housekeeping', () => {
   const tasks = ref<HousekeepingViewTask[]>([])
   const stats = ref<StaffStats[]>([])
-  const staff = ref<EmployeeProfile[]>([])
+  // El personal son USUARIOS del hotel (tabla users), no perfiles de RRHH: los
+  // tasks guardan staffId = users.id, así que hay que resolver contra /usuarios.
+  const staff = ref<TeamMember[]>([])
   const rooms = ref<any[]>([])
   const loading = ref(false)
   const currentHotelId = ref<string | undefined>()
@@ -110,16 +121,16 @@ export const useHousekeepingStore = defineStore('housekeeping', () => {
     currentHotelId.value = hotelId
     loading.value = true
     try {
-      const [roomsRes, employeesResult, tasksRes] = await Promise.all([
+      const [roomsRes, usersResult, tasksRes] = await Promise.all([
         hotelId ? RoomService.list({ hotelId }) : Promise.resolve({ rooms: [] as any[] }),
-        hotelId ? EmpleadosService.listProfiles({ hotelId, limit: 100 }) : Promise.resolve({ data: [] as EmployeeProfile[], total: 0 }),
+        TeamService.list(),
         HousekeepingService.list(hotelId),
       ])
       rooms.value = roomsRes.rooms ?? []
-      staff.value = employeesResult.data ?? []
+      staff.value = Array.isArray(usersResult) ? usersResult : (usersResult?.data ?? [])
       const roomMap = new Map(rooms.value.map(r => [r.id, r]))
-      // Indexar por userId: los tasks guardan staffId = users.id (no employee_profiles.id).
-      const staffMap = new Map(staff.value.map(s => [s.userId, s.userName || s.userId]))
+      // Indexar por users.id: los tasks guardan staffId/supervisorId = users.id.
+      const staffMap = new Map(staff.value.map(s => [s.id, s.name || s.id]))
       tasks.value = (tasksRes.data ?? []).map(t => mapTask(t, roomMap, staffMap))
     } finally {
       loading.value = false

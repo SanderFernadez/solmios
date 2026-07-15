@@ -43,6 +43,12 @@ export interface HousekeepingTask {
   rating?: number | null
   /** Video de evidencia de fin (solo si el hotel usa el modo `video`). */
   video?: VideoEvidence | null
+  /** Supervisor que aprobó/revisó la limpieza (users.id). */
+  supervisorId?: string
+  /** Nota que dejó el supervisor al aprobar. */
+  supervisorNote?: string
+  /** Hora en que el supervisor estuvo en la habitación (foto de presencia). */
+  supOnSiteTime?: string
   cleaningItems?: any
   createdAt: string
   updatedAt: string
