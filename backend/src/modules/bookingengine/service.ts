@@ -16,6 +16,7 @@ import { BookingUseCase } from './usecases/booking'
 import { AnalyticsUseCase } from './usecases/analytics'
 import { StripeUseCase } from './usecases/stripe'
 import type { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
+import type { PaymentEventStore } from '../../services/payment-gateway/payment-events'
 
 export class BookingengineService {
   private sockets: BookingengineSockets = {}
@@ -33,13 +34,14 @@ export class BookingengineService {
     private readonly logger: Logger,
     cache: CacheAdapter,
     registry?: PaymentGatewayRegistry,
+    events?: PaymentEventStore,
   ) {
     if (!registry) throw new Error('bookingengine: PaymentGatewayRegistry es requerido (pasarela por hotel)')
     this.config = new ConfigUseCase(configRepo, cache)
     this.availability = new AvailabilityUseCase(availabilityRepo, cache)
     this.booking = new BookingUseCase(bookingRepo, this.availability)
     this.analytics = new AnalyticsUseCase(eventsRepo)
-    this.stripe = new StripeUseCase(bookingRepo, logger, registry)
+    this.stripe = new StripeUseCase(bookingRepo, logger, registry, events)
   }
 
   setSockets(s: Partial<BookingengineSockets>): void {

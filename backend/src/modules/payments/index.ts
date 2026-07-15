@@ -8,6 +8,7 @@ import { PaymentsController } from './controller'
 import type { PaymentDTO, PaymentLinkDTO, DepositDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 import { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
+import { PaymentEventStore } from '../../services/payment-gateway/payment-events'
 
 export { PaymentsService }
 export type { PaymentDTO, CreatePaymentDTO, ChargeCardDTO, PaymentLinkDTO, CreatePaymentLinkDTO, DepositDTO, CreateDepositDTO, RefundDepositDTO, PaymentsQuery, PaymentsPaginated, ReconciliationEntry, ReconciliationResult } from './types'
@@ -46,7 +47,11 @@ export function PaymentsModule() {
       const gatewayRepo = new OrmRepository<any>(orm, 'PaymentGateways')
       const registry = new PaymentGatewayRegistry(gatewayRepo as any, log)
 
-      const service = new PaymentsService(paymentRepo, linkRepo, depositRepo, log, cache, auth, userRepo, registry)
+      // Barrera anti-doble-cobro: los webhooks se procesan una sola vez aunque lleguen repetidos.
+      const eventRepo = new OrmRepository<any>(orm, 'PaymentEvents')
+      const events = new PaymentEventStore(eventRepo as any, log)
+
+      const service = new PaymentsService(paymentRepo, linkRepo, depositRepo, log, cache, auth, userRepo, registry, events)
       const controller = new PaymentsController(service, log)
 
       // Admin routes (protegidas con auth)

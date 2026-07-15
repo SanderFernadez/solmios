@@ -10,6 +10,7 @@ import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type { PublicBookingDTO } from '../types'
 import type { PaymentGatewayRegistry } from '../../../services/payment-gateway/registry'
+import type { PaymentEventStore } from '../../../services/payment-gateway/payment-events'
 
 interface StripeSession {
   id: string
@@ -22,6 +23,7 @@ export class StripeUseCase {
     private readonly bookingRepo: RepositoryAdapter<PublicBookingDTO>,
     private readonly logger: Logger,
     private readonly registry: PaymentGatewayRegistry,
+    private readonly events?: PaymentEventStore,
   ) {}
 
   async isConfigured(hotelId: string): Promise<boolean> {
@@ -86,15 +88,23 @@ export class StripeUseCase {
         this.logger.error(`Webhook del hotel ${hotelId} quiso confirmar la reserva ${bookingId}, que no es suya`)
         return null
       }
-      // Idempotencia: Stripe reintenta. Confirmar dos veces no debe re-disparar nada.
-      if ((booking as any).paymentStatus === 'paid') return { type: 'already_processed', bookingId }
+      if (!this.events) throw new Error('bookingengine: PaymentEventStore requerido para procesar webhooks')
 
-      await this.bookingRepo.update(bookingId, {
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentRef: outcome.providerRef,
-      } as any)
-      this.logger.info(`Reserva ${bookingId} confirmada por pago (hotel ${hotelId})`)
+      // Barrera atómica contra reintentos y webhooks concurrentes (este es el flujo público:
+      // huéspedes reales pagando por internet). Reemplaza la verificación por paymentStatus, que
+      // no frenaba dos webhooks a la vez.
+      const result = await this.events.settleOnce(
+        hotelId, 'stripe', outcome.eventId,
+        { providerRef: outcome.providerRef, reference: bookingId, status: 'paid',
+          amountMinor: outcome.amountMinor, currency: outcome.currency },
+        async () => {
+          await this.bookingRepo.update(bookingId, {
+            status: 'confirmed', paymentStatus: 'paid', paymentRef: outcome.providerRef,
+          } as any)
+          this.logger.info(`Reserva ${bookingId} confirmada por pago (hotel ${hotelId})`)
+        },
+      )
+      if (result.outcome === 'duplicate') return { type: 'already_processed', bookingId }
       return { type: 'booking_confirmed', bookingId }
     }
 

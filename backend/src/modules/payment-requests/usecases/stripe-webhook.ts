@@ -51,6 +51,10 @@ export async function processStripeWebhook(
         const paymentRequestId = session.metadata?.paymentRequestId
         if (paymentRequestId) {
           const pr = await repo.findById(paymentRequestId)
+          // Idempotencia: este flujo tiene DOBLE barrera propia — el chequeo de estado
+          // (pr.status !== 'paid') más `alreadyRecorded` en recordStripePayment, que no asienta
+          // dos veces el mismo sessionId. No usa PaymentEventStore como los otros dos flujos
+          // porque su asiento ya es idempotente por providerRef (el sessionId de Stripe).
           // El webhook del Hotel A no puede marcar como pagado un cobro del Hotel B.
           if (pr && pr.hotelId !== hotelId) {
             logger.error(`Webhook del hotel ${hotelId} quiso pagar el request ${paymentRequestId}, que no es suyo`)

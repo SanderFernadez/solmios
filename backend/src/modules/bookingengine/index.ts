@@ -9,6 +9,7 @@ import { BookingengineController } from './controller'
 import type { BookingConfigDTO, PublicBookingDTO, ConversionEventDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 import { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
+import { PaymentEventStore } from '../../services/payment-gateway/payment-events'
 
 export { BookingengineService }
 export type { BookingConfigDTO, UpdateBookingConfigDTO, AvailabilityQuery, AvailabilityResult, PublicBookingDTO, CreatePublicBookingDTO, ConversionEventDTO, CreateConversionEventDTO, BookingAnalytics } from './types'
@@ -45,7 +46,9 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       // paga a la cuenta del Hotel A, no a la del .env del servidor.
       const gatewayRepo = new OrmRepository<any>(orm, 'PaymentGateways')
       const registry = new PaymentGatewayRegistry(gatewayRepo as any, log)
-      const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache, registry)
+      // Barrera anti-doble-cobro para el webhook público.
+      const eventStore = new PaymentEventStore(new OrmRepository<any>(orm, 'PaymentEvents') as any, log)
+      const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache, registry, eventStore)
       const controller = new BookingengineController(service, log, orm, auth, opts?.pushAvailability)
 
       // Admin routes (protegidas con auth)
