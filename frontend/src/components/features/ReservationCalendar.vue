@@ -37,7 +37,7 @@
           <span class="w-3 h-3 rounded" :class="chOverride(lc.k) ? '' : lc.c" :style="chOverride(lc.k) ? { background: chOverride(lc.k)! } : {}"></span>
           <span :class="chOverride(lc.k) ? '' : lc.t" :style="chOverride(lc.k) ? { color: chOverride(lc.k)! } : {}">{{ lc.l }}</span>
         </span>
-        <button v-if="!embedded" @click="openColorPicker" class="ml-1 px-2 py-0.5 rounded border border-border text-[10px] font-bold text-text-muted hover:text-navy hover:border-navy transition-colors cursor-pointer" title="Elegir el color de cada canal">🎨 Colores</button>
+        <button v-if="!embedded" @click="openColorPicker" class="ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg bg-navy text-white text-[11px] font-extrabold shadow-sm hover:bg-navy/90 hover:shadow-md transition-all cursor-pointer" title="Elegir el color de cada canal">🎨 Personalizar colores</button>
       </template>
       <template v-else>
         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span>Pendiente</span>
