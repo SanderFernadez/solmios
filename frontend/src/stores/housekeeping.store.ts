@@ -3,7 +3,7 @@
 // y expone acciones de administración (start/complete/photos/stats).
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { HousekeepingService, type HousekeepingTask, type StaffStats, type PhotoEvidence } from '@/services/Housekeeping.service'
+import { HousekeepingService, type HousekeepingTask, type StaffStats, type PhotoEvidence, type VideoEvidence } from '@/services/Housekeeping.service'
 import { RoomService } from '@/services/Room.service'
 import { EmpleadosService } from '@/services/Empleados.service'
 import type { EmployeeProfile } from '@/services/Empleados.service'
@@ -32,6 +32,10 @@ export interface HousekeepingViewTask {
   notes: string
   items: string[]
   photos: PhotoEvidence[]
+  /** Calificación 1–10 del supervisor, o null si aprobó sin calificar. */
+  rating: number | null
+  /** Video de evidencia de fin, si el hotel usa el modo `video`. */
+  video: VideoEvidence | null
 }
 
 const MS_PER_MINUTE = 60 * 1000
@@ -80,6 +84,8 @@ function mapTask(t: HousekeepingTask, roomMap: Map<string, any>, staffMap: Map<s
     notes: t.notes || '',
     items: parseItems(t.cleaningItems),
     photos: t.photos ?? [],
+    rating: typeof t.rating === 'number' ? t.rating : null,
+    video: t.video ?? null,
   }
 }
 

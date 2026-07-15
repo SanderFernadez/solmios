@@ -319,8 +319,24 @@
             </div>
           </div>
 
+          <!-- Calificación del supervisor (1–10) -->
+          <div v-if="selectedTask.rating != null" class="py-5 border-b border-border">
+            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Calificación del supervisor</div>
+            <div class="flex items-center flex-wrap gap-3">
+              <div class="text-2xl font-black text-navy leading-none tabular-nums">
+                {{ selectedTask.rating }}<span class="text-base font-bold text-text-muted"> / 10</span>
+              </div>
+              <div class="flex items-center gap-0.5 text-lg leading-none">
+                <span v-for="n in 10" :key="n" :class="n <= (selectedTask.rating || 0) ? 'text-cyan' : 'text-border'">★</span>
+              </div>
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded-full" :class="ratingClass(selectedTask.rating)">
+                {{ ratingLabel(selectedTask.rating) }}
+              </span>
+            </div>
+          </div>
+
           <div v-if="selectedTask.notes" class="py-5 border-b border-border">
-            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</div>
+            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas / comentarios</div>
             <div class="text-sm text-text-secondary">{{ selectedTask.notes }}</div>
           </div>
 
@@ -352,6 +368,24 @@
               </div>
             </div>
             <div v-else class="text-xs text-text-muted py-1">Sin fotos.</div>
+          </div>
+
+          <!-- Video de evidencia de fin (modo `video`) -->
+          <div v-if="selectedTask.video" class="pt-5 mt-5 border-t border-border">
+            <div class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Video de evidencia</div>
+            <div v-if="videoLoading" class="flex items-center gap-2 text-xs text-text-muted py-3">
+              <span class="w-3.5 h-3.5 rounded-full border-2 border-border border-t-cyan animate-spin"></span>
+              Cargando video…
+            </div>
+            <div v-else-if="videoError" class="text-xs text-red py-3">{{ videoError }}</div>
+            <video
+              v-else-if="videoUrl"
+              :src="videoUrl"
+              controls
+              playsinline
+              preload="metadata"
+              class="w-full rounded-xl border border-border bg-black max-h-80"
+            ></video>
           </div>
         </div>
         <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
@@ -472,6 +506,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useCountUp } from '@/composables/useCountUp'
 import { useHousekeepingStore, humanizeMs, type HousekeepingViewTask } from '@/stores/housekeeping.store'
+import { HousekeepingService } from '@/services/Housekeeping.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useNow } from '@/composables/useNow'
@@ -488,6 +523,11 @@ const showViewModal = ref(false)
 const showNewModal = ref(false)
 const showAssignModal = ref(false)
 const selectedTask = ref<HousekeepingViewTask>(blankTask())
+// Video de evidencia: la URL se pide firmada al abrir el detalle (el bucket es
+// privado, no se puede linkear directo). Se resetea entre tareas.
+const videoUrl = ref<string | null>(null)
+const videoLoading = ref(false)
+const videoError = ref<string | null>(null)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
 const assignStaff = ref('')
@@ -556,7 +596,7 @@ const TYPE_ICONS: Record<string, string> = { full_cleaning: ICON_SPARKLE, quick_
 const TYPE_COLORS: Record<string, string> = { full_cleaning: 'border-l-4 border-l-cyan-500', quick_cleaning: 'border-l-4 border-l-teal-500', deep_cleaning: 'border-l-4 border-l-blue-600', inspection: 'border-l-4 border-l-purple-500', maintenance: 'border-l-4 border-l-amber-500' }
 
 function blankTask(): HousekeepingViewTask {
-  return { id: '', roomNumber: '', type: '', floor: '', status: 'pending', priority: 'Normal', priorityRaw: 'medium', assignedTo: 'Sin asignar', staffId: '', time: '', notes: '', items: [], photos: [] }
+  return { id: '', roomNumber: '', type: '', floor: '', status: 'pending', priority: 'Normal', priorityRaw: 'medium', assignedTo: 'Sin asignar', staffId: '', time: '', notes: '', items: [], photos: [], rating: null, video: null }
 }
 
 // Fuentes numéricas separadas de `stats` para poder animarlas con useCountUp
@@ -726,6 +766,42 @@ function syncSelectedTask(id: string) {
 function openViewTask(task: HousekeepingViewTask) {
   selectedTask.value = task
   showViewModal.value = true
+  loadVideo(task)
+}
+
+// Pide la URL firmada para reproducir el video, solo si la tarea tiene uno.
+async function loadVideo(task: HousekeepingViewTask) {
+  videoUrl.value = null
+  videoError.value = null
+  if (!task.video || !task.id) return
+  videoLoading.value = true
+  try {
+    const res = await HousekeepingService.videoViewUrl(task.id)
+    // Si mientras cargaba se abrió otra tarea, descartamos esta respuesta.
+    if (selectedTask.value.id !== task.id) return
+    videoUrl.value = res?.url ?? null
+    if (!videoUrl.value) videoError.value = 'No se pudo obtener el video.'
+  } catch {
+    if (selectedTask.value.id === task.id) videoError.value = 'No se pudo cargar el video.'
+  } finally {
+    if (selectedTask.value.id === task.id) videoLoading.value = false
+  }
+}
+
+// Etiqueta y color del puntaje 1–10 del supervisor.
+function ratingLabel(r: number | null): string {
+  if (r == null) return ''
+  if (r >= 9) return '¡Excelente!'
+  if (r >= 7) return 'Muy bien'
+  if (r >= 5) return 'Buen trabajo'
+  return 'A mejorar'
+}
+
+function ratingClass(r: number | null): string {
+  if (r == null) return 'bg-surface text-text-muted'
+  if (r >= 7) return 'bg-teal/10 text-teal'
+  if (r >= 5) return 'bg-cyan/10 text-cyan'
+  return 'bg-orange/10 text-orange'
 }
 
 function openNewTask() {

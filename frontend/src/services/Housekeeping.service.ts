@@ -9,6 +9,22 @@ export interface PhotoEvidence {
   uploadedAt: string
 }
 
+/** Video de evidencia de fin (cuando el hotel usa el modo `video` en vez de las
+ *  fotos por área). Un solo video por tarea. Los bytes viven en el bucket; acá
+ *  solo guardamos su ruta. Para reproducirlo se pide una URL firmada temporal. */
+export interface VideoEvidence {
+  path?: string
+  durationSeconds?: number
+  uploadedAt?: string
+}
+
+/** Respuesta de la URL firmada para VER el video. */
+export interface VideoViewUrl {
+  url: string
+  durationSeconds?: number
+  expiresInSeconds?: number
+}
+
 export interface HousekeepingTask {
   id: string
   roomId: string
@@ -23,6 +39,10 @@ export interface HousekeepingTask {
   startTime?: string
   endTime?: string
   photos?: PhotoEvidence[]
+  /** Calificación 1–10 que el supervisor le pone a la limpieza al aprobarla. */
+  rating?: number | null
+  /** Video de evidencia de fin (solo si el hotel usa el modo `video`). */
+  video?: VideoEvidence | null
   cleaningItems?: any
   createdAt: string
   updatedAt: string
@@ -66,6 +86,12 @@ export const HousekeepingService = {
   },
   async removePhoto(id: string, photoUrl: string) {
     return http.delete<HousekeepingTask>(`/housekeeping/${id}/photos?url=${encodeURIComponent(photoUrl)}`)
+  },
+  /** URL firmada temporal para reproducir el video de evidencia. El bucket puede
+   *  ser privado: el backend firma un GET que expira, en vez de servir una URL
+   *  pública. Permiso `view`: lo ve el admin y el supervisor, no solo quien grabó. */
+  async videoViewUrl(id: string) {
+    return http.get<VideoViewUrl>(`/housekeeping/${id}/video/view-url`)
   },
   async stats(hotelId?: string, from?: string, to?: string) {
     const params = new URLSearchParams()

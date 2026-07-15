@@ -204,6 +204,18 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          path: 'technical-providers',
+          name: 'technical-providers',
+          component: () => import('@/pages/technical-providers/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'team-chat',
+          name: 'team-chat',
+          component: () => import('@/pages/team-chat/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'night-audit',
           name: 'night-audit',
           component: () => import('@/pages/night-audit/index.vue'),
