@@ -24,6 +24,14 @@
           </select>
         </div>
       </div>
+      <!-- Accesos rápidos: centro de operaciones del planning (solo vista completa) -->
+      <div v-if="!embedded" class="mt-3 flex items-center gap-2 flex-wrap">
+        <span class="text-[10px] font-black text-text-muted uppercase mr-1 tracking-wide">Accesos rápidos:</span>
+        <button v-for="qa in QUICK_ACTIONS" :key="qa.to" @click="router.push(qa.to)" :title="qa.label"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white text-xs font-bold text-navy hover:bg-navy hover:text-white hover:border-navy transition-all cursor-pointer">
+          <span>{{ qa.icon }}</span><span class="hidden sm:inline">{{ qa.label }}</span>
+        </button>
+      </div>
     </div>
 
     <!-- Legend -->
@@ -121,7 +129,7 @@
                     @click.stop="openContext($event, gRes(room.id, day.dateStr)!, room)"
                     @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
                     <span class="text-[11px] leading-none mr-1.5 shrink-0" :title="'Canal: ' + gRes(room.id, day.dateStr)!.ch">{{ chIcon(gRes(room.id, day.dateStr)!.chKey) }}</span>
-                    <span class="text-[9px] font-extrabold truncate text-white">{{ gRes(room.id, day.dateStr)!.name }}</span>
+                    <span class="text-[9px] font-extrabold truncate text-white"><span v-if="gRes(room.id, day.dateStr)!.pax" class="text-white/75">{{ gRes(room.id, day.dateStr)!.pax }}P·</span>{{ gRes(room.id, day.dateStr)!.name }}</span>
                     <span class="text-[8px] text-white/70 ml-auto shrink-0 flex items-center gap-0.5">
                       <span v-if="gRes(room.id, day.dateStr)!.lockCode" :title="`Cerradura: ${gRes(room.id, day.dateStr)!.lockCode}`">🔐</span>
                       <span :title="`Pago: ${gRes(room.id, day.dateStr)!.paymentStatus}`">{{ PAY_ICON[gRes(room.id, day.dateStr)!.paymentStatus] }}</span>
@@ -793,6 +801,18 @@ const LEGEND_CH = [
   { k: 'expedia', l: 'Expedia', c: 'bg-gold', t: 'text-gold' },
   { k: 'airbnb', l: 'Airbnb', c: 'bg-coral', t: 'text-coral' },
 ]
+
+// Accesos rápidos del planning (centro de operaciones): navegan a las secciones ligadas
+// a reservas. Solo en la vista completa (no en el widget embebido del home).
+const QUICK_ACTIONS = [
+  { icon: '📅', label: 'Reservas', to: '/panel/reservations' },
+  { icon: '🚪', label: 'Check-in / out', to: '/panel/checkin' },
+  { icon: '👥', label: 'Huéspedes', to: '/panel/guests' },
+  { icon: '🔐', label: 'Cerraduras', to: '/panel/cerraduras' },
+  { icon: '🔄', label: 'Canales', to: '/panel/channel-manager' },
+  { icon: '🛏️', label: 'Habitaciones', to: '/panel/rooms' },
+  { icon: '💳', label: 'Facturación', to: '/panel/billing' },
+]
 const CH_COLOR_ALIAS: Record<string, string> = { directa: 'direct', 'booking.com': 'booking', walk_in: 'direct', email: 'direct' }
 function normCh(key?: string): string { const k = (key || 'direct').toLowerCase().trim(); return CH_COLOR_ALIAS[k] || k }
 // Colores elegidos por el hotel (solo los que difieren del default). Vacío = todo por defecto.
@@ -894,6 +914,7 @@ function gRes(rid: any, ds: string) {
     id: r.id, name: r.guestName || 'Guest', ch: cc.l, chKey: ch,
     bg: colorMode.value === 'status' ? (ST_COLOR[status] || 'bg-gray-400') : cc.bg,
     amt: r.totalAmount || 0,
+    pax: (Number(r.adults) || 0) + (Number(r.children) || 0),
     status,
     lockCode: r.lockCode || '',
     paymentStatus: r.paymentStatus || 'pending',
