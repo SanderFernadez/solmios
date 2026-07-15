@@ -70,6 +70,20 @@ export class S3StorageAdapter implements StorageAdapter {
     })
   }
 
+  /**
+   * URL firmada temporal para LEER un objeto. La evidencia en video de una
+   * habitación no debe ser una URL pública adivinable/compartible: con esto el
+   * bucket puede ser PRIVADO y el video se sirve solo a quien pide y por un rato.
+   * Funciona igual si el bucket fuera público — por eso se prefiere sobre la URL
+   * directa de `getUrl`.
+   */
+  presignGet(key: string, opts?: { expiresInSeconds?: number }): string {
+    return this.client.presign(key, {
+      method: 'GET',
+      expiresIn: opts?.expiresInSeconds ?? 900,
+    })
+  }
+
   async upload(file: FileUpload, directory?: string): Promise<StoredFile> {
     const key = this.keyFor(directory, file.originalName)
     await this.client.write(key, file.buffer, { type: file.mimeType })

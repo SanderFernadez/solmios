@@ -133,6 +133,28 @@ export class VideoUseCase {
     return updated
   }
 
+  /**
+   * URL firmada temporal para VER el video de la tarea. La app la pide justo
+   * antes de reproducir; expira sola. Requiere S3 (el modo video ya lo exige) y
+   * que la tarea sea del hotel de quien pide. Devuelve también la duración para
+   * que el visor sepa cuánto dura sin volver a leer la tarea.
+   */
+  async getViewUrl(
+    taskId: string,
+    user: HousekeepingUser,
+  ): Promise<{ url: string; durationSeconds: number; expiresInSeconds: number }> {
+    const s3 = this.assertVideoStorage()
+    const task = await this.ownedTask(taskId, user)
+    const video = (task as any).video as VideoEvidence | null | undefined
+    if (!video?.path) throw new NotFoundError('La tarea no tiene un video de evidencia')
+
+    return {
+      url: s3.presignGet(video.path, { expiresInSeconds: UPLOAD_URL_TTL_SECONDS }),
+      durationSeconds: video.durationSeconds,
+      expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
+    }
+  }
+
   private assertDuration(seconds: number, max: number): void {
     const n = Math.trunc(Number(seconds))
     if (!Number.isFinite(n) || n <= 0) {

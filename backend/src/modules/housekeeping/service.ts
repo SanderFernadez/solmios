@@ -178,6 +178,7 @@ export class HousekeepingService {
   async requestVideoUploadUrl(id: string, i: { contentType: string; durationSeconds: number }, u: HousekeepingUser): Promise<VideoUploadTicket> { return this.video().requestUploadUrl(id, i, u) }
   async attachVideo(id: string, i: { url: string; path: string; durationSeconds: number; mimeType: string }, u: HousekeepingUser) { return this.afterVideo(await this.video().attachVideo(id, i, u)) }
   async removeVideo(id: string, u: HousekeepingUser) { return this.afterVideo(await this.video().removeVideo(id, u)) }
+  async getVideoViewUrl(id: string, u: HousekeepingUser) { return this.video().getViewUrl(id, u) }
 
   private async invalidateCache(hotelId?: string) {
     // `delete` de una clave exacta ya no alcanza: la clave del listado incluye

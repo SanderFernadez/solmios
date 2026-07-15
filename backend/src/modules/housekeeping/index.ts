@@ -96,6 +96,9 @@ export function HousekeepingModule(
       router.post('/api/housekeeping/:id/video/upload-url', guard('housekeeping', 'edit'), (req) => controller.videoUploadUrl(req))
       router.post('/api/housekeeping/:id/video', guard('housekeeping', 'edit'), (req) => controller.attachVideo(req))
       router.delete('/api/housekeeping/:id/video', guard('housekeeping', 'edit'), (req) => controller.removeVideo(req))
+      // Ver el video: permiso `view` (no `edit`) — el supervisor y el admin
+      // revisan la evidencia sin poder editar la tarea de la camarera.
+      router.get('/api/housekeeping/:id/video/view-url', guard('housekeeping', 'view'), (req) => controller.videoViewUrl(req))
 
       // ─── Aprobación y presencia (F4/F5) ─────────────────────────────────
       router.post('/api/housekeeping/:id/approve', guard('housekeeping', 'edit'), (req) => controller.approve(req))

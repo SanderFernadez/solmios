@@ -203,6 +203,12 @@ export class HousekeepingController {
     return { status: 200, body: await this.service.removeVideo(req.params.id, req.user as any) }
   }
 
+  // URL firmada temporal para reproducir el video. La app la pide justo antes de
+  // ver: expira sola, así el bucket puede ser privado y el video no queda público.
+  async videoViewUrl(req: HttpRequest) {
+    return { status: 200, body: await this.service.getVideoViewUrl(req.params.id, req.user as any) }
+  }
+
   async updateSupplyLists(req: HttpRequest) {
     const hotelId = (req.user as any).hotelId
     const body = (req.body || {}) as Record<string, unknown>
