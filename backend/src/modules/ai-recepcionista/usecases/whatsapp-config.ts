@@ -31,3 +31,25 @@ export async function updateWhatsappConfig(
     dailyMessageLimit: dto.dailyMessageLimit || 1000,
   } as any)
 }
+
+/**
+ * Quita los SECRETOS de la config antes de devolverla al cliente (IA-C1).
+ *
+ * `getWhatsappConfig`/`updateWhatsappConfig` devolvían la fila entera por GET/PUT, con el
+ * `accessToken` de WhatsApp, el `llmApiKey` y TODO el bundle de credenciales de Baileys en claro
+ * → cualquiera con `ai:edit` secuestraba la sesión de WhatsApp del hotel. Estos valores nunca
+ * deben salir del servidor. Se reemplazan por flags `hasX` para que el frontend sepa si están
+ * configurados sin verlos. Los consumidores INTERNOS (pipeline LLM, sesión Baileys) usan el repo
+ * directo, no esta proyección.
+ */
+export function redactWhatsappConfig(config: any): any {
+  if (!config) return null
+  const { accessToken, verifyToken, baileysCredentials, llmApiKey, ...safe } = config
+  return {
+    ...safe,
+    hasAccessToken: !!accessToken,
+    hasVerifyToken: !!verifyToken,
+    hasBaileysCredentials: !!baileysCredentials,
+    hasLlmApiKey: !!llmApiKey,
+  }
+}

@@ -45,6 +45,15 @@ export const MANAGER_TOOLS = [
 ]
 
 /** Ejecuta una tool administrativa. Devuelve { ok, ...datos } o { error } o { requiresConfirmation, preview }. */
+/** findById + guard de tenant (IA-A3): una tool del Gerente IA solo puede tocar reservas de SU
+ *  hotel. El reservationId lo dicta el LLM; sin este guard, una inyección escribía (cancel/checkin/
+ *  checkout) sobre reservas de otro hotel. */
+async function ownedReservation(reservationRepo: any, id: unknown, hotelId: string): Promise<any | null> {
+  if (!id) return null
+  const r = await reservationRepo.findById(id as string)
+  return r && r.hotelId === hotelId ? r : null
+}
+
 export async function executeManagerTool(name: string, args: Record<string, unknown>, hotelId: string, repos: ToolRepos): Promise<Record<string, unknown>> {
   const { reservationRepo, roomRepo } = repos
   const today = new Date().toISOString().split('T')[0]
@@ -85,11 +94,12 @@ export async function executeManagerTool(name: string, args: Record<string, unkn
     }
 
     case 'cancel_reservation': {
+      const r = await ownedReservation(reservationRepo, args.reservationId, hotelId)
+      if (!r) return { error: 'Reserva no encontrada' }
       if (!args.confirmed) {
-        const r = await reservationRepo.findById(args.reservationId)
         // Reservations no tiene guestName (mem 1805) — resolver vía guestId → Guests.
-        const g = r?.guestId ? await repos.guestRepo.findById(r.guestId).catch(() => null) : null
-        return { requiresConfirmation: true, action: 'cancel_reservation', reservationId: args.reservationId, guestName: g?.name, status: r?.status, preview: `Cancelar la reserva de ${g?.name || args.reservationId}` }
+        const g = r.guestId ? await repos.guestRepo.findById(r.guestId).catch(() => null) : null
+        return { requiresConfirmation: true, action: 'cancel_reservation', reservationId: args.reservationId, guestName: g?.name, status: r.status, preview: `Cancelar la reserva de ${g?.name || args.reservationId}` }
       }
       const updated = await reservationRepo.update(args.reservationId, { status: 'cancelled' } as any)
       return { ok: !!updated, reservationId: args.reservationId, status: 'cancelled' }
@@ -117,11 +127,13 @@ export async function executeManagerTool(name: string, args: Record<string, unkn
     }
 
     case 'checkin_guest': {
+      if (!(await ownedReservation(reservationRepo, args.reservationId, hotelId))) return { error: 'Reserva no encontrada' }
       const updated = await reservationRepo.update(args.reservationId, { status: 'checked_in' } as any)
       return updated ? { ok: true, reservationId: args.reservationId, status: 'checked_in' } : { error: 'Reserva no encontrada' }
     }
 
     case 'checkout_guest': {
+      if (!(await ownedReservation(reservationRepo, args.reservationId, hotelId))) return { error: 'Reserva no encontrada' }
       const updated = await reservationRepo.update(args.reservationId, { status: 'checked_out' } as any)
       return updated ? { ok: true, reservationId: args.reservationId, status: 'checked_out' } : { error: 'Reserva no encontrada' }
     }

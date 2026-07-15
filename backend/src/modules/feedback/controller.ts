@@ -2,6 +2,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { FeedbackService } from './service'
 import { CreateFeedbackPinSchema, UpdateFeedbackPinSchema } from './validators/schema'
+import { resolveTenant } from '../../shared/utils/resolve-tenant'
 
 export class FeedbackController {
   constructor(
@@ -11,7 +12,10 @@ export class FeedbackController {
 
   // ── CRUD Feedback Pins ──────────────────────────────────────────────────
   async listPins(req: HttpRequest) {
-    const { hotelId, route } = req.query as any
+    const { route } = req.query as any
+    // resolveTenant, NO el hotelId de la query: un merchant queda forzado a su hotel. Antes,
+    // ?hotelId=B leía el feedback de otro hotel y sin el param dumpeaba TODOS los hoteles.
+    const hotelId = resolveTenant(req)
     const result = await this.service.listPins(hotelId, route)
     return { status: 200, body: result }
   }

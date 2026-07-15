@@ -2,6 +2,7 @@ import type { Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { AiRecepcionistaService } from './service'
 import { AiRecepcionistaValidator, CloseConversationSchema, TransferConversationSchema, TestIntentSchema, WebChatMessageSchema, StartWhatsappSchema, StopWhatsappSchema } from './validators/schema'
+import { redactWhatsappConfig } from './usecases/whatsapp-config'
 
 export class AiRecepcionistaController {
   constructor(
@@ -130,7 +131,8 @@ export class AiRecepcionistaController {
   async getWhatsappConfig(req: any) {
     const user = req.user || {}
     const config = await this.service.getWhatsappConfig(req.query?.hotelId || '', user)
-    return { status: 200, body: config }
+    // Nunca devolver accessToken/llmApiKey/baileysCredentials al cliente (IA-C1).
+    return { status: 200, body: redactWhatsappConfig(config) }
   }
 
   async updateWhatsappConfig(req: any) {
@@ -138,7 +140,7 @@ export class AiRecepcionistaController {
     const body: any = req.body || {}
     validateSchema(AiRecepcionistaValidator.createWhatsappConfig as any, body)
     const result = await this.service.updateWhatsappConfig(body, user)
-    return { status: 200, body: result }
+    return { status: 200, body: redactWhatsappConfig(result) }
   }
 
   // ─── WhatsApp Webhook ───────────────────────────────────────────────────

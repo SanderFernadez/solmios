@@ -208,6 +208,18 @@ export async function generateReply(
   return buildResponse(nlpResult, variables)
 }
 
+/**
+ * findById + guard de tenant (IA-A2): una tool solo puede ver/tocar reservas del hotel del bot que
+ * está respondiendo. El `reservationId` lo dicta el LLM, y el webchat es PÚBLICO sin auth, así que
+ * un anónimo con prompt-injection podía leer/cancelar/facturar reservas de CUALQUIER hotel. Este
+ * guard corta eso: si la reserva no es del `hotelId` de contexto, es como si no existiera.
+ */
+async function findOwnedReservation(repo: any, resId: string, hotelId: string): Promise<any | null> {
+  if (!resId) return null
+  const r = await repo.findById(resId)
+  return r && r.hotelId === hotelId ? r : null
+}
+
 async function executeTool(name: string, args: Record<string, unknown>, hotelId: string, repos?: ToolRepos): Promise<unknown> {
   if (!repos) return { error: 'Repos not available' }
 
@@ -375,7 +387,7 @@ async function executeTool(name: string, args: Record<string, unknown>, hotelId:
 
       let reservations
       if (resId) {
-        const found = await repos.reservationRepo.findById(resId)
+        const found = await findOwnedReservation(repos.reservationRepo, resId, hotelId)
         reservations = found ? [found] : []
       } else if (email) {
         const all = await repos.reservationRepo.findMany({ hotelId })
@@ -405,7 +417,7 @@ async function executeTool(name: string, args: Record<string, unknown>, hotelId:
       const resId = args.reservationId as string
       if (!resId) return { error: 'Necesitá el número de reserva' }
 
-      const reservation = await repos.reservationRepo.findById(resId)
+      const reservation = await findOwnedReservation(repos.reservationRepo, resId, hotelId)
       if (!reservation) return { error: 'No encontré esa reserva' }
 
       await repos.reservationRepo.update(resId, { status: 'cancelled' })
@@ -522,7 +534,7 @@ async function executeTool(name: string, args: Record<string, unknown>, hotelId:
 
       if (!reservationId) return { error: 'Necesitás reservationId' }
 
-      const reservation = await repos.reservationRepo.findById(reservationId)
+      const reservation = await findOwnedReservation(repos.reservationRepo, reservationId, hotelId)
       if (!reservation) return { error: 'Reserva no encontrada' }
 
       const room = await repos.roomRepo.findById(reservation.roomId)
