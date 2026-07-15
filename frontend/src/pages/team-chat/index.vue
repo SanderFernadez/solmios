@@ -134,7 +134,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { TeamChatService, type MessageDTO } from '@/services/TeamChat.service'
-import { EmpleadosService } from '@/services/Empleados.service'
+import { TeamService } from '@/services/Team.service'
 import { useAuthStore } from '@/stores/auth.store'
 
 const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>'
@@ -237,13 +237,15 @@ const selectedConversation = computed<Conversation | null>(() =>
 )
 
 async function loadNames() {
-  if (!hotelId.value) return
   try {
-    const res = await EmpleadosService.listProfiles({ hotelId: hotelId.value, limit: 100 })
-    const list = res?.data ?? []
+    // Los que chatean son USUARIOS del hotel (tabla users), no perfiles de RRHH:
+    // `/usuarios` devuelve id → name y esos ids son los que traen los mensajes.
+    // (employee-profiles es otra cosa y sus ids no coinciden con los del chat.)
+    const res = await TeamService.list()
+    const list = Array.isArray(res) ? res : (res?.data ?? [])
     const map = new Map<string, string>()
-    for (const e of list) {
-      if (e.userId) map.set(e.userId, e.userName || 'Usuario')
+    for (const u of list) {
+      if (u.id && u.name) map.set(u.id, u.name)
     }
     userNames.value = map
   } catch {
