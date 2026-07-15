@@ -927,15 +927,17 @@ details[open] > summary .ml-auto { transform: rotate(180deg); }
 
   /* Modo bono alojamiento */
   .print-voucherLodging .rm-print-area { display: none !important; }
-  .print-voucherLodging .rm-voucher-lodging { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; visibility: visible; }
+  .print-voucherLodging .rm-voucher-lodging { display: block !important; position: fixed; left: 0; top: 0; width: 100%; padding: 24px; visibility: visible; }
   .print-voucherLodging .rm-voucher-lodging, .print-voucherLodging .rm-voucher-lodging * { visibility: visible; }
   /* Modo bono cliente */
   .print-voucherClient .rm-print-area { display: none !important; }
-  .print-voucherClient .rm-voucher-client { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; visibility: visible; }
+  .print-voucherClient .rm-voucher-client { display: block !important; position: fixed; left: 0; top: 0; width: 100%; padding: 24px; visibility: visible; }
   .print-voucherClient .rm-voucher-client, .print-voucherClient .rm-voucher-client * { visibility: visible; }
   /* Modo factura */
   .print-invoice .rm-print-area { display: none !important; }
-  .print-invoice .rm-invoice { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 32px 40px; visibility: visible; }
+  /* position: fixed (NO absolute): ancla el documento a la PÁGINA. Con absolute se anclaba al
+     .modal-panel centrado (con overflow:hidden) y el contenido caía fuera del A4 → hoja en blanco. */
+  .print-invoice .rm-invoice { display: block !important; position: fixed; left: 0; top: 0; width: 100%; padding: 32px 40px; visibility: visible; }
   .print-invoice .rm-invoice, .print-invoice .rm-invoice * { visibility: visible; }
 }
 </style>
