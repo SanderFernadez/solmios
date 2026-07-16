@@ -284,6 +284,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { PlatformService } from '@/services/Platform.service'
+import { AuditLogService } from '@/services/AuditLog.service'
 
 const analytics = ref<Awaited<ReturnType<typeof SuperAdminService.analytics>> | null>(null)
 
@@ -337,7 +338,7 @@ onMounted(async () => {
     topHotels.value = (Array.isArray(data) ? data : []).slice(0, 5)
   } catch { /* silent */ }
   try {
-    const a = await PlatformService.audit()
+    const a = await AuditLogService.list()
     recentActivity.value = (a?.data || []).slice(0, 8)
   } catch { /* silent */ }
 })

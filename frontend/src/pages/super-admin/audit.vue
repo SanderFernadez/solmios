@@ -126,7 +126,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { PlatformService } from '@/services/Platform.service'
+import { AuditLogService } from '@/services/AuditLog.service'
 
 const searchQuery = ref('')
 const filterAction = ref('all')
@@ -139,7 +139,7 @@ const logs = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const { data } = await PlatformService.audit()
+    const { data } = await AuditLogService.list()
     logs.value = data.map((l: any) => {
       const dt = String(l.createdAt || '').replace('T', ' ')
       return {

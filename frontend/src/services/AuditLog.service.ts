@@ -5,9 +5,8 @@ import type { AuditLogRecord, AuditLogQuery, AuditLogListResponse } from '@/type
  * Espeja backend/src/modules/auditlog/index.ts (GET /api/auditlog, GET /api/auditlog/:id).
  * Módulo append-only: sin update ni delete expuestos.
  *
- * Reemplaza al consumo embebido en PlatformService.audit() (frontend/src/services/Platform.service.ts).
- * Se deja PlatformService.audit() intacto para no romper frontend/src/pages/super-admin/audit.vue;
- * los consumos nuevos deberían usar este service dedicado.
+ * Service dedicado de auditoría. Reemplazó a PlatformService.audit() (ya eliminado, M45 #313);
+ * consumidores actuales: super-admin/audit.vue y super-admin/index.vue.
  */
 export const AuditLogService = {
   list: (params?: AuditLogQuery) => {
