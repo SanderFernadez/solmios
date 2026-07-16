@@ -134,7 +134,7 @@
     <section id="features" class="py-16 px-6 bg-white border-y border-slate-100">
       <div class="max-w-7xl mx-auto">
         <div class="text-center mb-12">
-          <h2 class="text-xl md:text-2xl font-black text-navy">Funciones diseñadas para simplificar tu operación</h2>
+          <h2 class="text-xl md:text-2xl font-black text-navy">Todo lo que necesitas para vender más y trabajar menos</h2>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-x-1 gap-y-8">
           <template v-for="(f, i) in quickFeatures" :key="f.label">
@@ -251,6 +251,7 @@
             Empezar ahora
             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </router-link>
+          <p class="text-sm font-semibold text-slate-500 mt-5">Sin tarjeta de crédito. Lo configuras en minutos, no en semanas.</p>
         </div>
       </div>
     </section>
@@ -262,8 +263,8 @@
           <div class="inline-flex items-center gap-2 mb-5 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100">
             <span class="text-[11px] font-extrabold tracking-wide text-blue uppercase">Integraciones</span>
           </div>
-          <h2 class="text-3xl md:text-4xl font-black text-navy mb-4">Conecta con tu ecosistema</h2>
-          <p class="text-slate-500 max-w-xl mx-auto">APIs abiertas que se conectan con el stack que ya usas.</p>
+          <h2 class="text-3xl md:text-4xl font-black text-navy mb-4">Vende en más canales sin doble trabajo</h2>
+          <p class="text-slate-500 max-w-xl mx-auto">Sincroniza tarifas y disponibilidad con las OTAs, cobra online y confirma por WhatsApp desde un solo lugar: más reservas directas, menos comisiones y cero carga manual.</p>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
           <div v-for="int in integrations" :key="int.name"
@@ -331,15 +332,18 @@
         </div>
         <div class="grid md:grid-cols-3 gap-6">
           <div v-for="t in testimonials" :key="t.name" class="bg-white border border-slate-100 rounded-2xl p-8 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-            <div class="flex gap-0.5 mb-5">
-              <svg v-for="i in 5" :key="i" class="w-4 h-4" fill="#D4AC0D" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <div class="flex items-center gap-2 mb-5">
+              <div class="flex gap-0.5">
+                <svg v-for="i in t.rating" :key="i" class="w-4 h-4" fill="#D4AC0D" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              </div>
+              <span class="text-xs font-bold text-navy">{{ t.rating.toFixed(1) }}</span>
             </div>
             <p class="text-sm text-slate-600 leading-relaxed mb-6">"{{ t.quote }}"</p>
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white" :style="`background:${t.avatarBg}`">{{ t.initials }}</div>
               <div>
-                <div class="text-sm font-bold text-navy">{{ t.name }}</div>
-                <div class="text-[10px] text-slate-400">{{ t.hotel }}</div>
+                <div class="text-sm font-bold text-navy">{{ t.name }} <span class="font-medium text-slate-400">· {{ t.role }}</span></div>
+                <div class="text-[10px] text-slate-400">{{ t.hotel }} · {{ t.location }}</div>
               </div>
             </div>
           </div>
@@ -550,9 +554,9 @@ const plans = [
 ]
 
 const testimonials = [
-  { quote: 'Pasamos de usar 4 herramientas diferentes a solo SolmiOS. El Channel Manager nos ahorró 3 horas diarias de trabajo manual.', name: 'Juan García', hotel: 'Hotel Caribe Paradise', initials: 'JG', avatarBg: '#1D6FA4' },
-  { quote: 'La facturación electrónica para DGII era un dolor de cabeza. Ahora se genera automáticamente. El soporte es excepcional.', name: 'Roberto Suárez', hotel: 'Gran Hotel Santo Domingo', initials: 'RS', avatarBg: '#117A65' },
-  { quote: 'Como recepcionista, todo es muy intuitivo. El check-in toma 30 segundos. Los huéspedes quedan impresionados.', name: 'María López', hotel: 'Hotel Caribe Paradise', initials: 'ML', avatarBg: '#6C3483' },
+  { quote: 'Pasamos de usar 4 herramientas diferentes a solo SolmiOS. El Channel Manager nos ahorró 3 horas diarias de trabajo manual.', name: 'Juan García', role: 'Gerente General', hotel: 'Hotel Boutique Las Palmas', location: 'Punta Cana, RD', rating: 5, initials: 'JG', avatarBg: '#1D6FA4' },
+  { quote: 'La facturación electrónica para DGII era un dolor de cabeza. Ahora se genera automáticamente. El soporte es excepcional.', name: 'Roberto Suárez', role: 'Director de Operaciones', hotel: 'Gran Hotel Colonial', location: 'Santo Domingo, RD', rating: 5, initials: 'RS', avatarBg: '#117A65' },
+  { quote: 'Como recepcionista, todo es muy intuitivo. El check-in toma 30 segundos. Los huéspedes quedan impresionados.', name: 'María López', role: 'Jefa de Recepción', hotel: 'Aparta-Hotel Vista Mar', location: 'Cartagena, CO', rating: 5, initials: 'ML', avatarBg: '#6C3483' },
 ]
 
 const footerCols = [
