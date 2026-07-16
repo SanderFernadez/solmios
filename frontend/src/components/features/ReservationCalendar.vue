@@ -423,14 +423,14 @@
               <thead><tr style="border-bottom:2px solid #1a2b4c"><th style="text-align:left;padding:8px 0;font-size:10px;text-transform:uppercase;color:#6b7280">Habitación</th><th style="text-align:center;padding:8px 0;font-size:10px;text-transform:uppercase;color:#6b7280">Cant.</th><th style="text-align:right;padding:8px 0;font-size:10px;text-transform:uppercase;color:#6b7280">Precio/n</th><th style="text-align:right;padding:8px 0;font-size:10px;text-transform:uppercase;color:#6b7280">Subtotal</th></tr></thead>
               <tbody>
                 <tr v-for="(item, i) in quote.rooms" :key="i" style="border-bottom:1px solid #e5e7eb">
-                  <td style="padding:8px 0;font-weight:700;color:#1a2b4c">{{ item.type }}</td><td style="padding:8px 0;text-align:center">{{ item.qty }}</td><td style="padding:8px 0;text-align:right">${{ item.price }}</td><td style="padding:8px 0;text-align:right;font-weight:700">${{ item.qty * item.price * quote.nights }}</td>
+                  <td style="padding:8px 0;font-weight:700;color:#1a2b4c">{{ item.type }}</td><td style="padding:8px 0;text-align:center">{{ item.qty }}</td><td style="padding:8px 0;text-align:right">${{ item.price }}</td><td style="padding:8px 0;text-align:right;font-weight:700">${{ item.qty * item.price * quoteNights }}</td>
                 </tr>
               </tbody>
             </table>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px">
               <div><span style="color:#6b7280">Check-in:</span> <strong>{{ quote.checkIn }}</strong></div>
               <div><span style="color:#6b7280">Check-out:</span> <strong>{{ quote.checkOut }}</strong></div>
-              <div><span style="color:#6b7280">Noches:</span> <strong>{{ quote.nights }}</strong></div>
+              <div><span style="color:#6b7280">Noches:</span> <strong>{{ quoteNights }}</strong></div>
               <div><span style="color:#6b7280">Huéspedes:</span> <strong>{{ quote.adults }} adultos, {{ quote.kids }} niños</strong></div>
             </div>
             <div style="border-top:2px solid #1a2b4c;padding-top:12px;font-size:12px">
@@ -485,11 +485,11 @@
                 class="text-xs font-bold text-teal hover:underline cursor-pointer">+ Agregar habitación</button>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
-              <div class="bg-surface rounded-xl p-3 flex justify-between"><span class="text-text-secondary">Check-in</span><span class="font-bold">{{ quote.checkIn }}</span></div>
-              <div class="bg-surface rounded-xl p-3 flex justify-between"><span class="text-text-secondary">Check-out</span><span class="font-bold">{{ quote.checkOut }}</span></div>
+              <div class="bg-surface rounded-xl p-3 flex justify-between items-center gap-2"><span class="text-text-secondary shrink-0">Check-in</span><input v-model="quote.checkIn" type="date" class="min-w-0 flex-1 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy" /></div>
+              <div class="bg-surface rounded-xl p-3 flex justify-between items-center gap-2"><span class="text-text-secondary shrink-0">Check-out</span><input v-model="quote.checkOut" type="date" class="min-w-0 flex-1 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy" /></div>
             </div>
             <div class="grid grid-cols-3 gap-2 mt-2 text-sm">
-              <div class="bg-surface rounded-xl p-3 flex justify-between"><span class="text-text-secondary">Noches</span><span class="font-bold">{{ quote.nights }}</span></div>
+              <div class="bg-surface rounded-xl p-3 flex justify-between"><span class="text-text-secondary">Noches</span><span class="font-bold">{{ quoteNights }}</span></div>
               <div class="bg-surface rounded-xl p-3 flex justify-between items-center"><span class="text-text-secondary">Adultos</span><input v-model.number="quote.adults" type="number" min="1" max="10" class="w-12 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy text-right" /></div>
               <div class="bg-surface rounded-xl p-3 flex justify-between items-center"><span class="text-text-secondary">Niños</span><input v-model.number="quote.kids" type="number" min="0" max="10" class="w-12 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy text-right" /></div>
             </div>
@@ -499,8 +499,8 @@
             <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Precios</label>
             <div class="bg-surface rounded-xl p-4 space-y-2 text-sm">
               <div v-for="(item, i) in quote.rooms" :key="'p'+i" class="flex justify-between">
-                <span class="text-text-secondary">{{ item.type }} ×{{ item.qty }} ({{ quote.nights }}n × ${{ item.price }})</span>
-                <span class="font-bold">${{ item.qty * item.price * quote.nights }}</span>
+                <span class="text-text-secondary">{{ item.type }} ×{{ item.qty }} ({{ quoteNights }}n × ${{ item.price }})</span>
+                <span class="font-bold">${{ item.qty * item.price * quoteNights }}</span>
               </div>
               <div class="flex justify-between border-t border-border pt-2">
                 <span class="text-text-secondary">Subtotal</span>
@@ -831,7 +831,15 @@ const newRes = ref({
   amt: 0,
 })
 const quote = ref<{ show: boolean; id: string; today: string; hotel: string; hotelAddress: string; hotelPhone: string; hotelEmail: string; rooms: { type: string; qty: number; price: number }[]; checkIn: string; checkOut: string; nights: number; guest: string; email: string; phone: string; adults: number; kids: number; taxName: string; taxRate: number; notes: string }>({ show: false, id: '', today: '', hotel: '', hotelAddress: '', hotelPhone: '', hotelEmail: '', rooms: [{ type: 'Standard', qty: 1, price: 100 }], checkIn: '', checkOut: '', nights: 0, guest: '', email: '', phone: '', adults: 1, kids: 0, taxName: 'ITBIS', taxRate: 18, notes: '' })
-const quoteSubtotal = computed(() => quote.value.rooms.reduce((s, r) => s + r.qty * r.price * quote.value.nights, 0))
+// Noches de la cotización: se calculan de check-in/check-out (ahora editables en el modal).
+// Antes era un valor fijo tomado del rango inicial y NO reaccionaba al cambiar las fechas,
+// así que "Noches" quedaba en 1 aunque el usuario ajustara las fechas o pusiera otra cosa.
+const quoteNights = computed(() => {
+  const ci = quote.value.checkIn, co = quote.value.checkOut
+  if (!ci || !co) return 0
+  return Math.max(0, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / MS_PER_DAY))
+})
+const quoteSubtotal = computed(() => quote.value.rooms.reduce((s, r) => s + r.qty * r.price * quoteNights.value, 0))
 const quoteRoomTypes = computed(() => {
   const types = new Set<string>()
   for (const r of planRooms.value) types.add((r.type || 'double').charAt(0).toUpperCase() + (r.type || 'double').slice(1))
