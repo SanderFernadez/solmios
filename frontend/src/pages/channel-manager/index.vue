@@ -125,7 +125,10 @@
           class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 transition-transform duration-300 hover:-translate-y-0.5">
           <!-- Channel Icon -->
           <div class="flex items-center justify-between mb-4">
-            <div class="w-14 h-14 rounded-2xl flex items-center justify-center" :class="channel.bgColor"><span class="w-7 h-7" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span></div>
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center" :class="channel.bgColor">
+              <span v-if="channel.hasLogo" class="w-7 h-7" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span>
+              <span v-else class="text-lg font-black" :class="channel.iconColor || 'text-navy'">{{ channel.initial }}</span>
+            </div>
             <div class="flex items-center gap-1">
               <span class="w-2.5 h-2.5 rounded-full" :class="channel.connected ? 'bg-teal animate-pulse' : 'bg-gray-300'"></span>
               <span class="text-[10px] font-bold" :class="channel.connected ? 'text-teal' : 'text-text-muted'">{{ channel.connected ? 'Conectado' : 'Disponible' }}</span>
@@ -166,7 +169,10 @@
         <div v-for="channel in availableChannels" :key="channel.id"
           class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 transition-transform duration-300 hover:-translate-y-0.5 group">
           <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center" :class="channel.bgColor"><span class="w-5 h-5" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span></div>
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" :class="channel.bgColor">
+              <span v-if="channel.hasLogo" class="w-5 h-5" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span>
+              <span v-else class="text-sm font-black" :class="channel.iconColor || 'text-navy'">{{ channel.initial }}</span>
+            </div>
             <div>
               <div class="text-sm font-bold text-navy">{{ channel.name }}</div>
               <div class="text-[10px] text-text-muted">{{ channel.category }}</div>
@@ -224,6 +230,7 @@ import { ChannelService } from '@/services/Channel.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { http } from '@/services/http'
+import { resolveChannelLogo } from '@/utils/channelLogos'
 
 const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
 const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>'
@@ -237,7 +244,6 @@ const ICON_TRIP = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="currentC
 const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
 const ICON_PALM = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21V10m0 0c-2-3-6-4-9-2 2 1 4 1 6 0-1 2-4 3-6 5 3 0 6-1 9-3Zm0 0c2-3 6-4 9-2-2 1-4 1-6 0 1 2 4 3 6 5-3 0-6-1-9-3Z"/></svg>'
 const ICON_PLANE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="currentColor"><path d="m21.5 15-6-2-1-6.5c-.1-.6-.6-1-1.2-1s-1.1.4-1.2 1L11 13l-6 2v2l6-1 1 5-2 1v1.5l3-1 3 1V21l-2-1 1-5 6 1v-2Z"/></svg>'
-const ICON_LINK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 0 0-5.656 0l-4 4a4 4 0 0 0 5.656 5.656l1.102-1.101m-.758-4.899a4 4 0 0 0 5.656 0l4-4a4 4 0 0 0-5.656-5.656l-1.1 1.1"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -271,33 +277,54 @@ const connectResult = ref('')
 const showIframe = ref(false)
 const iframeUrl = ref('')
 
+// Ensures every catalog entry (from platform config or the default list) carries a
+// brand logo + color, falling back to an initial badge when the channel is unknown.
+function normalizeCatalog(list: any[]): any[] {
+  return list.map((c: any) => {
+    const name = c.name || c.title || 'OTA'
+    const logo = resolveChannelLogo(name, c.channexCode || c.otaCode || c.id)
+    return {
+      ...c,
+      name,
+      icon: c.icon || logo.icon,
+      bgColor: c.bgColor || c.color || logo.bgColor,
+      iconColor: c.iconColor || logo.iconColor,
+      initial: logo.initial,
+      hasLogo: !!c.icon || logo.matched,
+    }
+  })
+}
+
 async function loadStatus() {
   try {
     status.value = await ChannelService.status(hotelId.value)
-    connectedChannels.value = status.value.data.map((c: any) => ({
-      id: c.id ?? c.name,
-      name: c.name || 'OTA',
-      icon: c.icon || ICON_LINK,
-      bgColor: c.color || 'bg-gray-50',
-      iconColor: c.iconColor || 'text-navy',
-      description: c.description || c.descripcion || '',
-      connected: !!(c.connected ?? c.conectado),
-      active: c.active,
-      bookings: c.bookings ?? 0,
-      lastSync: c.lastSync || c.ultimaSync || status.value?.lastSync || '—',
-      otaCode: c.otaCode || c.channexCode,
-    }))
+    connectedChannels.value = status.value.data.map((c: any) => {
+      const name = c.name || 'OTA'
+      const logo = resolveChannelLogo(name, c.otaCode || c.channexCode)
+      return {
+        id: c.id ?? c.name,
+        name,
+        icon: c.icon || logo.icon,
+        initial: logo.initial,
+        hasLogo: !!c.icon || logo.matched,
+        bgColor: c.color || logo.bgColor,
+        iconColor: c.iconColor || logo.iconColor,
+        description: c.description || c.descripcion || '',
+        connected: !!(c.connected ?? c.conectado),
+        active: c.active,
+        bookings: c.bookings ?? 0,
+        lastSync: c.lastSync || c.ultimaSync || status.value?.lastSync || '—',
+        otaCode: c.otaCode || c.channexCode,
+      }
+    })
   } catch { toast.error("Error al cargar datos") }
   try {
     const { ConfigService } = await import('@/services/Platform.service')
     const otas = await ConfigService.get('ota_catalog', 'platform')
       || await ConfigService.get('catalogo_otas', 'platform')
-    if (Array.isArray(otas) && otas.length > 0) {
-      availableChannels.value = otas
-    } else {
-      availableChannels.value = DEFAULT_OTA_CATALOG
-    }
-  } catch { availableChannels.value = DEFAULT_OTA_CATALOG }
+    const source = (Array.isArray(otas) && otas.length > 0) ? otas : DEFAULT_OTA_CATALOG
+    availableChannels.value = normalizeCatalog(source)
+  } catch { availableChannels.value = normalizeCatalog(DEFAULT_OTA_CATALOG) }
   // Load sync history from DB
   try {
     const logData = await ChannelService.syncLog(hotelId.value)

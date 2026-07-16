@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChannelService } from '@/services/Channel.service'
+import { resolveChannelLogo } from '@/utils/channelLogos'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +19,7 @@ onMounted(async () => {
 
 const statusColor = computed(() => detail.value?.isActive ? 'bg-teal' : 'bg-orange')
 const statusText = computed(() => detail.value?.isActive ? 'Activo' : 'Inactivo')
+const logo = computed(() => resolveChannelLogo(detail.value?.channel, detail.value?.title))
 </script>
 
 <template>
@@ -28,8 +30,9 @@ const statusText = computed(() => detail.value?.isActive ? 'Activo' : 'Inactivo'
     <div class="bg-white rounded-2xl border p-6">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-          <div class="w-14 h-14 rounded-2xl bg-navy flex items-center justify-center text-2xl">
-            {{ detail.channel === 'AirBNB' ? '🩷' : detail.channel === 'BDC' ? '🟦' : '🔗' }}
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center" :class="logo.bgColor">
+            <span v-if="logo.matched" class="w-7 h-7" :class="logo.iconColor" v-html="logo.icon"></span>
+            <span v-else class="text-xl font-black" :class="logo.iconColor">{{ logo.initial }}</span>
           </div>
           <div>
             <div class="flex items-center gap-3">
