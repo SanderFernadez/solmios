@@ -9,4 +9,4 @@
 - [x] 2.2 Tab "Registros" en `cerraduras/index.vue` (selector + tabla).
 - [x] 3.1 `bun test` (19 ttlock) + `arckode analyze` 0 violaciones + typecheck 0.
 - [x] 3.2 `vue-tsc -b` 0 errores (mis archivos) + `vite build` OK.
-- [ ] 3.3 Verificación en prod: tab Registros lista la actividad real de la cerradura.
+- [x] 3.3 Verificación en prod: tab Registros lista la actividad real de la cerradura.
