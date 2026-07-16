@@ -104,10 +104,13 @@
               </div>
 
               <div v-for="room in rt.rooms" :key="room.id" class="flex border-b border-navy/10 hover:bg-surface/30">
-                <div class="w-56 flex-shrink-0 px-4 py-3 border-r border-border flex items-center gap-3">
+                <div class="w-56 flex-shrink-0 px-4 py-3 border-r border-border flex items-center gap-2">
                   <span class="font-bold text-sm text-navy">{{ room.number }}</span>
                   <span class="text-[10px] text-text-muted truncate">{{ room.type }}</span>
-                  <span class="w-2 h-2 rounded-full ml-auto" :class="room.status === 'occupied' ? 'bg-coral' : 'bg-teal'"></span>
+                  <button @click.stop="openRoomLock(room)" class="ml-auto text-text-muted hover:text-navy transition-colors cursor-pointer shrink-0" title="Cerradura de la habitación">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="11" width="16" height="10" rx="2"/><path stroke-linecap="round" d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                  </button>
+                  <span class="w-2 h-2 rounded-full shrink-0" :class="room.status === 'occupied' ? 'bg-coral' : 'bg-teal'"></span>
                 </div>
 
                 <div v-for="day in visibleDays" :key="day.dateStr + room.id"
@@ -741,6 +744,15 @@
       @close="detailId = null"
       @edit="onEditFromPlanning"
     />
+
+    <!-- Cerradura por habitación (Fase A) -->
+    <RoomLockModal
+      :room-id="lockRoom?.id ?? null"
+      :room-number="lockRoom?.number ?? ''"
+      :reservation-id="lockRoom?.reservationId ?? null"
+      @close="lockRoom = null"
+      @changed="onLockChanged"
+    />
   </div>
 </template>
 
@@ -756,6 +768,7 @@ import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import ReservationModal from '@/components/features/ReservationModal.vue'
+import RoomLockModal from '@/components/features/RoomLockModal.vue'
 import { useRouter } from 'vue-router'
 
 // `embedded`: cuando el calendario se monta dentro del dashboard (home) en vez de la
@@ -768,6 +781,23 @@ const emit = defineEmits<{ changed: [] }>()
 const router = useRouter()
 const auth = useAuthStore()
 const toast = useToast()
+
+// Acceso a la cerradura por habitación (🔒 en la fila). Pasa la reserva activa HOY (si la hay)
+// para poder generar el código desde acá; el modal resuelve la cerradura por roomId.
+const lockRoom = ref<{ id: string; number: string; reservationId: string | null } | null>(null)
+function openRoomLock(room: any) {
+  const today = visibleDays.value.find(d => d.isToday)
+  const res = today ? gRes(room.id, today.dateStr) : null
+  lockRoom.value = { id: String(room.id), number: String(room.number ?? ''), reservationId: res?.id ?? null }
+}
+async function onLockChanged() {
+  // Recargar el planning para reflejar el badge 🔐 de la reserva si cambió su código.
+  try {
+    const d = await OperationsService.planning(hid.value)
+    planRooms.value = d.rooms ?? planRooms.value
+    planReservas.value = d.reservas ?? planReservas.value
+  } catch { /* recarga best-effort */ }
+}
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 type DI = { dateStr: string; dayName: string; dayNum: number; monthShort: string; isToday: boolean; isWeekend: boolean; date: Date }
