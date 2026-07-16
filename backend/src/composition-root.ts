@@ -222,6 +222,8 @@ import { messagesPushtokensConnector } from './connectors/messages-pushtokens'
 import { pushtokensUsuariosConnector } from './connectors/pushtokens-usuarios'
 import { housekeepingMantenimientoConnector } from './connectors/housekeeping-mantenimiento'
 import { housekeepingNotificacionesConnector } from './connectors/housekeeping-notificaciones'
+import { empleadosHousekeepingConnector } from './connectors/empleados-housekeeping'
+import { empleadosAttendanceConnector } from './connectors/empleados-attendance'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -312,6 +314,10 @@ system.addConnector('pushtokens-usuarios', pushtokensUsuariosConnector)
 system.addConnector('housekeeping-mantenimiento', housekeepingMantenimientoConnector)
 // Asignar una habitación le avisa a la persona asignada.
 system.addConnector('housekeeping-notificaciones', housekeepingNotificacionesConnector)
+// El motor de evaluación de desempeño (#321) lee productividad/calidad de housekeeping y
+// puntualidad/asistencia de attendance — datos reales, sin importar esos módulos.
+system.addConnector('empleados-housekeeping', empleadosHousekeepingConnector)
+system.addConnector('empleados-attendance', empleadosAttendanceConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm, logger)

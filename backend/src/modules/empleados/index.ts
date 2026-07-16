@@ -12,6 +12,8 @@ import { DashboardUseCase } from './usecases/dashboard'
 import { LeaveConfigUseCase } from './usecases/leave-config'
 import { AppraisalConfigUseCase } from './usecases/appraisal-config'
 import { HrCatalogUseCase } from './usecases/hr-catalog'
+import { EvalConfigUseCase } from './usecases/eval-config'
+import { AutoEvaluationUseCase } from './usecases/auto-evaluation'
 
 /** Un documento del expediente (PDF/imagen) en base64: 10 MB de sobra. */
 const DOCUMENT_UPLOAD_LIMIT = 10 * 1024 * 1024
@@ -19,7 +21,7 @@ import type {
   DepartmentDTO, EmployeeProfileDTO, ContractDTO,
   DocumentDTO, LeaveRequestDTO, PerformanceReviewDTO,
   LeaveTypeDTO, LeaveAllocationDTO, PublicHolidayDTO, AppraisalTemplateDTO,
-  JobPositionDTO, ContractTypeDTO, WorkLocationDTO,
+  JobPositionDTO, ContractTypeDTO, WorkLocationDTO, PerformanceEvalConfigDTO,
 } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
@@ -35,8 +37,10 @@ export type {
   CreateDepartmentDTO, CreateEmployeeProfileDTO, CreateContractDTO,
   CreateDocumentDTO, CreateLeaveRequestDTO, CreatePerformanceReviewDTO,
   EmpleadosQuery, EmpleadosPaginated, DocumentExpiryAlert,
+  PerformanceEvalConfigDTO, UpdatePerformanceEvalConfigDTO, AutoEvalSummary, AutoEvalResult,
 } from './types'
 export type { EmpleadosSockets } from './sockets'
+export type { HkStatsPort, AttendanceStatsPort } from './usecases/auto-evaluation'
 
 export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
   return createModule({
@@ -64,12 +68,13 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
         'listLeaveAllocations', 'createLeaveAllocation', 'deleteLeaveAllocation',
         'listPublicHolidays', 'createPublicHoliday', 'deletePublicHoliday',
         'getLeaveBalance', 'getLeaveCalendar',
+        'getEvalConfig', 'updateEvalConfig', 'runAutoEvaluation', 'listEvalResults',
       ],
       events: [
         'onEmployeeCreated', 'onEmployeeDeactivated',
         'onDocumentExpiring', 'onLeaveRequestPending',
       ],
-      tables: ['departments', 'employee_profiles', 'employee_contracts', 'employee_documents', 'leave_requests', 'performance_reviews', 'leave_types', 'leave_allocations', 'public_holidays', 'appraisal_templates', 'job_positions', 'contract_types', 'work_locations'],
+      tables: ['departments', 'employee_profiles', 'employee_contracts', 'employee_documents', 'leave_requests', 'performance_reviews', 'leave_types', 'leave_allocations', 'public_holidays', 'appraisal_templates', 'job_positions', 'contract_types', 'work_locations', 'performance_eval_config'],
       dependencies: [],
       rules: ['No importar de otros módulos'],
     },
@@ -91,12 +96,15 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       const jobRepo = new OrmRepository<JobPositionDTO>(orm, 'JobPosition')
       const contractTypeRepo = new OrmRepository<ContractTypeDTO>(orm, 'ContractType')
       const locationRepo = new OrmRepository<WorkLocationDTO>(orm, 'WorkLocation')
+      const evalConfigRepo = new OrmRepository<PerformanceEvalConfigDTO>(orm, 'PerformanceEvalConfig')
 
       const log = logger.child('empleados')
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const leaveConfig = new LeaveConfigUseCase(leaveTypeRepo, allocationRepo, holidayRepo, leaveRepo, log)
       const appraisalConfig = new AppraisalConfigUseCase(templateRepo, log)
       const hrCatalog = new HrCatalogUseCase(jobRepo, contractTypeRepo, locationRepo, log)
+      const evalConfig = new EvalConfigUseCase(evalConfigRepo, log)
+      const autoEval = new AutoEvaluationUseCase(evalConfig, reviewRepo, profileRepo, log)
       const service = new EmpleadosService(
         departmentRepo, profileRepo, contractRepo,
         documentRepo, leaveRepo, reviewRepo,
@@ -105,7 +113,8 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       )
       const dashboard = new DashboardUseCase(profileRepo, contractRepo, documentRepo, leaveRepo, reviewRepo, departmentRepo, log, userRepo)
       service.attachDashboard(dashboard)   // permite inyectar el puerto de asistencia (#198) por connector
-      const controller = new EmpleadosController(service, log, dashboard, opts.storage, leaveConfig, appraisalConfig, hrCatalog)
+      service.attachAutoEvaluation(autoEval) // motor de evaluación (#321): los connectors le inyectan los puertos hk/attendance
+      const controller = new EmpleadosController(service, log, dashboard, opts.storage, leaveConfig, appraisalConfig, hrCatalog, evalConfig, autoEval)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
@@ -178,6 +187,12 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       router.post('/api/appraisal-templates', guard('users', 'create'), (req) => controller.createAppraisalTemplate(req))
       router.put('/api/appraisal-templates/:id', guard('users', 'edit'), (req) => controller.updateAppraisalTemplate(req))
       router.delete('/api/appraisal-templates/:id', guard('users', 'delete'), (req) => controller.deleteAppraisalTemplate(req))
+
+      // ─── Evaluación automática de desempeño (#321) + su config (#322) ──
+      router.get('/api/performance-eval/config', guard('users', 'view'), (req) => controller.getEvalConfig(req))
+      router.put('/api/performance-eval/config', guard('users', 'edit'), (req) => controller.updateEvalConfig(req))
+      router.post('/api/performance-eval/run', guard('users', 'edit'), (req) => controller.runAutoEvaluation(req))
+      router.get('/api/performance-eval/results', guard('users', 'view'), (req) => controller.listEvalResults(req))
 
       // ─── Catálogos: puestos, tipos de contrato, ubicaciones ──
       router.get('/api/job-positions', guard('users', 'view'), (req) => controller.listJobPositions(req))

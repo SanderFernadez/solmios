@@ -141,6 +141,24 @@ export class ClockUseCase {
     return inDateRange(records, 'date', from, to)
   }
 
+  /**
+   * Asistencia por empleado para el motor de evaluación (#321): a-tiempo / ausente / tarde.
+   * `date` es 'YYYY-MM-DD' → `from`/`to` deben venir en el mismo formato (los provee el motor).
+   */
+  async getStaffAttendance(hotelId: string, from: string, to: string): Promise<{ employeeId: string; present: number; absent: number; late: number }[]> {
+    const all = await this.recordRepo.findMany({ hotelId })
+    const records = inDateRange(all, 'date', from, to)
+    const byEmployee = new Map<string, { present: number; absent: number; late: number }>()
+    for (const r of records) {
+      const acc = byEmployee.get(r.employeeId) ?? { present: 0, absent: 0, late: 0 }
+      if (r.status === 'absent') acc.absent += 1
+      else if (r.status === 'late') acc.late += 1
+      else if (r.clockIn) acc.present += 1
+      byEmployee.set(r.employeeId, acc)
+    }
+    return [...byEmployee.entries()].map(([employeeId, v]) => ({ employeeId, ...v }))
+  }
+
   async getReport(hotelId: string, from: string, to: string): Promise<AttendanceReport[]> {
     const all = await this.recordRepo.findMany({ hotelId })
     const records = inDateRange(all, 'date', from, to)

@@ -23,6 +23,7 @@ import { LeaveConfigUseCase } from './usecases/leave-config'
 import { ReviewUseCase } from './usecases/reviews'
 import { OrgChartUseCase } from './usecases/org-chart'
 import type { DashboardUseCase, AttendanceSummaryPort } from './usecases/dashboard'
+import type { AutoEvaluationUseCase, HkStatsPort, AttendanceStatsPort } from './usecases/auto-evaluation'
 import type { SimpleUser } from './usecases/ownership'
 import type { AuditPort } from '../../shared/usecases/audit'
 
@@ -71,6 +72,12 @@ export class EmpleadosService {
   attachDashboard(d: DashboardUseCase): void { this.dashboard = d }
   setAttendancePort(port: AttendanceSummaryPort): void { this.dashboard?.setAttendancePort(port) }
 
+  // Motor de evaluación automática (#321): el controller usa el usecase; los connectors le inyectan los puertos hk/attendance.
+  private autoEval?: AutoEvaluationUseCase
+  attachAutoEvaluation(uc: AutoEvaluationUseCase): void { this.autoEval = uc }
+  setHousekeepingStatsPort(port: HkStatsPort): void { this.autoEval?.setHousekeepingPort(port) }
+  setAttendanceStatsPort(port: AttendanceStatsPort): void { this.autoEval?.setAttendancePort(port) }
+
   // ─── Departments ──────────────────────────────────────
 
   async createDepartment(dto: CreateDepartmentDTO): Promise<DepartmentDTO> {
@@ -94,7 +101,6 @@ export class EmpleadosService {
   }
 
   // ─── Employee Profiles ────────────────────────────────
-
   async createProfile(dto: CreateEmployeeProfileDTO): Promise<EmployeeProfileDTO> {
     const profile = await this.profiles.create(dto)
     this.sockets.onEmployeeCreated?.(profile)
@@ -129,7 +135,6 @@ export class EmpleadosService {
   }
 
   // ─── Contracts ────────────────────────────────────────
-
   async createContract(dto: CreateContractDTO): Promise<ContractDTO> {
     return this.contracts.create(dto)
   }
@@ -139,7 +144,6 @@ export class EmpleadosService {
   async terminateContract(id: string, user?: SimpleUser): Promise<ContractDTO> { return this.contracts.terminate(id, user) }
 
   // ─── Documents ────────────────────────────────────────
-
   async createDocument(dto: CreateDocumentDTO): Promise<DocumentDTO> {
     return this.documents.create(dto)
   }
@@ -157,7 +161,6 @@ export class EmpleadosService {
   }
 
   // ─── Leave Requests ───────────────────────────────────
-
   async createLeaveRequest(dto: CreateLeaveRequestDTO): Promise<LeaveRequestDTO> {
     return this.leaveRequests.create(dto)
   }
@@ -179,7 +182,6 @@ export class EmpleadosService {
   }
 
   // ─── Performance Reviews ──────────────────────────────
-
   async createReview(dto: CreatePerformanceReviewDTO): Promise<PerformanceReviewDTO> { return this.reviews.create(dto) }
   async getReview(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> { return this.reviews.getById(id, user) }
   async listReviews(hotelId: string, employeeId?: string): Promise<PerformanceReviewDTO[]> { return this.reviews.list(hotelId, employeeId) }
@@ -187,7 +189,6 @@ export class EmpleadosService {
   async completeReview(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> { return this.reviews.complete(id, user) }
 
   // ─── Alerts & Org Chart ───────────────────────────────
-
   async getExpiringDocuments(hotelId: string, daysAhead = 30): Promise<DocumentExpiryAlert[]> {
     return this.documents.getExpiring(hotelId, daysAhead)
   }

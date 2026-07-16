@@ -380,6 +380,74 @@ export interface CreateWorkLocationDTO {
   address?: string
 }
 
+// ─── Performance Eval Config (motor automático — #322) ──
+export interface EvalWeights {
+  productivity: number
+  quality: number
+  punctuality: number
+  attendance: number
+}
+export interface EvalThresholds {
+  excellent: number
+  good: number
+  fair: number
+}
+export type EvalPeriodType = 'monthly' | 'quarterly'
+
+export interface PerformanceEvalConfigDTO {
+  id: string
+  hotelId: string
+  period: EvalPeriodType
+  weights: EvalWeights
+  thresholds: EvalThresholds
+  standardTaskMinutes: number
+  enabled: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UpdatePerformanceEvalConfigDTO {
+  period?: EvalPeriodType
+  weights?: EvalWeights
+  thresholds?: EvalThresholds
+  standardTaskMinutes?: number
+  enabled?: boolean
+}
+
+// ─── Auto-evaluation engine (#321) ──────────────────────
+export type EvalBand = 'excellent' | 'good' | 'fair' | 'poor'
+
+/** Desglose de un criterio: su score 0-100, el peso aplicado y si tuvo data para computarse. */
+export interface EvalCriterionResult {
+  score: number
+  weight: number
+  hasData: boolean
+}
+
+export interface EvalBreakdown {
+  productivity: EvalCriterionResult
+  quality: EvalCriterionResult
+  punctuality: EvalCriterionResult
+  attendance: EvalCriterionResult
+}
+
+export interface AutoEvalResult {
+  employeeId: string
+  reviewId: string
+  score: number
+  band: EvalBand
+  breakdown: EvalBreakdown
+}
+
+export interface AutoEvalSummary {
+  hotelId: string
+  period: string
+  periodType: EvalPeriodType
+  evaluated: number
+  skipped: number
+  results: AutoEvalResult[]
+}
+
 // ─── Queries ────────────────────────────────────────────
 export interface EmpleadosQuery {
   hotelId?: string

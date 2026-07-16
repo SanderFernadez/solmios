@@ -7,6 +7,9 @@ import type { DashboardUseCase } from './usecases/dashboard'
 import type { LeaveConfigUseCase } from './usecases/leave-config'
 import type { AppraisalConfigUseCase } from './usecases/appraisal-config'
 import type { HrCatalogUseCase } from './usecases/hr-catalog'
+import type { EvalConfigUseCase } from './usecases/eval-config'
+import type { AutoEvaluationUseCase } from './usecases/auto-evaluation'
+import type { EvalPeriodType, UpdatePerformanceEvalConfigDTO } from './types'
 import type { StorageService } from 'arckode-framework/modules/storage'
 import { parseDataUrl } from '../../shared/utils/data-url'
 import type {
@@ -24,6 +27,7 @@ import {
   CreateLeaveTypeSchema, UpdateLeaveTypeSchema, CreateLeaveAllocationSchema, CreatePublicHolidaySchema,
   UpdateReviewSchema, CreateAppraisalTemplateSchema,
   CreateJobPositionSchema, CreateContractTypeSchema, CreateWorkLocationSchema,
+  UpdateEvalConfigSchema,
 } from './validators/schema'
 
 /**
@@ -51,7 +55,20 @@ export class EmpleadosController {
     private readonly appraisalConfig?: AppraisalConfigUseCase,
     // Catálogos RRHH (puestos, tipos de contrato, ubicaciones): idem.
     private readonly hrCatalog?: HrCatalogUseCase,
+    // Config del motor de evaluación (#322) y el motor automático (#321): usecases directos.
+    private readonly evalConfig?: EvalConfigUseCase,
+    private readonly autoEval?: AutoEvaluationUseCase,
   ) {}
+
+  private evalCfg(): EvalConfigUseCase {
+    if (!this.evalConfig) throw new NotFoundError('Evaluación automática no configurada')
+    return this.evalConfig
+  }
+
+  private engine(): AutoEvaluationUseCase {
+    if (!this.autoEval) throw new NotFoundError('Motor de evaluación no configurado')
+    return this.autoEval
+  }
 
   private catalog(): HrCatalogUseCase {
     if (!this.hrCatalog) throw new NotFoundError('Catálogos RRHH no configurados')
@@ -401,6 +418,31 @@ export class EmpleadosController {
   async deleteAppraisalTemplate(req: HttpRequest) {
     await this.appraisal().remove(req.params.id, this.hotelOf(req))
     return { status: 204, body: null }
+  }
+
+  // ─── Performance Eval: config (#322) + motor automático (#321) ──
+  async getEvalConfig(req: HttpRequest) {
+    return { status: 200, body: await this.evalCfg().get(this.hotelOf(req)) }
+  }
+
+  async updateEvalConfig(req: HttpRequest) {
+    this.logger.info('PUT /api/performance-eval/config')
+    const base = validateSchema(UpdateEvalConfigSchema, req.body) as any
+    // weights/thresholds son objetos: van aparte porque validateSchema descarta los campos objeto.
+    const body = (req.body ?? {}) as any
+    const data = { ...base, weights: body.weights, thresholds: body.thresholds } as UpdatePerformanceEvalConfigDTO
+    return { status: 200, body: await this.evalCfg().update(this.hotelOf(req), data) }
+  }
+
+  async runAutoEvaluation(req: HttpRequest) {
+    this.logger.info('POST /api/performance-eval/run')
+    const period = ((req.body as any)?.period ?? (req.query as any)?.period) as EvalPeriodType | undefined
+    return { status: 200, body: await this.engine().run(this.hotelOf(req), period) }
+  }
+
+  async listEvalResults(req: HttpRequest) {
+    const period = (req.query as any)?.period as string | undefined
+    return { status: 200, body: await this.engine().listResults(this.hotelOf(req), period) }
   }
 
   // ─── Catálogos: puestos, tipos de contrato, ubicaciones ──

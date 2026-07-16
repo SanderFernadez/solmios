@@ -8,7 +8,7 @@ import { createPermissionGuard } from '../../infrastructure/auth/create-permissi
 
 export { AttendanceService }
 export type { AttendanceRecordDTO, AttendanceScheduleDTO, AttendanceConfigDTO, AttendanceReport, AttendanceQuery } from './types'
-export type { AttendanceSockets } from './sockets'
+export type { AttendanceSockets, AttendanceStatsPort, AttendanceStaffStat } from './sockets'
 
 export function AttendanceModule() {
   return createModule({

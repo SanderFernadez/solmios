@@ -232,6 +232,23 @@ const WorkLocationModel: ModelDefinition = {
   timestamps: true,
 }
 
+// ─── Performance Eval Config (reglas y tiempos del motor automático — #322) ───
+// Config por hotel del motor de evaluación de desempeño (#321): pesos por criterio,
+// umbrales de banda y el tiempo estándar por tarea de limpieza. weights/thresholds
+// son JSON (el ORM los (de)serializa solo). NO va en shared: es dueño el módulo empleados.
+const PerformanceEvalConfigModel: ModelDefinition = {
+  table: 'performance_eval_config',
+  fields: {
+    hotelId: { type: 'string', required: true, indexed: true },
+    period: { type: 'string', default: 'monthly' },          // 'monthly' | 'quarterly'
+    weights: { type: 'json' },                                 // {productivity,quality,punctuality,attendance} suman 100
+    thresholds: { type: 'json' },                              // {excellent,good,fair} descendentes
+    standardTaskMinutes: { type: 'number', default: 30 },      // tiempo estándar por tarea (score productividad)
+    enabled: { type: 'boolean', default: 1 },
+  },
+  timestamps: true,
+}
+
 // ─── Register all models ────────────────────────────────
 export function registerEmpleadosModels(orm: ORM): void {
   orm.define('Department', DepartmentModel)
@@ -247,4 +264,5 @@ export function registerEmpleadosModels(orm: ORM): void {
   orm.define('JobPosition', JobPositionModel)
   orm.define('ContractType', ContractTypeModel)
   orm.define('WorkLocation', WorkLocationModel)
+  orm.define('PerformanceEvalConfig', PerformanceEvalConfigModel)
 }

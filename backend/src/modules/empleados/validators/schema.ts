@@ -178,3 +178,13 @@ export const CreatePublicHolidaySchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const, required: true, min: 2, max: 80 },
   recurring: { type: 'boolean' as const },
 }
+
+// ─── Performance Eval config (#322) ─────────────────────
+// Solo los escalares se validan acá. weights/thresholds son objetos y viajan aparte (el controller
+// los pasa desde el body crudo — validateSchema descartaría un campo objeto). Sus reglas de
+// negocio (suma 100, umbrales descendentes) las impone EvalConfigUseCase.update.
+export const UpdateEvalConfigSchema: Record<string, ValidationRule> = {
+  period: { type: 'string' as const, max: 20 },
+  standardTaskMinutes: { type: 'number' as const, min: 1 },
+  enabled: { type: 'boolean' as const },
+}

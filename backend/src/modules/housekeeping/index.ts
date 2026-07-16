@@ -16,7 +16,7 @@ const PHOTO_UPLOAD_LIMIT = 10 * BYTES_PER_MB
 
 export { HousekeepingService }
 export type { HousekeepingDTO, CreateHousekeepingDTO, UpdateHousekeepingDTO, HousekeepingQuery, HousekeepingPaginated, StaffStats, StaffStatsQuery, PhotoEvidence } from './types'
-export type { HousekeepingSockets } from './sockets'
+export type { HousekeepingSockets, HousekeepingStatsPort, HousekeepingStaffStat } from './sockets'
 export { HousekeepingValidator, CreateHousekeepingSchema, UpdateHousekeepingSchema } from './validators/schema'
 
 export function HousekeepingModule(

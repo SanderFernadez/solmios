@@ -67,6 +67,8 @@ export class AttendanceService {
   async getToday(employeeId: string, hotelId?: string) { return this.clock.getToday(employeeId, hotelId) }
   async listRecords(query: AttendanceQuery) { return this.clock.list(query.hotelId ?? '', query.from, query.to, query.employeeId) }
   async getReport(hotelId: string, from: string, to: string) { return this.clock.getReport(hotelId, from, to) }
+  /** Puerto de consulta para el motor de evaluación (#321). Lo lee el connector empleados-attendance. */
+  async getStaffAttendance(hotelId: string, from: string, to: string) { return this.clock.getStaffAttendance(hotelId, from, to) }
 
   /** Resumen de asistencia de HOY para el dashboard (#198): presentes (con fichaje) y tardanzas. */
   async getTodaySummary(hotelId: string): Promise<{ present: number; late: number }> {

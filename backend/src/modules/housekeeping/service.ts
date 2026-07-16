@@ -67,6 +67,7 @@ export class HousekeepingService {
       (item) => this.sockets.onHousekeepingUpdated?.(item) ?? Promise.resolve(),
       (h) => this.invalidateCache(h),
       this.employeeRepo,
+      (item) => this.sockets.onTaskCompleted?.(item) ?? Promise.resolve(),
     )
     this.crud = new CrudUseCase(
       repo,
@@ -137,6 +138,8 @@ export class HousekeepingService {
   async addPhoto(id: string, file: FileUpload, areaId: string, u: HousekeepingUser) { return this.photos.addPhoto(id, file, areaId, u) }
   async removePhoto(id: string, url: string, u: HousekeepingUser) { return this.photos.removePhoto(id, url, u) }
   async stats(q: StaffStatsQuery, u: HousekeepingUser) { return this.statsUc.stats(q, u) }
+  /** Puerto de consulta para el motor de evaluación (#321). Lo lee el connector empleados-housekeeping. */
+  async getStaffStats(hotelId: string, from: string, to: string) { return this.statsUc.aggregate(hotelId, from, to) }
 
   // ─── Aprobación y presencia ───────────────────────────────────────────────
   async approve(id: string, user: { id: string; role?: string; hotelId?: string }, note: string | undefined, rating: number) {
