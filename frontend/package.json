@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "typecheck": "vue-tsc -b --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.21",
@@ -31,11 +34,15 @@
     "vue-router": "^5.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^24.12.3",
     "@vitejs/plugin-vue": "^6.0.6",
+    "@vue/test-utils": "^2.4.11",
     "@vue/tsconfig": "^0.9.1",
+    "happy-dom": "^20.10.6",
     "typescript": "~6.0.2",
     "vite": "^8.0.12",
+    "vitest": "^4.1.10",
     "vue-tsc": "^3.2.8"
   }
 }
