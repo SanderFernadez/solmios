@@ -96,8 +96,10 @@ export class TtlockService {
    */
   async generateCodeIfAbsent(hotelId: string, reservationId: string): Promise<any> {
     const codes = await this.queries.listCodesByHotel(hotelId)
-    const alreadyActive = codes.some((c: any) => c.reservationId === reservationId && c.status === 'active')
-    if (alreadyActive) return { skipped: true, reason: 'already-active' }
+    // 'pending' cuenta como existente: es el código emitido cuando la cerradura estaba offline.
+    // Sin esto, cada reintento del webhook duplicaría la fila pendiente para la misma reserva.
+    const existing = codes.find((c: any) => c.reservationId === reservationId && (c.status === 'active' || c.status === 'pending'))
+    if (existing) return { skipped: true, reason: `already-${existing.status}` }
     return this.generateCode(hotelId, reservationId)
   }
 
@@ -130,7 +132,10 @@ export class TtlockService {
   async expireCodesByReservation(reservationId: string): Promise<void> {
     const codes = await this.lockCodesRepo.findMany({ reservationId }) as any[]
     for (const c of codes) {
-      if (c.status !== 'active') continue
+      // 'pending' (emitido con la cerradura offline) también se cierra al checkout: sin
+      // ttlockKeyboardPwdId `removePinFromLock` es no-op, así que no toca hardware, pero la
+      // fila deja de figurar como vigente.
+      if (c.status !== 'active' && c.status !== 'pending') continue
       // El checkout no puede fallar porque una cerradura no responda: logueamos y seguimos,
       // pero el código igual queda marcado como expirado para que no se muestre como vigente.
       try {

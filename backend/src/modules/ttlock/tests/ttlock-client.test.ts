@@ -80,4 +80,56 @@ describe('ttlock-client', () => {
       expect(body.get('deleteType')).toBe('2')
     })
   })
+
+  // #240 — Reintento con backoff SOLO para fallos transitorios (red / 5xx),
+  // nunca para errores permanentes (4xx) ni de negocio (errcode con HTTP 200).
+  describe('reintento + backoff', () => {
+    /** fetch que falla las primeras `failFirst` veces (throw/5xx) y luego responde OK. */
+    function flakyFetch(mode: 'throw' | '5xx', failFirst: number, ok: any) {
+      let calls = 0
+      globalThis.fetch = (async () => {
+        calls++
+        if (calls <= failFirst) {
+          if (mode === 'throw') throw new Error('ECONNRESET')
+          return new Response('upstream down', { status: 503 })
+        }
+        return new Response(JSON.stringify(ok))
+      }) as any
+      return () => calls
+    }
+
+    it('reintenta ante caída de red (fetch tira) y termina OK al 3er intento', async () => {
+      const getCalls = flakyFetch('throw', 2, { errcode: 0, keyboardPwdId: 777 })
+      const r = await addKeyboardPassword({ clientId: 'cid', accessToken: 'tok' }, 1, '123456', 1, 2)
+      expect(getCalls()).toBe(3)        // 2 fallos + 1 éxito
+      expect(r.keyboardPwdId).toBe('777')
+    })
+
+    it('reintenta ante HTTP 5xx transitorio y termina OK', async () => {
+      const getCalls = flakyFetch('5xx', 2, { errcode: 0, keyboardPwdId: 888 })
+      const r = await addKeyboardPassword({ clientId: 'cid', accessToken: 'tok' }, 1, '123456', 1, 2)
+      expect(getCalls()).toBe(3)
+      expect(r.keyboardPwdId).toBe('888')
+    })
+
+    it('agota los reintentos (3) y propaga el error si la red nunca vuelve', async () => {
+      const getCalls = flakyFetch('throw', 99, {})
+      await expect(addKeyboardPassword({ clientId: 'cid', accessToken: 'tok' }, 1, '1', 1, 2)).rejects.toThrow(/ECONNRESET/)
+      expect(getCalls()).toBe(3) // MAX_ATTEMPTS, no infinito
+    })
+
+    it('NO reintenta un error de NEGOCIO (errcode con HTTP 200): una sola llamada', async () => {
+      let calls = 0
+      globalThis.fetch = (async () => { calls++; return new Response(JSON.stringify({ errcode: 10003, errmsg: 'invalid token' })) }) as any
+      await expect(addKeyboardPassword({ clientId: 'cid', accessToken: 'bad' }, 1, '1', 1, 2)).rejects.toThrow(/TTLock/)
+      expect(calls).toBe(1) // token inválido es permanente: no tiene sentido reintentar
+    })
+
+    it('NO reintenta un HTTP 4xx (error de cliente permanente): una sola llamada', async () => {
+      let calls = 0
+      globalThis.fetch = (async () => { calls++; return new Response(JSON.stringify({ errcode: 0, keyboardPwdId: 1 }), { status: 400 }) }) as any
+      await addKeyboardPassword({ clientId: 'cid', accessToken: 'tok' }, 1, '1', 1, 2)
+      expect(calls).toBe(1)
+    })
+  })
 })

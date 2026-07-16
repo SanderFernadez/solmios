@@ -195,6 +195,75 @@ describe('TtlockService', () => {
       const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
       await expect(svc.generateCodeIfAbsent('h1', 'res1')).rejects.toThrow(/no encontrada/)
     })
+
+    // #240 — código duplicado: con un código ACTIVO existente NO debe crearse una segunda fila.
+    it('NO crea una segunda fila lock_codes si ya hay una activa', async () => {
+      const created: any[] = []
+      const orm = makeOrm({
+        findMany: async (table: string) => table === 'LockCodes'
+          ? [{ id: 'c1', reservationId: 'res1', hotelId: 'h1', status: 'active' }]
+          : [],
+        create: async (table: string, data: any) => { created.push({ table, ...data }); return data },
+      })
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+      const r = await svc.generateCodeIfAbsent('h1', 'res1')
+      expect(r.skipped).toBe(true)
+      expect(created.filter((c) => c.table === 'LockCodes')).toHaveLength(0) // no duplica
+    })
+
+    // #240 — un código 'pending' (emitido con la cerradura offline) también bloquea la regeneración.
+    it('NO regenera si la reserva ya tiene un código PENDING', async () => {
+      const created: any[] = []
+      const orm = makeOrm({
+        findMany: async (table: string) => table === 'LockCodes'
+          ? [{ id: 'c1', reservationId: 'res1', hotelId: 'h1', status: 'pending' }]
+          : [],
+        create: async (table: string, data: any) => { created.push({ table, ...data }); return data },
+      })
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+      const r = await svc.generateCodeIfAbsent('h1', 'res1')
+      expect(r.skipped).toBe(true)
+      expect(r.reason).toBe('already-pending')
+      expect(created.filter((c) => c.table === 'LockCodes')).toHaveLength(0)
+    })
+  })
+
+  // #240 — cerradura OFFLINE: no se empuja el PIN al hardware, se registra el código como 'pending'.
+  describe('generateCode — cerradura offline', () => {
+    it('registra el código como pending y NO llama a la API de Sciener', async () => {
+      const created: any[] = []
+      const orm = makeOrm({
+        findMany: async (table: string) => {
+          if (table === 'Reservations') return [{ id: 'res1', hotelId: 'h1', roomId: 'rm1', checkIn: '2026-06-01', checkOut: '2026-06-03' }]
+          // La cerradura de la habitación está OFFLINE.
+          if (table === 'LockDevices') return [{ id: 'l1', hotelId: 'h1', ttlockLockId: '123', roomId: 'rm1', status: 'offline' }]
+          if (table === 'Configuration') return [{ id: 'cfg1', value: JSON.stringify({ clientId: 'test', accessToken: 'tok', region: 'eu' }) }]
+          return []
+        },
+        create: async (table: string, data: any) => { created.push({ table, ...data }); return data },
+      })
+      let fetchCalls = 0
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => { fetchCalls++; return new Response(JSON.stringify({ errcode: 0, keyboardPwdId: 1 })) }) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+        const result = await svc.generateCode('h1', 'res1')
+        // Side-effects: fila 'pending', sin PIN físico, y CERO llamadas a la cerradura.
+        expect(fetchCalls).toBe(0)
+        const lc = created.find((c) => c.table === 'LockCodes')
+        expect(lc).toBeDefined()
+        expect(lc.status).toBe('pending')
+        expect(lc.ttlockKeyboardPwdId).toBe('')
+        expect(lc.code).toBeTruthy()          // PIN pre-asignado para reintentar
+        expect(lc.reservationId).toBe('res1')
+        expect(result.status).toBe('pending')
+      } finally {
+        globalThis.fetch = realFetch
+      }
+    })
   })
 
   // QA-03 (#302): happy-path de generateCode — genera el PIN en la cerradura y persiste la fila

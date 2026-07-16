@@ -36,6 +36,50 @@ function base(region?: string): string {
 /** ms timestamp actual (la API de Sciener lo pide como `date`). */
 function nowMs(): number { return Date.now() }
 
+// --- Reintento con backoff para fallos TRANSITORIOS de la red/Sciener ---
+// Máximo de intentos y demora base del backoff exponencial (200ms, 400ms, ...).
+const MAX_ATTEMPTS = 3
+const BACKOFF_BASE_MS = 200
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * `fetch` con reintento + backoff exponencial, SOLO para errores transitorios:
+ *  - la red se cae / timeout → `fetch` tira → reintentamos.
+ *  - HTTP 5xx (Sciener caído/inestable) → reintentamos.
+ * NO reintenta:
+ *  - HTTP 4xx (error de cliente permanente: token/params malos) → se devuelve tal cual.
+ *  - errores de NEGOCIO de Sciener (`errcode != 0`), que viajan con HTTP 200 en el body →
+ *    ni siquiera los ve este wrapper; los valida `assertOk` aguas abajo.
+ * No toca la paginación: envuelve UNA request; el `for(;;)` de cada listado sigue igual.
+ */
+async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, init)
+      // 5xx = transitorio: reintentar mientras queden intentos.
+      if (res.status >= 500 && res.status <= 599 && attempt < MAX_ATTEMPTS - 1) {
+        await sleep(BACKOFF_BASE_MS * 2 ** attempt)
+        continue
+      }
+      return res
+    } catch (e) {
+      // fetch tiró → red/timeout: reintentar mientras queden intentos.
+      lastErr = e
+      if (attempt < MAX_ATTEMPTS - 1) {
+        await sleep(BACKOFF_BASE_MS * 2 ** attempt)
+        continue
+      }
+    }
+  }
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error('TTLock: fallo de red tras varios reintentos')
+}
+
 /** Lee el body JSON de una response Sciener y normaliza errores. */
 async function readJson(res: Response): Promise<any> {
   const text = await res.text()
@@ -76,7 +120,7 @@ export async function getAccessToken(c: TTLockCreds): Promise<{ accessToken: str
   if (!c.clientId || !c.clientSecret || !c.username || !c.password) {
     throw new Error('Faltan clientId/clientSecret/username/password de TTLock')
   }
-  const res = await fetch(`${base(c.region)}/oauth2/token`, {
+  const res = await fetchWithRetry(`${base(c.region)}/oauth2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -111,7 +155,7 @@ export async function listLocks(c: TTLockCreds): Promise<TTLockDevice[]> {
       clientId: c.clientId, accessToken: c.accessToken,
       pageNo: String(pageNo), pageSize: '50', date: String(nowMs()),
     })
-    const data = await readJson(await fetch(`${base(c.region)}/v3/lock/list?${qs}`))
+    const data = await readJson(await fetchWithRetry(`${base(c.region)}/v3/lock/list?${qs}`))
     assertOk(data, 'listar cerraduras')
     const list: any[] = data?.list || []
     for (const l of list) {
@@ -135,7 +179,7 @@ export async function listLocks(c: TTLockCreds): Promise<TTLockDevice[]> {
 export async function addKeyboardPassword(
   c: TTLockCreds, lockId: number, password: string, startMs: number, endMs: number,
 ): Promise<{ keyboardPwdId?: string }> {
-  const res = await fetch(`${base(c.region)}/v3/keyboardPwd/add`, {
+  const res = await fetchWithRetry(`${base(c.region)}/v3/keyboardPwd/add`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -162,7 +206,7 @@ export async function addKeyboardPassword(
 export async function deleteKeyboardPassword(
   c: TTLockCreds, lockId: number, keyboardPwdId: string,
 ): Promise<void> {
-  const res = await fetch(`${base(c.region)}/v3/keyboardPwd/delete`, {
+  const res = await fetchWithRetry(`${base(c.region)}/v3/keyboardPwd/delete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -197,7 +241,7 @@ export async function listGateways(c: TTLockCreds): Promise<TTLockGateway[]> {
       clientId: c.clientId, accessToken: c.accessToken,
       pageNo: String(pageNo), pageSize: '50', date: String(nowMs()),
     })
-    const data = await readJson(await fetch(`${base(c.region)}/v3/gateway/list?${qs}`))
+    const data = await readJson(await fetchWithRetry(`${base(c.region)}/v3/gateway/list?${qs}`))
     assertOk(data, 'listar gateways')
     const list: any[] = data?.list || []
     for (const g of list) {
@@ -238,7 +282,7 @@ export async function listLockPasscodes(c: TTLockCreds, lockId: number): Promise
       clientId: c.clientId, accessToken: c.accessToken, lockId: String(lockId),
       pageNo: String(pageNo), pageSize: '50', date: String(nowMs()),
     })
-    const data = await readJson(await fetch(`${base(c.region)}/v3/lock/listKeyboardPwd?${qs}`))
+    const data = await readJson(await fetchWithRetry(`${base(c.region)}/v3/lock/listKeyboardPwd?${qs}`))
     assertOk(data, 'listar códigos de la cerradura')
     const list: any[] = data?.list || []
     for (const p of list) {
