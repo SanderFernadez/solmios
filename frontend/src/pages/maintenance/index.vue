@@ -376,22 +376,23 @@
                   @input="staffDropdownOpen = true"
                   @blur="closeDropdown(() => staffDropdownOpen = false)"
                   class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy pr-8"
-                  placeholder="Buscar empleado..."
+                  placeholder="Técnico interno o proveedor de servicios..."
                 >
-                <button v-if="newOrder.assignedTo" @mousedown.prevent="clearStaff()" class="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-navy text-xs cursor-pointer">✕</button>
+                <button v-if="newOrder.assignedTo || newOrder.providerId" @mousedown.prevent="clearStaff()" class="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-navy text-xs cursor-pointer">✕</button>
               </div>
               <div v-if="staffDropdownOpen && filteredStaff.length" class="absolute z-10 mt-1 w-full bg-white border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
                 <div
-                  v-for="tech in filteredStaff"
-                  :key="tech.id"
-                  @mousedown.prevent="selectStaff(tech)"
+                  v-for="opt in filteredStaff"
+                  :key="opt.kind + opt.id"
+                  @mousedown.prevent="selectStaff(opt)"
                   class="px-4 py-2.5 text-sm cursor-pointer hover:bg-surface transition-colors flex items-center gap-2"
-                  :class="newOrder.assignedTo === tech.id ? 'bg-navy/5 font-bold' : ''"
+                  :class="(newOrder.assignedTo === opt.id || newOrder.providerId === opt.id) ? 'bg-navy/5 font-bold' : ''"
                 >
-                  <div class="w-6 h-6 rounded-full bg-navy/10 flex items-center justify-center">
-                    <span class="text-[9px] font-bold text-navy">{{ tech.name.split(' ').map((n: string) => n[0]).join('') }}</span>
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" :class="opt.kind === 'provider' ? 'bg-cyan/15' : 'bg-navy/10'">
+                    <span class="text-[9px] font-bold" :class="opt.kind === 'provider' ? 'text-cyan' : 'text-navy'">{{ opt.name.split(' ').map((n: string) => n[0]).join('') }}</span>
                   </div>
-                  <span class="text-navy">{{ tech.name }}</span>
+                  <span class="text-navy flex-1 truncate">{{ opt.name }}</span>
+                  <span v-if="opt.kind === 'provider'" class="text-[9px] font-bold text-cyan bg-cyan/10 px-1.5 py-0.5 rounded-full shrink-0">Externo</span>
                 </div>
               </div>
             </div>
@@ -455,7 +456,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useCountUp } from '@/composables/useCountUp'
 import { OperationsService } from '@/services/Operations.service'
 import { RoomService } from '@/services/Room.service'
-import { EmpleadosService } from '@/services/Empleados.service'
+import { TeamService } from '@/services/Team.service'
+import { TechnicalProvidersService } from '@/services/TechnicalProviders.service'
 import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -510,9 +512,20 @@ const availableStatuses = [
   { value: 'closed', label: 'Completada', description: 'Problema resuelto verificado', dotColor: 'bg-teal' }
 ]
 
+// Solo el personal de mantenimiento (rol `maintenance`) se ofrece para asignar un
+// ticket interno. Los tickets guardan assignedTo = users.id.
 const maintenanceStaff = computed(() =>
-  hotelStaff.value.map(e => ({ id: e.userId, name: e.userName || e.position || 'Empleado' }))
+  hotelStaff.value
+    .filter(e => e.role === 'maintenance')
+    .map(e => ({ id: e.id, name: e.name || 'Técnico' }))
 )
+
+// Opciones del selector "Asignar a": técnicos internos + proveedores de servicios
+// externos (plomero, electricista…). Cada opción sabe si es staff o proveedor.
+const assignOptions = computed(() => [
+  ...maintenanceStaff.value.map(s => ({ kind: 'staff' as const, id: s.id, name: s.name })),
+  ...providers.value.map(p => ({ kind: 'provider' as const, id: p.id, name: p.name })),
+])
 
 const orders = ref<any[]>([])
 
@@ -521,7 +534,7 @@ const orders = ref<any[]>([])
 // de que `orders` esté declarado — a diferencia de un computed normal, que es perezoso).
 const openCount = computed(() => orders.value.filter((x: any) => x.status === 'open').length)
 const inProgressCount = computed(() => orders.value.filter((x: any) => x.status === 'in_progress').length)
-const unassignedCount = computed(() => orders.value.filter((x: any) => !x.assignedTo && x.status !== 'closed').length)
+const unassignedCount = computed(() => orders.value.filter((x: any) => !x.assignedTo && !x.providerId && x.status !== 'closed').length)
 const closedCount = computed(() => orders.value.filter((x: any) => x.status === 'closed').length)
 const totalCostValue = computed(() => orders.value.reduce((s: number, x: any) => s + (x.estimatedCost ?? 0), 0))
 const avgHoursValue = computed(() => {
@@ -552,6 +565,8 @@ const formErrors = ref<Record<string, string>>({})
 const hotelRooms = ref<any[]>([])
 const hotelStaff = ref<any[]>([])
 const staffMap = ref<Record<string, string>>({})
+const providers = ref<{ id: string; name: string }[]>([])
+const providerMap = ref<Record<string, string>>({})
 const draggedOrder = ref<any>(null)
 const dragOverCol = ref<string | null>(null)
 
@@ -580,16 +595,25 @@ const staffSearch = ref('')
 const staffDropdownOpen = ref(false)
 const filteredStaff = computed(() => {
   const q = staffSearch.value.toLowerCase()
-  if (!q) return maintenanceStaff.value.slice(0, 20)
-  return maintenanceStaff.value.filter(s => s.name.toLowerCase().includes(q)).slice(0, 20)
+  if (!q) return assignOptions.value.slice(0, 30)
+  return assignOptions.value.filter(s => s.name.toLowerCase().includes(q)).slice(0, 30)
 })
-function selectStaff(staff: any) {
-  newOrder.value.assignedTo = staff.id
-  staffSearch.value = staff.name
+function selectStaff(opt: { kind: 'staff' | 'provider'; id: string; name: string }) {
+  // Un ticket tiene UN dueño: si se elige un proveedor externo, se libera el
+  // técnico interno y viceversa (igual que en la app móvil).
+  if (opt.kind === 'provider') {
+    newOrder.value.providerId = opt.id
+    newOrder.value.assignedTo = ''
+  } else {
+    newOrder.value.assignedTo = opt.id
+    newOrder.value.providerId = ''
+  }
+  staffSearch.value = opt.name
   staffDropdownOpen.value = false
 }
 function clearStaff() {
   newOrder.value.assignedTo = ''
+  newOrder.value.providerId = ''
   staffSearch.value = ''
 }
 
@@ -601,7 +625,10 @@ const PRI_LABELS: Record<string, string> = { high: 'Alta', medium: 'Normal', low
 const CAT_LABELS: Record<string, string> = { hvac: 'Aire Acond.', plumbing: 'Plomería', electrical: 'Eléctrico', electronics: 'Electrónica', general: 'General', carpentry: 'Carpintería', painting: 'Pintura', structural: 'Estructural', pest_control: 'Plagas', furniture: 'Muebles', appliance: 'Electrodom.' }
 
 onMounted(async () => {
-  await Promise.all([loadData(), loadRooms(), loadStaff()])
+  // El staff y los proveedores se cargan primero para que los nombres se
+  // resuelvan al mapear los tickets (assignedTo/providerId → nombre).
+  await Promise.all([loadStaff(), loadProviders(), loadRooms()])
+  await loadData()
 })
 
 async function loadData() {
@@ -616,8 +643,14 @@ async function loadData() {
       category: o.category || 'general',
       priority: o.priority || 'medium',
       status: o.status || 'open',
-      assignedTo: o.assignedTo || 'Sin asignar',
-      assignedToName: staffMap.value[o.assignedTo] || o.assignedTo || 'Sin asignar',
+      assignedTo: o.assignedTo || '',
+      providerId: o.providerId || '',
+      // Nombre a mostrar: el proveedor de servicios si el ticket es externo, si no
+      // el técnico interno. Ambos se resuelven contra /usuarios y el catálogo.
+      assignedToName: o.providerId
+        ? (providerMap.value[o.providerId] || 'Proveedor de servicios')
+        : (staffMap.value[o.assignedTo] || (o.assignedTo ? o.assignedTo : 'Sin asignar')),
+      isExternal: !!o.providerId,
       date: o.reportedDate ? String(o.reportedDate).slice(0, 10) : '',
       description: o.description || '',
       estimatedCost: o.estimatedCost || 0,
@@ -643,17 +676,31 @@ async function loadRooms() {
 }
 
 async function loadStaff() {
-  if (!hotelId.value) return
   try {
-    const res = await EmpleadosService.listProfiles({ hotelId: hotelId.value, limit: 100 }) as any
-    const items = res.data || res
+    // Los técnicos son USUARIOS del hotel (tabla users), no perfiles de RRHH:
+    // los tickets guardan assignedTo = users.id. employee-profiles trae otros ids.
+    const res = await TeamService.list() as any
+    const items = Array.isArray(res) ? res : (res?.data ?? [])
     hotelStaff.value = Array.isArray(items) ? items : []
     const map: Record<string, string> = {}
-    for (const e of hotelStaff.value) {
-      if (e.userId) map[e.userId] = e.userName || e.position || 'Empleado'
+    for (const u of hotelStaff.value) {
+      if (u.id && u.name) map[u.id] = u.name
     }
     staffMap.value = map
   } catch { /* silent — staff is optional */ }
+}
+
+async function loadProviders() {
+  try {
+    const res = await TechnicalProvidersService.list() as any
+    const items = Array.isArray(res) ? res : (res?.data ?? [])
+    providers.value = (Array.isArray(items) ? items : [])
+      .map((p: any) => ({ id: p.id, name: p.name }))
+      .filter((p: any) => p.id && p.name)
+    const map: Record<string, string> = {}
+    for (const p of providers.value) map[p.id] = p.name
+    providerMap.value = map
+  } catch { /* silent — proveedores son opcionales */ }
 }
 
 const newOrder = ref({
@@ -663,6 +710,7 @@ const newOrder = ref({
   category: '',
   priority: 'medium',
   assignedTo: '',
+  providerId: '',
   description: '',
   estimatedCost: '',
 })
@@ -740,7 +788,7 @@ const openViewOrder = (order: any) => {
 const openNewOrder = () => {
   editingOrder.value = null
   formErrors.value = {}
-  newOrder.value = { title: '', roomId: '', roomNumber: '', category: '', priority: 'medium', assignedTo: '', description: '', estimatedCost: '' }
+  newOrder.value = { title: '', roomId: '', roomNumber: '', category: '', priority: 'medium', assignedTo: '', providerId: '', description: '', estimatedCost: '' }
   roomSearch.value = ''
   staffSearch.value = ''
   showNewModal.value = true
@@ -755,15 +803,18 @@ const openEditOrder = (order: any) => {
     roomNumber: order.location?.replace('Hab ', '') || '',
     category: order.category || '',
     priority: order.priority || 'medium',
-    assignedTo: order.assignedTo === 'Sin asignar' ? '' : order.assignedTo || '',
+    assignedTo: order.assignedTo || '',
+    providerId: order.providerId || '',
     description: order.description || '',
     estimatedCost: order.estimatedCost ? String(order.estimatedCost) : '',
   }
   // Set search displays for autocomplete
   const room = hotelRooms.value.find(r => r.number === newOrder.value.roomNumber)
   roomSearch.value = room ? `${room.number} — ${room.name || room.type}` : newOrder.value.roomNumber
-  const staff = maintenanceStaff.value.find(s => s.id === newOrder.value.assignedTo)
-  staffSearch.value = staff?.name || ''
+  // El texto del autocomplete: el proveedor si el ticket es externo, si no el técnico.
+  staffSearch.value = newOrder.value.providerId
+    ? (providerMap.value[newOrder.value.providerId] || '')
+    : (staffMap.value[newOrder.value.assignedTo] || '')
   showNewModal.value = true
 }
 
@@ -792,6 +843,7 @@ const createOrder = async () => {
         roomId: resolvedRoomId,
         roomNumber: newOrder.value.roomNumber || '',
         assignedTo: newOrder.value.assignedTo || '',
+        providerId: newOrder.value.providerId || '',
         estimatedCost: newOrder.value.estimatedCost ? parseInt(newOrder.value.estimatedCost) : 0,
       })
       toast.success('Orden actualizada')
@@ -806,6 +858,7 @@ const createOrder = async () => {
         roomId: resolvedRoomId,
         roomNumber: newOrder.value.roomNumber || '',
         assignedTo: newOrder.value.assignedTo || '',
+        providerId: newOrder.value.providerId || '',
         estimatedCost: newOrder.value.estimatedCost ? parseInt(newOrder.value.estimatedCost) : 0,
         reportedDate: new Date().toISOString(),
       })
