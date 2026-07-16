@@ -231,7 +231,7 @@ describe('PricingService — tenancy (SEC-2.2)', () => {
         count: async () => 0,
         paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
       })
-      return new PricingService(mk('Seasons'), mk('RoomRates'), mk('RoomBlocks'), mk('RateRestrictions'), log)
+      return new PricingService(mk('Seasons') as any, mk('RoomRates') as any, mk('RoomBlocks') as any, mk('RateRestrictions') as any, log)
     }
 
     it('siembra temporadas por defecto con exactamente una activa', async () => {
