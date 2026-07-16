@@ -134,6 +134,7 @@ import { FeedbackModule } from './modules/feedback'
 import { StaffAuthModule } from './modules/staff-auth'
 import { MessagesModule } from './modules/messages'
 import { PushTokensModule } from './modules/pushtokens'
+import { EmailQueueModule } from './modules/email-queue'
 import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
@@ -153,6 +154,7 @@ const mods = [
   StaffAuthModule(),
   MessagesModule({ storage }),
   PushTokensModule(),
+  EmailQueueModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 

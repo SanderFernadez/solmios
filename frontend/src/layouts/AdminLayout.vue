@@ -304,6 +304,7 @@ const nonavItems = [
       { label: 'Habitaciones', path: '/panel/rooms', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Envíos Auto', path: '/panel/auto-messages', roles: ['hotel_admin'] },
       { label: 'Historial Envíos', path: '/panel/message-logs', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Cola de Emails', path: '/panel/email-queue', roles: ['hotel_admin'] },
       { label: 'Plantillas WhatsApp', path: '/panel/whatsapp-templates', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Cerraduras', path: '/panel/cerraduras', roles: ['hotel_admin'] },
       { label: 'Pasarelas de Pago', path: '/panel/pagos', roles: ['hotel_admin'] },

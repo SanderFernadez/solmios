@@ -351,6 +351,12 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          path: 'email-queue',
+          name: 'email-queue',
+          component: () => import('@/pages/email-queue/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'devices',
           name: 'devices',
           component: () => import('@/pages/devices/index.vue'),
