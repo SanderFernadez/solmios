@@ -345,8 +345,8 @@
                   <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-[10px]">🏨</span> Alojamiento</h4>
                   <div class="bg-surface rounded-xl p-3 text-sm space-y-2 mb-3">
                     <div class="flex justify-between"><span class="text-text-secondary">Habitación</span><span class="font-bold text-navy">{{ newRes.room?.number }} — {{ newRes.room?.type }}</span></div>
-                    <div class="flex justify-between"><span class="text-text-secondary">Fecha entrada</span><span class="font-bold text-navy">{{ newRes.cin }}</span></div>
-                    <div class="flex justify-between"><span class="text-text-secondary">Fecha salida</span><span class="font-bold text-navy">{{ newRes.cout }}</span></div>
+                    <div class="flex justify-between items-center gap-2"><span class="text-text-secondary shrink-0">Fecha entrada</span><input v-model="newRes.cin" type="date" class="min-w-0 flex-1 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy" /></div>
+                    <div class="flex justify-between items-center gap-2"><span class="text-text-secondary shrink-0">Fecha salida</span><input v-model="newRes.cout" type="date" class="min-w-0 flex-1 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy" /></div>
                     <div class="flex justify-between"><span class="text-text-secondary">Noches</span><span class="font-bold text-navy">{{ newResNights }}</span></div>
                   </div>
                   <div class="grid grid-cols-2 gap-3">
@@ -358,8 +358,8 @@
                     <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Canal</label><select v-model="newRes.ch" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="direct">Directa</option><option value="booking">Booking</option><option value="expedia">Expedia</option><option value="airbnb">Airbnb</option><option value="google">Google</option><option value="whatsapp">WhatsApp</option></select></div>
                   </div>
                   <div v-if="newRes.room" class="bg-white rounded-xl p-3 mt-3 space-y-1.5 border border-border text-sm">
-                    <div class="flex justify-between"><span class="text-text-secondary">{{ newResNights }}n × ${{ newRes.room.basePrice }}</span><span class="font-bold">${{ newRes.room.basePrice * newResNights }}</span></div>
-                    <div class="flex justify-between"><span class="text-text-secondary">Impuestos (10%)</span><span class="font-bold">${{ Math.round(newRes.room.basePrice * newResNights * 0.1) }}</span></div>
+                    <div class="flex justify-between"><span class="text-text-secondary">{{ newResNights }}n × ${{ newResRoomBase }}</span><span class="font-bold">${{ newResRoomBase * newResNights }}</span></div>
+                    <div v-if="hotelTaxRate > 0" class="flex justify-between"><span class="text-text-secondary">{{ hotelTaxName }} ({{ hotelTaxRate }}%)</span><span class="font-bold">${{ newResTax }}</span></div>
                   </div>
                 </div>
                 <!-- Anticipo -->
@@ -367,7 +367,7 @@
                   <h4 class="text-xs font-black text-teal uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-teal/20 flex items-center justify-center text-[10px]">💰</span> Anticipo y Total</h4>
                   <div class="space-y-3">
                     <div class="grid grid-cols-2 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Anticipo (%)</label><input v-model.number="newRes.depositPercentage" type="number" min="0" max="100" @input="newRes.deposit = Math.round(newRes.amt * (newRes.depositPercentage||0) / 100)" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
+                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Anticipo (%)</label><input v-model.number="newRes.depositPercentage" type="number" min="0" max="100" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
                       <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Monto ($)</label><input v-model.number="newRes.deposit" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm font-bold text-navy" /></div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
@@ -375,8 +375,8 @@
                       <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Pago con</label><select v-model="newRes.payMethod" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="transfer">Transferencia</option><option value="card">Tarjeta</option><option value="cash">Efectivo</option><option value="link">Link de pago</option></select></div>
                     </div>
                     <div class="bg-white rounded-xl p-3 space-y-1.5 border border-border">
-                      <div class="flex justify-between text-sm"><span class="text-text-secondary">Precio final</span><span class="font-extrabold text-navy text-lg">${{ newRes.amt }}</span></div>
-                      <div v-if="newRes.amt > 0" class="flex justify-between text-sm"><span class="text-text-secondary">Pendiente</span><span class="font-black" :class="newRes.amt - newRes.deposit > 0 ? 'text-coral' : 'text-teal'">${{ newRes.amt - newRes.deposit }}</span></div>
+                      <div class="flex justify-between text-sm"><span class="text-text-secondary">Precio final</span><span class="font-extrabold text-navy text-lg">${{ newResAmt }}</span></div>
+                      <div v-if="newResAmt > 0" class="flex justify-between text-sm"><span class="text-text-secondary">Pendiente</span><span class="font-black" :class="newResAmt - newRes.deposit > 0 ? 'text-coral' : 'text-teal'">${{ newResAmt - newRes.deposit }}</span></div>
                     </div>
                   </div>
                 </div>
@@ -385,7 +385,7 @@
           </div>
           <!-- Footer -->
           <div class="p-4 border-t border-border bg-surface/80 shrink-0 flex items-center justify-between">
-            <div class="text-sm font-extrabold text-navy">Total: <span class="text-lg">${{ newRes.amt }}</span></div>
+            <div class="text-sm font-extrabold text-navy">Total: <span class="text-lg">${{ newResAmt }}</span></div>
             <div class="flex gap-3">
               <button @click="newRes.show=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
               <button @click="saveNewRes" class="px-6 py-2.5 bg-teal text-white rounded-xl text-sm font-black cursor-pointer hover:opacity-90">Crear Reserva</button>
@@ -745,7 +745,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
 import { ReservationService, type RescheduleQuote, type RescheduleCommitInput } from '@/services/Reservation.service'
 import { GuestService } from '@/services/Guest.service'
@@ -850,6 +850,21 @@ const quoteRoomTypes = computed(() => {
 const newResNights = computed(() => {
   if (!newRes.value.cin || !newRes.value.cout) return 0
   return Math.max(1, Math.round((new Date(newRes.value.cout).getTime() - new Date(newRes.value.cin).getTime()) / MS_PER_DAY))
+})
+// Impuesto del hotel — config real, NO el 10% hardcodeado de antes (C2). Cargado en onMounted.
+const hotelTaxRate = ref(0)
+const hotelTaxName = ref('Impuesto')
+// Total de la nueva reserva: REACTIVO a fechas (noches) y tarifa (A1). Antes era un `amt`
+// fijo que no reaccionaba al cambiar las fechas y usaba impuesto 10% fijo (C2).
+const newResRoomBase = computed(() => Number(newRes.value.room?.basePrice) || 0)
+const newResTax = computed(() => Math.round(newResRoomBase.value * newResNights.value * hotelTaxRate.value / 100))
+const newResAmt = computed(() => newResRoomBase.value * newResNights.value + newResTax.value)
+// Depósito sincronizado con el total y el % (A3): al abrir, cambiar fechas o el %, se
+// recalcula y clampa a [0, total] (m3). El usuario puede sobreescribir el monto a mano.
+watch([newResAmt, () => newRes.value.depositPercentage, () => newRes.value.show], () => {
+  if (!newRes.value.show) return
+  const pct = Number(newRes.value.depositPercentage) || 0
+  newRes.value.deposit = Math.min(newResAmt.value, Math.max(0, Math.round(newResAmt.value * pct / 100)))
 })
 
 // Channels
@@ -1059,7 +1074,7 @@ const PAY_METHODS: readonly { v: string; l: string }[] = [
 ]
 
 function gRes(rid: any, ds: string) {
-  const r = dispReservas.value.find((b: any) => String(b.roomId) === String(rid) && ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10))
+  const r = dispReservas.value.find((b: any) => String(b.roomId) === String(rid) && b.status !== 'cancelled' && ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10))
   if (!r) return null
   const ch = (r.channel || 'direct').toLowerCase(); const cc = CH[ch] || { l: r.channel || 'Directa', bg: 'bg-gray-400' }
   const status = r.status || 'pending'
@@ -1112,7 +1127,7 @@ function blkSpan(rid: any, day: DI) {
 }
 function dayOcc(ds: string) {
   const n = planRooms.value.length; if (!n) return 0; const o = new Set<string>()
-  dispReservas.value.forEach((b: any) => { if (ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10)) o.add(String(b.roomId)) })
+  dispReservas.value.forEach((b: any) => { if (b.status !== 'cancelled' && ds >= String(b.checkIn||'').slice(0,10) && ds < String(b.checkOut||'').slice(0,10)) o.add(String(b.roomId)) })
   planBlocks.value.forEach((b: any) => { if (ds >= b.startDate && ds <= b.endDate) o.add(String(b.roomId)) })
   return Math.round((o.size / n) * 100)
 }
@@ -1175,7 +1190,9 @@ function onMouseUp(ev: MouseEvent) {
   if (room && (dragStarted || from !== to)) {
     // Keep selection visible
     lastSel.value = { room, from, to }
-    const nights = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / MS_PER_DAY))
+    // El rango de celdas es INCLUSIVO en ambos extremos: de `from` a `to` hay (to-from)+1
+    // celdas = noches. Antes faltaba el +1 y la reserva salía una noche corta (C1).
+    const nights = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / MS_PER_DAY) + 1)
     popup.value = { show: true, x: Math.min(ev.clientX, window.innerWidth - 210), y: Math.min(ev.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: to, nights, res: null, blk: null }
   } else if (room && !dragStarted) {
     lastSel.value = { room, from, to }
@@ -1378,12 +1395,11 @@ function popupNewRes() {
   const p = popup.value
   lastSel.value = null
   const roomData = planRooms.value.find((r: any) => r.id === p.room?.id)
-  const nights = Math.max(1, Math.round((new Date(p.toDate).getTime() - new Date(p.fromDate).getTime()) / MS_PER_DAY))
-  const basePrice = roomData?.basePrice || 0
-  const subtotal = basePrice * nights
-  const taxes = Math.round(subtotal * 0.1)
+  // Checkout EXCLUSIVO: la última celda seleccionada es la última noche; el checkout es el día
+  // siguiente. Así N celdas resaltadas = N noches y la barra cubre las celdas exactas (C1).
+  const cout = addDaysStr(p.toDate, 1)
   newRes.value = {
-    show: true, room: p.room, cin: p.fromDate, cout: p.toDate,
+    show: true, room: { ...p.room, basePrice: roomData?.basePrice ?? p.room?.basePrice ?? 0 }, cin: p.fromDate, cout,
     name: '', email: '', phone: '',
     language: 'Español', country: 'República Dominicana', nationality: 'Dominicana',
     address: '', city: '', province: '',
@@ -1395,7 +1411,7 @@ function popupNewRes() {
     ch: 'direct', commission: 0, extLocator: '', otaNotes: '',
     cardHolder: '', cardBrand: 'visa', cardNumber: '', cardCvv: '', cardExpMonth: '', cardExpYear: '',
     payMethod: 'transfer', deposit: 0, depositPercentage: 100, depositStatus: 'unpaid',
-    amt: subtotal + taxes,
+    amt: 0, // el total real es el computed `newResAmt` (reactivo)
   }
   popup.value.show = false
 }
@@ -1414,9 +1430,9 @@ function popupQuote() {
     hotelPhone: hotelInfo.value.phone,
     hotelEmail: hotelInfo.value.email,
     rooms: [{ type: roomType, qty: 1, price: roomData?.basePrice || 100 }],
-    checkIn: p.fromDate, checkOut: p.toDate, nights: p.nights,
+    checkIn: p.fromDate, checkOut: addDaysStr(p.toDate, 1), nights: p.nights,
     guest: '', email: '', phone: '', adults: 1, kids: 0,
-    taxName: 'ITBIS', taxRate: 18, notes: '',
+    taxName: hotelTaxName.value, taxRate: hotelTaxRate.value, notes: '',
   }
   popup.value.show = false
 }
@@ -1534,11 +1550,11 @@ async function saveNewRes() {
     // 2. Crear reserva
     const r = await ReservationService.create({
       hotelId, roomId: n.room.id, guestId: guest.id,
-      checkIn: n.cin, checkOut: cout, totalAmount: n.amt,
+      checkIn: n.cin, checkOut: cout, totalAmount: newResAmt.value,
       channel: n.ch, status: 'confirmed',
       paymentMethod: n.payMethod, deposit: n.deposit || 0,
       depositPercentage: n.depositPercentage,
-      depositStatus: n.depositStatus,
+      depositStatus: newResAmt.value > 0 && (n.deposit || 0) >= newResAmt.value ? 'paid' : (n.deposit || 0) > 0 ? 'partial' : 'unpaid',
       adults: n.adults, children: n.kids,
       notes: n.guestNotes,
       regime: n.regime,
@@ -1546,7 +1562,7 @@ async function saveNewRes() {
       externalLocator: n.extLocator,
     })
     // 3. Push local
-    const amt = n.amt || 0
+    const amt = newResAmt.value || 0
     const dep = n.deposit || 0
     const paymentStatus = amt > 0 && dep >= amt ? 'paid' : dep > 0 ? 'partial' : 'pending'
     planReservas.value.push({
@@ -1574,6 +1590,8 @@ onMounted(async () => {
     const s = await HotelService.settings(hid.value)
     const h = (s as any).hotel || {}
     hotelInfo.value = { name: h.name || auth.user?.hotelName || '', address: h.address || '', phone: h.phone || '', email: h.email || '' }
+    hotelTaxRate.value = Number(h.taxRate) || 0
+    hotelTaxName.value = h.taxName || 'Impuesto'
   } catch {}
   try { const c = await ConfigService.get('channel_colors', hid.value); if (c && typeof c === 'object' && !Array.isArray(c)) channelColors.value = c } catch {}
 })
