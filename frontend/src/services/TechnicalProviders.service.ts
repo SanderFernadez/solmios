@@ -1,7 +1,7 @@
 import { http } from './http'
 
 /**
- * Proveedor técnico — servicio externo de mantenimiento del hotel
+ * Proveedor de servicios — servicio externo de mantenimiento del hotel
  * (plomero, electricista, técnico A/C, etc.).
  * Los campos de BD/API van en inglés; la UI los rotula en español.
  */

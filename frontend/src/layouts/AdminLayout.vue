@@ -242,7 +242,7 @@ const nonavItems = [
     children: [
       { label: 'Limpieza', path: '/panel/housekeeping', roles: ['hotel_admin'] },
       { label: 'Mantenimiento', path: '/panel/maintenance', roles: ['hotel_admin'] },
-      { label: 'Proveedores técnicos', path: '/panel/technical-providers', roles: ['hotel_admin'] },
+      { label: 'Proveedores de servicios', path: '/panel/technical-providers', roles: ['hotel_admin'] },
       { label: 'Chats del equipo', path: '/panel/team-chat', roles: ['hotel_admin'] },
     ]
   },

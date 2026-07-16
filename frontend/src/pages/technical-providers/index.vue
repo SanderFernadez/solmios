@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="flex items-center gap-2.5 mb-1.5">
-      <h2 class="text-xl font-black text-navy">Proveedores técnicos</h2>
+      <h2 class="text-xl font-black text-navy">Proveedores de servicios</h2>
       <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
         <span class="relative flex h-1.5 w-1.5">
           <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
@@ -16,7 +16,7 @@
       <p class="text-sm text-text-secondary max-w-lg">A quién llamar cuando algo no se arregla adentro.</p>
       <button @click="openNew" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer shrink-0">
         <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
-        Nuevo proveedor técnico
+        Nuevo proveedor de servicios
       </button>
     </div>
 
@@ -36,11 +36,11 @@
     <!-- Empty state -->
     <div v-else-if="providers.length === 0" class="rounded-[20px] border border-dashed border-border bg-white shadow-(--shadow-card) flex flex-col items-center justify-center py-20 text-center">
       <span class="w-12 h-12 mb-4 text-text-muted opacity-40" v-html="ICON_WRENCH"></span>
-      <p class="text-base font-black text-navy">Todavía no cargaste ningún proveedor técnico</p>
+      <p class="text-base font-black text-navy">Todavía no cargaste ningún proveedor de servicios</p>
       <p class="text-sm text-text-muted mt-1 max-w-sm">Sumá al plomero, electricista o técnico de A/C de confianza para tenerlos a mano.</p>
       <button @click="openNew" class="mt-5 flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
         <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
-        Nuevo proveedor técnico
+        Nuevo proveedor de servicios
       </button>
     </div>
 
@@ -100,7 +100,7 @@
       <div v-if="showModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
           <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
-            <h3 class="text-xl font-black text-navy tracking-tight">{{ editing ? 'Editar proveedor técnico' : 'Nuevo proveedor técnico' }}</h3>
+            <h3 class="text-xl font-black text-navy tracking-tight">{{ editing ? 'Editar proveedor de servicios' : 'Nuevo proveedor de servicios' }}</h3>
             <button @click="closeModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
@@ -279,7 +279,7 @@ async function load() {
   try {
     providers.value = await TechnicalProvidersService.list()
   } catch {
-    error.value = 'No se pudieron cargar los proveedores técnicos.'
+    error.value = 'No se pudieron cargar los proveedores de servicios.'
   } finally {
     loading.value = false
   }
@@ -390,10 +390,10 @@ async function save() {
   try {
     if (editing.value) {
       await TechnicalProvidersService.update(editing.value.id, payload)
-      toast.success('Proveedor técnico actualizado')
+      toast.success('Proveedor de servicios actualizado')
     } else {
       await TechnicalProvidersService.create(payload)
-      toast.success('Proveedor técnico creado')
+      toast.success('Proveedor de servicios creado')
     }
     showModal.value = false
     editing.value = null
@@ -414,7 +414,7 @@ async function confirmDelete() {
   deleting.value = true
   try {
     await TechnicalProvidersService.remove(deleteTarget.value.id)
-    toast.success('Proveedor técnico eliminado')
+    toast.success('Proveedor de servicios eliminado')
     deleteTarget.value = null
     await load()
   } catch {
