@@ -167,4 +167,33 @@ describe('TtlockService', () => {
       await expect(svc.generateCode('h1', 'inexistente')).rejects.toThrow(/no encontrada/)
     })
   })
+
+  // generateCodeIfAbsent — punto de entrada de la generación AUTOMÁTICA (al pagarse la seña). Debe
+  // ser idempotente: el webhook de Stripe reintenta y una reserva puede tener varios Links de Pago.
+  describe('generateCodeIfAbsent — idempotencia', () => {
+    it('NO regenera si la reserva ya tiene un código ACTIVO', async () => {
+      const orm = makeOrm({
+        findMany: async (table: string) => table === 'LockCodes'
+          ? [{ id: 'c1', reservationId: 'res1', hotelId: 'h1', status: 'active' }]
+          : [],
+      })
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+      const r = await svc.generateCodeIfAbsent('h1', 'res1')
+      expect(r.skipped).toBe(true)
+    })
+
+    it('SÍ genera si el único código de la reserva está revocado (no activo)', async () => {
+      // Sin código activo → NO saltea → llama a generateCode. La reserva no existe en este mock, así
+      // que tira 'no encontrada': la excepción PRUEBA que pasó la guarda de idempotencia y siguió.
+      const orm = makeOrm({
+        findMany: async (table: string) => table === 'LockCodes'
+          ? [{ id: 'c1', reservationId: 'res1', hotelId: 'h1', status: 'revoked' }]
+          : [],
+      })
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+      await expect(svc.generateCodeIfAbsent('h1', 'res1')).rejects.toThrow(/no encontrada/)
+    })
+  })
 })

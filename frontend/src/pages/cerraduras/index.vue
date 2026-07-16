@@ -113,7 +113,7 @@
             </td>
           </tr>
           <tr v-if="!lockCodes.length">
-            <td colspan="6" class="p-8 text-center text-sm text-text-muted">Todavía no se generó ningún código. Se crean al hacer check-in en una habitación con cerradura asignada.</td>
+            <td colspan="6" class="p-8 text-center text-sm text-text-muted">Todavía no se generó ningún código. Se crean automáticamente al pagarse la seña de una reserva (habitación con cerradura asignada), o a mano desde la reserva.</td>
           </tr>
         </tbody>
       </table>

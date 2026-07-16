@@ -167,6 +167,7 @@ import { bookingChannexConnector } from './connectors/booking-channex'
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 import { paymentsCajaConnector } from './connectors/payments-caja'
 import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-payments'
+import { paymentRequestsTtlockConnector } from './connectors/payment-requests-ttlock'
 import { facturasReservasConnector } from './connectors/facturas-reservas'
 import { facturasAuditlogConnector } from './connectors/facturas-auditlog'
 import { rolesAuditlogConnector } from './connectors/roles-auditlog'
@@ -291,6 +292,7 @@ system.addConnector('facturas-payments', facturasPaymentsConnector)
 system.addConnector('folios-payments', foliosPaymentsConnector)
 // Un cobro Stripe también es dinero: sin esto queda fuera de `payments` y de la conciliación.
 system.addConnector('payment-requests-payments', paymentRequestsPaymentsConnector)
+system.addConnector('payment-requests-ttlock', paymentRequestsTtlockConnector(logger))
 // El widget público cobra con Stripe: ese dinero vivía solo en la tabla `bookings`.
 system.addConnector('bookingengine-payments', bookingenginePaymentsConnector)
 system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector(orm))

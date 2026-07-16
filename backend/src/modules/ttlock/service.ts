@@ -67,6 +67,19 @@ export class TtlockService {
   }
 
   /**
+   * Genera el código solo si la reserva no tiene ya uno ACTIVO. Es el punto de entrada de la
+   * generación automática (al pagarse la seña): `generateCode` siempre inserta, así que el reintento
+   * del webhook de Stripe o varios Links de Pago para la misma reserva duplicarían PINs. El botón
+   * manual ("Regenerar") sigue usando `generateCode` directo, porque ahí regenerar es intencional.
+   */
+  async generateCodeIfAbsent(hotelId: string, reservationId: string): Promise<any> {
+    const codes = await this.queries.listCodesByHotel(hotelId)
+    const alreadyActive = codes.some((c: any) => c.reservationId === reservationId && c.status === 'active')
+    if (alreadyActive) return { skipped: true, reason: 'already-active' }
+    return this.generateCode(hotelId, reservationId)
+  }
+
+  /**
    * Borra el PIN de la cerradura FÍSICA. Si TTLock falla, propagamos: marcar el código como
    * revocado en la base mientras la puerta sigue abriéndose con ese PIN es peor que fallar fuerte.
    */
