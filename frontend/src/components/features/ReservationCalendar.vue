@@ -107,8 +107,12 @@
                 <div class="w-56 flex-shrink-0 px-4 py-3 border-r border-border flex items-center gap-2">
                   <span class="font-bold text-sm text-navy">{{ room.number }}</span>
                   <span class="text-[10px] text-text-muted truncate">{{ room.type }}</span>
-                  <button @click.stop="openRoomLock(room)" class="ml-auto text-text-muted hover:text-navy transition-colors cursor-pointer shrink-0" title="Cerradura de la habitación">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="11" width="16" height="10" rx="2"/><path stroke-linecap="round" d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                  <button @click.stop="openRoomLock(room)" class="ml-auto shrink-0 w-6 h-6 rounded-lg bg-navy/[0.06] hover:bg-cyan/20 text-navy/50 hover:text-cyan flex items-center justify-center transition-colors cursor-pointer" title="Cerradura de la habitación">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                      <rect x="5" y="10" width="14" height="11" rx="2"/><path stroke-linecap="round" d="M8 10V7a4 4 0 0 1 8 0v3"/>
+                      <circle cx="9" cy="14.5" r="0.7" fill="currentColor"/><circle cx="12" cy="14.5" r="0.7" fill="currentColor"/><circle cx="15" cy="14.5" r="0.7" fill="currentColor"/>
+                      <circle cx="9" cy="17.5" r="0.7" fill="currentColor"/><circle cx="12" cy="17.5" r="0.7" fill="currentColor"/><circle cx="15" cy="17.5" r="0.7" fill="currentColor"/>
+                    </svg>
                   </button>
                   <span class="w-2 h-2 rounded-full shrink-0" :class="room.status === 'occupied' ? 'bg-coral' : 'bg-teal'"></span>
                 </div>
