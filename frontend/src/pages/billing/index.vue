@@ -199,12 +199,12 @@
               <td class="p-4 text-sm">{{ payment.concept }}</td>
               <td class="p-4">
                 <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="methodClass(payment.method)">
-                  {{ payment.method }}
+                  {{ methodLabel(payment.method) }}
                 </span>
               </td>
               <td class="p-4">
-                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="payment.status === 'paid' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">
-                  {{ payment.status === 'paid' ? 'Pagado' : 'Pendiente' }}
+                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="paymentStatusClass(payment.status)">
+                  {{ paymentStatusLabel(payment.status) }}
                 </span>
               </td>
               <td class="p-4 text-sm text-text-secondary">{{ payment.date }}</td>
@@ -742,6 +742,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { BillingService, isDeletable, type BillingStats, type Invoice, type InvoiceStatus } from '@/services/Billing.service'
 import { RoomService } from '@/services/Room.service'
+import { GuestService } from '@/services/Guest.service'
 import { useCurrency } from '@/composables/useCurrency'
 import { useCountUp } from '@/composables/useCountUp'
 import { FoliosService, type Folio } from '@/services/Folios.service'
@@ -875,32 +876,44 @@ function toRow(d: Invoice) {
   }
 }
 
+/** Concepto legible del pago: descripción real, si no la referencia, si no el método. */
+function paymentConcept(p: { description: string; reference: string; method: string }): string {
+  return p.description || p.reference || methodLabel(p.method)
+}
+
 /**
- * Facturas y pagos son tipos distintos de documento en la misma tabla: se piden por separado
- * (`type=invoice` / `type=payment`). Antes se traía una página mezclada y se separaba con
- * `.filter()`, así que la paginación contaba pagos como facturas y el filtro de estado solo
- * miraba la página actual.
+ * Facturas y pagos: las facturas viven en `invoices` (`type=invoice`); los pagos ahora vienen del
+ * módulo `payments` (`GET /api/payments`, fuente de verdad del dinero) con método, referencia y
+ * estado REALES — NO los comprobantes `type:'payment'` de `invoices` (modelo viejo). El nombre del
+ * huésped no lo trae `/payments` (solo `guestId`): se resuelve contra `/huespedes`.
  */
 async function loadData() {
   loading.value = true
   try {
-    const [invoiceRes, paymentRes, statsData] = await Promise.all([
+    const [invoiceRes, paymentRes, statsData, guestRes] = await Promise.all([
       BillingService.list({
         hotelId: hotelId.value,
         type: 'invoice',
         status: invoiceFilter.value === 'all' ? undefined : invoiceFilter.value,
         page: page.value,
       }),
-      BillingService.list({ hotelId: hotelId.value, type: 'payment', limit: PAYMENTS_PAGE_SIZE }).catch(() => null),
+      BillingService.listPayments({ hotelId: hotelId.value, limit: PAYMENTS_PAGE_SIZE }).catch(() => null),
       BillingService.stats().catch(() => null),
+      GuestService.list({ hotelId: hotelId.value }).catch(() => null),
     ])
     if (statsData) stats.value = statsData
     totalPages.value = invoiceRes.pages
     totalItems.value = invoiceRes.total
     invoices.value = invoiceRes.invoices.map(toRow)
-    payments.value = (paymentRes?.invoices ?? []).map(toRow).map(p => ({
-      id: p.id, guest: p.guest, concept: p.concept, method: p.method || '—',
-      status: p.status, date: p.date, amount: p.total,
+    const guestName = new Map((guestRes?.guests ?? []).map(g => [g.id, g.name]))
+    payments.value = (paymentRes?.payments ?? []).map(p => ({
+      id: p.id,
+      guest: (p.guestId && guestName.get(p.guestId)) || '—',
+      concept: paymentConcept(p),
+      method: p.method,
+      status: p.status,
+      date: (p.createdAt || '').slice(0, 10),
+      amount: p.amount,
     }))
     await loadFolios()
   } catch { toast.error("Error al cargar datos") }
@@ -940,8 +953,38 @@ function methodClass(method: string) {
     'transferencia': 'bg-teal/10 text-teal', 'transfer': 'bg-teal/10 text-teal',
     'efectivo': 'bg-gold/10 text-gold', 'cash': 'bg-gold/10 text-gold',
     'link de pago': 'bg-purple/10 text-purple', 'link': 'bg-purple/10 text-purple',
+    'deposit': 'bg-navy/10 text-navy', 'other': 'bg-gray-100 text-gray-500',
   }
   return classes[m] ?? 'bg-gray-100 text-gray-500'
+}
+
+/** Etiqueta ES del método real del pago (`payments.method` viene en inglés). */
+function methodLabel(method: string) {
+  const labels: Record<string, string> = {
+    card: 'Tarjeta', cash: 'Efectivo', transfer: 'Transferencia',
+    link: 'Link de pago', deposit: 'Depósito', other: 'Otro',
+  }
+  return labels[String(method).toLowerCase()] ?? method
+}
+
+/** Estado real del ciclo de vida del pago (NO el de una factura). */
+function paymentStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    completed: 'Cobrado', pending: 'Pendiente', processing: 'Procesando',
+    failed: 'Fallido', refunded: 'Reembolsado',
+  }
+  return labels[String(status).toLowerCase()] ?? status
+}
+
+function paymentStatusClass(status: string) {
+  const classes: Record<string, string> = {
+    completed: 'bg-teal/10 text-teal',
+    pending: 'bg-gold/10 text-gold',
+    processing: 'bg-blue-100 text-blue-700',
+    failed: 'bg-coral/10 text-coral',
+    refunded: 'bg-gray-100 text-gray-500',
+  }
+  return classes[String(status).toLowerCase()] ?? 'bg-gray-100 text-gray-500'
 }
 
 function invoiceStatusClass(status: string) {

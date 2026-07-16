@@ -95,6 +95,54 @@ interface BillingResponse {
   hasPrev: boolean
 }
 
+/**
+ * Pago real del módulo `payments` (fuente de verdad del dinero). NO confundir con los comprobantes
+ * `type:'payment'` de la tabla `invoices` (modelo viejo): estos traen método, referencia y estado
+ * REALES del cobro. `status` es el ciclo de vida del pago ('completed' = cobrado), no el de una factura.
+ */
+export interface Payment {
+  id: string
+  method: string   // card | cash | transfer | link | deposit | other
+  status: string   // pending | processing | completed | failed | refunded
+  amount: number
+  currency: string
+  reference: string
+  description: string
+  guestId?: string | null
+  folioId?: string | null
+  invoiceId?: string | null
+  createdAt: string
+}
+
+function mapPayment(r: any): Payment {
+  return {
+    id: r.id,
+    method: String(r.method ?? 'other'),
+    status: String(r.status ?? 'pending'),
+    amount: Number(r.amount ?? 0),
+    currency: r.currency ?? 'USD',
+    reference: r.reference ?? '',
+    description: r.description ?? '',
+    guestId: r.guestId ?? null,
+    folioId: r.folioId ?? null,
+    invoiceId: r.invoiceId ?? null,
+    createdAt: r.createdAt ?? r.processedAt ?? '',
+  }
+}
+
+interface PaymentsApiResponse {
+  data: any[]
+  pagination: { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean }
+}
+
+export interface ListPaymentsParams {
+  hotelId?: string
+  method?: string
+  status?: string
+  page?: number
+  limit?: number
+}
+
 export interface BillingStats {
   total: number
   pendingAmount: number
@@ -142,6 +190,29 @@ export const BillingService = {
       pages: data.pages ?? 1,
       hasNext: data.hasNext ?? false,
       hasPrev: data.hasPrev ?? false,
+    }
+  },
+
+  /**
+   * Lista los pagos REALES desde el módulo `payments` (`GET /api/payments`), no los comprobantes
+   * `type:'payment'` de `invoices`. Trae método, referencia y estado reales. El backend fuerza el
+   * `hotelId` del JWT para merchants (el query param solo lo respeta super_admin).
+   */
+  async listPayments(params: ListPaymentsParams = {}): Promise<{ payments: Payment[]; total: number; pages: number; hasNext: boolean; hasPrev: boolean }> {
+    const { hotelId, method, status, page = 1, limit = 20 } = params
+    const qs = new URLSearchParams()
+    if (hotelId) qs.set('hotelId', hotelId)
+    if (method) qs.set('method', method)
+    if (status) qs.set('status', status)
+    qs.set('page', String(page))
+    qs.set('limit', String(limit))
+    const res = await http.get<PaymentsApiResponse>(`/payments?${qs.toString()}`)
+    return {
+      payments: (res.data ?? []).map(mapPayment),
+      total: res.pagination?.total ?? 0,
+      pages: res.pagination?.totalPages ?? 1,
+      hasNext: res.pagination?.hasNext ?? false,
+      hasPrev: res.pagination?.hasPrev ?? false,
     }
   },
 
