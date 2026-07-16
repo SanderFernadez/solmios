@@ -47,10 +47,12 @@ export async function settleFolioAtCheckout(
     }, user)
   }
 
-  // El balance viene del folio enriquecido (getById lo computa). No existe folios.getBalance().
+  // El balance y los cargos vienen del folio enriquecido (getById los computa). No hay getBalance().
   const folioAfterPayment = await folios.getById(folio.id, user)
-  const balance = Number(folioAfterPayment?.balance ?? 0)
-  if (balance <= 0) {
+  const chargesTotal = Number(folioAfterPayment?.chargesTotal ?? 0)
+
+  // Folio sin cargos (roomRate 0 y sin extras): no hay nada que facturar → se cierra sin comprobante.
+  if (chargesTotal <= 0) {
     await folios.close(folio.id, user)
     return {
       folioId: folio.id,
@@ -61,10 +63,10 @@ export async function settleFolioAtCheckout(
     }
   }
 
-  // Cierra el folio, emite la factura y las vincula. Un solo paso del lado del servicio.
-  // El pago ya se posteó con `folios.applyPayment`, que asienta el dinero en `payments`. La factura
-  // hereda ese monto como `amountPaid`. NO se llama a `facturas.pay()`: registraría el mismo dinero
-  // una segunda vez en caja y conciliación.
+  // Con cargos, SIEMPRE se emite comprobante — haya o no saldo pendiente. Antes, si el pago saldaba
+  // el folio (balance <= 0) se cerraba con `folios.close()` SIN factura, y una estadía pagada al 100%
+  // quedaba sin comprobante para el huésped. `closeAndCreateInvoice` hereda el pago ya asentado
+  // (`amountPaid = paymentsTotal`, close-and-invoice.ts) SIN volver a moverlo en caja/conciliación.
   const { folio: closedFolio, invoice } = await folios.closeAndCreateInvoice(folio.id, user)
 
   const amountPaid = settle?.amount || 0

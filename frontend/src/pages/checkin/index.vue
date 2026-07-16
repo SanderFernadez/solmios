@@ -483,6 +483,30 @@
               <div v-if="(checkoutFolio.balance || 0) <= 0" class="text-[10px] text-teal font-bold mt-2">✓ Cuenta saldada</div>
             </div>
 
+            <!-- #4 Alta de consumo sobre el folio, sin salir del check-in -->
+            <div v-if="checkoutFolio" class="py-4 border-b border-border">
+              <button v-if="!showChargeForm" @click="showChargeForm = true" class="text-[11px] font-bold text-teal hover:underline cursor-pointer">+ Agregar consumo</button>
+              <div v-else class="space-y-2">
+                <div class="text-[10px] text-text-muted uppercase tracking-wide">Nuevo consumo</div>
+                <input v-model="chargeForm.description" type="text" placeholder="Descripción (ej: Minibar)" class="w-full px-3 py-2 rounded-xl border border-border text-xs" />
+                <div class="flex gap-2">
+                  <select v-model="chargeForm.category" class="px-3 py-2 rounded-xl border border-border text-xs cursor-pointer">
+                    <option value="minibar">Minibar</option>
+                    <option value="restaurant">Restaurante</option>
+                    <option value="laundry">Lavandería</option>
+                    <option value="spa">Spa</option>
+                    <option value="service">Servicio</option>
+                    <option value="other">Otro</option>
+                  </select>
+                  <input v-model.number="chargeForm.amount" type="number" min="0" step="0.01" placeholder="Monto" class="flex-1 px-3 py-2 rounded-xl border border-border text-xs" />
+                </div>
+                <div class="flex gap-2">
+                  <button @click="addCharge" :disabled="addingCharge" class="flex-1 py-2 bg-navy text-white text-xs font-bold rounded-xl hover:bg-navy-light disabled:opacity-50 cursor-pointer">{{ addingCharge ? 'Agregando...' : 'Agregar' }}</button>
+                  <button @click="resetChargeForm" :disabled="addingCharge" class="py-2 px-3 text-xs font-bold text-text-secondary hover:text-navy cursor-pointer disabled:opacity-50">Cancelar</button>
+                </div>
+              </div>
+            </div>
+
             <!-- Payment method selection (only if balance > 0) -->
             <div v-if="checkoutFolio && (checkoutFolio.balance || 0) > 0" class="py-5 border-b border-border">
               <div class="text-[10px] text-text-muted uppercase tracking-wide mb-2.5">Método de pago</div>
@@ -495,6 +519,14 @@
                   <span>{{ pm.label }}</span>
                 </button>
               </div>
+            </div>
+
+            <!-- #5 Guarda de deuda: confirmación explícita si se va con saldo pendiente sin pago -->
+            <div v-if="checkoutFolio && (checkoutFolio.balance || 0) > 0 && !settleMethod" class="py-4 border-b border-border">
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" v-model="debtAck" class="mt-0.5 accent-coral" />
+                <span class="text-[11px] font-bold text-coral">El huésped se irá con saldo pendiente de ${{ (checkoutFolio.balance || 0).toFixed(2) }}. Confirmo el check-out con deuda.</span>
+              </label>
             </div>
 
             <div class="flex items-start gap-2 pt-5">
@@ -552,6 +584,12 @@ const checkoutFolio = ref<Folio | null>(null)
 const folioLoading = ref(false)
 const settleMethod = ref<string | null>(null)
 const selectedRoom = ref<CheckinRoom | null>(null)
+// #5 guarda de deuda: confirmación explícita para cerrar el check-out con saldo pendiente sin pago.
+const debtAck = ref(false)
+// #4 alta de consumo sobre el folio desde el propio check-out (sin ir a /folios).
+const showChargeForm = ref(false)
+const addingCharge = ref(false)
+const chargeForm = ref<{ description: string; amount: number | null; category: string }>({ description: '', amount: null, category: 'minibar' })
 
 const PAYMENT_ICONS: Record<string, string> = {
   cash: '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path stroke-linecap="round" d="M6 9v.01M18 15v.01"/></svg>',
@@ -928,10 +966,18 @@ async function confirmCheckin() {
   await doCheckin(checkinGuest.value)
 }
 
+function resetChargeForm() {
+  showChargeForm.value = false
+  addingCharge.value = false
+  chargeForm.value = { description: '', amount: null, category: 'minibar' }
+}
+
 async function openCheckoutModal(guest: CheckinGuest) {
   checkoutGuest.value = guest
   checkoutFolio.value = null
   settleMethod.value = null
+  debtAck.value = false
+  resetChargeForm()
   showCheckoutModal.value = true
 
   if (guest.id) {
@@ -960,6 +1006,32 @@ function closeCheckoutModal() {
   checkoutGuest.value = null
   checkoutFolio.value = null
   settleMethod.value = null
+  debtAck.value = false
+  resetChargeForm()
+}
+
+/** #4 — Agrega un consumo al folio del huésped desde el check-out y recarga el saldo. */
+async function addCharge() {
+  if (!checkoutFolio.value || addingCharge.value) return
+  const description = chargeForm.value.description.trim()
+  const amount = Number(chargeForm.value.amount)
+  if (!description || !(amount > 0)) {
+    toast.error('Consumo inválido', 'Poné una descripción y un monto mayor a 0')
+    return
+  }
+  addingCharge.value = true
+  try {
+    await FoliosService.charge(checkoutFolio.value.id, { description, amount, category: chargeForm.value.category, quantity: 1 })
+    // Recargar el folio para reflejar el nuevo saldo; el pago sugerido deja de ser válido.
+    checkoutFolio.value = await FoliosService.get(checkoutFolio.value.id)
+    settleMethod.value = null
+    debtAck.value = false
+    resetChargeForm()
+    toast.success('Consumo agregado')
+  } catch {
+    toast.error('No se pudo agregar el consumo', 'Reintentá en unos segundos')
+    addingCharge.value = false
+  }
 }
 
 async function doCheckout(guest: CheckinGuest) {
@@ -991,6 +1063,13 @@ async function doCheckout(guest: CheckinGuest) {
 
 async function confirmCheckout() {
   if (!checkoutGuest.value || processing.value) return
+  // #5 — Guarda de deuda: si el huésped se va con saldo pendiente y no se registró un pago,
+  // exigir confirmación explícita (checkbox) antes de cerrar el check-out con deuda.
+  const balance = checkoutFolio.value?.balance || 0
+  if (balance > 0 && !settleMethod.value && !debtAck.value) {
+    toast.error('Saldo pendiente', `Registrá el pago o confirmá el check-out con deuda de $${balance.toFixed(2)}`)
+    return
+  }
   await doCheckout(checkoutGuest.value)
 }
 </script>
