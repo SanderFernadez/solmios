@@ -44,11 +44,21 @@
             </div>
 
             <template v-else>
-              <!-- Sin cerradura asignada -->
-              <div v-if="!lock" class="text-center py-8">
-                <div class="text-3xl mb-2">🔓</div>
-                <p class="text-sm font-bold text-navy">Sin cerradura asignada</p>
-                <p class="text-xs text-text-muted mt-1">Asigná una cerradura a esta habitación desde <router-link to="/panel/cerraduras" class="text-cyan underline">Cerraduras</router-link>.</p>
+              <!-- Sin cerradura asignada: asignar una desde acá mismo -->
+              <div v-if="!lock" class="py-6">
+                <div class="text-center mb-4">
+                  <div class="text-3xl mb-2">🔓</div>
+                  <p class="text-sm font-bold text-navy">Sin cerradura asignada</p>
+                  <p class="text-xs text-text-muted mt-1">Asigná una cerradura sincronizada a esta habitación.</p>
+                </div>
+                <div v-if="availableLocks.length" class="space-y-2">
+                  <select v-model="assignLockId" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
+                    <option value="">Elegí una cerradura…</option>
+                    <option v-for="l in availableLocks" :key="l.id" :value="l.id">{{ l.name || l.id }}</option>
+                  </select>
+                  <button @click="assignLock" :disabled="!assignLockId || assigning" class="w-full py-2.5 bg-navy text-white text-xs font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ assigning ? 'Asignando…' : 'Asignar cerradura' }}</button>
+                </div>
+                <p v-else class="text-xs text-text-muted text-center">No hay cerraduras sincronizadas sin asignar. Sincronizá tus cerraduras TTLock primero.</p>
               </div>
 
               <!-- Tab Cerradura -->
@@ -79,6 +89,24 @@
                   {{ unlocking ? 'Abriendo…' : 'Abrir puerta' }}
                 </button>
                 <p v-if="lock.status !== 'online'" class="text-[10px] text-text-muted text-center">La cerradura debe estar online para abrir en remoto.</p>
+
+                <!-- Cambiar / desasignar la cerradura de esta habitación -->
+                <div class="pt-2 border-t border-border">
+                  <button v-if="!showReassign" @click="showReassign = true" class="text-[11px] font-bold text-text-muted hover:text-navy transition-colors cursor-pointer">Cambiar / desasignar cerradura</button>
+                  <div v-else class="space-y-2">
+                    <div class="flex gap-2">
+                      <select v-model="assignLockId" class="flex-1 px-3 py-2 rounded-lg border border-border text-xs cursor-pointer">
+                        <option value="">Cambiar a…</option>
+                        <option v-for="l in availableLocks" :key="l.id" :value="l.id">{{ l.name || l.id }}</option>
+                      </select>
+                      <button @click="assignLock" :disabled="!assignLockId || assigning" class="px-3 py-2 bg-navy text-white text-xs font-bold rounded-lg hover:bg-navy-light disabled:opacity-50 cursor-pointer">Cambiar</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button @click="unassignLock" :disabled="assigning" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer disabled:opacity-50">Desasignar de esta habitación</button>
+                      <button @click="showReassign = false" class="text-[11px] font-bold text-text-muted hover:text-navy transition-colors cursor-pointer ml-auto">Cancelar</button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- Tab Códigos (BD / reservas) -->
@@ -190,6 +218,14 @@ const deletingId = ref<number | null>(null)
 const lock = ref<LockDevice | null>(null)
 const codes = ref<LockCode[]>([])
 
+// Asignación de cerradura desde el propio modal (autosuficiente, sin ir a la página avanzada).
+const allLocks = ref<LockDevice[]>([])
+const assignLockId = ref('')
+const assigning = ref(false)
+const showReassign = ref(false)
+// Cerraduras candidatas: las sincronizadas que no están asignadas a ninguna habitación.
+const availableLocks = computed(() => allLocks.value.filter(l => !l.roomId))
+
 const gateways = ref<LockGatewayLink[]>([])
 const gatewayLoading = ref(false)
 
@@ -244,7 +280,8 @@ async function load() {
   activeCodes.value = []; records.value = []; gateways.value = []
   try {
     const [locksRes, codesRes] = await Promise.all([TTLockService.listLocks(), TTLockService.listCodes()])
-    lock.value = (locksRes.data || []).find(l => l.roomId === props.roomId) || null
+    allLocks.value = locksRes.data || []
+    lock.value = allLocks.value.find(l => l.roomId === props.roomId) || null
     codes.value = lock.value ? (codesRes.data || []).filter(c => c.lockId === lock.value!.id) : []
   } catch {
     toast.error('No se pudo cargar la cerradura')
@@ -370,8 +407,41 @@ async function revoke(code: LockCode) {
   }
 }
 
+async function assignLock() {
+  if (!assignLockId.value || !props.roomId || assigning.value) return
+  assigning.value = true
+  try {
+    await TTLockService.updateLock(assignLockId.value, { roomId: props.roomId })
+    assignLockId.value = ''
+    showReassign.value = false
+    await load()
+    emit('changed')
+    toast.success('Cerradura asignada a la habitación')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo asignar la cerradura')
+  } finally {
+    assigning.value = false
+  }
+}
+
+async function unassignLock() {
+  if (!lock.value?.id || assigning.value) return
+  assigning.value = true
+  try {
+    await TTLockService.updateLock(lock.value.id, { roomId: '' })
+    showReassign.value = false
+    await load()
+    emit('changed')
+    toast.success('Cerradura desasignada')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo desasignar la cerradura')
+  } finally {
+    assigning.value = false
+  }
+}
+
 watch(() => props.roomId, (id) => {
-  if (id) { tab.value = 'device'; fijoCode.value = ''; fijoName.value = ''; load() }
+  if (id) { tab.value = 'device'; fijoCode.value = ''; fijoName.value = ''; assignLockId.value = ''; showReassign.value = false; load() }
 })
 </script>
 
