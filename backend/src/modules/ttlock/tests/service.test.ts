@@ -143,6 +143,62 @@ describe('TtlockService', () => {
     })
   })
 
+  describe('expireCodesByReservation — checkout best-effort', () => {
+    it('marca expired cuando el borrado físico funciona', async () => {
+      const updates: any[] = []
+      const orm = makeOrm({
+        findMany: async (table: string) => {
+          if (table === 'Configuration') return [{ id: 'cfg1', value: JSON.stringify({ clientId: 'test', accessToken: 'tok', region: 'eu' }) }]
+          if (table === 'LockCodes') return [{ id: 'c1', reservationId: 'res1', lockId: 'l1', hotelId: 'h1', status: 'active', ttlockKeyboardPwdId: '999' }]
+          return []
+        },
+        findById: async (table: string) => {
+          if (table === 'LockDevices') return { id: 'l1', hotelId: 'h1', ttlockLockId: '123' }
+          return null
+        },
+        update: async (_t: string, id: string, data: any) => { updates.push({ id, ...data }) },
+      })
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => new Response(JSON.stringify({ errcode: 0 }))) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+        await svc.expireCodesByReservation('res1')
+      } finally {
+        globalThis.fetch = realFetch
+      }
+      expect(updates).toEqual([{ id: 'c1', status: 'expired' }])
+    })
+
+    // El PIN sigue abriendo la puerta: NO se puede mentir con 'expired'.
+    it('NO marca expired si el borrado físico falla — queda expire_failed', async () => {
+      const updates: any[] = []
+      const orm = makeOrm({
+        findMany: async (table: string) => {
+          if (table === 'Configuration') return [{ id: 'cfg1', value: JSON.stringify({ clientId: 'test', accessToken: 'tok', region: 'eu' }) }]
+          if (table === 'LockCodes') return [{ id: 'c1', reservationId: 'res1', lockId: 'l1', hotelId: 'h1', status: 'active', ttlockKeyboardPwdId: '999' }]
+          return []
+        },
+        findById: async (table: string) => {
+          if (table === 'LockDevices') return { id: 'l1', hotelId: 'h1', ttlockLockId: '123' }
+          return null
+        },
+        update: async (_t: string, id: string, data: any) => { updates.push({ id, ...data }) },
+      })
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => new Response(JSON.stringify({ errcode: 10003, errmsg: 'invalid token' }))) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+        await svc.expireCodesByReservation('res1')
+      } finally {
+        globalThis.fetch = realFetch
+      }
+      expect(updates).toEqual([{ id: 'c1', status: 'expire_failed' }])
+      expect(updates.some(u => u.status === 'expired')).toBe(false)
+    })
+  })
+
   // SEC-5.3 (#351): un merchant NO puede generar el código de puerta de una reserva de OTRO hotel.
   // El guard está en generateCodeForReservation: `if (res.hotelId !== hotelId) throw 'Sin acceso'`,
   // que corta ANTES de tocar la cerradura (por eso no hace falta mockear el cliente TTLock).

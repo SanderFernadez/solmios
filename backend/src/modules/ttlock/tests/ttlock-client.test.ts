@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'bun:test'
 import { createHash } from 'node:crypto'
-import { getAccessToken, addKeyboardPassword, deleteKeyboardPassword } from '../../../services/ttlock-client'
+import { getAccessToken, addKeyboardPassword, deleteKeyboardPassword, randomPin } from '../../../services/ttlock-client'
 
 const realFetch = globalThis.fetch
 afterEach(() => { globalThis.fetch = realFetch })
@@ -17,6 +17,34 @@ function captureFetch(response: any) {
 }
 
 describe('ttlock-client', () => {
+  describe('randomPin — CSPRNG, no Math.random', () => {
+    it('siempre son 6 dígitos numéricos (padding incluido)', () => {
+      for (let i = 0; i < 5000; i++) {
+        const pin = randomPin()
+        expect(pin).toMatch(/^[0-9]{6}$/)
+      }
+    })
+
+    it('el rango es 000000-999999 y cubre los extremos con leading zeros', () => {
+      let sawLeadingZero = false
+      let min = Infinity
+      let max = -Infinity
+      for (let i = 0; i < 20000; i++) {
+        const pin = randomPin()
+        expect(pin).toHaveLength(6)
+        const n = Number(pin)
+        expect(n).toBeGreaterThanOrEqual(0)
+        expect(n).toBeLessThanOrEqual(999999)
+        if (pin[0] === '0') sawLeadingZero = true
+        if (n < min) min = n
+        if (n > max) max = n
+      }
+      // El PIN es una credencial física: el rango completo incluye 0xxxxx (antes se
+      // arrancaba en 100000 con Math.random). Verificamos que el padding preserva 6 dígitos.
+      expect(sawLeadingZero).toBe(true)
+    })
+  })
+
   describe('getAccessToken', () => {
     it('manda el password como MD5 hex de 32 chars en minúsculas', async () => {
       const seen = captureFetch({ access_token: 'tok', refresh_token: 'ref' })

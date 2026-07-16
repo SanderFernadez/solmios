@@ -102,6 +102,22 @@ describe('PushTokensService.register', () => {
     expect(updated[0]).toMatchObject({ id: 'p1', userId: 'u2' })
   })
 
+  // SEGURIDAD cross-tenant: un usuario de OTRO hotel que conoce el token opaco NO
+  // puede robárselo reasignándolo a su hotelId. El token ajeno es invisible acá.
+  it('nunca reasigna un token que pertenece a otro hotel', async () => {
+    const attacker: PushUser = { id: 'evil', hotelId: 'h2' }
+    const { repo, updated, created } = repoWith([row({ id: 'p1', token: 'tok-1', userId: 'u1', hotelId: 'h1' })])
+    const svc = new PushTokensService(repo, log)
+
+    await svc.register({ token: 'tok-1' }, attacker)
+
+    // La fila original de h1 queda intacta...
+    expect(updated).toHaveLength(0)
+    // ...y el token se registra como NUEVO, scoped al hotel del atacante (nunca cruza tenants).
+    expect(created).toHaveLength(1)
+    expect(created[0]).toMatchObject({ token: 'tok-1', userId: 'evil', hotelId: 'h2' })
+  })
+
   it('sin platform lo guarda en null, no lo inventa', async () => {
     const { repo, created } = repoWith([])
     const svc = new PushTokensService(repo, log)

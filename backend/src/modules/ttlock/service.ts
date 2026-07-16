@@ -144,12 +144,18 @@ export class TtlockService {
       // ttlockKeyboardPwdId `removePinFromLock` es no-op, así que no toca hardware, pero la
       // fila deja de figurar como vigente.
       if (c.status !== 'active' && c.status !== 'pending') continue
-      // El checkout no puede fallar porque una cerradura no responda: logueamos y seguimos,
-      // pero el código igual queda marcado como expirado para que no se muestre como vigente.
+      // El checkout no puede fallar porque una cerradura no responda: logueamos y seguimos.
+      // PERO si el borrado físico falla, el PIN SIGUE ABRIENDO LA PUERTA: marcarlo 'expired'
+      // sería mentir (seguridad). Lo dejamos en 'expire_failed' — un estado distinto de 'expired'
+      // que refleja el fallo y permite reintentar/auditar. No requiere columna nueva: `status` es
+      // texto libre (sin CHECK) y 'expire_failed' no cuenta como vigente (active/pending) ni como
+      // revocado limpio (expired/revoked).
       try {
         await this.removePinFromLock(c)
       } catch (e: any) {
-        this.logger.error(`No se pudo borrar el PIN ${c.id} de la cerradura: ${e?.message || e}`)
+        this.logger.error(`No se pudo borrar el PIN ${c.id} de la cerradura, el código SIGUE ACTIVO: ${e?.message || e}`)
+        await this.lockCodesRepo.update(c.id, { status: 'expire_failed' })
+        continue
       }
       await this.lockCodesRepo.update(c.id, { status: 'expired' })
     }

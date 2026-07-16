@@ -79,21 +79,29 @@ export class PushTokensService {
   /**
    * Guarda el token de este teléfono para este usuario.
    *
-   * Se busca por token, no por usuario. Si el teléfono ya estaba registrado a
-   * nombre de otro —el turno anterior cerró sesión y entró otra persona— el
-   * token pasa de dueño: si no, la camarera de la mañana recibiría los mensajes
-   * de la noche.
+   * Se busca por token dentro del MISMO hotel (multi-tenant). Reasignar un token
+   * a otro dueño solo es legítimo dentro del hotel —el turno anterior cerró sesión
+   * y entró otra persona en el mismo teléfono— así la camarera de la mañana no
+   * recibe los mensajes de la noche.
+   *
+   * SEGURIDAD (cross-tenant hijack): un token FCM es opaco pero adivinable/filtrable.
+   * Si buscáramos solo por token global, cualquier usuario de OTRO hotel que conozca
+   * el token se lo reasignaría a su hotelId y empezaría a recibir los pushes de la
+   * habitación ajena. Por eso el `findMany` filtra por `hotelId` del usuario
+   * autenticado: un token de otro tenant es invisible acá y se registra como nuevo,
+   * scoped a este hotel. Nunca movemos un token entre hoteles.
    */
   async register(dto: RegisterPushTokenDTO, user: PushUser): Promise<PushTokenDTO> {
     const platform = dto.platform ?? null
-    const [existing] = await this.repo.findMany({ token: dto.token })
+    const [existing] = await this.repo.findMany({ token: dto.token, hotelId: user.hotelId })
 
     if (existing) {
-      if (existing.userId === user.id && existing.hotelId === user.hotelId) return existing
-      this.logger.info('Token de push cambia de dueño', { from: existing.userId, to: user.id })
+      if (existing.userId === user.id) return existing
+      this.logger.info('Token de push cambia de dueño (mismo hotel)', {
+        hotelId: user.hotelId, from: existing.userId, to: user.id,
+      })
       const updated = await this.repo.update(existing.id, {
         userId: user.id,
-        hotelId: user.hotelId,
         platform,
       } as Partial<Omit<PushTokenDTO, 'id'>>)
       return updated ?? existing

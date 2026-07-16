@@ -5,7 +5,7 @@
 // Las credenciales viven en `configuration` (key: ttlock_config), NUNCA en código.
 // Regiones: eu (euapi.sciener.com) · us (api.us.sciener.com) · cn (api.sciener.com).
 
-import { createHash } from 'node:crypto'
+import { createHash, randomInt } from 'node:crypto'
 
 const REGION_BASE: Record<string, string> = {
   eu: 'https://euapi.sciener.com',
@@ -22,11 +22,14 @@ const REGION_BASE: Record<string, string> = {
 export type TTLockAddType = 1 | 2 | 3
 export const DEFAULT_ADD_TYPE: TTLockAddType = 2
 
-/** Genera un PIN numérico aleatorio de seis dígitos para una cerradura TTLock. */
+/**
+ * Genera un PIN numérico de seis dígitos para una cerradura TTLock.
+ * Usa un CSPRNG (`crypto.randomInt`, no `Math.random`): el PIN es una credencial
+ * física de acceso, un generador predecible permitiría adivinarlo. Rango completo
+ * 000000-999999 con padding a 6 dígitos (Sciener espera el PIN como string numérico).
+ */
 export function randomPin(): string {
-  const min = 100000
-  const span = 900000
-  return String(Math.floor(min + Math.random() * span))
+  return String(randomInt(0, 1_000_000)).padStart(6, '0')
 }
 
 function base(region?: string): string {
