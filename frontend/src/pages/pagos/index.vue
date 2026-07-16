@@ -123,6 +123,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth.store'
 import {
   PaymentGatewayService,
   type PaymentGateway,
@@ -131,6 +132,7 @@ import {
 } from '@/services/PaymentGateway.service'
 
 const toast = useToast()
+const auth = useAuthStore()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -194,7 +196,13 @@ const providers = computed(() => CATALOG)
 
 const current = computed(() => (openForm.value ? gatewayOf(openForm.value) : undefined))
 
-const webhookUrl = computed(() => `${window.location.origin}/api/webhooks/stripe/{tuHotelId}`)
+// La ruta real del backend es /api/stripe/webhook/:hotelId (payment-requests/index.ts). Antes acá
+// figuraba /api/webhooks/stripe/{tuHotelId} — path invertido y el placeholder sin reemplazar: quien
+// registraba ESA URL en Stripe recibía 404 y el pago de la seña nunca se confirmaba.
+const webhookUrl = computed(() => {
+  const hid = auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : '{tuHotelId}'
+  return `${window.location.origin}/api/stripe/webhook/${hid}`
+})
 
 function gatewayOf(provider: PaymentProvider): PaymentGateway | undefined {
   return gateways.value.find(g => g.provider === provider)
