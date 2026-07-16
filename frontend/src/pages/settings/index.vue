@@ -806,7 +806,7 @@ const tabs = [
   { value: 'hotel' as string, label: 'Hotel' },
   { value: 'location' as string, label: 'Ubicación' },
   { value: 'amenities' as string, label: 'Amenities' },
-  { value: 'rates' as string, label: 'Tarifas' },
+  { value: 'rates' as string, label: 'Temporadas y Tarifas' },
   { value: 'conditions' as string, label: 'Condiciones' },
   { value: 'description' as string, label: 'Descripción' },
   { value: 'integrations' as string, label: 'Integraciones' },
