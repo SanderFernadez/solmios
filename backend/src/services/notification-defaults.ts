@@ -4,7 +4,7 @@
 // vive en auto_messages; este archivo es el fallback. Versionado con git, testeable sin DB.
 // Las variables {key} se interpolan con renderTemplate() de email-service (6.1.2).
 
-export type NotificationEvent = 'reservation_confirmed' | 'reservation_presale' | 'checkin_welcome' | 'no_show' | 'checkout'
+export type NotificationEvent = 'reservation_confirmed' | 'reservation_presale' | 'checkin_welcome' | 'no_show' | 'checkout' | 'invoice' | 'reminder'
 export type NotificationLanguage = 'es' | 'en' | 'pt'
 
 export interface NotificationDefault {
@@ -381,6 +381,158 @@ const CHECKOUT_PT = `<!DOCTYPE html>
   </div>
 </body></html>`
 
+// ─── invoice (envío de factura al huésped) ─────────────────────────────────
+// Email que acompaña el envío de una factura. Placeholders solo del set resoluble
+// por los consumidores (hotel_name, guest_name, room_number, fechas, total_amount,
+// locator, hotel_phone, logo_url). El PDF/detalle de la factura va aparte.
+
+const INVOICE_ES = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:24px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Tu factura</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Hola <strong>{guest_name}</strong>,</p>
+    <p>Te enviamos la factura correspondiente a tu estancia. Aquí tienes el detalle:</p>
+    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
+      <table style="width:100%;font-size:14px;">
+        <tr><td style="padding:6px 0;color:#6b7280;">Habitación</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
+        <tr><td style="padding:6px 0;border-top:2px solid #e5e7eb;color:#1a2b4c;font-weight:bold;">Total</td><td style="padding:6px 0;border-top:2px solid #e5e7eb;font-weight:bold;text-align:right;font-size:18px;color:#1a2b4c;">{total_amount}</td></tr>
+      </table>
+    </div>
+    <p style="font-size:13px;color:#6b7280;">Localizador: <strong>{locator}</strong></p>
+    <p style="font-size:13px;color:#6b7280;">Si tenés alguna consulta sobre tu factura, llamá al <strong>{hotel_phone}</strong>.</p>
+    <p style="font-size:13px;color:#6b7280;">¡Gracias por tu preferencia!</p>
+  </div>
+</body></html>`
+
+const INVOICE_EN = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:24px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Your invoice</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Hi <strong>{guest_name}</strong>,</p>
+    <p>Here is the invoice for your stay. Please find the details below:</p>
+    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
+      <table style="width:100%;font-size:14px;">
+        <tr><td style="padding:6px 0;color:#6b7280;">Room</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
+        <tr><td style="padding:6px 0;border-top:2px solid #e5e7eb;color:#1a2b4c;font-weight:bold;">Total</td><td style="padding:6px 0;border-top:2px solid #e5e7eb;font-weight:bold;text-align:right;font-size:18px;color:#1a2b4c;">{total_amount}</td></tr>
+      </table>
+    </div>
+    <p style="font-size:13px;color:#6b7280;">Booking ref: <strong>{locator}</strong></p>
+    <p style="font-size:13px;color:#6b7280;">If you have any questions about your invoice, call <strong>{hotel_phone}</strong>.</p>
+    <p style="font-size:13px;color:#6b7280;">Thank you for choosing us!</p>
+  </div>
+</body></html>`
+
+const INVOICE_PT = `<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:24px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">A sua fatura</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Olá <strong>{guest_name}</strong>,</p>
+    <p>Enviamos a fatura referente à sua estadia. Aqui estão os detalhes:</p>
+    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
+      <table style="width:100%;font-size:14px;">
+        <tr><td style="padding:6px 0;color:#6b7280;">Quarto</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
+        <tr><td style="padding:6px 0;border-top:2px solid #e5e7eb;color:#1a2b4c;font-weight:bold;">Total</td><td style="padding:6px 0;border-top:2px solid #e5e7eb;font-weight:bold;text-align:right;font-size:18px;color:#1a2b4c;">{total_amount}</td></tr>
+      </table>
+    </div>
+    <p style="font-size:13px;color:#6b7280;">Localizador: <strong>{locator}</strong></p>
+    <p style="font-size:13px;color:#6b7280;">Para qualquer dúvida sobre a sua fatura, ligue para <strong>{hotel_phone}</strong>.</p>
+    <p style="font-size:13px;color:#6b7280;">Obrigado pela sua preferência!</p>
+  </div>
+</body></html>`
+
+// ─── reminder (recordatorio pre-llegada) ────────────────────────────────────
+// Recordatorio previo al check-in. Placeholders solo del set resoluble.
+
+const REMINDER_ES = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:24px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Recordatorio de tu llegada</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Hola <strong>{guest_name}</strong>,</p>
+    <p>Te recordamos que tu llegada se acerca. Estos son los datos de tu reserva:</p>
+    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
+      <table style="width:100%;font-size:14px;">
+        <tr><td style="padding:6px 0;color:#6b7280;">Habitación</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
+      </table>
+    </div>
+    <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
+    <p style="font-size:13px;color:#6b7280;">Localizador: <strong>{locator}</strong></p>
+    <p style="font-size:13px;color:#6b7280;">Si necesitás algo antes de llegar, llamá al <strong>{hotel_phone}</strong>.</p>
+    <p style="font-size:14px;">¡Te esperamos!</p>
+  </div>
+</body></html>`
+
+const REMINDER_EN = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:24px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Your arrival reminder</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Hi <strong>{guest_name}</strong>,</p>
+    <p>Just a reminder that your arrival is coming up. Here are your booking details:</p>
+    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
+      <table style="width:100%;font-size:14px;">
+        <tr><td style="padding:6px 0;color:#6b7280;">Room</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
+      </table>
+    </div>
+    <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
+    <p style="font-size:13px;color:#6b7280;">Booking ref: <strong>{locator}</strong></p>
+    <p style="font-size:13px;color:#6b7280;">If you need anything before you arrive, call <strong>{hotel_phone}</strong>.</p>
+    <p style="font-size:14px;">We look forward to welcoming you!</p>
+  </div>
+</body></html>`
+
+const REMINDER_PT = `<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#1a2b4c;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="margin:0;font-size:24px;">🏨 {hotel_name}</h1>
+    <p style="margin:5px 0 0;opacity:0.8;">Lembrete da sua chegada</p>
+  </div>
+  <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+    <p style="font-size:16px;">Olá <strong>{guest_name}</strong>,</p>
+    <p>Lembramos que a sua chegada está próxima. Aqui estão os dados da sua reserva:</p>
+    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
+      <table style="width:100%;font-size:14px;">
+        <tr><td style="padding:6px 0;color:#6b7280;">Quarto</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
+      </table>
+    </div>
+    <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
+    <p style="font-size:13px;color:#6b7280;">Localizador: <strong>{locator}</strong></p>
+    <p style="font-size:13px;color:#6b7280;">Se precisar de algo antes de chegar, ligue para <strong>{hotel_phone}</strong>.</p>
+    <p style="font-size:14px;">Esperamos por si!</p>
+  </div>
+</body></html>`
+
 // ─── Registro central ───────────────────────────────────────────────────────
 
 export const NOTIFICATION_DEFAULTS: Record<NotificationEvent, Partial<Record<NotificationLanguage, NotificationDefault>>> = {
@@ -408,6 +560,16 @@ export const NOTIFICATION_DEFAULTS: Record<NotificationEvent, Partial<Record<Not
     es: { subject: '¡Gracias por tu estancia en {hotel_name}!', body: CHECKOUT_ES },
     en: { subject: 'Thank you for your stay at {hotel_name}!', body: CHECKOUT_EN },
     pt: { subject: 'Obrigado pela sua estadia em {hotel_name}!', body: CHECKOUT_PT },
+  },
+  invoice: {
+    es: { subject: 'Tu factura — {hotel_name}', body: INVOICE_ES },
+    en: { subject: 'Your invoice — {hotel_name}', body: INVOICE_EN },
+    pt: { subject: 'A sua fatura — {hotel_name}', body: INVOICE_PT },
+  },
+  reminder: {
+    es: { subject: 'Recordatorio de tu llegada — {hotel_name}', body: REMINDER_ES },
+    en: { subject: 'Your arrival reminder — {hotel_name}', body: REMINDER_EN },
+    pt: { subject: 'Lembrete da sua chegada — {hotel_name}', body: REMINDER_PT },
   },
 }
 

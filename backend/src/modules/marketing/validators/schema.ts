@@ -12,7 +12,7 @@ export const CreateAutoMessageSchema: Record<string, ValidationRule> = {
   emailBody: { type: 'string' as const },
   whatsappBody: { type: 'string' as const },
   // Notification templates configurable + i18n (spec 11.1.6).
-  event: { type: 'string' as const, enum: ['reservation_confirmed','reservation_presale','checkin_welcome','no_show','checkout'] },
+  event: { type: 'string' as const, enum: ['reservation_confirmed','reservation_presale','checkin_welcome','no_show','checkout','invoice','reminder'] },
   language: { type: 'string' as const, enum: ['es','en','pt'] },
   triggerType: { type: 'string' as const, enum: ['immediate','cron'] },
 }
@@ -34,7 +34,7 @@ export const UpdateAutoMessageSchema: Record<string, ValidationRule> = {
   emailBody: { type: 'string' as const },
   whatsappBody: { type: 'string' as const },
   // Notification templates configurable + i18n (spec 11.1.6) — editables en update
-  event: { type: 'string' as const, enum: ['reservation_confirmed','reservation_presale','checkin_welcome','no_show','checkout'] },
+  event: { type: 'string' as const, enum: ['reservation_confirmed','reservation_presale','checkin_welcome','no_show','checkout','invoice','reminder'] },
   language: { type: 'string' as const, enum: ['es','en','pt'] },
   triggerType: { type: 'string' as const, enum: ['immediate','cron'] },
   isActive: { type: 'number' as const },
