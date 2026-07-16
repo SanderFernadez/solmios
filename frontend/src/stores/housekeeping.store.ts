@@ -172,8 +172,17 @@ export const useHousekeepingStore = defineStore('housekeeping', () => {
     stats.value = await HousekeepingService.stats(currentHotelId.value, from, to)
   }
 
+  /// Aprueba y califica una limpieza (1–10). El backend exige presencia marcada
+  /// antes de aprobar, así que el admin que revisa desde el panel la sella en el
+  /// mismo paso, y después aprueba con la calificación.
+  async function approveTask(id: string, rating: number, note?: string) {
+    await HousekeepingService.markPresence(id)
+    await HousekeepingService.approve(id, rating, note)
+    await load(currentHotelId.value)
+  }
+
   return {
     tasks, stats, staff, rooms, loading,
-    load, createTask, updateTask, startTask, completeTask, uploadPhoto, removePhoto, loadStats,
+    load, createTask, updateTask, startTask, completeTask, uploadPhoto, removePhoto, loadStats, approveTask,
   }
 })

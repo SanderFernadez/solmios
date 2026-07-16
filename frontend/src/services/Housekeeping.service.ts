@@ -99,6 +99,16 @@ export const HousekeepingService = {
   async videoViewUrl(id: string) {
     return http.get<VideoViewUrl>(`/housekeeping/${id}/video/view-url`)
   },
+  /** Marca la presencia del supervisor (sella `supOnSiteTime`). El backend lo exige
+   *  antes de aprobar; el admin que revisa desde el panel la marca en el mismo paso. */
+  async markPresence(id: string) {
+    return http.post(`/housekeeping/${id}/presence`, {})
+  },
+  /** Aprueba y CALIFICA la limpieza (1–10). Deja `supervisorId`, la nota y pasa la
+   *  tarea a `inspected`. `rating` es obligatorio en el backend. */
+  async approve(id: string, rating: number, note?: string) {
+    return http.post<HousekeepingTask>(`/housekeeping/${id}/approve`, { rating, note })
+  },
   async stats(hotelId?: string, from?: string, to?: string) {
     const params = new URLSearchParams()
     if (hotelId) params.set('hotelId', hotelId)

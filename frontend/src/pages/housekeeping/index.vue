@@ -312,6 +312,30 @@
             </div>
           </div>
 
+          <!-- Calificar y aprobar (solo si está completada y sin calificar) -->
+          <div v-if="selectedTask.status === 'completed'" class="rounded-2xl border-2 border-cyan/40 bg-cyan/5 p-4">
+            <div class="text-[10px] font-bold text-cyan uppercase tracking-wide mb-1.5">Calificar limpieza</div>
+            <p class="text-xs text-text-secondary mb-3">Poné la calificación del 1 al 10 y aprobá la habitación.</p>
+            <div class="flex items-center gap-0.5 mb-3">
+              <button
+                v-for="n in 10" :key="n" type="button" @click="ratingInput = n"
+                class="text-2xl leading-none transition-transform hover:scale-110 cursor-pointer"
+                :class="ratingInput != null && n <= ratingInput ? 'text-cyan' : 'text-border'"
+              >★</button>
+              <span v-if="ratingInput != null" class="ml-2 text-sm font-black text-navy tabular-nums">{{ ratingInput }} / 10</span>
+            </div>
+            <textarea
+              v-model="ratingNote" rows="2" maxlength="500"
+              placeholder="Nota para la camarera (opcional)…"
+              class="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:border-cyan resize-none mb-3"
+            ></textarea>
+            <button
+              @click="approveSelected"
+              :disabled="ratingInput == null || approving"
+              class="w-full py-2.5 bg-cyan text-navy rounded-xl text-sm font-extrabold hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >{{ approving ? 'Aprobando…' : 'Aprobar y calificar' }}</button>
+          </div>
+
           <!-- Revisión del supervisor: puntos + quién aprobó + nota, todo junto -->
           <div v-if="selectedTask.rating != null || selectedTask.supervisorName || selectedTask.supervisorNote" class="rounded-2xl border border-border p-4">
             <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-3">Revisión del supervisor</div>
@@ -345,9 +369,15 @@
             </div>
             <div v-if="selectedTask.photos.length" class="grid grid-cols-3 gap-2">
               <div v-for="photo in selectedTask.photos" :key="photo.url" class="relative group">
-                <img :src="photo.url" :alt="photo.name" class="w-full h-20 object-cover rounded-lg border border-border" />
+                <img
+                  :src="photo.url"
+                  :alt="photo.name"
+                  loading="lazy"
+                  @click="lightboxUrl = photo.url"
+                  class="w-full h-20 object-cover rounded-lg border border-border cursor-zoom-in bg-surface"
+                />
                 <button
-                  @click="onRemovePhoto(photo.url)"
+                  @click.stop="onRemovePhoto(photo.url)"
                   class="absolute top-1 right-1 w-5 h-5 bg-red text-white rounded-full text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                 >✕</button>
               </div>
@@ -500,6 +530,27 @@
       </div>
     </div>
     </Transition>
+
+    <!-- Lightbox: foto de evidencia a tamaño completo (los thumbnails no dejan verla bien) -->
+    <Teleport to="body">
+      <div
+        v-if="lightboxUrl"
+        @click="lightboxUrl = null"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
+      >
+        <img
+          :src="lightboxUrl"
+          alt="Evidencia"
+          @click.stop
+          class="max-w-full max-h-full rounded-xl shadow-2xl object-contain select-none"
+        />
+        <button
+          @click.stop="lightboxUrl = null"
+          class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-white/90 text-navy rounded-full text-lg font-bold cursor-pointer hover:bg-white transition-colors"
+          aria-label="Cerrar"
+        >✕</button>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -524,11 +575,20 @@ const showViewModal = ref(false)
 const showNewModal = ref(false)
 const showAssignModal = ref(false)
 const selectedTask = ref<HousekeepingViewTask>(blankTask())
+// Foto de evidencia ampliada (lightbox). Los thumbnails de 80px no dejan ver el
+// detalle de la limpieza; al hacer click se abre a tamaño completo.
+const lightboxUrl = ref<string | null>(null)
 // Video de evidencia: la URL se pide firmada al abrir el detalle (el bucket es
 // privado, no se puede linkear directo). Se resetea entre tareas.
 const videoUrl = ref<string | null>(null)
 const videoLoading = ref(false)
 const videoError = ref<string | null>(null)
+// Visor de imágenes a pantalla completa (click en una foto de evidencia).
+const lightboxUrl = ref<string | null>(null)
+// Calificación de la limpieza desde el panel (1–10) + nota del supervisor.
+const ratingInput = ref<number | null>(null)
+const ratingNote = ref('')
+const approving = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
 const assignStaff = ref('')
@@ -741,7 +801,9 @@ function primaryAction(task: HousekeepingViewTask): { label: string; fn: () => P
       ? { label: '▶ Iniciar', fn: () => store.startTask(task.id) }
       : { label: 'Asignar', fn: async () => { openEditTask(task) }, silent: true }
     case 'in_progress': return { label: 'Finalizar', fn: () => store.completeTask(task.id) }
-    case 'completed': return { label: 'Inspeccionar', fn: () => store.updateTask(task.id, { status: 'inspected' }) }
+    // 'completed' → la aprobación va por la tarjeta "Calificar limpieza" (exige puntaje),
+    // no por un botón genérico que dejaría la calificación en null.
+    case 'completed': return null
     case 'inspected': return { label: 'Reabrir', fn: () => store.updateTask(task.id, { status: 'pending' }) }
     default: return null
   }
@@ -768,7 +830,27 @@ function syncSelectedTask(id: string) {
 function openViewTask(task: HousekeepingViewTask) {
   selectedTask.value = task
   showViewModal.value = true
+  // Reset del formulario de calificación entre tareas.
+  ratingInput.value = null
+  ratingNote.value = ''
   loadVideo(task)
+}
+
+// Califica (1–10) y aprueba la limpieza desde el panel. El store marca la presencia
+// y aprueba; la tarea pasa a 'inspected' con el puntaje y la nota.
+async function approveSelected() {
+  const task = selectedTask.value
+  if (!task.id || ratingInput.value == null || approving.value) return
+  approving.value = true
+  try {
+    await store.approveTask(task.id, ratingInput.value, ratingNote.value.trim() || undefined)
+    toast.success('Limpieza calificada y aprobada')
+    showViewModal.value = false
+  } catch (e: any) {
+    toast.error('No se pudo aprobar la limpieza', e?.message)
+  } finally {
+    approving.value = false
+  }
 }
 
 // Pide la URL firmada para reproducir el video, solo si la tarea tiene uno.
