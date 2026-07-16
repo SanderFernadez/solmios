@@ -142,4 +142,29 @@ describe('TtlockService', () => {
       expect(updated).toBe(false)
     })
   })
+
+  // SEC-5.3 (#351): un merchant NO puede generar el código de puerta de una reserva de OTRO hotel.
+  // El guard está en generateCodeForReservation: `if (res.hotelId !== hotelId) throw 'Sin acceso'`,
+  // que corta ANTES de tocar la cerradura (por eso no hace falta mockear el cliente TTLock).
+  describe('generateCode — aislamiento multi-tenant (SEC-5.3)', () => {
+    it('un merchant NO genera código de una reserva de otro hotel', async () => {
+      // findReservationById usa orm.findMany('Reservations', {id}); la reserva es del hotel 'h1'.
+      const orm = makeOrm({
+        findMany: async (table: string) => table === 'Reservations'
+          ? [{ id: 'res1', hotelId: 'h1', roomId: 'rm1', checkIn: '2026-06-01', checkOut: '2026-06-03' }]
+          : [],
+      })
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+      // token del hotel 'h2' intentando generar el PIN de la reserva del hotel 'h1'
+      await expect(svc.generateCode('h2', 'res1')).rejects.toThrow(/Sin acceso/)
+    })
+
+    it('rechaza si la reserva no existe', async () => {
+      const orm = makeOrm() // findMany('Reservations') → [] → null → 'Reserva no encontrada'
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+      await expect(svc.generateCode('h1', 'inexistente')).rejects.toThrow(/no encontrada/)
+    })
+  })
 })
