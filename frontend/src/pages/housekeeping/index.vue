@@ -583,8 +583,6 @@ const lightboxUrl = ref<string | null>(null)
 const videoUrl = ref<string | null>(null)
 const videoLoading = ref(false)
 const videoError = ref<string | null>(null)
-// Visor de imágenes a pantalla completa (click en una foto de evidencia).
-const lightboxUrl = ref<string | null>(null)
 // Calificación de la limpieza desde el panel (1–10) + nota del supervisor.
 const ratingInput = ref<number | null>(null)
 const ratingNote = ref('')
