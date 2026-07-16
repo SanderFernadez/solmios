@@ -107,7 +107,9 @@
                 <div class="w-56 flex-shrink-0 px-4 py-3 border-r border-border flex items-center gap-2">
                   <span class="font-bold text-sm text-navy">{{ room.number }}</span>
                   <span class="text-[10px] text-text-muted truncate">{{ room.type }}</span>
-                  <button @click.stop="openRoomLock(room)" class="ml-auto shrink-0 w-6 h-6 rounded-lg bg-navy/[0.06] hover:bg-cyan/20 text-navy/50 hover:text-cyan flex items-center justify-center transition-colors cursor-pointer" title="Cerradura de la habitación">
+                  <button @click.stop="openRoomLock(room)" class="ml-auto shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+                    :class="hasLock(room.id) ? 'bg-teal/15 text-teal hover:bg-teal/25' : 'bg-navy/[0.04] text-navy/25 hover:bg-navy/10 hover:text-navy/50'"
+                    :title="hasLock(room.id) ? 'Cerradura asignada — gestionar' : 'Sin cerradura asignada'">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                       <rect x="5" y="10" width="14" height="11" rx="2"/><path stroke-linecap="round" d="M8 10V7a4 4 0 0 1 8 0v3"/>
                       <circle cx="9" cy="14.5" r="0.7" fill="currentColor"/><circle cx="12" cy="14.5" r="0.7" fill="currentColor"/><circle cx="15" cy="14.5" r="0.7" fill="currentColor"/>
@@ -773,6 +775,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import RoomLockModal from '@/components/features/RoomLockModal.vue'
+import { TTLockService } from '@/services/TTLock.service'
 import { useRouter } from 'vue-router'
 
 // `embedded`: cuando el calendario se monta dentro del dashboard (home) en vez de la
@@ -789,6 +792,15 @@ const toast = useToast()
 // Acceso a la cerradura por habitación (🔒 en la fila). Pasa la reserva activa HOY (si la hay)
 // para poder generar el código desde acá; el modal resuelve la cerradura por roomId.
 const lockRoom = ref<{ id: string; number: string; reservationId: string | null } | null>(null)
+// roomIds que tienen una cerradura TTLock asignada → el candado de esas filas se pinta distinto.
+const lockedRoomIds = ref<Set<string>>(new Set())
+function hasLock(roomId: any) { return lockedRoomIds.value.has(String(roomId)) }
+async function loadLocks() {
+  try {
+    const r = await TTLockService.listLocks()
+    lockedRoomIds.value = new Set((r.data || []).filter(l => l.roomId).map(l => String(l.roomId)))
+  } catch { /* TTLock no configurado en este hotel: sin cerraduras marcadas */ }
+}
 function openRoomLock(room: any) {
   const today = visibleDays.value.find(d => d.isToday)
   const res = today ? gRes(room.id, today.dateStr) : null
@@ -801,6 +813,7 @@ async function onLockChanged() {
     planRooms.value = d.rooms ?? planRooms.value
     planReservas.value = d.reservas ?? planReservas.value
   } catch { /* recarga best-effort */ }
+  loadLocks()
 }
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
@@ -1623,6 +1636,7 @@ async function saveNewRes() {
 // Load
 onMounted(async () => {
   try { const d = await OperationsService.planning(hid.value); planRooms.value = d.rooms ?? []; planReservas.value = d.reservas ?? [] } catch {}
+  loadLocks()
   try { const b = await HotelService.blocks(); planBlocks.value = (b.data ?? []) as any[] } catch {}
   try {
     const s = await HotelService.settings(hid.value)
