@@ -1257,8 +1257,12 @@ function onResizeDown(rb: any, e: MouseEvent) {
 function onResDragMove(e: MouseEvent): boolean {
   const rd = resDrag.value
   if (!rd) return false
-  const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
-  const cell = el?.closest('[data-rid]') as HTMLElement | null
+  // elementsFromPoint (PLURAL): la barra que se arrastra sigue al cursor y queda ENCIMA de las
+  // celdas. Con elementFromPoint (singular) el punto caía sobre la barra → su celda origen, y
+  // `moved` nunca se activaba: mover no hacía nada y al soltar se abría el menú contextual.
+  // Buscamos la celda que está DEBAJO de la barra en la pila de elementos del cursor.
+  const stack = document.elementsFromPoint(e.clientX, e.clientY) as HTMLElement[]
+  const cell = stack.find(el => el.matches?.('[data-rid][data-date]'))
   if (!cell) return true
   const rid = cell.dataset.rid, date = cell.dataset.date
   if (!rid || !date) return true
