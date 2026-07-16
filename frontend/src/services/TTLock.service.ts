@@ -25,6 +25,26 @@ export interface LockCode {
   sentAt?: string
 }
 
+export interface LockGateway {
+  gatewayId: number
+  gatewayName?: string
+  gatewayMac?: string
+  networkName?: string
+  isOnline?: number
+  lockNum?: number
+}
+
+export interface LockActiveCode {
+  keyboardPwdId: number
+  keyboardPwd?: string
+  keyboardPwdName?: string
+  /** 1 permanente · 2 temporal · 3 período · 4 borrado (Sciener). */
+  keyboardPwdType?: number
+  startDate?: number
+  endDate?: number
+  status?: number
+}
+
 export interface TTLockConfig {
   clientId?: string
   clientSecret?: string
@@ -55,4 +75,8 @@ export const TTLockService = {
     http.put<LockDevice>(`/ttlock/lock/${id}`, patch),
   generateCode: (reservationId: string) => http.post<LockCode>(`/ttlock/generate-code/${reservationId}`),
   revokeCode: (id: string) => http.delete<{ success: boolean }>(`/ttlock/code/${id}`),
+  /** Gateways de la cuenta TTLock del hotel. */
+  listGateways: () => http.get<{ data: LockGateway[] }>('/ttlock/gateways'),
+  /** Códigos REALES vivos en el hardware de una cerradura (lockId = id de lock_devices). */
+  listActiveCodes: (lockId: string) => http.get<{ data: LockActiveCode[] }>(`/ttlock/locks/${lockId}/active-codes`),
 }

@@ -230,4 +230,52 @@ describe('TtlockService', () => {
       }
     })
   })
+
+  // Fase B: gateways + códigos activos leídos del hardware (no de la BD).
+  describe('listGateways / listActiveCodes', () => {
+    it('listGateways devuelve los gateways de la cuenta TTLock', async () => {
+      const orm = makeOrm()
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => new Response(JSON.stringify({ total: 1, list: [{ gatewayId: 2312994, gatewayName: 'gateway', isOnline: 1, lockNum: 1 }] }))) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+        const gws = await svc.listGateways('h1')
+        expect(gws).toHaveLength(1)
+        expect(gws[0].gatewayId).toBe(2312994)
+        expect(gws[0].isOnline).toBe(1)
+      } finally {
+        globalThis.fetch = realFetch
+      }
+    })
+
+    it('listActiveCodes lee los PIN reales del hardware de la cerradura', async () => {
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'h1', ttlockLockId: '123' } : null,
+      })
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => new Response(JSON.stringify({ total: 1, list: [{ keyboardPwdId: 1, keyboardPwd: '445566', nickName: 'Solmi', keyboardPwdType: 3, status: 1 }] }))) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const auth = { assertOwnership: () => {} } as any
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+        const codes = await svc.listActiveCodes('h1', 'l1')
+        expect(codes).toHaveLength(1)
+        expect(codes[0].keyboardPwd).toBe('445566')
+        expect(codes[0].keyboardPwdName).toBe('Solmi') // mapea nickName → keyboardPwdName
+      } finally {
+        globalThis.fetch = realFetch
+      }
+    })
+
+    it('listActiveCodes de una cerradura de OTRO hotel: assertOwnership corta', async () => {
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'h1', ttlockLockId: '123' } : null,
+      })
+      const queries = new TtlockQueries(orm)
+      const auth = { assertOwnership: (a: string, b: string) => { if (a !== b) throw new Error('Forbidden') } } as any
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+      await expect(svc.listActiveCodes('h2', 'l1')).rejects.toThrow(/Forbidden/)
+    })
+  })
 })

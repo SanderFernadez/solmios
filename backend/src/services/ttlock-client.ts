@@ -176,3 +176,82 @@ export async function deleteKeyboardPassword(
   })
   assertOk(await readJson(res), 'borrar PIN de cerradura')
 }
+
+export interface TTLockGateway {
+  gatewayId: number
+  gatewayName?: string
+  gatewayMac?: string
+  networkName?: string
+  isOnline?: number
+  lockNum?: number
+  gatewayVersion?: number
+}
+
+/** Lista los gateways de la cuenta TTLock (paginando). `isOnline` 1 = conectado. */
+export async function listGateways(c: TTLockCreds): Promise<TTLockGateway[]> {
+  if (!c.accessToken) throw new Error('Sin access_token de TTLock (conectá primero)')
+  const all: TTLockGateway[] = []
+  let pageNo = 1
+  for (;;) {
+    const qs = new URLSearchParams({
+      clientId: c.clientId, accessToken: c.accessToken,
+      pageNo: String(pageNo), pageSize: '50', date: String(nowMs()),
+    })
+    const data = await readJson(await fetch(`${base(c.region)}/v3/gateway/list?${qs}`))
+    assertOk(data, 'listar gateways')
+    const list: any[] = data?.list || []
+    for (const g of list) {
+      all.push({
+        gatewayId: g.gatewayId, gatewayName: g.gatewayName, gatewayMac: g.gatewayMac,
+        networkName: g.networkName, isOnline: g.isOnline, lockNum: g.lockNum, gatewayVersion: g.gatewayVersion,
+      })
+    }
+    const total = Number(data?.total ?? 0)
+    if (list.length < 50 || all.length >= total) break
+    pageNo++
+    if (pageNo > 20) break
+  }
+  return all
+}
+
+/**
+ * Un código tal como vive HOY en la cerradura física (distinto de la tabla `lock_codes` de la BD).
+ * `keyboardPwdType`: 1 permanente · 2 temporal · 3 período · 4 borrado, etc. (Sciener). `status` 1 = válido.
+ */
+export interface TTLockPasscode {
+  keyboardPwdId: number
+  keyboardPwd?: string
+  keyboardPwdName?: string
+  keyboardPwdType?: number
+  startDate?: number
+  endDate?: number
+  status?: number
+}
+
+/** Lee los códigos (keyboardPwd) reales de UNA cerradura física, paginando. */
+export async function listLockPasscodes(c: TTLockCreds, lockId: number): Promise<TTLockPasscode[]> {
+  if (!c.accessToken) throw new Error('Sin access_token de TTLock (conectá primero)')
+  const all: TTLockPasscode[] = []
+  let pageNo = 1
+  for (;;) {
+    const qs = new URLSearchParams({
+      clientId: c.clientId, accessToken: c.accessToken, lockId: String(lockId),
+      pageNo: String(pageNo), pageSize: '50', date: String(nowMs()),
+    })
+    const data = await readJson(await fetch(`${base(c.region)}/v3/lock/listKeyboardPwd?${qs}`))
+    assertOk(data, 'listar códigos de la cerradura')
+    const list: any[] = data?.list || []
+    for (const p of list) {
+      all.push({
+        keyboardPwdId: p.keyboardPwdId, keyboardPwd: p.keyboardPwd,
+        keyboardPwdName: p.keyboardPwdName ?? p.nickName, keyboardPwdType: p.keyboardPwdType,
+        startDate: p.startDate, endDate: p.endDate, status: p.status,
+      })
+    }
+    const total = Number(data?.total ?? 0)
+    if (list.length < 50 || all.length >= total) break
+    pageNo++
+    if (pageNo > 20) break
+  }
+  return all
+}

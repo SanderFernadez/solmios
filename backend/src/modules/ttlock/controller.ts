@@ -89,6 +89,27 @@ export class TtlockController {
     return { status: 200, body: { data: await this.service.listCodes(id) } }
   }
 
+  async listGateways(req: HttpRequest) {
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 200, body: { data: [] } }
+    try {
+      return { status: 200, body: { data: await this.service.listGateways(id) } }
+    } catch (e: any) {
+      return { status: 400, body: { error: e.message } }
+    }
+  }
+
+  async listActiveCodes(req: HttpRequest) {
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    try {
+      return { status: 200, body: { data: await this.service.listActiveCodes(id, req.params.id) } }
+    } catch (e: any) {
+      if (e.message?.includes('no encontrada')) return { status: 404, body: { error: e.message } }
+      return { status: 400, body: { error: e.message || 'No se pudieron leer los códigos de la cerradura' } }
+    }
+  }
+
   async revokeCode(req: HttpRequest) {
     // Sin el hotel del token, revokeCode aceptaba cualquier codeId de cualquier hotel (IDOR).
     const id = await this.hotelOf(req)
