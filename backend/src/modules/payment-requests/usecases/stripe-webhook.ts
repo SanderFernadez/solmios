@@ -8,7 +8,7 @@ import { StripeService } from '../../../services/stripe-service'
 import type { PaymentRequestDTO, WebhookResult } from '../types'
 import type { PaymentRequestsSockets } from '../sockets'
 import { recordStripePayment, type StripePaymentPort } from './payment-port'
-import { webhookPaidEntry, type AuditEntry } from './audit'
+import { webhookPaidEntry, webhookFailedEntry, type AuditEntry } from './audit'
 
 export interface WebhookDeps {
   repo: RepositoryAdapter<PaymentRequestDTO>
@@ -101,9 +101,13 @@ export async function processStripeWebhook(
         if (paymentRequestId) await repo.update(paymentRequestId, { status: 'expired' } as Partial<PaymentRequestDTO>)
         break
       }
-      case 'payment_intent.payment_failed':
+      case 'payment_intent.payment_failed': {
+        const intent = event.data.object as any
         logger.warn('Stripe payment failed', { event })
+        // Rastro de auditoría del cobro fallido (append-only, vía el connector payment-requests-auditlog).
+        await audit?.(webhookFailedEntry(hotelId, intent))
         break
+      }
       default:
         break
     }

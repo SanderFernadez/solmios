@@ -58,3 +58,34 @@ export function webhookPaidEntry(pr: PaymentRequestDTO, amountPaid: number): Aud
     detail: `Solicitud de pago confirmada por Stripe (webhook) · ${amountPaid.toFixed(2)} ${pr.currency || 'USD'}`,
   }
 }
+
+/**
+ * Cobro fallido reportado por Stripe (`payment_intent.payment_failed`). Sin userId: lo dispara
+ * Stripe, no un usuario. hotelId sale del metadata del intent con fallback al hotel de la ruta
+ * (que es quien autentica el webhook), así el rastro nunca queda sin tenant.
+ */
+export function webhookFailedEntry(hotelId: string, intent: any): AuditEntry {
+  const amount = Math.abs(Number(intent?.amount ?? 0)) / 100
+  const currency = String(intent?.currency ?? 'usd').toUpperCase()
+  const reason = intent?.last_payment_error?.message || intent?.cancellation_reason || 'motivo desconocido'
+  const paymentRequestId = intent?.metadata?.paymentRequestId
+  return {
+    hotelId: intent?.metadata?.hotelId || hotelId,
+    action: 'payment_request.payment_failed',
+    entity: 'payment_request',
+    entityId: paymentRequestId || intent?.id,
+    detail: `Cobro Stripe fallido · ${amount.toFixed(2)} ${currency} · intent ${String(intent?.id || '').slice(0, 16)} · ${reason}`,
+  }
+}
+
+/** El merchant abrió una sesión de checkout de Stripe para cobrar la solicitud (rastro del cobro iniciado). */
+export function checkoutSessionCreatedEntry(pr: PaymentRequestDTO, sessionId: string, actor: Actor): AuditEntry {
+  return {
+    hotelId: pr.hotelId,
+    userId: actor?.id,
+    action: 'payment_request.checkout_session_created',
+    entity: 'payment_request',
+    entityId: pr.id,
+    detail: `Sesión de checkout Stripe creada · ${money(pr)} · sesión ${String(sessionId).slice(0, 20)}`,
+  }
+}

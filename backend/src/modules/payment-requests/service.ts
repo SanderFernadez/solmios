@@ -20,7 +20,7 @@ import type { PaymentRequestsSockets } from './sockets'
 import { processStripeWebhook } from './usecases/stripe-webhook'
 import type { StripePaymentPort } from './usecases/payment-port'
 import {
-  auditSafely, deleteEntry, statusChangeEntry, isSensitiveStatus,
+  auditSafely, deleteEntry, statusChangeEntry, isSensitiveStatus, checkoutSessionCreatedEntry,
   type AuditEntry, type AuditPort,
 } from './usecases/audit'
 
@@ -167,6 +167,8 @@ export class PaymentRequestsService {
         metadata: { hotelId: pr.hotelId, reservationId: pr.reservationId || '' },
       })
       await this.repo.update(id, { stripeSessionId: result.sessionId, stripePaymentUrl: result.sessionUrl } as Partial<PaymentRequestDTO>)
+      // Rastro de auditoría: se abrió una sesión de cobro con Stripe (append-only, no tumba la operación).
+      await this.audit(checkoutSessionCreatedEntry(pr, result.sessionId, user))
       return { url: result.sessionUrl, sessionId: result.sessionId }
     } catch (e: any) {
       this.logger.error('Stripe create checkout failed', e)
