@@ -24,6 +24,34 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  build: {
+    // Sube el umbral de warning para reducir ruido: con el vendor ya troceado
+    // ningún chunk debería acercarse a este límite.
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        // Separa las librerías pesadas de node_modules en chunks propios para que
+        // el chunk principal no las arrastre y se carguen solo cuando la ruta las use.
+        manualChunks(id: string) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@fullcalendar')) return 'vendor-calendar'
+            if (id.includes('leaflet')) return 'vendor-map'
+            if (id.includes('@vueup/vue-quill') || id.includes('quill')) return 'vendor-editor'
+            if (id.includes('html2canvas') || id.includes('qrcode')) return 'vendor-export'
+            if (id.includes('simple-icons')) return 'vendor-icons'
+            if (
+              id.includes('/vue/') ||
+              id.includes('/vue-router/') ||
+              id.includes('/pinia/') ||
+              id.includes('/@vue/')
+            )
+              return 'vendor-vue'
+            return 'vendor'
+          }
+        },
+      },
+    },
+  },
   server: {
     host: true,
     port: 5173,
