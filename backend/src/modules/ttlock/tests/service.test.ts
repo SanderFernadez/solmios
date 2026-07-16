@@ -196,4 +196,38 @@ describe('TtlockService', () => {
       await expect(svc.generateCodeIfAbsent('h1', 'res1')).rejects.toThrow(/no encontrada/)
     })
   })
+
+  // QA-03 (#302): happy-path de generateCode — genera el PIN en la cerradura y persiste la fila
+  // lock_codes ACTIVA con la ventana de la estadía. Se mockea el cliente Sciener (fetch).
+  describe('generateCode — happy path', () => {
+    it('crea la fila lock_codes activa con la ventana de la estadía y el PIN de la cerradura', async () => {
+      const created: any[] = []
+      const orm = makeOrm({
+        findMany: async (table: string) => {
+          if (table === 'Reservations') return [{ id: 'res1', hotelId: 'h1', roomId: 'rm1', checkIn: '2026-06-01', checkOut: '2026-06-03' }]
+          if (table === 'LockDevices') return [{ id: 'l1', hotelId: 'h1', ttlockLockId: '123', roomId: 'rm1', status: 'online' }]
+          if (table === 'Configuration') return [{ id: 'cfg1', value: JSON.stringify({ clientId: 'test', clientSecret: 'sec', accessToken: 'tok', region: 'eu' }) }]
+          return []
+        },
+        create: async (table: string, data: any) => { created.push({ table, ...data }); return data },
+      })
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => new Response(JSON.stringify({ errcode: 0, keyboardPwdId: 555 }))) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+        await svc.generateCode('h1', 'res1')
+        const lc = created.find((c) => c.table === 'LockCodes')
+        expect(lc).toBeDefined()
+        expect(lc.status).toBe('active')
+        expect(lc.reservationId).toBe('res1')
+        expect(lc.startDate).toBe('2026-06-01')
+        expect(lc.endDate).toBe('2026-06-03')
+        expect(lc.code).toBeTruthy() // se generó un PIN
+        expect(String(lc.ttlockKeyboardPwdId)).toBe('555') // pwdId devuelto por la cerradura
+      } finally {
+        globalThis.fetch = realFetch
+      }
+    })
+  })
 })
