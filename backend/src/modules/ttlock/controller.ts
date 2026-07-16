@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { TtlockService } from './service'
-import { UpdateTTLockConfigSchema, ConnectTTLockSchema, UpdateLockDeviceSchema } from './validators/schema'
+import { UpdateTTLockConfigSchema, ConnectTTLockSchema, UpdateLockDeviceSchema, CreatePermanentCodeSchema } from './validators/schema'
 
 export class TtlockController {
   constructor(
@@ -142,6 +142,30 @@ export class TtlockController {
     } catch (e: any) {
       if (e.message?.includes('no encontrada')) return { status: 404, body: { error: e.message } }
       return { status: 400, body: { error: e.message || 'No se pudo borrar el código de la cerradura' } }
+    }
+  }
+
+  async listLockGateways(req: HttpRequest) {
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 200, body: { data: [] } }
+    try {
+      return { status: 200, body: { data: await this.service.listLockGateways(id, req.params.id) } }
+    } catch (e: any) {
+      if (e.message?.includes('no encontrada')) return { status: 404, body: { error: e.message } }
+      return { status: 400, body: { error: e.message || 'No se pudo leer el gateway de la cerradura' } }
+    }
+  }
+
+  async createPermanentCode(req: HttpRequest) {
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    try {
+      const data = validateSchema(CreatePermanentCodeSchema, req.body || {}) as any
+      const created = await this.service.createPermanentCode(id, req.params.id, data.code, data.name)
+      return { status: 201, body: created }
+    } catch (e: any) {
+      if (e.message?.includes('no encontrada')) return { status: 404, body: { error: e.message } }
+      return { status: 400, body: { error: e.message || 'No se pudo crear el código fijo' } }
     }
   }
 

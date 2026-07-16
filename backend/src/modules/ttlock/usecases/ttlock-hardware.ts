@@ -2,7 +2,7 @@
 // (gateways, códigos activos, registros, apertura remota, borrado de PIN). Extraído del service
 // para no volverlo un God Object (>200 líneas). Todas validan ownership sobre la cerradura.
 
-import { listGateways, listLockPasscodes, listLockRecords, unlockLock, deleteKeyboardPassword } from '../../../services/ttlock-client'
+import { listGateways, listLockPasscodes, listLockRecords, unlockLock, deleteKeyboardPassword, listLockGateways, addPermanentPasscode, randomPin } from '../../../services/ttlock-client'
 
 const MS_PER_DAY = 86_400_000
 
@@ -54,6 +54,20 @@ export async function getRecords(deps: HardwareDeps, hotelId: string, lockDevice
 export async function openLock(deps: HardwareDeps, hotelId: string, lockDeviceId: string): Promise<void> {
   const { lock, cfg } = await resolveLock(deps, hotelId, lockDeviceId)
   await unlockLock(credsFrom(cfg), Number(lock.ttlockLockId))
+}
+
+/** Gateway(s) que alcanzan esta cerradura, con señal — "dónde está conectada". */
+export async function getLockGateways(deps: HardwareDeps, hotelId: string, lockDeviceId: string): Promise<any[]> {
+  const { lock, cfg } = await resolveLock(deps, hotelId, lockDeviceId)
+  return listLockGateways(credsFrom(cfg), Number(lock.ttlockLockId))
+}
+
+/** Crea un código fijo (permanente) de staff. Si no se pasa `code`, se genera uno. */
+export async function createPermanentCode(deps: HardwareDeps, hotelId: string, lockDeviceId: string, code?: string, name?: string): Promise<{ code: string; keyboardPwdId?: string }> {
+  const { lock, cfg } = await resolveLock(deps, hotelId, lockDeviceId)
+  const pwd = code && /^\d{4,9}$/.test(code) ? code : randomPin()
+  const r = await addPermanentPasscode(credsFrom(cfg), Number(lock.ttlockLockId), pwd, name)
+  return { code: pwd, keyboardPwdId: r.keyboardPwdId }
 }
 
 /**

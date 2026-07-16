@@ -57,6 +57,14 @@ export interface LockRecord {
   lockDate?: number
 }
 
+export interface LockGatewayLink {
+  gatewayId: number
+  gatewayName?: string
+  gatewayMac?: string
+  /** Señal del gateway a la cerradura (dBm). Más cerca de 0 = mejor. */
+  rssi?: number
+}
+
 export interface TTLockConfig {
   clientId?: string
   clientSecret?: string
@@ -97,4 +105,8 @@ export const TTLockService = {
   unlockLock: (lockId: string) => http.post<{ success: boolean }>(`/ttlock/locks/${lockId}/unlock`),
   /** Borra un PIN directo del hardware (keyboardPwdId de la cerradura). */
   deletePasscode: (lockId: string, pwdId: string | number) => http.delete<{ success: boolean }>(`/ttlock/locks/${lockId}/passcodes/${pwdId}`),
+  /** Gateway(s) que alcanzan esta cerradura (con señal). */
+  listLockGateways: (lockId: string) => http.get<{ data: LockGatewayLink[] }>(`/ttlock/locks/${lockId}/gateways`),
+  /** Crea un código fijo (permanente) de staff en la cerradura. `code` opcional (se genera si falta). */
+  createPermanentCode: (lockId: string, body: { code?: string; name?: string }) => http.post<{ code: string; keyboardPwdId?: string }>(`/ttlock/locks/${lockId}/permanent-codes`, body),
 }

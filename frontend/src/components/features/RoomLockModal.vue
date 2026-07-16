@@ -29,9 +29,10 @@
           <!-- Tabs -->
           <div v-if="lock" class="shrink-0 px-5 flex gap-1 border-b border-border overflow-x-auto">
             <button v-for="t in tabs" :key="t.key" @click="selectTab(t.key)"
-              class="px-3 py-2 text-xs font-bold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap"
+              class="px-3 py-2 text-xs font-bold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1"
               :class="tab === t.key ? 'border-navy text-navy' : 'border-transparent text-text-muted hover:text-navy'">
               {{ t.label }}
+              <span v-if="t.key === 'errors' && errorCount > 0" class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-coral/10 text-coral">{{ errorCount }}</span>
             </button>
           </div>
 
@@ -53,7 +54,6 @@
               <!-- Tab Cerradura -->
               <div v-else-if="tab === 'device'" class="space-y-3">
                 <div class="flex justify-between text-xs"><span class="text-text-muted">Nombre</span><span class="font-bold text-navy">{{ lock.name || '—' }}</span></div>
-                <div class="flex justify-between text-xs"><span class="text-text-muted">ID TTLock</span><span class="font-mono text-text-secondary">{{ lock.ttlockLockId || '—' }}</span></div>
                 <div class="flex justify-between text-xs"><span class="text-text-muted">MAC</span><span class="font-mono text-text-secondary">{{ lock.mac || '—' }}</span></div>
                 <div class="flex justify-between text-xs"><span class="text-text-muted">Batería</span>
                   <span class="font-bold" :class="(lock.batteryLevel||0) > 50 ? 'text-teal' : (lock.batteryLevel||0) > 20 ? 'text-gold' : 'text-coral'">{{ lock.batteryLevel || 0 }}%</span>
@@ -61,6 +61,18 @@
                 <div class="flex justify-between text-xs items-center"><span class="text-text-muted">Estado</span>
                   <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ lock.status || 'offline' }}</span>
                 </div>
+
+                <!-- Gateway (dónde está conectada) -->
+                <div class="pt-2 border-t border-border">
+                  <div class="text-[10px] font-bold text-text-muted uppercase mb-1.5">Gateway</div>
+                  <div v-if="gatewayLoading" class="text-xs text-text-muted">Buscando gateway…</div>
+                  <div v-else-if="!gateways.length" class="text-xs text-coral">Sin gateway en rango. La cerradura no puede operarse en remoto.</div>
+                  <div v-else v-for="g in gateways" :key="g.gatewayId" class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-navy">{{ g.gatewayName || ('Gateway ' + g.gatewayId) }}</span>
+                    <span class="font-bold" :class="signalClass(g.rssi)">{{ signalLabel(g.rssi) }}<span class="text-text-muted font-normal"> ({{ g.rssi }} dBm)</span></span>
+                  </div>
+                </div>
+
                 <button @click="unlockDoor" :disabled="unlocking || lock.status !== 'online'"
                   class="w-full mt-2 py-2.5 bg-navy text-white text-xs font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path stroke-linecap="round" d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
@@ -86,7 +98,29 @@
                 <p v-if="!codes.length" class="text-xs text-text-muted text-center py-4">Sin códigos de reserva para esta cerradura.</p>
               </div>
 
-              <!-- Tab Códigos activos (hardware) -->
+              <!-- Tab Fijos (permanentes de staff) -->
+              <div v-else-if="tab === 'fijos'">
+                <div v-if="activeLoading" class="text-center text-xs text-text-muted py-6">Cargando…</div>
+                <template v-else>
+                  <div class="bg-surface rounded-xl p-3 mb-3 space-y-2">
+                    <div class="text-[10px] font-bold text-text-muted uppercase">Nuevo código fijo</div>
+                    <input v-model="fijoName" type="text" placeholder="Nombre (ej: Camarera, Mantenimiento)" class="w-full px-3 py-2 rounded-lg border border-border text-xs" />
+                    <div class="flex gap-2">
+                      <input v-model="fijoCode" type="text" inputmode="numeric" placeholder="Código (4-9 dígitos, opcional)" class="flex-1 px-3 py-2 rounded-lg border border-border text-xs" />
+                      <button @click="createFijo" :disabled="creatingFijo" class="px-4 py-2 bg-navy text-white text-xs font-bold rounded-lg hover:bg-navy-light disabled:opacity-50 cursor-pointer">{{ creatingFijo ? '…' : 'Crear' }}</button>
+                    </div>
+                  </div>
+                  <div v-for="c in fijos" :key="c.keyboardPwdId" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2 mb-2">
+                    <code class="text-sm font-mono font-bold text-navy">{{ c.keyboardPwd || '••••' }}</code>
+                    <span class="text-[10px] text-text-secondary truncate">{{ c.keyboardPwdName || 'Fijo' }}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan/10 text-cyan shrink-0 ml-auto">permanente</span>
+                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-[10px] font-bold text-coral hover:text-navy cursor-pointer shrink-0 disabled:opacity-50">{{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}</button>
+                  </div>
+                  <p v-if="!fijos.length" class="text-xs text-text-muted text-center py-3">Sin códigos fijos. Creá uno para el staff.</p>
+                </template>
+              </div>
+
+              <!-- Tab Activos (hardware) -->
               <div v-else-if="tab === 'active'">
                 <div v-if="activeLoading" class="text-center text-xs text-text-muted py-6">Leyendo la cerradura…</div>
                 <template v-else>
@@ -94,25 +128,29 @@
                   <div v-for="c in activeCodes" :key="c.keyboardPwdId" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2 mb-2">
                     <code class="text-sm font-mono font-bold text-navy">{{ c.keyboardPwd || '••••' }}</code>
                     <span class="text-[10px] text-text-secondary truncate">{{ c.keyboardPwdName || '—' }}</span>
-                    <span class="text-[10px] text-text-muted shrink-0 ml-auto">{{ fmtMs(c.startDate) }} → {{ fmtMs(c.endDate) }}</span>
+                    <span class="text-[10px] text-text-muted shrink-0 ml-auto">{{ fmtMs(c.startDate) }} → {{ c.endDate ? fmtMs(c.endDate) : 'perm.' }}</span>
                     <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-[10px] font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0 disabled:opacity-50">{{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}</button>
                   </div>
                   <p v-if="!activeCodes.length" class="text-xs text-text-muted text-center py-4">La cerradura no tiene códigos activos ahora.</p>
                 </template>
               </div>
 
-              <!-- Tab Registros (actividad) -->
-              <div v-else-if="tab === 'records'">
-                <div v-if="recordsLoading" class="text-center text-xs text-text-muted py-6">Cargando historial…</div>
+              <!-- Tab Errores (fallos del hardware) -->
+              <div v-else-if="tab === 'errors'">
+                <div v-if="recordsLoading" class="text-center text-xs text-text-muted py-6">Revisando la cerradura…</div>
                 <template v-else>
-                  <p class="text-[11px] text-text-muted mb-3">Actividad de los últimos 30 días.</p>
-                  <div v-for="r in records" :key="r.recordId" class="flex items-center gap-2 border-b border-border py-2 last:border-0">
-                    <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="r.success === 1 ? 'bg-teal' : 'bg-coral'"></span>
+                  <p class="text-[11px] text-text-muted mb-3">Intentos fallidos y problemas de los últimos 30 días.</p>
+                  <div v-for="r in errors" :key="r.recordId" class="flex items-center gap-2 border-b border-border py-2 last:border-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-coral shrink-0"></span>
                     <span class="text-xs font-bold text-navy">{{ recordTypeLabel(r.recordType) }}</span>
                     <span v-if="r.keyboardPwd" class="text-[11px] font-mono text-text-secondary">{{ r.keyboardPwd }}</span>
-                    <span class="text-[10px] text-text-muted shrink-0 ml-auto">{{ fmtMs(r.lockDate) }}</span>
+                    <span class="text-[10px] font-bold text-coral shrink-0 ml-auto">Falló</span>
+                    <span class="text-[10px] text-text-muted shrink-0">{{ fmtMs(r.lockDate) }}</span>
                   </div>
-                  <p v-if="!records.length" class="text-xs text-text-muted text-center py-4">Sin registros en los últimos 30 días.</p>
+                  <div v-if="!errors.length" class="text-center py-6">
+                    <div class="text-2xl mb-1">✅</div>
+                    <p class="text-xs text-text-muted">Sin errores en los últimos 30 días.</p>
+                  </div>
                 </template>
               </div>
             </template>
@@ -124,8 +162,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { TTLockService, type LockDevice, type LockCode, type LockActiveCode, type LockRecord } from '@/services/TTLock.service'
+import { ref, computed, watch } from 'vue'
+import { TTLockService, type LockDevice, type LockCode, type LockActiveCode, type LockRecord, type LockGatewayLink } from '@/services/TTLock.service'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps<{
@@ -136,12 +174,13 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'close'): void; (e: 'changed'): void }>()
 
 const toast = useToast()
-type LockTab = 'device' | 'codes' | 'active' | 'records'
+type LockTab = 'device' | 'codes' | 'fijos' | 'active' | 'errors'
 const tabs: { key: LockTab; label: string }[] = [
   { key: 'device', label: 'Cerradura' },
   { key: 'codes', label: 'Códigos' },
+  { key: 'fijos', label: 'Fijos' },
   { key: 'active', label: 'Activos' },
-  { key: 'records', label: 'Registros' },
+  { key: 'errors', label: 'Errores' },
 ]
 const tab = ref<LockTab>('device')
 const loading = ref(false)
@@ -151,12 +190,23 @@ const deletingId = ref<number | null>(null)
 const lock = ref<LockDevice | null>(null)
 const codes = ref<LockCode[]>([])
 
+const gateways = ref<LockGatewayLink[]>([])
+const gatewayLoading = ref(false)
+
 const activeCodes = ref<LockActiveCode[]>([])
 const activeLoading = ref(false)
 const activeLoaded = ref(false)
 const records = ref<LockRecord[]>([])
 const recordsLoading = ref(false)
 const recordsLoaded = ref(false)
+
+const fijoCode = ref('')
+const fijoName = ref('')
+const creatingFijo = ref(false)
+
+const fijos = computed(() => activeCodes.value.filter(c => c.keyboardPwdType === 1))
+const errors = computed(() => records.value.filter(r => r.success !== 1))
+const errorCount = computed(() => errors.value.length)
 
 function fmtMs(ms?: number) {
   if (!ms) return '—'
@@ -168,18 +218,30 @@ const RECORD_TYPE: Record<number, string> = {
   11: 'Bloqueo', 12: 'Operación gateway', 46: 'Apertura remota', 47: 'Apertura remota',
 }
 function recordTypeLabel(t?: number) { return t != null ? (RECORD_TYPE[t] || `Evento ${t}`) : '—' }
+function signalLabel(rssi?: number) {
+  if (rssi == null) return '—'
+  if (rssi >= -70) return 'Buena'
+  if (rssi >= -85) return 'Media'
+  return 'Débil'
+}
+function signalClass(rssi?: number) {
+  if (rssi == null) return 'text-text-muted'
+  if (rssi >= -70) return 'text-teal'
+  if (rssi >= -85) return 'text-gold'
+  return 'text-coral'
+}
 
 function selectTab(k: LockTab) {
   tab.value = k
-  if (k === 'active' && !activeLoaded.value) loadActive()
-  if (k === 'records' && !recordsLoaded.value) loadRecords()
+  if ((k === 'active' || k === 'fijos') && !activeLoaded.value) loadActive()
+  if (k === 'errors' && !recordsLoaded.value) loadRecords()
 }
 
 async function load() {
   if (!props.roomId) return
   loading.value = true
   activeLoaded.value = false; recordsLoaded.value = false
-  activeCodes.value = []; records.value = []
+  activeCodes.value = []; records.value = []; gateways.value = []
   try {
     const [locksRes, codesRes] = await Promise.all([TTLockService.listLocks(), TTLockService.listCodes()])
     lock.value = (locksRes.data || []).find(l => l.roomId === props.roomId) || null
@@ -188,6 +250,18 @@ async function load() {
     toast.error('No se pudo cargar la cerradura')
   } finally {
     loading.value = false
+  }
+  if (lock.value?.id) loadGateways()
+}
+
+async function loadGateways() {
+  if (!lock.value?.id) return
+  gatewayLoading.value = true
+  try {
+    const r = await TTLockService.listLockGateways(lock.value.id)
+    gateways.value = r.data || []
+  } catch { /* el device sigue mostrándose sin gateway */ } finally {
+    gatewayLoading.value = false
   }
 }
 
@@ -247,6 +321,26 @@ async function deleteActive(c: LockActiveCode) {
   }
 }
 
+async function createFijo() {
+  if (!lock.value?.id || creatingFijo.value) return
+  const name = fijoName.value.trim()
+  const code = fijoCode.value.trim()
+  if (!name) { toast.error('Poné un nombre para el código fijo'); return }
+  if (code && !/^\d{4,9}$/.test(code)) { toast.error('El código debe tener entre 4 y 9 dígitos'); return }
+  creatingFijo.value = true
+  try {
+    const r = await TTLockService.createPermanentCode(lock.value.id, { code: code || undefined, name })
+    await loadActive()
+    emit('changed')
+    fijoCode.value = ''; fijoName.value = ''
+    toast.success(`Código fijo creado: ${r.code}`)
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo crear el código fijo')
+  } finally {
+    creatingFijo.value = false
+  }
+}
+
 async function generate() {
   if (!props.reservationId || generating.value) return
   generating.value = true
@@ -277,7 +371,7 @@ async function revoke(code: LockCode) {
 }
 
 watch(() => props.roomId, (id) => {
-  if (id) { tab.value = 'device'; load() }
+  if (id) { tab.value = 'device'; fijoCode.value = ''; fijoName.value = ''; load() }
 })
 </script>
 

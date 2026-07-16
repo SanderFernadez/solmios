@@ -24,8 +24,15 @@ export const UpdateLockDeviceSchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const, max: 100 },
 }
 
+// Código fijo (permanente) de staff. `code` opcional (si no viene, se genera). 4-9 dígitos.
+export const CreatePermanentCodeSchema: Record<string, ValidationRule> = {
+  code: { type: 'string' as const, min: 4, max: 9 },
+  name: { type: 'string' as const, max: 50 },
+}
+
 export const TTLockValidator = {
   updateConfig: UpdateTTLockConfigSchema,
   connect: ConnectTTLockSchema,
   updateLock: UpdateLockDeviceSchema,
+  createPermanentCode: CreatePermanentCodeSchema,
 }

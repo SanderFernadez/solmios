@@ -96,6 +96,16 @@ export class TtlockService {
     return hw.removePasscode(this.hwDeps(), hotelId, lockDeviceId, keyboardPwdId)
   }
 
+  /** Gateway(s) que alcanzan esta cerradura (con señal). */
+  listLockGateways(hotelId: string, lockDeviceId: string): Promise<any[]> {
+    return hw.getLockGateways(this.hwDeps(), hotelId, lockDeviceId)
+  }
+
+  /** Crea un código fijo (permanente) de staff en la cerradura. */
+  createPermanentCode(hotelId: string, lockDeviceId: string, code?: string, name?: string): Promise<any> {
+    return hw.createPermanentCode(this.hwDeps(), hotelId, lockDeviceId, code, name)
+  }
+
   /**
    * Genera el código solo si la reserva no tiene ya uno ACTIVO. Es el punto de entrada de la
    * generación automática (al pagarse la seña): `generateCode` siempre inserta, así que el reintento

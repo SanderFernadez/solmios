@@ -363,3 +363,51 @@ export async function unlockLock(c: TTLockCreds, lockId: number): Promise<void> 
   })
   assertOk(await readJson(res), 'abrir la cerradura en remoto')
 }
+
+/** Gateway(s) que alcanzan a UNA cerradura, con la señal (`rssi`, dBm; más cerca de 0 = mejor). */
+export interface TTLockLockGateway {
+  gatewayId: number
+  gatewayName?: string
+  gatewayMac?: string
+  rssi?: number
+}
+
+export async function listLockGateways(c: TTLockCreds, lockId: number): Promise<TTLockLockGateway[]> {
+  if (!c.accessToken) throw new Error('Sin access_token de TTLock (conectá primero)')
+  const qs = new URLSearchParams({
+    clientId: c.clientId, accessToken: c.accessToken, lockId: String(lockId), date: String(nowMs()),
+  })
+  const data = await readJson(await fetchWithRetry(`${base(c.region)}/v3/gateway/listByLock?${qs}`))
+  assertOk(data, 'listar el gateway de la cerradura')
+  return (data?.list || []).map((g: any) => ({
+    gatewayId: g.gatewayId, gatewayName: g.gatewayName, gatewayMac: g.gatewayMac, rssi: g.rssi,
+  }))
+}
+
+/**
+ * Crea un código PERMANENTE (fijo) en la cerradura — no atado a reserva (staff, mantenimiento).
+ * `keyboardPwdType=1` + `endDate=0` = permanente (verificado contra la API). Devuelve keyboardPwdId.
+ */
+export async function addPermanentPasscode(
+  c: TTLockCreds, lockId: number, password: string, name?: string,
+): Promise<{ keyboardPwdId?: string }> {
+  const res = await fetchWithRetry(`${base(c.region)}/v3/keyboardPwd/add`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      clientId: c.clientId,
+      accessToken: c.accessToken!,
+      lockId: String(lockId),
+      keyboardPwd: password,
+      keyboardPwdName: name || 'Fijo',
+      keyboardPwdType: '1',
+      startDate: String(nowMs()),
+      endDate: '0',
+      addType: String(c.addType ?? DEFAULT_ADD_TYPE),
+      date: String(nowMs()),
+    }),
+  })
+  const data = await readJson(res)
+  assertOk(data, 'crear código permanente')
+  return { keyboardPwdId: data?.keyboardPwdId != null ? String(data.keyboardPwdId) : undefined }
+}

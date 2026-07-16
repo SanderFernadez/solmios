@@ -487,4 +487,46 @@ describe('TtlockService', () => {
       }
     })
   })
+
+  // Gateway de la cerradura + código fijo (permanente) — para el modal robusto del Planning.
+  describe('listLockGateways / createPermanentCode', () => {
+    it('listLockGateways devuelve el gateway de la cerradura con señal', async () => {
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'h1', ttlockLockId: '123' } : null,
+      })
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => new Response(JSON.stringify({ list: [{ gatewayId: 2312994, gatewayName: 'gateway', rssi: -57 }] }))) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const auth = { assertOwnership: () => {} } as any
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+        const gws = await svc.listLockGateways('h1', 'l1')
+        expect(gws[0].gatewayId).toBe(2312994)
+        expect(gws[0].rssi).toBe(-57)
+      } finally {
+        globalThis.fetch = realFetch
+      }
+    })
+
+    it('createPermanentCode crea un fijo con keyboardPwdType=1 y el code dado', async () => {
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'h1', ttlockLockId: '123' } : null,
+      })
+      const realFetch = globalThis.fetch
+      let sentBody = ''
+      globalThis.fetch = (async (_url: any, init: any) => { sentBody = String(init?.body); return new Response(JSON.stringify({ keyboardPwdId: 42 })) }) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const auth = { assertOwnership: () => {} } as any
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+        const r = await svc.createPermanentCode('h1', 'l1', '246810', 'Staff')
+        expect(r.code).toBe('246810')
+        expect(String(r.keyboardPwdId)).toBe('42')
+        expect(sentBody).toContain('keyboardPwdType=1')
+        expect(sentBody).toContain('endDate=0')
+      } finally {
+        globalThis.fetch = realFetch
+      }
+    })
+  })
 })
