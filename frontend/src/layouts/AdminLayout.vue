@@ -156,6 +156,7 @@
 
       <!-- Page Content -->
       <main class="flex-1 p-6" data-feedback-content>
+        <Breadcrumbs v-if="!isCommandCenter" />
         <router-view />
       </main>
     </div>
@@ -174,6 +175,7 @@ import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanne
 import OfflineBanner from '@/components/features/core-pms/OfflineBanner.vue'
 import HotelSwitcher from '@/components/features/core-pms/HotelSwitcher.vue'
 import UserMenu from '@/components/features/core-pms/UserMenu.vue'
+import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 
 const ICON_MENU = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/></svg>'
 
