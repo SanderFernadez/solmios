@@ -14,4 +14,4 @@
 ## Fase 3 — Verificación
 - [x] 3.1 `bun test` (ttlock) + `arckode analyze` 0 violaciones.
 - [x] 3.2 `vue-tsc -b` 0 errores (archivos tocados) + `vite build` OK.
-- [ ] 3.3 Verificación en prod: tab Gateways lista el gateway real; Códigos activos lee el hardware; visual OK.
+- [x] 3.3 Verificación en prod: tab Gateways lista el gateway real; Códigos activos lee el hardware; visual OK.
