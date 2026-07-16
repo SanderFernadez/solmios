@@ -211,7 +211,7 @@ export class EmpleadosController {
     this.logger.info('GET /api/employee-contracts')
     const hotelId = (req as any).user?.hotelId ?? (req.query as any).hotelId
     const employeeId = (req.query as any).employeeId
-    const contracts = await this.service.listContracts(hotelId, employeeId)
+    const contracts = await this.service.listContracts(hotelId, employeeId, (req as any).user)
     return { status: 200, body: contracts }
   }
 

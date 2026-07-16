@@ -5,12 +5,17 @@ import { ValidationError, NotFoundError } from 'arckode-framework'
 import type { AttendanceRecordDTO, AttendanceScheduleDTO, AttendanceConfigDTO, AttendanceReport } from '../types'
 import { inDateRange } from '../../../shared/usecases/date-range'
 
+/** Tope de horas por registro manual. Un rango mal cargado infla la nómina (bug: 1000h). */
+const MAX_HOURS_PER_RECORD = 24
+
 export class ClockUseCase {
   constructor(
     private readonly recordRepo: RepositoryAdapter<AttendanceRecordDTO>,
     private readonly scheduleRepo: RepositoryAdapter<AttendanceScheduleDTO>,
     private readonly configRepo: RepositoryAdapter<AttendanceConfigDTO>,
     private readonly logger: Logger,
+    // Perfil de empleado — para validar que el `employeeId` corregido a mano sea del hotel.
+    private readonly profileRepo?: RepositoryAdapter<{ id: string; hotelId: string; userId?: string }>,
   ) {}
 
   async clockIn(employeeId: string, hotelId: string, method = 'pin', location?: string): Promise<AttendanceRecordDTO> {
@@ -87,6 +92,19 @@ export class ClockUseCase {
   }
 
   async manualRecord(employeeId: string, hotelId: string, data: { clockIn: string; clockOut?: string; notes?: string }, approvedBy: string): Promise<AttendanceRecordDTO> {
+    // Un fichaje manual alimenta la nómina. Sin estos checks, un rango invertido o desmedido
+    // (o un employeeId ajeno) infla las horas a pagar. Se rechaza con ValidationError claro.
+    const clockInMs = Date.parse(data.clockIn)
+    if (isNaN(clockInMs)) throw new ValidationError('clockIn inválido')
+
+    // El empleado corregido a mano tiene que pertenecer al hotel del supervisor.
+    if (this.profileRepo) {
+      const belongs =
+        (await this.profileRepo.findOne({ id: employeeId, hotelId })) ??
+        (await this.profileRepo.findOne({ userId: employeeId, hotelId } as any))
+      if (!belongs) throw new ValidationError('El empleado no pertenece a este hotel')
+    }
+
     const today = data.clockIn.slice(0, 10)
     const existing = await this.recordRepo.findOne({ employeeId, date: today })
 
@@ -94,9 +112,12 @@ export class ClockUseCase {
     let totalHours: number | null = null
     let overtimeHours = 0
     if (data.clockIn && data.clockOut) {
-      const clockInMs = new Date(data.clockIn).getTime()
-      const clockOutMs = new Date(data.clockOut).getTime()
+      const clockOutMs = Date.parse(data.clockOut)
+      if (isNaN(clockOutMs)) throw new ValidationError('clockOut inválido')
+      if (clockOutMs <= clockInMs) throw new ValidationError('La salida debe ser posterior a la entrada')
       totalHours = Math.round(((clockOutMs - clockInMs) / 3600000) * 100) / 100
+      if (totalHours > MAX_HOURS_PER_RECORD)
+        throw new ValidationError(`Un registro no puede superar ${MAX_HOURS_PER_RECORD} horas`)
       const config = await this.configRepo.findOne({ hotelId })
       const schedule = await this.getEmployeeSchedule(employeeId, hotelId)
       if (schedule && config?.overtimeEnabled) {

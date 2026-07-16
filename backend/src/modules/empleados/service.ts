@@ -140,7 +140,7 @@ export class EmpleadosService {
   }
 
   async getContract(id: string, user?: SimpleUser): Promise<ContractDTO> { return this.contracts.getById(id, user) }
-  async listContracts(hotelId: string, employeeId?: string): Promise<ContractDTO[]> { return this.contracts.list(hotelId, employeeId) }
+  async listContracts(hotelId: string, employeeId?: string, user?: SimpleUser): Promise<ContractDTO[]> { return this.contracts.list(hotelId, employeeId, user) }
   async terminateContract(id: string, user?: SimpleUser): Promise<ContractDTO> { return this.contracts.terminate(id, user) }
 
   // ─── Documents ────────────────────────────────────────

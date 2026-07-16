@@ -31,7 +31,7 @@ export class AttendanceService {
     assignmentRepo?: RepositoryAdapter<ShiftAssignmentDTO>,
     profileRepo?: RepositoryAdapter<{ id: string; hotelId: string }>,
   ) {
-    this.clock = new ClockUseCase(recordRepo, scheduleRepo, configRepo, logger)
+    this.clock = new ClockUseCase(recordRepo, scheduleRepo, configRepo, logger, profileRepo as any)
     this.shifts = new ShiftAssignmentUseCase(assignmentRepo as any, scheduleRepo as any, profileRepo as any, logger)
   }
 

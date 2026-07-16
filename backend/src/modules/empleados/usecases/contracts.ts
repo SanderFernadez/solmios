@@ -6,6 +6,16 @@ import type { ContractDTO, CreateContractDTO } from '../types'
 import type { SimpleUser } from './ownership'
 import { validateEmployeeBelongsToHotel } from './validate-employee'
 
+// Mismo criterio que profiles.ts: el salario es dato sensible. Un usuario con `users:view`
+// (ej. recepción) NO debe ver los sueldos de sus colegas — solo los roles privilegiados.
+const PRIVILEGED_ROLES = ['hotel_admin', 'super_admin']
+
+function stripSalary(contract: any, userRole?: string): any {
+  if (!userRole || PRIVILEGED_ROLES.includes(userRole)) return contract
+  const { salary, ...rest } = contract
+  return rest
+}
+
 export class ContractUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<ContractDTO>,
@@ -33,19 +43,21 @@ export class ContractUseCase {
     const contract = await this.repo.findById(id)
     if (!contract) throw new NotFoundError('Contract not found')
     if (this.auth && user) this.auth.assertOwnership(contract.hotelId, user.hotelId ?? '', user.role, 'super_admin')
-    return contract
+    return stripSalary(contract, user?.role)
   }
 
-  async list(hotelId: string, employeeId?: string): Promise<ContractDTO[]> {
+  async list(hotelId: string, employeeId?: string, user?: SimpleUser): Promise<ContractDTO[]> {
     const filters: Record<string, any> = {}
     if (hotelId) filters.hotelId = hotelId
     if (employeeId) filters.employeeId = employeeId
-    return this.repo.findMany(filters)
+    const contracts = await this.repo.findMany(filters)
+    return contracts.map((c) => stripSalary(c, user?.role))
   }
 
   async terminate(id: string, user?: SimpleUser): Promise<ContractDTO> {
     const contract = await this.getById(id, user)
     if (contract.status === 'terminated') throw new ValidationError('Contract already terminated')
-    return this.repo.update(id, { status: 'terminated' } as any) as Promise<ContractDTO>
+    const updated = await this.repo.update(id, { status: 'terminated' } as any)
+    return stripSalary(updated, user?.role)
   }
 }

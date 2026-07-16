@@ -1,5 +1,10 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
+import { validateSchema } from 'arckode-framework'
 import type { PricingService } from './service'
+import {
+  UpdateSeasonsSchema, UpdateRatesSchema, UpdateRateRestrictionsSchema, CreateBlockSchema,
+  validateRateItems, validateSeasonItems, validateRestrictionItems, validateBlockRange,
+} from './validators/schema'
 
 export class PricingController {
   constructor(
@@ -35,8 +40,9 @@ export class PricingController {
 
   async updateSeasons(req: HttpRequest) {
     const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
+    validateSchema(UpdateSeasonsSchema, req.body)
     const { seasons } = req.body as any
-    if (!Array.isArray(seasons)) return { status: 400, body: { error: 'seasons debe ser un array' } }
+    validateSeasonItems(seasons)
     return { status: 200, body: { success: true, count: await this.service.updateSeasons(id, seasons, this.actorOf(req)) } }
   }
 
@@ -47,8 +53,9 @@ export class PricingController {
 
   async updateRates(req: HttpRequest) {
     const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
+    validateSchema(UpdateRatesSchema, req.body)
     const { rates } = req.body as any
-    if (!Array.isArray(rates)) return { status: 400, body: { error: 'rates debe ser un array' } }
+    validateRateItems(rates)
     return { status: 200, body: { success: true, count: await this.service.updateRates(id, rates, this.actorOf(req)) } }
   }
 
@@ -65,8 +72,10 @@ export class PricingController {
 
   async createBlocks(req: HttpRequest) {
     const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
+    validateSchema(CreateBlockSchema, req.body)
     const { roomIds, reason, startDate, endDate } = req.body as any
-    if (!roomIds?.length || !startDate || !endDate) return { status: 400, body: { error: 'roomIds, startDate, endDate requeridos' } }
+    if (!roomIds?.length) return { status: 400, body: { error: 'roomIds requerido' } }
+    validateBlockRange(startDate, endDate)
     const created = await this.service.createBlocks(id, (req.user as any)?.id || '', roomIds, reason, startDate, endDate)
     return { status: 201, body: { data: created, count: created.length } }
   }
@@ -84,8 +93,9 @@ export class PricingController {
 
   async updateRateRestrictions(req: HttpRequest) {
     const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
+    validateSchema(UpdateRateRestrictionsSchema, req.body)
     const { restrictions } = req.body as any
-    if (!Array.isArray(restrictions)) return { status: 400, body: { error: 'restrictions debe ser un array' } }
+    validateRestrictionItems(restrictions)
     return { status: 200, body: { success: true, count: await this.service.updateRateRestrictions(id, restrictions, this.actorOf(req)) } }
   }
 
