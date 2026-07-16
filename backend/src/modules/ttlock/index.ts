@@ -16,7 +16,7 @@ export function TtlockModule() {
     contract: {
       name: 'ttlock', version: '1.0.0',
       description: 'TTLock smart lock management',
-      actions: ['getConfig', 'updateConfig', 'connect', 'listLocks', 'listCodes', 'listGateways', 'listActiveCodes', 'syncLocks', 'generateCode', 'revokeCode', 'updateLock'],
+      actions: ['getConfig', 'updateConfig', 'connect', 'listLocks', 'listCodes', 'listGateways', 'listActiveCodes', 'listRecords', 'syncLocks', 'generateCode', 'revokeCode', 'updateLock'],
       events: [],
       tables: ['lock_devices', 'lock_codes'],
       dependencies: [],
@@ -45,12 +45,13 @@ export function TtlockModule() {
       router.get('/api/ttlock/codes', guard('ttlock', 'view'), (req: any) => controller.listCodes(req))
       router.get('/api/ttlock/gateways', guard('ttlock', 'view'), (req: any) => controller.listGateways(req))
       router.get('/api/ttlock/locks/:id/active-codes', guard('ttlock', 'view'), (req: any) => controller.listActiveCodes(req))
+      router.get('/api/ttlock/locks/:id/records', guard('ttlock', 'view'), (req: any) => controller.listRecords(req))
       router.post('/api/ttlock/sync', guard('ttlock', 'edit'), (req: any) => controller.syncLocks(req))
       router.post('/api/ttlock/generate-code/:reservationId', guard('ttlock', 'edit'), (req: any) => controller.generateCode(req))
       router.delete('/api/ttlock/code/:id', guard('ttlock', 'edit'), (req: any) => controller.revokeCode(req))
       router.put('/api/ttlock/lock/:id', guard('ttlock', 'edit'), (req: any) => controller.updateLock(req))
 
-      log.info('Módulo ttlock listo (10 endpoints)')
+      log.info('Módulo ttlock listo (11 endpoints)')
       return service
     },
   })

@@ -299,3 +299,45 @@ export async function listLockPasscodes(c: TTLockCreds, lockId: number): Promise
   }
   return all
 }
+
+/**
+ * Un registro de actividad de la cerradura (apertura, intento fallido, cambio de config).
+ * `recordType` es el código del evento de Sciener; `success` 1 = OK, 0 = falló. `lockDate` en ms.
+ */
+export interface TTLockRecord {
+  recordId: number
+  recordType?: number
+  success?: number
+  keyboardPwd?: string
+  keyName?: string
+  username?: string
+  lockDate?: number
+}
+
+/** Lee el historial de actividad de UNA cerradura física entre dos fechas (ms), paginando. */
+export async function listLockRecords(c: TTLockCreds, lockId: number, startMs: number, endMs: number): Promise<TTLockRecord[]> {
+  if (!c.accessToken) throw new Error('Sin access_token de TTLock (conectá primero)')
+  const all: TTLockRecord[] = []
+  let pageNo = 1
+  for (;;) {
+    const qs = new URLSearchParams({
+      clientId: c.clientId, accessToken: c.accessToken, lockId: String(lockId),
+      startDate: String(startMs), endDate: String(endMs),
+      pageNo: String(pageNo), pageSize: '50', date: String(nowMs()),
+    })
+    const data = await readJson(await fetchWithRetry(`${base(c.region)}/v3/lockRecord/list?${qs}`))
+    assertOk(data, 'listar registros de la cerradura')
+    const list: any[] = data?.list || []
+    for (const r of list) {
+      all.push({
+        recordId: r.recordId, recordType: r.recordType, success: r.success,
+        keyboardPwd: r.keyboardPwd, keyName: r.keyName, username: r.username, lockDate: r.lockDate,
+      })
+    }
+    const total = Number(data?.total ?? 0)
+    if (list.length < 50 || all.length >= total) break
+    pageNo++
+    if (pageNo > 20) break
+  }
+  return all
+}

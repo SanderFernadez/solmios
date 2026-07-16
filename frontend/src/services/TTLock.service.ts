@@ -45,6 +45,18 @@ export interface LockActiveCode {
   status?: number
 }
 
+export interface LockRecord {
+  recordId: number
+  /** Código del evento de Sciener (4 = apertura con código, 1 = app, etc.). */
+  recordType?: number
+  /** 1 = OK · 0 = falló. */
+  success?: number
+  keyboardPwd?: string
+  keyName?: string
+  username?: string
+  lockDate?: number
+}
+
 export interface TTLockConfig {
   clientId?: string
   clientSecret?: string
@@ -79,4 +91,6 @@ export const TTLockService = {
   listGateways: () => http.get<{ data: LockGateway[] }>('/ttlock/gateways'),
   /** Códigos REALES vivos en el hardware de una cerradura (lockId = id de lock_devices). */
   listActiveCodes: (lockId: string) => http.get<{ data: LockActiveCode[] }>(`/ttlock/locks/${lockId}/active-codes`),
+  /** Historial de actividad (aperturas/intentos) de una cerradura (últimos 30 días). */
+  listLockRecords: (lockId: string) => http.get<{ data: LockRecord[] }>(`/ttlock/locks/${lockId}/records`),
 }

@@ -197,6 +197,42 @@
       </div>
     </div>
 
+    <!-- ── TAB: Registros (actividad del hardware) ── -->
+    <div v-show="tab === 'records'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+      <h3 class="font-extrabold text-navy mb-1">Registros de la cerradura</h3>
+      <p class="text-xs text-text-muted mb-4">Historial de aperturas e intentos de los últimos 30 días, leído del hardware.</p>
+      <div class="flex flex-wrap gap-2 items-center mb-5">
+        <select v-model="recordsLockId" class="px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
+          <option value="">Elegí una cerradura</option>
+          <option v-for="l in locks" :key="l.id" :value="l.id">{{ l.name || l.id }}{{ l.roomNumber && l.roomNumber !== '—' ? ` · Hab ${l.roomNumber}` : '' }}</option>
+        </select>
+        <button @click="checkRecords" :disabled="!recordsLockId || recordsLoading" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ recordsLoading ? 'Cargando...' : 'Ver historial' }}</button>
+      </div>
+      <div v-if="recordsChecked && !recordsLoading">
+        <div v-if="!records.length" class="text-center text-sm text-text-muted py-8">Sin registros en los últimos 30 días.</div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full">
+            <thead><tr class="border-b border-border bg-surface/50">
+              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
+              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Evento</th>
+              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Código / Usuario</th>
+              <th class="text-center p-3 text-[10px] font-bold text-text-muted uppercase">Resultado</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="r in records" :key="r.recordId" class="border-b border-border last:border-0">
+                <td class="p-3 text-xs text-text-secondary">{{ fmtMs(r.lockDate) }}</td>
+                <td class="p-3 text-xs text-navy font-bold">{{ recordTypeLabel(r.recordType) }}</td>
+                <td class="p-3 text-xs text-text-secondary"><span v-if="r.keyboardPwd" class="font-mono">{{ r.keyboardPwd }}</span><span v-else>{{ r.keyName || r.username || '—' }}</span></td>
+                <td class="p-3 text-center">
+                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="r.success === 1 ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ r.success === 1 ? 'OK' : 'Falló' }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal códigos BD por cerradura -->
     <Teleport to="body">
       <Transition name="modal-fade">
@@ -227,13 +263,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { TTLockService, type TTLockConfig, type LockGateway, type LockActiveCode } from '@/services/TTLock.service'
+import { TTLockService, type TTLockConfig, type LockGateway, type LockActiveCode, type LockRecord } from '@/services/TTLock.service'
 
 const auth = useAuthStore()
 const toast = useToast()
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
-type Tab = 'config' | 'locks' | 'gateways' | 'active'
+type Tab = 'config' | 'locks' | 'gateways' | 'active' | 'records'
 const tab = ref<Tab>('locks')
 
 const syncing = ref(false)
@@ -257,11 +293,18 @@ const activeCodes = ref<LockActiveCode[]>([])
 const activeLoading = ref(false)
 const activeChecked = ref(false)
 
+// Registros de actividad (hardware)
+const recordsLockId = ref('')
+const records = ref<LockRecord[]>([])
+const recordsLoading = ref(false)
+const recordsChecked = ref(false)
+
 const tabs = computed(() => [
   { key: 'config' as Tab, label: 'Configuración', badge: null as number | null },
   { key: 'locks' as Tab, label: 'Cerraduras', badge: locks.value.length },
   { key: 'gateways' as Tab, label: 'Gateways', badge: gatewaysLoaded.value ? gateways.value.length : null },
   { key: 'active' as Tab, label: 'Códigos activos', badge: null as number | null },
+  { key: 'records' as Tab, label: 'Registros', badge: null as number | null },
 ])
 
 function selectTab(k: Tab) {
@@ -410,6 +453,27 @@ function inspectLock(lock: any) {
   activeLockId.value = lock.id
   tab.value = 'active'
   checkActiveCodes()
+}
+
+const RECORD_TYPE: Record<number, string> = {
+  1: 'Apertura app', 4: 'Apertura código', 7: 'Tarjeta', 8: 'Huella',
+  11: 'Bloqueo', 12: 'Operación gateway', 46: 'Apertura remota', 47: 'Apertura remota',
+}
+function recordTypeLabel(t?: number) { return t != null ? (RECORD_TYPE[t] || `Evento ${t}`) : '—' }
+
+async function checkRecords() {
+  if (!recordsLockId.value) return
+  recordsLoading.value = true
+  recordsChecked.value = false
+  try {
+    const r = await TTLockService.listLockRecords(recordsLockId.value)
+    records.value = (r.data || []).sort((a, b) => (b.lockDate || 0) - (a.lockDate || 0))
+    recordsChecked.value = true
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo leer el historial de la cerradura')
+  } finally {
+    recordsLoading.value = false
+  }
 }
 
 onMounted(load)

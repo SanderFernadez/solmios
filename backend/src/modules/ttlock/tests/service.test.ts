@@ -346,5 +346,34 @@ describe('TtlockService', () => {
       const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
       await expect(svc.listActiveCodes('h2', 'l1')).rejects.toThrow(/Forbidden/)
     })
+
+    it('listLockRecords lee el historial de actividad de la cerradura', async () => {
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'h1', ttlockLockId: '123' } : null,
+      })
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => new Response(JSON.stringify({ total: 1, list: [{ recordId: 631488774, recordType: 4, success: 1, keyboardPwd: '121563', lockDate: 1784217414000 }] }))) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const auth = { assertOwnership: () => {} } as any
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+        const recs = await svc.listLockRecords('h1', 'l1')
+        expect(recs).toHaveLength(1)
+        expect(recs[0].keyboardPwd).toBe('121563')
+        expect(recs[0].success).toBe(1)
+      } finally {
+        globalThis.fetch = realFetch
+      }
+    })
+
+    it('listLockRecords de una cerradura de OTRO hotel: assertOwnership corta', async () => {
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'h1', ttlockLockId: '123' } : null,
+      })
+      const queries = new TtlockQueries(orm)
+      const auth = { assertOwnership: (a: string, b: string) => { if (a !== b) throw new Error('Forbidden') } } as any
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+      await expect(svc.listLockRecords('h2', 'l1')).rejects.toThrow(/Forbidden/)
+    })
   })
 })

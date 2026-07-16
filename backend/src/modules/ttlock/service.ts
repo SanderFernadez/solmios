@@ -1,6 +1,6 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type { LockDeviceDTO, LockCodeDTO } from './types'
-import { getAccessToken, listLocks, addKeyboardPassword, deleteKeyboardPassword, randomPin, listGateways, listLockPasscodes } from '../../services/ttlock-client'
+import { getAccessToken, listLocks, addKeyboardPassword, deleteKeyboardPassword, randomPin, listGateways, listLockPasscodes, listLockRecords } from '../../services/ttlock-client'
 import { generateCodeForReservation } from './usecases/ttlock-config'
 import type { TtlockQueries } from './usecases/ttlock-queries'
 
@@ -86,6 +86,23 @@ export class TtlockService {
     const cfg = await this.queries.getTtlockConfig(hotelId)
     if (!cfg?.accessToken) throw new Error('TTLock no conectado')
     return listLockPasscodes({ clientId: cfg.clientId, accessToken: cfg.accessToken, region: cfg.region }, Number(lock.ttlockLockId))
+  }
+
+  /**
+   * Historial de actividad de una cerradura (tab "Registros"): aperturas, intentos y cambios,
+   * leídos del hardware. Ventana por defecto: últimos `days` días. Mismo ownership que arriba.
+   */
+  async listLockRecords(hotelId: string, lockDeviceId: string, days = 30): Promise<any[]> {
+    const lock = await this.lockDevicesRepo.findById(lockDeviceId) as any
+    if (!lock) throw new Error('Cerradura no encontrada')
+    if (this.auth) this.auth.assertOwnership(lock.hotelId, hotelId, undefined, 'super_admin')
+    if (!lock.ttlockLockId) throw new Error('Cerradura sin ID TTLock')
+    const cfg = await this.queries.getTtlockConfig(hotelId)
+    if (!cfg?.accessToken) throw new Error('TTLock no conectado')
+    const MS_PER_DAY = 86_400_000
+    const end = Date.now()
+    const start = end - days * MS_PER_DAY
+    return listLockRecords({ clientId: cfg.clientId, accessToken: cfg.accessToken, region: cfg.region }, Number(lock.ttlockLockId), start, end)
   }
 
   /**
