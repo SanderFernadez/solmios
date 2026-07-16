@@ -306,6 +306,99 @@ export const EmpleadosService = {
 
   // Dashboard RRHH (resumen consolidado)
   async getDashboard(): Promise<HrDashboard> { return http.get('/api/hr-dashboard') },
+
+  // Expediente integral consolidado por empleado (#323)
+  async getDossier(id: string): Promise<EmployeeDossier> { return http.get(`/api/employee-profiles/${id}/dossier`) },
+
+  // ── Evaluación de desempeño: config (#322) + motor automático (#321) ──
+  async getEvalConfig(): Promise<PerformanceEvalConfig> { return http.get('/api/performance-eval/config') },
+  async updateEvalConfig(data: UpdatePerformanceEvalConfig): Promise<PerformanceEvalConfig> { return http.put('/api/performance-eval/config', data) },
+  async runEvaluation(period?: EvalPeriodType): Promise<AutoEvalSummary> { return http.post('/api/performance-eval/run', period ? { period } : {}) },
+  async listEvalResults(period?: string): Promise<PerformanceReview[]> { return http.get(`/api/performance-eval/results${period ? `?period=${encodeURIComponent(period)}` : ''}`) },
+}
+
+// ── Expediente integral (#323) ──
+export interface DossierEvalSummary {
+  latestScore: number | null
+  band: EvalBand | null
+  period: string | null
+  reviewDate: string | null
+  breakdown: EvalBreakdown | null
+  totalAutomatic: number
+}
+
+export interface EmployeeDossier {
+  profile: EmployeeProfile
+  contracts: Contract[]
+  documents: EmployeeDocument[]
+  leaveRequests: LeaveRequest[]
+  reviews: PerformanceReview[]
+  evalSummary: DossierEvalSummary | null
+}
+
+// ── Evaluación de desempeño (#321/#322) ──
+export type EvalPeriodType = 'monthly' | 'quarterly'
+export type EvalBand = 'excellent' | 'good' | 'fair' | 'poor'
+
+export interface EvalWeights {
+  productivity: number
+  quality: number
+  punctuality: number
+  attendance: number
+}
+
+export interface EvalThresholds {
+  excellent: number
+  good: number
+  fair: number
+}
+
+export interface EvalCriterionResult {
+  score: number
+  weight: number
+  hasData: boolean
+}
+
+export interface EvalBreakdown {
+  productivity: EvalCriterionResult
+  quality: EvalCriterionResult
+  punctuality: EvalCriterionResult
+  attendance: EvalCriterionResult
+}
+
+export interface PerformanceEvalConfig {
+  id: string
+  hotelId: string
+  period: EvalPeriodType
+  weights: EvalWeights
+  thresholds: EvalThresholds
+  standardTaskMinutes: number
+  enabled: number
+}
+
+export interface UpdatePerformanceEvalConfig {
+  period?: EvalPeriodType
+  weights?: EvalWeights
+  thresholds?: EvalThresholds
+  standardTaskMinutes?: number
+  enabled?: boolean
+}
+
+export interface AutoEvalResult {
+  employeeId: string
+  reviewId: string
+  score: number
+  band: EvalBand
+  breakdown: EvalBreakdown
+}
+
+export interface AutoEvalSummary {
+  hotelId: string
+  period: string
+  periodType: EvalPeriodType
+  evaluated: number
+  skipped: number
+  results: AutoEvalResult[]
 }
 
 export interface HrDashboard {

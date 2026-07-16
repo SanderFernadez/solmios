@@ -285,6 +285,18 @@ const router = createRouter({
           meta: { requiresHotelAuth: true },
         },
         {
+          path: 'rrhh/empleados/:id/expediente',
+          name: 'empleado-expediente',
+          component: () => import('@/pages/empleados/expediente.vue'),
+          meta: { requiresHotelAuth: true },
+        },
+        {
+          path: 'rrhh/evaluacion',
+          name: 'rrhh-evaluacion',
+          component: () => import('@/pages/rrhh-evaluacion/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'rrhh/dashboard',
           name: 'rrhh-dashboard',
           component: () => import('@/pages/rrhh-dashboard/index.vue'),

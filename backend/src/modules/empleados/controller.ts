@@ -9,6 +9,7 @@ import type { AppraisalConfigUseCase } from './usecases/appraisal-config'
 import type { HrCatalogUseCase } from './usecases/hr-catalog'
 import type { EvalConfigUseCase } from './usecases/eval-config'
 import type { AutoEvaluationUseCase } from './usecases/auto-evaluation'
+import type { DossierUseCase } from './usecases/dossier'
 import type { EvalPeriodType, UpdatePerformanceEvalConfigDTO } from './types'
 import type { StorageService } from 'arckode-framework/modules/storage'
 import { parseDataUrl } from '../../shared/utils/data-url'
@@ -58,7 +59,14 @@ export class EmpleadosController {
     // Config del motor de evaluación (#322) y el motor automático (#321): usecases directos.
     private readonly evalConfig?: EvalConfigUseCase,
     private readonly autoEval?: AutoEvaluationUseCase,
+    // Expediente integral (#323): agregación de solo-lectura, usecase directo (gate 200 líneas del service).
+    private readonly dossier?: DossierUseCase,
   ) {}
+
+  private expediente(): DossierUseCase {
+    if (!this.dossier) throw new NotFoundError('Expediente no configurado')
+    return this.dossier
+  }
 
   private evalCfg(): EvalConfigUseCase {
     if (!this.evalConfig) throw new NotFoundError('Evaluación automática no configurada')
@@ -175,6 +183,13 @@ export class EmpleadosController {
     this.logger.info('POST /api/employee-profiles/:id/reactivate')
     const profile = await this.service.reactivateProfile(req.params.id, (req as any).user)
     return { status: 200, body: profile }
+  }
+
+  /** GET /api/employee-profiles/:id/dossier — expediente integral consolidado (#323). */
+  async getDossier(req: HttpRequest) {
+    this.logger.info('GET /api/employee-profiles/:id/dossier')
+    const dossier = await this.expediente().get(req.params.id, (req as any).user)
+    return { status: 200, body: dossier }
   }
 
   // ─── Contracts ────────────────────────────────────────

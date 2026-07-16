@@ -14,6 +14,7 @@ import { AppraisalConfigUseCase } from './usecases/appraisal-config'
 import { HrCatalogUseCase } from './usecases/hr-catalog'
 import { EvalConfigUseCase } from './usecases/eval-config'
 import { AutoEvaluationUseCase } from './usecases/auto-evaluation'
+import { DossierUseCase } from './usecases/dossier'
 
 /** Un documento del expediente (PDF/imagen) en base64: 10 MB de sobra. */
 const DOCUMENT_UPLOAD_LIMIT = 10 * 1024 * 1024
@@ -63,7 +64,7 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
         'listJobPositions', 'createJobPosition', 'updateJobPosition', 'deleteJobPosition',
         'listContractTypes', 'createContractType', 'deleteContractType',
         'listWorkLocations', 'createWorkLocation', 'deleteWorkLocation',
-        'getExpiringDocuments', 'getOrgChart',
+        'getExpiringDocuments', 'getOrgChart', 'getEmployeeDossier',
         'listLeaveTypes', 'createLeaveType', 'updateLeaveType', 'deleteLeaveType',
         'listLeaveAllocations', 'createLeaveAllocation', 'deleteLeaveAllocation',
         'listPublicHolidays', 'createPublicHoliday', 'deletePublicHoliday',
@@ -114,7 +115,8 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       const dashboard = new DashboardUseCase(profileRepo, contractRepo, documentRepo, leaveRepo, reviewRepo, departmentRepo, log, userRepo)
       service.attachDashboard(dashboard)   // permite inyectar el puerto de asistencia (#198) por connector
       service.attachAutoEvaluation(autoEval) // motor de evaluación (#321): los connectors le inyectan los puertos hk/attendance
-      const controller = new EmpleadosController(service, log, dashboard, opts.storage, leaveConfig, appraisalConfig, hrCatalog, evalConfig, autoEval)
+      const dossier = new DossierUseCase(service) // expediente integral (#323): reusa los reads públicos del service
+      const controller = new EmpleadosController(service, log, dashboard, opts.storage, leaveConfig, appraisalConfig, hrCatalog, evalConfig, autoEval, dossier)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
@@ -133,6 +135,9 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       // `users:view` le daría los contratos, salarios y licencias de todo el hotel.
       // Va ANTES de `/:id`: el router resuelve por orden de registro y `me` se comería como un id.
       router.get('/api/employee-profiles/me', [auth.authenticate(...STAFF_ROLES)], (req) => controller.myProfile(req))
+      // Expediente integral consolidado (#323). Va ANTES de `/:id` — el router resuelve por orden de
+      // registro y `/:id` NO debe comerse el segmento `dossier`.
+      router.get('/api/employee-profiles/:id/dossier', guard('users', 'view'), (req) => controller.getDossier(req))
       router.get('/api/employee-profiles/:id', guard('users', 'view'), (req) => controller.getProfile(req))
       router.put('/api/employee-profiles/:id', guard('users', 'edit'), (req) => controller.updateProfile(req))
       router.delete('/api/employee-profiles/:id', guard('users', 'delete'), (req) => controller.deactivateProfile(req))

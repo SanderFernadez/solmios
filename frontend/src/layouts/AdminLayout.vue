@@ -286,6 +286,7 @@ const nonavItems = [
     children: [
       { label: 'Panel RRHH', path: '/panel/rrhh/dashboard', roles: ['hotel_admin'] },
       { label: 'Empleados', path: '/panel/rrhh/empleados', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Evaluación de Desempeño', path: '/panel/rrhh/evaluacion', roles: ['hotel_admin'] },
       { label: 'Asistencia', path: '/panel/rrhh/attendance', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Nómina', path: '/panel/rrhh/payroll', roles: ['hotel_admin'] },
       { label: 'Reclutamiento', path: '/panel/rrhh/reclutamiento', roles: ['hotel_admin'] },

@@ -63,8 +63,11 @@
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="emp.active ? 'bg-teal/10 text-teal' : 'bg-text-muted/15 text-text-muted'">{{ emp.active ? 'Activo' : 'Inactivo' }}</span>
               </td>
               <td class="px-4 py-2.5 text-right whitespace-nowrap">
-                <button @click.stop="openProfile(emp)" class="inline-flex items-center gap-1 px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 cursor-pointer">
-                  <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Ver
+                <button @click.stop="openExpediente(emp)" class="inline-flex items-center gap-1 px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 cursor-pointer">
+                  <span class="w-3 h-3 shrink-0" v-html="ICON_FOLDER"></span>Expediente
+                </button>
+                <button @click.stop="openProfile(emp)" class="inline-flex items-center gap-1 ml-1 px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 cursor-pointer">
+                  <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Editar
                 </button>
                 <button v-if="emp.active" @click.stop="deactivateEmployee(emp)" class="inline-flex items-center gap-1 ml-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">
                   <span class="w-3 h-3 shrink-0" v-html="ICON_POWER"></span>Desactivar
@@ -344,6 +347,7 @@ const ICON_XCIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none"
 const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h12M9.75 7.5v-1.5a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 1.5 1.5v1.5m-8.25 0 .75 11.25a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5L17.25 7.5"/></svg>'
 const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'
 const ICON_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"/></svg>'
+const ICON_FOLDER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg>'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -477,6 +481,9 @@ onMounted(async () => {
 // ─── Actions ────────────────────────────────────────────
 
 function openOrgChart() { router.push('/panel/rrhh/organigrama') }
+
+/** Abre el expediente integral consolidado del empleado (#323). */
+function openExpediente(emp: EmployeeProfile) { router.push(`/panel/rrhh/empleados/${emp.id}/expediente`) }
 
 const departmentOptions = () => departments.value.map((d) => ({ value: d.id, label: d.name }))
 
