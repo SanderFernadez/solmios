@@ -3,6 +3,8 @@ import type { ValidationRule } from 'arckode-framework'
 export const CreateGitLabIssueSchema: Record<string, ValidationRule> = {
   screenshot: { type: 'string' as const },
   filename: { type: 'string' as const, max: 200 },
+  // id del pin recién creado: el server lo vincula con el issue (evita un PATCH desde el frontend).
+  pinId: { type: 'string' as const, max: 100 },
   comment: { type: 'string' as const, required: true, min: 3, max: 1000 },
   route: { type: 'string' as const, required: true, max: 500 },
   x: { type: 'number' as const },

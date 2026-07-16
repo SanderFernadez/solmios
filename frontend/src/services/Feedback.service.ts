@@ -4,6 +4,8 @@ import type { FeedbackPin, CreateFeedbackPayload } from '@/types'
 export interface GitLabIssuePayload {
   screenshot: string
   filename: string
+  /** id del pin recién creado: el backend lo vincula con el issue (evita un PATCH desde acá). */
+  pinId?: string
   comment: string
   route: string
   x: number

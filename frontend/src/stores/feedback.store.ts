@@ -80,9 +80,10 @@ export const useFeedbackStore = defineStore('feedback', () => {
       })
       pins.value.push(pin)
 
-      // Crear issue en GitLab
+      // Crear issue en GitLab y vincularlo al pin (lo hace el server con pinId, sin PATCH desde acá).
       try {
         const result: GitLabIssueResult = await FeedbackService.createGitLabIssue({
+          pinId: pin.id,
           screenshot: pendingScreenshot.value || '',
           filename: `feedback-${activeRoute.value.replace(/\//g, '-')}-${Date.now()}.png`,
           comment: data.comment,
@@ -96,8 +97,8 @@ export const useFeedbackStore = defineStore('feedback', () => {
         lastIssueUrl.value = result.issueUrl
         lastError.value = null
 
-        // Actualizar pin con el issue URL
-        await FeedbackService.update(pin.id, { gitlabIssueUrl: result.issueUrl } as any)
+        // El server ya guardó el issueUrl en el pin; actualizamos la copia local.
+        pin.gitlabIssueUrl = result.issueUrl
       } catch (e: any) {
         lastError.value = e?.message || 'Error al crear issue en GitLab'
       }

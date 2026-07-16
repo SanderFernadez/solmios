@@ -71,7 +71,7 @@ export class FeedbackService {
 
   // ── GitLab Issue ────────────────────────────────────────────────────────
   async createGitLabIssue(reqBody: any, user: any): Promise<any> {
-    const { screenshot, filename, comment, route, x, y, browser, viewportWidth, viewportHeight } = reqBody
+    const { screenshot, filename, comment, route, x, y, browser, viewportWidth, viewportHeight, pinId } = reqBody
     const GITLAB_TOKEN = process.env.GITLAB_TOKEN
     const GITLAB_PROJECT_ID = process.env.GITLAB_PROJECT_ID
     if (!GITLAB_TOKEN || !GITLAB_PROJECT_ID) throw new Error('GitLab no configurado en el servidor')
@@ -126,6 +126,28 @@ export class FeedbackService {
     if (!issueRes.ok) { const errText = await issueRes.text(); throw new Error(`Error al crear issue: ${errText}`) }
     const issueData = (await issueRes.json()) as any
     this.logger.info('GitLab issue creado desde feedback', { issueUrl: issueData.web_url, route })
+
+    // Vincular el issue al pin de feedback. El widget crea el pin primero y pasa su id acá, así el
+    // servidor escribe `gitlabIssueUrl`/`gitlabIssueId` sin que el frontend necesite un PATCH (que
+    // exigiría `feedback:edit`). Ownership: el pin tiene que ser del hotel del usuario; el
+    // assertOwnership bloquea escribir en el pin de otro hotel. Si falla, no abortamos: el issue ya
+    // se creó en GitLab y devolvemos su URL igual (solo logueamos).
+    if (pinId) {
+      try {
+        const existing = (await this.pinsRepo.findById(pinId)) as FeedbackPinDTO | null
+        if (existing) {
+          if (this.auth && user) this.auth.assertOwnership(existing.hotelId ?? '', user.hotelId, user.role, 'super_admin')
+          await this.pinsRepo.update(pinId, {
+            gitlabIssueUrl: issueData.web_url,
+            gitlabIssueId: issueData.iid,
+            updatedAt: new Date().toISOString(),
+          } as any)
+        }
+      } catch (e) {
+        this.logger.warn('No se pudo vincular el issue de GitLab al pin', { pinId, error: (e as Error).message })
+      }
+    }
+
     return { issueUrl: issueData.web_url, issueId: issueData.iid, title: issueData.title }
   }
 }

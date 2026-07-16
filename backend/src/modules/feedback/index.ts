@@ -39,14 +39,19 @@ export function FeedbackModule() {
       // SC-03: los cuatro verbos exigían solo `feedback:view` — cualquiera con acceso de lectura
       // podía crear/editar/borrar. Separados por acción real (ver permissions.ts: hotel_admin
       // recibió feedback:create/edit/delete para no perder la función que ya usaba de hecho).
+      // VER/edit/delete siguen con permiso (administrar pines ajenos sí es privilegiado).
       router.get('/api/feedback', guard('feedback', 'view'), (req: any) => controller.listPins(req))
       router.get('/api/feedback/:id', guard('feedback', 'view'), (req: any) => controller.getPin(req))
-      router.post('/api/feedback', guard('feedback', 'create'), (req: any) => controller.createPin(req))
       router.patch('/api/feedback/:id', guard('feedback', 'edit'), (req: any) => controller.updatePin(req))
       router.delete('/api/feedback/:id', guard('feedback', 'delete'), (req: any) => controller.deletePin(req))
 
-      // GitLab issue creation
-      router.post('/api/feedback/gitlab-issue', guard('feedback', 'edit'), (req: any) => controller.createGitLabIssue(req))
+      // Crear feedback propio + issue de GitLab desde el widget (App.vue, visible para TODOS los
+      // autenticados). Antes exigían `feedback:create`/`feedback:edit`, permisos que por defecto SOLO
+      // tiene hotel_admin → recepción/supervisor/camarera/técnico recibían 403 al reportar.
+      // `auth.authenticate()` sin roles valida el token y deja crear a cualquier logueado.
+      // El issue de GitLab lleva rate-limit (createGitLabIssue controller) para no llenar el repo.
+      router.post('/api/feedback', [auth.authenticate()], (req: any) => controller.createPin(req))
+      router.post('/api/feedback/gitlab-issue', [auth.authenticate()], (req: any) => controller.createGitLabIssue(req))
 
       log.info('Módulo feedback v2 listo (CRUD + GitLab)')
       return service
