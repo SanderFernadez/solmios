@@ -223,6 +223,16 @@ El ORM construye `allowedFields = new Set(Object.keys(def.fields))` y **descarta
 - Tipos en `types/index.ts`
 - Naming: páginas kebab-case, componentes PascalCase, stores camelCase, services PascalCase+.service.ts
 
+### ⚠️ Resolver nombres de personal/participantes: `/usuarios`, NO `employee-profiles`
+Los `staffId`, `supervisorId`, `assignedTo`, `providerId` y los `fromUserId/toUserId` del chat
+guardan **`users.id`** (tabla `users`). Para mostrar el nombre hay que resolver contra
+**`GET /api/usuarios`** (`TeamService.list()` → `id → name`), **NO** contra `employee-profiles`
+(`EmpleadosService.listProfiles`), que es un módulo de RRHH con otros ids que **no matchean** →
+todo sale "Sin asignar"/"Usuario"/ID crudo. Bug recurrente: apareció en `team-chat`, `housekeeping`
+(camarera + supervisor + stats) y `maintenance` (técnicos). Filtrar el desplegable por rol:
+limpieza→`housekeeper`, mantenimiento→`maintenance`. **Regla: cualquier vista que muestre el nombre
+de un usuario del hotel resuelve por `/usuarios`.**
+
 ## Verificación (antes de "listo")
 ```bash
 # Backend — arckode analyze es GATE BLOQUEANTE
@@ -232,6 +242,21 @@ cd backend && bun run typecheck && bun test
 cd frontend && npx vue-tsc --noEmit && bun run build
 ```
 > Si `arckode analyze` muestra ❌ violaciones, el backend **NO está terminado**.
+
+## Panel web — Operaciones (estado 2026-07-16)
+Terminología: **"Proveedor de servicios"** (antes "Servicio externo"/"Proveedor técnico") es el nombre
+visible en toda la app (web + móvil). Solo texto de UI; código/rutas/endpoints siguen en inglés
+(`/mantenimiento/proveedores`, clases `TechnicalProvider*`/`ExternalProvider*`).
+
+| Vista (menú Operaciones) | Estado |
+|---|---|
+| **Limpieza** → detalle "Ver" | Rediseñado en tarjetas. Muestra camarera (resuelta), **video** (URL firmada `GET /housekeeping/:id/video/view-url`), **lightbox** de fotos, **Revisión del supervisor** (rating 1-10 + quién aprobó + nota), y **Calificar/aprobar** desde el panel (tarjeta en tareas `completed`: marca presencia `POST /:id/presence` → aprueba `POST /:id/approve {rating,note}` → `inspected`). Asignar solo a `housekeeper`. |
+| **Proveedores de servicios** | Vista NUEVA (`pages/technical-providers/`): alta/edición/baja del catálogo `/mantenimiento/proveedores`. |
+| **Chats del equipo** | Vista NUEVA (`pages/team-chat/`): monitor solo-lectura de `GET /messages/all`, agrupa por par de usuarios + canal `team:`. Nombres por `/usuarios`. |
+| **Mantenimiento** | Asigna tickets a técnicos (`role=maintenance`) **o** a un Proveedor de servicios (`providerId`, badge "Externo"). Un ticket, un dueño. |
+
+Aprobar limpieza desde el web exige `supOnSiteTime` (presencia) — el backend lo pide; el admin la
+marca en el mismo paso (`presence` no exige foto; la foto es solo la regla del móvil).
 
 ## Multi-tenancy
 - Single DB con columna `hotelId` en cada tabla
@@ -342,7 +367,11 @@ filtros y paginación, así que se invalidan bumpeando un token de versión
 ```bash
 # Setup SSH askpass al inicio de sesión — ver ssh-solmios skill
 REPO=/www/wwwroot/hotel.zx89.site/solmios
-SOLSSH "cd $REPO && git pull origin main"
+# ⚠️ El `git pull` a veces falla en el server ("could not read... make sure you have access")
+# por las 2 SSH keys. Forzar la key correcta con IdentitiesOnly:
+SOLSSH "cd $REPO && GIT_SSH_COMMAND='ssh -i /root/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' git pull origin main"
+# ⚠️ Si el build de Vite falla, NO pisa el dist viejo (queda la versión anterior servida).
+#    Verificar SIEMPRE que el build termine en "✓ built" antes de dar el deploy por hecho.
 SOLSSH "cd $REPO/backend && bun install && systemctl restart solmios-backend"
 SOLSSH "cd $REPO/frontend && bun --bun vite build"   # SIEMPRE bun --bun (Node 18 + Vite 8 rompe)
 # Si cambiaron modelos ORM: cd $REPO/backend && set -a && source .env && set +a && RUN_MIGRATE=1 bun run src/composition-root.ts
