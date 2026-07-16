@@ -689,17 +689,21 @@
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface text-text-muted shrink-0">{{ (ST[r.status] && ST[r.status].l) || r.status }}</span>
               </div>
             </template>
-            <!-- Cerraduras -->
+            <!-- Cerraduras: TODAS las del hotel, con gestión completa por cerradura -->
             <template v-else-if="quickAction === 'locks'">
-              <div v-if="!locksList.length" class="text-xs text-text-muted">No hay reservas activas con código de cerradura. Los códigos se generan al hacer el check-in cuando el hotel usa cerraduras inteligentes.</div>
-              <div v-for="r in locksList" :key="r.id" class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border">
-                <div class="min-w-0">
-                  <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
-                  <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }}</div>
+              <div v-if="!hotelLocks.length" class="text-xs text-text-muted text-center py-4">No hay cerraduras sincronizadas. Conectá y sincronizá TTLock en Configuración.</div>
+              <div v-for="l in hotelLocks" :key="l.id" class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border">
+                <div class="flex items-center gap-2 min-w-0">
+                  <svg class="w-4 h-4 shrink-0" :class="l.status === 'online' ? 'text-teal' : 'text-navy/40'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="11" rx="2"/><path stroke-linecap="round" d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                  <div class="min-w-0">
+                    <div class="text-sm font-bold text-navy truncate">{{ l.name || 'Cerradura' }}</div>
+                    <div class="text-[10px] text-text-muted">{{ l.roomId ? ('Hab. ' + (l.roomNumber || '—')) : 'Sin habitación asignada' }}</div>
+                  </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                  <span class="font-mono text-sm font-black text-navy tracking-widest px-2 py-1 rounded-lg bg-surface">🔐 {{ r.lockCode }}</span>
-                  <button @click="quickOpenRes(r)" class="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-bold text-navy hover:bg-surface cursor-pointer">Ver</button>
+                  <span class="text-[11px] font-bold" :class="(l.batteryLevel||0) > 50 ? 'text-teal' : (l.batteryLevel||0) > 20 ? 'text-gold' : 'text-coral'">🔋 {{ l.batteryLevel || 0 }}%</span>
+                  <span class="text-[9px] font-bold px-2 py-1 rounded-full" :class="l.status === 'online' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ l.status === 'online' ? 'online' : 'offline' }}</span>
+                  <button @click="manageLock(l)" class="px-2.5 py-1.5 rounded-lg bg-navy text-white text-[11px] font-bold hover:bg-navy/90 cursor-pointer">Gestionar</button>
                 </div>
               </div>
             </template>
@@ -711,7 +715,7 @@
             </template>
           </div>
           <div class="p-3 border-t border-border shrink-0 flex justify-end">
-            <button @click="goAdvanced(quickAdvancedPath)" class="px-4 py-2 rounded-xl bg-surface text-navy text-xs font-black hover:bg-navy hover:text-white transition-colors cursor-pointer">Avanzado → página completa</button>
+            <button @click="goAdvanced(quickAdvancedPath)" class="px-4 py-2 rounded-xl bg-surface text-navy text-xs font-black hover:bg-navy hover:text-white transition-colors cursor-pointer">{{ quickAction === 'locks' ? 'Configuración TTLock →' : 'Avanzado → página completa' }}</button>
           </div>
         </div>
       </div>
@@ -794,12 +798,21 @@ const toast = useToast()
 const lockRoom = ref<{ id: string; number: string; reservationId: string | null } | null>(null)
 // roomIds que tienen una cerradura TTLock asignada → el candado de esas filas se pinta distinto.
 const lockedRoomIds = ref<Set<string>>(new Set())
+const hotelLocks = ref<any[]>([])   // todas las cerraduras del hotel (para el panel de la barra)
 function hasLock(roomId: any) { return lockedRoomIds.value.has(String(roomId)) }
 async function loadLocks() {
   try {
     const r = await TTLockService.listLocks()
-    lockedRoomIds.value = new Set((r.data || []).filter(l => l.roomId).map(l => String(l.roomId)))
+    hotelLocks.value = r.data || []
+    lockedRoomIds.value = new Set(hotelLocks.value.filter(l => l.roomId).map(l => String(l.roomId)))
   } catch { /* TTLock no configurado en este hotel: sin cerraduras marcadas */ }
+}
+/** Abrir la gestión completa de una cerradura desde el panel de la barra (reusa RoomLockModal). */
+function manageLock(l: any) {
+  const room = planRooms.value.find((r: any) => String(r.id) === String(l.roomId))
+  if (!room) { toast.info('Asigná esta cerradura a una habitación para gestionarla'); return }
+  quickAction.value = null
+  openRoomLock(room)
 }
 function openRoomLock(room: any) {
   const today = visibleDays.value.find(d => d.isToday)
@@ -993,7 +1006,6 @@ const quickSearchResults = computed(() => {
   ).slice(0, 25)
 })
 // Reservas activas con código de cerradura.
-const locksList = computed(() => planReservas.value.filter((r: any) => r.lockCode && r.status !== 'cancelled' && r.status !== 'checked_out'))
 function roomNoOf(r: any): string { return r.roomNumber || roomNumberOf(String(r.roomId)) }
 
 async function quickCheckin(res: any) {
