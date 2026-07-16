@@ -24,6 +24,7 @@ export class UsuariosService {
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
     private readonly hotelRepo?: RepositoryAdapter<any>,
+    private readonly configRepo?: RepositoryAdapter<any>,
   ) {}
 
   /** Conecta el audit log. Lo inyecta el connector `usuarios-auditlog`. */
@@ -97,8 +98,7 @@ export class UsuariosService {
     const tokenPayload = { id: user.id, role: user.role, hotelId: user.hotelId, userType: user.userType || 'merchant' }
     const token = (this.auth as any).createToken(tokenPayload)
     const refreshToken = (this.auth as any).createRefreshToken(tokenPayload)
-    // Se guarda el jti del refresh vigente (no el access, que no se consultaba): habilita revocar
-    // la sesión de refresh en logout. Single-session: un login nuevo invalida el refresh anterior.
+    // Guarda el jti del refresh vigente: habilita revocarlo en logout. Single-session: un login nuevo invalida el anterior.
     await this.repo.update(user.id, { token: jtiOf(refreshToken) ?? null })
     let hotelName = ''
     if (user.hotelId && this.hotelRepo) {
@@ -108,15 +108,16 @@ export class UsuariosService {
         hotelName = (hotel as any)?.name || ''
       } catch { /* graceful */ }
     }
-    return { token, refreshToken, user: { id: user.id, name: user.name, email: user.email, role: user.role, hotelId: user.hotelId, hotelName } }
+    // `phone` para la app móvil: lo lee del login y lo guarda (igual que `/api/auth/me`).
+    return { token, refreshToken, user: { id: user.id, name: user.name, email: user.email, phone: user.phone ?? '', role: user.role, hotelId: user.hotelId, hotelName } }
   }
 
   async me(id: string): Promise<any> {
-    return getProfile(this.repo, this.hotelRepo, id)
+    return getProfile(this.repo, this.hotelRepo, id, this.configRepo)
   }
 
   async updateProfile(userId: string, data: ProfilePatch): Promise<any> {
-    return updateProfile(this.repo, this.hotelRepo, userId, data)
+    return updateProfile(this.repo, this.hotelRepo, userId, data, this.configRepo)
   }
 
   async list(hotelId?: string): Promise<any[]> {
@@ -189,7 +190,6 @@ export class UsuariosService {
   async changePassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
     return changePassword(this.repo, id, currentPassword, newPassword)
   }
-
   private async hashPassword(p: string): Promise<string> {
     return hashPassword(p)
   }

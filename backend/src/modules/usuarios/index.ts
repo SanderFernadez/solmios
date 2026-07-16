@@ -34,8 +34,9 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       registerUsuariosModels(orm)
       const repo = new OrmRepository<any>(orm, 'Users')
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
+      const configRepo = new OrmRepository<any>(orm, 'Configuration')
       const log = logger.child('usuarios')
-      const service = new UsuariosService(repo, log, cache, auth, hotelRepo)
+      const service = new UsuariosService(repo, log, cache, auth, hotelRepo, configRepo)
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const controller = new UsuariosController(service, log, opts.storage, roleRepo)
 

@@ -17,11 +17,19 @@ export interface ProfilePatch {
 
 const MIN_NAME_LENGTH = 2
 
+/** Clave de `configuration` donde el admin guarda los permisos por rol de la app
+ *  móvil (qué pestañas/acciones ve el supervisor/camarera). Se sirve dentro de
+ *  `/auth/me` para que el supervisor los reciba SIN leer `/configuracion` (que
+ *  exige `settings:view`, permiso que no tiene). Así el toggle del admin se
+ *  propaga a otros dispositivos en vez de quedar local. */
+export const MOBILE_PERMS_KEY = 'mobile_role_permissions'
+
 /** El perfil visible: nunca password, token ni los campos de reset. */
 export async function getProfile(
   repo: RepositoryAdapter<any>,
   hotelRepo: RepositoryAdapter<any> | undefined,
   userId: string,
+  configRepo?: RepositoryAdapter<any>,
 ): Promise<Record<string, unknown>> {
   // @ignore IDOR_RISK — `userId` sale del JWT (req.user.id), es un self-lookup.
   const u = await repo.findById(userId)
@@ -38,6 +46,20 @@ export async function getProfile(
     }
   }
 
+  // Permisos por rol de la app móvil, guardados por el admin del hotel. `null` si
+  // el hotel nunca los configuró → el móvil usa sus defaults (todo concedido).
+  let rolePermissions: Record<string, unknown> | null = null
+  if (u.hotelId && configRepo) {
+    try {
+      const rows = await configRepo.findMany({ hotelId: u.hotelId, key: MOBILE_PERMS_KEY })
+      const raw = (rows?.[0] as any)?.value
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      if (parsed && typeof parsed === 'object') rolePermissions = parsed
+    } catch {
+      // El perfil sirve igual sin los permisos custom.
+    }
+  }
+
   return {
     id: u.id,
     name: u.name,
@@ -48,6 +70,7 @@ export async function getProfile(
     userType: u.userType ?? 'merchant',
     hotelId: u.hotelId,
     hotelName,
+    rolePermissions,
   }
 }
 
@@ -63,6 +86,7 @@ export async function updateProfile(
   hotelRepo: RepositoryAdapter<any> | undefined,
   userId: string,
   data: ProfilePatch,
+  configRepo?: RepositoryAdapter<any>,
 ): Promise<Record<string, unknown>> {
   // @ignore IDOR_RISK — `userId` sale del JWT (req.user.id), es un self-update.
   const user = await repo.findById(userId)
@@ -84,5 +108,5 @@ export async function updateProfile(
   if (data.avatar !== undefined) patch.avatar = data.avatar === '' ? null : data.avatar
 
   if (Object.keys(patch).length > 0) await repo.update(userId, patch)
-  return getProfile(repo, hotelRepo, userId)
+  return getProfile(repo, hotelRepo, userId, configRepo)
 }
