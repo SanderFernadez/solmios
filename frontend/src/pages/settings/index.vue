@@ -348,10 +348,12 @@
       <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Temporadas</h3>
         <div class="grid md:grid-cols-4 gap-4">
-          <div v-for="(s, i) in seasonsList" :key="i" class="bg-surface rounded-xl p-4">
+          <div v-for="(s, i) in seasonsList" :key="i" class="bg-surface rounded-xl p-4"
+            :class="s.active ? 'ring-2 ring-cyan' : ''">
             <div class="flex items-center gap-2 mb-3">
               <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: s.color || '#3b82f6' }"></div>
               <span class="text-sm font-bold text-navy">{{ s.label || s.name }}</span>
+              <span v-if="s.active" class="ml-auto inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[9px] font-extrabold uppercase text-[#16A34A]">Activa</span>
             </div>
             <div class="space-y-2">
               <div>
@@ -362,6 +364,10 @@
                 <label class="text-[10px] font-bold text-text-muted uppercase">Fin</label>
                 <input v-model="s.endDate" type="date" class="w-full mt-1 px-3 py-2 rounded-full border border-border text-xs focus:outline-none focus:border-navy" />
               </div>
+              <button v-if="!s.active" @click="activateSeason(s.name)" :disabled="activatingSeason"
+                class="w-full mt-1 px-3 py-2 rounded-full bg-navy/5 hover:bg-navy text-navy hover:text-white text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-50">
+                Activar temporada
+              </button>
             </div>
           </div>
         </div>
@@ -975,10 +981,10 @@ onMounted(async () => {
     const seas = await HotelService.seasons().catch(() => ({ data: [] }))
     if (seas.data.length === 0) {
       seasonsList.value = [
-        { name: 'baja', label: 'Baja', startDate: '', endDate: '', color: '#3b82f6', sortOrder: 0 },
-        { name: 'media', label: 'Media', startDate: '', endDate: '', color: '#f59e0b', sortOrder: 1 },
-        { name: 'alta', label: 'Alta', startDate: '', endDate: '', color: '#ef4444', sortOrder: 2 },
-        { name: 'especial', label: 'Especial', startDate: '', endDate: '', color: '#8b5cf6', sortOrder: 3 },
+        { name: 'baja', label: 'Baja', startDate: '', endDate: '', color: '#3b82f6', sortOrder: 0, active: 1 },
+        { name: 'media', label: 'Media', startDate: '', endDate: '', color: '#f59e0b', sortOrder: 1, active: 0 },
+        { name: 'alta', label: 'Alta', startDate: '', endDate: '', color: '#ef4444', sortOrder: 2, active: 0 },
+        { name: 'especial', label: 'Especial', startDate: '', endDate: '', color: '#8b5cf6', sortOrder: 3, active: 0 },
       ]
     } else {
       seasonsList.value = seas.data
@@ -1037,7 +1043,7 @@ async function saveAll() {
   try {
     const seasons = seasonsList.value.map((s, i) => ({
       name: s.name, label: s.label, startDate: s.startDate, endDate: s.endDate,
-      color: s.color, sortOrder: i,
+      color: s.color, sortOrder: i, active: s.active ? 1 : 0,
     }))
     await HotelService.saveSeasons(seasons)
   } catch { errors.push('temporadas') }
@@ -1273,7 +1279,7 @@ async function saveRates() {
   try {
     const seasons = seasonsList.value.map((s, i) => ({
       name: s.name, label: s.label, startDate: s.startDate, endDate: s.endDate,
-      color: s.color, sortOrder: i,
+      color: s.color, sortOrder: i, active: s.active ? 1 : 0,
     }))
     await HotelService.saveSeasons(seasons)
     await HotelService.saveRates(buildRatesPayload())
@@ -1282,6 +1288,23 @@ async function saveRates() {
     toast.error('Error al guardar tarifas')
   } finally {
     savingRates.value = false
+  }
+}
+
+const activatingSeason = ref(false)
+async function activateSeason(name: string) {
+  if (activatingSeason.value) return
+  activatingSeason.value = true
+  try {
+    const res = await HotelService.activateSeason(name)
+    // Reflejar la nueva activa (el backend deja una sola). Fallback: marcar localmente.
+    if (res?.data?.length) seasonsList.value = res.data
+    else seasonsList.value.forEach((s) => (s.active = s.name === name ? 1 : 0))
+    toast.success(`Temporada activa: ${name}`)
+  } catch {
+    toast.error('No se pudo cambiar la temporada activa')
+  } finally {
+    activatingSeason.value = false
   }
 }
 </script>

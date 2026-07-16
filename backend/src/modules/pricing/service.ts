@@ -28,24 +28,59 @@ export class PricingService {
     return auditSafely(this.auditPort, this.logger, entry)
   }
 
+  /** Temporadas por defecto (rangos del año en curso) — se siembran la 1ª vez que un hotel abre la sección. */
+  private defaultSeasons(): any[] {
+    const y = new Date().getFullYear()
+    return [
+      { name: 'baja', label: 'Temporada Baja', startDate: `${y}-01-01`, endDate: `${y}-05-31`, color: '#3b82f6', sortOrder: 0, active: 1 },
+      { name: 'media', label: 'Temporada Media', startDate: `${y}-06-01`, endDate: `${y}-11-30`, color: '#f59e0b', sortOrder: 1, active: 0 },
+      { name: 'alta', label: 'Temporada Alta', startDate: `${y}-12-01`, endDate: `${y}-12-31`, color: '#ef4444', sortOrder: 2, active: 0 },
+    ]
+  }
+
   async listSeasons(hotelId: string): Promise<any[]> {
-    const data = await this.seasonsRepo.findMany({ hotelId }) as any[]
+    let data = await this.seasonsRepo.findMany({ hotelId }) as any[]
+    // Seed la 1ª vez: sin esto la temporada activa no tendría sobre qué operar.
+    if (data.length === 0) {
+      for (const s of this.defaultSeasons()) {
+        await this.seasonsRepo.create({ id: crypto.randomUUID(), hotelId, ...s })
+      }
+      data = await this.seasonsRepo.findMany({ hotelId }) as any[]
+    }
     return data.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0))
   }
 
   async updateSeasons(hotelId: string, seasons: any[], actor?: Actor): Promise<number> {
     const existing = await this.seasonsRepo.findMany({ hotelId }) as any[]
     for (const ex of existing) await this.seasonsRepo.delete(ex.id)
+    // A lo sumo una activa: la 1ª marcada active en el payload; si ninguna, la primera.
+    let activeIdx = seasons.findIndex((s) => s?.active)
+    if (activeIdx === -1 && seasons.length > 0) activeIdx = 0
     for (let i = 0; i < seasons.length; i++) {
       const s = seasons[i]
       await this.seasonsRepo.create({
         id: crypto.randomUUID(), hotelId, name: s.name || `season-${i}`, label: s.label || '',
         startDate: s.startDate || '', endDate: s.endDate || '',
-        color: s.color || '#3b82f6', sortOrder: i,
+        color: s.color || '#3b82f6', sortOrder: i, active: i === activeIdx ? 1 : 0,
       })
     }
     await this.audit(seasonsChangeEntry(hotelId, seasons.length, actor))
     return seasons.length
+  }
+
+  /** Cambia la temporada activa del hotel (por nombre). Solo una queda activa. #148 */
+  async activateSeason(hotelId: string, name: string, actor?: Actor): Promise<any[]> {
+    const seasons = await this.listSeasons(hotelId) // garantiza que haya data seedeada
+    const target = seasons.find((s) => s.name === name)
+    if (!target) throw new AuthError(`Temporada '${name}' no existe en este hotel`)
+    for (const s of seasons) {
+      const shouldBeActive = s.name === name ? 1 : 0
+      if ((s.active ? 1 : 0) !== shouldBeActive) {
+        await this.seasonsRepo.update(s.id, { active: shouldBeActive })
+      }
+    }
+    await this.audit(seasonsChangeEntry(hotelId, seasons.length, actor))
+    return this.listSeasons(hotelId)
   }
 
   async listRates(hotelId: string): Promise<any[]> {

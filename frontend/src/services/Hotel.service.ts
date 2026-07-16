@@ -25,6 +25,7 @@ export interface HotelData {
 export interface Season {
   id: string; hotelId: string; name: string; label: string
   startDate: string; endDate: string; color: string; sortOrder: number
+  active?: number
 }
 
 export interface RoomRate {
@@ -69,6 +70,10 @@ export const HotelService = {
   },
   async saveSeasons(seasons: Partial<Season>[]) {
     return http.put('/seasons', { seasons })
+  },
+  /** Cambia la temporada activa del hotel (una sola activa). #148 */
+  async activateSeason(name: string): Promise<{ success: boolean; data: Season[] }> {
+    return http.post('/seasons/activate', { name })
   },
 
   // Rates matrix

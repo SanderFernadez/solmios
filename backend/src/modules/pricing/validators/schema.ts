@@ -23,6 +23,10 @@ export const UpdateSeasonsSchema: Record<string, ValidationRule> = {
   seasons: { type: arrayType, required: true },
 }
 
+export const ActivateSeasonSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, required: true, min: 1 },
+}
+
 export const UpdateRatesSchema: Record<string, ValidationRule> = {
   rates: { type: arrayType, required: true },
 }

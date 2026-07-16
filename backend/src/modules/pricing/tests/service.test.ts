@@ -210,4 +210,50 @@ describe('PricingService — tenancy (SEC-2.2)', () => {
     await expect(makeService(orm).deleteBlock('b1', 'h1')).rejects.toThrow()
     expect(wasDeleted()).toBe(false)
   })
+
+  describe('temporada activa (#148)', () => {
+    function seasonsSvc() {
+      const store: any[] = []
+      const orm = {
+        findMany: async (table: string, filter: any) =>
+          table === 'Seasons' ? store.filter((s) => !filter?.hotelId || s.hotelId === filter.hotelId) : [],
+        create: async (_t: string, data: any) => { store.push({ ...data }); return data },
+        update: async (_t: string, id: string, data: any) => { const r = store.find((s) => s.id === id); if (r) Object.assign(r, data) },
+        delete: async (_t: string, id: string) => { const i = store.findIndex((s) => s.id === id); if (i >= 0) store.splice(i, 1) },
+      }
+      const mk = (table: string) => ({
+        findMany: async (f: any) => orm.findMany(table, f),
+        findById: async () => null,
+        findOne: async (f: any) => { const rows = await orm.findMany(table, f); return rows[0] || null },
+        create: async (d: any) => orm.create(table, d),
+        update: async (id: string, d: any) => orm.update(table, id, d),
+        delete: async (id: string) => orm.delete(table, id),
+        count: async () => 0,
+        paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
+      })
+      return new PricingService(mk('Seasons'), mk('RoomRates'), mk('RoomBlocks'), mk('RateRestrictions'), log)
+    }
+
+    it('siembra temporadas por defecto con exactamente una activa', async () => {
+      const svc = seasonsSvc()
+      const seasons = await svc.listSeasons('h1')
+      expect(seasons.length).toBeGreaterThanOrEqual(3)
+      expect(seasons.filter((s: any) => s.active).length).toBe(1)
+    })
+
+    it('activateSeason deja activa solo la elegida', async () => {
+      const svc = seasonsSvc()
+      await svc.listSeasons('h1')
+      const result = await svc.activateSeason('h1', 'media')
+      const active = result.filter((s: any) => s.active)
+      expect(active).toHaveLength(1)
+      expect(active[0].name).toBe('media')
+    })
+
+    it('activateSeason lanza si la temporada no existe', async () => {
+      const svc = seasonsSvc()
+      await svc.listSeasons('h1')
+      await expect(svc.activateSeason('h1', 'inexistente')).rejects.toThrow()
+    })
+  })
 })

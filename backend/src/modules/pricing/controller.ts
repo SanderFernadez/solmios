@@ -3,6 +3,7 @@ import { validateSchema } from 'arckode-framework'
 import type { PricingService } from './service'
 import {
   UpdateSeasonsSchema, UpdateRatesSchema, UpdateRateRestrictionsSchema, CreateBlockSchema,
+  ActivateSeasonSchema,
   validateRateItems, validateSeasonItems, validateRestrictionItems, validateBlockRange,
 } from './validators/schema'
 
@@ -44,6 +45,13 @@ export class PricingController {
     const { seasons } = req.body as any
     validateSeasonItems(seasons)
     return { status: 200, body: { success: true, count: await this.service.updateSeasons(id, seasons, this.actorOf(req)) } }
+  }
+
+  async activateSeason(req: HttpRequest) {
+    const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
+    validateSchema(ActivateSeasonSchema, req.body)
+    const { name } = req.body as any
+    return { status: 200, body: { success: true, data: await this.service.activateSeason(id, String(name), this.actorOf(req)) } }
   }
 
   async listRates(req: HttpRequest) {

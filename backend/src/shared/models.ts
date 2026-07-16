@@ -138,6 +138,7 @@ export function registerSharedModels(orm: ORM): void {
       endDate: { type: 'string', required: true },
       color: { type: 'string', default: '#3b82f6' },
       sortOrder: { type: 'number', default: 0 },
+      active: { type: 'boolean', default: 0 }, // temporada activa del hotel (a lo sumo una =1)
     },
   })
 

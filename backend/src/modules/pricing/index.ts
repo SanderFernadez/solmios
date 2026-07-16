@@ -36,6 +36,7 @@ export function PricingModule() {
 
       router.get('/api/seasons', guard('settings', 'view'), (req: any) => controller.listSeasons(req))
       router.put('/api/seasons', guard('settings', 'edit'), (req: any) => controller.updateSeasons(req))
+      router.post('/api/seasons/activate', guard('settings', 'edit'), (req: any) => controller.activateSeason(req))
       router.get('/api/rates', guard('settings', 'view'), (req: any) => controller.listRates(req))
       router.put('/api/rates', guard('settings', 'edit'), (req: any) => controller.updateRates(req))
       router.post('/api/rates/copy-next-year', guard('settings', 'edit'), (req: any) => controller.copyRatesNextYear(req))
