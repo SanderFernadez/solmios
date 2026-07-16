@@ -341,3 +341,22 @@ export async function listLockRecords(c: TTLockCreds, lockId: number, startMs: n
   }
   return all
 }
+
+/**
+ * Abre la cerradura FÍSICA en remoto a través del gateway. Requiere que el gateway esté online y
+ * en rango de la cerradura; si no, Sciener devuelve errcode y `assertOk` lanza.
+ */
+export async function unlockLock(c: TTLockCreds, lockId: number): Promise<void> {
+  if (!c.accessToken) throw new Error('Sin access_token de TTLock (conectá primero)')
+  const res = await fetchWithRetry(`${base(c.region)}/v3/lock/unlock`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      clientId: c.clientId,
+      accessToken: c.accessToken,
+      lockId: String(lockId),
+      date: String(nowMs()),
+    }),
+  })
+  assertOk(await readJson(res), 'abrir la cerradura en remoto')
+}

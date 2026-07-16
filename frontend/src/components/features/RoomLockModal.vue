@@ -61,6 +61,12 @@
                 <div class="flex justify-between text-xs items-center"><span class="text-text-muted">Estado</span>
                   <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ lock.status || 'offline' }}</span>
                 </div>
+                <button @click="unlockDoor" :disabled="unlocking || lock.status !== 'online'"
+                  class="w-full mt-2 py-2.5 bg-navy text-white text-xs font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path stroke-linecap="round" d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
+                  {{ unlocking ? 'Abriendo…' : 'Abrir puerta' }}
+                </button>
+                <p v-if="lock.status !== 'online'" class="text-[10px] text-text-muted text-center">La cerradura debe estar online para abrir en remoto.</p>
               </div>
 
               <!-- Tab Códigos (BD / reservas) -->
@@ -87,8 +93,9 @@
                   <p class="text-[11px] text-text-muted mb-3">PIN reales vivos en la cerradura (leídos del hardware).</p>
                   <div v-for="c in activeCodes" :key="c.keyboardPwdId" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2 mb-2">
                     <code class="text-sm font-mono font-bold text-navy">{{ c.keyboardPwd || '••••' }}</code>
-                    <span class="text-[10px] text-text-secondary">{{ c.keyboardPwdName || '—' }}</span>
+                    <span class="text-[10px] text-text-secondary truncate">{{ c.keyboardPwdName || '—' }}</span>
                     <span class="text-[10px] text-text-muted shrink-0 ml-auto">{{ fmtMs(c.startDate) }} → {{ fmtMs(c.endDate) }}</span>
+                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-[10px] font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0 disabled:opacity-50">{{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}</button>
                   </div>
                   <p v-if="!activeCodes.length" class="text-xs text-text-muted text-center py-4">La cerradura no tiene códigos activos ahora.</p>
                 </template>
@@ -139,6 +146,8 @@ const tabs: { key: LockTab; label: string }[] = [
 const tab = ref<LockTab>('device')
 const loading = ref(false)
 const generating = ref(false)
+const unlocking = ref(false)
+const deletingId = ref<number | null>(null)
 const lock = ref<LockDevice | null>(null)
 const codes = ref<LockCode[]>([])
 
@@ -207,6 +216,34 @@ async function loadRecords() {
     toast.error((e as Error).message || 'No se pudo leer el historial')
   } finally {
     recordsLoading.value = false
+  }
+}
+
+async function unlockDoor() {
+  if (!lock.value?.id || unlocking.value) return
+  unlocking.value = true
+  try {
+    await TTLockService.unlockLock(lock.value.id)
+    toast.success('Puerta abierta')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo abrir la puerta')
+  } finally {
+    unlocking.value = false
+  }
+}
+
+async function deleteActive(c: LockActiveCode) {
+  if (!lock.value?.id || deletingId.value != null) return
+  deletingId.value = c.keyboardPwdId
+  try {
+    await TTLockService.deletePasscode(lock.value.id, c.keyboardPwdId)
+    await loadActive()
+    emit('changed')
+    toast.success('Código borrado de la cerradura')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo borrar el código')
+  } finally {
+    deletingId.value = null
   }
 }
 

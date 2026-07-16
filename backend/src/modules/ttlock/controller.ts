@@ -121,6 +121,30 @@ export class TtlockController {
     }
   }
 
+  async unlock(req: HttpRequest) {
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    try {
+      await this.service.unlockLock(id, req.params.id)
+      return { status: 200, body: { success: true } }
+    } catch (e: any) {
+      if (e.message?.includes('no encontrada')) return { status: 404, body: { error: e.message } }
+      return { status: 400, body: { error: e.message || 'No se pudo abrir la cerradura' } }
+    }
+  }
+
+  async deletePasscode(req: HttpRequest) {
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    try {
+      await this.service.deletePasscode(id, req.params.id, req.params.pwdId)
+      return { status: 200, body: { success: true } }
+    } catch (e: any) {
+      if (e.message?.includes('no encontrada')) return { status: 404, body: { error: e.message } }
+      return { status: 400, body: { error: e.message || 'No se pudo borrar el código de la cerradura' } }
+    }
+  }
+
   async revokeCode(req: HttpRequest) {
     // Sin el hotel del token, revokeCode aceptaba cualquier codeId de cualquier hotel (IDOR).
     const id = await this.hotelOf(req)

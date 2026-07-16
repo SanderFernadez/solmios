@@ -376,4 +376,59 @@ describe('TtlockService', () => {
       await expect(svc.listLockRecords('h2', 'l1')).rejects.toThrow(/Forbidden/)
     })
   })
+
+  // Gestión desde el Planning: abrir la puerta en remoto + borrar un PIN del hardware.
+  describe('unlockLock / deletePasscode', () => {
+    it('unlockLock llama al endpoint de apertura remota', async () => {
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'h1', ttlockLockId: '123' } : null,
+      })
+      const realFetch = globalThis.fetch
+      let calledUrl = ''
+      globalThis.fetch = (async (url: any) => { calledUrl = String(url); return new Response(JSON.stringify({ errcode: 0 })) }) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const auth = { assertOwnership: () => {} } as any
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+        await svc.unlockLock('h1', 'l1')
+        expect(calledUrl).toContain('/v3/lock/unlock')
+      } finally {
+        globalThis.fetch = realFetch
+      }
+    })
+
+    it('unlockLock de otro hotel: assertOwnership corta', async () => {
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'h1', ttlockLockId: '123' } : null,
+      })
+      const queries = new TtlockQueries(orm)
+      const auth = { assertOwnership: (a: string, b: string) => { if (a !== b) throw new Error('Forbidden') } } as any
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+      await expect(svc.unlockLock('h2', 'l1')).rejects.toThrow(/Forbidden/)
+    })
+
+    it('deletePasscode borra del hardware y revoca la fila de la BD que apunta a ese PIN', async () => {
+      const updated: any[] = []
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'h1', ttlockLockId: '123' } : null,
+        findMany: async (table: string) => {
+          if (table === 'Configuration') return [{ id: 'cfg1', value: JSON.stringify({ clientId: 'test', accessToken: 'tok', region: 'eu' }) }]
+          if (table === 'LockCodes') return [{ id: 'c1', status: 'active', ttlockKeyboardPwdId: '999' }]
+          return []
+        },
+        update: async (table: string, id: string, data: any) => { updated.push({ table, id, data }) },
+      })
+      const realFetch = globalThis.fetch
+      globalThis.fetch = (async () => new Response(JSON.stringify({ errcode: 0 }))) as any
+      try {
+        const queries = new TtlockQueries(orm)
+        const auth = { assertOwnership: () => {} } as any
+        const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+        await svc.deletePasscode('h1', 'l1', '999')
+        expect(updated.some(u => u.table === 'LockCodes' && u.data.status === 'revoked')).toBe(true)
+      } finally {
+        globalThis.fetch = realFetch
+      }
+    })
+  })
 })

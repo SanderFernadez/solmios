@@ -1,7 +1,8 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type { LockDeviceDTO, LockCodeDTO } from './types'
-import { getAccessToken, listLocks, addKeyboardPassword, deleteKeyboardPassword, randomPin, listGateways, listLockPasscodes, listLockRecords } from '../../services/ttlock-client'
+import { getAccessToken, listLocks, addKeyboardPassword, deleteKeyboardPassword, randomPin } from '../../services/ttlock-client'
 import { generateCodeForReservation } from './usecases/ttlock-config'
+import * as hw from './usecases/ttlock-hardware'
 import type { TtlockQueries } from './usecases/ttlock-queries'
 
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
@@ -66,43 +67,33 @@ export class TtlockService {
     return this.queries.listCodesByHotel(hotelId)
   }
 
-  /** Gateways de la cuenta TTLock del hotel (lo que muestra el tab "Gateways"). */
-  async listGateways(hotelId: string): Promise<any[]> {
-    const cfg = await this.queries.getTtlockConfig(hotelId)
-    if (!cfg?.accessToken) throw new Error('TTLock no conectado')
-    return listGateways({ clientId: cfg.clientId, accessToken: cfg.accessToken, region: cfg.region })
+  // Operaciones de hardware (gateways, códigos activos, registros, apertura remota, borrado de PIN).
+  // La lógica vive en `usecases/ttlock-hardware` (ownership + creds); acá solo se delega para no
+  // volver el service un God Object (>200 líneas).
+  private hwDeps() {
+    return { lockDevicesRepo: this.lockDevicesRepo, lockCodesRepo: this.lockCodesRepo, queries: this.queries, auth: this.auth }
   }
 
-  /**
-   * Códigos REALES vivos en una cerradura física (tab "Comprobar códigos activos"), leídos del
-   * hardware vía la API — no de la tabla `lock_codes`. `lockDeviceId` es el id de nuestra tabla:
-   * validamos ownership antes de resolver el ttlockLockId y consultar.
-   */
-  async listActiveCodes(hotelId: string, lockDeviceId: string): Promise<any[]> {
-    const lock = await this.lockDevicesRepo.findById(lockDeviceId) as any
-    if (!lock) throw new Error('Cerradura no encontrada')
-    if (this.auth) this.auth.assertOwnership(lock.hotelId, hotelId, undefined, 'super_admin')
-    if (!lock.ttlockLockId) throw new Error('Cerradura sin ID TTLock')
-    const cfg = await this.queries.getTtlockConfig(hotelId)
-    if (!cfg?.accessToken) throw new Error('TTLock no conectado')
-    return listLockPasscodes({ clientId: cfg.clientId, accessToken: cfg.accessToken, region: cfg.region }, Number(lock.ttlockLockId))
+  listGateways(hotelId: string): Promise<any[]> {
+    return hw.getGateways(this.hwDeps(), hotelId)
   }
 
-  /**
-   * Historial de actividad de una cerradura (tab "Registros"): aperturas, intentos y cambios,
-   * leídos del hardware. Ventana por defecto: últimos `days` días. Mismo ownership que arriba.
-   */
-  async listLockRecords(hotelId: string, lockDeviceId: string, days = 30): Promise<any[]> {
-    const lock = await this.lockDevicesRepo.findById(lockDeviceId) as any
-    if (!lock) throw new Error('Cerradura no encontrada')
-    if (this.auth) this.auth.assertOwnership(lock.hotelId, hotelId, undefined, 'super_admin')
-    if (!lock.ttlockLockId) throw new Error('Cerradura sin ID TTLock')
-    const cfg = await this.queries.getTtlockConfig(hotelId)
-    if (!cfg?.accessToken) throw new Error('TTLock no conectado')
-    const MS_PER_DAY = 86_400_000
-    const end = Date.now()
-    const start = end - days * MS_PER_DAY
-    return listLockRecords({ clientId: cfg.clientId, accessToken: cfg.accessToken, region: cfg.region }, Number(lock.ttlockLockId), start, end)
+  listActiveCodes(hotelId: string, lockDeviceId: string): Promise<any[]> {
+    return hw.getActiveCodes(this.hwDeps(), hotelId, lockDeviceId)
+  }
+
+  listLockRecords(hotelId: string, lockDeviceId: string, days = 30): Promise<any[]> {
+    return hw.getRecords(this.hwDeps(), hotelId, lockDeviceId, days)
+  }
+
+  /** Abre la puerta en remoto (por gateway). */
+  unlockLock(hotelId: string, lockDeviceId: string): Promise<void> {
+    return hw.openLock(this.hwDeps(), hotelId, lockDeviceId)
+  }
+
+  /** Borra un PIN directo del hardware (tab "Activos") y sincroniza la fila de la BD. */
+  deletePasscode(hotelId: string, lockDeviceId: string, keyboardPwdId: string): Promise<void> {
+    return hw.removePasscode(this.hwDeps(), hotelId, lockDeviceId, keyboardPwdId)
   }
 
   /**

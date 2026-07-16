@@ -93,4 +93,8 @@ export const TTLockService = {
   listActiveCodes: (lockId: string) => http.get<{ data: LockActiveCode[] }>(`/ttlock/locks/${lockId}/active-codes`),
   /** Historial de actividad (aperturas/intentos) de una cerradura (últimos 30 días). */
   listLockRecords: (lockId: string) => http.get<{ data: LockRecord[] }>(`/ttlock/locks/${lockId}/records`),
+  /** Abre la puerta en remoto por el gateway. */
+  unlockLock: (lockId: string) => http.post<{ success: boolean }>(`/ttlock/locks/${lockId}/unlock`),
+  /** Borra un PIN directo del hardware (keyboardPwdId de la cerradura). */
+  deletePasscode: (lockId: string, pwdId: string | number) => http.delete<{ success: boolean }>(`/ttlock/locks/${lockId}/passcodes/${pwdId}`),
 }
