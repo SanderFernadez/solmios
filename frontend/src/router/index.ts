@@ -321,6 +321,12 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          path: 'ai-gerente',
+          name: 'ai-gerente',
+          component: () => import('@/pages/ai-gerente/index.vue'),
+          meta: { requiresHotelAuth: true },
+        },
+        {
           path: 'crm',
           name: 'crm',
           component: () => import('@/pages/crm/index.vue'),

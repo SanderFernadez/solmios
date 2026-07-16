@@ -270,6 +270,7 @@ const nonavItems = [
     label: 'IA', icon: ICONS.sparkles, roles: ['hotel_admin', 'receptionist'],
     children: [
       { label: 'Recepcionista', path: '/panel/ai-receptionist', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Gerente IA', path: '/panel/ai-gerente', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Configuración IA', path: '/panel/ai-receptionist/config', roles: ['hotel_admin'] },
     ]
   },
