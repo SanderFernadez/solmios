@@ -3,7 +3,7 @@
 // persiste como upsert en configuration(platform,'modules').
 
 import { describe, it, expect } from 'bun:test'
-import { MODULE_CATALOG, getModuleState, setModuleState } from '../usecases/modules'
+import { MODULE_CATALOG, getModuleState, setModuleState, getModuleStateForPlan } from '../usecases/modules'
 
 function configRepo(initial: Record<string, boolean> | null = null) {
   const rows: any[] = initial ? [{ id: 'c1', hotelId: 'platform', key: 'modules', value: { ...initial } }] : []
@@ -48,5 +48,36 @@ describe('modules — estado', () => {
     const repo = configRepo(null)
     const next = await setModuleState(repo, { hackerModule: false } as any)
     expect((next as any).hackerModule).toBeUndefined()
+  })
+})
+
+describe('modules — estado efectivo por plan (global ∩ plan)', () => {
+  const plansRepo = (modules: string[] | undefined) => ({
+    findMany: async (_f: any) => (modules === undefined ? [] : [{ id: 'p1', slug: 'basico', modules }]),
+  }) as any
+
+  it('plan con módulos: solo esos quedan ON (más el ∩ global)', async () => {
+    const state = await getModuleStateForPlan(configRepo(null), plansRepo(['reservations', 'finance']), 'basico')
+    expect(state.reservations).toBe(true)
+    expect(state.finance).toBe(true)
+    expect(state.crm).toBe(false)   // no está en el plan
+    expect(state.ai).toBe(false)
+  })
+
+  it('plan SIN módulos definidos = todos (retrocompat)', async () => {
+    const state = await getModuleStateForPlan(configRepo(null), plansRepo([]), 'basico')
+    for (const m of MODULE_CATALOG) expect(state[m.key]).toBe(true)
+  })
+
+  it('un módulo apagado GLOBAL manda aunque el plan lo incluya', async () => {
+    const state = await getModuleStateForPlan(configRepo({ finance: false }), plansRepo(['finance', 'reservations']), 'basico')
+    expect(state.finance).toBe(false)   // global OFF gana
+    expect(state.reservations).toBe(true)
+  })
+
+  it('sin planSlug (super_admin) = solo el global', async () => {
+    const state = await getModuleStateForPlan(configRepo({ crm: false }), plansRepo(['reservations']), undefined)
+    expect(state.crm).toBe(false)
+    expect(state.ai).toBe(true)   // no se filtra por plan
   })
 })

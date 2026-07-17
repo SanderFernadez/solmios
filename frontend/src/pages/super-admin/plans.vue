@@ -83,6 +83,20 @@
                 <input v-model.number="form.limits.properties" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm" />
               </div>
             </div>
+            <div>
+              <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Módulos incluidos</label>
+              <p class="text-[11px] text-text-muted mb-2">Los hoteles con este plan solo ven estos módulos. Sin ninguno marcado = todos (compatibilidad).</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button v-for="m in moduleCatalog" :key="m.key" type="button" @click="toggleModule(m.key)"
+                  class="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-bold text-left transition-colors cursor-pointer"
+                  :class="form.modules.includes(m.key) ? 'bg-teal/10 border-teal text-teal' : 'bg-surface border-border text-text-muted'">
+                  <span class="w-4 h-4 rounded flex items-center justify-center shrink-0 border" :class="form.modules.includes(m.key) ? 'bg-teal border-teal text-white' : 'border-border'">
+                    <span v-if="form.modules.includes(m.key)" class="text-[10px] leading-none">✓</span>
+                  </span>
+                  {{ m.label }}
+                </button>
+              </div>
+            </div>
           </div>
           <div class="p-6 border-t border-border flex gap-3 justify-end">
             <button @click="showModal=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
@@ -97,6 +111,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { PlansService } from '@/services/Plans.service'
+import { ModulesService, type ModuleMeta } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
 const toast = useToast()
 
@@ -104,22 +119,30 @@ const plans = ref<any[]>([])
 const showModal = ref(false)
 const editing = ref<any>(null)
 const saving = ref(false)
+const moduleCatalog = ref<ModuleMeta[]>([])
 
-const form = ref({ name: '', price: 0, currency: 'USD', description: '', features: [] as string[], limits: { rooms: 30, users: 2, properties: 1 } })
+const emptyForm = () => ({ name: '', price: 0, currency: 'USD', description: '', features: [] as string[], modules: [] as string[], limits: { rooms: 30, users: 2, properties: 1 } })
+const form = ref(emptyForm())
 const featuresText = ref('')
 
 const features = computed(() => featuresText.value.split('\n').filter(f => f.trim()))
 
+function toggleModule(key: string) {
+  const set = new Set(form.value.modules)
+  set.has(key) ? set.delete(key) : set.add(key)
+  form.value.modules = [...set]
+}
+
 function openNew() {
   editing.value = null
-  form.value = { name: '', price: 0, currency: 'USD', description: '', features: [], limits: { rooms: 30, users: 2, properties: 1 } }
+  form.value = emptyForm()
   featuresText.value = ''
   showModal.value = true
 }
 
 function openEdit(plan: any) {
   editing.value = plan
-  form.value = { name: plan.name, price: plan.price, currency: plan.currency || 'USD', description: plan.description || '', features: plan.features || [], limits: plan.limits || { rooms: 30, users: 2, properties: 1 } }
+  form.value = { name: plan.name, price: plan.price, currency: plan.currency || 'USD', description: plan.description || '', features: plan.features || [], modules: plan.modules || [], limits: plan.limits || { rooms: 30, users: 2, properties: 1 } }
   featuresText.value = (plan.features || []).join('\n')
   showModal.value = true
 }
@@ -127,6 +150,9 @@ function openEdit(plan: any) {
 async function loadPlans() {
   const { data } = await PlansService.list()
   plans.value = data || []
+}
+async function loadModuleCatalog() {
+  try { moduleCatalog.value = (await ModulesService.adminGet()).catalog || [] } catch { /* opcional */ }
 }
 
 async function save() {
@@ -158,5 +184,5 @@ async function deletePlan(plan: any) {
   }
 }
 
-onMounted(loadPlans)
+onMounted(() => { loadPlans(); loadModuleCatalog() })
 </script>

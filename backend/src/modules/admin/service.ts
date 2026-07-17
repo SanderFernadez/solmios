@@ -53,6 +53,7 @@ export class AdminService {
       slug: body.name.toLowerCase().replace(/\s+/g, '-'),
       price: Number(body.price), currency: body.currency || 'USD',
       description: body.description || '', features: body.features || [],
+      modules: Array.isArray(body.modules) ? body.modules : [],
       limits: body.limits || { rooms: 30, users: 2, properties: 1 },
       isActive: body.isActive !== false ? 1 : 0, sortOrder: body.sortOrder || 0,
     })
@@ -63,7 +64,7 @@ export class AdminService {
     if (!existing) throw new Error('Plan no encontrado')
     if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
     const patch: Record<string, any> = {}
-    for (const k of ['name', 'price', 'currency', 'description', 'features', 'limits', 'isActive', 'sortOrder']) {
+    for (const k of ['name', 'price', 'currency', 'description', 'features', 'modules', 'limits', 'isActive', 'sortOrder']) {
       if (body[k] !== undefined) patch[k] = k === 'isActive' ? (body[k] ? 1 : 0) : body[k]
     }
     if (body.name) patch.slug = body.name.toLowerCase().replace(/\s+/g, '-')

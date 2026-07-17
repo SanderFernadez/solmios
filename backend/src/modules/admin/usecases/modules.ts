@@ -40,6 +40,28 @@ export async function getModuleState(configRepo: RepositoryAdapter<any>): Promis
   return state
 }
 
+/**
+ * Estado EFECTIVO para un hotel: global-ON ∩ (módulos del plan). Un plan sin módulos definidos incluye
+ * TODOS (retrocompat: los planes viejos no pierden nada). super_admin / sin plan → solo el global.
+ */
+export async function getModuleStateForPlan(
+  configRepo: RepositoryAdapter<any>, plansRepo: RepositoryAdapter<any>, planSlug?: string,
+): Promise<ModuleState> {
+  const global = await getModuleState(configRepo)
+  let planModules: string[] | null = null
+  if (planSlug) {
+    const plan = ((await plansRepo.findMany({ slug: planSlug })) as any[])?.[0]
+    const raw = plan?.modules ? (typeof plan.modules === 'string' ? JSON.parse(plan.modules) : plan.modules) : []
+    if (Array.isArray(raw) && raw.length) planModules = raw.map(String)
+  }
+  const state: ModuleState = {}
+  for (const m of MODULE_CATALOG) {
+    const inPlan = !planModules || planModules.includes(m.key)
+    state[m.key] = global[m.key] !== false && inPlan
+  }
+  return state
+}
+
 /** Aplica un patch parcial (solo claves del catálogo) y persiste. Devuelve el estado resultante. */
 export async function setModuleState(configRepo: RepositoryAdapter<any>, patch: ModuleState): Promise<ModuleState> {
   const { row } = await readRaw(configRepo)

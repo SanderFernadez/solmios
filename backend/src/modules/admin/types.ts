@@ -1,4 +1,4 @@
-export interface PlanDTO { id: string; name: string; slug: string; price: number; currency: string; description: string; features: any[]; limits: any; isActive: number; sortOrder: number; }
+export interface PlanDTO { id: string; name: string; slug: string; price: number; currency: string; description: string; features: any[]; modules: string[]; limits: any; isActive: number; sortOrder: number; }
 export interface AmenityCatalogDTO { id: string; key: string; label: string; category: string; icon: string; isActive: number; sortOrder: number; }
 
 export interface HotelBreakdownDTO {

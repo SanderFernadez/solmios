@@ -31,6 +31,8 @@ export function registerSharedModels(orm: ORM): void {
       currency: { type: 'string', default: 'USD' },
       description: { type: 'string', default: '' },
       features: { type: 'json', default: [] },
+      // Módulos del producto que incluye el plan (keys del catálogo). Vacío = todos (retrocompat).
+      modules: { type: 'json', default: [] },
       limits: { type: 'json', default: { rooms: 30, users: 2, properties: 1 } },
       isActive: { type: 'number', default: 1 },
       sortOrder: { type: 'number', default: 0 },

@@ -3,7 +3,7 @@ import type { PlanDTO, AmenityCatalogDTO } from './types'
 import { AdminService } from './service'
 import { AdminController } from './controller'
 import { DashboardQueries } from './usecases/dashboard-queries'
-import { MODULE_CATALOG, getModuleState, setModuleState } from './usecases/modules'
+import { MODULE_CATALOG, getModuleState, setModuleState, getModuleStateForPlan } from './usecases/modules'
 import { requireUserType } from '../../infrastructure/auth/require-user-type'
 
 export { AdminService }
@@ -34,12 +34,21 @@ export function AdminModule() {
       const sa = [auth.authenticate('super_admin'), requireUserType('admin')]
       const ar = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin'), requireUserType('merchant')]
 
-      // ── Módulos del producto (activar/desactivar) — global, en configuration(platform,'modules') ──
+      // ── Módulos del producto (activar/desactivar) — global en configuration(platform,'modules') + por plan ──
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
-      // Editar: solo super_admin. Leer el estado: cualquier usuario logueado (el panel del hotel filtra su menú).
+      const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
+      // Editar: solo super_admin. Leer: cualquier logueado; el estado sale de global ∩ el plan de SU hotel.
       router.get('/api/admin/modules', sa, async () => ({ status: 200, body: { catalog: MODULE_CATALOG, state: await getModuleState(configRepo) } }))
       router.put('/api/admin/modules', sa, async (req: any) => ({ status: 200, body: { state: await setModuleState(configRepo, (req.body?.state ?? req.body) || {}) } }))
-      router.get('/api/modules', [auth.authenticate()], async () => ({ status: 200, body: { state: await getModuleState(configRepo) } }))
+      router.get('/api/modules', [auth.authenticate()], async (req: any) => {
+        const hotelId = req.user?.hotelId
+        let planSlug: string | undefined
+        if (hotelId && hotelId !== 'platform') {
+          const hotel = ((await hotelsRepo.findMany({ id: hotelId })) as any[])?.[0]
+          planSlug = hotel?.plan
+        }
+        return { status: 200, body: { state: await getModuleStateForPlan(configRepo, plansRepo, planSlug) } }
+      })
 
       router.get('/api/admin/hoteles', sa, () => controller.listHotels())
       router.get('/api/admin/users', sa, () => controller.listUsers())
