@@ -68,7 +68,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="m in catalog.modules" :key="m.key" class="border-b border-border/40 hover:bg-surface/30 transition-colors">
+              <tr v-for="m in visibleModules" :key="m.key" class="border-b border-border/40 hover:bg-surface/30 transition-colors">
                 <td class="py-2.5 px-4 text-xs font-bold text-navy">{{ m.label }}</td>
                 <td v-for="a in catalog.actions" :key="a.key" class="py-2.5 px-3 text-center">
                   <input type="checkbox" :value="`${m.key}:${a.key}`" v-model="selected.permissions"
@@ -101,19 +101,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RolesService, type Role, type PermissionCatalog } from '@/services/Roles.service'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth.store'
+import { useModulesStore } from '@/stores/modules.store'
+import { permissionModuleEnabled } from '@/config/module-map'
 
 const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h12M9.75 7.5v-1.5a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 1.5 1.5v1.5m-8.25 0 .75 11.25a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5L17.25 7.5"/></svg>'
 
 const toast = useToast()
+const auth = useAuthStore()
+const modules = useModulesStore()
 const loading = ref(true)
 const saving = ref(false)
 const roles = ref<Role[]>([])
 const catalog = ref<PermissionCatalog>({ modules: [], actions: [] })
 const selected = ref<Role | null>(null)
+
+// El dueño solo reparte permisos de los módulos que la plataforma le liberó (plan ∩ global).
+const visibleModules = computed(() =>
+  catalog.value.modules.filter((m) => permissionModuleEnabled(m.key, modules.state)))
 
 async function load() {
   loading.value = true
@@ -125,7 +134,7 @@ async function load() {
   } catch { toast.error('No se pudieron cargar los roles') }
   finally { loading.value = false }
 }
-onMounted(load)
+onMounted(() => { modules.ensure(auth.user?.hotelId); load() })
 
 function select(role: Role) {
   // Copia editable: no mutar la card del listado hasta guardar.
@@ -134,7 +143,8 @@ function select(role: Role) {
 
 function selectAll() {
   if (!selected.value) return
-  selected.value.permissions = catalog.value.modules.flatMap((m) => catalog.value.actions.map((a) => `${m.key}:${a.key}`))
+  // Solo los módulos visibles (liberados al hotel): "Todo" no otorga permisos de módulos que no tiene.
+  selected.value.permissions = visibleModules.value.flatMap((m) => catalog.value.actions.map((a) => `${m.key}:${a.key}`))
 }
 function clearAll() {
   if (selected.value) selected.value.permissions = []

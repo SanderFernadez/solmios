@@ -72,3 +72,33 @@ export function isRouteEnabled(path: string, state: Record<string, boolean>): bo
   const key = moduleKeyForPath(path)
   return !key || state[key] !== false
 }
+
+// Módulo de permiso (shared/permissions.ts MODULES) → clave del catálogo de producto que lo habilita.
+// El dueño del hotel solo reparte permisos de los módulos que la plataforma le liberó (plan ∩ global):
+// esta tabla dice qué módulo de producto respalda cada grupo de permisos. Lo NO mapeado es transversal
+// y siempre se muestra (dashboard, settings/Configuración Base, feedback).
+export const PERMISSION_TO_MODULE: Record<string, string> = {
+  reservations: 'reservations',
+  guests: 'guests',
+  rooms: 'settings.rooms',
+  housekeeping: 'operations.housekeeping',
+  maintenance: 'operations.maintenance',
+  billing: 'finance',
+  reports: 'finance.reports',
+  users: 'hr',
+  attendance: 'hr.attendance',
+  payroll: 'hr.payroll',
+  'channel-manager': 'channel',
+  ttlock: 'settings.locks',
+  ai: 'ai',
+}
+
+/**
+ * ¿El dueño puede repartir permisos de este módulo de permiso? Solo si el módulo de producto que lo
+ * respalda está habilitado para el hotel. Sin mapeo = transversal/base → siempre true. Fail-open: si el
+ * estado no cargó (objeto vacío), no se oculta nada (no dejamos al dueño sin gestionar sus permisos).
+ */
+export function permissionModuleEnabled(permKey: string, state: Record<string, boolean>): boolean {
+  const productKey = PERMISSION_TO_MODULE[permKey]
+  return !productKey || state[productKey] !== false
+}
