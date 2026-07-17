@@ -38,6 +38,26 @@ export class DashboardQueries {
     return rows.filter((u: any) => u && u.email).map((u: any) => ({ name: u.name, email: u.email, role: u.role }))
   }
 
+  /** Últimos N meses como buckets ordenados (viejo → nuevo). */
+  private lastNMonths(n: number): { key: string; label: string }[] {
+    const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+    const now = new Date()
+    const out: { key: string; label: string }[] = []
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      out.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: MONTHS[d.getMonth()] })
+    }
+    return out
+  }
+
+  /** Clave `YYYY-MM` de una fecha ISO; null si no parsea. */
+  private monthKeyOf(raw: any): string | null {
+    if (!raw) return null
+    const d = new Date(String(raw))
+    if (Number.isNaN(d.getTime())) return null
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+
   async getAnalytics(): Promise<any> {
     const hs = await this.orm.findMany('Hotels', {})
     const us = await this.orm.findMany('Users', {})
@@ -72,15 +92,50 @@ export class DashboardQueries {
     const totalRevenue = rs.reduce((s: number, r: any) => s + Number(r.totalAmount || 0), 0)
     const totalNightsSold = rs.reduce((s: number, r: any) => s + nights(r.checkIn, r.checkOut), 0)
     const avgADR = totalNightsSold > 0 ? Math.round(totalRevenue / totalNightsSold) : 0
+
+    // Ingresos mensuales reales (últimos 6 meses) — suma de totalAmount de reservas activas por mes.
+    // Se agrupa por createdAt (cuándo entró la reserva); si falta, cae a checkIn.
+    const REVENUE_STATUSES = ['confirmed', 'checked_in', 'checked_out']
+    const buckets = this.lastNMonths(6)
+    const revByMonth: Record<string, number> = {}
+    for (const r of rs) {
+      if (!REVENUE_STATUSES.includes(r.status)) continue
+      const key = this.monthKeyOf(r.createdAt) ?? this.monthKeyOf(r.checkIn)
+      if (!key) continue
+      revByMonth[key] = (revByMonth[key] || 0) + Number(r.totalAmount || 0)
+    }
+    const monthlyRevenue = buckets.map((b) => ({ label: b.label, value: Math.round(revByMonth[b.key] || 0) }))
+
+    // MRR por plan (para el revenue de "Distribución por Plan")
+    const byPlanRevenue: Record<string, number> = {}
+    for (const h of hs) {
+      const plan = String(h.plan || 'essential')
+      byPlanRevenue[plan] = (byPlanRevenue[plan] || 0) + (PLAN_PRICE[plan.toLowerCase()] ?? 49)
+    }
+
+    // Trends reales: altas de este mes vs el anterior (crecimiento del período).
+    const [prevKey, curKey] = [buckets[4].key, buckets[5].key]
+    const createdIn = (rows: any[], key: string): number =>
+      rows.filter((x: any) => this.monthKeyOf(x.createdAt) === key).length
+    const pct = (cur: number, prev: number): number =>
+      prev > 0 ? Math.round(((cur - prev) / prev) * 100) : (cur > 0 ? 100 : 0)
+    const trends = {
+      hoteles: pct(createdIn(hs, curKey), createdIn(hs, prevKey)),
+      usuarios: pct(createdIn(us, curKey), createdIn(us, prevKey)),
+      reservas: pct(createdIn(rs, curKey), createdIn(rs, prevKey)),
+      mrr: pct(monthlyRevenue[5].value, monthlyRevenue[4].value),
+    }
+
     return {
       mrr: hs.reduce((s: number, h: any) => s + (PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49), 0),
       totalHoteles: hs.length, totalUsuarios: us.length, totalReservas: rs.length,
       activeHotels: hs.filter((h: any) => h.status === 'active').length,
       byPlan: hs.reduce((a: any, h: any) => ((a[h.plan] = (a[h.plan] || 0) + 1), a), {}),
+      byPlanRevenue,
       avgOccupancy, avgADR, hotelsBreakdown,
       topByRevenue: [...hotelsBreakdown].sort((a: any, b: any) => b.revenue - a.revenue).slice(0, 5),
       topByOccupancy: [...hotelsBreakdown].sort((a: any, b: any) => b.occupancy - a.occupancy).slice(0, 5),
-      npsScore: 0, ticketPromedio: 0, monthlyRevenue: [],
+      npsScore: 0, ticketPromedio: 0, monthlyRevenue, trends,
     }
   }
 

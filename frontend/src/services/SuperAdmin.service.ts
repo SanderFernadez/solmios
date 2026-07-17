@@ -12,6 +12,10 @@ export interface AdminUser {
   createdAt?: string
 }
 
+export interface HotelBreakdown {
+  id: string; name: string; plan: string; status: string; mrr: number
+  rooms: number; reservations: number; occupancy: number; adr: number; revenue: number
+}
 export interface AdminAnalytics {
   mrr: number
   totalHoteles: number
@@ -19,11 +23,16 @@ export interface AdminAnalytics {
   totalReservas: number
   activeHotels: number
   byPlan: Record<string, number>
+  byPlanRevenue: Record<string, number>
   avgOccupancy: number
   avgADR: number
-  hotelsBreakdown?: Array<{ id: string; name: string; plan: string; status: string; mrr: number; rooms: number; reservations: number; occupancy: number; adr: number; revenue: number }>
+  hotelsBreakdown?: HotelBreakdown[]
+  topByRevenue?: HotelBreakdown[]
+  topByOccupancy?: HotelBreakdown[]
   npsScore: number
   ticketPromedio: number
+  monthlyRevenue: Array<{ label: string; value: number }>
+  trends: { hoteles: number; usuarios: number; reservas: number; mrr: number }
 }
 
 export interface AdminHotel extends HotelData {

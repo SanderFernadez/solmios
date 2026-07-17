@@ -5,7 +5,7 @@
       <div v-for="stat in mainStats" :key="stat.label" class="bg-white rounded-2xl border border-border card-shadow p-5">
         <div class="flex items-center justify-between mb-3">
           <span class="text-2xl">{{ stat.icon }}</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="stat.trend > 0 ? 'bg-teal/10 text-teal' : 'bg-red/10 text-red'">
+          <span v-if="stat.trend !== 0" class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="stat.trend > 0 ? 'bg-teal/10 text-teal' : 'bg-red/10 text-red'">
             {{ stat.trend > 0 ? '+' : '' }}{{ stat.trend }}%
           </span>
         </div>
@@ -94,8 +94,8 @@
                 <div class="text-[10px] text-text-muted">{{ hotel.location }}</div>
               </div>
               <div class="text-right">
-                <div class="text-sm font-black text-teal">${{ (hotel.mrr ?? 0).toLocaleString() }}</div>
-                <div class="text-[10px] text-text-muted">{{ hotel.plan }}</div>
+                <div class="text-sm font-black text-teal">${{ (hotel.revenue ?? 0).toLocaleString() }}</div>
+                <div class="text-[10px] text-text-muted capitalize">{{ hotel.plan }}</div>
               </div>
             </div>
           </div>
@@ -203,48 +203,34 @@
         </div>
       </div>
 
-      <!-- System Health -->
+      <!-- System Health — datos reales del proceso backend (GET /admin/monitoring) -->
       <div class="bg-white rounded-2xl border border-border card-shadow">
         <div class="p-5 border-b border-border">
           <h3 class="text-sm font-black text-navy">Salud del Sistema</h3>
         </div>
         <div class="p-5">
           <div class="space-y-4">
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm">Uptime</span>
-                <span class="text-sm font-bold text-teal">99.9%</span>
-              </div>
-              <div class="w-full h-2 bg-surface rounded-full">
-                <div class="h-2 bg-teal rounded-full" style="width: 99.9%"></div>
-              </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm">Estado del backend</span>
+              <span class="text-sm font-bold text-teal flex items-center gap-1.5">
+                <span class="w-2 h-2 bg-teal rounded-full"></span>Operativo
+              </span>
             </div>
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm">API Response</span>
-                <span class="text-sm font-bold text-teal">142ms</span>
-              </div>
-              <div class="w-full h-2 bg-surface rounded-full">
-                <div class="h-2 bg-cyan rounded-full" style="width: 85%"></div>
-              </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm">Uptime</span>
+              <span class="text-sm font-bold text-navy">{{ uptimeLabel }}</span>
             </div>
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm">DB Performance</span>
-                <span class="text-sm font-bold text-teal">OK</span>
-              </div>
-              <div class="w-full h-2 bg-surface rounded-full">
-                <div class="h-2 bg-navy rounded-full" style="width: 92%"></div>
-              </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm">Memoria (RSS)</span>
+              <span class="text-sm font-bold text-navy">{{ memoriaMb.toLocaleString() }} MB</span>
             </div>
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm">Storage</span>
-                <span class="text-sm font-bold text-orange">67%</span>
-              </div>
-              <div class="w-full h-2 bg-surface rounded-full">
-                <div class="h-2 bg-orange rounded-full" style="width: 67%"></div>
-              </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm">Base de datos</span>
+              <span class="text-sm font-bold text-teal">Conectada</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm">Reservas registradas</span>
+              <span class="text-sm font-bold text-navy">{{ (monitoring?.reservas ?? 0).toLocaleString() }}</span>
             </div>
           </div>
         </div>
@@ -257,22 +243,22 @@
         </div>
         <div class="p-5">
           <div class="grid grid-cols-2 gap-3">
-            <button class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
+            <router-link to="/admin/hotels" class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
               <div class="text-2xl mb-2">🏨</div>
-              <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Nuevo Hotel</div>
-            </button>
-            <button class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
+              <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Gestionar Hoteles</div>
+            </router-link>
+            <router-link to="/admin/plans" class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
               <div class="text-2xl mb-2">💳</div>
               <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Crear Plan</div>
-            </button>
-            <button class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
+            </router-link>
+            <router-link to="/admin/announcements" class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
               <div class="text-2xl mb-2">📧</div>
-              <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Enviar Newsletter</div>
-            </button>
-            <button class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
+              <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Anuncios</div>
+            </router-link>
+            <router-link to="/admin/analytics" class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
               <div class="text-2xl mb-2">📊</div>
               <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Ver Reportes</div>
-            </button>
+            </router-link>
           </div>
         </div>
       </div>
@@ -290,11 +276,12 @@ const analytics = ref<Awaited<ReturnType<typeof SuperAdminService.analytics>> | 
 
 const mainStats = computed(() => {
   const a = analytics.value
+  const t = a?.trends
   return [
-    { icon: '🏨', label: 'Hoteles Activos', value: String(a?.activeHotels ?? a?.totalHoteles ?? 0), trend: 0 },
-    { icon: '💰', label: 'MRR Total', value: `$${(a?.mrr ?? 0).toLocaleString()}`, trend: 0 },
-    { icon: '👤', label: 'Usuarios Totales', value: String(a?.totalUsuarios ?? 0), trend: 0 },
-    { icon: '📋', label: 'Reservas', value: String(a?.totalReservas ?? 0), trend: 0 },
+    { icon: '🏨', label: 'Hoteles Activos', value: String(a?.activeHotels ?? a?.totalHoteles ?? 0), trend: t?.hoteles ?? 0 },
+    { icon: '💰', label: 'MRR Total', value: `$${(a?.mrr ?? 0).toLocaleString()}`, trend: t?.mrr ?? 0 },
+    { icon: '👤', label: 'Usuarios Totales', value: String(a?.totalUsuarios ?? 0), trend: t?.usuarios ?? 0 },
+    { icon: '📋', label: 'Reservas', value: String(a?.totalReservas ?? 0), trend: t?.reservas ?? 0 },
     { icon: '🎯', label: 'Ocupación prom', value: `${a?.avgOccupancy ?? 0}%`, trend: 0 },
     { icon: '💵', label: 'ADR prom', value: `$${(a?.avgADR ?? 0).toLocaleString()}`, trend: 0 },
   ]
@@ -312,6 +299,7 @@ const PLAN_META: Record<string, { color: string }> = {
 
 const planDistribution = computed(() => {
   const byPlan = analytics.value?.byPlan ?? {}
+  const byPlanRevenue = analytics.value?.byPlanRevenue ?? {}
   const total = Object.values(byPlan).reduce((s: number, n) => s + (n as number), 0) || 1
   return Object.entries(byPlan).map(([name, count]) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
@@ -319,24 +307,42 @@ const planDistribution = computed(() => {
     color: PLAN_META[name.toLowerCase()]?.color ?? 'bg-cyan',
     barColor: PLAN_META[name.toLowerCase()]?.color ?? 'bg-cyan',
     percentage: Math.round(((count as number) / total) * 100),
-    revenue: 0,
+    revenue: byPlanRevenue[name] ?? 0,
   }))
 })
 
 const totalHotels = computed(() => planDistribution.value.reduce((acc, p) => acc + p.count, 0))
 
 const monitoring = ref<any>({})
-const topHotels = ref<any[]>([])
 const recentActivity = ref<any[]>([])
+
+// Top hoteles por ingresos: el backend ya lo computa ordenado (topByRevenue), con revenue/mrr/plan reales.
+const topHotels = computed(() => {
+  const src = analytics.value?.topByRevenue ?? []
+  return src.map((h) => ({
+    id: h.id, name: h.name, plan: h.plan,
+    location: `${h.rooms} hab · ${h.reservations} reservas`,
+    revenue: h.revenue, mrr: h.mrr,
+  }))
+})
+
+// Salud del sistema con datos reales del backend (uptime en segundos, RAM en MB).
+const SECONDS_PER_DAY = 86_400
+const SECONDS_PER_HOUR = 3_600
+const uptimeLabel = computed(() => {
+  const s = Number(monitoring.value?.uptime ?? 0)
+  const d = Math.floor(s / SECONDS_PER_DAY)
+  const h = Math.floor((s % SECONDS_PER_DAY) / SECONDS_PER_HOUR)
+  const m = Math.floor((s % SECONDS_PER_HOUR) / 60)
+  if (d > 0) return `${d}d ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+})
+const memoriaMb = computed(() => Number(monitoring.value?.memoria ?? 0))
 
 onMounted(async () => {
   try { analytics.value = await SuperAdminService.analytics() } catch { /* silent */ }
   try { monitoring.value = await PlatformService.monitoring() } catch { /* silent */ }
-  try {
-    const h = await SuperAdminService.hotels()
-    const data = (h as any)?.data || (h as any)?.hotels || h || []
-    topHotels.value = (Array.isArray(data) ? data : []).slice(0, 5)
-  } catch { /* silent */ }
   try {
     const a = await AuditLogService.list()
     recentActivity.value = (a?.data || []).slice(0, 8)
