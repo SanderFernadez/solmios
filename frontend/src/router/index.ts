@@ -87,6 +87,11 @@ const router = createRouter({
           component: () => import('@/pages/super-admin/users.vue'),
         },
         {
+          path: 'channels',
+          name: 'super-admin-channels',
+          component: () => import('@/pages/super-admin/channels.vue'),
+        },
+        {
           path: 'settings',
           name: 'super-admin-settings',
           component: () => import('@/pages/super-admin/settings.vue'),
