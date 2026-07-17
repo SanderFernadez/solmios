@@ -1,76 +1,85 @@
 <template>
-  <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 mb-8">
-    <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
-      <div>
-        <h2 class="text-lg font-black text-navy">Tarifas por canal</h2>
-        <p class="text-xs text-text-muted mt-0.5">Precio base + ajuste por temporada para cada canal conectado</p>
+  <div class="rounded-[20px] border-2 border-navy bg-white shadow-(--shadow-card) overflow-hidden mb-8">
+    <!-- Header oscuro (coherente con el header/sidebar del home) -->
+    <div class="flex items-center justify-between gap-3 flex-wrap bg-navy px-4 sm:px-5 py-4">
+      <div class="min-w-0">
+        <h2 class="text-base sm:text-lg font-black text-white">Tarifas por canal</h2>
+        <p class="text-[11px] text-white/60 mt-0.5">Precio base + ajuste por temporada</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 flex-wrap">
         <select v-if="channels.length > 1" v-model="selectedChannel" @change="loadRates"
-          class="px-4 py-2 rounded-xl border border-border text-sm font-bold text-navy focus:border-cyan outline-none cursor-pointer">
-          <option v-for="c in channels" :key="c.code" :value="c.code">{{ c.name }}</option>
+          class="px-3 py-2 rounded-lg border-2 border-white/20 bg-white/10 text-sm font-bold text-white outline-none cursor-pointer">
+          <option v-for="c in channels" :key="c.code" :value="c.code" class="text-navy">{{ c.name }}</option>
         </select>
-        <span v-else class="px-4 py-2 rounded-xl bg-surface text-sm font-bold text-navy">{{ channels[0]?.name }}</span>
+        <span v-else class="px-3 py-2 rounded-lg bg-white/10 text-sm font-bold text-white">{{ channels[0]?.name }}</span>
         <button @click="save" :disabled="saving || !selectedChannel"
-          class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
-          {{ saving ? 'Guardando...' : 'Guardar' }}
+          class="rounded-lg bg-cyan text-navy text-sm font-extrabold px-5 py-2 border-2 border-cyan hover:bg-cyan-light transition-all cursor-pointer disabled:opacity-50">
+          {{ saving ? 'Guardando…' : 'Guardar' }}
         </button>
       </div>
     </div>
 
-    <!-- Leyenda de temporadas -->
-    <div class="flex flex-wrap gap-4 mb-5">
-      <span v-for="s in seasons" :key="s.name" class="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary">
-        <span class="w-3 h-3 rounded-full" :style="{ background: s.color }"></span>{{ s.label || s.name }}
-      </span>
-    </div>
+    <div class="p-4 sm:p-5">
+      <!-- Leyenda de temporadas -->
+      <div class="flex flex-wrap gap-x-4 gap-y-2 mb-4">
+        <span v-for="s in seasons" :key="s.name" class="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary">
+          <span class="w-3 h-3 rounded-full border border-navy/20" :style="{ background: s.color }"></span>{{ s.label || s.name }}
+        </span>
+      </div>
 
-    <div v-if="loading" class="text-center py-10 text-text-muted text-sm">Cargando tarifas...</div>
-    <div v-else-if="groups.length === 0" class="text-center py-10 text-text-muted text-sm">
-      No hay habitaciones con tipo definido para configurar tarifas.
-    </div>
+      <div v-if="loading" class="text-center py-10 text-text-muted text-sm">Cargando tarifas…</div>
+      <div v-else-if="groups.length === 0" class="text-center py-10 text-text-muted text-sm">
+        No hay habitaciones con tipo definido para configurar tarifas.
+      </div>
 
-    <!-- Una tarjeta por habitación (roomType × ocupación) -->
-    <div v-else class="space-y-4">
-      <div v-for="g in groups" :key="g.key" class="rounded-2xl border border-border bg-surface/40 p-4">
-        <h3 class="text-sm font-black text-navy mb-3">{{ g.roomType }} <span class="text-text-muted font-bold">· {{ g.occupancy }} pers.</span></h3>
-        <div class="flex flex-wrap gap-3 items-stretch">
-          <!-- General + días mín/máx -->
-          <div class="rounded-xl bg-white border border-border p-3 min-w-[170px]">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Tarifa base (General)</div>
-            <div class="flex items-center gap-1 mb-2">
-              <input type="number" min="0" step="0.01" v-model.number="g.basePrice"
-                class="w-24 px-2 py-1.5 rounded-lg border border-border text-sm font-bold text-navy text-right" />
-              <span class="text-xs text-text-muted">{{ currency }}</span>
-            </div>
-            <div class="flex gap-2">
-              <div>
-                <div class="text-[10px] text-text-muted">Días mín.</div>
-                <input type="number" min="0" v-model.number="g.minStay" class="w-14 px-2 py-1 rounded-lg border border-border text-xs text-right" />
-              </div>
-              <div>
-                <div class="text-[10px] text-text-muted">Días máx.</div>
-                <input type="number" min="0" v-model.number="g.maxStay" class="w-14 px-2 py-1 rounded-lg border border-border text-xs text-right" />
-              </div>
-            </div>
+      <!-- Una tarjeta por habitación (roomType × ocupación) -->
+      <div v-else class="space-y-4">
+        <div v-for="g in groups" :key="g.key" class="rounded-2xl border-2 border-navy overflow-hidden">
+          <div class="bg-surface border-b-2 border-navy px-4 py-2.5">
+            <h3 class="text-sm font-black text-navy capitalize">{{ g.roomType }} <span class="text-text-muted font-bold normal-case">· {{ g.occupancy }} pers.</span></h3>
           </div>
-
-          <!-- Una columna por temporada -->
-          <div v-for="cell in g.cells" :key="cell.season" class="rounded-xl border border-border p-3 min-w-[150px]"
-            :style="{ background: seasonColor(cell.season) + '22' }">
-            <div class="text-[10px] font-bold uppercase mb-1" :style="{ color: seasonColor(cell.season) }">{{ seasonLabel(cell.season) }}</div>
-            <div class="flex items-center gap-1 mb-1.5">
-              <span class="text-xs font-black text-navy">+</span>
-              <input type="number" step="0.01" v-model.number="cell.percentage"
-                class="w-16 px-2 py-1.5 rounded-lg border border-border text-sm font-bold text-navy text-right" />
-              <span class="text-xs text-text-muted">%</span>
+          <!-- Responsive: en móvil General arriba + temporadas 2×2; en desktop General a la izq + 4 temporadas en fila -->
+          <div class="p-3 grid grid-cols-1 lg:grid-cols-[190px_1fr] gap-3">
+            <!-- General + días mín/máx -->
+            <div class="rounded-xl border-2 border-navy bg-surface p-3">
+              <div class="text-[10px] font-black text-text-muted uppercase mb-1">Tarifa base (General)</div>
+              <div class="flex items-center gap-1 mb-2">
+                <input type="number" min="0" step="0.01" inputmode="decimal" v-model.number="g.basePrice"
+                  class="w-full px-2 py-1.5 rounded-lg border-2 border-navy/30 text-sm font-black text-navy text-right focus:border-navy outline-none" />
+                <span class="text-xs text-text-muted shrink-0">{{ currency }}</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <div class="text-[10px] text-text-muted">Días mín.</div>
+                  <input type="number" min="0" inputmode="numeric" v-model.number="g.minStay" class="w-full px-2 py-1 rounded-lg border-2 border-navy/30 text-xs text-right focus:border-navy outline-none" />
+                </div>
+                <div>
+                  <div class="text-[10px] text-text-muted">Días máx.</div>
+                  <input type="number" min="0" inputmode="numeric" v-model.number="g.maxStay" class="w-full px-2 py-1 rounded-lg border-2 border-navy/30 text-xs text-right focus:border-navy outline-none" />
+                </div>
+              </div>
             </div>
-            <div class="text-sm font-black text-teal mb-2">= {{ resultPrice(g.basePrice, cell.percentage) }} {{ currency }}</div>
-            <button @click="cell.closed = cell.closed ? 0 : 1"
-              class="w-full py-1.5 text-[10px] font-bold rounded-full transition-colors cursor-pointer"
-              :class="cell.closed ? 'bg-coral text-white' : 'border border-border text-text-secondary hover:border-coral hover:text-coral'">
-              {{ cell.closed ? 'Ventas cerradas' : 'Cerrar ventas' }}
-            </button>
+
+            <!-- Temporadas: 2 columnas en móvil, 4 en desktop -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+              <div v-for="cell in g.cells" :key="cell.season" class="rounded-xl border-2 border-navy overflow-hidden flex flex-col">
+                <div class="px-2.5 py-1.5 text-[10px] font-black uppercase text-white truncate" :style="{ background: seasonColor(cell.season) }">{{ seasonLabel(cell.season) }}</div>
+                <div class="p-2.5 flex flex-col gap-1.5 flex-1">
+                  <div class="flex items-center gap-1">
+                    <span class="text-xs font-black text-navy">+</span>
+                    <input type="number" step="0.01" inputmode="decimal" v-model.number="cell.percentage"
+                      class="w-full min-w-0 px-2 py-1.5 rounded-lg border-2 border-navy/30 text-sm font-black text-navy text-right focus:border-navy outline-none" />
+                    <span class="text-xs text-text-muted">%</span>
+                  </div>
+                  <div class="text-sm font-black text-teal">= {{ resultPrice(g.basePrice, cell.percentage) }} <span class="text-[10px] text-text-muted">{{ currency }}</span></div>
+                  <button @click="cell.closed = cell.closed ? 0 : 1"
+                    class="mt-auto w-full py-1.5 text-[10px] font-black rounded-lg border-2 transition-colors cursor-pointer"
+                    :class="cell.closed ? 'bg-coral border-coral text-white' : 'border-navy/30 text-text-secondary hover:border-coral hover:text-coral'">
+                    {{ cell.closed ? 'Ventas cerradas' : 'Cerrar ventas' }}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
