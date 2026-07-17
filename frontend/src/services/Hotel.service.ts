@@ -88,6 +88,14 @@ export const HotelService = {
     return http.post('/rates/copy-next-year')
   },
 
+  // Modo de tarificación del hotel: 'per_room' (precio por habitación) | 'per_person' (por ocupación).
+  async pricingMode(): Promise<{ mode: 'per_room' | 'per_person' }> {
+    return http.get('/pricing-mode')
+  },
+  async setPricingMode(mode: 'per_room' | 'per_person'): Promise<{ mode: 'per_room' | 'per_person' }> {
+    return http.put('/pricing-mode', { mode })
+  },
+
   // Días Mínimos por fecha (fila del planning). Solo devuelve overrides (minStay > 1).
   async dateRestrictions(from?: string, to?: string): Promise<{ data: { date: string; minStay: number }[] }> {
     const qs = from && to ? `?from=${from}&to=${to}` : ''

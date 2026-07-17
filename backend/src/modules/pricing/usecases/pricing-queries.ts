@@ -1,15 +1,53 @@
+export type PricingMode = 'per_room' | 'per_person'
+
 export class PricingQueries {
   constructor(private readonly orm: any) {}
 
-  /** Tipos de habitación distintos del hotel, con ocupación (capacity) y precio base de referencia. */
-  async roomTypesFor(hotelId: string): Promise<{ type: string; occupancy: number; basePrice: number }[]> {
+  /**
+   * Modo de tarificación del hotel (config PMS por cliente):
+   *  - 'per_room'   → un precio por habitación sin importar huéspedes (default).
+   *  - 'per_person' → precio distinto por cantidad de personas (occupancy-based).
+   * Guardado en configuration(hotelId, key='pricing_mode') = { mode }.
+   */
+  async getPricingMode(hotelId: string): Promise<PricingMode> {
+    try {
+      const rows = await this.orm.findMany('Configuration', { hotelId, key: 'pricing_mode' }) as any[]
+      const raw = rows[0]?.value
+      const v = typeof raw === 'string' ? (() => { try { return JSON.parse(raw) } catch { return raw } })() : raw
+      const mode = (v && typeof v === 'object') ? v.mode : v
+      return mode === 'per_person' ? 'per_person' : 'per_room'
+    } catch { return 'per_room' }
+  }
+
+  async setPricingMode(hotelId: string, mode: PricingMode): Promise<PricingMode> {
+    const value = { mode: mode === 'per_person' ? 'per_person' : 'per_room' }
+    const rows = await this.orm.findMany('Configuration', { hotelId, key: 'pricing_mode' }) as any[]
+    if (rows[0]) await this.orm.update('Configuration', rows[0].id, { value })
+    else await this.orm.create('Configuration', { id: crypto.randomUUID(), hotelId, key: 'pricing_mode', value })
+    return value.mode as PricingMode
+  }
+
+  /**
+   * Tipos de habitación del hotel expandidos por ocupación según el modo:
+   *  - per_room   → una fila por tipo (ocupación = capacidad).
+   *  - per_person → una fila por cada ocupación 1..capacidad (para precio por persona).
+   */
+  async roomTypesFor(hotelId: string, mode: PricingMode = 'per_room'): Promise<{ type: string; occupancy: number; basePrice: number }[]> {
     const rooms = await this.orm.findMany('Rooms', { hotelId }) as any[]
-    const byType = new Map<string, { type: string; occupancy: number; basePrice: number }>()
+    const byType = new Map<string, { type: string; capacity: number; basePrice: number }>()
     for (const r of rooms) {
       const type = r.type || 'standard'
-      if (!byType.has(type)) byType.set(type, { type, occupancy: Number(r.capacity) || 2, basePrice: Number(r.basePrice) || 0 })
+      if (!byType.has(type)) byType.set(type, { type, capacity: Math.max(1, Number(r.capacity) || 2), basePrice: Number(r.basePrice) || 0 })
     }
-    return [...byType.values()]
+    const out: { type: string; occupancy: number; basePrice: number }[] = []
+    for (const t of byType.values()) {
+      if (mode === 'per_person') {
+        for (let occ = 1; occ <= t.capacity; occ++) out.push({ type: t.type, occupancy: occ, basePrice: t.basePrice })
+      } else {
+        out.push({ type: t.type, occupancy: t.capacity, basePrice: t.basePrice })
+      }
+    }
+    return out
   }
 
   /**
@@ -26,13 +64,15 @@ export class PricingQueries {
     const baseByKey = new Map(base.map((b) => [key(b.roomType, b.occupancy, b.season), b]))
 
     // Celdas base: las tarifas base existentes, o derivadas de room types × temporadas si no hay ninguna.
+    // Con per_person se expanden por cada ocupación; con per_room, una por tipo.
+    const mode = await this.getPricingMode(hotelId)
     let cells: { roomType: string; occupancy: number; season: string; basePrice: number }[]
     if (base.length) {
       cells = base.map((b) => ({ roomType: b.roomType, occupancy: b.occupancy, season: b.season, basePrice: b.basePrice ?? 0 }))
     } else {
       const seasons = await this.orm.findMany('Seasons', { hotelId }) as any[]
       const seasonNames = seasons.length ? seasons.map((s: any) => s.name) : ['baja', 'media', 'alta', 'especial']
-      const roomTypes = await this.roomTypesFor(hotelId)
+      const roomTypes = await this.roomTypesFor(hotelId, mode)
       cells = []
       for (const rt of roomTypes) for (const season of seasonNames) cells.push({ roomType: rt.type, occupancy: rt.occupancy, season, basePrice: rt.basePrice })
     }

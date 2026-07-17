@@ -44,6 +44,8 @@ export function PricingModule() {
       router.get('/api/rates', guard('settings', 'view'), (req: any) => controller.listRates(req))
       router.put('/api/rates', guard('settings', 'edit'), (req: any) => controller.updateRates(req))
       router.post('/api/rates/copy-next-year', guard('settings', 'edit'), (req: any) => controller.copyRatesNextYear(req))
+      router.get('/api/pricing-mode', guard('settings', 'view'), (req: any) => controller.getPricingMode(req))
+      router.put('/api/pricing-mode', guard('settings', 'edit'), (req: any) => controller.setPricingMode(req))
       router.get('/api/blocks', guard('settings', 'view'), (req: any) => controller.listBlocks(req))
       router.post('/api/blocks', guard('settings', 'create'), (req: any) => controller.createBlocks(req))
       router.delete('/api/blocks/:id', guard('settings', 'delete'), (req: any) => controller.deleteBlock(req))

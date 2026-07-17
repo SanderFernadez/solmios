@@ -84,6 +84,15 @@ export class PricingService {
     return this.listSeasons(hotelId)
   }
 
+  /** Modo de tarificación del hotel (per_room | per_person) — config PMS por cliente. */
+  async getPricingMode(hotelId: string): Promise<'per_room' | 'per_person'> {
+    return this.queries ? this.queries.getPricingMode(hotelId) : 'per_room'
+  }
+  async setPricingMode(hotelId: string, mode: string): Promise<'per_room' | 'per_person'> {
+    const m = mode === 'per_person' ? 'per_person' : 'per_room'
+    return this.queries ? this.queries.setPricingMode(hotelId, m) : m
+  }
+
   async listRates(hotelId: string, channel?: string): Promise<any[]> {
     const all = await this.ratesRepo.findMany({ hotelId }) as any[]
     if (!channel) return all.filter((r) => !r.channel)
