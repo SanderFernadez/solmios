@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect, afterEach } from 'bun:test'
 import { silentLogger } from 'arckode-framework/testing'
 import { AdminService } from '../service'
 import { DashboardQueries } from '../usecases/dashboard-queries'
@@ -112,6 +112,51 @@ describe('AdminService', () => {
       const repos = makeRepos()
       const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(makeOrm()))
       await expect(svc.deletePlan('nope')).rejects.toThrow('no encontrado')
+    })
+  })
+
+  describe('getPublicUsers — fail-closed SEC-3.1 (V6)', () => {
+    const demoOrm = makeOrm({
+      findMany: async (table: string) => {
+        if (table === 'Users') return [{ id: 'u1', name: 'Demo', email: 'demo@solmios.com', role: 'hotel_admin', isDemo: 1, active: 1 }]
+        return []
+      },
+    })
+    const prevNodeEnv = process.env.NODE_ENV
+    const prevDemo = process.env.DEMO_LOGIN
+
+    const makeSvc = () => {
+      const repos = makeRepos()
+      return new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(demoOrm))
+    }
+
+    afterEach(() => {
+      if (prevNodeEnv === undefined) delete process.env.NODE_ENV
+      else process.env.NODE_ENV = prevNodeEnv
+      if (prevDemo === undefined) delete process.env.DEMO_LOGIN
+      else process.env.DEMO_LOGIN = prevDemo
+    })
+
+    it('devuelve [] si NODE_ENV no esta seteado (fail-closed: deploy sin NODE_ENV no filtra cuentas demo)', async () => {
+      delete process.env.NODE_ENV
+      delete process.env.DEMO_LOGIN
+      expect(await makeSvc().getPublicUsers()).toEqual([])
+    })
+
+    it('en dev (NODE_ENV=development) lista las cuentas demo, sin id ni credenciales', async () => {
+      process.env.NODE_ENV = 'development'
+      delete process.env.DEMO_LOGIN
+      const result = await makeSvc().getPublicUsers()
+      expect(result).toEqual([{ name: 'Demo', email: 'demo@solmios.com', role: 'hotel_admin' }])
+      expect(result[0]).not.toHaveProperty('id')
+    })
+
+    it('en production solo lista si DEMO_LOGIN=1', async () => {
+      process.env.NODE_ENV = 'production'
+      delete process.env.DEMO_LOGIN
+      expect(await makeSvc().getPublicUsers()).toEqual([])
+      process.env.DEMO_LOGIN = '1'
+      expect(await makeSvc().getPublicUsers()).toHaveLength(1)
     })
   })
 })
