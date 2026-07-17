@@ -115,75 +115,85 @@
     </Teleport>
 
     <!-- Connected Channels -->
-    <div class="mb-8">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-black text-navy">Canales Conectados</h2>
-        <span class="text-xs font-bold text-text-muted">{{ connectedChannels.filter(c => c.connected).length }} de {{ connectedChannels.length }}</span>
-      </div>
-      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <SectionCard title="Canales Conectados" class="mb-8">
+      <template #actions>
+        <span class="px-3 py-1 rounded-lg bg-white/10 text-xs font-black text-white">{{ connectedChannels.filter(c => c.connected).length }} de {{ connectedChannels.length }}</span>
+      </template>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <div v-for="channel in connectedChannels" :key="channel.id"
-          class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 transition-transform duration-300 hover:-translate-y-0.5">
-          <!-- Channel Icon -->
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-14 h-14 rounded-2xl flex items-center justify-center" :class="channel.bgColor">
-              <span v-if="channel.hasLogo" class="w-7 h-7" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span>
+          class="rounded-2xl border-2 border-navy bg-white overflow-hidden flex flex-col transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg">
+          <!-- Header con logo + estado -->
+          <div class="flex items-center gap-3 p-4 border-b-2 border-navy">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" :class="channel.bgColor">
+              <span v-if="channel.hasLogo" class="w-6 h-6" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span>
               <span v-else class="text-lg font-black" :class="channel.iconColor || 'text-navy'">{{ channel.initial }}</span>
             </div>
-            <div class="flex items-center gap-1">
-              <span class="w-2.5 h-2.5 rounded-full" :class="channel.connected ? 'bg-teal animate-pulse' : 'bg-gray-300'"></span>
-              <span class="text-[10px] font-bold" :class="channel.connected ? 'text-teal' : 'text-text-muted'">{{ channel.connected ? 'Conectado' : 'Disponible' }}</span>
+            <div class="min-w-0">
+              <h3 class="text-sm font-black text-navy truncate">{{ channel.name }}</h3>
+              <span class="inline-flex items-center gap-1 text-[10px] font-black" :class="channel.connected ? 'text-teal' : 'text-text-muted'">
+                <span class="w-2 h-2 rounded-full" :class="channel.connected ? 'bg-teal animate-pulse' : 'bg-gray-300'"></span>
+                {{ channel.connected ? 'Conectado' : 'Disponible' }}
+              </span>
             </div>
           </div>
-          <h3 class="text-sm font-black text-navy mb-1">{{ channel.name }}</h3>
-          <p class="text-[10px] text-text-muted mb-3">{{ channel.description }}</p>
+
           <template v-if="channel.connected">
-            <div class="py-3 border-t border-border space-y-2 mb-3">
-              <div class="flex justify-between text-[10px]">
+            <div class="p-4 space-y-2 flex-1">
+              <div class="flex justify-between text-xs">
                 <span class="text-text-muted">Reservas (mes)</span>
-                <span class="font-bold text-navy">{{ channel.bookings }}</span>
+                <span class="font-black text-navy">{{ channel.bookings }}</span>
               </div>
-              <div class="flex justify-between text-[10px]">
-                <span class="text-text-muted">Última Sync</span>
-                <span class="font-bold text-teal">{{ channel.lastSync }}</span>
+              <div class="flex justify-between text-xs">
+                <span class="text-text-muted">Última sync</span>
+                <span class="font-bold text-teal">{{ formatSync(channel.lastSync) }}</span>
               </div>
             </div>
-            <div class="flex items-center gap-4">
-              <button @click="configChannel(channel)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Configurar</button>
-              <button @click="disconnectChannel(channel.id)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Desconectar</button>
+            <!-- Acciones imponentes -->
+            <div class="p-4 pt-0 flex flex-col gap-2">
+              <button @click="configChannel(channel)"
+                class="w-full py-2.5 bg-navy text-white text-sm font-extrabold rounded-xl border-2 border-navy hover:bg-navy-light transition-all cursor-pointer flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.28c.063.375.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.03 7.03 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.241.437-.613.43-.992a7.03 7.03 0 0 1 0-.255c.007-.378-.138-.75-.43-.991l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.281Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+                Configurar tarifas
+              </button>
+              <button @click="disconnectChannel(channel.id)"
+                class="w-full py-2 text-xs font-bold text-coral border-2 border-coral/30 rounded-xl hover:bg-coral hover:text-white transition-colors cursor-pointer">
+                Desconectar
+              </button>
             </div>
           </template>
           <template v-else>
-            <button @click="connectChannel(channel.id)" class="w-full py-2.5 bg-cyan text-navy text-xs font-extrabold rounded-full hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 005.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-              Conectar
-            </button>
+            <div class="p-4">
+              <button @click="connectChannel(channel.id)" class="w-full py-2.5 bg-cyan text-navy text-sm font-extrabold rounded-xl border-2 border-cyan hover:bg-cyan-light transition-all cursor-pointer">
+                Conectar
+              </button>
+            </div>
           </template>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Available Channels -->
-    <div class="mb-8">
-      <h2 class="text-lg font-black text-navy mb-4">Canales Disponibles para Conectar</h2>
-      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <SectionCard title="Canales Disponibles para Conectar" subtitle="Pedí la conexión y te guiamos con el mapeo en Channex" class="mb-8">
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <div v-for="channel in availableChannels" :key="channel.id"
-          class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 transition-transform duration-300 hover:-translate-y-0.5 group">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center" :class="channel.bgColor">
+          class="rounded-2xl border-2 border-navy bg-white p-4 flex flex-col gap-3 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" :class="channel.bgColor">
               <span v-if="channel.hasLogo" class="w-5 h-5" :class="channel.iconColor || 'text-navy'" v-html="channel.icon"></span>
               <span v-else class="text-sm font-black" :class="channel.iconColor || 'text-navy'">{{ channel.initial }}</span>
             </div>
-            <div>
-              <div class="text-sm font-bold text-navy">{{ channel.name }}</div>
-              <div class="text-[10px] text-text-muted">{{ channel.category }}</div>
+            <div class="min-w-0">
+              <div class="text-sm font-black text-navy truncate">{{ channel.name }}</div>
+              <div class="text-[10px] font-bold text-text-muted uppercase">{{ channel.category || channel.type || 'OTA' }}</div>
             </div>
           </div>
-          <button class="w-full py-2 text-[11px] font-bold rounded-full border border-border text-text-secondary group-hover:border-cyan group-hover:text-cyan transition-all cursor-pointer">
+          <button @click="openConnectFlow()"
+            class="mt-auto w-full py-2.5 text-sm font-extrabold rounded-xl border-2 border-navy text-navy hover:bg-navy hover:text-white transition-colors cursor-pointer">
             Solicitar Conexión
           </button>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Sync Log -->
     <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
@@ -230,6 +240,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { http } from '@/services/http'
 import { resolveChannelLogo } from '@/utils/channelLogos'
+import SectionCard from '@/components/ui/SectionCard.vue'
 
 const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
 const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>'
@@ -329,6 +340,31 @@ async function loadStatus() {
     const logData = await ChannelService.syncLog(hotelId.value)
     syncLog.value = (logData?.data || []).slice(0, 20)
   } catch {}
+}
+
+// Fecha de última sincronización legible (evita mostrar el timestamp ISO crudo).
+const MS_PER_MIN = 60_000
+function formatSync(raw: string | null | undefined): string {
+  if (!raw || raw === '—') return '—'
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return '—'
+  const mins = Math.floor((Date.now() - d.getTime()) / MS_PER_MIN)
+  if (mins < 1) return 'recién'
+  if (mins < 60) return `hace ${mins} min`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `hace ${hrs} h`
+  return d.toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+// Solicitar conexión de un canal: abre el flujo de mapeo/conexión de Channex embebido (iframe).
+async function openConnectFlow() {
+  try {
+    const r = await ChannelService.iframeToken(hotelId.value, auth.user?.name)
+    iframeUrl.value = r.iframeUrl
+    showIframe.value = true
+  } catch {
+    toast.error('No se pudo abrir el asistente de conexión')
+  }
 }
 
 async function syncNow() {
