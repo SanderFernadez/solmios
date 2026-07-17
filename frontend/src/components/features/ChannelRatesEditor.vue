@@ -86,8 +86,8 @@
       <div class="space-y-3">
         <div v-for="(s, i) in seasonsDraft" :key="i" class="rounded-xl border-2 border-navy p-3">
           <div class="flex items-center gap-2 mb-3">
-            <input type="color" v-model="s.color" class="w-8 h-8 rounded-lg border-2 border-navy/30 cursor-pointer shrink-0" />
-            <input v-model="s.label" class="flex-1 min-w-0 px-3 py-2 rounded-lg border-2 border-navy/30 text-sm font-bold text-navy focus:border-navy outline-none" :placeholder="s.name" />
+            <span class="w-4 h-4 rounded-full border border-navy/20 shrink-0" :style="{ background: s.color }"></span>
+            <span class="flex-1 min-w-0 text-sm font-black text-navy truncate">{{ s.label || s.name }}</span>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
