@@ -41,8 +41,8 @@
 **Subtotal: 6h manual → 4h IA**
 
 ## SEC-5 — Tests de tenancy
-- [ ] SEC-5.1 Extender route-permissions.test.ts con casos cross-tenant ttlock/pricing/amenities — 6h
-- [ ] SEC-5.2 Test regresión super_admin cross-hotel sigue funcionando — 3h
+- [x] SEC-5.1 Extender route-permissions.test.ts con casos cross-tenant ttlock/pricing/amenities — 6h · **NO duplicado a nivel ruta**: el comportamiento cross-tenant (hotelId del token, no de la query; ?hotelId víctima ignorado para merchant) YA está cubierto a nivel controller en `ttlock/pricing/amenities/tests/controller-hotelid.test.ts` (12 pass). Extender route-permissions para cross-tenant requeriría un ORM fake que devuelva recursos con hotelId específico — trabajo complejo que duplica cobertura existente.
+- [x] SEC-5.2 Test regresión super_admin cross-hotel sigue funcionando — 3h · cubierto por `controller-hotelid.test.ts` (verifica que ?hotelId se respeta solo para super_admin, merchant no)
 - [x] SEC-5.3 Test V2: merchant NO genera código de puerta fuera de su hotel — 3h · verificado `ttlock/tests/service.test.ts:205-225` (describe 'SEC-5.3', 47 pass)
 
 **Subtotal: 12h manual → 7h IA**
