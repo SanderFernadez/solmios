@@ -41,14 +41,14 @@
 
     <!-- Permission Matrix -->
     <div v-if="selectedRole" class="bg-white rounded-2xl border border-border overflow-hidden">
-      <div class="p-4 border-b border-border bg-surface/50 flex items-center justify-between">
+      <div class="px-5 py-4 bg-navy flex items-center justify-between">
         <div>
-          <h3 class="font-extrabold text-navy">Permisos — {{ selectedRole.name }}</h3>
-          <p class="text-[10px] text-text-muted">Marca los permisos que tendrá este rol</p>
+          <h3 class="font-extrabold text-white">Permisos — {{ selectedRole.name }}</h3>
+          <p class="text-[10px] text-white/60">Marca los permisos que tendrá este rol</p>
         </div>
         <div class="flex gap-2">
-          <button @click="selectAll" class="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-surface text-navy hover:bg-navy hover:text-white transition-colors cursor-pointer">Seleccionar Todo</button>
-          <button @click="deselectAll" class="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-surface text-navy hover:bg-navy hover:text-white transition-colors cursor-pointer">Quitar Todo</button>
+          <button @click="selectAll" class="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-white/10 text-white hover:bg-white/20 hover:text-white transition-colors cursor-pointer">Seleccionar Todo</button>
+          <button @click="deselectAll" class="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-white/10 text-white hover:bg-white/20 hover:text-white transition-colors cursor-pointer">Quitar Todo</button>
         </div>
       </div>
 
@@ -112,11 +112,12 @@
     </div>
 
     <!-- Feature Flags by Plan -->
-    <div class="bg-white rounded-2xl border border-border p-6 mt-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-extrabold text-navy">Control de Features por Plan</h3>
-        <span class="text-[10px] font-bold text-text-muted">Define qué módulos están disponibles en cada plan</span>
+    <div class="bg-white rounded-2xl border border-border mt-6 overflow-hidden">
+      <div class="flex items-center justify-between bg-navy px-5 py-4">
+        <h3 class="font-extrabold text-white">Control de Features por Plan</h3>
+        <span class="text-[10px] font-bold text-white/60">Define qué módulos están disponibles en cada plan</span>
       </div>
+      <div class="p-6">
       <div class="overflow-x-auto">
         <table class="w-full tbl-navy">
           <thead>
@@ -153,12 +154,17 @@
         </table>
       </div>
       <button class="mt-4 px-4 py-2 bg-navy text-white text-xs font-bold rounded-xl cursor-pointer">Guardar Features</button>
+      </div>
     </div>
 
     <!-- Create Role Modal -->
     <div v-if="showCreateRole" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl w-full max-w-sm p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Crear Nuevo Rol</h3>
+      <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">Crear Nuevo Rol</h3>
+          <button @click="showCreateRole = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
+        </div>
+        <div class="p-6">
         <div class="space-y-3">
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
@@ -183,6 +189,7 @@
         <div class="flex gap-3 mt-6">
           <button @click="showCreateRole = false" class="flex-1 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cancelar</button>
           <button @click="createRole" :disabled="!newRole.name" class="flex-1 py-2.5 bg-navy text-white text-sm font-bold rounded-xl disabled:opacity-40 cursor-pointer">Crear Rol</button>
+        </div>
         </div>
       </div>
     </div>

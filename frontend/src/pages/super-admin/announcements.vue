@@ -14,8 +14,8 @@
 
     <!-- Sent Announcements -->
     <div class="bg-white rounded-2xl border border-border overflow-hidden mb-6">
-      <div class="p-4 border-b border-border bg-surface/50">
-        <h3 class="font-extrabold text-navy text-sm">Anuncios Enviados</h3>
+      <div class="px-5 py-4 bg-navy">
+        <h3 class="font-extrabold text-white text-sm">Anuncios Enviados</h3>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full tbl-navy">
@@ -112,8 +112,12 @@
 
     <!-- Create Modal -->
     <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl w-full max-w-lg p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Nuevo Anuncio</h3>
+      <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">Nuevo Anuncio</h3>
+          <button @click="showCreateModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
+        </div>
+        <div class="p-6">
         <div class="space-y-4">
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Título</label>
@@ -150,6 +154,7 @@
         <div class="flex gap-3 mt-6">
           <button @click="showCreateModal = false" class="flex-1 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cancelar</button>
           <button @click="sendAnnouncement" class="flex-1 py-2.5 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer">Enviar Ahora</button>
+        </div>
         </div>
       </div>
     </div>

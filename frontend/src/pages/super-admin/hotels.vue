@@ -194,9 +194,9 @@
     <!-- Modal: Ver Hotel -->
     <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-2xl card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">Detalle del Hotel</h3>
-          <button @click="showViewModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">Detalle del Hotel</h3>
+          <button @click="showViewModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6">
           <div class="flex items-center gap-4 mb-6">
@@ -231,9 +231,9 @@
     <!-- Modal: Nuevo/Editar Hotel -->
     <div v-if="showEditModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">{{ editingHotel.id ? 'Editar Hotel' : 'Registrar Nuevo Hotel' }}</h3>
-          <button @click="showEditModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">{{ editingHotel.id ? 'Editar Hotel' : 'Registrar Nuevo Hotel' }}</h3>
+          <button @click="showEditModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6">
           <div class="grid grid-cols-2 gap-4">
@@ -265,10 +265,10 @@
 
     <!-- Modal: Suspender -->
     <div v-if="showSuspendModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-md card-shadow">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">{{ selectedHotel.status === 'Suspendido' ? 'Reactivar' : 'Suspender' }} Hotel</h3>
-          <button @click="showSuspendModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+      <div class="bg-white rounded-2xl w-full max-w-md card-shadow overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">{{ selectedHotel.status === 'Suspendido' ? 'Reactivar' : 'Suspender' }} Hotel</h3>
+          <button @click="showSuspendModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6">
           <div class="text-sm font-bold text-navy mb-2">{{ selectedHotel.name }}</div>

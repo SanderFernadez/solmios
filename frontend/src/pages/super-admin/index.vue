@@ -1,31 +1,20 @@
 <template>
   <div>
     <!-- Stats Principales -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-      <div v-for="stat in mainStats" :key="stat.label" class="group bg-white rounded-2xl border border-border card-shadow p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg">
-        <div class="flex items-center justify-between mb-4">
-          <span class="w-10 h-10 rounded-xl flex items-center justify-center" :class="stat.tint">
-            <Icon :name="stat.icon" :size="20" />
-          </span>
-          <span v-if="stat.trend !== 0" class="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full" :class="stat.trend > 0 ? 'bg-teal/10 text-teal' : 'bg-red/10 text-red'">
-            <Icon :name="stat.trend > 0 ? 'trending-up' : 'arrow-down'" :size="11" />{{ stat.trend > 0 ? '+' : '' }}{{ stat.trend }}%
-          </span>
-        </div>
-        <div class="text-2xl font-black text-navy leading-none">{{ stat.value }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase mt-2 tracking-wide">{{ stat.label }}</div>
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <KpiHeroCard v-for="s in mainStats" :key="s.label" v-bind="s" />
     </div>
 
     <!-- Fila 2 -->
     <div class="grid grid-cols-3 gap-6 mb-6">
       <!-- MRR Chart -->
-      <div class="col-span-2 bg-white rounded-2xl border border-border card-shadow">
-        <div class="p-5 border-b border-border">
+      <div class="col-span-2 bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-black text-navy">Ingresos Mensuales (MRR)</h3>
+            <h3 class="text-sm font-black text-white">Ingresos Mensuales (MRR)</h3>
             <div class="flex gap-2">
-              <button class="px-3 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold cursor-pointer">6 meses</button>
-              <button class="px-3 py-1 bg-surface rounded-lg text-[10px] font-bold text-text-muted hover:bg-surface-dark cursor-pointer">12 meses</button>
+              <button class="px-3 py-1 bg-white/15 text-white rounded-lg text-[10px] font-bold cursor-pointer">6 meses</button>
+              <button class="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold text-white/60 hover:bg-white/10 cursor-pointer">12 meses</button>
             </div>
           </div>
         </div>
@@ -45,9 +34,9 @@
       </div>
 
       <!-- Plan Distribution -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
-        <div class="p-5 border-b border-border">
-          <h3 class="text-sm font-black text-navy">Distribución por Plan</h3>
+      <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
+          <h3 class="text-sm font-black text-white">Distribución por Plan</h3>
         </div>
         <div class="p-5">
           <div class="space-y-4">
@@ -75,10 +64,10 @@
     <!-- Fila 3 -->
     <div class="grid grid-cols-2 gap-6 mb-6">
       <!-- Top Hotels -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
-        <div class="p-5 border-b border-border">
+      <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-black text-navy">Top Hoteles por Ingresos</h3>
+            <h3 class="text-sm font-black text-white">Top Hoteles por Ingresos</h3>
             <router-link to="/admin/hotels" class="text-[10px] font-bold text-cyan hover:underline cursor-pointer">Ver todos →</router-link>
           </div>
         </div>
@@ -105,9 +94,9 @@
       </div>
 
       <!-- PC-2.2: Consolidado por hotel (ocupación/ADR/revenue cross-hotel) -->
-      <div v-if="(analytics as any)?.hotelsBreakdown?.length" class="bg-white rounded-2xl border border-border card-shadow">
-        <div class="p-5 border-b border-border">
-          <h3 class="text-sm font-black text-navy">Consolidado por hotel</h3>
+      <div v-if="(analytics as any)?.hotelsBreakdown?.length" class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
+          <h3 class="text-sm font-black text-white">Consolidado por hotel</h3>
         </div>
         <div class="p-4 overflow-x-auto">
           <table class="w-full text-xs tbl-navy">
@@ -140,9 +129,9 @@
       </div>
 
       <!-- Recent Activity -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
-        <div class="p-5 border-b border-border">
-          <h3 class="text-sm font-black text-navy">Actividad Reciente de la Plataforma</h3>
+      <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
+          <h3 class="text-sm font-black text-white">Actividad Reciente de la Plataforma</h3>
         </div>
         <div class="p-4">
           <div v-if="recentActivity.length" class="space-y-3">
@@ -165,10 +154,10 @@
     <!-- Fila 4 -->
     <div class="grid grid-cols-3 gap-6">
       <!-- Support Tickets -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
-        <div class="p-5 border-b border-border">
+      <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-black text-navy">Tickets de Soporte</h3>
+            <h3 class="text-sm font-black text-white">Tickets de Soporte</h3>
             <router-link to="/admin/support" class="text-[10px] font-bold text-cyan hover:underline cursor-pointer">Ver todos →</router-link>
           </div>
         </div>
@@ -207,9 +196,9 @@
       </div>
 
       <!-- System Health — datos reales del proceso backend (GET /admin/monitoring) -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
-        <div class="p-5 border-b border-border">
-          <h3 class="text-sm font-black text-navy">Salud del Sistema</h3>
+      <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
+          <h3 class="text-sm font-black text-white">Salud del Sistema</h3>
         </div>
         <div class="p-5">
           <div class="space-y-4">
@@ -240,9 +229,9 @@
       </div>
 
       <!-- Quick Actions -->
-      <div class="bg-white rounded-2xl border border-border card-shadow">
-        <div class="p-5 border-b border-border">
-          <h3 class="text-sm font-black text-navy">Acciones Rápidas</h3>
+      <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
+          <h3 class="text-sm font-black text-white">Acciones Rápidas</h3>
         </div>
         <div class="p-5">
           <div class="grid grid-cols-2 gap-3">
@@ -262,6 +251,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import Icon from '@/components/ui/Icon.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { PlatformService } from '@/services/Platform.service'
 import { AuditLogService } from '@/services/AuditLog.service'
@@ -269,17 +259,18 @@ import type { AuditLogRecord } from '@/types'
 
 const analytics = ref<Awaited<ReturnType<typeof SuperAdminService.analytics>> | null>(null)
 
+// Cards KPI con gradiente (mismo componente que el dashboard del hotel).
 const mainStats = computed(() => {
   const a = analytics.value
   const t = a?.trends
   return [
-    { icon: 'building', tint: 'bg-navy/10 text-navy', label: 'Hoteles Activos', value: String(a?.activeHotels ?? a?.totalHoteles ?? 0), trend: t?.hoteles ?? 0 },
-    { icon: 'money', tint: 'bg-teal/10 text-teal', label: 'MRR Total', value: `$${(a?.mrr ?? 0).toLocaleString()}`, trend: t?.mrr ?? 0 },
-    { icon: 'user', tint: 'bg-cyan/10 text-cyan', label: 'Usuarios Totales', value: String(a?.totalUsuarios ?? 0), trend: t?.usuarios ?? 0 },
-    { icon: 'clipboard', tint: 'bg-gold/10 text-gold', label: 'Reservas', value: String(a?.totalReservas ?? 0), trend: t?.reservas ?? 0 },
-    { icon: 'target', tint: 'bg-coral/10 text-coral', label: 'Ocupación prom', value: `${a?.avgOccupancy ?? 0}%`, trend: 0 },
-    { icon: 'card', tint: 'bg-orange/10 text-orange', label: 'ADR prom', value: `$${(a?.avgADR ?? 0).toLocaleString()}`, trend: 0 },
-  ]
+    { label: 'Hoteles Activos', value: Number(a?.activeHotels ?? a?.totalHoteles ?? 0), icon: 'building', accent: 'blue', trend: t?.hoteles ?? null },
+    { label: 'MRR Total', value: Number(a?.mrr ?? 0), prefix: '$', icon: 'money', accent: 'green', trend: t?.mrr ?? null },
+    { label: 'Usuarios Totales', value: Number(a?.totalUsuarios ?? 0), icon: 'users', accent: 'purple', trend: t?.usuarios ?? null },
+    { label: 'Reservas', value: Number(a?.totalReservas ?? 0), icon: 'bookings', accent: 'amber', trend: t?.reservas ?? null },
+    { label: 'Ocupación prom', value: Number(a?.avgOccupancy ?? 0), suffix: '%', icon: 'bed', accent: 'teal', progress: Number(a?.avgOccupancy ?? 0) },
+    { label: 'ADR prom', value: Number(a?.avgADR ?? 0), prefix: '$', icon: 'money', accent: 'rose' },
+  ] as const
 })
 
 const quickActions = [

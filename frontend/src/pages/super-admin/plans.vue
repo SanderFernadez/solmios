@@ -42,9 +42,9 @@
       <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto">
-          <div class="p-6 border-b border-border flex items-center justify-between">
-            <h3 class="text-lg font-black text-navy">{{ editing ? 'Editar' : 'Nuevo' }} Plan</h3>
-            <button @click="showModal=false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center cursor-pointer">✕</button>
+          <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+            <h3 class="text-lg font-black text-white truncate">{{ editing ? 'Editar' : 'Nuevo' }} Plan</h3>
+            <button @click="showModal=false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
           </div>
           <div class="p-6 space-y-4">
             <div>

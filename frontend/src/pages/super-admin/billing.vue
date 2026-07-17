@@ -111,10 +111,10 @@
 
     <!-- Modal: Detalle Factura -->
     <div v-if="showDetailModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">Factura #{{ selectedInvoice.id }}</h3>
-          <button @click="showDetailModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">Factura #{{ selectedInvoice.id }}</h3>
+          <button @click="showDetailModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6">
           <div class="flex items-center gap-4 mb-6">
@@ -154,10 +154,10 @@
 
     <!-- Modal: Recordatorio -->
     <div v-if="showReminderModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-md card-shadow">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">Enviar Recordatorio</h3>
-          <button @click="showReminderModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+      <div class="bg-white rounded-2xl w-full max-w-md card-shadow overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">Enviar Recordatorio</h3>
+          <button @click="showReminderModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6">
           <div class="bg-surface rounded-xl p-3 mb-4">
@@ -182,10 +182,10 @@
 
     <!-- Modal: Confirmar Pago -->
     <div v-if="showConfirmModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-md card-shadow">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">Confirmar Pago</h3>
-          <button @click="showConfirmModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+      <div class="bg-white rounded-2xl w-full max-w-md card-shadow overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">Confirmar Pago</h3>
+          <button @click="showConfirmModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6 text-center">
           <div class="w-16 h-16 bg-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">

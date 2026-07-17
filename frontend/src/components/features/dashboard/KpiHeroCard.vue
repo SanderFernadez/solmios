@@ -68,13 +68,13 @@
 import { computed, toRef } from 'vue'
 import { useCountUp } from '@/composables/useCountUp'
 
-export type KpiIcon = 'bed' | 'checkin' | 'checkout' | 'money'
+export type KpiIcon = 'bed' | 'checkin' | 'checkout' | 'money' | 'building' | 'users' | 'bookings'
 
 const props = withDefaults(defineProps<{
   label: string
   value: number
   icon: KpiIcon
-  accent: 'blue' | 'green' | 'purple' | 'amber'
+  accent: 'blue' | 'green' | 'purple' | 'amber' | 'teal' | 'rose'
   prefix?: string
   suffix?: string
   unit?: string
@@ -96,6 +96,9 @@ const ICONS: Record<KpiIcon, string> = {
   checkin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
   checkout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
   money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  building: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v18M3 22h18M10 22v-4h4v4M9 7h.01M13 7h.01M9 11h.01M13 11h.01"/></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  bookings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>',
 }
 
 const THEMES = {
@@ -118,6 +121,16 @@ const THEMES = {
     borderColor: 'rgba(245,158,11,0.35)',
     bg: 'linear-gradient(155deg, rgba(245,158,11,0.1) 0%, rgba(255,255,255,1) 55%)',
     glow: 'rgba(245,158,11,0.3)', stroke: '#F59E0B', labelColor: '#D97706',
+  },
+  teal: {
+    borderColor: 'rgba(20,184,166,0.35)',
+    bg: 'linear-gradient(155deg, rgba(20,184,166,0.1) 0%, rgba(255,255,255,1) 55%)',
+    glow: 'rgba(20,184,166,0.32)', stroke: '#14B8A6', labelColor: '#0D9488',
+  },
+  rose: {
+    borderColor: 'rgba(244,63,94,0.35)',
+    bg: 'linear-gradient(155deg, rgba(244,63,94,0.1) 0%, rgba(255,255,255,1) 55%)',
+    glow: 'rgba(244,63,94,0.3)', stroke: '#F43F5E', labelColor: '#E11D48',
   },
 } as const
 

@@ -119,9 +119,9 @@
     <!-- Modal: Ver Usuario -->
     <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">Detalle del Cliente</h3>
-          <button @click="showViewModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">Detalle del Cliente</h3>
+          <button @click="showViewModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6">
           <div class="flex items-center gap-4 mb-6">
@@ -160,9 +160,9 @@
     <!-- Modal: Invitar/Editar -->
     <div v-if="showEditModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">{{ editingUser.id ? 'Editar Cliente' : 'Invitar Nuevo Cliente' }}</h3>
-          <button @click="showEditModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">{{ editingUser.id ? 'Editar Cliente' : 'Invitar Nuevo Cliente' }}</h3>
+          <button @click="showEditModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6">
           <div class="grid grid-cols-2 gap-4">
@@ -201,12 +201,12 @@
     <!-- Modal: Activity Log -->
     <div v-if="showActivityModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl w-full max-w-md card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b border-border">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
           <div>
-            <h3 class="text-lg font-black text-navy">Actividad Reciente</h3>
-            <div class="text-[10px] text-text-muted">{{ activityUser.name }}</div>
+            <h3 class="text-lg font-black text-white truncate">Actividad Reciente</h3>
+            <div class="text-[10px] text-white/60">{{ activityUser.name }}</div>
           </div>
-          <button @click="showActivityModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+          <button @click="showActivityModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6">
           <div class="space-y-4">

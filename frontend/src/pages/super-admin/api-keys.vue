@@ -13,8 +13,11 @@
 
     <div class="grid lg:grid-cols-3 gap-6 mb-6">
       <!-- API Keys -->
-      <div class="lg:col-span-2 bg-white rounded-2xl border border-border p-6">
-        <h3 class="font-extrabold text-navy mb-4">API Keys Activas</h3>
+      <div class="lg:col-span-2 bg-white rounded-2xl border border-border overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
+          <h3 class="font-extrabold text-white">API Keys Activas</h3>
+        </div>
+        <div class="p-6">
         <div class="overflow-x-auto">
           <table class="w-full tbl-navy">
             <thead>
@@ -59,11 +62,15 @@
             </tbody>
           </table>
         </div>
+        </div>
       </div>
 
       <!-- Rate Limits -->
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <h3 class="font-extrabold text-navy mb-4">Rate Limits</h3>
+      <div class="bg-white rounded-2xl border border-border overflow-hidden">
+        <div class="px-5 py-4 bg-navy">
+          <h3 class="font-extrabold text-white">Rate Limits</h3>
+        </div>
+        <div class="p-6">
         <div class="space-y-3">
           <div v-for="plan in rateLimits" :key="plan.plan" class="bg-surface rounded-xl p-3">
             <div class="flex items-center justify-between mb-2">
@@ -79,17 +86,19 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Webhooks -->
-    <div class="bg-white rounded-2xl border border-border p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-extrabold text-navy">Webhooks Configurados</h3>
-        <button class="px-3 py-2 bg-surface text-navy text-xs font-bold rounded-xl cursor-pointer">
+    <div class="bg-white rounded-2xl border border-border overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 bg-navy">
+        <h3 class="font-extrabold text-white">Webhooks Configurados</h3>
+        <button class="px-3 py-2 bg-white/10 text-white text-xs font-bold rounded-xl cursor-pointer">
           + Nuevo Webhook
         </button>
       </div>
+      <div class="p-6">
       <div class="overflow-x-auto">
         <table class="w-full tbl-navy">
           <thead>
@@ -127,12 +136,17 @@
           </tbody>
         </table>
       </div>
+      </div>
     </div>
 
     <!-- Create API Key Modal -->
     <div v-if="showCreateKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl w-full max-w-sm p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Nueva API Key</h3>
+      <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">Nueva API Key</h3>
+          <button @click="showCreateKey = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
+        </div>
+        <div class="p-6">
         <div class="space-y-3">
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
@@ -162,22 +176,28 @@
             {{ creating ? 'Generando...' : 'Generar' }}
           </button>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- Reveal new API Key (one-time secret — persistente, no toast) -->
     <div v-if="revealKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl w-full max-w-md p-6">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="text-2xl">🔑</span>
-          <h3 class="text-lg font-black text-navy">Guardá tu API Key ahora</h3>
+      <div class="bg-white rounded-2xl w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-2xl">🔑</span>
+            <h3 class="text-lg font-black text-white truncate">Guardá tu API Key ahora</h3>
+          </div>
+          <button @click="revealKey = null" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
+        <div class="p-6">
         <p class="text-xs text-coral font-bold mb-3">⚠️ Por seguridad no se volverá a mostrar. Copiala y guardala en un lugar seguro.</p>
         <div class="bg-surface rounded-xl p-3 mb-4 flex items-center gap-2">
           <code class="flex-1 text-xs font-mono text-navy break-all">{{ revealKey }}</code>
           <button @click="copyPlainKey" class="shrink-0 px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-lg cursor-pointer hover:bg-navy-light">Copiar</button>
         </div>
         <button @click="revealKey = null" class="w-full py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Listo, ya la guardé</button>
+        </div>
       </div>
     </div>
   </div>

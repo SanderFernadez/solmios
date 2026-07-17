@@ -32,11 +32,11 @@
     </div>
 
     <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
-      <div class="p-5 border-b border-border flex items-center justify-between">
-        <h3 class="text-sm font-black text-navy">Historial de Pagos Recientes</h3>
+      <div class="px-5 py-4 bg-navy flex items-center justify-between">
+        <h3 class="text-sm font-black text-white">Historial de Pagos Recientes</h3>
         <div class="relative">
-          <input v-model="searchQuery" type="text" placeholder="Buscar hotel..." class="w-64 h-9 pl-9 pr-4 rounded-lg border border-border text-sm bg-surface focus:outline-none focus:border-cyan">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input v-model="searchQuery" type="text" placeholder="Buscar hotel..." class="w-64 h-9 pl-9 pr-4 rounded-lg border border-border text-sm bg-white/10 text-white placeholder-white/50 focus:outline-none focus:border-cyan">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
       </div>
       <table class="w-full tbl-navy">
@@ -68,10 +68,10 @@
 
     <!-- Modal: Editar Plan -->
     <div v-if="showEditPlanModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow">
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-black text-navy">{{ editingPlan.id ? 'Editar Plan' : 'Nuevo Plan' }}</h3>
-          <button @click="showEditPlanModal = false" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">✕</button>
+      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
+          <h3 class="text-lg font-black text-white truncate">{{ editingPlan.id ? 'Editar Plan' : 'Nuevo Plan' }}</h3>
+          <button @click="showEditPlanModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
         </div>
         <div class="p-6">
           <div class="grid grid-cols-2 gap-4">
