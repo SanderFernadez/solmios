@@ -505,4 +505,29 @@ router.beforeEach((to) => {
   return true
 })
 
+// ── Recuperación de chunks obsoletos tras un deploy ──────────────────────────
+// Vite parte la app en chunks con hash de contenido. Cuando se publica un build nuevo, los
+// chunks viejos dejan de existir en el server: una pestaña ya abierta (o un index.html cacheado)
+// intenta cargar el chunk viejo → 404 → el import() dinámico de la ruta rechaza, Vue Router no
+// monta la vista y el menú queda muerto. Detectamos ESE error puntual y forzamos una recarga a la
+// ruta destino para traer el index.html + los chunks nuevos. El flag en sessionStorage recarga una
+// sola vez por destino: si tras recargar sigue fallando, no es un deploy (chunk realmente roto) y
+// evitamos un loop infinito de recargas.
+const CHUNK_ERROR_RE = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Unable to preload (?:CSS|module)/i
+const RELOAD_FLAG = 'router:chunk-reload'
+
+router.onError((error: unknown, to) => {
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  if (!CHUNK_ERROR_RE.test(message)) return
+  const target = to?.fullPath || window.location.pathname
+  if (sessionStorage.getItem(RELOAD_FLAG) === target) return
+  sessionStorage.setItem(RELOAD_FLAG, target)
+  window.location.assign(target)
+})
+
+router.afterEach(() => {
+  // Navegación exitosa → limpiar el flag para permitir futuras auto-recuperaciones.
+  sessionStorage.removeItem(RELOAD_FLAG)
+})
+
 export default router
