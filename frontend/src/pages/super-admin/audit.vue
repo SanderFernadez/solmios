@@ -64,7 +64,7 @@
     <!-- Audit Table -->
     <div class="bg-white rounded-2xl border border-border overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full tbl-navy">
           <thead>
             <tr class="border-b border-border bg-surface/50">
               <th class="text-left py-3 px-4 text-[10px] font-bold text-text-muted uppercase">Fecha/Hora</th>

@@ -18,7 +18,7 @@
         <h3 class="font-extrabold text-navy text-sm">Anuncios Enviados</h3>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full tbl-navy">
           <thead>
             <tr class="border-b border-border">
               <th class="text-left py-3 px-4 text-[10px] font-bold text-text-muted uppercase">Título</th>

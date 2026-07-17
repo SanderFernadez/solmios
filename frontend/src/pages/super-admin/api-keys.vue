@@ -16,7 +16,7 @@
       <div class="lg:col-span-2 bg-white rounded-2xl border border-border p-6">
         <h3 class="font-extrabold text-navy mb-4">API Keys Activas</h3>
         <div class="overflow-x-auto">
-          <table class="w-full">
+          <table class="w-full tbl-navy">
             <thead>
               <tr class="border-b border-border">
                 <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Nombre</th>
@@ -91,7 +91,7 @@
         </button>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full tbl-navy">
           <thead>
             <tr class="border-b border-border">
               <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">URL</th>

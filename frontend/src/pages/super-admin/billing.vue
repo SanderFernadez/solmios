@@ -55,7 +55,7 @@
 
     <!-- Tabla -->
     <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
-      <table class="w-full">
+      <table class="w-full tbl-navy">
         <thead>
           <tr class="border-b border-border">
             <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase cursor-pointer hover:text-navy" @click="toggleSort('id')">

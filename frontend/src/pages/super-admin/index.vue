@@ -110,7 +110,7 @@
           <h3 class="text-sm font-black text-navy">Consolidado por hotel</h3>
         </div>
         <div class="p-4 overflow-x-auto">
-          <table class="w-full text-xs">
+          <table class="w-full text-xs tbl-navy">
             <thead><tr class="border-b border-border text-text-muted uppercase">
               <th class="text-left p-2">Hotel</th>
               <th class="text-left p-2">Plan</th>

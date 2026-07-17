@@ -87,6 +87,27 @@
     box-shadow: var(--shadow-card);
   }
 
+  /* Header de tabla en navy (azul del sidebar). Aplicar `tbl-navy` al <table>;
+     gana en especificidad a las utilities de color/fondo puestas en <tr>/<th>. */
+  .tbl-navy thead tr {
+    background: var(--color-navy);
+    border-color: var(--color-navy);
+  }
+
+  .tbl-navy thead th {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .tbl-navy thead th:first-child {
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+  }
+
+  .tbl-navy thead th:last-child {
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+
   .btn-primary {
     background: var(--color-navy);
     color: white;

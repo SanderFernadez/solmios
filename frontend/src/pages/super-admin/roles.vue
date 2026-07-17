@@ -54,7 +54,7 @@
 
       <!-- Permission Matrix by Module -->
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full tbl-navy">
           <thead>
             <tr class="border-b border-border bg-navy/5">
               <th class="text-left py-3 px-4 text-xs font-black text-navy">Módulo / Categoría</th>
@@ -118,7 +118,7 @@
         <span class="text-[10px] font-bold text-text-muted">Define qué módulos están disponibles en cada plan</span>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full tbl-navy">
           <thead>
             <tr class="border-b border-border bg-surface/50">
               <th class="text-left py-3 px-4 text-[10px] font-bold text-text-muted uppercase">Feature / Módulo</th>
