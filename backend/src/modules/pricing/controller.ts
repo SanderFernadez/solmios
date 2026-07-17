@@ -1,17 +1,19 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { PricingService } from './service'
+import type { PricingCalendarService } from './service-calendar'
 import {
   UpdateSeasonsSchema, UpdateRatesSchema, UpdateRateRestrictionsSchema, CreateBlockSchema,
-  ActivateSeasonSchema, UpdateDateRestrictionsSchema,
+  ActivateSeasonSchema, UpdateDateRestrictionsSchema, AssignSeasonSchema,
   validateRateItems, validateSeasonItems, validateRestrictionItems, validateBlockRange,
-  validateDateRestrictionItems,
+  validateDateRestrictionItems, validateAssignSeason,
 } from './validators/schema'
 
 export class PricingController {
   constructor(
     private readonly service: PricingService,
     private readonly logger: Logger,
+    private readonly calendar: PricingCalendarService,
   ) {}
 
   /** SC-05: quién ejecuta el cambio de tarifa. Sin esto el audit log no sirve de nada. */
@@ -116,7 +118,7 @@ export class PricingController {
   async listDateRestrictions(req: HttpRequest) {
     const id = await this.hotelOf(req); if (!id) return { status: 200, body: { data: [] } }
     const { from, to } = (req.query || {}) as any
-    return { status: 200, body: { data: await this.service.listDateRestrictions(id, from, to) } }
+    return { status: 200, body: { data: await this.calendar.listDateRestrictions(id, from, to) } }
   }
 
   async updateDateRestrictions(req: HttpRequest) {
@@ -124,6 +126,21 @@ export class PricingController {
     validateSchema(UpdateDateRestrictionsSchema, req.body)
     const { items } = req.body as any
     validateDateRestrictionItems(items)
-    return { status: 200, body: { success: true, count: await this.service.updateDateRestrictions(id, items, this.actorOf(req)) } }
+    return { status: 200, body: { success: true, count: await this.calendar.updateDateRestrictions(id, items) } }
+  }
+
+  async listSeasonAssignments(req: HttpRequest) {
+    const id = await this.hotelOf(req); if (!id) return { status: 200, body: { data: [] } }
+    const { from, to } = (req.query || {}) as any
+    return { status: 200, body: { data: await this.calendar.listSeasonAssignments(id, from, to) } }
+  }
+
+  async assignSeason(req: HttpRequest) {
+    const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
+    validateSchema(AssignSeasonSchema, req.body)
+    validateAssignSeason(req.body)
+    const { from, to, weekdays, season } = req.body as any
+    const count = await this.calendar.assignSeason(id, { from, to, weekdays, season: season ?? '' })
+    return { status: 200, body: { success: true, count } }
   }
 }

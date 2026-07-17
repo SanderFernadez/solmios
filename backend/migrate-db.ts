@@ -137,6 +137,14 @@ async function createTablesBlock1(): Promise<void> {
   await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_date_restrictions_hotel_date
     ON date_restrictions (hotelId, date)`)
 
+  // Temporada por FECHA (diálogo "Asignación de temporadas" del planning). Mapea cada fecha a una
+  // temporada del catálogo (seasons.name). UNIQUE(hotelId, date) para el upsert por fecha.
+  await exec(`CREATE TABLE IF NOT EXISTS season_assignments (
+    id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, date TEXT NOT NULL,
+    season TEXT NOT NULL, createdAt TEXT, updatedAt TEXT)`)
+  await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_season_assignments_hotel_date
+    ON season_assignments (hotelId, date)`)
+
   await exec(`CREATE TABLE IF NOT EXISTS groups (
     id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL, leadGuestId TEXT,
     totalRooms INTEGER DEFAULT 1, checkIn TEXT, checkOut TEXT, status TEXT DEFAULT 'pending',

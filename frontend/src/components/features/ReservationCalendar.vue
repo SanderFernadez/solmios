@@ -111,6 +111,24 @@
               </div>
             </div>
 
+            <!-- Temporada: temporada asignada por fecha (diálogo "Asignación de temporadas") -->
+            <div class="flex border-b border-border bg-white">
+              <div class="w-56 flex-shrink-0 px-4 py-2 border-r border-border flex items-center gap-1.5">
+                <span class="text-[11px] leading-none">🗓️</span>
+                <span class="text-[10px] font-black text-navy uppercase tracking-wide">Temporada</span>
+                <button v-if="canEditMinStay" type="button" @click="openSeasonDialog"
+                  class="ml-auto text-[9px] font-black px-2 py-0.5 rounded-full bg-navy text-white hover:bg-navy/90 cursor-pointer"
+                  title="Asignar temporada a un rango de fechas">Asignar</button>
+              </div>
+              <div v-for="day in visibleDays" :key="'sea-' + day.dateStr"
+                class="flex-1 min-w-[68px] px-1.5 py-2 border-r border-navy/10 shrink-0 flex items-center justify-center"
+                :class="day.isToday ? 'bg-cyan/5' : ''"
+                :title="seasonLabelFor(day.dateStr) || 'Sin temporada'">
+                <span v-if="seasonColorFor(day.dateStr)" class="inline-block w-full h-3.5 rounded" :style="{ background: seasonColorFor(day.dateStr) }"></span>
+                <span v-else class="text-[9px] text-text-muted/40 select-none">—</span>
+              </div>
+            </div>
+
             <!-- Room groups -->
             <template v-for="rt in filteredRoomTypes" :key="rt.type">
               <div class="flex border-b border-border bg-navy/5">
@@ -785,6 +803,51 @@
       @close="lockRoom = null"
       @changed="onLockChanged"
     />
+
+    <!-- Diálogo: Asignación de temporadas (estilo MrPlan) -->
+    <Teleport to="body">
+      <div v-if="seasonDlg.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="seasonDlg.show = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-3.5 bg-navy text-white">
+            <h3 class="text-sm font-black">Asignación de temporadas</h3>
+            <button @click="seasonDlg.show = false" class="text-white/80 hover:text-white cursor-pointer text-xl leading-none">×</button>
+          </div>
+          <div class="p-5 space-y-4">
+            <div>
+              <label class="text-[10px] font-bold text-text-muted uppercase">Rango de fechas</label>
+              <div class="flex items-center gap-2 mt-1">
+                <input type="date" v-model="seasonDlg.from" class="flex-1 px-3 py-2 rounded-lg border border-border text-sm text-navy" />
+                <span class="text-text-muted">→</span>
+                <input type="date" v-model="seasonDlg.to" class="flex-1 px-3 py-2 rounded-lg border border-border text-sm text-navy" />
+              </div>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-text-muted uppercase">Días de la semana</label>
+              <div class="grid grid-cols-2 gap-2 mt-1.5">
+                <button v-for="wd in WEEKDAYS_UI" :key="wd.idx" type="button" @click="seasonDlg.weekdays[wd.idx] = !seasonDlg.weekdays[wd.idx]"
+                  class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer"
+                  :class="seasonDlg.weekdays[wd.idx] ? 'bg-teal/15 border-teal text-teal' : 'bg-surface border-border text-text-muted'">
+                  <span class="w-2.5 h-2.5 rounded-full" :class="seasonDlg.weekdays[wd.idx] ? 'bg-teal' : 'bg-gray-300'"></span>
+                  {{ wd.label }}
+                </button>
+              </div>
+            </div>
+            <div class="space-y-2 pt-1">
+              <button v-for="s in seasonsCatalog" :key="s.name" type="button" @click="applySeason(s.name)"
+                class="w-full py-2.5 rounded-lg text-sm font-black text-white shadow-sm hover:opacity-90 cursor-pointer"
+                :style="{ background: s.color }">
+                {{ s.label }}
+              </button>
+              <p v-if="!seasonsCatalog.length" class="text-center text-xs text-text-muted py-2">Configurá temporadas en Ajustes › Tarifas primero.</p>
+              <button type="button" @click="applySeason('')" class="w-full py-2 rounded-lg text-xs font-bold text-coral border border-coral/40 hover:bg-coral/5 cursor-pointer">Quitar temporada del rango</button>
+            </div>
+          </div>
+          <div class="px-5 py-3 bg-surface/60 text-right">
+            <button @click="seasonDlg.show = false" class="text-sm font-bold text-text-muted hover:text-navy cursor-pointer">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -1710,14 +1773,60 @@ async function commitMinStay(dateStr: string) {
     toast.error(e?.message || 'No se pudo guardar el mínimo')
   }
 }
-// Recargar los mínimos cuando cambia el rango visible (semana/vista).
-watch(() => visibleDays.value.length ? `${visibleDays.value[0].dateStr}|${visibleDays.value[visibleDays.value.length - 1].dateStr}` : '', () => loadDateRestrictions())
+// ── Temporada por fecha (diálogo "Asignación de temporadas", estilo MrPlan) ──
+interface SeasonCat { name: string; label: string; color: string }
+// Orden de UI (Lun→Dom); idx = getDay() (0=Dom..6=Sáb) para coincidir con el backend.
+const WEEKDAYS_UI = [
+  { label: 'Lunes', idx: 1 }, { label: 'Martes', idx: 2 }, { label: 'Miércoles', idx: 3 },
+  { label: 'Jueves', idx: 4 }, { label: 'Viernes', idx: 5 }, { label: 'Sábado', idx: 6 }, { label: 'Domingo', idx: 0 },
+]
+const seasonsCatalog = ref<SeasonCat[]>([])
+const seasonByDate = ref<Record<string, string>>({})   // date → season.name
+const seasonDlg = ref<{ show: boolean; from: string; to: string; weekdays: boolean[] }>({
+  show: false, from: '', to: '', weekdays: [true, true, true, true, true, true, true],
+})
+function seasonMeta(name: string) { return seasonsCatalog.value.find(s => s.name === name) }
+function seasonColorFor(dateStr: string) { const n = seasonByDate.value[dateStr]; return n ? (seasonMeta(n)?.color || '#94a3b8') : '' }
+function seasonLabelFor(dateStr: string) { const n = seasonByDate.value[dateStr]; return n ? (seasonMeta(n)?.label || n) : '' }
+async function loadSeasonsCatalog() {
+  try { const r = await HotelService.seasons(); seasonsCatalog.value = (r.data || []).map((s: any) => ({ name: s.name, label: s.label || s.name, color: s.color || '#94a3b8' })) } catch { /* sin catálogo */ }
+}
+async function loadSeasonAssignments() {
+  const days = visibleDays.value
+  if (!days.length) return
+  try {
+    const r = await HotelService.seasonAssignments(days[0].dateStr, days[days.length - 1].dateStr)
+    const map: Record<string, string> = {}
+    for (const it of r.data || []) map[it.date] = it.season
+    seasonByDate.value = map
+  } catch { /* sin permiso o error: la fila queda sin temporada */ }
+}
+function openSeasonDialog() {
+  const days = visibleDays.value
+  seasonDlg.value = { show: true, from: days[0]?.dateStr || '', to: days[days.length - 1]?.dateStr || '', weekdays: [true, true, true, true, true, true, true] }
+}
+async function applySeason(seasonName: string) {
+  const d = seasonDlg.value
+  if (!d.from || !d.to || d.to < d.from) { toast.error('Rango de fechas inválido'); return }
+  const weekdays = d.weekdays.map((on, i) => on ? i : -1).filter(i => i >= 0)
+  try {
+    const r = await HotelService.assignSeason({ from: d.from, to: d.to, weekdays, season: seasonName })
+    seasonDlg.value.show = false
+    await loadSeasonAssignments()
+    toast.success(seasonName ? `Temporada asignada (${r.count} día/s)` : `Temporada quitada (${r.count} día/s)`)
+  } catch (e: any) { toast.error(e?.message || 'No se pudo asignar la temporada') }
+}
+
+// Recargar overrides por fecha (mínimos + temporadas) cuando cambia el rango visible (semana/vista).
+watch(() => visibleDays.value.length ? `${visibleDays.value[0].dateStr}|${visibleDays.value[visibleDays.value.length - 1].dateStr}` : '', () => { loadDateRestrictions(); loadSeasonAssignments() })
 
 // Load
 onMounted(async () => {
   try { const d = await OperationsService.planning(hid.value); planRooms.value = d.rooms ?? []; planReservas.value = d.reservas ?? [] } catch {}
   loadLocks()
   loadDateRestrictions()
+  loadSeasonsCatalog()
+  loadSeasonAssignments()
   try { const b = await HotelService.blocks(); planBlocks.value = (b.data ?? []) as any[] } catch {}
   try {
     const s = await HotelService.settings(hid.value)

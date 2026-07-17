@@ -96,6 +96,19 @@ export function registerSharedModels(orm: ORM): void {
     },
   })
 
+  // ─── Season Assignments (temporada por fecha) ────────
+  // Mapea CADA fecha a una temporada del catálogo (Seasons.name). Alimenta el diálogo "Asignación de
+  // temporadas" y la fila "Temporada" del planning. Sin fila = "sin temporada" para esa fecha.
+  orm.define('SeasonAssignments', {
+    table: 'season_assignments', timestamps: true,
+    fields: {
+      id: { type: 'string', required: true },
+      hotelId: { type: 'string', required: true, indexed: true },
+      date: { type: 'string', required: true, indexed: true },
+      season: { type: 'string', required: true },
+    },
+  })
+
   // ─── Email Queue ─────────────────────────────────────
   orm.define('EmailQueue', {
     table: 'email_queue', timestamps: true,

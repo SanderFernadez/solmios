@@ -6,10 +6,6 @@ import {
   restrictionsChangeEntry, blockDeleteEntry,
   type AuditEntry, type AuditPort, type Actor, type RateChange,
 } from './usecases/audit'
-import {
-  listDateRestrictions, upsertDateRestrictions,
-  type DateRestrictionRow, type DateRestrictionInput,
-} from './usecases/date-restrictions'
 
 export class PricingService {
   private auditPort: AuditPort | null = null
@@ -21,7 +17,6 @@ export class PricingService {
     private readonly restrictionsRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly queries?: PricingQueries,
-    private readonly dateRestrictionsRepo?: RepositoryAdapter<any>,
   ) {}
 
   /** Conecta el audit log. Lo inyecta el connector `pricing-auditlog`. */
@@ -39,7 +34,8 @@ export class PricingService {
     return [
       { name: 'baja', label: 'Temporada Baja', startDate: `${y}-01-01`, endDate: `${y}-05-31`, color: '#3b82f6', sortOrder: 0, active: 1 },
       { name: 'media', label: 'Temporada Media', startDate: `${y}-06-01`, endDate: `${y}-11-30`, color: '#f59e0b', sortOrder: 1, active: 0 },
-      { name: 'alta', label: 'Temporada Alta', startDate: `${y}-12-01`, endDate: `${y}-12-31`, color: '#ef4444', sortOrder: 2, active: 0 },
+      { name: 'alta', label: 'Temporada Alta', startDate: `${y}-12-01`, endDate: `${y}-12-31`, color: '#84cc16', sortOrder: 2, active: 0 },
+      { name: 'especial', label: 'Temporada Especial', startDate: '', endDate: '', color: '#f59e0b', sortOrder: 3, active: 0 },
     ]
   }
 
@@ -176,18 +172,5 @@ export class PricingService {
   async getChannelMetrics(hotelId: string): Promise<any[]> {
     if (!this.queries) throw new Error('Queries no disponible')
     return this.queries.getChannelMetrics(hotelId)
-  }
-
-  /** Estadía mínima por fecha (fila "Días Mínimos" del planning). Default 1 si no hay override. */
-  async listDateRestrictions(hotelId: string, from?: string, to?: string): Promise<DateRestrictionRow[]> {
-    if (!this.dateRestrictionsRepo) return []
-    return listDateRestrictions(this.dateRestrictionsRepo, hotelId, from, to)
-  }
-
-  async updateDateRestrictions(hotelId: string, items: DateRestrictionInput[], actor?: Actor): Promise<number> {
-    if (!this.dateRestrictionsRepo) throw new Error('DateRestrictions repo no disponible')
-    const saved = await upsertDateRestrictions(this.dateRestrictionsRepo, hotelId, items)
-    if (saved > 0) await this.audit(restrictionsChangeEntry(hotelId, saved, actor))
-    return saved
   }
 }

@@ -41,6 +41,12 @@ export const UpdateDateRestrictionsSchema: Record<string, ValidationRule> = {
 
 const MAX_MIN_STAY = 365   // estadía mínima disparatada (más de un año) se corta acá
 
+export const AssignSeasonSchema: Record<string, ValidationRule> = {
+  from: { type: 'string' as const, required: true, pattern: DATE_RE },
+  to: { type: 'string' as const, required: true, pattern: DATE_RE },
+  season: { type: 'string' as const, max: 60 },   // vacío = borrar la asignación
+}
+
 // ─── Validación por ítem (validateSchema no valida el contenido de los arrays) ───
 
 /** Cada tarifa: precios/recargos en rango y la tarifa resultante nunca negativa. */
@@ -109,6 +115,18 @@ export function validateDateRestrictionItems(items: unknown): void {
   })
 }
 
+/** Asignación de temporada: rango coherente y weekdays (si vienen) enteros 0..6 (0=Dom). */
+export function validateAssignSeason(body: any): void {
+  if (!body || typeof body !== 'object') throw new ValidationError('body inválido')
+  if (body.to < body.from) throw new ValidationError('to no puede ser anterior a from')
+  if (body.weekdays !== undefined && body.weekdays !== null) {
+    if (!Array.isArray(body.weekdays)) throw new ValidationError('weekdays debe ser un array')
+    for (const w of body.weekdays) {
+      if (!Number.isInteger(w) || w < 0 || w > 6) throw new ValidationError('weekdays: cada día es un entero 0..6 (0=Dom)')
+    }
+  }
+}
+
 /** Bloqueo de habitación: fin no anterior al inicio (los formatos ya los valida CreateBlockSchema). */
 export function validateBlockRange(startDate: string, endDate: string): void {
   if (startDate && endDate && endDate < startDate)
@@ -121,4 +139,5 @@ export const PricingValidator = {
   updateRates: UpdateRatesSchema,
   updateRateRestrictions: UpdateRateRestrictionsSchema,
   updateDateRestrictions: UpdateDateRestrictionsSchema,
+  assignSeason: AssignSeasonSchema,
 }

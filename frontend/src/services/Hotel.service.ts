@@ -96,6 +96,16 @@ export const HotelService = {
     return http.put('/date-restrictions', { items })
   },
 
+  // Temporada por fecha (diálogo "Asignación de temporadas" del planning).
+  async seasonAssignments(from?: string, to?: string): Promise<{ data: { date: string; season: string }[] }> {
+    const qs = from && to ? `?from=${from}&to=${to}` : ''
+    return http.get(`/season-assignments${qs}`)
+  },
+  /** Asigna (o borra, con season vacío) una temporada a un rango filtrado por día de la semana (0=Dom..6=Sáb). */
+  async assignSeason(input: { from: string; to: string; weekdays?: number[]; season: string }): Promise<{ success: boolean; count: number }> {
+    return http.post('/season-assignments', input)
+  },
+
   // Blocks
   async blocks(startDate?: string, endDate?: string): Promise<{ data: any[] }> {
     const qs = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : ''

@@ -1,5 +1,6 @@
 import { createModule, OrmRepository } from 'arckode-framework'
 import { PricingService } from './service'
+import { PricingCalendarService } from './service-calendar'
 import { PricingController } from './controller'
 import { PricingQueries } from './usecases/pricing-queries'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
@@ -14,9 +15,9 @@ export function PricingModule() {
     contract: {
       name: 'pricing', version: '1.0.0',
       description: 'Inventory and pricing management',
-      actions: ['listSeasons', 'updateSeasons', 'listRates', 'updateRates', 'copyRatesNextYear', 'listBlocks', 'createBlocks', 'deleteBlock', 'listRateRestrictions', 'updateRateRestrictions', 'listDateRestrictions', 'updateDateRestrictions', 'getChannelMetrics'],
+      actions: ['listSeasons', 'updateSeasons', 'listRates', 'updateRates', 'copyRatesNextYear', 'listBlocks', 'createBlocks', 'deleteBlock', 'listRateRestrictions', 'updateRateRestrictions', 'listDateRestrictions', 'updateDateRestrictions', 'listSeasonAssignments', 'assignSeason', 'getChannelMetrics'],
       events: [],
-      tables: ['seasons', 'room_rates', 'room_blocks', 'rate_restrictions', 'date_restrictions'],
+      tables: ['seasons', 'room_rates', 'room_blocks', 'rate_restrictions', 'date_restrictions', 'season_assignments'],
       dependencies: [],
       rules: [],
     },
@@ -28,9 +29,11 @@ export function PricingModule() {
       const blocksRepo = new OrmRepository<any>(orm, 'RoomBlocks')
       const restrictionsRepo = new OrmRepository<any>(orm, 'RateRestrictions')
       const dateRestrictionsRepo = new OrmRepository<any>(orm, 'DateRestrictions')
+      const seasonAssignmentsRepo = new OrmRepository<any>(orm, 'SeasonAssignments')
       const queries = new PricingQueries(orm)
-      const service = new PricingService(seasonsRepo, ratesRepo, blocksRepo, restrictionsRepo, log, queries, dateRestrictionsRepo)
-      const controller = new PricingController(service, log)
+      const service = new PricingService(seasonsRepo, ratesRepo, blocksRepo, restrictionsRepo, log, queries)
+      const calendar = new PricingCalendarService(dateRestrictionsRepo, seasonAssignmentsRepo, log)
+      const controller = new PricingController(service, log, calendar)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
@@ -50,9 +53,13 @@ export function PricingModule() {
       // pinta para recepción; la edición sigue siendo settings:edit (config de tarifas).
       router.get('/api/date-restrictions', guard('reservations', 'view'), (req: any) => controller.listDateRestrictions(req))
       router.put('/api/date-restrictions', guard('settings', 'edit'), (req: any) => controller.updateDateRestrictions(req))
+      // Temporada por fecha (diálogo "Asignación de temporadas" del planning). Lectura con
+      // reservations:view (el calendario la pinta); asignación con settings:edit (config de tarifas).
+      router.get('/api/season-assignments', guard('reservations', 'view'), (req: any) => controller.listSeasonAssignments(req))
+      router.post('/api/season-assignments', guard('settings', 'edit'), (req: any) => controller.assignSeason(req))
       router.get('/api/channel-metrics', guard('settings', 'view'), (req: any) => controller.getChannelMetrics(req))
 
-      log.info('Módulo pricing listo (13 endpoints)')
+      log.info('Módulo pricing listo (15 endpoints)')
       return service
     },
   })
