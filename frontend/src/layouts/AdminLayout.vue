@@ -127,25 +127,12 @@
     <!-- Main Content -->
     <div class="flex-1 min-w-0 lg:ml-64 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
       <!-- Header (el dashboard general trae su propia barra oscura de comando) -->
-      <header v-if="!isCommandCenter" class="h-16 bg-white flex items-center gap-3 justify-between px-4 md:px-6 sticky top-0 z-10 shadow-(--shadow-nav)">
-        <div class="flex items-center gap-3 min-w-0">
-          <button @click="mobileMenuOpen = true" class="lg:hidden shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
-            </svg>
-          </button>
-          <h1 class="text-lg font-black text-navy truncate">{{ pageTitle }}</h1>
-        </div>
-        <div class="flex items-center gap-2.5">
-          <!-- Notifications bell (componente dedicado) -->
-          <NotificationBell />
-
-          <!-- User Menu (Configuración / Cambiar contraseña / Salir) -->
-          <UserMenu />
-        </div>
-      </header>
-      <!-- Toggle móvil para el dashboard general (trae su propia barra clara sin header estándar) -->
-      <button v-else @click="mobileMenuOpen = true" class="lg:hidden fixed top-3 left-3 z-20 w-9 h-9 flex items-center justify-center rounded-lg border border-border bg-white text-navy shadow-(--shadow-card) hover:bg-surface cursor-pointer">
+      <!-- Header global "command center" (mismo en todas las páginas). El dashboard trae el suyo. -->
+      <div v-if="!isCommandCenter" class="px-4 md:px-6 pt-4">
+        <AppHeader />
+      </div>
+      <!-- Toggle del menú en móvil (todas las páginas) -->
+      <button @click="mobileMenuOpen = true" class="lg:hidden fixed top-3 left-3 z-30 w-9 h-9 flex items-center justify-center rounded-lg border border-border bg-white text-navy shadow-(--shadow-card) hover:bg-surface cursor-pointer">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
         </svg>
@@ -171,11 +158,10 @@ import { useDashboardStore } from '@/stores/dashboard.store'
 import { useRoomStore } from '@/stores/room.store'
 import { useNow } from '@/composables/useNow'
 import { useModulesStore } from '@/stores/modules.store'
-import NotificationBell from '@/components/features/core-pms/NotificationBell.vue'
+import AppHeader from '@/components/features/core-pms/AppHeader.vue'
 import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanner.vue'
 import OfflineBanner from '@/components/features/core-pms/OfflineBanner.vue'
 import HotelSwitcher from '@/components/features/core-pms/HotelSwitcher.vue'
-import UserMenu from '@/components/features/core-pms/UserMenu.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 
 const ICON_MENU = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/></svg>'
@@ -417,45 +403,6 @@ const userInitials = computed(() => {
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 })
 
-const pageTitle = computed(() => {
-  const titles: Record<string, string> = {
-    'dashboard-general': 'Dashboard General',
-    planning: 'Planning',
-    reservations: 'Reservas',
-    rooms: 'Habitaciones',
-    guests: 'Huéspedes',
-    checkin: 'Check-in Digital',
-    housekeeping: 'Housekeeping',
-    maintenance: 'Mantenimiento',
-    'channel-manager': 'Channel Manager',
-    'booking-engine': 'Booking Engine',
-    packages: 'Ofertas',
-    groups: 'Grupos',
-    'night-audit': 'Night Audit',
-    billing: 'Facturación',
-    folios: 'Folios In-House',
-    payments: 'Links de Pago',
-    gastos: 'Gastos',
-    reports: 'Reportes',
-    opiniones: 'Opiniones',
-    'auto-messages': 'Envíos Automáticos',
-    'message-logs': 'Historial de Envíos',
-    'whatsapp-templates': 'Plantillas WhatsApp',
-    caja: 'Caja',
-    cerraduras: 'Cerraduras TTLock',
-    pagos: 'Pasarelas de Pago',
-    devices: 'Dispositivos',
-    'push-tokens': 'Notificaciones Push',
-    support: 'Soporte',
-    settings: 'Configuración',
-    team: 'Equipo',
-    empleados: 'Empleados',
-    payroll: 'Nómina',
-    attendance: 'Asistencia',
-    crm: 'CRM y Fidelización',
-  }
-  return titles[route.name as string] ?? 'Panel'
-})
 
 function isActive(path: string) {
   return route.path.startsWith(path)
