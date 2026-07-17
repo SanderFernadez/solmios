@@ -81,8 +81,8 @@ export const UpdateHotelesSchema: Record<string, ValidationRule> = {
   country: { type: 'string' as const, max: 100 },
   currency: { type: 'string' as const, min: 3, max: 3 },
   timezone: { type: 'string' as const, max: 50 },
-  plan: { type: 'string' as const, enum: HOTEL_PLAN_ENUM },
-  status: { type: 'string' as const, enum: HOTEL_STATUS_ENUM },
+  // plan y status NO se editan acá: son operación de plataforma (super_admin vía PUT /api/admin/hoteles/:id).
+  // Al no declararlos, validateSchema los descarta → un merchant no puede auto-subirse de plan ni re-activarse.
   roomsCount: { type: 'number' as const, min: 0 },
   active: { type: 'number' as const },
   checkIn: { type: 'string' as const, pattern: /^\d{2}:\d{2}$/ },

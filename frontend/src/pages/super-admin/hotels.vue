@@ -244,9 +244,7 @@
             <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Habitaciones</label><input v-model.number="editingHotel.rooms" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
             <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Plan *</label>
               <select v-model="editingHotel.plan" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
-                <option value="Starter">Starter — $49/mes</option>
-                <option value="Professional">Professional — $99/mes</option>
-                <option value="Enterprise">Enterprise — $199/mes</option>
+                <option v-for="p in plansList" :key="p.id" :value="cap(p.slug)">{{ p.name }} — ${{ p.price }}/mes</option>
               </select>
             </div>
             <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Estado</label>
@@ -294,6 +292,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
+import { HotelAdminService } from '@/services/Platform.service'
+import { PlansService } from '@/services/Plans.service'
+import { useToast } from '@/composables/useToast'
+
+const toast = useToast()
+const cap = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+const plansList = ref<any[]>([])
 
 const activeFilter = ref('all')
 const planFilter = ref('all')
@@ -327,6 +332,7 @@ const stats = computed(() => {
 const hotels = ref<any[]>([])
 
 onMounted(async () => {
+  try { plansList.value = (await PlansService.list()).data || [] } catch { /* opcional */ }
   try {
     const { hotels: data } = await SuperAdminService.hotels()
     hotels.value = data.map((h: any) => ({
@@ -429,23 +435,41 @@ const openEditHotel = (hotel: any) => { editingHotel.value = { ...hotel }; showE
 const openNewHotel = () => { editingHotel.value = { id: null, name: '', email: '', phone: '', location: '', plan: 'Professional', rooms: 0, occupancy: 0, mrr: 0, users: 1, status: 'Pendiente', registered: new Date().toLocaleDateString('es-ES') }; showEditModal.value = true }
 const openSuspendModal = (hotel: any) => { selectedHotel.value = { ...hotel }; suspendReason.value = ''; showSuspendModal.value = true }
 
-const saveHotel = () => {
+const saveHotel = async () => {
   if (!editingHotel.value.name || !editingHotel.value.email || !editingHotel.value.location) return
-  editingHotel.value.mrr = editingHotel.value.plan === 'Starter' ? 49 : editingHotel.value.plan === 'Professional' ? 99 : 199
+  editingHotel.value.mrr = PLAN_MRR[String(editingHotel.value.plan).toLowerCase()] ?? 0
   if (editingHotel.value.id) {
-    const idx = hotels.value.findIndex(h => h.id === editingHotel.value.id)
-    if (idx !== -1) hotels.value[idx] = { ...editingHotel.value }
+    // Editar hotel existente: persistir plan/estado/datos en el backend (super_admin).
+    try {
+      await HotelAdminService.update(String(editingHotel.value.id), {
+        plan: editingHotel.value.plan, status: editingHotel.value.status,
+        name: editingHotel.value.name, email: editingHotel.value.email,
+        phone: editingHotel.value.phone, location: editingHotel.value.location,
+      })
+      const idx = hotels.value.findIndex(h => h.id === editingHotel.value.id)
+      if (idx !== -1) hotels.value[idx] = { ...editingHotel.value }
+      toast.success('Hotel actualizado')
+      showEditModal.value = false
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo guardar el hotel')
+    }
   } else {
-    editingHotel.value.id = Date.now()
-    hotels.value.unshift({ ...editingHotel.value })
+    // Alta de hotel: el onboarding completo (crear cuenta dueño, etc.) es un flujo aparte, aún no cableado acá.
+    toast.error('El alta de hoteles nuevos se hace desde el onboarding, no desde esta pantalla')
   }
-  showEditModal.value = false
 }
 
-const toggleSuspend = () => {
-  selectedHotel.value.status = selectedHotel.value.status === 'Suspendido' ? 'Activo' : 'Suspendido'
-  const idx = hotels.value.findIndex(h => h.id === selectedHotel.value.id)
-  if (idx !== -1) hotels.value[idx].status = selectedHotel.value.status
-  showSuspendModal.value = false
+const toggleSuspend = async () => {
+  const next = selectedHotel.value.status === 'Suspendido' ? 'Activo' : 'Suspendido'
+  try {
+    await HotelAdminService.update(String(selectedHotel.value.id), { status: next })
+    selectedHotel.value.status = next
+    const idx = hotels.value.findIndex(h => h.id === selectedHotel.value.id)
+    if (idx !== -1) hotels.value[idx].status = next
+    toast.success(next === 'Suspendido' ? 'Hotel suspendido' : 'Hotel reactivado')
+    showSuspendModal.value = false
+  } catch (e: any) {
+    toast.error(e?.message || 'No se pudo cambiar el estado')
+  }
 }
 </script>

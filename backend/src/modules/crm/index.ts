@@ -5,6 +5,7 @@ import { CrmService } from './service'
 import { CrmController } from './controller'
 import type { LoyaltyTransactionDTO, CouponDTO, GuestSegmentDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { CrmService }
 export type { LoyaltyTransactionDTO, CouponDTO, GuestSegmentDTO, GuestLTV, CrmDashboard, CreateCouponDTO, CreateSegmentDTO } from './types'
@@ -39,7 +40,9 @@ export function CrmModule() {
       const controller = new CrmController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('crm')]
 
       router.post('/api/crm/points/award', guard('guests', 'edit'), (req) => controller.awardPoints(req))
       router.post('/api/crm/points/redeem', guard('guests', 'edit'), (req) => controller.redeemPoints(req))

@@ -12,6 +12,7 @@ import { ChannexUseCase } from './usecases/channex'
 import { ChannexAdminService } from './service-channex-admin'
 import type { RoomTypeSummary, CanalesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 import { requireUserType } from '../../infrastructure/auth/require-user-type'
 import { resolveTenant } from '../../shared/utils/resolve-tenant'
 
@@ -51,7 +52,11 @@ export function CanalesModule() {
       const controller = new CanalesController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      // Todas las rutas de hotel de canales son del módulo 'channel': el entitlement se agrega una vez
+      // envolviendo el permission guard, sin tocar cada ruta. Las rutas /api/admin/* usan adminOnly aparte.
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('channel')]
 
       // ── Config Channex a nivel PLATAFORMA (super_admin) — white-label: una cuenta para todos ──
       const adminConfig = new ConfigUseCase(repo, queries)

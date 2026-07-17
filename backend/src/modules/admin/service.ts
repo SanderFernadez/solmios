@@ -30,6 +30,7 @@ export class AdminService {
     private readonly logger: Logger,
     private readonly auth?: any,
     private readonly queries?: DashboardQueries,
+    private readonly hotelsRepo?: RepositoryAdapter<any>,
   ) {}
 
   async listHotels(): Promise<{ data: any[]; total: number }> { return this.queries!.listHotels() }
@@ -77,6 +78,31 @@ export class AdminService {
     if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
     await this.plansRepo.delete(id)
     await auditSafely(this.auditPort, this.logger, planDeleteEntry(existing, user))
+  }
+
+  /**
+   * Actualiza plan/estado/datos de CUALQUIER hotel (operación de plataforma, solo super_admin).
+   * El `plan` se valida contra la tabla `plans` (no un enum): un plan inexistente → error. Así se puede
+   * asignar cualquier plan que exista en la tabla y no quedan planes fantasma.
+   */
+  async updateHotel(id: string, body: any, user?: any): Promise<any> {
+    if (!this.hotelsRepo) throw new Error('hotelsRepo no disponible')
+    const existing = await this.hotelsRepo.findById(id) as any
+    if (!existing) throw new Error('Hotel no encontrado')
+    if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
+    const patch: Record<string, any> = {}
+    if (body.plan !== undefined) {
+      const slug = String(body.plan).toLowerCase()
+      const plan = (await this.plansRepo.findMany({ slug }))[0]
+      if (!plan) throw new Error(`El plan '${body.plan}' no existe en el catálogo de planes`)
+      patch.plan = slug
+    }
+    if (body.status !== undefined) patch.status = String(body.status).toLowerCase()
+    if (body.name !== undefined) patch.name = body.name
+    if (body.email !== undefined) patch.email = body.email
+    if (body.phone !== undefined) patch.phone = body.phone
+    if (body.location !== undefined) patch.address = body.location
+    return await this.hotelsRepo.update(id, patch)
   }
 
   async listAmenitiesCatalog(): Promise<{ data: any[]; total: number }> {

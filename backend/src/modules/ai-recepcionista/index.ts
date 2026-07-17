@@ -13,6 +13,7 @@ import type {
   AiVoiceConfigRecord,
 } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { AiRecepcionistaService }
 export type {
@@ -103,7 +104,9 @@ export function AiRecepcionistaModule() {
       const controller = new AiRecepcionistaController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('ai.receptionist')]
 
       router.get('/api/ai/conversations', guard('ai', 'view'), (req) => controller.index(req))
       router.get('/api/ai/conversations/:id', guard('ai', 'view'), (req) => controller.show(req))

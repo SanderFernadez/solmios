@@ -16,7 +16,7 @@ export function AdminModule() {
     contract: {
       name: 'admin', version: '1.0.0',
       description: 'Platform-level management: hotels, users, plans, analytics',
-      actions: ['listHotels', 'listUsers', 'getAnalytics', 'listSubscriptions', 'listAuditLogs', 'listAnnouncements', 'getMonitoring', 'listPlans', 'createPlan', 'updatePlan', 'deletePlan', 'listAmenitiesCatalog', 'createAmenityCatalog', 'updateAmenityCatalog', 'deleteAmenityCatalog', 'getPublicUsers', 'getModules', 'setModules', 'getEnabledModules'],
+      actions: ['listHotels', 'updateHotel', 'listUsers', 'getAnalytics', 'listSubscriptions', 'listAuditLogs', 'listAnnouncements', 'getMonitoring', 'listPlans', 'createPlan', 'updatePlan', 'deletePlan', 'listAmenitiesCatalog', 'createAmenityCatalog', 'updateAmenityCatalog', 'deleteAmenityCatalog', 'getPublicUsers', 'getModules', 'setModules', 'getEnabledModules'],
       events: [],
       tables: [],
       dependencies: [],
@@ -28,15 +28,15 @@ export function AdminModule() {
       const plansRepo = new OrmRepository<PlanDTO>(orm, 'Plans')
       const amenitiesRepo = new OrmRepository<AmenityCatalogDTO>(orm, 'AmenitiesCatalog')
       const queries = new DashboardQueries(orm)
-      const service = new AdminService(plansRepo, amenitiesRepo, log, auth, queries)
+      const configRepo = new OrmRepository<any>(orm, 'Configuration')
+      const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
+      const service = new AdminService(plansRepo, amenitiesRepo, log, auth, queries, hotelsRepo)
       const controller = new AdminController(service, log)
 
       const sa = [auth.authenticate('super_admin'), requireUserType('admin')]
       const ar = [auth.authenticate('hotel_admin', 'receptionist', 'super_admin'), requireUserType('merchant')]
 
       // ── Módulos del producto (activar/desactivar) — global en configuration(platform,'modules') + por plan ──
-      const configRepo = new OrmRepository<any>(orm, 'Configuration')
-      const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
       // Editar: solo super_admin. Leer: cualquier logueado; el estado sale de global ∩ el plan de SU hotel.
       router.get('/api/admin/modules', sa, async () => ({ status: 200, body: { catalog: MODULE_CATALOG, state: await getModuleState(configRepo) } }))
       router.put('/api/admin/modules', sa, async (req: any) => ({ status: 200, body: { state: await setModuleState(configRepo, (req.body?.state ?? req.body) || {}) } }))
@@ -51,6 +51,7 @@ export function AdminModule() {
       })
 
       router.get('/api/admin/hoteles', sa, () => controller.listHotels())
+      router.put('/api/admin/hoteles/:id', sa, (req: any) => controller.updateHotel(req))
       router.get('/api/admin/users', sa, () => controller.listUsers())
       router.get('/api/admin/analytics', sa, () => controller.getAnalytics())
       router.get('/api/admin/subscriptions', sa, () => controller.listSubscriptions())

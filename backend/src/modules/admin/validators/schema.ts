@@ -45,6 +45,16 @@ export const UpdateAmenityCatalogSchema: Record<string, ValidationRule> = {
   sortOrder: { type: 'number' as const, min: 0 },
 }
 
+// Update de hotel por el super_admin (plan/estado/datos). El `plan` se valida contra la tabla en el service.
+export const UpdateHotelAdminSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, min: 2, max: 120 },
+  email: { type: 'string' as const, max: 160 },
+  phone: { type: 'string' as const, max: 40 },
+  location: { type: 'string' as const, max: 200 },
+  plan: { type: 'string' as const, max: 40 },
+  status: { type: 'string' as const, max: 20 },
+}
+
 export const AdminValidator = {
   createPlan: CreatePlanSchema,
   updatePlan: UpdatePlanSchema,

@@ -35,6 +35,13 @@ export const ModulesService = {
   enabled: () => _http.get<{ state: ModuleState }>('/modules'),
 }
 
+// Gestión de hoteles a nivel PLATAFORMA (super_admin). Asignar plan, estado y datos de cualquier hotel.
+// El `plan` se valida contra la tabla de planes en el backend.
+export const HotelAdminService = {
+  update: (id: string, patch: { plan?: string; status?: string; name?: string; email?: string; phone?: string; location?: string }) =>
+    _http.put<any>(`/admin/hoteles/${id}`, patch),
+}
+
 // Cuenta Channex a nivel PLATAFORMA (white-label). Solo super_admin. La API key nunca vuelve cruda.
 export interface ChannexStatus { environment: string; hasKey: boolean; keyMasked: string }
 export const ChannexAdminService = {

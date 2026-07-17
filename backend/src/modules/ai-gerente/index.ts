@@ -5,6 +5,7 @@ import { AiGerenteService } from './service'
 import { AiGerenteController } from './controller'
 import type { AiGerenteDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { AiGerenteService }
 export type { AiGerenteDTO, CreateAiGerenteDTO, UpdateAiGerenteDTO, AiGerenteQuery, AiGerentePaginated, AskRequest } from './types'
@@ -41,7 +42,9 @@ export function AiGerenteModule() {
       const controller = new AiGerenteController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('ai.manager')]
 
       router.post('/api/ai/manager/ask', guard('ai', 'view'), (req) => controller.ask(req))
       router.get('/api/ai/manager/interactions', guard('ai', 'view'), (req) => controller.index(req))

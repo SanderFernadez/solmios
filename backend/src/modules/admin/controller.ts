@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { AdminService } from './service'
-import { CreatePlanSchema, UpdatePlanSchema, CreateAmenityCatalogSchema, UpdateAmenityCatalogSchema } from './validators/schema'
+import { CreatePlanSchema, UpdatePlanSchema, CreateAmenityCatalogSchema, UpdateAmenityCatalogSchema, UpdateHotelAdminSchema } from './validators/schema'
 
 export class AdminController {
   constructor(
@@ -76,6 +76,17 @@ export class AdminController {
       return { status: 200, body: { success: true } }
     } catch (e: any) {
       return { status: 404, body: { error: e.message } }
+    }
+  }
+
+  async updateHotel(req: HttpRequest) {
+    try {
+      const data = validateSchema(UpdateHotelAdminSchema, req.body) as any
+      return { status: 200, body: await this.service.updateHotel(req.params.id, data, req.user as any) }
+    } catch (e: any) {
+      const msg = e.message || 'Error'
+      const status = msg.includes('no encontrado') ? 404 : (msg.includes('no existe') ? 400 : 400)
+      return { status, body: { error: msg } }
     }
   }
 
