@@ -34,8 +34,8 @@
     <!-- KPIs -->
     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
       <div v-for="s in statsCards" :key="s.label"
-        class="group flex items-start gap-3 rounded-2xl border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl" :style="{ background: s.bg, color: s.accent }">
+        class="group flex items-start gap-3 rounded-2xl border-2 border-navy bg-white p-4 shadow-(--shadow-card) transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border-2 border-navy/10" :style="{ background: s.bg, color: s.accent }">
           <svg v-if="s.icon === 'checkin'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H4.5"/>
           </svg>
@@ -66,9 +66,17 @@
     </div>
 
     <!-- Filters + Table -->
-    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+    <div class="rounded-[20px] border-2 border-navy bg-white shadow-(--shadow-card) overflow-hidden">
+      <!-- Header de sección (design system) -->
+      <div class="flex items-center justify-between gap-3 flex-wrap bg-navy px-4 sm:px-5 py-4">
+        <div>
+          <h2 class="text-base sm:text-lg font-black text-white">Listado de reservas</h2>
+          <p class="text-[11px] text-white/60 mt-0.5">Buscá, filtrá y gestioná todas las reservas del hotel</p>
+        </div>
+        <span class="px-3 py-1 rounded-lg bg-white/10 text-xs font-black text-white">{{ filtered.length }}</span>
+      </div>
       <!-- Toolbar -->
-      <div class="flex items-center gap-3 p-4 border-b border-border flex-wrap">
+      <div class="flex items-center gap-3 p-4 border-b-2 border-navy flex-wrap">
         <div class="relative">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
@@ -211,7 +219,7 @@
       <Transition name="modal-fade">
         <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
           <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-5xl max-h-[95vh] sm:max-h-[92vh] overflow-hidden flex flex-col">
+          <div class="modal-panel relative bg-white rounded-[20px] border-2 border-navy shadow-2xl w-full max-w-5xl max-h-[95vh] sm:max-h-[92vh] overflow-hidden flex flex-col">
 
             <!-- Header -->
             <div class="p-5 border-b border-border shrink-0 bg-gradient-to-r from-navy to-navy/90">
