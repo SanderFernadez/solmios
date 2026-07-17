@@ -31,6 +31,10 @@
           <select v-model="viewDays" class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy bg-white cursor-pointer">
             <option :value="7">7 días</option><option :value="14">14 días</option><option :value="30">30 días</option>
           </select>
+          <button v-if="canEditMinStay" @click="openSeasonDialog" title="Asignar temporada a un rango de fechas"
+            class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy bg-white hover:bg-surface cursor-pointer inline-flex items-center gap-1.5">
+            🗓️ Temporadas
+          </button>
         </div>
       </div>
     </div>
@@ -82,7 +86,9 @@
               </div>
               <div v-for="day in visibleDays" :key="day.dateStr"
                 class="flex-1 min-w-[68px] px-2 py-3 text-center border-r border-navy/15 shrink-0"
-                :class="day.isToday ? 'bg-cyan/20' : day.isWeekend ? 'bg-cyan/10' : ''">
+                :class="!seasonColorFor(day.dateStr) && (day.isToday ? 'bg-cyan/20' : day.isWeekend ? 'bg-cyan/10' : '')"
+                :style="seasonHeaderStyle(day.dateStr)"
+                :title="seasonLabelFor(day.dateStr) ? `Temporada: ${seasonLabelFor(day.dateStr)}` : ''">
                 <div class="text-[10px] font-bold" :class="day.isToday ? 'text-cyan' : 'text-text-muted'">{{ day.dayName }}</div>
                 <div class="text-xs font-black mt-0.5" :class="day.isToday ? 'text-cyan' : 'text-navy'">{{ day.dayNum }}</div>
                 <div class="text-[9px] text-text-muted mt-0.5">{{ day.monthShort }}</div>
@@ -108,24 +114,6 @@
                   :title="canEditMinStay ? 'Estadía mínima (noches) para llegadas este día — clic para editar' : 'Estadía mínima (noches) para llegadas este día'">
                   {{ minStayFor(day.dateStr) }}
                 </button>
-              </div>
-            </div>
-
-            <!-- Temporada: temporada asignada por fecha (diálogo "Asignación de temporadas") -->
-            <div class="flex border-b border-border bg-white">
-              <div class="w-56 flex-shrink-0 px-4 py-2 border-r border-border flex items-center gap-1.5">
-                <span class="text-[11px] leading-none">🗓️</span>
-                <span class="text-[10px] font-black text-navy uppercase tracking-wide">Temporada</span>
-                <button v-if="canEditMinStay" type="button" @click="openSeasonDialog"
-                  class="ml-auto text-[9px] font-black px-2 py-0.5 rounded-full bg-navy text-white hover:bg-navy/90 cursor-pointer"
-                  title="Asignar temporada a un rango de fechas">Asignar</button>
-              </div>
-              <div v-for="day in visibleDays" :key="'sea-' + day.dateStr"
-                class="flex-1 min-w-[68px] px-1.5 py-2 border-r border-navy/10 shrink-0 flex items-center justify-center"
-                :class="day.isToday ? 'bg-cyan/5' : ''"
-                :title="seasonLabelFor(day.dateStr) || 'Sin temporada'">
-                <span v-if="seasonColorFor(day.dateStr)" class="inline-block w-full h-3.5 rounded" :style="{ background: seasonColorFor(day.dateStr) }"></span>
-                <span v-else class="text-[9px] text-text-muted/40 select-none">—</span>
               </div>
             </div>
 
@@ -1788,6 +1776,11 @@ const seasonDlg = ref<{ show: boolean; from: string; to: string; weekdays: boole
 function seasonMeta(name: string) { return seasonsCatalog.value.find(s => s.name === name) }
 function seasonColorFor(dateStr: string) { const n = seasonByDate.value[dateStr]; return n ? (seasonMeta(n)?.color || '#94a3b8') : '' }
 function seasonLabelFor(dateStr: string) { const n = seasonByDate.value[dateStr]; return n ? (seasonMeta(n)?.label || n) : '' }
+// Tinta la columna de la fecha con el color de su temporada (fondo suave + barra sólida abajo).
+function seasonHeaderStyle(dateStr: string) {
+  const c = seasonColorFor(dateStr)
+  return c ? { backgroundColor: `${c}2e`, boxShadow: `inset 0 -3px 0 ${c}` } : {}
+}
 async function loadSeasonsCatalog() {
   try { const r = await HotelService.seasons(); seasonsCatalog.value = (r.data || []).map((s: any) => ({ name: s.name, label: s.label || s.name, color: s.color || '#94a3b8' })) } catch { /* sin catálogo */ }
 }
