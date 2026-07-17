@@ -86,16 +86,11 @@ export class PricingService {
 
   async listRates(hotelId: string, channel?: string): Promise<any[]> {
     const all = await this.ratesRepo.findMany({ hotelId }) as any[]
-    const base = all.filter((r) => !r.channel)
-    if (!channel) return base
-    // Vista por canal: por cada celda base, si el canal tiene override lo devolvemos; si no, proyectamos
-    // la base al canal (sin id, hereda basePrice del hotel, %=0) para que el front la muestre y, al
-    // guardar, se cree la fila del canal. `_inherited` marca las que aún no tienen override propio.
-    const key = (r: any) => `${r.roomType}|${r.occupancy}|${r.season}`
-    const overrides = new Map((all.filter((r) => r.channel === channel)).map((o) => [key(o), o]))
-    return base.map((b) => overrides.get(key(b)) ?? ({
-      ...b, id: undefined, channel, percentage: 0, price: b.basePrice, closed: 0, minStay: 0, maxStay: 0, _inherited: true,
-    }))
+    if (!channel) return all.filter((r) => !r.channel)
+    // Vista por canal: delegada a queries, que arma la grilla (base o derivada de los room types) y
+    // aplica overrides del canal. Fallback defensivo a solo-base si no hay queries inyectadas.
+    if (this.queries) return this.queries.listChannelRates(hotelId, channel, all)
+    return all.filter((r) => r.channel === channel)
   }
 
   async updateRates(hotelId: string, rates: any[], actor?: Actor): Promise<number> {
