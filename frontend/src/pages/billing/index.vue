@@ -1212,28 +1212,23 @@ function closePaymentModal() {
 
 async function savePayment() {
   if (!paymentForm.value.guest || paymentForm.value.amount <= 0) { toast.warning('Datos incompletos'); return }
+  if (!paymentTargetId.value) { toast.warning('Seleccioná una factura o folio para registrar el pago'); return }
   savingPayment.value = true
   // El código canónico ('cash'), no la etiqueta en español: la API tiene un enum cerrado y la DB
   // habla inglés. Mandar "Efectivo" hacía que el pago cayera en `other` y no llegara a la caja.
   const method = paymentForm.value.method
   try {
-    if (paymentTargetKind.value === 'folio' && paymentTargetId.value) {
+    // Todo pago tiene un target (factura o folio). Ambos asientan el dinero en `payments` vía el
+    // payment-port del backend — ya no se crea el comprobante `type:'payment'` suelto en `invoices`
+    // (modelo viejo que no alimentaba la caja ni la conciliación). BM-4.3.
+    if (paymentTargetKind.value === 'folio') {
       await FoliosService.pay(paymentTargetId.value, {
         amount: paymentForm.value.amount, method, reference: paymentForm.value.reference,
       })
-    } else if (paymentTargetId.value) {
+    } else {
       await BillingService.pay(paymentTargetId.value, {
         method, amount: paymentForm.value.amount,
         reference: paymentForm.value.reference, notes: paymentForm.value.notes || undefined,
-      })
-    } else {
-      await BillingService.create({
-        hotelId: hotelId.value,
-        amount: paymentForm.value.amount,
-        type: 'payment',
-        status: 'paid',
-        paymentMethod: method,
-        notes: `Guest: ${paymentForm.value.guest}${paymentForm.value.reference ? ` | Ref: ${paymentForm.value.reference}` : ''}`,
       })
     }
     closePaymentModal()

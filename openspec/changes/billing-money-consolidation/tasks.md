@@ -32,7 +32,7 @@
 
 - [ ] 4.1 `InvoiceType` → `'invoice' | 'credit_note'`; quitar `folio`/`receipt`/`payment` del enum y validators
 - [ ] 4.2 Frontend: `TYPE_MAP` y `typeLabel()` sin tipos muertos
-- [ ] 4.3 Tab "Pagos" lee `/api/payments` (con método, referencia y estado reales)
+- [x] 4.3 Tab "Pagos" lee `/api/payments` (con método, referencia y estado reales) · `billing/index.vue:loadData` ya migrado a `/api/payments`; eliminada la rama muerta que creaba `type:'payment'` suelto (BM-4.3)
 - [ ] 4.4 `stats.ts`: el filtro `type==='invoice'` deja de ser necesario — documentar o simplificar
 - [ ] 4.5 Actualizar `CLAUDE.md`: `payments` es la única fuente de verdad del dinero
 
