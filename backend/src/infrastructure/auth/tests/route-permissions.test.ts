@@ -197,7 +197,10 @@ const suites: ModuleSuite[] = [
     factory: FeedbackModule,
     customRoles: { [FEEDBACK_VIEW_ONLY]: ['feedback:view'] },
     cases: [
-      { label: 'POST crear pin', method: 'POST', path: '/api/feedback', permission: 'feedback:create', deniedRole: FEEDBACK_VIEW_ONLY, allowedRole: 'hotel_admin', body: {} },
+      // POST /api/feedback es solo-login (widget global: cualquier logueado puede crear feedback);
+      // NO exige feedback:create (ese permiso por defecto solo lo tiene hotel_admin, y se eligió
+      // dejar crear a cualquier usuario autenticado). Por eso no se testa acá — este suite es de
+      // permisos module:action. El fix real (PATCH/DELETE exigen edit/delete, no view) va abajo.
       { label: 'PATCH editar pin (bug: antes alcanzaba con view)', method: 'PATCH', path: '/api/feedback/p1', permission: 'feedback:edit', deniedRole: FEEDBACK_VIEW_ONLY, allowedRole: 'hotel_admin', body: {} },
       { label: 'DELETE borrar pin (bug: antes alcanzaba con view)', method: 'DELETE', path: '/api/feedback/p1', permission: 'feedback:delete', deniedRole: FEEDBACK_VIEW_ONLY, allowedRole: 'hotel_admin' },
     ],
