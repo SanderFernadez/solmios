@@ -16,6 +16,7 @@ import { ConfigUseCase } from './usecases/config'
 import type { CanalesQueries } from './usecases/canales-queries'
 import { auditSafely, channelDeleteEntry, type AuditPort } from './usecases/audit'
 import { getSyncLog as getSyncLogFromTable } from './usecases/sync-log'
+import { pushSeasonalRatesToChannex } from './usecases/push-rates'
 
 export class CanalesService {
   private sockets: CanalesSockets = {}
@@ -57,13 +58,8 @@ export class CanalesService {
   }
 
   // ─── Config delegado a usecase ───────────────────────────────────────
-  async getConfig(hotelId: string): Promise<CanalesDTO | undefined> {
-    return this.config.getConfig(hotelId)
-  }
-
-  private async upsertConfig(hotelId: string, patch: Partial<CanalesDTO>): Promise<CanalesDTO> {
-    return this.config.upsertConfig(hotelId, patch)
-  }
+  async getConfig(hotelId: string): Promise<CanalesDTO | undefined> { return this.config.getConfig(hotelId) }
+  private async upsertConfig(hotelId: string, patch: Partial<CanalesDTO>): Promise<CanalesDTO> { return this.config.upsertConfig(hotelId, patch) }
 
   // ─── Operaciones Channex (delegan al usecase) ────────────────────────
   async listChannels(hotelId: string): Promise<ChannelsResultDTO> {
@@ -168,6 +164,11 @@ export class CanalesService {
   }
 
   async getSyncLog(hotelId?: string): Promise<any[]> { return getSyncLogFromTable(this.syncLogRepo, hotelId) }
+
+  /** Etapa 2 — empuja las tarifas por temporada del hotel a Channex (rate + cerrar ventas + min/max stay). */
+  async pushSeasonalRates(hotelId: string, channel?: string): Promise<{ pushed: number; skipped: number }> {
+    return pushSeasonalRatesToChannex({ getConfig: (h) => this.getConfig(h), findMany: (m, q) => this.queries.findMany(m, q), pushSeasonalRates: (c, r, s) => this.channex.pushSeasonalRates(c, r, s) }, hotelId, channel)
+  }
 
   // ─── CRUD delegado a usecase ─────────────────────────────────────────
   async list(query?: CanalesQuery, user?: CurrentUser): Promise<CanalesPaginated> {

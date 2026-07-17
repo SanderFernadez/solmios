@@ -116,6 +116,14 @@ export function CanalesModule() {
 
       router.get('/api/channels/sync-log', guard('channel-manager', 'view'), (req) => controller.syncLog(req))
 
+      // Etapa 2 — empujar las tarifas por temporada del hotel a Channex (rate/stop-sell/min-max stay).
+      router.post('/api/channels/push-rates', guard('channel-manager', 'edit'), async (req) => {
+        const hotelId = resolveTenant(req)
+        if (!hotelId) return { status: 404, body: { error: 'Hotel no encontrado' } }
+        const channel = (req.body as any)?.channel
+        return { status: 200, body: await service.pushSeasonalRates(hotelId, channel) }
+      })
+
       log.info('Módulo canales (Channex) listo')
       return service
     },

@@ -208,6 +208,52 @@ export class ChannexUseCase {
     return { pushed: true }
   }
 
+  /**
+   * Etapa 2 — Push de tarifas POR TEMPORADA a Channex. Para cada tarifa (roomType, season) empuja al
+   * rate plan del room type el precio calculado (base×(1+%/100)) por el rango de fechas de la temporada,
+   * junto con cerrar ventas (stop_sell) y min/max stay. Nunca fechas pasadas. Devuelve cuántas empujó.
+   */
+  async pushSeasonalRates(
+    cfg: CanalesDTO | undefined,
+    rates: Array<{ roomType: string; season: string; basePrice: number; percentage: number; closed?: number; minStay?: number; maxStay?: number }>,
+    seasons: Array<{ name: string; startDate?: string; endDate?: string }>,
+  ): Promise<{ pushed: number; skipped: number }> {
+    if (!cfg?.channexPropertyId) return { pushed: 0, skipped: rates.length }
+    const key = this.resolveKey(cfg)
+    const pid = cfg.channexPropertyId
+    const rts = ((await this.channexReq(key, 'GET', `/room_types?filter[property_id]=${pid}`)).data as any)?.data || []
+    const rps = ((await this.channexReq(key, 'GET', `/rate_plans?filter[property_id]=${pid}`)).data as any)?.data || []
+    const rtIdByTitle = new Map<string, string>(rts.map((rt: any) => [String(rt.attributes?.title || '').toLowerCase(), rt.id]))
+    const rpIdByRt = new Map<string, string>()
+    for (const rp of rps) {
+      const rtid = rp.attributes?.room_type_id || rp.relationships?.room_type?.data?.id
+      if (rtid && !rpIdByRt.has(rtid)) rpIdByRt.set(rtid, rp.id)
+    }
+    const seasonByName = new Map(seasons.map((s) => [s.name, s]))
+    const today = new Date().toISOString().slice(0, 10)
+    const values: any[] = []
+    let skipped = 0
+    for (const r of rates) {
+      const s = seasonByName.get(r.season)
+      if (!s?.startDate || !s?.endDate) { skipped++; continue }        // temporada sin fechas → no se puede empujar
+      const from = s.startDate < today ? today : s.startDate           // nunca fechas pasadas
+      if (s.endDate < from) { skipped++; continue }                    // temporada ya terminó
+      const rtId = rtIdByTitle.get(String(r.roomType).toLowerCase())
+      const rpId = rtId ? rpIdByRt.get(rtId) : undefined
+      if (!rpId) { skipped++; continue }                               // room type sin rate plan en Channex
+      const rate = Math.round((r.basePrice || 0) * (1 + (r.percentage || 0) / 100) * 100)  // centavos
+      const entry: any = { property_id: pid, rate_plan_id: rpId, date_from: from, date_to: s.endDate, rate, stop_sell: !!r.closed }
+      if (Number(r.minStay) > 0) entry.min_stay_arrival = Number(r.minStay)
+      if (Number(r.maxStay) > 0) entry.max_stay = Number(r.maxStay)
+      values.push(entry)
+    }
+    if (values.length === 0) return { pushed: 0, skipped }
+    const res = await this.channexReq(key, 'POST', '/restrictions', { values })
+    if (!res.ok) throw new Error('Channex rechazó las tarifas: ' + JSON.stringify((res.data as any)?.errors || '').slice(0, 200))
+    this.logger.info('Tarifas por temporada empujadas a Channex', { pushed: values.length, skipped })
+    return { pushed: values.length, skipped }
+  }
+
   // ─── Push de availability (reservas/checkin/checkout/bloqueos) ───────
   // Recibe los rangos YA calculados y comprimidos por el service (que lee DB).
   // El usecase solo resuelve el room_type_id de Channex (por title) y empuja.
