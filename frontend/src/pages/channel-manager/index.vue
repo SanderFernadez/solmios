@@ -214,7 +214,6 @@
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="log.status === 'success' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ log.status === 'success' ? 'Exitoso' : 'Error' }}</span>
               </td>
               <td class="py-3 text-xs text-text-muted max-w-xs truncate">{{ log.details }}</td>
-              <td class="py-3 text-xs text-text-muted">{{ log.detail }}</td>
             </tr>
           </tbody>
         </table>

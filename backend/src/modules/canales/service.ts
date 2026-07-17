@@ -15,6 +15,7 @@ import { BookingsUseCase } from './usecases/bookings'
 import { ConfigUseCase } from './usecases/config'
 import type { CanalesQueries } from './usecases/canales-queries'
 import { auditSafely, channelDeleteEntry, type AuditPort } from './usecases/audit'
+import { getSyncLog as getSyncLogFromTable } from './usecases/sync-log'
 
 export class CanalesService {
   private sockets: CanalesSockets = {}
@@ -166,9 +167,7 @@ export class CanalesService {
     return this.channelApi.getChannelDetail(await this.getConfig(hotelId), channelId)
   }
 
-  async getSyncLog(hotelId?: string): Promise<any[]> {
-    return this.queries.getSyncLog(hotelId)
-  }
+  async getSyncLog(hotelId?: string): Promise<any[]> { return getSyncLogFromTable(this.syncLogRepo, hotelId) }
 
   // ─── CRUD delegado a usecase ─────────────────────────────────────────
   async list(query?: CanalesQuery, user?: CurrentUser): Promise<CanalesPaginated> {
