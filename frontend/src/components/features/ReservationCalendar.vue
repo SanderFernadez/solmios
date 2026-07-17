@@ -31,7 +31,7 @@
           <select v-model="viewDays" class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy bg-white cursor-pointer">
             <option :value="7">7 días</option><option :value="14">14 días</option><option :value="30">30 días</option>
           </select>
-          <button v-if="canEditMinStay" @click="openSeasonDialog" title="Asignar temporada a un rango de fechas"
+          <button v-if="!embedded && canEditMinStay" @click="openSeasonDialog" title="Asignar temporada a un rango de fechas"
             class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy bg-white hover:bg-surface cursor-pointer inline-flex items-center gap-1.5">
             🗓️ Temporadas
           </button>
@@ -65,13 +65,16 @@
       <span class="text-text-muted">🟡 Pago parcial</span>
       <span class="text-text-muted">✅ Pagada</span>
       <span class="text-text-muted">🔐 Con cerradura</span>
-      <span class="text-text-muted">|</span>
-      <span class="text-text-muted uppercase">Tipos:</span>
-      <button v-for="rt in roomTypes" :key="rt.type" @click="toggleTypeFilter(rt.type)"
-        class="px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer"
-        :class="typeFilter.has(rt.type) ? 'border-navy bg-navy/10 text-navy' : 'border-border text-text-muted line-through'">
-        {{ rt.type }} ({{ rt.rooms.length }})
-      </button>
+      <!-- Filtro por tipo de habitación: solo en el Planning; el widget del dashboard va limpio. -->
+      <template v-if="!embedded">
+        <span class="text-text-muted">|</span>
+        <span class="text-text-muted uppercase">Tipos:</span>
+        <button v-for="rt in roomTypes" :key="rt.type" @click="toggleTypeFilter(rt.type)"
+          class="px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer"
+          :class="typeFilter.has(rt.type) ? 'border-navy bg-navy/10 text-navy' : 'border-border text-text-muted line-through'">
+          {{ rt.type }} ({{ rt.rooms.length }})
+        </button>
+      </template>
     </div>
 
     <!-- Grid -->
@@ -135,7 +138,7 @@
                 <div class="w-56 flex-shrink-0 px-4 py-3 border-r border-border flex items-center gap-2">
                   <span class="font-bold text-sm text-navy">{{ room.number }}</span>
                   <span class="text-[10px] text-text-muted truncate">{{ room.type }}</span>
-                  <button @click.stop="openRoomLock(room)" class="ml-auto shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+                  <button v-if="!embedded" @click.stop="openRoomLock(room)" class="ml-auto shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
                     :class="hasLock(room.id) ? 'bg-teal/15 text-teal hover:bg-teal/25' : 'bg-navy/[0.04] text-navy/25 hover:bg-navy/10 hover:text-navy/50'"
                     :title="hasLock(room.id) ? 'Cerradura asignada — gestionar' : 'Sin cerradura asignada'">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
@@ -144,7 +147,7 @@
                       <circle cx="9" cy="17.5" r="0.7" fill="currentColor"/><circle cx="12" cy="17.5" r="0.7" fill="currentColor"/><circle cx="15" cy="17.5" r="0.7" fill="currentColor"/>
                     </svg>
                   </button>
-                  <span class="w-2 h-2 rounded-full shrink-0" :class="room.status === 'occupied' ? 'bg-coral' : 'bg-teal'"></span>
+                  <span class="w-2 h-2 rounded-full shrink-0" :class="[room.status === 'occupied' ? 'bg-coral' : 'bg-teal', embedded ? 'ml-auto' : '']"></span>
                 </div>
 
                 <div v-for="day in visibleDays" :key="day.dateStr + room.id"
@@ -682,28 +685,81 @@
           <div class="p-4 overflow-y-auto flex-1 space-y-3">
             <!-- Llegadas / Salidas -->
             <template v-if="quickAction === 'arrivals'">
-              <div class="text-[10px] font-black text-teal uppercase mb-1">Llegadas de hoy ({{ arrivalsToday.length }})</div>
-              <div v-if="!arrivalsToday.length" class="text-xs text-text-muted">Sin llegadas para hoy.</div>
-              <div v-for="r in arrivalsToday" :key="r.id" class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border">
-                <div class="min-w-0">
-                  <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
-                  <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }} · {{ (Number(r.adults) || 0) + (Number(r.children) || 0) }}P</div>
-                </div>
-                <div class="flex items-center gap-1.5 shrink-0">
-                  <button @click="quickOpenRes(r)" class="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-bold text-navy hover:bg-surface cursor-pointer">Ver</button>
-                  <button v-if="r.status !== 'checked_in'" @click="quickCheckin(r)" class="px-2.5 py-1.5 rounded-lg bg-teal text-white text-[11px] font-bold hover:brightness-95 cursor-pointer">Check-in</button>
-                  <span v-else class="px-2.5 py-1.5 rounded-lg bg-teal/10 text-teal text-[11px] font-bold">✓ Ingresado</span>
-                </div>
+              <!-- Sin movimientos: estado vacio claro -->
+              <div v-if="!arrivalsToday.length && !departuresToday.length" class="flex flex-col items-center justify-center py-8 text-center">
+                <div class="text-3xl mb-2">🗓️</div>
+                <div class="text-sm font-bold text-navy">Sin movimientos para hoy</div>
+                <div class="text-xs text-text-muted mt-0.5">No hay llegadas ni salidas programadas.</div>
               </div>
-              <div class="text-[10px] font-black text-gray-500 uppercase mb-1 pt-2 border-t border-border">Salidas de hoy ({{ departuresToday.length }})</div>
-              <div v-if="!departuresToday.length" class="text-xs text-text-muted">Sin salidas para hoy.</div>
-              <div v-for="r in departuresToday" :key="r.id" class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border">
-                <div class="min-w-0">
-                  <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
-                  <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }}</div>
+
+              <template v-else>
+                <!-- LLEGADAS -->
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-[10px] font-black text-teal uppercase tracking-wide">🛬 Llegadas de hoy</span>
+                  <span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-teal/10 text-teal">{{ arrivalsToday.length }}</span>
                 </div>
-                <button @click="quickOpenRes(r)" class="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-bold text-navy hover:bg-surface cursor-pointer shrink-0">Ver / Check-out</button>
-              </div>
+                <div v-if="!arrivalsToday.length" class="text-xs text-text-muted mb-2">Sin llegadas para hoy.</div>
+                <div v-for="r in arrivalsToday" :key="r.id" class="rounded-xl border border-border mb-2 overflow-hidden">
+                  <div class="flex items-center justify-between gap-2 p-2.5">
+                    <div class="min-w-0 flex items-center gap-2">
+                      <span class="text-base shrink-0" :title="CH[(r.channel || 'direct').toLowerCase()]?.l">{{ CHANNEL_ICON[(r.channel || 'direct').toLowerCase()] || '🏨' }}</span>
+                      <div class="min-w-0">
+                        <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
+                        <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }} · {{ (Number(r.adults) || 0) + (Number(r.children) || 0) }}P · {{ resNights(r) }}n</div>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <button @click="toggleRes(r.id)" class="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-bold text-navy hover:bg-surface cursor-pointer">{{ expandedRes.has(r.id) ? 'Menos ▴' : 'Ver más ▾' }}</button>
+                      <button v-if="r.status !== 'checked_in'" @click="quickCheckin(r)" class="px-2.5 py-1.5 rounded-lg bg-teal text-white text-[11px] font-bold hover:brightness-95 cursor-pointer">Check-in</button>
+                      <span v-else class="px-2.5 py-1.5 rounded-lg bg-teal/10 text-teal text-[11px] font-bold">✓ Ingresado</span>
+                    </div>
+                  </div>
+                  <div v-if="expandedRes.has(r.id)" class="px-2.5 pb-2.5 pt-2 border-t border-border bg-surface/40 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+                    <div><div class="text-text-muted">Canal</div><div class="font-bold text-navy">{{ CH[(r.channel || 'direct').toLowerCase()]?.l || r.channel || 'Directa' }}</div></div>
+                    <div><div class="text-text-muted">Estado</div><div><span class="font-bold px-1.5 py-0.5 rounded-full" :class="ST[r.status]?.b || 'bg-surface text-text-muted'">{{ ST[r.status]?.l || r.status }}</span></div></div>
+                    <div><div class="text-text-muted">Entrada</div><div class="font-bold text-navy">{{ String(r.checkIn || '').slice(0, 10) }}</div></div>
+                    <div><div class="text-text-muted">Salida</div><div class="font-bold text-navy">{{ String(r.checkOut || '').slice(0, 10) }}</div></div>
+                    <div><div class="text-text-muted">Huéspedes</div><div class="font-bold text-navy">{{ Number(r.adults) || 0 }} ad · {{ Number(r.children) || 0 }} ni</div></div>
+                    <div><div class="text-text-muted">Pago</div><div class="font-bold text-navy">{{ PAY_ICON[r.paymentStatus || 'pending'] }} {{ PAY_LABEL[r.paymentStatus || 'pending'] }}</div></div>
+                    <div v-if="r.price || r.totalAmount"><div class="text-text-muted">Total</div><div class="font-bold text-navy">RD$ {{ Number(r.price || r.totalAmount || 0).toLocaleString('es-DO') }}</div></div>
+                    <div v-if="r.externalLocator"><div class="text-text-muted">Localizador</div><div class="font-bold text-navy truncate">{{ r.externalLocator }}</div></div>
+                    <div class="col-span-2 pt-1"><button @click="quickOpenRes(r)" class="w-full py-1.5 rounded-lg bg-navy text-white text-[11px] font-bold hover:bg-navy/90 cursor-pointer">Abrir reserva completa →</button></div>
+                  </div>
+                </div>
+
+                <!-- SALIDAS -->
+                <div class="flex items-center gap-2 mb-1.5 pt-2 border-t border-border">
+                  <span class="text-[10px] font-black text-gray-500 uppercase tracking-wide">🛫 Salidas de hoy</span>
+                  <span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{{ departuresToday.length }}</span>
+                </div>
+                <div v-if="!departuresToday.length" class="text-xs text-text-muted">Sin salidas para hoy.</div>
+                <div v-for="r in departuresToday" :key="'d-' + r.id" class="rounded-xl border border-border mb-2 overflow-hidden">
+                  <div class="flex items-center justify-between gap-2 p-2.5">
+                    <div class="min-w-0 flex items-center gap-2">
+                      <span class="text-base shrink-0" :title="CH[(r.channel || 'direct').toLowerCase()]?.l">{{ CHANNEL_ICON[(r.channel || 'direct').toLowerCase()] || '🏨' }}</span>
+                      <div class="min-w-0">
+                        <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
+                        <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }} · {{ resNights(r) }}n</div>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <button @click="toggleRes('d-' + r.id)" class="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-bold text-navy hover:bg-surface cursor-pointer">{{ expandedRes.has('d-' + r.id) ? 'Menos ▴' : 'Ver más ▾' }}</button>
+                      <button @click="quickOpenRes(r)" class="px-2.5 py-1.5 rounded-lg bg-navy text-white text-[11px] font-bold hover:bg-navy/90 cursor-pointer">Check-out</button>
+                    </div>
+                  </div>
+                  <div v-if="expandedRes.has('d-' + r.id)" class="px-2.5 pb-2.5 pt-2 border-t border-border bg-surface/40 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+                    <div><div class="text-text-muted">Canal</div><div class="font-bold text-navy">{{ CH[(r.channel || 'direct').toLowerCase()]?.l || r.channel || 'Directa' }}</div></div>
+                    <div><div class="text-text-muted">Estado</div><div><span class="font-bold px-1.5 py-0.5 rounded-full" :class="ST[r.status]?.b || 'bg-surface text-text-muted'">{{ ST[r.status]?.l || r.status }}</span></div></div>
+                    <div><div class="text-text-muted">Entrada</div><div class="font-bold text-navy">{{ String(r.checkIn || '').slice(0, 10) }}</div></div>
+                    <div><div class="text-text-muted">Salida</div><div class="font-bold text-navy">{{ String(r.checkOut || '').slice(0, 10) }}</div></div>
+                    <div><div class="text-text-muted">Huéspedes</div><div class="font-bold text-navy">{{ Number(r.adults) || 0 }} ad · {{ Number(r.children) || 0 }} ni</div></div>
+                    <div><div class="text-text-muted">Pago</div><div class="font-bold text-navy">{{ PAY_ICON[r.paymentStatus || 'pending'] }} {{ PAY_LABEL[r.paymentStatus || 'pending'] }}</div></div>
+                    <div v-if="r.price || r.totalAmount"><div class="text-text-muted">Total</div><div class="font-bold text-navy">RD$ {{ Number(r.price || r.totalAmount || 0).toLocaleString('es-DO') }}</div></div>
+                    <div v-if="r.externalLocator"><div class="text-text-muted">Localizador</div><div class="font-bold text-navy truncate">{{ r.externalLocator }}</div></div>
+                    <div class="col-span-2 pt-1"><button @click="quickOpenRes(r)" class="w-full py-1.5 rounded-lg bg-navy text-white text-[11px] font-bold hover:bg-navy/90 cursor-pointer">Abrir reserva completa →</button></div>
+                  </div>
+                </div>
+              </template>
             </template>
             <!-- Buscar -->
             <template v-else-if="quickAction === 'search'">
@@ -857,7 +913,7 @@ import { useRouter } from 'vue-router'
 
 // `embedded`: cuando el calendario se monta dentro del dashboard (home) en vez de la
 // página Planning — oculta el título de página y ajusta el marco al card del widget.
-defineProps<{ embedded?: boolean }>()
+const props = defineProps<{ embedded?: boolean }>()
 // `changed`: se emite tras cada mutación que persiste en la DB (crear/mover/extender/
 // pagar/bloquear/check-in/cancelar) para que el host (dashboard) refresque sus KPIs.
 const emit = defineEmits<{ changed: [] }>()
@@ -874,6 +930,7 @@ const lockedRoomIds = ref<Set<string>>(new Set())
 const hotelLocks = ref<any[]>([])   // todas las cerraduras del hotel (para el panel de la barra)
 function hasLock(roomId: any) { return lockedRoomIds.value.has(String(roomId)) }
 async function loadLocks() {
+  if (props.embedded) return   // el widget del dashboard no muestra cerraduras
   try {
     const r = await TTLockService.listLocks()
     hotelLocks.value = r.data || []
@@ -907,7 +964,8 @@ type DI = { dateStr: string; dayName: string; dayNum: number; monthShort: string
 
 const MS_PER_DAY = 86_400_000
 
-const viewDays = ref(14)
+// El widget del dashboard ("de adelante") arranca en 7 días — más compacto y distinto del Planning.
+const viewDays = ref(props.embedded ? 7 : 14)
 const weekOffset = ref(0)
 const planRooms = ref<any[]>([])
 const planReservas = ref<any[]>([])
@@ -1053,8 +1111,20 @@ const quickAction = ref<QuickKey | null>(null)
 const quickSearch = ref('')
 const syncing = ref(false)
 const syncMsg = ref('')
+// Reservas con el detalle desplegado ("Ver más") en el modal de llegadas/salidas.
+// Las salidas se prefijan con 'd-' para no colisionar con la misma reserva en llegadas.
+const expandedRes = ref<Set<string>>(new Set())
+function toggleRes(id: string) {
+  const s = new Set(expandedRes.value)
+  s.has(id) ? s.delete(id) : s.add(id)
+  expandedRes.value = s
+}
+function resNights(r: any): number {
+  return nightsBetween(String(r.checkIn || '').slice(0, 10), String(r.checkOut || '').slice(0, 10))
+}
+const PAY_LABEL: Record<string, string> = { paid: 'Pagada', partial: 'Pago parcial', pending: 'Pendiente' }
 function todayStr(): string { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
-function openQuick(key: QuickKey) { quickAction.value = key; quickSearch.value = ''; syncMsg.value = '' }
+function openQuick(key: QuickKey) { quickAction.value = key; quickSearch.value = ''; syncMsg.value = ''; expandedRes.value = new Set() }
 function goAdvanced(path: string) { quickAction.value = null; router.push(path) }
 
 // Llegadas de hoy pendientes de check-in (checkIn = hoy, no canceladas ni ya salidas).
