@@ -170,7 +170,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useRoomStore } from '@/stores/room.store'
 import { useNow } from '@/composables/useNow'
-import { ModulesService } from '@/services/Platform.service'
+import { useModulesStore } from '@/stores/modules.store'
 import NotificationBell from '@/components/features/core-pms/NotificationBell.vue'
 import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanner.vue'
 import OfflineBanner from '@/components/features/core-pms/OfflineBanner.vue'
@@ -354,46 +354,8 @@ function isSectionActive(item: any) {
   return isActive(item.path)
 }
 
-// Módulos del producto activados a nivel plataforma (super_admin). Se filtran del menú los apagados.
-const enabledModules = ref<Record<string, boolean>>({})
-// Grupo top-level del menú → key del módulo del catálogo. Lo no mapeado (Dashboard/Configuración/Soporte) es base.
-const LABEL_TO_MODULE: Record<string, string> = {
-  Planning: 'planning', Channel: 'channel', Reservas: 'reservations', Operaciones: 'operations',
-  'Huéspedes': 'guests', Finanzas: 'finance', Ventas: 'sales', IA: 'ai', CRM: 'crm', RRHH: 'hr',
-}
-// Entrada hija del menú → key del submódulo. Lo no mapeado queda siempre visible (default ON).
-const PATH_TO_SUBMODULE: Record<string, string> = {
-  '/panel/reservations': 'reservations.list',
-  '/panel/checkin': 'reservations.checkin',
-  '/panel/housekeeping': 'operations.housekeeping',
-  '/panel/maintenance': 'operations.maintenance',
-  '/panel/technical-providers': 'operations.providers',
-  '/panel/team-chat': 'operations.team-chat',
-  '/panel/billing': 'finance.billing',
-  '/panel/folios': 'finance.folios',
-  '/panel/payments': 'finance.payments',
-  '/panel/caja': 'finance.caja',
-  '/panel/gastos': 'finance.gastos',
-  '/panel/reports': 'finance.reports',
-  '/panel/night-audit': 'finance.night-audit',
-  '/panel/groups': 'sales.groups',
-  '/panel/packages': 'sales.packages',
-  '/panel/opiniones': 'sales.reviews',
-  '/panel/ai-receptionist': 'ai.receptionist',
-  '/panel/ai-gerente': 'ai.manager',
-  '/panel/rrhh/dashboard': 'hr.dashboard',
-  '/panel/rrhh/empleados': 'hr.employees',
-  '/panel/rrhh/attendance': 'hr.attendance',
-  '/panel/rrhh/payroll': 'hr.payroll',
-}
-function moduleEnabled(label: string): boolean {
-  const key = LABEL_TO_MODULE[label]
-  return !key || enabledModules.value[key] !== false
-}
-function submoduleEnabled(path: string): boolean {
-  const key = PATH_TO_SUBMODULE[path]
-  return !key || enabledModules.value[key] !== false
-}
+// Estado efectivo de módulos/submódulos del hotel (global ∩ plan). El guard de rutas usa el mismo store.
+const modules = useModulesStore()
 
 const visibleItems = computed(() => {
   const role = auth.userRole ?? ''
@@ -401,17 +363,18 @@ const visibleItems = computed(() => {
   // unificamos a NavItem. El template usa path/expanded solo en la rama que corresponde.
   const items = nonavItems as unknown as NavItem[]
   return items
-    .filter((item) => {
-      if (!moduleEnabled(item.label)) return false   // módulo desactivado por la plataforma
-      if (item.children) return item.children.some((c) => c.roles.includes(role) && submoduleEnabled(c.path))
-      return item.roles.includes(role)
-    })
     .map((item) => {
       if (item.children) {
-        const children = item.children.filter((c) => c.roles.includes(role) && submoduleEnabled(c.path))
+        const children = item.children.filter((c) => c.roles.includes(role) && modules.routeEnabled(c.path))
         return { ...item, children, expanded: !collapsedSections.value.has(item.label) }
       }
       return item
+    })
+    .filter((item) => {
+      // Padre: visible si le queda al menos un hijo habilitado (por rol + módulo).
+      if (item.children) return item.children.length > 0
+      // Hoja: por rol + su ruta habilitada (las rutas CORE quedan siempre visibles).
+      return item.roles.includes(role) && modules.routeEnabled(item.path)
     })
 })
 
@@ -428,7 +391,7 @@ const occupancyBreakdown = computed(() => {
 
 onMounted(() => {
   dashboard.fetchStats(auth.user?.hotelId)
-  ModulesService.enabled().then(r => { enabledModules.value = r.state || {} }).catch(() => { /* sin datos: todo visible */ })
+  modules.ensure(auth.user?.hotelId)
 })
 
 const roleLabel = computed(() => {

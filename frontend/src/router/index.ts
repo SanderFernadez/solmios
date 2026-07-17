@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { useModulesStore } from '@/stores/modules.store'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -473,7 +474,7 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   if (to.path === '/login') {
@@ -500,6 +501,19 @@ router.beforeEach((to) => {
   if (to.meta.requiresHotelAdmin) {
     if (!auth.isAuthenticated) return '/login'
     if (!auth.isSuperAdmin && !auth.isHotelAdmin) return '/panel'
+  }
+
+  // ── Bloqueo por módulo/submódulo: no basta con ocultar del menú, la URL directa también se bloquea ──
+  // Aplica solo a rutas del panel del hotel y cuando hay sesión de hotel (usuario del hotel o super_admin
+  // impersonando). El estado efectivo (global ∩ plan del hotel) sale de GET /api/modules, cacheado por hotel.
+  if (to.path.startsWith('/panel/') && auth.isAuthenticated) {
+    const modules = useModulesStore()
+    await modules.ensure(auth.user?.hotelId)
+    if (!modules.routeEnabled(to.path)) {
+      // Módulo/submódulo no habilitado para este hotel → a su dashboard (siempre CORE/accesible).
+      if (to.path !== '/panel/dashboard') return '/panel/dashboard'
+      return false
+    }
   }
 
   return true
