@@ -35,6 +35,13 @@ const ICONS: Record<string, Node[]> = {
   'circle-half': [['circle', { cx: 12, cy: 12, r: 8 }], ['path', { d: 'M12 4a8 8 0 010 16z', fill: 'currentColor', stroke: 'none' }]],
   circle: [['circle', { cx: 12, cy: 12, r: 8 }]],
   dot: [['circle', { cx: 12, cy: 12, r: 4, fill: 'currentColor', stroke: 'none' }]],
+  chart: [['path', { d: 'M3 21h18' }], ['rect', { x: 5, y: 11, width: 3, height: 7, rx: 1 }], ['rect', { x: 10.5, y: 6, width: 3, height: 12, rx: 1 }], ['rect', { x: 16, y: 14, width: 3, height: 4, rx: 1 }]],
+  target: [['circle', { cx: 12, cy: 12, r: 8 }], ['circle', { cx: 12, cy: 12, r: 4 }], ['circle', { cx: 12, cy: 12, r: 1, fill: 'currentColor', stroke: 'none' }]],
+  mail: [['rect', { x: 3, y: 5, width: 18, height: 14, rx: 2 }], ['path', { d: 'M3 7l9 6 9-6' }]],
+  'trending-up': [['path', { d: 'M3 17l6-6 4 4 8-8' }], ['path', { d: 'M15 7h6v6' }]],
+  login: [['path', { d: 'M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4' }], ['path', { d: 'M10 17l5-5-5-5M15 12H3' }]],
+  edit: [['path', { d: 'M12 20h9' }], ['path', { d: 'M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z' }]],
+  plus: [['path', { d: 'M12 5v14M5 12h14' }]],
 }
 
 export default defineComponent({

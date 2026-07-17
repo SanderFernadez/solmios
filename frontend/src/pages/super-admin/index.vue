@@ -1,16 +1,18 @@
 <template>
   <div>
     <!-- Stats Principales -->
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      <div v-for="stat in mainStats" :key="stat.label" class="bg-white rounded-2xl border border-border card-shadow p-5">
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-2xl">{{ stat.icon }}</span>
-          <span v-if="stat.trend !== 0" class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="stat.trend > 0 ? 'bg-teal/10 text-teal' : 'bg-red/10 text-red'">
-            {{ stat.trend > 0 ? '+' : '' }}{{ stat.trend }}%
+    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+      <div v-for="stat in mainStats" :key="stat.label" class="group bg-white rounded-2xl border border-border card-shadow p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg">
+        <div class="flex items-center justify-between mb-4">
+          <span class="w-10 h-10 rounded-xl flex items-center justify-center" :class="stat.tint">
+            <Icon :name="stat.icon" :size="20" />
+          </span>
+          <span v-if="stat.trend !== 0" class="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full" :class="stat.trend > 0 ? 'bg-teal/10 text-teal' : 'bg-red/10 text-red'">
+            <Icon :name="stat.trend > 0 ? 'trending-up' : 'arrow-down'" :size="11" />{{ stat.trend > 0 ? '+' : '' }}{{ stat.trend }}%
           </span>
         </div>
-        <div class="text-2xl font-black text-navy">{{ stat.value }}</div>
-        <div class="text-[10px] text-text-muted font-bold uppercase mt-1">{{ stat.label }}</div>
+        <div class="text-2xl font-black text-navy leading-none">{{ stat.value }}</div>
+        <div class="text-[10px] text-text-muted font-bold uppercase mt-2 tracking-wide">{{ stat.label }}</div>
       </div>
     </div>
 
@@ -143,18 +145,19 @@
           <h3 class="text-sm font-black text-navy">Actividad Reciente de la Plataforma</h3>
         </div>
         <div class="p-4">
-          <div class="space-y-3">
+          <div v-if="recentActivity.length" class="space-y-3">
             <div v-for="activity in recentActivity" :key="activity.id" class="flex items-start gap-3 p-3 bg-surface rounded-xl">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm" :class="activity.bgClass">
-                {{ activity.icon }}
+              <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="activity.tint">
+                <Icon :name="activity.icon" :size="15" />
               </div>
-              <div class="flex-1">
-                <div class="text-sm font-bold text-navy">{{ activity.title }}</div>
-                <div class="text-[10px] text-text-muted">{{ activity.description }}</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-bold text-navy truncate">{{ activity.title }}</div>
+                <div class="text-[10px] text-text-muted truncate">{{ activity.description }}</div>
               </div>
               <div class="text-[10px] text-text-muted whitespace-nowrap">{{ activity.time }}</div>
             </div>
           </div>
+          <div v-else class="py-8 text-center text-xs text-text-muted">Sin actividad reciente</div>
         </div>
       </div>
     </div>
@@ -243,21 +246,11 @@
         </div>
         <div class="p-5">
           <div class="grid grid-cols-2 gap-3">
-            <router-link to="/admin/hotels" class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
-              <div class="text-2xl mb-2">🏨</div>
-              <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Gestionar Hoteles</div>
-            </router-link>
-            <router-link to="/admin/plans" class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
-              <div class="text-2xl mb-2">💳</div>
-              <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Crear Plan</div>
-            </router-link>
-            <router-link to="/admin/announcements" class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
-              <div class="text-2xl mb-2">📧</div>
-              <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Anuncios</div>
-            </router-link>
-            <router-link to="/admin/analytics" class="p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
-              <div class="text-2xl mb-2">📊</div>
-              <div class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">Ver Reportes</div>
+            <router-link v-for="action in quickActions" :key="action.to" :to="action.to" class="flex flex-col items-center gap-2 p-4 bg-surface rounded-xl text-center hover:bg-surface-dark transition-colors cursor-pointer group">
+              <span class="w-10 h-10 rounded-xl flex items-center justify-center" :class="action.tint">
+                <Icon :name="action.icon" :size="20" />
+              </span>
+              <span class="text-[10px] font-bold text-navy group-hover:text-cyan transition-colors">{{ action.label }}</span>
             </router-link>
           </div>
         </div>
@@ -268,9 +261,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import Icon from '@/components/ui/Icon.vue'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { PlatformService } from '@/services/Platform.service'
 import { AuditLogService } from '@/services/AuditLog.service'
+import type { AuditLogRecord } from '@/types'
 
 const analytics = ref<Awaited<ReturnType<typeof SuperAdminService.analytics>> | null>(null)
 
@@ -278,14 +273,21 @@ const mainStats = computed(() => {
   const a = analytics.value
   const t = a?.trends
   return [
-    { icon: '🏨', label: 'Hoteles Activos', value: String(a?.activeHotels ?? a?.totalHoteles ?? 0), trend: t?.hoteles ?? 0 },
-    { icon: '💰', label: 'MRR Total', value: `$${(a?.mrr ?? 0).toLocaleString()}`, trend: t?.mrr ?? 0 },
-    { icon: '👤', label: 'Usuarios Totales', value: String(a?.totalUsuarios ?? 0), trend: t?.usuarios ?? 0 },
-    { icon: '📋', label: 'Reservas', value: String(a?.totalReservas ?? 0), trend: t?.reservas ?? 0 },
-    { icon: '🎯', label: 'Ocupación prom', value: `${a?.avgOccupancy ?? 0}%`, trend: 0 },
-    { icon: '💵', label: 'ADR prom', value: `$${(a?.avgADR ?? 0).toLocaleString()}`, trend: 0 },
+    { icon: 'building', tint: 'bg-navy/10 text-navy', label: 'Hoteles Activos', value: String(a?.activeHotels ?? a?.totalHoteles ?? 0), trend: t?.hoteles ?? 0 },
+    { icon: 'money', tint: 'bg-teal/10 text-teal', label: 'MRR Total', value: `$${(a?.mrr ?? 0).toLocaleString()}`, trend: t?.mrr ?? 0 },
+    { icon: 'user', tint: 'bg-cyan/10 text-cyan', label: 'Usuarios Totales', value: String(a?.totalUsuarios ?? 0), trend: t?.usuarios ?? 0 },
+    { icon: 'clipboard', tint: 'bg-gold/10 text-gold', label: 'Reservas', value: String(a?.totalReservas ?? 0), trend: t?.reservas ?? 0 },
+    { icon: 'target', tint: 'bg-coral/10 text-coral', label: 'Ocupación prom', value: `${a?.avgOccupancy ?? 0}%`, trend: 0 },
+    { icon: 'card', tint: 'bg-orange/10 text-orange', label: 'ADR prom', value: `$${(a?.avgADR ?? 0).toLocaleString()}`, trend: 0 },
   ]
 })
+
+const quickActions = [
+  { to: '/admin/hotels', icon: 'building', tint: 'bg-navy/10 text-navy', label: 'Gestionar Hoteles' },
+  { to: '/admin/plans', icon: 'card', tint: 'bg-cyan/10 text-cyan', label: 'Crear Plan' },
+  { to: '/admin/announcements', icon: 'mail', tint: 'bg-gold/10 text-gold', label: 'Anuncios' },
+  { to: '/admin/analytics', icon: 'chart', tint: 'bg-teal/10 text-teal', label: 'Ver Reportes' },
+]
 
 const revenueData = computed(() => (analytics.value as any)?.monthlyRevenue ?? [])
 
@@ -314,7 +316,34 @@ const planDistribution = computed(() => {
 const totalHotels = computed(() => planDistribution.value.reduce((acc, p) => acc + p.count, 0))
 
 const monitoring = ref<any>({})
-const recentActivity = ref<any[]>([])
+
+// El audit log trae { action, userName, entity, detail, createdAt }. Lo mapeamos a un
+// item de UI con icono/color por tipo de acción y tiempo relativo (los campos icon/title/…
+// no vienen del backend; antes se bindeaban directo y salían filas en blanco).
+interface ActivityItem { id: string; icon: string; tint: string; title: string; description: string; time: string }
+const ACTION_META: { match: RegExp; icon: string; tint: string }[] = [
+  { match: /login|auth|sesi/i, icon: 'login', tint: 'bg-cyan/10 text-cyan' },
+  { match: /creat|crea|add|alta|nuev/i, icon: 'plus', tint: 'bg-teal/10 text-teal' },
+  { match: /delet|elimin|remov|baja/i, icon: 'trash', tint: 'bg-red/10 text-red' },
+  { match: /updat|edit|modif|cambio/i, icon: 'edit', tint: 'bg-gold/10 text-gold' },
+  { match: /pago|payment|cobro|factur|invoice/i, icon: 'money', tint: 'bg-teal/10 text-teal' },
+]
+function metaFor(action: string): { icon: string; tint: string } {
+  return ACTION_META.find((m) => m.match.test(action)) ?? { icon: 'bell', tint: 'bg-navy/10 text-navy' }
+}
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime()
+  if (!then) return ''
+  const s = Math.floor((Date.now() - then) / 1000)
+  if (s < 60) return 'hace un momento'
+  const m = Math.floor(s / 60)
+  if (m < 60) return `hace ${m} min`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `hace ${h} h`
+  const d = Math.floor(h / 24)
+  return `hace ${d} d`
+}
+const recentActivity = ref<ActivityItem[]>([])
 
 // Top hoteles por ingresos: el backend ya lo computa ordenado (topByRevenue), con revenue/mrr/plan reales.
 const topHotels = computed(() => {
@@ -345,7 +374,17 @@ onMounted(async () => {
   try { monitoring.value = await PlatformService.monitoring() } catch { /* silent */ }
   try {
     const a = await AuditLogService.list()
-    recentActivity.value = (a?.data || []).slice(0, 8)
+    recentActivity.value = (a?.data || []).slice(0, 8).map((r: AuditLogRecord): ActivityItem => {
+      const meta = metaFor(r.action)
+      return {
+        id: r.id,
+        icon: meta.icon,
+        tint: meta.tint,
+        title: r.action || 'Actividad',
+        description: [r.userName, r.entity, r.detail].filter(Boolean).join(' · '),
+        time: timeAgo(r.createdAt),
+      }
+    })
   } catch { /* silent */ }
 })
 </script>
