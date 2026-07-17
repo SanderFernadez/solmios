@@ -20,6 +20,10 @@
         class="rounded-lg bg-cyan text-navy text-sm font-extrabold px-5 py-2 border-2 border-cyan hover:bg-cyan-light transition-all cursor-pointer disabled:opacity-50">
         {{ saving ? 'Guardando…' : 'Guardar' }}
       </button>
+      <button @click="pushToChannex" :disabled="pushing || !selectedChannel" title="Enviar los precios/cierres/estadías a los canales vía Channex"
+        class="rounded-lg bg-teal text-white text-sm font-extrabold px-5 py-2 border-2 border-teal hover:bg-teal-light transition-all cursor-pointer disabled:opacity-50">
+        {{ pushing ? 'Enviando…' : 'Enviar a canales' }}
+      </button>
     </template>
 
     <!-- Leyenda de temporadas -->
@@ -121,6 +125,7 @@ import { ref, onMounted } from 'vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import { HotelService, type RoomRate } from '@/services/Hotel.service'
+import { ChannelService } from '@/services/Channel.service'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps<{
@@ -227,6 +232,17 @@ async function save() {
     toast.success('Tarifas guardadas')
     await loadRates()
   } catch { toast.error('Error al guardar tarifas') } finally { saving.value = false }
+}
+
+// Empuja las tarifas por temporada a Channex (precio calculado por rango de fecha + cierre + estadía).
+const pushing = ref(false)
+async function pushToChannex() {
+  pushing.value = true
+  try {
+    const r = await ChannelService.pushRates(selectedChannel.value)
+    if (r.pushed > 0) toast.success(`${r.pushed} tarifa(s) enviada(s) a Channex${r.skipped ? ` · ${r.skipped} omitida(s)` : ''}`)
+    else toast.warning('Nada que enviar: revisá que las temporadas tengan fechas y el canal esté sincronizado')
+  } catch { toast.error('No se pudo enviar a Channex') } finally { pushing.value = false }
 }
 
 // Modo de tarificación (config PMS por hotel): por habitación o por persona/ocupación.

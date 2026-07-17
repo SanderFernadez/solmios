@@ -90,6 +90,11 @@ export const ChannelService = {
     return http.post('/channels/sync', hotelId ? { hotelId } : {})
   },
 
+  // Etapa 2: empuja las tarifas por temporada (precio/cierre/estadía) a Channex.
+  async pushRates(channel?: string): Promise<{ pushed: number; skipped: number }> {
+    return http.post('/channels/push-rates', channel ? { channel } : {})
+  },
+
   async testConnection(hotelId: string, channel: string, otaHotelId: string): Promise<TestConnectionResult> {
     return http.post('/channels/test-connection', { hotelId, channel, hotel_id: otaHotelId })
   },
