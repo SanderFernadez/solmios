@@ -1,3 +1,7 @@
+// Ms por día. reports/helpers.ts expone la misma constante como MS_PER_DAY; se duplica acá
+// para no importar cross-module (prohibido por convención: iría por connector).
+const MS_PER_DAY = 86_400_000
+
 export class DashboardQueries {
   constructor(private readonly orm: any) {}
 
@@ -11,15 +15,20 @@ export class DashboardQueries {
     const dirty = rooms.filter((r: any) => r.status === 'dirty').length
     const maintenance = rooms.filter((r: any) => r.status === 'out_of_service').length
     const t = new Date().toISOString().split('T')[0]
-    const revenueToday = res.filter((r: any) => String(r.checkIn || '').slice(0, 10) === t).reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
+    // Una reserva cancelada o no-show nunca generó ingreso: excluirla de todo agregado de dinero,
+    // igual que report-queries.ts (medido: incluirlas inflaba el revenue +75%). Los CONTEOS
+    // (checkins/checkouts/reservas) siguen sobre `res` completo, solo el dinero pasa por `revenueRes`.
+    const revenueRes = res.filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show')
+    const revenueOn = (day: string) => revenueRes.filter((r: any) => String(r.checkIn || '').slice(0, 10) === day).reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
+    const revenueToday = revenueOn(t)
     const checkins = res.filter((r: any) => r.checkIn && String(r.checkIn).slice(0, 10) === t && (r.status === 'confirmed' || r.status === 'checked_in')).length
     const checkouts = res.filter((r: any) => r.checkOut && String(r.checkOut).slice(0, 10) === t && (r.status === 'checked_in' || r.status === 'checked_out')).length
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    const yesterday = new Date(Date.now() - MS_PER_DAY).toISOString().split('T')[0]
     const occYesterday = rooms.length ? Math.round((rooms.filter((r: any) => r.status === 'occupied').length / rooms.length) * 100) : 0
-    const revYesterday = res.filter((r: any) => String(r.checkIn || '').slice(0, 10) === yesterday).reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
+    const revYesterday = revenueOn(yesterday)
     const occToday = rooms.length ? Math.round((occupied / rooms.length) * 100) : 0
     return {
-      ocupacion: occToday, revenue: res.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0), revenueToday,
+      ocupacion: occToday, revenue: revenueRes.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0), revenueToday,
       totalRooms: rooms.length, occupied, checkins, checkouts,
       huespedes: guests.length, reservas: res.length, dirty, maintenance,
       roomsByType: rooms.reduce((a: any, r: any) => ((a[r.type] = (a[r.type] || 0) + 1), a), {}),
