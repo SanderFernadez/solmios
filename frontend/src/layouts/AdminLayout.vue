@@ -361,8 +361,37 @@ const LABEL_TO_MODULE: Record<string, string> = {
   Planning: 'planning', Channel: 'channel', Reservas: 'reservations', Operaciones: 'operations',
   'Huéspedes': 'guests', Finanzas: 'finance', Ventas: 'sales', IA: 'ai', CRM: 'crm', RRHH: 'hr',
 }
+// Entrada hija del menú → key del submódulo. Lo no mapeado queda siempre visible (default ON).
+const PATH_TO_SUBMODULE: Record<string, string> = {
+  '/panel/reservations': 'reservations.list',
+  '/panel/checkin': 'reservations.checkin',
+  '/panel/housekeeping': 'operations.housekeeping',
+  '/panel/maintenance': 'operations.maintenance',
+  '/panel/technical-providers': 'operations.providers',
+  '/panel/team-chat': 'operations.team-chat',
+  '/panel/billing': 'finance.billing',
+  '/panel/folios': 'finance.folios',
+  '/panel/payments': 'finance.payments',
+  '/panel/caja': 'finance.caja',
+  '/panel/gastos': 'finance.gastos',
+  '/panel/reports': 'finance.reports',
+  '/panel/night-audit': 'finance.night-audit',
+  '/panel/groups': 'sales.groups',
+  '/panel/packages': 'sales.packages',
+  '/panel/opiniones': 'sales.reviews',
+  '/panel/ai-receptionist': 'ai.receptionist',
+  '/panel/ai-gerente': 'ai.manager',
+  '/panel/rrhh/dashboard': 'hr.dashboard',
+  '/panel/rrhh/empleados': 'hr.employees',
+  '/panel/rrhh/attendance': 'hr.attendance',
+  '/panel/rrhh/payroll': 'hr.payroll',
+}
 function moduleEnabled(label: string): boolean {
   const key = LABEL_TO_MODULE[label]
+  return !key || enabledModules.value[key] !== false
+}
+function submoduleEnabled(path: string): boolean {
+  const key = PATH_TO_SUBMODULE[path]
   return !key || enabledModules.value[key] !== false
 }
 
@@ -374,12 +403,12 @@ const visibleItems = computed(() => {
   return items
     .filter((item) => {
       if (!moduleEnabled(item.label)) return false   // módulo desactivado por la plataforma
-      if (item.children) return item.children.some((c) => c.roles.includes(role))
+      if (item.children) return item.children.some((c) => c.roles.includes(role) && submoduleEnabled(c.path))
       return item.roles.includes(role)
     })
     .map((item) => {
       if (item.children) {
-        const children = item.children.filter((c) => c.roles.includes(role))
+        const children = item.children.filter((c) => c.roles.includes(role) && submoduleEnabled(c.path))
         return { ...item, children, expanded: !collapsedSections.value.has(item.label) }
       }
       return item

@@ -25,7 +25,9 @@ export const ConfigService = {
 }
 
 // Módulos del producto (activar/desactivar). Admin edita; el panel del hotel lee para filtrar su menú.
-export interface ModuleMeta { key: string; label: string; description: string }
+// Un módulo puede tener submódulos (entradas hijas del menú) que se togglean por separado.
+export interface SubModuleMeta { key: string; label: string; description: string }
+export interface ModuleMeta { key: string; label: string; description: string; submodules?: SubModuleMeta[] }
 export type ModuleState = Record<string, boolean>
 export const ModulesService = {
   adminGet: () => _http.get<{ catalog: ModuleMeta[]; state: ModuleState }>('/admin/modules'),
