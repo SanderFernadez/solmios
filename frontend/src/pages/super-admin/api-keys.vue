@@ -59,6 +59,11 @@
                   </button>
                 </td>
               </tr>
+              <tr v-if="!apiKeys.length">
+                <td colspan="7">
+                  <EmptyState title="Sin API keys" message="Todavía no generaste ninguna clave. Creá una para conectar servicios externos." />
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -133,6 +138,11 @@
                 <button class="text-[10px] font-bold text-coral hover:underline cursor-pointer">Eliminar</button>
               </td>
             </tr>
+            <tr v-if="!webhooks.length">
+              <td colspan="7">
+                <EmptyState title="Sin webhooks" message="Configurá un webhook para recibir eventos de la plataforma en tu servidor." />
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -205,6 +215,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import { ApikeysService } from '@/services/Apikeys.service'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { useToast } from '@/composables/useToast'
