@@ -158,47 +158,40 @@
     </div>
 
     <!-- Create Role Modal -->
-    <div v-if="showCreateRole" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">Crear Nuevo Rol</h3>
-          <button @click="showCreateRole = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
+    <AppModal v-if="showCreateRole" size="sm" title="Crear Nuevo Rol" @close="showCreateRole = false">
+      <div class="space-y-3">
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
+          <input v-model="newRole.name" type="text" placeholder="Ej: Supervisor" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
         </div>
-        <div class="p-6">
-        <div class="space-y-3">
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
-            <input v-model="newRole.name" type="text" placeholder="Ej: Supervisor" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Icono</label>
-            <div class="flex gap-2 flex-wrap">
-              <button v-for="icon in iconOptions" :key="icon" @click="newRole.icon = icon"
-                class="w-10 h-10 rounded-xl text-lg flex items-center justify-center border-2 transition-all cursor-pointer"
-                :class="newRole.icon === icon ? 'border-cyan bg-cyan/10' : 'border-border hover:border-cyan/50'">{{ icon }}</button>
-            </div>
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Color</label>
-            <div class="flex gap-2">
-              <button v-for="c in colorOptions" :key="c.bg" @click="newRole.color = c.class + ' ' + c.bg"
-                class="w-8 h-8 rounded-full border-2 transition-all cursor-pointer" :class="[c.bg, newRole.color.includes(c.bg) ? 'border-navy scale-110' : 'border-transparent hover:scale-110']"></button>
-            </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Icono</label>
+          <div class="flex gap-2 flex-wrap">
+            <button v-for="icon in iconOptions" :key="icon" @click="newRole.icon = icon"
+              class="w-10 h-10 rounded-xl text-lg flex items-center justify-center border-2 transition-all cursor-pointer"
+              :class="newRole.icon === icon ? 'border-cyan bg-cyan/10' : 'border-border hover:border-cyan/50'">{{ icon }}</button>
           </div>
         </div>
-        <div class="flex gap-3 mt-6">
-          <button @click="showCreateRole = false" class="flex-1 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cancelar</button>
-          <button @click="createRole" :disabled="!newRole.name" class="flex-1 py-2.5 bg-navy text-white text-sm font-bold rounded-xl disabled:opacity-40 cursor-pointer">Crear Rol</button>
-        </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Color</label>
+          <div class="flex gap-2">
+            <button v-for="c in colorOptions" :key="c.bg" @click="newRole.color = c.class + ' ' + c.bg"
+              class="w-8 h-8 rounded-full border-2 transition-all cursor-pointer" :class="[c.bg, newRole.color.includes(c.bg) ? 'border-navy scale-110' : 'border-transparent hover:scale-110']"></button>
+          </div>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <button @click="showCreateRole = false" class="px-4 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cancelar</button>
+        <button @click="createRole" :disabled="!newRole.name" class="px-4 py-2.5 bg-navy text-white text-sm font-bold rounded-xl disabled:opacity-40 cursor-pointer">Crear Rol</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { TeamService } from '@/services/Team.service'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const selectedRole = ref<any>(null)
 const showCreateRole = ref(false)

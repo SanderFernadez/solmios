@@ -117,13 +117,7 @@
     </div>
 
     <!-- Modal: Ver Usuario -->
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">Detalle del Cliente</h3>
-          <button @click="showViewModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
+    <AppModal v-if="showViewModal" size="md" title="Detalle del Cliente" @close="showViewModal = false">
           <div class="flex items-center gap-4 mb-6">
             <div class="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold" :class="selectedUser.avatarClass">{{ selectedUser.initials }}</div>
             <div>
@@ -149,22 +143,14 @@
               <span v-for="perm in selectedUser.permissionsList" :key="perm" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-navy/10 text-navy">{{ perm }}</span>
             </div>
           </div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showViewModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
-          <button @click="showViewModal = false; openEditUser(selectedUser)" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Editar</button>
-        </div>
-      </div>
-    </div>
+      <template #footer>
+        <button @click="showViewModal = false" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
+        <button @click="showViewModal = false; openEditUser(selectedUser)" class="px-4 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Editar</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Invitar/Editar -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">{{ editingUser.id ? 'Editar Cliente' : 'Invitar Nuevo Cliente' }}</h3>
-          <button @click="showEditModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
+    <AppModal v-if="showEditModal" size="md" :title="editingUser.id ? 'Editar Cliente' : 'Invitar Nuevo Cliente'" @close="showEditModal = false">
           <div class="grid grid-cols-2 gap-4">
             <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Nombre Completo *</label><input v-model="editingUser.name" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
             <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Email *</label><input v-model="editingUser.email" type="email" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
@@ -190,25 +176,14 @@
               </select>
             </div>
           </div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showEditModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
-          <button @click="saveUser" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">{{ editingUser.id ? 'Guardar Cambios' : 'Enviar Invitación' }}</button>
-        </div>
-      </div>
-    </div>
+      <template #footer>
+        <button @click="showEditModal = false" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
+        <button @click="saveUser" class="px-4 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">{{ editingUser.id ? 'Guardar Cambios' : 'Enviar Invitación' }}</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Activity Log -->
-    <div v-if="showActivityModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-md card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <div>
-            <h3 class="text-lg font-black text-white truncate">Actividad Reciente</h3>
-            <div class="text-[10px] text-white/60">{{ activityUser.name }}</div>
-          </div>
-          <button @click="showActivityModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
+    <AppModal v-if="showActivityModal" size="md" title="Actividad Reciente" :subtitle="activityUser.name" @close="showActivityModal = false">
           <div class="space-y-4">
             <div v-for="(log, i) in activityLogs" :key="i" class="flex gap-3">
               <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] flex-shrink-0" :class="log.iconClass">{{ log.icon }}</div>
@@ -219,12 +194,10 @@
               </div>
             </div>
           </div>
-        </div>
-        <div class="p-6 border-t border-border">
-          <button @click="showActivityModal = false" class="w-full py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
-        </div>
-      </div>
-    </div>
+      <template #footer>
+        <button @click="showActivityModal = false" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -233,6 +206,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()

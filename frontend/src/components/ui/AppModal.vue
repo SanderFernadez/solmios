@@ -17,7 +17,7 @@
           </div>
 
           <!-- Cuerpo -->
-          <div class="flex-1 overflow-y-auto p-5">
+          <div class="flex-1 overflow-y-auto" :class="bodyClass">
             <slot />
           </div>
 
@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch, onBeforeUnmount } from 'vue'
 
 const props = withDefaults(defineProps<{
   open?: boolean
@@ -41,12 +41,34 @@ const props = withDefaults(defineProps<{
   size?: 'sm' | 'md' | 'lg' | 'xl'
   closable?: boolean
   closeOnBackdrop?: boolean
-}>(), { open: true, size: 'md', closable: true, closeOnBackdrop: true })
+  /** Padding del cuerpo. Pasar 'p-0' cuando el contenido es una tabla full-bleed. */
+  bodyClass?: string
+}>(), { open: true, size: 'md', closable: true, closeOnBackdrop: true, bodyClass: 'p-5' })
 
 const emit = defineEmits<{ close: [] }>()
 
 const SIZES: Record<string, string> = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-5xl' }
 const sizeClass = computed(() => SIZES[props.size] || SIZES.md)
+
+// Robustez: ESC cierra (si closable) + bloqueo de scroll del body mientras está abierto.
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && props.closable) emit('close')
+}
+watch(() => props.open, (isOpen) => {
+  if (typeof document === 'undefined') return
+  if (isOpen) {
+    document.addEventListener('keydown', onKeydown)
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.removeEventListener('keydown', onKeydown)
+    document.body.style.overflow = ''
+  }
+}, { immediate: true })
+onBeforeUnmount(() => {
+  if (typeof document === 'undefined') return
+  document.removeEventListener('keydown', onKeydown)
+  document.body.style.overflow = ''
+})
 </script>
 
 <style scoped>

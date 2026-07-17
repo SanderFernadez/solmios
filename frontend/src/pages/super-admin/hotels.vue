@@ -192,14 +192,8 @@
     </div>
 
     <!-- Modal: Ver Hotel -->
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-2xl card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">Detalle del Hotel</h3>
-          <button @click="showViewModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
-          <div class="flex items-center gap-4 mb-6">
+    <AppModal v-if="showViewModal" size="lg" title="Detalle del Hotel" @close="showViewModal = false">
+      <div class="flex items-center gap-4 mb-6">
             <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-2xl font-black">{{ selectedHotel.name[0] }}</div>
             <div>
               <div class="flex items-center gap-3">
@@ -220,23 +214,17 @@
             <div><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Teléfono</div><div class="text-sm">{{ selectedHotel.phone }}</div></div>
             <div><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Registro</div><div class="text-sm">{{ selectedHotel.registered }}</div></div>
           </div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showViewModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
-          <button @click="showViewModal = false; openEditHotel(selectedHotel)" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Editar Hotel</button>
-        </div>
-      </div>
-    </div>
+      <template #footer>
+        <button @click="showViewModal = false" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
+        <button @click="showViewModal = false; openEditHotel(selectedHotel)" class="px-4 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Editar Hotel</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Nuevo/Editar Hotel -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">{{ editingHotel.id ? 'Editar Hotel' : 'Registrar Nuevo Hotel' }}</h3>
-          <button @click="showEditModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
-          <div class="grid grid-cols-2 gap-4">
+    <AppModal v-if="showEditModal" size="md"
+      :title="editingHotel.id ? 'Editar Hotel' : 'Registrar Nuevo Hotel'"
+      @close="showEditModal = false">
+      <div class="grid grid-cols-2 gap-4">
             <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Nombre del Hotel *</label><input v-model="editingHotel.name" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
             <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Email *</label><input v-model="editingHotel.email" type="email" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
             <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Teléfono</label><input v-model="editingHotel.phone" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
@@ -255,42 +243,35 @@
               </select>
             </div>
           </div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showEditModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
-          <button @click="saveHotel" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">{{ editingHotel.id ? 'Guardar Cambios' : 'Registrar Hotel' }}</button>
-        </div>
-      </div>
-    </div>
+      <template #footer>
+        <button @click="showEditModal = false" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
+        <button @click="saveHotel" class="px-4 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">{{ editingHotel.id ? 'Guardar Cambios' : 'Registrar Hotel' }}</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Suspender -->
-    <div v-if="showSuspendModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-md card-shadow overflow-hidden">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">{{ selectedHotel.status === 'Suspendido' ? 'Reactivar' : 'Suspender' }} Hotel</h3>
-          <button @click="showSuspendModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
-          <div class="text-sm font-bold text-navy mb-2">{{ selectedHotel.name }}</div>
-          <div class="text-[10px] text-text-muted mb-4">{{ selectedHotel.location }}</div>
-          <div v-if="selectedHotel.status !== 'Suspendido'" class="mb-4">
-            <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Motivo de Suspensión *</label>
-            <textarea v-model="suspendReason" rows="3" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Ej: Pago no recibido..."></textarea>
-          </div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showSuspendModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
-          <button @click="toggleSuspend" class="flex-1 py-2.5 rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer" :class="selectedHotel.status === 'Suspendido' ? 'bg-teal text-white' : 'bg-red text-white'">
-            {{ selectedHotel.status === 'Suspendido' ? 'Reactivar' : 'Suspender' }}
-          </button>
-        </div>
+    <AppModal v-if="showSuspendModal" size="md"
+      :title="`${selectedHotel.status === 'Suspendido' ? 'Reactivar' : 'Suspender'} Hotel`"
+      @close="showSuspendModal = false">
+      <div class="text-sm font-bold text-navy mb-2">{{ selectedHotel.name }}</div>
+      <div class="text-[10px] text-text-muted mb-4">{{ selectedHotel.location }}</div>
+      <div v-if="selectedHotel.status !== 'Suspendido'">
+        <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Motivo de Suspensión *</label>
+        <textarea v-model="suspendReason" rows="3" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Ej: Pago no recibido..."></textarea>
       </div>
-    </div>
+      <template #footer>
+        <button @click="showSuspendModal = false" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
+        <button @click="toggleSuspend" class="px-4 py-2.5 rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer" :class="selectedHotel.status === 'Suspendido' ? 'bg-teal text-white' : 'bg-red text-white'">
+          {{ selectedHotel.status === 'Suspendido' ? 'Reactivar' : 'Suspender' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { HotelAdminService } from '@/services/Platform.service'
 import { PlansService } from '@/services/Plans.service'

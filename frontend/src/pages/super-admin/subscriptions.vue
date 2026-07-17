@@ -67,35 +67,28 @@
     </div>
 
     <!-- Modal: Editar Plan -->
-    <div v-if="showEditPlanModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow overflow-hidden">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">{{ editingPlan.id ? 'Editar Plan' : 'Nuevo Plan' }}</h3>
-          <button @click="showEditPlanModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Nombre del Plan *</label><input v-model="editingPlan.name" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
-            <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Precio Mensual ($) *</label><input v-model.number="editingPlan.price" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
-            <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Máx. Habitaciones *</label><input v-model.number="editingPlan.maxRooms" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
-            <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Máx. Usuarios *</label><input v-model.number="editingPlan.maxUsers" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
-            <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Máx. Propiedades *</label><input v-model.number="editingPlan.maxProperties" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
-            <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Descripción</label><textarea v-model="editingPlan.description" rows="2" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none"></textarea></div>
-            <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Features (una por línea)</label><textarea v-model="editingPlan.featuresText" rows="4" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Hasta 30 habitaciones&#10;2 usuarios&#10;Reportes básicos"></textarea></div>
-          </div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showEditPlanModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
-          <button @click="savePlan" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Guardar Plan</button>
-        </div>
+    <AppModal v-if="showEditPlanModal" size="lg" :title="editingPlan.id ? 'Editar Plan' : 'Nuevo Plan'" @close="showEditPlanModal = false">
+      <div class="grid grid-cols-2 gap-4">
+        <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Nombre del Plan *</label><input v-model="editingPlan.name" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Precio Mensual ($) *</label><input v-model.number="editingPlan.price" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Máx. Habitaciones *</label><input v-model.number="editingPlan.maxRooms" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Máx. Usuarios *</label><input v-model.number="editingPlan.maxUsers" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
+        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Máx. Propiedades *</label><input v-model.number="editingPlan.maxProperties" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
+        <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Descripción</label><textarea v-model="editingPlan.description" rows="2" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none"></textarea></div>
+        <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Features (una por línea)</label><textarea v-model="editingPlan.featuresText" rows="4" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Hasta 30 habitaciones&#10;2 usuarios&#10;Reportes básicos"></textarea></div>
       </div>
-    </div>
+      <template #footer>
+        <button @click="showEditPlanModal = false" class="bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer px-4 py-2.5">Cancelar</button>
+        <button @click="savePlan" class="bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer px-4 py-2.5">Guardar Plan</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { PlatformService } from '@/services/Platform.service'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const searchQuery = ref('')
 const showEditPlanModal = ref(false)

@@ -110,96 +110,72 @@
     </div>
 
     <!-- Modal: Detalle Factura -->
-    <div v-if="showDetailModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-lg card-shadow overflow-hidden">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">Factura #{{ selectedInvoice.id }}</h3>
-          <button @click="showDetailModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
+    <AppModal v-if="showDetailModal" size="lg" :title="`Factura #${selectedInvoice.id}`" body-class="p-6" @close="showDetailModal = false">
+      <div class="flex items-center gap-4 mb-6">
+        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-xl font-black">{{ selectedInvoice.hotel[0] }}</div>
+        <div>
+          <div class="text-lg font-bold text-navy">{{ selectedInvoice.hotel }}</div>
+          <div class="text-sm text-text-muted">{{ selectedInvoice.plan }}</div>
         </div>
-        <div class="p-6">
-          <div class="flex items-center gap-4 mb-6">
-            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-xl font-black">{{ selectedInvoice.hotel[0] }}</div>
-            <div>
-              <div class="text-lg font-bold text-navy">{{ selectedInvoice.hotel }}</div>
-              <div class="text-sm text-text-muted">{{ selectedInvoice.plan }}</div>
-            </div>
-            <div class="ml-auto">
-              <span class="text-[10px] font-bold px-3 py-1 rounded-full" :class="statusClass(selectedInvoice.status)">{{ selectedInvoice.status }}</span>
-            </div>
-          </div>
-          <div class="bg-surface rounded-xl p-4 mb-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Concepto</div>
-            <div class="text-sm font-bold">{{ selectedInvoice.concept }}</div>
-          </div>
-          <div class="grid grid-cols-2 gap-4 mb-4">
-            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Monto</div><div class="text-2xl font-black text-navy">${{ selectedInvoice.amount }}</div></div>
-            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Método de Pago</div><div class="text-sm font-bold">{{ selectedInvoice.method }}</div></div>
-          </div>
-          <div class="grid grid-cols-2 gap-4 mb-4">
-            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Fecha de Emisión</div><div class="text-sm">{{ selectedInvoice.date }}</div></div>
-            <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Fecha de Vencimiento</div><div class="text-sm">{{ selectedInvoice.dueDate }}</div></div>
-          </div>
-          <div v-if="selectedInvoice.notes" class="bg-surface rounded-xl p-4 mb-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Notas</div>
-            <div class="text-sm text-text-secondary">{{ selectedInvoice.notes }}</div>
-          </div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showDetailModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
-          <button v-if="selectedInvoice.status === 'Pendiente' || selectedInvoice.status === 'Vencido'" @click="sendReminder(selectedInvoice)" class="flex-1 py-2.5 bg-navy/10 text-navy rounded-xl text-sm font-bold hover:bg-navy/20 transition-colors cursor-pointer">Enviar Recordatorio</button>
-          <button class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">📄 Descargar PDF</button>
+        <div class="ml-auto">
+          <span class="text-[10px] font-bold px-3 py-1 rounded-full" :class="statusClass(selectedInvoice.status)">{{ selectedInvoice.status }}</span>
         </div>
       </div>
-    </div>
+      <div class="bg-surface rounded-xl p-4 mb-4">
+        <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Concepto</div>
+        <div class="text-sm font-bold">{{ selectedInvoice.concept }}</div>
+      </div>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Monto</div><div class="text-2xl font-black text-navy">${{ selectedInvoice.amount }}</div></div>
+        <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Método de Pago</div><div class="text-sm font-bold">{{ selectedInvoice.method }}</div></div>
+      </div>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Fecha de Emisión</div><div class="text-sm">{{ selectedInvoice.date }}</div></div>
+        <div class="bg-surface rounded-xl p-4"><div class="text-[10px] font-bold text-text-muted uppercase mb-1">Fecha de Vencimiento</div><div class="text-sm">{{ selectedInvoice.dueDate }}</div></div>
+      </div>
+      <div v-if="selectedInvoice.notes" class="bg-surface rounded-xl p-4 mb-4">
+        <div class="text-[10px] font-bold text-text-muted uppercase mb-1">Notas</div>
+        <div class="text-sm text-text-secondary">{{ selectedInvoice.notes }}</div>
+      </div>
+      <template #footer>
+        <button @click="showDetailModal = false" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
+        <button v-if="selectedInvoice.status === 'Pendiente' || selectedInvoice.status === 'Vencido'" @click="sendReminder(selectedInvoice)" class="px-4 py-2.5 bg-navy/10 text-navy rounded-xl text-sm font-bold hover:bg-navy/20 transition-colors cursor-pointer">Enviar Recordatorio</button>
+        <button class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">📄 Descargar PDF</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Recordatorio -->
-    <div v-if="showReminderModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-md card-shadow overflow-hidden">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">Enviar Recordatorio</h3>
-          <button @click="showReminderModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
-          <div class="bg-surface rounded-xl p-3 mb-4">
-            <div class="text-sm font-bold text-navy">{{ reminderInvoice.hotel }}</div>
-            <div class="text-[10px] text-text-muted">Factura #{{ reminderInvoice.id }} — ${{ reminderInvoice.amount }}</div>
-          </div>
-          <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Tipo de Recordatorio</label>
-            <select v-model="reminderType" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
-              <option value="gentle">Amable — Primer recordatorio</option>
-              <option value="firm">Firme — Segundo recordatorio</option>
-              <option value="urgent">Urgente — Último aviso antes de suspensión</option>
-            </select>
-          </div>
-          <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Mensaje Personalizado</label><textarea v-model="reminderMessage" rows="4" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Escriba un mensaje adicional..."></textarea></div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showReminderModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
-          <button @click="confirmReminder" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Enviar</button>
-        </div>
+    <AppModal v-if="showReminderModal" size="md" title="Enviar Recordatorio" body-class="p-6" @close="showReminderModal = false">
+      <div class="bg-surface rounded-xl p-3 mb-4">
+        <div class="text-sm font-bold text-navy">{{ reminderInvoice.hotel }}</div>
+        <div class="text-[10px] text-text-muted">Factura #{{ reminderInvoice.id }} — ${{ reminderInvoice.amount }}</div>
       </div>
-    </div>
+      <div class="mb-4"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Tipo de Recordatorio</label>
+        <select v-model="reminderType" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
+          <option value="gentle">Amable — Primer recordatorio</option>
+          <option value="firm">Firme — Segundo recordatorio</option>
+          <option value="urgent">Urgente — Último aviso antes de suspensión</option>
+        </select>
+      </div>
+      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Mensaje Personalizado</label><textarea v-model="reminderMessage" rows="4" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Escriba un mensaje adicional..."></textarea></div>
+      <template #footer>
+        <button @click="showReminderModal = false" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
+        <button @click="confirmReminder" class="px-4 py-2.5 bg-navy text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Enviar</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Confirmar Pago -->
-    <div v-if="showConfirmModal" class="fixed inset-0 bg-navy/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl w-full max-w-md card-shadow overflow-hidden">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">Confirmar Pago</h3>
-          <button @click="showConfirmModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6 text-center">
-          <div class="w-16 h-16 bg-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span class="text-3xl">✅</span>
-          </div>
-          <div class="text-sm font-bold text-navy mb-1">¿Marcar como pagado?</div>
-          <div class="text-[10px] text-text-muted">Factura #{{ confirmInvoice.id }} — {{ confirmInvoice.hotel }} — ${{ confirmInvoice.amount }}</div>
-        </div>
-        <div class="flex gap-3 p-6 border-t border-border">
-          <button @click="showConfirmModal = false" class="flex-1 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
-          <button @click="confirmMarkAsPaid" class="flex-1 py-2.5 bg-teal text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Confirmar Pago</button>
-        </div>
+    <AppModal v-if="showConfirmModal" size="md" title="Confirmar Pago" body-class="p-6 text-center" @close="showConfirmModal = false">
+      <div class="w-16 h-16 bg-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
+        <span class="text-3xl">✅</span>
       </div>
-    </div>
+      <div class="text-sm font-bold text-navy mb-1">¿Marcar como pagado?</div>
+      <div class="text-[10px] text-text-muted">Factura #{{ confirmInvoice.id }} — {{ confirmInvoice.hotel }} — ${{ confirmInvoice.amount }}</div>
+      <template #footer>
+        <button @click="showConfirmModal = false" class="px-4 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cancelar</button>
+        <button @click="confirmMarkAsPaid" class="px-4 py-2.5 bg-teal text-white rounded-xl text-sm font-extrabold hover:shadow-lg transition-colors cursor-pointer">Confirmar Pago</button>
+      </template>
+    </AppModal>
 
     <!-- Toast -->
     <div v-if="showToast" class="fixed bottom-6 right-6 bg-navy text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 z-50 animate-fade-in">
@@ -212,6 +188,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { PlatformService } from '@/services/Platform.service'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const searchQuery = ref('')
 const statusFilter = ref('all')

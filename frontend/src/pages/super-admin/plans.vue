@@ -38,15 +38,8 @@
     </div>
 
     <!-- Modal -->
-    <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto">
-          <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-            <h3 class="text-lg font-black text-white truncate">{{ editing ? 'Editar' : 'Nuevo' }} Plan</h3>
-            <button @click="showModal=false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-          </div>
-          <div class="p-6 space-y-4">
+    <AppModal v-if="showModal" size="lg" :title="`${editing ? 'Editar' : 'Nuevo'} Plan`" @close="showModal=false">
+      <div class="space-y-4">
             <div>
               <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre *</label>
               <input v-model="form.name" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm" />
@@ -112,19 +105,18 @@
                 </div>
               </div>
             </div>
-          </div>
-          <div class="p-6 border-t border-border flex gap-3 justify-end">
-            <button @click="showModal=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="save" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">{{ saving ? 'Guardando...' : 'Guardar' }}</button>
-          </div>
-        </div>
       </div>
-    </Teleport>
+      <template #footer>
+        <button @click="showModal=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
+        <button @click="save" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">{{ saving ? 'Guardando...' : 'Guardar' }}</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { PlansService } from '@/services/Plans.service'
 import { ModulesService, type ModuleMeta, type SubModuleMeta } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'

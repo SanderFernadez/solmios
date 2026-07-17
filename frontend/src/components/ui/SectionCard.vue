@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-[20px] border-2 border-navy bg-white shadow-(--shadow-card) overflow-hidden">
+  <div class="rounded-2xl border border-border bg-white shadow-(--shadow-card) overflow-hidden">
     <!-- Header de sección oscuro (mismo look en todo el sistema) -->
     <div v-if="title || $slots.header || $slots.actions"
       class="flex items-center justify-between gap-3 flex-wrap bg-navy px-4 sm:px-5 py-4">

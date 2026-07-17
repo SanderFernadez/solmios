@@ -111,59 +111,52 @@
     </div>
 
     <!-- Create Modal -->
-    <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">Nuevo Anuncio</h3>
-          <button @click="showCreateModal = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
+    <AppModal v-if="showCreateModal" size="lg" title="Nuevo Anuncio" @close="showCreateModal = false">
+      <div class="space-y-4">
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Título</label>
+          <input v-model="newAnnouncement.title" type="text" placeholder="Ej: ¡Nueva función disponible!" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
         </div>
-        <div class="p-6">
-        <div class="space-y-4">
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Título</label>
-            <input v-model="newAnnouncement.title" type="text" placeholder="Ej: ¡Nueva función disponible!" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tipo</label>
-            <select v-model="newAnnouncement.type" class="w-full h-10 px-4 rounded-xl border border-border text-sm cursor-pointer">
-              <option value="feature">Nueva función</option>
-              <option value="maintenance">Mantenimiento</option>
-              <option value="promo">Promoción</option>
-              <option value="info">Informativo</option>
-              <option value="urgent">Urgente</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Audiencia</label>
-            <div class="grid grid-cols-2 gap-2">
-              <label class="flex items-center gap-2 p-2 bg-surface rounded-lg cursor-pointer">
-                <input type="checkbox" v-model="newAnnouncement.allHotels" class="w-4 h-4 text-cyan rounded" />
-                <span class="text-xs font-bold text-navy">Todos los hoteles</span>
-              </label>
-              <label class="flex items-center gap-2 p-2 bg-surface rounded-lg cursor-pointer">
-                <input type="checkbox" v-model="newAnnouncement.adminsOnly" class="w-4 h-4 text-cyan rounded" />
-                <span class="text-xs font-bold text-navy">Solo admins</span>
-              </label>
-            </div>
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Mensaje</label>
-            <textarea v-model="newAnnouncement.message" rows="4" class="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan resize-none" placeholder="Escribe el mensaje del anuncio..."></textarea>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tipo</label>
+          <select v-model="newAnnouncement.type" class="w-full h-10 px-4 rounded-xl border border-border text-sm cursor-pointer">
+            <option value="feature">Nueva función</option>
+            <option value="maintenance">Mantenimiento</option>
+            <option value="promo">Promoción</option>
+            <option value="info">Informativo</option>
+            <option value="urgent">Urgente</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Audiencia</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-2 p-2 bg-surface rounded-lg cursor-pointer">
+              <input type="checkbox" v-model="newAnnouncement.allHotels" class="w-4 h-4 text-cyan rounded" />
+              <span class="text-xs font-bold text-navy">Todos los hoteles</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 bg-surface rounded-lg cursor-pointer">
+              <input type="checkbox" v-model="newAnnouncement.adminsOnly" class="w-4 h-4 text-cyan rounded" />
+              <span class="text-xs font-bold text-navy">Solo admins</span>
+            </label>
           </div>
         </div>
-        <div class="flex gap-3 mt-6">
-          <button @click="showCreateModal = false" class="flex-1 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cancelar</button>
-          <button @click="sendAnnouncement" class="flex-1 py-2.5 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer">Enviar Ahora</button>
-        </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Mensaje</label>
+          <textarea v-model="newAnnouncement.message" rows="4" class="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan resize-none" placeholder="Escribe el mensaje del anuncio..."></textarea>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <button @click="showCreateModal = false" class="px-4 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cancelar</button>
+        <button @click="sendAnnouncement" class="px-4 py-2.5 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer">Enviar Ahora</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { PlatformService } from '@/services/Platform.service'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const showCreateModal = ref(false)
 

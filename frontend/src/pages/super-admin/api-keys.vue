@@ -150,72 +150,56 @@
     </div>
 
     <!-- Create API Key Modal -->
-    <div v-if="showCreateKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <h3 class="text-lg font-black text-white truncate">Nueva API Key</h3>
-          <button @click="showCreateKey = false" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
+    <AppModal v-if="showCreateKey" size="sm" title="Nueva API Key" @close="showCreateKey = false">
+      <div class="space-y-3">
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
+          <input v-model="newKey.name" type="text" placeholder="Ej: Conexión Channex" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
         </div>
-        <div class="p-6">
-        <div class="space-y-3">
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
-            <input v-model="newKey.name" type="text" placeholder="Ej: Conexión Channex" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Hotel</label>
-            <select v-model="newKey.hotel" class="w-full h-10 px-4 rounded-xl border border-border text-sm cursor-pointer">
-              <option value="">Global (todos)</option>
-              <option v-for="h in hotels" :key="h.id" :value="h.id">{{ h.name }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Scope / Permisos</label>
-            <div class="flex flex-wrap gap-1.5">
-              <button v-for="s in scopes" :key="s" @click="toggleScope(s)"
-                class="text-[10px] font-bold px-2 py-1 rounded-full border transition-all cursor-pointer"
-                :class="newKey.scopes.includes(s) ? 'bg-cyan border-cyan text-navy' : 'bg-surface border-border text-text-muted hover:border-cyan'">
-                {{ s }}
-              </button>
-            </div>
-          </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Hotel</label>
+          <select v-model="newKey.hotel" class="w-full h-10 px-4 rounded-xl border border-border text-sm cursor-pointer">
+            <option value="">Global (todos)</option>
+            <option v-for="h in hotels" :key="h.id" :value="h.id">{{ h.name }}</option>
+          </select>
         </div>
-        <div class="flex gap-3 mt-6">
-          <button @click="showCreateKey = false" class="flex-1 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Cancelar</button>
-          <button @click="generateKey" :disabled="creating" class="flex-1 py-2.5 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50">
-            {{ creating ? 'Generando...' : 'Generar' }}
-          </button>
-        </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Scope / Permisos</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button v-for="s in scopes" :key="s" @click="toggleScope(s)"
+              class="text-[10px] font-bold px-2 py-1 rounded-full border transition-all cursor-pointer"
+              :class="newKey.scopes.includes(s) ? 'bg-cyan border-cyan text-navy' : 'bg-surface border-border text-text-muted hover:border-cyan'">
+              {{ s }}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <button @click="showCreateKey = false" class="bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer px-4 py-2.5">Cancelar</button>
+        <button @click="generateKey" :disabled="creating" class="bg-navy text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50 px-4 py-2.5">
+          {{ creating ? 'Generando...' : 'Generar' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Reveal new API Key (one-time secret — persistente, no toast) -->
-    <div v-if="revealKey" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl w-full max-w-md overflow-hidden">
-        <div class="flex items-center justify-between gap-3 bg-navy px-6 py-4">
-          <div class="flex items-center gap-2 min-w-0">
-            <span class="text-2xl">🔑</span>
-            <h3 class="text-lg font-black text-white truncate">Guardá tu API Key ahora</h3>
-          </div>
-          <button @click="revealKey = null" class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6">
-        <p class="text-xs text-coral font-bold mb-3">⚠️ Por seguridad no se volverá a mostrar. Copiala y guardala en un lugar seguro.</p>
-        <div class="bg-surface rounded-xl p-3 mb-4 flex items-center gap-2">
-          <code class="flex-1 text-xs font-mono text-navy break-all">{{ revealKey }}</code>
-          <button @click="copyPlainKey" class="shrink-0 px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-lg cursor-pointer hover:bg-navy-light">Copiar</button>
-        </div>
-        <button @click="revealKey = null" class="w-full py-2.5 bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer">Listo, ya la guardé</button>
-        </div>
+    <AppModal v-if="revealKey" size="md" title="Guardá tu API Key ahora" @close="revealKey = null">
+      <p class="text-xs text-coral font-bold mb-3">⚠️ Por seguridad no se volverá a mostrar. Copiala y guardala en un lugar seguro.</p>
+      <div class="bg-surface rounded-xl p-3 flex items-center gap-2">
+        <code class="flex-1 text-xs font-mono text-navy break-all">{{ revealKey }}</code>
+        <button @click="copyPlainKey" class="shrink-0 px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-lg cursor-pointer hover:bg-navy-light">Copiar</button>
       </div>
-    </div>
+      <template #footer>
+        <button @click="revealKey = null" class="bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer px-4 py-2.5">Listo, ya la guardé</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { ApikeysService } from '@/services/Apikeys.service'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { useToast } from '@/composables/useToast'
