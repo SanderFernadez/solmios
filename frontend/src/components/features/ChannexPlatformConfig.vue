@@ -5,8 +5,8 @@
         <h3 class="text-lg font-black text-navy">Channel Manager (Channex)</h3>
         <div class="text-sm text-text-muted">Cuenta única de la plataforma. Todos los hoteles sincronizan OTAs con estas credenciales.</div>
       </div>
-      <span class="text-[11px] font-black px-3 py-1 rounded-full" :class="channex.hasKey ? 'bg-teal/15 text-teal' : 'bg-gold/15 text-gold'">
-        {{ channex.hasKey ? 'Configurada' : 'Sin configurar' }}
+      <span class="text-[11px] font-black px-3 py-1 rounded-full inline-flex items-center gap-1.5" :class="badge.cls">
+        <span class="w-2 h-2 rounded-full" :class="badge.dot"></span>{{ badge.label }}
       </span>
     </div>
     <div class="grid md:grid-cols-2 gap-4">
@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ChannexAdminService, type ChannexStatus } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
 
@@ -47,8 +47,20 @@ const apiKey = ref('')   // solo se envía si el admin escribe algo (nunca se mu
 const testing = ref(false)
 const testResult = ref<{ ok: boolean; msg: string } | null>(null)
 
+// Badge de estado en vivo: Sin configurar / Verificando / Conectado / Sin conexión.
+const badge = computed(() => {
+  if (!channex.value.hasKey) return { label: 'Sin configurar', cls: 'bg-gold/15 text-gold', dot: 'bg-gold' }
+  if (testing.value) return { label: 'Verificando…', cls: 'bg-navy/10 text-navy', dot: 'bg-navy animate-pulse' }
+  if (testResult.value?.ok) return { label: 'Conectado', cls: 'bg-teal/15 text-teal', dot: 'bg-teal' }
+  if (testResult.value && !testResult.value.ok) return { label: 'Sin conexión', cls: 'bg-coral/15 text-coral', dot: 'bg-coral' }
+  return { label: 'Configurada', cls: 'bg-teal/15 text-teal', dot: 'bg-teal' }
+})
+
 async function load() {
-  try { channex.value = await ChannexAdminService.status() } catch { /* sin permiso / no seteado */ }
+  try {
+    channex.value = await ChannexAdminService.status()
+    if (channex.value.hasKey) test()   // auto-verifica al abrir: el estado se ve sin tocar nada
+  } catch { /* sin permiso / no seteado */ }
 }
 async function save() {
   try {
