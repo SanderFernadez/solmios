@@ -6,10 +6,11 @@
         <p class="text-xs text-text-muted mt-0.5">Precio base + ajuste por temporada para cada canal conectado</p>
       </div>
       <div class="flex items-center gap-3">
-        <select v-model="selectedChannel" @change="loadRates"
+        <select v-if="channels.length > 1" v-model="selectedChannel" @change="loadRates"
           class="px-4 py-2 rounded-xl border border-border text-sm font-bold text-navy focus:border-cyan outline-none cursor-pointer">
           <option v-for="c in channels" :key="c.code" :value="c.code">{{ c.name }}</option>
         </select>
+        <span v-else class="px-4 py-2 rounded-xl bg-surface text-sm font-bold text-navy">{{ channels[0]?.name }}</span>
         <button @click="save" :disabled="saving || !selectedChannel"
           class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
           {{ saving ? 'Guardando...' : 'Guardar' }}

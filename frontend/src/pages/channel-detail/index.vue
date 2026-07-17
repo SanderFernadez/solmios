@@ -3,12 +3,18 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChannelService } from '@/services/Channel.service'
 import { resolveChannelLogo } from '@/utils/channelLogos'
+import ChannelRatesEditor from '@/components/features/ChannelRatesEditor.vue'
 
 const route = useRoute()
 const router = useRouter()
 const channelId = computed(() => route.params.id as string)
 const detail = ref<any>(null)
 const loading = ref(true)
+
+// El canal actual, en el formato que espera el editor de tarifas ({ code, name }).
+const channelForRates = computed(() =>
+  detail.value?.channel ? [{ code: String(detail.value.channel), name: detail.value.title || detail.value.channel }] : [],
+)
 
 onMounted(async () => {
   try { 
@@ -46,6 +52,10 @@ const logo = computed(() => resolveChannelLogo(detail.value?.channel, detail.val
       </div>
     </div>
 
+    <!-- Tarifas por temporada de este canal (estilo MisterPlan) -->
+    <ChannelRatesEditor v-if="channelForRates.length" :channels="channelForRates" />
+
+    <!-- Mapeo técnico de rate plans en Channex (avanzado) -->
     <div class="grid lg:grid-cols-2 gap-6">
       <!-- Rate Plans Mapeados -->
       <div class="bg-white rounded-2xl border p-6">
