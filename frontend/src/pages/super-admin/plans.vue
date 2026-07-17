@@ -85,16 +85,31 @@
             </div>
             <div>
               <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Módulos incluidos</label>
-              <p class="text-[11px] text-text-muted mb-2">Los hoteles con este plan solo ven estos módulos. Sin ninguno marcado = todos (compatibilidad).</p>
-              <div class="grid grid-cols-2 gap-2">
-                <button v-for="m in moduleCatalog" :key="m.key" type="button" @click="toggleModule(m.key)"
-                  class="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-bold text-left transition-colors cursor-pointer"
-                  :class="form.modules.includes(m.key) ? 'bg-teal/10 border-teal text-teal' : 'bg-surface border-border text-text-muted'">
-                  <span class="w-4 h-4 rounded flex items-center justify-center shrink-0 border" :class="form.modules.includes(m.key) ? 'bg-teal border-teal text-white' : 'border-border'">
-                    <span v-if="form.modules.includes(m.key)" class="text-[10px] leading-none">✓</span>
-                  </span>
-                  {{ m.label }}
-                </button>
+              <p class="text-[11px] text-text-muted mb-2">Los hoteles con este plan solo ven estos módulos y submódulos. Sin ninguno marcado = todos (compatibilidad).</p>
+              <div class="space-y-2">
+                <div v-for="m in moduleCatalog" :key="m.key" class="rounded-xl border" :class="hasModule(m.key) ? 'border-teal bg-teal/5' : 'border-border bg-surface'">
+                  <!-- Módulo -->
+                  <button type="button" @click="toggleModule(m)"
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm font-bold text-left cursor-pointer"
+                    :class="hasModule(m.key) ? 'text-teal' : 'text-text-muted'">
+                    <span class="w-4 h-4 rounded flex items-center justify-center shrink-0 border" :class="hasModule(m.key) ? 'bg-teal border-teal text-white' : 'border-border'">
+                      <span v-if="hasModule(m.key)" class="text-[10px] leading-none">✓</span>
+                    </span>
+                    {{ m.label }}
+                    <span v-if="m.submodules?.length && hasModule(m.key)" class="ml-auto text-[10px] font-semibold text-text-muted">{{ subCount(m) }}</span>
+                  </button>
+                  <!-- Submódulos (solo si el módulo está incluido) -->
+                  <div v-if="m.submodules?.length && hasModule(m.key)" class="px-3 pb-2 pl-9 grid grid-cols-2 gap-1.5">
+                    <button v-for="s in m.submodules" :key="s.key" type="button" @click="toggleSubmodule(m, s)"
+                      class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] font-semibold text-left cursor-pointer transition-colors"
+                      :class="hasModule(s.key) ? 'text-navy' : 'text-text-muted'">
+                      <span class="w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 border" :class="hasModule(s.key) ? 'bg-teal border-teal text-white' : 'border-border'">
+                        <span v-if="hasModule(s.key)" class="text-[9px] leading-none">✓</span>
+                      </span>
+                      {{ s.label }}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -111,7 +126,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { PlansService } from '@/services/Plans.service'
-import { ModulesService, type ModuleMeta } from '@/services/Platform.service'
+import { ModulesService, type ModuleMeta, type SubModuleMeta } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
 const toast = useToast()
 
@@ -127,10 +142,44 @@ const featuresText = ref('')
 
 const features = computed(() => featuresText.value.split('\n').filter(f => f.trim()))
 
-function toggleModule(key: string) {
+function hasModule(key: string): boolean {
+  return form.value.modules.includes(key)
+}
+function subCount(m: ModuleMeta): string {
+  const subs = m.submodules ?? []
+  const on = subs.filter(s => form.value.modules.includes(s.key)).length
+  return `${on}/${subs.length}`
+}
+// Marcar módulo → agrega el módulo + TODOS sus submódulos (por defecto, todo incluido). Desmarcar → saca ambos.
+function toggleModule(m: ModuleMeta) {
   const set = new Set(form.value.modules)
-  set.has(key) ? set.delete(key) : set.add(key)
+  const subs = m.submodules ?? []
+  if (set.has(m.key)) {
+    set.delete(m.key)
+    subs.forEach(s => set.delete(s.key))
+  } else {
+    set.add(m.key)
+    subs.forEach(s => set.add(s.key))
+  }
   form.value.modules = [...set]
+}
+function toggleSubmodule(m: ModuleMeta, s: SubModuleMeta) {
+  if (!form.value.modules.includes(m.key)) return   // módulo no incluido: no-op
+  const set = new Set(form.value.modules)
+  set.has(s.key) ? set.delete(s.key) : set.add(s.key)
+  form.value.modules = [...set]
+}
+// Retrocompat: un plan viejo guardaba solo claves top-level. Al abrirlo, si un módulo está incluido pero
+// no lista ninguno de sus submódulos, se consideran TODOS incluidos → los marcamos para reflejar el estado real.
+function normalizeModules(mods: string[]): string[] {
+  const set = new Set(mods)
+  for (const m of moduleCatalog.value) {
+    const subs = m.submodules ?? []
+    if (set.has(m.key) && subs.length && !subs.some(s => set.has(s.key))) {
+      subs.forEach(s => set.add(s.key))
+    }
+  }
+  return [...set]
 }
 
 function openNew() {
@@ -142,7 +191,7 @@ function openNew() {
 
 function openEdit(plan: any) {
   editing.value = plan
-  form.value = { name: plan.name, price: plan.price, currency: plan.currency || 'USD', description: plan.description || '', features: plan.features || [], modules: plan.modules || [], limits: plan.limits || { rooms: 30, users: 2, properties: 1 } }
+  form.value = { name: plan.name, price: plan.price, currency: plan.currency || 'USD', description: plan.description || '', features: plan.features || [], modules: normalizeModules(plan.modules || []), limits: plan.limits || { rooms: 30, users: 2, properties: 1 } }
   featuresText.value = (plan.features || []).join('\n')
   showModal.value = true
 }

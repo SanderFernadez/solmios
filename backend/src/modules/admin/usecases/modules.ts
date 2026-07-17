@@ -101,9 +101,14 @@ export async function getModuleState(configRepo: RepositoryAdapter<any>): Promis
 }
 
 /**
- * Estado EFECTIVO para un hotel: global-ON ∩ (módulos del plan). Un plan sin módulos definidos incluye
- * TODOS (retrocompat: los planes viejos no pierden nada). super_admin / sin plan → solo el global.
- * Los submódulos NO se configuran por plan (independiente): heredan el `inPlan` del padre + su toggle global.
+ * Estado EFECTIVO para un hotel: global-ON ∩ (módulos y submódulos del plan). El plan.modules es una lista
+ * plana de claves top-level Y submódulos punteados (`finance.night-audit`). super_admin / sin plan → solo global.
+ * Retrocompat:
+ *  - Plan sin módulos definidos (array vacío) → incluye TODO (los planes viejos no pierden nada).
+ *  - Plan que lista un módulo top-level pero NINGÚN submódulo suyo → todos sus submódulos incluidos
+ *    (los planes viejos guardaban solo claves top-level: no deben quedar sin submódulos).
+ *  - Plan que lista al menos un `modulo.sub` → dentro de ese módulo, solo los submódulos listados.
+ * El toggle global siempre manda: si un módulo/submódulo está apagado global, se cae para todos.
  */
 export async function getModuleStateForPlan(
   configRepo: RepositoryAdapter<any>, plansRepo: RepositoryAdapter<any>, planSlug?: string,
@@ -115,12 +120,17 @@ export async function getModuleStateForPlan(
     const raw = plan?.modules ? (typeof plan.modules === 'string' ? JSON.parse(plan.modules) : plan.modules) : []
     if (Array.isArray(raw) && raw.length) planModules = raw.map(String)
   }
+  const has = (k: string) => !planModules || planModules.includes(k)
   const state: ModuleState = {}
   for (const m of MODULE_CATALOG) {
-    const inPlan = !planModules || planModules.includes(m.key)
-    state[m.key] = global[m.key] !== false && inPlan
-    for (const s of m.submodules ?? []) {
-      state[s.key] = global[s.key] !== false && inPlan
+    const moduleOn = global[m.key] !== false && has(m.key)
+    state[m.key] = moduleOn
+    const subs = m.submodules ?? []
+    // ¿El plan seleccionó submódulos concretos de este módulo? Si no, todos heredan al padre (retrocompat).
+    const subSelected = !!planModules && subs.some((s) => planModules!.includes(s.key))
+    for (const s of subs) {
+      const inPlan = !subSelected || planModules!.includes(s.key)
+      state[s.key] = moduleOn && global[s.key] !== false && inPlan
     }
   }
   return state
