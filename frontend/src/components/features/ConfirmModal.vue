@@ -1,33 +1,27 @@
 <template>
-  <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-        <div class="flex items-start gap-3 mb-4">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="danger ? 'bg-coral/10 text-coral' : 'bg-navy/10 text-navy'">
-            <span class="w-5 h-5" v-html="danger ? ICON_ALERT : ICON_QUESTION"></span>
-          </div>
-          <div class="min-w-0">
-            <h3 class="text-base font-black text-navy leading-snug">{{ title }}</h3>
-            <p class="text-sm text-text-secondary mt-1">{{ message }}</p>
-          </div>
-        </div>
-        <div class="flex gap-3">
-          <button @click="$emit('close')" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface">
-            {{ cancelLabel || 'Cancelar' }}
-          </button>
-          <button @click="$emit('confirm')" :disabled="loading"
-            class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white cursor-pointer disabled:opacity-50"
-            :class="danger ? 'bg-coral hover:bg-coral/80' : 'bg-navy hover:bg-navy-light'">
-            {{ loading ? 'Procesando…' : (confirmLabel || 'Confirmar') }}
-          </button>
-        </div>
+  <AppModal size="sm" :title="title" :closable="false" @close="$emit('close')">
+    <div class="flex items-start gap-3">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border-2" :class="danger ? 'bg-coral/10 text-coral border-coral' : 'bg-navy/10 text-navy border-navy'">
+        <span class="w-5 h-5" v-html="danger ? ICON_ALERT : ICON_QUESTION"></span>
       </div>
+      <p class="text-sm text-text-secondary">{{ message }}</p>
     </div>
-  </Teleport>
+    <template #footer>
+      <button @click="$emit('close')" class="flex-1 py-2.5 border-2 border-navy/30 rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition-colors">
+        {{ cancelLabel || 'Cancelar' }}
+      </button>
+      <button @click="$emit('confirm')" :disabled="loading"
+        class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white cursor-pointer disabled:opacity-50 border-2"
+        :class="danger ? 'bg-coral border-coral hover:bg-coral/80' : 'bg-navy border-navy hover:bg-navy-light'">
+        {{ loading ? 'Procesando…' : (confirmLabel || 'Confirmar') }}
+      </button>
+    </template>
+  </AppModal>
 </template>
 
 <script setup lang="ts">
+import AppModal from '@/components/ui/AppModal.vue'
+
 defineProps<{
   title: string
   message: string

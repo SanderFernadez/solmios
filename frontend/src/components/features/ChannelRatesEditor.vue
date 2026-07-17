@@ -1,26 +1,18 @@
 <template>
-  <div class="rounded-[20px] border-2 border-navy bg-white shadow-(--shadow-card) overflow-hidden mb-8">
-    <!-- Header oscuro (coherente con el header/sidebar del home) -->
-    <div class="flex items-center justify-between gap-3 flex-wrap bg-navy px-4 sm:px-5 py-4">
-      <div class="min-w-0">
-        <h2 class="text-base sm:text-lg font-black text-white">Tarifas por canal</h2>
-        <p class="text-[11px] text-white/60 mt-0.5">Precio base + ajuste por temporada</p>
-      </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <select v-if="channels.length > 1" v-model="selectedChannel" @change="loadRates"
-          class="px-3 py-2 rounded-lg border-2 border-white/20 bg-white/10 text-sm font-bold text-white outline-none cursor-pointer">
-          <option v-for="c in channels" :key="c.code" :value="c.code" class="text-navy">{{ c.name }}</option>
-        </select>
-        <span v-else class="px-3 py-2 rounded-lg bg-white/10 text-sm font-bold text-white">{{ channels[0]?.name }}</span>
-        <button @click="save" :disabled="saving || !selectedChannel"
-          class="rounded-lg bg-cyan text-navy text-sm font-extrabold px-5 py-2 border-2 border-cyan hover:bg-cyan-light transition-all cursor-pointer disabled:opacity-50">
-          {{ saving ? 'Guardando…' : 'Guardar' }}
-        </button>
-      </div>
-    </div>
+  <SectionCard title="Tarifas por canal" subtitle="Precio base + ajuste por temporada" class="mb-8">
+    <template #actions>
+      <select v-if="channels.length > 1" v-model="selectedChannel" @change="loadRates"
+        class="px-3 py-2 rounded-lg border-2 border-white/20 bg-white/10 text-sm font-bold text-white outline-none cursor-pointer">
+        <option v-for="c in channels" :key="c.code" :value="c.code" class="text-navy">{{ c.name }}</option>
+      </select>
+      <span v-else class="px-3 py-2 rounded-lg bg-white/10 text-sm font-bold text-white">{{ channels[0]?.name }}</span>
+      <button @click="save" :disabled="saving || !selectedChannel"
+        class="rounded-lg bg-cyan text-navy text-sm font-extrabold px-5 py-2 border-2 border-cyan hover:bg-cyan-light transition-all cursor-pointer disabled:opacity-50">
+        {{ saving ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </template>
 
-    <div class="p-4 sm:p-5">
-      <!-- Leyenda de temporadas -->
+    <!-- Leyenda de temporadas -->
       <div class="flex flex-wrap gap-x-4 gap-y-2 mb-4">
         <span v-for="s in seasons" :key="s.name" class="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary">
           <span class="w-3 h-3 rounded-full border border-navy/20" :style="{ background: s.color }"></span>{{ s.label || s.name }}
@@ -83,12 +75,12 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+  </SectionCard>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 import { HotelService, type RoomRate } from '@/services/Hotel.service'
 import { useToast } from '@/composables/useToast'
 
