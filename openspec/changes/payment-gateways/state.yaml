@@ -2,9 +2,14 @@
 
 change_name: payment-gateways
 created: 2026-07-14
-status: in-progress
-current_phase: apply
+status: implemented
+current_phase: completed
+completed_at: 2026-07-17
 parent_changes: [seguridad-multitenant]
+# Cierre 2026-07-17: bug critico de cobro cross-hotel CERRADO. PG-0,1,2,5 + PG-3.1/3.5 + PG-4.1
+# implementados. PG-3.2/3.3/3.4, PG-4.2-4.5, PG-6 DIFERIDOS por decision arquitectonica (ver tasks.md
+# § Decisiones — NO son deuda: StripeUseCase es capa con logica util, enums son variaciones semanticas,
+# webhooks funcionan). PG-7 bloqueado creds -> GitLab #405-408.
 trigger: >
   El dueño pidió que la integración de pagos tenga página propia y soporte varios proveedores
   (incluidos bancos locales RD), señalando que la configuración es de CADA hotel, no de la
@@ -16,17 +21,15 @@ trigger: >
 sprints:
   pg-0-rawbody:
     title: "Prerequisito: req.rawBody en el framework"
-    status: proposed
+    status: done
     tasks_total: 3
-    tasks_done: 0
+    tasks_done: 3
     priority: critical
     manual_h: 7
     ia_h: 5
     nota: >
-      BLOQUEANTE. kernel/http/server.ts:201 hace JSON.parse y descarta los bytes crudos;
-      grep rawBody en el kernel = 0 hits. Sin esto NINGUNA firma (Stripe HMAC, PayPal RSA,
-      Azul HMAC-SHA512) puede verificarse. Fix upstream en arckode-framework, como el remap
-      camelCase de 1.6.2.
+      RESUELTO upstream en fw 1.6.3 (kernel/http/types.ts:28 rawBody?:Buffer, server.ts:91,106
+      lee y propaga los bytes crudos). Webhook Stripe verificado en prod (firma OK, 2026-07-16).
 
   pg-1-credenciales:
     title: Credenciales de pasarela por hotel, cifradas
