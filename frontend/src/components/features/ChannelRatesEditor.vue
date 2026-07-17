@@ -6,6 +6,11 @@
         <option v-for="c in channels" :key="c.code" :value="c.code" class="text-navy">{{ c.name }}</option>
       </select>
       <span v-else class="px-3 py-2 rounded-lg bg-white/10 text-sm font-bold text-white">{{ channels[0]?.name }}</span>
+      <button @click="openSeasonsModal"
+        class="rounded-lg border-2 border-white/20 bg-white/10 text-white text-sm font-bold px-4 py-2 hover:bg-white/20 transition-all cursor-pointer flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+        Temporadas
+      </button>
       <button @click="save" :disabled="saving || !selectedChannel"
         class="rounded-lg bg-cyan text-navy text-sm font-extrabold px-5 py-2 border-2 border-cyan hover:bg-cyan-light transition-all cursor-pointer disabled:opacity-50">
         {{ saving ? 'Guardando…' : 'Guardar' }}
@@ -75,12 +80,41 @@
           </div>
         </div>
       </div>
+
+    <!-- Modal: editar fechas/colores de las temporadas del hotel -->
+    <AppModal :open="showSeasonsModal" title="Temporadas del hotel" subtitle="Definí el rango de fechas de cada temporada" size="lg" @close="showSeasonsModal = false">
+      <div class="space-y-3">
+        <div v-for="(s, i) in seasonsDraft" :key="i" class="rounded-xl border-2 border-navy p-3">
+          <div class="flex items-center gap-2 mb-3">
+            <input type="color" v-model="s.color" class="w-8 h-8 rounded-lg border-2 border-navy/30 cursor-pointer shrink-0" />
+            <input v-model="s.label" class="flex-1 min-w-0 px-3 py-2 rounded-lg border-2 border-navy/30 text-sm font-bold text-navy focus:border-navy outline-none" :placeholder="s.name" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-black text-text-muted uppercase mb-1">Desde</label>
+              <input type="date" v-model="s.startDate" class="w-full px-2 py-1.5 rounded-lg border-2 border-navy/30 text-xs focus:border-navy outline-none" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-black text-text-muted uppercase mb-1">Hasta</label>
+              <input type="date" v-model="s.endDate" class="w-full px-2 py-1.5 rounded-lg border-2 border-navy/30 text-xs focus:border-navy outline-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button @click="showSeasonsModal = false" class="px-4 py-2.5 border-2 border-navy/30 rounded-xl text-sm font-bold text-text-secondary hover:bg-surface transition-colors cursor-pointer">Cancelar</button>
+        <button @click="saveSeasons" :disabled="savingSeasons" class="px-5 py-2.5 rounded-xl bg-navy border-2 border-navy text-white text-sm font-extrabold hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ savingSeasons ? 'Guardando…' : 'Guardar temporadas' }}
+        </button>
+      </template>
+    </AppModal>
   </SectionCard>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { HotelService, type RoomRate } from '@/services/Hotel.service'
 import { useToast } from '@/composables/useToast'
 
@@ -92,10 +126,36 @@ const props = defineProps<{
 
 const toast = useToast()
 const currency = props.currency || 'USD'
-const seasons = ref<{ name: string; label?: string; color?: string }[]>([])
+interface SeasonRow { name: string; label?: string; color?: string; startDate?: string; endDate?: string }
+const seasons = ref<SeasonRow[]>([])
 const selectedChannel = ref(props.channels[0]?.code || '')
 const loading = ref(false)
 const saving = ref(false)
+
+// Modal para editar las fechas/colores de las temporadas del hotel.
+const showSeasonsModal = ref(false)
+const savingSeasons = ref(false)
+const seasonsDraft = ref<SeasonRow[]>([])
+
+function openSeasonsModal() {
+  seasonsDraft.value = seasons.value.map((s) => ({ ...s }))
+  showSeasonsModal.value = true
+}
+
+async function saveSeasons() {
+  savingSeasons.value = true
+  try {
+    // Conserva label/color/orden y persiste las fechas; el backend re-siembra si el hotel no tenía.
+    await HotelService.saveSeasons(seasonsDraft.value.map((s, i) => ({
+      name: s.name, label: s.label || s.name, color: s.color || '#3b82f6',
+      startDate: s.startDate || '', endDate: s.endDate || '', sortOrder: i, active: i === 0 ? 1 : 0,
+    })))
+    showSeasonsModal.value = false
+    await loadSeasons()
+    await loadRates()
+    toast.success('Temporadas actualizadas')
+  } catch { toast.error('Error al guardar temporadas') } finally { savingSeasons.value = false }
+}
 
 interface Cell { season: string; percentage: number; closed: number }
 interface Group { key: string; roomType: string; occupancy: number; basePrice: number; minStay: number; maxStay: number; cells: Cell[] }
@@ -164,11 +224,17 @@ async function save() {
   } catch { toast.error('Error al guardar tarifas') } finally { saving.value = false }
 }
 
-onMounted(async () => {
+// Temporadas del hotel. El backend (GET /seasons) las siembra por defecto si el hotel no tiene
+// ninguna, así que siempre vuelven las 4 (Baja/Media/Alta/Especial).
+async function loadSeasons() {
   try {
     const s = await HotelService.seasons()
-    seasons.value = (s.data || []).map((x: any) => ({ name: x.name, label: x.label, color: x.color }))
-  } catch { /* sin temporadas → columnas por defecto */ }
+    seasons.value = (s.data || []).map((x: any) => ({ name: x.name, label: x.label, color: x.color, startDate: x.startDate, endDate: x.endDate }))
+  } catch { /* sin temporadas → columnas por defecto del backend */ }
+}
+
+onMounted(async () => {
+  await loadSeasons()
   await loadRates()
 })
 </script>
