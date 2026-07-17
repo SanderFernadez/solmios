@@ -21,12 +21,12 @@
 
 ## BM-3 — Migración de datos
 
-- [ ] 3.1 `scripts/migrate-payments-out-of-invoices.ts` — copia `invoices.type='payment'` → `payments`
-- [ ] 3.2 Dedup idempotente por (`invoiceId`, `reference`, `amount`)
-- [ ] 3.3 Guard: aborta si `SUM(amount)` pre != post
-- [ ] 3.4 `metadata.migratedFrom = 'invoices'` para permitir rollback
-- [ ] 3.5 Correr en SQLite local sobre copia y verificar sumas
-- [ ] 3.6 Dry-run contra Postgres de prod (sin escribir)
+- [x] 3.1 `scripts/migrate-payments-out-of-invoices.ts` — copia `invoices.type='payment'` → `payments` · script completo (multi-motor, dry-run)
+- [x] 3.2 Dedup idempotente por (`invoiceId`, `reference`, `amount`) · verificado: re-correr da 0 a migrar
+- [x] 3.3 Guard: aborta si `SUM(amount)` pre != post · verificado: delta 120 == 120, guard OK
+- [x] 3.4 `metadata.migratedFrom = 'invoices'` para permitir rollback · incluye sourceInvoiceId/Number
+- [x] 3.5 Correr en SQLite local sobre copia y verificar sumas · verificado en dev (1 cobro migrado, guard OK)
+- [x] 3.6 Dry-run contra Postgres de prod (sin escribir) · soporta `DATABASE_URL --dry-run`; prod no-op (0 invoices type='payment')
 
 ## BM-4 — Limpieza
 
