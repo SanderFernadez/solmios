@@ -5,7 +5,7 @@
       <span class="text-[10px] font-black text-white/45 uppercase tracking-widest mr-1">Operaciones</span>
       <button v-for="t in QUICK_TOOLBAR" :key="t.key" @click="openQuick(t.key)" :title="t.label"
         class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold transition-all cursor-pointer ring-1 ring-white/10 hover:ring-white/30">
-        <span class="text-base leading-none">{{ t.icon }}</span>
+        <Icon :name="t.icon" :size="16" />
         <span>{{ t.label }}</span>
       </button>
     </div>
@@ -33,7 +33,7 @@
           </select>
           <button v-if="!embedded && canEditMinStay" @click="openSeasonDialog" title="Asignar temporada a un rango de fechas"
             class="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-navy bg-white hover:bg-surface cursor-pointer inline-flex items-center gap-1.5">
-            🗓️ Temporadas
+            <Icon name="calendar" :size="14" /> Temporadas
           </button>
         </div>
       </div>
@@ -50,7 +50,7 @@
           <ChannelIcon :channel="lc.k" :size="16" />
           <span class="text-navy">{{ lc.l }}</span>
         </span>
-        <button v-if="!embedded" @click="openColorPicker" class="ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg bg-navy text-white text-[11px] font-extrabold shadow-sm hover:bg-navy/90 hover:shadow-md transition-all cursor-pointer" title="Elegir el color de cada canal">🎨 Personalizar colores</button>
+        <button v-if="!embedded" @click="openColorPicker" class="ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg bg-navy text-white text-[11px] font-extrabold shadow-sm hover:bg-navy/90 hover:shadow-md transition-all cursor-pointer" title="Elegir el color de cada canal"><Icon name="palette" :size="13" /> Personalizar colores</button>
       </template>
       <template v-else>
         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span>Pendiente</span>
@@ -62,9 +62,9 @@
       <span class="text-text-muted">|</span>
       <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gray-300"></span> Bloqueo</span>
       <span class="text-text-muted">|</span>
-      <span class="text-text-muted">🟡 Pago parcial</span>
-      <span class="text-text-muted">✅ Pagada</span>
-      <span class="text-text-muted">🔐 Con cerradura</span>
+      <span class="flex items-center gap-1 text-gold"><Icon name="circle-half" :size="13" /><span class="text-text-muted">Pago parcial</span></span>
+      <span class="flex items-center gap-1 text-teal"><Icon name="circle-check" :size="13" /><span class="text-text-muted">Pagada</span></span>
+      <span class="flex items-center gap-1 text-navy"><Icon name="lock" :size="13" /><span class="text-text-muted">Con cerradura</span></span>
       <!-- Filtro por tipo de habitación: solo en el Planning; el widget del dashboard va limpio. -->
       <template v-if="!embedded">
         <span class="text-text-muted">|</span>
@@ -101,7 +101,7 @@
             <!-- Días Mínimos: estadía mínima (noches) para reservas que ENTRAN cada día -->
             <div class="flex border-b border-border bg-amber-50/60">
               <div class="w-56 flex-shrink-0 px-4 py-2 border-r border-border flex items-center gap-1.5">
-                <span class="text-[11px] leading-none">📏</span>
+                <Icon name="ruler" :size="13" class="text-navy" />
                 <span class="text-[10px] font-black text-navy uppercase tracking-wide">Días Mínimos</span>
               </div>
               <div v-for="day in visibleDays" :key="'ms-' + day.dateStr"
@@ -172,8 +172,8 @@
                     <ChannelIcon :channel="gRes(room.id, day.dateStr)!.chKey" :size="13" class="mr-1 shrink-0 ring-1 ring-white/40 rounded-[4px]" />
                     <span class="text-[9px] font-extrabold truncate text-white"><span v-if="gRes(room.id, day.dateStr)!.pax" class="text-white/75">{{ gRes(room.id, day.dateStr)!.pax }}P·</span>{{ gRes(room.id, day.dateStr)!.name }}</span>
                     <span class="text-[8px] text-white/70 ml-auto shrink-0 flex items-center gap-0.5">
-                      <span v-if="gRes(room.id, day.dateStr)!.lockCode" :title="`Cerradura: ${gRes(room.id, day.dateStr)!.lockCode}`">🔐</span>
-                      <span :title="`Pago: ${gRes(room.id, day.dateStr)!.paymentStatus}`">{{ PAY_ICON[gRes(room.id, day.dateStr)!.paymentStatus] }}</span>
+                      <Icon v-if="gRes(room.id, day.dateStr)!.lockCode" name="lock" :size="10" :title="`Cerradura: ${gRes(room.id, day.dateStr)!.lockCode}`" />
+                      <Icon :name="PAY_ICON[gRes(room.id, day.dateStr)!.paymentStatus]" :size="10" :title="`Pago: ${gRes(room.id, day.dateStr)!.paymentStatus}`" />
                       <span>${{ gRes(room.id, day.dateStr)!.amt }}</span>
                     </span>
                     <!-- Handle para extender/acortar (arrastrar el borde derecho) — #204/#207 -->
@@ -191,7 +191,7 @@
                     class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 bg-gray-300/80 cursor-pointer hover:bg-gray-400/80"
                     :style="{ width: `calc(${blkSpan(room.id, day)} * 100%)` }"
                     @mousedown.stop @click.stop="confirmUnblock(gBlk(room.id, day.dateStr)!)">
-                    <span class="text-[9px] font-bold text-gray-600 truncate">🚫 {{ gBlk(room.id, day.dateStr)!.reason || 'Bloqueo' }}</span>
+                    <span class="text-[9px] font-bold text-gray-600 truncate flex items-center gap-1"><Icon name="ban" :size="10" /> {{ gBlk(room.id, day.dateStr)!.reason || 'Bloqueo' }}</span>
                   </div>
                 </div>
               </div>
@@ -217,34 +217,34 @@
           <span>{{ popup.room?.number }} · {{ popup.fromDate }}{{ popup.fromDate !== popup.toDate ? ' → ' + popup.toDate : '' }}
             <span v-if="popup.nights > 0" class="text-navy ml-1">({{ popup.nights }}n)</span>
           </span>
-          <button @click="closePopup" class="text-text-muted hover:text-coral font-bold text-sm cursor-pointer ml-3">✕</button>
+          <button @click="closePopup" class="text-text-muted hover:text-coral font-bold text-sm cursor-pointer ml-3"><Icon name="x" :size="14" /></button>
         </div>
         <button v-if="!popup.res && !popup.blk" @click="popupNewRes" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
           <span class="text-teal text-base">+</span> Nueva Reserva
         </button>
         <button v-if="!popup.res && !popup.blk" @click="popupBlock" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
-          <span class="text-coral">🚫</span> Bloquear
+          <Icon name="ban" :size="15" class="text-coral" /> Bloquear
         </button>
         <button v-if="!popup.res && !popup.blk" @click="popupQuote" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
-          <span class="text-gold">📄</span> Cotización
+          <Icon name="document" :size="15" class="text-gold" /> Cotización
         </button>
         <button v-if="popup.res" @click="popupViewRes" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
-          <span>📋</span> Ver Reserva
+          <Icon name="clipboard" :size="15" /> Ver Reserva
         </button>
         <button v-if="popup.res" @click="popupExtend" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
-          <span>📅</span> Extender estadía
+          <Icon name="calendar-plus" :size="15" /> Extender estadía
         </button>
         <button v-if="popup.res" @click="popupDuplicate" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
-          <span>📄</span> Duplicar reserva
+          <Icon name="document" :size="15" /> Duplicar reserva
         </button>
         <button v-if="popup.res" @click="popupCheckin" class="w-full text-left px-4 py-2.5 text-sm font-bold text-teal hover:bg-surface cursor-pointer flex items-center gap-2">
-          <span>🛎️</span> Hacer Check-in
+          <Icon name="bell" :size="15" /> Hacer Check-in
         </button>
         <button v-if="popup.res" @click="popupCancel" class="w-full text-left px-4 py-2.5 text-sm font-bold text-coral hover:bg-surface cursor-pointer flex items-center gap-2">
-          <span>✕</span> Cancelar Reserva
+          <Icon name="x" :size="15" /> Cancelar Reserva
         </button>
         <button v-if="popup.blk" @click="popupUnblock" class="w-full text-left px-4 py-2.5 text-sm font-bold text-coral hover:bg-surface cursor-pointer flex items-center gap-2">
-          <span>🗑️</span> Eliminar Bloqueo
+          <Icon name="trash" :size="15" /> Eliminar Bloqueo
         </button>
       </div>
     </Teleport>
@@ -253,7 +253,7 @@
     <Teleport to="body">
       <div v-if="blockDlg.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-md p-6">
-          <h3 class="text-lg font-black text-navy mb-4">🚫 Bloquear</h3>
+          <h3 class="text-lg font-black text-navy mb-4 flex items-center gap-2"><Icon name="ban" :size="18" class="text-coral" /> Bloquear</h3>
           <div class="space-y-4">
             <div class="bg-surface rounded-xl p-3 text-sm font-bold text-navy">{{ blockDlg.room }} · {{ blockDlg.from }} → {{ blockDlg.to }}</div>
             <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Motivo</label>
@@ -275,7 +275,7 @@
     <Teleport to="body">
       <div v-if="unblock.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
-          <div class="text-3xl mb-3">🚫</div>
+          <div class="mb-3 flex justify-center text-coral"><Icon name="ban" :size="30" /></div>
           <h3 class="text-lg font-black text-navy mb-2">¿Desbloquear?</h3>
           <p class="text-sm text-text-secondary">{{ unblock.room }} — {{ unblock.reason }}</p>
           <p class="text-xs text-text-muted">{{ unblock.from }} → {{ unblock.to }}</p>
@@ -296,9 +296,9 @@
           <div class="p-5 border-b border-border flex items-center justify-between shrink-0 bg-gradient-to-r from-navy to-navy/90">
             <div class="flex items-center gap-3">
               <h3 class="text-lg font-black text-white">Nueva Reserva</h3>
-              <span class="text-xs text-white/60">🏨 {{ newRes.room?.number }} — {{ newRes.room?.type }} · ${{ newRes.room?.basePrice }}/n</span>
+              <span class="text-xs text-white/60 flex items-center gap-1"><Icon name="building" :size="13" /> {{ newRes.room?.number }} — {{ newRes.room?.type }} · ${{ newRes.room?.basePrice }}/n</span>
             </div>
-            <button @click="newRes.show=false" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20">✕</button>
+            <button @click="newRes.show=false" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20"><Icon name="x" :size="16" /></button>
           </div>
           <!-- Body -->
           <div class="flex-1 overflow-y-auto">
@@ -306,7 +306,7 @@
               <!-- IZQUIERDA: Cliente + Emergencia -->
               <div class="p-5 space-y-5">
                 <div>
-                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-[10px]">👤</span> Cliente</h4>
+                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-navy"><Icon name="user" :size="12" /></span> Cliente</h4>
                   <div class="space-y-3">
                     <div>
                       <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre completo <span class="text-coral">*</span></label><input v-model="newRes.name" type="text" placeholder="Nombre y apellido" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
@@ -343,7 +343,7 @@
                 </div>
                 <!-- Emergencia -->
                 <div class="border border-coral/20 rounded-xl p-4 bg-coral/5">
-                  <h4 class="text-xs font-black text-coral uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-coral/20 flex items-center justify-center text-[10px]">🚨</span> Contacto de Emergencia</h4>
+                  <h4 class="text-xs font-black text-coral uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-coral/20 flex items-center justify-center text-coral"><Icon name="alert" :size="12" /></span> Contacto de Emergencia</h4>
                   <div class="space-y-3">
                     <div class="grid grid-cols-2 gap-3">
                       <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre completo</label><input v-model="newRes.emergencyName" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
@@ -355,7 +355,7 @@
                 </div>
                 <!-- OTA -->
                 <div v-if="newRes.ch!=='direct'" class="border border-border rounded-xl p-4 bg-surface/50">
-                  <h4 class="text-xs font-black text-navy uppercase mb-3">🌐 Datos del Canal</h4>
+                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><Icon name="globe" :size="14" /> Datos del Canal</h4>
                   <div class="grid grid-cols-2 gap-3">
                     <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Comisión (%)</label><input v-model.number="newRes.commission" type="number" min="0" max="50" class="w-full px-3 py-2 rounded-lg border border-border text-sm" /></div>
                     <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Locator OTA</label><input v-model="newRes.extLocator" type="text" class="w-full px-3 py-2 rounded-lg border border-border text-sm" /></div>
@@ -366,7 +366,7 @@
               <div class="p-5 space-y-5">
                 <!-- Tarjeta -->
                 <div class="border border-purple/20 rounded-xl p-4 bg-purple/5">
-                  <h4 class="text-xs font-black text-purple uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-purple/20 flex items-center justify-center text-[10px]">💳</span> Tarjeta de Crédito/Débito</h4>
+                  <h4 class="text-xs font-black text-purple uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-purple/20 flex items-center justify-center text-purple"><Icon name="card" :size="12" /></span> Tarjeta de Crédito/Débito</h4>
                   <div class="space-y-3">
                     <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Titular</label><input v-model="newRes.cardHolder" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
                     <div class="grid grid-cols-3 gap-3">
@@ -382,7 +382,7 @@
                 </div>
                 <!-- Alojamiento -->
                 <div>
-                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-[10px]">🏨</span> Alojamiento</h4>
+                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-navy"><Icon name="building" :size="12" /></span> Alojamiento</h4>
                   <div class="bg-surface rounded-xl p-3 text-sm space-y-2 mb-3">
                     <div class="flex justify-between"><span class="text-text-secondary">Habitación</span><span class="font-bold text-navy">{{ newRes.room?.number }} — {{ newRes.room?.type }}</span></div>
                     <div class="flex justify-between items-center gap-2"><span class="text-text-secondary shrink-0">Fecha entrada</span><input v-model="newRes.cin" type="date" class="min-w-0 flex-1 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy" /></div>
@@ -404,7 +404,7 @@
                 </div>
                 <!-- Anticipo -->
                 <div class="border border-teal/20 rounded-xl p-4 bg-teal/5">
-                  <h4 class="text-xs font-black text-teal uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-teal/20 flex items-center justify-center text-[10px]">💰</span> Anticipo y Total</h4>
+                  <h4 class="text-xs font-black text-teal uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-teal/20 flex items-center justify-center text-teal"><Icon name="money" :size="12" /></span> Anticipo y Total</h4>
                   <div class="space-y-3">
                     <div class="grid grid-cols-2 gap-3">
                       <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Anticipo (%)</label><input v-model.number="newRes.depositPercentage" type="number" min="0" max="100" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
@@ -440,8 +440,8 @@
       <div v-if="quote.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-4 no-print">
-            <h3 class="text-lg font-black text-navy">📄 Cotización</h3>
-            <button @click="quote.show = false" class="text-text-muted hover:text-coral font-bold cursor-pointer">✕</button>
+            <h3 class="text-lg font-black text-navy flex items-center gap-2"><Icon name="document" :size="18" /> Cotización</h3>
+            <button @click="quote.show = false" class="text-text-muted hover:text-coral font-bold cursor-pointer"><Icon name="x" :size="16" /></button>
           </div>
 
           <!-- PRINT VIEW -->
@@ -519,7 +519,7 @@
                   <input v-model.number="item.price" type="number" min="0" class="w-20 px-2 py-2 rounded-lg border border-border text-xs font-bold text-navy text-right" />
                   <span class="text-[10px] text-text-muted">/n</span>
                 </div>
-                <button @click="quote.rooms.splice(i, 1)" v-if="quote.rooms.length > 1" class="text-coral text-xs font-bold cursor-pointer hover:underline">✕</button>
+                <button @click="quote.rooms.splice(i, 1)" v-if="quote.rooms.length > 1" class="text-coral text-xs font-bold cursor-pointer hover:underline"><Icon name="x" :size="13" /></button>
               </div>
               <button @click="addQuoteRoom"
                 class="text-xs font-bold text-teal hover:underline cursor-pointer">+ Agregar habitación</button>
@@ -569,7 +569,7 @@
           </div><!-- end screen-only -->
           <div class="flex gap-3">
             <button @click="quote.show = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer no-print">Cerrar</button>
-            <button @click="printQuote" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer no-print">🖨️ Imprimir</button>
+            <button @click="printQuote" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer no-print inline-flex items-center justify-center gap-2"><Icon name="printer" :size="15" /> Imprimir</button>
           </div>
         </div>
       </div>
@@ -581,7 +581,7 @@
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
           <div class="px-5 py-4 border-b border-border flex items-center justify-between">
             <h3 class="font-black text-navy text-base">Mover / Extender reserva</h3>
-            <button @click="closeReschedule" class="text-text-muted hover:text-coral font-bold text-lg cursor-pointer">✕</button>
+            <button @click="closeReschedule" class="text-text-muted hover:text-coral font-bold text-lg cursor-pointer"><Icon name="x" :size="16" /></button>
           </div>
 
           <!-- Modo "Extender" desde el menú: elegir la nueva fecha de salida -->
@@ -613,7 +613,7 @@
 
             <!-- No disponible -->
             <div v-if="!reschedule.quote.available" class="bg-coral/10 border border-coral/30 rounded-xl px-3 py-2.5 text-xs text-coral font-bold">
-              🚫 {{ reschedule.quote.reason || 'La habitación no está disponible en esas fechas.' }}
+              <span class="inline-flex items-center gap-1"><Icon name="ban" :size="13" /> {{ reschedule.quote.reason || 'La habitación no está disponible en esas fechas.' }}</span>
             </div>
 
             <template v-else>
@@ -675,19 +675,19 @@
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[82vh] flex flex-col">
           <div class="flex items-center justify-between p-4 border-b border-border shrink-0">
             <h3 class="text-sm font-black text-navy">
-              <span v-if="quickAction === 'arrivals'">🚪 Llegadas y Salidas de hoy</span>
-              <span v-else-if="quickAction === 'search'">🔍 Buscar reserva</span>
-              <span v-else-if="quickAction === 'locks'">🔐 Cerraduras</span>
-              <span v-else-if="quickAction === 'sync'">🔄 Sincronizar canales</span>
+              <span v-if="quickAction === 'arrivals'" class="inline-flex items-center gap-2"><Icon name="in-out" :size="16" /> Llegadas y Salidas de hoy</span>
+              <span v-else-if="quickAction === 'search'" class="inline-flex items-center gap-2"><Icon name="search" :size="16" /> Buscar reserva</span>
+              <span v-else-if="quickAction === 'locks'" class="inline-flex items-center gap-2"><Icon name="lock" :size="16" /> Cerraduras</span>
+              <span v-else-if="quickAction === 'sync'" class="inline-flex items-center gap-2"><Icon name="sync" :size="16" /> Sincronizar canales</span>
             </h3>
-            <button @click="quickAction = null" class="text-text-muted hover:text-coral font-bold cursor-pointer">✕</button>
+            <button @click="quickAction = null" class="text-text-muted hover:text-coral font-bold cursor-pointer"><Icon name="x" :size="16" /></button>
           </div>
           <div class="p-4 overflow-y-auto flex-1 space-y-3">
             <!-- Llegadas / Salidas -->
             <template v-if="quickAction === 'arrivals'">
               <!-- Sin movimientos: estado vacio claro -->
               <div v-if="!arrivalsToday.length && !departuresToday.length" class="flex flex-col items-center justify-center py-8 text-center">
-                <div class="text-3xl mb-2">🗓️</div>
+                <div class="mb-2 flex justify-center text-text-muted"><Icon name="calendar" :size="30" /></div>
                 <div class="text-sm font-bold text-navy">Sin movimientos para hoy</div>
                 <div class="text-xs text-text-muted mt-0.5">No hay llegadas ni salidas programadas.</div>
               </div>
@@ -695,7 +695,7 @@
               <template v-else>
                 <!-- LLEGADAS -->
                 <div class="flex items-center gap-2 mb-1.5">
-                  <span class="text-[10px] font-black text-teal uppercase tracking-wide">🛬 Llegadas de hoy</span>
+                  <span class="text-[10px] font-black text-teal uppercase tracking-wide inline-flex items-center gap-1"><Icon name="arrow-down" :size="13" /> Llegadas de hoy</span>
                   <span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-teal/10 text-teal">{{ arrivalsToday.length }}</span>
                 </div>
                 <div v-if="!arrivalsToday.length" class="text-xs text-text-muted mb-2">Sin llegadas para hoy.</div>
@@ -711,7 +711,7 @@
                     <div class="flex items-center gap-1.5 shrink-0">
                       <button @click="toggleRes(r.id)" class="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-bold text-navy hover:bg-surface cursor-pointer">{{ expandedRes.has(r.id) ? 'Menos ▴' : 'Ver más ▾' }}</button>
                       <button v-if="r.status !== 'checked_in'" @click="quickCheckin(r)" class="px-2.5 py-1.5 rounded-lg bg-teal text-white text-[11px] font-bold hover:brightness-95 cursor-pointer">Check-in</button>
-                      <span v-else class="px-2.5 py-1.5 rounded-lg bg-teal/10 text-teal text-[11px] font-bold">✓ Ingresado</span>
+                      <span v-else class="px-2.5 py-1.5 rounded-lg bg-teal/10 text-teal text-[11px] font-bold inline-flex items-center gap-1"><Icon name="check" :size="12" /> Ingresado</span>
                     </div>
                   </div>
                   <div v-if="expandedRes.has(r.id)" class="px-2.5 pb-2.5 pt-2 border-t border-border bg-surface/40 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
@@ -720,7 +720,7 @@
                     <div><div class="text-text-muted">Entrada</div><div class="font-bold text-navy">{{ String(r.checkIn || '').slice(0, 10) }}</div></div>
                     <div><div class="text-text-muted">Salida</div><div class="font-bold text-navy">{{ String(r.checkOut || '').slice(0, 10) }}</div></div>
                     <div><div class="text-text-muted">Huéspedes</div><div class="font-bold text-navy">{{ Number(r.adults) || 0 }} ad · {{ Number(r.children) || 0 }} ni</div></div>
-                    <div><div class="text-text-muted">Pago</div><div class="font-bold text-navy">{{ PAY_ICON[r.paymentStatus || 'pending'] }} {{ PAY_LABEL[r.paymentStatus || 'pending'] }}</div></div>
+                    <div><div class="text-text-muted">Pago</div><div class="font-bold text-navy flex items-center gap-1"><Icon :name="PAY_ICON[r.paymentStatus || 'pending']" :size="13" :class="PAY_ICON_COLOR[r.paymentStatus || 'pending']" /> {{ PAY_LABEL[r.paymentStatus || 'pending'] }}</div></div>
                     <div v-if="r.price || r.totalAmount"><div class="text-text-muted">Total</div><div class="font-bold text-navy">RD$ {{ Number(r.price || r.totalAmount || 0).toLocaleString('es-DO') }}</div></div>
                     <div v-if="r.externalLocator"><div class="text-text-muted">Localizador</div><div class="font-bold text-navy truncate">{{ r.externalLocator }}</div></div>
                     <div class="col-span-2 pt-1"><button @click="quickOpenRes(r)" class="w-full py-1.5 rounded-lg bg-navy text-white text-[11px] font-bold hover:bg-navy/90 cursor-pointer">Abrir reserva completa →</button></div>
@@ -729,7 +729,7 @@
 
                 <!-- SALIDAS -->
                 <div class="flex items-center gap-2 mb-1.5 pt-2 border-t border-border">
-                  <span class="text-[10px] font-black text-gray-500 uppercase tracking-wide">🛫 Salidas de hoy</span>
+                  <span class="text-[10px] font-black text-gray-500 uppercase tracking-wide inline-flex items-center gap-1"><Icon name="arrow-up" :size="13" /> Salidas de hoy</span>
                   <span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{{ departuresToday.length }}</span>
                 </div>
                 <div v-if="!departuresToday.length" class="text-xs text-text-muted">Sin salidas para hoy.</div>
@@ -753,7 +753,7 @@
                     <div><div class="text-text-muted">Entrada</div><div class="font-bold text-navy">{{ String(r.checkIn || '').slice(0, 10) }}</div></div>
                     <div><div class="text-text-muted">Salida</div><div class="font-bold text-navy">{{ String(r.checkOut || '').slice(0, 10) }}</div></div>
                     <div><div class="text-text-muted">Huéspedes</div><div class="font-bold text-navy">{{ Number(r.adults) || 0 }} ad · {{ Number(r.children) || 0 }} ni</div></div>
-                    <div><div class="text-text-muted">Pago</div><div class="font-bold text-navy">{{ PAY_ICON[r.paymentStatus || 'pending'] }} {{ PAY_LABEL[r.paymentStatus || 'pending'] }}</div></div>
+                    <div><div class="text-text-muted">Pago</div><div class="font-bold text-navy flex items-center gap-1"><Icon :name="PAY_ICON[r.paymentStatus || 'pending']" :size="13" :class="PAY_ICON_COLOR[r.paymentStatus || 'pending']" /> {{ PAY_LABEL[r.paymentStatus || 'pending'] }}</div></div>
                     <div v-if="r.price || r.totalAmount"><div class="text-text-muted">Total</div><div class="font-bold text-navy">RD$ {{ Number(r.price || r.totalAmount || 0).toLocaleString('es-DO') }}</div></div>
                     <div v-if="r.externalLocator"><div class="text-text-muted">Localizador</div><div class="font-bold text-navy truncate">{{ r.externalLocator }}</div></div>
                     <div class="col-span-2 pt-1"><button @click="quickOpenRes(r)" class="w-full py-1.5 rounded-lg bg-navy text-white text-[11px] font-bold hover:bg-navy/90 cursor-pointer">Abrir reserva completa →</button></div>
@@ -785,7 +785,7 @@
                   </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                  <span class="text-[11px] font-bold" :class="(l.batteryLevel||0) > 50 ? 'text-teal' : (l.batteryLevel||0) > 20 ? 'text-gold' : 'text-coral'">🔋 {{ l.batteryLevel || 0 }}%</span>
+                  <span class="text-[11px] font-bold inline-flex items-center gap-1" :class="(l.batteryLevel||0) > 50 ? 'text-teal' : (l.batteryLevel||0) > 20 ? 'text-gold' : 'text-coral'"><Icon name="battery" :size="13" /> {{ l.batteryLevel || 0 }}%</span>
                   <span class="text-[9px] font-bold px-2 py-1 rounded-full" :class="l.status === 'online' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ l.status === 'online' ? 'online' : 'offline' }}</span>
                   <button @click="manageLock(l)" class="px-2.5 py-1.5 rounded-lg bg-navy text-white text-[11px] font-bold hover:bg-navy/90 cursor-pointer">Gestionar</button>
                 </div>
@@ -794,7 +794,7 @@
             <!-- Sincronizar -->
             <template v-else-if="quickAction === 'sync'">
               <p class="text-xs text-text-muted">Fuerza la sincronización con los canales y OTAs conectados, y trae al calendario las reservas nuevas.</p>
-              <button @click="doSync" :disabled="syncing" class="w-full py-2.5 rounded-xl bg-navy text-white text-sm font-black hover:bg-navy/90 disabled:opacity-50 cursor-pointer">{{ syncing ? 'Sincronizando…' : '🔄 Sincronizar ahora' }}</button>
+              <button @click="doSync" :disabled="syncing" class="w-full py-2.5 rounded-xl bg-navy text-white text-sm font-black hover:bg-navy/90 disabled:opacity-50 cursor-pointer inline-flex items-center justify-center gap-2"><Icon v-if="!syncing" name="sync" :size="15" /> {{ syncing ? 'Sincronizando…' : 'Sincronizar ahora' }}</button>
               <div v-if="syncMsg" class="text-xs font-bold text-center" :class="syncMsg.includes('No se pudo') ? 'text-coral' : 'text-teal'">{{ syncMsg }}</div>
             </template>
           </div>
@@ -810,8 +810,8 @@
       <div v-if="colorPicker" class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" @click.self="colorPicker = false">
         <div class="bg-white rounded-2xl border border-border shadow-2xl w-full max-w-sm">
           <div class="flex items-center justify-between p-4 border-b border-border">
-            <h3 class="text-sm font-black text-navy">🎨 Colores de los canales</h3>
-            <button @click="colorPicker = false" class="text-text-muted hover:text-coral font-bold cursor-pointer">✕</button>
+            <h3 class="text-sm font-black text-navy flex items-center gap-2"><Icon name="palette" :size="15" /> Colores de los canales</h3>
+            <button @click="colorPicker = false" class="text-text-muted hover:text-coral font-bold cursor-pointer"><Icon name="x" :size="16" /></button>
           </div>
           <div class="p-4 space-y-2.5 max-h-[60vh] overflow-y-auto">
             <p class="text-[11px] text-text-muted mb-1">Elegí con qué color se ven en el calendario las reservas de cada canal.</p>
@@ -909,6 +909,7 @@ import { useToast } from '@/composables/useToast'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import RoomLockModal from '@/components/features/RoomLockModal.vue'
 import ChannelIcon from '@/components/ui/ChannelIcon.vue'
+import Icon from '@/components/ui/Icon.vue'
 import { TTLockService } from '@/services/TTLock.service'
 import { useRouter } from 'vue-router'
 
@@ -1099,10 +1100,10 @@ const LEGEND_CH = [
 // Cada acción abre un modal para resolver en el momento; con "Avanzado →" a la página.
 // Solo en la vista completa (no en el widget embebido del home).
 const QUICK_TOOLBAR = [
-  { key: 'arrivals', icon: '🚪', label: 'Llegadas / Salidas' },
-  { key: 'search', icon: '🔍', label: 'Buscar' },
-  { key: 'locks', icon: '🔐', label: 'Cerraduras' },
-  { key: 'sync', icon: '🔄', label: 'Sincronizar' },
+  { key: 'arrivals', icon: 'in-out', label: 'Llegadas / Salidas' },
+  { key: 'search', icon: 'search', label: 'Buscar' },
+  { key: 'locks', icon: 'lock', label: 'Cerraduras' },
+  { key: 'sync', icon: 'sync', label: 'Sincronizar' },
 ] as const
 type QuickKey = typeof QUICK_TOOLBAR[number]['key']
 const quickAction = ref<QuickKey | null>(null)
@@ -1264,7 +1265,8 @@ const ST_COLOR: Record<string, string> = {
   pending: 'bg-amber-500', confirmed: 'bg-cyan', checked_in: 'bg-teal',
   checked_out: 'bg-gray-400', cancelled: 'bg-coral',
 }
-const PAY_ICON: Record<string, string> = { paid: '✅', partial: '🟡', pending: '🔴' }
+const PAY_ICON: Record<string, string> = { paid: 'circle-check', partial: 'circle-half', pending: 'circle' }
+const PAY_ICON_COLOR: Record<string, string> = { paid: 'text-teal', partial: 'text-gold', pending: 'text-coral' }
 const PAY_METHODS: readonly { v: string; l: string }[] = [
   { v: 'cash', l: 'Efectivo' },
   { v: 'card', l: 'Tarjeta' },
