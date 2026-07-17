@@ -17,16 +17,10 @@
       </div>
     </div>
 
-    <!-- KPIs -->
+    <!-- KPIs — tarjetas hero del dashboard (gradiente + glow + ícono grande) -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-      <div v-for="kpi in kpis" :key="kpi.key"
-        class="group flex items-start gap-3.5 rounded-[20px] border border-border bg-white p-6 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" :style="{ background: kpi.bg, color: kpi.accent }" v-html="kpi.icon"></div>
-        <div class="flex-1 pt-0.5 min-w-0">
-          <div class="text-[13px] text-text-secondary font-medium mb-1.5 truncate">{{ kpi.label }}</div>
-          <div class="text-[28px] leading-none font-extrabold tabular-nums text-navy">{{ kpi.value }}</div>
-        </div>
-      </div>
+      <KpiHeroCard v-for="kpi in kpis" :key="kpi.key"
+        :label="kpi.label" :value="kpi.value" :icon="kpi.icon" :accent="kpi.accent" />
     </div>
 
     <!-- Loading skeleton -->
@@ -555,6 +549,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { useRouter } from 'vue-router'
 import { useCountUp } from '@/composables/useCountUp'
 import { OperationsService } from '@/services/Operations.service'
@@ -853,9 +848,9 @@ const arrivalsAnim = useCountUp(arrivalsToday)
 const departuresAnim = useCountUp(departuresToday)
 
 const kpis = computed(() => [
-  { key: 'inhouse', label: 'En Casa', value: Math.round(inHouseAnim.value), icon: KPI_ICON_BED, bg: '#D1FAE5', accent: '#117A65' },
-  { key: 'arrivals', label: 'Por Llegar Hoy', value: Math.round(arrivalsAnim.value), icon: KPI_ICON_ARRIVAL, bg: '#FEF3C7', accent: '#B7950B' },
-  { key: 'departures', label: 'Por Salir Hoy', value: Math.round(departuresAnim.value), icon: KPI_ICON_DEPARTURE, bg: '#FEE2E2', accent: '#E74C3C' },
+  { key: 'inhouse', label: 'En Casa', value: Math.round(inHouseAnim.value), icon: 'users' as const, accent: 'teal' as const },
+  { key: 'arrivals', label: 'Por Llegar Hoy', value: Math.round(arrivalsAnim.value), icon: 'checkin' as const, accent: 'amber' as const },
+  { key: 'departures', label: 'Por Salir Hoy', value: Math.round(departuresAnim.value), icon: 'checkout' as const, accent: 'rose' as const },
 ])
 
 function daysUntil(dateStr: string) {

@@ -31,38 +31,12 @@
       </div>
     </div>
 
-    <!-- KPIs -->
-    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-      <div v-for="s in statsCards" :key="s.label"
-        class="group flex items-start gap-3 rounded-2xl border-2 border-navy bg-white p-4 shadow-(--shadow-card) transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border-2 border-navy/10" :style="{ background: s.bg, color: s.accent }">
-          <svg v-if="s.icon === 'checkin'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H4.5"/>
-          </svg>
-          <svg v-else-if="s.icon === 'checkout'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M9 12h12m0 0l-3-3m3 3l-3 3"/>
-          </svg>
-          <svg v-else-if="s.icon === 'money'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <svg v-else-if="s.icon === 'wallet'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18-3a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9v.75"/>
-          </svg>
-          <svg v-else-if="s.icon === 'clock'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <svg v-else-if="s.icon === 'confirmed'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-        <div class="min-w-0">
-          <div class="text-xl font-black leading-tight tabular-nums text-navy">{{ s.prefix }}{{ Math.round(s.value).toLocaleString('en-US') }}</div>
-          <div class="text-[11px] text-text-secondary font-semibold leading-tight mt-0.5 truncate">{{ s.label }}</div>
-          <button v-if="s.link" @click="s.link()" class="mt-1 text-[10px] font-bold text-blue hover:underline cursor-pointer">Ver detalles</button>
-          <div v-else-if="s.caption" class="mt-1 text-[10px] font-semibold text-text-muted">{{ s.caption }}</div>
-          <div v-else class="mt-1 text-[10px] font-semibold" :class="trendClass(s.trend)">{{ trendLabel(s.trend) }}</div>
-        </div>
-      </div>
+    <!-- KPIs — mismas tarjetas hero del dashboard (gradiente + glow + ícono grande) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <KpiHeroCard v-for="s in statsCards" :key="s.label"
+        :label="s.label" :value="s.value" :icon="s.icon" :accent="s.accent"
+        :prefix="s.prefix" :trend="s.trend ?? null" :unit="s.caption"
+        @click="s.link && s.link()" :class="s.link ? 'cursor-pointer' : ''" />
     </div>
 
     <!-- Filters + Table -->
@@ -663,6 +637,7 @@ import { useCountUp } from '@/composables/useCountUp'
 import { ReservationService } from '@/services/Reservation.service'
 import { CompanionsService } from '@/services/Companions.service'
 import ReservationModal from '@/components/features/ReservationModal.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
 import type { Guest } from '@/types'
@@ -817,12 +792,12 @@ const confirmedAnim = useCountUp(confirmedCount)
 function setStatusFilter(status: string) { filterStatus.value = status }
 
 const statsCards = computed(() => [
-  { label: 'Check-ins Hoy', value: checkinsAnim.value, icon: 'checkin', bg: '#DBEAFE', accent: '#1D67E3', trend: checkinsTrend.value },
-  { label: 'Check-outs Hoy', value: checkoutsAnim.value, icon: 'checkout', bg: '#FEE2E2', accent: '#EF4444', trend: checkoutsTrend.value },
-  { label: 'Ingresos Hoy', value: revenueAnim.value, prefix: '$', icon: 'money', bg: '#D1FAE5', accent: '#10B981', trend: revenueTrend.value },
-  { label: 'Total Facturado', value: totalBilledAnim.value, prefix: '$', icon: 'wallet', bg: '#EDE9FE', accent: '#6C3483', caption: 'Acumulado' },
-  { label: 'Pendientes', value: pendingAnim.value, icon: 'clock', bg: '#FEF3C7', accent: '#F59E0B', link: () => setStatusFilter('pending') },
-  { label: 'Confirmadas', value: confirmedAnim.value, icon: 'confirmed', bg: '#CFFAFE', accent: '#00B4D8', link: () => setStatusFilter('confirmed') },
+  { label: 'Check-ins Hoy', value: checkinsAnim.value, icon: 'checkin' as const, accent: 'blue' as const, trend: checkinsTrend.value, caption: undefined as string | undefined, link: undefined as (() => void) | undefined },
+  { label: 'Check-outs Hoy', value: checkoutsAnim.value, icon: 'checkout' as const, accent: 'rose' as const, trend: checkoutsTrend.value, caption: undefined as string | undefined, link: undefined as (() => void) | undefined },
+  { label: 'Ingresos Hoy', value: revenueAnim.value, prefix: '$', icon: 'money' as const, accent: 'green' as const, trend: revenueTrend.value, caption: undefined as string | undefined, link: undefined as (() => void) | undefined },
+  { label: 'Total Facturado', value: totalBilledAnim.value, prefix: '$', icon: 'money' as const, accent: 'purple' as const, trend: null as number | null, caption: 'Acumulado' as string | undefined, link: undefined as (() => void) | undefined },
+  { label: 'Pendientes', value: pendingAnim.value, icon: 'bookings' as const, accent: 'amber' as const, trend: null as number | null, caption: undefined as string | undefined, link: (() => setStatusFilter('pending')) as (() => void) | undefined },
+  { label: 'Confirmadas', value: confirmedAnim.value, icon: 'bookings' as const, accent: 'teal' as const, trend: null as number | null, caption: undefined as string | undefined, link: (() => setStatusFilter('confirmed')) as (() => void) | undefined },
 ])
 
 const filtered = computed(() => {
