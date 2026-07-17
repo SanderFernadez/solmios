@@ -64,4 +64,14 @@ describe('payInvoice — payment real en payments (BM-1.5 / BM-1.6)', () => {
     expect(result.status).toBe('pending')
     expect(result.balance).toBe(70)
   })
+
+  it('rechaza un sobrepago (monto mayor que el saldo): no se asienta nada', async () => {
+    const calls: RecordPaymentInput[] = []
+    const repo = { update: async (_id: string, patch: any) => ({ ...baseInvoice, ...patch }) }
+    // Factura de 100, cobrar 150 → excede el saldo; el excedente no debe吸收se en payments.
+    await expect(
+      payInvoice(repo as any, log, makePort(calls), { ...baseInvoice, amount: 100 } as any, { amount: 150, method: 'cash' }),
+    ).rejects.toThrow(/excede el saldo/)
+    expect(calls).toHaveLength(0) // no se registra ningún pago
+  })
 })

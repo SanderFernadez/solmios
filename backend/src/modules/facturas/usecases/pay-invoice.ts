@@ -12,9 +12,12 @@
 // entero falla y la factura queda intacta. Al revés dejaría una factura "cobrada" sin plata asociada.
 
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { FacturasDTO, PayFacturasDTO } from '../types'
 import { recordInvoicePayment, normalizePaymentMethod, type PaymentPort } from './payment-port'
+
+/** Tolerancia de centavos al comparar el cobro contra el saldo (errores de redondeo float). */
+const BALANCE_EPSILON = 0.01
 
 export interface PayInvoiceResult {
   updated: FacturasDTO
@@ -34,7 +37,15 @@ export async function payInvoice(
 ): Promise<PayInvoiceResult> {
   const total = Number(invoice.amount) || 0
   const applied = Number(dto.amount) || total
-  const amountPaid = (Number(invoice.amountPaid) || 0) + applied
+  const alreadyPaid = Number(invoice.amountPaid) || 0
+  // Sobrepago: cobrar más del saldo pendiente descuenta caja vs saldo sin vuelto ni alerta (el
+  // excedente se asienta en payments y la factura queda paid con balance 0). Se rechaza — un
+  // excedente va por depósito o nota de crédito, no absorbido en la factura. (folios ya lo valida.)
+  const outstanding = total - alreadyPaid
+  if (applied > outstanding + BALANCE_EPSILON) {
+    throw new ValidationError(`El pago ($${applied}) excede el saldo pendiente ($${outstanding})`)
+  }
+  const amountPaid = alreadyPaid + applied
   const status = amountPaid >= total ? 'paid' : 'pending'
   const balance = Math.max(0, total - amountPaid)
   const method = normalizePaymentMethod(dto.method)
