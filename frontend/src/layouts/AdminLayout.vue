@@ -170,6 +170,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useRoomStore } from '@/stores/room.store'
 import { useNow } from '@/composables/useNow'
+import { ModulesService } from '@/services/Platform.service'
 import NotificationBell from '@/components/features/core-pms/NotificationBell.vue'
 import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanner.vue'
 import OfflineBanner from '@/components/features/core-pms/OfflineBanner.vue'
@@ -353,6 +354,18 @@ function isSectionActive(item: any) {
   return isActive(item.path)
 }
 
+// Módulos del producto activados a nivel plataforma (super_admin). Se filtran del menú los apagados.
+const enabledModules = ref<Record<string, boolean>>({})
+// Grupo top-level del menú → key del módulo del catálogo. Lo no mapeado (Dashboard/Configuración/Soporte) es base.
+const LABEL_TO_MODULE: Record<string, string> = {
+  Planning: 'planning', Channel: 'channel', Reservas: 'reservations', Operaciones: 'operations',
+  'Huéspedes': 'guests', Finanzas: 'finance', Ventas: 'sales', IA: 'ai', CRM: 'crm', RRHH: 'hr',
+}
+function moduleEnabled(label: string): boolean {
+  const key = LABEL_TO_MODULE[label]
+  return !key || enabledModules.value[key] !== false
+}
+
 const visibleItems = computed(() => {
   const role = auth.userRole ?? ''
   // El literal nonavItems mezcla padres (con children, sin path) y hojas (con path);
@@ -360,6 +373,7 @@ const visibleItems = computed(() => {
   const items = nonavItems as unknown as NavItem[]
   return items
     .filter((item) => {
+      if (!moduleEnabled(item.label)) return false   // módulo desactivado por la plataforma
       if (item.children) return item.children.some((c) => c.roles.includes(role))
       return item.roles.includes(role)
     })
@@ -385,6 +399,7 @@ const occupancyBreakdown = computed(() => {
 
 onMounted(() => {
   dashboard.fetchStats(auth.user?.hotelId)
+  ModulesService.enabled().then(r => { enabledModules.value = r.state || {} }).catch(() => { /* sin datos: todo visible */ })
 })
 
 const roleLabel = computed(() => {

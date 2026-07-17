@@ -24,6 +24,15 @@ export const ConfigService = {
   },
 }
 
+// Módulos del producto (activar/desactivar). Admin edita; el panel del hotel lee para filtrar su menú.
+export interface ModuleMeta { key: string; label: string; description: string }
+export type ModuleState = Record<string, boolean>
+export const ModulesService = {
+  adminGet: () => _http.get<{ catalog: ModuleMeta[]; state: ModuleState }>('/admin/modules'),
+  adminSave: (state: ModuleState) => _http.put<{ state: ModuleState }>('/admin/modules', { state }),
+  enabled: () => _http.get<{ state: ModuleState }>('/modules'),
+}
+
 // Cuenta Channex a nivel PLATAFORMA (white-label). Solo super_admin. La API key nunca vuelve cruda.
 export interface ChannexStatus { environment: string; hasKey: boolean; keyMasked: string }
 export const ChannexAdminService = {

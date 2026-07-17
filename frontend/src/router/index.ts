@@ -122,9 +122,9 @@ const router = createRouter({
           component: () => import('@/pages/super-admin/plans.vue'),
         },
         {
-          path: 'amenities',
-          name: 'super-admin-amenities',
-          component: () => import('@/pages/super-admin/amenities.vue'),
+          path: 'modules',
+          name: 'super-admin-modules',
+          component: () => import('@/pages/super-admin/modules.vue'),
         },
         {
           path: 'api-keys',
