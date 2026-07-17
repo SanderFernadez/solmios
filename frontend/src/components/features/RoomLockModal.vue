@@ -72,6 +72,14 @@
                   <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ lock.status || 'offline' }}</span>
                 </div>
 
+                <!-- Toggle: auto-generar el código al pagarse la seña, por cerradura -->
+                <div class="flex justify-between items-center text-xs pt-1">
+                  <span class="text-text-muted">Códigos automáticos <span class="text-[10px]">(al pagar la seña)</span></span>
+                  <button @click="toggleAutoCodes" :disabled="togglingAuto" class="relative w-9 h-5 rounded-full transition-colors cursor-pointer disabled:opacity-50 shrink-0" :class="autoOn ? 'bg-teal' : 'bg-gray-300'" :title="autoOn ? 'Activado' : 'Desactivado'">
+                    <span class="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" :class="autoOn ? 'left-4' : 'left-0.5'"></span>
+                  </button>
+                </div>
+
                 <!-- Gateway (dónde está conectada) -->
                 <div class="pt-2 border-t border-border">
                   <div class="text-[10px] font-bold text-text-muted uppercase mb-1.5">Gateway</div>
@@ -214,6 +222,7 @@ const tab = ref<LockTab>('device')
 const loading = ref(false)
 const generating = ref(false)
 const unlocking = ref(false)
+const togglingAuto = ref(false)
 const deletingId = ref<number | null>(null)
 const lock = ref<LockDevice | null>(null)
 const codes = ref<LockCode[]>([])
@@ -240,6 +249,8 @@ const fijoCode = ref('')
 const fijoName = ref('')
 const creatingFijo = ref(false)
 
+// Auto-códigos: habilitado salvo que sea explícitamente false (filas viejas sin el campo = ON).
+const autoOn = computed(() => lock.value?.autoCodesEnabled !== false)
 const fijos = computed(() => activeCodes.value.filter(c => c.keyboardPwdType === 1))
 const errors = computed(() => records.value.filter(r => r.success !== 1))
 const errorCount = computed(() => errors.value.length)
@@ -327,6 +338,22 @@ async function loadRecords() {
     toast.error((e as Error).message || 'No se pudo leer el historial')
   } finally {
     recordsLoading.value = false
+  }
+}
+
+async function toggleAutoCodes() {
+  if (!lock.value?.id || togglingAuto.value) return
+  const next = !autoOn.value
+  togglingAuto.value = true
+  try {
+    await TTLockService.updateLock(lock.value.id, { autoCodesEnabled: next })
+    lock.value.autoCodesEnabled = next
+    emit('changed')
+    toast.success(next ? 'Auto-códigos activados' : 'Auto-códigos desactivados')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo cambiar el auto-código')
+  } finally {
+    togglingAuto.value = false
   }
 }
 

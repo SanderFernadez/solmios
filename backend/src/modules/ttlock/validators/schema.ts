@@ -22,6 +22,7 @@ export const ConnectTTLockSchema: Record<string, ValidationRule> = {
 export const UpdateLockDeviceSchema: Record<string, ValidationRule> = {
   roomId: { type: 'string' as const },
   name: { type: 'string' as const, max: 100 },
+  autoCodesEnabled: { type: 'boolean' as const },
 }
 
 // Código fijo (permanente) de staff. `code` opcional (si no viene, se genera). 4-9 dígitos.

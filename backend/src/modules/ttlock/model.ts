@@ -11,6 +11,9 @@ export const LockDevicesModel: ModelDefinition = {
     mac: { type: 'string' },
     batteryLevel: { type: 'number', default: 0 },
     status: { type: 'string', default: 'offline' },
+    // Auto-generar el código al pagarse la seña, por cerradura. Default true (comportamiento previo).
+    // Boolean → columna INTEGER (0/1). Filas viejas (NULL tras ADD COLUMN) se tratan como habilitado.
+    autoCodesEnabled: { type: 'boolean', default: true },
   },
   timestamps: true,
 }

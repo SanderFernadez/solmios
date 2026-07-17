@@ -25,6 +25,7 @@ export interface LockDeviceDTO {
   mac: string
   batteryLevel: number
   status: string
+  autoCodesEnabled?: boolean
 }
 
 export interface LockCodeDTO {
@@ -44,6 +45,7 @@ export interface LockCodeDTO {
 export interface UpdateLockDeviceDTO {
   roomId?: string
   name?: string
+  autoCodesEnabled?: boolean
 }
 
 export interface TTLockConnectDTO {

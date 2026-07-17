@@ -252,6 +252,22 @@ describe('TtlockService', () => {
       await expect(svc.generateCodeIfAbsent('h1', 'res1')).rejects.toThrow(/no encontrada/)
     })
 
+    it('NO genera (auto) si la cerradura de la habitación tiene auto-códigos apagado', async () => {
+      const orm = makeOrm({
+        findMany: async (table: string) => {
+          if (table === 'LockCodes') return []                                   // sin código previo
+          if (table === 'Reservations') return [{ id: 'res1', hotelId: 'h1', roomId: 'rm1' }]
+          if (table === 'LockDevices') return [{ id: 'l1', hotelId: 'h1', ttlockLockId: '123', roomId: 'rm1', autoCodesEnabled: false }]
+          return []
+        },
+      })
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+      const r = await svc.generateCodeIfAbsent('h1', 'res1')
+      expect(r.skipped).toBe(true)
+      expect(r.reason).toBe('auto-disabled')
+    })
+
     // #240 — código duplicado: con un código ACTIVO existente NO debe crearse una segunda fila.
     it('NO crea una segunda fila lock_codes si ya hay una activa', async () => {
       const created: any[] = []

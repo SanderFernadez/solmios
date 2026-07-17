@@ -118,6 +118,14 @@ export class TtlockService {
     // Sin esto, cada reintento del webhook duplicaría la fila pendiente para la misma reserva.
     const existing = codes.find((c: any) => c.reservationId === reservationId && (c.status === 'active' || c.status === 'pending'))
     if (existing) return { skipped: true, reason: `already-${existing.status}` }
+    // Toggle por cerradura: si la cerradura de la habitación tiene los auto-códigos apagados, NO generar
+    // en el flujo automático (el botón manual sí, porque `generateCode` no pasa por acá). Filas viejas
+    // sin el campo (undefined/NULL) cuentan como habilitado — solo `=== false` apaga.
+    const res = await this.queries.findReservationById(reservationId)
+    if (res?.roomId) {
+      const lock = (await this.lockDevicesRepo.findMany({ roomId: res.roomId }))[0] as any
+      if (lock && lock.autoCodesEnabled === false) return { skipped: true, reason: 'auto-disabled' }
+    }
     return this.generateCode(hotelId, reservationId)
   }
 
@@ -179,7 +187,9 @@ export class TtlockService {
     const patch: Partial<Omit<LockDeviceDTO, 'id'>> = {}
     if (body.roomId !== undefined) patch.roomId = body.roomId
     if (body.name !== undefined) patch.name = body.name
+    if (body.autoCodesEnabled !== undefined) patch.autoCodesEnabled = body.autoCodesEnabled
     await this.lockDevicesRepo.update(lockId, patch)
-    return await this.lockDevicesRepo.findById(lockId)
+    // Devolvemos el lock ya validado + el patch, sin re-consultar (evita un segundo findById).
+    return { ...(lock || {}), ...patch, id: lockId }
   }
 }

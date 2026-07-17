@@ -10,6 +10,8 @@ export interface LockDevice {
   batteryLevel?: number
   status?: string
   roomNumber?: string
+  /** Auto-generar el código al pagarse la seña, por cerradura. */
+  autoCodesEnabled?: boolean
 }
 
 export interface LockCode {
@@ -91,7 +93,7 @@ export const TTLockService = {
   listLocks: () => http.get<{ data: LockDevice[] }>('/ttlock/locks'),
   listCodes: () => http.get<{ data: LockCode[] }>('/ttlock/codes'),
   sync: () => http.post<{ success: boolean; synced: number; message?: string }>('/ttlock/sync'),
-  updateLock: (id: string, patch: { roomId?: string; name?: string }) =>
+  updateLock: (id: string, patch: { roomId?: string; name?: string; autoCodesEnabled?: boolean }) =>
     http.put<LockDevice>(`/ttlock/lock/${id}`, patch),
   generateCode: (reservationId: string) => http.post<LockCode>(`/ttlock/generate-code/${reservationId}`),
   revokeCode: (id: string) => http.delete<{ success: boolean }>(`/ttlock/code/${id}`),
