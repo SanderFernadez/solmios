@@ -3,8 +3,9 @@ import { validateSchema } from 'arckode-framework'
 import type { PricingService } from './service'
 import {
   UpdateSeasonsSchema, UpdateRatesSchema, UpdateRateRestrictionsSchema, CreateBlockSchema,
-  ActivateSeasonSchema,
+  ActivateSeasonSchema, UpdateDateRestrictionsSchema,
   validateRateItems, validateSeasonItems, validateRestrictionItems, validateBlockRange,
+  validateDateRestrictionItems,
 } from './validators/schema'
 
 export class PricingController {
@@ -110,5 +111,19 @@ export class PricingController {
   async getChannelMetrics(req: HttpRequest) {
     const id = await this.hotelOf(req); if (!id) return { status: 200, body: { data: [] } }
     return { status: 200, body: { data: await this.service.getChannelMetrics(id) } }
+  }
+
+  async listDateRestrictions(req: HttpRequest) {
+    const id = await this.hotelOf(req); if (!id) return { status: 200, body: { data: [] } }
+    const { from, to } = (req.query || {}) as any
+    return { status: 200, body: { data: await this.service.listDateRestrictions(id, from, to) } }
+  }
+
+  async updateDateRestrictions(req: HttpRequest) {
+    const id = await this.hotelOf(req); if (!id) return { status: 400, body: { error: 'hotelId requerido' } }
+    validateSchema(UpdateDateRestrictionsSchema, req.body)
+    const { items } = req.body as any
+    validateDateRestrictionItems(items)
+    return { status: 200, body: { success: true, count: await this.service.updateDateRestrictions(id, items, this.actorOf(req)) } }
   }
 }

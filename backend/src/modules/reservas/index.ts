@@ -37,11 +37,12 @@ export function ReservasModule() {
       const roomRepo = new OrmRepository<any>(orm, 'Rooms')
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const blockRepo = new OrmRepository<any>(orm, 'RoomBlocks')
+      const dateRestrictionRepo = new OrmRepository<any>(orm, 'DateRestrictions')
       const companionsRepo = new OrmRepository<any>(orm, 'Companions')
       const addonsRepo = new OrmRepository<any>(orm, 'ReservationAddons')
       const messageLogRepo = new OrmRepository<any>(orm, 'MessageLogs')
       const queries = new ReservasQueries(orm)
-      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo)
+      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo, dateRestrictionRepo)
       const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth, orm, null, messageLogRepo, roomRepo, hotelRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

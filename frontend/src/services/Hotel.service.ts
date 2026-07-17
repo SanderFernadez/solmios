@@ -87,6 +87,15 @@ export const HotelService = {
     return http.post('/rates/copy-next-year')
   },
 
+  // Días Mínimos por fecha (fila del planning). Solo devuelve overrides (minStay > 1).
+  async dateRestrictions(from?: string, to?: string): Promise<{ data: { date: string; minStay: number }[] }> {
+    const qs = from && to ? `?from=${from}&to=${to}` : ''
+    return http.get(`/date-restrictions${qs}`)
+  },
+  async saveDateRestrictions(items: { date: string; minStay: number }[]): Promise<{ success: boolean; count: number }> {
+    return http.put('/date-restrictions', { items })
+  },
+
   // Blocks
   async blocks(startDate?: string, endDate?: string): Promise<{ data: any[] }> {
     const qs = startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : ''

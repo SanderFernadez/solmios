@@ -47,7 +47,7 @@ export async function getReservationById(repo: any, id: string, currentUser: { i
   return item
 }
 
-export async function createReservation(repo: any, blockRepo: any | undefined, logger: any, cache: any, sockets: any, notifyDeps: any, dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }, roomRepo?: any, guestRepo?: any): Promise<ReservasDTO> {
+export async function createReservation(repo: any, blockRepo: any | undefined, logger: any, cache: any, sockets: any, notifyDeps: any, dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }, roomRepo?: any, guestRepo?: any, dateRestrictionRepo?: any): Promise<ReservasDTO> {
   if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado para crear en otro hotel')
   // El estado inicial no puede ser checked_in/checked_out/etc: esos se logran vía /checkin y
   // /checkout (que crean folio y ocupan el cuarto). Una reserva nace confirmada o pendiente.
@@ -67,6 +67,15 @@ export async function createReservation(repo: any, blockRepo: any | undefined, l
     if (!guest || guest.hotelId !== dto.hotelId) throw new ConflictError('El huésped no pertenece a este hotel')
   }
   if (dto.checkIn >= dto.checkOut) throw new ConflictError('checkIn debe ser anterior a checkOut')
+  // Estadía mínima por fecha (fila "Días Mínimos" del planning). Solo se persisten overrides (minStay>1);
+  // sin fila para la fecha de entrada, el mínimo es 1 noche. Lee la tabla compartida DateRestrictions —
+  // sin importar el módulo pricing (aislamiento de módulos), igual que blockRepo con RoomBlocks.
+  if (dateRestrictionRepo) {
+    const nights = Math.round((new Date(dto.checkOut).getTime() - new Date(dto.checkIn).getTime()) / 86_400_000)
+    const row = (await dateRestrictionRepo.findMany({ hotelId: dto.hotelId, date: dto.checkIn }))[0] as any
+    const minStay = row && Number(row.minStay) > 1 ? Math.floor(Number(row.minStay)) : 1
+    if (nights < minStay) throw new ConflictError(`Estadía mínima para el ${dto.checkIn}: ${minStay} noche(s)`)
+  }
   await assertRoomAvailable(repo, dto.roomId, dto.checkIn, dto.checkOut)
   if (blockRepo) {
     const blocks = await blockRepo.findMany({ roomId: dto.roomId, hotelId: dto.hotelId })

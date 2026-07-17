@@ -89,6 +89,28 @@
               </div>
             </div>
 
+            <!-- Días Mínimos: estadía mínima (noches) para reservas que ENTRAN cada día -->
+            <div class="flex border-b border-border bg-amber-50/60">
+              <div class="w-56 flex-shrink-0 px-4 py-2 border-r border-border flex items-center gap-1.5">
+                <span class="text-[11px] leading-none">📏</span>
+                <span class="text-[10px] font-black text-navy uppercase tracking-wide">Días Mínimos</span>
+              </div>
+              <div v-for="day in visibleDays" :key="'ms-' + day.dateStr"
+                class="flex-1 min-w-[68px] px-1 py-1.5 text-center border-r border-navy/10 shrink-0"
+                :class="day.isToday ? 'bg-cyan/10' : ''">
+                <input v-if="minStayEditDate === day.dateStr" :ref="setMinStayInput" type="number" min="1" max="365"
+                  v-model.number="minStayDraft"
+                  @blur="commitMinStay(day.dateStr)" @keyup.enter="commitMinStay(day.dateStr)" @keyup.esc="minStayEditDate = null"
+                  class="w-11 text-center text-xs font-black border border-navy rounded px-0.5 py-0.5 outline-none" />
+                <button v-else type="button" @click="startMinStayEdit(day.dateStr)" :disabled="!canEditMinStay"
+                  class="w-full text-xs font-black rounded px-1 py-0.5 transition-colors"
+                  :class="[minStayFor(day.dateStr) > 1 ? 'text-coral' : 'text-navy/60', canEditMinStay ? 'cursor-pointer hover:bg-navy/10' : 'cursor-default']"
+                  :title="canEditMinStay ? 'Estadía mínima (noches) para llegadas este día — clic para editar' : 'Estadía mínima (noches) para llegadas este día'">
+                  {{ minStayFor(day.dateStr) }}
+                </button>
+              </div>
+            </div>
+
             <!-- Room groups -->
             <template v-for="rt in filteredRoomTypes" :key="rt.type">
               <div class="flex border-b border-border bg-navy/5">
@@ -1645,10 +1667,57 @@ async function saveNewRes() {
   }
 }
 
+// ── Días Mínimos por fecha (estadía mínima de una reserva que ENTRA ese día) ──
+// La fila del planning muestra las noches mínimas por columna. Default 1; solo se guardan
+// overrides (>1). Editable por admin del hotel — el backend valida (settings:edit) y la reserva
+// se rechaza si dura menos que el mínimo de su fecha de entrada.
+const minStayByDate = ref<Record<string, number>>({})
+const minStayEditDate = ref<string | null>(null)
+const minStayDraft = ref<number>(1)
+const canEditMinStay = computed(() => auth.isHotelAdmin || auth.isSuperAdmin)
+function minStayFor(dateStr: string) { return minStayByDate.value[dateStr] || 1 }
+// Function-ref: enfoca el input al montarse (confiable dentro de v-for, a diferencia de un ref plano).
+function setMinStayInput(el: any) { if (el) { el.focus?.(); el.select?.() } }
+async function loadDateRestrictions() {
+  const days = visibleDays.value
+  if (!days.length) return
+  try {
+    const r = await HotelService.dateRestrictions(days[0].dateStr, days[days.length - 1].dateStr)
+    const map: Record<string, number> = {}
+    for (const it of r.data || []) map[it.date] = Number(it.minStay) || 1
+    minStayByDate.value = map
+  } catch { /* sin permiso o error: la fila queda en el default (1) */ }
+}
+function startMinStayEdit(dateStr: string) {
+  if (!canEditMinStay.value) return
+  minStayDraft.value = minStayFor(dateStr)
+  minStayEditDate.value = dateStr
+}
+async function commitMinStay(dateStr: string) {
+  if (minStayEditDate.value !== dateStr) return
+  minStayEditDate.value = null
+  const v = Math.max(1, Math.min(365, Math.floor(Number(minStayDraft.value) || 1)))
+  if (v === minStayFor(dateStr)) return
+  const prev = { ...minStayByDate.value }
+  const next = { ...minStayByDate.value }
+  if (v > 1) next[dateStr] = v; else delete next[dateStr]
+  minStayByDate.value = next
+  try {
+    await HotelService.saveDateRestrictions([{ date: dateStr, minStay: v }])
+    toast.success(v > 1 ? `Mínimo ${v} noches para el ${dateStr}` : `Sin mínimo para el ${dateStr}`)
+  } catch (e: any) {
+    minStayByDate.value = prev
+    toast.error(e?.message || 'No se pudo guardar el mínimo')
+  }
+}
+// Recargar los mínimos cuando cambia el rango visible (semana/vista).
+watch(() => visibleDays.value.length ? `${visibleDays.value[0].dateStr}|${visibleDays.value[visibleDays.value.length - 1].dateStr}` : '', () => loadDateRestrictions())
+
 // Load
 onMounted(async () => {
   try { const d = await OperationsService.planning(hid.value); planRooms.value = d.rooms ?? []; planReservas.value = d.reservas ?? [] } catch {}
   loadLocks()
+  loadDateRestrictions()
   try { const b = await HotelService.blocks(); planBlocks.value = (b.data ?? []) as any[] } catch {}
   try {
     const s = await HotelService.settings(hid.value)

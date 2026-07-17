@@ -52,6 +52,7 @@ export class ReservasService {
     private readonly hotelRepo: RepositoryAdapter<any>,
     private readonly queries: ReservasQueries,
     private readonly blockRepo?: RepositoryAdapter<any>,
+    private readonly dateRestrictionRepo?: RepositoryAdapter<any>,
   ) {}
 
   // ACUMULA handlers — nunca pisa el anterior.
@@ -79,7 +80,7 @@ export class ReservasService {
 
   async create(dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Creando reserva', { userId: currentUser.id, roomId: dto.roomId })
-    const item = await createReservation(this.repo, this.blockRepo, this.logger, this.cache, this.sockets, this.notifyDeps(), dto, currentUser, this.roomRepo, this.guestRepo)
+    const item = await createReservation(this.repo, this.blockRepo, this.logger, this.cache, this.sockets, this.notifyDeps(), dto, currentUser, this.roomRepo, this.guestRepo, this.dateRestrictionRepo)
     dispatchCreateEmail(this.notifyDeps(), dto, item)
     return item
   }

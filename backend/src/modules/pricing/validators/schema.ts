@@ -35,6 +35,12 @@ export const UpdateRateRestrictionsSchema: Record<string, ValidationRule> = {
   restrictions: { type: arrayType, required: true },
 }
 
+export const UpdateDateRestrictionsSchema: Record<string, ValidationRule> = {
+  items: { type: arrayType, required: true },
+}
+
+const MAX_MIN_STAY = 365   // estadía mínima disparatada (más de un año) se corta acá
+
 // ─── Validación por ítem (validateSchema no valida el contenido de los arrays) ───
 
 /** Cada tarifa: precios/recargos en rango y la tarifa resultante nunca negativa. */
@@ -90,6 +96,19 @@ export function validateRestrictionItems(restrictions: unknown): void {
   })
 }
 
+/** Cada ítem de "Días Mínimos": fecha válida y minStay entero en [1..365]. */
+export function validateDateRestrictionItems(items: unknown): void {
+  if (!Array.isArray(items)) throw new ValidationError('items debe ser un array')
+  items.forEach((it: any, i: number) => {
+    const at = `items[${i}]`
+    if (!it || typeof it !== 'object') throw new ValidationError(`${at}: item inválido`)
+    if (!DATE_RE.test(String(it.date || ''))) throw new ValidationError(`${at}: date inválido (YYYY-MM-DD)`)
+    const v = num(it.minStay)
+    if (!Number.isInteger(v) || v < 1 || v > MAX_MIN_STAY)
+      throw new ValidationError(`${at}: minStay debe ser un entero entre 1 y ${MAX_MIN_STAY}`)
+  })
+}
+
 /** Bloqueo de habitación: fin no anterior al inicio (los formatos ya los valida CreateBlockSchema). */
 export function validateBlockRange(startDate: string, endDate: string): void {
   if (startDate && endDate && endDate < startDate)
@@ -101,4 +120,5 @@ export const PricingValidator = {
   updateSeasons: UpdateSeasonsSchema,
   updateRates: UpdateRatesSchema,
   updateRateRestrictions: UpdateRateRestrictionsSchema,
+  updateDateRestrictions: UpdateDateRestrictionsSchema,
 }

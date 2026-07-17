@@ -129,6 +129,14 @@ async function createTablesBlock1(): Promise<void> {
     relatedType TEXT, relatedId TEXT, createdAt TEXT, updatedAt TEXT)`)
   await exec(`CREATE INDEX IF NOT EXISTS idx_email_queue_status_retry ON email_queue (status, nextRetryAt)`)
 
+  // Estadía mínima por FECHA (fila "Días Mínimos" del planning). Solo overrides (minStay>1);
+  // una fecha sin fila = 1 noche mínima. UNIQUE(hotelId, date) para el upsert por fecha.
+  await exec(`CREATE TABLE IF NOT EXISTS date_restrictions (
+    id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, date TEXT NOT NULL,
+    minStay INTEGER NOT NULL DEFAULT 1, createdAt TEXT, updatedAt TEXT)`)
+  await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_date_restrictions_hotel_date
+    ON date_restrictions (hotelId, date)`)
+
   await exec(`CREATE TABLE IF NOT EXISTS groups (
     id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, name TEXT NOT NULL, leadGuestId TEXT,
     totalRooms INTEGER DEFAULT 1, checkIn TEXT, checkOut TEXT, status TEXT DEFAULT 'pending',

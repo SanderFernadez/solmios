@@ -82,6 +82,20 @@ export function registerSharedModels(orm: ORM): void {
     },
   })
 
+  // ─── Date Restrictions (estadía mínima por fecha) ────
+  // minStay por FECHA de check-in (a diferencia de RateRestrictions, que es por roomType+season).
+  // Alimenta la fila "Días Mínimos" del planning y se valida al crear una reserva. Solo se
+  // persisten overrides (minStay > 1); una fecha sin fila = 1 noche mínima (default).
+  orm.define('DateRestrictions', {
+    table: 'date_restrictions', timestamps: true,
+    fields: {
+      id: { type: 'string', required: true },
+      hotelId: { type: 'string', required: true, indexed: true },
+      date: { type: 'string', required: true, indexed: true },
+      minStay: { type: 'number', default: 1 },
+    },
+  })
+
   // ─── Email Queue ─────────────────────────────────────
   orm.define('EmailQueue', {
     table: 'email_queue', timestamps: true,

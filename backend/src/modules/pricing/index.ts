@@ -14,9 +14,9 @@ export function PricingModule() {
     contract: {
       name: 'pricing', version: '1.0.0',
       description: 'Inventory and pricing management',
-      actions: ['listSeasons', 'updateSeasons', 'listRates', 'updateRates', 'copyRatesNextYear', 'listBlocks', 'createBlocks', 'deleteBlock', 'listRateRestrictions', 'updateRateRestrictions', 'getChannelMetrics'],
+      actions: ['listSeasons', 'updateSeasons', 'listRates', 'updateRates', 'copyRatesNextYear', 'listBlocks', 'createBlocks', 'deleteBlock', 'listRateRestrictions', 'updateRateRestrictions', 'listDateRestrictions', 'updateDateRestrictions', 'getChannelMetrics'],
       events: [],
-      tables: ['seasons', 'room_rates', 'room_blocks', 'rate_restrictions'],
+      tables: ['seasons', 'room_rates', 'room_blocks', 'rate_restrictions', 'date_restrictions'],
       dependencies: [],
       rules: [],
     },
@@ -27,8 +27,9 @@ export function PricingModule() {
       const ratesRepo = new OrmRepository<any>(orm, 'RoomRates')
       const blocksRepo = new OrmRepository<any>(orm, 'RoomBlocks')
       const restrictionsRepo = new OrmRepository<any>(orm, 'RateRestrictions')
+      const dateRestrictionsRepo = new OrmRepository<any>(orm, 'DateRestrictions')
       const queries = new PricingQueries(orm)
-      const service = new PricingService(seasonsRepo, ratesRepo, blocksRepo, restrictionsRepo, log, queries)
+      const service = new PricingService(seasonsRepo, ratesRepo, blocksRepo, restrictionsRepo, log, queries, dateRestrictionsRepo)
       const controller = new PricingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -45,9 +46,13 @@ export function PricingModule() {
       router.delete('/api/blocks/:id', guard('settings', 'delete'), (req: any) => controller.deleteBlock(req))
       router.get('/api/rate-restrictions', guard('settings', 'view'), (req: any) => controller.listRateRestrictions(req))
       router.put('/api/rate-restrictions', guard('settings', 'edit'), (req: any) => controller.updateRateRestrictions(req))
+      // Días Mínimos por fecha (fila del planning). Lectura con reservations:view — el calendario la
+      // pinta para recepción; la edición sigue siendo settings:edit (config de tarifas).
+      router.get('/api/date-restrictions', guard('reservations', 'view'), (req: any) => controller.listDateRestrictions(req))
+      router.put('/api/date-restrictions', guard('settings', 'edit'), (req: any) => controller.updateDateRestrictions(req))
       router.get('/api/channel-metrics', guard('settings', 'view'), (req: any) => controller.getChannelMetrics(req))
 
-      log.info('Módulo pricing listo (11 endpoints)')
+      log.info('Módulo pricing listo (13 endpoints)')
       return service
     },
   })

@@ -6,6 +6,10 @@ import {
   restrictionsChangeEntry, blockDeleteEntry,
   type AuditEntry, type AuditPort, type Actor, type RateChange,
 } from './usecases/audit'
+import {
+  listDateRestrictions, upsertDateRestrictions,
+  type DateRestrictionRow, type DateRestrictionInput,
+} from './usecases/date-restrictions'
 
 export class PricingService {
   private auditPort: AuditPort | null = null
@@ -17,6 +21,7 @@ export class PricingService {
     private readonly restrictionsRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly queries?: PricingQueries,
+    private readonly dateRestrictionsRepo?: RepositoryAdapter<any>,
   ) {}
 
   /** Conecta el audit log. Lo inyecta el connector `pricing-auditlog`. */
@@ -171,5 +176,18 @@ export class PricingService {
   async getChannelMetrics(hotelId: string): Promise<any[]> {
     if (!this.queries) throw new Error('Queries no disponible')
     return this.queries.getChannelMetrics(hotelId)
+  }
+
+  /** Estadía mínima por fecha (fila "Días Mínimos" del planning). Default 1 si no hay override. */
+  async listDateRestrictions(hotelId: string, from?: string, to?: string): Promise<DateRestrictionRow[]> {
+    if (!this.dateRestrictionsRepo) return []
+    return listDateRestrictions(this.dateRestrictionsRepo, hotelId, from, to)
+  }
+
+  async updateDateRestrictions(hotelId: string, items: DateRestrictionInput[], actor?: Actor): Promise<number> {
+    if (!this.dateRestrictionsRepo) throw new Error('DateRestrictions repo no disponible')
+    const saved = await upsertDateRestrictions(this.dateRestrictionsRepo, hotelId, items)
+    if (saved > 0) await this.audit(restrictionsChangeEntry(hotelId, saved, actor))
+    return saved
   }
 }
