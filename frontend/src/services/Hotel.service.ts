@@ -31,6 +31,7 @@ export interface Season {
 export interface RoomRate {
   id?: string; hotelId?: string; roomType: string; occupancy: number
   season: string; price: number; basePrice: number; percentage: number; closed: number
+  channel?: string; minStay?: number; maxStay?: number; _inherited?: boolean
 }
 
 export interface AmenityCatalog {
@@ -76,9 +77,9 @@ export const HotelService = {
     return http.post('/seasons/activate', { name })
   },
 
-  // Rates matrix
-  async rates(): Promise<{ data: RoomRate[] }> {
-    return http.get('/rates')
+  // Rates matrix. Con `channel` devuelve las tarifas de ese canal (override o base heredada).
+  async rates(channel?: string): Promise<{ data: RoomRate[] }> {
+    return http.get(`/rates${channel ? `?channel=${encodeURIComponent(channel)}` : ''}`)
   },
   async saveRates(rates: Partial<RoomRate>[]) {
     return http.put('/rates', { rates })

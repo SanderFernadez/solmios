@@ -180,10 +180,14 @@ export function registerSharedModels(orm: ORM): void {
       roomType: { type: 'string', required: true },
       occupancy: { type: 'number', required: true },
       season: { type: 'string', required: true },
+      // channel '' = tarifa base del hotel; 'airbnb'/'booking'/... = override por canal (match-misterplan).
+      channel: { type: 'string', default: '' },
       price: { type: 'number', required: true },
       basePrice: { type: 'number', default: 0 },
       percentage: { type: 'number', default: 0 },
       closed: { type: 'number', default: 0 },
+      minStay: { type: 'number', default: 0 },
+      maxStay: { type: 'number', default: 0 },
     },
   })
 

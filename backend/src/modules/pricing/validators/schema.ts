@@ -68,6 +68,11 @@ export function validateRateItems(rates: unknown): void {
       const price = num(r.price)
       if (!Number.isFinite(price) || price < 0 || price > MAX_PRICE) throw new ValidationError(`${at}: price fuera de rango`)
     }
+    if (r.channel !== undefined && typeof r.channel !== 'string') throw new ValidationError(`${at}: channel debe ser string`)
+    const minStay = num(r.minStay ?? 0), maxStay = num(r.maxStay ?? 0)
+    if (minStay < 0 || minStay > MAX_MIN_STAY || maxStay < 0 || maxStay > MAX_MIN_STAY)
+      throw new ValidationError(`${at}: minStay/maxStay fuera de rango (0..${MAX_MIN_STAY})`)
+    if (maxStay > 0 && maxStay < minStay) throw new ValidationError(`${at}: maxStay no puede ser menor que minStay`)
   })
 }
 

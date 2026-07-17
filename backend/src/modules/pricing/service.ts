@@ -84,8 +84,18 @@ export class PricingService {
     return this.listSeasons(hotelId)
   }
 
-  async listRates(hotelId: string): Promise<any[]> {
-    return await this.ratesRepo.findMany({ hotelId }) as any[]
+  async listRates(hotelId: string, channel?: string): Promise<any[]> {
+    const all = await this.ratesRepo.findMany({ hotelId }) as any[]
+    const base = all.filter((r) => !r.channel)
+    if (!channel) return base
+    // Vista por canal: por cada celda base, si el canal tiene override lo devolvemos; si no, proyectamos
+    // la base al canal (sin id, hereda basePrice del hotel, %=0) para que el front la muestre y, al
+    // guardar, se cree la fila del canal. `_inherited` marca las que aún no tienen override propio.
+    const key = (r: any) => `${r.roomType}|${r.occupancy}|${r.season}`
+    const overrides = new Map((all.filter((r) => r.channel === channel)).map((o) => [key(o), o]))
+    return base.map((b) => overrides.get(key(b)) ?? ({
+      ...b, id: undefined, channel, percentage: 0, price: b.basePrice, closed: 0, minStay: 0, maxStay: 0, _inherited: true,
+    }))
   }
 
   async updateRates(hotelId: string, rates: any[], actor?: Actor): Promise<number> {
@@ -93,18 +103,20 @@ export class PricingService {
     const changes: RateChange[] = []
     for (const r of rates) {
       if (!r.roomType || !r.season || r.occupancy === undefined) continue
+      const channel = typeof r.channel === 'string' ? r.channel : ''
       const basePrice = r.basePrice ?? 0; const percentage = r.percentage ?? 0
       const price = Math.round(basePrice * (1 + percentage / 100) * 100) / 100
       const closed = r.closed ? 1 : 0
-      const existing = (await this.ratesRepo.findMany({ hotelId, roomType: r.roomType, occupancy: r.occupancy, season: r.season }))[0] as any
+      const minStay = Number(r.minStay) || 0; const maxStay = Number(r.maxStay) || 0
+      const existing = (await this.ratesRepo.findMany({ hotelId, roomType: r.roomType, occupancy: r.occupancy, season: r.season, channel }))[0] as any
       const change: RateChange = { roomType: r.roomType, season: r.season, occupancy: r.occupancy, from: null, to: price, closed }
       if (existing) {
-        await this.ratesRepo.update(existing.id, { basePrice, percentage, price, closed })
+        await this.ratesRepo.update(existing.id, { basePrice, percentage, price, closed, minStay, maxStay })
         // El grid manda TODAS las celdas en cada guardado: solo se audita lo que realmente cambió.
         const moved = Number(existing.price ?? 0) !== price || Number(existing.closed ?? 0) !== closed
         if (moved) changes.push({ ...change, from: Number(existing.price ?? 0) })
       } else {
-        await this.ratesRepo.create({ id: crypto.randomUUID(), hotelId, roomType: r.roomType, occupancy: r.occupancy, season: r.season, basePrice, percentage, price, closed })
+        await this.ratesRepo.create({ id: crypto.randomUUID(), hotelId, roomType: r.roomType, occupancy: r.occupancy, season: r.season, channel, basePrice, percentage, price, closed, minStay, maxStay })
         changes.push(change)
       }
       saved++

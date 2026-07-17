@@ -162,6 +162,9 @@
       </div>
     </div>
 
+    <!-- Tarifas por canal (solo con canales conectados) — precios/temporadas al estilo MisterPlan -->
+    <ChannelRatesEditor v-if="connectedForRates.length" :channels="connectedForRates" :hotel-id="hotelId" />
+
     <!-- Available Channels -->
     <div class="mb-8">
       <h2 class="text-lg font-black text-navy mb-4">Canales Disponibles para Conectar</h2>
@@ -230,6 +233,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { http } from '@/services/http'
 import { resolveChannelLogo } from '@/utils/channelLogos'
+import ChannelRatesEditor from '@/components/features/ChannelRatesEditor.vue'
 
 const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
 const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>'
@@ -266,6 +270,13 @@ const syncing = ref(false)
 const connectedChannels = ref<any[]>([])
 const availableChannels = ref<any[]>([])
 const syncLog = ref<any[]>([])
+
+// Canales realmente conectados → alimentan el editor de tarifas por canal (match-misterplan).
+const connectedForRates = computed(() =>
+  connectedChannels.value
+    .filter((c) => c.connected)
+    .map((c) => ({ code: String(c.otaCode || c.name), name: c.name })),
+)
 
 const connectDialog = ref<{ channelId: string; channelName: string; channelCode: string; title: string; connected: boolean } | null>(null)
 const configDialog = ref<{ id: string; name: string; otaCode: string; active: boolean; bookings: number; lastSync: string; connected: boolean } | null>(null)

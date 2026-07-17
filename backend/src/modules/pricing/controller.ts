@@ -59,7 +59,9 @@ export class PricingController {
 
   async listRates(req: HttpRequest) {
     const id = await this.hotelOf(req); if (!id) return { status: 200, body: { data: [] } }
-    return { status: 200, body: { data: await this.service.listRates(id) } }
+    // ?channel= filtra a las tarifas de ese canal (con fallback a la base); sin él, devuelve la base.
+    const channel = typeof req.query?.channel === 'string' ? req.query.channel : undefined
+    return { status: 200, body: { data: await this.service.listRates(id, channel) } }
   }
 
   async updateRates(req: HttpRequest) {
