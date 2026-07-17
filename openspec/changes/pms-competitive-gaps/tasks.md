@@ -72,7 +72,7 @@ cd frontend && npx vue-tsc -b  # 0 errores
 ### PC-3.1 — Backend Stripe
 
 - [x] **PC-3.1.1** `cd backend && bun add stripe`
-- [ ] **PC-3.1.2** Crear `backend/src/services/stripe-service.ts` (singleton Stripe con STRIPE_SECRET_KEY, helpers para crear checkout session, construir payment link)
+- [x] **PC-3.1.2** Crear `backend/src/services/stripe-service.ts` (singleton Stripe con STRIPE_SECRET_KEY, helpers para crear checkout session, construir payment link) · verificado: archivo creado + `stripe@^22.2.2`. `createPaymentLink` queda fuera (dead code, ver deuda L160)
 - [x] **PC-3.1.3** `POST /api/payment-requests/:id/create-checkout` — crea Checkout Session en Stripe y actualiza PaymentRequest con `stripeSessionId` + `stripePaymentUrl`
 - [x] **PC-3.1.4** `POST /api/stripe/webhook` (público, sin auth, firma con `STRIPE_WEBHOOK_SECRET`) — maneja `checkout.session.completed`, `payment_intent.payment_failed`. Marca PaymentRequest como `paid` con `paidAt`
 - [x] **PC-3.1.5** `.env.example` con `STRIPE_SECRET_KEY=`, `STRIPE_PUBLISHABLE_KEY=`, `STRIPE_WEBHOOK_SECRET=`, `STRIPE_CURRENCY=usd`

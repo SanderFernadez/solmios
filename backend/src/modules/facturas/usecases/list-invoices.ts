@@ -4,8 +4,8 @@
 import type { RepositoryAdapter, CacheAdapter, Logger } from 'arckode-framework'
 import { AuthError } from 'arckode-framework'
 import type { FacturasDTO, FacturasQuery, FacturasListResult, CurrentUser } from '../types'
-import { enrichInvoice, type EnrichDeps } from './billing'
-import { attachItems } from './invoice-items'
+import { type EnrichDeps } from './billing'
+import { enrichInvoicesBatch } from './enrich-invoices-batch'
 import { facturasListCacheKey } from './cache'
 
 const DEFAULT_LIMIT = 20
@@ -60,7 +60,8 @@ export async function listInvoices(
   if (query?.search) {
     const q = String(query.search).toLowerCase()
     const allRows = await repo.findMany(filters)
-    const allData = await Promise.all(allRows.map(async (r) => attachItems(itemRepo, await enrichInvoice(r, enrichDeps))))
+    // N+1 eliminado (#274/#276): enriquecido en lote (antes hasta 4 queries por factura).
+    const allData = await enrichInvoicesBatch(allRows, enrichDeps, itemRepo)
     const matched = allData.filter((d) =>
       (d.invoiceNumber || '').toLowerCase().includes(q) ||
       (d.guest || '').toLowerCase().includes(q) ||
@@ -77,7 +78,8 @@ export async function listInvoices(
   }
 
   const result = await repo.paginate(filters, { offset, limit })
-  const data = await Promise.all(result.data.map(async (r) => attachItems(itemRepo, await enrichInvoice(r, enrichDeps))))
+  // N+1 eliminado (#274/#276): enriquecido en lote (antes hasta 4 queries por factura).
+  const data = await enrichInvoicesBatch(result.data, enrichDeps, itemRepo)
   const pages = Math.ceil(result.total / limit)
   const response = { data, total: result.total, limit, offset, pages, hasNext: page < pages, hasPrev: page > 1 }
 

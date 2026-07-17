@@ -3,6 +3,8 @@ import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { FolioDTO, FolioChargeDTO, OpenFolioDTO, PostChargeDTO, ApplyPaymentDTO, FolioQuery, FolioListResult, CurrentUser } from './types'
 import type { FoliosSockets } from './sockets'
 import { enrichFolio } from './usecases/enrich-folio'
+import { loadOwnedFolio as loadOwnedFolioUsecase } from './usecases/load-owned-folio'
+import { enrichFoliosBatch } from './usecases/enrich-folios-batch'
 import { folioSummary } from './usecases/folio-summary'
 import { closeAndInvoice as closeAndInvoiceUsecase, type CloseAndInvoiceResult } from './usecases/close-and-invoice'
 import { postNightAuditRoomCharges as postNightAuditUsecase } from './usecases/night-audit'
@@ -73,19 +75,24 @@ export class FoliosService {
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as FolioListResult
     const folios = await this.folioRepo.findMany(filters)
-    const data = await Promise.all(folios.map((f) => this.enrich(f)))
+    // N+1 eliminado (#274/#276): enriquecido en lote. Antes: 3 queries por folio (charges+guest+room).
+    const data = await enrichFoliosBatch(
+      { chargeRepo: this.chargeRepo, guestRepo: this.deps.guest, roomRepo: this.deps.room },
+      folios,
+    )
     const result = { data, total: data.length }
     await this.cache.set(cacheKey, result, 300)
     return result
   }
 
+  /** Carga un folio y exige ownership del hotel antes de devolverlo. Patrón común a getById/close/setInvoice. */
+  private loadOwnedFolio(id: string, user: CurrentUser): Promise<FolioDTO> {
+    return loadOwnedFolioUsecase(this.folioRepo, this.deps.user, this.auth, id, user)
+  }
+
   async getById(id: string, user: CurrentUser): Promise<FolioDTO> {
     this.logger.info('Obteniendo folio', { id })
-    const folio = await this.folioRepo.findById(id)
-    if (!folio) throw new NotFoundError('Folio no encontrado')
-    const me = await this.deps.user.findById(user.id)
-    this.auth.assertOwnership(folio.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
-    return this.enrich(folio, true)
+    return this.enrich(await this.loadOwnedFolio(id, user), true)
   }
 
   private enrich(f: FolioDTO, includeCharges = false): Promise<FolioDTO> {
@@ -131,10 +138,7 @@ export class FoliosService {
 
   // ─── Cerrar folio ──────
   async close(folioId: string, user: CurrentUser): Promise<FolioDTO> {
-    const folio = await this.folioRepo.findById(folioId)
-    if (!folio) throw new NotFoundError('Folio no encontrado')
-    const me = await this.deps.user.findById(user.id)
-    this.auth.assertOwnership(folio.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
+    const folio = await this.loadOwnedFolio(folioId, user)
     if (folio.status !== 'open') throw new ValidationError('El folio no está abierto')
     const closed = await this.folioRepo.update(folioId, { status: 'closed', closedAt: now() } as any)
     await this.sockets.onFolioClosed?.(closed)
@@ -147,10 +151,7 @@ export class FoliosService {
   }
 
   async setInvoice(folioId: string, invoiceId: string, user: CurrentUser): Promise<FolioDTO> {
-    const folio = await this.folioRepo.findById(folioId)
-    if (!folio) throw new NotFoundError('Folio no encontrado')
-    const me = await this.deps.user.findById(user.id)
-    this.auth.assertOwnership(folio.hotelId, me?.hotelId ?? '', user.role, 'super_admin')
+    await this.loadOwnedFolio(folioId, user)
     const updated = await this.folioRepo.update(folioId, { invoiceId } as any)
     return this.enrich(updated as FolioDTO, true)
   }
