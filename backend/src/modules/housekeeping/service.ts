@@ -15,6 +15,7 @@ import { StatsUseCase } from './usecases/stats'
 import { ApproveUseCase } from './usecases/approve'
 import { ConfigListsUseCase } from './usecases/config-lists'
 import { HousekeepingSettingsUseCase, type HousekeepingSettings, DEFAULT_MAX_VIDEO_SECONDS } from './usecases/settings'
+import { getRoomLockCode } from './usecases/lock-code'
 import { VideoUseCase, type VideoUploadTicket } from './usecases/video'
 import type { S3StorageAdapter } from '../../infrastructure/storage/s3-adapter'
 import { assertStaffExists } from './usecases/staff'
@@ -60,6 +61,8 @@ export class HousekeepingService {
     /** Adapter S3 (Backblaze). Sin él, el modo video no se puede usar: la app
      *  sube el archivo directo al bucket con una URL prefirmada. */
     videoStorage?: S3StorageAdapter,
+    private readonly lockDeviceRepo?: RepositoryAdapter<any>,
+    private readonly lockCodeRepo?: RepositoryAdapter<any>,
   ) {
     this.employeeRepo = employeeRepo
     this.timings = new TimingsUseCase(
@@ -182,6 +185,7 @@ export class HousekeepingService {
   async attachVideo(id: string, i: { url: string; path: string; durationSeconds: number; mimeType: string }, u: HousekeepingUser) { return this.afterVideo(await this.video().attachVideo(id, i, u)) }
   async removeVideo(id: string, u: HousekeepingUser) { return this.afterVideo(await this.video().removeVideo(id, u)) }
   async getVideoViewUrl(id: string, u: HousekeepingUser) { return this.video().getViewUrl(id, u) }
+  async getRoomLockCode(id: string, u: HousekeepingUser) { return getRoomLockCode(this.repo, this.auth, this.lockDeviceRepo, this.lockCodeRepo, id, u) }
 
   private async invalidateCache(hotelId?: string) {
     // `delete` de una clave exacta ya no alcanza: la clave del listado incluye

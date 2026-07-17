@@ -209,6 +209,10 @@ export class HousekeepingController {
     return { status: 200, body: await this.service.getVideoViewUrl(req.params.id, req.user as any) }
   }
 
+  async lockCode(req: HttpRequest) {
+    return { status: 200, body: await this.service.getRoomLockCode(req.params.id, req.user as any) }
+  }
+
   async updateSupplyLists(req: HttpRequest) {
     const hotelId = (req.user as any).hotelId
     const body = (req.body || {}) as Record<string, unknown>

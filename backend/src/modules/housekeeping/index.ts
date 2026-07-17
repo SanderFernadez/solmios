@@ -58,7 +58,11 @@ export function HousekeepingModule(
       // KV por hotel (tabla `configuration`): guarda los ajustes de housekeeping,
       // como si el supervisor debe tomar foto de presencia para revisar.
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
-      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo, roomRepo, checklistRepo, configRepo, opts.videoStorage)
+      // Cerraduras TTLock: para darle a la camarera el código de entrada de su
+      // habitación (opcional — solo si el hotel tiene TTLock en esa habitación).
+      const lockDeviceRepo = new OrmRepository<any>(orm, 'LockDevices')
+      const lockCodeRepo = new OrmRepository<any>(orm, 'LockCodes')
+      const service = new HousekeepingService(repo, log, cache, userRepo, auth, employeeRepo, opts.storage, photoReqRepo, supplyRepo, roomRepo, checklistRepo, configRepo, opts.videoStorage, lockDeviceRepo, lockCodeRepo)
       const controller = new HousekeepingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -99,6 +103,9 @@ export function HousekeepingModule(
       // Ver el video: permiso `view` (no `edit`) — el supervisor y el admin
       // revisan la evidencia sin poder editar la tarea de la camarera.
       router.get('/api/housekeeping/:id/video/view-url', guard('housekeeping', 'view'), (req) => controller.videoViewUrl(req))
+      // Código de entrada (TTLock) de la habitación de la tarea. `housekeeping:view`
+      // porque la camarera lo necesita al ir a limpiar y NO tiene `ttlock:view`.
+      router.get('/api/housekeeping/:id/lock-code', guard('housekeeping', 'view'), (req) => controller.lockCode(req))
 
       // ─── Aprobación y presencia (F4/F5) ─────────────────────────────────
       router.post('/api/housekeeping/:id/approve', guard('housekeeping', 'edit'), (req) => controller.approve(req))
