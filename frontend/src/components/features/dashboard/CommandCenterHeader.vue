@@ -1,5 +1,16 @@
 <template>
-  <div class="flex flex-wrap items-stretch gap-4">
+  <div class="flex flex-wrap items-center md:items-stretch gap-4">
+    <!-- Versión compacta para mobile: nombre del hotel + estado (pl para dejar lugar al toggle del menú) -->
+    <div class="flex md:hidden items-center min-w-0 pl-11">
+      <div class="min-w-0">
+        <h1 class="text-sm font-black text-navy uppercase leading-tight truncate">{{ hotelName }}</h1>
+        <div class="flex items-center gap-1 text-[10px] font-black" :class="apiOnline ? 'text-teal' : 'text-coral'">
+          <span class="w-1.5 h-1.5 rounded-full" :class="apiOnline ? 'bg-teal' : 'bg-coral'"></span>
+          {{ apiOnline ? 'Operativo' : 'Sin conexión' }}
+        </div>
+      </div>
+    </div>
+
     <!-- Identidad — foto real de hotel, bordes difuminados en las 4 direcciones para fundirse con el fondo. Oculta en mobile. -->
     <div class="relative hidden w-40 shrink-0 items-center overflow-hidden rounded-lg sm:w-48 md:flex lg:w-56 xl:w-64">
       <img
