@@ -19,7 +19,7 @@
         </div>
         <div class="p-6">
         <div class="overflow-x-auto">
-          <table class="w-full tbl-navy">
+          <table class="w-full tbl-head">
             <thead>
               <tr class="border-b border-border">
                 <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Nombre</th>
@@ -100,7 +100,7 @@
       </div>
       <div class="p-6">
       <div class="overflow-x-auto">
-        <table class="w-full tbl-navy">
+        <table class="w-full tbl-head">
           <thead>
             <tr class="border-b border-border">
               <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">URL</th>
