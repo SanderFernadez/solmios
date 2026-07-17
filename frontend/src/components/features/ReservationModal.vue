@@ -13,6 +13,7 @@ import { AutoMessagesService } from '@/services/AutoMessages.service'
 import { AddonsService } from '@/services/Addons.service'
 import { ConfigService } from '@/services/Platform.service'
 import { HotelService, type HotelData } from '@/services/Hotel.service'
+import ChannelIcon from '@/components/ui/ChannelIcon.vue'
 import { useToast } from '@/composables/useToast'
 import { nationalityToFlag, languageToFlag } from '@/composables/useCountryFlag'
 import type { ReservationDetail, ReservationDetailAddon, CurrencyConfig, GuaranteeCardData, AuditLogEntry } from '@/types'
@@ -385,7 +386,7 @@ function editar() { if (d.value) emit('edit', d.value) }
                 {{ stLabel(d.status) }}
               </span>
               <span class="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
-                <span class="w-1.5 h-1.5 rounded-full" :class="srcDot(d.source || d.channel)"></span>
+                <ChannelIcon :channel="d.source || d.channel || 'direct'" :size="14" class="ring-1 ring-white/40 rounded-[4px]" />
                 {{ srcLabel(d.source || d.channel) }}
               </span>
             </div>

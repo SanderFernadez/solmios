@@ -46,9 +46,9 @@
         <button @click="colorMode = 'status'" class="px-2 py-0.5 rounded text-[10px] cursor-pointer" :class="colorMode === 'status' ? 'bg-navy text-white' : 'text-text-muted'">Por Estado</button>
       </div>
       <template v-if="colorMode === 'channel'">
-        <span v-for="lc in LEGEND_CH" :key="lc.k" class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded" :class="chOverride(lc.k) ? '' : lc.c" :style="chOverride(lc.k) ? { background: chOverride(lc.k)! } : {}"></span>
-          <span :class="chOverride(lc.k) ? '' : lc.t" :style="chOverride(lc.k) ? { color: chOverride(lc.k)! } : {}">{{ lc.l }}</span>
+        <span v-for="lc in LEGEND_CH" :key="lc.k" class="flex items-center gap-1.5">
+          <ChannelIcon :channel="lc.k" :size="16" />
+          <span class="text-navy">{{ lc.l }}</span>
         </span>
         <button v-if="!embedded" @click="openColorPicker" class="ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg bg-navy text-white text-[11px] font-extrabold shadow-sm hover:bg-navy/90 hover:shadow-md transition-all cursor-pointer" title="Elegir el color de cada canal">🎨 Personalizar colores</button>
       </template>
@@ -169,7 +169,7 @@
                     @mousedown.stop="onResDown(gRes(room.id, day.dateStr)!, $event)"
                     @click.stop="openContext($event, gRes(room.id, day.dateStr)!, room)"
                     @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
-                    <span class="text-[11px] leading-none mr-1.5 shrink-0" :title="'Canal: ' + gRes(room.id, day.dateStr)!.ch">{{ chIcon(gRes(room.id, day.dateStr)!.chKey) }}</span>
+                    <ChannelIcon :channel="gRes(room.id, day.dateStr)!.chKey" :size="13" class="mr-1 shrink-0 ring-1 ring-white/40 rounded-[4px]" />
                     <span class="text-[9px] font-extrabold truncate text-white"><span v-if="gRes(room.id, day.dateStr)!.pax" class="text-white/75">{{ gRes(room.id, day.dateStr)!.pax }}P·</span>{{ gRes(room.id, day.dateStr)!.name }}</span>
                     <span class="text-[8px] text-white/70 ml-auto shrink-0 flex items-center gap-0.5">
                       <span v-if="gRes(room.id, day.dateStr)!.lockCode" :title="`Cerradura: ${gRes(room.id, day.dateStr)!.lockCode}`">🔐</span>
@@ -702,7 +702,7 @@
                 <div v-for="r in arrivalsToday" :key="r.id" class="rounded-xl border border-border mb-2 overflow-hidden">
                   <div class="flex items-center justify-between gap-2 p-2.5">
                     <div class="min-w-0 flex items-center gap-2">
-                      <span class="text-base shrink-0" :title="CH[(r.channel || 'direct').toLowerCase()]?.l">{{ CHANNEL_ICON[(r.channel || 'direct').toLowerCase()] || '🏨' }}</span>
+                      <ChannelIcon :channel="r.channel || 'direct'" :size="18" class="shrink-0" />
                       <div class="min-w-0">
                         <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
                         <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }} · {{ (Number(r.adults) || 0) + (Number(r.children) || 0) }}P · {{ resNights(r) }}n</div>
@@ -736,7 +736,7 @@
                 <div v-for="r in departuresToday" :key="'d-' + r.id" class="rounded-xl border border-border mb-2 overflow-hidden">
                   <div class="flex items-center justify-between gap-2 p-2.5">
                     <div class="min-w-0 flex items-center gap-2">
-                      <span class="text-base shrink-0" :title="CH[(r.channel || 'direct').toLowerCase()]?.l">{{ CHANNEL_ICON[(r.channel || 'direct').toLowerCase()] || '🏨' }}</span>
+                      <ChannelIcon :channel="r.channel || 'direct'" :size="18" class="shrink-0" />
                       <div class="min-w-0">
                         <div class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Huésped' }}</div>
                         <div class="text-[10px] text-text-muted">Hab. {{ roomNoOf(r) }} · {{ resNights(r) }}n</div>
@@ -816,7 +816,7 @@
           <div class="p-4 space-y-2.5 max-h-[60vh] overflow-y-auto">
             <p class="text-[11px] text-text-muted mb-1">Elegí con qué color se ven en el calendario las reservas de cada canal.</p>
             <div v-for="c in CH_LIST" :key="c.key" class="flex items-center justify-between gap-3">
-              <span class="text-sm font-bold text-navy">{{ c.label }}</span>
+              <span class="flex items-center gap-2 text-sm font-bold text-navy"><ChannelIcon :channel="c.key" :size="18" />{{ c.label }}</span>
               <div class="flex items-center gap-2">
                 <span class="text-[10px] font-mono text-text-muted uppercase">{{ colorDraft[c.key] }}</span>
                 <input type="color" v-model="colorDraft[c.key]" class="w-9 h-9 rounded cursor-pointer border border-border bg-white p-0.5">
@@ -908,6 +908,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import RoomLockModal from '@/components/features/RoomLockModal.vue'
+import ChannelIcon from '@/components/ui/ChannelIcon.vue'
 import { TTLockService } from '@/services/TTLock.service'
 import { useRouter } from 'vue-router'
 
@@ -1067,13 +1068,7 @@ const CH: Record<string, any> = {
   whatsapp: { l: 'WhatsApp', bg: 'bg-emerald-500', b: 'bg-emerald-100 text-emerald-700' },
   phone: { l: 'Teléfono', bg: 'bg-gray-500', b: 'bg-gray-100 text-gray-600' },
 }
-// Icono por canal (en vez del texto). El nombre del canal queda en el `title` al pasar el mouse.
-const CHANNEL_ICON: Record<string, string> = {
-  direct: '🏨', directa: '🏨',
-  booking: '📘', 'booking.com': '📘',
-  expedia: '✈️', airbnb: '🏡',
-  google: '🌐', whatsapp: '💬', phone: '📞',
-}
+// El logo de marca de cada canal lo renderiza <ChannelIcon> (SVG). El nombre queda en su `title`.
 
 // ── Colores de canal personalizables (#138) ──────────────────────────────
 // El hotel elige el color de cada canal; se guarda en config `channel_colors`.
@@ -1089,12 +1084,15 @@ const CH_LIST = [
   { key: 'google', label: 'Google' }, { key: 'whatsapp', label: 'WhatsApp' },
   { key: 'phone', label: 'Teléfono' },
 ]
-// Canales de la leyenda con su clase por defecto (fallback cuando no hay color custom).
+// Canales reales de la leyenda (con su logo de marca vía <ChannelIcon>).
 const LEGEND_CH = [
-  { k: 'direct', l: 'Directa', c: 'bg-teal', t: 'text-teal' },
-  { k: 'booking', l: 'Booking', c: 'bg-cyan', t: 'text-cyan' },
-  { k: 'expedia', l: 'Expedia', c: 'bg-gold', t: 'text-gold' },
-  { k: 'airbnb', l: 'Airbnb', c: 'bg-coral', t: 'text-coral' },
+  { k: 'direct', l: 'Directa' },
+  { k: 'booking', l: 'Booking.com' },
+  { k: 'expedia', l: 'Expedia' },
+  { k: 'airbnb', l: 'Airbnb' },
+  { k: 'google', l: 'Google' },
+  { k: 'whatsapp', l: 'WhatsApp' },
+  { k: 'phone', l: 'Teléfono' },
 ]
 
 // ── Barra de operaciones rápidas del planning (centro de operaciones) ─────
@@ -1220,7 +1218,6 @@ function barStyle(rid: any, day: DI) {
   }
   return s
 }
-const chIcon = (key: string): string => CHANNEL_ICON[key] || '🔗'
 const ST: Record<string, any> = {
   pending: { l: 'Pendiente', b: 'bg-gold/10 text-gold' }, confirmed: { l: 'Confirmada', b: 'bg-teal/10 text-teal' },
   checked_in: { l: 'Check-in', b: 'bg-cyan/10 text-cyan' }, checked_out: { l: 'Check-out', b: 'bg-gray-100 text-gray-500' },
