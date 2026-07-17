@@ -8,6 +8,7 @@ import type {
   PayrollRunDetailDTO, PayrollPayslipDTO, PayrollPaymentHistoryDTO,
 } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { PayrollService }
 export type {
@@ -52,7 +53,9 @@ export function PayrollModule() {
       const controller = new PayrollController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('hr.payroll')]
 
       // Permiso payroll:* (NO billing:*): liquidar sueldos es del hotel_admin, no de recepción.
       // Config

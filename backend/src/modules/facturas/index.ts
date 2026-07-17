@@ -8,6 +8,7 @@ import { FacturasService } from './service'
 import { FacturasController } from './controller'
 import type { FacturasDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { FacturasService }
 export type { FacturasDTO, CreateFacturasDTO, UpdateFacturasDTO, FacturasQuery, FacturasListResult } from './types'
@@ -52,7 +53,9 @@ export function FacturasModule() {
       const controller = new FacturasController(service, log, hotelRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('finance.billing')]
 
       router.get('/api/facturas', guard('billing', 'view'), (req) => controller.index(req))
       router.get('/api/facturas/stats', guard('billing', 'view'), (req) => controller.stats(req))

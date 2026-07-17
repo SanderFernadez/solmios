@@ -3,6 +3,7 @@ import { EmailQueueService } from './service'
 import { EmailQueueController } from './controller'
 import type { EmailQueueDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { EmailQueueService }
 export type { EmailQueueDTO, EmailQueueQuery, EmailQueuePaginated, EmailQueueStatus } from './types'
@@ -36,7 +37,9 @@ export function EmailQueueModule() {
       const controller = new EmailQueueController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('settings.email-queue')]
 
       router.get('/api/email-queue', guard('settings', 'view'), (req) => controller.index(req))
       router.post('/api/email-queue/:id/requeue', guard('settings', 'edit'), (req) => controller.requeue(req))

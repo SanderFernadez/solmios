@@ -8,6 +8,7 @@ import { CashService } from './service'
 import { CashController } from './controller'
 import type { CashMovementDTO, CashShiftDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { CashService }
 export type {
@@ -47,7 +48,9 @@ export function CashModule() {
       const controller = new CashController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('finance.caja')]
 
       // Movimientos
       router.get('/api/caja/movements', guard('billing', 'view'), (req) => controller.index(req))

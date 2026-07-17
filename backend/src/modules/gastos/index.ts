@@ -8,6 +8,7 @@ import { GastosService } from './service'
 import { GastosController } from './controller'
 import type { GastosDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { GastosService }
 export type { GastosDTO, CreateGastosDTO, UpdateGastosDTO, GastosQuery, GastosPaginated } from './types'
@@ -43,7 +44,9 @@ export function GastosModule() {
       const controller = new GastosController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('finance.gastos')]
 
       router.get('/api/gastos', guard('billing', 'view'), (req) => controller.index(req))
       router.get('/api/gastos/:id', guard('billing', 'view'), (req) => controller.show(req))

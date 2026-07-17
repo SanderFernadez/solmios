@@ -8,6 +8,7 @@ import { HuespedesService } from './service'
 import { HuespedesController } from './controller'
 import type { HuespedesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { HuespedesService }
 export type { HuespedesDTO, CreateHuespedesDTO, UpdateHuespedesDTO, HuespedesQuery, HuespedesPaginated } from './types'
@@ -43,7 +44,9 @@ export function HuespedesModule() {
       const controller = new HuespedesController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('guests')]
 
       router.get('/api/huespedes', guard('guests', 'view'), (req) => controller.index(req))
       router.get('/api/huespedes/:id', guard('guests', 'view'), (req) => controller.show(req))

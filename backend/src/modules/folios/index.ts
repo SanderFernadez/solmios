@@ -5,6 +5,7 @@ import { FoliosService } from './service'
 import { FoliosController } from './controller'
 import type { FolioDTO, FolioChargeDTO, OpenFolioDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { FoliosService }
 export type { FolioDTO, FolioChargeDTO, OpenFolioDTO, PostChargeDTO, ApplyPaymentDTO, FolioQuery, FolioListResult } from './types'
@@ -47,7 +48,9 @@ export function FoliosModule() {
       const controller = new FoliosController(service, log, orm)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('finance.folios')]
 
       router.get('/api/folios', guard('billing', 'view'), (req) => controller.index(req))
       router.get('/api/folios/:id', guard('billing', 'view'), (req) => controller.show(req))

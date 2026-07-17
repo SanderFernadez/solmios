@@ -11,6 +11,7 @@ import { PaymentRequestsService } from './service'
 import { PaymentRequestsController } from './controller'
 import type { PaymentRequestDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { PaymentRequestsService }
 export type {
@@ -59,7 +60,9 @@ export function PaymentRequestsModule() {
       const controller = new PaymentRequestsController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('finance.payments')]
 
       router.get('/api/payment-requests', guard('billing', 'view'), (req) => controller.index(req))
       router.get('/api/payment-requests/:id', guard('billing', 'view'), (req) => controller.show(req))

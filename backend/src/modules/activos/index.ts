@@ -5,6 +5,7 @@ import { ActivosService } from './service'
 import { ActivosController } from './controller'
 import type { ActivosDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { ActivosService }
 export type { ActivosDTO, CreateActivosDTO, UpdateActivosDTO, ActivosQuery } from './types'
@@ -40,7 +41,9 @@ export function ActivosModule() {
       const controller = new ActivosController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('hr.activos')]
 
       router.get('/api/assets', guard('users', 'view'), (req) => controller.index(req))
       router.get('/api/assets/:id', guard('users', 'view'), (req) => controller.show(req))

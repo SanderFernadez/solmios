@@ -3,6 +3,7 @@ import { ReportsService } from './service'
 import { ReportsController } from './controller'
 import { ReportQueries } from './usecases/report-queries'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { ReportsService }
 
@@ -28,7 +29,9 @@ export function ReportsModule() {
       const controller = new ReportsController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('finance.reports')]
 
       router.get('/api/reports', guard('reports', 'view'), (req: any) => controller.getReports(req))
       router.get('/api/reports/advanced', guard('reports', 'view'), (req: any) => controller.getAdvancedReport(req))

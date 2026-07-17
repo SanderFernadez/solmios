@@ -7,6 +7,7 @@ import { HousekeepingService } from './service'
 import { HousekeepingController } from './controller'
 import type { HousekeepingDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 // Límite del body de upload por foto (10 MB). Las fotos viajan como base64 en JSON,
 // que infla ~33% respecto al binario → 10 MB cubre fotos reales de hasta ~7 MB.
@@ -66,7 +67,9 @@ export function HousekeepingModule(
       const controller = new HousekeepingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('operations.housekeeping')]
 
       router.get('/api/housekeeping', guard('housekeeping', 'view'), (req) => controller.index(req))
       router.get('/api/housekeeping/stats', guard('housekeeping', 'view'), (req) => controller.stats(req))

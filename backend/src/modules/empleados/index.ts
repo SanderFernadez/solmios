@@ -25,6 +25,7 @@ import type {
   JobPositionDTO, ContractTypeDTO, WorkLocationDTO, PerformanceEvalConfigDTO,
 } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 /** Todo el personal del hotel puede leer su propio perfil. */
 const STAFF_ROLES: [string, ...string[]] = [
@@ -119,7 +120,9 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
       const controller = new EmpleadosController(service, log, dashboard, opts.storage, leaveConfig, appraisalConfig, hrCatalog, evalConfig, autoEval, dossier)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('hr.employees')]
 
       // ─── Departments ──────────────────────────────────
       router.post('/api/departments', guard('users', 'create'), (req) => controller.createDepartment(req))

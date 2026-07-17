@@ -4,6 +4,7 @@ import { DispositivosService } from './service'
 import { DispositivosController } from './controller'
 import type { DispositivosDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { DispositivosService }
 export type { DispositivosDTO, CreateDispositivosDTO, UpdateDispositivosDTO, DispositivosQuery, DispositivosPaginated } from './types'
@@ -35,7 +36,9 @@ export function DispositivosModule() {
       const controller = new DispositivosController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('settings.devices')]
 
       router.get('/api/dispositivos', guard('settings', 'view'), (req) => controller.index(req))
       router.get('/api/dispositivos/:id', guard('settings', 'view'), (req) => controller.show(req))

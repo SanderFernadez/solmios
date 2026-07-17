@@ -5,6 +5,7 @@ import { CapacitacionService } from './service'
 import { CapacitacionController } from './controller'
 import type { CourseDTO, EnrollmentDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { CapacitacionService }
 export type { CourseDTO, CreateCourseDTO, EnrollmentDTO, CreateEnrollmentDTO, CapacitacionDTO, CapacitacionQuery } from './types'
@@ -40,7 +41,9 @@ export function CapacitacionModule() {
       const controller = new CapacitacionController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('hr.capacitacion')]
 
       // Cursos
       router.get('/api/training/courses', guard('users', 'view'), (req) => controller.listCourses(req))

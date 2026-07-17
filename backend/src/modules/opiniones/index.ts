@@ -4,6 +4,7 @@ import { OpinionesService } from './service'
 import { OpinionesController } from './controller'
 import type { OpinionesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { OpinionesService }
 export type { OpinionesDTO, CreateOpinionesDTO, UpdateOpinionesDTO, OpinionesQuery, OpinionesPaginated } from './types'
@@ -35,7 +36,9 @@ export function OpinionesModule() {
       const controller = new OpinionesController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('sales.reviews')]
 
       router.get('/api/opiniones', guard('reports', 'view'), (req) => controller.index(req))
       router.get('/api/opiniones/:id', guard('reports', 'view'), (req) => controller.show(req))

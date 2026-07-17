@@ -6,6 +6,7 @@ import { ReservasQueries } from './usecases/reservas-queries'
 import { handleQScanProWebhook, type QScanProWebhookBody } from './usecases/qscanpro-webhook'
 import type { ReservasDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { ReservasService }
 export type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
@@ -47,7 +48,9 @@ export function ReservasModule() {
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('reservations.list')]
 
       // ── CRUD ──
       router.get('/api/reservas', guard('reservations', 'view'), (req) => controller.index(req))

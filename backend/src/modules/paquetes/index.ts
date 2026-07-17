@@ -8,6 +8,7 @@ import { PaquetesService } from './service'
 import { PaquetesController } from './controller'
 import type { PaquetesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { PaquetesService }
 export type { PaquetesDTO, CreatePaquetesDTO, UpdatePaquetesDTO, PaquetesQuery, PaquetesPaginated } from './types'
@@ -43,7 +44,9 @@ export function PaquetesModule() {
       const controller = new PaquetesController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('sales.packages')]
 
       router.get('/api/paquetes', guard('rooms', 'view'), (req) => controller.index(req))
       router.get('/api/paquetes/:id', guard('rooms', 'view'), (req) => controller.show(req))

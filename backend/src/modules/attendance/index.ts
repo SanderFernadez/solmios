@@ -5,6 +5,7 @@ import { AttendanceService } from './service'
 import { AttendanceController } from './controller'
 import type { AttendanceRecordDTO, AttendanceScheduleDTO, AttendanceConfigDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { AttendanceService }
 export type { AttendanceRecordDTO, AttendanceScheduleDTO, AttendanceConfigDTO, AttendanceReport, AttendanceQuery } from './types'
@@ -41,7 +42,9 @@ export function AttendanceModule() {
       const controller = new AttendanceController(service, log, profileRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('hr.attendance')]
 
       // Clock — fichar es una acción del propio empleado, no administrar usuarios. Antes pedía
       // `users:create`, que solo tiene hotel_admin: ninguna camarera ni recepcionista podía fichar.

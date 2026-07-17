@@ -8,6 +8,7 @@ import { GruposService } from './service'
 import { GruposController } from './controller'
 import type { GruposDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { GruposService }
 export type { GruposDTO, CreateGruposDTO, UpdateGruposDTO, GruposQuery, GruposPaginated } from './types'
@@ -43,7 +44,9 @@ export function GruposModule() {
       const controller = new GruposController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('sales.groups')]
 
       router.get('/api/grupos', guard('reservations', 'view'), (req) => controller.index(req))
       router.get('/api/grupos/:id', guard('reservations', 'view'), (req) => controller.show(req))

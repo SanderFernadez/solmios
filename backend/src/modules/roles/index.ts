@@ -4,6 +4,7 @@ import { RolesService } from './service'
 import { RolesController } from './controller'
 import type { RolesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { RolesService }
 export type { RolesDTO, CreateRolesDTO, UpdateRolesDTO, RolesQuery, RolesPaginated } from './types'
@@ -35,7 +36,9 @@ export function RolesModule() {
       const controller = new RolesController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('hr.roles')]
 
       router.get('/api/roles', guard('users', 'view'), (req) => controller.index(req))
       // /catalog ANTES de /:id o la ruta con param lo captura como id='catalog'.

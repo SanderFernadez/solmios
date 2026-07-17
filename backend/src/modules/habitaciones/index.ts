@@ -4,6 +4,7 @@ import { HabitacionesService } from './service'
 import { HabitacionesController } from './controller'
 import type { HabitacionesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { HabitacionesService }
 export type { HabitacionesDTO, CreateHabitacionesDTO, UpdateHabitacionesDTO, HabitacionesQuery, HabitacionesPaginated } from './types'
@@ -37,7 +38,9 @@ export function HabitacionesModule() {
       const controller = new HabitacionesController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('settings.rooms')]
 
       router.get('/api/habitaciones', guard('rooms', 'view'), (req) => controller.index(req))
       router.get('/api/habitaciones/:id', guard('rooms', 'view'), (req) => controller.show(req))

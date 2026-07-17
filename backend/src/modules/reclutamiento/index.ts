@@ -7,6 +7,7 @@ import { ReclutamientoService } from './service'
 import { ReclutamientoController } from './controller'
 import type { ApplicantDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { ReclutamientoService }
 export type {
@@ -44,7 +45,9 @@ export function ReclutamientoModule() {
 
       // Reclutamiento es tarea de RRHH → se protege con el permiso `users` (mismo que empleados).
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('hr.reclutamiento')]
 
       router.get('/api/applicants', guard('users', 'view'), (req) => controller.index(req))
       router.get('/api/applicants/pipeline', guard('users', 'view'), (req) => controller.pipeline(req))

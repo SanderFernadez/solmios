@@ -7,6 +7,7 @@ import { PaymentsService } from './service'
 import { PaymentsController } from './controller'
 import type { PaymentDTO, PaymentLinkDTO, DepositDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 import { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 import { PaymentEventStore } from '../../services/payment-gateway/payment-events'
 
@@ -57,7 +58,9 @@ export function PaymentsModule() {
       // Admin routes (protegidas con auth)
       if (auth) {
         const roleRepo = new OrmRepository<any>(orm, 'Roles')
-        const guard = createPermissionGuard(auth, roleRepo)
+        const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('finance.payments')]
 
         // Payments
         router.get('/api/payments', guard('billing', 'view'), (req: any) => controller.listPayments(req))

@@ -5,6 +5,7 @@ import { TtlockService } from './service'
 import { TtlockController } from './controller'
 import { TtlockQueries } from './usecases/ttlock-queries'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { TtlockService }
 
@@ -36,7 +37,9 @@ export function TtlockModule() {
       const controller = new TtlockController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('settings.locks')]
 
       router.get('/api/ttlock/config', guard('ttlock', 'view'), (req: any) => controller.getConfig(req))
       router.put('/api/ttlock/config', guard('ttlock', 'edit'), (req: any) => controller.updateConfig(req))

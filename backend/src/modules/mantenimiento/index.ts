@@ -6,6 +6,7 @@ import { MantenimientoService } from './service'
 import { MantenimientoController } from './controller'
 import type { MantenimientoDTO, MaintenanceAuditDTO, MaintenanceProviderDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { MantenimientoService }
 export type { MantenimientoDTO, CreateMantenimientoDTO, UpdateMantenimientoDTO, MantenimientoQuery, MantenimientoPaginated, MaintenanceAuditDTO, MaintenanceAuditAction } from './types'
@@ -45,7 +46,9 @@ export function MantenimientoModule(opts?: { storage?: StorageService }) {
       const controller = new MantenimientoController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('operations.maintenance')]
 
       router.get('/api/mantenimiento/stats', guard('maintenance', 'view'), (req) => controller.stats(req))
 

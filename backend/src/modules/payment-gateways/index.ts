@@ -10,6 +10,7 @@ import type { PaymentGatewayRow } from './types'
 import { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 import { isEncryptionConfigured } from '../../services/payment-gateway/crypto'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { PaymentGatewaysService }
 export type { PaymentGatewayDTO, UpsertPaymentGatewayDTO, PaymentGatewayRow } from './types'
@@ -52,7 +53,9 @@ export function PaymentGatewaysModule() {
       const controller = new PaymentGatewaysController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('settings.gateways')]
 
       // Configurar cómo cobra el hotel es una decisión de dinero: billing:edit, no billing:view.
       router.get('/api/payment-gateways', guard('billing', 'edit'), (req: any) => controller.list(req))

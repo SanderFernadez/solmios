@@ -7,6 +7,7 @@ import { ReembolsosService } from './service'
 import { ReembolsosController } from './controller'
 import type { ExpenseClaimDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 export { ReembolsosService }
 export type {
@@ -44,7 +45,9 @@ export function ReembolsosModule() {
 
       // Reembolsos = dinero de RRHH → permiso `billing` (mismo criterio financiero que folios/pagos).
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
-      const guard = createPermissionGuard(auth, roleRepo)
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const moduleGuard = createModuleGuard(orm)
+      const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('hr.reembolsos')]
 
       router.get('/api/expense-claims', guard('billing', 'view'), (req) => controller.index(req))
       router.get('/api/expense-claims/totals', guard('billing', 'view'), (req) => controller.totals(req))
