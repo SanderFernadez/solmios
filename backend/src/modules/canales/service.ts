@@ -34,11 +34,11 @@ export class CanalesService {
     private readonly queries: CanalesQueries,
     private readonly syncLogRepo?: RepositoryAdapter<any>,
   ) {
-    this.channex = new ChannexUseCase(logger)
+    this.config = new ConfigUseCase(repo, queries)
+    this.channex = new ChannexUseCase(logger, () => this.config.getPlatformChannex())  // white-label: cuenta de plataforma
     this.crud = new CanalesCrudUseCase(repo, userRepo, auth)
     this.channelApi = new ChannelApiUseCase(this.channex)
     this.bookings = new BookingsUseCase(this.channex, queries)
-    this.config = new ConfigUseCase(repo, queries)
   }
 
   /** Conecta el audit log. Lo inyecta el connector `canales-auditlog`. */

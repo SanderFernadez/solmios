@@ -19,12 +19,35 @@ export class CanalesQueries {
 
   async getOTACatalog(): Promise<any[]> {
     try {
-      const rows = await this.orm.findMany('Configuration', { hotelId: 'platform', clave: 'canales_ota' })
+      // `key` (no `clave`): el modelo Configuration usa `key`; con `clave` el ORM descartaba el filtro
+      // (campo inexistente) y traía la 1ª config del platform → catálogo siempre vacío. Fix.
+      const rows = await this.orm.findMany('Configuration', { hotelId: 'platform', key: 'canales_ota' })
       const cfg = (rows as any[])?.[0]
       if (!cfg) return []
       const val = typeof cfg.value === 'string' ? JSON.parse(cfg.value) : cfg.value
       return Array.isArray(val) ? val : []
     } catch { return [] }
+  }
+
+  // ─── Credenciales Channex a nivel PLATAFORMA (white-label: una cuenta para todos los hoteles) ──
+  // Se guardan en configuration(hotelId='platform', key='channex') = { apiKey, environment }.
+  async getPlatformChannex(): Promise<{ apiKey?: string; environment?: string } | null> {
+    try {
+      const rows = await this.orm.findMany('Configuration', { hotelId: 'platform', key: 'channex' })
+      const row = (rows as any[])?.[0]
+      if (!row) return null
+      const v = typeof row.value === 'string' ? JSON.parse(row.value) : row.value
+      return v && typeof v === 'object' && !Array.isArray(v) ? v : null
+    } catch { return null }
+  }
+
+  async setPlatformChannex(patch: { apiKey?: string; environment?: string }): Promise<void> {
+    const rows = await this.orm.findMany('Configuration', { hotelId: 'platform', key: 'channex' })
+    const row = (rows as any[])?.[0]
+    const cur = row ? (typeof row.value === 'string' ? JSON.parse(row.value) : row.value) : {}
+    const value = { ...(cur && typeof cur === 'object' ? cur : {}), ...patch }
+    if (row) await this.orm.update('Configuration', row.id, { value })
+    else await this.orm.create('Configuration', { id: crypto.randomUUID(), hotelId: 'platform', key: 'channex', value })
   }
 
   async applyBookingRevision(dto: any, hotelId: string, channex: any, apiKey: string): Promise<void> {

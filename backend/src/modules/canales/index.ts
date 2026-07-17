@@ -7,8 +7,12 @@ import { registerCanalesModels } from './model'
 import { CanalesService } from './service'
 import { CanalesController } from './controller'
 import { CanalesQueries } from './usecases/canales-queries'
+import { ConfigUseCase } from './usecases/config'
+import { ChannexUseCase } from './usecases/channex'
+import { ChannexAdminService } from './service-channex-admin'
 import type { RoomTypeSummary, CanalesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { requireUserType } from '../../infrastructure/auth/require-user-type'
 import { resolveTenant } from '../../shared/utils/resolve-tenant'
 
 export { CanalesService }
@@ -48,6 +52,15 @@ export function CanalesModule() {
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
+
+      // ── Config Channex a nivel PLATAFORMA (super_admin) — white-label: una cuenta para todos ──
+      const adminConfig = new ConfigUseCase(repo, queries)
+      const adminChannex = new ChannexUseCase(log, () => adminConfig.getPlatformChannex())
+      const channexAdmin = new ChannexAdminService(adminConfig, adminChannex)
+      const adminOnly = [auth.authenticate('super_admin'), requireUserType('admin')]
+      router.get('/api/admin/channex-config', adminOnly, async () => ({ status: 200, body: await channexAdmin.getStatus() }))
+      router.put('/api/admin/channex-config', adminOnly, async (req: any) => ({ status: 200, body: await channexAdmin.save(req.body || {}) }))
+      router.post('/api/admin/channex-config/test', adminOnly, async () => ({ status: 200, body: await channexAdmin.test() }))
 
       router.get('/api/channels', guard('channel-manager', 'view'), async (req) => {
         // resolveTenant (no resolveHotelId del cliente): el merchant queda forzado a su hotel; solo

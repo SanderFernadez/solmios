@@ -6,24 +6,56 @@
 import type { Logger } from 'arckode-framework'
 import type { CanalesDTO, ChannelDTO, ChannelsResultDTO, RoomTypeSummary, SyncResultDTO, TestConnectionDTO, TestConnectionResultDTO, MappingDetailDTO, OTAChannelCreateDTO, OTAChannelResultDTO, GroupDTO, OTAChannelMeta, BookingRevisionDTO, BookingIngestionResult } from '../types'
 
-const CHANNEX_BASE = process.env.CHANNEX_BASE_URL || 'https://staging.channex.io/api/v1'
+const STAGING_BASE = process.env.CHANNEX_BASE_URL || 'https://staging.channex.io/api/v1'
+const PROD_BASE = 'https://api.channex.io/api/v1'
 const CHANNEX_KEY = process.env.CHANNEX_API_KEY || ''
 
-export class ChannexUseCase {
-  constructor(private readonly logger: Logger) {}
+/** Resolver de credenciales de PLATAFORMA (una cuenta Channex white-label para todos los hoteles). */
+export type PlatformCredsResolver = () => Promise<{ apiKey?: string; environment?: string } | null>
 
+export class ChannexUseCase {
+  constructor(
+    private readonly logger: Logger,
+    private readonly getPlatformCreds?: PlatformCredsResolver,
+  ) {}
+
+  /** Credenciales efectivas: la cuenta de PLATAFORMA manda (admin > env); el entorno define staging/prod. */
+  private async platform(): Promise<{ key: string; base: string }> {
+    const p = this.getPlatformCreds ? await this.getPlatformCreds().catch(() => null) : null
+    const base = p?.environment === 'production' ? PROD_BASE : STAGING_BASE
+    return { key: p?.apiKey || CHANNEX_KEY, base }
+  }
+
+  // Fallback para el key por-hotel (legacy). La plataforma tiene prioridad en channexReq.
   private resolveKey(cfg?: CanalesDTO | null): string {
     return cfg?.channexApiKey || CHANNEX_KEY
   }
 
-  private async channexReq(apiKey: string, method: string, path: string, body?: any) {
-    if (!apiKey) throw new Error('Channex API key no configurada')
-    const url = `${CHANNEX_BASE}${path}`
+  private async channexReq(apiKeyOverride: string, method: string, path: string, body?: any) {
+    const plat = await this.platform()
+    const apiKey = plat.key || apiKeyOverride   // plataforma primero; el por-hotel es último recurso
+    if (!apiKey) throw new Error('Channex API key no configurada (configurala en Admin → Integraciones)')
+    const url = `${plat.base}${path}`
     const opts: any = { method, headers: { 'Content-Type': 'application/json', 'user-api-key': apiKey } }
     if (body && method !== 'GET') opts.body = JSON.stringify(body)
     const r = await fetch(url, opts)
     const t = await r.text()
     try { return { ok: r.ok, data: JSON.parse(t) } } catch { return { ok: r.ok, data: t } }
+  }
+
+  /** Prueba la credencial de plataforma con un GET liviano a Channex. Para el botón "Probar conexión" del admin. */
+  async testApiKey(): Promise<{ success: boolean; message: string; environment: string }> {
+    const plat = await this.platform()
+    const environment = plat.base === PROD_BASE ? 'production' : 'staging'
+    if (!plat.key) return { success: false, message: 'No hay API key configurada', environment }
+    try {
+      const res = await this.channexReq('', 'GET', '/properties?limit=1')
+      if (res.ok) return { success: true, message: 'Conexión con Channex OK', environment }
+      const err = (res.data as any)?.errors
+      return { success: false, message: err?.title || err?.code || 'La API key fue rechazada por Channex', environment }
+    } catch (e: any) {
+      return { success: false, message: e?.message || 'Error de red al contactar Channex', environment }
+    }
   }
 
   // ─── Canales conectados (Channex real + catálogo de la DB) ──────────
@@ -85,7 +117,8 @@ export class ChannexUseCase {
 
   async getFeed(): Promise<{ pendingBookings: number }> {
     try {
-      const feed = await this.channexReq(CHANNEX_KEY, 'GET', '/booking_revisions/feed?limit=10')
+      // channexReq resuelve la key de plataforma; el override queda vacío.
+      const feed = await this.channexReq('', 'GET', '/booking_revisions/feed?limit=10')
       return { pendingBookings: feed.data?.meta?.total || 0 }
     } catch { return { pendingBookings: 0 } }
   }

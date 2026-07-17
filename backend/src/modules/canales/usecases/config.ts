@@ -23,4 +23,12 @@ export class ConfigUseCase {
   async getOTACatalog(): Promise<any[]> {
     return this.queries.getOTACatalog()
   }
+
+  // Credenciales Channex de PLATAFORMA (una cuenta white-label para todos los hoteles).
+  getPlatformChannex(): Promise<{ apiKey?: string; environment?: string } | null> {
+    return this.queries.getPlatformChannex()
+  }
+  setPlatformChannex(patch: { apiKey?: string; environment?: string }): Promise<void> {
+    return this.queries.setPlatformChannex(patch)
+  }
 }

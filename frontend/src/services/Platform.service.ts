@@ -23,3 +23,11 @@ export const ConfigService = {
     await _http.post('/configuracion', { clave: key, valor: value, hotelId: hotelId || 'platform' })
   },
 }
+
+// Cuenta Channex a nivel PLATAFORMA (white-label). Solo super_admin. La API key nunca vuelve cruda.
+export interface ChannexStatus { environment: string; hasKey: boolean; keyMasked: string }
+export const ChannexAdminService = {
+  status: () => _http.get<ChannexStatus>('/admin/channex-config'),
+  save: (patch: { apiKey?: string; environment?: string }) => _http.put<ChannexStatus>('/admin/channex-config', patch),
+  test: () => _http.post<{ success: boolean; message: string; environment: string }>('/admin/channex-config/test'),
+}
