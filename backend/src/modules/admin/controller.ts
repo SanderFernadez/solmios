@@ -41,9 +41,19 @@ export class AdminController {
     return { status: 200, body: await this.service.listPlans() }
   }
 
+  // validateSchema del framework SOLO maneja string/number/boolean/date → DESCARTA los campos
+  // array/object (features, modules, limits). Se re-inyectan del body crudo (el service los whitelistea).
+  private mergeComplexPlanFields(data: any, body: any): any {
+    const b = body ?? {}
+    if (Array.isArray(b.features)) data.features = b.features
+    if (Array.isArray(b.modules)) data.modules = b.modules
+    if (b.limits && typeof b.limits === 'object') data.limits = b.limits
+    return data
+  }
+
   async createPlan(req: HttpRequest) {
     try {
-      const data = validateSchema(CreatePlanSchema, req.body) as any
+      const data = this.mergeComplexPlanFields(validateSchema(CreatePlanSchema, req.body) as any, req.body)
       const plan = await this.service.createPlan(data)
       return { status: 201, body: plan }
     } catch (e: any) {
@@ -53,7 +63,7 @@ export class AdminController {
 
   async updatePlan(req: HttpRequest) {
     try {
-      const data = validateSchema(UpdatePlanSchema, req.body) as any
+      const data = this.mergeComplexPlanFields(validateSchema(UpdatePlanSchema, req.body) as any, req.body)
       return { status: 200, body: await this.service.updatePlan(req.params.id, data, req.user as any) }
     } catch (e: any) {
       return { status: e.message.includes('no encontrado') ? 404 : 400, body: { error: e.message } }
