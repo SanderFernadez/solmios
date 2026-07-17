@@ -72,7 +72,7 @@ function normalize(input: string): string {
  * Callers can render `initial` in a color badge when `icon` isn't a brand mark.
  */
 export function resolveChannelLogo(nameOrCode?: string, ...aliases: (string | undefined)[]): ChannelLogo {
-  const candidates = [nameOrCode, ...aliases].map(normalize).filter(Boolean)
+  const candidates = [nameOrCode, ...aliases].map((s) => normalize(s ?? '')).filter(Boolean)
   const initial = (nameOrCode || '').trim().charAt(0).toUpperCase() || '?'
   for (const brand of BRANDS) {
     const hit = brand.keywords.some(k => candidates.some(c => c.includes(k)))
