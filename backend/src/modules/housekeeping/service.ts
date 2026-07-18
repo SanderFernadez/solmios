@@ -17,6 +17,7 @@ import { ConfigListsUseCase } from './usecases/config-lists'
 import { HousekeepingSettingsUseCase, type HousekeepingSettings, DEFAULT_MAX_VIDEO_SECONDS } from './usecases/settings'
 import { getRoomLockCode } from './usecases/lock-code'
 import { VideoUseCase, type VideoUploadTicket } from './usecases/video'
+import { VideoTranscoder } from './usecases/transcode'
 import type { S3StorageAdapter } from '../../infrastructure/storage/s3-adapter'
 import { assertStaffExists } from './usecases/staff'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
@@ -67,7 +68,8 @@ export class HousekeepingService {
     this.employeeRepo = employeeRepo
     if (configRepo) { // antes que `timings`: el cierre consulta el modo de evidencia
       this.settingsUc = new HousekeepingSettingsUseCase(configRepo)
-      this.videoUc = new VideoUseCase(repo, this.settingsUc, videoStorage)
+      this.videoUc = new VideoUseCase(repo, this.settingsUc, videoStorage,
+        videoStorage ? new VideoTranscoder(repo, videoStorage, logger) : undefined)
     }
     this.timings = new TimingsUseCase(
       repo,
@@ -174,9 +176,7 @@ export class HousekeepingService {
   async upsertChecklist(h: string, rt: string, items: any[]) { return this.configLists?.upsertChecklist(h, rt, items) ?? [] }
   async getSettings(h: string): Promise<HousekeepingSettings> { return this.settingsUc?.get(h) ?? { ...FALLBACK_SETTINGS } }
   async updateSettings(h: string, patch: Partial<HousekeepingSettings>): Promise<HousekeepingSettings> { return this.settingsUc?.update(h, patch) ?? { ...FALLBACK_SETTINGS } }
-
-  // ─── Evidencia en video ───────────────────────────────────────────────────
-  // Los bytes NO pasan por acá: se firma un permiso y la app sube directo al bucket.
+  // ─── Evidencia en video ── los bytes NO pasan por acá: se firma un permiso y la app sube al bucket.
   private video(): VideoUseCase {
     if (!this.videoUc) throw new ValidationError('Evidencia en video no disponible en este servidor')
     return this.videoUc

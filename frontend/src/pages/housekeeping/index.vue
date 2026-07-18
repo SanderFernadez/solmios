@@ -382,14 +382,22 @@
                 Cargando video…
               </div>
               <div v-else-if="videoError" class="text-xs text-danger py-3">{{ videoError }}</div>
-              <!-- HEVC: el navegador no lo decodifica. En vez de un cuadro negro,
-                   se ofrece bajarlo y abrirlo con el reproductor del sistema. -->
+              <!-- El servidor lo está pasando a un formato que el navegador lea. -->
+              <div
+                v-else-if="selectedTask.video.transcoding"
+                class="flex items-center gap-2 text-xs text-text-muted py-3"
+              >
+                <span class="w-3.5 h-3.5 rounded-full border-2 border-border border-t-cyan animate-spin"></span>
+                Preparando el video para verlo acá… recargá en un minuto.
+              </div>
+              <!-- El teléfono grabó en un codec que el navegador no decodifica y la
+                   conversión no llegó a hacerse. Descargarlo es mejor que un cuadro negro. -->
               <div
                 v-else-if="videoUrl && !canPlayVideo"
-                class="rounded-xl border border-border bg-surface-2 p-4 text-center"
+                class="rounded-xl border border-border bg-surface p-4 text-center"
               >
                 <div class="text-xs text-text-muted mb-3">
-                  El navegador no puede reproducir este video
+                  Este navegador no puede reproducir el video
                   <span v-if="selectedTask.video?.codec">({{ selectedTask.video.codec }})</span>.
                   Descargalo para verlo.
                 </div>
@@ -409,6 +417,7 @@
                 preload="metadata"
                 class="w-full rounded-xl border border-border bg-black max-h-80"
                 @error="videoDecodeFailed = true"
+                @loadeddata="checkDecoded"
               ></video>
             </div>
           </div>
@@ -696,6 +705,17 @@ const videoError = ref<string | null>(null)
 // `videoDecodeFailed` cubre el resto: cualquier codec que este navegador rechace
 // en tiempo real, sin depender de que el backend lo haya clasificado.
 const videoDecodeFailed = ref(false)
+
+/**
+ * Con un codec que no soporta, el navegador NO dispara `error`: abre el
+ * contenedor, informa la duración y hasta `readyState: 4`, pero devuelve un
+ * cuadro de 0×0 — pantalla negra sin ningún aviso. Medido en Chrome con un HEVC
+ * de producción. Por eso la detección mira las dimensiones y no solo el evento.
+ */
+function checkDecoded(e: Event) {
+  const el = e.target as HTMLVideoElement
+  if (el.videoWidth === 0 || el.videoHeight === 0) videoDecodeFailed.value = true
+}
 const canPlayVideo = computed(
   () => selectedTask.value.video?.playableInBrowser !== false && !videoDecodeFailed.value,
 )

@@ -45,6 +45,8 @@ export interface VideoEvidence {
   height?: number | null
   /** `false` cuando el teléfono grabó en HEVC: el navegador no lo decodifica. */
   playableInBrowser?: boolean
+  /** El servidor lo está convirtiendo a H.264 en este momento. */
+  transcoding?: boolean
 }
 
 /** Respuesta de la URL firmada para VER el video. */

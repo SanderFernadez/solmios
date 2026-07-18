@@ -113,6 +113,25 @@ export class S3StorageAdapter implements StorageAdapter {
     }
   }
 
+  /**
+   * Baja el objeto entero a memoria. Se usa para convertir un video que el
+   * navegador no puede decodificar: ffmpeg necesita el archivo completo, no un
+   * tramo. Con los videos de limpieza (decenas de MB) es aceptable; para algo
+   * más grande habría que streamear a disco.
+   */
+  async readAll(key: string): Promise<Uint8Array | null> {
+    try {
+      return new Uint8Array(await this.client.file(key).arrayBuffer())
+    } catch {
+      return null
+    }
+  }
+
+  /** Sube bytes ya armados a una clave EXACTA (a diferencia de `upload`, que la genera). */
+  async putAt(key: string, bytes: Uint8Array, contentType: string): Promise<void> {
+    await this.client.write(key, bytes, { type: contentType })
+  }
+
   async upload(file: FileUpload, directory?: string): Promise<StoredFile> {
     const key = this.keyFor(directory, file.originalName)
     await this.client.write(key, file.buffer, { type: file.mimeType })

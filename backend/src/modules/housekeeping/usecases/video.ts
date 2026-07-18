@@ -14,6 +14,7 @@ import type { S3StorageAdapter } from '../../../infrastructure/storage/s3-adapte
 import type { HousekeepingSettingsUseCase } from './settings'
 import { assertCanEditEvidence } from './ownership'
 import { probeMp4 } from './mp4-probe'
+import type { VideoTranscoder } from './transcode'
 
 /** Solo se aceptan videos. Un `image/*` acá sería un error de la app. */
 const VIDEO_MIME_PREFIX = 'video/'
@@ -44,6 +45,9 @@ export class VideoUseCase {
     private readonly settings: HousekeepingSettingsUseCase,
     /** Ausente si el hotel corre con storage local: el modo video no funciona. */
     private readonly s3?: S3StorageAdapter,
+    /** Convierte a H.264 lo que el navegador no puede decodificar. Sin esto, el
+     *  video HEVC se guarda igual pero solo se puede descargar. */
+    private readonly transcoder?: VideoTranscoder,
   ) {}
 
   /**
@@ -164,6 +168,10 @@ export class VideoUseCase {
 
     const updated = await this.repo.update(taskId, { video } as any)
     if (!updated) throw new NotFoundError('Error al actualizar tarea')
+
+    // Si el teléfono grabó en un codec que el navegador no lee (HEVC), el
+    // servidor lo pasa a H.264 aparte. No se espera: la camarera ya terminó.
+    this.transcoder?.scheduleIfNeeded(taskId, video)
     return updated
   }
 

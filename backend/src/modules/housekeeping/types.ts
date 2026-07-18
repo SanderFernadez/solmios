@@ -42,9 +42,14 @@ export interface VideoEvidence {
   height?: number | null
   /**
    * `false` cuando el teléfono grabó en HEVC: el navegador no lo decodifica y el
-   * panel ofrece descargarlo en vez de mostrar un cuadro negro.
+   * panel ofrece descargarlo en vez de mostrar un cuadro negro. El servidor lo
+   * convierte a H.264 y entonces pasa a `true`.
    */
   playableInBrowser?: boolean
+  /** El servidor lo está convirtiendo a H.264 en este momento. */
+  transcoding?: boolean
+  /** Codec con el que se grabó, si hubo que convertirlo (queda como rastro). */
+  originalCodec?: string | null
 }
 
 export interface StaffStats {
