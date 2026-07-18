@@ -7,6 +7,30 @@ export interface PhotoEvidence {
   size: number
   mimeType: string
   uploadedAt: string
+  /**
+   * Área que la camarera fotografió (`bed`, `bathroom`, `x-balcon`…). La app la
+   * manda según la foto que se le pidió; el nombre visible sale del catálogo de
+   * `photoRequirements`, salvo las áreas del flujo (`start`, `after`, …).
+   */
+  areaId?: string
+}
+
+/** Área fotografiable configurada por el hotel. `areaId` es la clave que viaja en la foto. */
+export interface PhotoRequirement {
+  id: string
+  areaId: string
+  areaName: string
+  icon?: string
+  required?: boolean
+  active?: boolean
+  tipText?: string
+  roomType?: string
+}
+
+/** Item del checklist de limpieza tal como lo dejó la camarera. */
+export interface ChecklistItem {
+  name: string
+  done: boolean
 }
 
 /** Video de evidencia de fin (cuando el hotel usa el modo `video` en vez de las
@@ -97,6 +121,14 @@ export const HousekeepingService = {
   },
   async removePhoto(id: string, photoUrl: string) {
     return http.delete<HousekeepingTask>(`/housekeeping/${id}/photos?url=${encodeURIComponent(photoUrl)}`)
+  },
+  /**
+   * Catálogo de áreas fotografiables del hotel (`bed` → "Cama tendida", …). Es lo
+   * que convierte las miniaturas de evidencia en algo legible: la foto guarda el
+   * `areaId`, el nombre visible vive acá y lo configura el admin.
+   */
+  async photoRequirements() {
+    return http.get<PhotoRequirement[]>('/housekeeping/photo-requirements')
   },
   /** URL firmada temporal para reproducir el video de evidencia. El bucket puede
    *  ser privado: el backend firma un GET que expira, en vez de servir una URL

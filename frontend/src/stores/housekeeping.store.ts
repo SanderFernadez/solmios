@@ -3,7 +3,7 @@
 // y expone acciones de administración (start/complete/photos/stats).
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { HousekeepingService, type HousekeepingTask, type StaffStats, type PhotoEvidence, type VideoEvidence } from '@/services/Housekeeping.service'
+import { HousekeepingService, type HousekeepingTask, type StaffStats, type PhotoEvidence, type VideoEvidence, type ChecklistItem } from '@/services/Housekeeping.service'
 import { RoomService } from '@/services/Room.service'
 import { TeamService, type TeamMember } from '@/services/Team.service'
 
@@ -29,7 +29,8 @@ export interface HousekeepingViewTask {
   durationMs?: number
   time: string
   notes: string
-  items: string[]
+  /** Checklist de la limpieza con su estado real (hecho / sin hacer). */
+  items: ChecklistItem[]
   photos: PhotoEvidence[]
   /** Calificación 1–10 del supervisor, o null si aprobó sin calificar. */
   rating: number | null
@@ -55,7 +56,16 @@ export function humanizeMs(ms: number): string {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
-function parseItems(cleaningItems: unknown): string[] {
+/**
+ * Checklist tal como lo dejó la camarera. Conserva el `done`: antes se aplanaba
+ * a `string[]` y se perdía justamente el dato que el supervisor necesita —
+ * "TV: sin hacer" se veía igual que "TV: hecho".
+ *
+ * Tolera las dos formas que llegan de la BD: array ya parseado o el JSON crudo,
+ * y los items viejos guardados como string suelto (se asumen hechos: son de
+ * tareas cerradas antes de que existiera el `done`).
+ */
+function parseItems(cleaningItems: unknown): ChecklistItem[] {
   if (!cleaningItems) return []
   const arr = Array.isArray(cleaningItems)
     ? cleaningItems
@@ -63,7 +73,11 @@ function parseItems(cleaningItems: unknown): string[] {
       ? (() => { try { return JSON.parse(cleaningItems) } catch { return [] } })()
       : []
   if (!Array.isArray(arr)) return []
-  return arr.map((i: any) => (typeof i === 'string' ? i : i?.name)).filter(Boolean)
+  return arr
+    .map((i: any) => (typeof i === 'string'
+      ? { name: i, done: true }
+      : { name: i?.name, done: i?.done === true }))
+    .filter((i) => Boolean(i.name))
 }
 
 function mapTask(t: HousekeepingTask, roomMap: Map<string, any>, staffMap: Map<string, string>): HousekeepingViewTask {

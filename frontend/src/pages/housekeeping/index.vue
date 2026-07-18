@@ -353,15 +353,20 @@
                 <input type="file" accept="image/*" class="hidden" @change="onPhotoSelect" />
               </label>
             </div>
+            <!-- Cada foto se muestra con el área que se le pidió a la camarera:
+                 sin eso la evidencia es un mosaico anónimo. -->
             <div v-if="selectedTask.photos.length" class="grid grid-cols-3 gap-2">
               <div v-for="(photo, i) in selectedTask.photos" :key="photo.url" class="relative group">
                 <img
                   :src="photo.url"
-                  :alt="photo.name"
+                  :alt="areaLabel(photo.areaId)"
                   loading="lazy"
                   @click="openLightbox(i)"
                   class="w-full h-20 object-cover rounded-lg border border-border cursor-zoom-in bg-surface"
                 />
+                <div class="absolute inset-x-0 bottom-0 px-1.5 py-1 bg-navy/75 rounded-b-lg pointer-events-none">
+                  <div class="text-[9px] font-bold text-white leading-tight truncate">{{ areaLabel(photo.areaId) }}</div>
+                </div>
                 <button
                   @click.stop="onRemovePhoto(photo.url)"
                   class="absolute top-1 right-1 w-5 h-5 bg-danger text-white rounded-full text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -408,13 +413,27 @@
             </div>
           </div>
 
-          <!-- Checklist -->
+          <!-- Checklist de la limpieza: qué se hizo y qué quedó pendiente. Un item
+               sin marcar es lo que el supervisor tiene que ir a mirar, así que se
+               distingue del hecho en vez de listarlos todos igual. -->
           <div v-if="selectedTask.items.length" class="rounded-2xl border border-border p-4">
-            <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2.5">Items de limpieza</div>
-            <div class="flex flex-wrap gap-1.5">
-              <span v-for="item in selectedTask.items" :key="item" class="text-xs font-medium text-text-secondary px-3 py-1 rounded-full border border-border">
-                {{ item }}
-              </span>
+            <div class="flex items-center justify-between mb-2.5">
+              <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide">Checklist de limpieza</div>
+              <div class="text-[11px] font-bold tabular-nums" :class="checklistDone === selectedTask.items.length ? 'text-teal' : 'text-warning'">
+                {{ checklistDone }} de {{ selectedTask.items.length }}
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <div v-for="item in selectedTask.items" :key="item.name" class="flex items-center gap-2.5">
+                <span
+                  class="w-4 h-4 shrink-0 rounded-full grid place-items-center"
+                  :class="item.done ? 'bg-teal text-white' : 'border-2 border-border'"
+                >
+                  <svg v-if="item.done" class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="4"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                </span>
+                <span class="text-sm" :class="item.done ? 'text-text-secondary' : 'text-navy font-bold'">{{ item.name }}</span>
+                <span v-if="!item.done" class="text-[10px] font-bold text-warning uppercase tracking-wide">Sin hacer</span>
+              </div>
             </div>
           </div>
 
@@ -547,10 +566,16 @@
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
           </button>
-          <div class="absolute bottom-5 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-navy/80 text-white text-xs font-bold tabular-nums">
-            {{ (lightboxIndex ?? 0) + 1 }} / {{ lightboxCount }}
-          </div>
         </template>
+
+        <!-- Área + posición. El área va también con una sola foto: es el dato que
+             dice qué se está mirando. -->
+        <div class="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-navy/85">
+          <span class="text-xs font-bold text-white">{{ areaLabel(lightboxPhoto.areaId) }}</span>
+          <span v-if="lightboxCount > 1" class="text-xs font-bold text-white/60 tabular-nums">
+            {{ (lightboxIndex ?? 0) + 1 }} / {{ lightboxCount }}
+          </span>
+        </div>
 
         <button
           @click.stop="closeLightbox"
@@ -566,7 +591,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useCountUp } from '@/composables/useCountUp'
 import { useHousekeepingStore, humanizeMs, type HousekeepingViewTask } from '@/stores/housekeeping.store'
-import { HousekeepingService } from '@/services/Housekeeping.service'
+import { HousekeepingService, type PhotoRequirement } from '@/services/Housekeeping.service'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -585,6 +610,53 @@ const showViewModal = ref(false)
 const showNewModal = ref(false)
 const showAssignModal = ref(false)
 const selectedTask = ref<HousekeepingViewTask>(blankTask())
+// ─── Áreas de la evidencia ───────────────────────────────────────────────────
+// Cada foto guarda el `areaId` de lo que se le pidió fotografiar a la camarera.
+// Sin resolverlo, la evidencia es un mosaico de fotos anónimas y el supervisor no
+// sabe si está mirando el baño o el balcón.
+//
+// El nombre visible sale del catálogo que configura el hotel
+// (`/housekeeping/photo-requirements`). Estas cuatro NO están ahí: las genera el
+// flujo de la app, no el admin, así que su nombre vive acá.
+const FLOW_AREA_LABELS: Record<string, string> = {
+  start: 'Antes de limpiar',
+  after: 'Después de limpiar',
+  evidence: 'Evidencia adicional',
+  supervisor_presence: 'Presencia del supervisor',
+}
+
+const areaNames = ref<Record<string, string>>({})
+
+/** Cuántos items del checklist quedaron efectivamente hechos. */
+const checklistDone = computed(() => selectedTask.value.items.filter((i) => i.done).length)
+
+async function loadAreaNames() {
+  try {
+    // El endpoint responde `{data:[…]}` SIN el `success` que `http` usa para
+    // desenvolver, así que acá llega el objeto entero y no el array que declara
+    // el tipo. Se acepta cualquiera de las dos formas en vez de confiar en una:
+    // el envoltorio difiere entre local y producción.
+    const res = (await HousekeepingService.photoRequirements()) as unknown
+    const list = Array.isArray(res)
+      ? res
+      : Array.isArray((res as { data?: unknown })?.data)
+        ? ((res as { data: PhotoRequirement[] }).data)
+        : []
+    const map: Record<string, string> = {}
+    for (const r of list) if (r?.areaId && r?.areaName) map[r.areaId] = r.areaName
+    areaNames.value = map
+  } catch {
+    // El catálogo es decorativo: si no carga, las fotos caen al nombre del área.
+  }
+}
+
+/** Nombre visible del área. Cae al propio id antes que a un vacío: un `x-patio`
+ *  sin configurar dice algo, y "Sin área" solo cuando la foto no trae ninguna. */
+function areaLabel(areaId?: string): string {
+  if (!areaId) return 'Sin área'
+  return areaNames.value[areaId] || FLOW_AREA_LABELS[areaId] || areaId
+}
+
 // Foto de evidencia ampliada (lightbox). Los thumbnails de 80px no dejan ver el
 // detalle de la limpieza; al hacer click se abre a tamaño completo.
 //
@@ -1103,7 +1175,10 @@ async function onDrop(_e: DragEvent, newStatus: string) {
   }
 }
 
-onMounted(() => store.load(hotelId.value))
+onMounted(() => {
+  store.load(hotelId.value)
+  loadAreaNames()
+})
 </script>
 
 <style scoped>
