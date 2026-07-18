@@ -1,13 +1,28 @@
 <template>
   <div>
+    <!-- Header -->
     <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <div>
         <h2 class="text-xl font-black text-navy">Roles y Permisos</h2>
         <p class="text-sm text-text-muted mt-0.5">Creá roles a medida y definí qué puede hacer cada uno</p>
       </div>
-      <button @click="openCreate" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+      <button @click="openCreate"
+        class="flex items-center gap-1.5 rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
         <span class="text-lg leading-none">+</span>Nuevo Rol
       </button>
+    </div>
+
+    <!-- KPIs -->
+    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+      <div v-for="i in 3" :key="i" class="h-[104px] animate-pulse rounded-[16px] bg-surface"></div>
+    </div>
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+      <KpiHeroCard label="Roles del Hotel" :value="roles.length" icon="building" accent="blue"
+        :unit="`${customRolesCount} personalizado(s)`" />
+      <KpiHeroCard label="Usuarios Asignados" :value="assignedUsers" icon="users" accent="teal"
+        :unit="rolesWithUsers ? `${rolesWithUsers} rol(es) en uso` : 'Ningún rol asignado todavía'" />
+      <KpiHeroCard label="Módulos Disponibles" :value="visibleModules.length" icon="bookings" accent="purple"
+        :unit="`${catalog.actions.length} acción(es) por módulo`" />
     </div>
 
     <div class="mb-5 p-3 rounded-xl bg-navy/5 border border-navy/10 text-xs text-text-secondary">
@@ -15,78 +30,139 @@
       <b>roles personalizados</b> para tu hotel (ej: Cajero, Gerente de piso) y los asignás al registrar un empleado.
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
-    </div>
-
-    <template v-else>
-      <!-- Grid de roles custom -->
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <button v-for="role in roles" :key="role.id" @click="select(role)"
-          class="text-left bg-white rounded-2xl border-2 p-5 transition-all hover:shadow-lg cursor-pointer"
-          :class="selected?.id === role.id ? 'border-navy shadow-md' : 'border-border'">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-navy/5 flex items-center justify-center text-lg">{{ role.icon }}</div>
-              <div>
-                <div class="text-sm font-black text-navy">{{ role.name }}</div>
-                <div class="text-[10px] text-text-muted">{{ role.users }} usuario(s)</div>
-              </div>
-            </div>
-            <button @click.stop="confirmDelete(role)" class="text-coral hover:bg-coral/10 rounded-lg p-1 cursor-pointer" title="Eliminar rol">
-              <span class="w-4 h-4 block" v-html="ICON_TRASH"></span>
-            </button>
-          </div>
-          <div class="text-[10px] text-text-muted">{{ role.permissions.length }} permiso(s)</div>
+    <!-- Listado de roles -->
+    <SectionCard title="Roles" :subtitle="loading ? 'Cargando…' : `${roles.length} rol(es) configurado(s)`"
+      body-class="p-0" class="mb-6">
+      <template #actions>
+        <button @click="openCreate"
+          class="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
+          + Nuevo Rol
         </button>
+      </template>
 
-        <button @click="openCreate" class="bg-white rounded-2xl border-2 border-dashed border-border p-5 flex flex-col items-center justify-center min-h-[112px] hover:border-cyan transition-colors cursor-pointer">
-          <span class="text-2xl text-text-muted mb-1">+</span>
-          <span class="text-xs font-bold text-text-muted">Crear rol personalizado</span>
-        </button>
+      <div v-if="loading" class="space-y-2 p-4">
+        <div v-for="i in 4" :key="i" class="h-12 animate-pulse rounded-xl bg-surface"></div>
       </div>
 
-      <!-- Matriz de permisos -->
-      <div v-if="selected" class="bg-white rounded-2xl border border-border overflow-hidden">
-        <div class="p-4 border-b border-border bg-surface/50 flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h3 class="font-extrabold text-navy text-sm">Permisos — {{ selected.name }}</h3>
-            <p class="text-[10px] text-text-muted">Marcá lo que puede hacer este rol</p>
-          </div>
-          <div class="flex gap-2">
-            <button @click="selectAll" class="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-surface text-navy hover:bg-navy hover:text-white transition-colors cursor-pointer">Todo</button>
-            <button @click="clearAll" class="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-surface text-navy hover:bg-navy hover:text-white transition-colors cursor-pointer">Nada</button>
-          </div>
-        </div>
+      <EmptyState v-else-if="!roles.length" :icon="ICON_SHIELD"
+        title="Todavía no hay roles"
+        message="Creá un rol personalizado para repartir permisos entre tu equipo.">
+        <template #action>
+          <button @click="openCreate"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+            Crear rol
+          </button>
+        </template>
+      </EmptyState>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[640px] tbl-head">
+          <thead>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Rol</th>
+              <th class="text-right px-4 py-3 text-[10px]">Usuarios</th>
+              <th class="text-right px-4 py-3 text-[10px]">Permisos</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="role in roles" :key="role.id" @click="select(role)"
+              class="border-b border-border/50 transition-colors cursor-pointer hover:bg-surface/60"
+              :class="selected?.id === role.id ? 'bg-navy/5' : ''">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy/5 text-lg">{{ role.icon }}</div>
+                  <div class="min-w-0">
+                    <div class="text-sm font-black text-navy truncate">{{ role.name }}</div>
+                    <span class="mt-0.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+                      :class="role.system ? 'bg-navy/10 text-navy' : 'bg-cyan/10 text-cyan'">
+                      {{ role.system ? 'Sistema' : 'Personalizado' }}
+                    </span>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-right text-sm font-bold text-navy tabular-nums">{{ role.users ?? 0 }}</td>
+              <td class="px-4 py-3 text-right text-sm font-bold text-navy tabular-nums">{{ role.permissions.length }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button @click.stop="select(role)" title="Editar permisos"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-navy hover:bg-navy/10 transition-colors cursor-pointer">
+                    <span class="block h-4 w-4" v-html="ICON_SLIDERS"></span>
+                  </button>
+                  <button @click.stop="confirmDelete(role)" title="Eliminar rol"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-coral hover:bg-coral/10 transition-colors cursor-pointer">
+                    <span class="block h-4 w-4" v-html="ICON_TRASH"></span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </SectionCard>
+
+    <!-- Matriz de permisos -->
+    <SectionCard v-if="!loading && roles.length"
+      :title="selected ? `Permisos — ${selected.name}` : 'Permisos'"
+      :subtitle="selected ? 'Marcá lo que puede hacer este rol' : 'Elegí un rol del listado para editar sus permisos'"
+      body-class="p-0">
+      <template v-if="selected" #actions>
+        <button @click="selectAll"
+          class="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
+          Marcar todo
+        </button>
+        <button @click="clearAll"
+          class="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
+          Quitar todo
+        </button>
+      </template>
+
+      <EmptyState v-if="!selected" :icon="ICON_SHIELD"
+        title="Ningún rol seleccionado"
+        message="Tocá un rol en el listado de arriba para ver y editar su matriz de permisos." />
+
+      <EmptyState v-else-if="!visibleModules.length" :icon="ICON_SHIELD"
+        title="Sin módulos habilitados"
+        message="Tu plan todavía no libera módulos con permisos configurables." />
+
+      <template v-else>
+        <div class="max-h-[540px] overflow-auto">
+          <table class="w-full min-w-[720px] tbl-head">
             <thead>
-              <tr class="border-b border-border bg-navy/5">
-                <th class="text-left py-3 px-4 text-xs font-black text-navy">Módulo</th>
-                <th v-for="a in catalog.actions" :key="a.key" class="text-center py-3 px-3 text-[10px] font-bold text-text-muted uppercase">{{ a.label }}</th>
+              <tr>
+                <th class="sticky top-0 z-10 bg-surface text-left px-4 py-3 text-[10px]">Módulo</th>
+                <th v-for="a in catalog.actions" :key="a.key"
+                  class="sticky top-0 z-10 bg-surface text-center px-3 py-3 text-[10px] whitespace-nowrap">{{ a.label }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="m in visibleModules" :key="m.key" class="border-b border-border/40 hover:bg-surface/30 transition-colors">
-                <td class="py-2.5 px-4 text-xs font-bold text-navy">{{ m.label }}</td>
-                <td v-for="a in catalog.actions" :key="a.key" class="py-2.5 px-3 text-center">
+              <tr v-for="m in visibleModules" :key="m.key"
+                class="border-b border-border/50 transition-colors hover:bg-surface/60">
+                <td class="px-4 py-2.5">
+                  <div class="text-xs font-bold text-navy">{{ m.label }}</div>
+                  <div class="text-[10px] text-text-muted tabular-nums">{{ modulePermCount(m.key) }} de {{ catalog.actions.length }}</div>
+                </td>
+                <td v-for="a in catalog.actions" :key="a.key" class="px-3 py-2.5 text-center">
                   <input type="checkbox" :value="`${m.key}:${a.key}`" v-model="selected.permissions"
-                    class="w-4 h-4 accent-navy rounded cursor-pointer" />
+                    :aria-label="`${m.label} — ${a.label}`"
+                    class="mx-auto block h-4 w-4 accent-navy rounded cursor-pointer" />
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="p-4 border-t border-border flex items-center justify-between">
-          <span class="text-xs text-text-muted">{{ selected.permissions.length }} permiso(s) asignado(s)</span>
-          <button @click="save" :disabled="saving" class="px-4 py-2 bg-navy text-white text-xs font-bold rounded-xl cursor-pointer disabled:opacity-50">
-            {{ saving ? 'Guardando…' : 'Guardar Permisos' }}
+        <div class="flex items-center justify-between gap-3 flex-wrap border-t border-border px-4 py-4">
+          <span class="text-xs text-text-muted tabular-nums">
+            {{ selected.permissions.length }} de {{ totalAssignablePermissions }} permiso(s) asignado(s)
+          </span>
+          <button @click="save" :disabled="saving"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+            {{ saving ? 'Guardando…' : 'Guardar permisos' }}
           </button>
         </div>
-      </div>
-    </template>
+      </template>
+    </SectionCard>
 
     <FormModal
       v-if="createModal"
@@ -104,12 +180,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { RolesService, type Role, type PermissionCatalog } from '@/services/Roles.service'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
 import { useModulesStore } from '@/stores/modules.store'
 import { permissionModuleEnabled } from '@/config/module-map'
 
 const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h12M9.75 7.5v-1.5a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 1.5 1.5v1.5m-8.25 0 .75 11.25a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5L17.25 7.5"/></svg>'
+const ICON_SLIDERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h10m4 0h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>'
+const ICON_SHIELD = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v6c0 4.4-3 8.1-7 9-4-.9-7-4.6-7-9V6l7-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 12.2l1.8 1.8 3.4-3.6"/></svg>'
 
 const toast = useToast()
 const auth = useAuthStore()
@@ -123,6 +204,17 @@ const selected = ref<Role | null>(null)
 // El dueño solo reparte permisos de los módulos que la plataforma le liberó (plan ∩ global).
 const visibleModules = computed(() =>
   catalog.value.modules.filter((m) => permissionModuleEnabled(m.key, modules.state)))
+
+const customRolesCount = computed(() => roles.value.filter((r) => !r.system).length)
+const assignedUsers = computed(() => roles.value.reduce((sum, r) => sum + (r.users ?? 0), 0))
+const rolesWithUsers = computed(() => roles.value.filter((r) => (r.users ?? 0) > 0).length)
+const totalAssignablePermissions = computed(() => visibleModules.value.length * catalog.value.actions.length)
+
+/** Cuántas acciones del módulo tiene marcadas el rol seleccionado (solo lectura, no altera el payload). */
+function modulePermCount(moduleKey: string): number {
+  if (!selected.value) return 0
+  return catalog.value.actions.filter((a) => selected.value!.permissions.includes(`${moduleKey}:${a.key}`)).length
+}
 
 async function load() {
   loading.value = true

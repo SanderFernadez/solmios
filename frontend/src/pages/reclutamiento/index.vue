@@ -1,43 +1,96 @@
 <template>
   <div>
+    <!-- Header -->
     <div class="flex items-center justify-between mb-6 gap-3 flex-wrap">
       <div>
         <h2 class="text-xl font-black text-navy">Reclutamiento</h2>
         <p class="text-sm text-text-muted mt-0.5">Pipeline de selección — postulantes por etapa</p>
       </div>
-      <button @click="openNewApplicant" class="flex items-center gap-1.5 px-4 py-2 bg-cyan text-navy rounded-xl text-xs font-bold hover:shadow-lg cursor-pointer">
-        + Nuevo postulante
+      <button @click="openNewApplicant"
+        class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
+        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+        Nuevo postulante
       </button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <KpiHeroCard label="Postulantes" :value="totalApplicants" icon="users" accent="blue"
+        unit="Total en el pipeline" />
+      <KpiHeroCard label="En Proceso" :value="inProcessCount" icon="bookings" accent="purple"
+        unit="Nuevos, preselección, entrevista y oferta" :progress="inProcessShare" />
+      <KpiHeroCard label="Contratados" :value="hiredCount" icon="checkin" accent="teal"
+        unit="Pasaron a expediente de empleado" :progress="hiredShare" />
+      <KpiHeroCard label="Rechazados" :value="rejectedCount" icon="checkout" accent="rose"
+        unit="Descartados del pipeline" />
     </div>
 
-    <div v-else class="overflow-x-auto pb-4">
-      <div class="flex gap-4 min-w-max">
-        <div v-for="col in columns" :key="col.stage" class="w-64 shrink-0">
-          <div class="flex items-center justify-between mb-2 px-1">
-            <span class="text-xs font-black uppercase tracking-wide" :class="col.text">{{ col.label }}</span>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface text-text-muted">{{ byStage(col.stage).length }}</span>
-          </div>
-          <div class="space-y-2 min-h-[60px] p-2 rounded-xl" :class="col.bg">
-            <div v-for="a in byStage(col.stage)" :key="a.id" class="card p-3 bg-white">
-              <div class="font-bold text-navy text-sm truncate">{{ a.name }}</div>
-              <div class="text-[11px] text-text-muted truncate">{{ a.email || a.phone || 'Sin contacto' }}</div>
-              <div v-if="a.source" class="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-navy/5 text-navy uppercase">{{ a.source }}</div>
-              <div v-if="a.stage === 'rejected' && a.rejectReason" class="text-[10px] text-coral mt-1 line-clamp-2">✕ {{ a.rejectReason }}</div>
-              <div v-if="a.stage !== 'hired' && a.stage !== 'rejected'" class="flex items-center gap-1 mt-2 flex-wrap">
-                <button v-if="nextStage(a.stage)" @click="advance(a)" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-teal/10 text-teal hover:bg-teal/20 cursor-pointer">→ {{ stageLabel(nextStage(a.stage)!) }}</button>
-                <button @click="hire(a)" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-cyan/20 text-navy hover:bg-cyan/30 cursor-pointer">Contratar</button>
-                <button @click="reject(a)" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-coral/10 text-coral hover:bg-coral/20 cursor-pointer">Rechazar</button>
-              </div>
+    <!-- Tablero por etapa -->
+    <SectionCard title="Pipeline de selección" :subtitle="`${totalApplicants} postulante(s) en ${columns.length} etapas`">
+      <!-- Skeleton -->
+      <div v-if="loading" class="overflow-x-auto pb-1">
+        <div class="flex gap-4 min-w-max">
+          <div v-for="i in 6" :key="i" class="w-64 shrink-0 rounded-2xl border border-border bg-white p-3">
+            <div class="h-4 w-24 animate-pulse rounded bg-surface"></div>
+            <div class="mt-3 space-y-2">
+              <div v-for="j in 3" :key="j" class="h-20 animate-pulse rounded-xl bg-surface"></div>
             </div>
-            <div v-if="byStage(col.stage).length === 0" class="text-center text-[10px] text-text-muted py-3">—</div>
           </div>
         </div>
       </div>
-    </div>
+
+      <div v-else class="overflow-x-auto pb-1">
+        <div class="flex gap-4 min-w-max">
+          <div v-for="col in columns" :key="col.stage"
+            class="w-64 shrink-0 rounded-2xl border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+            <!-- Header de columna -->
+            <div class="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
+              <span class="text-[10px] font-bold uppercase tracking-wide" :class="col.text">{{ col.label }}</span>
+              <span class="text-[10px] font-black tabular-nums px-2 py-0.5 rounded-full" :class="col.badge">
+                {{ byStage(col.stage).length }}
+              </span>
+            </div>
+
+            <!-- Tarjetas -->
+            <div class="p-2 space-y-2">
+              <div v-for="a in byStage(col.stage)" :key="a.id"
+                class="rounded-xl border border-border bg-white p-3 transition-shadow hover:shadow-(--shadow-card)">
+                <div class="font-bold text-navy text-sm truncate">{{ a.name }}</div>
+                <div v-if="a.email || a.phone" class="text-[11px] text-text-muted truncate">{{ a.email || a.phone }}</div>
+                <div v-if="a.source"
+                  class="inline-block mt-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-navy/10 text-navy uppercase tracking-wide">
+                  {{ a.source }}
+                </div>
+                <div v-if="a.stage === 'rejected' && a.rejectReason"
+                  class="mt-1.5 rounded-lg bg-coral/10 px-2 py-1 text-[10px] text-coral line-clamp-2">
+                  {{ a.rejectReason }}
+                </div>
+
+                <div v-if="a.stage !== 'hired' && a.stage !== 'rejected'"
+                  class="mt-2.5 flex items-center gap-1 border-t border-border pt-2">
+                  <button v-if="nextStage(a.stage)" @click="advance(a)"
+                    :title="`Mover a ${stageLabel(nextStage(a.stage)!)}`"
+                    class="h-8 w-8 grid place-items-center rounded-lg text-teal hover:bg-teal/10 transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_ARROW_RIGHT"></span>
+                  </button>
+                  <button @click="hire(a)" title="Contratar"
+                    class="h-8 w-8 grid place-items-center rounded-lg text-navy hover:bg-navy/10 transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_CHECK"></span>
+                  </button>
+                  <button @click="reject(a)" title="Rechazar"
+                    class="h-8 w-8 grid place-items-center rounded-lg text-coral hover:bg-coral/10 transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_X"></span>
+                  </button>
+                </div>
+              </div>
+
+              <EmptyState v-if="byStage(col.stage).length === 0" title="Sin postulantes"
+                :message="`Nadie en ${col.label.toLowerCase()} por ahora.`" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </SectionCard>
 
     <FormModal
       v-if="formModal"
@@ -55,13 +108,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ReclutamientoService, type Applicant } from '@/services/Reclutamiento.service'
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { useConfirm } from '@/composables/useConfirm'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 
 type FormValues = Record<string, string | number>
 
@@ -73,17 +129,22 @@ const applicants = ref<Applicant[]>([])
 const saving = ref(false)
 const formModal = ref<{ title: string; submitLabel: string; fields: FormField[]; onSubmit: (v: FormValues) => Promise<unknown> } | null>(null)
 
+const ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="h-full w-full"><path d="M12 5v14M5 12h14"/></svg>'
+const ICON_ARROW_RIGHT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="h-full w-full"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="h-full w-full"><path d="M20 6L9 17l-5-5"/></svg>'
+const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="h-full w-full"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+
 const STAGES = ['new', 'screening', 'interview', 'offer', 'hired', 'rejected'] as const
 const STAGE_LABELS: Record<string, string> = {
   new: 'Nuevos', screening: 'Preselección', interview: 'Entrevista', offer: 'Oferta', hired: 'Contratados', rejected: 'Rechazados',
 }
 const columns = [
-  { stage: 'new', label: 'Nuevos', bg: 'bg-navy/5', text: 'text-navy' },
-  { stage: 'screening', label: 'Preselección', bg: 'bg-gold/5', text: 'text-gold' },
-  { stage: 'interview', label: 'Entrevista', bg: 'bg-cyan/5', text: 'text-cyan' },
-  { stage: 'offer', label: 'Oferta', bg: 'bg-teal/5', text: 'text-teal' },
-  { stage: 'hired', label: 'Contratados', bg: 'bg-teal/10', text: 'text-teal' },
-  { stage: 'rejected', label: 'Rechazados', bg: 'bg-coral/5', text: 'text-coral' },
+  { stage: 'new', label: 'Nuevos', bg: 'bg-navy/5', text: 'text-navy', badge: 'bg-navy/10 text-navy' },
+  { stage: 'screening', label: 'Preselección', bg: 'bg-gold/5', text: 'text-gold', badge: 'bg-gold/10 text-gold' },
+  { stage: 'interview', label: 'Entrevista', bg: 'bg-cyan/5', text: 'text-cyan', badge: 'bg-cyan/10 text-cyan' },
+  { stage: 'offer', label: 'Oferta', bg: 'bg-teal/5', text: 'text-teal', badge: 'bg-teal/10 text-teal' },
+  { stage: 'hired', label: 'Contratados', bg: 'bg-teal/10', text: 'text-teal', badge: 'bg-teal/10 text-teal' },
+  { stage: 'rejected', label: 'Rechazados', bg: 'bg-coral/5', text: 'text-coral', badge: 'bg-coral/10 text-coral' },
 ]
 
 function stageLabel(s: string) { return STAGE_LABELS[s] ?? s }
@@ -93,6 +154,14 @@ function nextStage(stage: string): string | null {
   const i = flow.indexOf(stage)
   return i >= 0 && i < flow.length - 1 ? flow[i + 1] : null
 }
+
+// KPIs — los anima KpiHeroCard internamente (useCountUp propio).
+const totalApplicants = computed(() => applicants.value.length)
+const hiredCount = computed(() => applicants.value.filter((a) => a.stage === 'hired').length)
+const rejectedCount = computed(() => applicants.value.filter((a) => a.stage === 'rejected').length)
+const inProcessCount = computed(() => totalApplicants.value - hiredCount.value - rejectedCount.value)
+const inProcessShare = computed(() => (totalApplicants.value ? Math.round((inProcessCount.value / totalApplicants.value) * 100) : 0))
+const hiredShare = computed(() => (totalApplicants.value ? Math.round((hiredCount.value / totalApplicants.value) * 100) : 0))
 
 async function load() {
   loading.value = true

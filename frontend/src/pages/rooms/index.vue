@@ -13,23 +13,6 @@
         </span>
       </div>
       <div class="flex gap-2 items-center flex-wrap">
-        <div class="relative">
-          <input v-model="searchQuery" type="text" placeholder="Buscar habitación, tipo, piso..." class="pl-9 pr-8 py-2 rounded-full border border-border text-xs font-bold w-64 focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 bg-white" />
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-navy cursor-pointer">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <select v-model="activeFilter" class="px-3 py-2 rounded-full border border-border text-xs font-bold cursor-pointer bg-white">
-          <option value="all">Todas</option>
-          <option value="available">Disponibles</option>
-          <option value="occupied">Ocupadas</option>
-          <option value="cleaning">Limpieza</option>
-          <option value="dirty">Sucias</option>
-          <option value="out_of_service">F/S</option>
-        </select>
         <button @click="openNew" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
           Nueva
@@ -41,116 +24,159 @@
       </div>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-      <div v-for="s in stats" :key="s.label" class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="s.bg">
-            <span class="w-5 h-5" :class="s.color" v-html="s.icon"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums" :class="s.color">{{ Math.round(s.value) }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">{{ s.label }}</div>
+    <!-- Stats — KpiHeroCard (mismo lenguaje visual que dashboard/guests) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+      <KpiHeroCard label="Total" :value="totalCount" icon="bed" accent="blue"
+        unit="Habitaciones registradas" />
+      <KpiHeroCard label="Disponibles" :value="availableCount" icon="checkin" accent="green"
+        unit="Listas para vender" :progress="sharePct(availableCount)" />
+      <KpiHeroCard label="Ocupadas" :value="occupiedCount" icon="users" accent="rose"
+        unit="Con huésped en casa" :progress="sharePct(occupiedCount)" />
+      <KpiHeroCard label="En limpieza" :value="cleaningCount" icon="checkout" accent="teal"
+        unit="Housekeeping trabajando" />
+      <KpiHeroCard label="Sucias" :value="dirtyCount" icon="bookings" accent="amber"
+        unit="Esperan limpieza" />
+      <KpiHeroCard label="Fuera de servicio" :value="outOfServiceCount" icon="building" accent="purple"
+        unit="No vendibles" />
+    </div>
+
+    <!-- Listado de habitaciones -->
+    <SectionCard title="Habitaciones" :subtitle="listSubtitle" body-class="p-0">
+      <template #actions>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" v-html="ICON_SEARCH"></span>
+          <input v-model="searchQuery" type="text" placeholder="Buscar habitación, tipo, piso..."
+            class="w-full sm:w-64 pl-9 pr-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm text-white placeholder:text-white/45 focus:outline-none focus:border-cyan focus:bg-white/15 transition-colors" />
+        </div>
+        <select v-model="activeFilter"
+          class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+          <option class="text-navy" value="all">Todas</option>
+          <option class="text-navy" value="available">Disponibles</option>
+          <option class="text-navy" value="occupied">Ocupadas</option>
+          <option class="text-navy" value="cleaning">Limpieza</option>
+          <option class="text-navy" value="dirty">Sucias</option>
+          <option class="text-navy" value="out_of_service">Fuera de servicio</option>
+        </select>
+      </template>
+
+      <!-- Carga inicial -->
+      <div v-if="loading && !rooms.length" class="p-4 sm:p-5">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))">
+          <div v-for="i in 8" :key="i" class="rounded-2xl border border-border p-4">
+            <div class="h-6 w-16 animate-pulse rounded bg-surface"></div>
+            <div class="mt-3 h-4 w-24 animate-pulse rounded bg-surface"></div>
+            <div class="mt-3 h-3 w-full animate-pulse rounded bg-surface"></div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Empty state -->
-    <div v-if="rooms.length === 0 && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
-      <svg class="w-10 h-10 mx-auto mb-3 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1" />
-      </svg>
-      <p class="text-sm text-text-muted">No hay habitaciones. Creá la primera con "Nueva" o "Crear en Lote".</p>
-    </div>
+      <!-- Sin resultados / sin datos -->
+      <EmptyState
+        v-else-if="!filteredRooms.length"
+        :icon="ICON_BUILDING_EMPTY"
+        :title="hasFilters ? 'Sin resultados' : 'Todavía no hay habitaciones'"
+        :message="hasFilters
+          ? 'Probá con otro término de búsqueda o quitá el filtro de estado.'
+          : 'Creá la primera habitación, o cargá un piso entero con «Crear en Lote».'"
+      >
+        <template #action>
+          <button v-if="hasFilters" @click="clearFilters"
+            class="px-5 py-2.5 rounded-full border border-border text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer">
+            Limpiar filtros
+          </button>
+          <button v-else @click="openNew"
+            class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy/90 transition-colors cursor-pointer">
+            Nueva habitación
+          </button>
+        </template>
+      </EmptyState>
 
-    <!-- Legend -->
-    <div v-if="rooms.length > 0" class="flex flex-wrap items-center gap-x-5 gap-y-2 mb-5">
-      <div v-for="s in ROOM_STATUS_LEGEND" :key="s.status" class="flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full shrink-0" :class="s.dot"></span>
-        <span class="text-[12px] text-text-secondary">{{ s.label }}</span>
+      <div v-else class="p-4 sm:p-5">
+        <!-- Leyenda de estados -->
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mb-5">
+          <div v-for="s in ROOM_STATUS_LEGEND" :key="s.status" class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full shrink-0" :class="s.dot"></span>
+            <span class="text-[12px] text-text-secondary">{{ s.label }}</span>
+          </div>
+        </div>
+
+        <!-- Habitaciones agrupadas por tipo -->
+        <div v-for="rt in paginatedRoomTypes" :key="rt.type" class="mb-8 last:mb-0">
+          <div class="flex items-baseline gap-2 mb-3 flex-wrap">
+            <h3 class="text-sm font-black text-navy">{{ rt.type }}</h3>
+            <span class="text-xs text-text-muted">
+              {{ rt.rooms.length }} habitaciones · {{ rt.available }} disponibles<template v-if="rt.occupied"> · {{ rt.occupied }} ocupadas</template><template v-if="rt.cleaning"> · {{ rt.cleaning }} limpieza</template>
+            </span>
+          </div>
+          <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))">
+            <div v-for="room in rt.rooms" :key="room.id" @click="openDetail(room)"
+              class="rounded-2xl border border-border bg-white p-4 cursor-pointer transition-colors hover:border-navy/25 hover:bg-surface/40">
+              <!-- El número es el ancla visual de la card -->
+              <div class="flex items-start justify-between gap-2 mb-3">
+                <span class="text-2xl font-black leading-none tabular-nums text-navy"
+                  :class="{ 'line-through opacity-40': room.status === 'out_of_service' }">
+                  {{ room.number }}
+                </span>
+                <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide"
+                  :class="statusBadge(room.status)">
+                  {{ statusLabel(room.status) }}
+                </span>
+              </div>
+              <div class="flex items-baseline justify-between gap-2 mb-3">
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Por noche</span>
+                <span class="text-sm font-black tabular-nums text-navy">${{ room.basePrice.toLocaleString() }}</span>
+              </div>
+              <div class="flex items-center gap-3 text-[11px] text-text-muted">
+                <span class="flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>
+                  <span class="tabular-nums">{{ room.maxGuests }}p</span>
+                </span>
+                <span class="flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>
+                  <span class="tabular-nums">Piso {{ room.floor }}</span>
+                </span>
+                <span v-if="room.surfaceArea" class="tabular-nums">{{ room.surfaceArea }}m²</span>
+              </div>
+              <div v-if="(room.amenities||[]).length" class="mt-3 pt-3 border-t border-border text-[11px] text-text-muted truncate">
+                {{ (room.amenities||[]).slice(0, 3).map(amenityLabel).join(' · ') }}<template v-if="room.amenities.length > 3"> +{{ room.amenities.length - 3 }}</template>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- Rooms by Type -->
-    <div v-for="rt in paginatedRoomTypes" :key="rt.type" class="mb-9">
-      <div class="flex items-baseline gap-2 mb-4 px-0.5 flex-wrap">
-        <h3 class="text-sm font-bold text-navy">{{ rt.type }}</h3>
-        <span class="text-xs text-text-muted">
-          {{ rt.rooms.length }} habitaciones · {{ rt.available }} disponibles<template v-if="rt.occupied"> · {{ rt.occupied }} ocupadas</template><template v-if="rt.cleaning"> · {{ rt.cleaning }} limpieza</template>
+      <!-- Paginación -->
+      <div v-if="totalPages > 1" class="flex items-center justify-between px-4 py-3 border-t border-border">
+        <span class="text-[11px] font-bold text-text-muted tabular-nums">
+          {{ (page - 1) * perPage + 1 }}–{{ Math.min(page * perPage, filteredRooms.length) }} de {{ filteredRooms.length }}
         </span>
-      </div>
-      <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))">
-        <div v-for="room in rt.rooms" :key="room.id" @click="openDetail(room)"
-          class="rounded-2xl border border-border p-4 cursor-pointer transition-colors hover:border-navy/25 bg-white">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xl font-black text-navy" :class="{ 'line-through opacity-40': room.status === 'out_of_service' }">
-              {{ room.number }}
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="statusDot(room.status)"></span>
-              <span class="text-[10px] font-semibold uppercase tracking-wide text-text-muted">{{ statusLabel(room.status) }}</span>
-            </span>
-          </div>
-          <div class="text-sm font-bold text-navy mb-3">
-            ${{ room.basePrice }} <span class="text-[11px] font-normal text-text-muted">/noche</span>
-          </div>
-          <div class="flex items-center gap-3 text-[11px] text-text-muted">
-            <span class="flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>
-              {{ room.maxGuests }}p
-            </span>
-            <span class="flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>
-              Piso {{ room.floor }}
-            </span>
-            <span v-if="room.surfaceArea">{{ room.surfaceArea }}m²</span>
-          </div>
-          <div v-if="(room.amenities||[]).length" class="mt-3 pt-3 border-t border-border text-[11px] text-text-muted truncate">
-            {{ (room.amenities||[]).slice(0, 3).map(amenityLabel).join(' · ') }}<template v-if="room.amenities.length > 3"> +{{ room.amenities.length - 3 }}</template>
-          </div>
+        <div class="flex items-center gap-1">
+          <button @click="page = 1" :disabled="page <= 1" title="Primera página"
+            class="grid h-8 w-8 place-items-center rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">«</button>
+          <button @click="page--" :disabled="page <= 1" title="Página anterior"
+            class="grid h-8 w-8 place-items-center rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">‹</button>
+          <span class="px-2 text-xs font-bold text-navy tabular-nums">{{ page }} / {{ totalPages }}</span>
+          <button @click="page++" :disabled="page >= totalPages" title="Página siguiente"
+            class="grid h-8 w-8 place-items-center rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">›</button>
+          <button @click="page = totalPages" :disabled="page >= totalPages" title="Última página"
+            class="grid h-8 w-8 place-items-center rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">»</button>
         </div>
       </div>
-    </div>
-
-    <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex items-center justify-between mt-4 px-2">
-      <div class="text-xs text-text-muted font-bold">
-        {{ filteredRooms.length }} de {{ totalRooms }} habitaciones
-      </div>
-      <div class="flex items-center gap-1.5">
-        <button @click="page = 1" :disabled="page <= 1"
-          class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">«</button>
-        <button @click="page--" :disabled="page <= 1"
-          class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
-        <span class="px-2 text-sm font-bold text-navy">{{ page }} / {{ totalPages }}</span>
-        <button @click="page++" :disabled="page >= totalPages"
-          class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">›</button>
-        <button @click="page = totalPages" :disabled="page >= totalPages"
-          class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">»</button>
-      </div>
-    </div>
+    </SectionCard>
 
     <!-- ====================== DETAIL MODAL ====================== -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-      <div v-if="detailModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
-          <div class="px-7 pt-7 pb-5 flex items-center justify-between shrink-0">
-            <div class="flex items-baseline gap-3">
-              <span class="text-3xl font-black leading-none tracking-tight text-navy">{{ detailRoom?.number }}</span>
-              <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide" :class="statusText(detailRoom?.status||'')">
-                <span class="w-1.5 h-1.5 rounded-full" :class="statusDot(detailRoom?.status||'')"></span>
-                {{ statusLabel(detailRoom?.status||'') }}
-              </span>
-            </div>
-            <button @click="detailModal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
+    <AppModal v-if="detailModal.show" size="lg" @close="detailModal.show=false">
+      <template #header>
+        <div class="flex items-baseline gap-3 min-w-0">
+          <span class="text-2xl font-black leading-none tracking-tight text-white">{{ detailRoom?.number }}</span>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white">
+            <span class="h-1.5 w-1.5 rounded-full" :class="statusDot(detailRoom?.status||'')"></span>
+            {{ statusLabel(detailRoom?.status||'') }}
+          </span>
+        </div>
+      </template>
 
-          <div class="px-7 pb-7 space-y-6 overflow-y-auto flex-1">
+      <div class="space-y-6">
             <!-- Room info: lista tipográfica, sin cajas -->
             <div class="grid grid-cols-3 gap-x-4 gap-y-5 pb-6 border-b border-border">
               <div>
@@ -175,7 +201,10 @@
               </div>
               <div>
                 <div class="text-[11px] text-text-muted uppercase tracking-wide">Superficie</div>
-                <div class="text-sm font-bold text-navy mt-1">{{ detailRoom?.surfaceArea || '—' }} m²</div>
+                <!-- Sin superficie cargada no se pinta un guión suelto. -->
+                <div class="text-sm font-bold mt-1" :class="detailRoom?.surfaceArea ? 'text-navy' : 'text-text-muted'">
+                  {{ detailRoom?.surfaceArea ? `${detailRoom.surfaceArea} m²` : 'Sin dato' }}
+                </div>
               </div>
             </div>
 
@@ -212,39 +241,24 @@
                 </button>
               </div>
             </div>
-          </div>
-
-          <div class="px-7 py-5 border-t border-border flex items-center gap-3 justify-between shrink-0">
-            <button @click="deleteRoomFromDetail"
-              class="text-sm font-bold text-coral hover:opacity-70 cursor-pointer transition-opacity">
-              Eliminar
-            </button>
-            <div class="flex items-center gap-4">
-              <button @click="detailModal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
-              <button @click="openEditFromDetail" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer hover:bg-navy/90 transition-colors">
-                Editar
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
-      </Transition>
-    </Teleport>
+
+      <template #footer>
+        <button @click="deleteRoomFromDetail"
+          class="mr-auto px-4 py-2.5 text-sm font-bold text-coral hover:opacity-70 cursor-pointer transition-opacity">
+          Eliminar
+        </button>
+        <button @click="detailModal.show=false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
+        <button @click="openEditFromDetail" class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+          Editar
+        </button>
+      </template>
+    </AppModal>
 
     <!-- ====================== BATCH MODAL ====================== -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-      <div v-if="batchModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
-          <div class="px-7 pt-7 pb-5 flex items-center justify-between shrink-0">
-            <h3 class="text-xl font-black text-navy tracking-tight">Crear en lote</h3>
-            <button @click="batchModal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
-
-          <div class="px-7 pb-7 space-y-6 overflow-y-auto flex-1">
+    <AppModal v-if="batchModal.show" size="lg" title="Crear en lote"
+      subtitle="Genera varias habitaciones del mismo tipo de una vez" @close="batchModal.show=false">
+      <div class="space-y-6">
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Tipo de habitación</label>
               <div class="grid grid-cols-2 gap-2">
@@ -308,33 +322,20 @@
                 </button>
               </div>
             </div>
-          </div>
-
-          <div class="px-7 py-5 border-t border-border flex items-center gap-4 justify-end shrink-0">
-            <button @click="batchModal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
-            <button @click="executeBatch" :disabled="batchSaving || batchCount <= 0 || batchCount > 100"
-              class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-              {{ batchSaving ? 'Creando...' : `Crear ${batchCount} habitaciones` }}
-            </button>
-          </div>
-        </div>
       </div>
-      </Transition>
-    </Teleport>
+
+      <template #footer>
+        <button @click="batchModal.show=false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+        <button @click="executeBatch" :disabled="batchSaving || batchCount <= 0 || batchCount > 100"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+          {{ batchSaving ? 'Creando…' : `Crear ${batchCount} habitaciones` }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- ====================== EDIT MODAL ====================== -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-      <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-          <div class="px-7 pt-7 pb-5 flex items-center justify-between shrink-0">
-            <h3 class="text-xl font-black text-navy tracking-tight">{{ modal.edit ? 'Editar' : 'Nueva' }} habitación</h3>
-            <button @click="modal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
-          <div class="px-7 pb-7 space-y-5 overflow-y-auto flex-1">
+    <AppModal v-if="modal.show" size="lg" :title="`${modal.edit ? 'Editar' : 'Nueva'} habitación`" @close="modal.show=false">
+      <div class="space-y-5">
             <div class="grid grid-cols-3 gap-4">
               <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Número *</label><input v-model="form.number" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" /></div>
               <div><label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Tipo</label>
@@ -365,20 +366,25 @@
                 </button>
               </div>
             </div>
-          </div>
-          <div class="px-7 py-5 border-t border-border flex items-center gap-4 justify-end shrink-0">
-            <button @click="modal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
-            <button @click="save" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer transition-colors disabled:opacity-40">{{ saving?'Guardando...':'Guardar' }}</button>
-          </div>
-        </div>
       </div>
-      </Transition>
-    </Teleport>
+
+      <template #footer>
+        <button @click="modal.show=false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+        <button @click="save" :disabled="saving"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-40">
+          {{ saving ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import AppModal from '@/components/ui/AppModal.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { useCountUp } from '@/composables/useCountUp'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -565,6 +571,27 @@ const ROOM_STATUS_LEGEND = [
 
 const totalRooms = ref(0)
 
+// % que representa un subconjunto sobre el total — alimenta los anillos de los KPI.
+function sharePct(n: number): number {
+  return totalCount.value ? Math.round((n / totalCount.value) * 100) : 0
+}
+
+// Subtítulo del listado: aclara si lo mostrado está filtrado.
+const listSubtitle = computed(() => hasFilters.value
+  ? `${filteredRooms.value.length} de ${totalCount.value} habitación(es)`
+  : `${totalCount.value} habitación(es)`)
+
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z"/></svg>'
+const ICON_BUILDING_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
+
+// ¿Hay algún filtro puesto? Distingue "no hay habitaciones" de "el filtro no encontró nada".
+const hasFilters = computed(() => activeFilter.value !== 'all' || searchQuery.value.trim() !== '')
+
+function clearFilters() {
+  activeFilter.value = 'all'
+  searchQuery.value = ''
+}
+
 const filteredRooms = computed(() => {
   let list = rooms.value
   if (activeFilter.value !== 'all') list = list.filter(r => r.status === activeFilter.value)
@@ -601,6 +628,8 @@ function statusLabel(s: string) { const m: Record<string,string> = { available:'
 function statusText(s: string) { const m: Record<string,string> = { available:'text-teal', occupied:'text-coral', cleaning:'text-cyan', dirty:'text-gold', out_of_service:'text-gray-400' }; return m[s]||'text-gray-400' }
 function statusHeaderBg(s: string) { const m: Record<string,string> = { available:'bg-teal/5', occupied:'bg-coral/5', cleaning:'bg-cyan/5', dirty:'bg-gold/5', out_of_service:'bg-gray-50' }; return m[s]||'bg-surface' }
 function statusBorder(s: string) { const m: Record<string,string> = { available:'border-teal/40', occupied:'border-coral/40', cleaning:'border-cyan/40', dirty:'border-gold/40', out_of_service:'border-gray-300' }; return m[s]||'border-border' }
+// Badge de estado de la fila: fondo tonal + texto del mismo color (patrón del design system).
+function statusBadge(s: string) { const m: Record<string,string> = { available:'bg-teal/10 text-teal', occupied:'bg-coral/10 text-coral', cleaning:'bg-cyan/10 text-cyan', dirty:'bg-gold/10 text-gold', out_of_service:'bg-surface text-text-muted' }; return m[s]||'bg-surface text-text-muted' }
 
 // Toggle de amenities como "chips" (Batch y Edit comparten la misma lógica sobre arrays distintos)
 function toggleAmenity(list: string[], key: string) {
@@ -788,22 +817,5 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Entrada/salida de los modales: backdrop se desvanece, el panel además escala y sube levemente. */
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-.modal-fade-enter-active .modal-panel,
-.modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel,
-.modal-fade-leave-to .modal-panel {
-  opacity: 0;
-  transform: scale(0.95) translateY(12px);
-}
+/* Las transiciones de entrada/salida ahora las aporta AppModal. */
 </style>

@@ -15,6 +15,18 @@
       </div>
     </div>
 
+    <!-- KPIs — cifras reales de lo ya cargado (KpiHeroCard anima solo) -->
+    <div v-if="!loading" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <KpiHeroCard label="Empleados activos" :value="activeProfilesCount" icon="users" accent="blue"
+        :unit="`Nómina mensual $${monthlyPayroll.toLocaleString()}`" />
+      <KpiHeroCard label="Contratos activos" :value="activeContractsCount" icon="bookings" accent="teal"
+        :unit="`${contracts.length} contrato(s) registrado(s)`" />
+      <KpiHeroCard label="Solicitudes pendientes" :value="pendingLeavesCount" icon="checkout" accent="amber"
+        unit="Vacaciones y permisos por aprobar" />
+      <KpiHeroCard label="Documentos por vencer" :value="documentAlerts.length" icon="building" accent="rose"
+        unit="Requieren renovación" />
+    </div>
+
     <div class="flex gap-2 mb-6 flex-wrap">
       <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value"
         class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
@@ -24,213 +36,328 @@
       </button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
-      <span class="ml-3 text-sm text-text-muted font-bold">Cargando datos...</span>
+    <!-- Skeleton de carga (no spinner: la grilla ya insinúa la forma final) -->
+    <div v-if="loading" class="space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div v-for="i in 4" :key="i" class="h-28 animate-pulse rounded-[16px] bg-surface"></div>
+      </div>
+      <div class="rounded-2xl border border-border bg-white overflow-hidden">
+        <div class="h-16 animate-pulse bg-surface"></div>
+        <div class="p-4 space-y-3">
+          <div v-for="i in 6" :key="i" class="h-10 animate-pulse rounded-lg bg-surface"></div>
+        </div>
+      </div>
     </div>
 
+    <template v-else>
     <!-- Expedientes -->
-    <div v-if="activeTab === 'profiles' && !loading" class="card overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-2.5 border-b border-border">
-        <span class="text-[11px] text-text-muted">{{ profiles.length }} {{ showInactive ? 'empleados (incluye inactivos)' : 'empleados activos' }}</span>
-        <label class="inline-flex items-center gap-2 cursor-pointer text-[11px] font-bold text-text-secondary select-none">
+    <SectionCard v-if="activeTab === 'profiles'"
+      title="Expedientes del personal"
+      :subtitle="`${profiles.length} ${showInactive ? 'empleados (incluye inactivos)' : 'empleados activos'}`"
+      body-class="p-0">
+      <template #actions>
+        <label class="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-bold text-white select-none">
           <input type="checkbox" v-model="showInactive" @change="loadData" class="accent-cyan cursor-pointer" />
           Ver inactivos
         </label>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+      </template>
+
+      <EmptyState v-if="!profiles.length" :icon="ICON_USERS_EMPTY"
+        title="Todavía no hay empleados"
+        message="Registrá al primer miembro del equipo para armar su expediente, contrato y evaluaciones.">
+        <template #action>
+          <button @click="() => openNewEmployee()" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+            Nuevo Empleado
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[860px] tbl-head text-sm">
           <thead>
-            <tr class="border-b border-border bg-surface/50">
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Empleado</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Rol</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Depto</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Contrato</th>
-              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Salario</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estado</th>
-              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Empleado</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Departamento</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden xl:table-cell">Contrato</th>
+              <th class="text-right px-4 py-3 text-[10px]">Salario</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="emp in profiles" :key="emp.id" @click="openProfile(emp)"
-              class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors cursor-pointer" :class="{ 'opacity-60': !emp.active }">
-              <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ emp.userName || emp.position || emp.userId }}</td>
-              <td class="px-4 py-2.5 text-text-secondary">{{ roleLabel(emp.userRole) }}</td>
-              <td class="px-4 py-2.5 text-text-secondary">{{ getDeptName(emp.departmentId) }}</td>
-              <td class="px-4 py-2.5 text-text-secondary">{{ contractTypeName(emp.contractType) }}</td>
-              <td class="px-4 py-2.5 text-right font-bold text-navy whitespace-nowrap">${{ emp.salary?.toLocaleString() || '—' }}</td>
-              <td class="px-4 py-2.5">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="emp.active ? 'bg-teal/10 text-teal' : 'bg-text-muted/15 text-text-muted'">{{ emp.active ? 'Activo' : 'Inactivo' }}</span>
+              class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer"
+              :class="{ 'opacity-60': !emp.active }">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-navy/10 text-xs font-black text-navy">
+                    {{ initialsOf(employeeDisplayName(emp)) }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span class="text-sm font-bold text-navy truncate">{{ employeeDisplayName(emp) }}</span>
+                      <span v-if="emp.userRole" class="shrink-0 rounded-full bg-cyan/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-cyan">
+                        {{ roleLabel(emp.userRole) }}
+                      </span>
+                    </div>
+                    <!-- En pantallas chicas el dato de las columnas ocultas sube como sublínea -->
+                    <div v-if="emp.departmentId" class="text-[11px] text-text-muted truncate lg:hidden">{{ getDeptName(emp.departmentId) }}</div>
+                    <div v-if="emp.contractType" class="text-[11px] text-text-muted truncate xl:hidden">{{ contractTypeName(emp.contractType) }}</div>
+                  </div>
+                </div>
               </td>
-              <td class="px-4 py-2.5 text-right whitespace-nowrap">
-                <button @click.stop="openExpediente(emp)" class="inline-flex items-center gap-1 px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 cursor-pointer">
-                  <span class="w-3 h-3 shrink-0" v-html="ICON_FOLDER"></span>Expediente
-                </button>
-                <button @click.stop="openProfile(emp)" class="inline-flex items-center gap-1 ml-1 px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 cursor-pointer">
-                  <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Editar
-                </button>
-                <button v-if="emp.active" @click.stop="deactivateEmployee(emp)" class="inline-flex items-center gap-1 ml-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">
-                  <span class="w-3 h-3 shrink-0" v-html="ICON_POWER"></span>Desactivar
-                </button>
-                <button v-else @click.stop="reactivateEmployee(emp)" class="inline-flex items-center gap-1 ml-1 px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 cursor-pointer">
-                  <span class="w-3 h-3 shrink-0" v-html="ICON_POWER"></span>Reactivar
-                </button>
+              <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary">
+                <span v-if="emp.departmentId">{{ getDeptName(emp.departmentId) }}</span>
+                <span v-else class="text-text-muted">Sin departamento</span>
+              </td>
+              <td class="px-4 py-3 hidden xl:table-cell text-sm text-text-secondary">
+                <span v-if="emp.contractType">{{ contractTypeName(emp.contractType) }}</span>
+                <span v-else class="text-text-muted">Sin contrato</span>
+              </td>
+              <td class="px-4 py-3 text-right whitespace-nowrap">
+                <span v-if="emp.salary" class="text-sm font-extrabold text-navy tabular-nums">${{ emp.salary.toLocaleString() }}</span>
+                <span v-else class="text-sm text-text-muted">Sin definir</span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2 py-0.5 text-[10px] font-bold" :class="emp.active ? 'bg-teal/10 text-teal' : 'bg-text-muted/15 text-text-muted'">
+                  {{ emp.active ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button @click.stop="openExpediente(emp)" title="Ver expediente"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_FOLDER"></span>
+                  </button>
+                  <button @click.stop="openProfile(emp)" title="Editar datos"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_PENCIL"></span>
+                  </button>
+                  <button v-if="emp.active" @click.stop="deactivateEmployee(emp)" title="Desactivar empleado"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_POWER"></span>
+                  </button>
+                  <button v-else @click.stop="reactivateEmployee(emp)" title="Reactivar empleado"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-teal/10 hover:text-teal transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_POWER"></span>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-if="profiles.length === 0" class="p-12 text-center">
-        <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_USERS"></span>
-        <p class="text-text-muted text-sm">No hay empleados registrados</p>
-      </div>
-    </div>
+    </SectionCard>
 
     <!-- Contratos -->
-    <div v-if="activeTab === 'contracts' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between items-center">
-        <h3 class="font-extrabold text-navy text-sm">Contratos Laborales</h3>
-        <button @click="openNewContract" class="flex items-center gap-1 px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">
-          <span class="w-3 h-3 shrink-0" v-html="ICON_PLUS"></span>Nuevo Contrato
+    <SectionCard v-if="activeTab === 'contracts'"
+      title="Contratos laborales"
+      :subtitle="`${activeContractsCount} activo(s) de ${contracts.length}`"
+      body-class="p-0">
+      <template #actions>
+        <button @click="openNewContract" class="flex items-center gap-1.5 rounded-lg bg-cyan px-4 py-2 text-xs font-extrabold text-navy hover:shadow-lg transition-all cursor-pointer">
+          <span class="h-3.5 w-3.5 shrink-0" v-html="ICON_PLUS"></span>Nuevo Contrato
         </button>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+      </template>
+
+      <EmptyState v-if="!contracts.length" :icon="ICON_DOCUMENT_EMPTY"
+        title="Sin contratos registrados"
+        message="Creá el primer contrato para dejar asentadas las condiciones laborales del equipo.">
+        <template #action>
+          <button @click="openNewContract" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+            Nuevo Contrato
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[820px] tbl-head text-sm">
           <thead>
-            <tr class="border-b border-border bg-surface/50">
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Empleado</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tipo</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Inicio</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Fin</th>
-              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Salario</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estado</th>
-              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Empleado</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Inicio</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Fin</th>
+              <th class="text-right px-4 py-3 text-[10px]">Salario</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="c in contracts" :key="c.id" class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors">
-              <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ getEmployeeName(c.employeeId) }}</td>
-              <td class="px-4 py-2.5 text-text-secondary">{{ contractTypeName(c.type) }}</td>
-              <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ c.startDate }}</td>
-              <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ c.endDate || 'Indefinido' }}</td>
-              <td class="px-4 py-2.5 text-right font-bold text-navy whitespace-nowrap">${{ c.salary.toLocaleString() }}</td>
-              <td class="px-4 py-2.5">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ c.status === 'active' ? 'Activo' : 'Terminado' }}</span>
+            <tr v-for="c in contracts" :key="c.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/10 text-[10px] font-black text-navy">
+                    {{ initialsOf(getEmployeeName(c.employeeId)) }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-sm font-bold text-navy truncate">{{ getEmployeeName(c.employeeId) }}</div>
+                    <div class="text-[11px] text-text-muted truncate">{{ contractTypeName(c.type) }}</div>
+                    <div class="text-[11px] text-text-muted truncate lg:hidden">{{ c.startDate }} → {{ c.endDate || 'Indefinido' }}</div>
+                  </div>
+                </div>
               </td>
-              <td class="px-4 py-2.5 text-right whitespace-nowrap">
-                <button v-if="c.status === 'active'" @click="terminateContract(c)" class="inline-flex items-center gap-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">
-                  <span class="w-3 h-3 shrink-0" v-html="ICON_XCIRCLE"></span>Terminar
-                </button>
+              <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary whitespace-nowrap">{{ c.startDate }}</td>
+              <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary whitespace-nowrap">{{ c.endDate || 'Indefinido' }}</td>
+              <td class="px-4 py-3 text-right text-sm font-extrabold text-navy tabular-nums whitespace-nowrap">${{ c.salary.toLocaleString() }}</td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2 py-0.5 text-[10px] font-bold" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-text-muted/15 text-text-muted'">
+                  {{ c.status === 'active' ? 'Activo' : 'Terminado' }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button v-if="c.status === 'active'" @click="terminateContract(c)" title="Terminar contrato"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_XCIRCLE"></span>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-if="contracts.length === 0" class="p-12 text-center">
-        <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_DOCUMENT"></span>
-        <p class="text-text-muted text-sm">No hay contratos registrados</p>
-      </div>
-    </div>
+    </SectionCard>
 
     <!-- Documentos -->
-    <div v-if="activeTab === 'documents' && !loading" class="space-y-4">
-      <div v-if="documentAlerts.length" class="card p-4 bg-coral/5 border border-coral/20 rounded-xl mb-4">
+    <div v-if="activeTab === 'documents'" class="space-y-4">
+      <div v-if="documentAlerts.length" class="rounded-2xl border border-coral/20 bg-coral/5 p-4">
         <h3 class="flex items-center gap-2 font-extrabold text-coral text-sm mb-3">
-          <span class="w-4 h-4 shrink-0" v-html="ICON_ALERT"></span>Documentos por Vencer ({{ documentAlerts.length }})
+          <span class="h-4 w-4 shrink-0" v-html="ICON_ALERT"></span>Documentos por vencer ({{ documentAlerts.length }})
         </h3>
-        <div v-for="alert in documentAlerts" :key="alert.documentId" class="flex items-center justify-between py-2 border-b border-coral/10 last:border-0">
-          <div class="flex items-center gap-3">
-            <span class="w-5 h-5 text-coral shrink-0" v-html="ICON_DOCUMENT"></span>
-            <div>
-              <div class="text-sm font-bold text-navy">{{ alert.documentName }}</div>
-              <div class="text-[10px] text-text-muted">Vence en {{ alert.daysUntilExpiry }} días — {{ alert.expiryDate }}</div>
+        <div v-for="alert in documentAlerts" :key="alert.documentId" class="flex items-center justify-between gap-3 py-2 border-b border-coral/10 last:border-0">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="h-5 w-5 text-coral shrink-0" v-html="ICON_DOCUMENT"></span>
+            <div class="min-w-0">
+              <div class="text-sm font-bold text-navy truncate">{{ alert.documentName }}</div>
+              <div class="text-[11px] text-text-muted">Vence en {{ alert.daysUntilExpiry }} días · {{ alert.expiryDate }}</div>
             </div>
           </div>
-          <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-coral/10 text-coral shrink-0">Urgente</span>
+          <span class="shrink-0 rounded-full bg-coral/10 px-2 py-1 text-[10px] font-bold text-coral">Urgente</span>
         </div>
       </div>
 
-      <div class="card overflow-hidden">
-        <div class="p-4 border-b border-border flex justify-between items-center">
-          <h3 class="font-extrabold text-navy text-sm">Documentos del Expediente</h3>
-          <button @click="openNewDocument" class="flex items-center gap-1 px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">
-            <span class="w-3 h-3 shrink-0" v-html="ICON_PLUS"></span>Nuevo Documento
+      <SectionCard title="Documentos del expediente" :subtitle="`${documents.length} documento(s)`" body-class="p-0">
+        <template #actions>
+          <button @click="openNewDocument" class="flex items-center gap-1.5 rounded-lg bg-cyan px-4 py-2 text-xs font-extrabold text-navy hover:shadow-lg transition-all cursor-pointer">
+            <span class="h-3.5 w-3.5 shrink-0" v-html="ICON_PLUS"></span>Nuevo Documento
           </button>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
+        </template>
+
+        <EmptyState v-if="!documents.length" :icon="ICON_DOCUMENT_EMPTY"
+          title="Sin documentos cargados"
+          message="Subí cédulas, títulos o certificados para tenerlos a mano y controlar sus vencimientos.">
+          <template #action>
+            <button @click="openNewDocument" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+              Nuevo Documento
+            </button>
+          </template>
+        </EmptyState>
+
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[720px] tbl-head text-sm">
             <thead>
-              <tr class="border-b border-border bg-surface/50">
-                <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Documento</th>
-                <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tipo</th>
-                <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Empleado</th>
-                <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Vencimiento</th>
-                <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
+              <tr>
+                <th class="text-left px-4 py-3 text-[10px]">Documento</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Empleado</th>
+                <th class="text-left px-4 py-3 text-[10px]">Vencimiento</th>
+                <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="doc in documents" :key="doc.id" class="border-b border-border/60 last:border-0 hover:bg-surface/50">
-                <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ doc.name }}</td>
-                <td class="px-4 py-2.5 text-text-secondary">{{ doc.type }}</td>
-                <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ getEmployeeName(doc.employeeId) }}</td>
-                <td class="px-4 py-2.5 whitespace-nowrap" :class="isExpiringSoon(doc) ? 'text-coral font-bold' : 'text-text-secondary'">{{ doc.expiryDate || '—' }}</td>
-                <td class="px-4 py-2.5 text-right whitespace-nowrap">
-                  <a v-if="doc.fileUrl" :href="doc.fileUrl" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 cursor-pointer mr-1">
-                    <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Ver
-                  </a>
-                  <button @click="deleteDocument(doc)" class="inline-flex items-center gap-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">
-                    <span class="w-3 h-3 shrink-0" v-html="ICON_TRASH"></span>Eliminar
-                  </button>
+              <tr v-for="doc in documents" :key="doc.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="min-w-0">
+                    <div class="text-sm font-bold text-navy truncate">{{ doc.name }}</div>
+                    <div v-if="doc.type" class="text-[11px] text-text-muted truncate">{{ doc.type }}</div>
+                    <div class="text-[11px] text-text-muted truncate lg:hidden">{{ getEmployeeName(doc.employeeId) }}</div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary whitespace-nowrap">{{ getEmployeeName(doc.employeeId) }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm">
+                  <span v-if="doc.expiryDate" :class="isExpiringSoon(doc) ? 'font-bold text-coral' : 'text-text-secondary'">{{ doc.expiryDate }}</span>
+                  <span v-else class="text-text-muted">Sin vencimiento</span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <a v-if="doc.fileUrl" :href="doc.fileUrl" target="_blank" rel="noopener" title="Ver documento"
+                      class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_EYE"></span>
+                    </a>
+                    <button @click="deleteDocument(doc)" title="Eliminar documento"
+                      class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_TRASH"></span>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div v-if="documents.length === 0" class="p-12 text-center">
-          <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_DOCUMENT"></span>
-          <p class="text-text-muted text-sm">No hay documentos registrados</p>
-        </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- Vacaciones y Permisos -->
-    <div v-if="activeTab === 'leaves' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between items-center">
-        <h3 class="font-extrabold text-navy text-sm">Solicitudes de Vacaciones y Permisos</h3>
-        <button @click="openNewLeave" class="flex items-center gap-1 px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">
-          <span class="w-3 h-3 shrink-0" v-html="ICON_PLUS"></span>Nueva Solicitud
+    <SectionCard v-if="activeTab === 'leaves'"
+      title="Vacaciones y permisos"
+      :subtitle="`${pendingLeavesCount} pendiente(s) de ${leaveRequests.length} solicitud(es)`"
+      body-class="p-0">
+      <template #actions>
+        <button @click="openNewLeave" class="flex items-center gap-1.5 rounded-lg bg-cyan px-4 py-2 text-xs font-extrabold text-navy hover:shadow-lg transition-all cursor-pointer">
+          <span class="h-3.5 w-3.5 shrink-0" v-html="ICON_PLUS"></span>Nueva Solicitud
         </button>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+      </template>
+
+      <EmptyState v-if="!leaveRequests.length" :icon="ICON_BEACH_EMPTY"
+        title="Sin solicitudes"
+        message="Cuando el equipo pida vacaciones o permisos, las solicitudes aparecen acá para aprobar o rechazar.">
+        <template #action>
+          <button @click="openNewLeave" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+            Nueva Solicitud
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[820px] tbl-head text-sm">
           <thead>
-            <tr class="border-b border-border bg-surface/50">
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Empleado</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tipo</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Desde</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Hasta</th>
-              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Días</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estado</th>
-              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Empleado</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Desde</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Hasta</th>
+              <th class="text-right px-4 py-3 text-[10px]">Días</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="l in leaveRequests" :key="l.id" class="border-b border-border/60 last:border-0 hover:bg-surface/50">
-              <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ getEmployeeName(l.employeeId) }}</td>
-              <td class="px-4 py-2.5 text-text-secondary">{{ leaveTypeLabel(l.type) }}</td>
-              <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ l.startDate }}</td>
-              <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ l.endDate }}</td>
-              <td class="px-4 py-2.5 text-right text-text-secondary">{{ l.days }}</td>
-              <td class="px-4 py-2.5">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="leaveStatusClass(l.status)">{{ leaveStatusLabel(l.status) }}</span>
+            <tr v-for="l in leaveRequests" :key="l.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/10 text-[10px] font-black text-navy">
+                    {{ initialsOf(getEmployeeName(l.employeeId)) }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-sm font-bold text-navy truncate">{{ getEmployeeName(l.employeeId) }}</div>
+                    <div class="text-[11px] text-text-muted truncate">{{ leaveTypeLabel(l.type) }}</div>
+                    <div class="text-[11px] text-text-muted truncate lg:hidden">{{ l.startDate }} → {{ l.endDate }}</div>
+                  </div>
+                </div>
               </td>
-              <td class="px-4 py-2.5 text-right whitespace-nowrap">
-                <div class="flex gap-1 justify-end" v-if="l.status === 'pending'">
-                  <button @click="approveLeave(l)" class="inline-flex items-center gap-1 px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 cursor-pointer">
-                    <span class="w-3 h-3 shrink-0" v-html="ICON_CHECK"></span>Aprobar
+              <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary whitespace-nowrap">{{ l.startDate }}</td>
+              <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary whitespace-nowrap">{{ l.endDate }}</td>
+              <td class="px-4 py-3 text-right text-sm font-bold text-navy tabular-nums">{{ l.days }}</td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2 py-0.5 text-[10px] font-bold" :class="leaveStatusClass(l.status)">{{ leaveStatusLabel(l.status) }}</span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5" v-if="l.status === 'pending'">
+                  <button @click="approveLeave(l)" title="Aprobar solicitud"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-teal/10 hover:text-teal transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_CHECK"></span>
                   </button>
-                  <button @click="rejectLeave(l)" class="inline-flex items-center gap-1 px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 cursor-pointer">
-                    <span class="w-3 h-3 shrink-0" v-html="ICON_XCIRCLE"></span>Rechazar
+                  <button @click="rejectLeave(l)" title="Rechazar solicitud"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_XCIRCLE"></span>
                   </button>
                 </div>
               </td>
@@ -238,55 +365,79 @@
           </tbody>
         </table>
       </div>
-      <div v-if="leaveRequests.length === 0" class="p-12 text-center">
-        <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_BEACH"></span>
-        <p class="text-text-muted text-sm">No hay solicitudes pendientes</p>
-      </div>
-    </div>
+    </SectionCard>
 
     <!-- Evaluaciones -->
-    <div v-if="activeTab === 'reviews' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between items-center">
-        <h3 class="font-extrabold text-navy text-sm">Evaluaciones de Desempeño</h3>
-        <button @click="openNewReview" class="flex items-center gap-1 px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">
-          <span class="w-3 h-3 shrink-0" v-html="ICON_PLUS"></span>Nueva Evaluación
+    <SectionCard v-if="activeTab === 'reviews'"
+      title="Evaluaciones de desempeño"
+      :subtitle="`${reviews.length} evaluación(es)`"
+      body-class="p-0">
+      <template #actions>
+        <button @click="openNewReview" class="flex items-center gap-1.5 rounded-lg bg-cyan px-4 py-2 text-xs font-extrabold text-navy hover:shadow-lg transition-all cursor-pointer">
+          <span class="h-3.5 w-3.5 shrink-0" v-html="ICON_PLUS"></span>Nueva Evaluación
         </button>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+      </template>
+
+      <EmptyState v-if="!reviews.length" :icon="ICON_STAR_EMPTY"
+        title="Sin evaluaciones"
+        message="Evaluá el desempeño del equipo para llevar registro de fortalezas, mejoras y objetivos.">
+        <template #action>
+          <button @click="openNewReview" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+            Nueva Evaluación
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[760px] tbl-head text-sm">
           <thead>
-            <tr class="border-b border-border bg-surface/50">
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Empleado</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Período</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Fecha</th>
-              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Puntaje</th>
-              <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estado</th>
-              <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Empleado</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Fecha</th>
+              <th class="text-right px-4 py-3 text-[10px]">Puntaje</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="r in reviews" :key="r.id" class="border-b border-border/60 last:border-0 hover:bg-surface/50">
-              <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ getEmployeeName(r.employeeId) }}</td>
-              <td class="px-4 py-2.5 text-text-secondary">{{ r.period || '—' }}</td>
-              <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap">{{ r.reviewDate }}</td>
-              <td class="px-4 py-2.5 text-right">
-                <span :class="scoreClass(r.score)">{{ r.score ?? '—' }}/10</span>
+            <tr v-for="r in reviews" :key="r.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/10 text-[10px] font-black text-navy">
+                    {{ initialsOf(getEmployeeName(r.employeeId)) }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-sm font-bold text-navy truncate">{{ getEmployeeName(r.employeeId) }}</div>
+                    <div v-if="r.period" class="text-[11px] text-text-muted truncate">{{ r.period }}</div>
+                    <div class="text-[11px] text-text-muted truncate lg:hidden">{{ r.reviewDate }}</div>
+                  </div>
+                </div>
               </td>
-              <td class="px-4 py-2.5">
-                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="r.status === 'completed' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">{{ r.status === 'completed' ? 'Completada' : 'Borrador' }}</span>
+              <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary whitespace-nowrap">{{ r.reviewDate }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap">
+                <span v-if="r.score" class="text-sm tabular-nums" :class="scoreClass(r.score)">{{ r.score }}/10</span>
+                <span v-else class="text-sm text-text-muted">Sin puntaje</span>
               </td>
-              <td class="px-4 py-2.5 text-right whitespace-nowrap">
-                <div class="inline-flex items-center gap-1.5">
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2 py-0.5 text-[10px] font-bold" :class="r.status === 'completed' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">
+                  {{ r.status === 'completed' ? 'Completada' : 'Borrador' }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
                   <template v-if="r.status === 'draft'">
-                    <button @click="openEditReview(r)" class="inline-flex items-center gap-1 px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 cursor-pointer">
-                      <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Editar
+                    <button @click="openEditReview(r)" title="Editar borrador"
+                      class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_PENCIL"></span>
                     </button>
-                    <button @click="completeReview(r)" class="inline-flex items-center gap-1 px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 cursor-pointer">
-                      <span class="w-3 h-3 shrink-0" v-html="ICON_CHECK"></span>Completar
+                    <button @click="completeReview(r)" title="Completar evaluación"
+                      class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-teal/10 hover:text-teal transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_CHECK"></span>
                     </button>
                   </template>
-                  <button v-else @click="openViewReview(r)" class="inline-flex items-center gap-1 px-2 py-1 bg-surface text-text-secondary rounded-lg text-[10px] font-bold hover:bg-border/40 cursor-pointer">
-                    <span class="w-3 h-3 shrink-0" v-html="ICON_EYE"></span>Ver
+                  <button v-else @click="openViewReview(r)" title="Ver evaluación"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_EYE"></span>
                   </button>
                 </div>
               </td>
@@ -294,11 +445,8 @@
           </tbody>
         </table>
       </div>
-      <div v-if="reviews.length === 0" class="p-12 text-center">
-        <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_STAR"></span>
-        <p class="text-text-muted text-sm">No hay evaluaciones registradas</p>
-      </div>
-    </div>
+    </SectionCard>
+    </template>
 
     <FormModal
       v-if="formModal"
@@ -334,6 +482,9 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 
 const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
@@ -348,6 +499,13 @@ const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" s
 const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'
 const ICON_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"/></svg>'
 const ICON_FOLDER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg>'
+const ICON_PENCIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>'
+
+// Variantes para EmptyState: el contenedor mide 64px, el ícono va a 32px (no al 100%).
+const ICON_USERS_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
+const ICON_DOCUMENT_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m1 5H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l4.414 4.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>'
+const ICON_BEACH_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v3m-7.5 6a7.5 7.5 0 0 1 15 0h-15Zm7.5 0v9m-9 0h18"/></svg>'
+const ICON_STAR_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 21.44a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -411,6 +569,24 @@ function getEmployeeName(userId: string): string {
   const profile = profiles.value.find(p => p.userId === userId || p.id === userId)
   return profile?.userName || profile?.position || userId.slice(0, 8)
 }
+
+/** Nombre visible del empleado en el listado (cuenta → cargo → id). */
+function employeeDisplayName(emp: EmployeeProfile): string {
+  return emp.userName || emp.position || emp.userId
+}
+
+/** Iniciales para el avatar de la fila (máximo 2 letras). */
+function initialsOf(name?: string): string {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '??'
+  return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase()
+}
+
+// ─── Cifras de cabecera (derivadas de lo ya cargado) ─────
+const activeProfilesCount = computed(() => profiles.value.filter((p) => p.active).length)
+const monthlyPayroll = computed(() => profiles.value.filter((p) => p.active).reduce((sum, p) => sum + (p.salary || 0), 0))
+const activeContractsCount = computed(() => contracts.value.filter((c) => c.status === 'active').length)
+const pendingLeavesCount = computed(() => leaveRequests.value.filter((l) => l.status === 'pending').length)
 
 function leaveTypeLabel(type: string) {
   const configured = leaveTypes.value.find((t) => t.code === type)

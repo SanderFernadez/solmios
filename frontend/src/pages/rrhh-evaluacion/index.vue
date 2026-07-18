@@ -6,24 +6,45 @@
         <p class="text-sm text-text-muted mt-0.5">Motor automático: puntúa al personal con datos reales de limpieza y asistencia</p>
       </div>
       <button @click="runEvaluation" :disabled="running || !config"
-        class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+        class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
         <span class="w-4 h-4 shrink-0" v-html="ICON_PLAY"></span>
         {{ running ? 'Ejecutando…' : 'Ejecutar evaluación del período' }}
       </button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
-      <span class="ml-3 text-sm text-text-muted font-bold">Cargando configuración...</span>
+    <!-- Skeletons -->
+    <div v-if="loading" class="space-y-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div v-for="i in 3" :key="i" class="h-28 animate-pulse rounded-[16px] bg-surface"></div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div class="h-96 animate-pulse rounded-2xl bg-surface"></div>
+        <div class="h-96 animate-pulse rounded-2xl bg-surface lg:col-span-2"></div>
+      </div>
     </div>
 
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      <!-- Config -->
-      <section class="card p-5 lg:col-span-1 space-y-4">
-        <h3 class="font-extrabold text-navy text-sm flex items-center gap-2">
-          <span class="w-4 h-4 text-navy shrink-0" v-html="ICON_COG"></span>Configuración
-        </h3>
+    <template v-else>
+      <!-- KPIs -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+        <KpiHeroCard label="Evaluaciones" :value="results.length" icon="users" accent="blue"
+          unit="Historial acumulado del hotel" />
+        <KpiHeroCard v-if="summary" label="Evaluados" :value="summary.evaluated" icon="checkin" accent="teal"
+          :unit="`Última ejecución · ${summary.period}`" />
+        <KpiHeroCard v-if="summary" label="Sin datos" :value="summary.skipped" icon="checkout" accent="amber"
+          :unit="summary.periodType === 'monthly' ? 'Período mensual' : 'Período trimestral'" />
+      </div>
 
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <!-- Config -->
+      <SectionCard class="lg:col-span-1" title="Configuración" subtitle="Motor de puntuación automática">
+        <template #actions>
+          <button @click="saveConfig" :disabled="saving || weightsSum !== 100"
+            class="rounded-full bg-cyan px-5 py-2 text-sm font-extrabold text-navy transition-all hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            {{ saving ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </template>
+
+        <div class="space-y-4">
         <div>
           <label class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Período</label>
           <select v-model="form.period" class="input mt-1">
@@ -60,71 +81,83 @@
           <input type="number" min="1" v-model.number="form.standardTaskMinutes" class="input mt-1" />
         </div>
 
-        <label class="flex items-center gap-2 cursor-pointer text-sm font-bold text-text-secondary select-none">
+        <label class="flex items-center gap-2 cursor-pointer text-sm font-bold text-text-secondary select-none rounded-xl bg-surface px-3 py-2.5">
           <input type="checkbox" v-model="form.enabled" class="accent-cyan cursor-pointer" />
           Motor habilitado
         </label>
 
-        <button @click="saveConfig" :disabled="saving || weightsSum !== 100"
-          class="w-full bg-navy text-white font-extrabold text-sm px-4 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-          {{ saving ? 'Guardando…' : 'Guardar configuración' }}
-        </button>
-        <p v-if="weightsSum !== 100" class="text-[11px] text-coral font-bold text-center">Los pesos deben sumar exactamente 100.</p>
-      </section>
-
-      <!-- Resumen + Resultados -->
-      <div class="lg:col-span-2 space-y-5">
-        <div v-if="summary" class="card p-5">
-          <h3 class="font-extrabold text-navy text-sm mb-3">Última ejecución — {{ summary.period }}</h3>
-          <div class="grid grid-cols-3 gap-3">
-            <div class="rounded-xl bg-teal/10 p-3 text-center">
-              <div class="text-2xl font-black text-teal">{{ summary.evaluated }}</div>
-              <div class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Evaluados</div>
-            </div>
-            <div class="rounded-xl bg-gold/10 p-3 text-center">
-              <div class="text-2xl font-black text-gold">{{ summary.skipped }}</div>
-              <div class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Sin datos</div>
-            </div>
-            <div class="rounded-xl bg-navy/5 p-3 text-center">
-              <div class="text-2xl font-black text-navy capitalize">{{ summary.periodType === 'monthly' ? 'Mensual' : 'Trimestral' }}</div>
-              <div class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Período</div>
-            </div>
-          </div>
+        <p v-if="weightsSum !== 100" class="rounded-xl bg-coral/10 px-3 py-2 text-[11px] font-bold text-coral text-center">
+          Los pesos deben sumar exactamente 100.
+        </p>
         </div>
+      </SectionCard>
 
-        <section class="card overflow-hidden">
-          <header class="px-4 py-3 border-b border-border flex items-center justify-between">
-            <h3 class="font-extrabold text-navy text-sm">Resultados</h3>
-            <span class="text-[11px] text-text-muted">{{ results.length }} evaluaciones</span>
-          </header>
-          <div v-if="results.length" class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-border bg-surface/50">
-                  <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Empleado</th>
-                  <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Período</th>
-                  <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Puntaje</th>
-                  <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Banda</th>
-                  <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Desglose (Prod / Cal / Punt / Asis)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in results" :key="r.id" class="border-b border-border/60 last:border-0 hover:bg-surface/50">
-                  <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ employeeName(r.employeeId) }}</td>
-                  <td class="px-4 py-2.5 text-text-secondary">{{ r.period || '—' }}</td>
-                  <td class="px-4 py-2.5 text-right font-black" :class="scoreClass(r.score)">{{ r.score ?? '—' }}</td>
-                  <td class="px-4 py-2.5">
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="bandBg(bandOf(r))">{{ bandLabel(bandOf(r)) }}</span>
-                  </td>
-                  <td class="px-4 py-2.5 text-text-secondary whitespace-nowrap text-[11px]">{{ breakdownText(r) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p v-else class="p-10 text-center text-text-muted text-sm">Todavía no hay evaluaciones. Ejecutá el motor para generarlas.</p>
-        </section>
+      <!-- Resultados -->
+      <SectionCard class="lg:col-span-2" title="Resultados"
+        :subtitle="`${results.length} evaluación(es) registradas`" body-class="p-0">
+        <EmptyState
+          v-if="!results.length"
+          :icon="ICON_CHART_EMPTY"
+          title="Todavía no hay evaluaciones"
+          message="Ejecutá el motor para puntuar al personal con los datos de limpieza y asistencia del período."
+        >
+          <template #action>
+            <button @click="runEvaluation" :disabled="running || !config"
+              class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              {{ running ? 'Ejecutando…' : 'Ejecutar evaluación' }}
+            </button>
+          </template>
+        </EmptyState>
+
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[720px] tbl-head text-sm">
+            <thead>
+              <tr>
+                <th class="text-left px-4 py-3 text-[10px]">Empleado</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Período</th>
+                <th class="text-left px-4 py-3 text-[10px]">Banda</th>
+                <th class="text-right px-4 py-3 text-[10px] hidden lg:table-cell">Prod / Cal / Punt / Asis</th>
+                <th class="text-right px-4 py-3 text-[10px]">Puntaje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in results" :key="r.id" class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-3">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/5 text-[11px] font-black text-navy">
+                      {{ initials(employeeName(r.employeeId)) }}
+                    </span>
+                    <div class="min-w-0">
+                      <div class="font-bold text-navy truncate">{{ employeeName(r.employeeId) }}</div>
+                      <div v-if="r.period" class="text-[11px] text-text-muted lg:hidden">{{ r.period }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-text-secondary hidden lg:table-cell">
+                  <span v-if="r.period">{{ r.period }}</span>
+                  <span v-else class="text-text-muted text-[11px]">Sin período</span>
+                </td>
+                <td class="px-4 py-3">
+                  <span v-if="bandOf(r)" class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="bandBg(bandOf(r))">
+                    {{ bandLabel(bandOf(r)) }}
+                  </span>
+                  <span v-else class="text-[11px] text-text-muted">Sin banda</span>
+                </td>
+                <td class="px-4 py-3 text-right whitespace-nowrap">
+                  <span v-if="hasBreakdown(r)" class="text-[11px] font-bold tabular-nums text-text-secondary">{{ breakdownText(r) }}</span>
+                  <span v-else class="text-[11px] text-text-muted">Sin desglose</span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <span v-if="r.score != null" class="text-base font-black tabular-nums" :class="scoreClass(r.score)">{{ r.score }}</span>
+                  <span v-else class="text-[11px] text-text-muted">Sin puntaje</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -135,9 +168,12 @@ import {
   type EvalPeriodType, type EvalBand, type EvalBreakdown, type EvalWeights, type EvalThresholds, type AutoEvalSummary,
 } from '@/services/Empleados.service'
 import { useToast } from '@/composables/useToast'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 0 1 0 1.971l-11.54 6.347a1.125 1.125 0 0 1-1.667-.985V5.653Z"/></svg>'
-const ICON_COG = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a6.759 6.759 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.241.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.991l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.281Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
+const ICON_CHART_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>'
 
 const toast = useToast()
 
@@ -201,6 +237,11 @@ function parseAnswers(r: PerformanceReview): { band?: EvalBand; breakdown?: Eval
   try { return JSON.parse(r.answers || '{}') } catch { return {} }
 }
 function bandOf(r: PerformanceReview): EvalBand | null { return parseAnswers(r).band ?? null }
+function hasBreakdown(r: PerformanceReview): boolean { return !!parseAnswers(r).breakdown }
+/** Iniciales para el avatar de la tabla (solo presentación). */
+function initials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('') || '?'
+}
 function breakdownText(r: PerformanceReview): string {
   const b = parseAnswers(r).breakdown
   if (!b) return '—'

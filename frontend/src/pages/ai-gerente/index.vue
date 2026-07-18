@@ -19,84 +19,115 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Chat -->
-      <div class="lg:col-span-2 flex flex-col bg-white rounded-2xl border border-border overflow-hidden" style="height: 70vh">
-        <div ref="scrollEl" class="flex-1 overflow-y-auto p-5 space-y-4">
-          <div v-if="!thread.length" class="h-full flex flex-col items-center justify-center text-center text-text-muted">
-            <span class="w-10 h-10 mb-3" v-html="ICON_SPARKLES"></span>
-            <p class="text-sm font-semibold text-navy mb-1">Hacé tu primera pregunta</p>
-            <p class="text-xs max-w-xs">Ej: «¿Cuál fue la ocupación de esta semana?» o «¿Qué habitaciones se liberan mañana?»</p>
-            <div class="flex flex-wrap gap-2 justify-center mt-4">
-              <button v-for="s in suggestions" :key="s" @click="draft = s; send()"
-                class="text-xs px-3 py-1.5 rounded-full bg-surface hover:bg-navy hover:text-white transition-colors font-semibold">
-                {{ s }}
-              </button>
-            </div>
-          </div>
+      <SectionCard class="lg:col-span-2 flex flex-col" style="height: 70vh"
+        title="Conversación"
+        :subtitle="thread.length ? `${thread.length} consulta(s) en esta sesión` : 'Respuestas generadas con datos del hotel'"
+        body-class="flex-1 min-h-0 flex flex-col p-0">
+        <template #actions>
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-white">
+            <span class="block h-3.5 w-3.5" v-html="ICON_SPARKLES"></span>
+            Gerente IA
+          </span>
+        </template>
+
+        <div ref="scrollEl" class="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
+          <EmptyState v-if="!thread.length && !asking" :icon="ICON_SPARKLES"
+            title="Hacé tu primera pregunta"
+            message="Ej: «¿Cuál fue la ocupación de esta semana?» o «¿Qué habitaciones se liberan mañana?»">
+            <template #action>
+              <div class="flex flex-wrap justify-center gap-2">
+                <button v-for="s in suggestions" :key="s" @click="draft = s; send()"
+                  class="rounded-full border border-border bg-surface px-3.5 py-2 text-xs font-bold text-navy transition-colors hover:bg-navy hover:text-white cursor-pointer">
+                  {{ s }}
+                </button>
+              </div>
+            </template>
+          </EmptyState>
 
           <template v-for="msg in thread" :key="msg.id">
             <!-- Pregunta del usuario -->
             <div class="flex justify-end">
-              <div class="max-w-[80%] rounded-2xl rounded-br-sm bg-navy text-white px-4 py-2.5 text-sm">
+              <div class="max-w-[80%] rounded-2xl rounded-br-sm bg-navy px-4 py-2.5 text-sm text-white">
                 {{ msg.query }}
               </div>
             </div>
             <!-- Respuesta -->
             <div class="flex justify-start">
-              <div class="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-4 py-2.5">
-                <p class="text-sm text-navy whitespace-pre-wrap">{{ msg.response }}</p>
-                <div class="flex items-center gap-3 mt-2 text-[11px] text-text-muted">
-                  <span v-if="msg.confidence != null">Confianza: {{ Math.round((msg.confidence || 0) * 100) }}%</span>
-                  <span v-if="msg.responseTimeMs != null">· {{ msg.responseTimeMs }} ms</span>
-                  <span class="ml-auto flex items-center gap-1.5">
-                    <button @click="rate(msg, 'helpful')" :class="msg.feedback === 'helpful' ? 'text-[#16A34A]' : 'hover:text-navy'" title="Útil">👍</button>
-                    <button @click="rate(msg, 'not_helpful')" :class="msg.feedback === 'not_helpful' ? 'text-[#DC2626]' : 'hover:text-navy'" title="No útil">👎</button>
-                    <button @click="rate(msg, 'inaccurate')" :class="msg.feedback === 'inaccurate' ? 'text-[#D97706]' : 'hover:text-navy'" title="Impreciso">⚠️</button>
+              <div class="max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-surface px-4 py-3">
+                <p class="whitespace-pre-wrap text-sm text-navy">{{ msg.response }}</p>
+                <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-border pt-2">
+                  <span v-if="msg.confidence != null"
+                    class="rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide tabular-nums"
+                    :class="confidenceClass(msg.confidence)">
+                    Confianza {{ Math.round((msg.confidence || 0) * 100) }}%
+                  </span>
+                  <span v-if="msg.responseTimeMs != null"
+                    class="rounded-full bg-navy/5 px-2 py-0.5 text-[10px] font-bold text-text-muted tabular-nums">
+                    {{ msg.responseTimeMs }} ms
+                  </span>
+                  <span class="ml-auto flex items-center gap-1">
+                    <button type="button" @click="rate(msg, 'helpful')" title="Útil"
+                      class="grid h-8 w-8 place-items-center rounded-full text-sm transition-colors cursor-pointer"
+                      :class="msg.feedback === 'helpful' ? 'bg-teal/10 text-teal' : 'hover:bg-navy/10'">👍</button>
+                    <button type="button" @click="rate(msg, 'not_helpful')" title="No útil"
+                      class="grid h-8 w-8 place-items-center rounded-full text-sm transition-colors cursor-pointer"
+                      :class="msg.feedback === 'not_helpful' ? 'bg-coral/10 text-coral' : 'hover:bg-navy/10'">👎</button>
+                    <button type="button" @click="rate(msg, 'inaccurate')" title="Impreciso"
+                      class="grid h-8 w-8 place-items-center rounded-full text-sm transition-colors cursor-pointer"
+                      :class="msg.feedback === 'inaccurate' ? 'bg-gold/10 text-gold' : 'hover:bg-navy/10'">⚠️</button>
                   </span>
                 </div>
               </div>
             </div>
           </template>
 
+          <!-- Skeleton mientras el análisis carga -->
           <div v-if="asking" class="flex justify-start">
-            <div class="rounded-2xl rounded-bl-sm bg-surface px-4 py-3">
-              <div class="flex gap-1">
-                <span class="w-2 h-2 rounded-full bg-navy/40 animate-bounce" style="animation-delay:0ms"></span>
-                <span class="w-2 h-2 rounded-full bg-navy/40 animate-bounce" style="animation-delay:150ms"></span>
-                <span class="w-2 h-2 rounded-full bg-navy/40 animate-bounce" style="animation-delay:300ms"></span>
-              </div>
+            <div class="w-[85%] space-y-2 rounded-2xl rounded-bl-sm border border-border bg-surface px-4 py-3">
+              <div class="h-3 w-11/12 animate-pulse rounded bg-navy/10"></div>
+              <div class="h-3 w-9/12 animate-pulse rounded bg-navy/10"></div>
+              <div class="h-3 w-6/12 animate-pulse rounded bg-navy/10"></div>
+              <p class="pt-1 text-[10px] font-bold uppercase tracking-wide text-text-muted">Analizando datos del hotel…</p>
             </div>
           </div>
         </div>
 
         <!-- Input -->
-        <form @submit.prevent="send" class="border-t border-border p-3 flex items-end gap-2">
+        <form @submit.prevent="send" class="flex items-end gap-2 border-t border-border bg-white p-3">
           <textarea v-model="draft" rows="1" placeholder="Escribí tu pregunta…"
             @keydown.enter.exact.prevent="send"
             class="flex-1 resize-none rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-navy/20"></textarea>
           <button type="submit" :disabled="asking || !draft.trim()"
-            class="rounded-xl bg-navy text-white px-4 py-2.5 text-sm font-bold disabled:opacity-40">
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-navy-light disabled:opacity-40 cursor-pointer">
             Enviar
           </button>
         </form>
-      </div>
+      </SectionCard>
 
       <!-- Historial -->
-      <div class="bg-white rounded-2xl border border-border overflow-hidden flex flex-col" style="height: 70vh">
-        <div class="px-4 py-3 border-b border-border">
-          <h3 class="font-extrabold text-navy text-sm">Historial de consultas</h3>
-        </div>
-        <div class="flex-1 overflow-y-auto p-3 space-y-2">
-          <div v-if="loadingHistory" class="flex items-center justify-center py-10">
-            <div class="w-6 h-6 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
+      <SectionCard class="flex flex-col" style="height: 70vh"
+        title="Historial de consultas"
+        :subtitle="history.length ? `${history.length} consulta(s) guardada(s)` : undefined"
+        body-class="flex-1 min-h-0 overflow-y-auto p-3">
+        <div v-if="loadingHistory" class="space-y-2">
+          <div v-for="n in 5" :key="n" class="rounded-xl bg-surface px-3 py-2.5">
+            <div class="h-3 w-10/12 animate-pulse rounded bg-navy/10"></div>
+            <div class="mt-2 h-2.5 w-4/12 animate-pulse rounded bg-navy/10"></div>
           </div>
-          <p v-else-if="!history.length" class="text-xs text-text-muted text-center py-10">Sin consultas todavía</p>
-          <button v-for="h in history" :key="h.id" @click="restore(h)"
-            class="w-full text-left rounded-xl bg-surface hover:bg-surface/70 px-3 py-2.5 transition-colors">
-            <p class="text-xs font-semibold text-navy line-clamp-2">{{ h.query }}</p>
-            <p class="text-[11px] text-text-muted mt-1">{{ formatDate(h.createdAt) }}</p>
+        </div>
+
+        <EmptyState v-else-if="!history.length" :icon="ICON_CLOCK"
+          title="Sin consultas todavía"
+          message="Cuando le preguntes algo al gerente IA, la consulta queda acá para retomarla." />
+
+        <div v-else class="space-y-2">
+          <button v-for="h in history" :key="h.id" type="button" @click="restore(h)"
+            class="w-full rounded-xl border border-transparent bg-surface px-3 py-2.5 text-left transition-colors hover:border-navy/20 hover:bg-surface-dark cursor-pointer">
+            <p class="line-clamp-2 text-xs font-semibold text-navy">{{ h.query }}</p>
+            <p v-if="formatDate(h.createdAt)" class="mt-1 text-[11px] text-text-muted tabular-nums">{{ formatDate(h.createdAt) }}</p>
           </button>
         </div>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>
@@ -105,10 +136,21 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { AiGerenteService, type AiInteraction, type AiFeedback } from '@/services/AiGerente.service'
 import { useToast } from '@/composables/useToast'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 
 const toast = useToast()
 
-const ICON_SPARKLES = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>'
+const ICON_SPARKLES = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>'
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+
+/** Badge de confianza: teal ok · gold atención · coral crítico */
+function confidenceClass(confidence?: number | null): string {
+  const pct = (confidence ?? 0) * 100
+  if (pct >= 80) return 'bg-teal/10 text-teal'
+  if (pct >= 50) return 'bg-gold/10 text-gold'
+  return 'bg-coral/10 text-coral'
+}
 
 const suggestions = [
   '¿Cuál fue la ocupación de esta semana?',

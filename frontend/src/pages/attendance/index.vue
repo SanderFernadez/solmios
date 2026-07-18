@@ -1,80 +1,53 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-3 flex-wrap mb-6">
       <div>
         <h2 class="text-xl font-black text-navy">Asistencia y Ponche Digital</h2>
         <p class="text-sm text-text-muted mt-0.5">Fichaje de entrada/salida, horarios y reportes</p>
       </div>
     </div>
 
-    <div class="flex gap-2 mb-6">
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6 flex-wrap">
       <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value"
-        class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
+        class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer"
         :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
         <span class="w-4 h-4 shrink-0" v-html="tab.icon"></span>
         {{ tab.label }}
       </button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
+    <!-- Loading (skeleton) -->
+    <div v-if="loading" class="space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div v-for="i in 4" :key="i" class="h-28 animate-pulse rounded-2xl bg-surface"></div>
+      </div>
+      <div class="h-64 animate-pulse rounded-2xl bg-surface"></div>
     </div>
 
-    <!-- Ponche Digital -->
-    <div v-if="activeTab === 'clock' && !loading">
-      <!-- Herramientas de Supervisor (colapsable, arriba del widget personal) -->
-      <div class="max-w-md mx-auto mb-4">
-        <button @click="showSupervisorTools = !showSupervisorTools"
-          class="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-white hover:border-navy/30 transition-colors cursor-pointer">
-          <div class="w-8 h-8 rounded-lg bg-navy/10 flex items-center justify-center shrink-0">
-            <span class="w-4 h-4 text-navy" v-html="ICON_USERS"></span>
-          </div>
-          <div class="flex-1 text-left">
-            <div class="text-sm font-extrabold text-navy leading-none">Herramientas de Supervisor</div>
-            <div class="text-[10px] text-text-muted mt-1">Registrar fichaje manual</div>
-          </div>
-          <span class="w-4 h-4 text-text-muted shrink-0 transition-transform" :class="showSupervisorTools ? 'rotate-180' : ''" v-html="ICON_CHEVRON_DOWN"></span>
-        </button>
+    <!-- ─── Ponche Digital ─────────────────────────────── -->
+    <div v-if="activeTab === 'clock' && !loading" class="max-w-xl mx-auto">
+      <SectionCard title="Ponche Digital" :subtitle="today">
+        <template #actions>
+          <button @click="showSupervisorTools = true"
+            class="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
+            <span class="h-3.5 w-3.5 shrink-0" v-html="ICON_USERS"></span>
+            Fichaje manual
+          </button>
+        </template>
 
-        <div v-if="showSupervisorTools" class="card p-5 mt-2 border-l-4 border-l-navy/30">
-          <div class="space-y-4">
-            <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Empleado</label>
-              <input v-model="manualForm.employeeId" placeholder="ID del empleado" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
-            </div>
-            <div class="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Hora de entrada</label>
-                <input v-model="manualForm.clockIn" type="datetime-local" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Hora de salida <span class="normal-case font-normal text-text-muted/70">(opcional)</span></label>
-                <input v-model="manualForm.clockOut" type="datetime-local" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
-              </div>
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Motivo</label>
-              <input v-model="manualForm.notes" placeholder="Ej: Olvidó marcar entrada, dispositivo sin conexión..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
-            </div>
-            <button @click="doManualRecord" class="w-full flex items-center justify-center gap-2 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
-              <span class="w-4 h-4 shrink-0" v-html="ICON_CHECK_CIRCLE"></span>Registrar Manualmente
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="max-w-md mx-auto">
-        <div class="card p-8 text-center">
+        <div class="text-center">
           <div class="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
             :class="todayRecord?.clockIn && !todayRecord?.clockOut ? 'bg-cyan/10 text-cyan' : todayRecord?.clockOut ? 'bg-teal/10 text-teal' : 'bg-navy/5 text-navy/40'">
             <span class="w-9 h-9 shrink-0" :class="todayRecord?.clockIn && !todayRecord?.clockOut ? 'animate-pulse' : ''" v-html="todayRecord?.clockOut ? ICON_CHECK_CIRCLE : ICON_CLOCK"></span>
           </div>
-          <div class="text-2xl font-black text-navy mb-2">{{ now }}</div>
-          <div class="text-sm text-text-secondary mb-6">{{ today }}</div>
+          <div class="text-3xl font-black text-navy tabular-nums mb-1">{{ now }}</div>
+          <div class="text-sm text-text-secondary mb-6 capitalize">{{ today }}</div>
 
           <!-- Método selector -->
           <div v-if="!todayRecord?.clockIn" class="mb-6">
-            <div class="text-[10px] font-bold text-navy uppercase tracking-wide mb-3">Método de fichaje</div>
+            <div class="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-3">Método de fichaje</div>
             <div class="grid grid-cols-4 gap-2">
               <button v-for="m in methods" :key="m.value" @click="selectedMethod = m.value"
                 class="p-3 rounded-xl border-2 text-center transition-all cursor-pointer"
@@ -104,31 +77,23 @@
 
           <!-- PIN input -->
           <div v-if="!todayRecord?.clockIn && selectedMethod === 'pin'" class="mb-4">
-            <label class="block text-[10px] font-bold text-navy uppercase mb-2">Código PIN</label>
-            <input v-model="pinCode" type="password" maxlength="6" placeholder="••••••" class="w-32 text-center px-4 py-3 rounded-xl border-2 border-navy/20 text-xl font-bold tracking-widest focus:outline-none focus:border-navy text-navy">
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2">Código PIN</label>
+            <input v-model="pinCode" type="password" maxlength="6" placeholder="••••••" class="w-32 mx-auto block text-center px-4 py-3 rounded-xl border-2 border-navy/20 text-xl font-bold tracking-widest focus:outline-none focus:border-navy text-navy">
           </div>
 
-          <div v-if="todayRecord" class="mb-6 p-4 bg-surface rounded-xl">
-            <div class="flex items-center justify-center gap-2 mb-3">
-              <span class="w-4 h-4 text-navy shrink-0" v-html="methods.find(m => m.value === todayRecord?.method)?.icon || ICON_CLOCK"></span>
-              <span class="text-[10px] font-bold text-text-muted">{{ methods.find(m => m.value === todayRecord?.method)?.label || todayRecord?.method }}</span>
+          <!-- Resumen del día — solo los datos que existen (nada de "—") -->
+          <div v-if="todayRecord && todayFacts.length" class="mb-6 p-4 bg-surface rounded-xl">
+            <div v-if="todayMethodLabel" class="flex items-center justify-center gap-2 mb-3">
+              <span class="w-4 h-4 text-navy shrink-0" v-html="todayMethodIcon"></span>
+              <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted">{{ todayMethodLabel }}</span>
             </div>
             <div class="grid grid-cols-2 gap-3 text-left">
-              <div class="flex items-center gap-2">
-                <span class="w-4 h-4 text-teal shrink-0" v-html="ICON_LOGIN"></span>
-                <div><span class="text-[10px] text-text-muted uppercase block">Entrada</span><span class="text-sm font-bold text-navy">{{ todayRecord.clockIn ? new Date(todayRecord.clockIn).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}) : '—' }}</span></div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="w-4 h-4 text-coral shrink-0" v-html="ICON_LOGOUT"></span>
-                <div><span class="text-[10px] text-text-muted uppercase block">Salida</span><span class="text-sm font-bold text-navy">{{ todayRecord.clockOut ? new Date(todayRecord.clockOut).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}) : '—' }}</span></div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="w-4 h-4 text-gold shrink-0" v-html="ICON_COFFEE"></span>
-                <div><span class="text-[10px] text-text-muted uppercase block">Descanso</span><span class="text-sm font-bold">{{ todayRecord.breakStart && !todayRecord.breakEnd ? 'En curso' : (todayRecord.breakEnd ? 'Completado' : '—') }}</span></div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="w-4 h-4 text-teal shrink-0" v-html="ICON_CLOCK"></span>
-                <div><span class="text-[10px] text-text-muted uppercase block">Horas</span><span class="text-sm font-bold text-teal">{{ todayRecord.totalHours?.toFixed(1) ?? '—' }}h</span></div>
+              <div v-for="f in todayFacts" :key="f.label" class="flex items-center gap-2">
+                <span class="w-4 h-4 shrink-0" :class="f.tone" v-html="f.icon"></span>
+                <div class="min-w-0">
+                  <span class="block text-[10px] font-bold uppercase tracking-wide text-text-muted">{{ f.label }}</span>
+                  <span class="text-sm font-bold tabular-nums" :class="f.valueTone || 'text-navy'">{{ f.value }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -150,176 +115,256 @@
               class="w-full flex items-center justify-center gap-2 py-4 bg-coral text-white rounded-2xl text-lg font-extrabold hover:bg-coral/80 transition-all cursor-pointer shadow-lg">
               <span class="w-5 h-5 shrink-0" v-html="ICON_HOME"></span>Fichar Salida
             </button>
-            <div v-if="todayRecord?.clockOut" class="flex items-center justify-center gap-2 py-4 bg-teal/5 border border-teal/20 rounded-xl">
+            <div v-if="todayRecord?.clockOut" class="flex items-center justify-center gap-2 py-4 bg-teal/10 rounded-xl">
               <span class="w-4 h-4 text-teal shrink-0" v-html="ICON_CHECK_CIRCLE"></span>
               <span class="text-teal font-bold text-sm">Jornada completada</span>
             </div>
           </div>
         </div>
-      </div>
-
+      </SectionCard>
     </div>
 
-    <!-- Horarios -->
-    <div v-if="activeTab === 'schedules' && !loading" class="card overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between items-center">
-        <h3 class="font-extrabold text-navy text-sm">Horarios y Turnos</h3>
-        <button @click="openNewSchedule" class="flex items-center gap-1 px-3 py-1.5 bg-cyan text-navy rounded-lg text-[10px] font-bold hover:shadow-lg cursor-pointer">
-          <span class="w-3 h-3 shrink-0" v-html="ICON_PLUS"></span>Nuevo Turno
+    <!-- ─── Horarios ───────────────────────────────────── -->
+    <SectionCard v-if="activeTab === 'schedules' && !loading"
+      title="Horarios y Turnos" :subtitle="`${schedules.length} turno(s) configurado(s)`" body-class="p-0">
+      <template #actions>
+        <button @click="openNewSchedule"
+          class="flex items-center gap-1.5 rounded-lg bg-cyan px-3 py-2 text-[11px] font-extrabold text-navy hover:shadow-lg transition-all cursor-pointer">
+          <span class="h-3 w-3 shrink-0" v-html="ICON_PLUS"></span>Nuevo Turno
         </button>
-      </div>
-      <div v-if="schedules.length === 0" class="p-12 text-center">
-        <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_CALENDAR"></span>
-        <p class="text-text-muted text-sm">No hay turnos configurados</p>
-      </div>
+      </template>
+
+      <EmptyState v-if="schedules.length === 0" :icon="ICON_CALENDAR"
+        title="Todavía no hay turnos"
+        message="Creá el primer turno para poder armar el calendario y medir tardanzas.">
+        <template #action>
+          <button @click="openNewSchedule"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Nuevo turno</button>
+        </template>
+      </EmptyState>
+
       <div v-else class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div v-for="s in schedules" :key="s.id" class="p-4 bg-surface rounded-xl">
-          <div class="flex items-center justify-between mb-2">
-            <div class="font-extrabold text-navy text-sm">{{ s.name }}</div>
-            <button @click="deleteSchedule(s)" class="text-coral hover:bg-coral/10 rounded-lg p-1 cursor-pointer">
-              <span class="w-3.5 h-3.5 shrink-0 block" v-html="ICON_TRASH"></span>
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="font-extrabold text-navy text-sm truncate">{{ s.name }}</div>
+            <button @click="deleteSchedule(s)" title="Eliminar turno"
+              class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-coral hover:bg-coral/10 transition-colors cursor-pointer">
+              <span class="h-4 w-4" v-html="ICON_TRASH"></span>
             </button>
           </div>
           <div class="space-y-1">
-            <div class="flex items-center gap-1.5 text-xs text-text-secondary"><span class="w-3.5 h-3.5 text-navy shrink-0" v-html="ICON_CLOCK"></span>{{ s.startTime }} → {{ s.endTime }}</div>
-            <div class="flex items-center gap-1.5 text-xs text-text-secondary"><span class="w-3.5 h-3.5 text-gold shrink-0" v-html="ICON_COFFEE"></span>{{ s.breakMinutes }}min descanso</div>
-            <div class="flex items-center gap-1.5 text-xs text-text-secondary"><span class="w-3.5 h-3.5 text-cyan shrink-0" v-html="ICON_ALARM"></span>{{ s.graceMinutes }}min tolerancia</div>
+            <div class="flex items-center gap-1.5 text-xs text-text-secondary"><span class="w-3.5 h-3.5 text-navy shrink-0" v-html="ICON_CLOCK"></span><span class="tabular-nums">{{ s.startTime }} → {{ s.endTime }}</span></div>
+            <div class="flex items-center gap-1.5 text-xs text-text-secondary"><span class="w-3.5 h-3.5 text-gold shrink-0" v-html="ICON_COFFEE"></span><span class="tabular-nums">{{ s.breakMinutes }}min</span> descanso</div>
+            <div class="flex items-center gap-1.5 text-xs text-text-secondary"><span class="w-3.5 h-3.5 text-cyan shrink-0" v-html="ICON_ALARM"></span><span class="tabular-nums">{{ s.graceMinutes }}min</span> tolerancia</div>
           </div>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
-    <!-- Reportes -->
+    <!-- ─── Reportes ───────────────────────────────────── -->
     <div v-if="activeTab === 'reports' && !loading" class="space-y-4">
-      <div class="card p-5">
-        <h3 class="font-extrabold text-navy text-sm mb-4">Reporte de Asistencia</h3>
-        <div class="flex flex-wrap gap-3">
-          <input v-model="reportFrom" type="date" class="px-4 py-2 rounded-xl border border-border text-sm">
-          <input v-model="reportTo" type="date" class="px-4 py-2 rounded-xl border border-border text-sm">
-          <button @click="loadReport" class="flex items-center gap-1.5 px-4 py-2 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light cursor-pointer">
-            <span class="w-4 h-4 shrink-0" v-html="ICON_CHART"></span>Generar
+      <div v-if="report.length" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KpiHeroCard label="Días Trabajados" :value="reportTotals.days" icon="bookings" accent="blue"
+          unit="Sumatoria del período" />
+        <KpiHeroCard label="Horas Totales" :value="reportTotals.hours" icon="checkin" accent="teal"
+          suffix="h" unit="Horas registradas" />
+        <KpiHeroCard label="Horas Extra" :value="reportTotals.overtime" icon="money" accent="amber"
+          suffix="h" unit="Por encima del turno" />
+        <KpiHeroCard label="Faltas" :value="reportTotals.absences" icon="users" accent="rose"
+          unit="Ausencias del período" />
+      </div>
+
+      <SectionCard title="Reporte de Asistencia"
+        :subtitle="report.length ? `${report.length} empleado(s) en el rango` : 'Elegí un rango de fechas'"
+        body-class="p-0">
+        <template #actions>
+          <input v-model="reportFrom" type="date"
+            class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+          <input v-model="reportTo" type="date"
+            class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+          <button @click="loadReport"
+            class="flex items-center gap-1.5 rounded-lg bg-cyan px-3 py-2 text-[11px] font-extrabold text-navy hover:shadow-lg transition-all cursor-pointer">
+            <span class="h-3.5 w-3.5 shrink-0" v-html="ICON_CHART"></span>Generar
           </button>
-        </div>
-      </div>
+        </template>
 
-      <div v-if="report.length" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10"><span class="w-5 h-5 text-navy" v-html="ICON_CALENDAR"></span></div>
-            <div class="min-w-0"><div class="text-xl font-black leading-none text-navy truncate">{{ reportTotals.days }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Días Trabajados</div></div>
-          </div>
-        </div>
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10"><span class="w-5 h-5 text-teal" v-html="ICON_CLOCK"></span></div>
-            <div class="min-w-0"><div class="text-xl font-black leading-none text-teal truncate">{{ reportTotals.hours }}h</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Horas Totales</div></div>
-          </div>
-        </div>
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10"><span class="w-5 h-5 text-gold" v-html="ICON_CLOCK"></span></div>
-            <div class="min-w-0"><div class="text-xl font-black leading-none text-gold truncate">{{ reportTotals.overtime }}h</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Horas Extra</div></div>
-          </div>
-        </div>
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-coral/10"><span class="w-5 h-5 text-coral" v-html="ICON_ALARM"></span></div>
-            <div class="min-w-0"><div class="text-xl font-black leading-none text-coral truncate">{{ reportTotals.absences }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Faltas</div></div>
-          </div>
-        </div>
-      </div>
+        <EmptyState v-if="!report.length && reportLoaded" :icon="ICON_CHART"
+          title="Sin movimientos en el rango"
+          message="No hay fichajes entre esas fechas. Probá con un período más amplio." />
+        <EmptyState v-else-if="!report.length" :icon="ICON_CHART"
+          title="Todavía no generaste el reporte"
+          message="Seleccioná un rango de fechas arriba y tocá Generar." />
 
-      <div class="card overflow-hidden">
-        <div v-if="report.length" class="overflow-x-auto">
-          <table class="w-full text-sm">
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[720px] tbl-head">
             <thead>
-              <tr class="border-b border-border bg-surface/50">
-                <th class="text-left px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Empleado</th>
-                <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Días</th>
-                <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Horas</th>
-                <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Extra</th>
-                <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Faltas</th>
-                <th class="text-right px-4 py-2.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tarde</th>
+              <tr>
+                <th class="text-left px-4 py-3 text-[10px]">Empleado</th>
+                <th class="text-right px-4 py-3 text-[10px]">Días</th>
+                <th class="text-right px-4 py-3 text-[10px]">Horas</th>
+                <th class="text-right px-4 py-3 text-[10px] hidden lg:table-cell">Extra</th>
+                <th class="text-right px-4 py-3 text-[10px] hidden lg:table-cell">Faltas</th>
+                <th class="text-right px-4 py-3 text-[10px]">Tarde</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="r in report" :key="r.employeeId" class="border-b border-border/60 last:border-0 hover:bg-surface/50 transition-colors">
-                <td class="px-4 py-2.5 font-bold text-navy whitespace-nowrap">{{ getEmployeeName(r.employeeId) }}</td>
-                <td class="px-4 py-2.5 text-right text-text-secondary">{{ r.daysWorked }}</td>
-                <td class="px-4 py-2.5 text-right text-text-secondary">{{ r.hoursWorked }}h</td>
-                <td class="px-4 py-2.5 text-right text-gold font-bold">{{ r.overtimeHours }}h</td>
-                <td class="px-4 py-2.5 text-right text-coral font-bold">{{ r.absences }}</td>
-                <td class="px-4 py-2.5 text-right text-coral font-bold">{{ r.lateArrivals }}</td>
+              <tr v-for="r in report" :key="r.employeeId" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="text-sm font-bold text-navy">{{ getEmployeeName(r.employeeId) }}</div>
+                  <div class="text-[11px] text-text-muted lg:hidden tabular-nums">
+                    {{ r.overtimeHours }}h extra · {{ r.absences }} falta(s)
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-right text-sm text-text-secondary tabular-nums">{{ r.daysWorked }}</td>
+                <td class="px-4 py-3 text-right text-sm font-extrabold text-navy tabular-nums">{{ r.hoursWorked }}h</td>
+                <td class="px-4 py-3 text-right text-sm font-bold text-gold tabular-nums hidden lg:table-cell">{{ r.overtimeHours }}h</td>
+                <td class="px-4 py-3 text-right hidden lg:table-cell">
+                  <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold tabular-nums"
+                    :class="r.absences > 0 ? 'bg-coral/10 text-coral' : 'bg-teal/10 text-teal'">{{ r.absences }}</span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold tabular-nums"
+                    :class="r.lateArrivals > 0 ? 'bg-gold/10 text-gold' : 'bg-teal/10 text-teal'">{{ r.lateArrivals }}</span>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div v-else class="p-12 text-center">
-          <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_CHART"></span>
-          <p class="text-text-muted text-sm">Seleccioná un rango de fechas y generá el reporte</p>
-        </div>
-      </div>
+      </SectionCard>
     </div>
 
-    <!-- Calendario de Turnos -->
-    <div v-if="activeTab === 'calendar' && !loading" class="space-y-4">
-      <div class="card p-4 flex flex-wrap items-center gap-3">
-        <div class="flex items-center gap-2">
-          <button @click="shiftWeek(-7)" class="w-8 h-8 rounded-lg border border-border hover:border-navy/30 flex items-center justify-center cursor-pointer text-navy">‹</button>
-          <span class="text-sm font-bold text-navy">{{ weekDays[0] }} → {{ weekDays[6] }}</span>
-          <button @click="shiftWeek(7)" class="w-8 h-8 rounded-lg border border-border hover:border-navy/30 flex items-center justify-center cursor-pointer text-navy">›</button>
+    <!-- ─── Calendario de Turnos ───────────────────────── -->
+    <SectionCard v-if="activeTab === 'calendar' && !loading"
+      title="Calendario de Turnos" :subtitle="`${weekDays[0]} → ${weekDays[6]}`" body-class="p-0">
+      <template #actions>
+        <div class="flex items-center gap-1">
+          <button @click="shiftWeek(-7)" title="Semana anterior"
+            class="grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer">‹</button>
+          <button @click="shiftWeek(7)" title="Semana siguiente"
+            class="grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer">›</button>
         </div>
-        <div class="flex items-center gap-2 ml-auto">
-          <label class="text-[10px] font-bold text-text-muted uppercase">Turno a pintar</label>
-          <select v-model="paintScheduleId" class="px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-            <option value="" disabled>Elegí un turno</option>
-            <option v-for="s in schedules" :key="s.id" :value="s.id">{{ s.name }} ({{ s.startTime }}-{{ s.endTime }})</option>
-          </select>
+        <select v-model="paintScheduleId"
+          class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+          <option class="text-navy" value="" disabled>Turno a pintar</option>
+          <option class="text-navy" v-for="s in schedules" :key="s.id" :value="s.id">{{ s.name }} ({{ s.startTime }}-{{ s.endTime }})</option>
+        </select>
+      </template>
+
+      <EmptyState v-if="!schedules.length" :icon="ICON_CALENDAR"
+        title="Sin turnos para asignar"
+        message="Creá al menos un turno en la pestaña Horarios antes de armar el calendario.">
+        <template #action>
+          <button @click="activeTab = 'schedules'"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Ir a Horarios</button>
+        </template>
+      </EmptyState>
+
+      <EmptyState v-else-if="!profiles.length" :icon="ICON_USERS"
+        title="Sin empleados con legajo"
+        message="Cargá los legajos en la sección Empleados para poder asignarles turnos." />
+
+      <div v-else>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[720px] border-collapse tbl-head">
+            <thead>
+              <tr>
+                <th class="text-left px-3 py-3 text-[10px] sticky left-0 bg-surface">Empleado</th>
+                <th v-for="(d, i) in weekDays" :key="d" class="px-2 py-3 text-[10px] text-center whitespace-nowrap">
+                  {{ WEEKDAY_LABELS[i] }}<br><span class="tabular-nums opacity-60">{{ d.slice(8) }}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in profiles" :key="p.id" class="border-b border-border last:border-0">
+                <td class="px-3 py-2 text-sm font-bold text-navy whitespace-nowrap sticky left-0 bg-white">{{ p.userName || p.position || p.id.slice(0,6) }}</td>
+                <td v-for="d in weekDays" :key="d" class="px-1.5 py-1.5 text-center">
+                  <button @click="onCell(p, d)"
+                    :title="cellFor(p.id, d) ? 'Quitar turno' : 'Asignar turno'"
+                    class="w-full min-h-[34px] rounded-lg text-[10px] font-bold px-1 py-1 transition-colors cursor-pointer"
+                    :class="cellFor(p.id, d) ? 'bg-cyan/15 text-navy hover:bg-coral/15' : 'bg-surface text-text-muted/50 hover:bg-navy/5'">
+                    {{ cellFor(p.id, d) ? scheduleName(cellFor(p.id, d)!.scheduleId) : '+' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="border-t border-border px-4 py-3 text-[11px] text-text-muted">
+          Elegí un turno arriba y hacé click en una celda para asignarlo. Click en una celda asignada para quitar el turno.
+        </p>
+      </div>
+    </SectionCard>
+
+    <!-- ─── Modal: fichaje manual (supervisor) ─────────── -->
+    <AppModal v-if="showSupervisorTools" size="lg" title="Fichaje manual"
+      subtitle="Herramienta de supervisor" @close="showSupervisorTools = false">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1.5">Empleado</label>
+          <input v-model="manualForm.employeeId" placeholder="ID del empleado" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1.5">Hora de entrada</label>
+            <input v-model="manualForm.clockIn" type="datetime-local" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1.5">Hora de salida <span class="normal-case font-normal text-text-muted/70">(opcional)</span></label>
+            <input v-model="manualForm.clockOut" type="datetime-local" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1.5">Motivo</label>
+          <input v-model="manualForm.notes" placeholder="Ej: Olvidó marcar entrada, dispositivo sin conexión..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
         </div>
       </div>
+      <template #footer>
+        <button @click="showSupervisorTools = false"
+          class="rounded-full px-5 py-2.5 text-sm font-bold text-text-secondary hover:bg-white transition-colors cursor-pointer">Cancelar</button>
+        <button @click="doManualRecord"
+          class="flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+          <span class="h-4 w-4 shrink-0" v-html="ICON_CHECK_CIRCLE"></span>Registrar
+        </button>
+      </template>
+    </AppModal>
 
-      <div v-if="!schedules.length" class="card p-8 text-center text-sm text-text-muted">
-        Creá al menos un turno en la pestaña <b>Horarios</b> antes de armar el calendario.
+    <!-- ─── Modal: nuevo turno ─────────────────────────── -->
+    <AppModal v-if="scheduleModal" size="lg" title="Nuevo Turno"
+      subtitle="Horario, descanso y tolerancia" @close="scheduleModal = false">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1.5">Nombre del turno</label>
+          <input v-model="scheduleForm.name" placeholder="Mañana" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1.5">Hora inicio</label>
+            <input v-model="scheduleForm.startTime" placeholder="HH:MM" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm tabular-nums focus:outline-none focus:border-navy">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1.5">Hora fin</label>
+            <input v-model="scheduleForm.endTime" placeholder="HH:MM" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm tabular-nums focus:outline-none focus:border-navy">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1.5">Descanso (min)</label>
+            <input v-model.number="scheduleForm.breakMinutes" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm tabular-nums focus:outline-none focus:border-navy">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-1.5">Tolerancia (min)</label>
+            <input v-model.number="scheduleForm.graceMinutes" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm tabular-nums focus:outline-none focus:border-navy">
+          </div>
+        </div>
       </div>
-      <div v-else-if="!profiles.length" class="card p-8 text-center text-sm text-text-muted">
-        No hay empleados con legajo. Cargalos en <b>Empleados</b>.
-      </div>
-      <div v-else class="card overflow-x-auto">
-        <table class="w-full text-sm border-collapse">
-          <thead>
-            <tr class="bg-surface/50">
-              <th class="text-left px-3 py-2.5 text-[10px] font-bold text-text-muted uppercase sticky left-0 bg-surface/50">Empleado</th>
-              <th v-for="(d, i) in weekDays" :key="d" class="px-2 py-2.5 text-[10px] font-bold text-text-muted uppercase text-center whitespace-nowrap">
-                {{ WEEKDAY_LABELS[i] }}<br><span class="text-text-muted/60">{{ d.slice(8) }}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in profiles" :key="p.id" class="border-t border-border/50">
-              <td class="px-3 py-2 font-bold text-navy whitespace-nowrap sticky left-0 bg-white">{{ p.userName || p.position || p.id.slice(0,6) }}</td>
-              <td v-for="d in weekDays" :key="d" class="px-1.5 py-1.5 text-center">
-                <button @click="onCell(p, d)"
-                  class="w-full min-h-[34px] rounded-lg text-[10px] font-bold px-1 py-1 transition-colors cursor-pointer"
-                  :class="cellFor(p.id, d) ? 'bg-cyan/15 text-navy hover:bg-coral/15' : 'bg-surface text-text-muted/50 hover:bg-navy/5'">
-                  {{ cellFor(p.id, d) ? scheduleName(cellFor(p.id, d)!.scheduleId) : '+' }}
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="text-[11px] text-text-muted">Elegí un turno arriba y hacé click en una celda para asignarlo. Click en una celda asignada para quitar el turno.</p>
-    </div>
+      <template #footer>
+        <button @click="scheduleModal = false"
+          class="rounded-full px-5 py-2.5 text-sm font-bold text-text-secondary hover:bg-white transition-colors cursor-pointer">Cancelar</button>
+        <button @click="submitSchedule" :disabled="savingSchedule"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ savingSchedule ? 'Creando...' : 'Crear Turno' }}
+        </button>
+      </template>
+    </AppModal>
 
-    <FormModal
-      v-if="scheduleModal"
-      title="Nuevo Turno"
-      :fields="scheduleFields"
-      :loading="savingSchedule"
-      submit-label="Crear Turno"
-      @close="scheduleModal = false"
-      @submit="createSchedule"
-    />
     <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
       :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
       @confirm="runConfirm" @close="confirmModal = null" />
@@ -332,8 +377,11 @@ import { AttendanceService, type AttendanceRecord, type AttendanceSchedule, type
 import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.service'
 import { useToast } from '@/composables/useToast'
 import CameraCapture from '@/components/features/CameraCapture.vue'
-import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import AppModal from '@/components/ui/AppModal.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { useConfirm } from '@/composables/useConfirm'
 
 const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
@@ -352,7 +400,6 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h12M9.75 7.5v-1.5a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 1.5 1.5v1.5m-8.25 0 .75 11.25a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5L17.25 7.5"/></svg>'
 const ICON_USERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
 const ICON_ALARM = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-1.5a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-9v1.5m-6.364.879.879.879M20.485 4.257l-.879.879"/></svg>'
-const ICON_CHEVRON_DOWN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>'
 
 const toast = useToast()
 const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({ onDone: () => loadData(), onError: (e) => toast.error(e instanceof Error ? e.message : 'La acción falló') })
@@ -363,6 +410,7 @@ const now = ref(''); const today = ref('')
 const todayRecord = ref<AttendanceRecord | null>(null)
 const schedules = ref<AttendanceSchedule[]>([])
 const report = ref<AttendanceReportRow[]>([])
+const reportLoaded = ref(false)
 const reportFrom = ref(''); const reportTo = ref('')
 const manualForm = ref({ employeeId: '', clockIn: '', clockOut: '', notes: '' })
 const selectedMethod = ref('pin')
@@ -391,6 +439,21 @@ const reportTotals = computed(() => ({
   overtime: report.value.reduce((s, r) => s + (r.overtimeHours || 0), 0),
   absences: report.value.reduce((s, r) => s + (r.absences || 0), 0),
 }))
+
+// El resumen del día se declara como datos: los campos sin valor no se pintan (nada de "—").
+const todayMethodLabel = computed(() => methods.find(m => m.value === todayRecord.value?.method)?.label || todayRecord.value?.method || '')
+const todayMethodIcon = computed(() => methods.find(m => m.value === todayRecord.value?.method)?.icon || ICON_CLOCK)
+const hhmm = (iso: string) => new Date(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+const todayFacts = computed(() => {
+  const r = todayRecord.value
+  if (!r) return []
+  const facts: { label: string; value: string; icon: string; tone: string; valueTone?: string }[] = []
+  if (r.clockIn) facts.push({ label: 'Entrada', value: hhmm(r.clockIn), icon: ICON_LOGIN, tone: 'text-teal' })
+  if (r.clockOut) facts.push({ label: 'Salida', value: hhmm(r.clockOut), icon: ICON_LOGOUT, tone: 'text-coral' })
+  if (r.breakStart) facts.push({ label: 'Descanso', value: r.breakEnd ? 'Completado' : 'En curso', icon: ICON_COFFEE, tone: 'text-gold' })
+  if (r.totalHours !== undefined && r.totalHours !== null) facts.push({ label: 'Horas', value: `${r.totalHours.toFixed(1)}h`, icon: ICON_CLOCK, tone: 'text-teal', valueTone: 'text-teal' })
+  return facts
+})
 
 function getEmployeeName(employeeId: string): string {
   if (!employeeId) return '—'
@@ -430,13 +493,13 @@ async function doStartBreak() { try { todayRecord.value = await AttendanceServic
 async function doEndBreak() { try { todayRecord.value = await AttendanceService.endBreak(getEmpId()); toast.info('Descanso finalizado') } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') } }
 async function doManualRecord() {
   if (!manualForm.value.employeeId || !manualForm.value.clockIn) { toast.warning('ID empleado y hora entrada requeridos'); return }
-  try { await AttendanceService.manualRecord(manualForm.value); toast.success('Fichaje manual registrado'); manualForm.value = { employeeId: '', clockIn: '', clockOut: '', notes: '' } }
+  try { await AttendanceService.manualRecord(manualForm.value); toast.success('Fichaje manual registrado'); manualForm.value = { employeeId: '', clockIn: '', clockOut: '', notes: '' }; showSupervisorTools.value = false }
   catch { toast.error('Error') }
 }
 
 async function loadReport() {
   if (!reportFrom.value || !reportTo.value) { toast.warning('Seleccioná fechas'); return }
-  try { report.value = await AttendanceService.getReport(reportFrom.value, reportTo.value) } catch { toast.error('Error') }
+  try { report.value = await AttendanceService.getReport(reportFrom.value, reportTo.value); reportLoaded.value = true } catch { toast.error('Error') }
 }
 
 // ─── Calendario de Turnos ───────────────────────────────
@@ -457,7 +520,7 @@ const assignments = ref<ShiftAssignment[]>([])
 const paintScheduleId = ref('')
 
 const cellFor = (employeeId: string, date: string) => assignments.value.find((a) => a.employeeId === employeeId && a.date === date)
-const scheduleName = (id: string) => schedules.value.find((s) => s.id === id)?.name ?? '—'
+const scheduleName = (id: string) => schedules.value.find((s) => s.id === id)?.name ?? 'Turno'
 
 async function loadWeek() {
   try { assignments.value = await AttendanceService.listShiftAssignments(weekDays.value[0], weekDays.value[6]) }
@@ -489,15 +552,16 @@ watch(activeTab, (t) => {
 
 const scheduleModal = ref(false)
 const savingSchedule = ref(false)
-const scheduleFields: FormField[] = [
-  { key: 'name', label: 'Nombre del turno', required: true, placeholder: 'Mañana' },
-  { key: 'startTime', label: 'Hora inicio', type: 'text', required: true, default: '06:00', placeholder: 'HH:MM' },
-  { key: 'endTime', label: 'Hora fin', type: 'text', required: true, default: '14:00', placeholder: 'HH:MM' },
-  { key: 'breakMinutes', label: 'Descanso (min)', type: 'number', min: 0, default: 30 },
-  { key: 'graceMinutes', label: 'Tolerancia (min)', type: 'number', min: 0, default: 10 },
-]
+const EMPTY_SCHEDULE = { name: '', startTime: '06:00', endTime: '14:00', breakMinutes: 30, graceMinutes: 10 }
+const scheduleForm = ref({ ...EMPTY_SCHEDULE })
 
-function openNewSchedule() { scheduleModal.value = true }
+function openNewSchedule() { scheduleForm.value = { ...EMPTY_SCHEDULE }; scheduleModal.value = true }
+
+function submitSchedule() {
+  const v = scheduleForm.value
+  if (!v.name || !v.startTime || !v.endTime) { toast.warning('Nombre, hora inicio y hora fin son requeridos'); return }
+  createSchedule({ ...v })
+}
 
 async function createSchedule(values: Record<string, string | number>) {
   savingSchedule.value = true

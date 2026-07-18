@@ -9,21 +9,15 @@
         </div>
         <div class="h-10 w-32 bg-surface rounded-xl animate-pulse"></div>
       </div>
+      <div class="flex gap-2 mb-6">
+        <div v-for="i in 5" :key="i" class="h-9 w-28 bg-surface rounded-full animate-pulse"></div>
+      </div>
       <div class="grid lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
-          <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-            <div class="h-5 w-40 bg-surface rounded mb-4 animate-pulse"></div>
-            <div class="grid grid-cols-2 gap-4">
+          <div v-for="c in 2" :key="c" class="rounded-2xl border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+            <div class="h-14 bg-navy animate-pulse"></div>
+            <div class="grid grid-cols-2 gap-4 p-5">
               <div v-for="i in 6" :key="i">
-                <div class="h-3 w-20 bg-surface rounded mb-2 animate-pulse"></div>
-                <div class="h-10 w-full bg-surface rounded-xl animate-pulse"></div>
-              </div>
-            </div>
-          </div>
-          <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-            <div class="h-5 w-28 bg-surface rounded mb-4 animate-pulse"></div>
-            <div class="grid grid-cols-2 gap-4">
-              <div v-for="i in 4" :key="i">
                 <div class="h-3 w-20 bg-surface rounded mb-2 animate-pulse"></div>
                 <div class="h-10 w-full bg-surface rounded-xl animate-pulse"></div>
               </div>
@@ -31,9 +25,9 @@
           </div>
         </div>
         <div class="space-y-6">
-          <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-            <div class="h-5 w-16 bg-surface rounded mb-4 animate-pulse"></div>
-            <div class="h-24 w-full bg-surface rounded-xl animate-pulse"></div>
+          <div class="rounded-2xl border border-border bg-white shadow-(--shadow-card) overflow-hidden">
+            <div class="h-14 bg-navy animate-pulse"></div>
+            <div class="p-5"><div class="h-24 w-full bg-surface rounded-xl animate-pulse"></div></div>
           </div>
         </div>
       </div>
@@ -63,16 +57,15 @@
     <!-- ========== HOTEL ========== -->
     <div v-if="activeTab === 'hotel'" class="grid lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 space-y-6">
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-          <h3 class="font-extrabold text-navy mb-4">Datos del Hotel</h3>
-          <div class="grid grid-cols-2 gap-4">
+        <SectionCard title="Datos del hotel" subtitle="Identidad y clasificación que aparece en facturas, emails y OTAs">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nombre *</label>
-              <input v-model="form.name" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Nombre *</label>
+              <input v-model="form.name" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tipo de Alojamiento</label>
-              <select v-model="form.accommodationType" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Tipo de alojamiento</label>
+              <select v-model="form.accommodationType" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
                 <option value="">Seleccionar</option>
                 <option value="hotel">Hotel</option>
                 <option value="boutique">Hotel Boutique</option>
@@ -85,8 +78,8 @@
               </select>
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">País *</label>
-              <select v-model="form.country" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">País *</label>
+              <select v-model="form.country" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
                 <option value="DO">República Dominicana</option>
                 <option value="CO">Colombia</option>
                 <option value="MX">México</option>
@@ -96,8 +89,8 @@
               </select>
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Clasificación</label>
-              <select v-model="form.starRating" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Clasificación</label>
+              <select v-model="form.starRating" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
                 <option value="">N/A</option>
                 <option value="1">1 Estrella</option>
                 <option value="2">2 Estrellas</option>
@@ -106,71 +99,68 @@
                 <option value="5">5 Estrellas</option>
               </select>
             </div>
-            <div class="col-span-2">
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Dirección</label>
-              <input v-model="form.address" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+            <div class="sm:col-span-2">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Dirección</label>
+              <input v-model="form.address" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Provincia</label>
-              <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Provincia</label>
+              <input v-model="form.province" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Municipio</label>
-              <input v-model="form.municipality" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
-            </div>
-          </div>
-        </div>
-
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-          <h3 class="font-extrabold text-navy mb-4">Contacto</h3>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Teléfono Principal</label>
-              <input v-model="form.phone" type="tel" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
-            </div>
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Teléfono 2</label>
-              <input v-model="form.phone2" type="tel" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
-            </div>
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Email</label>
-              <input v-model="form.email" type="email" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
-            </div>
-            <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Sitio Web</label>
-              <input v-model="form.website" type="url" placeholder="https://" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Municipio</label>
+              <input v-model="form.municipality" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
             </div>
           </div>
-        </div>
+        </SectionCard>
 
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-          <h3 class="font-extrabold text-navy mb-4">Propietario</h3>
-          <div class="grid grid-cols-2 gap-4">
+        <SectionCard title="Contacto" subtitle="Datos visibles para huéspedes y en las comunicaciones automáticas">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nombre del Propietario</label>
-              <input v-model="form.ownerName" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Teléfono principal</label>
+              <input v-model="form.phone" type="tel" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">CIF/NIF/RNC</label>
-              <input v-model="form.ownerTaxId" type="text" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Teléfono 2</label>
+              <input v-model="form.phone2" type="tel" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+            </div>
+            <div>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Email</label>
+              <input v-model="form.email" type="email" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+            </div>
+            <div>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Sitio web</label>
+              <input v-model="form.website" type="url" placeholder="https://" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
             </div>
           </div>
-        </div>
+        </SectionCard>
 
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-          <h3 class="font-extrabold text-navy mb-4">Check-In / Check-Out</h3>
-          <div class="grid grid-cols-4 gap-4">
+        <SectionCard title="Propietario" subtitle="Titular fiscal que figura en las facturas emitidas">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Check-In</label>
-              <input v-model="form.checkIn" type="time" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Nombre del propietario</label>
+              <input v-model="form.ownerName" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Check-Out</label>
-              <input v-model="form.checkOut" type="time" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">CIF/NIF/RNC</label>
+              <input v-model="form.ownerTaxId" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Estadía y moneda" subtitle="Horarios de entrada/salida, zona horaria y moneda base de la operación">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Check-in</label>
+              <input v-model="form.checkIn" type="time" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Zona Horaria</label>
-              <select v-model="form.timezone" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Check-out</label>
+              <input v-model="form.checkOut" type="time" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+            </div>
+            <div>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Zona horaria</label>
+              <select v-model="form.timezone" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
                 <option value="America/Santo_Domingo">Santo Domingo (GMT-4)</option>
                 <option value="America/Bogota">Bogotá (GMT-5)</option>
                 <option value="America/Mexico_City">CDMX (GMT-6)</option>
@@ -180,88 +170,97 @@
               </select>
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Moneda</label>
-              <select v-model="form.currency" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Moneda</label>
+              <select v-model="form.currency" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
                 <option value="USD">USD</option><option value="DOP">DOP</option><option value="COP">COP</option>
                 <option value="MXN">MXN</option><option value="PEN">PEN</option><option value="CLP">CLP</option><option value="ARS">ARS</option>
               </select>
             </div>
           </div>
-        </div>
-      </div>
+        </SectionCard>
 
-      <!-- Conversión de moneda (F3 match-misterplan) -->
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-        <h3 class="font-extrabold text-navy mb-1">Conversión de moneda</h3>
-        <p class="text-xs text-text-muted mb-4">Moneda secundaria para mostrar totales convertidos (ej. en el detalle de reserva).</p>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Moneda secundaria</label>
-            <select v-model="currencyConfig.secondaryCurrency" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-              <option value="DOP">DOP (Pesos dominicanos)</option><option value="USD">USD</option><option value="EUR">EUR</option>
-              <option value="COP">COP</option><option value="MXN">MXN</option><option value="ARS">ARS</option><option value="CLP">CLP</option>
-            </select>
+        <!-- Conversión de moneda (F3 match-misterplan) -->
+        <SectionCard title="Conversión de moneda"
+          subtitle="Moneda secundaria para mostrar totales convertidos (ej. en el detalle de reserva)">
+          <template #actions>
+            <button @click="saveCurrency" :disabled="currencySaving"
+              class="rounded-full bg-cyan px-4 py-2 text-xs font-bold text-navy transition-all hover:shadow-lg cursor-pointer disabled:opacity-50">
+              {{ currencySaving ? 'Guardando…' : 'Guardar conversión' }}
+            </button>
+          </template>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Moneda secundaria</label>
+              <select v-model="currencyConfig.secondaryCurrency" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
+                <option value="DOP">DOP (Pesos dominicanos)</option><option value="USD">USD</option><option value="EUR">EUR</option>
+                <option value="COP">COP</option><option value="MXN">MXN</option><option value="ARS">ARS</option><option value="CLP">CLP</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Tipo de cambio</label>
+              <input v-model.number="currencyConfig.exchangeRate" type="number" min="0" step="0.01"
+                class="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-bold text-navy text-right tabular-nums focus:border-navy focus:outline-none" />
+            </div>
           </div>
-          <div>
-            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Tipo de cambio</label>
-            <input v-model.number="currencyConfig.exchangeRate" type="number" min="0" step="0.01" class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
+        </SectionCard>
+
+        <!-- PIN de tarjeta de garantía (MisterPlan) -->
+        <SectionCard title="PIN de tarjeta de garantía"
+          subtitle="Protege los datos de las tarjetas de garantía en el detalle de reserva">
+          <template #actions>
+            <span v-if="hasGuaranteePin" class="rounded-full bg-teal/20 px-3 py-1 text-[10px] font-extrabold uppercase text-teal">Configurado</span>
+            <span v-else class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-extrabold uppercase text-white/80">Sin configurar</span>
+          </template>
+          <div class="flex flex-wrap items-end gap-3">
+            <div>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Nuevo PIN (4-8 dígitos)</label>
+              <input v-model="guaranteePinDraft" type="password" inputmode="numeric" maxlength="8" placeholder="••••"
+                class="w-40 rounded-xl border border-border px-4 py-2.5 font-mono text-sm tracking-widest focus:border-navy focus:outline-none" />
+            </div>
+            <button @click="saveGuaranteePin" :disabled="guaranteePinSaving || !guaranteePinDraft"
+              class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white transition-all hover:shadow-lg cursor-pointer disabled:opacity-50">
+              {{ guaranteePinSaving ? 'Guardando…' : 'Guardar PIN' }}
+            </button>
           </div>
-        </div>
-        <button @click="saveCurrency" :disabled="currencySaving" class="mt-4 px-5 py-2.5 bg-teal text-white rounded-full text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
-          {{ currencySaving ? 'Guardando…' : 'Guardar conversión' }}
-        </button>
-      </div>
+        </SectionCard>
 
-      <!-- PIN de tarjeta de garantía (MisterPlan) -->
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-        <h3 class="font-extrabold text-navy mb-1">PIN de tarjeta de garantía</h3>
-        <p class="text-xs text-text-muted mb-4">PIN requerido para ver los datos de las tarjetas de garantía en el detalle de reserva.
-          <span v-if="hasGuaranteePin" class="text-teal font-semibold">Configurado</span>
-          <span v-else class="text-coral font-semibold">Sin configurar</span>
-        </p>
-        <div class="flex flex-wrap items-end gap-3">
-          <div>
-            <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-2">Nuevo PIN (4-8 dígitos)</label>
-            <input v-model="guaranteePinDraft" type="password" inputmode="numeric" maxlength="8" placeholder="••••" class="px-4 py-2.5 rounded-full border border-border text-sm font-mono bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-40" />
+        <!-- Automatización del flujo de reserva (auto/manual) -->
+        <SectionCard title="Automatización"
+          subtitle="Acciones automáticas al confirmar o hacer check-in — podés apagarlas y operar manual">
+          <template #actions>
+            <button @click="saveAutomation" :disabled="automationSaving"
+              class="rounded-full bg-cyan px-4 py-2 text-xs font-bold text-navy transition-all hover:shadow-lg cursor-pointer disabled:opacity-50">
+              {{ automationSaving ? 'Guardando…' : 'Guardar automatización' }}
+            </button>
+          </template>
+          <div class="space-y-3">
+            <label class="flex items-center justify-between gap-4 rounded-xl bg-surface p-3.5 cursor-pointer">
+              <span class="text-sm font-bold text-navy">Generar código de puerta al hacer check-in
+                <span class="block text-[11px] font-normal text-text-muted">Requiere TTLock conectado</span></span>
+              <input type="checkbox" v-model="automation.autoLockCode" class="h-5 w-5 shrink-0 rounded text-cyan cursor-pointer" />
+            </label>
+            <label class="flex items-center justify-between gap-4 rounded-xl bg-surface p-3.5 cursor-pointer">
+              <span class="text-sm font-bold text-navy">Enviar requerimiento de pago al confirmar
+                <span class="block text-[11px] font-normal text-text-muted">Deuda técnica: hook backend</span></span>
+              <input type="checkbox" v-model="automation.autoPaymentRequest" class="h-5 w-5 shrink-0 rounded text-cyan cursor-pointer" />
+            </label>
           </div>
-          <button @click="saveGuaranteePin" :disabled="guaranteePinSaving || !guaranteePinDraft" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
-            {{ guaranteePinSaving ? 'Guardando…' : 'Guardar PIN' }}
-          </button>
-        </div>
+        </SectionCard>
       </div>
 
-      <!-- Automatización del flujo de reserva (auto/manual) -->
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-        <h3 class="font-extrabold text-navy mb-1">Automatización</h3>
-        <p class="text-xs text-text-muted mb-4">Acciones automáticas al confirmar / hacer check-in. Podés apagarlas y hacerlo manual cuando quieras.</p>
-        <div class="space-y-3">
-          <label class="flex items-center justify-between bg-surface rounded-xl p-3 cursor-pointer">
-            <span class="text-sm font-bold text-navy">Generar código de puerta al hacer check-in <span class="text-[11px] font-normal text-text-muted">(requiere TTLock conectado)</span></span>
-            <input type="checkbox" v-model="automation.autoLockCode" class="w-5 h-5 rounded text-cyan" />
-          </label>
-          <label class="flex items-center justify-between bg-surface rounded-xl p-3 cursor-pointer">
-            <span class="text-sm font-bold text-navy">Enviar requerimiento de pago al confirmar <span class="text-[11px] font-normal text-text-muted">(deuda técnica: hook backend)</span></span>
-            <input type="checkbox" v-model="automation.autoPaymentRequest" class="w-5 h-5 rounded text-cyan" />
-          </label>
-        </div>
-        <button @click="saveAutomation" :disabled="automationSaving" class="mt-4 px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
-          {{ automationSaving ? 'Guardando…' : 'Guardar automatización' }}
-        </button>
-      </div>
-
+      <!-- Columna lateral: identidad y plan -->
       <div class="space-y-6">
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-          <h3 class="font-extrabold text-navy mb-4">Plan</h3>
-          <div class="bg-purple/10 rounded-xl p-4 text-center">
-            <div class="text-[10px] font-bold text-teal uppercase mb-1">Activo</div>
+        <SectionCard title="Plan" subtitle="Suscripción activa de la plataforma">
+          <div class="rounded-xl bg-purple/10 p-4 text-center">
+            <div class="mb-1 text-[10px] font-bold uppercase text-teal">Activo</div>
             <div class="text-lg font-black text-purple">{{ form.plan || 'Professional' }}</div>
-            <div class="text-2xl font-black text-navy mt-1">{{ planPrice }}<span class="text-sm text-text-muted">/mes</span></div>
+            <div class="mt-1 text-2xl font-black text-navy tabular-nums">{{ planPrice }}<span class="text-sm font-bold text-text-muted">/mes</span></div>
           </div>
-        </div>
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 text-center">
-          <span class="w-8 h-8 mx-auto mb-2 block text-navy/40" v-html="ICON_BUILDING"></span>
+        </SectionCard>
+        <div class="rounded-2xl border border-border bg-white p-6 text-center shadow-(--shadow-card)">
+          <span class="mx-auto mb-2 block h-8 w-8 text-navy/40" v-html="ICON_BUILDING"></span>
           <div class="text-sm font-bold text-navy">{{ form.name || 'Hotel' }}</div>
-          <div class="text-[10px] text-text-muted mt-1">{{ form.country || '' }}</div>
+          <div v-if="form.country" class="mt-1 text-[10px] font-bold uppercase tracking-wide text-text-muted">{{ form.country }}</div>
         </div>
       </div>
     </div>
@@ -700,6 +699,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, reactive } from 'vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
 import { ConfigService } from '@/services/Platform.service'

@@ -1,91 +1,82 @@
 <template>
-  <div class="min-h-screen bg-surface">
+  <div>
     <!-- Header -->
-    <div class="bg-white border-b border-border px-6 py-4">
-      <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 class="text-xl font-black text-navy">Ofertas</h1>
-          <p class="text-xs text-text-muted">Paquetes y servicios adicionales para ofrecer a tus huéspedes</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-xs font-bold px-3 py-1 rounded-full bg-gold/10 text-gold">
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-xl font-black text-navy">Ofertas</h2>
+          <span class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-1 text-[10px] font-extrabold uppercase text-gold">
             {{ activeOffers.length }} {{ activeOffers.length === 1 ? 'oferta activa' : 'ofertas activas' }}
           </span>
-          <button @click="openCreate()" class="flex items-center gap-1.5 px-4 py-2 bg-navy text-white text-sm font-bold rounded-xl hover:bg-navy-light transition-colors cursor-pointer">
-            <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
-            Nueva Oferta
-          </button>
+        </div>
+        <p class="text-sm text-text-muted mt-0.5">Paquetes y servicios adicionales para ofrecer a tus huéspedes</p>
+      </div>
+      <button @click="openCreate()" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
+        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+        Nueva Oferta
+      </button>
+    </div>
+
+    <!-- KPIs — todos derivados del catálogo real -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <KpiHeroCard label="Paquetes" :value="combos.length" icon="bookings" accent="blue"
+        unit="Combos armados del catálogo" />
+      <KpiHeroCard label="Servicios Adicionales" :value="servicios.length" icon="building" accent="purple"
+        unit="Extras sueltos para vender aparte" />
+      <KpiHeroCard label="Precio Promedio" :value="avgPrice" icon="money" accent="teal"
+        prefix="$" unit="Promedio de todas las ofertas" />
+      <KpiHeroCard label="Valor del Catálogo" :value="catalogValue" icon="money" accent="amber"
+        prefix="$" :unit="`${activeOffers.length} de ${offers.length} ofertas activas`" />
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6 flex-wrap">
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        @click="activeTab = tab.id"
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer"
+        :class="activeTab === tab.id ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- Skeletons -->
+    <div v-if="loading" class="grid gap-4 md:grid-cols-3">
+      <div v-for="i in 6" :key="i" class="overflow-hidden rounded-2xl border border-border bg-white">
+        <div class="h-32 animate-pulse bg-surface"></div>
+        <div class="space-y-3 p-5">
+          <div class="h-4 w-2/3 animate-pulse rounded bg-surface"></div>
+          <div class="h-3 w-full animate-pulse rounded bg-surface"></div>
+          <div class="h-6 w-24 animate-pulse rounded bg-surface"></div>
         </div>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto p-6">
-      <!-- KPIs — todos derivados del catálogo real -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-              <span class="w-5 h-5 text-navy" v-html="ICON_BOX"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none text-navy truncate">{{ combos.length }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Paquetes</div>
-            </div>
-          </div>
-        </div>
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-              <span class="w-5 h-5 text-cyan" v-html="ICON_LAYERS"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none text-navy truncate">{{ servicios.length }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Servicios Adicionales</div>
-            </div>
-          </div>
-        </div>
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-              <span class="w-5 h-5 text-teal" v-html="ICON_WALLET"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none text-teal truncate">${{ avgPrice.toLocaleString() }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Precio Promedio</div>
-            </div>
-          </div>
-        </div>
-        <div class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-              <span class="w-5 h-5 text-navy" v-html="ICON_CHART"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none text-navy truncate">${{ catalogValue.toLocaleString() }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Valor del Catálogo</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="flex gap-1 bg-white rounded-xl p-1 border border-border mb-6 w-fit">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          @click="activeTab = tab.id"
-          class="px-4 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer"
-          :class="activeTab === tab.id ? 'bg-navy text-white' : 'text-text-muted hover:bg-surface'"
-        >
-          {{ tab.label }}
+    <!-- Paquetes -->
+    <SectionCard v-else-if="activeTab === 'combo'"
+      title="Paquetes" :subtitle="`${combos.length} paquete(s) en el catálogo`">
+      <template #actions>
+        <button @click="openCreate('combo')"
+          class="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
+          <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_PLUS"></span>
+          Nuevo Paquete
         </button>
-      </div>
+      </template>
 
-      <div v-if="loading" class="card p-12 text-center text-sm text-text-muted">Cargando ofertas...</div>
+      <EmptyState v-if="combos.length === 0"
+        :icon="ICON_BOX"
+        title="Todavía no hay paquetes"
+        message="Armá tu primer combo para ofrecerlo junto con la reserva.">
+        <template #action>
+          <button @click="openCreate('combo')"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Crear paquete</button>
+        </template>
+      </EmptyState>
 
-      <!-- Paquetes -->
-      <div v-else-if="activeTab === 'combo'" class="grid md:grid-cols-3 gap-4">
-        <div v-for="(offer, idx) in combos" :key="offer.id" class="bg-white rounded-2xl border border-border overflow-hidden hover:shadow-md transition-shadow">
+      <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div v-for="(offer, idx) in combos" :key="offer.id" class="overflow-hidden rounded-2xl border border-border bg-white hover:shadow-md transition-shadow">
           <div class="h-32 bg-gradient-to-br" :class="gradientFor(idx)"></div>
           <div class="p-5">
             <div class="flex items-center justify-between mb-2 gap-2">
@@ -94,195 +85,193 @@
                 {{ offer.active ? 'Activa' : 'Inactiva' }}
               </span>
             </div>
-            <p class="text-[10px] text-text-muted mb-3 whitespace-pre-line">{{ offer.description || 'Sin descripción' }}</p>
+            <p v-if="offer.description" class="text-[11px] text-text-muted mb-3 whitespace-pre-line">{{ offer.description }}</p>
             <div v-if="offer.contents?.length" class="flex flex-wrap gap-1 mb-3">
               <span v-for="item in offer.contents" :key="item" class="text-[10px] px-2 py-0.5 rounded-full bg-navy/5 text-navy">{{ item }}</span>
             </div>
-            <div class="mb-3">
-              <span class="text-xl font-black text-navy">${{ offer.price.toLocaleString() }}</span>
+            <div class="mb-4 text-right">
+              <div class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Precio</div>
+              <span class="text-xl font-black tabular-nums text-navy">${{ offer.price.toLocaleString() }}</span>
             </div>
-            <div class="flex gap-2">
-              <button @click="openEdit(offer)" class="flex-1 flex items-center justify-center gap-1 py-2 bg-surface text-navy text-[10px] font-bold rounded-lg hover:bg-navy hover:text-white transition-all cursor-pointer">
-                <span class="w-3 h-3 shrink-0" v-html="ICON_PENCIL"></span>
-                Editar
+            <div class="flex items-center justify-end gap-1 border-t border-border pt-3">
+              <button @click="openEdit(offer)" title="Editar"
+                class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                <span class="h-4 w-4" v-html="ICON_PENCIL"></span>
               </button>
-              <button @click="toggleActive(offer)" class="flex-1 flex items-center justify-center gap-1 py-2 bg-surface text-navy text-[10px] font-bold rounded-lg hover:bg-navy hover:text-white transition-all cursor-pointer">
-                <span class="w-3 h-3 shrink-0" v-html="ICON_TOGGLE"></span>
-                {{ offer.active ? 'Desactivar' : 'Activar' }}
+              <button @click="toggleActive(offer)" :title="offer.active ? 'Desactivar' : 'Activar'"
+                class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                <span class="h-4 w-4" v-html="ICON_TOGGLE"></span>
               </button>
-              <button @click="confirmTarget = offer" class="flex items-center justify-center py-2 px-2 bg-surface text-coral text-[10px] font-bold rounded-lg hover:bg-coral hover:text-white transition-all cursor-pointer" title="Eliminar">
-                <span class="w-3 h-3 shrink-0" v-html="ICON_TRASH"></span>
+              <button @click="confirmTarget = offer" title="Eliminar"
+                class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer">
+                <span class="h-4 w-4" v-html="ICON_TRASH"></span>
               </button>
             </div>
           </div>
         </div>
 
-        <button @click="openCreate('combo')" class="bg-white rounded-2xl border-2 border-dashed border-border p-6 flex flex-col items-center justify-center min-h-[280px] hover:border-cyan transition-colors cursor-pointer">
+        <button @click="openCreate('combo')" class="rounded-2xl border-2 border-dashed border-border bg-white p-6 flex flex-col items-center justify-center min-h-[280px] hover:border-cyan transition-colors cursor-pointer">
           <div class="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-text-muted mb-3">
             <span class="w-6 h-6 shrink-0" v-html="ICON_PLUS"></span>
           </div>
           <div class="text-sm font-bold text-text-muted">Crear Paquete</div>
         </button>
       </div>
+    </SectionCard>
 
-      <!-- Servicios adicionales -->
-      <div v-else-if="activeTab === 'servicio'" class="bg-white rounded-2xl border border-border p-6">
-        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h2 class="text-lg font-black text-navy">Servicios Adicionales</h2>
-          <button @click="openCreate('servicio')" class="flex items-center gap-1.5 px-4 py-2 bg-navy text-white text-xs font-bold rounded-xl hover:bg-navy-light transition-colors cursor-pointer">
-            <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_PLUS"></span>
-            Nuevo Servicio
-          </button>
-        </div>
-        <div v-if="servicios.length === 0" class="text-center py-12">
-          <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_TAG"></span>
-          <h3 class="font-bold text-navy mb-1">Sin servicios adicionales</h3>
-          <p class="text-xs text-text-muted">Agregá extras sueltos para ofrecer a los huéspedes.</p>
-        </div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="border-b border-border">
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Servicio</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Incluye</th>
-                <th class="text-right py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Precio</th>
-                <th class="text-left py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estado</th>
-                <th class="text-right py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="offer in servicios" :key="offer.id" class="border-b border-border/50 hover:bg-surface/50 transition-colors">
-                <td class="py-3">
-                  <div class="text-sm font-bold text-navy">{{ offer.name }}</div>
-                  <div class="text-[10px] text-text-muted">{{ offer.description }}</div>
-                </td>
-                <td class="py-3">
-                  <span v-if="!offer.contents?.length" class="text-[10px] text-text-muted">—</span>
-                  <div v-else class="flex flex-wrap gap-1">
-                    <span v-for="item in offer.contents" :key="item" class="text-[10px] px-2 py-0.5 rounded-full bg-navy/5 text-navy">{{ item }}</span>
-                  </div>
-                </td>
-                <td class="py-3 text-sm font-bold text-navy text-right">${{ offer.price.toLocaleString() }}</td>
-                <td class="py-3">
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="offer.active ? 'bg-teal/10 text-teal' : 'bg-surface text-text-muted'">
-                    {{ offer.active ? 'Activo' : 'Inactivo' }}
-                  </span>
-                </td>
-                <td class="py-3 text-right whitespace-nowrap">
-                  <button @click="openEdit(offer)" class="inline-flex items-center gap-1 text-[10px] font-bold text-cyan hover:underline cursor-pointer mr-3">
-                    <span class="w-3 h-3 shrink-0" v-html="ICON_PENCIL"></span>
-                    Editar
+    <!-- Servicios adicionales -->
+    <SectionCard v-else-if="activeTab === 'servicio'"
+      title="Servicios Adicionales" :subtitle="`${servicios.length} servicio(s) en el catálogo`" body-class="p-0">
+      <template #actions>
+        <button @click="openCreate('servicio')"
+          class="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
+          <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_PLUS"></span>
+          Nuevo Servicio
+        </button>
+      </template>
+
+      <EmptyState v-if="servicios.length === 0"
+        :icon="ICON_TAG"
+        title="Sin servicios adicionales"
+        message="Agregá extras sueltos para ofrecer a los huéspedes.">
+        <template #action>
+          <button @click="openCreate('servicio')"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Crear servicio</button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[720px] tbl-head">
+          <thead>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Servicio</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Incluye</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-right px-4 py-3 text-[10px]">Precio</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="offer in servicios" :key="offer.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+              <td class="px-4 py-3">
+                <div class="text-sm font-bold text-navy">{{ offer.name }}</div>
+                <div v-if="offer.description" class="text-[11px] text-text-muted">{{ offer.description }}</div>
+                <div v-if="offer.contents?.length" class="mt-1 flex flex-wrap gap-1 lg:hidden">
+                  <span v-for="item in offer.contents" :key="item" class="text-[10px] px-2 py-0.5 rounded-full bg-navy/5 text-navy">{{ item }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 hidden lg:table-cell">
+                <div v-if="offer.contents?.length" class="flex flex-wrap gap-1">
+                  <span v-for="item in offer.contents" :key="item" class="text-[10px] px-2 py-0.5 rounded-full bg-navy/5 text-navy">{{ item }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="offer.active ? 'bg-teal/10 text-teal' : 'bg-surface text-text-muted'">
+                  {{ offer.active ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right text-sm font-black tabular-nums text-navy">${{ offer.price.toLocaleString() }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-1">
+                  <button @click="openEdit(offer)" title="Editar"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_PENCIL"></span>
                   </button>
-                  <button @click="toggleActive(offer)" class="inline-flex items-center gap-1 text-[10px] font-bold text-navy hover:underline cursor-pointer mr-3">
-                    {{ offer.active ? 'Desactivar' : 'Activar' }}
+                  <button @click="toggleActive(offer)" :title="offer.active ? 'Desactivar' : 'Activar'"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_TOGGLE"></span>
                   </button>
-                  <button @click="confirmTarget = offer" class="inline-flex items-center gap-1 text-[10px] font-bold text-coral hover:underline cursor-pointer">
-                    <span class="w-3 h-3 shrink-0" v-html="ICON_TRASH"></span>
-                    Eliminar
+                  <button @click="confirmTarget = offer" title="Eliminar"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_TRASH"></span>
                   </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Modal crear / editar -->
-    <Teleport to="body">
-      <div v-if="showDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="flex items-center gap-2 text-lg font-black text-navy">
-              <span class="w-5 h-5 shrink-0" v-html="ICON_PLUS"></span>
-              {{ editingId ? 'Editar Oferta' : 'Nueva Oferta' }}
-            </h2>
-            <button @click="showDialog = false" class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-surface hover:text-navy">
-              <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-            </button>
+    <AppModal v-if="showDialog" size="md"
+      :title="editingId ? 'Editar Oferta' : 'Nueva Oferta'"
+      :subtitle="form.type === 'combo' ? 'Paquete' : 'Servicio adicional'"
+      @close="showDialog = false">
+      <div class="space-y-4">
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
+          <input v-model="form.name" type="text" placeholder="Ej: Fin de semana romántico" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
+        </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Descripción</label>
+          <textarea v-model="form.description" rows="2" class="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan resize-none"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Precio</label>
+            <input v-model.number="form.price" type="number" min="0" step="0.01" placeholder="0.00" class="w-full h-10 px-4 rounded-xl border border-border text-sm text-right font-bold focus:outline-none focus:border-cyan" />
           </div>
-          <div class="space-y-4">
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
-              <input v-model="form.name" type="text" placeholder="Ej: Fin de semana romántico" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
-            </div>
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Descripción</label>
-              <textarea v-model="form.description" rows="2" class="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan resize-none"></textarea>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Precio</label>
-                <input v-model.number="form.price" type="number" min="0" step="0.01" placeholder="0.00" class="w-full h-10 px-4 rounded-xl border border-border text-sm text-right font-bold focus:outline-none focus:border-cyan" />
-              </div>
-              <div>
-                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tipo</label>
-                <select v-model="form.type" class="w-full h-10 px-4 rounded-xl border border-border text-sm cursor-pointer focus:outline-none focus:border-cyan">
-                  <option value="combo">Paquete</option>
-                  <option value="servicio">Servicio adicional</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Incluye</label>
-              <div class="flex gap-2 mb-2">
-                <input
-                  v-model="newItem"
-                  @keyup.enter="addItem"
-                  type="text"
-                  placeholder="Ej: Desayuno para dos"
-                  class="flex-1 h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan"
-                />
-                <button @click="addItem" class="px-4 rounded-xl bg-surface text-navy text-sm font-bold hover:bg-navy hover:text-white transition-all cursor-pointer">Agregar</button>
-              </div>
-              <div v-if="form.contents.length === 0" class="text-[11px] text-text-muted">Todavía no agregaste nada.</div>
-              <div v-else class="flex flex-wrap gap-2">
-                <span v-for="(item, idx) in form.contents" :key="idx" class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-navy/5 text-navy">
-                  {{ item }}
-                  <button @click="form.contents.splice(idx, 1)" class="text-text-muted hover:text-coral cursor-pointer">
-                    <span class="w-3 h-3 block" v-html="ICON_X"></span>
-                  </button>
-                </span>
-              </div>
-            </div>
-
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input v-model.number="form.active" type="checkbox" :true-value="1" :false-value="0" class="w-4 h-4 accent-navy cursor-pointer" />
-              <span class="text-sm font-bold text-navy">Activa</span>
-            </label>
-          </div>
-          <div class="flex gap-3 mt-6">
-            <button @click="showDialog = false" class="flex-1 py-2.5 bg-surface text-navy text-sm font-bold rounded-xl hover:bg-navy hover:text-white transition-all cursor-pointer">
-              Cancelar
-            </button>
-            <button @click="save" :disabled="submitting" class="flex-1 py-2.5 bg-navy text-white text-sm font-bold rounded-xl hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
-              {{ submitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Crear') }}
-            </button>
+          <div>
+            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tipo</label>
+            <select v-model="form.type" class="w-full h-10 px-4 rounded-xl border border-border text-sm cursor-pointer focus:outline-none focus:border-cyan">
+              <option value="combo">Paquete</option>
+              <option value="servicio">Servicio adicional</option>
+            </select>
           </div>
         </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Incluye</label>
+          <div class="flex gap-2 mb-2">
+            <input
+              v-model="newItem"
+              @keyup.enter="addItem"
+              type="text"
+              placeholder="Ej: Desayuno para dos"
+              class="flex-1 h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan"
+            />
+            <button @click="addItem" class="px-4 rounded-xl bg-surface text-navy text-sm font-bold hover:bg-navy hover:text-white transition-all cursor-pointer">Agregar</button>
+          </div>
+          <div v-if="form.contents.length === 0" class="text-[11px] text-text-muted">Todavía no agregaste nada.</div>
+          <div v-else class="flex flex-wrap gap-2">
+            <span v-for="(item, idx) in form.contents" :key="idx" class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-navy/5 text-navy">
+              {{ item }}
+              <button @click="form.contents.splice(idx, 1)" class="text-text-muted hover:text-coral cursor-pointer">
+                <span class="w-3 h-3 block" v-html="ICON_X"></span>
+              </button>
+            </span>
+          </div>
+        </div>
+
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input v-model.number="form.active" type="checkbox" :true-value="1" :false-value="0" class="w-4 h-4 accent-navy cursor-pointer" />
+          <span class="text-sm font-bold text-navy">Activa</span>
+        </label>
       </div>
-    </Teleport>
+
+      <template #footer>
+        <button @click="showDialog = false" class="rounded-full px-5 py-2.5 text-sm font-bold text-text-secondary hover:bg-white transition-colors cursor-pointer">
+          Cancelar
+        </button>
+        <button @click="save" :disabled="submitting" class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ submitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Crear') }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Confirmar borrado -->
-    <Teleport to="body">
-      <div v-if="confirmTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-          <h2 class="text-lg font-black text-navy mb-2">Eliminar oferta</h2>
-          <p class="text-sm text-text-secondary mb-5">
-            ¿Seguro que querés eliminar <strong>{{ confirmTarget.name }}</strong>? No se puede deshacer.
-          </p>
-          <div class="flex gap-3">
-            <button @click="confirmTarget = null" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="remove" :disabled="deleting" class="flex-1 py-2.5 bg-coral text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
-              {{ deleting ? 'Eliminando...' : 'Eliminar' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <AppModal v-if="confirmTarget" size="sm" title="Eliminar oferta" @close="confirmTarget = null">
+      <p class="text-sm text-text-secondary">
+        ¿Seguro que querés eliminar <strong>{{ confirmTarget.name }}</strong>? No se puede deshacer.
+      </p>
+      <template #footer>
+        <button @click="confirmTarget = null" class="rounded-full px-5 py-2.5 text-sm font-bold text-text-secondary hover:bg-white transition-colors cursor-pointer">Cancelar</button>
+        <button @click="remove" :disabled="deleting" class="rounded-full bg-coral px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50">
+          {{ deleting ? 'Eliminando...' : 'Eliminar' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -291,17 +280,19 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { PackagesService, offerType, type Offer, type OfferType } from '@/services/Packages.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
 const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
 const ICON_PENCIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>'
 const ICON_TOGGLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9"/></svg>'
 const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h12M9.75 7.5v-1.5a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 1.5 1.5v1.5m-8.25 0 .75 11.25a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5L17.25 7.5"/></svg>'
-const ICON_BOX = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5 12 12m0 0L3.75 7.5M12 12v9m8.25-4.5V7.279a1.5 1.5 0 0 0-.75-1.299l-7.5-4.333a1.5 1.5 0 0 0-1.5 0L3 5.98a1.5 1.5 0 0 0-.75 1.3v8.442a1.5 1.5 0 0 0 .75 1.3l7.5 4.332a1.5 1.5 0 0 0 1.5 0l7.5-4.333a1.5 1.5 0 0 0 .75-1.299Z"/></svg>'
-const ICON_LAYERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m12 4 8.5 4.5L12 13 3.5 8.5 12 4Zm-8.5 8 8.5 4.5 8.5-4.5m-17 4 8.5 4.5 8.5-4.5"/></svg>'
-const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5M21 12h-4a1.5 1.5 0 0 0 0 3h4v-3Z"/></svg>'
-const ICON_CHART = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg>'
-const ICON_TAG = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.169.659 1.591l9.5 9.5a2.25 2.25 0 0 0 3.182 0l4.318-4.318a2.25 2.25 0 0 0 0-3.182l-9.5-9.5A2.25 2.25 0 0 0 9.568 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.008v.008H6.75V6.75Z"/></svg>'
+// ICON_BOX / ICON_TAG se usan sólo en EmptyState (caja de 64px) → tamaño fijo h-8 w-8.
+const ICON_BOX = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5 12 12m0 0L3.75 7.5M12 12v9m8.25-4.5V7.279a1.5 1.5 0 0 0-.75-1.299l-7.5-4.333a1.5 1.5 0 0 0-1.5 0L3 5.98a1.5 1.5 0 0 0-.75 1.3v8.442a1.5 1.5 0 0 0 .75 1.3l7.5 4.332a1.5 1.5 0 0 0 1.5 0l7.5-4.333a1.5 1.5 0 0 0 .75-1.299Z"/></svg>'
+const ICON_TAG = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.169.659 1.591l9.5 9.5a2.25 2.25 0 0 0 3.182 0l4.318-4.318a2.25 2.25 0 0 0 0-3.182l-9.5-9.5A2.25 2.25 0 0 0 9.568 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.008v.008H6.75V6.75Z"/></svg>'
 
 const GRADIENTS = ['from-pink-400 to-rose-500', 'from-cyan to-teal', 'from-navy to-navy-light', 'from-blue to-cyan', 'from-purple to-indigo']
 const gradientFor = (idx: number) => GRADIENTS[idx % GRADIENTS.length]

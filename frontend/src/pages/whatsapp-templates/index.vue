@@ -9,115 +9,189 @@
     </div>
 
     <!-- Estadísticas rápidas -->
-    <div class="grid grid-cols-3 gap-3 mb-6">
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="text-2xl font-black text-navy">{{ templates.length }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Total</div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="text-2xl font-black text-teal">{{ activeCount }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Activas</div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="text-2xl font-black text-cyan">{{ categoriesCount }}</div>
-        <div class="text-[10px] text-text-muted uppercase font-bold">Categorías</div>
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <KpiHeroCard label="Plantillas" :value="templates.length" icon="bookings" accent="blue"
+        unit="Textos guardados" />
+      <KpiHeroCard label="Activas" :value="activeCount" icon="checkin" accent="teal"
+        :unit="`${inactiveCount} inactiva(s)`" :progress="activePct" />
+      <KpiHeroCard label="Categorías" :value="categoriesCount" icon="building" accent="purple"
+        unit="En uso" />
     </div>
 
     <!-- Lista de plantillas -->
-    <div v-if="loading" class="text-center py-12 text-text-muted text-sm">Cargando...</div>
-    <div v-else-if="templates.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
-      <span class="w-10 h-10 mx-auto mb-3 block text-navy/30" v-html="ICON_MESSAGE"></span>
-      <h3 class="font-bold text-navy mb-1">Sin plantillas</h3>
-      <p class="text-xs text-text-muted mb-4">Crea tu primera plantilla para responder más rápido a tus huéspedes</p>
-      <button @click="openNew" class="px-5 py-2.5 bg-cyan text-navy rounded-full text-sm font-bold hover:shadow-lg transition-all cursor-pointer">+ Crear plantilla</button>
-    </div>
-    <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="t in templates" :key="t.id" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5 cursor-pointer hover:shadow-lg transition-all flex flex-col" @click="openEdit(t)">
-        <div class="flex items-start justify-between mb-2">
-          <div class="flex items-center gap-2">
-            <span class="w-4 h-4 text-navy/50 shrink-0" v-html="categoryIcon(t.category)"></span>
-            <h3 class="text-sm font-black text-navy flex-1 truncate">{{ t.name }}</h3>
-          </div>
-          <span class="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0" :class="t.isActive ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-400'">{{ t.isActive ? 'Activa' : 'Inactiva' }}</span>
-        </div>
-        <p class="text-xs text-text-secondary mb-3 line-clamp-3 flex-1">{{ t.body }}</p>
-        <div class="flex items-center justify-between text-[10px] text-text-muted">
-          <span class="font-bold uppercase">{{ t.category || 'general' }}</span>
-          <button v-if="t.body" @click.stop="testTemplate(t)" class="text-emerald-600 hover:underline cursor-pointer font-bold">Probar</button>
-        </div>
+    <SectionCard
+      title="Listado de plantillas"
+      :subtitle="`${templates.length} plantilla(s) · ${activeCount} activa(s)`"
+      body-class="p-0"
+    >
+      <template #actions>
+        <button @click="openNew" class="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm font-bold text-white hover:bg-white/15 transition-colors cursor-pointer">
+          Nueva plantilla
+        </button>
+      </template>
+
+      <!-- Carga: esqueleto de filas -->
+      <div v-if="loading" class="space-y-2 p-4">
+        <div v-for="i in 4" :key="i" class="h-12 animate-pulse rounded-lg bg-surface"></div>
       </div>
-    </div>
+
+      <EmptyState
+        v-else-if="!templates.length"
+        :icon="ICON_MESSAGE"
+        title="Todavía no hay plantillas"
+        message="Creá tu primera plantilla para responder más rápido a tus huéspedes por WhatsApp."
+      >
+        <template #action>
+          <button @click="openNew" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
+            Crear plantilla
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[820px] tbl-head">
+          <thead>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Plantilla</th>
+              <th class="text-left px-4 py-3 text-[10px]">Mensaje</th>
+              <th class="text-right px-4 py-3 text-[10px] hidden lg:table-cell">Variables</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="t in templates"
+              :key="t.id"
+              @click="openEdit(t)"
+              class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer"
+            >
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/5 text-navy">
+                    <span class="block h-4 w-4" v-html="categoryIcon(t.category)"></span>
+                  </span>
+                  <div class="min-w-0">
+                    <div class="text-sm font-bold text-navy truncate">{{ t.name }}</div>
+                    <div class="text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                      {{ categoryLabel(t.category) }}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                <p v-if="t.body" class="max-w-[360px] text-xs text-text-secondary line-clamp-2">{{ t.body }}</p>
+                <span v-else class="text-xs text-text-muted">Sin contenido</span>
+              </td>
+              <td class="px-4 py-3 text-right hidden lg:table-cell">
+                <span v-if="variableCount(t.body)" class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-gold">
+                  {{ variableCount(t.body) }}
+                </span>
+                <span v-else class="text-xs text-text-muted">Sin variables</span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide"
+                  :class="t.isActive ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">
+                  {{ t.isActive ? 'Activa' : 'Inactiva' }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button v-if="t.body" @click.stop="testTemplate(t)" title="Probar en WhatsApp"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_SEND"></span>
+                  </button>
+                  <button @click.stop="openEdit(t)" title="Editar"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_PENCIL"></span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </SectionCard>
 
     <!-- Modal crear/editar -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">{{ modal.edit ? 'Editar' : 'Nueva' }} Plantilla</h3>
-              <div class="flex items-center gap-3">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input v-model="form.isActive" type="checkbox" class="w-4 h-4 rounded text-cyan" />
-                  <span class="text-xs font-bold text-navy">Activa</span>
-                </label>
-                <button @click="modal.show=false" class="w-4 h-4 text-text-muted hover:text-navy transition-colors cursor-pointer" v-html="ICON_X"></button>
-              </div>
-            </div>
-            <div class="overflow-y-auto flex-1 p-5 space-y-4">
-              <div class="grid grid-cols-3 gap-4">
-                <div class="col-span-2">
-                  <label class="block text-[11px] font-bold text-navy uppercase mb-2">Nombre *</label>
-                  <input v-model="form.name" type="text" placeholder="Bienvenida, Confirmación, etc." class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase mb-2">Categoría</label>
-                  <select v-model="form.category" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
-                    <option value="general">General</option>
-                    <option value="reservation">Reserva</option>
-                    <option value="checkin">Check-in</option>
-                    <option value="checkout">Check-out</option>
-                    <option value="payment">Pago</option>
-                    <option value="marketing">Marketing</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <div class="flex items-center justify-between mb-2">
-                  <label class="block text-[11px] font-bold text-navy uppercase">Cuerpo del mensaje *</label>
-                  <span class="text-[10px] text-text-muted">{{ (form.body || '').length }} / 1024</span>
-                </div>
-                <textarea v-model="form.body" rows="6" placeholder="Hola {guest_name}! Gracias por reservar en {hotel_name}. Te esperamos el {checkin_date} en {room_number}." class="w-full px-4 py-3 rounded-2xl border border-border text-sm resize-none"></textarea>
-                <p class="text-[10px] text-text-muted mt-1">Longitud máxima de WhatsApp: 1024 caracteres.</p>
-              </div>
-              <div>
-                <label class="block text-[11px] font-bold text-navy uppercase mb-2">Variables disponibles (click para insertar)</label>
-                <div class="flex flex-wrap gap-1">
-                  <button v-for="v in variables" :key="v" @click="insertVariable(v)" type="button"
-                    class="px-2.5 py-1 bg-navy/5 text-navy rounded-full text-[10px] font-bold cursor-pointer hover:bg-navy/10 transition-colors">{{ v }}</button>
-                </div>
-              </div>
-              <!-- Preview -->
-              <div v-if="form.body" class="py-4 border-t border-border">
-                <div class="text-[10px] font-bold text-text-muted uppercase mb-2">Vista previa</div>
-                <p class="text-xs text-navy whitespace-pre-wrap">{{ preview }}</p>
-              </div>
-            </div>
-            <div class="shrink-0 p-5 border-t border-border flex items-center gap-4 justify-end">
-              <button v-if="modal.edit" @click="deleteTemplate" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer mr-auto">Eliminar</button>
-              <button @click="modal.show=false" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-              <button @click="save" :disabled="saving" class="px-4 py-2 bg-navy text-white rounded-full text-[11px] font-bold hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ saving ? 'Guardando...' : 'Guardar' }}</button>
+    <AppModal
+      v-if="modal.show"
+      size="lg"
+      :title="modal.edit ? 'Editar plantilla' : 'Nueva plantilla'"
+      subtitle="Se envía por WhatsApp con las variables reemplazadas"
+      @close="modal.show = false"
+    >
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2">Nombre *</label>
+            <input v-model="form.name" type="text" placeholder="Bienvenida, Confirmación, etc." class="w-full px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-cyan transition-colors" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2">Categoría</label>
+            <select v-model="form.category" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer focus:outline-none focus:border-cyan transition-colors">
+              <option value="general">General</option>
+              <option value="reservation">Reserva</option>
+              <option value="checkin">Check-in</option>
+              <option value="checkout">Check-out</option>
+              <option value="payment">Pago</option>
+              <option value="marketing">Marketing</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="flex items-center gap-2 cursor-pointer rounded-2xl border border-border bg-surface/60 px-4 py-3">
+          <input v-model="form.isActive" type="checkbox" class="w-4 h-4 rounded text-cyan" />
+          <span class="text-xs font-bold text-navy">Plantilla activa</span>
+          <span class="text-[11px] text-text-muted">— disponible al escribirle a un huésped</span>
+        </label>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted">Cuerpo del mensaje *</label>
+            <span class="text-[10px] font-bold tabular-nums" :class="(form.body || '').length > 1024 ? 'text-coral' : 'text-text-muted'">
+              {{ (form.body || '').length }} / 1024
+            </span>
+          </div>
+          <textarea v-model="form.body" rows="6" placeholder="Hola {guest_name}! Gracias por reservar en {hotel_name}. Te esperamos el {checkin_date} en {room_number}." class="w-full px-4 py-3 rounded-2xl border border-border text-sm resize-none focus:outline-none focus:border-cyan transition-colors"></textarea>
+          <p class="text-[10px] text-text-muted mt-1">Longitud máxima de WhatsApp: 1024 caracteres.</p>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2">Variables disponibles (click para insertar)</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button v-for="v in variables" :key="v" @click="insertVariable(v)" type="button"
+              class="px-2.5 py-1 bg-navy/5 text-navy rounded-full text-[10px] font-bold cursor-pointer hover:bg-navy/10 transition-colors">{{ v }}</button>
+          </div>
+        </div>
+
+        <!-- Preview como burbuja de chat -->
+        <div v-if="form.body" class="border-t border-border pt-4">
+          <div class="text-[10px] font-bold uppercase tracking-wide text-text-muted mb-2">Vista previa</div>
+          <div class="rounded-2xl bg-surface p-4">
+            <div class="ml-auto max-w-[85%] rounded-2xl rounded-br-sm border border-teal/20 bg-teal/10 px-4 py-3">
+              <p class="text-xs whitespace-pre-wrap text-navy">{{ preview }}</p>
+              <div class="mt-1.5 text-right text-[9px] font-bold text-teal">Ejemplo con datos de demo</div>
             </div>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+      </div>
+
+      <template #footer>
+        <button v-if="modal.edit" @click="deleteTemplate" class="mr-auto text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Eliminar</button>
+        <button @click="modal.show = false" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="save" :disabled="saving" class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ saving ? 'Guardando...' : 'Guardar' }}</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import AppModal from '@/components/ui/AppModal.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { WhatsappService } from '@/services/Whatsapp.service'
 import type { WhatsappTemplate } from '@/services/Whatsapp.service'
 import { useToast } from '@/composables/useToast'
@@ -130,6 +204,8 @@ const ICON_BELL = `${SVG_OPEN}<path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2
 const ICON_LOGOUT = `${SVG_OPEN}<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>`
 const ICON_CARD = `${SVG_OPEN}<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>`
 const ICON_MEGAPHONE = `${SVG_OPEN}<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`
+const ICON_SEND = `${SVG_OPEN}<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`
+const ICON_PENCIL = `${SVG_OPEN}<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>`
 
 const toast = useToast()
 const templates = ref<WhatsappTemplate[]>([])
@@ -146,6 +222,24 @@ const variables = ['{guest_name}', '{hotel_name}', '{checkin_date}', '{checkout_
 
 const activeCount = computed(() => templates.value.filter(t => t.isActive).length)
 const categoriesCount = computed(() => new Set(templates.value.map(t => t.category || 'general')).size)
+
+const inactiveCount = computed(() => templates.value.length - activeCount.value)
+// % de plantillas activas — alimenta el anillo del KPI.
+const activePct = computed(() => templates.value.length
+  ? Math.round((activeCount.value / templates.value.length) * 100)
+  : 0)
+
+// Cuántos placeholders {{variable}} tiene la plantilla — se muestra por fila.
+function variableCount(body?: string): number {
+  return body ? (body.match(/\{\{\s*[\w.]+\s*\}\}/g) ?? []).length : 0
+}
+
+// Mismas claves que el desplegable de categoría del formulario.
+const CATEGORY_LABELS: Record<string, string> = {
+  general: 'General', reservation: 'Reserva', checkin: 'Check-in',
+  checkout: 'Check-out', payment: 'Pago', marketing: 'Marketing',
+}
+const categoryLabel = (c?: string): string => CATEGORY_LABELS[c || 'general'] ?? (c || 'General')
 
 /** Preview con variables reemplazadas por valores demo */
 const preview = computed(() => {

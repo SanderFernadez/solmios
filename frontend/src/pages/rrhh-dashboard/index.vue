@@ -5,154 +5,180 @@
       <p class="text-sm text-text-muted mt-0.5">Resumen consolidado de talento del hotel</p>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
-    </div>
+    <!-- Skeletons -->
+    <template v-if="loading">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <div v-for="i in 4" :key="i" class="h-[132px] animate-pulse rounded-[16px] bg-surface"></div>
+      </div>
+      <div class="grid lg:grid-cols-2 gap-6 mb-6">
+        <div v-for="i in 2" :key="i" class="h-48 animate-pulse rounded-2xl bg-surface"></div>
+      </div>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div v-for="i in 3" :key="i" class="h-56 animate-pulse rounded-2xl bg-surface"></div>
+      </div>
+    </template>
 
     <template v-else-if="data">
       <!-- KPIs -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div v-for="k in kpis" :key="k.label" class="card p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="k.bg">
-              <span class="w-5 h-5" :class="k.fg" v-html="k.icon"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none text-navy truncate">{{ k.value }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">{{ k.label }}</div>
-            </div>
-          </div>
-        </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <KpiHeroCard v-for="k in kpis" :key="k.label" :label="k.label" :value="k.value"
+          :icon="k.icon" :accent="k.accent" :unit="k.unit" />
       </div>
 
-      <!-- Ocupación del personal (3 estados) -->
-      <div class="card p-5 mb-6">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-extrabold text-navy text-sm">Estado de ocupación del personal</h3>
-          <span class="text-xs text-text-muted">{{ data.occupancy.total }} total</span>
-        </div>
-        <div class="h-3 rounded-full bg-surface overflow-hidden flex mb-3">
-          <div class="h-full bg-teal" :style="{ width: occPct(data.occupancy.available) }" title="Disponibles"></div>
-          <div class="h-full bg-gold" :style="{ width: occPct(data.occupancy.onLeave) }" title="De licencia"></div>
-          <div class="h-full bg-text-muted/40" :style="{ width: occPct(data.occupancy.inactive) }" title="Inactivos"></div>
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-teal shrink-0"></span>
-            <div><div class="text-lg font-black leading-none text-navy">{{ data.occupancy.available }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Disponibles</div></div>
+      <div class="grid lg:grid-cols-2 gap-6 mb-6">
+        <!-- Ocupación del personal (3 estados) -->
+        <SectionCard title="Estado de ocupación del personal"
+          :subtitle="`${data.occupancy.total} colaboradores en total`"
+          :class="data.attendance ? '' : 'lg:col-span-2'">
+          <div class="h-3 rounded-full bg-surface overflow-hidden flex mb-4">
+            <div class="h-full bg-teal" :style="{ width: occPct(data.occupancy.available) }" title="Disponibles"></div>
+            <div class="h-full bg-gold" :style="{ width: occPct(data.occupancy.onLeave) }" title="De licencia"></div>
+            <div class="h-full bg-text-muted/40" :style="{ width: occPct(data.occupancy.inactive) }" title="Inactivos"></div>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-gold shrink-0"></span>
-            <div><div class="text-lg font-black leading-none text-navy">{{ data.occupancy.onLeave }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">De licencia</div></div>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="rounded-xl bg-teal/5 p-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-teal shrink-0"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Disponibles</span>
+              </div>
+              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.occupancy.available }}</div>
+            </div>
+            <div class="rounded-xl bg-gold/5 p-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-gold shrink-0"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">De licencia</span>
+              </div>
+              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.occupancy.onLeave }}</div>
+            </div>
+            <div class="rounded-xl bg-surface p-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-text-muted/40 shrink-0"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Inactivos</span>
+              </div>
+              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.occupancy.inactive }}</div>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-text-muted/40 shrink-0"></span>
-            <div><div class="text-lg font-black leading-none text-navy">{{ data.occupancy.inactive }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Inactivos</div></div>
-          </div>
-        </div>
-      </div>
+        </SectionCard>
 
-      <!-- Resumen de asistencia de hoy (#198) -->
-      <div v-if="data.attendance" class="card p-5 mb-6">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-extrabold text-navy text-sm">Asistencia de hoy</h3>
-          <span class="text-xs text-text-muted">fichaje en vivo</span>
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div class="p-3 rounded-xl bg-teal/5 flex items-center gap-2.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-teal shrink-0"></span>
-            <div><div class="text-lg font-black leading-none text-navy">{{ data.attendance.present }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Presentes</div></div>
+        <!-- Resumen de asistencia de hoy (#198) -->
+        <SectionCard v-if="data.attendance" title="Asistencia de hoy" subtitle="Fichaje en vivo">
+          <div class="grid grid-cols-3 gap-3">
+            <div class="rounded-xl bg-teal/5 p-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-teal shrink-0"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Presentes</span>
+              </div>
+              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.attendance.present }}</div>
+            </div>
+            <div class="rounded-xl bg-coral/5 p-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-coral shrink-0"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Ausentes</span>
+              </div>
+              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.attendance.absent }}</div>
+            </div>
+            <div class="rounded-xl bg-gold/5 p-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-gold shrink-0"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Tarde</span>
+              </div>
+              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.attendance.late }}</div>
+            </div>
           </div>
-          <div class="p-3 rounded-xl bg-coral/5 flex items-center gap-2.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-coral shrink-0"></span>
-            <div><div class="text-lg font-black leading-none text-navy">{{ data.attendance.absent }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Ausentes</div></div>
-          </div>
-          <div class="p-3 rounded-xl bg-gold/5 flex items-center gap-2.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-gold shrink-0"></span>
-            <div><div class="text-lg font-black leading-none text-navy">{{ data.attendance.late }}</div><div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-0.5">Tarde</div></div>
-          </div>
-        </div>
+        </SectionCard>
       </div>
 
       <div class="grid lg:grid-cols-2 gap-6">
         <!-- Por departamento -->
-        <div class="card p-5">
-          <h3 class="font-extrabold text-navy text-sm mb-4">Plantilla por departamento</h3>
-          <div v-if="!data.byDepartment.length" class="text-sm text-text-muted py-6 text-center">Sin empleados cargados</div>
+        <SectionCard title="Plantilla por departamento"
+          :subtitle="data.byDepartment.length ? `${data.byDepartment.length} departamentos` : undefined"
+          :body-class="data.byDepartment.length ? 'p-4 sm:p-5' : 'p-0'">
+          <EmptyState v-if="!data.byDepartment.length" icon="🏢" title="Sin empleados cargados"
+            message="Cuando registres colaboradores vas a ver acá el reparto por departamento." />
           <div v-else class="space-y-3">
             <div v-for="d in data.byDepartment" :key="d.departmentId || d.name">
-              <div class="flex items-center justify-between text-xs mb-1">
-                <span class="font-bold text-navy">{{ d.name }}</span>
-                <span class="text-text-muted">{{ d.count }}</span>
+              <div class="flex items-center justify-between text-xs mb-1 gap-2">
+                <span class="font-bold text-navy truncate">{{ d.name }}</span>
+                <span class="text-text-muted tabular-nums shrink-0">{{ d.count }}</span>
               </div>
               <div class="h-2 rounded-full bg-surface overflow-hidden">
                 <div class="h-full bg-cyan rounded-full" :style="{ width: barWidth(d.count) }"></div>
               </div>
             </div>
           </div>
-        </div>
+        </SectionCard>
 
         <!-- Alertas y pendientes -->
-        <div class="card p-5">
-          <h3 class="font-extrabold text-navy text-sm mb-4">Alertas y pendientes</h3>
-          <div class="space-y-3">
-            <div v-for="a in alerts" :key="a.label" class="flex items-center justify-between p-3 rounded-xl" :class="a.value > 0 ? a.bg : 'bg-surface'">
-              <div class="flex items-center gap-2.5">
-                <span class="w-4 h-4 shrink-0" :class="a.value > 0 ? a.fg : 'text-text-muted'" v-html="a.icon"></span>
-                <span class="text-xs font-bold" :class="a.value > 0 ? 'text-navy' : 'text-text-muted'">{{ a.label }}</span>
+        <SectionCard title="Alertas y pendientes" subtitle="Requieren seguimiento" body-class="p-0">
+          <div class="divide-y divide-border">
+            <div v-for="a in alerts" :key="a.label" class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="h-8 w-8 shrink-0 grid place-items-center rounded-lg"
+                  :class="a.value > 0 ? [a.bg, a.fg] : 'bg-surface text-text-muted'">
+                  <span class="h-4 w-4" v-html="a.icon"></span>
+                </span>
+                <span class="text-xs font-bold truncate" :class="a.value > 0 ? 'text-navy' : 'text-text-muted'">{{ a.label }}</span>
               </div>
-              <span class="text-sm font-black" :class="a.value > 0 ? a.fg : 'text-text-muted'">{{ a.value }}</span>
+              <span class="text-sm font-black tabular-nums shrink-0" :class="a.value > 0 ? a.fg : 'text-text-muted'">{{ a.value }}</span>
             </div>
           </div>
-          <div class="mt-4 flex items-center justify-between p-3 rounded-xl bg-navy/5">
+          <div class="flex items-center justify-between gap-3 border-t-2 border-navy/10 bg-navy/5 px-4 sm:px-5 py-3">
             <span class="text-xs font-bold text-navy">Puntaje promedio de evaluaciones</span>
-            <span class="text-sm font-black text-teal">{{ data.reviews.avgScore ?? '—' }}</span>
+            <span v-if="data.reviews.avgScore != null" class="text-sm font-black tabular-nums text-teal">{{ data.reviews.avgScore }}</span>
+            <span v-else class="text-[11px] font-bold text-text-muted">Sin evaluaciones</span>
           </div>
-        </div>
+        </SectionCard>
       </div>
 
       <!-- Cumpleaños · Licencias hoy · Top desempeño -->
       <div class="grid md:grid-cols-3 gap-6 mt-6">
         <!-- Cumpleaños del mes -->
-        <div class="card p-5">
-          <h3 class="font-extrabold text-navy text-sm mb-4">🎂 Cumpleaños del mes</h3>
-          <div v-if="!data.birthdaysThisMonth.length" class="text-sm text-text-muted py-6 text-center">Sin cumpleaños este mes</div>
+        <SectionCard title="🎂 Cumpleaños del mes" :subtitle="`Mes de ${monthName}`"
+          :body-class="data.birthdaysThisMonth.length ? 'p-4 sm:p-5' : 'p-0'">
+          <EmptyState v-if="!data.birthdaysThisMonth.length" icon="🎂" title="Sin cumpleaños este mes"
+            message="No hay colaboradores que cumplan años en este período." />
           <div v-else class="space-y-2.5">
-            <div v-for="b in data.birthdaysThisMonth" :key="b.employeeId" class="flex items-center justify-between">
+            <div v-for="b in data.birthdaysThisMonth" :key="b.employeeId" class="flex items-center justify-between gap-2">
               <span class="text-xs font-bold text-navy truncate">{{ b.name }}</span>
-              <span class="text-xs text-text-muted shrink-0 ml-2">{{ b.day }} {{ monthName }}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan/10 text-cyan shrink-0 tabular-nums">{{ b.day }} {{ monthName }}</span>
             </div>
           </div>
-        </div>
+        </SectionCard>
 
         <!-- Colaboradores de licencia hoy -->
-        <div class="card p-5">
-          <h3 class="font-extrabold text-navy text-sm mb-4">🌴 De licencia hoy</h3>
-          <div v-if="!data.onLeaveToday.length" class="text-sm text-text-muted py-6 text-center">Nadie de licencia hoy</div>
+        <SectionCard title="🌴 De licencia hoy"
+          :subtitle="data.onLeaveToday.length ? `${data.onLeaveToday.length} colaboradores` : undefined"
+          :body-class="data.onLeaveToday.length ? 'p-4 sm:p-5' : 'p-0'">
+          <EmptyState v-if="!data.onLeaveToday.length" icon="🌴" title="Nadie de licencia hoy"
+            message="Todo el equipo disponible está en operación." />
           <div v-else class="space-y-2.5">
-            <div v-for="l in data.onLeaveToday" :key="l.employeeId + l.startDate" class="flex items-center justify-between">
+            <div v-for="l in data.onLeaveToday" :key="l.employeeId + l.startDate" class="flex items-center justify-between gap-2">
               <span class="text-xs font-bold text-navy truncate">{{ l.name }}</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gold/10 text-gold shrink-0 ml-2">{{ leaveTypeLabel(l.type) }}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gold/10 text-gold shrink-0">{{ leaveTypeLabel(l.type) }}</span>
             </div>
           </div>
-        </div>
+        </SectionCard>
 
         <!-- Top desempeño -->
-        <div class="card p-5">
-          <h3 class="font-extrabold text-navy text-sm mb-4">⭐ Top desempeño</h3>
-          <div v-if="!data.topPerformers.length" class="text-sm text-text-muted py-6 text-center">Sin evaluaciones completadas</div>
+        <SectionCard title="⭐ Top desempeño" subtitle="Mejores puntajes de evaluación"
+          :body-class="data.topPerformers.length ? 'p-4 sm:p-5' : 'p-0'">
+          <EmptyState v-if="!data.topPerformers.length" icon="⭐" title="Sin evaluaciones completadas"
+            message="Cuando cierres evaluaciones vas a ver acá el ranking del equipo." />
           <div v-else class="space-y-2.5">
             <div v-for="(t, i) in data.topPerformers" :key="t.employeeId" class="flex items-center gap-2.5">
-              <span class="w-5 h-5 rounded-full bg-teal/10 text-teal text-[10px] font-black flex items-center justify-center shrink-0">{{ i + 1 }}</span>
+              <span class="w-5 h-5 rounded-full bg-teal/10 text-teal text-[10px] font-black flex items-center justify-center shrink-0 tabular-nums">{{ i + 1 }}</span>
               <span class="text-xs font-bold text-navy truncate flex-1">{{ t.name }}</span>
-              <span class="text-xs font-black text-teal shrink-0">{{ t.avgScore }}</span>
+              <span class="text-xs font-black text-teal shrink-0 tabular-nums">{{ t.avgScore }}</span>
             </div>
           </div>
-        </div>
+        </SectionCard>
       </div>
     </template>
 
-    <div v-else class="card p-10 text-center text-sm text-text-muted">No se pudo cargar el panel.</div>
+    <SectionCard v-else body-class="p-0">
+      <EmptyState icon="⚠️" title="No se pudo cargar el panel"
+        message="Ocurrió un problema al traer los datos de RRHH. Volvé a intentarlo." />
+    </SectionCard>
   </div>
 </template>
 
@@ -160,8 +186,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { EmpleadosService, type HrDashboard } from '@/services/Empleados.service'
 import { useToast } from '@/composables/useToast'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 
-const I_USERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
 const I_DOC = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>'
 const I_CAL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3.75 8.25h16.5M4.5 6h15a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-15a.75.75 0 0 1-.75-.75V6.75A.75.75 0 0 1 4.5 6Z"/></svg>'
 const I_STAR = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.5a.56.56 0 0 1 1.04 0l2.12 5.11a.56.56 0 0 0 .48.35l5.52.44c.5.04.7.66.32.99l-4.2 3.6a.56.56 0 0 0-.18.56l1.28 5.38a.56.56 0 0 1-.84.61l-4.72-2.88a.56.56 0 0 0-.59 0l-4.72 2.88a.56.56 0 0 1-.84-.61l1.28-5.38a.56.56 0 0 0-.18-.56l-4.2-3.6a.56.56 0 0 1 .32-.99l5.52-.44a.56.56 0 0 0 .48-.35L11.48 3.5Z"/></svg>'
@@ -177,11 +205,15 @@ onMounted(async () => {
   finally { loading.value = false }
 })
 
-const kpis = computed(() => data.value ? [
-  { label: 'Empleados activos', value: data.value.headcount, icon: I_USERS, bg: 'bg-navy/10', fg: 'text-navy' },
-  { label: 'Altas este mes', value: data.value.newHiresThisMonth, icon: I_USERS, bg: 'bg-teal/10', fg: 'text-teal' },
-  { label: 'Contratos activos', value: data.value.contracts.active, icon: I_DOC, bg: 'bg-cyan/10', fg: 'text-cyan' },
-  { label: 'Ausencias pendientes', value: data.value.leaves.pending, icon: I_CAL, bg: 'bg-gold/10', fg: 'text-gold' },
+type KpiIcon = 'bed' | 'checkin' | 'checkout' | 'money' | 'building' | 'users' | 'bookings'
+type KpiAccent = 'blue' | 'green' | 'purple' | 'amber' | 'teal' | 'rose'
+type Kpi = { label: string; value: number; icon: KpiIcon; accent: KpiAccent; unit?: string }
+
+const kpis = computed<Kpi[]>(() => data.value ? [
+  { label: 'Empleados activos', value: data.value.headcount, icon: 'users', accent: 'blue', unit: `${data.value.occupancy.available} disponibles` },
+  { label: 'Altas este mes', value: data.value.newHiresThisMonth, icon: 'checkin', accent: 'teal' },
+  { label: 'Contratos activos', value: data.value.contracts.active, icon: 'building', accent: 'purple', unit: `${data.value.contracts.expiringSoon} por vencer` },
+  { label: 'Ausencias pendientes', value: data.value.leaves.pending, icon: 'bookings', accent: 'amber', unit: `${data.value.leaves.upcomingApproved} aprobadas próximas` },
 ] : [])
 
 const alerts = computed(() => data.value ? [

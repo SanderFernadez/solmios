@@ -11,251 +11,395 @@
       </div>
     </div>
 
+    <!-- KPIs — sólo tienen sentido cuando ya hay cerraduras sincronizadas -->
+    <div v-if="locks.length" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <KpiHeroCard label="Cerraduras" :value="locks.length" icon="building" accent="blue"
+        :unit="`${onlineLocks} en línea · ${locks.length - onlineLocks} sin conexión`" :progress="onlineShare" />
+      <KpiHeroCard label="Asignadas a habitación" :value="mappedLocks" icon="bed" accent="purple"
+        unit="Listas para generar códigos" :progress="mappedShare" />
+      <KpiHeroCard label="Códigos activos" :value="activeCodesCount" icon="bookings" accent="teal"
+        :unit="`${lockCodes.length} códigos registrados`" />
+      <KpiHeroCard label="Batería baja" :value="lowBatteryLocks" icon="checkout" accent="amber"
+        :unit="`Menos de ${LOW_BATTERY_THRESHOLD}% de carga`" />
+    </div>
+
     <!-- Tabs -->
     <div class="flex gap-1 mb-6 border-b border-border overflow-x-auto">
       <button v-for="t in tabs" :key="t.key" @click="selectTab(t.key)"
         class="px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
         :class="tab === t.key ? 'border-navy text-navy' : 'border-transparent text-text-muted hover:text-navy'">
         {{ t.label }}
-        <span v-if="t.badge != null" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" :class="tab === t.key ? 'bg-navy/10 text-navy' : 'bg-surface text-text-muted'">{{ t.badge }}</span>
+        <span v-if="t.badge != null" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums" :class="tab === t.key ? 'bg-navy/10 text-navy' : 'bg-surface text-text-muted'">{{ t.badge }}</span>
       </button>
     </div>
 
     <!-- ── TAB: Configuración ── -->
-    <div v-show="tab === 'config'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-      <h3 class="font-extrabold text-navy mb-4">Configuración TTLock</h3>
-      <div class="grid md:grid-cols-2 gap-4">
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client ID</label><input v-model="ttlockConfig.clientId" type="text" placeholder="De open.ttlock.com" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
-        <div>
-          <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Client Secret</label>
-          <input v-model="ttlockConfig.clientSecret" type="password" :placeholder="ttlockConfig.hasSecret ? '•••••••• (guardado)' : 'Pegá el Client Secret'" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
-          <p v-if="ttlockConfig.hasSecret" class="text-[10px] text-text-muted mt-1 ml-4">Guardado. Dejalo vacío para conservarlo.</p>
+    <div v-show="tab === 'config'">
+      <SectionCard title="Configuración TTLock" subtitle="Credenciales de la cuenta del hotel en open.ttlock.com">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Client ID</label>
+            <input v-model="ttlockConfig.clientId" type="text" placeholder="De open.ttlock.com" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Client Secret</label>
+            <input v-model="ttlockConfig.clientSecret" type="password" :placeholder="ttlockConfig.hasSecret ? '•••••••• (guardado)' : 'Pegá el Client Secret'" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
+            <p v-if="ttlockConfig.hasSecret" class="text-[10px] text-text-muted mt-1 ml-4">Guardado. Dejalo vacío para conservarlo.</p>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Usuario TTLock</label>
+            <input v-model="ttlockConfig.username" type="text" placeholder="Usuario de la cuenta TTLock del hotel" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Contraseña TTLock</label>
+            <input v-model="ttlockConfig.password" type="password" :placeholder="ttlockConfig.hasPassword ? '•••••••• (guardada)' : 'Contraseña de la cuenta TTLock'" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
+            <p v-if="ttlockConfig.hasPassword" class="text-[10px] text-text-muted mt-1 ml-4">Guardada. Dejala vacía para conservarla.</p>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Región</label>
+            <select v-model="ttlockConfig.region" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
+              <option value="eu">Europa (eu)</option>
+              <option value="us">EE.UU. (us)</option>
+              <option value="cn">China (cn)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Account ID / Email</label>
+            <input v-model="ttlockConfig.accountId" type="text" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Entrega del código</label>
+            <select v-model.number="ttlockConfig.addType" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
+              <option :value="2">Gateway (remoto)</option>
+              <option :value="1">Bluetooth (app en la puerta)</option>
+              <option :value="3">NB-IoT</option>
+            </select>
+            <p class="text-[10px] text-text-muted mt-1 ml-4">Sin gateway, el PIN solo llega con un teléfono al lado de la cerradura.</p>
+          </div>
         </div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Usuario TTLock</label><input v-model="ttlockConfig.username" type="text" placeholder="Usuario de la cuenta TTLock del hotel" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
-        <div>
-          <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Contraseña TTLock</label>
-          <input v-model="ttlockConfig.password" type="password" :placeholder="ttlockConfig.hasPassword ? '•••••••• (guardada)' : 'Contraseña de la cuenta TTLock'" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" />
-          <p v-if="ttlockConfig.hasPassword" class="text-[10px] text-text-muted mt-1 ml-4">Guardada. Dejala vacía para conservarla.</p>
-        </div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Región</label><select v-model="ttlockConfig.region" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer"><option value="eu">Europa (eu)</option><option value="us">EE.UU. (us)</option><option value="cn">China (cn)</option></select></div>
-        <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Account ID / Email</label><input v-model="ttlockConfig.accountId" type="text" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-full border border-border text-sm" /></div>
-        <div>
-          <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Entrega del código</label>
-          <select v-model.number="ttlockConfig.addType" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
-            <option :value="2">Gateway (remoto)</option>
-            <option :value="1">Bluetooth (app en la puerta)</option>
-            <option :value="3">NB-IoT</option>
-          </select>
-          <p class="text-[10px] text-text-muted mt-1 ml-4">Sin gateway, el PIN solo llega con un teléfono al lado de la cerradura.</p>
-        </div>
-        <div class="flex items-end gap-2">
+
+        <div class="flex flex-wrap items-center gap-2 mt-6 pt-5 border-t border-border">
           <button @click="saveTtlockConfig" :disabled="saving || connecting" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ saving ? 'Guardando...' : 'Guardar Config' }}</button>
           <button @click="connectTtlock" :disabled="saving || connecting" class="px-5 py-2.5 bg-teal text-white rounded-full text-sm font-bold hover:bg-teal-light transition-all cursor-pointer disabled:opacity-50">{{ connecting ? 'Conectando...' : 'Conectar' }}</button>
+          <p class="text-[10px] text-text-muted ml-auto">Registrate en <a href="https://open.ttlock.com" target="_blank" class="text-cyan underline">open.ttlock.com</a> → Crea una App OAuth → Copia Client ID y Secret aquí</p>
         </div>
-      </div>
-      <p class="text-[10px] text-text-muted mt-3">Registrate en <a href="https://open.ttlock.com" target="_blank" class="text-cyan underline">open.ttlock.com</a> → Crea una App OAuth → Copia Client ID y Secret aquí</p>
+      </SectionCard>
     </div>
 
     <!-- ── TAB: Cerraduras ── -->
     <div v-show="tab === 'locks'" class="space-y-6">
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-        <div class="p-4 border-b border-border"><h3 class="font-extrabold text-navy">Dispositivos</h3></div>
-        <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead><tr class="border-b border-border bg-surface/50">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Nombre</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Habitación</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">MAC</th>
-            <th class="text-center p-4 text-[10px] font-bold text-text-muted uppercase">Batería</th>
-            <th class="text-center p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acción</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="lock in locks" :key="lock.id" class="border-b border-border last:border-0 hover:bg-surface/50">
-              <td class="p-4 text-sm font-bold text-navy">{{ lock.name || 'Sin nombre' }}</td>
-              <td class="p-4">
-                <select @change="mapLock(lock, ($event.target as HTMLSelectElement).value)" class="px-3 py-1.5 rounded-full border border-border text-xs cursor-pointer">
-                  <option value="">Sin asignar</option>
-                  <option v-for="r in rooms" :key="r.id" :value="r.id" :selected="lock.roomId===r.id">{{ r.number }} - {{ r.type }}</option>
-                </select>
-              </td>
-              <td class="p-4 text-xs font-mono text-text-secondary">{{ lock.mac || '—' }}</td>
-              <td class="p-4 text-center">
-                <span class="text-xs font-bold" :class="(lock.batteryLevel||0) > 50 ? 'text-teal' : (lock.batteryLevel||0) > 20 ? 'text-gold' : 'text-coral'">{{ lock.batteryLevel || 0 }}%</span>
-              </td>
-              <td class="p-4 text-center">
-                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status==='online'?'bg-teal/10 text-teal':'bg-gray-100 text-gray-500'">{{ lock.status || 'offline' }}</span>
-              </td>
-              <td class="p-4 text-right whitespace-nowrap">
-                <button v-if="lock.roomId" @click="viewCodes(lock)" class="text-[11px] font-bold text-navy/70 hover:text-navy transition-colors cursor-pointer mr-3">Códigos BD</button>
-                <button @click="inspectLock(lock)" class="text-[11px] font-bold text-cyan hover:text-navy transition-colors cursor-pointer">Verificar hardware</button>
-              </td>
-            </tr>
-            <tr v-if="!locks.length">
-              <td colspan="6" class="p-8 text-center text-sm text-text-muted">No hay cerraduras. Conectá TTLock en Configuración y tocá Sincronizar.</td>
-            </tr>
-          </tbody>
-        </table>
+      <SectionCard title="Dispositivos" :subtitle="`${locks.length} cerradura(s) sincronizada(s)`" body-class="p-0">
+        <div v-if="loading" class="p-4 space-y-2">
+          <div v-for="i in 4" :key="i" class="h-12 animate-pulse rounded-lg bg-surface"></div>
         </div>
-      </div>
 
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-        <div class="p-4 border-b border-border flex items-center justify-between">
-          <h3 class="font-extrabold text-navy">Códigos de Acceso (base de datos)</h3>
-          <span class="text-xs text-text-muted">{{ lockCodes.length }} códigos</span>
-        </div>
-        <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead><tr class="border-b border-border bg-surface/50">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Cerradura</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Código</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Reserva</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Válido</th>
-            <th class="text-center p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acción</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="code in lockCodes" :key="code.id" class="border-b border-border last:border-0 hover:bg-surface/50">
-              <td class="p-4 text-xs text-text-secondary">{{ getLockName(code.lockId) }}</td>
-              <td class="p-4 text-sm font-black text-navy font-mono">{{ code.code }}</td>
-              <td class="p-4 text-xs text-text-secondary">{{ code.reservationId ? code.reservationId.slice(0,8)+'...' : '—' }}</td>
-              <td class="p-4 text-xs">{{ code.startDate }} → {{ code.endDate }}</td>
-              <td class="p-4 text-center">
-                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="code.status==='active'?'bg-teal/10 text-teal':'bg-gray-100 text-gray-500'">{{ code.status }}</span>
-              </td>
-              <td class="p-4 text-right">
-                <button v-if="code.status==='active'" @click="revokeCode(code)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Revocar</button>
-              </td>
-            </tr>
-            <tr v-if="!lockCodes.length">
-              <td colspan="6" class="p-8 text-center text-sm text-text-muted">Todavía no se generó ningún código. Se crean automáticamente al pagarse la seña de una reserva (habitación con cerradura asignada), o a mano desde la reserva.</td>
-            </tr>
-          </tbody>
-        </table>
-        </div>
-      </div>
-    </div>
+        <EmptyState
+          v-else-if="!locks.length"
+          :icon="ICON_LOCK_EMPTY"
+          :title="ttlockConfig.connected ? 'Todavía no hay cerraduras' : 'TTLock no está conectado'"
+          :message="ttlockConfig.connected ? 'La cuenta está conectada pero no se trajo ningún dispositivo. Tocá Sincronizar para volver a leer la cuenta TTLock.' : 'Cargá las credenciales en la pestaña Configuración y conectá la cuenta para traer las cerraduras del hotel.'"
+        >
+          <template #action>
+            <button v-if="ttlockConfig.connected" @click="syncLocks" :disabled="syncing" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+              {{ syncing ? 'Sincronizando...' : 'Sincronizar' }}
+            </button>
+            <button v-else @click="selectTab('config')" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
+              Ir a Configuración
+            </button>
+          </template>
+        </EmptyState>
 
-    <!-- ── TAB: Gateways ── -->
-    <div v-show="tab === 'gateways'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-extrabold text-navy">Gateways</h3>
-        <button @click="loadGateways" :disabled="gatewaysLoading" class="text-xs font-bold text-cyan hover:underline cursor-pointer disabled:opacity-50">{{ gatewaysLoading ? 'Cargando...' : 'Actualizar' }}</button>
-      </div>
-      <div v-if="gatewaysLoading" class="text-center text-sm text-text-muted py-8">Cargando gateways...</div>
-      <div v-else-if="!gateways.length" class="text-center text-sm text-text-muted py-8">No se detectaron gateways en la cuenta TTLock.</div>
-      <div v-else class="grid sm:grid-cols-2 gap-3">
-        <div v-for="g in gateways" :key="g.gatewayId" class="rounded-2xl border border-border p-4">
-          <div class="flex items-center justify-between mb-2">
-            <span class="font-bold text-navy text-sm">{{ g.gatewayName || ('Gateway ' + g.gatewayId) }}</span>
-            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="g.isOnline ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ g.isOnline ? 'Online' : 'Offline' }}</span>
-          </div>
-          <div class="space-y-1 text-xs">
-            <div class="flex justify-between"><span class="text-text-muted">Red WiFi</span><span class="text-text-secondary">{{ g.networkName || '—' }}</span></div>
-            <div class="flex justify-between"><span class="text-text-muted">MAC</span><span class="font-mono text-text-secondary">{{ g.gatewayMac || '—' }}</span></div>
-            <div class="flex justify-between"><span class="text-text-muted">Cerraduras</span><span class="font-bold text-navy">{{ g.lockNum ?? 0 }}</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── TAB: Códigos activos (hardware) ── -->
-    <div v-show="tab === 'active'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-      <h3 class="font-extrabold text-navy mb-1">Comprobar códigos activos</h3>
-      <p class="text-xs text-text-muted mb-4">Lee los PIN que realmente tiene la cerradura en el hardware (distinto de la tabla de la base de datos).</p>
-      <div class="flex flex-wrap gap-2 items-center mb-5">
-        <select v-model="activeLockId" class="px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
-          <option value="">Elegí una cerradura</option>
-          <option v-for="l in locks" :key="l.id" :value="l.id">{{ l.name || l.id }}{{ l.roomNumber && l.roomNumber !== '—' ? ` · Hab ${l.roomNumber}` : '' }}</option>
-        </select>
-        <button @click="checkActiveCodes" :disabled="!activeLockId || activeLoading" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ activeLoading ? 'Comprobando...' : 'Comprobar' }}</button>
-      </div>
-      <div v-if="activeChecked && !activeLoading">
-        <div v-if="!activeCodes.length" class="text-center text-sm text-text-muted py-8">La cerradura no tiene códigos activos en este momento.</div>
         <div v-else class="overflow-x-auto">
-          <table class="w-full">
-            <thead><tr class="border-b border-border bg-surface/50">
-              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Código</th>
-              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Nombre</th>
-              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Tipo</th>
-              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Válido</th>
-              <th class="text-center p-3 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-            </tr></thead>
+          <table class="w-full min-w-[880px] tbl-head">
+            <thead>
+              <tr>
+                <th class="text-left px-4 py-3 text-[10px]">Nombre</th>
+                <th class="text-left px-4 py-3 text-[10px]">Habitación</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">MAC</th>
+                <th class="text-right px-4 py-3 text-[10px]">Batería</th>
+                <th class="text-center px-4 py-3 text-[10px]">Estado</th>
+                <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="c in activeCodes" :key="c.keyboardPwdId" class="border-b border-border last:border-0">
-                <td class="p-3 text-sm font-black text-navy font-mono">{{ c.keyboardPwd || '••••' }}</td>
-                <td class="p-3 text-xs text-text-secondary">{{ c.keyboardPwdName || '—' }}</td>
-                <td class="p-3 text-xs text-text-secondary">{{ pwdTypeLabel(c.keyboardPwdType) }}</td>
-                <td class="p-3 text-xs text-text-secondary">{{ fmtMs(c.startDate) }} → {{ fmtMs(c.endDate) }}</td>
-                <td class="p-3 text-center">
-                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="c.status === 1 ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ c.status === 1 ? 'Válido' : 'Inactivo' }}</span>
+              <tr v-for="lock in locks" :key="lock.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="text-sm font-bold text-navy">{{ lock.name || 'Sin nombre' }}</div>
+                  <div v-if="lock.mac" class="text-[11px] font-mono text-text-muted lg:hidden">{{ lock.mac }}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <select @change="mapLock(lock, ($event.target as HTMLSelectElement).value)" class="px-3 py-1.5 rounded-full border border-border text-xs cursor-pointer">
+                    <option value="">Sin asignar</option>
+                    <option v-for="r in rooms" :key="r.id" :value="r.id" :selected="lock.roomId===r.id">{{ r.number }} - {{ r.type }}</option>
+                  </select>
+                </td>
+                <td class="px-4 py-3 hidden lg:table-cell">
+                  <span v-if="lock.mac" class="text-xs font-mono text-text-secondary">{{ lock.mac }}</span>
+                  <span v-else class="text-xs text-text-muted">Sin MAC</span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold tabular-nums" :class="batteryClass(lock.batteryLevel)">
+                    {{ lock.batteryLevel || 0 }}%
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status==='online' ? 'bg-teal/10 text-teal' : 'bg-navy/5 text-text-muted'">{{ lock.status === 'online' ? 'En línea' : 'Sin conexión' }}</span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button v-if="lock.roomId" @click="viewCodes(lock)" title="Ver códigos guardados"
+                      class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_KEY"></span>
+                    </button>
+                    <button @click="inspectLock(lock)" title="Verificar hardware"
+                      class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_SEARCH"></span>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </SectionCard>
+
+      <SectionCard title="Códigos de acceso" :subtitle="`${lockCodes.length} código(s) en la base de datos · ${activeCodesCount} activo(s)`" body-class="p-0">
+        <div v-if="loading" class="p-4 space-y-2">
+          <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-lg bg-surface"></div>
+        </div>
+
+        <EmptyState
+          v-else-if="!lockCodes.length"
+          :icon="ICON_KEY_EMPTY"
+          title="Todavía no se generó ningún código"
+          message="Los PIN se crean solos al pagarse la seña de una reserva cuya habitación tiene cerradura asignada, o a mano desde la reserva."
+        />
+
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[880px] tbl-head">
+            <thead>
+              <tr>
+                <th class="text-left px-4 py-3 text-[10px]">Cerradura</th>
+                <th class="text-left px-4 py-3 text-[10px]">Código</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Reserva</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Válido</th>
+                <th class="text-center px-4 py-3 text-[10px]">Estado</th>
+                <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="code in lockCodes" :key="code.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+                <td class="px-4 py-3 text-xs text-text-secondary">{{ getLockName(code.lockId) }}</td>
+                <td class="px-4 py-3">
+                  <div class="text-sm font-black font-mono text-navy tabular-nums">{{ code.code }}</div>
+                  <div v-if="code.startDate || code.endDate" class="text-[11px] text-text-muted lg:hidden">{{ code.startDate }} → {{ code.endDate }}</div>
+                </td>
+                <td class="px-4 py-3 hidden lg:table-cell">
+                  <span v-if="code.reservationId" class="text-xs font-mono text-text-secondary">{{ code.reservationId.slice(0, 8) }}…</span>
+                  <span v-else class="text-xs text-text-muted">Sin reserva</span>
+                </td>
+                <td class="px-4 py-3 hidden lg:table-cell">
+                  <span v-if="code.startDate || code.endDate" class="text-xs text-text-secondary">{{ code.startDate }} → {{ code.endDate }}</span>
+                  <span v-else class="text-xs text-text-muted">Sin límite</span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="code.status==='active' ? 'bg-teal/10 text-teal' : 'bg-navy/5 text-text-muted'">{{ code.status === 'active' ? 'Activo' : 'Revocado' }}</span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <button v-if="code.status==='active'" @click="revokeCode(code)" title="Revocar código"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer ml-auto">
+                    <span class="h-4 w-4" v-html="ICON_BAN"></span>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+    </div>
+
+    <!-- ── TAB: Gateways ── -->
+    <div v-show="tab === 'gateways'">
+      <SectionCard title="Gateways" subtitle="Puentes que permiten enviar el PIN a la cerradura de forma remota">
+        <template #actions>
+          <button @click="loadGateways" :disabled="gatewaysLoading"
+            class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-bold text-white hover:bg-white/15 transition-colors cursor-pointer disabled:opacity-50">
+            {{ gatewaysLoading ? 'Cargando...' : 'Actualizar' }}
+          </button>
+        </template>
+
+        <div v-if="gatewaysLoading" class="grid sm:grid-cols-2 gap-3">
+          <div v-for="i in 2" :key="i" class="h-32 animate-pulse rounded-2xl bg-surface"></div>
+        </div>
+
+        <EmptyState
+          v-else-if="!gateways.length"
+          :icon="ICON_GATEWAY_EMPTY"
+          title="Sin gateways detectados"
+          message="La cuenta TTLock no reporta ningún gateway. Sin uno, el PIN solo se puede cargar por Bluetooth con un teléfono al lado de la cerradura."
+        />
+
+        <div v-else class="grid sm:grid-cols-2 gap-3">
+          <div v-for="g in gateways" :key="g.gatewayId" class="rounded-2xl border border-border p-4">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="font-bold text-navy text-sm truncate">{{ g.gatewayName || ('Gateway ' + g.gatewayId) }}</span>
+              <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full" :class="g.isOnline ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ g.isOnline ? 'En línea' : 'Sin conexión' }}</span>
+            </div>
+            <div class="space-y-1 text-xs">
+              <div v-if="g.networkName" class="flex justify-between gap-3"><span class="text-text-muted">Red WiFi</span><span class="text-text-secondary truncate">{{ g.networkName }}</span></div>
+              <div v-if="g.gatewayMac" class="flex justify-between gap-3"><span class="text-text-muted">MAC</span><span class="font-mono text-text-secondary truncate">{{ g.gatewayMac }}</span></div>
+              <div class="flex justify-between gap-3"><span class="text-text-muted">Cerraduras</span><span class="font-bold text-navy tabular-nums">{{ g.lockNum ?? 0 }}</span></div>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+    </div>
+
+    <!-- ── TAB: Códigos activos (hardware) ── -->
+    <div v-show="tab === 'active'">
+      <SectionCard title="Comprobar códigos activos" subtitle="Lee los PIN que realmente tiene la cerradura en el hardware" body-class="p-0">
+        <template #actions>
+          <select v-model="activeLockId" class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+            <option class="text-navy" value="">Elegí una cerradura</option>
+            <option class="text-navy" v-for="l in locks" :key="l.id" :value="l.id">{{ l.name || l.id }}{{ l.roomNumber && l.roomNumber !== '—' ? ` · Hab ${l.roomNumber}` : '' }}</option>
+          </select>
+          <button @click="checkActiveCodes" :disabled="!activeLockId || activeLoading"
+            class="px-4 py-2 rounded-lg bg-cyan text-sm font-bold text-white hover:bg-cyan/85 transition-colors cursor-pointer disabled:opacity-50">
+            {{ activeLoading ? 'Comprobando...' : 'Comprobar' }}
+          </button>
+        </template>
+
+        <div v-if="activeLoading" class="p-4 space-y-2">
+          <div v-for="i in 3" :key="i" class="h-12 animate-pulse rounded-lg bg-surface"></div>
+        </div>
+
+        <EmptyState
+          v-else-if="!activeChecked"
+          :icon="ICON_SEARCH_EMPTY"
+          title="Elegí una cerradura"
+          message="Seleccioná el dispositivo y tocá Comprobar para leer los códigos que hoy están cargados en el hardware. Esto puede diferir de la tabla de la base de datos."
+        />
+
+        <EmptyState
+          v-else-if="!activeCodes.length"
+          :icon="ICON_KEY_EMPTY"
+          title="Sin códigos activos"
+          message="La cerradura no tiene ningún PIN vigente en este momento."
+        />
+
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[760px] tbl-head">
+            <thead>
+              <tr>
+                <th class="text-left px-4 py-3 text-[10px]">Código</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Nombre</th>
+                <th class="text-left px-4 py-3 text-[10px]">Tipo</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Válido</th>
+                <th class="text-center px-4 py-3 text-[10px]">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in activeCodes" :key="c.keyboardPwdId" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="text-sm font-black font-mono text-navy tabular-nums">{{ c.keyboardPwd || '••••' }}</div>
+                  <div v-if="c.keyboardPwdName" class="text-[11px] text-text-muted lg:hidden">{{ c.keyboardPwdName }}</div>
+                </td>
+                <td class="px-4 py-3 hidden lg:table-cell">
+                  <span v-if="c.keyboardPwdName" class="text-xs text-text-secondary">{{ c.keyboardPwdName }}</span>
+                  <span v-else class="text-xs text-text-muted">Sin nombre</span>
+                </td>
+                <td class="px-4 py-3 text-xs text-text-secondary">{{ pwdTypeLabel(c.keyboardPwdType) }}</td>
+                <td class="px-4 py-3 hidden lg:table-cell">
+                  <span v-if="c.startDate || c.endDate" class="text-xs text-text-secondary tabular-nums">{{ fmtMs(c.startDate) }} → {{ fmtMs(c.endDate) }}</span>
+                  <span v-else class="text-xs text-text-muted">Sin límite</span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="c.status === 1 ? 'bg-teal/10 text-teal' : 'bg-navy/5 text-text-muted'">{{ c.status === 1 ? 'Válido' : 'Inactivo' }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
     </div>
 
     <!-- ── TAB: Registros (actividad del hardware) ── -->
-    <div v-show="tab === 'records'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-      <h3 class="font-extrabold text-navy mb-1">Registros de la cerradura</h3>
-      <p class="text-xs text-text-muted mb-4">Historial de aperturas e intentos de los últimos 30 días, leído del hardware.</p>
-      <div class="flex flex-wrap gap-2 items-center mb-5">
-        <select v-model="recordsLockId" class="px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
-          <option value="">Elegí una cerradura</option>
-          <option v-for="l in locks" :key="l.id" :value="l.id">{{ l.name || l.id }}{{ l.roomNumber && l.roomNumber !== '—' ? ` · Hab ${l.roomNumber}` : '' }}</option>
-        </select>
-        <button @click="checkRecords" :disabled="!recordsLockId || recordsLoading" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ recordsLoading ? 'Cargando...' : 'Ver historial' }}</button>
-      </div>
-      <div v-if="recordsChecked && !recordsLoading">
-        <div v-if="!records.length" class="text-center text-sm text-text-muted py-8">Sin registros en los últimos 30 días.</div>
+    <div v-show="tab === 'records'">
+      <SectionCard title="Registros de la cerradura" subtitle="Aperturas e intentos de los últimos 30 días, leídos del hardware" body-class="p-0">
+        <template #actions>
+          <select v-model="recordsLockId" class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+            <option class="text-navy" value="">Elegí una cerradura</option>
+            <option class="text-navy" v-for="l in locks" :key="l.id" :value="l.id">{{ l.name || l.id }}{{ l.roomNumber && l.roomNumber !== '—' ? ` · Hab ${l.roomNumber}` : '' }}</option>
+          </select>
+          <button @click="checkRecords" :disabled="!recordsLockId || recordsLoading"
+            class="px-4 py-2 rounded-lg bg-cyan text-sm font-bold text-white hover:bg-cyan/85 transition-colors cursor-pointer disabled:opacity-50">
+            {{ recordsLoading ? 'Cargando...' : 'Ver historial' }}
+          </button>
+        </template>
+
+        <div v-if="recordsLoading" class="p-4 space-y-2">
+          <div v-for="i in 5" :key="i" class="h-12 animate-pulse rounded-lg bg-surface"></div>
+        </div>
+
+        <EmptyState
+          v-else-if="!recordsChecked"
+          :icon="ICON_SEARCH_EMPTY"
+          title="Elegí una cerradura"
+          message="Seleccioná el dispositivo y tocá Ver historial para traer las aperturas registradas por el hardware."
+        />
+
+        <EmptyState
+          v-else-if="!records.length"
+          :icon="ICON_CLOCK_EMPTY"
+          title="Sin actividad"
+          message="La cerradura no registró aperturas ni intentos en los últimos 30 días."
+        />
+
         <div v-else class="overflow-x-auto">
-          <table class="w-full">
-            <thead><tr class="border-b border-border bg-surface/50">
-              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
-              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Evento</th>
-              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Código / Usuario</th>
-              <th class="text-center p-3 text-[10px] font-bold text-text-muted uppercase">Resultado</th>
-            </tr></thead>
+          <table class="w-full min-w-[720px] tbl-head">
+            <thead>
+              <tr>
+                <th class="text-left px-4 py-3 text-[10px]">Fecha</th>
+                <th class="text-left px-4 py-3 text-[10px]">Evento</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Código / Usuario</th>
+                <th class="text-center px-4 py-3 text-[10px]">Resultado</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="r in records" :key="r.recordId" class="border-b border-border last:border-0">
-                <td class="p-3 text-xs text-text-secondary">{{ fmtMs(r.lockDate) }}</td>
-                <td class="p-3 text-xs text-navy font-bold">{{ recordTypeLabel(r.recordType) }}</td>
-                <td class="p-3 text-xs text-text-secondary"><span v-if="r.keyboardPwd" class="font-mono">{{ r.keyboardPwd }}</span><span v-else>{{ r.keyName || r.username || '—' }}</span></td>
-                <td class="p-3 text-center">
+              <tr v-for="r in records" :key="r.recordId" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+                <td class="px-4 py-3 text-xs text-text-secondary tabular-nums whitespace-nowrap">{{ fmtMs(r.lockDate) }}</td>
+                <td class="px-4 py-3">
+                  <div class="text-xs font-bold text-navy">{{ recordTypeLabel(r.recordType) }}</div>
+                  <div v-if="actorOf(r)" class="text-[11px] text-text-muted lg:hidden" :class="r.keyboardPwd ? 'font-mono' : ''">{{ actorOf(r) }}</div>
+                </td>
+                <td class="px-4 py-3 hidden lg:table-cell">
+                  <span v-if="actorOf(r)" class="text-xs text-text-secondary" :class="r.keyboardPwd ? 'font-mono' : ''">{{ actorOf(r) }}</span>
+                  <span v-else class="text-xs text-text-muted">Sin identificar</span>
+                </td>
+                <td class="px-4 py-3 text-center">
                   <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="r.success === 1 ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ r.success === 1 ? 'OK' : 'Falló' }}</span>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- Modal códigos BD por cerradura -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="codesModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="codesModal = null"></div>
-          <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[80vh]">
-            <div class="shrink-0 p-6 pb-4">
-              <h3 class="text-lg font-black text-navy">Códigos de {{ codesModal.lockName }}</h3>
-            </div>
-            <div class="overflow-y-auto flex-1 px-6 space-y-2">
-              <div v-for="(c, i) in codesModal.codes" :key="i" class="flex items-center gap-2 bg-surface rounded-full px-3 py-2">
-                <code class="flex-1 text-sm font-mono font-bold text-navy">{{ c.code }}</code>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ c.status }}</span>
-                <span class="text-[10px] text-text-muted shrink-0">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
-              </div>
-            </div>
-            <div class="shrink-0 p-6 pt-5">
-              <button @click="codesModal = null" class="w-full py-2.5 bg-surface text-navy text-sm font-bold rounded-full hover:bg-navy/5 transition-all cursor-pointer">Cerrar</button>
-            </div>
-          </div>
+    <AppModal v-if="codesModal" size="md" :title="`Códigos de ${codesModal.lockName}`"
+      :subtitle="`${codesModal.codes.length} código(s) en la base de datos`" @close="codesModal = null">
+      <div class="space-y-2">
+        <div v-for="(c, i) in codesModal.codes" :key="i" class="flex items-center gap-2 bg-surface rounded-full px-3 py-2">
+          <code class="flex-1 text-sm font-mono font-bold text-navy tabular-nums">{{ c.code }}</code>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-navy/5 text-text-muted'">{{ c.status === 'active' ? 'Activo' : 'Revocado' }}</span>
+          <span v-if="c.startDate || c.endDate" class="text-[10px] text-text-muted shrink-0 tabular-nums">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
         </div>
-      </Transition>
-    </Teleport>
+      </div>
+      <template #footer>
+        <button @click="codesModal = null" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Cerrar</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -264,6 +408,10 @@ import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { TTLockService, type TTLockConfig, type LockGateway, type LockActiveCode, type LockRecord } from '@/services/TTLock.service'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import AppModal from '@/components/ui/AppModal.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -274,6 +422,7 @@ const tab = ref<Tab>('locks')
 
 const syncing = ref(false)
 const saving = ref(false)
+const loading = ref(true)
 const locks = ref<any[]>([])
 const rooms = ref<any[]>([])
 const lockCodes = ref<any[]>([])
@@ -299,6 +448,27 @@ const records = ref<LockRecord[]>([])
 const recordsLoading = ref(false)
 const recordsChecked = ref(false)
 
+// KPIs derivados de los datos ya cargados (no hay endpoint de stats)
+const LOW_BATTERY_THRESHOLD = 20
+const onlineLocks = computed(() => locks.value.filter(l => l.status === 'online').length)
+const mappedLocks = computed(() => locks.value.filter(l => !!l.roomId).length)
+const activeCodesCount = computed(() => lockCodes.value.filter((c: any) => c.status === 'active').length)
+const lowBatteryLocks = computed(() => locks.value.filter(l => (l.batteryLevel || 0) <= LOW_BATTERY_THRESHOLD).length)
+const onlineShare = computed(() => (locks.value.length ? Math.round((onlineLocks.value / locks.value.length) * 100) : 0))
+const mappedShare = computed(() => (locks.value.length ? Math.round((mappedLocks.value / locks.value.length) * 100) : 0))
+
+function batteryClass(level?: number) {
+  const v = level || 0
+  if (v > 50) return 'bg-teal/10 text-teal'
+  if (v > LOW_BATTERY_THRESHOLD) return 'bg-gold/10 text-gold'
+  return 'bg-coral/10 text-coral'
+}
+
+/** Quién abrió: el PIN usado, o el nombre de la llave/usuario. Vacío si no hay dato. */
+function actorOf(r: LockRecord) {
+  return r.keyboardPwd || r.keyName || r.username || ''
+}
+
 const tabs = computed(() => [
   { key: 'config' as Tab, label: 'Configuración', badge: null as number | null },
   { key: 'locks' as Tab, label: 'Cerraduras', badge: locks.value.length },
@@ -313,10 +483,12 @@ function selectTab(k: Tab) {
 }
 
 async function load() {
+  loading.value = true
   try { const cfg = await TTLockService.getConfig(); ttlockConfig.value = { ...ttlockConfig.value, ...cfg, clientSecret: '', password: '' } } catch {}
   try { const r = await TTLockService.listLocks(); locks.value = r.data||[] } catch {}
   try { const r = await TTLockService.listCodes(); lockCodes.value = r.data||[] } catch {}
   try { const { RoomService } = await import('@/services/Room.service'); const res = await RoomService.list({ hotelId: hid.value }).catch(()=>({rooms:[],total:0})); rooms.value = res.rooms||[] } catch {}
+  loading.value = false
 }
 
 /** El secret/password vacíos significan "no lo toques": el backend conserva el guardado. */
@@ -426,7 +598,7 @@ async function loadGateways() {
 }
 
 const PWD_TYPE: Record<number, string> = { 1: 'Permanente', 2: 'Temporal', 3: 'Período', 4: 'Borrado' }
-function pwdTypeLabel(t?: number) { return t != null ? (PWD_TYPE[t] || `Tipo ${t}`) : '—' }
+function pwdTypeLabel(t?: number) { return t != null ? (PWD_TYPE[t] || `Tipo ${t}`) : 'Sin tipo' }
 function fmtMs(ms?: number) {
   if (!ms) return '—'
   const d = new Date(ms)
@@ -459,7 +631,7 @@ const RECORD_TYPE: Record<number, string> = {
   1: 'Apertura app', 4: 'Apertura código', 7: 'Tarjeta', 8: 'Huella',
   11: 'Bloqueo', 12: 'Operación gateway', 46: 'Apertura remota', 47: 'Apertura remota',
 }
-function recordTypeLabel(t?: number) { return t != null ? (RECORD_TYPE[t] || `Evento ${t}`) : '—' }
+function recordTypeLabel(t?: number) { return t != null ? (RECORD_TYPE[t] || `Evento ${t}`) : 'Evento desconocido' }
 
 async function checkRecords() {
   if (!recordsLockId.value) return
@@ -476,12 +648,17 @@ async function checkRecords() {
   }
 }
 
+// Iconos inline (SVG como string + v-html sobre un span con tamaño)
+const ICON_KEY = '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a4 4 0 1 1-3.87 5H8v2H6v2H2v-3l6.13-6.13A4 4 0 0 1 15 7Z"/><path d="M16.5 7.5h.01"/></svg>'
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+const ICON_BAN = '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>'
+const ICON_LOCK_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 15v2"/></svg>'
+const ICON_KEY_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a4 4 0 1 1-3.87 5H8v2H6v2H2v-3l6.13-6.13A4 4 0 0 1 15 7Z"/><path d="M16.5 7.5h.01"/></svg>'
+const ICON_GATEWAY_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a9 9 0 0 1 14 0"/><path d="M8.5 15.5a4.5 4.5 0 0 1 7 0"/><path d="M2 9.5a13 13 0 0 1 20 0"/><circle cx="12" cy="19" r="1.5"/></svg>'
+const ICON_SEARCH_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+const ICON_CLOCK_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+
 onMounted(load)
 </script>
 
-<style scoped>
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
-.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel { transition: transform 0.2s ease, opacity 0.2s ease; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
-.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel { opacity: 0; transform: translateY(8px) scale(0.98); }
-</style>
+<style scoped></style>

@@ -20,138 +20,171 @@
       </button>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-            <span class="w-5 h-5 text-navy" v-html="ICON_CHAT"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">{{ Math.round(totalReviewsAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total Reseñas</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
-            <span class="w-5 h-5 text-gold" v-html="ICON_STAR"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-gold truncate">{{ avgRating }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Calificación Promedio</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-            <span class="w-5 h-5 text-cyan" v-html="ICON_REPLY"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-cyan truncate">{{ Math.round(respondedAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Con Respuesta</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-            <span class="w-5 h-5 text-teal" v-html="ICON_CHECK_CIRCLE"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-teal truncate">{{ Math.round(responseRateAnim) }}%</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Tasa de Respuesta</div>
-          </div>
-        </div>
-      </div>
+    <!-- KPIs -->
+    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div v-for="n in 4" :key="n" class="h-[132px] animate-pulse rounded-[16px] bg-surface"></div>
+    </div>
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <KpiHeroCard label="Total Reseñas" :value="totalReviewsCount" icon="bookings" accent="blue"
+        :unit="reviews.length ? `${respondedCount} con respuesta` : 'Todavía sin reseñas'" />
+      <KpiHeroCard label="Satisfacción" :value="satisfactionPct" icon="money" accent="amber"
+        suffix="%" :progress="satisfactionPct" :unit="`${avgRating} de 5 estrellas`" />
+      <KpiHeroCard label="Con Respuesta" :value="respondedCount" icon="users" accent="purple"
+        :unit="`${pendingCount} sin responder`" />
+      <KpiHeroCard label="Tasa de Respuesta" :value="responseRate" icon="checkin" accent="teal"
+        suffix="%" :progress="responseRate" unit="Reseñas contestadas por el hotel" />
     </div>
 
-    <!-- Config bar -->
-    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 mb-6 flex items-center flex-wrap gap-x-8 gap-y-3">
-      <div class="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase shrink-0">
-        <span class="w-3.5 h-3.5 shrink-0" v-html="ICON_SETTINGS"></span>
-        Configuración
+    <!-- Configuración -->
+    <SectionCard title="Configuración" subtitle="Automatismos de reseñas" class="mb-6">
+      <div class="flex items-center flex-wrap gap-x-8 gap-y-3">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <span class="relative inline-flex items-center cursor-pointer">
+            <input v-model="config.requestReviews" type="checkbox" class="sr-only peer" @change="saveConfig" />
+            <span class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal"></span>
+          </span>
+          <span class="text-xs text-navy font-bold">Solicitar reseñas</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <span class="relative inline-flex items-center cursor-pointer">
+            <input v-model="config.publishScore" type="checkbox" class="sr-only peer" @change="saveConfig" />
+            <span class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal"></span>
+          </span>
+          <span class="text-xs text-navy font-bold">Publicar puntuación</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <span class="relative inline-flex items-center cursor-pointer">
+            <input v-model="config.publishComments" type="checkbox" class="sr-only peer" @change="saveConfig" />
+            <span class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal"></span>
+          </span>
+          <span class="text-xs text-navy font-bold">Publicar comentarios</span>
+        </label>
       </div>
-      <label class="flex items-center gap-2 cursor-pointer">
-        <span class="relative inline-flex items-center cursor-pointer">
-          <input v-model="config.requestReviews" type="checkbox" class="sr-only peer" @change="saveConfig" />
-          <span class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal"></span>
-        </span>
-        <span class="text-xs text-navy font-bold">Solicitar reseñas</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer">
-        <span class="relative inline-flex items-center cursor-pointer">
-          <input v-model="config.publishScore" type="checkbox" class="sr-only peer" @change="saveConfig" />
-          <span class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal"></span>
-        </span>
-        <span class="text-xs text-navy font-bold">Publicar puntuación</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer">
-        <span class="relative inline-flex items-center cursor-pointer">
-          <input v-model="config.publishComments" type="checkbox" class="sr-only peer" @change="saveConfig" />
-          <span class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal"></span>
-        </span>
-        <span class="text-xs text-navy font-bold">Publicar comentarios</span>
-      </label>
-    </div>
+    </SectionCard>
 
-    <!-- Reviews List -->
-    <div class="space-y-4">
-      <div v-if="reviews.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
-        <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_CHAT"></span>
-        <h3 class="font-bold text-navy mb-1">Sin opiniones aún</h3>
-        <p class="text-xs text-text-muted">Las reseñas de huéspedes aparecerán acá.</p>
+    <!-- Listado de reseñas -->
+    <SectionCard
+      title="Reseñas de huéspedes"
+      :subtitle="reviews.length ? `${filteredReviews.length} de ${reviews.length} reseña(s)` : 'Sin reseñas registradas'"
+      body-class="p-0"
+    >
+      <template #actions>
+        <select
+          v-model="statusFilter"
+          class="rounded-full border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white focus:outline-none"
+        >
+          <option value="all" class="text-navy">Todas</option>
+          <option value="pending" class="text-navy">Sin responder</option>
+          <option value="answered" class="text-navy">Respondidas</option>
+        </select>
+      </template>
+
+      <!-- Carga -->
+      <div v-if="loading" class="divide-y divide-border">
+        <div v-for="n in 3" :key="n" class="p-5">
+          <div class="h-4 w-32 animate-pulse rounded bg-surface"></div>
+          <div class="mt-3 h-3 w-48 animate-pulse rounded bg-surface"></div>
+          <div class="mt-3 h-3 w-full animate-pulse rounded bg-surface"></div>
+        </div>
       </div>
-      <div v-for="r in reviews" :key="r.id" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-5">
-        <div class="flex items-start justify-between mb-2 flex-wrap gap-2">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-lg font-black text-gold">{{ '★'.repeat(r.rating || 0) }}{{ '☆'.repeat(5 - (r.rating || 0)) }}</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="channelBadge(r.channel)">{{ r.channel || 'Directa' }}</span>
-            </div>
-            <div class="text-sm font-bold text-navy mt-1">{{ r.guestName || 'Anónimo' }}</div>
-            <div class="text-[10px] text-text-muted">{{ r.createdAt?.slice(0,10) || '' }}</div>
-          </div>
-          <button @click="openRespond(r)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">
-            {{ r.response ? 'Editar respuesta' : 'Responder' }}
+
+      <!-- Sin datos -->
+      <EmptyState
+        v-else-if="!reviews.length"
+        :icon="ICON_CHAT_EMPTY"
+        title="Sin opiniones aún"
+        message="Las reseñas de tus huéspedes van a aparecer acá apenas empiecen a llegar."
+      >
+        <template #action>
+          <button @click="requestReviews" class="inline-flex items-center gap-1.5 rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer">
+            <span class="h-4 w-4 shrink-0" v-html="ICON_MAIL"></span>
+            Solicitar Reseñas
           </button>
-        </div>
-        <p class="text-sm text-text-secondary mt-2">{{ r.comment || r.title || '' }}</p>
-        <div v-if="r.response" class="mt-3 pt-3 border-t border-border">
-          <span class="text-[10px] font-bold text-cyan uppercase tracking-wide block mb-1">Respuesta del hotel</span>
-          <p class="text-sm italic text-navy">{{ r.response }}</p>
-        </div>
-      </div>
-    </div>
+        </template>
+      </EmptyState>
 
-    <!-- Respond Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="respondModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Responder a {{ respondModal.guest }}</h3>
-              <button @click="respondModal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-              </button>
-            </div>
-            <div class="p-5 space-y-4 overflow-y-auto flex-1">
-              <p class="text-sm text-text-secondary italic pb-4 border-b border-border">"{{ respondModal.comment }}"</p>
-              <textarea v-model="respondModal.text" rows="4" placeholder="Escribe tu respuesta..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm resize-none focus:outline-none focus:border-navy"></textarea>
-            </div>
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="respondModal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="saveResponse" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">Publicar Respuesta</button>
+      <!-- Filtro sin resultados -->
+      <EmptyState
+        v-else-if="!filteredReviews.length"
+        :icon="ICON_CHAT_EMPTY"
+        title="Ninguna reseña con ese filtro"
+        message="Probá con otro estado de respuesta para ver el resto de las opiniones."
+      >
+        <template #action>
+          <button @click="statusFilter = 'all'" class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer">
+            Ver todas
+          </button>
+        </template>
+      </EmptyState>
+
+      <!-- Lista -->
+      <div v-else class="divide-y divide-border">
+        <article v-for="r in filteredReviews" :key="r.id" class="p-4 sm:p-5 hover:bg-surface/40 transition-colors">
+          <div class="flex items-start justify-between gap-3 flex-wrap">
+            <div class="flex items-start gap-3 min-w-0">
+              <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-navy/10 text-[11px] font-black text-navy">
+                {{ initials(r.guestName) }}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-bold text-navy truncate">{{ r.guestName || 'Anónimo' }}</span>
+                  <span class="rounded-full px-2 py-0.5 text-[10px] font-bold" :class="channelBadge(r.channel)">{{ r.channel || 'Directa' }}</span>
+                  <span v-if="r.response" class="rounded-full bg-teal/10 px-2 py-0.5 text-[10px] font-bold text-teal">Respondida</span>
+                  <span v-else class="rounded-full bg-gold/10 px-2 py-0.5 text-[10px] font-bold text-gold">Sin responder</span>
+                </div>
+                <div class="mt-1.5 flex items-center gap-2">
+                  <span class="flex items-center gap-0.5">
+                    <span
+                      v-for="s in 5" :key="s"
+                      class="block h-3.5 w-3.5"
+                      :class="s <= (r.rating || 0) ? 'text-gold' : 'text-border'"
+                      v-html="ICON_STAR"
+                    ></span>
+                  </span>
+                  <span class="text-[11px] font-black tabular-nums text-navy">{{ r.rating || 0 }}/5</span>
+                  <span v-if="r.createdAt" class="text-[10px] text-text-muted">· {{ r.createdAt.slice(0, 10) }}</span>
+                </div>
               </div>
             </div>
+            <button
+              @click="openRespond(r)"
+              :title="r.response ? 'Editar respuesta' : 'Responder'"
+              class="h-8 w-8 shrink-0 grid place-items-center rounded-lg text-text-secondary hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer"
+            >
+              <span class="h-4 w-4" v-html="ICON_REPLY"></span>
+            </button>
           </div>
+
+          <p v-if="r.comment || r.title" class="mt-3 text-sm text-text-secondary">{{ r.comment || r.title }}</p>
+
+          <div v-if="r.response" class="mt-3 rounded-xl border-l-2 border-cyan bg-surface px-4 py-3">
+            <span class="mb-1 block text-[10px] font-bold uppercase tracking-wide text-cyan">Respuesta del hotel</span>
+            <p class="text-sm italic text-navy">{{ r.response }}</p>
+          </div>
+        </article>
+      </div>
+    </SectionCard>
+
+    <!-- Responder -->
+    <AppModal
+      v-if="respondModal.show"
+      size="md"
+      :title="respondModal.response ? 'Editar respuesta' : 'Responder reseña'"
+      :subtitle="respondModal.guest"
+      @close="respondModal.show = false"
+    >
+      <div class="space-y-4">
+        <p v-if="respondModal.comment" class="border-b border-border pb-4 text-sm italic text-text-secondary">"{{ respondModal.comment }}"</p>
+        <div>
+          <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-text-muted">Tu respuesta</label>
+          <textarea v-model="respondModal.text" rows="4" placeholder="Escribe tu respuesta..." class="w-full resize-none rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:border-navy"></textarea>
         </div>
-      </Transition>
-    </Teleport>
+      </div>
+      <template #footer>
+        <button @click="respondModal.show = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="saveResponse" class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer">Publicar Respuesta</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -160,18 +193,21 @@ import { ref, computed, onMounted } from 'vue'
 import { OpinionesService } from '@/services/Opiniones.service'
 import { ConfigService } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
-import { useCountUp } from '@/composables/useCountUp'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const ICON_MAIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0-.828.672-1.5 1.5-1.5h16.5c.828 0 1.5.672 1.5 1.5v10.5a1.5 1.5 0 0 1-1.5 1.5H3.75a1.5 1.5 0 0 1-1.5-1.5V6.75Zm0 0 9.75 6.75 9.75-6.75"/></svg>'
-const ICON_CHAT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>'
 const ICON_STAR = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="currentColor"><path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 21.44a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>'
-const ICON_SETTINGS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.752.43.992l1.005.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.216.456a1.125 1.125 0 0 1-1.37-.49l-1.296-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.752-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
+// Icono del EmptyState: tamaño fijo (h-8 w-8) porque el contenedor del componente es de 64px.
+const ICON_CHAT_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>'
 const ICON_REPLY = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17 4 12m0 0 5-5m-5 5h11a4 4 0 0 1 4 4v1"/></svg>'
-const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 1.5 1.5 3.75-3.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
-const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
 
 const toast = useToast()
 const reviews = ref<any[]>([])
+const loading = ref(true)
+const statusFilter = ref<'all' | 'pending' | 'answered'>('all')
 const config = ref({ requestReviews: true, publishScore: true, publishComments: true })
 
 const avgRating = computed(() => {
@@ -180,21 +216,33 @@ const avgRating = computed(() => {
 })
 
 const respondedCount = computed(() => reviews.value.filter((r: any) => r.response).length)
+const pendingCount = computed(() => reviews.value.length - respondedCount.value)
 const responseRate = computed(() => (reviews.value.length ? Math.round((respondedCount.value / reviews.value.length) * 100) : 0))
 const totalReviewsCount = computed(() => reviews.value.length)
+// El KPI grande muestra la satisfacción en % (la card redondea a entero);
+// la nota exacta sobre 5 va en la línea `unit`.
+const satisfactionPct = computed(() => Math.round((Number(avgRating.value) / 5) * 100))
 
-const totalReviewsAnim = useCountUp(totalReviewsCount)
-const respondedAnim = useCountUp(respondedCount)
-const responseRateAnim = useCountUp(responseRate)
+const filteredReviews = computed(() => {
+  if (statusFilter.value === 'pending') return reviews.value.filter((r: any) => !r.response)
+  if (statusFilter.value === 'answered') return reviews.value.filter((r: any) => r.response)
+  return reviews.value
+})
 
-const respondModal = ref({ show: false, id: '', guest: '', comment: '', text: '' })
+const respondModal = ref({ show: false, id: '', guest: '', comment: '', text: '', response: '' })
 
 function channelBadge(c: string) {
   const m: any = { direct: 'bg-teal/10 text-teal', booking: 'bg-cyan/10 text-cyan', expedia: 'bg-gold/10 text-gold', airbnb: 'bg-coral/10 text-coral' }
   return m[c?.toLowerCase()] || 'bg-gray-100 text-gray-500'
 }
 
+function initials(name?: string) {
+  if (!name) return 'AN'
+  return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()
+}
+
 async function load() {
+  loading.value = true
   try {
     const r = await OpinionesService.list()
     reviews.value = Array.isArray(r) ? r : []
@@ -203,10 +251,11 @@ async function load() {
     const c = await ConfigService.get('opiniones_config')
     if (c) config.value = typeof c === 'string' ? JSON.parse(c) : c
   } catch {}
+  loading.value = false
 }
 
 function openRespond(r: any) {
-  respondModal.value = { show: true, id: r.id, guest: r.guestName || 'Anónimo', comment: r.comment || '', text: r.response || '' }
+  respondModal.value = { show: true, id: r.id, guest: r.guestName || 'Anónimo', comment: r.comment || '', text: r.response || '', response: r.response || '' }
 }
 
 async function saveResponse() {
@@ -230,13 +279,4 @@ function requestReviews() {
 onMounted(load)
 </script>
 
-<style scoped>
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
-.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
-  opacity: 0; transform: scale(0.95) translateY(12px);
-}
-</style>
+<style scoped></style>
