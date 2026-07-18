@@ -28,54 +28,16 @@
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-            <span class="w-5 h-5 text-navy" v-html="ICON_WALLET"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">${{ Math.round(totalMonthAnim).toLocaleString() }}</div>
-            <div v-if="formatSecondary(totalMonth)" class="text-[10px] text-text-muted truncate">{{ formatSecondary(totalMonth) }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-0.5 truncate">Ingresos del Mes</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-            <span class="w-5 h-5 text-teal" v-html="ICON_CHECK_PLAIN"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-teal truncate">${{ Math.round(totalTodayAnim).toLocaleString() }}</div>
-            <div v-if="formatSecondary(totalToday)" class="text-[10px] text-text-muted truncate">{{ formatSecondary(totalToday) }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-0.5 truncate">Cobrado Hoy</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
-            <span class="w-5 h-5 text-gold" v-html="ICON_CLOCK"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-gold truncate">${{ Math.round(totalPendingAnim).toLocaleString() }}</div>
-            <div v-if="formatSecondary(totalPending)" class="text-[10px] text-text-muted truncate">{{ formatSecondary(totalPending) }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-0.5 truncate">Pendiente</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-            <span class="w-5 h-5 text-cyan" v-html="ICON_DOCUMENT"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-cyan">{{ Math.round(totalInvoicesAnim) }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Facturas Emitidas</div>
-          </div>
-        </div>
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <KpiHeroCard label="Ingresos del Mes" :value="totalMonth" icon="money" accent="blue"
+        prefix="$" :unit="formatSecondary(totalMonth) || 'Facturado este mes'" />
+      <KpiHeroCard label="Cobrado Hoy" :value="totalToday" icon="checkin" accent="teal"
+        prefix="$" :unit="formatSecondary(totalToday) || 'Ingresado hoy'" />
+      <KpiHeroCard label="Pendiente" :value="totalPending" icon="checkout" accent="amber"
+        prefix="$" :unit="formatSecondary(totalPending) || 'Por cobrar + vencido'"
+        :progress="collectedShare" />
+      <KpiHeroCard label="Facturas Emitidas" :value="totalInvoices" icon="bookings" accent="purple"
+        unit="Documentos del período" />
     </div>
 
     <!-- Tabs -->
@@ -99,33 +61,42 @@
     </div>
 
     <!-- Invoices Tab -->
-    <div v-if="activeTab === 'invoices' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div class="p-4 border-b border-border">
-        <div class="flex items-center justify-between">
-          <h3 class="font-extrabold text-navy text-sm">Facturas</h3>
-          <div class="flex gap-2">
-            <select v-model="invoiceFilter" @change="applyInvoiceFilter" class="px-3 py-1.5 rounded-lg border border-border text-[11px] font-bold focus:outline-none focus:border-navy cursor-pointer">
-              <option value="all">Todas</option>
-              <option value="paid">Pagadas</option>
-              <option value="pending">Pendientes</option>
-              <option value="overdue">Vencidas</option>
-              <option value="cancelled">Anuladas</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[720px]">
+    <SectionCard v-if="activeTab === 'invoices' && !loading"
+      title="Facturas" :subtitle="`${totalItems} documento(s)`" body-class="p-0">
+      <template #actions>
+        <select v-model="invoiceFilter" @change="applyInvoiceFilter"
+          class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+          <option class="text-navy" value="all">Todas</option>
+          <option class="text-navy" value="paid">Pagadas</option>
+          <option class="text-navy" value="pending">Pendientes</option>
+          <option class="text-navy" value="overdue">Vencidas</option>
+          <option class="text-navy" value="cancelled">Anuladas</option>
+        </select>
+      </template>
+
+      <EmptyState v-if="invoices.length === 0"
+        :icon="ICON_DOCUMENT"
+        :title="invoiceFilter !== 'all' ? 'Sin facturas con este filtro' : 'Todavía no hay facturas'"
+        :message="invoiceFilter !== 'all' ? 'Probá con otro estado o mirá todas.' : 'Emití la primera factura o cerrá un folio para generarla.'">
+        <template #action>
+          <button v-if="invoiceFilter !== 'all'" @click="invoiceFilter = 'all'; applyInvoiceFilter()"
+            class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer">Ver todas</button>
+          <button v-else @click="openNewInvoice"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Nueva factura</button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[880px] tbl-head">
           <thead>
-            <tr class="border-b border-border bg-surface/50">
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Factura</th>
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Huésped</th>
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hab</th>
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Concepto</th>
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
-              <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Total</th>
-              <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acciones</th>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Factura</th>
+              <th class="text-left px-4 py-3 text-[10px]">Huésped</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Concepto</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden xl:table-cell">Fecha</th>
+              <th class="text-right px-4 py-3 text-[10px]">Total</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -133,379 +104,372 @@
               v-for="inv in invoices"
               :key="inv.id"
               @click="openViewInvoice(inv)"
-              class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors cursor-pointer"
+              class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer"
             >
-              <td class="p-4 text-sm font-bold text-navy">#{{ inv.number }}</td>
-              <td class="p-4 text-sm font-bold">{{ inv.guest }}</td>
-              <td class="p-4 text-sm">{{ inv.room }}</td>
-              <td class="p-4 text-sm text-text-secondary">{{ inv.concept }}</td>
-              <td class="p-4">
-                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="invoiceStatusClass(inv.status)">
+              <td class="px-4 py-3">
+                <div class="text-sm font-black text-navy">#{{ inv.number }}</div>
+                <div v-if="inv.room" class="text-[11px] text-text-muted">Hab {{ inv.room }}</div>
+              </td>
+              <td class="px-4 py-3">
+                <!-- Una factura puede no tener huésped (cargo suelto): la celda lo dice
+                     en vez de quedar muda. -->
+                <div class="max-w-[180px] truncate text-sm font-bold" :class="inv.guest ? 'text-navy' : 'text-text-muted'">
+                  {{ inv.guest || 'Sin huésped' }}
+                </div>
+                <div class="max-w-[180px] truncate text-[11px] text-text-muted lg:hidden">{{ inv.concept }}</div>
+              </td>
+              <td class="px-4 py-3 text-sm text-text-secondary hidden lg:table-cell">
+                <span class="block truncate max-w-[240px]">{{ inv.concept }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :class="invoiceStatusClass(inv.status)">
                   {{ invoiceStatusLabel(inv.status) }}
                 </span>
               </td>
-              <td class="p-4 text-sm text-text-secondary">{{ inv.date }}</td>
-              <td class="p-4 text-right text-sm font-extrabold text-navy">${{ inv.total.toLocaleString() }}</td>
-              <td class="p-4 text-right">
-                <div class="flex gap-1 justify-end">
-                  <button @click.stop="openViewInvoice(inv)" class="px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 transition-colors cursor-pointer">Ver</button>
-                  <button v-if="inv.balance > 0 && inv.status !== 'cancelled'" @click.stop="openRecordPayment(inv)" class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 transition-colors cursor-pointer">Cobrar</button>
+              <td class="px-4 py-3 text-sm text-text-secondary hidden xl:table-cell">{{ inv.date }}</td>
+              <td class="px-4 py-3 text-right">
+                <div class="text-sm font-extrabold text-navy tabular-nums">${{ inv.total.toLocaleString() }}</div>
+                <!-- Saldo: lo que todavía falta cobrar de esta factura. -->
+                <div v-if="inv.balance > 0" class="text-[11px] font-bold text-gold tabular-nums">
+                  Saldo ${{ inv.balance.toLocaleString() }}
+                </div>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button @click.stop="openViewInvoice(inv)" title="Ver factura"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_EYE"></span>
+                  </button>
+                  <button v-if="inv.balance > 0 && inv.status !== 'cancelled'" @click.stop="openRecordPayment(inv)" title="Registrar cobro"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-teal hover:bg-teal/10 transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_CASH"></span>
+                  </button>
                   <!-- Una factura con efectos contables se anula, no se borra. -->
-                  <button v-if="inv.deletable" @click.stop="openDeleteModal(inv)" class="px-2 py-1 bg-coral/10 text-coral rounded-lg text-[10px] font-bold hover:bg-coral/20 transition-colors cursor-pointer">Eliminar</button>
-                  <button v-else-if="inv.status !== 'cancelled'" @click.stop="openCreditNoteModal(inv)" class="px-2 py-1 bg-gold/10 text-gold rounded-lg text-[10px] font-bold hover:bg-gold/20 transition-colors cursor-pointer">Anular</button>
+                  <button v-if="inv.deletable" @click.stop="openDeleteModal(inv)" title="Eliminar"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-coral hover:bg-coral/10 transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_TRASH"></span>
+                  </button>
+                  <button v-else-if="inv.status !== 'cancelled'" @click.stop="openCreditNoteModal(inv)" title="Anular con nota de crédito"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-gold hover:bg-gold/10 transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_BAN"></span>
+                  </button>
                 </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-if="invoices.length === 0" class="p-8 text-center">
-        <span class="w-9 h-9 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_DOCUMENT"></span>
-        <p class="text-sm text-text-muted font-bold">No hay facturas {{ invoiceFilter !== 'all' ? 'con este filtro' : 'registradas' }}</p>
-      </div>
+
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="flex items-center justify-between p-4 border-t border-border">
-        <div class="text-[10px] text-text-muted font-bold">{{ totalItems }} factura(s)</div>
+      <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-border px-4 py-3">
+        <span class="text-[11px] font-bold text-text-muted">{{ rangeLabel }}</span>
         <div class="flex items-center gap-1">
-          <button @click="page = 1; loadData()" :disabled="page <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">«</button>
-          <button @click="page--; loadData()" :disabled="page <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
+          <button @click="page = 1; loadData()" :disabled="page <= 1" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">«</button>
+          <button @click="page--; loadData()" :disabled="page <= 1" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">‹</button>
           <span class="px-2 text-xs font-bold text-navy">{{ page }} / {{ totalPages }}</span>
-          <button @click="page++; loadData()" :disabled="page >= totalPages" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">›</button>
-          <button @click="page = totalPages; loadData()" :disabled="page >= totalPages" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">»</button>
+          <button @click="page++; loadData()" :disabled="page >= totalPages" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">›</button>
+          <button @click="page = totalPages; loadData()" :disabled="page >= totalPages" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">»</button>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Payments Tab -->
-    <div v-if="activeTab === 'payments' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div class="p-4 border-b border-border">
-        <h3 class="font-extrabold text-navy text-sm">Pagos Recientes</h3>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[640px]">
+    <SectionCard v-if="activeTab === 'payments' && !loading"
+      title="Pagos recientes" subtitle="Cobros asentados en caja y pasarela" body-class="p-0">
+      <EmptyState v-if="payments.length === 0" :icon="ICON_CARD"
+        title="Todavía no hay pagos"
+        message="Los cobros aparecen acá apenas se registran contra una factura o folio." />
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[720px] tbl-head">
           <thead>
-            <tr class="border-b border-border bg-surface/50">
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Huésped</th>
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Concepto</th>
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Método</th>
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
-              <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Monto</th>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Huésped</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Concepto</th>
+              <th class="text-left px-4 py-3 text-[10px]">Método</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden xl:table-cell">Fecha</th>
+              <th class="text-right px-4 py-3 text-[10px]">Monto</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="payment in payments" :key="payment.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
-              <td class="p-4 text-sm font-bold text-navy">{{ payment.guest }}</td>
-              <td class="p-4 text-sm">{{ payment.concept }}</td>
-              <td class="p-4">
-                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="methodClass(payment.method)">
+            <tr v-for="payment in payments" :key="payment.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+              <td class="px-4 py-3">
+                <div class="text-sm font-bold text-navy truncate max-w-[200px]">{{ payment.guest }}</div>
+                <div class="text-[11px] text-text-muted lg:hidden truncate max-w-[200px]">{{ payment.concept }}</div>
+              </td>
+              <td class="px-4 py-3 text-sm text-text-secondary hidden lg:table-cell">
+                <span class="block truncate max-w-[240px]">{{ payment.concept }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :class="methodClass(payment.method)">
                   {{ methodLabel(payment.method) }}
                 </span>
               </td>
-              <td class="p-4">
-                <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="paymentStatusClass(payment.status)">
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :class="paymentStatusClass(payment.status)">
                   {{ paymentStatusLabel(payment.status) }}
                 </span>
               </td>
-              <td class="p-4 text-sm text-text-secondary">{{ payment.date }}</td>
-              <td class="p-4 text-right text-sm font-extrabold text-navy">${{ payment.amount }}</td>
+              <td class="px-4 py-3 text-sm text-text-secondary hidden xl:table-cell">{{ payment.date }}</td>
+              <td class="px-4 py-3 text-right text-sm font-extrabold text-navy tabular-nums">${{ payment.amount }}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-if="payments.length === 0" class="p-8 text-center">
-        <span class="w-9 h-9 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_CARD"></span>
-        <p class="text-sm text-text-muted font-bold">No hay pagos registrados</p>
-      </div>
-    </div>
+    </SectionCard>
 
     <!-- Folios Tab -->
-    <div v-if="activeTab === 'folios' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div class="p-4 border-b border-border">
-        <h3 class="font-extrabold text-navy text-sm">Folios de Habitación</h3>
-        <p class="text-[10px] text-text-muted mt-0.5">Cargos pendientes por habitación</p>
-      </div>
-      <div class="px-5">
-        <div v-if="folios.length === 0" class="py-8 text-center text-text-muted text-sm">No hay folios</div>
-        <div v-for="folio in folios" :key="folio.id" class="py-5 border-b border-border last:border-0">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-bold text-navy">Hab {{ folio.roomNumber || '—' }}</span>
-                <span class="text-text-muted">·</span>
-                <span class="text-sm font-bold text-navy truncate">{{ folio.guestName || 'Huésped' }}</span>
-              </div>
-              <div class="text-[10px] text-text-muted mt-0.5">
+    <SectionCard v-if="activeTab === 'folios' && !loading"
+      title="Folios de habitación" subtitle="Cargos abiertos por habitación" body-class="p-0">
+      <EmptyState v-if="folios.length === 0" :icon="ICON_DOCUMENT"
+        title="No hay folios abiertos"
+        message="El folio se abre solo al hacer el check-in de una reserva." />
+
+      <ul v-else class="divide-y divide-border">
+        <li v-for="folio in folios" :key="folio.id" class="flex flex-wrap items-center gap-4 px-4 py-4 transition-colors hover:bg-surface/60">
+          <!-- Habitación como ancla visual de la fila -->
+          <div class="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xs font-black"
+            :class="folio.status === 'open' ? 'bg-cyan/10 text-cyan' : 'bg-surface text-text-muted'">
+            {{ folio.roomNumber || '—' }}
+          </div>
+
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="truncate text-sm font-bold text-navy">{{ folio.guestName || 'Huésped' }}</span>
+              <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase"
+                :class="folio.status === 'open' ? 'bg-cyan/10 text-cyan' : 'bg-teal/10 text-teal'">
                 {{ folio.status === 'open' ? 'Abierto' : 'Cerrado' }}
-                <span v-if="folio.chargeCount"> · {{ folio.chargeCount }} cargo(s)</span>
-              </div>
+              </span>
+              <span v-if="folio.status === 'closed' && folio.invoiceId" class="shrink-0 text-[10px] font-bold text-teal">✓ Facturado</span>
             </div>
-            <div class="text-right shrink-0">
-              <div class="text-lg font-black text-navy">${{ (folio.chargesTotal || 0).toLocaleString() }}</div>
-              <div class="text-[10px] font-bold" :class="(folio.balance || 0) > 0 ? 'text-orange' : 'text-teal'">
-                Saldo: ${{ (folio.balance || 0).toLocaleString() }}
-              </div>
+            <div class="mt-0.5 text-[11px] text-text-muted">
+              <template v-if="folio.chargeCount">{{ folio.chargeCount }} cargo(s)</template>
+              <template v-else>Sin cargos</template>
             </div>
           </div>
-          <div class="mt-3 flex justify-end items-center gap-4">
-            <template v-if="folio.status === 'open'">
-              <button @click="openAddCharge(folio)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">+ Cargo</button>
-              <button @click="openRecordPaymentForFolio(folio)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Registrar Pago</button>
-              <button @click="openCloseFolioModal(folio)" class="rounded-full bg-cyan text-navy text-[11px] font-extrabold px-4 py-1.5 hover:shadow-lg transition-all cursor-pointer">Cerrar y Facturar</button>
-            </template>
-            <span v-else-if="folio.status === 'closed' && folio.invoiceId" class="text-[10px] text-teal font-bold">✓ Facturado</span>
+
+          <div class="shrink-0 text-right">
+            <div class="text-base font-black text-navy tabular-nums">${{ (folio.chargesTotal || 0).toLocaleString() }}</div>
+            <div class="text-[11px] font-bold tabular-nums" :class="(folio.balance || 0) > 0 ? 'text-gold' : 'text-teal'">
+              Saldo ${{ (folio.balance || 0).toLocaleString() }}
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
+
+          <div v-if="folio.status === 'open'" class="flex shrink-0 items-center gap-1.5">
+            <button @click="openAddCharge(folio)" title="Agregar cargo"
+              class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+              <span class="h-4 w-4" v-html="ICON_PLUS"></span>
+            </button>
+            <button @click="openRecordPaymentForFolio(folio)" title="Registrar pago"
+              class="grid h-8 w-8 place-items-center rounded-lg text-teal hover:bg-teal/10 transition-colors cursor-pointer">
+              <span class="h-4 w-4" v-html="ICON_CASH"></span>
+            </button>
+            <button @click="openCloseFolioModal(folio)"
+              class="rounded-full bg-navy px-4 py-2 text-[11px] font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer">
+              Cerrar y facturar
+            </button>
+          </div>
+        </li>
+      </ul>
+    </SectionCard>
 
     <!-- View Invoice Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showViewModal && viewInvoice" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+    <AppModal v-if="showViewModal && viewInvoice" size="lg" body-class="p-0" @close="closeViewModal">
+      <template #header>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h3 class="text-lg font-black text-white">{{ typeLabel(viewInvoice.type) }} #{{ viewInvoice.number }}</h3>
+            <span class="rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase" :class="invoiceStatusClass(viewInvoice.status)">
+              {{ invoiceStatusLabel(viewInvoice.status) }}
+            </span>
+          </div>
+          <p class="mt-0.5 text-[11px] text-white/60">
+            Emitida {{ viewInvoice.date }}<template v-if="viewInvoice.dueDate"> · Vence {{ viewInvoice.dueDate }}</template>
+            <template v-if="viewInvoice.ncf"> · NCF {{ viewInvoice.ncf }}</template>
+          </p>
+        </div>
+      </template>
 
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-            <!-- Header -->
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <div>
-                <div class="flex items-center gap-2">
-                  <h3 class="text-lg font-black text-navy">{{ typeLabel(viewInvoice.type) }} #{{ viewInvoice.number }}</h3>
-                  <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="invoiceStatusClass(viewInvoice.status)">
-                    {{ invoiceStatusLabel(viewInvoice.status) }}
-                  </span>
-                </div>
-                <p class="text-xs text-text-muted mt-0.5">Emitida: {{ viewInvoice.date }} {{ viewInvoice.dueDate ? `· Vence: ${viewInvoice.dueDate}` : '' }}</p>
-              </div>
-              <button @click="closeViewModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+      <!-- Cabecera de datos -->
+      <div class="grid grid-cols-3 gap-px border-b border-border bg-border">
+        <div v-for="d in invoiceHeaderFields" :key="d.label" class="bg-white px-4 py-3">
+          <div class="text-[10px] font-semibold uppercase tracking-wide text-text-muted">{{ d.label }}</div>
+          <div class="mt-0.5 truncate text-sm font-bold text-navy">{{ d.value }}</div>
+        </div>
+      </div>
+
+      <div class="p-5">
+        <!-- Conceptos -->
+        <section class="overflow-hidden rounded-2xl border border-border">
+          <header class="flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5">
+            <span class="grid h-6 w-6 place-items-center rounded-lg bg-navy/10 text-navy">
+              <span class="h-3.5 w-3.5" v-html="ICON_DOCUMENT"></span>
+            </span>
+            <h4 class="text-[11px] font-black uppercase tracking-wide text-navy">Conceptos facturados</h4>
+          </header>
+          <ul class="divide-y divide-border">
+            <li v-for="(item, idx) in viewInvoice.items" :key="idx" class="flex items-center justify-between gap-3 px-4 py-2.5">
+              <span class="min-w-0 truncate text-sm text-text-secondary">{{ item.description }}</span>
+              <span class="shrink-0 text-sm font-bold text-navy tabular-nums">{{ currencySymbol(viewInvoice.currency) }}{{ Number(item.amount).toFixed(2) }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Resumen financiero: el total es lo que se busca de un vistazo -->
+        <section class="mt-4 overflow-hidden rounded-2xl border-2 border-navy">
+          <div class="space-y-2 px-4 py-3">
+            <div class="flex justify-between text-sm">
+              <span class="text-text-secondary">Subtotal</span>
+              <span class="font-bold text-navy tabular-nums">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.subtotal.toFixed(2) }}</span>
             </div>
-
-            <!-- Body -->
-            <div class="p-6 overflow-y-auto flex-1">
-              <!-- NCF -->
-              <div v-if="viewInvoice.ncf" class="flex items-center justify-between pb-5 border-b border-border">
-                <span class="text-[10px] font-bold text-text-muted uppercase tracking-wide">NCF</span>
-                <span class="text-sm font-extrabold text-navy">{{ viewInvoice.ncf }}</span>
-              </div>
-
-              <!-- Guest & Room -->
-              <div class="grid grid-cols-3 gap-3 py-5 border-b border-border">
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Huésped</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewInvoice.guest || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Habitación</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewInvoice.room || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Moneda</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ currencySymbol(viewInvoice.currency) }} {{ viewInvoice.currency }}</div>
-                </div>
-              </div>
-
-              <!-- Items -->
-              <div class="py-5 border-b border-border">
-                <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-3">Conceptos Facturados</div>
-                <div class="divide-y divide-border">
-                  <div v-for="(item, idx) in viewInvoice.items" :key="idx" class="flex items-center justify-between py-2">
-                    <span class="text-sm font-bold text-navy">{{ item.description }}</span>
-                    <span class="text-sm font-bold text-navy">{{ currencySymbol(viewInvoice.currency) }}{{ Number(item.amount).toFixed(2) }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Financial Summary -->
-              <div class="py-5 border-b border-border space-y-2.5">
-                <div class="flex justify-between text-sm">
-                  <span class="text-text-secondary">Subtotal</span>
-                  <span class="font-bold text-navy">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.subtotal.toFixed(2) }}</span>
-                </div>
-                <div class="flex justify-between text-sm">
-                  <span class="text-text-secondary">Impuestos ({{ viewInvoice.taxRate }}%)</span>
-                  <span class="font-bold text-navy">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.tax.toFixed(2) }}</span>
-                </div>
-                <div class="flex justify-between pt-2.5 border-t border-border">
-                  <span class="font-extrabold text-navy">Total</span>
-                  <span class="font-extrabold text-navy text-xl">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.total.toFixed(2) }}</span>
-                </div>
-                <template v-if="viewInvoice.amountPaid > 0">
-                  <div class="flex justify-between text-sm text-teal pt-2.5 border-t border-border">
-                    <span class="font-bold">Pagado</span>
-                    <span class="font-bold">-{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.amountPaid.toFixed(2) }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="font-extrabold text-gold">Saldo Pendiente</span>
-                    <span class="font-extrabold text-gold">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.balance.toFixed(2) }}</span>
-                  </div>
-                </template>
-              </div>
-
-              <!-- Payment Method -->
-              <div v-if="viewInvoice.method" class="flex items-center gap-3 py-5 border-b border-border">
-                <span class="w-5 h-5 text-navy shrink-0" v-html="paymentMethodIcon(viewInvoice.method)"></span>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Método de Pago</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ paymentMethodLabel(viewInvoice.method) }}</div>
-                </div>
-              </div>
-
-              <!-- Notes -->
-              <div v-if="viewInvoice.notes" class="pt-5">
-                <div class="text-[10px] text-text-muted uppercase tracking-wide mb-1">Notas</div>
-                <div class="text-sm text-text-secondary whitespace-pre-wrap">{{ viewInvoice.notes }}</div>
-              </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center gap-4">
-                <button @click="printInvoice" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Imprimir</button>
-                <button @click="openEmailModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Enviar email</button>
-                <button @click="downloadPdf" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">PDF</button>
-                <div class="flex-1"></div>
-                <button v-if="viewInvoice.status === 'pending' || viewInvoice.balance > 0" @click="closeViewModal(); openRecordPayment(viewInvoice)" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer">
-                  Registrar Pago
-                </button>
-                <button @click="closeViewModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cerrar</button>
-              </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-text-secondary">Impuestos ({{ viewInvoice.taxRate }}%)</span>
+              <span class="font-bold text-navy tabular-nums">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.tax.toFixed(2) }}</span>
             </div>
           </div>
+          <div class="flex items-center justify-between bg-navy px-4 py-3">
+            <span class="text-[11px] font-black uppercase tracking-wide text-white/70">Total</span>
+            <span class="text-xl font-black text-white tabular-nums">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.total.toFixed(2) }}</span>
+          </div>
+          <div v-if="viewInvoice.amountPaid > 0" class="space-y-2 px-4 py-3">
+            <div class="flex justify-between text-sm">
+              <span class="font-bold text-teal">Pagado</span>
+              <span class="font-bold text-teal tabular-nums">−{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.amountPaid.toFixed(2) }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="font-black text-gold">Saldo pendiente</span>
+              <span class="font-black text-gold tabular-nums">{{ currencySymbol(viewInvoice.currency) }}{{ viewInvoice.balance.toFixed(2) }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Método de pago -->
+        <div v-if="viewInvoice.method" class="mt-4 flex items-center gap-3 rounded-2xl border border-border px-4 py-3">
+          <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-teal/10 text-teal">
+            <span class="h-4 w-4" v-html="paymentMethodIcon(viewInvoice.method)"></span>
+          </span>
+          <div>
+            <div class="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Método de pago</div>
+            <div class="text-sm font-bold text-navy">{{ paymentMethodLabel(viewInvoice.method) }}</div>
+          </div>
         </div>
-      </Transition>
-    </Teleport>
+
+        <!-- Notas -->
+        <section v-if="viewInvoice.notes" class="mt-4 overflow-hidden rounded-2xl border border-gold/30 bg-gold/5">
+          <header class="border-b border-gold/20 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-gold">Notas</header>
+          <p class="whitespace-pre-wrap px-4 py-3 text-sm text-text-secondary">{{ viewInvoice.notes }}</p>
+        </section>
+      </div>
+
+      <template #footer>
+        <button @click="printInvoice" title="Imprimir"
+          class="mr-auto inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">
+          <span class="h-4 w-4" v-html="ICON_PRINT"></span> Imprimir
+        </button>
+        <button @click="openEmailModal" class="px-3 py-2 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Email</button>
+        <button @click="downloadPdf" class="px-3 py-2 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">PDF</button>
+        <button v-if="viewInvoice.status === 'pending' || viewInvoice.balance > 0"
+          @click="closeViewModal(); openRecordPayment(viewInvoice)"
+          class="inline-flex items-center gap-2 rounded-full bg-teal px-5 py-2.5 text-sm font-extrabold text-white hover:bg-teal-light transition-colors cursor-pointer">
+          <span class="h-4 w-4" v-html="ICON_CASH"></span> Registrar pago
+        </button>
+      </template>
+    </AppModal>
 
     <!-- New Payment Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+    <AppModal v-if="showPaymentModal" size="md" title="Registrar pago"
+      :subtitle="paymentForm.guest || undefined" @close="closePaymentModal">
+      <div class="space-y-4">
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Monto ($)</label>
+          <input v-model.number="paymentForm.amount" type="number" min="0"
+            class="w-full rounded-xl border border-border px-4 py-2.5 text-lg font-black text-navy tabular-nums focus:border-navy focus:outline-none" />
+        </div>
 
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Registrar Pago</h3>
-              <button @click="closePaymentModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            <div class="p-5 space-y-4 overflow-y-auto flex-1">
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Huésped</label>
-                <input :value="paymentForm.guest" type="text" disabled class="w-full px-4 py-2.5 rounded-xl border border-border text-sm bg-surface" />
-              </div>
-
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Monto ($)</label>
-                <input v-model.number="paymentForm.amount" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Método de Pago</label>
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    v-for="method in paymentMethods"
-                    :key="method.value"
-                    @click="paymentForm.method = method.value"
-                    class="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-bold border transition-all cursor-pointer"
-                    :class="paymentForm.method === method.value ? 'border-navy bg-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'"
-                  >
-                    <span class="w-3.5 h-3.5 shrink-0" v-html="method.icon"></span>
-                    {{ method.label }}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Referencia</label>
-                <input v-model="paymentForm.reference" type="text" placeholder="N° transacción, comprobante, etc." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</label>
-                <textarea v-model="paymentForm.notes" rows="2" placeholder="Opcional..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
-              </div>
-            </div>
-
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="closePaymentModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="savePayment" :disabled="savingPayment" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">{{ savingPayment ? 'Guardando...' : 'Confirmar Pago' }}</button>
-              </div>
-            </div>
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Método de pago</label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="method in paymentMethods"
+              :key="method.value"
+              @click="paymentForm.method = method.value"
+              class="flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11px] font-bold transition-all cursor-pointer"
+              :class="paymentForm.method === method.value ? 'border-navy bg-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'"
+            >
+              <span class="h-3.5 w-3.5 shrink-0" v-html="method.icon"></span>
+              {{ method.label }}
+            </button>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Referencia</label>
+          <input v-model="paymentForm.reference" type="text" placeholder="N° transacción, comprobante, etc."
+            class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Notas</label>
+          <textarea v-model="paymentForm.notes" rows="2" placeholder="Opcional..."
+            class="w-full resize-none rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none"></textarea>
+        </div>
+      </div>
+
+      <template #footer>
+        <button @click="closePaymentModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="savePayment" :disabled="savingPayment"
+          class="inline-flex items-center gap-2 rounded-full bg-teal px-5 py-2.5 text-sm font-extrabold text-white hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">
+          <span class="h-4 w-4" v-html="ICON_CASH"></span>
+          {{ savingPayment ? 'Guardando…' : 'Confirmar pago' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Add Charge Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showChargeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Agregar Cargo — Hab {{ chargeRoom }}</h3>
-              <button @click="closeChargeModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            <div class="p-5 space-y-4 overflow-y-auto flex-1">
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Concepto</label>
-                <select v-model="chargeForm.description" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-                  <option value="">Seleccionar...</option>
-                  <option value="Minibar">Minibar</option>
-                  <option value="Servicio de habitación">Servicio de habitación</option>
-                  <option value="Lavandería">Lavandería</option>
-                  <option value="Spa">Spa</option>
-                  <option value="Restaurante">Restaurante</option>
-                  <option value="Telefonía">Telefonía</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Monto ($)</label>
-                <input v-model.number="chargeForm.amount" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</label>
-                <textarea v-model="chargeForm.notes" rows="2" placeholder="Detalle del cargo..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
-              </div>
-            </div>
-
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="closeChargeModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="saveCharge" :disabled="savingCharge" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">{{ savingCharge ? 'Agregando...' : 'Agregar' }}</button>
-              </div>
-            </div>
-          </div>
+    <AppModal v-if="showChargeModal" size="md" title="Agregar cargo"
+      :subtitle="`Habitación ${chargeRoom}`" @close="closeChargeModal">
+      <div class="space-y-4">
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Concepto</label>
+          <select v-model="chargeForm.description" class="w-full cursor-pointer rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none">
+            <option value="">Seleccionar…</option>
+            <option value="Minibar">Minibar</option>
+            <option value="Servicio de habitación">Servicio de habitación</option>
+            <option value="Lavandería">Lavandería</option>
+            <option value="Spa">Spa</option>
+            <option value="Restaurante">Restaurante</option>
+            <option value="Telefonía">Telefonía</option>
+            <option value="Otro">Otro</option>
+          </select>
         </div>
-      </Transition>
-    </Teleport>
+
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Monto ($)</label>
+          <input v-model.number="chargeForm.amount" type="number" min="0"
+            class="w-full rounded-xl border border-border px-4 py-2.5 text-lg font-black text-navy tabular-nums focus:border-navy focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Notas</label>
+          <textarea v-model="chargeForm.notes" rows="2" placeholder="Detalle del cargo…"
+            class="w-full resize-none rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none"></textarea>
+        </div>
+      </div>
+
+      <template #footer>
+        <button @click="closeChargeModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="saveCharge" :disabled="savingCharge"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ savingCharge ? 'Agregando…' : 'Agregar cargo' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- New Invoice Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showNewInvoiceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Nueva Factura</h3>
-              <button @click="closeNewInvoiceModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+    <AppModal v-if="showNewInvoiceModal" size="lg" title="Nueva factura"
+      subtitle="Buscá la habitación y cargá los conceptos" @close="closeNewInvoiceModal">
+      <div class="space-y-4">
               <!-- Room Search -->
               <div>
                 <label class="flex items-center gap-1.5 text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">
@@ -574,164 +538,134 @@
                 <textarea v-model="newInvoice.notes" rows="2" placeholder="Detalle adicional..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
               </div>
 
-              <!-- Total Preview -->
-              <div class="pt-4 border-t border-border">
-                <div class="flex justify-between text-sm">
-                  <span class="text-text-secondary">Subtotal</span>
-                  <span class="font-bold text-navy">${{ invoiceSubtotal.toFixed(2) }}</span>
-                </div>
-                <div v-if="hotelTaxRate > 0" class="flex justify-between text-sm mt-1.5">
-                  <span class="text-text-secondary">Impuestos ({{ hotelTaxRate }}%)</span>
-                  <span class="font-bold text-navy">${{ invoiceTaxes.toFixed(2) }}</span>
-                </div>
-                <div class="flex justify-between pt-2.5 mt-2 border-t border-border">
-                  <span class="font-extrabold text-navy">Total</span>
-                  <span class="font-extrabold text-navy text-lg">${{ invoiceTotal.toFixed(2) }}</span>
-                </div>
-              </div>
+        <!-- Total en vivo: lo que se va a emitir -->
+        <section class="overflow-hidden rounded-2xl border-2 border-navy">
+          <div class="space-y-1.5 px-4 py-3">
+            <div class="flex justify-between text-sm">
+              <span class="text-text-secondary">Subtotal</span>
+              <span class="font-bold text-navy tabular-nums">${{ invoiceSubtotal.toFixed(2) }}</span>
             </div>
-
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="closeNewInvoiceModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="saveNewInvoice" :disabled="savingInvoice || invoiceTotal <= 0" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
-                  {{ savingInvoice ? 'Creando...' : 'Crear Factura' }}
-                </button>
-              </div>
+            <div v-if="hotelTaxRate > 0" class="flex justify-between text-sm">
+              <span class="text-text-secondary">Impuestos ({{ hotelTaxRate }}%)</span>
+              <span class="font-bold text-navy tabular-nums">${{ invoiceTaxes.toFixed(2) }}</span>
             </div>
           </div>
-        </div>
-      </Transition>
-    </Teleport>
+          <div class="flex items-center justify-between bg-navy px-4 py-3">
+            <span class="text-[11px] font-black uppercase tracking-wide text-white/70">Total</span>
+            <span class="text-xl font-black text-white tabular-nums">${{ invoiceTotal.toFixed(2) }}</span>
+          </div>
+        </section>
+      </div>
+
+      <template #footer>
+        <button @click="closeNewInvoiceModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="saveNewInvoice" :disabled="savingInvoice || invoiceTotal <= 0"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ savingInvoice ? 'Creando…' : 'Crear factura' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Delete Confirmation Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showDeleteModal && deleteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div class="text-center mb-4">
-              <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-coral/10 flex items-center justify-center">
-                <span class="w-5 h-5 text-coral" v-html="ICON_ALERT_TRIANGLE"></span>
-              </div>
-              <h3 class="text-lg font-black text-navy">Eliminar Factura</h3>
-              <p class="text-sm text-text-secondary mt-2">¿Estás seguro de eliminar la factura <strong>#{{ deleteTarget.number }}</strong>?</p>
-              <p class="text-xs text-text-muted mt-1">Esta acción no se puede deshacer.</p>
-            </div>
-            <div class="flex items-center justify-center gap-4">
-              <button @click="closeDeleteModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-              <button @click="confirmDelete" :disabled="deleting" class="rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
-                {{ deleting ? 'Eliminando...' : 'Eliminar' }}
-              </button>
-            </div>
-          </div>
+    <AppModal v-if="showDeleteModal && deleteTarget" size="sm" title="Eliminar factura" @close="closeDeleteModal">
+      <div class="text-center">
+        <div class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-coral/10">
+          <span class="h-6 w-6 text-coral" v-html="ICON_ALERT_TRIANGLE"></span>
         </div>
-      </Transition>
-    </Teleport>
+        <p class="text-sm text-text-secondary">
+          ¿Eliminar la factura <strong class="text-navy">#{{ deleteTarget.number }}</strong>?
+        </p>
+        <p class="mt-1 text-xs text-text-muted">Esta acción no se puede deshacer.</p>
+      </div>
+      <template #footer>
+        <button @click="closeDeleteModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="confirmDelete" :disabled="deleting"
+          class="inline-flex items-center gap-2 rounded-full bg-coral px-5 py-2.5 text-sm font-extrabold text-white hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
+          <span class="h-4 w-4" v-html="ICON_TRASH"></span>
+          {{ deleting ? 'Eliminando…' : 'Eliminar' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Close Folio + Invoice Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showCloseFolioModal && closeFolioTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div class="text-center mb-4">
-              <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-cyan/10 flex items-center justify-center">
-                <span class="w-5 h-5 text-cyan" v-html="ICON_DOCUMENT"></span>
-              </div>
-              <h3 class="text-lg font-black text-navy">Cerrar y Facturar</h3>
-              <p class="text-sm text-text-secondary mt-2">
-                Se cerrará el folio de <strong>{{ closeFolioTarget.guestName || 'huésped' }}</strong> y se emitirá la factura por
-                <strong>${{ (closeFolioTarget.chargesTotal || 0).toLocaleString() }}</strong>.
-              </p>
-              <p class="text-xs text-text-muted mt-1">El folio no admite más cargos después de cerrarse.</p>
-            </div>
-            <div class="flex items-center justify-center gap-4">
-              <button @click="closeCloseFolioModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-              <button @click="confirmCloseAndInvoice" :disabled="closingFolio" class="rounded-full bg-cyan text-navy text-sm font-extrabold px-5 py-2.5 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
-                {{ closingFolio ? 'Facturando...' : 'Cerrar y Facturar' }}
-              </button>
-            </div>
-          </div>
+    <AppModal v-if="showCloseFolioModal && closeFolioTarget" size="sm" title="Cerrar y facturar" @close="closeCloseFolioModal">
+      <div class="text-center">
+        <div class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-cyan/10">
+          <span class="h-6 w-6 text-cyan" v-html="ICON_DOCUMENT"></span>
         </div>
-      </Transition>
-    </Teleport>
+        <p class="text-sm text-text-secondary">
+          Se cierra el folio de <strong class="text-navy">{{ closeFolioTarget.guestName || 'huésped' }}</strong> y se emite la factura.
+        </p>
+        <div class="mx-auto mt-3 w-fit rounded-xl bg-surface px-5 py-2.5">
+          <div class="text-2xl font-black text-navy tabular-nums">${{ (closeFolioTarget.chargesTotal || 0).toLocaleString() }}</div>
+          <div class="text-[10px] font-bold uppercase tracking-wide text-text-muted">A facturar</div>
+        </div>
+        <p class="mt-3 text-xs text-text-muted">El folio no admite más cargos después de cerrarse.</p>
+      </div>
+      <template #footer>
+        <button @click="closeCloseFolioModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="confirmCloseAndInvoice" :disabled="closingFolio"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ closingFolio ? 'Facturando…' : 'Cerrar y facturar' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Credit Note Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showCreditNoteModal && creditNoteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div class="p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Anular Factura #{{ creditNoteTarget.number }}</h3>
-              <button @click="closeCreditNoteModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div class="p-5 space-y-4">
-              <p class="text-sm text-text-secondary">
-                Esta factura ya tiene efectos contables, así que no se elimina: se emite una
-                <strong>nota de crédito</strong> por ${{ creditNoteTarget.total.toLocaleString() }} que la anula dejando el rastro.
-              </p>
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Motivo de la anulación</label>
-                <textarea v-model="creditNoteReason" rows="3" placeholder="Ej: error en el monto facturado, servicio no prestado..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
-              </div>
-            </div>
-            <div class="p-5 border-t border-border">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="closeCreditNoteModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="confirmCreditNote" :disabled="issuingCreditNote" class="rounded-full bg-gold text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
-                  {{ issuingCreditNote ? 'Emitiendo...' : 'Emitir Nota de Crédito' }}
-                </button>
-              </div>
-            </div>
-          </div>
+    <AppModal v-if="showCreditNoteModal && creditNoteTarget" size="md"
+      :title="`Anular factura #${creditNoteTarget.number}`" subtitle="Se emite una nota de crédito" @close="closeCreditNoteModal">
+      <div class="space-y-4">
+        <div class="flex gap-3 rounded-2xl border border-gold/30 bg-gold/5 px-4 py-3">
+          <span class="mt-0.5 h-5 w-5 shrink-0 text-gold" v-html="ICON_ALERT_TRIANGLE"></span>
+          <p class="text-sm text-text-secondary">
+            Esta factura ya tiene efectos contables, así que no se elimina: se emite una
+            <strong class="text-navy">nota de crédito</strong> por
+            <strong class="text-navy tabular-nums">${{ creditNoteTarget.total.toLocaleString() }}</strong>
+            que la anula dejando el rastro.
+          </p>
         </div>
-      </Transition>
-    </Teleport>
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Motivo de la anulación</label>
+          <textarea v-model="creditNoteReason" rows="3" placeholder="Ej: error en el monto facturado, servicio no prestado…"
+            class="w-full resize-none rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none"></textarea>
+        </div>
+      </div>
+      <template #footer>
+        <button @click="closeCreditNoteModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="confirmCreditNote" :disabled="issuingCreditNote"
+          class="rounded-full bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
+          {{ issuingCreditNote ? 'Emitiendo…' : 'Emitir nota de crédito' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Enviar factura por email -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showEmailModal && emailTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div class="p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Enviar Factura #{{ emailTarget.number }}</h3>
-              <button @click="closeEmailModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <form class="p-5 space-y-4" @submit.prevent="confirmEmail">
-              <div>
-                <label for="email-to" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Email del destinatario</label>
-                <input
-                  id="email-to"
-                  v-model.trim="emailTo"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="huesped@ejemplo.com"
-                  class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none transition-colors"
-                  :class="emailError ? 'border-red-400 focus:border-red-500' : 'border-border focus:border-navy'"
-                  @input="emailError = ''"
-                />
-                <p v-if="emailError" class="mt-2 text-xs font-bold text-red-500">{{ emailError }}</p>
-              </div>
-            </form>
-            <div class="p-5 border-t border-border">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="closeEmailModal" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="confirmEmail" :disabled="sendingEmail || !emailTo" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">
-                  {{ sendingEmail ? 'Enviando...' : 'Enviar' }}
-                </button>
-              </div>
-            </div>
-          </div>
+    <AppModal v-if="showEmailModal && emailTarget" size="md"
+      :title="`Enviar factura #${emailTarget.number}`" @close="closeEmailModal">
+      <form class="space-y-4" @submit.prevent="confirmEmail">
+        <div>
+          <label for="email-to" class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Email del destinatario</label>
+          <input
+            id="email-to"
+            v-model.trim="emailTo"
+            type="email"
+            autocomplete="email"
+            placeholder="huesped@ejemplo.com"
+            class="w-full rounded-xl border px-4 py-2.5 text-sm transition-colors focus:outline-none"
+            :class="emailError ? 'border-red-400 focus:border-red-500' : 'border-border focus:border-navy'"
+            @input="emailError = ''"
+          />
+          <p v-if="emailError" class="mt-2 text-xs font-bold text-red-500">{{ emailError }}</p>
         </div>
-      </Transition>
-    </Teleport>
+      </form>
+      <template #footer>
+        <button @click="closeEmailModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="confirmEmail" :disabled="sendingEmail || !emailTo"
+          class="rounded-full bg-teal px-5 py-2.5 text-sm font-extrabold text-white hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ sendingEmail ? 'Enviando…' : 'Enviar' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Invoice Print Frame (oculto) -->
     <iframe ref="printFrame" class="hidden" style="position:absolute;width:0;height:0;border:0;"></iframe>
@@ -744,7 +678,10 @@ import { BillingService, isDeletable, type BillingStats, type Invoice, type Invo
 import { RoomService } from '@/services/Room.service'
 import { GuestService } from '@/services/Guest.service'
 import { useCurrency } from '@/composables/useCurrency'
-import { useCountUp } from '@/composables/useCountUp'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { FoliosService, type Folio } from '@/services/Folios.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -778,7 +715,11 @@ const ICON_USER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 const ICON_ALERT_TRIANGLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z"/></svg>'
 const ICON_CASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path stroke-linecap="round" d="M6 9v.01M18 15v.01"/></svg>'
 const ICON_BANK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10 12 3l9 7M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9M9 20v-6h6v6"/></svg>'
-const ICON_LINK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5 21 3M16.5 3H21v4.5M10.5 13.5 3 21M7.5 21H3v-4.5"/></svg>'
+const ICON_PRINT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V3h12v6M6 18H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1M6 14h12v7H6v-7Z"/></svg>'
+const ICON_EYE ='<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.04 12.32a1 1 0 0 1 0-.64C3.42 7.51 7.36 4.5 12 4.5c4.64 0 8.57 3.01 9.96 7.18a1 1 0 0 1 0 .64C20.58 16.49 16.64 19.5 12 19.5c-4.64 0-8.57-3.01-9.96-7.18Z"/><circle cx="12" cy="12" r="3"/></svg>'
+const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>'
+const ICON_BAN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="m5.6 5.6 12.8 12.8"/></svg>'
+const ICON_LINK ='<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5 21 3M16.5 3H21v4.5M10.5 13.5 3 21M7.5 21H3v-4.5"/></svg>'
 
 const tabs = [
   { value: 'invoices', label: 'Facturas', icon: ICON_DOCUMENT },
@@ -941,10 +882,35 @@ const totalToday = computed(() => stats.value.todayRevenue)
 const totalPending = computed(() => stats.value.pendingAmount + stats.value.overdueAmount)
 const totalInvoices = computed(() => stats.value.total)
 
-const totalMonthAnim = useCountUp(totalMonth)
-const totalTodayAnim = useCountUp(totalToday)
-const totalPendingAnim = useCountUp(totalPending)
-const totalInvoicesAnim = useCountUp(totalInvoices)
+// Los KPI los anima KpiHeroCard internamente (useCountUp propio).
+
+// Cabecera de datos del modal de factura. Se declara como datos para que el
+// template solo itere, igual que la ficha del huésped.
+const invoiceHeaderFields = computed(() => {
+  const inv = viewInvoice.value
+  if (!inv) return []
+  return [
+    { label: 'Huésped', value: inv.guest || '—' },
+    { label: 'Habitación', value: inv.room || '—' },
+    { label: 'Moneda', value: `${currencySymbol(inv.currency)} ${inv.currency}` },
+  ]
+})
+
+// Porción ya cobrada del total facturado — alimenta el anillo del KPI "Pendiente".
+const collectedShare = computed(() => {
+  const billed = totalMonth.value + totalPending.value
+  return billed > 0 ? Math.round((totalMonth.value / billed) * 100) : 0
+})
+
+// Rango de la página actual. El tamaño de página lo decide el backend, así que se
+// deriva de total/pages en vez de hardcodear una constante que puede desincronizarse.
+const rangeLabel = computed(() => {
+  if (!totalItems.value) return '0 documentos'
+  const size = Math.ceil(totalItems.value / Math.max(1, totalPages.value))
+  const from = (page.value - 1) * size + 1
+  const to = Math.min(page.value * size, totalItems.value)
+  return `${from}–${to} de ${totalItems.value}`
+})
 
 function methodClass(method: string) {
   const m = String(method).toLowerCase()
@@ -1348,12 +1314,5 @@ async function confirmCreditNote() {
 </script>
 
 <style scoped>
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
-.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
-  opacity: 0; transform: scale(0.95) translateY(12px);
-}
+/* Las transiciones de entrada/salida ahora las aporta AppModal. */
 </style>
