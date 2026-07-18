@@ -21,119 +21,136 @@
       </button>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-            <span class="w-5 h-5 text-navy" v-html="ICON_USERS_GROUP"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-navy">{{ Math.round(totalGuestsAnim) }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Total Huéspedes</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-            <span class="w-5 h-5 text-cyan" v-html="ICON_HOME"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-cyan">{{ Math.round(activeTodayAnim) }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Activos Hoy</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-            <span class="w-5 h-5 text-teal" v-html="ICON_STAR"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-teal">{{ Math.round(frequentGuestsAnim) }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Frecuentes</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
-            <span class="w-5 h-5 text-gold" v-html="ICON_WALLET"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-gold">{{ Math.round(totalPointsAnim).toLocaleString() }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">Puntos Otorgados</div>
-          </div>
-        </div>
-      </div>
+    <!-- Stats — KpiHeroCard (mismo lenguaje visual que dashboard/housekeeping) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <KpiHeroCard label="Total Huéspedes" :value="totalGuestsCount" icon="users" accent="blue"
+        :unit="`${newGuestsCount} nuevos · ${vipGuestsCount} VIP`" />
+      <KpiHeroCard label="Activos Hoy" :value="activeToday" icon="checkin" accent="teal"
+        unit="Hospedados en este momento" />
+      <KpiHeroCard label="Frecuentes" :value="frequentGuests" icon="bookings" accent="purple"
+        :unit="`${FREQUENT_STAYS_THRESHOLD}+ estadías`" :progress="frequentShare" />
+      <KpiHeroCard label="Puntos Otorgados" :value="totalPoints" icon="money" accent="amber"
+        unit="Programa de fidelización" />
     </div>
 
     <!-- Guest List -->
-    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div class="p-4 border-b border-border">
-        <div class="flex items-center gap-3">
-          <input v-model="searchQuery" type="text" placeholder="Buscar por nombre, email o teléfono..." class="flex-1 px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy" />
-          <select v-model="filterType" class="px-4 py-2.5 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-            <option value="all">Todos</option>
-            <option value="frequent">Frecuentes (5+ estadías)</option>
-            <option value="new">Nuevos (1 estadía)</option>
-            <option value="vip">VIP ($5,000+ gastados)</option>
-          </select>
+    <SectionCard title="Listado de huéspedes" :subtitle="`${totalFiltered} de ${totalGuestsCount} huésped(es)`" body-class="p-0">
+      <template #actions>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" v-html="ICON_SEARCH"></span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Buscar nombre, email o teléfono..."
+            class="w-full sm:w-72 pl-9 pr-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm text-white placeholder:text-white/45 focus:outline-none focus:border-cyan focus:bg-white/15 transition-colors"
+          />
         </div>
+        <select v-model="filterType" class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+          <option class="text-navy" value="all">Todos</option>
+          <option class="text-navy" value="frequent">Frecuentes ({{ FREQUENT_STAYS_THRESHOLD }}+ estadías)</option>
+          <option class="text-navy" value="new">Nuevos (1 estadía)</option>
+          <option class="text-navy" value="vip">VIP (${{ VIP_SPEND_THRESHOLD.toLocaleString() }}+ gastados)</option>
+        </select>
+      </template>
+
+      <EmptyState
+        v-if="!totalFiltered"
+        :icon="ICON_USERS_EMPTY"
+        :title="searchQuery || filterType !== 'all' ? 'Sin resultados' : 'Todavía no hay huéspedes'"
+        :message="searchQuery || filterType !== 'all' ? 'Probá con otro término de búsqueda o quitá el filtro.' : 'Registrá el primer huésped para empezar a construir tu CRM.'"
+      >
+        <template #action>
+          <button v-if="searchQuery || filterType !== 'all'" @click="clearFilters" class="px-5 py-2.5 rounded-full border border-border text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer">
+            Limpiar filtros
+          </button>
+          <button v-else @click="openNewGuest" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
+            Nuevo Huésped
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[840px] tbl-head">
+          <thead>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Huésped</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Contacto</th>
+              <th class="text-right px-4 py-3 text-[10px]">Estadías</th>
+              <th class="text-right px-4 py-3 text-[10px]">Total Gastado</th>
+              <th class="text-right px-4 py-3 text-[10px]">Puntos</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden xl:table-cell">Última Visita</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="guest in paginatedGuests"
+              :key="guest.id"
+              @click="openViewGuest(guest)"
+              class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer"
+            >
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="relative shrink-0">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-black" :class="guestAvatarClass(guest)">
+                      {{ guest.initials }}
+                    </div>
+                    <!-- Punto verde: hospedado en este momento -->
+                    <span v-if="guest.isActiveToday" class="absolute -bottom-0.5 -right-0.5 flex h-3 w-3" title="Hospedado hoy">
+                      <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
+                      <span class="relative inline-flex h-3 w-3 rounded-full bg-[#22C55E] ring-2 ring-white"></span>
+                    </span>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-sm font-bold text-navy truncate">{{ guest.name }}</span>
+                      <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide" :class="segmentOf(guest).class">
+                        {{ segmentOf(guest).label }}
+                      </span>
+                    </div>
+                    <!-- Líneas secundarias: cada una se omite si está vacía (evita filas
+                         llenas de guiones sueltos). El contacto sólo aparece en <lg, donde
+                         la columna Contacto está oculta — en desktop sería duplicado. -->
+                    <div v-if="guest.nationality" class="text-[11px] text-text-muted truncate">{{ guest.nationality }}</div>
+                    <div v-if="contactOf(guest)" class="text-[11px] text-text-muted truncate lg:hidden">{{ contactOf(guest) }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3 hidden lg:table-cell">
+                <div v-if="guest.email" class="text-sm text-text-secondary truncate max-w-[220px]">{{ guest.email }}</div>
+                <div v-if="guest.phone" class="text-[11px] text-text-muted">{{ guest.phone }}</div>
+                <span v-if="!guest.email && !guest.phone" class="text-sm text-text-muted">Sin contacto</span>
+              </td>
+              <td class="px-4 py-3 text-right text-sm font-bold text-navy tabular-nums">{{ guest.stays }}</td>
+              <td class="px-4 py-3 text-right text-sm font-extrabold text-navy tabular-nums">${{ guest.totalSpent.toLocaleString() }}</td>
+              <td class="px-4 py-3 text-right">
+                <span class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-gold">
+                  {{ guest.points.toLocaleString() }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-sm text-text-secondary hidden xl:table-cell">{{ guest.lastVisit || '—' }}</td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button @click.stop="openViewGuest(guest)" title="Ver perfil"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_EYE"></span>
+                  </button>
+                  <button @click.stop="openEditGuest(guest)" title="Editar"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_PENCIL"></span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <table class="w-full">
-        <thead>
-          <tr class="border-b border-border bg-surface/50">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Huésped</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Contacto</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estadías</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Total Gastado</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Puntos</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Última Visita</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="guest in paginatedGuests"
-            :key="guest.id"
-            @click="openViewGuest(guest)"
-            class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors cursor-pointer"
-          >
-            <td class="p-4">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" :class="guestAvatarClass(guest)">
-                  {{ guest.initials }}
-                </div>
-                <div>
-                  <div class="text-sm font-bold text-navy">{{ guest.name }}</div>
-                  <div class="text-[10px] text-text-muted">{{ guest.nationality }}</div>
-                </div>
-              </div>
-            </td>
-            <td class="p-4">
-              <div class="text-sm">{{ guest.email }}</div>
-              <div class="text-[10px] text-text-muted">{{ guest.phone }}</div>
-            </td>
-            <td class="p-4 text-sm font-bold">{{ guest.stays }}</td>
-            <td class="p-4 text-sm font-extrabold text-navy">${{ guest.totalSpent.toLocaleString() }}</td>
-            <td class="p-4">
-              <span class="badge badge-info">{{ guest.points.toLocaleString() }}</span>
-            </td>
-            <td class="p-4 text-sm text-text-secondary">{{ guest.lastVisit }}</td>
-            <td class="p-4 text-right">
-              <div class="flex items-center justify-end gap-4">
-                <button @click.stop="openViewGuest(guest)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Ver</button>
-                <button @click.stop="openEditGuest(guest)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+
       <!-- Paginación del listado -->
       <div v-if="totalFiltered > PAGE_SIZE" class="flex items-center justify-between px-4 py-3 border-t border-border">
-        <span class="text-[10px] text-text-muted font-bold">{{ totalFiltered }} huésped(es)</span>
+        <span class="text-[11px] text-text-muted font-bold">
+          {{ (currentPage - 1) * PAGE_SIZE + 1 }}–{{ Math.min(currentPage * PAGE_SIZE, totalFiltered) }} de {{ totalFiltered }}
+        </span>
         <div class="flex items-center gap-1">
           <button @click="goToPage(1)" :disabled="currentPage <= 1" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">«</button>
           <button @click="goToPage(currentPage - 1)" :disabled="currentPage <= 1" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">‹</button>
@@ -142,7 +159,7 @@
           <button @click="goToPage(totalPages)" :disabled="currentPage >= totalPages" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">»</button>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- View Guest Profile Modal -->
     <Teleport to="body">
@@ -561,13 +578,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useCountUp } from '@/composables/useCountUp'
 import { GuestService } from '@/services/Guest.service'
 import { ReservationService } from '@/services/Reservation.service'
 import { CrmService } from '@/services/Crm.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
 
 const auth = useAuthStore()
@@ -575,10 +594,10 @@ const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
-const ICON_USERS_GROUP = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72M18 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M18 18.72v-.235a3 3 0 0 0-3-3M6 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M6 18.72v-.235a3 3 0 0 1 3-3m3.75-6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>'
-const ICON_HOME = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75"/></svg>'
-const ICON_STAR = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 21.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>'
-const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h.01M3 10h18"/></svg>'
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z"/></svg>'
+const ICON_EYE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
+const ICON_PENCIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v4.75A2 2 0 0 1 17.5 21h-11a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2h4.75"/></svg>'
+const ICON_USERS_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
 
 // Umbrales de segmentación de clientes (VIP por gasto, Frecuente por estadías)
 const VIP_SPEND_THRESHOLD = 5000
@@ -759,13 +778,12 @@ const activeToday = computed(() => guests.value.filter((g: any) => g.isActiveTod
 const frequentGuests = computed(() => guests.value.filter((g: any) => g.stays >= FREQUENT_STAYS_THRESHOLD).length)
 const totalPoints = computed(() => guests.value.reduce((sum: number, g: any) => sum + (g.points ?? 0), 0))
 const totalGuestsCount = computed(() => guests.value.length)
+const newGuestsCount = computed(() => guests.value.filter((g: any) => g.stays <= 1).length)
+const vipGuestsCount = computed(() => guests.value.filter((g: any) => g.totalSpent >= VIP_SPEND_THRESHOLD).length)
+// % de la cartera que ya es cliente frecuente — alimenta el anillo del KPI.
+const frequentShare = computed(() => totalGuestsCount.value ? Math.round((frequentGuests.value / totalGuestsCount.value) * 100) : 0)
 
-// useCountUp lee `.value` de inmediato al llamarse (a diferencia de un computed normal,
-// que es perezoso) — por eso va DESPUÉS de que `guests` ya esté declarado más arriba.
-const totalGuestsAnim = useCountUp(totalGuestsCount)
-const activeTodayAnim = useCountUp(activeToday)
-const frequentGuestsAnim = useCountUp(frequentGuests)
-const totalPointsAnim = useCountUp(totalPoints)
+// La animación de los números la hace KpiHeroCard internamente (useCountUp propio).
 
 const filteredGuests = computed(() => {
   let result = guests.value
@@ -806,6 +824,26 @@ function guestAvatarClass(guest: any) {
   if (guest.totalSpent >= VIP_SPEND_THRESHOLD) return 'bg-gold/10 text-gold'
   if (guest.stays >= FREQUENT_STAYS_THRESHOLD) return 'bg-teal/10 text-teal'
   return 'bg-navy/10 text-navy'
+}
+
+// Segmento visible en la fila: mismos umbrales que los filtros del listado,
+// para que el badge y el desplegable nunca digan cosas distintas.
+function segmentOf(guest: any): { label: string; class: string } {
+  if (guest.totalSpent >= VIP_SPEND_THRESHOLD) return { label: 'VIP', class: 'bg-gold/10 text-gold' }
+  if (guest.stays >= FREQUENT_STAYS_THRESHOLD) return { label: 'Frecuente', class: 'bg-teal/10 text-teal' }
+  if (guest.stays <= 1) return { label: 'Nuevo', class: 'bg-cyan/10 text-cyan' }
+  return { label: 'Regular', class: 'bg-surface text-text-muted' }
+}
+
+// Contacto compacto para pantallas chicas, donde la columna Contacto está oculta.
+// Devuelve '' si el huésped no tiene ninguno — así la línea no se renderiza.
+function contactOf(guest: any): string {
+  return guest.email || guest.phone || ''
+}
+
+function clearFilters() {
+  searchQuery.value = ''
+  filterType.value = 'all'
 }
 
 const TIER_META: Record<string, { label: string; color: string }> = {
