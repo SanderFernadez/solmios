@@ -17,80 +17,49 @@
       </div>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
-    </div>
+    <!-- Skeletons: cuatro KPI + la fila de tiers -->
+    <template v-if="loading">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <div v-for="i in 4" :key="i" class="h-28 animate-pulse rounded-[16px] bg-surface"></div>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        <div v-for="i in 5" :key="i" class="h-24 animate-pulse rounded-2xl bg-surface"></div>
+      </div>
+    </template>
 
     <template v-else-if="dashboard">
       <!-- KPIs -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-              <span class="w-5 h-5 text-navy" v-html="ICON_USERS"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none tabular-nums text-navy truncate">{{ Math.round(totalGuestsAnim) }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total Huéspedes</div>
-            </div>
-          </div>
-        </div>
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-              <span class="w-5 h-5 text-teal" v-html="ICON_CHECK"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none tabular-nums text-teal truncate">{{ Math.round(activeThisMonthAnim) }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Activos Este Mes</div>
-            </div>
-          </div>
-        </div>
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
-              <span class="w-5 h-5 text-gold" v-html="ICON_STAR"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none tabular-nums text-gold truncate">{{ Math.round(pointsIssuedAnim).toLocaleString() }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Puntos Emitidos</div>
-            </div>
-          </div>
-        </div>
-        <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-              <span class="w-5 h-5 text-cyan" v-html="ICON_WALLET"></span>
-            </div>
-            <div class="min-w-0">
-              <div class="text-xl font-black leading-none tabular-nums text-cyan truncate">${{ Math.round(avgLtvAnim).toLocaleString() }}</div>
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">LTV Promedio</div>
-            </div>
-          </div>
-        </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <KpiHeroCard label="Total Huéspedes" :value="totalGuestsCount" icon="users" accent="blue"
+          unit="En la cartera del hotel" />
+        <KpiHeroCard label="Activos Este Mes" :value="activeThisMonthCount" icon="checkin" accent="teal"
+          unit="Con movimiento reciente" :progress="activeShare" />
+        <KpiHeroCard label="Puntos Emitidos" :value="pointsIssuedCount" icon="money" accent="amber"
+          unit="Programa de fidelización" />
+        <KpiHeroCard label="LTV Promedio" :value="avgLtvCount" icon="bookings" accent="purple"
+          prefix="$" unit="Valor de vida por cliente" />
       </div>
 
       <!-- Tiers -->
-      <div class="mb-6">
-        <h3 class="text-sm font-extrabold text-navy mb-3">Distribución por Tier</h3>
+      <SectionCard title="Distribución por tier" subtitle="Cómo se reparte la cartera de huéspedes" class="mb-6">
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div v-for="(count, tier) in dashboard.topTierCounts" :key="tier"
-            class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
+            class="rounded-2xl border border-border p-4 transition-transform duration-300 hover:-translate-y-0.5">
             <div class="flex items-center gap-3">
-              <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0" :class="tierBg(tier)">
-                <span class="w-5 h-5" v-html="tierIcon(tier)"></span>
+              <div class="grid h-11 w-11 shrink-0 place-items-center rounded-full" :class="tierBg(tier)">
+                <span class="h-5 w-5" v-html="tierIcon(tier)"></span>
               </div>
               <div class="min-w-0">
                 <div class="text-xl font-black leading-none tabular-nums text-navy">{{ count }}</div>
-                <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">{{ tier }}</div>
+                <div class="mt-1 truncate text-[10px] font-bold uppercase tracking-wide text-text-muted">{{ tier }}</div>
               </div>
             </div>
-            <div class="mt-3 h-1.5 rounded-full bg-surface overflow-hidden">
+            <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-surface">
               <div class="h-full rounded-full transition-all" :class="tierBarColor(tier)" :style="{ width: tierPercent(count) + '%' }"></div>
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
     </template>
 
     <!-- Tabs -->
@@ -104,132 +73,193 @@
     </div>
 
     <!-- LTV -->
-    <div v-if="activeTab === 'ltv' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div class="p-4 border-b border-border"><h3 class="flex items-center gap-2 font-extrabold text-navy text-sm"><span class="w-4 h-4 shrink-0" v-html="ICON_CHART"></span>Valor de Vida del Cliente (LTV)</h3></div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+    <SectionCard v-if="activeTab === 'ltv' && !loading"
+      title="Valor de vida del cliente" :subtitle="`${ltv.length} huésped(es) con historial`" body-class="p-0">
+      <EmptyState v-if="!ltv.length" :icon="ICON_CHART_EMPTY"
+        title="Todavía no hay datos de LTV"
+        message="El valor de vida se calcula a partir de las estadías facturadas de cada huésped." />
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[900px] text-sm tbl-head">
           <thead>
-            <tr class="border-b border-border bg-surface/50">
-              <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Huésped</th>
-              <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tier</th>
-              <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Estancias</th>
-              <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Total Gastado</th>
-              <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Promedio</th>
-              <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Puntos</th>
-              <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Última Visita</th>
-              <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">LTV Score</th>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Huésped</th>
+              <th class="text-left px-4 py-3 text-[10px]">Tier</th>
+              <th class="text-right px-4 py-3 text-[10px]">Estancias</th>
+              <th class="text-right px-4 py-3 text-[10px]">Total Gastado</th>
+              <th class="text-right px-4 py-3 text-[10px] hidden lg:table-cell">Promedio</th>
+              <th class="text-right px-4 py-3 text-[10px]">Puntos</th>
+              <th class="text-right px-4 py-3 text-[10px] hidden xl:table-cell">Última Visita</th>
+              <th class="text-right px-4 py-3 text-[10px]">LTV Score</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="g in ltv" :key="g.guestId" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
-              <td class="px-4 py-3 font-bold text-navy whitespace-nowrap">{{ g.name }}</td>
-              <td class="px-4 py-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize" :class="tierBadge(g.tier)">{{ g.tier }}</span></td>
-              <td class="px-4 py-3 text-right text-text-secondary">{{ g.totalStays }}</td>
-              <td class="px-4 py-3 text-right font-bold text-navy">${{ g.totalSpent.toLocaleString() }}</td>
-              <td class="px-4 py-3 text-right text-text-secondary">${{ g.avgPerStay.toLocaleString() }}</td>
-              <td class="px-4 py-3 text-right text-gold font-bold">{{ g.loyaltyPoints }}</td>
-              <td class="px-4 py-3 text-right text-text-secondary whitespace-nowrap">
-                <span v-if="g.daysSinceLastVisit <= 30" class="inline-flex items-center gap-1"><span class="w-3 h-3 text-coral shrink-0" v-html="ICON_FLAME"></span>{{ g.daysSinceLastVisit }}d</span>
+            <tr v-for="g in ltv" :key="g.guestId" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/10 text-[11px] font-black text-navy">
+                    {{ initialsOf(g.name) }}
+                  </div>
+                  <span class="font-bold text-navy whitespace-nowrap">{{ g.name }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :class="tierBadge(g.tier)">{{ g.tier }}</span>
+              </td>
+              <td class="px-4 py-3 text-right tabular-nums text-text-secondary">{{ g.totalStays }}</td>
+              <td class="px-4 py-3 text-right font-bold tabular-nums text-navy">${{ g.totalSpent.toLocaleString() }}</td>
+              <td class="px-4 py-3 text-right tabular-nums text-text-secondary hidden lg:table-cell">${{ g.avgPerStay.toLocaleString() }}</td>
+              <td class="px-4 py-3 text-right">
+                <span class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-gold">
+                  {{ g.loyaltyPoints }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right tabular-nums text-text-secondary whitespace-nowrap hidden xl:table-cell">
+                <!-- Llama = volvió hace poco. -->
+                <span v-if="g.daysSinceLastVisit <= RECENT_DAYS" class="inline-flex items-center gap-1 font-bold text-coral">
+                  <span class="h-3 w-3 shrink-0" v-html="ICON_FLAME"></span>{{ g.daysSinceLastVisit }}d
+                </span>
                 <span v-else>{{ g.daysSinceLastVisit }}d</span>
               </td>
-              <td class="px-4 py-3 text-right font-extrabold" :class="g.ltvScore >= 50 ? 'text-teal' : g.ltvScore >= 30 ? 'text-gold' : 'text-text-secondary'">{{ g.ltvScore }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-if="!ltv.length" class="p-8 text-center text-text-muted text-sm">Cargando LTV...</div>
-    </div>
-
-    <!-- Cupones -->
-    <div v-if="activeTab === 'coupons' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between items-center">
-        <h3 class="flex items-center gap-2 font-extrabold text-navy text-sm"><span class="w-4 h-4 shrink-0" v-html="ICON_TAG"></span>Cupones y Descuentos</h3>
-        <button @click="showCouponForm = true" class="flex items-center gap-1.5 rounded-full bg-cyan text-navy text-[11px] font-extrabold px-3.5 py-1.5 hover:shadow-lg transition-all cursor-pointer">
-          <span class="w-3 h-3 shrink-0" v-html="ICON_PLUS"></span>Nuevo Cupón
-        </button>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-border bg-surface/50">
-              <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Código</th>
-              <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Tipo</th>
-              <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Valor</th>
-              <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Usos</th>
-              <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Vence</th>
-              <th class="text-right px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="c in coupons" :key="c.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
-              <td class="px-4 py-3 font-bold text-navy whitespace-nowrap">{{ c.code }}</td>
-              <td class="px-4 py-3 text-text-secondary">{{ c.type === 'percentage' ? '%' : '$' }}</td>
-              <td class="px-4 py-3 text-right font-bold text-teal">{{ c.type === 'percentage' ? c.value + '%' : '$' + c.value }}</td>
-              <td class="px-4 py-3 text-right text-text-secondary">{{ c.useCount }}{{ c.maxUses ? '/' + c.maxUses : '' }}</td>
-              <td class="px-4 py-3 text-text-secondary whitespace-nowrap">{{ c.expiresAt || 'Sin vencimiento' }}</td>
-              <td class="px-4 py-3 text-right">
-                <button @click="deleteCoupon(c)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Eliminar</button>
+              <td class="px-4 py-3 text-right font-extrabold tabular-nums"
+                :class="g.ltvScore >= 50 ? 'text-teal' : g.ltvScore >= 30 ? 'text-gold' : 'text-text-secondary'">
+                {{ g.ltvScore }}
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-if="!coupons.length" class="p-8 text-center">
-        <span class="w-8 h-8 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_TAG"></span>
-        <p class="text-text-muted text-sm">No hay cupones. Creá el primero.</p>
+    </SectionCard>
+
+    <!-- Cupones -->
+    <SectionCard v-if="activeTab === 'coupons' && !loading"
+      title="Cupones y descuentos" :subtitle="`${coupons.length} cupón(es)`" body-class="p-0">
+      <template #actions>
+        <button @click="showCouponForm = true"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm font-bold text-white hover:bg-white/15 transition-colors cursor-pointer">
+          <span class="h-3.5 w-3.5" v-html="ICON_PLUS"></span> Nuevo cupón
+        </button>
+      </template>
+
+      <EmptyState v-if="!coupons.length" :icon="ICON_TAG_EMPTY"
+        title="Todavía no hay cupones"
+        message="Creá un cupón para aplicar descuentos por código en las reservas.">
+        <template #action>
+          <button @click="showCouponForm = true"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+            Nuevo cupón
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-sm tbl-head">
+          <thead>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Código</th>
+              <th class="text-right px-4 py-3 text-[10px]">Descuento</th>
+              <th class="text-right px-4 py-3 text-[10px]">Usos</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Vence</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in coupons" :key="c.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+              <td class="px-4 py-3">
+                <div class="font-black text-navy whitespace-nowrap">{{ c.code }}</div>
+                <div class="text-[11px] text-text-muted lg:hidden">{{ c.expiresAt || 'Sin vencimiento' }}</div>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <span class="inline-flex items-center rounded-full bg-teal/10 px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-teal">
+                  {{ c.type === 'percentage' ? c.value + '%' : '$' + c.value }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right tabular-nums text-text-secondary">
+                {{ c.useCount }}<span v-if="c.maxUses" class="text-text-muted">/{{ c.maxUses }}</span>
+              </td>
+              <td class="px-4 py-3 text-text-secondary whitespace-nowrap hidden lg:table-cell">{{ c.expiresAt || 'Sin vencimiento' }}</td>
+              <td class="px-4 py-3 text-right">
+                <button @click="deleteCoupon(c)" title="Eliminar cupón"
+                  class="grid h-8 w-8 place-items-center rounded-lg text-coral hover:bg-coral/10 transition-colors cursor-pointer ml-auto">
+                  <span class="h-4 w-4" v-html="ICON_TRASH"></span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Validar cupón -->
-    <div v-if="activeTab === 'validate' && !loading" class="max-w-md mx-auto rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-      <h3 class="flex items-center gap-2 font-extrabold text-navy text-sm mb-4"><span class="w-4 h-4 shrink-0" v-html="ICON_CARD"></span>Validar Cupón</h3>
-      <div class="space-y-3">
-        <input v-model="validateCode" placeholder="Código del cupón" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
-        <input v-model.number="validateAmount" type="number" placeholder="Monto de la compra" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
-        <button @click="doValidateCoupon" class="w-full rounded-full bg-teal text-white text-sm font-extrabold py-3 hover:bg-teal-light transition-colors cursor-pointer">Validar</button>
-      </div>
-      <div v-if="validatedCoupon" class="mt-6 pt-5 border-t border-border">
-        <div class="font-extrabold text-teal text-lg">{{ validatedCoupon.code }}</div>
-        <div class="text-sm text-text-secondary mt-0.5">Descuento: <b class="text-navy">{{ validatedCoupon.type === 'percentage' ? validatedCoupon.value + '%' : '$' + validatedCoupon.value }}</b></div>
-      </div>
+    <div v-if="activeTab === 'validate' && !loading" class="mx-auto max-w-md">
+      <SectionCard title="Validar cupón" subtitle="Comprobá un código antes de aplicarlo">
+        <div class="space-y-3">
+          <div>
+            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Código</label>
+            <input v-model="validateCode" placeholder="Código del cupón"
+              class="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-bold text-navy focus:border-navy focus:outline-none">
+          </div>
+          <div>
+            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Monto de la compra</label>
+            <input v-model.number="validateAmount" type="number" placeholder="0"
+              class="w-full rounded-xl border border-border px-4 py-2.5 text-sm tabular-nums focus:border-navy focus:outline-none">
+          </div>
+          <button @click="doValidateCoupon"
+            class="w-full rounded-full bg-teal py-3 text-sm font-extrabold text-white hover:bg-teal-light transition-colors cursor-pointer">
+            Validar
+          </button>
+        </div>
+
+        <div v-if="validatedCoupon" class="mt-5 rounded-2xl border-2 border-teal/40 bg-teal/5 px-4 py-3">
+          <div class="text-lg font-black text-teal">{{ validatedCoupon.code }}</div>
+          <div class="mt-0.5 text-sm text-text-secondary">
+            Descuento:
+            <b class="text-navy tabular-nums">{{ validatedCoupon.type === 'percentage' ? validatedCoupon.value + '%' : '$' + validatedCoupon.value }}</b>
+          </div>
+        </div>
+      </SectionCard>
     </div>
 
     <!-- Segmentos -->
-    <div v-if="activeTab === 'segments' && !loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div class="p-4 border-b border-border flex justify-between items-center">
-        <h3 class="flex items-center gap-2 font-extrabold text-navy text-sm"><span class="w-4 h-4 shrink-0" v-html="ICON_TARGET"></span>Segmentos de Huéspedes</h3>
-        <button @click="showSegmentForm = true" class="flex items-center gap-1.5 rounded-full bg-cyan text-navy text-[11px] font-extrabold px-3.5 py-1.5 hover:shadow-lg transition-all cursor-pointer">
-          <span class="w-3 h-3 shrink-0" v-html="ICON_PLUS"></span>Nuevo
+    <SectionCard v-if="activeTab === 'segments' && !loading"
+      title="Segmentos de huéspedes" :subtitle="`${segments.length} segmento(s)`" body-class="p-0">
+      <template #actions>
+        <button @click="showSegmentForm = true"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm font-bold text-white hover:bg-white/15 transition-colors cursor-pointer">
+          <span class="h-3.5 w-3.5" v-html="ICON_PLUS"></span> Nuevo
         </button>
-      </div>
+      </template>
 
-      <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div v-for="s in segments" :key="s.id" class="rounded-[20px] border border-border p-4">
-          <div class="font-extrabold text-navy text-sm mb-1">{{ s.name }}</div>
-          <div class="text-[10px] text-text-muted mb-3">{{ s.description || 'Segmento dinámico' }} · {{ s.count }} huéspedes</div>
-          <button @click="viewSegmentGuests(s)" class="text-[11px] text-cyan font-bold hover:text-navy transition-colors cursor-pointer">Ver huéspedes →</button>
-        </div>
-        <div v-if="!segments.length" class="col-span-1 md:col-span-3 p-8 text-center">
-          <span class="w-8 h-8 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_TARGET"></span>
-          <p class="text-text-muted text-sm">No hay segmentos definidos</p>
+      <EmptyState v-if="!segments.length" :icon="ICON_TARGET_EMPTY"
+        title="No hay segmentos definidos"
+        message="Agrupá huéspedes por comportamiento para dirigirles campañas.">
+        <template #action>
+          <button @click="showSegmentForm = true"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+            Nuevo segmento
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="grid grid-cols-1 gap-4 p-4 md:grid-cols-3">
+        <div v-for="s in segments" :key="s.id" class="rounded-2xl border border-border p-4 transition-transform duration-300 hover:-translate-y-0.5">
+          <div class="flex items-start justify-between gap-2">
+            <div class="text-sm font-black text-navy">{{ s.name }}</div>
+            <span class="shrink-0 rounded-full bg-navy/10 px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-navy">{{ s.count }}</span>
+          </div>
+          <div v-if="s.description" class="mt-1 text-[11px] text-text-muted">{{ s.description }}</div>
+          <button @click="viewSegmentGuests(s)"
+            class="mt-3 text-[11px] font-bold text-cyan hover:text-navy transition-colors cursor-pointer">
+            Ver huéspedes →
+          </button>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Modal: Nuevo Cupón -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showCouponForm" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Nuevo Cupón</h3>
-              <button @click="showCouponForm = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-            </div>
-            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+    <AppModal v-if="showCouponForm" size="md" title="Nuevo cupón"
+      subtitle="Código de descuento aplicable en reservas" @close="showCouponForm = false">
+      <div class="space-y-4">
               <div>
                 <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Código</label>
                 <input v-model="couponForm.code" placeholder="Ej: VERANO2026" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
@@ -257,31 +287,18 @@
                   <input v-model="couponForm.expiresAt" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
                 </div>
               </div>
-            </div>
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="showCouponForm = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="createCoupon" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">Crear Cupón</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+      </div>
+
+      <template #footer>
+        <button @click="showCouponForm = false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="createCoupon" class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer">Crear cupón</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Nuevo Segmento -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showSegmentForm" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Nuevo Segmento</h3>
-              <button @click="showSegmentForm = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-            </div>
-            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+    <AppModal v-if="showSegmentForm" size="md" title="Nuevo segmento"
+      subtitle="Agrupa huéspedes por tier y cantidad de estadías" @close="showSegmentForm = false">
+      <div class="space-y-4">
               <div>
                 <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Nombre</label>
                 <input v-model="segmentForm.name" placeholder="Ej: Huéspedes frecuentes" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
@@ -301,17 +318,18 @@
                 <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Mín. Estancias</label>
                 <input v-model.number="segmentForm.minStays" type="number" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy">
               </div>
-            </div>
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="showSegmentForm = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="createSegment" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">Crear Segmento</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+      </div>
+
+      <template #footer>
+        <button @click="showSegmentForm = false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="createSegment" class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer">Crear segmento</button>
+      </template>
+    </AppModal>
+
+    <!-- Confirmación de borrado (reemplaza el confirm() nativo) -->
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -319,7 +337,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { CrmService, type Coupon, type GuestSegment, type GuestLTV, type CrmDashboard, type SegmentGuest } from '@/services/Crm.service'
 import { useToast } from '@/composables/useToast'
+import { useApiError } from '@/composables/useApiError'
+import { useConfirm } from '@/composables/useConfirm'
 import { useCountUp } from '@/composables/useCountUp'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import AppModal from '@/components/ui/AppModal.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 
 const ICON_USERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
 const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'
@@ -335,8 +360,18 @@ const ICON_MEDAL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" s
 const ICON_GEM = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 8.25 6.75 12 6.75-12M5.25 8.25 8 4.5h8l2.75 3.75M5.25 8.25h13.5"/></svg>'
 const ICON_CROWN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17h18M4 17l-1-9 5 4 4-6 4 6 5-4-1 9"/></svg>'
 const ICON_USER = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
+const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>'
+// Variantes a 32px para EmptyState (su caja mide 64px; con w-full quedan gigantes).
+const ICON_CHART_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg>'
+const ICON_TAG_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.169.659 1.591l9.5 9.5a2.25 2.25 0 0 0 3.182 0l4.318-4.318a2.25 2.25 0 0 0 0-3.182l-9.5-9.5A2.25 2.25 0 0 0 9.568 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.008v.008H6.75V6.75Z"/></svg>'
+const ICON_TARGET_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-4.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0-3a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>'
 
 const toast = useToast()
+const { handle } = useApiError()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => loadData(),
+  onError: (e) => handle(e, 'No se pudo eliminar el cupón'),
+})
 const activeTab = ref('ltv')
 const loading = ref(true)
 
@@ -357,10 +392,20 @@ const activeThisMonthCount = computed(() => dashboard.value?.activeThisMonth ?? 
 const pointsIssuedCount = computed(() => dashboard.value?.totalPointsIssued ?? 0)
 const avgLtvCount = computed(() => dashboard.value?.avgLTV ?? 0)
 
-const totalGuestsAnim = useCountUp(totalGuestsCount)
-const activeThisMonthAnim = useCountUp(activeThisMonthCount)
-const pointsIssuedAnim = useCountUp(pointsIssuedCount)
-const avgLtvAnim = useCountUp(avgLtvCount)
+// Los KPI los anima KpiHeroCard internamente (useCountUp propio).
+
+// Porción de la cartera con movimiento este mes — anillo del KPI.
+const activeShare = computed(() => totalGuestsCount.value
+  ? Math.round((activeThisMonthCount.value / totalGuestsCount.value) * 100)
+  : 0)
+
+// Cliente "reciente" si volvió dentro de esta ventana (llama en la tabla de LTV).
+const RECENT_DAYS = 30
+
+function initialsOf(name?: string): string {
+  if (!name) return '?'
+  return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('')
+}
 
 const showCouponForm = ref(false)
 const showSegmentForm = ref(false)
@@ -394,7 +439,19 @@ async function createCoupon() {
   try { await CrmService.createCoupon(couponForm.value); toast.success('Cupón creado'); showCouponForm.value = false; couponForm.value = { code: '', type: 'percentage', value: 10, minPurchase: 0, expiresAt: '' }; loadData() }
   catch { toast.error('Error') }
 }
-async function deleteCoupon(c: Coupon) { try { await CrmService.deleteCoupon(c.id); toast.success('Eliminado'); loadData() } catch { toast.error('Error') } }
+// Borrar un cupón pasa por ConfirmModal: un código puede estar circulando ya.
+function deleteCoupon(c: Coupon) {
+  askConfirm({
+    title: 'Eliminar cupón',
+    message: `El código ${c.code} deja de ser válido para quien todavía no lo usó.`,
+    confirmLabel: 'Eliminar',
+    danger: true,
+    run: async () => {
+      await CrmService.deleteCoupon(c.id)
+      toast.success('Cupón eliminado')
+    },
+  })
+}
 async function doValidateCoupon() {
   try { validatedCoupon.value = await CrmService.validateCoupon(validateCode.value, validateAmount.value); toast.success('¡Cupón válido!') }
   catch { validatedCoupon.value = null; toast.error('Cupón inválido o expirado') }

@@ -8,121 +8,135 @@
     </div>
 
     <!-- Cada hotel cobra a SU cuenta: el aviso importa porque acá se cargan llaves que mueven plata -->
-    <div class="rounded-[20px] border border-cyan/20 bg-cyan/5 p-4 mb-6 flex gap-3">
-      <span class="text-lg shrink-0">🔒</span>
-      <div class="text-xs text-text-secondary leading-relaxed">
+    <div class="mb-6 flex gap-3 rounded-2xl border border-cyan/30 bg-cyan/5 px-4 py-3.5">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cyan/15 text-cyan">
+        <span class="h-4.5 w-4.5" v-html="ICON_LOCK"></span>
+      </span>
+      <div class="text-xs leading-relaxed text-text-secondary">
         <strong class="text-navy">Estas credenciales son tuyas y de nadie más.</strong>
         Los cobros de tu hotel se procesan contra la cuenta que configurés acá, y el dinero llega a tu banco.
         Las llaves se guardan cifradas y no se muestran nunca más una vez cargadas.
       </div>
     </div>
 
-    <div v-if="loading" class="text-center py-12 text-sm text-text-muted">Cargando pasarelas…</div>
+    <SkeletonLoader v-if="loading" variant="card" :rows="3" />
 
     <div v-else class="space-y-4">
-      <div v-for="p in providers" :key="p.provider" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-        <!-- Cabecera del proveedor -->
-        <div class="p-5 flex items-center justify-between gap-3 flex-wrap">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl">{{ p.icon }}</span>
-            <div>
-              <h3 class="font-extrabold text-navy">{{ p.name }}</h3>
-              <p class="text-[11px] text-text-muted">{{ p.description }}</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <span v-if="!p.implemented" class="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500">Próximamente</span>
-            <span v-else-if="gatewayOf(p.provider)?.enabled" class="text-[10px] font-bold px-2 py-1 rounded-full bg-teal/10 text-teal">Activa</span>
-            <span v-else-if="gatewayOf(p.provider)" class="text-[10px] font-bold px-2 py-1 rounded-full bg-gold/10 text-gold">Configurada — inactiva</span>
-            <span v-else class="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500">Sin configurar</span>
-            <button
-              v-if="p.implemented"
-              @click="toggleForm(p.provider)"
-              class="text-[11px] font-bold text-navy/70 hover:text-navy transition-colors cursor-pointer"
-            >{{ openForm === p.provider ? 'Cerrar' : (gatewayOf(p.provider) ? 'Editar' : 'Configurar') }}</button>
-          </div>
-        </div>
+      <SectionCard v-for="p in providers" :key="p.provider"
+        :title="p.name" :subtitle="p.description" body-class="p-0">
+        <template #actions>
+          <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide" :class="providerBadge(p)">
+            {{ providerStatus(p) }}
+          </span>
+          <button
+            v-if="p.implemented"
+            @click="toggleForm(p.provider)"
+            class="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-white/15 transition-colors cursor-pointer"
+          >{{ openForm === p.provider ? 'Cerrar' : (gatewayOf(p.provider) ? 'Editar' : 'Configurar') }}</button>
+        </template>
 
         <!-- Lo que el proveedor puede y no puede hacer: se lee del backend, no se adivina -->
-        <div v-if="p.implemented || gatewayOf(p.provider)" class="px-5 pb-4 flex gap-2 flex-wrap">
-          <span class="text-[10px] px-2 py-1 rounded-full bg-surface text-text-secondary">{{ confirmationLabel(p.confirmation) }}</span>
-          <span class="text-[10px] px-2 py-1 rounded-full" :class="p.capabilities.refund ? 'bg-surface text-text-secondary' : 'bg-coral/10 text-coral'">
+        <div v-if="p.implemented || gatewayOf(p.provider)" class="flex flex-wrap gap-2 px-5 py-4">
+          <span class="rounded-full bg-surface px-2.5 py-1 text-[10px] font-bold text-text-secondary">{{ confirmationLabel(p.confirmation) }}</span>
+          <span class="rounded-full px-2.5 py-1 text-[10px] font-bold" :class="p.capabilities.refund ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">
             {{ p.capabilities.refund ? 'Permite reembolsos' : 'No permite reembolsos' }}
           </span>
-          <span v-if="p.capabilities.paymentLinks" class="text-[10px] px-2 py-1 rounded-full bg-surface text-text-secondary">Links de pago</span>
+          <span v-if="p.capabilities.paymentLinks" class="rounded-full bg-surface px-2.5 py-1 text-[10px] font-bold text-text-secondary">Links de pago</span>
         </div>
 
         <!-- Formulario -->
-        <div v-if="openForm === p.provider" class="border-t border-border p-5 bg-surface/30">
-          <div class="grid md:grid-cols-2 gap-4">
+        <div v-if="openForm === p.provider" class="border-t border-border bg-surface/40 p-5">
+          <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Modo</label>
-              <select v-model="form.mode" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer bg-white">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Modo</label>
+              <select v-model="form.mode" class="w-full cursor-pointer rounded-xl border border-border bg-white px-4 py-2.5 text-sm focus:border-navy focus:outline-none">
                 <option value="test">Prueba (no cobra dinero real)</option>
                 <option value="live">Producción (cobra dinero real)</option>
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Moneda</label>
-              <select v-model="form.currency" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer bg-white">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Moneda</label>
+              <select v-model="form.currency" class="w-full cursor-pointer rounded-xl border border-border bg-white px-4 py-2.5 text-sm focus:border-navy focus:outline-none">
                 <option value="usd">USD — Dólar</option>
                 <option value="dop">DOP — Peso dominicano</option>
                 <option value="eur">EUR — Euro</option>
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Llave secreta</label>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Llave secreta</label>
               <input
                 v-model="form.secretKey" type="password"
                 :placeholder="current?.hasSecret ? `${current.secretMask} (guardada)` : 'sk_test_… o sk_live_…'"
-                class="w-full px-4 py-2.5 rounded-full border border-border text-sm bg-white"
+                class="w-full rounded-xl border border-border bg-white px-4 py-2.5 font-mono text-sm focus:border-navy focus:outline-none"
               />
-              <p v-if="current?.hasSecret" class="text-[10px] text-text-muted mt-1 ml-4">Guardada. Dejala vacía para conservarla.</p>
+              <p v-if="current?.hasSecret" class="mt-1.5 text-[11px] text-text-muted">Guardada. Dejala vacía para conservarla.</p>
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Llave pública</label>
-              <input v-model="form.publishableKey" type="text" placeholder="pk_test_… o pk_live_…" class="w-full px-4 py-2.5 rounded-full border border-border text-sm bg-white" />
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Llave pública</label>
+              <input v-model="form.publishableKey" type="text" placeholder="pk_test_… o pk_live_…"
+                class="w-full rounded-xl border border-border bg-white px-4 py-2.5 font-mono text-sm focus:border-navy focus:outline-none" />
             </div>
             <div class="md:col-span-2">
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Secreto del webhook</label>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Secreto del webhook</label>
               <input
                 v-model="form.webhookSecret" type="password"
                 :placeholder="current?.hasWebhookSecret ? '•••••••• (guardado)' : 'whsec_…'"
-                class="w-full px-4 py-2.5 rounded-full border border-border text-sm bg-white"
+                class="w-full rounded-xl border border-border bg-white px-4 py-2.5 font-mono text-sm focus:border-navy focus:outline-none"
               />
-              <p class="text-[10px] text-text-muted mt-1 ml-4">
+              <p class="mt-1.5 text-[11px] text-text-muted">
                 En Stripe, apuntá el webhook a: <code class="font-mono text-navy">{{ webhookUrl }}</code>
               </p>
             </div>
           </div>
 
-          <div class="flex items-center gap-2 mt-5 flex-wrap">
-            <button @click="save(p.provider)" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">
-              {{ saving ? 'Guardando…' : 'Guardar' }}
-            </button>
-            <button v-if="current" @click="testConnection(current.id)" :disabled="testing" class="px-5 py-2.5 bg-teal text-white rounded-full text-sm font-bold hover:bg-teal-light transition-all cursor-pointer disabled:opacity-50">
-              {{ testing ? 'Probando…' : 'Probar conexión' }}
-            </button>
-            <button v-if="current" @click="toggleEnabled(current)" class="px-5 py-2.5 border border-border rounded-full text-sm font-bold text-text-secondary hover:border-navy/30 transition-all cursor-pointer">
-              {{ current.enabled ? 'Desactivar' : 'Activar' }}
-            </button>
-            <button v-if="current" @click="remove(current)" class="ml-auto text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">
-              Eliminar
-            </button>
+          <!-- Modo producción: el aviso va antes de los botones, no después -->
+          <div v-if="form.mode === 'live'" class="mt-4 flex gap-3 rounded-2xl border border-coral/30 bg-coral/5 px-4 py-3">
+            <span class="mt-0.5 h-4 w-4 shrink-0 text-coral" v-html="ICON_ALERT"></span>
+            <p class="text-[11px] font-bold text-coral">
+              En modo Producción los cobros son reales y el dinero se mueve de verdad.
+            </p>
           </div>
 
-          <p v-if="form.mode === 'live'" class="text-[11px] text-coral font-bold mt-3">
-            ⚠ En modo Producción los cobros son reales y el dinero se mueve de verdad.
-          </p>
+          <div class="mt-5 flex flex-wrap items-center gap-2">
+            <button @click="save(p.provider)" :disabled="saving"
+              class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+              {{ saving ? 'Guardando…' : 'Guardar' }}
+            </button>
+            <button v-if="current" @click="testConnection(current.id)" :disabled="testing"
+              class="rounded-full bg-teal px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">
+              {{ testing ? 'Probando…' : 'Probar conexión' }}
+            </button>
+            <button v-if="current" @click="toggleEnabled(current)"
+              class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
+              {{ current.enabled ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button v-if="current" @click="remove(current)" title="Eliminar pasarela"
+              class="ml-auto grid h-9 w-9 place-items-center rounded-lg text-coral hover:bg-coral/10 transition-colors cursor-pointer">
+              <span class="h-4 w-4" v-html="ICON_TRASH"></span>
+            </button>
+          </div>
         </div>
-      </div>
+      </SectionCard>
     </div>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { useApiError } from '@/composables/useApiError'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+
+const ICON_LOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="11" width="16" height="10" rx="2"/><path stroke-linecap="round" d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
+const ICON_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z"/></svg>'
+const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>'
 import { useAuthStore } from '@/stores/auth.store'
 import {
   PaymentGatewayService,
@@ -132,7 +146,12 @@ import {
 } from '@/services/PaymentGateway.service'
 
 const toast = useToast()
+const { handle } = useApiError()
 const auth = useAuthStore()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => load(),
+  onError: (e) => handle(e, 'No se pudo eliminar la pasarela'),
+})
 
 const loading = ref(true)
 const saving = ref(false)
@@ -206,6 +225,23 @@ const webhookUrl = computed(() => {
 
 function gatewayOf(provider: PaymentProvider): PaymentGateway | undefined {
   return gateways.value.find(g => g.provider === provider)
+}
+
+// Estado de la pasarela en una sola lectura: no implementada / activa / cargada pero apagada / vacía.
+function providerStatus(p: { provider: PaymentProvider; implemented: boolean }): string {
+  if (!p.implemented) return 'Próximamente'
+  const gw = gatewayOf(p.provider)
+  if (gw?.enabled) return 'Activa'
+  if (gw) return 'Configurada — inactiva'
+  return 'Sin configurar'
+}
+
+function providerBadge(p: { provider: PaymentProvider; implemented: boolean }): string {
+  if (!p.implemented) return 'bg-white/10 text-white/60'
+  const gw = gatewayOf(p.provider)
+  if (gw?.enabled) return 'bg-[#22C55E]/20 text-[#4ADE80]'
+  if (gw) return 'bg-gold/20 text-gold'
+  return 'bg-white/10 text-white/60'
 }
 
 function confirmationLabel(mode: ConfirmationMode): string {
@@ -294,16 +330,18 @@ async function toggleEnabled(gw: PaymentGateway) {
   }
 }
 
-async function remove(gw: PaymentGateway) {
-  if (!confirm(`¿Eliminar la pasarela ${gw.provider}? Vas a tener que volver a cargar las llaves para cobrar.`)) return
-  try {
-    await PaymentGatewayService.remove(gw.id)
-    toast.success('Pasarela eliminada')
-    openForm.value = null
-    await load()
-  } catch (e) {
-    toast.error((e as Error).message || 'No se pudo eliminar la pasarela')
-  }
+function remove(gw: PaymentGateway) {
+  askConfirm({
+    title: 'Eliminar pasarela',
+    message: `¿Eliminar la pasarela ${gw.provider}? Vas a tener que volver a cargar las llaves para cobrar.`,
+    confirmLabel: 'Eliminar',
+    danger: true,
+    run: async () => {
+      await PaymentGatewayService.remove(gw.id)
+      toast.success('Pasarela eliminada')
+      openForm.value = null
+    },
+  })
 }
 
 onMounted(load)
