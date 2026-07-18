@@ -50,7 +50,7 @@ export interface PushPort {
 }
 
 /** El número visible. Un aviso sin habitación no manda a nadie a ningún lado. */
-async function resolveRoomNumber(rooms: RoomsPort | null, roomId?: string): Promise<string | undefined> {
+export async function resolveRoomNumber(rooms: RoomsPort | null, roomId?: string): Promise<string | undefined> {
   if (!roomId || !rooms) return undefined
   try {
     const room = await rooms.getById(roomId, { id: 'system', role: 'super_admin' })

@@ -261,26 +261,21 @@
     </div>
 
     <!-- Modal: Ver Tarea -->
-    <Transition name="modal-fade">
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-        <div class="flex items-start justify-between px-7 pt-7 pb-4 shrink-0">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2.5 flex-wrap">
-              <h3 class="text-xl font-black text-navy tracking-tight">Habitación {{ selectedTask.roomNumber }}</h3>
-              <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="statusClass(selectedTask.status)">
-                {{ statusLabel(selectedTask.status) }}
-              </span>
-            </div>
-            <div class="text-xs text-text-muted mt-1 font-semibold">
-              {{ selectedTask.type }}<span v-if="selectedTask.floor"> · Piso {{ selectedTask.floor }}</span>
-            </div>
+    <AppModal v-if="showViewModal" size="lg" @close="showViewModal = false">
+      <template #header>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <h3 class="text-base sm:text-lg font-black text-white truncate">Habitación {{ selectedTask.roomNumber }}</h3>
+            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="statusClassOnDark(selectedTask.status)">
+              {{ statusLabel(selectedTask.status) }}
+            </span>
           </div>
-          <button @click="showViewModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+          <p class="text-[11px] text-white/60 mt-0.5 truncate">
+            {{ selectedTask.type }}<span v-if="selectedTask.floor"> · Piso {{ selectedTask.floor }}</span>
+          </p>
         </div>
-        <div class="px-7 pb-7 overflow-y-auto flex-1 space-y-4">
+      </template>
+        <div class="space-y-4">
           <!-- Asignación y tiempos -->
           <div class="rounded-2xl border border-border p-4">
             <div class="grid grid-cols-2 gap-x-4 gap-y-4">
@@ -359,17 +354,17 @@
               </label>
             </div>
             <div v-if="selectedTask.photos.length" class="grid grid-cols-3 gap-2">
-              <div v-for="photo in selectedTask.photos" :key="photo.url" class="relative group">
+              <div v-for="(photo, i) in selectedTask.photos" :key="photo.url" class="relative group">
                 <img
                   :src="photo.url"
                   :alt="photo.name"
                   loading="lazy"
-                  @click="lightboxUrl = photo.url"
+                  @click="openLightbox(i)"
                   class="w-full h-20 object-cover rounded-lg border border-border cursor-zoom-in bg-surface"
                 />
                 <button
                   @click.stop="onRemovePhoto(photo.url)"
-                  class="absolute top-1 right-1 w-5 h-5 bg-red text-white rounded-full text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  class="absolute top-1 right-1 w-5 h-5 bg-danger text-white rounded-full text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                 >✕</button>
               </div>
             </div>
@@ -381,7 +376,26 @@
                 <span class="w-3.5 h-3.5 rounded-full border-2 border-border border-t-cyan animate-spin"></span>
                 Cargando video…
               </div>
-              <div v-else-if="videoError" class="text-xs text-red py-3">{{ videoError }}</div>
+              <div v-else-if="videoError" class="text-xs text-danger py-3">{{ videoError }}</div>
+              <!-- HEVC: el navegador no lo decodifica. En vez de un cuadro negro,
+                   se ofrece bajarlo y abrirlo con el reproductor del sistema. -->
+              <div
+                v-else-if="videoUrl && !canPlayVideo"
+                class="rounded-xl border border-border bg-surface-2 p-4 text-center"
+              >
+                <div class="text-xs text-text-muted mb-3">
+                  El navegador no puede reproducir este video
+                  <span v-if="selectedTask.video?.codec">({{ selectedTask.video.codec }})</span>.
+                  Descargalo para verlo.
+                </div>
+                <a
+                  :href="videoUrl"
+                  download
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan text-white text-xs font-bold"
+                >
+                  Descargar video
+                </a>
+              </div>
               <video
                 v-else-if="videoUrl"
                 :src="videoUrl"
@@ -389,6 +403,7 @@
                 playsinline
                 preload="metadata"
                 class="w-full rounded-xl border border-border bg-black max-h-80"
+                @error="videoDecodeFailed = true"
               ></video>
             </div>
           </div>
@@ -409,29 +424,22 @@
             <div class="text-sm text-text-secondary">{{ selectedTask.notes }}</div>
           </div>
         </div>
-        <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
-          <button @click="showViewModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
-          <button
-            v-if="primaryAction(selectedTask)"
-            @click="runPrimary(selectedTask)"
-            class="px-5 py-2.5 bg-cyan text-navy rounded-full text-sm font-extrabold hover:shadow-lg transition-all cursor-pointer"
-          >{{ primaryAction(selectedTask)?.label }}</button>
-        </div>
-      </div>
-    </div>
-    </Transition>
+      <template #footer>
+        <button @click="showViewModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
+        <button
+          v-if="primaryAction(selectedTask)"
+          @click="runPrimary(selectedTask)"
+          class="px-5 py-2.5 bg-cyan text-navy rounded-full text-sm font-extrabold hover:shadow-lg transition-all cursor-pointer"
+        >{{ primaryAction(selectedTask)?.label }}</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Nueva / Editar Tarea -->
-    <Transition name="modal-fade">
-    <div v-if="showNewModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-        <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
-          <h3 class="text-xl font-black text-navy tracking-tight">{{ editingId ? 'Editar tarea' : 'Nueva tarea' }}</h3>
-          <button @click="showNewModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <div class="px-7 pb-7 overflow-y-auto flex-1">
+    <AppModal
+      v-if="showNewModal" size="lg"
+      :title="editingId ? 'Editar tarea' : 'Nueva tarea'"
+      @close="showNewModal = false"
+    >
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Habitación *</label>
@@ -468,28 +476,16 @@
               <textarea v-model="newTask.notes" rows="3" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Instrucciones especiales..."></textarea>
             </div>
           </div>
-        </div>
-        <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
-          <button @click="showNewModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
-          <button @click="saveTask" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50">
-            {{ saving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Tarea') }}
-          </button>
-        </div>
-      </div>
-    </div>
-    </Transition>
+      <template #footer>
+        <button @click="showNewModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+        <button @click="saveTask" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50">
+          {{ saving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Tarea') }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Asignar Tareas Rápidas -->
-    <Transition name="modal-fade">
-    <div v-if="showAssignModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-        <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
-          <h3 class="text-xl font-black text-navy tracking-tight">Asignar tareas rápidas</h3>
-          <button @click="showAssignModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <div class="px-7 pb-7 overflow-y-auto flex-1">
+    <AppModal v-if="showAssignModal" size="lg" title="Asignar tareas rápidas" @close="showAssignModal = false">
           <div class="mb-5">
             <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Seleccionar personal</label>
             <select v-model="assignStaff" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
@@ -509,34 +505,55 @@
               </label>
             </div>
           </div>
-        </div>
-        <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
-          <button @click="showAssignModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
-          <button
-            @click="assignSelected"
-            :disabled="assignSelection.length === 0 || !assignStaff"
-            class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50"
-          >Asignar {{ assignSelection.length || '' }}</button>
-        </div>
-      </div>
-    </div>
-    </Transition>
+      <template #footer>
+        <button @click="showAssignModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
+        <button
+          @click="assignSelected"
+          :disabled="assignSelection.length === 0 || !assignStaff"
+          class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50"
+        >Asignar {{ assignSelection.length || '' }}</button>
+      </template>
+    </AppModal>
 
-    <!-- Lightbox: foto de evidencia a tamaño completo (los thumbnails no dejan verla bien) -->
+    <!-- Lightbox: la evidencia se recorre entera sin volver al listado. Antes había
+         que cerrar y volver a abrir para pasar de una foto a la siguiente. -->
     <Teleport to="body">
       <div
-        v-if="lightboxUrl"
-        @click="lightboxUrl = null"
+        v-if="lightboxPhoto"
+        @click="closeLightbox"
         class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
       >
         <img
-          :src="lightboxUrl"
-          alt="Evidencia"
+          :key="lightboxPhoto.url"
+          :src="lightboxPhoto.url"
+          :alt="lightboxPhoto.name || 'Evidencia'"
           @click.stop
           class="max-w-full max-h-full rounded-xl shadow-2xl object-contain select-none"
         />
+
+        <!-- Flechas: solo si hay más de una foto que recorrer -->
+        <template v-if="lightboxCount > 1">
+          <button
+            @click.stop="stepLightbox(-1)"
+            class="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center bg-white/90 text-navy rounded-full cursor-pointer hover:bg-white transition-colors shadow-lg"
+            aria-label="Foto anterior"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <button
+            @click.stop="stepLightbox(1)"
+            class="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center bg-white/90 text-navy rounded-full cursor-pointer hover:bg-white transition-colors shadow-lg"
+            aria-label="Foto siguiente"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </button>
+          <div class="absolute bottom-5 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-navy/80 text-white text-xs font-bold tabular-nums">
+            {{ (lightboxIndex ?? 0) + 1 }} / {{ lightboxCount }}
+          </div>
+        </template>
+
         <button
-          @click.stop="lightboxUrl = null"
+          @click.stop="closeLightbox"
           class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-white/90 text-navy rounded-full text-lg font-bold cursor-pointer hover:bg-white transition-colors"
           aria-label="Cerrar"
         >✕</button>
@@ -546,7 +563,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useCountUp } from '@/composables/useCountUp'
 import { useHousekeepingStore, humanizeMs, type HousekeepingViewTask } from '@/stores/housekeeping.store'
 import { HousekeepingService } from '@/services/Housekeeping.service'
@@ -555,6 +572,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useNow } from '@/composables/useNow'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const store = useHousekeepingStore()
 const auth = useAuthStore()
@@ -569,12 +587,46 @@ const showAssignModal = ref(false)
 const selectedTask = ref<HousekeepingViewTask>(blankTask())
 // Foto de evidencia ampliada (lightbox). Los thumbnails de 80px no dejan ver el
 // detalle de la limpieza; al hacer click se abre a tamaño completo.
-const lightboxUrl = ref<string | null>(null)
+//
+// Se guarda la POSICIÓN, no la url: así se pasa a la foto siguiente sin cerrar,
+// que es como se revisa una limpieza (mirar las 6 fotos de la habitación de
+// corrido, no abrir y cerrar una por una).
+const lightboxIndex = ref<number | null>(null)
+const lightboxCount = computed(() => selectedTask.value.photos.length)
+const lightboxPhoto = computed(() =>
+  lightboxIndex.value === null ? null : selectedTask.value.photos[lightboxIndex.value] ?? null,
+)
+
+function openLightbox(index: number) { lightboxIndex.value = index }
+function closeLightbox() { lightboxIndex.value = null }
+
+/** Avanza o retrocede dando la vuelta: de la última pasa a la primera. */
+function stepLightbox(delta: number) {
+  if (lightboxIndex.value === null || lightboxCount.value === 0) return
+  lightboxIndex.value = (lightboxIndex.value + delta + lightboxCount.value) % lightboxCount.value
+}
+
+// Las flechas del teclado son el gesto natural para recorrer fotos. ESC cierra.
+function onLightboxKey(e: KeyboardEvent) {
+  if (lightboxIndex.value === null) return
+  if (e.key === 'ArrowRight') stepLightbox(1)
+  else if (e.key === 'ArrowLeft') stepLightbox(-1)
+  else if (e.key === 'Escape') closeLightbox()
+}
+onMounted(() => document.addEventListener('keydown', onLightboxKey))
+onBeforeUnmount(() => document.removeEventListener('keydown', onLightboxKey))
 // Video de evidencia: la URL se pide firmada al abrir el detalle (el bucket es
 // privado, no se puede linkear directo). Se resetea entre tareas.
 const videoUrl = ref<string | null>(null)
 const videoLoading = ref(false)
 const videoError = ref<string | null>(null)
+// El backend marca `playableInBrowser: false` para HEVC (grabaciones de iPhone).
+// `videoDecodeFailed` cubre el resto: cualquier codec que este navegador rechace
+// en tiempo real, sin depender de que el backend lo haya clasificado.
+const videoDecodeFailed = ref(false)
+const canPlayVideo = computed(
+  () => selectedTask.value.video?.playableInBrowser !== false && !videoDecodeFailed.value,
+)
 // Calificación de la limpieza desde el panel (1–10) + nota del supervisor.
 const ratingInput = ref<number | null>(null)
 const ratingNote = ref('')
@@ -637,7 +689,7 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 // (Pendiente → En Progreso → Completada → Inspeccionada). Ocultar etapas rompe la
 // representación del proceso, así que el tablero SIEMPRE muestra las 4 columnas.
 const kanbanColumns = [
-  { id: 'pending', title: 'Pendiente', dotColor: 'bg-orange', icon: ICON_INBOX, emptyHint: 'Las tareas nuevas aparecen acá' },
+  { id: 'pending', title: 'Pendiente', dotColor: 'bg-warning', icon: ICON_INBOX, emptyHint: 'Las tareas nuevas aparecen acá' },
   { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan', icon: ICON_SPARKLE, emptyHint: 'Arrastrá acá las tareas en limpieza' },
   { id: 'completed', title: 'Completada', dotColor: 'bg-teal', icon: ICON_CHECK_PLAIN, emptyHint: 'Tareas terminadas' },
   { id: 'inspected', title: 'Inspeccionada', dotColor: 'bg-purple', icon: ICON_SEARCH, emptyHint: 'Tareas verificadas por supervisión' },
@@ -724,12 +776,27 @@ function getInitials(name: string) {
 
 function statusClass(status: string) {
   const classes: Record<string, string> = {
-    pending: 'bg-orange/10 text-orange',
+    pending: 'bg-warning/10 text-warning',
     in_progress: 'bg-cyan/10 text-cyan',
     completed: 'bg-teal/10 text-teal',
     inspected: 'bg-purple/10 text-purple',
   }
   return classes[status] || 'bg-surface text-text-muted'
+}
+
+/**
+ * Mismo badge, pero sobre el header navy del modal. Los tonos al 10% de opacidad
+ * que se usan sobre fondo blanco ahí quedan ilegibles: sobre oscuro el color va
+ * sólido y el texto en navy, como el resto de los chips del sistema.
+ */
+function statusClassOnDark(status: string) {
+  const classes: Record<string, string> = {
+    pending: 'bg-warning text-navy',
+    in_progress: 'bg-cyan text-navy',
+    completed: 'bg-teal-light text-navy',
+    inspected: 'bg-purple-light text-white',
+  }
+  return classes[status] || 'bg-white/20 text-white'
 }
 
 function statusLabel(status: string) {
@@ -744,16 +811,16 @@ function statusLabel(status: string) {
 
 function priorityClass(priority: string) {
   const classes: Record<string, string> = {
-    Normal: 'bg-surface text-text-muted', High: 'bg-coral/10 text-coral', Urgent: 'bg-red/10 text-red',
-    low: 'bg-surface text-text-muted', medium: 'bg-gold/10 text-gold', high: 'bg-coral/10 text-coral', urgent: 'bg-red/10 text-red',
+    Normal: 'bg-surface text-text-muted', High: 'bg-coral/10 text-coral', Urgent: 'bg-danger/10 text-danger',
+    low: 'bg-surface text-text-muted', medium: 'bg-gold/10 text-gold', high: 'bg-coral/10 text-coral', urgent: 'bg-danger/10 text-danger',
   }
   return classes[priority] || 'bg-surface text-text-muted'
 }
 
 function priorityBadgeClass(priority: string) {
   const classes: Record<string, string> = {
-    Normal: 'bg-surface text-text-muted', High: 'bg-coral/10 text-coral', Urgent: 'bg-red text-white',
-    low: 'bg-surface text-text-muted', medium: 'bg-gold/10 text-gold', high: 'bg-coral/10 text-coral', urgent: 'bg-red text-white',
+    Normal: 'bg-surface text-text-muted', High: 'bg-coral/10 text-coral', Urgent: 'bg-danger text-white',
+    low: 'bg-surface text-text-muted', medium: 'bg-gold/10 text-gold', high: 'bg-coral/10 text-coral', urgent: 'bg-danger text-white',
   }
   return classes[priority] || 'bg-surface text-text-muted'
 }
@@ -847,6 +914,7 @@ async function approveSelected() {
 async function loadVideo(task: HousekeepingViewTask) {
   videoUrl.value = null
   videoError.value = null
+  videoDecodeFailed.value = false
   if (!task.video || !task.id) return
   videoLoading.value = true
   try {
@@ -875,7 +943,7 @@ function ratingClass(r: number | null): string {
   if (r == null) return 'bg-surface text-text-muted'
   if (r >= 7) return 'bg-teal/10 text-teal'
   if (r >= 5) return 'bg-cyan/10 text-cyan'
-  return 'bg-orange/10 text-orange'
+  return 'bg-warning/10 text-warning'
 }
 
 function openNewTask() {
@@ -1039,22 +1107,5 @@ onMounted(() => store.load(hotelId.value))
 </script>
 
 <style scoped>
-/* Entrada/salida de los modales: backdrop se desvanece, el panel además escala y sube levemente. */
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-.modal-fade-enter-active .modal-panel,
-.modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel,
-.modal-fade-leave-to .modal-panel {
-  opacity: 0;
-  transform: scale(0.95) translateY(12px);
-}
+/* La animación de los modales vive en AppModal. */
 </style>

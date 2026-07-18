@@ -5,10 +5,18 @@ import { AuthError } from 'arckode-framework'
 import type { HousekeepingDTO, HousekeepingQuery, HousekeepingPaginated, HousekeepingUser } from '../types'
 import { listCacheKey } from './cache'
 import { withRoomInfo } from './room-info'
+import { withStaffInfo } from './staff'
 
 const CACHE_TTL = 300
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
+
+/**
+ * Roles que ven las tareas de TODO el hotel (no solo las propias): el admin gestiona
+ * y el supervisor revisa cualquier limpieza. El resto (camarera/housekeeper) queda
+ * acotado a SUS tareas, aunque tenga `housekeeping:view`.
+ */
+const SUPERVISORY_ROLES = ['super_admin', 'hotel_admin', 'receptionist', 'supervisor']
 
 export class ListUseCase {
   constructor(
@@ -27,6 +35,12 @@ export class ListUseCase {
     // La app manda `?staffId=<users.id>` para "Mis Tareas".
     if (query.staffId) filters.staffId = query.staffId
 
+    // Aislamiento: la camarera solo ve SUS tareas, aunque no mande `?staffId` (o mande
+    // el de otra). Se pisa el filtro con su propio id. El supervisor/admin ven todo.
+    if (!SUPERVISORY_ROLES.includes(currentUser.role)) {
+      filters.staffId = currentUser.id
+    }
+
     const hotelId = await this.resolveHotelId(query, filters, currentUser)
 
     const page = Math.max(query.page || 1, 1)
@@ -41,7 +55,8 @@ export class ListUseCase {
     if (cached) return cached as HousekeepingPaginated
 
     const result = await this.repo.paginate(filters, { offset, limit })
-    const data = await withRoomInfo(this.roomRepo, result.data)
+    const withRooms = await withRoomInfo(this.roomRepo, result.data)
+    const data = await withStaffInfo(this.userRepo, withRooms)
     const response = { data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
     await this.cache.set(cacheKey, response, CACHE_TTL)
     return response

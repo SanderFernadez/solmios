@@ -26,7 +26,30 @@ export class TimingsUseCase {
     private readonly onUpdated: (item: HousekeepingDTO) => Promise<void>,
     private readonly invalidate: (hotelId?: string) => Promise<void>,
     private readonly employeeRepo?: RepositoryAdapter<any>,
+    /** Se dispara SOLO al completar: avisa al supervisor que hay algo para revisar. */
+    private readonly onCompleted?: (item: HousekeepingDTO) => Promise<void>,
+    /** Settings del hotel: de ahí sale si la evidencia de fin es foto o video. */
+    private readonly settings?: { get(hotelId: string): Promise<{ completionEvidence: string }> },
   ) {}
+
+  /**
+   * Con el hotel en modo `video`, una tarea no se cierra sin el video colgado.
+   *
+   * `attachVideo` ya rechaza las grabaciones cortadas, así que si hay video en
+   * la tarea es porque el archivo del bucket se verificó entero. Sin este gate,
+   * una subida fallida terminaba igual con la habitación marcada como limpia y
+   * sin ninguna evidencia detrás.
+   */
+  private async assertEvidence(task: HousekeepingDTO): Promise<void> {
+    if (!this.settings) return
+    const { completionEvidence } = await this.settings.get(task.hotelId)
+    if (completionEvidence !== 'video') return
+    if (!(task as any).video?.path) {
+      throw new ValidationError(
+        'Falta el video de la limpieza. Subilo antes de terminar la tarea.',
+      )
+    }
+  }
 
   /**
    * Solo la persona asignada (o un admin) inicia y termina su tarea.
@@ -103,6 +126,7 @@ export class TimingsUseCase {
     this.assertAssignedStaff(existing, currentUser)
     assertTransition(existing.status, 'completed')
     if (!existing.startTime) throw new ValidationError('La tarea no fue iniciada (falta startTime)')
+    await this.assertEvidence(existing)
     const nowIso = new Date().toISOString()
     // Si estaba pausada al finalizar, se cierra la pausa acumulándola primero,
     // para que la duración no cuente ese tiempo.
@@ -114,6 +138,8 @@ export class TimingsUseCase {
     } as any)
     if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
     await this.onUpdated(item)
+    // Aviso dedicado al supervisor: la limpieza terminó, hay algo para revisar.
+    await this.onCompleted?.(item)
     await this.invalidate(existing.hotelId)
     return item
   }

@@ -13,7 +13,13 @@ const rooms = [
   { id: 'r2', number: '305', floor: null, type: 'doble' },
 ]
 const roomRepo = { findMany: async () => rooms } as unknown as RepositoryAdapter<any>
-const userRepo = { findById: async () => ({ hotelId: 'h1' }) } as unknown as RepositoryAdapter<any>
+const userRepo = {
+  findById: async () => ({ hotelId: 'h1' }),
+  findMany: async () => [
+    { id: 'rosa', name: 'Rosa', hotelId: 'h1' },
+    { id: 'otra', name: 'Otra', hotelId: 'h1' },
+  ],
+} as unknown as RepositoryAdapter<any>
 
 /** Cache real en memoria: sin esto no se detecta que la clave ignora los filtros. */
 function memoryCache(): CacheAdapter {
@@ -94,12 +100,13 @@ describe('ListUseCase — la caché no puede ignorar los filtros', () => {
     expect(p2.page).toBe(2)
   })
 
-  it('las tareas listadas ya traen el número de habitación', async () => {
+  it('las tareas listadas ya traen el número de habitación y el nombre del staff', async () => {
     const uc = new ListUseCase(repoWith(allTasks), memoryCache(), userRepo, roomRepo)
 
     const suyas = await uc.list({ staffId: 'rosa' } as any, rosa)
 
     expect((suyas.data[0] as any).roomNumber).toBe('201')
+    expect((suyas.data[0] as any).staffName).toBe('Rosa')
   })
 
   it('nadie ve las tareas de otro hotel', async () => {
@@ -108,6 +115,20 @@ describe('ListUseCase — la caché no puede ignorar los filtros', () => {
     const r = await uc.list({} as any, { id: 'x', hotelId: 'h2', role: 'housekeeper' })
 
     expect(r.data).toEqual([])
+  })
+
+  // Aislamiento: una camarera que NO manda `?staffId` (o manda el de otra) igual ve
+  // solo lo suyo — el backend pisa el filtro con su propio id.
+  it('la camarera solo ve SUS tareas aunque no filtre por staffId', async () => {
+    const uc = new ListUseCase(repoWith(allTasks), memoryCache(), userRepo, roomRepo)
+
+    const sinFiltro = await uc.list({} as any, rosa)
+    expect(sinFiltro.data).toHaveLength(1)
+    expect(sinFiltro.data[0].id).toBe('t1')
+
+    const ajeno = await uc.list({ staffId: 'otra' } as any, rosa)
+    expect(ajeno.data).toHaveLength(1)
+    expect(ajeno.data[0].id).toBe('t1')
   })
 })
 

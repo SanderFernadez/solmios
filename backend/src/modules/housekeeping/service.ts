@@ -65,12 +65,17 @@ export class HousekeepingService {
     private readonly lockCodeRepo?: RepositoryAdapter<any>,
   ) {
     this.employeeRepo = employeeRepo
+    if (configRepo) { // antes que `timings`: el cierre consulta el modo de evidencia
+      this.settingsUc = new HousekeepingSettingsUseCase(configRepo)
+      this.videoUc = new VideoUseCase(repo, this.settingsUc, videoStorage)
+    }
     this.timings = new TimingsUseCase(
       repo,
       (item) => this.sockets.onHousekeepingUpdated?.(item) ?? Promise.resolve(),
       (h) => this.invalidateCache(h),
       this.employeeRepo,
       (item) => this.sockets.onTaskCompleted?.(item) ?? Promise.resolve(),
+      this.settingsUc,
     )
     this.crud = new CrudUseCase(
       repo,
@@ -98,10 +103,6 @@ export class HousekeepingService {
     this.approveUc = new ApproveUseCase(repo)
     if (photoReqRepo && supplyRepo) {
       this.configLists = new ConfigListsUseCase(photoReqRepo, supplyRepo, logger, checklistRepo)
-    }
-    if (configRepo) {
-      this.settingsUc = new HousekeepingSettingsUseCase(configRepo)
-      this.videoUc = new VideoUseCase(repo, this.settingsUc, videoStorage)
     }
   }
 

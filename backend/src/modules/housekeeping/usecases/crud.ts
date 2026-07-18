@@ -14,7 +14,7 @@ import type {
 } from '../types'
 import { withRoomInfo } from './room-info'
 import { assertTransition } from './timings'
-import { assertStaffExists } from './staff'
+import { assertStaffExists, withStaffInfo } from './staff'
 
 /** Efectos que dispara el CRUD. Los cablea el service. */
 export interface CrudEffects {
@@ -51,8 +51,10 @@ export class CrudUseCase {
     const item = result.data[0]
     if (!item) throw new NotFoundError('Tarea de housekeeping no encontrada')
     this.assertSameHotel(item.hotelId, user)
-    // El detalle también muestra "Hab. X": sin esto el título quedaba vacío.
-    const [enriched] = await withRoomInfo(this.roomRepo, [item])
+    // El detalle también muestra "Hab. X" y el nombre de la camarera: sin esto el
+    // título y el encabezado de aprobación quedaban vacíos.
+    const [withRoom] = await withRoomInfo(this.roomRepo, [item])
+    const [enriched] = await withStaffInfo(this.userRepo, [withRoom])
     return enriched as HousekeepingDTO
   }
 

@@ -11,6 +11,9 @@ export interface CleaningItem {
 }
 
 export interface PhotoEvidence {
+  /** A qué requisito/área corresponde la foto (cama, baño, `supervisor_presence`…).
+   *  La app lo usa para llenar los recuadros de evidencia; se persiste desde `addPhoto`. */
+  areaId?: string
   url: string
   path: string
   name: string
@@ -27,9 +30,21 @@ export interface PhotoEvidence {
 export interface VideoEvidence {
   url: string
   path: string
+  /** Duración REAL leída del archivo en el bucket, no la que declaró la app. */
   durationSeconds: number
   mimeType: string
   uploadedAt: string
+  /** Tamaño real del objeto. */
+  sizeBytes?: number
+  /** `avc1` (H.264), `hvc1`/`hev1` (HEVC). */
+  codec?: string | null
+  width?: number | null
+  height?: number | null
+  /**
+   * `false` cuando el teléfono grabó en HEVC: el navegador no lo decodifica y el
+   * panel ofrece descargarlo en vez de mostrar un cuadro negro.
+   */
+  playableInBrowser?: boolean
 }
 
 export interface StaffStats {

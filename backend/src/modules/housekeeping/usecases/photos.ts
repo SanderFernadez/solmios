@@ -1,8 +1,9 @@
 // usecases/photos.ts — Evidencia fotográfica de limpieza (upload/remove).
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import { NotFoundError, AuthError, ValidationError } from 'arckode-framework'
+import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { StorageService, FileUpload } from 'arckode-framework/modules/storage'
 import type { HousekeepingDTO, HousekeepingUser } from '../types'
+import { assertCanEditEvidence } from './ownership'
 
 /** Máximo de fotos de evidencia por tarea (evita que el JSON photos[] crezca sin tope). */
 const MAX_PHOTOS_PER_TASK = 20
@@ -21,7 +22,8 @@ export class PhotosUseCase {
     if (!this.storage) throw new Error('StorageService no configurado para housekeeping')
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
-    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
+    // La camarera solo sube fotos a SU tarea; el supervisor/admin, a cualquiera del hotel.
+    assertCanEditEvidence(existing, currentUser)
     // A4 — Whitelist de imágenes: el mimeType del FileUpload debe ser image/* (el data URL
     // base64 puede mentir, así que se valida acá antes de persistir).
     if (!file.mimeType?.startsWith(ALLOWED_IMAGE_PREFIX)) {
@@ -53,7 +55,7 @@ export class PhotosUseCase {
   async removePhoto(id: string, photoUrl: string, currentUser: HousekeepingUser): Promise<HousekeepingDTO> {
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Tarea de housekeeping no encontrada')
-    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
+    assertCanEditEvidence(existing, currentUser)
     const removed = (existing.photos ?? []).find(p => p.url === photoUrl)
     const photos = (existing.photos ?? []).filter(p => p.url !== photoUrl)
     // best-effort: borrar el archivo del disco (no bloquea si falla)

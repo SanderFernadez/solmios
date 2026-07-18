@@ -16,6 +16,11 @@ export interface VideoEvidence {
   path?: string
   durationSeconds?: number
   uploadedAt?: string
+  codec?: string | null
+  width?: number | null
+  height?: number | null
+  /** `false` cuando el teléfono grabó en HEVC: el navegador no lo decodifica. */
+  playableInBrowser?: boolean
 }
 
 /** Respuesta de la URL firmada para VER el video. */

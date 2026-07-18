@@ -84,6 +84,35 @@ export class S3StorageAdapter implements StorageAdapter {
     })
   }
 
+  /**
+   * Tamaño real del objeto en el bucket, o `null` si no existe.
+   *
+   * Los bytes de un video suben directo del celular a Backblaze, así que el
+   * backend nunca los ve: cuando la app dice "ya lo subí", esta es la única
+   * forma de comprobar que efectivamente llegó algo.
+   */
+  async statSize(key: string): Promise<number | null> {
+    try {
+      const stat = await this.client.stat(key)
+      return typeof stat?.size === 'number' ? stat.size : null
+    } catch {
+      return null // no existe / sin permiso: para el caller es lo mismo
+    }
+  }
+
+  /**
+   * Lee un tramo del objeto sin bajarlo entero. Se usa para leer la cabecera y
+   * el índice (`moov`) de un mp4 de decenas de MB moviendo apenas unos KB.
+   */
+  async readRange(key: string, start: number, end: number): Promise<Uint8Array | null> {
+    try {
+      const buf = await this.client.file(key).slice(start, end).arrayBuffer()
+      return new Uint8Array(buf)
+    } catch {
+      return null
+    }
+  }
+
   async upload(file: FileUpload, directory?: string): Promise<StoredFile> {
     const key = this.keyFor(directory, file.originalName)
     await this.client.write(key, file.buffer, { type: file.mimeType })

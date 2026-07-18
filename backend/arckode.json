@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-15T00:39:35.494Z",
+  "_generated": "2026-07-18T14:57:15.996Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -257,6 +257,19 @@
     },
     {
       "name": "pricing",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "email-queue",
       "structure": {
         "index": true,
         "types": true,
@@ -647,6 +660,7 @@
     "facturas-payments.ts",
     "crm-auditlog.ts",
     "habitaciones-canales.ts",
+    "empleados-housekeeping.ts",
     "reservas-housekeeping.ts",
     "attendance-dashboard.ts",
     "roles-auditlog.ts",
@@ -661,6 +675,7 @@
     "pricing-auditlog.ts",
     "reclutamiento-auditlog.ts",
     "messages-usuarios.ts",
+    "payment-requests-ttlock.ts",
     "mantenimiento-notificaciones.ts",
     "facturas-reservas.ts",
     "housekeeping-auditlog.ts",
@@ -675,6 +690,7 @@
     "cash-auditlog.ts",
     "empleados-auditlog.ts",
     "hoteles-auditlog.ts",
+    "empleados-attendance.ts",
     "payments-auditlog.ts",
     "housekeeping-notificaciones.ts",
     "grupos-auditlog.ts",

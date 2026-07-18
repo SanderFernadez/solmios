@@ -12,9 +12,18 @@ import { NotFoundError, AuthError, ValidationError } from 'arckode-framework'
 import type { HousekeepingDTO, VideoEvidence, HousekeepingUser } from '../types'
 import type { S3StorageAdapter } from '../../../infrastructure/storage/s3-adapter'
 import type { HousekeepingSettingsUseCase } from './settings'
+import { assertCanEditEvidence } from './ownership'
+import { probeMp4 } from './mp4-probe'
 
 /** Solo se aceptan videos. Un `image/*` acá sería un error de la app. */
 const VIDEO_MIME_PREFIX = 'video/'
+
+/**
+ * Margen entre lo que la app declara y lo que dura el archivo. Cubre el
+ * redondeo y el último fragmento que la cámara no llega a cerrar; más que esto
+ * es grabación cortada.
+ */
+const TRUNCATION_TOLERANCE_SECONDS = 2
 
 /** Cuánto vive la URL prefirmada. Alcanza de sobra para subir el archivo. */
 const UPLOAD_URL_TTL_SECONDS = 900
@@ -37,12 +46,26 @@ export class VideoUseCase {
     private readonly s3?: S3StorageAdapter,
   ) {}
 
-  /** La tarea, comprobando que sea del hotel de quien pide. */
-  private async ownedTask(taskId: string, user: HousekeepingUser): Promise<HousekeepingDTO> {
+  /**
+   * Para ESCRITURA de evidencia (subir/confirmar/borrar): la camarera dueña opera
+   * SU video; el supervisor/admin, el de cualquier tarea del hotel.
+   */
+  private async writableTask(taskId: string, user: HousekeepingUser): Promise<HousekeepingDTO> {
     const task = await this.repo.findById(taskId)
     if (!task) throw new NotFoundError('Tarea no encontrada')
-    const taskHotelId = (task as any).hotelId
-    if (user.role !== 'super_admin' && taskHotelId !== user.hotelId) {
+    assertCanEditEvidence(task, user)
+    return task
+  }
+
+  /**
+   * Para LECTURA (reproducir): basta con ser del hotel de la tarea. El supervisor
+   * revisa el video de cualquier camarera; el permiso `view` de la ruta ya acota
+   * quién llega hasta acá.
+   */
+  private async readableTask(taskId: string, user: HousekeepingUser): Promise<HousekeepingDTO> {
+    const task = await this.repo.findById(taskId)
+    if (!task) throw new NotFoundError('Tarea no encontrada')
+    if (user.role !== 'super_admin' && (task as any).hotelId !== user.hotelId) {
       throw new AuthError('La tarea no pertenece a tu hotel')
     }
     return task
@@ -68,7 +91,7 @@ export class VideoUseCase {
     user: HousekeepingUser,
   ): Promise<VideoUploadTicket> {
     const s3 = this.assertVideoStorage()
-    const task = await this.ownedTask(taskId, user)
+    const task = await this.writableTask(taskId, user)
 
     if (!input.contentType.startsWith(VIDEO_MIME_PREFIX)) {
       throw new ValidationError('Solo se permiten videos como evidencia de fin')
@@ -91,13 +114,22 @@ export class VideoUseCase {
     }
   }
 
-  /** La app confirma: los bytes ya están en el bucket, se cuelgan de la tarea. */
+  /**
+   * La app confirma: los bytes ya están en el bucket, se cuelgan de la tarea.
+   *
+   * La confirmación NO se cree lo que dice la app. Se lee el archivo real en el
+   * bucket y se compara: en producción llegaron videos declarados de 15 s cuyo
+   * archivo duraba 0.6 s — la grabación se cortó, la evidencia quedó vacía y la
+   * habitación figuraba revisada igual. Si el video está incompleto se rechaza
+   * acá, que es el único momento en que la camarera todavía puede regrabarlo.
+   */
   async attachVideo(
     taskId: string,
     input: { url: string; path: string; durationSeconds: number; mimeType: string },
     user: HousekeepingUser,
   ): Promise<HousekeepingDTO> {
-    const task = await this.ownedTask(taskId, user)
+    const s3 = this.assertVideoStorage()
+    const task = await this.writableTask(taskId, user)
 
     if (!input.mimeType.startsWith(VIDEO_MIME_PREFIX)) {
       throw new ValidationError('Solo se permiten videos como evidencia de fin')
@@ -106,12 +138,28 @@ export class VideoUseCase {
     const { maxVideoSeconds } = await this.settings.get((task as any).hotelId)
     this.assertDuration(input.durationSeconds, maxVideoSeconds)
 
+    const probe = await probeMp4(s3, input.path)
+    if (!probe) {
+      throw new ValidationError(
+        'La subida del video no se completó. Volvé a grabar y subir la evidencia.',
+      )
+    }
+    this.assertNotTruncated(probe.durationSeconds, input.durationSeconds)
+    this.assertDuration(Math.max(1, Math.round(probe.durationSeconds)), maxVideoSeconds)
+
     const video: VideoEvidence = {
       url: input.url,
       path: input.path,
-      durationSeconds: Math.trunc(input.durationSeconds),
+      // Se guarda la duración del archivo, no la declarada: es la que se puede
+      // sostener si alguien discute la evidencia.
+      durationSeconds: Math.round(probe.durationSeconds),
       mimeType: input.mimeType,
       uploadedAt: new Date().toISOString(),
+      sizeBytes: probe.sizeBytes,
+      codec: probe.codec,
+      width: probe.width,
+      height: probe.height,
+      playableInBrowser: probe.playableInBrowser,
     }
 
     const updated = await this.repo.update(taskId, { video } as any)
@@ -121,7 +169,7 @@ export class VideoUseCase {
 
   /** Borra el video de la tarea (la camarera lo rehace). */
   async removeVideo(taskId: string, user: HousekeepingUser): Promise<HousekeepingDTO> {
-    const task = await this.ownedTask(taskId, user)
+    const task = await this.writableTask(taskId, user)
     const current = (task as any).video as VideoEvidence | null | undefined
 
     const updated = await this.repo.update(taskId, { video: null } as any)
@@ -144,7 +192,7 @@ export class VideoUseCase {
     user: HousekeepingUser,
   ): Promise<{ url: string; durationSeconds: number; expiresInSeconds: number }> {
     const s3 = this.assertVideoStorage()
-    const task = await this.ownedTask(taskId, user)
+    const task = await this.readableTask(taskId, user)
     const video = (task as any).video as VideoEvidence | null | undefined
     if (!video?.path) throw new NotFoundError('La tarea no tiene un video de evidencia')
 
@@ -152,6 +200,21 @@ export class VideoUseCase {
       url: s3.presignGet(video.path, { expiresInSeconds: UPLOAD_URL_TTL_SECONDS }),
       durationSeconds: video.durationSeconds,
       expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
+    }
+  }
+
+  /**
+   * El archivo tiene que durar lo que la app dijo que grabó. Se tolera un margen
+   * chico (redondeos, el último cuadro que no cierra) pero no que falte la mitad
+   * del video: eso es una grabación cortada, no una evidencia.
+   */
+  private assertNotTruncated(realSeconds: number, declaredSeconds: number): void {
+    const declared = Math.trunc(Number(declaredSeconds))
+    if (realSeconds + TRUNCATION_TOLERANCE_SECONDS < declared) {
+      throw new ValidationError(
+        `El video quedó incompleto: se grabaron ${realSeconds.toFixed(1)} s de los ${declared} s ` +
+          'esperados. Volvé a grabar la habitación completa.',
+      )
     }
   }
 
