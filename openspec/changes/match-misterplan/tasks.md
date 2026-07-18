@@ -311,14 +311,14 @@
   > 6. Agregar los datos a Settings → Integraciones → WhatsApp (apiKey, phoneNumberId, businessAccountId)
   > Incluir screenshots de referencia y links oficiales de Meta.
   > La guía debe estar en español y ser ejecutable por un admin de hotel sin conocimientos técnicos profundos.
-- [ ] 7.2.2 Template approval flow
+- [⛔] 7.2.2 Template approval flow — **GitLab [#409](https://gitlab.com/underworf1/solmios/-/work_items/409)** (bloqueado: creds WhatsApp Business Meta)
   > El sistema debe permitir crear y enviar plantillas de WhatsApp para aprobación de Meta.
   > UI en /panel/auto-messages: botón "Enviar a aprobación" al lado de cada plantilla WhatsApp.
   > Al enviar, POST a WhatsApp Business API para crear la plantilla en Meta.
   > Mostrar estado de la plantilla: `pending` (en revisión), `approved` (aprobada), `rejected` (rechazada con motivo).
   > Webhook receiver: POST /api/whatsapp/webhook para recibir notificaciones de cambio de estado de Meta.
   > Si `rejected`, mostrar el motivo de rechazo en la UI y permitir editar y reenviar.
-- [ ] 7.2.3 Send via API (no manual click)
+- [⛔] 7.2.3 Send via API (no manual click) — **GitLab [#410](https://gitlab.com/underworf1/solmios/-/work_items/410)** (bloqueado: creds Meta + 7.2.2 aprobada)
   > Implementar envío REAL de mensajes WhatsApp a través de la API de Meta (no solo wa.me link).
   > POST https://graph.facebook.com/v22.0/{phone_number_id}/messages con el template aprobado.
   > Variables: {{1}}, {{2}}, etc se reemplazan con datos de la reserva (nombre huésped, fechas, código TTLock, etc).

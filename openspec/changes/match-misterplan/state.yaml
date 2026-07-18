@@ -2,8 +2,12 @@
 
 change_name: match-misterplan
 created: 2026-06-20
-status: implementing
-current_phase: phase-4-done
+status: implemented
+current_phase: completed
+completed_at: 2026-07-17
+# Cierre 2026-07-17: 168/170 tareas completas. Las 2 pendientes (7.2.2 Template approval,
+# 7.2.3 Send via API) bloqueadas por creds de WhatsApp Business de Meta -> GitLab.
+# Resto del cambio (rates grid, i18n, motor de reservas, integración MisterPlan) implementado.
 
 phases:
   phase-1-foundation:
