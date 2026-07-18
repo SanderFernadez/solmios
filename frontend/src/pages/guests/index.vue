@@ -162,260 +162,197 @@
     </SectionCard>
 
     <!-- View Guest Profile Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-      <div v-if="showViewModal && viewGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-
-        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-          <!-- Header -->
-          <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
-            <div class="flex items-center gap-4 min-w-0">
-              <div class="w-14 h-14 rounded-full flex items-center justify-center text-lg font-black shrink-0" :class="guestAvatarClass(viewGuest)">
-                {{ viewGuest.initials }}
-              </div>
-              <div class="min-w-0">
-                <h3 class="text-xl font-black text-navy truncate">{{ viewGuest.name }}</h3>
-                <p class="text-xs text-text-muted truncate">{{ viewGuest.nationality }} · {{ viewGuest.email }}</p>
-              </div>
-            </div>
-            <button @click="closeViewModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
+    <AppModal v-if="showViewModal && viewGuest" size="xl" body-class="p-0" @close="closeViewModal">
+      <!-- Header: identidad + tier, sobre el navy del sistema -->
+      <template #header>
+        <div class="flex items-center gap-4 min-w-0">
+          <div class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/10 text-lg font-black text-white ring-1 ring-white/20">
+            {{ viewGuest.initials }}
           </div>
-
-          <!-- Body -->
-          <div class="px-7 pb-7 overflow-y-auto flex-1">
-            <!-- Stats Row -->
-            <div class="grid grid-cols-4 gap-3 pb-6 border-b border-border">
-              <div class="text-center">
-                <div class="text-2xl font-black tabular-nums text-navy">{{ viewGuest.stays }}</div>
-                <div class="text-[10px] text-text-muted uppercase tracking-wide mt-0.5">Estadías</div>
-              </div>
-              <div class="text-center">
-                <div class="text-2xl font-black tabular-nums text-cyan">${{ viewGuest.totalSpent.toLocaleString() }}</div>
-                <div class="text-[10px] text-text-muted uppercase tracking-wide mt-0.5">Total Gastado</div>
-              </div>
-              <div class="text-center">
-                <div class="text-2xl font-black tabular-nums text-gold">{{ viewGuest.points.toLocaleString() }}</div>
-                <div class="text-[10px] text-text-muted uppercase tracking-wide mt-0.5">Puntos</div>
-              </div>
-              <div class="text-center">
-                <div class="text-2xl font-black" :class="viewGuestTier.color">{{ viewGuestTier.label }}</div>
-                <div class="text-[10px] text-text-muted uppercase tracking-wide mt-0.5">Tier</div>
-              </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="text-lg font-black text-white truncate">{{ viewGuest.name }}</h3>
+              <span class="rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white">
+                {{ viewGuestTier.label }}
+              </span>
+              <span v-if="viewGuest.isActiveToday" class="inline-flex items-center gap-1.5 rounded-full bg-[#22C55E]/20 px-2.5 py-0.5 text-[10px] font-extrabold uppercase text-[#4ADE80]">
+                <span class="h-1.5 w-1.5 rounded-full bg-[#4ADE80]"></span> Hospedado
+              </span>
             </div>
-
-            <!-- Información de Ventas / Valor del cliente -->
-            <div class="py-5 border-b border-border">
-              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Información de Ventas</h4>
-              <div class="grid grid-cols-3 gap-x-4 gap-y-3">
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Ticket Promedio</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">${{ viewGuest.sales ? viewGuest.sales.avgPerStay.toLocaleString() : '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Reservas</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.sales ? viewGuest.sales.reservationsCount : '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Facturado</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">${{ viewGuest.sales ? viewGuest.sales.totalResvSpent.toLocaleString() : '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Primera visita</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.sales ? fmtDate(viewGuest.sales.firstVisit) : '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Última visita</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.sales ? fmtDate(viewGuest.sales.lastVisit) : '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Días desde última</div>
-                  <div class="text-sm font-bold mt-0.5" :class="viewGuest.sales?.daysSinceLastVisit != null && viewGuest.sales.daysSinceLastVisit <= RECENT_VISIT_DAYS ? 'text-teal' : 'text-navy'">
-                    {{ viewGuest.sales?.daysSinceLastVisit != null ? viewGuest.sales.daysSinceLastVisit : '—' }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Contact Info -->
-            <div class="py-5 border-b border-border">
-              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Información de Contacto</h4>
-              <div class="grid grid-cols-2 gap-x-4 gap-y-3">
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Email</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.email || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Teléfono</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.phone || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Documento</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.document || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Fecha de Nacimiento</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.birthDate ? fmtDate(viewGuest.birthDate) : '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Nacionalidad</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.nationality || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Idioma</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.language || '—' }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Datos personales y dirección -->
-            <div class="py-5 border-b border-border">
-              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Datos Personales y Dirección</h4>
-              <div class="grid grid-cols-3 gap-x-4 gap-y-3">
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Sexo</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ sexLabel(viewGuest.sex) }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">País</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.country || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Tipo Doc.</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ docTypeLabel(viewGuest.documentType) }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Exp. Doc.</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.documentIssueDate ? fmtDate(viewGuest.documentIssueDate) : '—' }}</div>
-                </div>
-                <div class="col-span-2">
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Dirección</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ [viewGuest.address, viewGuest.city, viewGuest.province].filter(Boolean).join(', ') || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Profesión</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.profession || '—' }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Contacto de emergencia -->
-            <div v-if="viewGuest.emergencyContact && (viewGuest.emergencyContact.name || viewGuest.emergencyContact.phone || viewGuest.emergencyContact.email)" class="py-5 border-b border-border">
-              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Contacto de Emergencia</h4>
-              <div class="grid grid-cols-4 gap-x-4 gap-y-3">
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Nombre</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.emergencyContact.name || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Teléfono</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.emergencyContact.phone || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Relación</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.emergencyContact.relation || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-text-muted uppercase tracking-wide">Email</div>
-                  <div class="text-sm font-bold text-navy mt-0.5">{{ viewGuest.emergencyContact.email || '—' }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Preferences -->
-            <div v-if="viewGuest.preferences?.length" class="py-5 border-b border-border">
-              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Preferencias</h4>
-              <div class="flex flex-wrap gap-1.5">
-                <span v-for="pref in viewGuest.preferences" :key="pref" class="px-3 py-1 rounded-full border border-border text-xs font-medium text-text-secondary">
-                  {{ pref }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Stay History -->
-            <div class="py-5 border-b border-border">
-              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Historial de Estadías</h4>
-              <div v-if="viewGuest.loadingDetail" class="text-xs text-text-muted py-1">Cargando estadías…</div>
-              <div v-else-if="!viewGuest.history?.length" class="text-xs text-text-muted py-1">Sin estadías registradas</div>
-              <div v-else class="divide-y divide-border">
-                <div v-for="stay in viewGuest.history" :key="stay.id" class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
-                  <div class="min-w-0">
-                    <div class="text-sm font-bold text-navy">{{ stay.dates }}</div>
-                    <div class="text-[11px] text-text-muted">{{ stay.nights }} noches · ${{ stay.total }}<template v-if="stay.channel"> · {{ stay.channel }}</template></div>
-                  </div>
-                  <span class="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0" :class="stayBadgeClass(stay.status)">
-                    {{ stayLabel(stay.status) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Points History -->
-            <div class="py-5 border-b border-border">
-              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-3">Historial de Puntos</h4>
-              <div v-if="viewGuest.loadingDetail" class="text-xs text-text-muted py-1">Cargando puntos…</div>
-              <div v-else-if="!viewGuest.pointsHistory?.length" class="text-xs text-text-muted py-1">Sin movimientos de puntos</div>
-              <div v-else class="divide-y divide-border">
-                <div v-for="tx in viewGuest.pointsHistory" :key="tx.id" class="flex items-center justify-between py-2 first:pt-0 last:pb-0">
-                  <div class="min-w-0">
-                    <div class="text-xs font-bold text-navy">{{ tx.description || tx.type }}</div>
-                    <div class="text-[10px] text-text-muted">{{ fmtDate(tx.createdAt) }}</div>
-                  </div>
-                  <span class="text-sm font-black shrink-0" :class="tx.points >= 0 ? 'text-teal' : 'text-gold'">
-                    {{ tx.points >= 0 ? '+' : '' }}{{ tx.points }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Notes -->
-            <div v-if="viewGuest.notes" class="pt-5">
-              <h4 class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</h4>
-              <div class="text-sm text-text-secondary whitespace-pre-wrap">{{ viewGuest.notes }}</div>
-            </div>
+            <p class="mt-0.5 truncate text-[11px] text-white/60">
+              {{ [viewGuest.nationality, viewGuest.email].filter(Boolean).join(' · ') || 'Sin datos de contacto' }}
+            </p>
           </div>
+        </div>
+      </template>
 
-          <!-- Actions -->
-          <div class="flex items-center gap-4 px-7 py-5 border-t border-border shrink-0">
-            <button @click="closeViewModal(); openEditGuest(viewGuest)" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
-              Editar Perfil
-            </button>
-            <button @click="closeViewModal" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">
-              Cerrar
-            </button>
+      <!-- Franja de métricas -->
+      <div class="grid grid-cols-2 gap-px border-b border-border bg-border sm:grid-cols-4">
+        <div v-for="m in viewGuestMetrics" :key="m.label" class="flex items-center gap-3 bg-white px-4 py-3.5">
+          <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl" :class="m.iconClass">
+            <span class="h-4.5 w-4.5" v-html="UI_ICON[m.icon]"></span>
+          </span>
+          <div class="min-w-0">
+            <div class="text-lg font-black leading-none tabular-nums" :class="m.valueClass">{{ m.value }}</div>
+            <div class="mt-1 truncate text-[10px] font-bold uppercase tracking-wide text-text-muted">{{ m.label }}</div>
           </div>
         </div>
       </div>
-      </Transition>
-    </Teleport>
+
+      <!-- Dos columnas: ficha a la izquierda, actividad a la derecha -->
+      <div class="grid gap-5 p-5 lg:grid-cols-[1.05fr_1fr]">
+        <!-- ── Columna izquierda: ficha del cliente ── -->
+        <div class="space-y-4">
+          <section v-for="sec in viewGuestSections" :key="sec.title" class="overflow-hidden rounded-2xl border border-border">
+            <header class="flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5">
+              <span class="grid h-6 w-6 place-items-center rounded-lg bg-navy/10 text-navy">
+                <span class="h-3.5 w-3.5" v-html="UI_ICON[sec.icon]"></span>
+              </span>
+              <h4 class="text-[11px] font-black uppercase tracking-wide text-navy">{{ sec.title }}</h4>
+            </header>
+            <p v-if="!sec.fields.length" class="px-4 py-3 text-xs text-text-muted">Sin datos registrados</p>
+            <dl v-else class="grid grid-cols-2 gap-x-4 gap-y-3 p-4">
+              <div v-for="f in sec.fields" :key="f.label" :class="f.wide ? 'col-span-2' : ''">
+                <dt class="text-[10px] font-semibold uppercase tracking-wide text-text-muted">{{ f.label }}</dt>
+                <dd class="mt-0.5 truncate text-sm font-bold" :class="f.tone || 'text-navy'">{{ f.value }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Preferencias -->
+          <section v-if="viewGuest.preferences?.length" class="overflow-hidden rounded-2xl border border-border">
+            <header class="flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5">
+              <span class="grid h-6 w-6 place-items-center rounded-lg bg-cyan/10 text-cyan">
+                <span class="h-3.5 w-3.5" v-html="UI_ICON.sparkles"></span>
+              </span>
+              <h4 class="text-[11px] font-black uppercase tracking-wide text-navy">Preferencias</h4>
+            </header>
+            <div class="flex flex-wrap gap-1.5 p-4">
+              <span v-for="pref in viewGuest.preferences" :key="pref"
+                class="rounded-full bg-cyan/10 px-3 py-1 text-[11px] font-bold text-cyan">{{ pref }}</span>
+            </div>
+          </section>
+
+          <!-- Notas: se lee como una nota, no como un campo más -->
+          <section v-if="viewGuest.notes" class="overflow-hidden rounded-2xl border border-gold/30 bg-gold/5">
+            <header class="flex items-center gap-2 border-b border-gold/20 px-4 py-2.5">
+              <span class="grid h-6 w-6 place-items-center rounded-lg bg-gold/15 text-gold">
+                <span class="h-3.5 w-3.5" v-html="UI_ICON.note"></span>
+              </span>
+              <h4 class="text-[11px] font-black uppercase tracking-wide text-gold">Notas internas</h4>
+            </header>
+            <p class="whitespace-pre-wrap px-4 py-3 text-sm text-text-secondary">{{ viewGuest.notes }}</p>
+          </section>
+        </div>
+
+        <!-- ── Columna derecha: actividad ── -->
+        <div class="space-y-4">
+          <!-- Historial de estadías como línea de tiempo -->
+          <section class="overflow-hidden rounded-2xl border border-border">
+            <header class="flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2.5">
+              <div class="flex items-center gap-2">
+                <span class="grid h-6 w-6 place-items-center rounded-lg bg-teal/10 text-teal">
+                  <span class="h-3.5 w-3.5" v-html="UI_ICON.calendar"></span>
+                </span>
+                <h4 class="text-[11px] font-black uppercase tracking-wide text-navy">Historial de estadías</h4>
+              </div>
+              <span v-if="viewGuest.history?.length" class="text-[10px] font-bold text-text-muted">{{ viewGuest.history.length }}</span>
+            </header>
+
+            <div v-if="viewGuest.loadingDetail" class="space-y-3 p-4">
+              <div v-for="i in 3" :key="i" class="h-10 animate-pulse rounded-lg bg-surface"></div>
+            </div>
+            <p v-else-if="!viewGuest.history?.length" class="px-4 py-6 text-center text-xs text-text-muted">Sin estadías registradas</p>
+            <ol v-else class="relative p-4">
+              <!-- riel de la línea de tiempo -->
+              <span class="absolute bottom-6 left-[22px] top-6 w-px bg-border"></span>
+              <li v-for="stay in viewGuest.history" :key="stay.id" class="relative flex gap-3 pb-4 last:pb-0">
+                <span class="relative z-10 mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-white" :class="stayDotClass(stay.status)"></span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-start justify-between gap-2">
+                    <span class="text-sm font-bold text-navy">{{ stay.dates }}</span>
+                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase" :class="stayBadgeClass(stay.status)">
+                      {{ stayLabel(stay.status) }}
+                    </span>
+                  </div>
+                  <div class="mt-0.5 text-[11px] text-text-muted">
+                    {{ stay.nights }} noches · ${{ stay.total }}<template v-if="stay.channel"> · {{ stay.channel }}</template>
+                  </div>
+                </div>
+              </li>
+            </ol>
+          </section>
+
+          <!-- Movimientos de puntos -->
+          <section class="overflow-hidden rounded-2xl border border-border">
+            <header class="flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5">
+              <span class="grid h-6 w-6 place-items-center rounded-lg bg-gold/10 text-gold">
+                <span class="h-3.5 w-3.5" v-html="UI_ICON.coins"></span>
+              </span>
+              <h4 class="text-[11px] font-black uppercase tracking-wide text-navy">Movimientos de puntos</h4>
+            </header>
+
+            <div v-if="viewGuest.loadingDetail" class="space-y-3 p-4">
+              <div v-for="i in 2" :key="i" class="h-8 animate-pulse rounded-lg bg-surface"></div>
+            </div>
+            <p v-else-if="!viewGuest.pointsHistory?.length" class="px-4 py-6 text-center text-xs text-text-muted">Sin movimientos de puntos</p>
+            <ul v-else class="divide-y divide-border">
+              <li v-for="tx in viewGuest.pointsHistory" :key="tx.id" class="flex items-center justify-between gap-3 px-4 py-2.5">
+                <div class="min-w-0">
+                  <div class="truncate text-xs font-bold text-navy">{{ tx.description || tx.type }}</div>
+                  <div class="text-[10px] text-text-muted">{{ fmtDate(tx.createdAt) }}</div>
+                </div>
+                <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-black tabular-nums"
+                  :class="tx.points >= 0 ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">
+                  {{ tx.points >= 0 ? '+' : '' }}{{ tx.points }}
+                </span>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+
+      <template #footer>
+        <button @click="closeViewModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">
+          Cerrar
+        </button>
+        <button @click="closeViewModal(); openEditGuest(viewGuest)"
+          class="inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+          <span class="h-4 w-4" v-html="UI_ICON.pencil"></span>
+          Editar perfil
+        </button>
+      </template>
+    </AppModal>
 
     <!-- New/Edit Guest Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-      <div v-if="showFormModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
+    <AppModal v-if="showFormModal" size="lg" body-class="p-0"
+      :title="editingGuest ? 'Editar huésped' : 'Nuevo huésped'"
+      :subtitle="`Paso ${formStep} de ${FORM_STEPS.length} · ${FORM_STEPS[formStep - 1].label}`"
+      @close="closeFormModal">
 
-        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-          <div class="px-7 pt-7 pb-5 shrink-0">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-xl font-black text-navy tracking-tight">{{ editingGuest ? 'Editar huésped' : 'Nuevo huésped' }}</h3>
-              <button @click="closeFormModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <!-- Wizard progress -->
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-navy">Paso {{ formStep }} de {{ FORM_STEPS.length }}</span>
-              <span class="text-xs font-bold text-text-muted">{{ FORM_STEPS[formStep - 1].label }}</span>
-            </div>
-            <div class="h-1.5 bg-surface-dark rounded-full overflow-hidden">
-              <div class="h-full bg-navy rounded-full transition-all" :style="{ width: (formStep / FORM_STEPS.length * 100) + '%' }"></div>
-            </div>
-          </div>
+      <!-- Stepper: dónde estoy y qué falta -->
+      <ol class="flex items-center gap-1 border-b border-border bg-surface px-5 py-3">
+        <li v-for="s in FORM_STEPS" :key="s.n" class="flex flex-1 items-center gap-1.5 last:flex-none">
+          <button
+            @click="goToStep(s.n)"
+            :disabled="s.n > formStep"
+            class="flex items-center gap-2 rounded-full transition-colors"
+            :class="s.n <= formStep ? 'cursor-pointer' : 'cursor-not-allowed'"
+            :title="s.label"
+          >
+            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-black transition-colors"
+              :class="s.n < formStep ? 'bg-teal text-white' : s.n === formStep ? 'bg-navy text-white' : 'bg-white text-text-muted ring-1 ring-border'">
+              <span v-if="s.n < formStep" class="h-3.5 w-3.5" v-html="UI_ICON.check"></span>
+              <template v-else>{{ s.n }}</template>
+            </span>
+            <span class="hidden whitespace-nowrap text-[11px] font-bold sm:inline"
+              :class="s.n === formStep ? 'text-navy' : 'text-text-muted'">{{ s.short }}</span>
+          </button>
+          <span v-if="s.n < FORM_STEPS.length" class="h-px flex-1 transition-colors" :class="s.n < formStep ? 'bg-teal' : 'bg-border'"></span>
+        </li>
+      </ol>
 
-          <div class="px-7 pb-7 space-y-4 overflow-y-auto flex-1">
+      <div class="space-y-4 p-5">
             <p v-if="formStep === 1" class="text-[11px] text-text-muted">Los campos marcados con <span class="text-red-500 font-bold">*</span> son obligatorios.</p>
 
             <!-- Paso 1: Datos Personales -->
@@ -561,18 +498,24 @@
             </template>
           </div>
 
-          <div class="flex items-center justify-between px-7 py-5 border-t border-border shrink-0">
-            <button v-if="formStep === 1" @click="closeFormModal" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
-            <button v-else @click="prevFormStep" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Atrás</button>
-            <button v-if="formStep < FORM_STEPS.length" @click="nextFormStep" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">Siguiente</button>
-            <button v-else @click="saveGuest" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
-              {{ editingGuest ? 'Guardar Cambios' : 'Crear Huésped' }}
-            </button>
-          </div>
-        </div>
-      </div>
-      </Transition>
-    </Teleport>
+      <template #footer>
+        <button v-if="formStep === 1" @click="closeFormModal" class="mr-auto px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">
+          Cancelar
+        </button>
+        <button v-else @click="prevFormStep" class="mr-auto inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">
+          <span class="h-4 w-4" v-html="UI_ICON.arrowLeft"></span> Atrás
+        </button>
+        <button v-if="formStep < FORM_STEPS.length" @click="nextFormStep"
+          class="inline-flex items-center gap-1.5 rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+          Siguiente <span class="h-4 w-4" v-html="UI_ICON.arrowRight"></span>
+        </button>
+        <button v-else @click="saveGuest"
+          class="inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+          <span class="h-4 w-4" v-html="UI_ICON.check"></span>
+          {{ editingGuest ? 'Guardar cambios' : 'Crear huésped' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -586,6 +529,7 @@ import { useToast } from '@/composables/useToast'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
 
@@ -597,7 +541,29 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z"/></svg>'
 const ICON_EYE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
 const ICON_PENCIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v4.75A2 2 0 0 1 17.5 21h-11a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2h4.75"/></svg>'
-const ICON_USERS_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
+// Iconografía del modal de perfil (stroke, hereda color y tamaño del contenedor).
+const UI_ICON: Record<string, string> = {
+  bed: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 18v2M3 18h18M21 18v2M6 9V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2"/></svg>',
+  money: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  coins: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6"/><path d="M15.5 4.2a6 6 0 0 1 0 15.6M9 6v6l3 2"/></svg>',
+  ticket: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6Z"/><path d="M13 5v14"/></svg>',
+  user: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>',
+  id: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.5 1.7-2 3-2s2.5.5 3 2M15 10h4M15 14h3"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  sparkles: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>',
+  note: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4a2 2 0 0 1 2-2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16.9 4.5 1.7-1.7a1.9 1.9 0 0 1 2.6 2.6L19.5 7.1M16.9 4.5 6.6 14.8a4.5 4.5 0 0 0-1.1 1.9L4.7 19.3l2.6-.8a4.5 4.5 0 0 0 1.9-1.1L19.5 7.1M16.9 4.5 19.5 7.1"/></svg>',
+  award: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="m8.2 13.9-1.4 7 5.2-3 5.2 3-1.4-7"/></svg>',
+  check: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>',
+  arrowLeft: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
+  arrowRight: '<svg viewBox="0 0 24 24" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+}
+
+const ICON_USERS_EMPTY ='<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>'
 
 // Umbrales de segmentación de clientes (VIP por gasto, Frecuente por estadías)
 const VIP_SPEND_THRESHOLD = 5000
@@ -618,11 +584,13 @@ const viewGuest = ref<any>(null)
 const editingGuest = ref<any>(null)
 
 const formStep = ref(1)
+// `label` describe el paso en el encabezado; `short` es el del stepper, donde un
+// texto largo se parte en dos líneas y descuadra la fila de pasos.
 const FORM_STEPS = [
-  { n: 1, label: 'Datos Personales' },
-  { n: 2, label: 'Dirección y Profesión' },
-  { n: 3, label: 'Fidelización y Emergencia' },
-  { n: 4, label: 'Preferencias y Notas' },
+  { n: 1, label: 'Datos Personales', short: 'Datos' },
+  { n: 2, label: 'Dirección y Profesión', short: 'Dirección' },
+  { n: 3, label: 'Fidelización y Emergencia', short: 'Fidelización' },
+  { n: 4, label: 'Preferencias y Notas', short: 'Preferencias' },
 ]
 
 function nextFormStep() {
@@ -635,6 +603,12 @@ function nextFormStep() {
 
 function prevFormStep() {
   formStep.value = Math.max(formStep.value - 1, 1)
+}
+
+// El stepper permite volver a un paso ya visitado, nunca saltear hacia adelante
+// (el paso 1 valida nombre/email antes de dejar avanzar).
+function goToStep(n: number) {
+  if (n <= formStep.value) formStep.value = n
 }
 
 const form = ref({
@@ -863,6 +837,92 @@ const viewGuestTier = computed(() => {
   return { label: 'Regular', color: 'text-navy' }
 })
 
+// Franja superior del modal: las 4 cifras que resumen al cliente.
+const viewGuestMetrics = computed(() => {
+  const g = viewGuest.value
+  if (!g) return []
+  return [
+    { label: 'Estadías', value: String(g.stays ?? 0), icon: 'bed', iconClass: 'bg-navy/10 text-navy', valueClass: 'text-navy' },
+    { label: 'Total gastado', value: `$${(g.totalSpent ?? 0).toLocaleString()}`, icon: 'money', iconClass: 'bg-teal/10 text-teal', valueClass: 'text-teal' },
+    { label: 'Puntos', value: (g.points ?? 0).toLocaleString(), icon: 'coins', iconClass: 'bg-gold/10 text-gold', valueClass: 'text-gold' },
+    { label: 'Ticket promedio', value: g.sales ? `$${g.sales.avgPerStay.toLocaleString()}` : '—', icon: 'ticket', iconClass: 'bg-cyan/10 text-cyan', valueClass: 'text-cyan' },
+  ]
+})
+
+// Ficha del cliente declarada como datos: el template sólo itera. Cada sección
+// se omite si no aporta nada (emergencia sin cargar no dibuja una tarjeta vacía).
+const viewGuestSections = computed(() => {
+  const g = viewGuest.value
+  if (!g) return []
+  const dash = (v: any) => (v === 0 || v ? String(v) : '—')
+  const address = [g.address, g.city, g.province].filter(Boolean).join(', ')
+  const ec = g.emergencyContact ?? {}
+
+  const sections: { title: string; icon: string; fields: { label: string; value: string; wide?: boolean; tone?: string }[] }[] = [
+    {
+      title: 'Contacto', icon: 'mail', fields: [
+        { label: 'Email', value: dash(g.email) },
+        { label: 'Teléfono', value: dash(g.phone) },
+        { label: 'Idioma', value: dash(g.language) },
+        { label: 'Nacionalidad', value: dash(g.nationality) },
+      ],
+    },
+    {
+      title: 'Documentación', icon: 'id', fields: [
+        { label: 'Documento', value: dash(g.document) },
+        { label: 'Tipo', value: docTypeLabel(g.documentType) },
+        { label: 'Expedición', value: g.documentIssueDate ? fmtDate(g.documentIssueDate) : '—' },
+        { label: 'Nacimiento', value: g.birthDate ? fmtDate(g.birthDate) : '—' },
+        { label: 'Sexo', value: sexLabel(g.sex) },
+        { label: 'Profesión', value: dash(g.profession) },
+      ],
+    },
+    {
+      title: 'Dirección', icon: 'pin', fields: [
+        { label: 'Domicilio', value: address || '—', wide: true },
+        { label: 'País', value: dash(g.country) },
+      ],
+    },
+    {
+      title: 'Valor del cliente', icon: 'chart', fields: [
+        { label: 'Reservas', value: g.sales ? String(g.sales.reservationsCount) : '—' },
+        { label: 'Facturado', value: g.sales ? `$${g.sales.totalResvSpent.toLocaleString()}` : '—' },
+        { label: 'Primera visita', value: g.sales ? fmtDate(g.sales.firstVisit) : '—' },
+        { label: 'Última visita', value: g.sales ? fmtDate(g.sales.lastVisit) : '—' },
+        // Verde si volvió dentro de la ventana de "cliente reciente".
+        {
+          label: 'Días desde la última',
+          value: g.sales?.daysSinceLastVisit != null ? String(g.sales.daysSinceLastVisit) : '—',
+          tone: g.sales?.daysSinceLastVisit != null && g.sales.daysSinceLastVisit <= RECENT_VISIT_DAYS ? 'text-teal' : '',
+        },
+      ],
+    },
+  ]
+
+  if (ec.name || ec.phone || ec.email) {
+    sections.push({
+      title: 'Contacto de emergencia', icon: 'shield', fields: [
+        { label: 'Nombre', value: dash(ec.name) },
+        { label: 'Teléfono', value: dash(ec.phone) },
+        { label: 'Relación', value: dash(ec.relation) },
+        { label: 'Email', value: dash(ec.email) },
+      ],
+    })
+  }
+
+  // Los campos sin dato no se pintan: un perfil incompleto mostraba secciones
+  // enteras de guiones que estiraban la ficha y no decían nada. La sección
+  // sobrevive vacía a propósito (avisa que el dato falta) pero ocupa una línea.
+  return sections.map(s => ({ ...s, fields: s.fields.filter(f => f.value !== '—') }))
+})
+
+// Punto de la línea de tiempo: mismo código de color que el badge de estado.
+const STAY_DOTS: Record<string, string> = {
+  checked_out: 'bg-teal', checked_in: 'bg-cyan', confirmed: 'bg-navy',
+  pending: 'bg-gold', cancelled: 'bg-gold', no_show: 'bg-gold',
+}
+const stayDotClass = (s: string): string => STAY_DOTS[s] ?? 'bg-border'
+
 async function openViewGuest(guest: any) {
   // Abre el modal con placeholders y carga reservas + historial de puntos en paralelo.
   viewGuest.value = { ...guest, history: [], pointsHistory: [], sales: null, loadingDetail: true }
@@ -1020,22 +1080,5 @@ async function saveGuest() {
 </script>
 
 <style scoped>
-/* Entrada/salida de los modales: backdrop se desvanece, el panel además escala y sube levemente. */
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-.modal-fade-enter-active .modal-panel,
-.modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel,
-.modal-fade-leave-to .modal-panel {
-  opacity: 0;
-  transform: scale(0.95) translateY(12px);
-}
+/* Las transiciones de entrada/salida ahora las aporta AppModal. */
 </style>
