@@ -52,19 +52,10 @@
       </label>
     </div>
 
-    <!-- Stats cards -->
+    <!-- Stats cards — tarjetas hero del dashboard (gradiente + glow + ícono grande) -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-      <div v-for="stat in stats" :key="stat.label" class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="stat.bg">
-            <span class="w-5 h-5" :class="stat.color" v-html="stat.icon"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums" :class="stat.color">{{ Math.round(stat.value) }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">{{ stat.label }}</div>
-          </div>
-        </div>
-      </div>
+      <KpiHeroCard v-for="stat in stats" :key="stat.label"
+        :label="stat.label" :value="stat.value" :icon="stat.icon" :accent="stat.accent" />
     </div>
 
     <!-- Dashboard de Estadísticas -->
@@ -559,6 +550,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useCountUp } from '@/composables/useCountUp'
 import { useHousekeepingStore, humanizeMs, type HousekeepingViewTask } from '@/stores/housekeeping.store'
 import { HousekeepingService } from '@/services/Housekeeping.service'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useNow } from '@/composables/useNow'
@@ -673,11 +665,11 @@ const inspectedAnim = useCountUp(inspectedCount)
 const totalAnim = useCountUp(totalCount)
 
 const stats = computed(() => [
-  { label: 'Pendientes', value: pendingAnim.value, color: 'text-orange', bg: 'bg-orange/10', icon: ICON_INBOX },
-  { label: 'En Progreso', value: inProgressAnim.value, color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_SPARKLE },
-  { label: 'Completadas', value: completedAnim.value, color: 'text-teal', bg: 'bg-teal/10', icon: ICON_CHECK_PLAIN },
-  { label: 'Inspeccionadas', value: inspectedAnim.value, color: 'text-purple', bg: 'bg-purple/10', icon: ICON_SEARCH },
-  { label: 'Total', value: totalAnim.value, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_BOARD },
+  { label: 'Pendientes', value: pendingAnim.value, icon: 'bookings' as const, accent: 'amber' as const },
+  { label: 'En Progreso', value: inProgressAnim.value, icon: 'bed' as const, accent: 'blue' as const },
+  { label: 'Completadas', value: completedAnim.value, icon: 'checkin' as const, accent: 'teal' as const },
+  { label: 'Inspeccionadas', value: inspectedAnim.value, icon: 'users' as const, accent: 'purple' as const },
+  { label: 'Total', value: totalAnim.value, icon: 'building' as const, accent: 'green' as const },
 ])
 
 const availableRooms = computed(() =>
