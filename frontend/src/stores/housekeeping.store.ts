@@ -3,7 +3,7 @@
 // y expone acciones de administración (start/complete/photos/stats).
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { HousekeepingService, type HousekeepingTask, type StaffStats, type PhotoEvidence, type VideoEvidence, type ChecklistItem } from '@/services/Housekeeping.service'
+import { HousekeepingService, MAX_PAGE_SIZE, type HousekeepingTask, type StaffStats, type PhotoEvidence, type VideoEvidence, type ChecklistItem } from '@/services/Housekeeping.service'
 import { RoomService } from '@/services/Room.service'
 import { TeamService, type TeamMember } from '@/services/Team.service'
 
@@ -121,8 +121,36 @@ function fileToDataUrl(file: File): Promise<string> {
   })
 }
 
+/**
+ * Cómo se llena cada columna del tablero.
+ *
+ * Lo que está en curso se trae completo: es la operación del turno y el
+ * supervisor tiene que verlo todo. Lo terminado se trae solo lo último —el
+ * histórico crece sin parar y nadie revisa la limpieza de hace tres semanas
+ * desde el tablero—, y el encabezado igual muestra el total real.
+ */
+const ACTIVE_COLUMN_LIMIT = MAX_PAGE_SIZE
+const FINISHED_COLUMN_LIMIT = 10
+
+// Se ordena por `updatedAt` y no por `completedDate`, que sería lo semántico:
+// hay tareas terminadas sin fecha de fin (2 de 19 en producción), y Postgres
+// ordena DESC con NULLS FIRST — esas quedarían ENCABEZANDO "las últimas 10",
+// tapando justo las recientes. SQLite hace lo contrario, así que el bug solo
+// aparecería en producción. `updatedAt` está siempre y se toca al terminar.
+const BOARD_COLUMNS = [
+  { status: 'pending', limit: ACTIVE_COLUMN_LIMIT, sort: '-createdAt' },
+  { status: 'in_progress', limit: ACTIVE_COLUMN_LIMIT, sort: '-updatedAt' },
+  { status: 'completed', limit: FINISHED_COLUMN_LIMIT, sort: '-updatedAt' },
+  { status: 'inspected', limit: FINISHED_COLUMN_LIMIT, sort: '-updatedAt' },
+] as const
+
 export const useHousekeepingStore = defineStore('housekeeping', () => {
   const tasks = ref<HousekeepingViewTask[]>([])
+  /** Total REAL por estado, tal como lo informa el backend (no `tasks.length`). */
+  const totals = ref<Record<string, number>>({})
+  /** Página actual de la vista de tabla y su total en el servidor. */
+  const pageTasks = ref<HousekeepingViewTask[]>([])
+  const pageTotal = ref(0)
   const stats = ref<StaffStats[]>([])
   // El personal son USUARIOS del hotel (tabla users), no perfiles de RRHH: los
   // tasks guardan staffId = users.id, así que hay que resolver contra /usuarios.
@@ -131,24 +159,93 @@ export const useHousekeepingStore = defineStore('housekeeping', () => {
   const loading = ref(false)
   const currentHotelId = ref<string | undefined>()
 
+  /**
+   * Carga el TABLERO, pidiendo una consulta por columna.
+   *
+   * Antes se pedía el listado sin `page`/`limit`: el backend devolvía sus 20 por
+   * defecto y el tablero mostraba una parte del hotel como si fuera todo (26
+   * tareas en producción, 6 invisibles). Además los contadores se calculaban
+   * sobre esos 20, así que los KPIs mentían sin que se notara.
+   *
+   * Pedir por estado resuelve las dos cosas: cada respuesta trae su `total` real
+   * —que es el número que se muestra— y permite traer completo lo que está en
+   * curso y solo las últimas de lo terminado, que es lo que se mira de un histórico.
+   */
   async function load(hotelId?: string) {
     currentHotelId.value = hotelId
     loading.value = true
     try {
-      const [roomsRes, usersResult, tasksRes] = await Promise.all([
+      const [roomsRes, usersResult, ...pages] = await Promise.all([
         hotelId ? RoomService.list({ hotelId }) : Promise.resolve({ rooms: [] as any[] }),
         TeamService.list(),
-        HousekeepingService.list(hotelId),
+        ...BOARD_COLUMNS.map(c =>
+          HousekeepingService.list({ hotelId, status: c.status, limit: c.limit, sort: c.sort }),
+        ),
       ])
       rooms.value = roomsRes.rooms ?? []
       staff.value = Array.isArray(usersResult) ? usersResult : (usersResult?.data ?? [])
       const roomMap = new Map(rooms.value.map(r => [r.id, r]))
       // Indexar por users.id: los tasks guardan staffId/supervisorId = users.id.
       const staffMap = new Map(staff.value.map(s => [s.id, s.name || s.id]))
-      tasks.value = (tasksRes.data ?? []).map(t => mapTask(t, roomMap, staffMap))
+
+      const counts: Record<string, number> = {}
+      const all: HousekeepingViewTask[] = []
+      BOARD_COLUMNS.forEach((c, i) => {
+        const page = pages[i]
+        counts[c.status] = page?.total ?? 0
+        all.push(...(page?.data ?? []).map(t => mapTask(t, roomMap, staffMap)))
+      })
+      totals.value = counts
+      tasks.value = all
     } finally {
       loading.value = false
     }
+  }
+
+  /**
+   * Una página del listado completo, para la vista de tabla. Server-side de
+   * verdad: `total` sale del backend, no de contar lo que ya se tenía.
+   */
+  async function loadPage(opts: { page: number; limit: number; status?: string }) {
+    loading.value = true
+    try {
+      const res = await HousekeepingService.list({
+        hotelId: currentHotelId.value,
+        status: opts.status,
+        page: opts.page,
+        limit: opts.limit,
+        sort: '-createdAt',
+      })
+      const roomMap = new Map(rooms.value.map(r => [r.id, r]))
+      const staffMap = new Map(staff.value.map(s => [s.id, s.name || s.id]))
+      pageTasks.value = (res?.data ?? []).map(t => mapTask(t, roomMap, staffMap))
+      pageTotal.value = res?.total ?? 0
+      return res
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Todas las tareas del hotel, recorriendo las páginas del servidor. Es para el
+   * export: ahí sí hace falta el conjunto completo, y el tope por request
+   * (`MAX_PAGE_SIZE`) obliga a varias vueltas.
+   */
+  async function fetchAllForExport(status?: string): Promise<HousekeepingViewTask[]> {
+    const roomMap = new Map(rooms.value.map(r => [r.id, r]))
+    const staffMap = new Map(staff.value.map(s => [s.id, s.name || s.id]))
+    const out: HousekeepingViewTask[] = []
+    let page = 1
+    let pages = 1
+    do {
+      const res = await HousekeepingService.list({
+        hotelId: currentHotelId.value, status, page, limit: MAX_PAGE_SIZE, sort: '-createdAt',
+      })
+      out.push(...(res?.data ?? []).map(t => mapTask(t, roomMap, staffMap)))
+      pages = res?.pages ?? 1
+      page++
+    } while (page <= pages)
+    return out
   }
 
   async function createTask(payload: Partial<HousekeepingTask>) {
@@ -196,7 +293,7 @@ export const useHousekeepingStore = defineStore('housekeeping', () => {
   }
 
   return {
-    tasks, stats, staff, rooms, loading,
-    load, createTask, updateTask, startTask, completeTask, uploadPhoto, removePhoto, loadStats, approveTask,
+    tasks, totals, pageTasks, pageTotal, stats, staff, rooms, loading,
+    load, loadPage, fetchAllForExport, createTask, updateTask, startTask, completeTask, uploadPhoto, removePhoto, loadStats, approveTask,
   }
 })

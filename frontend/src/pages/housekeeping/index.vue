@@ -110,8 +110,13 @@
             <span class="w-3 h-3 rounded-full" :class="column.dotColor"></span>
             <h3 class="text-sm font-black text-navy">{{ column.title }}</h3>
           </div>
+          <!-- El total es el del hotel; si la columna muestra solo las últimas,
+               se dice cuántas se están viendo en vez de fingir que son todas. -->
           <span class="bg-white px-2 py-0.5 rounded-full text-[10px] font-bold text-text-muted border border-border">
-            {{ getColumnTasks(column.id).length }}
+            <template v-if="columnTotal(column.id) > getColumnTasks(column.id).length">
+              {{ getColumnTasks(column.id).length }} de {{ columnTotal(column.id) }}
+            </template>
+            <template v-else>{{ columnTotal(column.id) }}</template>
           </span>
         </div>
         <div class="space-y-3">
@@ -181,7 +186,10 @@
             <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
             Exportar CSV
           </button>
-          <span class="text-xs text-text-muted">{{ filteredTasks.length }} tarea(s)</span>
+          <span class="text-xs text-text-muted">
+            <template v-if="listSearch">{{ paginatedTasks.length }} en esta página</template>
+            <template v-else>{{ store.pageTotal }} tarea(s)</template>
+          </span>
         </div>
       </div>
       <table class="w-full">
@@ -249,7 +257,7 @@
       </table>
       <!-- Pagination -->
       <div v-if="totalListPages > 1" class="p-4 border-t border-border flex items-center justify-between">
-        <span class="text-xs text-text-muted">{{ filteredTasks.length }} tarea(s) en {{ totalListPages }} página(s)</span>
+        <span class="text-xs text-text-muted">{{ listRange }}</span>
         <div class="flex items-center gap-1">
           <button @click="listPage = 1" :disabled="listPage <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">«</button>
           <button @click="listPage--" :disabled="listPage <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
@@ -796,11 +804,17 @@ function blankTask(): HousekeepingViewTask {
 
 // Fuentes numéricas separadas de `stats` para poder animarlas con useCountUp
 // (el composable debe llamarse en el cuerpo de setup, no dentro del computed que arma las cards).
-const pendingCount = computed(() => store.tasks.filter(t => t.status === 'pending').length)
-const inProgressCount = computed(() => store.tasks.filter(t => t.status === 'in_progress').length)
-const completedCount = computed(() => store.tasks.filter(t => t.status === 'completed').length)
-const inspectedCount = computed(() => store.tasks.filter(t => t.status === 'inspected').length)
-const totalCount = computed(() => store.tasks.length)
+//
+// Los totales salen del backend (`store.totals`), NO de contar lo cargado: el
+// tablero trae solo las últimas de cada columna terminada, así que
+// `tasks.filter(...).length` mostraría 10 donde hay 47 y nadie lo notaría.
+const pendingCount = computed(() => store.totals.pending ?? 0)
+const inProgressCount = computed(() => store.totals.in_progress ?? 0)
+const completedCount = computed(() => store.totals.completed ?? 0)
+const inspectedCount = computed(() => store.totals.inspected ?? 0)
+const totalCount = computed(() =>
+  Object.values(store.totals).reduce((sum, n) => sum + n, 0),
+)
 
 const pendingAnim = useCountUp(pendingCount)
 const inProgressAnim = useCountUp(inProgressCount)
@@ -825,9 +839,15 @@ const roomOptions = computed(() =>
   availableRooms.value.map(r => ({ value: r.number, label: `${r.number} · ${r.type}` })),
 )
 
-const filteredTasks = computed(() => {
-  let tasks = store.tasks
-  if (activeFilter.value !== 'all') tasks = tasks.filter(t => t.status === activeFilter.value)
+// La tabla se pagina contra el SERVIDOR. Antes cortaba en el cliente la única
+// página que había recibido, así que siempre decía "1 de 1" y las tareas de la
+// página 2 en adelante no existían para el panel.
+//
+// La búsqueda por texto sigue siendo local porque mira campos que no están en la
+// tabla (número de habitación y nombre de la camarera viven en otras tablas): por
+// eso el contador aclara que filtra sobre la página que se está viendo.
+const paginatedTasks = computed(() => {
+  let tasks = store.pageTasks
   if (hideCompleted.value) tasks = tasks.filter(t => !COMPLETED_STATUSES.includes(t.status))
   if (listSearch.value) {
     const q = listSearch.value.toLowerCase()
@@ -841,14 +861,30 @@ const filteredTasks = computed(() => {
   return tasks
 })
 
-const paginatedTasks = computed(() => {
-  const start = (listPage.value - 1) * listPageSize.value
-  return filteredTasks.value.slice(start, start + listPageSize.value)
+const totalListPages = computed(() => Math.max(1, Math.ceil(store.pageTotal / listPageSize.value)))
+/** Rango que se está viendo: "21–40 de 126". */
+const listRange = computed(() => {
+  if (!store.pageTotal) return '0 de 0'
+  const from = (listPage.value - 1) * listPageSize.value + 1
+  const to = Math.min(from + store.pageTasks.length - 1, store.pageTotal)
+  return `${from}–${to} de ${store.pageTotal}`
 })
 
-const totalListPages = computed(() => Math.ceil(filteredTasks.value.length / listPageSize.value))
+/** Cada cambio de página, tamaño o filtro de estado va al servidor. */
+function reloadListPage() {
+  return store.loadPage({
+    page: listPage.value,
+    limit: listPageSize.value,
+    status: activeFilter.value === 'all' ? undefined : activeFilter.value,
+  })
+}
+watch([listPage, listPageSize], reloadListPage)
+watch(activeFilter, () => { listPage.value = 1; reloadListPage() })
+watch(activeView, (v) => { if (v === 'list' && !store.pageTasks.length) reloadListPage() })
 
 const getColumnTasks = (columnId: string) => store.tasks.filter(t => t.status === columnId)
+/** Cuántas hay en el hotel en ese estado (el tablero puede estar mostrando menos). */
+const columnTotal = (columnId: string) => store.totals[columnId] ?? getColumnTasks(columnId).length
 
 // Tareas pendientes sin staff asignado → candidatas a asignación rápida.
 const assignableTasks = computed(() =>
@@ -1124,9 +1160,17 @@ async function onRemovePhoto(url: string) {
   } catch (e: any) { toast.error('No se pudo eliminar la foto', e?.message) }
 }
 
-function exportCsv() {
+/**
+ * Exporta TODAS las tareas, no la página que se está viendo: un CSV que trae 20
+ * de 126 filas sin decirlo es peor que no exportar. Recorre las páginas del
+ * servidor y arma el archivo con el conjunto completo.
+ */
+async function exportCsv() {
+  const all = await store.fetchAllForExport(
+    activeFilter.value === 'all' ? undefined : activeFilter.value,
+  )
   const headers = ['Habitación', 'Tipo', 'Piso', 'Estado', 'Prioridad', 'Asignado', 'Inicio', 'Fin', 'Duración', 'Notas', 'Fotos']
-  const rows = filteredTasks.value.map(t => [
+  const rows = all.map(t => [
     t.roomNumber,
     t.type,
     t.floor,

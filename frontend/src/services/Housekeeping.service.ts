@@ -33,6 +33,21 @@ export interface ChecklistItem {
   done: boolean
 }
 
+/** Tamaño de página por defecto del listado. */
+export const DEFAULT_PAGE_SIZE = 20
+
+/** Tope que impone el backend (`MAX_LIMIT`): pedir más no trae más. */
+export const MAX_PAGE_SIZE = 100
+
+/** Respuesta paginada del listado: `total` es el del hotel, no el de la página. */
+export interface HousekeepingPage {
+  data: HousekeepingTask[]
+  total: number
+  page: number
+  limit: number
+  pages: number
+}
+
 /** Video de evidencia de fin (cuando el hotel usa el modo `video` en vez de las
  *  fotos por área). Un solo video por tarea. Los bytes viven en el bucket; acá
  *  solo guardamos su ruta. Para reproducirlo se pide una URL firmada temporal. */
@@ -93,9 +108,25 @@ export interface StaffStats {
 }
 
 export const HousekeepingService = {
-  async list(hotelId?: string) {
-    const query = hotelId ? `?hotelId=${hotelId}` : ''
-    return http.get<{ data: HousekeepingTask[]; total: number }>(`/housekeeping${query}`)
+  /**
+   * Listado paginado. `page`/`limit` van SIEMPRE: sin ellos el backend aplica su
+   * default de 20 y la vista muestra una parte del hotel como si fuera todo.
+   * `sort` acepta `-campo` para descendente (`-completedDate` = más recientes).
+   */
+  async list(params: {
+    hotelId?: string
+    status?: string
+    page?: number
+    limit?: number
+    sort?: string
+  } = {}) {
+    const q = new URLSearchParams()
+    if (params.hotelId) q.set('hotelId', params.hotelId)
+    if (params.status) q.set('status', params.status)
+    q.set('page', String(params.page ?? 1))
+    q.set('limit', String(params.limit ?? DEFAULT_PAGE_SIZE))
+    if (params.sort) q.set('sort', params.sort)
+    return http.get<HousekeepingPage>(`/housekeeping?${q.toString()}`)
   },
   async getById(id: string) {
     return http.get<HousekeepingTask>(`/housekeeping/${id}`)

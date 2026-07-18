@@ -134,6 +134,12 @@ export interface HousekeepingQuery {
   search?: string
   page?: number
   limit?: number
+  /**
+   * Orden del listado: `campo` (ascendente) o `-campo` (descendente), p.ej.
+   * `-completedDate` para las limpiezas terminadas más recientes. Sin esto el
+   * orden lo decide la base — sirve para "las últimas N", no para paginar a ciegas.
+   */
+  sort?: string
 }
 
 export interface HousekeepingPaginated {
