@@ -28,264 +28,247 @@
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-            <span class="w-5 h-5 text-navy" v-html="ICON_BUILDING"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-navy">{{ Math.round(foliosCountAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Folios abiertos</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-            <span class="w-5 h-5 text-teal" v-html="ICON_DOCUMENT"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-teal truncate">{{ formatMoney(totalChargesAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total cargos</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-            <span class="w-5 h-5 text-cyan" v-html="ICON_CARD"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-cyan truncate">{{ formatMoney(totalPaymentsAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total pagos</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="totalBalance > 0 ? 'bg-coral/10' : 'bg-teal/10'">
-            <span class="w-5 h-5" :class="totalBalance > 0 ? 'text-coral' : 'text-teal'" v-html="ICON_CLOCK"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums truncate" :class="totalBalance > 0 ? 'text-coral' : 'text-teal'">{{ formatMoney(totalBalanceAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Balance pendiente</div>
-          </div>
-        </div>
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <KpiHeroCard label="Folios Abiertos" :value="foliosCount" icon="building" accent="blue"
+        unit="Cuentas de huéspedes in-house" />
+      <KpiHeroCard label="Total Cargos" :value="totalCharges" icon="money" accent="teal"
+        prefix="$" :unit="`${totalChargeCount} movimiento(s) posteado(s)`" />
+      <KpiHeroCard label="Total Pagos" :value="totalPayments" icon="checkin" accent="purple"
+        prefix="$" unit="Cobrado contra folios abiertos" />
+      <KpiHeroCard label="Balance Pendiente" :value="totalBalance" icon="checkout" accent="amber"
+        prefix="$" unit="Por cobrar antes del check-out" :progress="collectedShare" />
     </div>
 
     <!-- Lista -->
-    <div v-if="loading && folios.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center text-sm text-text-muted">Cargando folios...</div>
-    <div v-else-if="folios.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
-      <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_DOCUMENT"></span>
-      <h3 class="font-bold text-navy mb-1">Sin folios abiertos</h3>
-      <p class="text-xs text-text-muted">Los folios se abren automáticamente al hacer check-in de una reserva.</p>
-    </div>
-    <div v-else class="space-y-3">
-      <div v-for="f in folios" :key="f.id" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-        <!-- Header -->
-        <div class="px-5 py-4 flex items-center justify-between hover:bg-surface/30 transition-colors cursor-pointer" @click="toggleFolio(f.id)">
-          <div class="flex items-center gap-3 flex-1 min-w-0">
-            <div class="w-10 h-10 rounded-full bg-cyan/10 flex items-center justify-center text-cyan font-black shrink-0">
-              {{ f.roomNumber || '?' }}
-            </div>
-            <div class="min-w-0">
-              <div class="text-sm font-black text-navy truncate">{{ f.guestName || `Folio ${f.id.slice(0,8)}` }}</div>
-              <div class="text-[10px] text-text-muted">
-                Hab. {{ f.roomNumber || '—' }} · Abierto {{ formatDate(f.openedAt) }} · {{ f.chargeCount || 0 }} cargos
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-4">
-            <div class="text-right">
-              <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide">Balance</div>
-              <div class="text-sm font-black" :class="(f.balance || 0) > 0 ? 'text-coral' : 'text-teal'">{{ formatMoney(f.balance || 0) }}</div>
-            </div>
-            <span class="w-4 h-4 text-text-muted shrink-0 transition-transform" :class="expanded.has(f.id) ? 'rotate-180' : ''" v-html="ICON_CHEVRON_DOWN"></span>
-          </div>
+    <SectionCard title="Folios abiertos" :subtitle="`${foliosCount} cuenta(s) in-house`" body-class="p-0">
+      <template #actions>
+        <span class="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-bold tabular-nums text-white">
+          Balance {{ formatMoney(totalBalance) }}
+        </span>
+      </template>
+
+      <!-- Carga -->
+      <div v-if="loading && folios.length === 0" class="p-4 sm:p-5 space-y-3">
+        <div v-for="i in 4" :key="i" class="h-14 animate-pulse rounded-xl bg-surface"></div>
+      </div>
+
+      <EmptyState v-else-if="folios.length === 0"
+        :icon="ICON_DOCUMENT"
+        title="Sin folios abiertos"
+        message="Los folios se abren automáticamente al hacer check-in de una reserva.">
+        <template #action>
+          <button @click="load" :disabled="loading"
+            class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer disabled:opacity-50">
+            Refrescar
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[860px] tbl-head">
+          <thead>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Huésped</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Abierto</th>
+              <th class="text-right px-4 py-3 text-[10px] hidden lg:table-cell">Cargos</th>
+              <th class="text-right px-4 py-3 text-[10px] hidden xl:table-cell">Pagos</th>
+              <th class="text-right px-4 py-3 text-[10px]">Balance</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="f in folios" :key="f.id">
+              <tr @click="toggleFolio(f.id)"
+                class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="h-9 w-9 shrink-0 grid place-items-center rounded-full bg-cyan/10 text-[11px] font-black tabular-nums text-cyan">
+                      {{ f.roomNumber || (f.guestName || 'F').charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="min-w-0">
+                      <div class="max-w-[220px] truncate text-sm font-black" :class="f.guestName ? 'text-navy' : 'text-text-muted'">
+                        {{ f.guestName || `Folio ${f.id.slice(0, 8)}` }}
+                      </div>
+                      <div class="text-[11px] text-text-muted">
+                        <span v-if="f.roomNumber">Hab. {{ f.roomNumber }} · </span>{{ f.chargeCount || 0 }} cargo(s)
+                        <span class="lg:hidden"> · Abierto {{ formatDate(f.openedAt) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-sm text-text-secondary hidden lg:table-cell">{{ formatDate(f.openedAt) }}</td>
+                <td class="px-4 py-3 text-right text-sm font-bold tabular-nums text-navy hidden lg:table-cell">{{ formatMoney(f.chargesTotal || 0) }}</td>
+                <td class="px-4 py-3 text-right text-sm font-bold tabular-nums text-teal hidden xl:table-cell">{{ formatMoney(f.paymentsTotal || 0) }}</td>
+                <td class="px-4 py-3 text-right text-sm font-black tabular-nums" :class="(f.balance || 0) > 0 ? 'text-coral' : 'text-teal'">
+                  {{ formatMoney(f.balance || 0) }}
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center justify-end gap-1">
+                    <button @click.stop="openChargeModal(f)" title="Agregar cargo"
+                      class="h-8 w-8 grid place-items-center rounded-lg text-text-secondary hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_PLUS"></span>
+                    </button>
+                    <button @click.stop="openPayModal(f)" title="Registrar pago"
+                      class="h-8 w-8 grid place-items-center rounded-lg text-text-secondary hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_CARD"></span>
+                    </button>
+                    <button @click.stop="toggleFolio(f.id)" :title="expanded.has(f.id) ? 'Ocultar detalle' : 'Ver detalle'"
+                      class="h-8 w-8 grid place-items-center rounded-lg text-text-secondary hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                      <span class="h-4 w-4 transition-transform" :class="expanded.has(f.id) ? 'rotate-180' : ''" v-html="ICON_CHEVRON_DOWN"></span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Detalle expandido -->
+              <tr v-if="expanded.has(f.id)" class="border-b border-border last:border-0">
+                <td colspan="6" class="bg-surface/40 px-4 py-4 sm:px-5">
+                  <!-- Cargos -->
+                  <div class="pb-4 border-b border-border">
+                    <div class="flex items-center justify-between mb-3">
+                      <h4 class="text-[10px] font-bold text-text-muted uppercase tracking-wide">Cargos y pagos</h4>
+                      <button @click.stop="openChargeModal(f)" class="text-[11px] font-bold text-teal hover:text-navy transition-colors cursor-pointer">+ Agregar cargo</button>
+                    </div>
+                    <p v-if="!f.charges || f.charges.length === 0" class="py-2 text-xs text-text-muted">Sin movimientos registrados. Posteá los cargos de habitación con el botón superior.</p>
+                    <div v-else class="divide-y divide-border">
+                      <div v-for="c in f.charges" :key="c.id" class="py-2.5 flex items-center justify-between gap-3 text-xs">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="h-2 w-2 rounded-full shrink-0" :class="c.kind === 'payment' ? 'bg-teal' : 'bg-navy/30'"></span>
+                          <div class="min-w-0">
+                            <div class="font-bold text-navy truncate">{{ c.description || categoryLabel(c.category) }}</div>
+                            <div class="text-[10px] text-text-muted">
+                              {{ categoryLabel(c.category) }}<span v-if="c.postedAt"> · {{ formatDate(c.postedAt) }}</span><span v-if="c.source"> · {{ c.source }}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="shrink-0 text-right">
+                          <div class="font-bold tabular-nums" :class="c.kind === 'payment' ? 'text-teal' : 'text-navy'">
+                            {{ c.kind === 'payment' ? '-' : '+' }}{{ formatMoney(c.total) }}
+                          </div>
+                          <div v-if="c.quantity > 1" class="text-[10px] text-text-muted tabular-nums">{{ c.quantity }}u × {{ formatMoney(c.amount) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Totales -->
+                  <div class="grid grid-cols-3 gap-3 py-4 border-b border-border">
+                    <div>
+                      <div class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Cargos</div>
+                      <div class="mt-0.5 text-sm font-bold tabular-nums text-navy">{{ formatMoney(f.chargesTotal || 0) }}</div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Pagos</div>
+                      <div class="mt-0.5 text-sm font-bold tabular-nums text-teal">{{ formatMoney(f.paymentsTotal || 0) }}</div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Balance</div>
+                      <div class="mt-0.5 text-sm font-bold tabular-nums" :class="(f.balance || 0) > 0 ? 'text-coral' : 'text-teal'">{{ formatMoney(f.balance || 0) }}</div>
+                    </div>
+                  </div>
+
+                  <!-- Acciones -->
+                  <div class="pt-4 flex items-center justify-end gap-4">
+                    <button @click.stop="openPayModal(f)" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">
+                      Registrar pago
+                    </button>
+                    <button @click.stop="closeAndInvoice(f)" :disabled="closing === f.id"
+                      class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+                      {{ closing === f.id ? 'Cerrando...' : 'Cerrar y facturar' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </SectionCard>
+
+    <!-- Modal Agregar cargo -->
+    <AppModal v-if="chargeModal.show" size="md" title="Cargo a Folio"
+      :subtitle="folioSubtitle(chargeModal.folio)" @close="chargeModal.show = false">
+      <div class="space-y-4">
+        <div>
+          <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Categoría</label>
+          <select v-model="chargeForm.category" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer focus:outline-none focus:border-navy">
+            <option value="room">Habitación</option>
+            <option value="minibar">Minibar</option>
+            <option value="restaurant">Restaurante</option>
+            <option value="laundry">Lavandería</option>
+            <option value="spa">SPA</option>
+            <option value="service">Servicio</option>
+            <option value="other">Otro</option>
+          </select>
         </div>
-
-        <!-- Detalle expandido -->
-        <div v-if="expanded.has(f.id)" class="border-t border-border px-5 py-5">
-          <!-- Cargos -->
-          <div class="pb-5 border-b border-border">
-            <div class="flex items-center justify-between mb-3">
-              <h4 class="text-[10px] font-bold text-text-muted uppercase tracking-wide">Cargos y pagos</h4>
-              <button @click.stop="openChargeModal(f)" class="text-[11px] font-bold text-teal hover:text-navy transition-colors cursor-pointer">+ Agregar cargo</button>
-            </div>
-            <div v-if="!f.charges || f.charges.length === 0" class="text-xs text-text-muted py-2">Sin movimientos. Postea los cargos de habitación con el botón superior.</div>
-            <div v-else class="divide-y divide-border">
-              <div v-for="c in f.charges" :key="c.id" class="py-2.5 flex items-center justify-between text-xs">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span class="w-2 h-2 rounded-full shrink-0" :class="c.kind === 'payment' ? 'bg-teal' : 'bg-navy/30'"></span>
-                  <div class="min-w-0">
-                    <div class="font-bold text-navy truncate">{{ c.description || c.category }}</div>
-                    <div class="text-[10px] text-text-muted">{{ categoryLabel(c.category) }} · {{ formatDate(c.postedAt) }} · {{ c.source }}</div>
-                  </div>
-                </div>
-                <div class="text-right shrink-0">
-                  <div class="font-bold" :class="c.kind === 'payment' ? 'text-teal' : 'text-navy'">
-                    {{ c.kind === 'payment' ? '-' : '+' }}{{ formatMoney(c.total) }}
-                  </div>
-                  <div v-if="c.quantity > 1" class="text-[10px] text-text-muted">{{ c.quantity }}u × {{ formatMoney(c.amount) }}</div>
-                </div>
-              </div>
-            </div>
+        <div>
+          <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Descripción</label>
+          <input v-model="chargeForm.description" type="text" placeholder="Ej: Cena - menú del día" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Monto unitario</label>
+            <input v-model.number="chargeForm.amount" type="number" min="0" step="0.01" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold tabular-nums text-navy text-right focus:outline-none focus:border-navy" />
           </div>
-
-          <!-- Totales -->
-          <div class="grid grid-cols-3 gap-3 py-5 border-b border-border">
-            <div>
-              <div class="text-[10px] text-text-muted uppercase tracking-wide">Cargos</div>
-              <div class="text-sm font-bold text-navy mt-0.5">{{ formatMoney(f.chargesTotal || 0) }}</div>
-            </div>
-            <div>
-              <div class="text-[10px] text-text-muted uppercase tracking-wide">Pagos</div>
-              <div class="text-sm font-bold text-teal mt-0.5">{{ formatMoney(f.paymentsTotal || 0) }}</div>
-            </div>
-            <div>
-              <div class="text-[10px] text-text-muted uppercase tracking-wide">Balance</div>
-              <div class="text-sm font-bold mt-0.5" :class="(f.balance || 0) > 0 ? 'text-coral' : 'text-teal'">{{ formatMoney(f.balance || 0) }}</div>
-            </div>
-          </div>
-
-          <!-- Acciones -->
-          <div class="pt-4 flex items-center justify-end gap-4">
-            <button @click.stop="openPayModal(f)" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">
-              Registrar pago
-            </button>
-            <button @click.stop="closeAndInvoice(f)" :disabled="closing === f.id"
-              class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
-              {{ closing === f.id ? 'Cerrando...' : 'Cerrar y facturar' }}
-            </button>
+          <div>
+            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Cantidad</label>
+            <input v-model.number="chargeForm.quantity" type="number" min="1" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold tabular-nums text-navy text-right focus:outline-none focus:border-navy" />
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Modal Agregar cargo -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="chargeModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Cargo a Folio</h3>
-              <button @click="chargeModal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-              </button>
-            </div>
-
-            <div class="p-5 space-y-4 overflow-y-auto flex-1">
-              <div class="flex items-center gap-2 pb-4 border-b border-border">
-                <span class="text-sm font-bold text-navy">{{ chargeModal.folio?.guestName }}</span>
-                <span class="text-text-muted">·</span>
-                <span class="text-sm text-text-secondary">Hab. {{ chargeModal.folio?.roomNumber }}</span>
-              </div>
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Categoría</label>
-                <select v-model="chargeForm.category" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer focus:outline-none focus:border-navy">
-                  <option value="room">Habitación</option>
-                  <option value="minibar">Minibar</option>
-                  <option value="restaurant">Restaurante</option>
-                  <option value="laundry">Lavandería</option>
-                  <option value="spa">SPA</option>
-                  <option value="service">Servicio</option>
-                  <option value="other">Otro</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Descripción</label>
-                <input v-model="chargeForm.description" type="text" placeholder="Ej: Cena - menú del día" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Monto unitario</label>
-                  <input v-model.number="chargeForm.amount" type="number" min="0" step="0.01" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-navy" />
-                </div>
-                <div>
-                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Cantidad</label>
-                  <input v-model.number="chargeForm.quantity" type="number" min="1" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-navy" />
-                </div>
-              </div>
-            </div>
-
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="chargeModal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="saveCharge" :disabled="savingCharge" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
-                  {{ savingCharge ? 'Guardando...' : 'Agregar' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+      <template #footer>
+        <button @click="chargeModal.show = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="saveCharge" :disabled="savingCharge" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ savingCharge ? 'Guardando...' : 'Agregar' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Modal Registrar pago -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="payModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Registrar Pago</h3>
-              <button @click="payModal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-              </button>
-            </div>
-
-            <div class="p-5 space-y-4 overflow-y-auto flex-1">
-              <div class="flex items-center gap-2 pb-4 border-b border-border">
-                <span class="text-sm font-bold text-navy">{{ payModal.folio?.guestName }}</span>
-                <span class="text-text-muted">·</span>
-                <span class="text-sm text-text-secondary">Hab. {{ payModal.folio?.roomNumber }}</span>
-                <span class="text-text-muted">·</span>
-                <span class="text-sm font-bold" :class="(payModal.folio?.balance || 0) > 0 ? 'text-coral' : 'text-teal'">Balance: {{ formatMoney(payModal.folio?.balance || 0) }}</span>
-              </div>
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Método</label>
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    v-for="method in paymentMethods"
-                    :key="method.value"
-                    type="button"
-                    @click="payForm.method = method.value"
-                    class="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-bold border transition-all cursor-pointer"
-                    :class="payForm.method === method.value ? 'border-navy bg-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'"
-                  >
-                    <span class="w-3.5 h-3.5 shrink-0" v-html="method.icon"></span>
-                    {{ method.label }}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Monto</label>
-                <div class="flex gap-2">
-                  <input v-model.number="payForm.amount" type="number" min="0" step="0.01" :placeholder="String(payModal.folio?.balance || 0)" class="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-navy" />
-                  <button @click="payForm.amount = payModal.folio?.balance || 0" type="button" class="px-3.5 py-2 rounded-full border border-border text-text-secondary text-xs font-bold hover:border-navy/30 transition-colors cursor-pointer">Total</button>
-                </div>
-              </div>
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Referencia (opcional)</label>
-                <input v-model="payForm.reference" type="text" placeholder="Ej: TXN-12345" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-            </div>
-
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="payModal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="savePayment" :disabled="savingPay" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">
-                  {{ savingPay ? 'Guardando...' : 'Registrar' }}
-                </button>
-              </div>
-            </div>
+    <AppModal v-if="payModal.show" size="md" title="Registrar Pago"
+      :subtitle="folioSubtitle(payModal.folio)" @close="payModal.show = false">
+      <div class="space-y-4">
+        <div class="flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
+          <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Balance del folio</span>
+          <span class="text-sm font-black tabular-nums" :class="(payModal.folio?.balance || 0) > 0 ? 'text-coral' : 'text-teal'">
+            {{ formatMoney(payModal.folio?.balance || 0) }}
+          </span>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Método</label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="method in paymentMethods"
+              :key="method.value"
+              type="button"
+              @click="payForm.method = method.value"
+              class="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-bold border transition-all cursor-pointer"
+              :class="payForm.method === method.value ? 'border-navy bg-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'"
+            >
+              <span class="w-3.5 h-3.5 shrink-0" v-html="method.icon"></span>
+              {{ method.label }}
+            </button>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+        <div>
+          <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Monto</label>
+          <div class="flex gap-2">
+            <input v-model.number="payForm.amount" type="number" min="0" step="0.01" :placeholder="String(payModal.folio?.balance || 0)" class="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-bold tabular-nums text-navy text-right focus:outline-none focus:border-navy" />
+            <button @click="payForm.amount = payModal.folio?.balance || 0" type="button" class="px-3.5 py-2 rounded-full border border-border text-text-secondary text-xs font-bold hover:border-navy/30 transition-colors cursor-pointer">Total</button>
+          </div>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Referencia (opcional)</label>
+          <input v-model="payForm.reference" type="text" placeholder="Ej: TXN-12345" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+        </div>
+      </div>
+      <template #footer>
+        <button @click="payModal.show = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="savePayment" :disabled="savingPay" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ savingPay ? 'Guardando...' : 'Registrar' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -296,12 +279,15 @@ import type { Folio } from '@/services/Folios.service'
 import { OperationsService } from '@/services/Operations.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { useCountUp } from '@/composables/useCountUp'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>'
 const ICON_DOCUMENT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>'
 const ICON_CARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>'
-const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>'
+const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>'
 const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>'
 const ICON_CHEVRON_DOWN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>'
 const ICON_CASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>'
@@ -329,11 +315,15 @@ const foliosCount = computed(() => folios.value.length)
 const totalCharges = computed(() => folios.value.reduce((s, f) => s + (f.chargesTotal || 0), 0))
 const totalPayments = computed(() => folios.value.reduce((s, f) => s + (f.paymentsTotal || 0), 0))
 const totalBalance = computed(() => folios.value.reduce((s, f) => s + (f.balance || 0), 0))
+const totalChargeCount = computed(() => folios.value.reduce((s, f) => s + (f.chargeCount || 0), 0))
+// % de lo cargado que ya está cobrado — alimenta el anillo del KPI de balance.
+const collectedShare = computed(() => {
+  const charges = totalCharges.value
+  if (charges <= 0) return 0
+  return Math.min(100, Math.round((totalPayments.value / charges) * 100))
+})
 
-const foliosCountAnim = useCountUp(foliosCount)
-const totalChargesAnim = useCountUp(totalCharges)
-const totalPaymentsAnim = useCountUp(totalPayments)
-const totalBalanceAnim = useCountUp(totalBalance)
+// Los KPI los anima KpiHeroCard internamente (useCountUp propio).
 
 async function load() {
   loading.value = true
@@ -466,8 +456,17 @@ function formatMoney(n: number): string {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n || 0)
 }
 
+// Subtítulo del modal: solo los datos que existen, sin "—" sueltos.
+function folioSubtitle(f: Folio | null): string {
+  if (!f) return ''
+  const parts: string[] = []
+  if (f.guestName) parts.push(f.guestName)
+  if (f.roomNumber) parts.push(`Hab. ${f.roomNumber}`)
+  return parts.length ? parts.join(' · ') : `Folio ${f.id.slice(0, 8)}`
+}
+
 function formatDate(d?: string | null): string {
-  if (!d) return '—'
+  if (!d) return 'Sin fecha'
   return new Date(d.includes('T') ? d : d + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
 }
 
@@ -479,13 +478,4 @@ function categoryLabel(c: string): string {
 onMounted(load)
 </script>
 
-<style scoped>
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
-.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
-  opacity: 0; transform: scale(0.95) translateY(12px);
-}
-</style>
+<style scoped></style>

@@ -38,70 +38,29 @@
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-            <span class="w-5 h-5 text-teal" v-html="ICON_BED"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-teal truncate">{{ Math.round(habOcupadasAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Hab. Ocupadas</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
-            <span class="w-5 h-5 text-gold" v-html="ICON_DOOR"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-gold truncate">{{ Math.round(checkoutsAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Check-outs</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-            <span class="w-5 h-5 text-cyan" v-html="ICON_LOGIN"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-cyan truncate">{{ Math.round(checkinsAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Check-ins</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-cyan/10">
-            <span class="w-5 h-5 text-cyan" v-html="ICON_CHART"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-cyan truncate">{{ Math.round(ocupacionAnim) }}%</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Ocupación</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-            <span class="w-5 h-5 text-navy" v-html="ICON_WALLET"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">${{ Math.round(ingresosAnim).toLocaleString() }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Ingresos Día</div>
-          </div>
-        </div>
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+      <KpiHeroCard label="Hab. Ocupadas" :value="habOcupadas" icon="bed" accent="teal"
+        :unit="totalRooms ? `de ${totalRooms} habitaciones` : 'Ocupadas esta noche'"
+        :progress="ocupacionPct" />
+      <KpiHeroCard label="Check-outs" :value="checkoutsCount" icon="checkout" accent="amber"
+        unit="Salidas del día" />
+      <KpiHeroCard label="Check-ins" :value="checkinsCount" icon="checkin" accent="blue"
+        unit="Entradas del día" />
+      <KpiHeroCard label="Ocupación" :value="ocupacionPct" icon="building" accent="purple"
+        suffix="%" unit="Del inventario total" :progress="ocupacionPct" />
+      <KpiHeroCard label="Ingresos Día" :value="ingresosDia" icon="money" accent="green"
+        prefix="$" unit="Total facturado hoy" />
     </div>
 
     <!-- Progreso del Audit -->
-    <div v-if="auditInProgress" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-black text-navy">Night Audit en Progreso</h3>
-        <span class="text-[10px] font-bold px-3 py-1 rounded-full bg-cyan/10 text-cyan">Paso {{ currentStep }}/{{ totalSteps }}</span>
-      </div>
+    <SectionCard v-if="auditInProgress" class="mb-6"
+      title="Night Audit en Progreso" subtitle="No cierres esta pestaña hasta terminar">
+      <template #actions>
+        <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white tabular-nums">
+          Paso {{ currentStep }}/{{ totalSteps }}
+        </span>
+      </template>
+
       <div class="w-full h-2 bg-surface rounded-full mb-4">
         <div class="h-2 bg-cyan rounded-full transition-all" :style="{ width: `${(currentStep / totalSteps) * 100}%` }"></div>
       </div>
@@ -109,208 +68,187 @@
         <div v-for="(step, index) in auditSteps" :key="index" class="flex items-center gap-3">
           <span v-if="index < currentStep" class="w-6 h-6 rounded-full bg-teal flex items-center justify-center text-white p-1 shrink-0" v-html="ICON_CHECK"></span>
           <span v-else-if="index === currentStep" class="w-6 h-6 rounded-full bg-cyan flex items-center justify-center text-navy text-xs animate-pulse shrink-0">...</span>
-          <span v-else class="w-6 h-6 rounded-full bg-surface flex items-center justify-center text-text-muted text-xs shrink-0">{{ index + 1 }}</span>
+          <span v-else class="w-6 h-6 rounded-full bg-surface flex items-center justify-center text-text-muted text-xs shrink-0 tabular-nums">{{ index + 1 }}</span>
           <span class="text-sm" :class="index <= currentStep ? 'text-navy font-bold' : 'text-text-muted'">{{ step }}</span>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Resumen de Actividad -->
-    <div v-if="activeView === 'activity'" class="grid grid-cols-2 gap-6">
+    <div v-if="activeView === 'activity'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Movimientos de Hoy -->
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-        <div class="p-4 border-b border-border flex items-center gap-2">
-          <span class="w-4 h-4 shrink-0 text-navy" v-html="ICON_ACTIVITY"></span>
-          <h3 class="text-sm font-black text-navy">Movimientos de Hoy</h3>
-        </div>
-        <div class="p-4">
-          <div v-if="todayMovements.length === 0" class="text-center py-8">
-            <span class="w-8 h-8 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_ACTIVITY"></span>
-            <p class="text-xs text-text-muted">Sin movimientos registrados hoy</p>
-          </div>
-          <div v-else class="divide-y divide-border">
-            <div v-for="movement in todayMovements" :key="movement.id" class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="movement.kind === 'checkin' ? 'bg-cyan/10' : 'bg-navy/10'">
-                  <span class="w-4 h-4" :class="movement.kind === 'checkin' ? 'text-cyan' : 'text-navy'" v-html="movement.kind === 'checkin' ? ICON_LOGIN : ICON_LOGOUT"></span>
-                </div>
-                <div>
-                  <div class="text-sm font-bold text-navy">{{ movement.description }}</div>
-                  <div class="text-[10px] text-text-muted">{{ movement.time }}</div>
-                </div>
+      <SectionCard title="Movimientos de Hoy"
+        :subtitle="todayMovements.length ? `${todayMovements.length} movimiento(s)` : 'Entradas y salidas de la jornada'"
+        body-class="p-0">
+        <EmptyState v-if="todayMovements.length === 0"
+          :icon="ICON_ACTIVITY"
+          title="Sin movimientos registrados"
+          message="Todavía no hay check-ins ni check-outs pendientes para hoy." />
+        <div v-else class="divide-y divide-border px-4 sm:px-5">
+          <div v-for="movement in todayMovements" :key="movement.id" class="flex items-center justify-between gap-3 py-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="movement.kind === 'checkin' ? 'bg-cyan/10' : 'bg-navy/10'">
+                <span class="w-4 h-4" :class="movement.kind === 'checkin' ? 'text-cyan' : 'text-navy'" v-html="movement.kind === 'checkin' ? ICON_LOGIN : ICON_LOGOUT"></span>
               </div>
-              <span class="text-sm font-bold" :class="movement.amount > 0 ? 'text-teal' : 'text-coral'">
-                {{ movement.amount > 0 ? '+' : '' }}${{ Math.abs(movement.amount) }}
-              </span>
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-navy truncate">{{ movement.description }}</div>
+                <div v-if="movement.time" class="text-[10px] text-text-muted">{{ movement.time }}</div>
+              </div>
             </div>
+            <span class="text-sm font-bold text-right tabular-nums shrink-0" :class="movement.amount > 0 ? 'text-teal' : 'text-coral'">
+              {{ movement.amount > 0 ? '+' : '' }}${{ Math.abs(movement.amount).toLocaleString() }}
+            </span>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- Habitaciones por Estado -->
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-        <div class="p-4 border-b border-border flex items-center gap-2">
-          <span class="w-4 h-4 shrink-0 text-navy" v-html="ICON_BED"></span>
-          <h3 class="text-sm font-black text-navy">Estado de Habitaciones</h3>
-        </div>
-        <div class="p-4">
-          <div v-if="roomStatuses.length === 0" class="text-center py-8">
-            <p class="text-xs text-text-muted">Sin datos de habitaciones</p>
-          </div>
-          <div v-else class="divide-y divide-border">
-            <div v-for="status in roomStatuses" :key="status.label" class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-              <div class="flex items-center gap-3">
-                <span class="w-3 h-3 rounded-full shrink-0" :class="status.dot"></span>
-                <span class="text-sm">{{ status.label }}</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="text-lg font-black text-navy">{{ status.count }}</span>
-                <div class="w-24 h-2 bg-surface rounded-full">
-                  <div class="h-2 rounded-full" :class="status.bar" :style="{ width: `${totalRooms ? (status.count / totalRooms) * 100 : 0}%` }"></div>
-                </div>
+      <SectionCard title="Estado de Habitaciones"
+        :subtitle="totalRooms ? `${totalRooms} habitaciones en inventario` : 'Distribución actual'"
+        body-class="p-0">
+        <EmptyState v-if="roomStatuses.length === 0"
+          :icon="ICON_BED"
+          title="Sin datos de habitaciones"
+          message="Cargá el inventario de habitaciones para ver la distribución por estado." />
+        <div v-else class="divide-y divide-border px-4 sm:px-5">
+          <div v-for="status in roomStatuses" :key="status.label" class="flex items-center justify-between gap-3 py-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="w-3 h-3 rounded-full shrink-0" :class="status.dot"></span>
+              <span class="text-sm text-navy truncate">{{ status.label }}</span>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <span class="text-lg font-black text-navy tabular-nums">{{ status.count }}</span>
+              <div class="w-24 h-2 bg-surface rounded-full">
+                <div class="h-2 rounded-full" :class="status.bar" :style="{ width: `${totalRooms ? (status.count / totalRooms) * 100 : 0}%` }"></div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- Alertas -->
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-        <div class="p-4 border-b border-border flex items-center gap-2">
-          <span class="w-4 h-4 shrink-0 text-navy" v-html="ICON_BELL"></span>
-          <h3 class="text-sm font-black text-navy">Alertas Pendientes</h3>
-        </div>
-        <div class="p-4">
-          <div v-if="alerts.length === 0" class="text-center py-8">
-            <span class="w-8 h-8 mx-auto mb-2 text-text-muted opacity-50 block" v-html="ICON_CHECK_CIRCLE"></span>
-            <p class="text-xs text-text-muted">Sin alertas pendientes</p>
-          </div>
-          <div v-else class="divide-y divide-border">
-            <div v-for="alert in alerts" :key="alert.id" class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-              <span class="w-5 h-5 mt-0.5 shrink-0" :class="alert.type === 'warning' ? 'text-gold' : 'text-coral'" v-html="ICON_ALERT"></span>
-              <div class="flex-1">
-                <div class="text-sm font-bold text-navy">{{ alert.title }}</div>
-                <div class="text-[10px] text-text-muted">{{ alert.description }}</div>
-              </div>
-              <span class="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0" :class="alert.type === 'warning' ? 'bg-gold/10 text-gold' : 'bg-coral/10 text-coral'">
-                {{ alert.type === 'warning' ? 'Advertencia' : 'Crítico' }}
-              </span>
+      <SectionCard title="Alertas Pendientes"
+        :subtitle="alerts.length ? `${alerts.length} alerta(s) por revisar` : 'Incidencias detectadas en el cierre'"
+        body-class="p-0">
+        <EmptyState v-if="alerts.length === 0"
+          :icon="ICON_CHECK_CIRCLE"
+          title="Sin alertas pendientes"
+          message="No hay incidencias que bloqueen el cierre operativo." />
+        <div v-else class="divide-y divide-border px-4 sm:px-5">
+          <div v-for="alert in alerts" :key="alert.id" class="flex items-start gap-3 py-3">
+            <span class="w-5 h-5 mt-0.5 shrink-0" :class="alert.type === 'warning' ? 'text-gold' : 'text-coral'" v-html="ICON_ALERT"></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-bold text-navy">{{ alert.title }}</div>
+              <div v-if="alert.description" class="text-[10px] text-text-muted">{{ alert.description }}</div>
             </div>
+            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0" :class="alert.type === 'warning' ? 'bg-gold/10 text-gold' : 'bg-coral/10 text-coral'">
+              {{ alert.type === 'warning' ? 'Advertencia' : 'Crítico' }}
+            </span>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- Resumen Financiero -->
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-        <div class="p-4 border-b border-border flex items-center gap-2">
-          <span class="w-4 h-4 shrink-0 text-navy" v-html="ICON_WALLET"></span>
-          <h3 class="text-sm font-black text-navy">Resumen Financiero</h3>
-        </div>
-        <div class="p-4 divide-y divide-border">
-          <div class="flex justify-between items-center py-2.5 first:pt-0">
+      <SectionCard title="Resumen Financiero" subtitle="Ingresos e impuestos de la jornada" body-class="p-0">
+        <div class="divide-y divide-border px-4 sm:px-5">
+          <div class="flex justify-between items-center gap-3 py-2.5">
             <span class="text-sm text-text-secondary">Ingresos por Habitaciones</span>
-            <span class="text-sm font-bold text-teal">${{ ((auditData as any)?.ingresosHabitaciones ?? 0).toLocaleString() }}</span>
+            <span class="text-sm font-bold text-teal text-right tabular-nums">${{ ((auditData as any)?.ingresosHabitaciones ?? 0).toLocaleString() }}</span>
           </div>
-          <div class="flex justify-between items-center py-2.5">
+          <div class="flex justify-between items-center gap-3 py-2.5">
             <span class="text-sm text-text-secondary">Ingresos por Servicios</span>
-            <span class="text-sm font-bold text-teal">${{ ((auditData as any)?.ingresosServicios ?? 0).toLocaleString() }}</span>
+            <span class="text-sm font-bold text-teal text-right tabular-nums">${{ ((auditData as any)?.ingresosServicios ?? 0).toLocaleString() }}</span>
           </div>
-          <div class="flex justify-between items-center py-2.5">
+          <div class="flex justify-between items-center gap-3 py-2.5">
             <span class="text-sm text-text-secondary">Impuestos (ITBIS)</span>
-            <span class="text-sm font-bold text-coral">${{ ((auditData as any)?.impuestos ?? 0).toLocaleString() }}</span>
+            <span class="text-sm font-bold text-coral text-right tabular-nums">${{ ((auditData as any)?.impuestos ?? 0).toLocaleString() }}</span>
           </div>
-          <div class="flex justify-between items-center pt-2.5 last:pb-0">
+          <div class="flex justify-between items-center gap-3 py-3">
             <span class="text-sm font-extrabold text-navy">Total del Día</span>
-            <span class="text-lg font-black text-navy">${{ ((auditData as any)?.totalDia ?? 0).toLocaleString() }}</span>
+            <span class="text-lg font-black text-navy text-right tabular-nums">${{ ((auditData as any)?.totalDia ?? 0).toLocaleString() }}</span>
           </div>
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- Último Reporte -->
-    <div v-if="activeView === 'report'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div class="p-6 border-b border-border">
-        <div class="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h3 class="text-lg font-black text-navy">Reporte Night Audit</h3>
-            <div class="text-sm text-text-muted">{{ (auditData as any)?.fecha || '—' }} — Generado ahora</div>
-          </div>
-          <div class="flex items-center gap-4">
-            <button class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">
-              Imprimir
-            </button>
-            <button class="flex items-center gap-1.5 rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">
-              <span class="w-4 h-4 shrink-0" v-html="ICON_MAIL"></span>
-              Enviar
-            </button>
-          </div>
-        </div>
-      </div>
-      <div class="p-6">
-        <div class="grid grid-cols-3 gap-6 pb-6 border-b border-border">
+    <SectionCard v-if="activeView === 'report'"
+      title="Reporte Night Audit" :subtitle="reportSubtitle" body-class="p-0">
+      <template #actions>
+        <button class="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
+          Imprimir
+        </button>
+        <button class="flex items-center gap-1.5 rounded-full bg-cyan text-navy text-sm font-extrabold px-5 py-2 hover:shadow-lg transition-all cursor-pointer">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_MAIL"></span>
+          Enviar
+        </button>
+      </template>
+
+      <div class="p-4 sm:p-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 pb-6 border-b border-border">
           <div>
             <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2">Noches Vendidas</div>
-            <div class="text-2xl font-black text-navy">{{ (auditData as any)?.nochesVendidas ?? 0 }}</div>
-            <div class="text-[10px] text-teal font-bold mt-1">{{ (auditData as any)?.ocupacion ?? 0 }}% ocupación</div>
+            <div class="text-2xl font-black text-navy tabular-nums">{{ (auditData as any)?.nochesVendidas ?? 0 }}</div>
+            <div class="text-[10px] text-teal font-bold mt-1 tabular-nums">{{ (auditData as any)?.ocupacion ?? 0 }}% ocupación</div>
           </div>
           <div>
             <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2">ADR (Tarifa Promedio)</div>
-            <div class="text-2xl font-black text-navy">${{ ((auditData as any)?.adr ?? 0).toLocaleString() }}</div>
-            <div class="text-[10px] text-teal font-bold mt-1">{{ ((auditData as any)?.adr ?? 0) > ((auditData as any)?.adrAyer ?? 0) ? '▲' : '▼' }}${{ Math.abs(((auditData as any)?.adr ?? 0) - ((auditData as any)?.adrAyer ?? 0)).toLocaleString() }} vs ayer</div>
+            <div class="text-2xl font-black text-navy tabular-nums">${{ ((auditData as any)?.adr ?? 0).toLocaleString() }}</div>
+            <div class="text-[10px] text-teal font-bold mt-1 tabular-nums">{{ ((auditData as any)?.adr ?? 0) > ((auditData as any)?.adrAyer ?? 0) ? '▲' : '▼' }}${{ Math.abs(((auditData as any)?.adr ?? 0) - ((auditData as any)?.adrAyer ?? 0)).toLocaleString() }} vs ayer</div>
           </div>
           <div>
             <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-2">RevPAR</div>
-            <div class="text-2xl font-black text-navy">${{ ((auditData as any)?.revpar ?? 0).toLocaleString() }}</div>
-            <div class="text-[10px] text-text-muted">—</div>
+            <div class="text-2xl font-black text-navy tabular-nums">${{ ((auditData as any)?.revpar ?? 0).toLocaleString() }}</div>
+            <div class="text-[10px] text-text-muted mt-1">Ingreso por habitación disponible</div>
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
           <div>
             <h4 class="text-sm font-black text-navy mb-3">Resumen de Check-ins</h4>
             <div class="divide-y divide-border">
-              <div class="flex justify-between text-sm py-2 first:pt-0">
+              <div class="flex justify-between gap-3 text-sm py-2 first:pt-0">
                 <span class="text-text-secondary">Check-ins realizados</span>
-                <span class="font-bold text-navy">{{ (auditData as any)?.checkins ?? 0 }}</span>
+                <span class="font-bold text-navy text-right tabular-nums">{{ (auditData as any)?.checkins ?? 0 }}</span>
               </div>
-              <div class="flex justify-between text-sm py-2">
+              <div class="flex justify-between gap-3 text-sm py-2">
                 <span class="text-text-secondary">Check-outs realizados</span>
-                <span class="font-bold text-navy">{{ (auditData as any)?.checkouts ?? 0 }}</span>
+                <span class="font-bold text-navy text-right tabular-nums">{{ (auditData as any)?.checkouts ?? 0 }}</span>
               </div>
-              <div class="flex justify-between text-sm py-2">
+              <div class="flex justify-between gap-3 text-sm py-2">
                 <span class="text-text-secondary">No-shows</span>
-                <span class="font-bold text-coral">{{ (auditData as any)?.noShows ?? 0 }}</span>
+                <span class="font-bold text-coral text-right tabular-nums">{{ (auditData as any)?.noShows ?? 0 }}</span>
               </div>
-              <div class="flex justify-between text-sm py-2 last:pb-0">
+              <div class="flex justify-between gap-3 text-sm py-2 last:pb-0">
                 <span class="text-text-secondary">Cancelaciones</span>
-                <span class="font-bold text-gold">{{ (auditData as any)?.cancelaciones ?? 0 }}</span>
+                <span class="font-bold text-gold text-right tabular-nums">{{ (auditData as any)?.cancelaciones ?? 0 }}</span>
               </div>
             </div>
           </div>
           <div>
             <h4 class="text-sm font-black text-navy mb-3">Resumen de Pagos</h4>
             <div class="divide-y divide-border">
-              <div class="flex justify-between text-sm py-2 first:pt-0">
+              <div class="flex justify-between gap-3 text-sm py-2 first:pt-0">
                 <span class="text-text-secondary">Pagos recibidos</span>
-                <span class="font-bold text-teal">${{ ((auditData as any)?.pagosRecibidos ?? 0).toLocaleString() }}</span>
+                <span class="font-bold text-teal text-right tabular-nums">${{ ((auditData as any)?.pagosRecibidos ?? 0).toLocaleString() }}</span>
               </div>
-              <div class="flex justify-between text-sm py-2">
+              <div class="flex justify-between gap-3 text-sm py-2">
                 <span class="text-text-secondary">Pagos pendientes</span>
-                <span class="font-bold text-gold">${{ ((auditData as any)?.pagosPendientes ?? 0).toLocaleString() }}</span>
+                <span class="font-bold text-gold text-right tabular-nums">${{ ((auditData as any)?.pagosPendientes ?? 0).toLocaleString() }}</span>
               </div>
-              <div class="flex justify-between text-sm py-2">
+              <div class="flex justify-between gap-3 text-sm py-2">
                 <span class="text-text-secondary">Depósitos de seguridad</span>
-                <span class="font-bold text-navy">${{ ((auditData as any)?.depositos ?? 0).toLocaleString() }}</span>
+                <span class="font-bold text-navy text-right tabular-nums">${{ ((auditData as any)?.depositos ?? 0).toLocaleString() }}</span>
               </div>
-              <div class="flex justify-between text-sm py-2 last:pb-0">
+              <div class="flex justify-between gap-3 text-sm py-2 last:pb-0">
                 <span class="text-text-secondary">Reembolsos</span>
-                <span class="font-bold text-coral">${{ ((auditData as any)?.reembolsos ?? 0).toLocaleString() }}</span>
+                <span class="font-bold text-coral text-right tabular-nums">${{ ((auditData as any)?.reembolsos ?? 0).toLocaleString() }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </SectionCard>
   </div>
 </template>
 
@@ -320,7 +258,9 @@ import { OperationsService } from '@/services/Operations.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useToast } from '@/composables/useToast'
-import { useCountUp } from '@/composables/useCountUp'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="currentColor"><path d="M5 3.87v16.26a1 1 0 0 0 1.53.85l13.14-8.13a1 1 0 0 0 0-1.7L6.53 3.02A1 1 0 0 0 5 3.87Z"/></svg>'
 const ICON_MAIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0-.828.672-1.5 1.5-1.5h16.5c.828 0 1.5.672 1.5 1.5v10.5a1.5 1.5 0 0 1-1.5 1.5H3.75a1.5 1.5 0 0 1-1.5-1.5V6.75Zm0 0 9.75 6.75 9.75-6.75"/></svg>'
@@ -328,10 +268,6 @@ const ICON_CHECK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" s
 const ICON_LOGIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V4.5A1.5 1.5 0 0 1 10.5 3h6A1.5 1.5 0 0 1 18 4.5v15a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 9 19.5v-2.25M12 12h9m0 0-3-3m3 3-3 3"/></svg>'
 const ICON_LOGOUT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 6.75V4.5A1.5 1.5 0 0 0 13.5 3h-6A1.5 1.5 0 0 0 6 4.5v15A1.5 1.5 0 0 0 7.5 21h6a1.5 1.5 0 0 0 1.5-1.5v-2.25M21 12h-9m0 0 3-3m-3 3 3 3"/></svg>'
 const ICON_BED = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6M3 18v2M21 18v2M3 12V8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m5-2h4a1 1 0 0 1 1 1v2"/></svg>'
-const ICON_DOOR = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M5 21V5a1 1 0 0 1 .8-.98l9-1.8A1 1 0 0 1 16 3.2V21M5 21h11M5 21H3m13 0h5m-5 0V3.2M13 12h.01"/></svg>'
-const ICON_CHART = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg>'
-const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5M21 12h-4a1.5 1.5 0 0 0 0 3h4v-3Z"/></svg>'
-const ICON_BELL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.85 23.85 0 0 0 5.454-1.31A8.97 8.97 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.97 8.97 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.26 24.26 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>'
 const ICON_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"/></svg>'
 const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 1.5 1.5 3.75-3.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
 const ICON_ACTIVITY = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3 8 4-16 3 8h4"/></svg>'
@@ -379,11 +315,12 @@ const checkinsCount = computed(() => (auditData.value as any)?.checkins ?? 0)
 const ocupacionPct = computed(() => (auditData.value as any)?.ocupacion ?? 0)
 const ingresosDia = computed(() => (auditData.value as any)?.totalDia ?? 0)
 
-const habOcupadasAnim = useCountUp(habOcupadas)
-const checkoutsAnim = useCountUp(checkoutsCount)
-const checkinsAnim = useCountUp(checkinsCount)
-const ocupacionAnim = useCountUp(ocupacionPct)
-const ingresosAnim = useCountUp(ingresosDia)
+// Los KPI los anima KpiHeroCard internamente (useCountUp propio) — no envolver acá.
+
+const reportSubtitle = computed(() => {
+  const fecha = (auditData.value as any)?.fecha
+  return fecha ? `${fecha} — Generado ahora` : 'Generado ahora'
+})
 
 const auditSteps = [
   'Verificar disponibilidad de habitaciones',
@@ -451,3 +388,5 @@ const viewLastReport = () => {
   activeView.value = 'report'
 }
 </script>
+
+<style scoped></style>

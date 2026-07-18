@@ -3,13 +3,16 @@ import { ref, computed, onMounted } from 'vue'
 import { GastosService, type Gasto, type ExpensePaymentMethod } from '@/services/Gastos.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { useCountUp } from '@/composables/useCountUp'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const ICON_RECEIPT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m1 5H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l4.414 4.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>'
-const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5M21 12h-4a1.5 1.5 0 0 0 0 3h4v-3Z"/></svg>'
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
-const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
 const ICON_ALERT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"/></svg>'
+const ICON_EDIT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.86 4.49a2.1 2.1 0 1 1 2.97 2.97L8.4 18.9l-3.9.98.98-3.9L16.86 4.5Z"/></svg>'
+const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>'
 
 const CATEGORY_LABEL: Record<string, string> = {
   general: 'General',
@@ -19,6 +22,17 @@ const CATEGORY_LABEL: Record<string, string> = {
   staff: 'Personal',
   marketing: 'Marketing',
   utilities: 'Servicios',
+}
+
+// Color por categoría: badge `bg-color/10 text-color`, mismo criterio que el resto del panel.
+const CATEGORY_CLASS: Record<string, string> = {
+  general: 'bg-navy/10 text-navy',
+  supplies: 'bg-cyan/10 text-cyan',
+  maintenance: 'bg-gold/10 text-gold',
+  cleaning: 'bg-teal/10 text-teal',
+  staff: 'bg-purple/10 text-purple',
+  marketing: 'bg-coral/10 text-coral',
+  utilities: 'bg-navy/10 text-navy',
 }
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
@@ -78,8 +92,14 @@ async function loadData(p = page.value) {
 
 // Suma de importes de la página visible (el total global es un count, no una suma de montos).
 const pageTotal = computed(() => gastos.value.reduce((s, g) => s + (g.amount || 0), 0))
-const totalCountAnim = useCountUp(totalCount)
-const pageTotalAnim = useCountUp(pageTotal)
+
+// Rango visible de la paginación: "1–20 de 47".
+const rangeLabel = computed(() => {
+  if (!totalCount.value) return '0 gastos'
+  const from = (page.value - 1) * LIMIT + 1
+  const to = Math.min(page.value * LIMIT, totalCount.value)
+  return `${from}–${to} de ${totalCount.value}`
+})
 
 function openCreate() {
   form.value = emptyForm()
@@ -173,191 +193,186 @@ function goNext() { if (page.value < pages.value) loadData(page.value + 1) }
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 gap-4">
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-            <span class="w-5 h-5 text-navy" v-html="ICON_RECEIPT"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-navy">{{ Math.round(totalCountAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Gastos registrados</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-coral/10">
-            <span class="w-5 h-5 text-coral" v-html="ICON_WALLET"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-coral truncate">${{ Math.round(pageTotalAnim).toLocaleString() }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Total (página)</div>
-          </div>
-        </div>
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <KpiHeroCard label="Gastos registrados" :value="totalCount" icon="bookings" accent="blue"
+        unit="Egresos del hotel" />
+      <KpiHeroCard label="Total de la página" :value="pageTotal" icon="money" accent="rose"
+        prefix="$" :unit="`${gastos.length} gasto(s) visibles`" />
     </div>
 
-    <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full" v-if="gastos.length">
-          <thead><tr class="border-b border-border bg-surface/50">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Concepto</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Categoría</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Importe</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Fecha</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Pago</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Proveedor</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase tracking-wider">Acciones</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="g in gastos" :key="g.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
-              <td class="p-4 text-sm font-bold text-navy">{{ g.concept }}</td>
-              <td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full bg-navy/5 text-navy">{{ CATEGORY_LABEL[g.category || ''] || g.category || '—' }}</span></td>
-              <td class="p-4 text-sm text-right font-black text-coral">${{ (g.amount || 0).toLocaleString() }}</td>
-              <td class="p-4 text-xs text-text-muted">{{ (g.date || '').slice(0, 10) }}</td>
-              <td class="p-4 text-xs whitespace-nowrap">
-                <span v-if="Number(g.paid) === 1" class="text-[10px] font-bold px-2 py-1 rounded-full bg-navy/5 text-navy">
-                  {{ PAYMENT_METHOD_LABEL[g.paymentMethod || 'other'] }}
-                </span>
-                <span v-else class="text-[10px] font-bold px-2 py-1 rounded-full bg-coral/10 text-coral">Impago</span>
-              </td>
-              <td class="p-4 text-xs">{{ g.provider || '—' }}</td>
-              <td class="p-4 text-right whitespace-nowrap">
-                <div class="flex items-center justify-end gap-4">
-                  <button @click="openEdit(g)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
-                  <button @click="askDelete(g)" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer">Eliminar</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-else-if="!loading" class="text-center py-12">
-          <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_RECEIPT"></span>
-          <h3 class="font-bold text-navy mb-1">Sin gastos registrados</h3>
-          <p class="text-xs text-text-muted">Registra un gasto para empezar a llevar el control de egresos.</p>
-        </div>
-        <div v-else class="text-center text-text-muted text-sm py-10">Cargando...</div>
+    <SectionCard title="Listado de gastos" :subtitle="rangeLabel" body-class="p-0">
+      <!-- Carga: esqueleto de filas, no un 'Cargando…' suelto -->
+      <div v-if="loading" class="space-y-3 p-4">
+        <div v-for="i in 5" :key="i" class="h-10 animate-pulse rounded bg-surface"></div>
       </div>
 
-      <!-- Paginación -->
-      <div v-if="pages > 1" class="flex items-center justify-between p-4 border-t border-border">
-        <span class="text-[10px] text-text-muted font-bold">Página {{ page }} de {{ pages }}</span>
-        <div class="flex items-center gap-1">
-          <button @click="goPrev" :disabled="page <= 1" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">‹</button>
-          <button @click="goNext" :disabled="page >= pages" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">›</button>
+      <EmptyState v-else-if="!gastos.length"
+        :icon="ICON_RECEIPT"
+        title="Sin gastos registrados"
+        message="Registrá un gasto para empezar a llevar el control de egresos.">
+        <template #action>
+          <button @click="openCreate" class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Nuevo gasto</button>
+        </template>
+      </EmptyState>
+
+      <template v-else>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px] tbl-head">
+            <thead>
+              <tr>
+                <th class="text-left px-4 py-3 text-[10px]">Concepto</th>
+                <th class="text-left px-4 py-3 text-[10px]">Categoría</th>
+                <th class="text-left px-4 py-3 text-[10px]">Pago</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Fecha</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Proveedor</th>
+                <th class="text-right px-4 py-3 text-[10px]">Importe</th>
+                <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="g in gastos" :key="g.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="text-sm font-bold text-navy">{{ g.concept }}</div>
+                  <!-- En <lg las columnas secundarias suben como línea de apoyo -->
+                  <div class="mt-0.5 text-[11px] text-text-muted lg:hidden">
+                    {{ (g.date || '').slice(0, 10) }}<template v-if="g.provider"> · {{ g.provider }}</template>
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase"
+                    :class="CATEGORY_CLASS[g.category || ''] || 'bg-navy/10 text-navy'">
+                    {{ CATEGORY_LABEL[g.category || ''] || g.category || 'General' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span v-if="Number(g.paid) === 1" class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase bg-teal/10 text-teal">
+                    {{ PAYMENT_METHOD_LABEL[g.paymentMethod || 'other'] }}
+                  </span>
+                  <span v-else class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase bg-coral/10 text-coral">Impago</span>
+                </td>
+                <td class="px-4 py-3 text-sm text-text-secondary hidden lg:table-cell">{{ (g.date || '').slice(0, 10) }}</td>
+                <td class="px-4 py-3 text-sm hidden lg:table-cell">
+                  <!-- El proveedor es opcional: la celda lo dice en vez de quedar muda -->
+                  <span class="block max-w-[200px] truncate" :class="g.provider ? 'text-text-secondary' : 'text-text-muted'">
+                    {{ g.provider || 'Sin proveedor' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-right text-sm font-extrabold text-coral tabular-nums">${{ (g.amount || 0).toLocaleString() }}</td>
+                <td class="px-4 py-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button @click="openEdit(g)" title="Editar gasto"
+                      class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_EDIT"></span>
+                    </button>
+                    <button @click="askDelete(g)" title="Eliminar gasto"
+                      class="grid h-8 w-8 place-items-center rounded-lg text-coral hover:bg-coral/10 transition-colors cursor-pointer">
+                      <span class="h-4 w-4" v-html="ICON_TRASH"></span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
-    </div>
+
+        <!-- Paginación -->
+        <div v-if="pages > 1" class="flex items-center justify-between border-t border-border px-4 py-3">
+          <span class="text-[11px] font-bold text-text-muted">{{ rangeLabel }}</span>
+          <div class="flex items-center gap-1">
+            <button @click="goPrev" :disabled="page <= 1" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">‹</button>
+            <span class="px-2 text-xs font-bold text-navy">{{ page }} / {{ pages }}</span>
+            <button @click="goNext" :disabled="page >= pages" class="px-2 py-1 rounded-lg text-xs font-bold text-navy hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">›</button>
+          </div>
+        </div>
+      </template>
+    </SectionCard>
 
     <!-- Modal crear/editar gasto -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">{{ editingId ? 'Editar Gasto' : 'Nuevo Gasto' }}</h3>
-              <button @click="showDialog = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-              </button>
-            </div>
-
-            <div class="p-5 space-y-4 overflow-y-auto flex-1">
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Concepto</label>
-                <input v-model="form.concept" placeholder="Ej: Compra de detergentes" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-              <div class="grid grid-cols-3 gap-3">
-                <div>
-                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Importe</label>
-                  <input v-model.number="form.amount" type="number" min="0" step="0.01" placeholder="0.00" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-navy text-right focus:outline-none focus:border-navy" />
-                </div>
-                <div class="col-span-2">
-                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Categoría</label>
-                  <select v-model="form.category" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer focus:outline-none focus:border-navy">
-                    <option value="general">General</option><option value="supplies">Suministros</option>
-                    <option value="maintenance">Mantenimiento</option><option value="cleaning">Limpieza</option>
-                    <option value="staff">Personal</option><option value="marketing">Marketing</option>
-                    <option value="utilities">Servicios</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Proveedor</label>
-                <input v-model="form.provider" placeholder="Opcional" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Fecha</label>
-                  <input v-model="form.date" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-                </div>
-                <div>
-                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Método de pago</label>
-                  <select v-model="form.paymentMethod" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer focus:outline-none focus:border-navy">
-                    <option value="cash">Efectivo</option><option value="card">Tarjeta</option>
-                    <option value="transfer">Transferencia</option><option value="other">Otro</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input v-model.number="form.paid" type="checkbox" :true-value="1" :false-value="0" class="w-4 h-4 accent-navy cursor-pointer" />
-                  <span class="text-sm font-bold text-navy">Ya está pagado</span>
-                </label>
-                <p v-if="movesCash" class="text-[11px] text-text-muted mt-1.5 pl-6">
-                  Sale del cajón: se registra como egreso en el arqueo del turno abierto.
-                </p>
-              </div>
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Notas</label>
-                <textarea v-model="form.notes" placeholder="Opcional" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none" rows="2"></textarea>
-              </div>
-            </div>
-
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="showDialog = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="saveGasto" :disabled="submitting" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">{{ submitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Guardar') }}</button>
-              </div>
-            </div>
+    <AppModal v-if="showDialog" size="md" :title="editingId ? 'Editar gasto' : 'Nuevo gasto'"
+      subtitle="Egreso operativo del hotel" @close="showDialog = false">
+      <div class="space-y-4">
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Concepto</label>
+          <input v-model="form.concept" placeholder="Ej: Compra de detergentes" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Importe</label>
+            <input v-model.number="form.amount" type="number" min="0" step="0.01" placeholder="0.00" class="w-full rounded-xl border border-border px-4 py-2.5 text-right text-sm font-bold text-navy tabular-nums focus:border-navy focus:outline-none" />
+          </div>
+          <div class="col-span-2">
+            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Categoría</label>
+            <select v-model="form.category" class="w-full cursor-pointer rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none">
+              <option value="general">General</option><option value="supplies">Suministros</option>
+              <option value="maintenance">Mantenimiento</option><option value="cleaning">Limpieza</option>
+              <option value="staff">Personal</option><option value="marketing">Marketing</option>
+              <option value="utilities">Servicios</option>
+            </select>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Proveedor</label>
+          <input v-model="form.provider" placeholder="Opcional" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Fecha</label>
+            <input v-model="form.date" type="date" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+          </div>
+          <div>
+            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Método de pago</label>
+            <select v-model="form.paymentMethod" class="w-full cursor-pointer rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none">
+              <option value="cash">Efectivo</option><option value="card">Tarjeta</option>
+              <option value="transfer">Transferencia</option><option value="other">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input v-model.number="form.paid" type="checkbox" :true-value="1" :false-value="0" class="h-4 w-4 accent-navy cursor-pointer" />
+            <span class="text-sm font-bold text-navy">Ya está pagado</span>
+          </label>
+          <p v-if="movesCash" class="mt-1.5 pl-6 text-[11px] text-text-muted">
+            Sale del cajón: se registra como egreso en el arqueo del turno abierto.
+          </p>
+        </div>
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Notas</label>
+          <textarea v-model="form.notes" placeholder="Opcional" rows="2" class="w-full resize-none rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none"></textarea>
+        </div>
+      </div>
+
+      <template #footer>
+        <button @click="showDialog = false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="saveGasto" :disabled="submitting"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ submitting ? 'Guardando…' : (editingId ? 'Actualizar' : 'Guardar') }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Modal confirmar eliminar -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="confirmTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div class="text-center mb-4">
-              <div class="w-11 h-11 mx-auto mb-2 rounded-full bg-coral/10 flex items-center justify-center">
-                <span class="w-5 h-5 text-coral" v-html="ICON_ALERT"></span>
-              </div>
-              <h3 class="text-lg font-black text-navy">Eliminar Gasto</h3>
-              <p class="text-sm text-text-secondary mt-2">¿Seguro que querés eliminar <strong>{{ confirmTarget.concept }}</strong> (${{ (confirmTarget.amount || 0).toLocaleString() }})?</p>
-              <p class="text-xs text-text-muted mt-1">Esta acción no se puede deshacer.</p>
-            </div>
-            <div class="flex items-center justify-center gap-4">
-              <button @click="confirmTarget = null" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-              <button @click="confirmDelete" :disabled="deleting" class="rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">{{ deleting ? 'Eliminando...' : 'Eliminar' }}</button>
-            </div>
-          </div>
+    <AppModal v-if="confirmTarget" size="sm" title="Eliminar gasto" @close="confirmTarget = null">
+      <div class="text-center">
+        <div class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-coral/10">
+          <span class="h-6 w-6 text-coral" v-html="ICON_ALERT"></span>
         </div>
-      </Transition>
-    </Teleport>
+        <p class="text-sm text-text-secondary">
+          ¿Seguro que querés eliminar <strong class="text-navy">{{ confirmTarget.concept }}</strong>
+          (<span class="font-bold text-navy tabular-nums">${{ (confirmTarget.amount || 0).toLocaleString() }}</span>)?
+        </p>
+        <p class="mt-1 text-xs text-text-muted">Esta acción no se puede deshacer.</p>
+      </div>
+      <template #footer>
+        <button @click="confirmTarget = null" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="confirmDelete" :disabled="deleting"
+          class="inline-flex items-center gap-2 rounded-full bg-coral px-5 py-2.5 text-sm font-extrabold text-white hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
+          <span class="h-4 w-4" v-html="ICON_TRASH"></span>
+          {{ deleting ? 'Eliminando…' : 'Eliminar' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
-<style scoped>
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
-.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
-  opacity: 0; transform: scale(0.95) translateY(12px);
-}
-</style>
+<style scoped></style>

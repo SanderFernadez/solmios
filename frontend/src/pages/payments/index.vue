@@ -20,204 +20,205 @@
       </button>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-coral/10">
-            <span class="w-5 h-5 text-coral" v-html="ICON_CLOCK"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-coral">{{ Math.round(pendingAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Pendientes</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-teal/10">
-            <span class="w-5 h-5 text-teal" v-html="ICON_CHECK_PLAIN"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-teal">{{ Math.round(paidAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Pagados</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-navy/10">
-            <span class="w-5 h-5 text-navy" v-html="ICON_WALLET"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-navy truncate">{{ formatMoney(paidAmountAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Cobrado (total)</div>
-          </div>
-        </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gold/10">
-            <span class="w-5 h-5 text-gold" v-html="ICON_LINK"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums text-gold truncate">{{ formatMoney(pendingAmountAnim) }}</div>
-            <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide mt-1 truncate">Por cobrar</div>
-          </div>
-        </div>
-      </div>
+    <!-- Stats — KpiHeroCard (animan solos) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <KpiHeroCard label="Pendientes" :value="pendingCount" icon="bookings" accent="rose"
+        unit="Links esperando pago" />
+      <KpiHeroCard label="Pagados" :value="paidCount" icon="checkin" accent="teal"
+        unit="Links ya cobrados" :progress="paidShare" />
+      <KpiHeroCard label="Cobrado (total)" :value="paidAmountValue" icon="money" accent="blue"
+        prefix="$" unit="Ingresado por links" />
+      <KpiHeroCard label="Por cobrar" :value="pendingAmountValue" icon="checkout" accent="amber"
+        prefix="$" unit="Monto de links pendientes" />
     </div>
 
-    <!-- Filtros -->
-    <div class="flex items-center gap-2 mb-4 flex-wrap">
-      <input v-model="search" type="text" placeholder="Buscar por reserva o destinatario..." class="px-4 py-2 rounded-full border border-border text-sm w-64 focus:outline-none focus:border-navy" />
-      <select v-model="filterStatus" class="px-3 py-2 rounded-full border border-border text-xs font-bold cursor-pointer focus:outline-none focus:border-navy">
-        <option value="">Todos los estados</option>
-        <option value="pending">Pendientes</option>
-        <option value="paid">Pagados</option>
-        <option value="expired">Expirados</option>
-        <option value="cancelled">Cancelados</option>
-      </select>
-      <span class="text-xs text-text-muted ml-auto">{{ filtered.length }} resultados</span>
-    </div>
+    <!-- Listado -->
+    <SectionCard title="Links de pago" :subtitle="`${filtered.length} de ${payments.length} link(s)`" body-class="p-0">
+      <template #actions>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" v-html="ICON_SEARCH"></span>
+          <input
+            v-model="search"
+            type="text"
+            placeholder="Buscar por reserva o destinatario..."
+            class="w-full sm:w-72 pl-9 pr-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm text-white placeholder:text-white/45 focus:outline-none focus:border-cyan focus:bg-white/15 transition-colors"
+          />
+        </div>
+        <select v-model="filterStatus" class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+          <option class="text-navy" value="">Todos los estados</option>
+          <option class="text-navy" value="pending">Pendientes</option>
+          <option class="text-navy" value="paid">Pagados</option>
+          <option class="text-navy" value="expired">Expirados</option>
+          <option class="text-navy" value="cancelled">Cancelados</option>
+        </select>
+      </template>
 
-    <!-- Lista -->
-    <div v-if="loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center text-sm text-text-muted">Cargando...</div>
-    <div v-else-if="filtered.length === 0" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-12 text-center">
-      <span class="w-10 h-10 mx-auto mb-3 text-text-muted opacity-50 block" v-html="ICON_CARD"></span>
-      <h3 class="font-bold text-navy mb-1">Sin links de pago</h3>
-      <p class="text-xs text-text-muted mb-4">Crea un link para cobrar a un huésped de forma remota</p>
-      <button @click="openNew" class="flex items-center gap-1.5 mx-auto rounded-full bg-cyan text-navy px-5 py-2.5 text-sm font-extrabold hover:shadow-lg transition-all cursor-pointer">
-        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
-        Crear link
-      </button>
-    </div>
-    <div v-else class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <table class="w-full">
-        <thead>
-          <tr class="border-b border-border bg-surface/50">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Reserva</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Destinatario</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Monto</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Enviado vía</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Fecha</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="p in filtered" :key="p.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
-            <td class="p-4">
-              <div class="text-xs font-bold text-navy">{{ p.reservationId?.slice(0, 8) || '—' }}</div>
-              <div v-if="p.guestName" class="text-[10px] text-text-muted">{{ p.guestName }}</div>
-            </td>
-            <td class="p-4">
-              <div class="text-xs text-navy">{{ p.sentTo || '—' }}</div>
-            </td>
-            <td class="p-4 text-right">
-              <div class="text-sm font-black text-navy">{{ formatMoney(p.amount) }}</div>
-              <div class="text-[10px] text-text-muted">{{ p.currency || 'USD' }}</div>
-            </td>
-            <td class="p-4">
-              <span class="flex items-center gap-1.5 text-xs text-navy">
-                <span class="w-3.5 h-3.5 text-text-muted shrink-0" v-html="channelIcon(p.sentVia)"></span>
-                {{ channelLabel(p.sentVia) }}
-              </span>
-            </td>
-            <td class="p-4">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="statusClass(p.status)">{{ statusLabel(p.status) }}</span>
-            </td>
-            <td class="p-4">
-              <div class="text-[11px] text-navy">{{ formatDate(p.createdAt) }}</div>
-              <div v-if="p.paidAt" class="text-[10px] text-teal">Pagado {{ formatDate(p.paidAt) }}</div>
-            </td>
-            <td class="p-4 text-right" @click.stop>
-              <div class="flex gap-2.5 justify-end items-center flex-wrap">
-                <button v-if="stripeConfigured && p.status === 'pending'" @click="createStripe(p)" title="Crear link de pago Stripe" class="text-[11px] font-bold text-purple hover:text-navy transition-colors cursor-pointer">Stripe</button>
-                <button v-if="p.stripePaymentUrl && p.status === 'pending'" @click="copyStripeUrl(p)" title="Copiar URL de pago" class="w-4 h-4 text-text-muted hover:text-navy transition-colors cursor-pointer" v-html="ICON_LINK"></button>
-                <button v-if="p.status === 'pending'" @click="resend(p, 'email')" title="Reenviar email" class="w-4 h-4 text-text-muted hover:text-navy transition-colors cursor-pointer" v-html="ICON_ENVELOPE"></button>
-                <button v-if="p.status === 'pending'" @click="resend(p, 'whatsapp')" title="Reenviar WhatsApp" class="w-4 h-4 text-text-muted hover:text-teal transition-colors cursor-pointer" v-html="ICON_CHAT"></button>
-                <button v-if="p.status === 'pending'" @click="markAsPaid(p)" title="Marcar pagado (manual)" class="w-4 h-4 text-text-muted hover:text-teal transition-colors cursor-pointer" v-html="ICON_CHECK_PLAIN"></button>
-                <button v-if="p.status === 'pending'" @click="cancel(p)" title="Cancelar" class="w-4 h-4 text-text-muted hover:text-coral transition-colors cursor-pointer" v-html="ICON_X"></button>
-                <button @click="remove(p)" title="Eliminar" class="w-4 h-4 text-text-muted hover:text-coral transition-colors cursor-pointer" v-html="ICON_TRASH"></button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <!-- Carga -->
+      <div v-if="loading" class="p-4 sm:p-5 space-y-3">
+        <div v-for="n in 5" :key="n" class="flex items-center gap-4">
+          <div class="h-9 flex-1 animate-pulse rounded bg-surface"></div>
+          <div class="h-9 w-24 animate-pulse rounded bg-surface hidden sm:block"></div>
+          <div class="h-9 w-20 animate-pulse rounded bg-surface"></div>
+        </div>
+      </div>
+
+      <EmptyState
+        v-else-if="filtered.length === 0"
+        :icon="ICON_CARD"
+        :title="hasFilters ? 'Sin resultados' : 'Todavía no hay links de pago'"
+        :message="hasFilters ? 'Probá con otro término de búsqueda o quitá el filtro de estado.' : 'Creá un link para cobrarle a un huésped de forma remota.'"
+      >
+        <template #action>
+          <button v-if="hasFilters" @click="clearFilters" class="px-5 py-2.5 rounded-full border border-border text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer">
+            Limpiar filtros
+          </button>
+          <button v-else @click="openNew" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer">
+            Crear link
+          </button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[900px] tbl-head">
+          <thead>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Reserva</th>
+              <th class="text-left px-4 py-3 text-[10px]">Destinatario</th>
+              <th class="text-right px-4 py-3 text-[10px]">Monto</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Enviado vía</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden xl:table-cell">Fecha</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in filtered" :key="p.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+              <td class="px-4 py-3">
+                <div v-if="p.reservationId" class="text-xs font-bold text-navy tabular-nums">{{ p.reservationId.slice(0, 8) }}</div>
+                <div v-else class="text-xs text-text-muted">Sin reserva</div>
+                <div v-if="p.guestName" class="text-[11px] text-text-muted truncate">{{ p.guestName }}</div>
+                <!-- En <xl la columna Fecha está oculta: el dato sube acá -->
+                <div class="text-[11px] text-text-muted xl:hidden">{{ formatDate(p.createdAt) }}</div>
+              </td>
+              <td class="px-4 py-3">
+                <div v-if="p.sentTo" class="text-sm text-navy truncate max-w-[220px]">{{ p.sentTo }}</div>
+                <div v-else class="text-sm text-text-muted">Sin destinatario</div>
+                <!-- En <lg la columna Enviado vía está oculta -->
+                <div class="text-[11px] text-text-muted lg:hidden">{{ channelLabel(p.sentVia) }}</div>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="text-sm font-extrabold text-navy tabular-nums">{{ formatMoney(p.amount) }}</div>
+                <div class="text-[10px] text-text-muted">{{ p.currency || 'USD' }}</div>
+              </td>
+              <td class="px-4 py-3 hidden lg:table-cell">
+                <span class="flex items-center gap-1.5 text-sm text-text-secondary">
+                  <span class="h-3.5 w-3.5 shrink-0 text-text-muted" v-html="channelIcon(p.sentVia)"></span>
+                  {{ channelLabel(p.sentVia) }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide" :class="statusClass(p.status)">
+                  {{ statusLabel(p.status) }}
+                </span>
+              </td>
+              <td class="px-4 py-3 hidden xl:table-cell">
+                <div class="text-[11px] text-text-secondary">{{ formatDate(p.createdAt) }}</div>
+                <div v-if="p.paidAt" class="text-[10px] font-bold text-teal">Pagado {{ formatDate(p.paidAt) }}</div>
+              </td>
+              <td class="px-4 py-3 text-right" @click.stop>
+                <div class="flex items-center justify-end gap-1">
+                  <button v-if="stripeConfigured && p.status === 'pending'" @click="createStripe(p)" title="Crear link de pago Stripe"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-purple hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_CARD"></span>
+                  </button>
+                  <button v-if="p.stripePaymentUrl && p.status === 'pending'" @click="copyStripeUrl(p)" title="Copiar URL de pago"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_LINK"></span>
+                  </button>
+                  <button v-if="p.status === 'pending'" @click="resend(p, 'email')" title="Reenviar email"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_ENVELOPE"></span>
+                  </button>
+                  <button v-if="p.status === 'pending'" @click="resend(p, 'whatsapp')" title="Reenviar WhatsApp"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-teal/10 hover:text-teal transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_CHAT"></span>
+                  </button>
+                  <button v-if="p.status === 'pending'" @click="markAsPaid(p)" title="Marcar pagado (manual)"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-teal/10 hover:text-teal transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_CHECK_PLAIN"></span>
+                  </button>
+                  <button v-if="p.status === 'pending'" @click="cancel(p)" title="Cancelar"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_X"></span>
+                  </button>
+                  <button @click="remove(p)" title="Eliminar"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_TRASH"></span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </SectionCard>
 
     <!-- Modal Nuevo link -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="newModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 p-5 border-b border-border flex items-center justify-between">
-              <h3 class="text-lg font-black text-navy">Nuevo Link de Pago</h3>
-              <button @click="newModal.show=false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:text-navy hover:bg-surface transition-colors cursor-pointer">
-                <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-              </button>
-            </div>
-
-            <div class="p-5 space-y-4 overflow-y-auto flex-1">
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Reserva *</label>
-                <select v-model="newForm.reservationId" class="w-full px-4 py-2.5 rounded-xl border text-sm cursor-pointer focus:outline-none"
-                  :class="attemptedSubmit && reservationError ? 'border-coral focus:border-coral' : 'border-border focus:border-navy'">
-                  <option value="">Seleccionar...</option>
-                  <option v-for="r in reservations" :key="r.id" :value="r.id">
-                    {{ r.guestName }} · Hab. {{ r.roomNumber }} · {{ formatDate(r.checkIn) }}
-                  </option>
-                </select>
-                <p v-if="attemptedSubmit && reservationError" class="text-[10px] text-coral font-bold mt-1">{{ reservationError }}</p>
-              </div>
-              <div>
-                <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Monto *</label>
-                <div class="relative">
-                  <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text-muted pointer-events-none">$</span>
-                  <input v-model="amountDisplay" type="text" inputmode="decimal" placeholder="0.00"
-                    @focus="amountFocused = true" @blur="amountFocused = false; roundAmount()"
-                    class="w-full pl-7 pr-4 py-2.5 rounded-xl border text-sm font-bold text-navy text-right focus:outline-none"
-                    :class="attemptedSubmit && amountError ? 'border-coral focus:border-coral' : 'border-border focus:border-navy'" />
-                </div>
-                <p v-if="attemptedSubmit && amountError" class="text-[10px] text-coral font-bold mt-1">{{ amountError }}</p>
-                <p v-if="selectedReservation" class="text-[10px] text-text-muted mt-1">
-                  Pendiente aprox: {{ formatMoney(reservationPendingAmount) }}
-                  <button @click="newForm.amount = reservationPendingAmount" type="button" class="text-teal hover:underline cursor-pointer ml-2 font-bold">Usar</button>
-                </p>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Enviar a</label>
-                  <input v-model="newForm.sentTo" :type="sentToInputType" :placeholder="sentToPlaceholder" autocomplete="off"
-                    class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none"
-                    :class="attemptedSubmit && sentToError ? 'border-coral focus:border-coral' : 'border-border focus:border-navy'" />
-                  <p v-if="attemptedSubmit && sentToError" class="text-[10px] text-coral font-bold mt-1">{{ sentToError }}</p>
-                </div>
-                <div>
-                  <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Vía</label>
-                  <select v-model="newForm.sentVia" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer focus:outline-none focus:border-navy">
-                    <option value="email">Email</option>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="sms">SMS</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div class="shrink-0 border-t border-border p-5">
-              <div class="flex items-center justify-end gap-4">
-                <button @click="newModal.show=false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="create" :disabled="creating" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
-                  {{ creating ? 'Creando...' : 'Crear link' }}
-                </button>
-              </div>
-            </div>
+    <AppModal v-if="newModal.show" size="md" title="Nuevo Link de Pago"
+      subtitle="Cobro remoto a un huésped" @close="newModal.show = false">
+      <div class="space-y-4">
+        <div>
+          <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Reserva *</label>
+          <select v-model="newForm.reservationId" class="w-full px-4 py-2.5 rounded-xl border text-sm cursor-pointer focus:outline-none"
+            :class="attemptedSubmit && reservationError ? 'border-coral focus:border-coral' : 'border-border focus:border-navy'">
+            <option value="">Seleccionar...</option>
+            <option v-for="r in reservations" :key="r.id" :value="r.id">
+              {{ r.guestName }} · Hab. {{ r.roomNumber }} · {{ formatDate(r.checkIn) }}
+            </option>
+          </select>
+          <p v-if="attemptedSubmit && reservationError" class="text-[10px] text-coral font-bold mt-1">{{ reservationError }}</p>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Monto *</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text-muted pointer-events-none">$</span>
+            <input v-model="amountDisplay" type="text" inputmode="decimal" placeholder="0.00"
+              @focus="amountFocused = true" @blur="amountFocused = false; roundAmount()"
+              class="w-full pl-7 pr-4 py-2.5 rounded-xl border text-sm font-bold text-navy text-right tabular-nums focus:outline-none"
+              :class="attemptedSubmit && amountError ? 'border-coral focus:border-coral' : 'border-border focus:border-navy'" />
+          </div>
+          <p v-if="attemptedSubmit && amountError" class="text-[10px] text-coral font-bold mt-1">{{ amountError }}</p>
+          <p v-if="selectedReservation" class="text-[10px] text-text-muted mt-1">
+            Pendiente aprox: {{ formatMoney(reservationPendingAmount) }}
+            <button @click="newForm.amount = reservationPendingAmount" type="button" class="text-teal hover:underline cursor-pointer ml-2 font-bold">Usar</button>
+          </p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Enviar a</label>
+            <input v-model="newForm.sentTo" :type="sentToInputType" :placeholder="sentToPlaceholder" autocomplete="off"
+              class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none"
+              :class="attemptedSubmit && sentToError ? 'border-coral focus:border-coral' : 'border-border focus:border-navy'" />
+            <p v-if="attemptedSubmit && sentToError" class="text-[10px] text-coral font-bold mt-1">{{ sentToError }}</p>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2 block">Vía</label>
+            <select v-model="newForm.sentVia" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer focus:outline-none focus:border-navy">
+              <option value="email">Email</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="sms">SMS</option>
+            </select>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+      </div>
+
+      <template #footer>
+        <button @click="newModal.show = false" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="create" :disabled="creating" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ creating ? 'Creando...' : 'Crear link' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -228,12 +229,14 @@ import type { PaymentRequest } from '@/services/Payments.service'
 import { ReservationService } from '@/services/Reservation.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { useCountUp } from '@/composables/useCountUp'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
-const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z"/></svg>'
 const ICON_CHECK_PLAIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>'
-const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h.01M3 10h18"/></svg>'
 const ICON_LINK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5 21 3M16.5 3H21v4.5M10.5 13.5 3 21M7.5 21H3v-4.5"/></svg>'
 const ICON_CARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="5" width="20" height="14" rx="2"/><path stroke-linecap="round" d="M2 10h20"/></svg>'
 const ICON_ENVELOPE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>'
@@ -360,10 +363,18 @@ const paidCount = computed(() => stats.value.paid)
 const paidAmountValue = computed(() => stats.value.paidAmount)
 const pendingAmountValue = computed(() => stats.value.pendingAmount)
 
-const pendingAnim = useCountUp(pendingCount)
-const paidAnim = useCountUp(paidCount)
-const paidAmountAnim = useCountUp(paidAmountValue)
-const pendingAmountAnim = useCountUp(pendingAmountValue)
+// Los KPI los anima KpiHeroCard internamente (useCountUp propio) — no envolver acá.
+// % de links cobrados sobre el total pendiente + pagado (anillo de progreso).
+const paidShare = computed(() => {
+  const total = pendingCount.value + paidCount.value
+  return total === 0 ? 0 : Math.round((paidCount.value / total) * 100)
+})
+
+const hasFilters = computed(() => !!search.value || !!filterStatus.value)
+function clearFilters() {
+  search.value = ''
+  filterStatus.value = ''
+}
 
 const filtered = computed(() => {
   let list = [...payments.value]
@@ -396,8 +407,8 @@ async function loadReservations() {
     const r = await ReservationService.list({ hotelId: hotelId.value })
     reservations.value = (r.reservations || []).map((x: any) => ({
       id: x.id,
-      guestName: x.guestName || '—',
-      roomNumber: x.roomNumber || '—',
+      guestName: x.guestName || 'Sin nombre',
+      roomNumber: x.roomNumber || 's/n',
       checkIn: x.checkIn,
       totalAmount: x.totalAmount,
       deposit: x.deposit,
@@ -509,7 +520,7 @@ function channelIcon(c?: string): string {
 }
 function channelLabel(c?: string): string {
   const m: Record<string, string> = { email: 'Email', whatsapp: 'WhatsApp', sms: 'SMS' }
-  return m[c || ''] || (c || '—')
+  return m[c || ''] || (c || 'Sin canal')
 }
 
 onMounted(() => {
@@ -519,12 +530,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
-.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
-  opacity: 0; transform: scale(0.95) translateY(12px);
-}
+/* Las transiciones de entrada/salida del modal ahora las aporta AppModal. */
 </style>
