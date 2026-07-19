@@ -55,6 +55,8 @@ function setup(opts: { failOn?: string[]; records?: Record<string, any[]>; recor
     uc: new MasterKeysUseCase(lockDevicesRepo, lockCodesRepo, hw),
     rows, hardware,
     failLater: (ids: string[]) => ids.forEach(i => fail.add(i)),
+    /** La cerradura vuelve a estar en línea. */
+    recover: (ids: string[]) => ids.forEach(i => fail.delete(i)),
     setRecords: (r: Record<string, any[]>) => Object.assign(records, r),
   }
 }
@@ -147,6 +149,72 @@ describe('MasterKeysUseCase.revoke', () => {
     expect(out.revoked).toBe(2)
     expect(out.failed).toEqual([{ lockName: 'Puerta 102', reason: 'sin gateway' }])
     expect(hardware.map(h => h.lockId)).toEqual(['l2'])
+  })
+})
+
+describe('MasterKeysUseCase — agregar y quitar puertas', () => {
+  it('lista qué puertas abre y cuáles no', async () => {
+    const { uc } = setup({ failOn: ['l2'] })
+    const res = await uc.create('h1', { userId: 'u1' }, 'a')
+    const locks = await uc.locksOf('h1', res.masterKeyId)
+
+    expect(locks).toHaveLength(3)
+    expect(locks.find(l => l.lockId === 'l1')!.applied).toBe(true)
+    expect(locks.find(l => l.lockId === 'l2')!.applied).toBe(false) // la que falló
+    expect(locks.find(l => l.lockId === 'l3')!.applied).toBe(true)
+  })
+
+  it('suma la puerta que había fallado, con el MISMO PIN', async () => {
+    // La l2 estaba caída al crear la llave y después vuelve.
+    const { uc, hardware, recover } = setup({ failOn: ['l2'] })
+    const res = await uc.create('h1', { userId: 'u1' }, 'a')
+    expect(hardware.map(h => h.lockId).sort()).toEqual(['l1', 'l3'])
+
+    recover(['l2'])
+    await uc.addLock('h1', res.masterKeyId, 'l2')
+
+    expect(hardware.map(h => h.lockId).sort()).toEqual(['l1', 'l2', 'l3'])
+    // Lo importante: no le dio otro número a la persona.
+    expect(new Set(hardware.map(h => h.code))).toEqual(new Set([res.code]))
+    const [k] = await uc.list('h1')
+    expect(k!.status).toBe('active')
+  })
+
+  it('agregar una puerta que ya abre no duplica nada', async () => {
+    const { uc, hardware } = setup()
+    const res = await uc.create('h1', { userId: 'u1' }, 'a')
+    await uc.addLock('h1', res.masterKeyId, 'l1')
+    expect(hardware.filter(h => h.lockId === 'l1')).toHaveLength(1)
+  })
+
+  it('quitar una puerta borra el PIN de esa cerradura y deja las otras', async () => {
+    const { uc, hardware } = setup()
+    const res = await uc.create('h1', { userId: 'u1' }, 'a')
+    await uc.removeLock('h1', res.masterKeyId, 'l2')
+
+    expect(hardware.map(h => h.lockId).sort()).toEqual(['l1', 'l3'])
+    const locks = await uc.locksOf('h1', res.masterKeyId)
+    expect(locks.find(l => l.lockId === 'l2')!.applied).toBe(false)
+    const [k] = await uc.list('h1')
+    expect(k!.status).toBe('partial') // ya no abre todo, y se ve
+  })
+
+  it('volver a agregar una puerta quitada reusa su fila', async () => {
+    const { uc, rows, hardware } = setup()
+    const res = await uc.create('h1', { userId: 'u1' }, 'a')
+    await uc.removeLock('h1', res.masterKeyId, 'l2')
+    await uc.addLock('h1', res.masterKeyId, 'l2')
+
+    expect(rows.filter(r => r.lockId === 'l2')).toHaveLength(1) // no se acumulan
+    expect(hardware.map(h => h.lockId).sort()).toEqual(['l1', 'l2', 'l3'])
+    const [k] = await uc.list('h1')
+    expect(k!.status).toBe('active')
+  })
+
+  it('no se puede sumar una cerradura de otro hotel', async () => {
+    const { uc } = setup()
+    const res = await uc.create('h1', { userId: 'u1' }, 'a')
+    await expect(uc.addLock('h1', res.masterKeyId, 'ajena')).rejects.toThrow('no encontrada')
   })
 })
 

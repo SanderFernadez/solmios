@@ -134,6 +134,72 @@ export class MasterKeysUseCase {
     return { masterKeyId, code, applied, failed }
   }
 
+  /**
+   * Qué puertas abre esta llave y cuáles no. Es lo que hace falta para
+   * administrarla: una cerradura pudo fallar al crearla, o simplemente no se
+   * quiere dar acceso a todas (la bodega, la caja fuerte).
+   */
+  async locksOf(hotelId: string, masterKeyId: string): Promise<{ lockId: string; lockName: string; roomId?: string; applied: boolean }[]> {
+    const rows = await this.rowsOf(hotelId, masterKeyId)
+    const activeByLock = new Map(rows.filter(r => r.status === 'active').map(r => [r.lockId, r]))
+    const locks = await this.lockDevicesRepo.findMany({ hotelId }) as any[]
+    return locks.map(l => ({
+      lockId: l.id,
+      lockName: l.name || l.id,
+      roomId: l.roomId || undefined,
+      applied: activeByLock.has(l.id),
+    }))
+  }
+
+  /**
+   * Suma una puerta a una llave que ya existe, con el MISMO PIN.
+   *
+   * Sirve para la cerradura que falló al crearla (estaba sin batería, sin
+   * gateway) y para dar acceso nuevo sin obligar a la persona a memorizar otro
+   * número.
+   */
+  async addLock(hotelId: string, masterKeyId: string, lockId: string): Promise<void> {
+    const rows = await this.rowsOf(hotelId, masterKeyId)
+    if (rows.some(r => r.lockId === lockId && r.status === 'active')) return // ya abre esa puerta
+
+    const lock = await this.lockDevicesRepo.findById(lockId)
+    if (!lock || lock.hotelId !== hotelId) throw new NotFoundError('Cerradura no encontrada')
+
+    const first = rows[0]!
+    const r = await this.hw.createPermanentCode(hotelId, lockId, first.code, first.label ?? 'Llave maestra')
+
+    // Si la llave ya estuvo en esta puerta y se quitó, se reusa la fila en vez
+    // de acumular una nueva por cada alta y baja.
+    const previous = rows.find(r2 => r2.lockId === lockId)
+    const patch = { status: 'active', ttlockKeyboardPwdId: r.keyboardPwdId ? String(r.keyboardPwdId) : '' }
+    if (previous) await this.lockCodesRepo.update(previous.id, patch)
+    else {
+      await this.lockCodesRepo.create({
+        id: crypto.randomUUID(),
+        lockId, hotelId,
+        code: first.code,
+        codeType: 'master',
+        userId: first.userId,
+        masterKeyId,
+        label: first.label,
+        sentVia: first.sentVia,
+        ...patch,
+      })
+    }
+  }
+
+  /** Le quita UNA puerta a la llave, borrando el PIN de esa cerradura. */
+  async removeLock(hotelId: string, masterKeyId: string, lockId: string): Promise<void> {
+    const rows = await this.rowsOf(hotelId, masterKeyId)
+    const row = rows.find(r => r.lockId === lockId && r.status === 'active')
+    if (!row) return // no la abría: nada que quitar
+
+    if (row.ttlockKeyboardPwdId) {
+      await this.hw.removePasscode(hotelId, lockId, row.ttlockKeyboardPwdId)
+    }
+    await this.lockCodesRepo.update(row.id, { status: 'revoked' })
+  }
+
   /** Llaves maestras del hotel, con en cuántas puertas quedó cada una. */
   async list(hotelId: string): Promise<MasterKeySummary[]> {
     const rows = await this.lockCodesRepo.findMany({ hotelId, codeType: 'master' }) as any[]

@@ -17,7 +17,7 @@ export function TtlockModule() {
     contract: {
       name: 'ttlock', version: '1.0.0',
       description: 'TTLock smart lock management',
-      actions: ['getConfig', 'updateConfig', 'connect', 'listLocks', 'listCodes', 'listGateways', 'listActiveCodes', 'listRecords', 'unlock', 'deletePasscode', 'listLockGateways', 'createPermanentCode', 'syncLocks', 'generateCode', 'revokeCode', 'updateLock', 'listMasterKeys', 'createMasterKey', 'revokeMasterKey', 'masterKeyAccessLog'],
+      actions: ['getConfig', 'updateConfig', 'connect', 'listLocks', 'listCodes', 'listGateways', 'listActiveCodes', 'listRecords', 'unlock', 'deletePasscode', 'listLockGateways', 'createPermanentCode', 'syncLocks', 'generateCode', 'revokeCode', 'updateLock', 'listMasterKeys', 'createMasterKey', 'revokeMasterKey', 'masterKeyAccessLog', 'masterKeyLocks', 'addMasterKeyLock', 'removeMasterKeyLock'],
       events: [],
       tables: ['lock_devices', 'lock_codes'],
       dependencies: [],
@@ -66,6 +66,9 @@ export function TtlockModule() {
       router.post('/api/ttlock/master-keys', managerOnly('edit'), (req: any) => controller.createMasterKey(req))
       router.delete('/api/ttlock/master-keys/:id', managerOnly('edit'), (req: any) => controller.revokeMasterKey(req))
       router.get('/api/ttlock/master-keys/:id/access-log', managerOnly('view'), (req: any) => controller.masterKeyAccessLog(req))
+      router.get('/api/ttlock/master-keys/:id/locks', managerOnly('view'), (req: any) => controller.masterKeyLocks(req))
+      router.post('/api/ttlock/master-keys/:id/locks/:lockId', managerOnly('edit'), (req: any) => controller.addMasterKeyLock(req))
+      router.delete('/api/ttlock/master-keys/:id/locks/:lockId', managerOnly('edit'), (req: any) => controller.removeMasterKeyLock(req))
 
       log.info('Módulo ttlock listo (15 endpoints)')
       return service

@@ -44,11 +44,38 @@ export async function getActiveCodes(deps: HardwareDeps, hotelId: string, lockDe
   return listLockPasscodes(credsFrom(cfg), Number(lock.ttlockLockId))
 }
 
+/**
+ * Historial de la cerradura, diciendo DE QUIÉN es el código que abrió.
+ *
+ * El hardware solo devuelve el número (`keyboardPwd`); leer "abrió 118205" no
+ * sirve para saber quién entró. Se cruza contra los códigos del hotel: el de una
+ * llave maestra trae el nombre de su dueño, el de un huésped trae su reserva.
+ */
 export async function getRecords(deps: HardwareDeps, hotelId: string, lockDeviceId: string, days = 30): Promise<any[]> {
   const { lock, cfg } = await resolveLock(deps, hotelId, lockDeviceId)
   const end = Date.now()
   const start = end - days * MS_PER_DAY
-  return listLockRecords(credsFrom(cfg), Number(lock.ttlockLockId), start, end)
+  const records = await listLockRecords(credsFrom(cfg), Number(lock.ttlockLockId), start, end)
+
+  const codes = await deps.lockCodesRepo.findMany({ hotelId }) as any[]
+  const byCode = new Map<string, any>()
+  for (const c of codes) {
+    // Si un mismo PIN se reusó, gana el más reciente: es el que corresponde a
+    // las aperturas que se están mirando.
+    const prev = byCode.get(String(c.code))
+    if (!prev || String(c.createdAt ?? '') > String(prev.createdAt ?? '')) byCode.set(String(c.code), c)
+  }
+
+  return records.map(r => {
+    const owner = r.keyboardPwd ? byCode.get(String(r.keyboardPwd)) : undefined
+    return {
+      ...r,
+      holder: owner?.label || (owner?.reservationId ? 'Huésped' : ''),
+      holderType: owner?.codeType === 'master' ? 'master' : owner?.reservationId ? 'guest' : '',
+      holderUserId: owner?.userId || '',
+      reservationId: owner?.reservationId || '',
+    }
+  })
 }
 
 export async function openLock(deps: HardwareDeps, hotelId: string, lockDeviceId: string): Promise<void> {

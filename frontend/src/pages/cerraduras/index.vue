@@ -361,7 +361,7 @@
               <tr>
                 <th class="text-left px-4 py-3 text-[10px]">Fecha</th>
                 <th class="text-left px-4 py-3 text-[10px]">Evento</th>
-                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Código / Usuario</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Quién entró</th>
                 <th class="text-center px-4 py-3 text-[10px]">Resultado</th>
               </tr>
             </thead>
@@ -370,11 +370,22 @@
                 <td class="px-4 py-3 text-xs text-text-secondary tabular-nums whitespace-nowrap">{{ fmtMs(r.lockDate) }}</td>
                 <td class="px-4 py-3">
                   <div class="text-xs font-bold text-navy">{{ recordTypeLabel(r.recordType) }}</div>
-                  <div v-if="actorOf(r)" class="text-[11px] text-text-muted lg:hidden" :class="r.keyboardPwd ? 'font-mono' : ''">{{ actorOf(r) }}</div>
+                  <div v-if="r.holder || actorOf(r)" class="text-[11px] text-text-muted lg:hidden">{{ r.holder || actorOf(r) }}</div>
                 </td>
+                <!-- El hardware solo dice el número; el backend lo cruza con los
+                     códigos del hotel para poder mostrar de quién era. -->
                 <td class="px-4 py-3 hidden lg:table-cell">
-                  <span v-if="actorOf(r)" class="text-xs text-text-secondary" :class="r.keyboardPwd ? 'font-mono' : ''">{{ actorOf(r) }}</span>
+                  <div v-if="r.holder" class="flex items-center gap-1.5">
+                    <span class="text-xs font-bold text-navy">{{ r.holder }}</span>
+                    <span
+                      v-if="r.holderType"
+                      class="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                      :class="r.holderType === 'master' ? 'bg-purple-light/15 text-purple' : 'bg-cyan/10 text-cyan'"
+                    >{{ r.holderType === 'master' ? 'Maestra' : 'Huésped' }}</span>
+                  </div>
+                  <span v-else-if="actorOf(r)" class="text-xs text-text-secondary" :class="r.keyboardPwd ? 'font-mono' : ''">{{ actorOf(r) }}</span>
                   <span v-else class="text-xs text-text-muted">Sin identificar</span>
+                  <div v-if="r.holder && r.keyboardPwd" class="text-[10px] text-text-muted font-mono tabular-nums">PIN {{ r.keyboardPwd }}</div>
                 </td>
                 <td class="px-4 py-3 text-center">
                   <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="r.success === 1 ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ r.success === 1 ? 'OK' : 'Falló' }}</span>
@@ -436,6 +447,10 @@
                 <td class="px-4 py-3">
                   <div class="flex items-center justify-end gap-1.5">
                     <button
+                      @click="openKeyLocks(k)"
+                      class="px-3 py-1.5 rounded-lg border border-border text-[11px] font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer"
+                    >Puertas</button>
+                    <button
                       @click="openAccessLog(k)"
                       class="px-3 py-1.5 rounded-lg border border-border text-[11px] font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer"
                     >¿Dónde entró?</button>
@@ -486,6 +501,41 @@
           @click="createMasterKey()" :disabled="!newMasterKey.userId || creatingMasterKey"
           class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >{{ creatingMasterKey ? 'Grabando en las cerraduras…' : 'Crear llave' }}</button>
+      </template>
+    </AppModal>
+
+    <!-- Qué puertas abre esta llave: se suman y se quitan de a una -->
+    <AppModal
+      v-if="keyLocksModal" size="md"
+      :title="`Puertas de ${personName(keyLocksModal.key.userId)}`"
+      :subtitle="`PIN ${keyLocksModal.key.code} · el mismo en todas`"
+      @close="keyLocksModal = null"
+    >
+      <div v-if="keyLocksLoading" class="flex items-center gap-2 text-xs text-text-muted py-6 justify-center">
+        <span class="w-4 h-4 rounded-full border-2 border-border border-t-cyan animate-spin"></span>
+        Cargando…
+      </div>
+      <div v-else class="space-y-1.5">
+        <div
+          v-for="l in keyLocksModal.locks" :key="l.lockId"
+          class="flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors"
+          :class="l.applied ? 'border-teal/30 bg-teal/5' : 'border-border'"
+        >
+          <span class="w-2 h-2 rounded-full shrink-0" :class="l.applied ? 'bg-teal' : 'bg-border'"></span>
+          <span class="text-sm font-bold text-navy flex-1 truncate">{{ l.lockName }}</span>
+          <span class="text-[11px] shrink-0" :class="l.applied ? 'text-teal font-bold' : 'text-text-muted'">
+            {{ l.applied ? 'Abre' : 'No abre' }}
+          </span>
+          <button
+            @click="toggleKeyLock(l)"
+            :disabled="togglingLock === l.lockId"
+            class="px-3 py-1.5 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer disabled:opacity-50"
+            :class="l.applied ? 'bg-coral/10 text-coral hover:bg-coral/20' : 'bg-navy text-white hover:bg-navy-light'"
+          >{{ togglingLock === l.lockId ? '…' : l.applied ? 'Quitar' : 'Agregar' }}</button>
+        </div>
+      </div>
+      <template #footer>
+        <button @click="keyLocksModal = null" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Cerrar</button>
       </template>
     </AppModal>
 
@@ -541,7 +591,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { TTLockService, type TTLockConfig, type LockGateway, type LockActiveCode, type LockRecord, type MasterKey, type MasterKeyAccess } from '@/services/TTLock.service'
+import { TTLockService, type TTLockConfig, type LockGateway, type LockActiveCode, type LockRecord, type MasterKey, type MasterKeyAccess, type MasterKeyLock } from '@/services/TTLock.service'
 import { TeamService } from '@/services/Team.service'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -705,6 +755,52 @@ async function revokeMasterKey(k: MasterKey) {
     await loadMasterKeys()
   } catch (e: any) {
     toast.error('No se pudo revocar', e?.message)
+  }
+}
+
+const keyLocksModal = ref<{ key: MasterKey; locks: MasterKeyLock[] } | null>(null)
+const keyLocksLoading = ref(false)
+const togglingLock = ref('')
+
+async function openKeyLocks(k: MasterKey) {
+  keyLocksModal.value = { key: k, locks: [] }
+  keyLocksLoading.value = true
+  try {
+    const r = await TTLockService.masterKeyLocks(k.masterKeyId)
+    if (keyLocksModal.value) keyLocksModal.value.locks = r.data ?? []
+  } catch (e: any) {
+    toast.error('No se pudieron cargar las puertas', e?.message)
+  } finally {
+    keyLocksLoading.value = false
+  }
+}
+
+/**
+ * Suma o quita UNA puerta. Se recarga el listado después: quitar una deja la
+ * llave en "Parcial", y eso tiene que verse.
+ */
+async function toggleKeyLock(l: MasterKeyLock) {
+  const modal = keyLocksModal.value
+  if (!modal) return
+  togglingLock.value = l.lockId
+  try {
+    if (l.applied) {
+      await TTLockService.removeMasterKeyLock(modal.key.masterKeyId, l.lockId)
+      toast.success(`${l.lockName}: la llave ya no abre`)
+    } else {
+      await TTLockService.addMasterKeyLock(modal.key.masterKeyId, l.lockId)
+      toast.success(`${l.lockName}: la llave ya abre`)
+    }
+    const r = await TTLockService.masterKeyLocks(modal.key.masterKeyId)
+    modal.locks = r.data ?? []
+    masterKeysLoaded.value = false
+    await loadMasterKeys()
+    const fresh = masterKeys.value.find(k => k.masterKeyId === modal.key.masterKeyId)
+    if (fresh) modal.key = fresh
+  } catch (e: any) {
+    toast.error('No se pudo cambiar el acceso', e?.message)
+  } finally {
+    togglingLock.value = ''
   }
 }
 

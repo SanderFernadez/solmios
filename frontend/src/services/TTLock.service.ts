@@ -57,6 +57,15 @@ export interface LockRecord {
   keyName?: string
   username?: string
   lockDate?: number
+  /**
+   * De quién es el código que abrió, resuelto por el backend. El hardware solo
+   * devuelve el número: "abrió 118205" no dice quién entró.
+   */
+  holder?: string
+  /** `master` = llave maestra de una persona · `guest` = código de una reserva. */
+  holderType?: 'master' | 'guest' | ''
+  holderUserId?: string
+  reservationId?: string
 }
 
 export interface LockGatewayLink {
@@ -103,6 +112,14 @@ export interface MasterKeyApplyResult {
   code: string
   applied: { lockId: string; lockName: string }[]
   failed: { lockId: string; lockName: string; reason: string }[]
+}
+
+/** Una puerta del hotel y si esta llave la abre o no. */
+export interface MasterKeyLock {
+  lockId: string
+  lockName: string
+  roomId?: string
+  applied: boolean
 }
 
 /** Una apertura registrada por la cerradura con esa llave. */
@@ -154,4 +171,13 @@ export const TTLockService = {
   /** Dónde y cuándo entró esa persona con su llave. */
   masterKeyAccessLog: (masterKeyId: string, days?: number) =>
     http.get<{ data: MasterKeyAccess[] }>(`/ttlock/master-keys/${masterKeyId}/access-log${days ? `?days=${days}` : ''}`),
+  /** Qué puertas abre la llave y cuáles no. */
+  masterKeyLocks: (masterKeyId: string) =>
+    http.get<{ data: MasterKeyLock[] }>(`/ttlock/master-keys/${masterKeyId}/locks`),
+  /** Suma una puerta a la llave, con el mismo PIN. */
+  addMasterKeyLock: (masterKeyId: string, lockId: string) =>
+    http.post<{ success: boolean }>(`/ttlock/master-keys/${masterKeyId}/locks/${lockId}`),
+  /** Le quita una puerta a la llave (borra el PIN de esa cerradura). */
+  removeMasterKeyLock: (masterKeyId: string, lockId: string) =>
+    http.delete<{ success: boolean }>(`/ttlock/master-keys/${masterKeyId}/locks/${lockId}`),
 }

@@ -213,6 +213,29 @@ export class TtlockController {
     return { status: 200, body: await this.service.masterKeys().revoke(hotelId, req.params.id, actor) }
   }
 
+  /** Qué puertas abre la llave y cuáles no (para poder sumar o quitar). */
+  async masterKeyLocks(req: HttpRequest) {
+    const hotelId = await this.hotelOf(req)
+    if (!hotelId) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    return { status: 200, body: { data: await this.service.masterKeys().locksOf(hotelId, req.params.id) } }
+  }
+
+  /** Suma una puerta a la llave, con el mismo PIN. */
+  async addMasterKeyLock(req: HttpRequest) {
+    const hotelId = await this.hotelOf(req)
+    if (!hotelId) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    await this.service.masterKeys().addLock(hotelId, req.params.id, req.params.lockId)
+    return { status: 200, body: { success: true } }
+  }
+
+  /** Le quita una puerta a la llave (borra el PIN de esa cerradura). */
+  async removeMasterKeyLock(req: HttpRequest) {
+    const hotelId = await this.hotelOf(req)
+    if (!hotelId) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    await this.service.masterKeys().removeLock(hotelId, req.params.id, req.params.lockId)
+    return { status: 200, body: { success: true } }
+  }
+
   /** Dónde y cuándo entró esa persona con su llave. */
   async masterKeyAccessLog(req: HttpRequest) {
     const hotelId = await this.hotelOf(req)
