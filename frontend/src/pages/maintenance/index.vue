@@ -11,8 +11,8 @@
       </span>
     </div>
 
-    <!-- Toolbar: fila 1 = navegación + acción primaria, fila 2 = filtros -->
-    <div class="flex items-center justify-between gap-3 mb-3">
+    <!-- Toolbar: vista + acción primaria -->
+    <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
       <div class="flex gap-2">
         <button
           v-for="view in views"
@@ -29,29 +29,35 @@
         Nueva Orden
       </button>
     </div>
-    <div class="flex flex-wrap items-center gap-2 mb-6">
-      <button
-        v-for="filter in statusFilters"
-        :key="filter.value"
-        @click="activeFilter = filter.value"
-        class="px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer"
-        :class="activeFilter === filter.value ? 'bg-navy/10 text-navy' : 'text-text-secondary hover:bg-surface'"
-      >
-        {{ filter.label }}
-      </button>
-    </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-      <div v-for="stat in stats" :key="stat.label" class="rounded-[20px] border border-border bg-white p-4 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="stat.bg">
-            <span class="w-5 h-5" :class="stat.color" v-html="stat.icon"></span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-xl font-black leading-none tabular-nums" :class="stat.color">{{ stat.value }}</div>
-            <div class="text-[10px] text-text-muted font-bold uppercase tracking-wide mt-1 truncate">{{ stat.label }}</div>
-          </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+      <KpiHeroCard label="Abiertas" :value="openCount" icon="bookings" accent="amber"
+        :unit="unassignedCount ? `${unassignedCount} sin asignar` : 'Todas asignadas'" />
+      <KpiHeroCard label="En Progreso" :value="inProgressCount" icon="building" accent="blue"
+        unit="Técnicos trabajando" />
+      <KpiHeroCard label="Completadas" :value="closedCount" icon="checkin" accent="teal"
+        :unit="avgHoursLabel" :progress="closedShare" />
+    </div>
+
+    <!-- Costo acumulado: dato de gestión, no de operación diaria -->
+    <div class="mb-6 flex flex-wrap items-center gap-x-8 gap-y-2 rounded-2xl border border-border bg-white px-5 py-3.5">
+      <div class="flex items-center gap-2.5">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-gold/10 text-gold">
+          <span class="h-4 w-4" v-html="ICON_WALLET"></span>
+        </span>
+        <div>
+          <div class="text-base font-black tabular-nums text-navy">${{ Math.round(totalCostCount).toLocaleString() }}</div>
+          <div class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Costo total</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-navy/10 text-navy">
+          <span class="h-4 w-4" v-html="ICON_CLOCK"></span>
+        </span>
+        <div>
+          <div class="text-base font-black tabular-nums text-navy">{{ avgHoursLabel }}</div>
+          <div class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Tiempo promedio</div>
         </div>
       </div>
     </div>
@@ -114,104 +120,131 @@
     </div>
 
     <!-- List View -->
-    <div v-else class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <div v-if="loading" class="flex items-center justify-center py-12 text-text-muted text-sm">
-        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-navy" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-        Cargando órdenes...
+    <SectionCard v-else title="Órdenes de trabajo"
+      :subtitle="`${filteredOrders.length} orden(es)${activeFilter !== 'all' ? ' · filtrado' : ''}`" body-class="p-0">
+      <template #actions>
+        <select v-model="activeFilter"
+          class="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white focus:border-cyan focus:outline-none cursor-pointer">
+          <option v-for="filter in statusFilters" :key="filter.value" class="text-navy" :value="filter.value">{{ filter.label }}</option>
+        </select>
+      </template>
+
+      <div v-if="loading" class="space-y-3 p-4">
+        <div v-for="i in 5" :key="i" class="h-12 animate-pulse rounded-lg bg-surface"></div>
       </div>
-      <table class="w-full">
-        <thead>
-          <tr class="border-b border-border">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">ID</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Título</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Ubicación</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Categoría</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Prioridad</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Duración</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Asignado</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="filteredOrders.length === 0">
-            <td colspan="9" class="p-0">
-              <div class="flex flex-col items-center justify-center py-16 text-center">
-                <span class="w-10 h-10 mb-3 text-text-muted opacity-40" v-html="ICON_WRENCH"></span>
-                <p class="text-sm font-bold text-navy">Sin órdenes de mantenimiento</p>
-                <p class="text-xs text-text-muted mt-1">No hay órdenes para los filtros actuales.<br>Creá una nueva orden o ajustá los filtros.</p>
-              </div>
-            </td>
-          </tr>
-          <tr v-for="order in filteredOrders" :key="order.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors cursor-pointer">
-            <td class="p-4 text-sm font-mono text-text-muted">#{{ shortId(order.id) }}</td>
-            <td class="p-4 text-sm font-bold text-navy">{{ order.title }}</td>
-            <td class="p-4 text-sm">{{ order.location }}</td>
-            <td class="p-4">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="categoryClass(order.category)">
-                {{ CAT_LABELS[order.category] || order.category }}
-              </span>
-            </td>
-            <td class="p-4">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="priorityClass(order.priority)">
-                {{ PRI_LABELS[order.priority] || order.priority }}
-              </span>
-            </td>
-            <td class="p-4">
-              <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="statusClass(order.status)">
-                {{ statusLabel(order.status) }}
-              </span>
-            </td>
-            <td class="p-4">
-              <span v-if="order.endTime && order.startTime" class="flex items-center gap-1 text-[10px] font-bold text-teal">
-                <span class="w-3 h-3 shrink-0" v-html="ICON_CLOCK"></span>
-                {{ formatDuration(order.startTime, order.endTime) }}
-              </span>
-              <span v-else-if="order.startTime" class="flex items-center gap-1 text-[10px] font-bold text-orange">
-                <span class="w-3 h-3 shrink-0" v-html="ICON_CLOCK"></span>
-                {{ formatElapsed(order.startTime) }}
-              </span>
-              <span v-else class="text-[10px] text-text-muted">—</span>
-            </td>
-            <td class="p-4">
-              <div class="flex items-center gap-2">
-                <div class="w-6 h-6 rounded-full bg-navy/10 flex items-center justify-center">
-                  <span class="text-[9px] font-bold text-navy">{{ getInitials(order.assignedToName) }}</span>
+
+      <EmptyState v-else-if="filteredOrders.length === 0"
+        :icon="ICON_WRENCH_EMPTY"
+        :title="activeFilter !== 'all' ? 'Sin órdenes con este filtro' : 'Sin órdenes de mantenimiento'"
+        :message="activeFilter !== 'all' ? 'Probá con otro estado o mirá todas las órdenes.' : 'Creá la primera orden para llevar registro de las reparaciones.'">
+        <template #action>
+          <button v-if="activeFilter !== 'all'" @click="activeFilter = 'all'"
+            class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer">Ver todas</button>
+          <button v-else @click="openNewOrder"
+            class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Nueva orden</button>
+        </template>
+      </EmptyState>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[980px] tbl-head">
+          <thead>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Orden</th>
+              <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Ubicación</th>
+              <th class="text-left px-4 py-3 text-[10px]">Categoría</th>
+              <th class="text-left px-4 py-3 text-[10px]">Prioridad</th>
+              <th class="text-left px-4 py-3 text-[10px]">Estado</th>
+              <th class="text-right px-4 py-3 text-[10px] hidden xl:table-cell">Duración</th>
+              <th class="text-left px-4 py-3 text-[10px]">Asignado</th>
+              <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="order in filteredOrders" :key="order.id"
+              @click="openViewOrder(order)"
+              class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer">
+              <td class="px-4 py-3">
+                <div class="text-sm font-bold text-navy">{{ order.title }}</div>
+                <div class="text-[11px] text-text-muted">
+                  <span class="font-mono">#{{ shortId(order.id) }}</span>
+                  <span class="lg:hidden"> · {{ order.location }}</span>
                 </div>
-                <span class="text-sm">{{ order.assignedToName }}</span>
-              </div>
-            </td>
-            <td class="p-4 text-right">
-              <div class="flex items-center gap-4 justify-end">
-                <button @click.stop="openViewOrder(order)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Ver</button>
-                <button @click.stop="openEditOrder(order)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
-                <button @click.stop="openStatusModal(order)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cambiar Estado</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+              </td>
+              <td class="px-4 py-3 text-sm text-text-secondary hidden lg:table-cell">{{ order.location }}</td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :class="categoryClass(order.category)">
+                  {{ CAT_LABELS[order.category] || order.category }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :class="priorityClass(order.priority)">
+                  {{ PRI_LABELS[order.priority] || order.priority }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :class="statusClass(order.status)">
+                  {{ statusLabel(order.status) }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right hidden xl:table-cell">
+                <!-- Sin arrancar no hay duración: la celda queda vacía en vez de mostrar un guión. -->
+                <span v-if="order.endTime && order.startTime" class="inline-flex items-center gap-1 text-[11px] font-bold tabular-nums text-teal">
+                  <span class="h-3 w-3 shrink-0" v-html="ICON_CLOCK"></span>
+                  {{ formatDuration(order.startTime, order.endTime) }}
+                </span>
+                <span v-else-if="order.startTime" class="inline-flex items-center gap-1 text-[11px] font-bold tabular-nums text-gold">
+                  <span class="h-3 w-3 shrink-0" v-html="ICON_CLOCK"></span>
+                  {{ formatElapsed(order.startTime) }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <div v-if="order.assignedTo || order.providerId" class="flex items-center gap-2">
+                  <div class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-navy/10 text-[9px] font-black text-navy">
+                    {{ getInitials(order.assignedToName) }}
+                  </div>
+                  <span class="text-sm text-text-secondary truncate max-w-[140px]">{{ order.assignedToName }}</span>
+                </div>
+                <span v-else class="text-sm text-text-muted">Sin asignar</span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button @click.stop="openViewOrder(order)" title="Ver orden"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_EYE"></span>
+                  </button>
+                  <button @click.stop="openEditOrder(order)" title="Editar"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_PENCIL"></span>
+                  </button>
+                  <button @click.stop="openStatusModal(order)" title="Cambiar estado"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-cyan hover:bg-cyan/10 transition-colors cursor-pointer">
+                    <span class="h-4 w-4" v-html="ICON_SWITCH"></span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </SectionCard>
 
     <!-- Modal: Ver Orden -->
-    <Transition name="modal-fade">
-    <div v-if="showViewModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
-        <!-- Header -->
-        <div class="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <span class="text-xs font-mono text-text-muted">#{{ shortId(selectedOrder.id) }}</span>
-            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="statusClass(selectedOrder.status)">{{ statusLabel(selectedOrder.status) }}</span>
-            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="priorityClass(selectedOrder.priority)">{{ PRI_LABELS[selectedOrder.priority] || selectedOrder.priority }}</span>
-            <span v-if="selectedOrder.startTime && !selectedOrder.endTime" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange/10 text-orange">{{ formatElapsed(selectedOrder.startTime) }}</span>
+    <AppModal v-if="showViewModal" size="lg" @close="showViewModal = false">
+      <template #header>
+        <div class="min-w-0">
+          <h3 class="truncate text-lg font-black text-white">{{ selectedOrder.title }}</h3>
+          <div class="mt-1 flex flex-wrap items-center gap-1.5">
+            <span class="font-mono text-[11px] text-white/60">#{{ shortId(selectedOrder.id) }}</span>
+            <span class="rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase" :class="statusClass(selectedOrder.status)">{{ statusLabel(selectedOrder.status) }}</span>
+            <span class="rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase" :class="priorityClass(selectedOrder.priority)">{{ PRI_LABELS[selectedOrder.priority] || selectedOrder.priority }}</span>
+            <span v-if="selectedOrder.startTime && !selectedOrder.endTime" class="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-extrabold uppercase tabular-nums text-gold">
+              {{ formatElapsed(selectedOrder.startTime) }}
+            </span>
           </div>
-          <button @click="showViewModal = false" class="w-7 h-7 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
         </div>
-        <!-- Body scrollable -->
-        <div class="flex-1 overflow-y-auto px-6 pb-6">
-          <div class="text-base font-black text-navy mb-3">{{ selectedOrder.title }}</div>
+      </template>
+
+      <div>
           <!-- Info grid tipográfico -->
           <div class="grid grid-cols-3 gap-x-3 gap-y-3 pb-5 border-b border-border">
             <div>
@@ -294,7 +327,7 @@
             <div v-else class="flex gap-1.5 flex-wrap">
               <div v-for="(photo, i) in selectedOrder.photos" :key="i" class="relative">
                 <img :src="photo.url" class="w-12 h-12 object-cover rounded-lg border border-border">
-                <span class="absolute -top-1 -right-1 text-[7px] px-1 py-0.5 rounded-full font-bold text-white" :class="photo.type === 'before' ? 'bg-orange' : photo.type === 'after' ? 'bg-teal' : 'bg-navy'">{{ photo.type }}</span>
+                <span class="absolute -top-1 -right-1 text-[7px] px-1 py-0.5 rounded-full font-bold text-white" :class="photo.type === 'before' ? 'bg-gold' : photo.type === 'after' ? 'bg-teal' : 'bg-navy'">{{ photo.type }}</span>
               </div>
             </div>
             <div v-if="selectedOrder.status !== 'closed'" class="mt-2 flex gap-1.5 items-center flex-wrap">
@@ -313,7 +346,7 @@
           <!-- Historial -->
           <div class="pt-4">
             <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1.5 cursor-pointer hover:text-navy transition-colors" @click="loadAuditHistory()">Historial <span class="font-normal normal-case">(clic para ver)</span></div>
-            <div v-if="auditHistory.length === 0" class="text-xs text-text-muted">—</div>
+            <div v-if="auditHistory.length === 0" class="text-xs text-text-muted">Sin movimientos registrados</div>
             <div v-else class="space-y-1.5">
               <div v-for="entry in auditHistory" :key="entry.id" class="flex items-center gap-1.5 text-[11px]">
                 <div class="w-1 h-1 rounded-full bg-navy/30 flex-shrink-0"></div>
@@ -323,33 +356,27 @@
               </div>
             </div>
           </div>
-        </div>
-        <!-- Footer -->
-        <div class="flex items-center gap-4 justify-end px-6 py-4 border-t border-border shrink-0">
-          <button @click="showViewModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
-          <button v-if="selectedOrder.status === 'open'" @click="startOrder(selectedOrder)" class="px-4 py-2 bg-teal text-white rounded-full text-xs font-extrabold hover:shadow-lg transition-all cursor-pointer">Iniciar</button>
-          <button v-if="selectedOrder.status === 'in_progress' || selectedOrder.status === 'waiting'" @click="completeOrder(selectedOrder)" class="px-4 py-2 bg-cyan text-navy rounded-full text-xs font-extrabold hover:shadow-lg transition-all cursor-pointer">Completar</button>
-        </div>
       </div>
-    </div>
-    </Transition>
+
+      <template #footer>
+        <button @click="showViewModal = false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
+        <button v-if="selectedOrder.status === 'open'" @click="startOrder(selectedOrder)"
+          class="rounded-full bg-teal px-5 py-2.5 text-sm font-extrabold text-white hover:bg-teal-light transition-colors cursor-pointer">Iniciar</button>
+        <button v-if="selectedOrder.status === 'in_progress' || selectedOrder.status === 'waiting'" @click="completeOrder(selectedOrder)"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer">Completar</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Nueva Orden -->
-    <Transition name="modal-fade">
-    <div v-if="showNewModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-        <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
-          <h3 class="text-xl font-black text-navy tracking-tight">{{ editingOrder ? 'Editar orden' : 'Nueva orden' }}</h3>
-          <button @click="showNewModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <div class="px-7 pb-7 overflow-y-auto flex-1">
+    <AppModal v-if="showNewModal" size="lg"
+      :title="editingOrder ? 'Editar orden' : 'Nueva orden'"
+      subtitle="Reparación o tarea de mantenimiento" @close="showNewModal = false">
+      <div>
           <div class="grid grid-cols-2 gap-4">
             <div class="col-span-2">
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Título *</label>
-              <input v-model="newOrder.title" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" :class="formErrors.title ? 'border-red' : ''" placeholder="Ej: Aire acondicionado no funciona">
-              <p v-if="formErrors.title" class="text-[10px] text-red mt-1">{{ formErrors.title }}</p>
+              <input v-model="newOrder.title" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" :class="formErrors.title ? 'border-coral' : ''" placeholder="Ej: Aire acondicionado no funciona">
+              <p v-if="formErrors.title" class="text-[10px] text-coral mt-1">{{ formErrors.title }}</p>
             </div>
             <div class="relative">
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Habitación *</label>
@@ -360,7 +387,7 @@
                   @input="roomDropdownOpen = true"
                   @blur="closeDropdown(() => roomDropdownOpen = false)"
                   class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy pr-8"
-                  :class="formErrors.roomNumber ? 'border-red' : ''"
+                  :class="formErrors.roomNumber ? 'border-coral' : ''"
                   placeholder="Buscar habitación..."
                 >
                 <button v-if="newOrder.roomNumber" @mousedown.prevent="clearRoom()" class="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-navy text-xs cursor-pointer">✕</button>
@@ -377,11 +404,11 @@
                   <span class="text-text-muted ml-2">{{ room.name || room.type }}</span>
                 </div>
               </div>
-              <p v-if="formErrors.roomNumber" class="text-[10px] text-red mt-1">{{ formErrors.roomNumber }}</p>
+              <p v-if="formErrors.roomNumber" class="text-[10px] text-coral mt-1">{{ formErrors.roomNumber }}</p>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Categoría *</label>
-              <select v-model="newOrder.category" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer" :class="formErrors.category ? 'border-red' : ''">
+              <select v-model="newOrder.category" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer" :class="formErrors.category ? 'border-coral' : ''">
                 <option value="">Seleccionar...</option>
                 <option value="electrical">Eléctrico</option>
                 <option value="plumbing">Plomería</option>
@@ -395,7 +422,7 @@
                 <option value="general">Limpieza</option>
                 <option value="structural">Otro</option>
               </select>
-              <p v-if="formErrors.category" class="text-[10px] text-red mt-1">{{ formErrors.category }}</p>
+              <p v-if="formErrors.category" class="text-[10px] text-coral mt-1">{{ formErrors.category }}</p>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Prioridad *</label>
@@ -448,55 +475,47 @@
               <input v-model="newOrder.estimatedCost" type="number" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="0.00">
             </div>
           </div>
-        </div>
-        <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
-          <button @click="showNewModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
-          <button @click="createOrder" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{{ saving ? 'Guardando...' : (editingOrder ? 'Guardar Cambios' : 'Crear Orden') }}</button>
-        </div>
       </div>
-    </div>
-    </Transition>
+
+      <template #footer>
+        <button @click="showNewModal = false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+        <button @click="createOrder" :disabled="saving"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ saving ? 'Guardando…' : (editingOrder ? 'Guardar cambios' : 'Crear orden') }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Modal: Cambiar Estado -->
-    <Transition name="modal-fade">
-    <div v-if="showStatusModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-md overflow-hidden">
-        <div class="flex items-center justify-between px-7 pt-7 pb-5">
-          <h3 class="text-xl font-black text-navy tracking-tight">Cambiar estado</h3>
-          <button @click="showStatusModal = false" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <div class="px-7 pb-6">
-          <div class="mb-5">
-            <div class="text-xs font-mono text-text-muted">#{{ shortId(selectedOrder.id) }}</div>
-            <div class="text-base font-black text-navy mt-0.5">{{ selectedOrder.title }}</div>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="status in availableStatuses"
-              :key="status.value"
-              @click="changeStatus(status.value)"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-colors cursor-pointer"
-              :class="selectedOrder.status === status.value ? [statusClass(status.value), statusBorderFromDot(status.dotColor)] : 'border-border text-text-secondary hover:border-navy/30'"
-            >
-              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="status.dotColor"></span>
-              {{ status.label }}
-            </button>
-          </div>
-        </div>
-        <div class="px-7 py-5 border-t border-border">
-          <button @click="showStatusModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
-        </div>
+    <AppModal v-if="showStatusModal" size="md" title="Cambiar estado"
+      :subtitle="selectedOrder.title" @close="showStatusModal = false">
+      <div class="mb-4 font-mono text-xs text-text-muted">#{{ shortId(selectedOrder.id) }}</div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="status in availableStatuses"
+          :key="status.value"
+          @click="changeStatus(status.value)"
+          class="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer"
+          :class="selectedOrder.status === status.value ? [statusClass(status.value), statusBorderFromDot(status.dotColor)] : 'border-border text-text-secondary hover:border-navy/30'"
+        >
+          <span class="h-1.5 w-1.5 shrink-0 rounded-full" :class="status.dotColor"></span>
+          {{ status.label }}
+        </button>
       </div>
-    </div>
-    </Transition>
+
+      <template #footer>
+        <button @click="showStatusModal = false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useCountUp } from '@/composables/useCountUp'
+import AppModal from '@/components/ui/AppModal.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { OperationsService } from '@/services/Operations.service'
 import { RoomService } from '@/services/Room.service'
 import { TeamService } from '@/services/Team.service'
@@ -521,6 +540,11 @@ const showStatusModal = ref(false)
 const selectedOrder = ref<any>({})
 
 const ICON_WRENCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>'
+const ICON_EYE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.04 12.32a1 1 0 0 1 0-.64C3.42 7.51 7.36 4.5 12 4.5c4.64 0 8.57 3.01 9.96 7.18a1 1 0 0 1 0 .64C20.58 16.49 16.64 19.5 12 19.5c-4.64 0-8.57-3.01-9.96-7.18Z"/><circle cx="12" cy="12" r="3"/></svg>'
+const ICON_PENCIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path stroke-linecap="round" d="m15 5 4 4"/></svg>'
+const ICON_SWITCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/></svg>'
+// Variante a 32px para EmptyState (su caja mide 64px; con w-full el SVG queda gigante).
+const ICON_WRENCH_EMPTY = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>'
 const ICON_COG = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.397-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.241.437-.613.43-.991a7.66 7.66 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
 const ICON_CLOCK = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
 const ICON_CHECK_PLAIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>'
@@ -542,14 +566,14 @@ const statusFilters = [
 ]
 
 const kanbanColumns = [
-  { id: 'open', title: 'Abierta', dotColor: 'bg-orange', icon: ICON_WRENCH, emptyHint: 'Las órdenes nuevas aparecen acá' },
+  { id: 'open', title: 'Abierta', dotColor: 'bg-gold', icon: ICON_WRENCH, emptyHint: 'Las órdenes nuevas aparecen acá' },
   { id: 'in_progress', title: 'En Progreso', dotColor: 'bg-cyan', icon: ICON_COG, emptyHint: 'Arrastrá acá las órdenes en trabajo' },
   { id: 'waiting', title: 'Esperando', dotColor: 'bg-purple', icon: ICON_CLOCK, emptyHint: 'Órdenes pausadas o esperando repuestos' },
   { id: 'closed', title: 'Completada', dotColor: 'bg-teal', icon: ICON_CHECK_PLAIN, emptyHint: 'Órdenes resueltas' }
 ]
 
 const availableStatuses = [
-  { value: 'open', label: 'Abierta', description: 'Problema reportado, esperando asignación', dotColor: 'bg-orange' },
+  { value: 'open', label: 'Abierta', description: 'Problema reportado, esperando asignación', dotColor: 'bg-gold' },
   { value: 'in_progress', label: 'En Progreso', description: 'Técnico trabajando en la solución', dotColor: 'bg-cyan' },
   { value: 'waiting', label: 'Esperando', description: 'Esperando repuestos o aprobación', dotColor: 'bg-purple' },
   { value: 'closed', label: 'Completada', description: 'Problema resuelto verificado', dotColor: 'bg-teal' }
@@ -572,7 +596,7 @@ const assignOptions = computed(() => [
 
 const orders = ref<any[]>([])
 
-// Fuentes numéricas separadas de `stats` para poder animarlas con useCountUp
+// Conteos por estado que alimentan los KPI de la cabecera
 // (el composable lee `.value` de inmediato al llamarse, así que debe ir DESPUÉS
 // de que `orders` esté declarado — a diferencia de un computed normal, que es perezoso).
 const openCount = computed(() => orders.value.filter((x: any) => x.status === 'open').length)
@@ -586,21 +610,20 @@ const avgHoursValue = computed(() => {
   return closed.reduce((sum: number, x: any) => sum + (new Date(x.endTime).getTime() - new Date(x.startTime).getTime()), 0) / closed.length / MS_PER_HOUR
 })
 
-const openAnim = useCountUp(openCount)
-const inProgressAnim = useCountUp(inProgressCount)
-const unassignedAnim = useCountUp(unassignedCount)
-const closedAnim = useCountUp(closedCount)
-const totalCostAnim = useCountUp(totalCostValue)
-const avgHoursAnim = useCountUp(avgHoursValue)
+// Los KPI los anima KpiHeroCard internamente (useCountUp propio).
+const totalCostCount = computed(() => totalCostValue.value)
 
-const stats = computed(() => [
-  { label: 'Abiertas', value: String(Math.round(openAnim.value)), color: 'text-orange', bg: 'bg-orange/10', icon: ICON_WRENCH },
-  { label: 'En Progreso', value: String(Math.round(inProgressAnim.value)), color: 'text-cyan', bg: 'bg-cyan/10', icon: ICON_COG },
-  { label: 'Sin Asignar', value: String(Math.round(unassignedAnim.value)), color: 'text-red', bg: 'bg-red/10', icon: ICON_USER },
-  { label: 'Completadas', value: String(Math.round(closedAnim.value)), color: 'text-teal', bg: 'bg-teal/10', icon: ICON_CHECK_PLAIN },
-  { label: 'Tiempo Prom.', value: avgHoursAnim.value > 0.05 ? `${(Math.round(avgHoursAnim.value * 10) / 10)}h` : '—', color: 'text-navy', bg: 'bg-navy/10', icon: ICON_CLOCK },
-  { label: 'Costo Total', value: `$${Math.round(totalCostAnim.value).toLocaleString()}`, color: 'text-navy', bg: 'bg-navy/10', icon: ICON_WALLET },
-])
+// Promedio de resolución. Solo se puede calcular sobre órdenes que tienen inicio
+// Y fin fichados: puede haber cerradas sin esos tiempos, así que el texto habla de
+// tiempos fichados y no de cierres (decía "Sin cierres aún" con órdenes cerradas).
+const avgHoursLabel = computed(() => avgHoursValue.value > 0.05
+  ? `${Math.round(avgHoursValue.value * 10) / 10}h promedio`
+  : 'Sin tiempos fichados')
+
+// % de órdenes ya cerradas sobre el total — anillo del KPI "Completadas".
+const closedShare = computed(() => orders.value.length
+  ? Math.round((closedCount.value / orders.value.length) * 100)
+  : 0)
 
 const loading = ref(false)
 const saving = ref(false)
@@ -695,7 +718,9 @@ function closeDropdown(fn: () => void) {
 }
 
 const PRI_LABELS: Record<string, string> = { high: 'Alta', medium: 'Normal', low: 'Baja', urgent: 'Urgente' }
-const CAT_LABELS: Record<string, string> = { hvac: 'Aire Acond.', plumbing: 'Plomería', electrical: 'Eléctrico', electronics: 'Electrónica', general: 'General', carpentry: 'Carpintería', painting: 'Pintura', structural: 'Estructural', pest_control: 'Plagas', furniture: 'Muebles', appliance: 'Electrodom.' }
+// `locks` existe en datos (tickets de cerraduras) aunque el formulario no la ofrezca:
+// sin la clave, la categoría se mostraba cruda en inglés.
+const CAT_LABELS: Record<string, string> = { hvac: 'Aire Acond.', plumbing: 'Plomería', electrical: 'Eléctrico', electronics: 'Electrónica', general: 'General', carpentry: 'Carpintería', painting: 'Pintura', structural: 'Estructural', pest_control: 'Plagas', furniture: 'Muebles', appliance: 'Electrodom.', locks: 'Cerraduras' }
 
 onMounted(async () => {
   // El staff y los proveedores se cargan primero para que los nombres se
@@ -818,7 +843,7 @@ function shortId(id: string): string {
 
 const statusClass = (status: string) => {
   const classes: Record<string, string> = {
-    open: 'bg-orange/10 text-orange',
+    open: 'bg-gold/10 text-gold',
     in_progress: 'bg-cyan/10 text-cyan',
     waiting: 'bg-purple/10 text-purple',
     closed: 'bg-teal/10 text-teal',
@@ -842,23 +867,24 @@ const priorityClass = (priority: string) => {
   const classes: Record<string, string> = {
     low: 'bg-surface text-text-muted',
     medium: 'bg-blue/10 text-blue',
-    high: 'bg-orange/10 text-orange',
-    urgent: 'bg-red/10 text-red'
+    high: 'bg-gold/10 text-gold',
+    urgent: 'bg-coral/10 text-coral'
   }
   return classes[priority] || 'bg-surface text-text-muted'
 }
 
 const categoryClass = (category: string) => {
   const classes: Record<string, string> = {
-    electrical: 'bg-yellow/10 text-yellow',
+    electrical: 'bg-gold/10 text-gold',
     plumbing: 'bg-blue/10 text-blue',
     hvac: 'bg-cyan/10 text-cyan',
-    carpentry: 'bg-orange/10 text-orange',
+    carpentry: 'bg-gold/10 text-gold',
     painting: 'bg-purple/10 text-purple',
     electronics: 'bg-navy/10 text-navy',
     general: 'bg-teal/10 text-teal',
     structural: 'bg-surface text-text-muted',
-    pest_control: 'bg-red/10 text-red',
+    pest_control: 'bg-coral/10 text-coral',
+    locks: 'bg-purple/10 text-purple',
   }
   return classes[category] || 'bg-surface text-text-muted'
 }
@@ -1087,7 +1113,7 @@ function catBorder(cat: string) {
   return map[cat] || 'border-l-gray-300'
 }
 
-// Deriva el color de borde a partir del dot de estado (ej. 'bg-orange' → 'border-orange')
+// Deriva el color de borde a partir del dot de estado (ej. 'bg-gold' → 'border-gold')
 // para que el pill seleccionado en "Cambiar Estado" use el acento propio de cada estado.
 function statusBorderFromDot(dotColor: string) {
   return dotColor.replace('bg-', 'border-')
@@ -1120,22 +1146,5 @@ async function onDrop(e: DragEvent, newStatus: string) {
 </script>
 
 <style scoped>
-/* Entrada/salida de los modales: backdrop se desvanece, el panel además escala y sube levemente. */
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-.modal-fade-enter-active .modal-panel,
-.modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel,
-.modal-fade-leave-to .modal-panel {
-  opacity: 0;
-  transform: scale(0.95) translateY(12px);
-}
+/* Las transiciones de entrada/salida ahora las aporta AppModal. */
 </style>
