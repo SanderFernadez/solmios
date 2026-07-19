@@ -899,19 +899,36 @@ const onPhotoSelected = (e: Event) => {
   newPhotoFile.value = input.files?.[0] || null
 }
 
+/** Lee el archivo como data URL: los bytes viajan dentro del JSON. */
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+
+/**
+ * La foto va como data URL en el cuerpo JSON, NO como multipart: el router del
+ * framework no propaga los archivos al handler, así que el `FormData` que se
+ * mandaba antes terminaba siempre en 400 "Archivo requerido" — nunca se pudo
+ * adjuntar una foto a una orden desde el panel.
+ */
 const uploadPhoto = async () => {
   if (!selectedOrder.value?.id || !newPhotoFile.value) return
-  const formData = new FormData()
-  formData.append('photo', newPhotoFile.value)
-  formData.append('type', newPhotoType.value)
   try {
-    await OperationsService.mantenimiento.post(`${selectedOrder.value.id}/photos`, formData)
+    const photo = await fileToDataUrl(newPhotoFile.value)
+    await OperationsService.mantenimiento.post(`${selectedOrder.value.id}/photos`, {
+      photo,
+      fileName: newPhotoFile.value.name,
+      type: newPhotoType.value,
+    })
     newPhotoFile.value = null
     toast.success('Foto subida')
     await loadData()
     const updated = orders.value.find(o => o.id === selectedOrder.value.id)
     if (updated) selectedOrder.value = updated
-  } catch { toast.error('Error al subir foto') }
+  } catch (e: any) { toast.error('Error al subir foto', e?.message) }
 }
 
 const loadAuditHistory = async () => {

@@ -1,5 +1,6 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from '../../shared/validators/validate-body'
+import { parseDataUrl, isImage } from '../../shared/utils/data-url'
 import type { MantenimientoService } from './service'
 import { CreateMantenimientoSchema, UpdateMantenimientoSchema, AddNotesSchema, CompleteMantenimientoSchema, AddPhotoMantenimientoSchema, CreateProviderSchema, UpdateProviderSchema } from './validators/schema'
 
@@ -64,12 +65,27 @@ export class MantenimientoController {
   }
 
   // ─── Photos ───────────────────────────────────────────
+  /**
+   * La foto llega como data URL en el JSON, no como multipart.
+   *
+   * El handler leía `req.file`, que el router del framework nunca completa: el
+   * endpoint respondía 400 "Archivo requerido" a TODA subida, así que las fotos
+   * del desperfecto no se podían adjuntar desde el panel. Es el mismo camino que
+   * ya usa housekeeping para su evidencia.
+   */
   async addPhoto(req: HttpRequest) {
     const currentUser = req.user as any
-    const file = (req as any).file as { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined
-    if (!file) return { status: 400, body: { error: 'Archivo requerido' } }
     const data = validateSchema(AddPhotoMantenimientoSchema, req.body || {}) as any
-    const fileUpload = { buffer: file.buffer, originalName: file.originalname, mimeType: file.mimetype, size: file.size }
+    const parsed = parseDataUrl(data.photo)
+    if (!parsed) return { status: 400, body: { error: 'Formato inválido (se espera data URL base64)' } }
+    if (!isImage(parsed.mimeType)) return { status: 400, body: { error: 'El archivo debe ser una imagen' } }
+    const fileUpload = {
+      fieldName: 'file',
+      originalName: data.fileName || `foto.${parsed.ext}`,
+      buffer: parsed.buffer,
+      mimeType: parsed.mimeType,
+      size: parsed.buffer.length,
+    }
     const item = await this.service.addPhoto(req.params.id, fileUpload as any, data.type, currentUser)
     return { status: 200, body: item }
   }

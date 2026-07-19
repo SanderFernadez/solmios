@@ -58,6 +58,10 @@ export const CompleteMantenimientoSchema: Record<string, ValidationRule> = {
 
 export const AddPhotoMantenimientoSchema: Record<string, ValidationRule> = {
   type: { type: 'string' as const, enum: PHOTO_TYPE_ENUM },
+  /** Data URL `data:image/jpeg;base64,…`. Los bytes viajan en el JSON: el router
+   *  del framework no propaga los archivos de un multipart al handler. */
+  photo: { type: 'string' as const, required: true },
+  fileName: { type: 'string' as const, max: 200 },
 }
 
 // Campos del perfil del proveedor, compartidos por alta y edición.
