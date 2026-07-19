@@ -239,6 +239,45 @@
               <div class="text-xs font-bold text-navy mt-0.5">{{ formatDuration(selectedOrder.startTime, selectedOrder.endTime) }}</div>
             </div>
           </div>
+          <!-- Contacto del proveedor asignado. El encargado de facilidades no
+               arregla: llama a quien tiene la habilidad, y lo hace desde acá en
+               vez de irse a buscar el teléfono a la vista de Proveedores. -->
+          <div v-if="assignedProvider" class="py-4 border-b border-border">
+            <div class="rounded-xl border border-cyan/30 bg-cyan/5 p-3">
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <div class="min-w-0">
+                  <div class="text-sm font-black text-navy truncate">{{ assignedProvider.name }}</div>
+                  <div class="text-[11px] text-text-secondary truncate">
+                    <span v-if="assignedProvider.specialty">{{ assignedProvider.specialty }}</span>
+                    <span v-if="assignedProvider.specialty && assignedProvider.rate"> · </span>
+                    <span v-if="assignedProvider.rate">{{ assignedProvider.rate }}</span>
+                  </div>
+                </div>
+                <span class="text-[9px] font-bold text-cyan bg-cyan/15 px-1.5 py-0.5 rounded-full shrink-0">Externo</span>
+              </div>
+              <div v-if="assignedProvider.phone || assignedProvider.email" class="flex flex-wrap gap-1.5">
+                <a
+                  v-if="assignedProvider.phone"
+                  :href="`tel:${assignedProvider.phone}`"
+                  class="px-3 py-1.5 rounded-lg bg-navy text-white text-[11px] font-bold hover:opacity-90 transition-opacity"
+                >Llamar {{ assignedProvider.phone }}</a>
+                <a
+                  v-if="assignedProvider.phone"
+                  :href="whatsappLink(assignedProvider.phone)"
+                  target="_blank" rel="noopener"
+                  class="px-3 py-1.5 rounded-lg bg-teal text-white text-[11px] font-bold hover:opacity-90 transition-opacity"
+                >WhatsApp</a>
+                <a
+                  v-if="assignedProvider.email"
+                  :href="`mailto:${assignedProvider.email}`"
+                  class="px-3 py-1.5 rounded-lg border border-border text-[11px] font-bold text-text-secondary hover:border-navy/30 transition-colors"
+                >Email</a>
+              </div>
+              <div v-else class="text-[11px] text-text-muted">
+                Este proveedor no tiene teléfono cargado.
+              </div>
+            </div>
+          </div>
           <!-- Descripción -->
           <div v-if="selectedOrder.description" class="py-4 border-b border-border text-xs text-text-secondary">{{ selectedOrder.description }}</div>
           <!-- Notas -->
@@ -391,7 +430,11 @@
                   <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" :class="opt.kind === 'provider' ? 'bg-cyan/15' : 'bg-navy/10'">
                     <span class="text-[9px] font-bold" :class="opt.kind === 'provider' ? 'text-cyan' : 'text-navy'">{{ opt.name.split(' ').map((n: string) => n[0]).join('') }}</span>
                   </div>
-                  <span class="text-navy flex-1 truncate">{{ opt.name }}</span>
+                  <span class="flex-1 min-w-0">
+                    <span class="text-navy block truncate">{{ opt.name }}</span>
+                    <!-- La habilidad es el criterio con el que se elige a quién llamar. -->
+                    <span v-if="opt.specialty" class="block text-[10px] text-text-muted truncate">{{ opt.specialty }}</span>
+                  </span>
                   <span v-if="opt.kind === 'provider'" class="text-[9px] font-bold text-cyan bg-cyan/10 px-1.5 py-0.5 rounded-full shrink-0">Externo</span>
                 </div>
               </div>
@@ -523,8 +566,8 @@ const maintenanceStaff = computed(() =>
 // Opciones del selector "Asignar a": técnicos internos + proveedores de servicios
 // externos (plomero, electricista…). Cada opción sabe si es staff o proveedor.
 const assignOptions = computed(() => [
-  ...maintenanceStaff.value.map(s => ({ kind: 'staff' as const, id: s.id, name: s.name })),
-  ...providers.value.map(p => ({ kind: 'provider' as const, id: p.id, name: p.name })),
+  ...maintenanceStaff.value.map(s => ({ kind: 'staff' as const, id: s.id, name: s.name, specialty: 'Personal interno' })),
+  ...providers.value.map(p => ({ kind: 'provider' as const, id: p.id, name: p.name, specialty: p.specialty })),
 ])
 
 const orders = ref<any[]>([])
@@ -565,7 +608,18 @@ const formErrors = ref<Record<string, string>>({})
 const hotelRooms = ref<any[]>([])
 const hotelStaff = ref<any[]>([])
 const staffMap = ref<Record<string, string>>({})
-const providers = ref<{ id: string; name: string }[]>([])
+interface ServiceProvider {
+  id: string
+  name: string
+  /** Habilidad por la que se lo llama: plomería, electricidad, refrigeración… */
+  specialty: string
+  phone: string
+  email: string
+  /** Tarifa tal como la cargó el hotel (texto libre: "RD$800/hora"). */
+  rate: string
+}
+
+const providers = ref<ServiceProvider[]>([])
 const providerMap = ref<Record<string, string>>({})
 const draggedOrder = ref<any>(null)
 const dragOverCol = ref<string | null>(null)
@@ -593,10 +647,29 @@ function clearRoom() {
 // Autocomplete state — Asignar a
 const staffSearch = ref('')
 const staffDropdownOpen = ref(false)
+/** Proveedor externo a cargo de la orden abierta, con su contacto. */
+const assignedProvider = computed<ServiceProvider | null>(() => {
+  const id = selectedOrder.value?.providerId
+  return id ? (providers.value.find(p => p.id === id) ?? null) : null
+})
+
+/**
+ * WhatsApp abre con el número en formato internacional y sin separadores; los
+ * teléfonos se cargan a mano ("809-555-0000", "+1 809 555 0000"), así que se
+ * normaliza acá en vez de exigir un formato al que los cargó.
+ */
+function whatsappLink(phone: string): string {
+  return `https://wa.me/${phone.replace(/[^\d]/g, '')}`
+}
+
 const filteredStaff = computed(() => {
   const q = staffSearch.value.toLowerCase()
   if (!q) return assignOptions.value.slice(0, 30)
-  return assignOptions.value.filter(s => s.name.toLowerCase().includes(q)).slice(0, 30)
+  // Se busca también por especialidad: el encargado piensa "necesito un
+  // plomero", no el nombre de la empresa.
+  return assignOptions.value
+    .filter(s => s.name.toLowerCase().includes(q) || s.specialty.toLowerCase().includes(q))
+    .slice(0, 30)
 })
 function selectStaff(opt: { kind: 'staff' | 'provider'; id: string; name: string }) {
   // Un ticket tiene UN dueño: si se elige un proveedor externo, se libera el
@@ -694,8 +767,19 @@ async function loadProviders() {
   try {
     const res = await TechnicalProvidersService.list() as any
     const items = Array.isArray(res) ? res : (res?.data ?? [])
+    // Se conservan especialidad y contacto: el encargado de facilidades no
+    // ejecuta el arreglo, elige a QUIÉN llamar según la habilidad y lo llama.
+    // Antes se guardaba solo `{id, name}` y esos datos se perdían acá, así que
+    // había que salir a la vista de Proveedores a buscar el teléfono a mano.
     providers.value = (Array.isArray(items) ? items : [])
-      .map((p: any) => ({ id: p.id, name: p.name }))
+      .map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        specialty: p.specialty || '',
+        phone: p.phone || '',
+        email: p.email || '',
+        rate: p.rate || '',
+      }))
       .filter((p: any) => p.id && p.name)
     const map: Record<string, string> = {}
     for (const p of providers.value) map[p.id] = p.name
