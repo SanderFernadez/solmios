@@ -38,17 +38,25 @@
               <span class="flex-1 text-left">{{ item.label }}</span>
               <span class="text-[10px] transition-transform" :class="item.expanded ? 'text-[#60A5FA]' : 'text-[#7C8AA5]'">{{ item.expanded ? '▾' : '▸' }}</span>
             </button>
-            <router-link
-              v-for="child in item.children"
-              :key="child.path"
-              :to="child.path"
-              v-show="item.expanded"
-              class="flex items-center gap-2.5 pl-12 pr-3 py-2.5 rounded-lg text-[12.5px] font-semibold transition-all cursor-pointer"
-              :class="isActive(child.path) ? 'bg-[#2563EB]/14 text-white' : 'text-[#8A96AD] hover:bg-white/6 hover:text-white'"
-            >
-              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isActive(child.path) ? 'bg-cyan cc-glow-dot' : 'bg-[#5A6684]'"></span>
-              <span>{{ child.label }}</span>
-            </router-link>
+            <template v-for="child in item.children" :key="child.path || child.group">
+              <!-- Encabezado de bloque dentro del submenú (no navega) -->
+              <div v-if="child.group" v-show="item.expanded"
+                class="flex items-center gap-2 pl-12 pr-3 pt-3 pb-1.5 select-none">
+                <span class="text-[9.5px] font-black uppercase tracking-[1.5px] text-[#5A6684]">{{ child.group }}</span>
+                <span class="h-px flex-1 bg-white/8"></span>
+              </div>
+
+              <router-link
+                v-else
+                :to="child.path"
+                v-show="item.expanded"
+                class="flex items-center gap-2.5 pl-12 pr-3 py-2.5 rounded-lg text-[12.5px] font-semibold transition-all cursor-pointer"
+                :class="isActive(child.path) ? 'bg-[#2563EB]/14 text-white' : 'text-[#8A96AD] hover:bg-white/6 hover:text-white'"
+              >
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isActive(child.path) ? 'bg-cyan cc-glow-dot' : 'bg-[#5A6684]'"></span>
+                <span>{{ child.label }}</span>
+              </router-link>
+            </template>
           </template>
           <!-- Simple item (no children) -->
           <router-link v-else :to="item.path"
@@ -289,17 +297,25 @@ const nonavItems = [
   },
   {
     label: 'Configuración', icon: ICONS.cog, roles: ['hotel_admin'],
+    // `group` abre un bloque con encabezado dentro del submenú: los items de
+    // mensajería estaban intercalados con los de infraestructura y no se
+    // distinguía qué configuraba qué.
     children: [
+      { group: 'General' },
       { label: 'Configuración Base', path: '/panel/settings', roles: ['hotel_admin'] },
       { label: 'Habitaciones', path: '/panel/rooms', roles: ['hotel_admin', 'receptionist'] },
+
+      { group: 'Mensajería' },
       { label: 'Envíos Auto', path: '/panel/auto-messages', roles: ['hotel_admin'] },
-      { label: 'Historial Envíos', path: '/panel/message-logs', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Cola de Emails', path: '/panel/email-queue', roles: ['hotel_admin'] },
       { label: 'Plantillas WhatsApp', path: '/panel/whatsapp-templates', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Cerraduras', path: '/panel/cerraduras', roles: ['hotel_admin'] },
-      { label: 'Pasarelas de Pago', path: '/panel/pagos', roles: ['hotel_admin'] },
-      { label: 'Dispositivos', path: '/panel/devices', roles: ['hotel_admin'] },
+      { label: 'Historial de Envíos', path: '/panel/message-logs', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Cola de Emails', path: '/panel/email-queue', roles: ['hotel_admin'] },
       { label: 'Notificaciones Push', path: '/panel/push-tokens', roles: ['hotel_admin'] },
+
+      { group: 'Integraciones' },
+      { label: 'Pasarelas de Pago', path: '/panel/pagos', roles: ['hotel_admin'] },
+      { label: 'Cerraduras', path: '/panel/cerraduras', roles: ['hotel_admin'] },
+      { label: 'Dispositivos', path: '/panel/devices', roles: ['hotel_admin'] },
     ]
   },
   {
@@ -310,7 +326,8 @@ const nonavItems = [
 const sectionLabels = nonavItems.filter(i => i.children).map(i => i.label)
 
 function sectionContainsRoute(item: any) {
-  return item.children?.some((c: any) => route.path.startsWith(c.path)) ?? false
+  // `c.path` es undefined en los encabezados de bloque: se saltean.
+  return item.children?.some((c: any) => c.path && route.path.startsWith(c.path)) ?? false
 }
 
 // Todas las secciones inician colapsadas, salvo la que contiene la ruta activa
@@ -333,6 +350,8 @@ interface NavItem {
   roles: string[]
   children?: NavItem[]
   expanded?: boolean
+  /** Encabezado de bloque dentro de un submenú: no navega ni tiene roles. */
+  group?: string
 }
 
 function isSectionActive(item: any) {
@@ -351,7 +370,13 @@ const visibleItems = computed(() => {
   return items
     .map((item) => {
       if (item.children) {
-        const children = item.children.filter((c) => c.roles.includes(role) && modules.routeEnabled(c.path))
+        // Los encabezados de bloque no tienen roles ni path: pasan el filtro y
+        // después se descartan los que quedaron sin ningún item debajo (p. ej.
+        // un recepcionista que no ve nada de "Integraciones").
+        const withGroups = item.children.filter((c) =>
+          c.group ? true : c.roles.includes(role) && modules.routeEnabled(c.path),
+        )
+        const children = withGroups.filter((c, i) => !c.group || !!withGroups[i + 1] && !withGroups[i + 1].group)
         return { ...item, children, expanded: !collapsedSections.value.has(item.label) }
       }
       return item
