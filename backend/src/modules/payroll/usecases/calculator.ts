@@ -125,6 +125,12 @@ export function periodBaseFor(monthlySalary: number, frequency?: string): number
   }
 }
 
+/**
+ * Cotizaciones que se descuentan ANTES de calcular el ISR (AFP y seguro de
+ * salud). Lo demás —adelantos, préstamos— no reduce la base imponible.
+ */
+const SOCIAL_SECURITY_CODES = new Set(['SS', 'HEALTH', 'AFP', 'SFS'])
+
 export class PayrollCalculatorUseCase {
   constructor(
     private readonly conceptRepo: RepositoryAdapter<PayrollConceptDTO>,
@@ -194,9 +200,25 @@ export class PayrollCalculatorUseCase {
       const empDeductions: PayrollDeductionItem[] = []
       let totalDed = 0
 
+      // El ISR se calcula sobre el sueldo MENOS las cotizaciones de seguridad
+      // social, no sobre el bruto: así lo define la ley y así lo espera el
+      // empleado en su volante. Se recorren primero las otras deducciones para
+      // tener esa base armada, sin depender del orden en que vengan los
+      // conceptos configurados.
+      const socialSecurityTotal = deductions
+        .filter(c => SOCIAL_SECURITY_CODES.has(c.code))
+        .reduce((sum, c) => sum + this.calculateConceptAmount(c, {
+          base: grossPay,
+          overtimeAmount,
+          overtimeHours: emp.overtimeHours,
+          daysWorked: emp.daysWorked,
+          hoursWorked: emp.hoursWorked,
+        }), 0)
+      const taxableBase = Math.max(0, grossPay - socialSecurityTotal)
+
       for (const concept of deductions) {
         if (concept.code === 'TAX' || concept.code === 'ISR') {
-          const tax = this.calculateIncomeTax(grossPay, taxBrackets)
+          const tax = this.calculateIncomeTax(taxableBase, taxBrackets)
           if (tax > 0) {
             empDeductions.push({ conceptId: concept.id, name: concept.name, code: concept.code, amount: Math.round(tax * 100) / 100 })
             totalDed += tax
@@ -272,22 +294,32 @@ export class PayrollCalculatorUseCase {
     }
   }
 
-  private calculateIncomeTax(annualizedGross: number, brackets: TaxBracket[]): number {
-    if (!brackets.length) return 0
-    // Annualize
-    const annual = annualizedGross * 12
-    let remaining = annual
+  /**
+   * ISR del mes según la escala progresiva del hotel.
+   *
+   * Los tramos de la configuración son MENSUALES (34.685 / 52.027 / 72.260 son
+   * los topes mensuales de la escala dominicana; los anuales son 416.220 /
+   * 624.329 / 867.123). Antes el sueldo se multiplicaba por 12 y se comparaba
+   * igual contra esos topes: un salario de 50.000 caía en el tramo del 25% y
+   * pagaba 11.548,58 en vez de 1.536,75 — más de 10.000 de menos en el bolsillo
+   * del empleado, todos los meses.
+   *
+   * Se aplica la escala tal como viene: mensual contra mensual.
+   */
+  private calculateIncomeTax(monthlyTaxable: number, brackets: TaxBracket[]): number {
+    if (!brackets.length || monthlyTaxable <= 0) return 0
     let tax = 0
 
     for (const bracket of brackets) {
-      if (remaining <= 0) break
-      const slabTop = bracket.to ?? Infinity
-      const slabAmount = bracket.from > 0 ? Math.min(slabTop - bracket.from, remaining) : Math.min(slabTop, remaining)
+      const from = bracket.from ?? 0
+      if (monthlyTaxable <= from) break
+      const top = bracket.to ?? Infinity
+      // Solo la porción del sueldo que cae DENTRO de este tramo paga su tasa.
+      const slabAmount = Math.min(monthlyTaxable, top) - from
       if (slabAmount <= 0) continue
       tax += slabAmount * (bracket.rate / 100)
-      remaining -= slabAmount
     }
 
-    return Math.round((tax / 12) * 100) / 100 // Monthly tax
+    return Math.round(tax * 100) / 100
   }
 }
