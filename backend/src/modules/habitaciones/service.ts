@@ -3,6 +3,7 @@ import { NotFoundError, AuthError } from 'arckode-framework'
 import type { HabitacionesDTO, CreateHabitacionesDTO, UpdateHabitacionesDTO, HabitacionesQuery, HabitacionesPaginated } from './types'
 import type { HabitacionesSockets } from './sockets'
 import { batchCreateRooms, type BatchCreateInput } from './usecases/batch-create'
+import { listCacheKey, bumpListVersion } from './usecases/cache'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
 export type { BatchCreateInput }
@@ -60,8 +61,11 @@ export class HabitacionesService {
     const limit = Math.min(Math.max(query.limit || 20, 1), 100)
     const offset = (page - 1) * limit
 
-    // Cache check — key includes query params to avoid stale data
-    const cacheKey = `habitaciones:list:${hotelId || 'all'}:p${page}:l${limit}:${query.status || ''}:${query.type || ''}:${query.search || ''}`
+    // Clave VERSIONADA: `cache.delete` solo borra claves exactas, así que la
+    // invalidación se hace bumpeando la versión (ver usecases/cache.ts).
+    const cacheKey = await listCacheKey(this.cache, hotelId, {
+      page, limit, status: query.status, type: query.type, search: query.search,
+    })
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as HabitacionesPaginated
 
@@ -94,7 +98,7 @@ export class HabitacionesService {
     }
     const item = await this.repo.create(dto as any)
     await this.sockets.onHabitacionesCreated?.(item)
-    await this.cache.delete(`habitaciones:list:${dto.hotelId}`)
+    await bumpListVersion(this.cache, dto.hotelId)
     return item
   }
 
@@ -107,7 +111,7 @@ export class HabitacionesService {
     const item = await this.repo.update(id, dto as any)
     if (!item) throw new NotFoundError('Habitación no encontrada')
     await this.sockets.onHabitacionesUpdated?.(item)
-    await this.cache.delete(`habitaciones:list:${existing.hotelId}`)
+    await bumpListVersion(this.cache, existing.hotelId)
     return item
   }
 
@@ -134,7 +138,7 @@ export class HabitacionesService {
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Habitación no encontrada')
     await this.sockets.onHabitacionesDeleted?.(id)
-    await this.cache.delete(`habitaciones:list:${existing.hotelId}`)
+    await bumpListVersion(this.cache, existing.hotelId)
     await auditSafely(this.auditPort, this.logger, {
       hotelId: existing.hotelId, userId: currentUser.id, action: 'room.delete',
       entity: 'room', entityId: id,

@@ -27,7 +27,7 @@ const PLANS = [
 
 function setup(subs: any[] = [], hotels: any[] = [{ id: 'h1', status: 'active' }]) {
   return new SubscriptionsService(
-    repoOf(subs), repoOf(hotels), repoOf([]), repoOf([]), repoOf([...PLANS]), log,
+    repoOf(subs), repoOf(hotels), repoOf([]), repoOf([]), repoOf([...PLANS]), repoOf([]), undefined, log,
   )
 }
 
