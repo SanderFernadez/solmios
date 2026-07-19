@@ -66,6 +66,10 @@
             <p class="text-xs text-text-secondary mt-0.5 truncate">
               {{ p.specialty || 'Sin rubro' }}<template v-if="p.phone"> · {{ p.phone }}</template>
             </p>
+            <div v-if="p.phone" class="flex items-center gap-1.5 mt-1.5">
+              <a :href="`https://wa.me/${String(p.phone).replace(/\D/g, '')}`" target="_blank" rel="noopener" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald/10 text-emerald hover:bg-emerald/20">WhatsApp</a>
+              <a :href="`tel:${p.phone}`" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-navy/10 text-navy hover:bg-navy/20">Llamar</a>
+            </div>
           </div>
         </div>
 

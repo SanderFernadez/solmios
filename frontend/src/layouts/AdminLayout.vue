@@ -28,7 +28,7 @@
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 py-5 px-3 space-y-1.5 overflow-y-auto scrollbar-hide">
+      <nav class="flex-1 py-5 px-3 space-y-1.5 overflow-y-auto">
         <template v-for="item in visibleItems" :key="item.path || item.label">
           <!-- Parent with children -->
           <template v-if="item.children">

@@ -9,7 +9,7 @@ import { assertOwnership } from '../helpers'
 // Flujo típico: open → in_progress → resolved → closed  (resolved = arreglado, closed = confirmado).
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   open: ['in_progress', 'resolved', 'closed'],
-  in_progress: ['waiting', 'resolved', 'closed'],
+  in_progress: ['open', 'waiting', 'resolved', 'closed'],
   waiting: ['in_progress', 'resolved', 'closed'],
   resolved: ['closed', 'open'],
   closed: ['open'],

@@ -882,7 +882,12 @@ watch([listPage, listPageSize], reloadListPage)
 watch(activeFilter, () => { listPage.value = 1; reloadListPage() })
 watch(activeView, (v) => { if (v === 'list' && !store.pageTasks.length) reloadListPage() })
 
-const getColumnTasks = (columnId: string) => store.tasks.filter(t => t.status === columnId)
+// BUG FIX (#416): las tareas urgentes no aparecían arriba. Ahora cada columna ordena por prioridad
+// (urgent → high → medium → low) para que las críticas se vean primero dentro de su columna.
+const PRIORITY_WEIGHT: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
+const getColumnTasks = (columnId: string) => store.tasks
+  .filter(t => t.status === columnId)
+  .sort((a, b) => (PRIORITY_WEIGHT[a.priorityRaw] ?? 9) - (PRIORITY_WEIGHT[b.priorityRaw] ?? 9))
 /** Cuántas hay en el hotel en ese estado (el tablero puede estar mostrando menos). */
 const columnTotal = (columnId: string) => store.totals[columnId] ?? getColumnTasks(columnId).length
 
