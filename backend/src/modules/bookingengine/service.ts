@@ -29,6 +29,11 @@ export class BookingengineService {
   constructor(
     configRepo: RepositoryAdapter<BookingConfigDTO>,
     availabilityRepo: RepositoryAdapter<any>,
+    // La disponibilidad sale de las habitaciones y las reservas reales del
+    // hotel, no de la tabla de stock (que nadie llena).
+    roomsRepo: RepositoryAdapter<any> | undefined,
+    reservationsRepo: RepositoryAdapter<any> | undefined,
+    hotelsRepo: RepositoryAdapter<any> | undefined,
     bookingRepo: RepositoryAdapter<PublicBookingDTO>,
     eventsRepo: RepositoryAdapter<ConversionEventDTO>,
     private readonly logger: Logger,
@@ -38,7 +43,7 @@ export class BookingengineService {
   ) {
     if (!registry) throw new Error('bookingengine: PaymentGatewayRegistry es requerido (pasarela por hotel)')
     this.config = new ConfigUseCase(configRepo, cache)
-    this.availability = new AvailabilityUseCase(availabilityRepo, cache)
+    this.availability = new AvailabilityUseCase(availabilityRepo, cache, roomsRepo, reservationsRepo, hotelsRepo)
     this.booking = new BookingUseCase(bookingRepo, this.availability)
     this.analytics = new AnalyticsUseCase(eventsRepo)
     this.stripe = new StripeUseCase(bookingRepo, logger, registry, events)

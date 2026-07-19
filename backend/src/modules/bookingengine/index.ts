@@ -38,6 +38,9 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
 
       const configRepo = new OrmRepository<BookingConfigDTO>(orm, 'BookingConfig')
       const availabilityRepo = new OrmRepository<any>(orm, 'AvailabilityCache')
+      const roomsRepo = new OrmRepository<any>(orm, 'Rooms')
+      const reservationsRepo = new OrmRepository<any>(orm, 'Reservations')
+      const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
       const bookingRepo = new OrmRepository<PublicBookingDTO>(orm, 'BookingEngine')
       const eventsRepo = new OrmRepository<ConversionEventDTO>(orm, 'ConversionEvents')
 
@@ -48,7 +51,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       const registry = new PaymentGatewayRegistry(gatewayRepo as any, log)
       // Barrera anti-doble-cobro para el webhook público.
       const eventStore = new PaymentEventStore(new OrmRepository<any>(orm, 'PaymentEvents') as any, log)
-      const service = new BookingengineService(configRepo, availabilityRepo, bookingRepo, eventsRepo, log, cache, registry, eventStore)
+      const service = new BookingengineService(configRepo, availabilityRepo, roomsRepo, reservationsRepo, hotelsRepo, bookingRepo, eventsRepo, log, cache, registry, eventStore)
       const controller = new BookingengineController(service, log, orm, auth, opts?.pushAvailability)
 
       // Admin routes (protegidas con auth)

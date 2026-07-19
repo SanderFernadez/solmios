@@ -75,6 +75,9 @@ function makeService(overrides = {}) {
   return new BookingengineService(
     makeConfigRepo(),
     makeAvailabilityRepo(),
+    undefined, // roomsRepo: estos tests no ejercitan la disponibilidad real
+    undefined, // reservationsRepo
+    undefined, // hotelsRepo
     makeBookingRepo(),
     makeEventsRepo(),
     log,
