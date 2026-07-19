@@ -4,6 +4,7 @@ import { getAccessToken, listLocks, addKeyboardPassword, deleteKeyboardPassword,
 import { generateCodeForReservation } from './usecases/ttlock-config'
 import * as hw from './usecases/ttlock-hardware'
 import type { TtlockQueries } from './usecases/ttlock-queries'
+import { createMasterKeys } from './usecases/master-keys-hardware'
 
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
 
@@ -105,6 +106,9 @@ export class TtlockService {
   createPermanentCode(hotelId: string, lockDeviceId: string, code?: string, name?: string): Promise<any> {
     return hw.createPermanentCode(this.hwDeps(), hotelId, lockDeviceId, code, name)
   }
+  private masterKeysUc?: ReturnType<typeof createMasterKeys>
+  /** Llaves maestras: un PIN por persona, aplicado a TODAS las cerraduras del hotel. */
+  masterKeys() { return (this.masterKeysUc ??= createMasterKeys(this.lockDevicesRepo, this.lockCodesRepo, this.hwDeps())) }
 
   /**
    * Genera el código solo si la reserva no tiene ya uno ACTIVO. Es el punto de entrada de la

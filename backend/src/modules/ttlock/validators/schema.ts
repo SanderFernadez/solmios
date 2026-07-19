@@ -31,9 +31,20 @@ export const CreatePermanentCodeSchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const, max: 50 },
 }
 
+/**
+ * Llave maestra: pertenece a una PERSONA (`userId`, un `users.id`), no a una
+ * reserva, y se aplica al mismo tiempo en todas las cerraduras del hotel.
+ */
+export const CreateMasterKeySchema: Record<string, ValidationRule> = {
+  userId: { type: 'string' as const, required: true, max: 60 },
+  code: { type: 'string' as const, min: 4, max: 9 },
+  label: { type: 'string' as const, max: 50 },
+}
+
 export const TTLockValidator = {
   updateConfig: UpdateTTLockConfigSchema,
   connect: ConnectTTLockSchema,
   updateLock: UpdateLockDeviceSchema,
   createPermanentCode: CreatePermanentCodeSchema,
+  createMasterKey: CreateMasterKeySchema,
 }

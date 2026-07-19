@@ -84,6 +84,36 @@ export interface TTLockConfig {
   hasPassword?: boolean
 }
 
+/** Llave maestra: un PIN de una persona, vivo en todas las cerraduras a la vez. */
+export interface MasterKey {
+  masterKeyId: string
+  userId: string
+  label: string
+  code: string
+  /** `partial` = está viva pero no llegó a todas las puertas. */
+  status: 'active' | 'revoked' | 'partial'
+  locksApplied: number
+  locksTotal: number
+  createdAt?: string
+}
+
+/** Resultado de aplicar la llave: en qué puertas entró y en cuáles no. */
+export interface MasterKeyApplyResult {
+  masterKeyId: string
+  code: string
+  applied: { lockId: string; lockName: string }[]
+  failed: { lockId: string; lockName: string; reason: string }[]
+}
+
+/** Una apertura registrada por la cerradura con esa llave. */
+export interface MasterKeyAccess {
+  lockId: string
+  lockName: string
+  roomId?: string
+  at: string
+  success: boolean
+}
+
 export const TTLockService = {
   getConfig: () => http.get<TTLockConfig>('/ttlock/config'),
   saveConfig: (config: Partial<TTLockConfig>) => http.put<{ success: boolean }>('/ttlock/config', config),
@@ -111,4 +141,17 @@ export const TTLockService = {
   listLockGateways: (lockId: string) => http.get<{ data: LockGatewayLink[] }>(`/ttlock/locks/${lockId}/gateways`),
   /** Crea un código fijo (permanente) de staff en la cerradura. `code` opcional (se genera si falta). */
   createPermanentCode: (lockId: string, body: { code?: string; name?: string }) => http.post<{ code: string; keyboardPwdId?: string }>(`/ttlock/locks/${lockId}/permanent-codes`, body),
+
+  // ─── Llaves maestras ────────────────────────────────────────────────────
+  // Un PIN por PERSONA que abre todas las puertas del hotel. Solo el gerente.
+  listMasterKeys: () => http.get<{ data: MasterKey[] }>('/ttlock/master-keys'),
+  /** Aplica el mismo PIN en todas las cerraduras. Responde en cuáles entró y en cuáles no. */
+  createMasterKey: (body: { userId: string; code?: string; label?: string }) =>
+    http.post<MasterKeyApplyResult>('/ttlock/master-keys', body),
+  /** Borra la llave del hardware de todas las cerraduras. */
+  revokeMasterKey: (masterKeyId: string) =>
+    http.delete<{ revoked: number; failed: { lockName: string; reason: string }[] }>(`/ttlock/master-keys/${masterKeyId}`),
+  /** Dónde y cuándo entró esa persona con su llave. */
+  masterKeyAccessLog: (masterKeyId: string, days?: number) =>
+    http.get<{ data: MasterKeyAccess[] }>(`/ttlock/master-keys/${masterKeyId}/access-log${days ? `?days=${days}` : ''}`),
 }

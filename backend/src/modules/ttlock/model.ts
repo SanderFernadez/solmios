@@ -32,6 +32,16 @@ export const LockCodesModel: ModelDefinition = {
     status: { type: 'string', default: 'active' },
     ttlockKeyboardPwdId: { type: 'string' },
     sentVia: { type: 'string' },
+    // ─── Llave maestra ──────────────────────────────────────────────────────
+    // Un código de huésped pertenece a una RESERVA; una llave maestra pertenece
+    // a una PERSONA y vive en todas las cerraduras a la vez. Cada fila es el PIN
+    // en UNA cerradura; `masterKeyId` agrupa las de la misma llave para poder
+    // revocarla entera y saber en cuántas puertas quedó aplicada.
+    // OJO: un campo que no esté acá el ORM lo descarta sin avisar.
+    userId: { type: 'string' },
+    masterKeyId: { type: 'string', indexed: true },
+    /** Nombre con el que se ve el código en la cerradura ("Maestra · Rosa Melo"). */
+    label: { type: 'string' },
   },
   timestamps: true,
 }

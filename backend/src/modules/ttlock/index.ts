@@ -17,7 +17,7 @@ export function TtlockModule() {
     contract: {
       name: 'ttlock', version: '1.0.0',
       description: 'TTLock smart lock management',
-      actions: ['getConfig', 'updateConfig', 'connect', 'listLocks', 'listCodes', 'listGateways', 'listActiveCodes', 'listRecords', 'unlock', 'deletePasscode', 'listLockGateways', 'createPermanentCode', 'syncLocks', 'generateCode', 'revokeCode', 'updateLock'],
+      actions: ['getConfig', 'updateConfig', 'connect', 'listLocks', 'listCodes', 'listGateways', 'listActiveCodes', 'listRecords', 'unlock', 'deletePasscode', 'listLockGateways', 'createPermanentCode', 'syncLocks', 'generateCode', 'revokeCode', 'updateLock', 'listMasterKeys', 'createMasterKey', 'revokeMasterKey', 'masterKeyAccessLog'],
       events: [],
       tables: ['lock_devices', 'lock_codes'],
       dependencies: [],
@@ -57,6 +57,15 @@ export function TtlockModule() {
       router.post('/api/ttlock/generate-code/:reservationId', guard('ttlock', 'edit'), (req: any) => controller.generateCode(req))
       router.delete('/api/ttlock/code/:id', guard('ttlock', 'edit'), (req: any) => controller.revokeCode(req))
       router.put('/api/ttlock/lock/:id', guard('ttlock', 'edit'), (req: any) => controller.updateLock(req))
+
+      // Llaves maestras: un PIN por persona que abre TODAS las puertas. Se suma
+      // el rol al permiso — recepción puede administrar cerraduras, pero emitir
+      // una llave que abre todo el hotel es del gerente.
+      const managerOnly = (a: string) => [auth.authenticate('hotel_admin', 'super_admin'), ...guard('ttlock', a)]
+      router.get('/api/ttlock/master-keys', managerOnly('view'), (req: any) => controller.listMasterKeys(req))
+      router.post('/api/ttlock/master-keys', managerOnly('edit'), (req: any) => controller.createMasterKey(req))
+      router.delete('/api/ttlock/master-keys/:id', managerOnly('edit'), (req: any) => controller.revokeMasterKey(req))
+      router.get('/api/ttlock/master-keys/:id/access-log', managerOnly('view'), (req: any) => controller.masterKeyAccessLog(req))
 
       log.info('Módulo ttlock listo (15 endpoints)')
       return service

@@ -386,6 +386,140 @@
       </SectionCard>
     </div>
 
+    <!-- Llaves maestras: un PIN por persona que abre TODAS las puertas -->
+    <div v-show="tab === 'master'">
+      <SectionCard
+        title="Llaves maestras"
+        :subtitle="`${masterKeys.length} llave(s) · abren las ${locks.length} cerradura(s) del hotel`"
+        body-class="p-0"
+      >
+        <template #actions>
+          <button
+            @click="openNewMasterKey()"
+            class="px-4 py-2 rounded-full bg-white/10 border border-white/15 text-white text-xs font-bold hover:bg-white/20 transition-colors cursor-pointer"
+          >+ Nueva llave</button>
+        </template>
+
+        <EmptyState
+          v-if="!masterKeys.length"
+          title="Sin llaves maestras"
+          message="Una llave maestra le da a una persona un PIN que abre todas las puertas del hotel, y deja registrado por dónde entró."
+        />
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[820px] tbl-head">
+            <thead>
+              <tr>
+                <th class="text-left px-4 py-3 text-[10px]">Persona</th>
+                <th class="text-left px-4 py-3 text-[10px]">PIN</th>
+                <th class="text-left px-4 py-3 text-[10px] hidden lg:table-cell">Puertas</th>
+                <th class="text-center px-4 py-3 text-[10px]">Estado</th>
+                <th class="text-right px-4 py-3 text-[10px]">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="k in masterKeys" :key="k.masterKeyId" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="text-sm font-bold text-navy">{{ personName(k.userId) }}</div>
+                  <div class="text-[11px] text-text-muted">{{ k.label }}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <code class="text-sm font-black font-mono text-navy tabular-nums">{{ k.code }}</code>
+                </td>
+                <td class="px-4 py-3 hidden lg:table-cell text-xs text-text-secondary tabular-nums">
+                  {{ k.locksApplied }} de {{ k.locksTotal }}
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="masterStatusClass(k.status)">
+                    {{ masterStatusLabel(k.status) }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button
+                      @click="openAccessLog(k)"
+                      class="px-3 py-1.5 rounded-lg border border-border text-[11px] font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer"
+                    >¿Dónde entró?</button>
+                    <button
+                      v-if="k.status !== 'revoked'"
+                      @click="revokeMasterKey(k)"
+                      class="px-3 py-1.5 rounded-lg bg-coral/10 text-coral text-[11px] font-bold hover:bg-coral/20 transition-colors cursor-pointer"
+                    >Revocar</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+    </div>
+
+    <!-- Alta de llave maestra -->
+    <AppModal
+      v-if="newMasterKeyOpen" size="md" title="Nueva llave maestra"
+      subtitle="El mismo PIN se graba en todas las cerraduras del hotel"
+      @close="newMasterKeyOpen = false"
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Persona *</label>
+          <select v-model="newMasterKey.userId" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
+            <option value="">Seleccionar...</option>
+            <option v-for="p in staff" :key="p.id" :value="p.id">{{ p.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">PIN (opcional)</label>
+          <input
+            v-model="newMasterKey.code" inputmode="numeric" maxlength="9"
+            class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm font-mono tabular-nums focus:outline-none focus:border-navy"
+            placeholder="Se genera solo si lo dejás vacío"
+          >
+          <p class="text-[11px] text-text-muted mt-1">Entre 4 y 9 dígitos.</p>
+        </div>
+        <p class="text-[11px] text-text-secondary bg-surface rounded-xl p-3">
+          Esta llave abre <strong>todas</strong> las puertas y no vence: se corta revocándola.
+        </p>
+      </div>
+      <template #footer>
+        <button @click="newMasterKeyOpen = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+        <button
+          @click="createMasterKey()" :disabled="!newMasterKey.userId || creatingMasterKey"
+          class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >{{ creatingMasterKey ? 'Grabando en las cerraduras…' : 'Crear llave' }}</button>
+      </template>
+    </AppModal>
+
+    <!-- Dónde entró esa persona -->
+    <AppModal
+      v-if="accessLogModal" size="lg"
+      :title="`Accesos de ${personName(accessLogModal.key.userId)}`"
+      :subtitle="`PIN ${accessLogModal.key.code} · últimos 30 días`"
+      @close="accessLogModal = null"
+    >
+      <div v-if="accessLogLoading" class="flex items-center gap-2 text-xs text-text-muted py-6 justify-center">
+        <span class="w-4 h-4 rounded-full border-2 border-border border-t-cyan animate-spin"></span>
+        Consultando las cerraduras…
+      </div>
+      <div v-else-if="!accessLogModal.entries.length" class="text-center py-8">
+        <p class="text-sm font-bold text-navy">Sin aperturas registradas</p>
+        <p class="text-xs text-text-muted mt-1">Esta persona todavía no usó su llave en ninguna puerta.</p>
+      </div>
+      <div v-else class="space-y-1.5">
+        <div
+          v-for="(e, i) in accessLogModal.entries" :key="i"
+          class="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5"
+        >
+          <span class="w-2 h-2 rounded-full shrink-0" :class="e.success ? 'bg-teal' : 'bg-coral'"></span>
+          <span class="text-sm font-bold text-navy flex-1 truncate">{{ e.lockName }}</span>
+          <span v-if="!e.success" class="text-[10px] font-bold text-coral uppercase">No abrió</span>
+          <span class="text-[11px] text-text-muted tabular-nums shrink-0">{{ formatAccessDate(e.at) }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <button @click="accessLogModal = null" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Cerrar</button>
+      </template>
+    </AppModal>
+
     <!-- Modal códigos BD por cerradura -->
     <AppModal v-if="codesModal" size="md" :title="`Códigos de ${codesModal.lockName}`"
       :subtitle="`${codesModal.codes.length} código(s) en la base de datos`" @close="codesModal = null">
@@ -407,7 +541,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { TTLockService, type TTLockConfig, type LockGateway, type LockActiveCode, type LockRecord } from '@/services/TTLock.service'
+import { TTLockService, type TTLockConfig, type LockGateway, type LockActiveCode, type LockRecord, type MasterKey, type MasterKeyAccess } from '@/services/TTLock.service'
+import { TeamService } from '@/services/Team.service'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -417,7 +552,7 @@ const auth = useAuthStore()
 const toast = useToast()
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
-type Tab = 'config' | 'locks' | 'gateways' | 'active' | 'records'
+type Tab = 'config' | 'locks' | 'gateways' | 'active' | 'records' | 'master'
 const tab = ref<Tab>('locks')
 
 const syncing = ref(false)
@@ -475,11 +610,128 @@ const tabs = computed(() => [
   { key: 'gateways' as Tab, label: 'Gateways', badge: gatewaysLoaded.value ? gateways.value.length : null },
   { key: 'active' as Tab, label: 'Códigos activos', badge: null as number | null },
   { key: 'records' as Tab, label: 'Registros', badge: null as number | null },
+  { key: 'master' as Tab, label: 'Llaves maestras', badge: masterKeysLoaded.value ? masterKeys.value.length : null },
 ])
 
 function selectTab(k: Tab) {
   tab.value = k
   if (k === 'gateways' && !gatewaysLoaded.value) loadGateways()
+  if (k === 'master' && !masterKeysLoaded.value) loadMasterKeys()
+}
+
+// ─── Llaves maestras ────────────────────────────────────────────────────────
+// Un PIN por PERSONA, grabado en todas las cerraduras. Los nombres se resuelven
+// contra /usuarios: las llaves guardan `users.id`, no perfiles de RRHH.
+const masterKeys = ref<MasterKey[]>([])
+const masterKeysLoaded = ref(false)
+const staff = ref<{ id: string; name: string }[]>([])
+const newMasterKeyOpen = ref(false)
+const newMasterKey = ref<{ userId: string; code: string }>({ userId: '', code: '' })
+const creatingMasterKey = ref(false)
+const accessLogModal = ref<{ key: MasterKey; entries: MasterKeyAccess[] } | null>(null)
+const accessLogLoading = ref(false)
+
+async function loadMasterKeys() {
+  try {
+    const r = await TTLockService.listMasterKeys()
+    masterKeys.value = r.data ?? []
+    masterKeysLoaded.value = true
+  } catch { /* el tab queda vacío; el resto de la pantalla sigue viva */ }
+  if (!staff.value.length) {
+    try {
+      const res = await TeamService.list() as any
+      const items = Array.isArray(res) ? res : (res?.data ?? [])
+      staff.value = items.map((u: any) => ({ id: u.id, name: u.name || u.email || u.id }))
+    } catch { /* sin lista de personal, el alta queda deshabilitada */ }
+  }
+}
+
+function personName(userId: string): string {
+  return staff.value.find(s => s.id === userId)?.name || 'Usuario'
+}
+
+function openNewMasterKey() {
+  newMasterKey.value = { userId: '', code: '' }
+  newMasterKeyOpen.value = true
+}
+
+/**
+ * Al crear, el PIN se graba puerta por puerta. Si alguna falla, se avisa cuáles:
+ * el gerente tiene que saber que esa persona NO puede entrar ahí.
+ */
+async function createMasterKey() {
+  if (!newMasterKey.value.userId) return
+  creatingMasterKey.value = true
+  try {
+    const person = personName(newMasterKey.value.userId)
+    const res = await TTLockService.createMasterKey({
+      userId: newMasterKey.value.userId,
+      code: newMasterKey.value.code || undefined,
+      label: `Maestra · ${person}`,
+    })
+    newMasterKeyOpen.value = false
+    if (res.failed?.length) {
+      toast.error(
+        `Llave ${res.code} creada en ${res.applied.length} de ${res.applied.length + res.failed.length} puertas`,
+        `No entró en: ${res.failed.map(f => f.lockName).join(', ')}`,
+      )
+    } else {
+      toast.success(`Llave ${res.code} activa en ${res.applied.length} puerta(s)`)
+    }
+    masterKeysLoaded.value = false
+    await loadMasterKeys()
+  } catch (e: any) {
+    toast.error('No se pudo crear la llave', e?.message)
+  } finally {
+    creatingMasterKey.value = false
+  }
+}
+
+async function revokeMasterKey(k: MasterKey) {
+  if (!confirm(`¿Revocar la llave de ${personName(k.userId)}? Dejará de abrir todas las puertas.`)) return
+  try {
+    const res = await TTLockService.revokeMasterKey(k.masterKeyId)
+    if (res.failed?.length) {
+      // Una puerta que no se pudo borrar sigue abriéndose con ese PIN: no se
+      // puede reportar como revocada sin más.
+      toast.error(
+        `Revocada en ${res.revoked} puerta(s), pero quedó activa en otras`,
+        `Revisar: ${res.failed.map(f => f.lockName).join(', ')}`,
+      )
+    } else {
+      toast.success(`Llave revocada en ${res.revoked} puerta(s)`)
+    }
+    masterKeysLoaded.value = false
+    await loadMasterKeys()
+  } catch (e: any) {
+    toast.error('No se pudo revocar', e?.message)
+  }
+}
+
+async function openAccessLog(k: MasterKey) {
+  accessLogModal.value = { key: k, entries: [] }
+  accessLogLoading.value = true
+  try {
+    const r = await TTLockService.masterKeyAccessLog(k.masterKeyId)
+    if (accessLogModal.value) accessLogModal.value.entries = r.data ?? []
+  } catch (e: any) {
+    toast.error('No se pudo leer el historial', e?.message)
+  } finally {
+    accessLogLoading.value = false
+  }
+}
+
+function masterStatusLabel(s: MasterKey['status']): string {
+  return s === 'active' ? 'Activa' : s === 'partial' ? 'Parcial' : 'Revocada'
+}
+function masterStatusClass(s: MasterKey['status']): string {
+  return s === 'active' ? 'bg-teal/10 text-teal'
+    : s === 'partial' ? 'bg-warning/10 text-warning'
+    : 'bg-navy/5 text-text-muted'
+}
+function formatAccessDate(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('es-DO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 async function load() {

@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { TtlockService } from './service'
-import { UpdateTTLockConfigSchema, ConnectTTLockSchema, UpdateLockDeviceSchema, CreatePermanentCodeSchema } from './validators/schema'
+import { UpdateTTLockConfigSchema, ConnectTTLockSchema, UpdateLockDeviceSchema, CreatePermanentCodeSchema, CreateMasterKeySchema } from './validators/schema'
 
 export class TtlockController {
   constructor(
@@ -186,5 +186,38 @@ export class TtlockController {
     const id = await this.hotelOf(req)
     const data = validateSchema(UpdateLockDeviceSchema, req.body) as any
     return { status: 200, body: await this.service.updateLock(req.params.id, data, id) }
+  }
+
+  // ─── Llaves maestras ──────────────────────────────────────────────────────
+  // Un PIN por persona que abre todas las puertas del hotel. Las rutas están
+  // restringidas al gerente: una llave que abre todo no la emite recepción.
+
+  async listMasterKeys(req: HttpRequest) {
+    const hotelId = await this.hotelOf(req)
+    if (!hotelId) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    return { status: 200, body: { data: await this.service.masterKeys().list(hotelId) } }
+  }
+
+  async createMasterKey(req: HttpRequest) {
+    const hotelId = await this.hotelOf(req)
+    if (!hotelId) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    const data = validateSchema(CreateMasterKeySchema, req.body ?? {}) as any
+    const actor = (req.user as any)?.id ?? ''
+    return { status: 201, body: await this.service.masterKeys().create(hotelId, data, actor) }
+  }
+
+  async revokeMasterKey(req: HttpRequest) {
+    const hotelId = await this.hotelOf(req)
+    if (!hotelId) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    const actor = (req.user as any)?.id ?? ''
+    return { status: 200, body: await this.service.masterKeys().revoke(hotelId, req.params.id, actor) }
+  }
+
+  /** Dónde y cuándo entró esa persona con su llave. */
+  async masterKeyAccessLog(req: HttpRequest) {
+    const hotelId = await this.hotelOf(req)
+    if (!hotelId) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    const days = Number(req.query['days']) || undefined
+    return { status: 200, body: { data: await this.service.masterKeys().accessLog(hotelId, req.params.id, days) } }
   }
 }
