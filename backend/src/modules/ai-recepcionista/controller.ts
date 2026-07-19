@@ -165,6 +165,24 @@ export class AiRecepcionistaController {
     const hotelId = req.params?.hotelId
     const body: any = req.body || {}
 
+    // BUG FIX: verificar la firma x-hub-signature-256 de Meta. Sin esto, cualquiera que conozca la
+    // URL pública inyecta mensajes falsos → el bot responde y via processIncomingMessage puede crear
+    // reservas / payment links / invoices reales. Fail-closed: sin appSecret (WHATSAPP_APP_SECRET)
+    // o sin signature, se rechaza. La firma se calcula sobre los bytes crudos (req.rawBody si el
+    // framework lo expone; fallback JSON.stringify).
+    const appSecret = process.env.WHATSAPP_APP_SECRET
+    const signature = req.headers?.['x-hub-signature-256'] || req.headers?.['X-Hub-Signature-256']
+    if (!appSecret || !signature) {
+      this.logger.warn('WhatsApp webhook rechazado: falta appSecret o signature', { hotelId, hasAppSecret: !!appSecret, hasSignature: !!signature })
+      return { status: 403, body: { error: 'signature required' } }
+    }
+    const rawBody = (req.rawBody ?? JSON.stringify(body)) as string
+    const expected = 'sha256=' + (await import('node:crypto')).createHmac('sha256', appSecret).update(rawBody).digest('hex')
+    if (signature !== expected) {
+      this.logger.warn('WhatsApp webhook: firma inválida', { hotelId })
+      return { status: 401, body: { error: 'invalid signature' } }
+    }
+
     try {
       const entry = body?.entry?.[0]
       const changes = entry?.changes?.[0]

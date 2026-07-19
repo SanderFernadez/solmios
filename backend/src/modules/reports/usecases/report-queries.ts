@@ -190,6 +190,9 @@ export class ReportQueries {
       const ci = String(r.checkIn || '').slice(0, 10)
       if ((r.status === 'pending' || r.status === 'confirmed') && ci && ci < todayStr) {
         await this.orm.update('Reservations', r.id, { status: 'no_show' })
+        // BUG FIX: liberar la habitación asociada — antes quedaba occupied/reserved y Channex la
+        // seguía mostrando fuera de inventario → overbooking real.
+        if (r.roomId) await this.orm.update('Rooms', r.roomId, { status: 'available' })
         count++
       }
     }

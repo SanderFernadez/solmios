@@ -11,6 +11,9 @@ export function createNoShowCron(orm: any, emailSender: EmailSender, logger: any
       const ci = String(r.checkIn || '').slice(0, 10)
       if ((r.status === 'pending' || r.status === 'confirmed') && ci && ci < todayStr) {
         await orm.update('Reservations', r.id, { status: 'no_show' })
+        // BUG FIX: liberar la habitación asociada (mismo fix que markNoShows del endpoint) — antes
+        // quedaba occupied/reserved y Channex la mostraba fuera de inventario → overbooking.
+        if (r.roomId) await orm.update('Rooms', r.roomId, { status: 'available' })
         count++
         dispatchLifecycleEmail(
           { emailSender, guestRepo: new OrmRepository<any>(orm, 'Guests'), roomRepo: new OrmRepository<any>(orm, 'Rooms'), hotelRepo: new OrmRepository<any>(orm, 'Hotels'), messageLogRepo: new OrmRepository<any>(orm, 'MessageLogs'), logger },
