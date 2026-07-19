@@ -11,6 +11,8 @@ import {
 } from './usecases/password'
 import { assertOwnership, pickDefined } from './usecases/ownership'
 import { jtiOf, refreshSession } from './usecases/token-session'
+import { assertHotelCanOperate, type AccessCheck } from './usecases/subscription-gate'
+import { switchHotel } from './usecases/switch-hotel'
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required')
@@ -26,6 +28,10 @@ export class UsuariosService {
     private readonly hotelRepo?: RepositoryAdapter<any>,
     private readonly configRepo?: RepositoryAdapter<any>,
   ) {}
+
+  /** Corte de servicio por suscripción. Lo inyecta el connector `usuarios-subscriptions`. */
+  private checkSubscription?: (hotelId: string) => Promise<AccessCheck>
+  setSubscriptionCheck(fn: (hotelId: string) => Promise<AccessCheck>): void { this.checkSubscription = fn }
 
   /** Conecta el audit log. Lo inyecta el connector `usuarios-auditlog`. */
   setAuditDeps(port: AuditPort): void {
@@ -44,37 +50,9 @@ export class UsuariosService {
     return hotels.filter((h: any) => h.id === user.hotelId)
   }
 
-  async switchHotel(userId: string, targetHotelId: string, currentRole: string): Promise<{ token: string; refreshToken: string; user: any }> {
-    if (!this.hotelRepo) throw new AuthError('HotelRepo no disponible')
-    const hotels = await this.hotelRepo.findMany({})
-    const hotel = hotels.find((h: any) => h.id === targetHotelId)
-    if (!hotel) throw new NotFoundError('Hotel no encontrado')
-    const user = await this.repo.findById(userId)
-    if (!user) throw new NotFoundError('Usuario no encontrado')
-    // hotel_admin solo puede cambiar a su propio hotel
-    if (currentRole !== 'super_admin' && user.hotelId !== targetHotelId) {
-      throw new AuthError('No autorizado para este hotel')
-    }
-    // Mantener rol original; si es super_admin y cambia a otro hotel, queda super_admin
-    // Si es hotel_admin, ya validamos que targetHotelId === user.hotelId
-    const tokenPayload = { id: userId, role: currentRole, hotelId: targetHotelId, userType: 'merchant' }
-    const token = (this.auth as any).createToken(tokenPayload)
-    const refreshToken = (this.auth as any).createRefreshToken(tokenPayload)
-    // Guardar el jti del refresh vigente (no el access), igual que login: cambiar de hotel emite una
-    // sesión nueva y su refresh debe quedar habilitado para renovar.
-    await this.repo.update(userId, { token: jtiOf(refreshToken) ?? null })
-    return {
-      token,
-      refreshToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: currentRole,
-        hotelId: targetHotelId,
-        hotelName: hotel.name,
-      },
-    }
+  /** Cambio de hotel activo (super_admin entre hoteles, hotel_admin al suyo). */
+  switchHotel(userId: string, targetHotelId: string, currentRole: string) {
+    return switchHotel({ repo: this.repo, hotelRepo: this.hotelRepo, auth: this.auth }, userId, targetHotelId, currentRole)
   }
 
   async login(emailOrPhone: string, password: string): Promise<{ token: string; refreshToken: string; user: any }> {
@@ -91,6 +69,7 @@ export class UsuariosService {
     if (!user || user.active === 0) throw new AuthError('Credenciales inválidas')
     const valid = await this.verifyPassword(password, user.password)
     if (!valid) throw new AuthError('Credenciales inválidas')
+    await assertHotelCanOperate(user, this.checkSubscription)
     // migración lazy de legacy plaintext → bcrypt
     if (!String(user.password).startsWith('$2') && !String(user.password).startsWith('$argon2') && !String(user.password).includes(':')) {
       await this.repo.update(user.id, { password: await this.hashPassword(password) })

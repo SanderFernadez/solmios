@@ -1,0 +1,93 @@
+// access.ts — ¿Este hotel puede usar el sistema hoy?
+//
+// Es la única fuente de verdad del corte de servicio. La responde el login y el
+// middleware que protege las rutas, para que no haya dos criterios distintos.
+//
+// El vencimiento se resuelve al CONSULTAR, no con un cron: si el trial terminó
+// hace un minuto, el acceso se corta ese minuto aunque ningún proceso lo haya
+// marcado todavía. El cron nocturno existe igual, pero solo para avisar y dejar
+// los estados prolijos — nunca para decidir si alguien entra.
+import type { RepositoryAdapter } from 'arckode-framework'
+
+/** Motivo por el que se corta el acceso. El frontend decide qué mostrar con esto. */
+export type DenyReason =
+  | 'trial_expired'
+  | 'subscription_expired'
+  | 'hotel_suspended'
+  | 'hotel_inactive'
+
+export interface AccessResult {
+  allowed: boolean
+  reason?: DenyReason
+  /** Días que faltan para que se venza (para avisar antes de cortar). */
+  daysLeft?: number
+  status?: string
+  trialEndsAt?: string
+}
+
+/** Estados de suscripción que dejan trabajar. */
+const WORKING_STATUSES = new Set(['trialing', 'active', 'past_due'])
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+export class SubscriptionAccess {
+  constructor(
+    private readonly subscriptionsRepo: RepositoryAdapter<any>,
+    private readonly hotelsRepo: RepositoryAdapter<any>,
+  ) {}
+
+  /**
+   * Un hotel sin suscripción registrada NO se bloquea: son los hoteles que ya
+   * existían antes de que esto se creara, y cortarles el servicio por una
+   * migración sería el peor estreno posible. Se los trata como al día.
+   */
+  async check(hotelId: string, now: Date = new Date()): Promise<AccessResult> {
+    if (!hotelId || hotelId === 'platform') return { allowed: true }
+
+    const hotel = await this.hotelsRepo.findById(hotelId)
+    if (hotel?.status === 'suspended') return { allowed: false, reason: 'hotel_suspended' }
+    if (hotel?.status === 'inactive') return { allowed: false, reason: 'hotel_inactive' }
+
+    const sub = (await this.subscriptionsRepo.findMany({ hotelId }))[0]
+    if (!sub) return { allowed: true }
+
+    if (sub.status === 'trialing') {
+      const endsAt = sub.trialEndsAt ? new Date(sub.trialEndsAt) : null
+      if (endsAt && endsAt.getTime() <= now.getTime()) {
+        // Se deja asentado para que el super-admin lo vea, pero la decisión ya
+        // se tomó con la fecha: el estado guardado es una consecuencia, no la causa.
+        await this.markExpired(sub.id)
+        return { allowed: false, reason: 'trial_expired', status: 'expired', trialEndsAt: sub.trialEndsAt }
+      }
+      return {
+        allowed: true,
+        status: sub.status,
+        trialEndsAt: sub.trialEndsAt,
+        daysLeft: endsAt ? Math.max(0, Math.ceil((endsAt.getTime() - now.getTime()) / MS_PER_DAY)) : undefined,
+      }
+    }
+
+    if (sub.status === 'active' || sub.status === 'past_due') {
+      const periodEnd = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : null
+      if (periodEnd && periodEnd.getTime() <= now.getTime()) {
+        await this.markExpired(sub.id)
+        return { allowed: false, reason: 'subscription_expired', status: 'expired' }
+      }
+      return { allowed: true, status: sub.status }
+    }
+
+    if (!WORKING_STATUSES.has(sub.status)) {
+      return {
+        allowed: false,
+        reason: sub.status === 'canceled' ? 'subscription_expired' : 'trial_expired',
+        status: sub.status,
+        trialEndsAt: sub.trialEndsAt,
+      }
+    }
+    return { allowed: true, status: sub.status }
+  }
+
+  private async markExpired(id: string): Promise<void> {
+    await this.subscriptionsRepo.update(id, { status: 'expired' }).catch(() => {})
+  }
+}

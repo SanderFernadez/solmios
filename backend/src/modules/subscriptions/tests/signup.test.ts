@@ -1,0 +1,134 @@
+// El alta pública tiene que dejar el hotel USABLE. El bug que motivó esto: el
+// alta del super-admin crea la fila del hotel y nada más, así que nadie puede
+// entrar (sin usuario) ni configurar permisos (sin roles).
+import { describe, it, expect } from 'bun:test'
+import { SignupUseCase, TRIAL_DAYS } from '../usecases/signup'
+import type { RepositoryAdapter } from 'arckode-framework'
+
+const NOW = new Date('2026-07-19T12:00:00Z')
+
+function setup(existingUsers: any[] = []) {
+  const hotels: any[] = []
+  const users: any[] = [...existingUsers]
+  const roles: any[] = []
+  const subs: any[] = []
+  const repo = (store: any[]): RepositoryAdapter<any> => ({
+    create: async (row: any) => { store.push(row); return row },
+    findMany: async (f: any = {}) => store.filter(r =>
+      Object.entries(f).every(([k, v]) => r[k] === v)),
+  } as unknown as RepositoryAdapter<any>)
+
+  const uc = new SignupUseCase({
+    hotelsRepo: repo(hotels),
+    usersRepo: repo(users),
+    rolesRepo: repo(roles),
+    subscriptionsRepo: repo(subs),
+    hashPassword: async (p: string) => `hashed:${p}`,
+  })
+  return { uc, hotels, users, roles, subs }
+}
+
+const VALID = {
+  hotelName: 'Hotel Prueba',
+  email: 'Dueño@Ejemplo.com ',
+  password: 'unaClave123',
+  ownerName: 'Ana Pérez',
+  address: 'Santo Domingo',
+}
+
+describe('SignupUseCase', () => {
+  it('deja el hotel listo para trabajar: hotel + dueño + roles + prueba', async () => {
+    const { uc, hotels, users, roles, subs } = setup()
+    const res = await uc.signup(VALID, NOW)
+
+    expect(hotels).toHaveLength(1)
+    expect(users).toHaveLength(1)
+    expect(roles.length).toBeGreaterThan(0)  // sin roles no puede dar de alta a su gente
+    expect(subs).toHaveLength(1)
+    expect(res.trialDays).toBe(TRIAL_DAYS)
+  })
+
+  it('el dueño queda como hotel_admin y puede iniciar sesión', async () => {
+    const { uc, users } = setup()
+    await uc.signup(VALID, NOW)
+    expect(users[0]).toMatchObject({
+      role: 'hotel_admin',
+      userType: 'merchant',
+      active: 1,
+      name: 'Ana Pérez',
+    })
+    expect(users[0].password).toBe('hashed:unaClave123') // nunca en texto plano
+  })
+
+  it('normaliza el email: se registra con mayúsculas y entra en minúsculas', async () => {
+    const { uc, users, hotels } = setup()
+    await uc.signup(VALID, NOW)
+    expect(users[0].email).toBe('dueño@ejemplo.com')
+    expect(hotels[0].email).toBe('dueño@ejemplo.com')
+  })
+
+  it('guarda la dirección en `address` (no en `location`, que el ORM descarta)', async () => {
+    const { uc, hotels } = setup()
+    await uc.signup(VALID, NOW)
+    expect(hotels[0].address).toBe('Santo Domingo')
+    expect(hotels[0]).not.toHaveProperty('location')
+  })
+
+  it('la prueba vence a los 7 días exactos', async () => {
+    const { uc, subs } = setup()
+    const res = await uc.signup(VALID, NOW)
+    expect(subs[0].status).toBe('trialing')
+    expect(res.trialEndsAt).toBe('2026-07-26T12:00:00.000Z')
+    expect(subs[0].trialEndsAt).toBe(res.trialEndsAt)
+  })
+
+  it('no deja registrar dos veces el mismo email', async () => {
+    const { uc, hotels } = setup([{ id: 'u0', email: 'dueño@ejemplo.com' }])
+    await expect(uc.signup(VALID, NOW)).rejects.toThrow('Ya existe una cuenta')
+    expect(hotels).toHaveLength(0) // no queda un hotel huérfano
+  })
+
+  it('rechaza datos incompletos sin crear nada a medias', async () => {
+    const { uc, hotels, users } = setup()
+    await expect(uc.signup({ ...VALID, hotelName: '  ' }, NOW)).rejects.toThrow('nombre del hotel')
+    await expect(uc.signup({ ...VALID, email: 'no-es-email' }, NOW)).rejects.toThrow('email')
+    await expect(uc.signup({ ...VALID, password: '123' }, NOW)).rejects.toThrow('contraseña')
+    expect(hotels).toHaveLength(0)
+    expect(users).toHaveLength(0)
+  })
+})
+
+describe('SignupUseCase — el alta no puede quedar a medias', () => {
+  it('si falla la suscripción, no deja el hotel ni el usuario creados', async () => {
+    const hotels: any[] = []
+    const users: any[] = []
+    const roles: any[] = []
+    const repo = (store: any[], failOnCreate = false): any => ({
+      create: async (row: any) => {
+        if (failOnCreate) throw new Error('la base se cayó')
+        store.push(row); return row
+      },
+      findMany: async (f: any = {}) => store.filter(r => Object.entries(f).every(([k, v]) => r[k] === v)),
+      delete: async (id: string) => {
+        const i = store.findIndex(r => r.id === id)
+        if (i >= 0) store.splice(i, 1)
+      },
+    })
+
+    const uc = new SignupUseCase({
+      hotelsRepo: repo(hotels),
+      usersRepo: repo(users),
+      rolesRepo: repo(roles),
+      subscriptionsRepo: repo([], true), // falla justo en el último paso
+      hashPassword: async (p: string) => `hashed:${p}`,
+    })
+
+    await expect(uc.signup(VALID, NOW)).rejects.toThrow('la base se cayó')
+
+    // Sin esto quedaría un hotel sin suscripción (entraría gratis para siempre)
+    // y un email tomado que impide reintentar el registro.
+    expect(hotels).toHaveLength(0)
+    expect(users).toHaveLength(0)
+    expect(roles).toHaveLength(0)
+  })
+})

@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-19T05:52:01.374Z",
+  "_generated": "2026-07-19T18:05:29.891Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -490,6 +490,19 @@
       "complete": true
     },
     {
+      "name": "subscriptions",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "capacitacion",
       "structure": {
         "index": true,
@@ -688,6 +701,7 @@
     "feedback-auditlog.ts",
     "capacitacion-auditlog.ts",
     "cash-auditlog.ts",
+    "usuarios-subscriptions.ts",
     "empleados-auditlog.ts",
     "hoteles-auditlog.ts",
     "empleados-attendance.ts",

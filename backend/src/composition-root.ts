@@ -129,6 +129,7 @@ import { ReportsModule } from './modules/reports'
 import { PricingModule } from './modules/pricing'
 import { AmenitiesModule } from './modules/amenities'
 import { TtlockModule } from './modules/ttlock'
+import { SubscriptionsModule } from './modules/subscriptions'
 import { DashboardModule } from './modules/dashboard'
 import { FeedbackModule } from './modules/feedback'
 import { StaffAuthModule } from './modules/staff-auth'
@@ -155,6 +156,7 @@ const mods = [
   MessagesModule({ storage }),
   PushTokensModule(),
   EmailQueueModule(),
+  SubscriptionsModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -224,6 +226,7 @@ import { housekeepingMantenimientoConnector } from './connectors/housekeeping-ma
 import { housekeepingNotificacionesConnector } from './connectors/housekeeping-notificaciones'
 import { empleadosHousekeepingConnector } from './connectors/empleados-housekeeping'
 import { empleadosAttendanceConnector } from './connectors/empleados-attendance'
+import { usuariosSubscriptionsConnector } from './connectors/usuarios-subscriptions'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -318,6 +321,8 @@ system.addConnector('housekeeping-notificaciones', housekeepingNotificacionesCon
 // puntualidad/asistencia de attendance — datos reales, sin importar esos módulos.
 system.addConnector('empleados-housekeeping', empleadosHousekeepingConnector)
 system.addConnector('empleados-attendance', empleadosAttendanceConnector)
+// El login pregunta si el hotel puede operar (prueba vigente / suscripción al día).
+system.addConnector('usuarios-subscriptions', usuariosSubscriptionsConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm, logger)
