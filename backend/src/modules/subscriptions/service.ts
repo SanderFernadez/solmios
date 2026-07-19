@@ -1,10 +1,12 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import { SignupUseCase, type SignupInput, type SignupResult } from './usecases/signup'
 import { SubscriptionAccess, type AccessResult } from './usecases/access'
+import { OnboardingUseCase, type OnboardingStatus } from './usecases/onboarding'
 import { hashPassword } from '../usuarios/usecases/password'
 
 export class SubscriptionsService {
   private readonly signupUc: SignupUseCase
+  private readonly onboardingUc: OnboardingUseCase
   private readonly accessUc: SubscriptionAccess
 
   constructor(
@@ -13,12 +15,15 @@ export class SubscriptionsService {
     usersRepo: RepositoryAdapter<any>,
     rolesRepo: RepositoryAdapter<any>,
     private readonly plansRepo: RepositoryAdapter<any>,
+    roomsRepo: RepositoryAdapter<any>,
+    ratesRepo: RepositoryAdapter<any> | undefined,
     private readonly logger: Logger,
   ) {
     this.signupUc = new SignupUseCase({
       hotelsRepo, usersRepo, rolesRepo, subscriptionsRepo, hashPassword,
     })
     this.accessUc = new SubscriptionAccess(subscriptionsRepo, hotelsRepo)
+    this.onboardingUc = new OnboardingUseCase({ roomsRepo, usersRepo, ratesRepo, hotelsRepo })
   }
 
   signup(input: SignupInput): Promise<SignupResult> {
@@ -42,6 +47,11 @@ export class SubscriptionsService {
         id: p.id, name: p.name, slug: p.slug, price: p.price,
         currency: p.currency, description: p.description, features: p.features ?? [],
       }))
+  }
+
+  /** Qué le falta configurar al hotel para poder trabajar. */
+  onboarding(hotelId: string): Promise<OnboardingStatus> {
+    return this.onboardingUc.status(hotelId)
   }
 
   /** Estado para mostrarle al hotel cuánto le queda o qué tiene que pagar. */

@@ -14,7 +14,7 @@ export function SubscriptionsModule() {
     contract: {
       name: 'subscriptions', version: '1.0.0',
       description: 'SaaS subscription lifecycle',
-      actions: ['signup', 'publicPlans', 'myStatus'],
+      actions: ['signup', 'publicPlans', 'myStatus', 'onboarding'],
       events: [],
       tables: ['subscriptions'],
       dependencies: [],
@@ -31,6 +31,8 @@ export function SubscriptionsModule() {
         new OrmRepository<any>(orm, 'Users'),
         new OrmRepository<any>(orm, 'Roles'),
         new OrmRepository<any>(orm, 'Plans'),
+        new OrmRepository<any>(orm, 'Rooms'),
+        undefined, // tarifas: el módulo de pricing define su propio modelo
         log,
       )
       const controller = new SubscriptionsController(service, log)
@@ -49,8 +51,9 @@ export function SubscriptionsModule() {
 
       // Del hotel logueado: cuánto le queda de prueba / si tiene que pagar.
       router.get('/api/subscription/me', [auth.authenticate()], (req: any) => controller.myStatus(req))
+      router.get('/api/onboarding/status', [auth.authenticate()], (req: any) => controller.onboarding(req))
 
-      log.info('Módulo subscriptions listo (3 endpoints)')
+      log.info('Módulo subscriptions listo (4 endpoints)')
       return service
     },
   })

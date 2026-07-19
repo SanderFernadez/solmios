@@ -24,6 +24,12 @@ export class SubscriptionsController {
     return { status: 200, body: { data: await this.service.publicPlans() } }
   }
 
+  /** Guía de primeros pasos: qué le falta configurar al hotel. */
+  async onboarding(req: HttpRequest) {
+    const hotelId = (req.user as any)?.hotelId
+    return { status: 200, body: { data: await this.service.onboarding(hotelId) } }
+  }
+
   /** Estado de la suscripción del hotel logueado: qué le queda y si tiene que pagar. */
   async myStatus(req: HttpRequest) {
     const hotelId = (req.user as any)?.hotelId

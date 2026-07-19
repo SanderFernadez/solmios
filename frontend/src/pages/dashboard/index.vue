@@ -1,5 +1,8 @@
 <template>
   <div class="cc-dashboard -m-6 min-h-screen space-y-4 p-5">
+    <!-- Guía de configuración: solo aparece mientras falte algo obligatorio. -->
+    <OnboardingGuide />
+
     <!-- 1. Centro de operaciones -->
     <CommandCenterHeader
       :hotel-name="hotelName"
@@ -167,6 +170,7 @@ import { ChannelService } from '@/services/Channel.service'
 import { HotelService, type HotelData } from '@/services/Hotel.service'
 import { ReportsService, type FacturacionReport } from '@/services/Reports.service'
 import CommandCenterHeader, { type WeatherInfo } from '@/components/features/dashboard/CommandCenterHeader.vue'
+import OnboardingGuide from '@/components/features/OnboardingGuide.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import ReservationCalendar from '@/components/features/ReservationCalendar.vue'
 import LiveActivityFeed, { type FeedItem } from '@/components/features/dashboard/LiveActivityFeed.vue'
