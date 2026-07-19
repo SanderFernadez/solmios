@@ -132,6 +132,14 @@ if (typeof document !== 'undefined') {
   })
 }
 
+/**
+ * Rutas donde un 401 significa "no pudiste entrar", no "tu sesión venció":
+ * login y alta pública. Todo lo demás sí es sesión caída.
+ */
+function isPublicAuthPath(path: string): boolean {
+  return /\/(auth\/login|public\/)/.test(path)
+}
+
 async function request<T>(method: string, path: string, body?: unknown, _isRetry = false): Promise<T> {
   // FormData (multipart): el browser setea el boundary; NO forzar Content-Type ni stringificar.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
@@ -145,6 +153,20 @@ async function request<T>(method: string, path: string, body?: unknown, _isRetry
     headers,
     body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
   })
+
+  // Un 401 en las rutas públicas de acceso NO es una sesión vencida: es "no
+  // pudiste entrar". Tratarlo como expiración pisaba el motivo real —el hotel
+  // con la prueba terminada leía "Sesión expirada" en vez de que tenía que
+  // contratar un plan— y encima disparaba un logout de una sesión inexistente.
+  if (res.status === 401 && isPublicAuthPath(path)) {
+    const raw = await res.json().catch(() => null)
+    const errObj = (raw as any)?.error
+    const msg = (typeof errObj === 'object' && errObj?.message) || (raw as any)?.error || (raw as any)?.message || 'No se pudo iniciar sesión'
+    const err = new ApiError(401, msg)
+    // El motivo permite al login ofrecer "ver planes" en vez de un error pelado.
+    ;(err as any).reason = (typeof errObj === 'object' && errObj?.code) || ''
+    throw err
+  }
 
   if (res.status === 401 && !_isRetry) {
     // Si ya estamos refrestando, encolar esta request

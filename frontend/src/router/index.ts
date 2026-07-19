@@ -30,6 +30,13 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      // Alta pública: acá aterriza el "Prueba Gratis" de la landing.
+      path: '/registro',
+      name: 'registro',
+      component: () => import('@/pages/auth/register.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/pages/auth/forgot-password.vue'),
@@ -385,6 +392,13 @@ const router = createRouter({
           name: 'auto-messages',
           component: () => import('@/pages/auto-messages/index.vue'),
           meta: { requiresHotelAdmin: true },
+        },
+        {
+          // Estado de la prueba/suscripción y planes. A esta página apunta el
+          // aviso de "te quedan N días" y el corte por vencimiento.
+          path: 'suscripcion',
+          name: 'suscripcion',
+          component: () => import('@/pages/suscripcion/index.vue'),
         },
         {
           path: 'cerraduras',

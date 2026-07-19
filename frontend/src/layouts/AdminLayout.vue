@@ -148,6 +148,7 @@
 
       <!-- Anuncios internos del sistema (FC-B1) -->
       <AnnouncementBanner />
+      <TrialBanner />
 
       <!-- Page Content -->
       <main class="flex-1 p-6" data-feedback-content>
@@ -167,6 +168,7 @@ import { useRoomStore } from '@/stores/room.store'
 import { useNow } from '@/composables/useNow'
 import { useModulesStore } from '@/stores/modules.store'
 import AppHeader from '@/components/features/core-pms/AppHeader.vue'
+import TrialBanner from '@/components/features/TrialBanner.vue'
 import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanner.vue'
 import OfflineBanner from '@/components/features/core-pms/OfflineBanner.vue'
 import HotelSwitcher from '@/components/features/core-pms/HotelSwitcher.vue'

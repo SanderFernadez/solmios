@@ -71,7 +71,16 @@
               <input v-model="password" type="password" placeholder="••••••••" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
             </div>
 
-            <div v-if="error" class="bg-coral/10 text-coral text-xs font-bold p-3 rounded-xl">{{ error }}</div>
+            <!-- Cuenta bloqueada por la suscripción: no alcanza con el error,
+                 hay que decirle a dónde ir a resolverlo. -->
+            <div v-if="error && needsPlan" class="bg-warning/10 border border-warning/30 p-3 rounded-xl">
+              <div class="text-xs font-bold text-navy mb-2">{{ error }}</div>
+              <router-link
+                to="/registro"
+                class="inline-flex px-3 py-1.5 rounded-lg bg-navy text-white text-[11px] font-bold hover:bg-navy-light transition-colors"
+              >Ver planes</router-link>
+            </div>
+            <div v-else-if="error" class="bg-coral/10 text-coral text-xs font-bold p-3 rounded-xl">{{ error }}</div>
 
             <button type="submit" :disabled="loading" class="w-full h-11 bg-navy text-white font-extrabold text-sm rounded-xl hover:bg-navy-light transition-colors disabled:opacity-50 cursor-pointer">
               {{ loading ? 'Entrando...' : 'Entrar' }}
@@ -135,6 +144,8 @@ const auth = useAuthStore()
 const email = ref('admin@solmios.com')
 const password = ref('demo123')
 const error = ref('')
+/** El corte por suscripción se resuelve contratando, no reintentando la clave. */
+const needsPlan = ref(false)
 const loading = ref(false)
 
 const ROLE_LABELS: Record<string, string> = {
@@ -194,6 +205,7 @@ onMounted(async () => {
 async function handleLogin() {
   loading.value = true
   error.value = ''
+  needsPlan.value = false
   try {
     await auth.login(email.value, password.value)
     const role = auth.userRole
@@ -204,6 +216,7 @@ async function handleLogin() {
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Error al iniciar sesión'
+    needsPlan.value = /prueba|suscripci|plan|suspendida|desactivada/i.test(error.value)
   } finally {
     loading.value = false
   }
