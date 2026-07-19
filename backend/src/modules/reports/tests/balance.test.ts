@@ -105,12 +105,26 @@ describe('BalanceStrategy — devengado como referencia', () => {
       reservations: [{ id: 'r1', totalAmount: 1000 }],
       folios: [{ id: 'f1', reservationId: 'r1' }],
       folioCharges: [
-        { folioId: 'f1', category: 'minibar', amount: 50, quantity: 2 },
+        { folioId: 'f1', category: 'minibar', amount: 50, quantity: 2, createdAt: '2026-07-15' },
         { folioId: 'f1', category: 'payment', kind: 'payment', amount: -300, quantity: 1 },
       ],
     }))
 
     expect(r.facturado).toBe(1100)  // 1000 room + 100 minibar; el pago -300 NO resta
+  })
+
+  it('los extras FUERA del rango [from, to] NO suman al devengado', () => {
+    // BUG FIX: antes extrasRevenue no filtraba por fecha → un balance de julio sumaba extras de
+    // toda la historia del hotel. Ahora se exige createdAt en [from, to].
+    const r = strategy.execute(ctx({
+      reservations: [{ id: 'r1', totalAmount: 1000 }],
+      folios: [{ id: 'f1', reservationId: 'r1' }],
+      folioCharges: [
+        { folioId: 'f1', category: 'minibar', amount: 50, quantity: 2, createdAt: '2026-06-15' }, // antes de from
+        { folioId: 'f1', category: 'spa', amount: 200, quantity: 1, createdAt: '2026-08-10' },     // después de to
+      ],
+    }))
+    expect(r.facturado).toBe(1000) // solo room; ambos extras fuera de rango quedan excluidos
   })
 
   it('A1: una reserva cancelada no suma al facturado', () => {

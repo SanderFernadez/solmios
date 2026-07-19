@@ -12,7 +12,10 @@ export class FacturacionStrategy implements ReportStrategy {
     // El cargo se vincula a la reserva por su folio, NO por c.reservationId (columna que no existe
     // en folio_charges → antes daba undefined y TODOS los extras quedaban fuera del facturado).
     const charges = ctx.folioCharges.filter((c: any) => reservationIds.has(ctx.folioToReservation.get(c.folioId)) && c.kind !== 'payment')
-    const extrasRevenue = charges.filter((c: any) => c.category !== 'room' && c.createdAt >= ctx.from).reduce((s: number, c: any) => s + (c.amount * (c.quantity || 1)), 0)
+    // BUG FIX: el filtro de fecha tenía solo lower bound (>= ctx.from) → extras con fecha POSTERIOR a `to`
+    // se sumaban al reporte. Upper bound inclusivo por día para cerrar la ventana [from, to].
+    const dayOf = (v: any) => String(v || '').slice(0, 10)
+    const extrasRevenue = charges.filter((c: any) => c.category !== 'room' && dayOf(c.createdAt) >= ctx.from && dayOf(c.createdAt) <= ctx.to).reduce((s: number, c: any) => s + (c.amount * (c.quantity || 1)), 0)
     const commissionOTA = ctx.revenueReservations.reduce((s: number, r: any) => s + (r.commissionAmount || 0), 0)
     const taxes = Math.round(roomRevenue * ctx.taxRate)
 

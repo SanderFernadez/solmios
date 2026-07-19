@@ -81,7 +81,7 @@ export async function processStripeWebhook(
             // El bridge no es idempotente (suma al `deposit` de la reserva). Si el cobro ya estaba
             // asentado, este webhook es un reintento y la reserva/folio ya se actualizaron.
             if (!alreadyRecorded) {
-              await applyPaymentBridge(reservationRepo, folioChargeRepo, pr, session, openFolio)
+              await applyPaymentBridge(reservationRepo, folioChargeRepo, pr, session, openFolio, logger)
             }
 
             await repo.update(paymentRequestId, {
@@ -129,13 +129,49 @@ async function findOpenFolio(folioRepo: RepositoryAdapter<any>, reservationId?: 
   return folios.find((f: any) => f.status === 'open') ?? null
 }
 
-/** Bridge: aplicar el pago a la reserva (deposit/pendingAmount/status) + folio (cargo payment). */
+/**
+ * Tolerancia de centavos al comparar un pago contra el saldo (errores de redondeo float).
+ * DEBE ser idéntico al `BALANCE_EPSILON` de `folios/usecases/folio-entries.ts`: el webhook no puede
+ * importar cross-módulo, así que se duplica a propósito. Si los dos se divorcian, un pago aceptado
+ * por el panel puede ser rechazado por el webhook (o viceversa) por un centavo.
+ */
+const BALANCE_EPSILON = 0.01
+
+/**
+ * Suma las líneas del folio y devuelve el saldo pendiente. Espejo de `folio-math.computeTotals`
+ * (no se puede importar cross-módulo). Los pagos tienen `total` negativo, por eso se suman sus
+ * valores absolutos.
+ */
+function computeFolioBalance(charges: any[]): number {
+  const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
+  const cargos = charges.filter((c) => c.kind === 'charge')
+  const pagos = charges.filter((c) => c.kind === 'payment')
+  const chargesTotal = round2(cargos.reduce((s, c) => s + Number(c.total || 0), 0))
+  const paymentsTotal = round2(pagos.reduce((s, c) => s + Math.abs(Number(c.total || 0)), 0))
+  return round2(chargesTotal - paymentsTotal)
+}
+
+/**
+ * Bridge: aplicar el pago a la reserva (deposit/pendingAmount/status) + folio (cargo payment).
+ *
+ * GUARDIÁN DE SALDO: antes de escribir el cargo `kind:'payment'` en el folio, verifica que el monto
+ * no exceda el saldo pendiente. El Checkout de Stripe fija el monto al crear la sesión, pero al
+ * llegar el webhook el folio puede tener pagos parciales previos (efectivo, transferencia) → el
+ * cargo directo dejaba el folio en negativo. NO se puede rutear por `FoliosService.applyPayment`
+ * porque (a) duplica el asiento en `payments` (el webhook ya lo hizo vía `recordStripePayment`) y
+ * (b) exige un `CurrentUser` que no existe en un endpoint público firmado por Stripe. El guardián
+ * se aplica entonces inline, con el mismo `BALANCE_EPSILON` y la misma matemática de
+ * `folio-entries.ts`. Si el pago excede el saldo, se omite el cargo foliar y se loguea para que un
+ * humano reconcilie; la reserva igual recibe el depósito (tiene su propio `Math.max(0,…)` contra
+ * saldo negativo) y el `payments` ya quedó asentado.
+ */
 async function applyPaymentBridge(
   reservationRepo: RepositoryAdapter<any>,
   folioChargeRepo: RepositoryAdapter<any>,
   pr: PaymentRequestDTO,
   session: any,
   openFolio: any | null,
+  logger: Logger,
 ): Promise<void> {
   const amountPaid = amountOf(session, pr)
   const reservationId = session.metadata?.reservationId || pr.reservationId
@@ -157,6 +193,19 @@ async function applyPaymentBridge(
   }
 
   if (openFolio && amountPaid > 0) {
+    // Guardián de saldo: espejo de folios/usecases/folio-entries.ts:77-79.
+    const charges = await folioChargeRepo.findMany({ folioId: openFolio.id })
+    const balance = computeFolioBalance(charges as any[])
+    if (amountPaid > balance + BALANCE_EPSILON) {
+      logger.warn(
+        'Stripe webhook: el cobro excede el saldo del folio, se omite el cargo para no dejarlo negativo',
+        {
+          folioId: openFolio.id, paymentRequestId: pr.id,
+          amountPaid, balance, stripeSessionId: session.id,
+        },
+      )
+      return
+    }
     await folioChargeRepo.create({
       folioId: openFolio.id, hotelId,
       description: `Pago Stripe · Ref ${session.payment_intent || session.id}`,

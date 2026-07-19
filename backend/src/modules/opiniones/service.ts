@@ -55,7 +55,10 @@ export class OpinionesService {
     const limit = Math.min(Math.max(query.limit || 20, 1), 100)
     const offset = (page - 1) * limit
 
-    const cacheKey = `opiniones:list:${hotelId || 'all'}`
+    // BUG FIX: la key omitía page/limit/filtros → la primera query puebla la clave y TODAS las demás
+    // combinaciones (página 2, otro limit, otros filtros) recibían esa misma respuesta por CACHE_TTL.
+    const filterKey = JSON.stringify(filters)
+    const cacheKey = `opiniones:list:${hotelId || 'all'}:p${page}:l${limit}:${filterKey}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as OpinionesPaginated
 

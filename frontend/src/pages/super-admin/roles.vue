@@ -274,7 +274,22 @@ function deselectAll() {
   selectedRole.value.permissions = []
 }
 
-function savePermissions() { /* TODO: persist */ }
+// BUG FIX: savePermissions era `/* TODO: persist */` → el botón "Guardar Cambios" no persistía nada;
+// el admin creía que guardaba y al recargar volvía todo. Ahora llama a RolesService.update con los
+// permisos del rol seleccionado y refleja el resultado en la lista local.
+async function savePermissions() {
+  const role = selectedRole.value
+  if (!role) return
+  try {
+    const { RolesService } = await import('@/services/Roles.service')
+    const updated = await RolesService.update(String(role.id), { permissions: [...role.permissions] })
+    role.permissions = updated.permissions
+    const idx = roles.value.findIndex((r: any) => r.id === role.id)
+    if (idx >= 0) roles.value[idx].permissions = updated.permissions
+  } catch (e) {
+    console.error('savePermissions: no se pudieron guardar los permisos', e)
+  }
+}
 
 function createRole() {
   roles.value.push({

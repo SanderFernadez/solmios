@@ -52,4 +52,7 @@ export const UpdateTemplateSchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const, min: 2 },
   body: { type: 'string' as const },
   category: { type: 'string' as const, enum: ['general','reservation','checkin','checkout','payment','marketing'] },
+  // BUG FIX: faltaba isActive → el toggle "activar/desactivar plantilla" del frontend se descartaba
+  // silenciosamente (validateSchema dropea campos no declarados).
+  isActive: { type: 'number' as const },
 }

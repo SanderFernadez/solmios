@@ -14,9 +14,13 @@ export function facturasReservasConnector(ctx: ConnectorContext): void {
 
       try {
         const reservas = ctx.resolveModule<{ update: (id: string, data: any) => Promise<any> }>('reservas')
-        await reservas.update(factura.reservationId, {
-          notes: `Factura ${factura.invoiceNumber} pagada — $${factura.amount} ${factura.currency}`,
-        } as any)
+        // BUG FIX: antes pisaba `notes` (cada factura pagada borraba cualquier nota previa del
+        // huésped/habitación). Ahora appendea el aviso al final del notes existente.
+        const prev = await (ctx as any).orm?.findById?.('Reservations', factura.reservationId)
+        const prevNotes = String(prev?.notes ?? '').trim()
+        const note = `Factura ${factura.invoiceNumber} pagada — $${factura.amount} ${factura.currency}`
+        const notes = prevNotes ? `${prevNotes}\n${note}` : note
+        await reservas.update(factura.reservationId, { notes } as any)
       } catch {
         // Conector es best-effort: no falla el módulo principal si la reserva no existe
       }

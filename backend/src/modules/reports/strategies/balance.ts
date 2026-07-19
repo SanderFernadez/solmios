@@ -31,8 +31,11 @@ export class BalanceStrategy implements ReportStrategy {
     // no trae reservationId).
     const roomRevenue = ctx.revenueReservations.reduce((s: number, r: any) => s + (r.totalAmount || 0), 0)
     const reservationIds = new Set(ctx.revenueReservations.map((r: any) => r.id))
+    // BUG FIX: extrasRevenue no filtraba por fecha → un balance de un mes sumaba TODOS los extras del
+    // hotel desde el origen. Filtro [from, to] inclusivo por día (igual que facturacion.ts).
+    const dayOf = (v: any) => String(v || '').slice(0, 10)
     const extrasRevenue = ctx.folioCharges
-      .filter((c: any) => reservationIds.has(ctx.folioToReservation.get(c.folioId)) && c.category !== 'room' && c.kind !== 'payment')
+      .filter((c: any) => reservationIds.has(ctx.folioToReservation.get(c.folioId)) && c.category !== 'room' && c.kind !== 'payment' && dayOf(c.createdAt) >= ctx.from && dayOf(c.createdAt) <= ctx.to)
       .reduce((s: number, c: any) => s + Number(c.amount || 0) * Number(c.quantity || 1), 0)
     const facturado = roomRevenue + extrasRevenue
 

@@ -25,6 +25,12 @@ export class StaffAuthService {
       throw new AuthError('Credenciales incorrectas')
     }
 
+    // 1.5 BUG FIX: loginByPin no verificaba user.active → un usuario desactivado (active=0) seguía
+    // entrando por PIN desde la app móvil. El login por email sí lo verifica (usuarios/service.ts).
+    if (!user.active) {
+      throw new AuthError('Cuenta desactivada. Contacta al administrador')
+    }
+
     // 2. Verificar si la cuenta está bloqueada
     if (user.pinLockedUntil) {
       const lockedUntil = new Date(user.pinLockedUntil).getTime()

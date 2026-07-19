@@ -8,6 +8,17 @@ import { inDateRange } from '../../../shared/usecases/date-range'
 /** Tope de horas por registro manual. Un rango mal cargado infla la nómina (bug: 1000h). */
 const MAX_HOURS_PER_RECORD = 24
 
+/** Minutos estándar del turno, normalizando cruce de medianoche y restando el break.
+ *  BUG FIX: antes `(eh*60+em) - (sh*60+sm) - break` daba negativo para turnos 22:00→06:00
+ *  (recepción, seguridad) → standardHours negativo → overtime se disparaba 10-20× y sobrepagaba. */
+function standardMinutesFor(schedule: { startTime: string; endTime: string; breakMinutes: number }): number {
+  const [sh, sm] = schedule.startTime.split(':').map(Number)
+  const [eh, em] = schedule.endTime.split(':').map(Number)
+  let minutes = (eh * 60 + em) - (sh * 60 + sm)
+  if (minutes < 0) minutes += 24 * 60 // el turno cruza medianoche (ej. 22:00→06:00)
+  return minutes - schedule.breakMinutes
+}
+
 export class ClockUseCase {
   constructor(
     private readonly recordRepo: RepositoryAdapter<AttendanceRecordDTO>,
@@ -51,7 +62,13 @@ export class ClockUseCase {
 
     const now = new Date().toISOString()
     const clockIn = new Date(record.clockIn!)
-    const hoursWorked = (new Date(now).getTime() - clockIn.getTime()) / 3600000
+    // BUG FIX: el descanso fichado (breakStart/breakEnd) nunca se descontaba del total → cada break
+    // se pagaba como hora trabajada, inflando la nómina sistemáticamente. Ahora se resta del tiempo.
+    let breakMs = 0
+    if (record.breakStart && record.breakEnd) {
+      breakMs = new Date(record.breakEnd).getTime() - new Date(record.breakStart).getTime()
+    }
+    const hoursWorked = (new Date(now).getTime() - clockIn.getTime() - breakMs) / 3600000
 
     const config = await this.configRepo.findOne({ hotelId })
     const schedule = await this.getEmployeeSchedule(employeeId, hotelId)
@@ -59,10 +76,7 @@ export class ClockUseCase {
     let overtimeHours = 0
     let finalStatus = 'present'
     if (schedule && config?.overtimeEnabled) {
-      const [sh, sm] = schedule.startTime.split(':').map(Number)
-      const [eh, em] = schedule.endTime.split(':').map(Number)
-      const standardMinutes = (eh * 60 + em) - (sh * 60 + sm) - schedule.breakMinutes
-      const standardHours = standardMinutes / 60
+      const standardHours = standardMinutesFor(schedule) / 60
       const otThreshold = schedule.overtimeThresholdMinutes / 60
       overtimeHours = Math.max(0, hoursWorked - standardHours - otThreshold)
       if (hoursWorked < standardHours - 0.5) finalStatus = 'early_departure'
@@ -121,10 +135,8 @@ export class ClockUseCase {
       const config = await this.configRepo.findOne({ hotelId })
       const schedule = await this.getEmployeeSchedule(employeeId, hotelId)
       if (schedule && config?.overtimeEnabled) {
-        const [sh, sm] = schedule.startTime.split(':').map(Number)
-        const [eh, em] = schedule.endTime.split(':').map(Number)
-        const standardMinutes = (eh * 60 + em) - (sh * 60 + sm) - schedule.breakMinutes
-        const standardHours = standardMinutes / 60
+        // BUG FIX: standardMinutes no normalizaba cruce de medianoche → turno nocturno daba overtime gigante.
+        const standardHours = standardMinutesFor(schedule) / 60
         const otThreshold = schedule.overtimeThresholdMinutes / 60
         overtimeHours = Math.max(0, totalHours - standardHours - otThreshold)
       }

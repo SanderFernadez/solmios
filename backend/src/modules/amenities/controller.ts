@@ -38,11 +38,29 @@ export class AmenitiesController {
     return { status: 200, body: { success: true, count: await this.service.updateHotelAmenities(id, amenities) } }
   }
 
+  // BUG FIX (IDOR cross-tenant): listRoom/updateRoom usaban req.params.roomId directo, sin verificar
+  // que la habitación pertenezca al hotel del token. Un merchant con settings:edit podía pasar un
+  // roomId ajeno y leer/escribir amenities de otro hotel. Ahora se valida ownership contra hotelOf().
+  private async assertRoomInHotel(roomId: string, hotelId: string): Promise<boolean> {
+    if (!roomId) return false
+    const rows = await (this.service as any).orm?.findMany?.('Rooms', { id: roomId }) || []
+    const room = rows?.[0]
+    return !!room && room.hotelId === hotelId
+  }
+
   async listRoom(req: HttpRequest) {
+    const hotelId = await this.hotelOf(req)
+    if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
+    const ok = await this.assertRoomInHotel(req.params.roomId, hotelId)
+    if (!ok) return { status: 404, body: { error: 'Habitación no encontrada' } }
     return { status: 200, body: { data: await this.service.listRoomAmenities(req.params.roomId) } }
   }
 
   async updateRoom(req: HttpRequest) {
+    const hotelId = await this.hotelOf(req)
+    if (!hotelId) return { status: 400, body: { error: 'hotelId requerido' } }
+    const ok = await this.assertRoomInHotel(req.params.roomId, hotelId)
+    if (!ok) return { status: 404, body: { error: 'Habitación no encontrada' } }
     const { amenities } = req.body as any
     if (!Array.isArray(amenities)) return { status: 400, body: { error: 'amenities debe ser un array' } }
     return { status: 200, body: { success: true, count: await this.service.updateRoomAmenities(req.params.roomId, amenities) } }

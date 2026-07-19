@@ -153,7 +153,21 @@ export class ReportQueries {
 
     // Saldos, no movimientos del día: la deuda viva y las garantías retenidas.
     const activas = res.filter((r: any) => r.status !== 'cancelled')
-    const pagosPendientes = activas.reduce((s: number, r: any) => s + Math.max(0, (r.totalAmount || 0) - (r.deposit || 0)), 0)
+    // BUG FIX: antes pagosPendientes solo restaba `deposit` e ignoraba los payments ya cobrados →
+    // inflaba la "cuenta por cobrar" del cierre (reserva $100 con $80 cobrados reportaba $100). Ahora
+    // resta deposit + payments completados. Mismo criterio que sumCharged (status 'completed' & type
+    // 'charge'). Deposit y payments son independientes (mem: depósitos = ledger desconectado).
+    const chargedByReservation = new Map<string, number>()
+    for (const p of payments) {
+      if (p.status !== 'completed' || p.type !== 'charge') continue
+      const rid = p.reservationId
+      if (!rid) continue
+      chargedByReservation.set(rid, (chargedByReservation.get(rid) || 0) + Number(p.amount || 0))
+    }
+    const pagosPendientes = activas.reduce((s: number, r: any) => {
+      const paid = (r.deposit || 0) + (chargedByReservation.get(r.id) || 0)
+      return s + Math.max(0, (r.totalAmount || 0) - paid)
+    }, 0)
     const depositos = res.filter((r: any) => r.status === 'pending').reduce((s: number, r: any) => s + (r.deposit || 0), 0)
 
     return {

@@ -49,7 +49,10 @@ export class MarketingController {
 
   async listTemplates(req: HttpRequest) { const h = this.hotelIdFor(req); return { status: 200, body: { data: await this.service.listTemplates(h) } } }
   async createTemplate(req: HttpRequest) {
-    const d = req.body as CreateWhatsappTemplateDTO; d.hotelId = this.hotelIdFor(req, d.hotelId)
+    // BUG FIX: casteo crudo `req.body as DTO` sin validateSchema → persistía body/category sin
+    // sanitizar ni enum-check. Ahora valida con CreateTemplateSchema (igual que updateTemplate).
+    const d = validateSchema(CreateTemplateSchema, req.body) as any
+    d.hotelId = this.hotelIdFor(req, d.hotelId)
     if (!d.name) return { status: 400, body: { error: 'name requerido' } }
     return { status: 201, body: await this.service.createTemplate(d) }
   }

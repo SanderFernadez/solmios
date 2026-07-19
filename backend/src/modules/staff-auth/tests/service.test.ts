@@ -26,7 +26,7 @@ describe('StaffAuthService v2', () => {
   it('loginByPin returns token for valid PIN', async () => {
     mockUserRepo.findMany.mockResolvedValue([{
       id: 'u1', name: 'María', phone: '8091234567', role: 'camarera',
-      hotelId: 'h1', pinEnabled: 1, pinHash: realPinHash, pinAttempts: 0,
+      hotelId: 'h1', active: 1, pinEnabled: 1, pinHash: realPinHash, pinAttempts: 0,
     }])
 
     const result = await service.loginByPin({ phone: '8091234567', pin: '123456' })
@@ -37,7 +37,7 @@ describe('StaffAuthService v2', () => {
   it('loginByPin throws on wrong PIN', async () => {
     mockUserRepo.findMany.mockResolvedValue([{
       id: 'u1', name: 'Ana', phone: '8091234567', role: 'camarera',
-      hotelId: 'h1', pinEnabled: 1, pinHash: realPinHash, pinAttempts: 0,
+      hotelId: 'h1', active: 1, pinEnabled: 1, pinHash: realPinHash, pinAttempts: 0,
     }])
 
     await expect(service.loginByPin({ phone: '8091234567', pin: '000000' }))
@@ -47,7 +47,7 @@ describe('StaffAuthService v2', () => {
   it('loginByPin locks account after 5 failed attempts', async () => {
     mockUserRepo.findMany.mockResolvedValue([{
       id: 'u1', name: 'Ana', phone: '8091234567', role: 'camarera',
-      hotelId: 'h1', pinEnabled: 1, pinHash: realPinHash, pinAttempts: 4,
+      hotelId: 'h1', active: 1, pinEnabled: 1, pinHash: realPinHash, pinAttempts: 4,
     }])
 
     await expect(service.loginByPin({ phone: '8091234567', pin: '000000' }))
@@ -57,7 +57,7 @@ describe('StaffAuthService v2', () => {
   it('loginByPin rejects when PIN not enabled', async () => {
     mockUserRepo.findMany.mockResolvedValue([{
       id: 'u1', name: 'Ana', phone: '8091234567', role: 'camarera',
-      hotelId: 'h1', pinEnabled: 0, pinHash: null,
+      hotelId: 'h1', active: 1, pinEnabled: 0, pinHash: null,
     }])
 
     await expect(service.loginByPin({ phone: '8091234567', pin: '123456' }))
@@ -68,5 +68,16 @@ describe('StaffAuthService v2', () => {
     mockUserRepo.findMany.mockResolvedValue([])
     await expect(service.loginByPin({ phone: '00000000', pin: '123456' }))
       .rejects.toThrow('Credenciales incorrectas')
+  })
+
+  it('loginByPin rejects when account is deactivated (active=0)', async () => {
+    // BUG FIX: antes loginByPin no verificaba user.active → un usuario desactivado seguía entrando
+    // por PIN desde la app móvil. El login por email sí lo verifica.
+    mockUserRepo.findMany.mockResolvedValue([{
+      id: 'u1', name: 'Eva', phone: '8091234567', role: 'camarera',
+      hotelId: 'h1', active: 0, pinEnabled: 1, pinHash: realPinHash, pinAttempts: 0,
+    }])
+    await expect(service.loginByPin({ phone: '8091234567', pin: '123456' }))
+      .rejects.toThrow('Cuenta desactivada')
   })
 })

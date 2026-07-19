@@ -56,7 +56,10 @@ export class AnunciosService {
     const limit = Math.min(Math.max(query.limit || 20, 1), 100)
     const offset = (page - 1) * limit
 
-    const cacheKey = `anuncios:list:${hotelId || 'all'}`
+    // BUG FIX: la key omitía page/limit/filtros → la primera query puebla la clave y todas las demás
+    // combinaciones recibían esa misma respuesta por CACHE_TTL (mismo bug que opiniones).
+    const filterKey = JSON.stringify(filters)
+    const cacheKey = `anuncios:list:${hotelId || 'all'}:p${page}:l${limit}:${filterKey}`
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as AnunciosPaginated
 

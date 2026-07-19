@@ -116,6 +116,52 @@ describe('FacturasService', () => {
       const result = await service.pay('i1', { method: 'card' }, user)
       expect(result.status).toBe('paid')
     })
+
+    it('rechaza un sobrepago (monto mayor que el saldo): no invoca paymentPort ni repo.update', async () => {
+      // Defensa a nivel servicio: si alguien mueve el guardián fuera de payInvoice, este test
+      // verifica que el rechazo burbujee sin efectos secundarios (ni cobro ni update).
+      const inv = { id: 'inv-1', hotelId: 'h1', amount: 100, amountPaid: 0, taxes: 0, status: 'pending' } as FacturasDTO
+      const paymentCalls: any[] = []
+      const paymentPort = {
+        recordPayment: async (input: any) => { paymentCalls.push(input); return { id: 'pay-1', status: 'completed' } },
+      }
+      let updateCalled = false
+      const repo = makeRepo({
+        findById: async () => inv,
+        update: async (id: string, data: any) => { updateCalled = true; return { id, ...data } as FacturasDTO },
+      })
+      const service = new FacturasService(repo, emptyRepo(), enrichDeps, userRepo, log, silentCache, mockAuth, emptyRepo())
+      service.setPaymentDeps(paymentPort)
+
+      await expect(
+        service.pay('inv-1', { method: 'cash', amount: 150 }, user),
+      ).rejects.toThrow(/excede el saldo pendiente/)
+      // Sin side effects: el cobro nunca se asienta ni se actualiza la factura.
+      expect(paymentCalls).toHaveLength(0)
+      expect(updateCalled).toBe(false)
+    })
+
+    it('rechaza un sobrepago sobre saldo parcial: el mensaje referencia el saldo restante', async () => {
+      // Factura de 100 con 30 ya pagados → saldo 70. Cobrar 80 excede el saldo pendiente.
+      const inv = { id: 'inv-2', hotelId: 'h1', amount: 100, amountPaid: 30, taxes: 0, status: 'pending' } as FacturasDTO
+      const paymentCalls: any[] = []
+      const paymentPort = {
+        recordPayment: async (input: any) => { paymentCalls.push(input); return { id: 'pay-1', status: 'completed' } },
+      }
+      let updateCalled = false
+      const repo = makeRepo({
+        findById: async () => inv,
+        update: async (id: string, data: any) => { updateCalled = true; return { id, ...data } as FacturasDTO },
+      })
+      const service = new FacturasService(repo, emptyRepo(), enrichDeps, userRepo, log, silentCache, mockAuth, emptyRepo())
+      service.setPaymentDeps(paymentPort)
+
+      await expect(
+        service.pay('inv-2', { method: 'card', amount: 80 }, user),
+      ).rejects.toThrow(/excede el saldo pendiente \(\$70\)/)
+      expect(paymentCalls).toHaveLength(0)
+      expect(updateCalled).toBe(false)
+    })
   })
 
   describe('update', () => {
