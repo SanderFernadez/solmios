@@ -317,6 +317,42 @@ const connectResult = ref('')
 const showIframe = ref(false)
 const iframeUrl = ref('')
 
+// ── Conectar un sistema propio (Open Channel) ──────────────────────────────
+const openChannelModal = ref(false)
+const openChannelLoading = ref(false)
+const openChannelCreds = ref<OpenChannelCredentials | null>(null)
+const copiedField = ref('')
+
+const openChannelFields = computed(() => {
+  if (!openChannelCreds.value) return []
+  const c = openChannelCreds.value
+  return [
+    { key: 'endpoint', label: 'Endpoint', value: c.endpoint },
+    { key: 'apiKey', label: 'API Key', value: c.apiKey },
+    { key: 'hotelCode', label: 'Hotel Code', value: c.hotelCode },
+  ]
+})
+
+async function openOpenChannelCreds() {
+  openChannelModal.value = true
+  if (openChannelCreds.value) return
+  openChannelLoading.value = true
+  try {
+    openChannelCreds.value = await ChannelService.openChannelCredentials()
+  } catch {
+    toast.error('No se pudieron generar las credenciales')
+    openChannelModal.value = false
+  } finally {
+    openChannelLoading.value = false
+  }
+}
+
+function copyField(key: string, value: string) {
+  navigator.clipboard.writeText(value)
+  copiedField.value = key
+  setTimeout(() => { if (copiedField.value === key) copiedField.value = '' }, 2000)
+}
+
 // Ensures every catalog entry (from platform config or the default list) carries a
 // brand logo + color, falling back to an initial badge when the channel is unknown.
 function normalizeCatalog(list: any[]): any[] {
