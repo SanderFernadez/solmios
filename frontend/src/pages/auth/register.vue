@@ -71,19 +71,26 @@
             <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
               Tu nombre <span class="text-danger">*</span>
             </label>
-            <input v-model="form.ownerName" type="text" required autocomplete="name" :maxlength="LIMITS.ownerName"
-              class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
+            <div class="relative">
+              <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_USER"></span>
+              <input v-model="form.ownerName" type="text" required autocomplete="name" :maxlength="LIMITS.ownerName"
+              class="w-full pl-10 pr-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
               placeholder="Ana Pérez">
+            </div>
           </div>
           <div>
             <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
               Email <span class="text-danger">*</span>
             </label>
-            <input v-model="form.email" type="email" required autocomplete="email" :maxlength="LIMITS.email"
-              class="w-full px-4 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-navy"
-              :class="emailTouched && !emailValid ? 'border-danger' : 'border-border'"
-              @blur="emailTouched = true"
-              placeholder="vos@tuhotel.com">
+            <div class="relative">
+              <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                :class="emailTouched && !emailValid ? 'text-danger' : 'text-text-muted'" v-html="ICON_MAIL"></span>
+              <input v-model="form.email" type="email" required autocomplete="email" :maxlength="LIMITS.email"
+                class="w-full pl-10 pr-4 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-navy"
+                :class="emailTouched && !emailValid ? 'border-danger' : 'border-border'"
+                @blur="emailTouched = true"
+                placeholder="vos@tuhotel.com">
+            </div>
             <p v-if="emailTouched && !emailValid" class="text-[11px] text-danger mt-1">
               Escribí un email válido, con dominio completo (ej: ana@tuhotel.com).
             </p>
@@ -94,9 +101,10 @@
               Contraseña <span class="text-danger">*</span>
             </label>
             <div class="relative">
+              <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_LOCK"></span>
               <input v-model="form.password" :type="showPassword ? 'text' : 'password'" required
                 autocomplete="new-password" :maxlength="PASSWORD_MAX"
-                class="w-full px-4 py-2.5 pr-16 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
+                class="w-full pl-10 pr-16 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
                 placeholder="Elegí una contraseña segura">
               <button type="button" @click="showPassword = !showPassword"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-text-muted hover:text-navy cursor-pointer">
@@ -139,9 +147,12 @@
             <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
               Nombre del hotel <span class="text-danger">*</span>
             </label>
-            <input v-model="form.hotelName" type="text" required :minlength="2" :maxlength="LIMITS.hotelName"
-              class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
+            <div class="relative">
+              <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_BUILDING"></span>
+              <input v-model="form.hotelName" type="text" required :minlength="2" :maxlength="LIMITS.hotelName"
+              class="w-full pl-10 pr-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
               placeholder="Hotel Boutique Palma">
+            </div>
           </div>
           <div>
             <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">País</label>
@@ -150,15 +161,16 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Ciudad</label>
+              <div class="relative">
+              <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_PIN"></span>
               <input v-model="form.address" type="text" :maxlength="LIMITS.address"
-                class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
+                class="w-full pl-10 pr-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
                 placeholder="Ciudad donde está el hotel">
+            </div>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Teléfono</label>
-              <input v-model="form.phone" type="tel" :maxlength="LIMITS.phone"
-                class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
-                placeholder="+1 809 555 0100">
+              <PhoneInput v-model="form.phone" :country="form.country" :maxlength="LIMITS.phone" />
             </div>
           </div>
           <div v-if="plans.length">
@@ -207,6 +219,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { SignupService, type PublicPlan } from '@/services/Signup.service'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
+import PhoneInput from '@/components/ui/PhoneInput.vue'
 import { COUNTRIES } from '@/data/locales'
 import { usePasswordStrength, PASSWORD_MAX } from '@/composables/usePasswordStrength'
 
@@ -225,6 +238,11 @@ const LIMITS = {
   phone: 40,
 } as const
 
+const ICON_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.25a7.5 7.5 0 0 1 15 0"/></svg>'
+const ICON_MAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="m3 8 8.25 5.5a1.5 1.5 0 0 0 1.5 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2Z"/></svg>'
+const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75M6 10.5h12a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 18 21H6a1.5 1.5 0 0 1-1.5-1.5V12A1.5 1.5 0 0 1 6 10.5Z"/></svg>'
+const ICON_BUILDING = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/></svg>'
+const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>'
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'
 const ICON_DOT = '<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><circle cx="12" cy="12" r="4"/></svg>'
 

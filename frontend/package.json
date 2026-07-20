@@ -25,6 +25,7 @@
     "@vueup/vue-quill": "^1.5.5",
     "html2canvas": "^1.4.1",
     "leaflet": "^1.9.4",
+    "libphonenumber-js": "^1.13.9",
     "pinia": "^3.0.4",
     "qrcode.vue": "^3.10.0",
     "simple-icons": "^16.25.0",
