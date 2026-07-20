@@ -49,6 +49,7 @@ export class StaffAuthController {
     }
 
     await this.service.resetPin(userId, adminId)
-    return { status: 200, body: { error: 'PIN reseteado correctamente' } }
+    // Éxito → `message`, no `error`: un cliente que trate `error` como fallo se confundía.
+    return { status: 200, body: { message: 'PIN reseteado correctamente' } }
   }
 }
