@@ -1,5 +1,4 @@
-// service.ts — Facade del módulo housekeeping.
-// CRUD base acá; operaciones de tiempos/fotos/stats delegadas a usecases/ (D2/D5).
+// service.ts — Facade del módulo housekeeping. CRUD base acá; tiempos/fotos/stats en usecases/ (D2/D5).
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, AuthError, ValidationError } from 'arckode-framework'
 import type { StorageService, FileUpload } from 'arckode-framework/modules/storage'
@@ -151,6 +150,7 @@ export class HousekeepingService {
   async approve(id: string, user: { id: string; role?: string; hotelId?: string }, note: string | undefined, rating: number) {
     const result = await this.approveUc.approve(id, user, note, rating)
     await this.sockets.onHousekeepingUpdated?.(result)
+    await this.sockets.onTaskInspected?.(result)   // aprobada → el connector libera la habitación (#392)
     await this.invalidateCache(result.hotelId)
     return result
   }

@@ -41,6 +41,12 @@ export interface HousekeepingSockets {
    * tarea de limpieza y mantenimiento nunca se enteraba.
    */
   onIssueReported?: (issue: IssueReport) => Promise<void>
+  /**
+   * El supervisor aprobó la limpieza (tarea → inspected). Lo cablea
+   * `connectors/housekeeping-habitaciones`, que devuelve la habitación a 'available' si sigue en
+   * 'cleaning'. Sin este hook la habitación quedaba trabada en 'cleaning' tras el checkout (#392).
+   */
+  onTaskInspected?: (data: HousekeepingDTO) => Promise<void>
 }
 
 /**

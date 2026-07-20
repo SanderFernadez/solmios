@@ -109,16 +109,6 @@
               <input v-model="form.address" type="text" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('address')" data-field="address" @blur="touchField('address')">
               <p v-if="errorOf('address')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('address') }}</p>
             </div>
-            <div>
-              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Provincia</label>
-              <input v-model="form.province" type="text" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('province')" data-field="province" @blur="touchField('province')">
-              <p v-if="errorOf('province')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('province') }}</p>
-            </div>
-            <div>
-              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Municipio</label>
-              <input v-model="form.municipality" type="text" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('municipality')" data-field="municipality" @blur="touchField('municipality')">
-              <p v-if="errorOf('municipality')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('municipality') }}</p>
-            </div>
           </div>
         </SectionCard>
 
@@ -318,8 +308,22 @@
           </button>
         </div>
         <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-          <h3 class="font-extrabold text-navy mb-4">Dirección Postal</h3>
-          <div class="space-y-3">
+          <h3 class="font-extrabold text-navy mb-1">Provincia, Municipio y Código Postal</h3>
+          <p class="text-[11px] text-text-muted mb-4">
+            <template v-if="mapsInteractive">Se completan solos al mover el pin — revisalos y corregí si hace falta.</template>
+            <template v-else>Sin mapa interactivo (falta la key de Google) se completan a mano.</template>
+          </p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Provincia</label>
+              <input v-model="form.province" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('province')" data-field="province" @blur="touchField('province')">
+              <p v-if="errorOf('province')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('province') }}</p>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Municipio</label>
+              <input v-model="form.municipality" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('municipality')" data-field="municipality" @blur="touchField('municipality')">
+              <p v-if="errorOf('municipality')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('municipality') }}</p>
+            </div>
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Localidad</label>
               <input v-model="form.locality" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('locality')" data-field="locality" @blur="touchField('locality')">
@@ -1332,6 +1336,7 @@ function applyMapsPaste() {
   mapsPaste.value = ''
   syncMarkerFromForm()
   toast.success('Ubicación actualizada desde Google Maps')
+  reverseGeocode(parsed.lat, parsed.lng)
 }
 
 // ─── Mapa interactivo (sólo si hay API key configurada en Admin → Integraciones) ─────
@@ -1339,10 +1344,48 @@ const mapEl = ref<HTMLElement | null>(null)
 const mapsInteractive = ref(false)
 let gmap: google.maps.Map | null = null
 let gmarker: google.maps.Marker | null = null
+let geocoder: google.maps.Geocoder | null = null
 
 function setCoords(lat: number, lng: number) {
   form.value.latitude = Number(lat.toFixed(6))
   form.value.longitude = Number(lng.toFixed(6))
+}
+
+/**
+ * Reverse geocoding: dado un punto, le pregunta a Google qué dirección hay ahí y completa
+ * Provincia/Municipio/Localidad/Código Postal. Requiere la API "Geocoding API" habilitada en el
+ * mismo proyecto de Google Cloud que la key de Maps JavaScript (Admin → Integraciones).
+ *
+ * Los tipos de `address_components` de Google no calzan 1:1 con la división administrativa
+ * dominicana en todos los casos — se completa como MEJOR ESFUERZO y el campo queda editable:
+ * si el hotel conoce el nombre correcto, lo corrige a mano después.
+ */
+async function reverseGeocode(lat: number, lng: number) {
+  const maps = await loadGoogleMaps()
+  if (!maps) return                      // sin key → no hay Geocoder, se completa a mano
+  geocoder ??= new maps.Geocoder()
+  try {
+    const { results } = await geocoder.geocode({ location: { lat, lng } })
+    const result = results?.[0]
+    if (!result) return
+    const componentOf = (type: string) =>
+      result.address_components.find((c) => c.types.includes(type))?.long_name || ''
+
+    const locality = componentOf('locality') || componentOf('sublocality') || componentOf('administrative_area_level_2')
+    const postalCode = componentOf('postal_code')
+    const province = componentOf('administrative_area_level_1')
+    const municipality = componentOf('administrative_area_level_2')
+
+    let filled = 0
+    if (locality) { form.value.locality = locality; filled++ }
+    if (postalCode) { form.value.postalCode = postalCode; filled++ }
+    if (province) { form.value.province = province; filled++ }
+    if (municipality) { form.value.municipality = municipality; filled++ }
+    if (filled > 0) toast.success('Dirección completada automáticamente — revisá los campos')
+  } catch {
+    // Sin resultados para ese punto (agua, zona sin datos) o "Geocoding API" no habilitada
+    // todavía en Cloud Console: se deja como estaba, no rompe el flujo de fijar coordenadas.
+  }
 }
 
 async function initInteractiveMap() {
@@ -1356,12 +1399,16 @@ async function initInteractiveMap() {
   gmarker = new maps.Marker({ position: center, map: gmap, draggable: true })
   gmarker.addListener('dragend', () => {
     const p = gmarker!.getPosition()
-    if (p) setCoords(p.lat(), p.lng())
+    if (p) {
+      setCoords(p.lat(), p.lng())
+      reverseGeocode(p.lat(), p.lng())
+    }
   })
   gmap.addListener('click', (e: google.maps.MapMouseEvent) => {
     if (!e.latLng) return
     setCoords(e.latLng.lat(), e.latLng.lng())
     gmarker!.setPosition(e.latLng)
+    reverseGeocode(e.latLng.lat(), e.latLng.lng())
   })
 }
 
@@ -1393,6 +1440,7 @@ function useMyLocation() {
       form.value.longitude = pos.coords.longitude
       syncMarkerFromForm()
       toast.success('Ubicación actualizada')
+      reverseGeocode(pos.coords.latitude, pos.coords.longitude)
     },
     () => toast.error('No se pudo obtener tu ubicación'),
   )

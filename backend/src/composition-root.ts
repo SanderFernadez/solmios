@@ -224,6 +224,7 @@ import { messagesPushtokensConnector } from './connectors/messages-pushtokens'
 import { pushtokensUsuariosConnector } from './connectors/pushtokens-usuarios'
 import { housekeepingMantenimientoConnector } from './connectors/housekeeping-mantenimiento'
 import { housekeepingNotificacionesConnector } from './connectors/housekeeping-notificaciones'
+import { housekeepingHabitacionesConnector } from './connectors/housekeeping-habitaciones'
 import { empleadosHousekeepingConnector } from './connectors/empleados-housekeeping'
 import { empleadosAttendanceConnector } from './connectors/empleados-attendance'
 import { usuariosSubscriptionsConnector } from './connectors/usuarios-subscriptions'
@@ -317,6 +318,9 @@ system.addConnector('pushtokens-usuarios', pushtokensUsuariosConnector)
 system.addConnector('housekeeping-mantenimiento', housekeepingMantenimientoConnector)
 // Asignar una habitación le avisa a la persona asignada.
 system.addConnector('housekeeping-notificaciones', housekeepingNotificacionesConnector)
+// Aprobar la limpieza devuelve la habitación a 'available' (#392): sin esto quedaba trabada en
+// 'cleaning' desde el checkout.
+system.addConnector('housekeeping-habitaciones', housekeepingHabitacionesConnector)
 // El motor de evaluación de desempeño (#321) lee productividad/calidad de housekeeping y
 // puntualidad/asistencia de attendance — datos reales, sin importar esos módulos.
 system.addConnector('empleados-housekeeping', empleadosHousekeepingConnector)
