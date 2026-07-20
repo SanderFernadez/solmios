@@ -28,7 +28,7 @@
 
     <!-- Error -->
     <div v-else-if="error" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) flex flex-col items-center justify-center py-16 text-center">
-      <span class="w-10 h-10 mb-3 text-red opacity-60" v-html="ICON_WRENCH"></span>
+      <span class="w-10 h-10 mb-3 text-danger opacity-60" v-html="ICON_WRENCH"></span>
       <p class="text-sm font-bold text-navy">{{ error }}</p>
       <button @click="load" class="mt-3 text-xs font-bold text-cyan hover:underline cursor-pointer">Reintentar</button>
     </div>
@@ -66,9 +66,22 @@
             <p class="text-xs text-text-secondary mt-0.5 truncate">
               {{ p.specialty || 'Sin rubro' }}<template v-if="p.phone"> · {{ p.phone }}</template>
             </p>
-            <div v-if="p.phone" class="flex items-center gap-1.5 mt-1.5">
-              <a :href="`https://wa.me/${String(p.phone).replace(/\D/g, '')}`" target="_blank" rel="noopener" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald/10 text-emerald hover:bg-emerald/20">WhatsApp</a>
-              <a :href="`tel:${p.phone}`" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-navy/10 text-navy hover:bg-navy/20">Llamar</a>
+            <div v-if="p.phone" class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <a
+                v-if="waHref(p.phone)"
+                :href="waHref(p.phone)!"
+                target="_blank"
+                rel="noopener"
+                class="text-[10px] font-bold px-2 py-1 rounded-lg bg-success/10 text-success hover:bg-success/20"
+              >WhatsApp</a>
+              <button
+                v-else
+                type="button"
+                @click="openEdit(p)"
+                title="WhatsApp necesita el número con código de país (ej: +1 809 555 0000). Tocá para completarlo."
+                class="text-[10px] font-bold px-2 py-1 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 cursor-pointer"
+              >Falta código de país</button>
+              <a :href="telHref(p.phone)" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-navy/10 text-navy hover:bg-navy/20">Llamar</a>
             </div>
           </div>
         </div>
@@ -88,13 +101,13 @@
           </div>
           <div v-if="p.email" class="flex items-center gap-2 text-text-secondary">
             <span class="w-3.5 h-3.5 shrink-0 text-text-muted" v-html="ICON_MAIL"></span>
-            <span class="truncate">{{ p.email }}</span>
+            <a :href="`mailto:${p.email}`" class="truncate hover:text-navy hover:underline">{{ p.email }}</a>
           </div>
         </div>
 
         <div class="flex items-center gap-4 justify-end pt-3 mt-auto border-t border-border">
           <button @click="openEdit(p)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
-          <button @click="askDelete(p)" class="text-[11px] font-bold text-text-secondary hover:text-red transition-colors cursor-pointer">Eliminar</button>
+          <button @click="askDelete(p)" class="text-[11px] font-bold text-text-secondary hover:text-danger transition-colors cursor-pointer">Eliminar</button>
         </div>
       </div>
     </div>
@@ -114,8 +127,8 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="col-span-2">
                 <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Nombre *</label>
-                <input v-model="form.name" maxlength="120" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" :class="nameError ? 'border-red' : ''" placeholder="Ej: Juan el plomero">
-                <p v-if="nameError" class="text-[10px] text-red mt-1">{{ nameError }}</p>
+                <input v-model="form.name" maxlength="120" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" :class="nameError ? 'border-danger' : ''" placeholder="Ej: Juan el plomero">
+                <p v-if="nameError" class="text-[10px] text-danger mt-1">{{ nameError }}</p>
               </div>
 
               <div>
@@ -124,7 +137,8 @@
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Teléfono</label>
-                <input v-model="form.phone" maxlength="40" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="809-555-0000">
+                <input v-model="form.phone" maxlength="40" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="+1 809 555 0000">
+                <p class="text-[10px] text-text-muted mt-1">Con código de país (+1, +34…) para poder abrir WhatsApp.</p>
               </div>
 
               <div>
@@ -198,7 +212,7 @@
           </div>
           <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border">
             <button @click="deleteTarget = null" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
-            <button @click="confirmDelete" :disabled="deleting" class="px-5 py-2.5 bg-red text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <button @click="confirmDelete" :disabled="deleting" class="px-5 py-2.5 bg-danger text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {{ deleting ? 'Eliminando...' : 'Eliminar' }}
             </button>
           </div>
@@ -287,6 +301,31 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * Link de WhatsApp, o null si el número no es resoluble.
+ *
+ * wa.me EXIGE el número en formato internacional completo. Un '809-555-0000' cargado sin prefijo
+ * armaba 'wa.me/8095550000', que WhatsApp no resuelve: el botón existía y no contactaba a nadie.
+ *
+ * No se asume ningún prefijo: el sistema no guarda código telefónico en ningún lado (`hotels.country`
+ * es el NOMBRE del país en español, no un dial code, y no existe countryCode/phonePrefix). Adivinar
+ * el prefijo mandaría a un contacto equivocado, que es peor que no ofrecer el link. Por eso: sólo se
+ * construye el link cuando el número ya viene internacionalizado con '+'.
+ */
+function waHref(phone?: string): string | null {
+  const raw = String(phone ?? '').trim()
+  if (!raw.startsWith('+')) return null
+  const digits = raw.slice(1).replace(/\D/g, '')
+  return digits ? `https://wa.me/${digits}` : null
+}
+
+/** Link de marcado. `tel:` sí acepta números locales, así que se conserva el '+' y se limpia el resto. */
+function telHref(phone?: string): string {
+  const raw = String(phone ?? '').trim()
+  const digits = raw.replace(/\D/g, '')
+  return `tel:${raw.startsWith('+') ? '+' : ''}${digits}`
 }
 
 function initials(name: string): string {

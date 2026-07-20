@@ -20,7 +20,7 @@
         class="rounded-lg bg-cyan text-navy text-sm font-extrabold px-5 py-2 border-2 border-cyan hover:bg-cyan-light transition-all cursor-pointer disabled:opacity-50">
         {{ saving ? 'Guardando…' : 'Guardar' }}
       </button>
-      <button @click="pushToChannex" :disabled="pushing || !selectedChannel" title="Enviar los precios/cierres/estadías a los canales vía Channex"
+      <button @click="pushToChannex" :disabled="pushing || !selectedChannel" title="Enviar los precios, cierres y estadías a los canales conectados"
         class="rounded-lg bg-teal text-white text-sm font-extrabold px-5 py-2 border-2 border-teal hover:bg-teal-light transition-all cursor-pointer disabled:opacity-50">
         {{ pushing ? 'Enviando…' : 'Enviar a canales' }}
       </button>
@@ -91,12 +91,22 @@
       </div>
 
     <!-- Modal: editar fechas/colores de las temporadas del hotel -->
-    <AppModal :open="showSeasonsModal" title="Temporadas del hotel" subtitle="Definí el rango de fechas de cada temporada" size="lg" @close="showSeasonsModal = false">
+    <AppModal :open="showSeasonsModal" title="Temporadas del hotel" subtitle="Las fechas son opcionales: si no las ponés, marcá los días en el planning" size="lg" @close="showSeasonsModal = false">
+      <p class="mb-3 rounded-xl bg-surface px-3 py-2.5 text-[11px] leading-relaxed text-text-secondary">
+        Una temporada puede no tener fechas fijas (por ejemplo la especial: Semana Santa, Navidad).
+        En ese caso cargá el precio igual y marcá los días en <span class="font-bold text-navy">Planning → Asignación de temporadas</span>:
+        esos días son los que se publican en los canales.
+      </p>
       <div class="space-y-3">
         <div v-for="(s, i) in seasonsDraft" :key="i" class="rounded-xl border-2 border-navy p-3">
           <div class="flex items-center gap-2 mb-3">
             <span class="w-4 h-4 rounded-full border border-navy/20 shrink-0" :style="{ background: s.color }"></span>
             <span class="flex-1 min-w-0 text-sm font-black text-navy truncate">{{ s.label || s.name }}</span>
+            <span
+              v-if="!s.startDate || !s.endDate"
+              class="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-warning"
+              title="Sin fechas fijas: se publica según los días marcados en Planning → Asignación de temporadas"
+            >Por días</span>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -125,7 +135,7 @@ import { ref, onMounted } from 'vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import { HotelService, type RoomRate } from '@/services/Hotel.service'
-import { ChannelService } from '@/services/Channel.service'
+import { ChannelService, type PushRatesResult } from '@/services/Channel.service'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps<{
@@ -234,15 +244,43 @@ async function save() {
   } catch { toast.error('Error al guardar tarifas') } finally { saving.value = false }
 }
 
-// Empuja las tarifas por temporada a Channex (precio calculado por rango de fecha + cierre + estadía).
+// Empuja las tarifas por temporada a los canales (precio por rango de fecha + cierre + estadía).
 const pushing = ref(false)
+
+/**
+ * Motivos legibles de las tarifas que no se pudieron publicar. Devuelve '' si no hubo ninguno.
+ * Nombra las temporadas/tipos concretos: un contador anónimo no le dice al usuario qué ir a arreglar.
+ */
+function pushSkipReasons(r: PushRatesResult): string {
+  const parts: string[] = []
+  if (r.seasonsWithoutDates?.length) {
+    parts.push(`${r.seasonsWithoutDates.join(', ')} no tiene fechas ni días asignados en el planning`)
+  }
+  if (r.expiredSeasons?.length) {
+    parts.push(`${r.expiredSeasons.join(', ')} ya terminó`)
+  }
+  if (r.roomTypesWithoutRatePlan?.length) {
+    parts.push(`sin tarifa publicable para ${r.roomTypesWithoutRatePlan.join(', ')} (falta sincronizar)`)
+  }
+  return parts.join(' · ')
+}
 async function pushToChannex() {
   pushing.value = true
   try {
     const r = await ChannelService.pushRates(selectedChannel.value)
-    if (r.pushed > 0) toast.success(`${r.pushed} tarifa(s) enviada(s) a Channex${r.skipped ? ` · ${r.skipped} omitida(s)` : ''}`)
-    else toast.warning('Nada que enviar: revisá que las temporadas tengan fechas y el canal esté sincronizado')
-  } catch { toast.error('No se pudo enviar a Channex') } finally { pushing.value = false }
+    const reasons = pushSkipReasons(r)
+    if (r.pushed > 0) {
+      // Éxito parcial: se avisa igual, con nombre y apellido de lo que quedó afuera.
+      if (reasons) toast.warning(`${r.pushed} tarifa(s) enviada(s). No se pudieron enviar ${r.skipped}: ${reasons}`)
+      else toast.success(`${r.pushed} tarifa(s) enviada(s) a Canales`)
+    } else if (r.notConnected) {
+      toast.warning('El hotel todavía no está sincronizado con los canales: sincronizá la propiedad antes de enviar tarifas')
+    } else if (reasons) {
+      toast.warning(`No se envió ninguna tarifa. ${reasons}`)
+    } else {
+      toast.warning('Nada que enviar: no hay tarifas cargadas para este canal')
+    }
+  } catch { toast.error('No se pudo enviar a Canales') } finally { pushing.value = false }
 }
 
 // Modo de tarificación (config PMS por hotel): por habitación o por persona/ocupación.

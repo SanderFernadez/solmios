@@ -4,7 +4,7 @@ import type {
   CanalesDTO, CreateCanalesDTO, UpdateCanalesDTO, CanalesQuery, CanalesPaginated,
   ChannelsResultDTO, RoomTypeSummary, SyncResultDTO,
   TestConnectionResultDTO, MappingDetailDTO, GroupDTO, OTAChannelCreateDTO, OTAChannelResultDTO,
-  OTAChannelMeta, BookingRevisionDTO, BookingIngestionResult, CurrentUser,
+  OTAChannelMeta, BookingRevisionDTO, BookingIngestionResult, CurrentUser, PushRatesResultDTO,
 } from './types'
 import type { CanalesSockets } from './sockets'
 import { ChannexUseCase } from './usecases/channex'
@@ -166,8 +166,8 @@ export class CanalesService {
   async getSyncLog(hotelId?: string): Promise<any[]> { return getSyncLogFromTable(this.syncLogRepo, hotelId) }
 
   /** Etapa 2 — empuja las tarifas por temporada del hotel a Channex (rate + cerrar ventas + min/max stay). */
-  async pushSeasonalRates(hotelId: string, channel?: string): Promise<{ pushed: number; skipped: number }> {
-    return pushSeasonalRatesToChannex({ getConfig: (h) => this.getConfig(h), findMany: (m, q) => this.queries.findMany(m, q), pushSeasonalRates: (c, r, s) => this.channex.pushSeasonalRates(c, r, s) }, hotelId, channel)
+  async pushSeasonalRates(hotelId: string, channel?: string): Promise<PushRatesResultDTO> {
+    return pushSeasonalRatesToChannex({ getConfig: (h) => this.getConfig(h), findMany: (m, q) => this.queries.findMany(m, q), pushSeasonalRates: (c, r, s, a) => this.channex.pushSeasonalRates(c, r, s, a) }, hotelId, channel)
   }
 
   // ─── CRUD delegado a usecase ─────────────────────────────────────────

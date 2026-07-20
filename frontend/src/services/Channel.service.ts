@@ -23,6 +23,20 @@ export interface ChannelStatus {
   channexPropertyId: string | null
 }
 
+/**
+ * Resultado del push de tarifas. Las listas nombran QUÉ bloqueó la publicación: sin esto el
+ * usuario veía un 200 y la tarifa nunca llegaba a la OTA.
+ */
+export interface PushRatesResult {
+  pushed: number
+  skipped: number
+  notConnected: boolean
+  /** Temporadas sin fechas propias NI días asignados en el planning. */
+  seasonsWithoutDates: string[]
+  expiredSeasons: string[]
+  roomTypesWithoutRatePlan: string[]
+}
+
 export interface TestConnectionResult {
   success: boolean
   message: string
@@ -91,7 +105,7 @@ export const ChannelService = {
   },
 
   // Etapa 2: empuja las tarifas por temporada (precio/cierre/estadía) a Channex.
-  async pushRates(channel?: string): Promise<{ pushed: number; skipped: number }> {
+  async pushRates(channel?: string): Promise<PushRatesResult> {
     return http.post('/channels/push-rates', channel ? { channel } : {})
   },
 

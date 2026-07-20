@@ -4,7 +4,7 @@
 // El service decide qué persistir. Así el service se mantiene < 200 líneas.
 
 import type { Logger } from 'arckode-framework'
-import type { CanalesDTO, ChannelDTO, ChannelsResultDTO, RoomTypeSummary, SyncResultDTO, TestConnectionDTO, TestConnectionResultDTO, MappingDetailDTO, OTAChannelCreateDTO, OTAChannelResultDTO, GroupDTO, OTAChannelMeta, BookingRevisionDTO, BookingIngestionResult } from '../types'
+import type { CanalesDTO, ChannelDTO, ChannelsResultDTO, RoomTypeSummary, SyncResultDTO, TestConnectionDTO, TestConnectionResultDTO, MappingDetailDTO, OTAChannelCreateDTO, OTAChannelResultDTO, GroupDTO, OTAChannelMeta, BookingRevisionDTO, BookingIngestionResult, PushRatesResultDTO, DateRange } from '../types'
 
 const STAGING_BASE = process.env.CHANNEX_BASE_URL || 'https://staging.channex.io/api/v1'
 const PROD_BASE = 'https://api.channex.io/api/v1'
@@ -216,9 +216,11 @@ export class ChannexUseCase {
   async pushSeasonalRates(
     cfg: CanalesDTO | undefined,
     rates: Array<{ roomType: string; season: string; basePrice: number; percentage: number; closed?: number; minStay?: number; maxStay?: number }>,
-    seasons: Array<{ name: string; startDate?: string; endDate?: string }>,
-  ): Promise<{ pushed: number; skipped: number }> {
-    if (!cfg?.channexPropertyId) return { pushed: 0, skipped: rates.length }
+    seasons: Array<{ name: string; label?: string; startDate?: string; endDate?: string }>,
+    assignedRanges: Map<string, DateRange[]> = new Map(),
+  ): Promise<PushRatesResultDTO> {
+    const empty = (): PushRatesResultDTO => ({ pushed: 0, skipped: 0, notConnected: false, seasonsWithoutDates: [], expiredSeasons: [], roomTypesWithoutRatePlan: [] })
+    if (!cfg?.channexPropertyId) return { ...empty(), skipped: rates.length, notConnected: true }
     const key = this.resolveKey(cfg)
     const pid = cfg.channexPropertyId
     const rts = ((await this.channexReq(key, 'GET', `/room_types?filter[property_id]=${pid}`)).data as any)?.data || []
@@ -233,25 +235,52 @@ export class ChannexUseCase {
     const today = new Date().toISOString().slice(0, 10)
     const values: any[] = []
     let skipped = 0
+    // Se acumulan los MOTIVOS, no solo el contador: un skip mudo hacía que la tarifa nunca
+    // llegara a la OTA sin que nadie se enterara. Set = un nombre por temporada aunque falle
+    // en varios room types.
+    const seasonsWithoutDates = new Set<string>()
+    const expiredSeasons = new Set<string>()
+    const roomTypesWithoutRatePlan = new Set<string>()
+    // Nombre visible de la temporada: el label si lo tiene, si no el name técnico.
+    const seasonLabel = (name: string): string => seasonByName.get(name)?.label || name
     for (const r of rates) {
       const s = seasonByName.get(r.season)
-      if (!s?.startDate || !s?.endDate) { skipped++; continue }        // temporada sin fechas → no se puede empujar
-      const from = s.startDate < today ? today : s.startDate           // nunca fechas pasadas
-      if (s.endDate < from) { skipped++; continue }                    // temporada ya terminó
+      // Dos orígenes de rango, en orden de prioridad:
+      //  1) las fechas propias de la temporada (catálogo Seasons), si las tiene;
+      //  2) los días pintados en el planning (season_assignments), agrupados en tramos contiguos.
+      // Esto permite que 'especial' se publique sin obligar al usuario a inventarle un rango fijo.
+      const ranges: DateRange[] = (s?.startDate && s?.endDate)
+        ? [{ startDate: s.startDate, endDate: s.endDate }]
+        : (assignedRanges.get(r.season) || [])
+      // Ni fechas ni días asignados → imposible publicar. Es el único caso que hay que avisar.
+      if (ranges.length === 0) { skipped++; seasonsWithoutDates.add(seasonLabel(r.season)); continue }
       const rtId = rtIdByTitle.get(String(r.roomType).toLowerCase())
       const rpId = rtId ? rpIdByRt.get(rtId) : undefined
-      if (!rpId) { skipped++; continue }                               // room type sin rate plan en Channex
-      const rate = Math.round((r.basePrice || 0) * (1 + (r.percentage || 0) / 100) * 100)  // centavos
-      const entry: any = { property_id: pid, rate_plan_id: rpId, date_from: from, date_to: s.endDate, rate, stop_sell: !!r.closed }
-      if (Number(r.minStay) > 0) entry.min_stay_arrival = Number(r.minStay)
-      if (Number(r.maxStay) > 0) entry.max_stay = Number(r.maxStay)
-      values.push(entry)
+      if (!rpId) { skipped++; roomTypesWithoutRatePlan.add(String(r.roomType)); continue }   // room type sin rate plan en Channex
+      const rate = Math.round((r.basePrice || 0) * (1 + (r.percentage || 0) / 100) * 100)    // centavos
+      let queued = 0
+      for (const rg of ranges) {
+        const from = rg.startDate < today ? today : rg.startDate   // nunca fechas pasadas
+        if (rg.endDate < from) continue                            // tramo ya terminó
+        const entry: any = { property_id: pid, rate_plan_id: rpId, date_from: from, date_to: rg.endDate, rate, stop_sell: !!r.closed }
+        if (Number(r.minStay) > 0) entry.min_stay_arrival = Number(r.minStay)
+        if (Number(r.maxStay) > 0) entry.max_stay = Number(r.maxStay)
+        values.push(entry)
+        queued++
+      }
+      // Todos los tramos quedaron en el pasado: la tarifa existe pero no hay futuro que publicar.
+      if (queued === 0) { skipped++; expiredSeasons.add(seasonLabel(r.season)) }
     }
-    if (values.length === 0) return { pushed: 0, skipped }
+    const reasons = {
+      seasonsWithoutDates: [...seasonsWithoutDates],
+      expiredSeasons: [...expiredSeasons],
+      roomTypesWithoutRatePlan: [...roomTypesWithoutRatePlan],
+    }
+    if (values.length === 0) return { ...empty(), skipped, ...reasons }
     const res = await this.channexReq(key, 'POST', '/restrictions', { values })
     if (!res.ok) throw new Error('Channex rechazó las tarifas: ' + JSON.stringify((res.data as any)?.errors || '').slice(0, 200))
-    this.logger.info('Tarifas por temporada empujadas a Channex', { pushed: values.length, skipped })
-    return { pushed: values.length, skipped }
+    this.logger.info('Tarifas por temporada empujadas a Channex', { pushed: values.length, skipped, ...reasons })
+    return { ...empty(), pushed: values.length, skipped, ...reasons }
   }
 
   // ─── Push de availability (reservas/checkin/checkout/bloqueos) ───────

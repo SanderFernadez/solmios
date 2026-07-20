@@ -78,6 +78,34 @@ export interface SyncResultDTO {
   ratePlans: number
 }
 
+/** Rango de fechas inclusivo (YYYY-MM-DD), tal como Channex espera date_from/date_to. */
+export interface DateRange {
+  startDate: string
+  endDate: string
+}
+
+/**
+ * Resultado del push de tarifas por temporada. `skipped` sin desglose era mudo: el hotel
+ * cargaba un precio, el push respondía 200 y la tarifa nunca llegaba a la OTA. Las listas
+ * nombran QUÉ hay que ir a arreglar (temporada sin fechas, temporada vencida, room type
+ * sin rate plan) para que el aviso sea accionable y no un contador anónimo.
+ */
+export interface PushRatesResultDTO {
+  pushed: number
+  skipped: number
+  /** El hotel todavía no tiene propiedad sincronizada en Channex: no hay dónde empujar. */
+  notConnected: boolean
+  /**
+   * Temporadas impublicables: sin fechas propias Y sin días asignados en el planning.
+   * Una temporada sin fechas pero pintada en el planning NO entra acá — se publica con esos rangos.
+   */
+  seasonsWithoutDates: string[]
+  /** Temporadas cuyo rango ya terminó — no se empujan fechas pasadas. */
+  expiredSeasons: string[]
+  /** Tipos de habitación sin rate plan en Channex (falta sincronizar la propiedad). */
+  roomTypesWithoutRatePlan: string[]
+}
+
 // ─── Channel API (conexión OTA) ────────────────────────
 export interface TestConnectionDTO {
   channel: string
