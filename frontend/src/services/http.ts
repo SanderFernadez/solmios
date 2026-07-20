@@ -226,6 +226,25 @@ async function request<T>(method: string, path: string, body?: unknown, _isRetry
 
   const text = await res.text()
 
+/**
+ * Un VALIDATION_ERROR del framework trae `message: "Validation error"` y el
+ * detalle real en `details.fields` ({ password: ["Minimum 10 characters"] }).
+ * Mostrar solo el `message` deja al usuario con "Validation error" y sin saber
+ * qué campo corregir, así que se le pega el detalle.
+ *
+ * Se ignora el detalle cuando el mensaje ya es específico: los usecases del
+ * proyecto responden en español y esos textos ganan.
+ */
+function withFieldDetail(message: string, errObj: unknown): string {
+  const fields = (errObj as { details?: { fields?: Record<string, string[]> } })?.details?.fields
+  if (!fields || typeof fields !== 'object') return message
+  if (!/^validation error$/i.test(String(message).trim())) return message
+
+  const parts = Object.entries(fields)
+    .map(([field, msgs]) => `${field}: ${(Array.isArray(msgs) ? msgs : [String(msgs)]).join(', ')}`)
+  return parts.length ? parts.join(' · ') : message
+}
+
   // Detect HTML response (backend error page / redirect)
   if (text && text.trimStart().startsWith('<')) {
     throw new ApiError(res.status, `El servidor respondió HTML en vez de JSON (HTTP ${res.status}). Verificá que el backend esté corriendo en el puerto correcto.`)
@@ -237,7 +256,7 @@ async function request<T>(method: string, path: string, body?: unknown, _isRetry
     // El framework envuelve errores en { success, error }; server.ts usa { error }
     const errObj = raw?.error ?? raw
     const msg = (typeof errObj === 'object' && errObj?.message) || raw?.error || raw?.message || `Error ${res.status}`
-    throw new ApiError(res.status, msg)
+    throw new ApiError(res.status, withFieldDetail(msg, errObj))
   }
 
   // Envelope del framework arckode: { success, data, meta, error }

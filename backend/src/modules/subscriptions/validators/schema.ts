@@ -1,5 +1,5 @@
 import type { ValidationRule } from 'arckode-framework'
-import { PASSWORD_MIN, PASSWORD_MAX } from '../../../shared/password-policy'
+import { PASSWORD_MAX } from '../../../shared/password-policy'
 import { EMAIL_MAX } from '../../../shared/email'
 
 // Los `max` de acá son el tope duro de entrada: recortan antes de tocar la base
@@ -9,11 +9,27 @@ import { EMAIL_MAX } from '../../../shared/email'
 // La fuerza de la contraseña NO se valida acá: `min` solo mide largo y el
 // mensaje de error del framework es genérico. La revisa el usecase con
 // shared/password-policy, que devuelve los motivos concretos en español.
+// Nota sobre los mensajes: el validador del framework usa `rule.message` solo
+// para `pattern` y `email`; para `min`/`max` emite un texto fijo en inglés
+// ("Minimum 10 characters"). Como la UI es en español, donde hace falta un
+// mensaje legible se expresa el mínimo como `pattern` con su `message`, o se
+// deja la comprobación al usecase, que responde en español.
 export const SignupSchema: Record<string, ValidationRule> = {
-  hotelName: { type: 'string' as const, required: true, min: 2, max: 120 },
+  hotelName: {
+    type: 'string' as const, required: true, max: 120,
+    pattern: /^[\s\S]{2,}$/,
+    message: 'El nombre del hotel debe tener al menos 2 caracteres',
+  },
   // `email` y no `string`: como string, "a@" pasaba la validación.
-  email: { type: 'email' as const, required: true, max: EMAIL_MAX },
-  password: { type: 'string' as const, required: true, min: PASSWORD_MIN, max: PASSWORD_MAX },
+  email: {
+    type: 'email' as const, required: true, max: EMAIL_MAX,
+    message: 'Escribí un email válido, con dominio completo',
+  },
+  // Sin `min`: la longitud la valida shared/password-policy en el usecase, que
+  // devuelve TODOS los motivos en español ("Debe incluir una letra mayúscula")
+  // en vez del "Minimum 10 characters" genérico. `max` sí queda acá: es el tope
+  // defensivo contra hashear una contraseña enorme, y tiene que cortar antes.
+  password: { type: 'string' as const, required: true, max: PASSWORD_MAX },
   ownerName: { type: 'string' as const, max: 120 },
   phone: { type: 'string' as const, max: 40 },
   // `country` DEBE estar declarado acá: validateSchema devuelve únicamente los
