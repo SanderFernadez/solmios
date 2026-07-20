@@ -8,13 +8,14 @@
 // Acá se crean las cuatro cosas juntas: hotel + dueño + roles + prueba.
 import { ValidationError } from 'arckode-framework'
 import type { RepositoryAdapter } from 'arckode-framework'
+import { passwordIssues } from '../../../shared/password-policy'
+import { isValidEmail } from '../../../shared/email'
 import { DEFAULT_ROLE_PERMISSIONS } from '../../../shared/permissions'
 
 /** Días de prueba gratis. Es la promesa de la landing: si cambia, cambia acá. */
 export const TRIAL_DAYS = 7
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
-const MIN_PASSWORD = 8
 
 export interface SignupInput {
   hotelName: string
@@ -53,10 +54,14 @@ export class SignupUseCase {
     const hotelName = String(input.hotelName ?? '').trim()
 
     if (!hotelName) throw new ValidationError('El nombre del hotel es obligatorio')
-    if (!email || !email.includes('@')) throw new ValidationError('El email no es válido')
-    if (!input.password || input.password.length < MIN_PASSWORD) {
-      throw new ValidationError(`La contraseña debe tener al menos ${MIN_PASSWORD} caracteres`)
-    }
+    if (!isValidEmail(email)) throw new ValidationError('El email no es válido')
+
+    // La política vive en shared/password-policy: el alta y el cambio de
+    // contraseña tienen que exigir lo mismo, o la más floja define la real.
+    const issues = passwordIssues(input.password ?? '', { email, name: hotelName })
+    // Se nombra el campo: "Debe tener al menos 10 caracteres" a secas no dice
+    // cuál de los campos del formulario está mal.
+    if (issues.length) throw new ValidationError(`La contraseña no es segura: ${issues.join('. ')}`)
 
     // El email es la llave con la que después inicia sesión: si ya existe, el
     // alta no puede seguir o quedarían dos cuentas peleando por el mismo login.

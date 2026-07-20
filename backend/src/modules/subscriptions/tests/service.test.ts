@@ -73,7 +73,7 @@ describe('SubscriptionsService.signup', () => {
   it('crea la cuenta y devuelve cuándo termina la prueba', async () => {
     const svc = setup()
     const res = await svc.signup({
-      hotelName: 'Hotel Nuevo', email: 'nuevo@ejemplo.com', password: 'clave12345',
+      hotelName: 'Hotel Nuevo', email: 'nuevo@ejemplo.com', password: 'Clave12345',
     })
     expect(res.hotelId).toBeTruthy()
     expect(res.userId).toBeTruthy()
