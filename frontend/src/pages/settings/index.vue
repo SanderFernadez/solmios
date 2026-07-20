@@ -45,13 +45,18 @@
       </button>
     </div>
 
-    <!-- Tabs -->
-    <div class="flex gap-2 mb-6 overflow-x-auto">
-      <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value"
-        class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer whitespace-nowrap"
-        :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
-        {{ tab.label }}
-      </button>
+    <!-- Tabs agrupados: administrativo vs. configuraciones e integraciones -->
+    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-8">
+      <div v-for="group in tabGroups" :key="group.label" class="min-w-0 lg:shrink">
+        <p class="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-text-muted">{{ group.label }}</p>
+        <div class="flex gap-2 overflow-x-auto pb-1">
+          <button v-for="tab in group.tabs" :key="tab.value" @click="activeTab = tab.value"
+            class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer whitespace-nowrap"
+            :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
+            {{ tab.label }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- ========== HOTEL ========== -->
@@ -901,21 +906,39 @@ const activeTab = ref('hotel' as string)
 const route = useRoute()
 onMounted(() => {
   const t = route.query.tab
-  if (typeof t === 'string' && tabs.some(tab => tab.value === t)) activeTab.value = t
+  if (typeof t === 'string' && allTabs.value.some(tab => tab.value === t)) activeTab.value = t
 })
 const saving = ref(false)
 const loading = ref(true)
 
-const tabs = [
-  { value: 'hotel' as string, label: 'Hotel' },
-  { value: 'location' as string, label: 'Ubicación' },
-  { value: 'amenities' as string, label: 'Amenities' },
-  { value: 'rates' as string, label: 'Temporadas y Tarifas' },
-  { value: 'conditions' as string, label: 'Condiciones' },
-  { value: 'description' as string, label: 'Descripción' },
-  { value: 'integrations' as string, label: 'Integraciones' },
-  { value: 'emergency' as string, label: 'Emergencias' },
+type SettingsTab = { value: string; label: string }
+type SettingsTabGroup = { label: string; tabs: SettingsTab[] }
+
+// Dos grupos de configuración (feedback #139):
+// - Administrativo: identidad del hotel + políticas comerciales/fiscales.
+// - Configuraciones e integraciones: catálogos configurables + conexiones con terceros.
+const tabGroups: SettingsTabGroup[] = [
+  {
+    label: 'Config. administrativo',
+    tabs: [
+      { value: 'hotel', label: 'Hotel' },
+      { value: 'location', label: 'Ubicación' },
+      { value: 'description', label: 'Descripción' },
+      { value: 'conditions', label: 'Condiciones' },
+      { value: 'rates', label: 'Temporadas y Tarifas' },
+      { value: 'emergency', label: 'Emergencias' },
+    ],
+  },
+  {
+    label: 'Configuraciones e integraciones',
+    tabs: [
+      { value: 'amenities', label: 'Amenities' },
+      { value: 'integrations', label: 'Integraciones' },
+    ],
+  },
 ]
+
+const allTabs = computed<SettingsTab[]>(() => tabGroups.flatMap(g => g.tabs))
 
 type HotelForm = Partial<HotelFull> & { cancellationType?: string; freeCancellation?: boolean }
 
