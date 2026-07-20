@@ -69,13 +69,13 @@
         <form v-if="step === 1" @submit.prevent="goToStep2" class="space-y-4">
           <div>
             <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
-              Tu nombre <span class="text-danger">*</span>
+              Nombre y apellido <span class="text-danger">*</span>
             </label>
             <div class="relative">
               <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_USER"></span>
               <input v-model="form.ownerName" type="text" required autocomplete="name" :maxlength="LIMITS.ownerName"
               class="w-full pl-10 pr-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
-              placeholder="Ana Pérez">
+              placeholder="Ana Pérez García">
             </div>
           </div>
           <div>
@@ -104,11 +104,13 @@
               <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_LOCK"></span>
               <input v-model="form.password" :type="showPassword ? 'text' : 'password'" required
                 autocomplete="new-password" :maxlength="PASSWORD_MAX"
-                class="w-full pl-10 pr-16 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
+                class="w-full pl-10 pr-11 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
                 placeholder="Elegí una contraseña segura">
               <button type="button" @click="showPassword = !showPassword"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-text-muted hover:text-navy cursor-pointer">
-                {{ showPassword ? 'Ocultar' : 'Ver' }}
+                :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                :title="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted hover:text-navy cursor-pointer"
+                v-html="showPassword ? ICON_EYE_OFF : ICON_EYE">
               </button>
             </div>
 
@@ -243,6 +245,8 @@ const ICON_MAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75M6 10.5h12a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 18 21H6a1.5 1.5 0 0 1-1.5-1.5V12A1.5 1.5 0 0 1 6 10.5Z"/></svg>'
 const ICON_BUILDING = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/></svg>'
 const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>'
+const ICON_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
+const ICON_EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>'
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'
 const ICON_DOT = '<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><circle cx="12" cy="12" r="4"/></svg>'
 

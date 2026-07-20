@@ -4,7 +4,7 @@ import { describe, it, expect } from 'bun:test'
 import { OnboardingUseCase } from '../usecases/onboarding'
 import type { RepositoryAdapter } from 'arckode-framework'
 
-function setup(opts: { rooms?: number; users?: number; rates?: number; hotel?: any } = {}) {
+function setup(opts: { rooms?: number; users?: number; rates?: number; hotel?: any; channels?: any[] } = {}) {
   const list = (n = 0) => Array.from({ length: n }, (_, i) => ({ id: `x${i}` }))
   const repo = (rows: any[]): RepositoryAdapter<any> => ({
     findMany: async () => rows,
@@ -16,6 +16,7 @@ function setup(opts: { rooms?: number; users?: number; rates?: number; hotel?: a
     usersRepo: repo(list(opts.users ?? 1)), // el dueño siempre existe
     ratesRepo: repo(list(opts.rates)),
     hotelsRepo: repo([]),
+    channelsRepo: repo(opts.channels ?? []),
   })
 }
 
@@ -52,5 +53,66 @@ describe('OnboardingUseCase', () => {
   it('los datos del hotel se dan por hechos con teléfono o dirección', async () => {
     const st = await setup({ hotel: { address: 'Santo Domingo' } }).status('h1')
     expect(st.steps.find(s => s.key === 'hotel')!.done).toBe(true)
+  })
+})
+
+describe('OnboardingUseCase — conectar canales', () => {
+  it('incluye el paso de canales: es el valor central del producto', async () => {
+    const st = await setup().status('h1')
+    const ch = st.steps.find(s => s.key === 'channels')
+    expect(ch).toBeDefined()
+    expect(ch!.done).toBe(false)
+  })
+
+  it('se marca hecho solo con una propiedad asignada, no con la fila vacía', async () => {
+    // La fila de channel_config se crea al entrar a la vista de Canales, sin
+    // haber conectado nada: contarla como "conectado" haría desaparecer el paso
+    // justo cuando todavía falta hacerlo.
+    const vacio = await setup({ channels: [{ id: 'c1', hotelId: 'h1', channexPropertyId: '' }] }).status('h1')
+    expect(vacio.steps.find(s => s.key === 'channels')!.done).toBe(false)
+
+    const conectado = await setup({ channels: [{ id: 'c1', hotelId: 'h1', channexPropertyId: 'prop-123' }] }).status('h1')
+    expect(conectado.steps.find(s => s.key === 'channels')!.done).toBe(true)
+  })
+
+  it('no bloquea el alta: conectar canales es opcional', async () => {
+    const st = await setup({ rooms: 3, hotel: { phone: '809', address: 'SD' } }).status('h1')
+    expect(st.steps.find(s => s.key === 'channels')!.required).toBe(false)
+    expect(st.completed).toBe(true)
+  })
+})
+
+describe('OnboardingUseCase — la guía tiene que explicar', () => {
+  it('cada paso dice cómo se hace y qué se pierde si falta', async () => {
+    // El bug original: la guía mostraba una línea y un botón "Empezar" que
+    // dejaba al usuario en una pantalla vacía sin saber qué apretar.
+    const st = await setup().status('h1')
+    for (const step of st.steps) {
+      expect(step.how.length).toBeGreaterThan(40)
+      expect(step.impact.length).toBeGreaterThan(20)
+      expect(step.cta).toBeTruthy()
+      expect(step.cta).not.toBe('Empezar')  // el botón nombra la acción
+    }
+  })
+
+  it('todos los pasos apuntan a rutas del panel que existen', async () => {
+    // "Definí tus tarifas" mandaba a /panel/pricing, que no existe: el botón
+    // sacaba al usuario del panel.
+    const EXISTENTES = [
+      '/panel/rooms', '/panel/settings', '/panel/channel-manager', '/panel/rrhh/team',
+    ]
+    const st = await setup().status('h1')
+    for (const step of st.steps) {
+      const base = step.route.split('?')[0]!
+      expect(EXISTENTES).toContain(base)
+    }
+  })
+
+  it('no nombra al proveedor del channel manager: es white-label', async () => {
+    // En el panel del hotel todo es "Canales/OTAs"; el proveedor solo se ve en
+    // el panel de administración de la plataforma.
+    const st = await setup().status('h1')
+    const texto = JSON.stringify(st.steps).toLowerCase()
+    expect(texto).not.toContain('channex')
   })
 })

@@ -4,8 +4,15 @@ import { http } from './http'
 export interface OnboardingStep {
   key: string
   title: string
+  /** Para qué sirve el paso, en una línea. */
   description: string
+  /** Cómo se hace: qué botón apretar y qué datos se piden. */
+  how: string
+  /** Qué no va a poder hacer el hotel si saltea el paso. */
+  impact: string
   route: string
+  /** Texto del botón. Opcional: cae a "Empezar" si el backend no lo manda. */
+  cta?: string
   done: boolean
   required: boolean
   count?: number

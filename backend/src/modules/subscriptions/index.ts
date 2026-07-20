@@ -33,8 +33,13 @@ export function SubscriptionsModule() {
         new OrmRepository<any>(orm, 'Roles'),
         new OrmRepository<any>(orm, 'Plans'),
         new OrmRepository<any>(orm, 'Rooms'),
-        undefined, // tarifas: el módulo de pricing define su propio modelo
+        // `RoomRates` es el modelo compartido de tarifas (shared/models.ts). Iba
+        // en `undefined`, así que el paso "Definí tus tarifas" de la guía de
+        // primeros pasos NUNCA se marcaba como hecho, por más tarifas cargadas.
+        new OrmRepository<any>(orm, 'RoomRates'),
         log,
+        // `Canales` = channel_config: dice si el hotel ya conectó sus OTAs.
+        new OrmRepository<any>(orm, 'Canales'),
       )
       const controller = new SubscriptionsController(service, log)
 

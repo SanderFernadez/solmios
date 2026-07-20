@@ -18,12 +18,13 @@ export class SubscriptionsService {
     roomsRepo: RepositoryAdapter<any>,
     ratesRepo: RepositoryAdapter<any> | undefined,
     private readonly logger: Logger,
+    channelsRepo?: RepositoryAdapter<any>,
   ) {
     this.signupUc = new SignupUseCase({
       hotelsRepo, usersRepo, rolesRepo, subscriptionsRepo, hashPassword,
     })
     this.accessUc = new SubscriptionAccess(subscriptionsRepo, hotelsRepo)
-    this.onboardingUc = new OnboardingUseCase({ roomsRepo, usersRepo, ratesRepo, hotelsRepo })
+    this.onboardingUc = new OnboardingUseCase({ roomsRepo, usersRepo, ratesRepo, hotelsRepo, channelsRepo })
   }
 
   signup(input: SignupInput): Promise<SignupResult> {
