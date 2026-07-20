@@ -1,11 +1,31 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import { hotelIdOfUserLegacy } from '../../shared/usecases/hotel-of-legacy'
 
 export class AmenitiesService {
   constructor(
     private readonly hotelAmenitiesRepo: RepositoryAdapter<any>,
     private readonly roomAmenitiesRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
+    // Para el ownership check del controller (assertRoomInHotel) y el fallback de
+    // hotelOf con tokens legacy sin hotelId. El controller ANTES llamaba a
+    // `(this.service as any).orm`, que nunca existió: devolvía siempre `[]`,
+    // así que listRoom/updateRoom daban 404 en el 100% de los casos, en
+    // cualquier hotel. roomsRepo y usersRepo son reales.
+    private readonly roomsRepo?: RepositoryAdapter<any>,
+    private readonly usersRepo?: RepositoryAdapter<any>,
   ) {}
+
+  /** ¿La habitación pertenece a este hotel? Usa findById, no findMany con id: ownership check real. */
+  async roomBelongsToHotel(roomId: string, hotelId: string): Promise<boolean> {
+    if (!roomId || !this.roomsRepo) return false
+    const room = await this.roomsRepo.findById(roomId).catch(() => null)
+    return !!room && (room as any).hotelId === hotelId
+  }
+
+  /** Ver shared/usecases/hotel-of-legacy.ts — fallback de hotelOf() con tokens legacy. */
+  hotelIdOfUser(userId?: string): Promise<string | undefined> {
+    return hotelIdOfUserLegacy(this.usersRepo, userId)
+  }
 
   getStaticCatalog(): Record<string, string[]> {
     return {

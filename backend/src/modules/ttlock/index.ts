@@ -33,8 +33,9 @@ export function TtlockModule() {
       const lockDevicesRepo = new OrmRepository<LockDeviceDTO>(orm, 'LockDevices')
       const lockCodesRepo = new OrmRepository<LockCodeDTO>(orm, 'LockCodes')
       const queries = new TtlockQueries(orm)
+      const usersRepo = new OrmRepository<any>(orm, 'Users')
       const service = new TtlockService(lockDevicesRepo, lockCodesRepo, log, queries, auth)
-      const controller = new TtlockController(service, log)
+      const controller = new TtlockController(service, log, usersRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const permGuard = createPermissionGuard(auth, roleRepo)

@@ -24,7 +24,9 @@ export function AmenitiesModule() {
       const log = logger.child('amenities')
       const hotelAmenitiesRepo = new OrmRepository<any>(orm, 'HotelAmenities')
       const roomAmenitiesRepo = new OrmRepository<any>(orm, 'RoomAmenities')
-      const service = new AmenitiesService(hotelAmenitiesRepo, roomAmenitiesRepo, log)
+      const roomsRepo = new OrmRepository<any>(orm, 'Rooms')
+      const usersRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new AmenitiesService(hotelAmenitiesRepo, roomAmenitiesRepo, log, roomsRepo, usersRepo)
       const controller = new AmenitiesController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

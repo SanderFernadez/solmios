@@ -1,12 +1,17 @@
-import type { HttpRequest, Logger } from 'arckode-framework'
+import type { HttpRequest, Logger, RepositoryAdapter } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { TtlockService } from './service'
 import { UpdateTTLockConfigSchema, ConnectTTLockSchema, UpdateLockDeviceSchema, CreatePermanentCodeSchema, CreateMasterKeySchema } from './validators/schema'
+import { hotelIdOfUserLegacy } from '../../shared/usecases/hotel-of-legacy'
 
 export class TtlockController {
   constructor(
     private readonly service: TtlockService,
     private readonly logger: Logger,
+    // Solo para el fallback de hotelOf() con tokens legacy sin hotelId embebido.
+    // No va al service: TtlockService ya roza el límite de 200 líneas
+    // (gate `arckode analyze`, ver comentario en hwDeps()).
+    private readonly usersRepo?: RepositoryAdapter<any>,
   ) {}
 
   private async hotelOf(req: any): Promise<string | undefined> {
@@ -18,9 +23,8 @@ export class TtlockController {
     if (userHotel && userHotel !== 'platform') return userHotel as string
     if (req?.user?.role === 'super_admin' && q.hotelId) return q.hotelId as string
     if (req?.user?.id && req?.user?.role !== 'super_admin') {
-      const uRows = await (this.service as any).orm?.findMany?.('Users', { id: req.user.id }) || []
-      const u: any = uRows?.[0]
-      if (u?.hotelId) return u.hotelId
+      const hotelId = await hotelIdOfUserLegacy(this.usersRepo, req.user.id)
+      if (hotelId) return hotelId
     }
     return undefined
   }

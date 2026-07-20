@@ -1,5 +1,6 @@
 import { AuthError } from 'arckode-framework'
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import { hotelIdOfUserLegacy } from '../../shared/usecases/hotel-of-legacy'
 import type { PricingQueries } from './usecases/pricing-queries'
 import {
   auditSafely, rateChangeEntry, rateCopyEntry, seasonsChangeEntry,
@@ -17,11 +18,17 @@ export class PricingService {
     private readonly restrictionsRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly queries?: PricingQueries,
+    private readonly usersRepo?: RepositoryAdapter<any>,
   ) {}
 
   /** Conecta el audit log. Lo inyecta el connector `pricing-auditlog`. */
   setAuditDeps(port: AuditPort): void {
     this.auditPort = port
+  }
+
+  /** Ver shared/usecases/hotel-of-legacy.ts — fallback de hotelOf() con tokens legacy. */
+  hotelIdOfUser(userId?: string): Promise<string | undefined> {
+    return hotelIdOfUserLegacy(this.usersRepo, userId)
   }
 
   private audit(entry: AuditEntry): Promise<void> {

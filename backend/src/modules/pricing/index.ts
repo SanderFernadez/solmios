@@ -31,7 +31,8 @@ export function PricingModule() {
       const dateRestrictionsRepo = new OrmRepository<any>(orm, 'DateRestrictions')
       const seasonAssignmentsRepo = new OrmRepository<any>(orm, 'SeasonAssignments')
       const queries = new PricingQueries(orm)
-      const service = new PricingService(seasonsRepo, ratesRepo, blocksRepo, restrictionsRepo, log, queries)
+      const usersRepo = new OrmRepository<any>(orm, 'Users')
+      const service = new PricingService(seasonsRepo, ratesRepo, blocksRepo, restrictionsRepo, log, queries, usersRepo)
       const calendar = new PricingCalendarService(dateRestrictionsRepo, seasonAssignmentsRepo, log)
       const controller = new PricingController(service, log, calendar)
 

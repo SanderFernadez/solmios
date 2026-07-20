@@ -30,9 +30,8 @@ export class PricingController {
     if (userHotel && userHotel !== 'platform') return userHotel as string
     if (req?.user?.role === 'super_admin' && q.hotelId) return q.hotelId as string
     if (req?.user?.id && req?.user?.role !== 'super_admin') {
-      const uRows = await (this.service as any).orm?.findMany?.('Users', { id: req.user.id }) || []
-      const u: any = uRows?.[0]
-      if (u?.hotelId) return u.hotelId
+      const hotelId = await this.service.hotelIdOfUser(req.user.id)
+      if (hotelId) return hotelId
     }
     return undefined
   }

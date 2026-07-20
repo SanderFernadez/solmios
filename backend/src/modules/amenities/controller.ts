@@ -15,9 +15,8 @@ export class AmenitiesController {
     if (userHotel && userHotel !== 'platform') return userHotel as string
     if (req?.user?.role === 'super_admin' && q.hotelId) return q.hotelId as string
     if (req?.user?.id && req?.user?.role !== 'super_admin') {
-      const uRows = await (this.service as any).orm?.findMany?.('Users', { id: req.user.id }) || []
-      const u: any = uRows?.[0]
-      if (u?.hotelId) return u.hotelId
+      const hotelId = await this.service.hotelIdOfUser(req.user.id)
+      if (hotelId) return hotelId
     }
     return undefined
   }
@@ -42,10 +41,7 @@ export class AmenitiesController {
   // que la habitación pertenezca al hotel del token. Un merchant con settings:edit podía pasar un
   // roomId ajeno y leer/escribir amenities de otro hotel. Ahora se valida ownership contra hotelOf().
   private async assertRoomInHotel(roomId: string, hotelId: string): Promise<boolean> {
-    if (!roomId) return false
-    const rows = await (this.service as any).orm?.findMany?.('Rooms', { id: roomId }) || []
-    const room = rows?.[0]
-    return !!room && room.hotelId === hotelId
+    return this.service.roomBelongsToHotel(roomId, hotelId)
   }
 
   async listRoom(req: HttpRequest) {
