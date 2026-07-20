@@ -1,5 +1,29 @@
 import { NotFoundError, AuthError, ConflictError } from 'arckode-framework'
 
+/**
+ * Tasa de impuesto del hotel, para el cargo automático de habitación al check-in.
+ *
+ * Copia local y no un import de facturas/folios: `reservas` no puede importar otro módulo
+ * directo (regla del proyecto — conectores, no imports cruzados), y esta lógica es sencilla.
+ * Mismo fallback que facturas/usecases/billing.ts y folios/usecases/folio-math.ts: antes este
+ * cargo se posteaba con `taxes: 0` fijo, así que el balance del folio arrancaba sin impuesto
+ * desde el primer cargo, ya en el check-in — no era solo un problema de la factura final.
+ */
+async function taxRateForCheckin(orm: any, hotelId: string): Promise<number> {
+  try {
+    const rows = await orm.findMany('Configuration', { hotelId, key: 'taxes' })
+    const arr: any[] = rows?.[0]?.value ?? []
+    const configured = arr.filter((t: any) => t && (t.activo ?? t.active)).reduce((s: number, t: any) => s + Number(t.tasa ?? t.rate ?? 0), 0)
+    if (configured > 0) return configured
+  } catch { /* cae al fallback */ }
+  try {
+    const hotel = (await orm.findMany('Hotels', { id: hotelId }))?.[0]
+    return Number(hotel?.taxRate) || 0
+  } catch {
+    return 0
+  }
+}
+
 export async function checkinValidation(repo: any, id: string, user: any, auth?: any): Promise<any> {
   const hotelId = user?.hotelId
   const r = await repo.findById(id) as any
@@ -33,6 +57,8 @@ export async function executeCheckin(r: any, user: any, deps: {
   const room = (await deps.orm.findMany('Rooms', { id: r.roomId }))[0] as any
   const roomRate = Number(room?.basePrice || r.totalAmount || 0)
   const checkInDate = String(r.checkIn).slice(0, 10)
+  const taxRate = await taxRateForCheckin(deps.orm, r.hotelId)
+  const roomTax = Math.round((roomRate * taxRate / 100 + Number.EPSILON) * 100) / 100
 
   try {
     await deps.orm.transaction(async (tx: any) => {
@@ -51,7 +77,7 @@ export async function executeCheckin(r: any, user: any, deps: {
           id: crypto.randomUUID(), folioId, hotelId: r.hotelId,
           description: `Habitación ${room?.number || ''} — ${checkInDate}`,
           category: 'room', kind: 'charge', quantity: 1,
-          amount: roomRate, taxes: 0, total: roomRate,
+          amount: roomRate, taxes: roomTax, total: roomRate + roomTax,
           source: 'checkin', postedAt: nowIso,
         })
       }

@@ -6,13 +6,42 @@ import type { FacturasDTO } from '../types'
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
 
-/** Suma las tasas activas de la config fiscal del hotel (key 'taxes' o 'impuestos'). */
-export async function taxRateFor(cfg: RepositoryAdapter<any>, hotelId: string): Promise<number> {
+/**
+ * Tasa de impuesto del hotel. Dos fuentes, en orden:
+ *
+ * 1. `configuration(key='taxes'|'impuestos')` — array de tasas activas, para el hotel que
+ *    necesita desglosar varios impuestos (ITBIS + un local, por ejemplo).
+ * 2. `hotels.taxRate` — el campo simple que Configuración → Impuestos realmente guarda
+ *    (`SettingsService.patchHotel`). Es lo que un dueño de hotel entiende que está
+ *    configurando, y hasta ahora nada leía ese valor: cualquier factura salía con 0%
+ *    de impuesto sin importar lo que se cargara en esa pantalla — bug encontrado
+ *    facturando de punta a punta en un hotel recién registrado (config vacía, taxRate=18
+ *    en el modelo, factura emitida en $80 en vez de $88 con 10%… ninguno de los tres
+ *    números coincidía entre sí).
+ *
+ * `hotelsRepo` es opcional para no romper los tests existentes que instancian esto solo
+ * con el config repo; sin él, se comporta como antes (fuente 1 únicamente).
+ */
+export async function taxRateFor(
+  cfg: RepositoryAdapter<any>,
+  hotelId: string,
+  hotelsRepo?: RepositoryAdapter<any>,
+): Promise<number> {
   try {
     let c = await cfg.findOne({ hotelId, key: 'taxes' })
     if (!c) c = await cfg.findOne({ hotelId, key: 'impuestos' })
     const arr: any[] = c?.value ?? []
-    return arr.filter((t) => t && (t.activo ?? t.active)).reduce((s, t) => s + Number(t.tasa ?? t.rate ?? 0), 0) || 0
+    const configured = arr.filter((t) => t && (t.activo ?? t.active)).reduce((s, t) => s + Number(t.tasa ?? t.rate ?? 0), 0)
+    if (configured > 0) return configured
+  } catch { /* cae al fallback */ }
+
+  if (!hotelsRepo) return 0
+  try {
+    // @ignore IDOR_RISK — `hotelId` no llega del cliente: es el hotelId propio del folio/factura
+    // que el llamador ya validó contra el usuario (assertOwnership aguas arriba). Acá solo se
+    // relee ESE MISMO hotel para su tasa de impuesto, no un id elegido por quien llama.
+    const hotel = await hotelsRepo.findById(hotelId)
+    return Number((hotel as any)?.taxRate) || 0
   } catch {
     return 0
   }

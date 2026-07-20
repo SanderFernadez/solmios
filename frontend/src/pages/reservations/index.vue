@@ -472,7 +472,7 @@
                 <div v-if="selRoom && form.checkIn && form.checkOut" class="bg-surface rounded-2xl p-4 space-y-2">
                   <div class="text-[11px] font-bold text-text-muted uppercase mb-2">Habitación {{ selRoom.number }} — {{ selRoom.type }}</div>
                   <div class="flex justify-between text-sm"><span class="text-text-secondary">{{ nights }} noches × ${{ selRoom.basePrice }}</span><span class="font-bold text-navy">${{ selRoom.basePrice * nights }}</span></div>
-                  <div class="flex justify-between text-sm"><span class="text-text-secondary">Impuestos (10%)</span><span class="font-bold text-navy">${{ taxes }}</span></div>
+                  <div class="flex justify-between text-sm"><span class="text-text-secondary">Impuestos ({{ taxRatePct }}%)</span><span class="font-bold text-navy">${{ taxes }}</span></div>
                   <div v-if="form.regime !== 'room_only'" class="flex justify-between text-sm"><span class="text-text-secondary">Régimen</span><span class="font-bold text-teal">{{ regimeLabel }}</span></div>
                 </div>
               </div>
@@ -552,7 +552,7 @@
                   </div>
                   <div v-if="selRoom && form.checkIn && form.checkOut" class="bg-surface rounded-2xl border border-border p-4 space-y-1.5 text-sm">
                     <div class="flex justify-between"><span class="text-text-secondary">{{ nights }} noches × ${{ selRoom.basePrice }}</span><span class="font-bold text-navy">${{ subtotal }}</span></div>
-                    <div class="flex justify-between"><span class="text-text-secondary">Impuestos (10%)</span><span class="font-bold text-navy">${{ taxes }}</span></div>
+                    <div class="flex justify-between"><span class="text-text-secondary">Impuestos ({{ taxRatePct }}%)</span><span class="font-bold text-navy">${{ taxes }}</span></div>
                     <div class="border-t border-border pt-1.5 flex justify-between items-center">
                       <span class="font-black text-navy">Total Reserva</span>
                       <span class="font-black text-navy text-lg">${{ total }}</span>
@@ -635,6 +635,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCountUp } from '@/composables/useCountUp'
 import { ReservationService } from '@/services/Reservation.service'
+import { BillingService } from '@/services/Billing.service'
 import { CompanionsService } from '@/services/Companions.service'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
@@ -815,8 +816,14 @@ const nights = computed(() => {
   if (!form.value.checkIn || !form.value.checkOut) return 0
   return Math.max(1, Math.round((new Date(form.value.checkOut).getTime() - new Date(form.value.checkIn).getTime()) / MS_PER_DAY))
 })
+// Tasa real del hotel (GET /api/facturas/tax-rate — misma fuente que usa la factura final).
+// Antes esto era 0.1 fijo en el texto Y en el cálculo: el preview del wizard mostraba
+// "Impuestos (10%)" sin importar lo que el hotel tuviera configurado, y como encima la
+// factura final no leía ese mismo config, el número que veía el staff al reservar no
+// coincidía con lo que terminaba cobrándose.
+const taxRatePct = ref(0)
 const subtotal = computed(() => selRoom.value ? selRoom.value.basePrice * nights.value : 0)
-const taxes = computed(() => Math.round(subtotal.value * 0.1))
+const taxes = computed(() => Math.round(subtotal.value * (taxRatePct.value / 100)))
 const total = computed(() => subtotal.value + taxes.value)
 const pend = computed(() => Math.max(0, total.value - (form.value.deposit || 0)))
 
@@ -1365,6 +1372,9 @@ function sendPayLink(ch: string) {
 
 onMounted(async () => {
   await load()
+  // Silencioso a propósito: sin tasa configurada, taxRatePct queda en 0 y el wizard
+  // simplemente no desglosa impuesto — mejor eso que romper la carga de reservas.
+  BillingService.taxRate().then((r) => { taxRatePct.value = r }).catch(() => {})
   // Si viene de planning con ?edit=id (botón Editar del ReservationModal), abrir el form.
   const editQ = route.query.edit
   if (editQ && typeof editQ === 'string') {

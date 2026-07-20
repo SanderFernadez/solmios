@@ -6,13 +6,35 @@ import type { FolioChargeDTO } from '../types'
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
 
-/** Suma las tasas activas de la config fiscal del hotel (key 'taxes' o 'impuestos'). */
-export async function taxRateFor(cfg: RepositoryAdapter<any>, hotelId: string): Promise<number> {
+/**
+ * Tasa de impuesto del hotel. Copia hermana de facturas/usecases/billing.ts:taxRateFor — mismo
+ * fallback y mismo motivo: `configuration(key='taxes')` nunca lo escribe ninguna pantalla, así
+ * que sin el fallback a `hotels.taxRate` (lo que Configuración → Impuestos SÍ guarda) cada cargo
+ * de folio se posteaba sin impuesto, y el balance que veía el huésped durante la estadía no
+ * coincidía con lo que terminaba saliendo en la factura.
+ *
+ * `hotelsRepo` opcional para no romper los tests que instancian esto solo con el config repo.
+ */
+export async function taxRateFor(
+  cfg: RepositoryAdapter<any>,
+  hotelId: string,
+  hotelsRepo?: RepositoryAdapter<any>,
+): Promise<number> {
   try {
     let c = await cfg.findOne({ hotelId, key: 'taxes' })
     if (!c) c = await cfg.findOne({ hotelId, key: 'impuestos' })
     const arr: any[] = c?.value ?? []
-    return arr.filter((t) => t && (t.activo ?? t.active)).reduce((s, t) => s + Number(t.tasa ?? t.rate ?? 0), 0) || 0
+    const configured = arr.filter((t) => t && (t.activo ?? t.active)).reduce((s, t) => s + Number(t.tasa ?? t.rate ?? 0), 0)
+    if (configured > 0) return configured
+  } catch { /* cae al fallback */ }
+
+  if (!hotelsRepo) return 0
+  try {
+    // @ignore IDOR_RISK — `hotelId` no llega del cliente: es el hotelId propio del folio que el
+    // llamador ya validó contra el usuario (assertOwnership aguas arriba). Acá solo se relee ESE
+    // MISMO hotel para su tasa de impuesto, no un id elegido por quien llama.
+    const hotel = await hotelsRepo.findById(hotelId)
+    return Number((hotel as any)?.taxRate) || 0
   } catch {
     return 0
   }

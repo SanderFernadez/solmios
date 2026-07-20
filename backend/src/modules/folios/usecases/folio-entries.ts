@@ -23,6 +23,8 @@ export interface FolioEntriesDeps {
   auth: Auth
   logger: Logger
   paymentPort?: FolioPaymentPort | null
+  /** Fallback de taxRateFor a hotels.taxRate — ver el comentario en folio-math.ts. */
+  hotelsRepo?: RepositoryAdapter<any>
 }
 
 /** Carga el folio, valida ownership y que esté abierto. */
@@ -47,7 +49,7 @@ export async function postCharge(
   const base = (Number(dto.amount) || 0) * qty
   if (base <= 0) throw new ValidationError('El monto del cargo debe ser positivo')
 
-  const rate = await taxRateFor(deps.configRepo, folio.hotelId)
+  const rate = await taxRateFor(deps.configRepo, folio.hotelId, deps.hotelsRepo)
   const { tax, total } = applyTax(base, rate)
   const charge = await deps.chargeRepo.create({
     folioId, hotelId: folio.hotelId, description: dto.description,

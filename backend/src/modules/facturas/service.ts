@@ -39,6 +39,8 @@ export class FacturasService {
     private readonly cache: CacheAdapter,
     private readonly auth: Auth,
     private readonly itemRepo: RepositoryAdapter<any>,
+    // Fallback de taxRateFor a hotels.taxRate (ver comentario en usecases/billing.ts).
+    private readonly hotelsForTaxRepo?: RepositoryAdapter<any>,
   ) {
     this.enrichDeps = deps
   }
@@ -87,7 +89,7 @@ export class FacturasService {
     // Ownership en el ALTA (ver resolveInvoiceHotelId): el hotel sale del JWT, no de dto.hotelId.
     const hotelId = await resolveInvoiceHotelId(this.userRepo, user, dto.hotelId)
     const { item, invoiceNumber, amount, currency } = await createInvoice(
-      { repo: this.repo, configRepo: this.configRepo, itemRepo: this.itemRepo, logger: this.logger },
+      { repo: this.repo, configRepo: this.configRepo, itemRepo: this.itemRepo, logger: this.logger, hotelsRepo: this.hotelsForTaxRepo },
       dto,
       hotelId,
     )
@@ -173,7 +175,7 @@ export class FacturasService {
     return generateTaxReport(this.repo, hotelFilterFor(user), from, to)
   }
   async getTaxRate(user: CurrentUser): Promise<{ rate: number }> {
-    return getTaxRateForUser(this.configRepo, user)
+    return getTaxRateForUser(this.configRepo, user, this.hotelsForTaxRepo)
   }
 
   async emailInvoice(id: string, to: string, user: CurrentUser): Promise<EmailInvoiceResult> {

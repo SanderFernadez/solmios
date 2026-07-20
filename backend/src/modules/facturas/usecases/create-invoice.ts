@@ -18,6 +18,8 @@ export interface CreateInvoiceDeps {
   configRepo: RepositoryAdapter<any>
   itemRepo: RepositoryAdapter<any>
   logger: Logger
+  /** Fallback de taxRateFor a hotels.taxRate — ver el comentario en billing.ts. */
+  hotelsRepo?: RepositoryAdapter<any>
 }
 
 export interface CreateInvoiceResult {
@@ -32,7 +34,7 @@ export async function createInvoice(
   dto: CreateFacturasDTO,
   hotelId: string,
 ): Promise<CreateInvoiceResult> {
-  const { repo, configRepo, itemRepo, logger } = deps
+  const { repo, configRepo, itemRepo, logger, hotelsRepo } = deps
   logger.info('Creando factura/cargo/pago', { type: dto.type, hotelId })
 
   const type = dto.type ?? 'invoice'
@@ -43,7 +45,7 @@ export async function createInvoice(
   let ncf = dto.ncf
 
   if (type === 'invoice') {
-    const rate = await taxRateFor(configRepo, hotelId)
+    const rate = await taxRateFor(configRepo, hotelId, hotelsRepo)
     const t = applyTax(base, rate)
     taxes = t.tax
     amount = t.total

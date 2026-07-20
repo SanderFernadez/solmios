@@ -49,7 +49,7 @@ export function FacturasModule() {
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const itemRepo = new OrmRepository<any>(orm, 'InvoiceItem')
       const log = logger.child('facturas')
-      const service = new FacturasService(repo, configRepo, { guest: guestRepo, reservation: reservationRepo, room: roomRepo }, userRepo, log, cache, auth!, itemRepo)
+      const service = new FacturasService(repo, configRepo, { guest: guestRepo, reservation: reservationRepo, room: roomRepo }, userRepo, log, cache, auth!, itemRepo, hotelRepo)
       const controller = new FacturasController(service, log, hotelRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

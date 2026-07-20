@@ -11,7 +11,8 @@ import { taxRateFor } from './billing'
 export async function getTaxRateForUser(
   configRepo: RepositoryAdapter<any>,
   user: { hotelId?: string | null },
+  hotelsRepo?: RepositoryAdapter<any>,
 ): Promise<{ rate: number }> {
   if (!user.hotelId) return { rate: 0 }
-  return { rate: await taxRateFor(configRepo, user.hotelId) }
+  return { rate: await taxRateFor(configRepo, user.hotelId, hotelsRepo) }
 }
