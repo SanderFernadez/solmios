@@ -7,6 +7,7 @@ const CLEANING_TYPE_ENUM = ['checkout', 'daily', 'weekly']
 const DEPOSIT_TYPE_ENUM = ['none', 'fixed', 'percentage']
 const ADVANCE_TYPE_ENUM = ['percentage', 'fixed']
 const PAYMENT_METHOD_ENUM = ['transfer', 'card', 'cash', 'gateway']
+const CANCELLATION_TYPE_ENUM = ['flexible', 'moderate', 'strict', 'non_refundable']
 
 export const CreateHotelesSchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const, required: true, min: 2, max: 100 },
@@ -36,6 +37,7 @@ export const CreateHotelesSchema: Record<string, ValidationRule> = {
   accommodationType: { type: 'string' as const, enum: ACCOMMODATION_TYPE_ENUM },
   registrationNumber: { type: 'string' as const, max: 50 },
   website: { type: 'string' as const, max: 200 },
+  logo: { type: 'string' as const, max: 500 },
   bookingEngineUrl: { type: 'string' as const, max: 200 },
   phone2: { type: 'string' as const, max: 20 },
   warningPhone: { type: 'string' as const, max: 20 },
@@ -52,6 +54,7 @@ export const CreateHotelesSchema: Record<string, ValidationRule> = {
   locality: { type: 'string' as const, max: 100 },
   postalCode: { type: 'string' as const, max: 20 },
   // Conditions
+  cancellationType: { type: 'string' as const, enum: CANCELLATION_TYPE_ENUM },
   cleaningType: { type: 'string' as const, enum: CLEANING_TYPE_ENUM },
   depositType: { type: 'string' as const, enum: DEPOSIT_TYPE_ENUM },
   depositFixed: { type: 'number' as const, min: 0 },
@@ -97,6 +100,7 @@ export const UpdateHotelesSchema: Record<string, ValidationRule> = {
   accommodationType: { type: 'string' as const, enum: ACCOMMODATION_TYPE_ENUM },
   registrationNumber: { type: 'string' as const, max: 50 },
   website: { type: 'string' as const, max: 200 },
+  logo: { type: 'string' as const, max: 500 },
   bookingEngineUrl: { type: 'string' as const, max: 200 },
   phone2: { type: 'string' as const, max: 20 },
   warningPhone: { type: 'string' as const, max: 20 },
@@ -111,6 +115,7 @@ export const UpdateHotelesSchema: Record<string, ValidationRule> = {
   municipality: { type: 'string' as const, max: 100 },
   locality: { type: 'string' as const, max: 100 },
   postalCode: { type: 'string' as const, max: 20 },
+  cancellationType: { type: 'string' as const, enum: CANCELLATION_TYPE_ENUM },
   cleaningType: { type: 'string' as const, enum: CLEANING_TYPE_ENUM },
   depositType: { type: 'string' as const, enum: DEPOSIT_TYPE_ENUM },
   depositFixed: { type: 'number' as const, min: 0 },

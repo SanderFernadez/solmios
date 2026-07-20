@@ -244,6 +244,27 @@ export function countryCode(name: string): string | undefined {
   return entry?.code || undefined
 }
 
+/**
+ * Nombre canónico del país a partir de lo que haya guardado: el nombre mismo o un código ISO.
+ *
+ * Por qué hace falta: `hotels.country` quedó con DOS formatos conviviendo. El registro guarda el
+ * nombre ('República Dominicana', vía SearchSelect sobre COUNTRIES) y la configuración del hotel
+ * guardaba el ISO ('DO', de un <select> propio de 6 opciones). Todo lo que deriva del país
+ * (bandera, prefijo telefónico vía countryCode) espera el NOMBRE, así que un hotel con 'DO'
+ * guardado no resolvía nada.
+ *
+ * Devuelve '' si no se reconoce, para no inventar un país que el usuario no eligió.
+ */
+export function countryName(value: string | undefined | null): string {
+  if (!value) return ''
+  const raw = value.trim()
+  if (!raw) return ''
+  const byName = COUNTRY_DATA.find((c) => c.name === raw)
+  if (byName) return byName.name
+  const iso = raw.toUpperCase()
+  return COUNTRY_DATA.find((c) => c.code && c.code === iso)?.name ?? ''
+}
+
 /** Entradas completas, para quien necesite nombre + código juntos. */
 export const COUNTRY_ENTRIES: readonly CountryEntry[] = COUNTRY_DATA
 

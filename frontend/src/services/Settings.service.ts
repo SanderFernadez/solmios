@@ -91,9 +91,12 @@ const HOTEL_ALLOWED_FIELDS = [
   'ownerName','ownerTaxId','deviceEmail','accommodationType','registrationNumber','website',
   'bookingEngineUrl','phone2','warningPhone','secondaryCurrency','youtubeUrl','starRating',
   'onlineBookingStatus','motorVersion','latitude','longitude','province','municipality',
-  'locality','postalCode','cleaningType','depositType','depositFixed','advanceType','advanceAmount',
+  'locality','postalCode','cancellationType','cleaningType','depositType','depositFixed','advanceType','advanceAmount',
   'releaseHours','defaultPaymentMethod','requestReviews','publishReviewScore','publishReviewComments',
   'taxName','taxRate','descriptionJson','wifiNetwork','wifiPassword',
+  // 'logo' se descartaba acá aunque la pantalla lo edita y facturas/emails/marketing lo consumen:
+  // no había ninguna vía para cambiar el logo del hotel.
+  'logo',
 ] as const
 
 export const SettingsService = {

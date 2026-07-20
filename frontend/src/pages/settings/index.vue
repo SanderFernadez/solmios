@@ -71,27 +71,20 @@
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Tipo de alojamiento</label>
               <select v-model="form.accommodationType" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
+                <!-- value = enum del backend (ACCOMMODATION_TYPE_ENUM), label en español.
+                     Antes había opciones inventadas (boutique, aparthotel, hostal, casa_rural,
+                     camping) que el schema rechazaba: elegirlas hacía fallar el guardado entero. -->
                 <option value="">Seleccionar</option>
                 <option value="hotel">Hotel</option>
-                <option value="boutique">Hotel Boutique</option>
-                <option value="aparthotel">Apartahotel</option>
-                <option value="hostal">Hostal</option>
-                <option value="casa_rural">Casa Rural</option>
-                <option value="villa">Villa</option>
-                <option value="camping">Camping</option>
-                <option value="hostel">Hostel</option>
+                <option value="apartment">Apartahotel / Apartamento</option>
+                <option value="hostel">Hostal</option>
+                <option value="villa">Villa / Casa</option>
+                <option value="bnb">Bed &amp; Breakfast</option>
               </select>
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">País *</label>
-              <select v-model="form.country" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
-                <option value="DO">República Dominicana</option>
-                <option value="CO">Colombia</option>
-                <option value="MX">México</option>
-                <option value="PE">Perú</option>
-                <option value="CL">Chile</option>
-                <option value="AR">Argentina</option>
-              </select>
+              <SearchSelect v-model="form.country" :options="COUNTRIES" placeholder="Buscar país..." />
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Clasificación</label>
@@ -123,11 +116,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Teléfono principal</label>
-              <input v-model="form.phone" type="tel" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <PhoneInput v-model="form.phone" :country="form.country" />
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Teléfono 2</label>
-              <input v-model="form.phone2" type="tel" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <PhoneInput v-model="form.phone2" :country="form.country" />
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Email</label>
@@ -165,21 +158,11 @@
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Zona horaria</label>
-              <select v-model="form.timezone" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
-                <option value="America/Santo_Domingo">Santo Domingo (GMT-4)</option>
-                <option value="America/Bogota">Bogotá (GMT-5)</option>
-                <option value="America/Mexico_City">CDMX (GMT-6)</option>
-                <option value="America/Lima">Lima (GMT-5)</option>
-                <option value="America/Santiago">Santiago (GMT-4)</option>
-                <option value="America/Argentina/Buenos_Aires">Buenos Aires (GMT-3)</option>
-              </select>
+              <SearchSelect v-model="form.timezone" :options="TIMEZONES" placeholder="Buscar zona horaria..." />
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Moneda</label>
-              <select v-model="form.currency" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none cursor-pointer">
-                <option value="USD">USD</option><option value="DOP">DOP</option><option value="COP">COP</option>
-                <option value="MXN">MXN</option><option value="PEN">PEN</option><option value="CLP">CLP</option><option value="ARS">ARS</option>
-              </select>
+              <SearchSelect v-model="form.currency" :options="CURRENCIES" placeholder="Buscar moneda..." />
             </div>
           </div>
         </SectionCard>
@@ -532,27 +515,28 @@
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tipo de Fianza</label>
             <select v-model="form.depositType" class="w-full px-3 py-2 rounded-full border border-border text-sm cursor-pointer">
-              <option value="ninguna">Ninguna</option>
-              <option value="fija">Fija</option>
-              <option value="porcentaje">Porcentaje</option>
+              <option value="none">Ninguna</option>
+              <option value="fixed">Fija</option>
+              <option value="percentage">Porcentaje</option>
             </select>
           </div>
-          <div v-if="form.depositType === 'fija' || form.depositType === 'porcentaje'">
+          <div v-if="form.depositType === 'fixed' || form.depositType === 'percentage'">
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Valor</label>
             <div class="flex items-center gap-2">
-              <span class="text-sm text-text-muted">{{ form.depositType === 'fija' ? '$' : '' }}</span>
+              <span class="text-sm text-text-muted">{{ form.depositType === 'fixed' ? '$' : '' }}</span>
               <input v-model.number="form.depositFixed" type="number" min="0" class="w-24 px-3 py-2 rounded-full border border-border text-sm font-bold text-navy text-right" />
-              <span v-if="form.depositType === 'porcentaje'" class="text-sm text-text-muted">%</span>
+              <span v-if="form.depositType === 'percentage'" class="text-sm text-text-muted">%</span>
             </div>
           </div>
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Forma de Pago por Defecto</label>
             <select v-model="form.defaultPaymentMethod" class="w-full px-3 py-2 rounded-full border border-border text-sm cursor-pointer">
+              <!-- value = PAYMENT_METHOD_ENUM. 'paypal' y 'link' no existen en el enum y hacían
+                   fallar el guardado completo; ambos son pasarela → 'gateway'. -->
               <option value="transfer">Transferencia</option>
               <option value="card">Tarjeta</option>
               <option value="cash">Efectivo</option>
-              <option value="paypal">PayPal</option>
-              <option value="link">Link de Pago</option>
+              <option value="gateway">Pasarela / Link de Pago</option>
             </select>
           </div>
         </div>
@@ -761,6 +745,9 @@
 import { ref, computed, onMounted, nextTick, watch, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import SectionCard from '@/components/ui/SectionCard.vue'
+import SearchSelect from '@/components/ui/SearchSelect.vue'
+import PhoneInput from '@/components/ui/PhoneInput.vue'
+import { COUNTRIES, countryName } from '@/data/locales'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
 import { ConfigService } from '@/services/Platform.service'
@@ -951,9 +938,9 @@ const form = ref<HotelForm>({
   ownerName: '', ownerTaxId: '', phone2: '', website: '',
   province: '', municipality: '', locality: '', postalCode: '',
   latitude: undefined as number | undefined, longitude: undefined as number | undefined,
-  cancellationType: 'flexible', cleaningType: 'salida',
-  depositType: 'ninguna', depositFixed: 0,
-  advanceType: 'porcentaje', advanceAmount: 0, releaseHours: 0,
+  cancellationType: 'flexible', cleaningType: 'checkout',
+  depositType: 'none', depositFixed: 0,
+  advanceType: 'percentage', advanceAmount: 0, releaseHours: 0,
   defaultPaymentMethod: 'transfer',
   requestReviews: false, publishReviewScore: false,
   taxName: 'ITBIS', taxRate: 18,
@@ -1050,7 +1037,10 @@ onMounted(async () => {
     const s = await SettingsService.get()
     const h = s.hotel as HotelFull & Record<string, unknown>
     form.value = {
-      name: h.name ?? '', country: h.country ?? '', address: h.address ?? '',
+      // countryName() acepta el nombre o el ISO viejo ('DO'): la columna quedó con los dos formatos
+      // porque el registro guardaba el nombre y esta pantalla guardaba el código. Sin normalizar,
+      // un hotel con 'DO' no matcheaba ninguna opción del selector ni resolvía bandera/prefijo.
+      name: h.name ?? '', country: countryName(h.country), address: h.address ?? '',
       phone: h.phone ?? '', email: h.email ?? '',
       timezone: h.timezone ?? 'America/Santo_Domingo', currency: h.currency ?? 'USD',
       checkIn: h.checkIn || '15:00', checkOut: h.checkOut || '12:00',
@@ -1067,10 +1057,10 @@ onMounted(async () => {
       locality: h.locality ?? '', postalCode: h.postalCode ?? '',
       latitude: h.latitude ? Number(h.latitude) : undefined,
       longitude: h.longitude ? Number(h.longitude) : undefined,
-      cancellationType: h.freeCancellationType ?? 'flexible',
-      cleaningType: h.cleaningType ?? 'salida',
-      depositType: h.depositType ?? 'ninguna', depositFixed: h.depositFixed ?? 0,
-      advanceType: h.advanceType ?? 'porcentaje', advanceAmount: h.advanceAmount ?? 0,
+      cancellationType: h.cancellationType ?? 'flexible',
+      cleaningType: h.cleaningType ?? 'checkout',
+      depositType: h.depositType ?? 'none', depositFixed: h.depositFixed ?? 0,
+      advanceType: h.advanceType ?? 'percentage', advanceAmount: h.advanceAmount ?? 0,
       releaseHours: h.releaseHours ?? 0,
       defaultPaymentMethod: h.defaultPaymentMethod ?? 'transfer',
       requestReviews: h.requestReviews === 1 || h.requestReviews === true,
@@ -1149,7 +1139,12 @@ async function saveAll() {
     'wifiNetwork','wifiPassword','descriptionJson','logo']
   for (const k of keys) {
     const v = saveField(k, (form.value as Record<string, unknown>)[k])
-    if (v !== undefined) (patch as Record<string, unknown>)[k] = typeof v === 'boolean' ? (v ? 1 : 0) : v
+    // Los booleanos viajan como booleanos. Antes se mandaban como 0/1 y el schema del backend
+    // exige `type: 'boolean'` estricto: como freeCancellation/depositRequired/requestReviews/
+    // publishReviewScore siempre tienen default, TODO "Guardar" devolvía 400 y no se persistía
+    // NINGÚN campo del hotel (validateSchema rechaza el body entero, no hace guardado parcial).
+    // Verificado contra prod: {"freeCancellation":0} → 400; {"freeCancellation":false} → 200.
+    if (v !== undefined) (patch as Record<string, unknown>)[k] = v
   }
   // Serializar descripciones multilingües como JSON
   patch.descriptionJson = JSON.stringify(descriptions.value)

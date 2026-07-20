@@ -21,6 +21,10 @@ export const HotelesModel: ModelDefinition = {
     checkIn: { type: 'string', default: '15:00' },
     checkOut: { type: 'string', default: '12:00' },
     // Políticas
+    // cancellationType: la UI ofrecía los 4 valores desde siempre, pero la columna no existía:
+    // se mandaba al guardar, la whitelist lo descartaba, y al releer se buscaba con otro nombre
+    // ('freeCancellationType', inexistente) → el radio volvía a 'flexible' hiciera lo que hiciera.
+    cancellationType: { type: 'string', default: 'flexible' },
     freeCancellation: { type: 'boolean', default: true },
     depositRequired: { type: 'boolean', default: true },
     depositPercent: { type: 'number', default: 30 },
