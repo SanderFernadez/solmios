@@ -43,14 +43,29 @@ export const ICON_CROWN = `${SVG_OPEN}<path d="m2.5 20 3-15 5 6 3.5-7 3.5 7 5-6 
 export const ICON_BUILDING = `${SVG_OPEN}<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>`
 export const ICON_BELL = `${SVG_OPEN}<path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 0 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/></svg>`
 export const ICON_USER = `${SVG_OPEN}<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+export const ICON_BROOM = `${SVG_OPEN}<path d="m13 11 9-9"/><path d="M14.6 12.6 11.4 9.4"/><path d="M6 22a4 4 0 0 1-4-4c2 0 3-1 3-3l6 6c0 2-1 3-3 3Z"/><path d="M9.5 6.5 17 14"/></svg>`
+export const ICON_WRENCH = `${SVG_OPEN}<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/></svg>`
+export const ICON_CLIPBOARD = `${SVG_OPEN}<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1"/><path d="m9 14 2 2 4-4"/></svg>`
 
-/** Etiquetas legibles para roles del sistema */
+/**
+ * Etiquetas legibles para roles del sistema.
+ * DEBE cubrir los 5 roles que define el backend en `shared/permissions.ts`
+ * (hotel_admin, receptionist, housekeeper, maintenance, supervisor) + super_admin.
+ * Si falta uno, `roleMeta()` cae al fallback y la UI muestra el slug crudo en inglés.
+ */
 export const ROLE_META: Record<string, { label: string; icon: string; class: string; description: string }> = {
   super_admin: { label: 'Super Admin', icon: ICON_CROWN, class: 'bg-purple/10 text-purple', description: 'Acceso total a la plataforma' },
   hotel_admin: { label: 'Admin Hotel', icon: ICON_BUILDING, class: 'bg-cyan/10 text-cyan', description: 'Gestiona su hotel: reservas, rooms, facturación, equipo' },
   receptionist: { label: 'Recepcionista', icon: ICON_BELL, class: 'bg-teal/10 text-teal', description: 'Reservas, check-in/out, huéspedes. No acceso a finanzas ni equipo' },
+  housekeeper: { label: 'Limpieza', icon: ICON_BROOM, class: 'bg-teal-light/10 text-teal-light', description: 'Tareas de limpieza de habitaciones desde la app móvil' },
+  maintenance: { label: 'Mantenimiento', icon: ICON_WRENCH, class: 'bg-gold/10 text-gold', description: 'Tickets de mantenimiento y reparaciones' },
+  supervisor: { label: 'Supervisor', icon: ICON_CLIPBOARD, class: 'bg-navy/10 text-navy', description: 'Supervisa y aprueba las tareas de limpieza del personal' },
 }
 
-export function roleMeta(role: string) {
-  return ROLE_META[role] || { label: role, icon: ICON_USER, class: 'bg-gray-100 text-gray-600', description: '' }
+/** Rol sin valor (usuarios legacy insertados fuera de la API): se muestra explícito, nunca vacío. */
+const ROLE_UNSET = { label: 'Sin rol', icon: ICON_USER, class: 'bg-surface-dark text-text-muted', description: 'El usuario no tiene rol asignado' }
+
+export function roleMeta(role?: string | null) {
+  if (!role) return ROLE_UNSET
+  return ROLE_META[role] || { label: role, icon: ICON_USER, class: 'bg-surface-dark text-text-secondary', description: '' }
 }

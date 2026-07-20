@@ -73,7 +73,7 @@
                 <div class="flex items-center gap-3">
                   <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy/5 text-lg">{{ role.icon }}</div>
                   <div class="min-w-0">
-                    <div class="text-sm font-black text-navy truncate">{{ role.name }}</div>
+                    <div class="text-sm font-black text-navy truncate">{{ roleLabel(role) }}</div>
                     <span class="mt-0.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
                       :class="role.system ? 'bg-navy/10 text-navy' : 'bg-cyan/10 text-cyan'">
                       {{ role.system ? 'Sistema' : 'Personalizado' }}
@@ -103,7 +103,7 @@
 
     <!-- Matriz de permisos -->
     <SectionCard v-if="!loading && roles.length"
-      :title="selected ? `Permisos — ${selected.name}` : 'Permisos'"
+      :title="selected ? `Permisos — ${roleLabel(selected)}` : 'Permisos'"
       :subtitle="selected ? 'Marcá lo que puede hacer este rol' : 'Elegí un rol del listado para editar sus permisos'"
       body-class="p-0">
       <template v-if="selected" #actions>
@@ -179,6 +179,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { RolesService, type Role, type PermissionCatalog } from '@/services/Roles.service'
+import { ROLE_META } from '@/services/Team.service'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -209,6 +210,15 @@ const customRolesCount = computed(() => roles.value.filter((r) => !r.system).len
 const assignedUsers = computed(() => roles.value.reduce((sum, r) => sum + (r.users ?? 0), 0))
 const rolesWithUsers = computed(() => roles.value.filter((r) => (r.users ?? 0) > 0).length)
 const totalAssignablePermissions = computed(() => visibleModules.value.length * catalog.value.actions.length)
+
+/**
+ * Nombre visible del rol. Los roles de sistema se guardan por slug en inglés (`housekeeper`,
+ * `maintenance`…) porque es la clave que evalúan los permisos del backend; acá se traduce para
+ * la UI. Los roles personalizados ya se crean con nombre en español, así que se muestran tal cual.
+ */
+function roleLabel(role: Role): string {
+  return ROLE_META[role.name]?.label ?? role.name
+}
 
 /** Cuántas acciones del módulo tiene marcadas el rol seleccionado (solo lectura, no altera el payload). */
 function modulePermCount(moduleKey: string): number {
@@ -255,7 +265,7 @@ async function save() {
 }
 
 async function confirmDelete(role: Role) {
-  if (!confirm(`¿Eliminar el rol "${role.name}"? Los empleados con este rol quedarán sin permisos hasta reasignarlos.`)) return
+  if (!confirm(`¿Eliminar el rol "${roleLabel(role)}"? Los empleados con este rol quedarán sin permisos hasta reasignarlos.`)) return
   try {
     await RolesService.remove(role.id)
     toast.success('Rol eliminado')
