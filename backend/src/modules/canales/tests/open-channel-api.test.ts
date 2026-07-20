@@ -201,4 +201,14 @@ describe('buildEndpointUrl', () => {
     const req = { headers: { host: 'localhost:3001', 'x-forwarded-proto': 'http' } }
     expect(buildEndpointUrl(req)).toBe('http://localhost:3001/api/channels/open-ari')
   })
+
+  it('prioriza cf-visitor sobre x-forwarded-proto (Cloudflare Flexible reenvía http al origen)', () => {
+    const req = { headers: { host: 'hotel.zx89.site', 'x-forwarded-proto': 'http', 'cf-visitor': '{"scheme":"https"}' } }
+    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari')
+  })
+
+  it('cf-visitor malformado no explota, cae a x-forwarded-proto', () => {
+    const req = { headers: { host: 'hotel.zx89.site', 'x-forwarded-proto': 'https', 'cf-visitor': 'no-es-json' } }
+    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari')
+  })
 })

@@ -34,9 +34,21 @@ export interface OpenChannelCredentials {
   endpoint: string
 }
 
-/** Arma la URL absoluta del endpoint a partir del propio request: nunca hardcodear el dominio. */
+/**
+ * Arma la URL absoluta del endpoint a partir del propio request: nunca hardcodear el dominio.
+ *
+ * Cloudflare (modo Flexible) habla HTTP plano con el origen: nginx ve $scheme=http y reenvía
+ * X-Forwarded-Proto:http aunque el visitante haya entrado por HTTPS — el header queda mintiendo.
+ * `cf-visitor` es la señal que Cloudflare agrega con el scheme REAL del visitante independiente
+ * de cómo hable con el origen; se prioriza sobre x-forwarded-proto cuando está presente.
+ */
 export function buildEndpointUrl(req: any): string {
-  const proto = (req?.headers?.['x-forwarded-proto'] as string) || 'https'
+  const cfVisitor = req?.headers?.['cf-visitor']
+  let proto: string | undefined
+  if (typeof cfVisitor === 'string') {
+    try { proto = JSON.parse(cfVisitor)?.scheme } catch { /* header malformado, se ignora */ }
+  }
+  proto = proto || (req?.headers?.['x-forwarded-proto'] as string) || 'https'
   const host = (req?.headers?.host as string) || 'localhost'
   return `${proto}://${host}/api/channels/open-ari`
 }
