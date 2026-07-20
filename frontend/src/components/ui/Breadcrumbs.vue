@@ -58,6 +58,9 @@ const LABELS: Record<string, string> = {
   capacitacion: 'Capacitación',
   roles: 'Roles y Permisos',
   settings: 'Configuración',
+  mensajeria: 'Mensajería',
+  // Las 5 de abajo ya no son rutas propias (redirigen a /panel/mensajeria?tab=),
+  // pero se dejan mapeadas por si el breadcrumb las ve en tránsito.
   'auto-messages': 'Envíos Auto',
   'message-logs': 'Historial Envíos',
   'email-queue': 'Cola de Emails',

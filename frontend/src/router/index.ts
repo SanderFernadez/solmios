@@ -376,10 +376,20 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          // Contenedor de Mensajería: las 5 vistas de abajo pasaron a ser tabs
+          // suyas (ver config/messaging-tabs.ts). NO lleva requiresHotelAdmin —
+          // el recepcionista entra para ver Plantillas WhatsApp e Historial; la
+          // página filtra las tabs por rol y por módulo habilitado.
+          path: 'mensajeria',
+          name: 'mensajeria',
+          component: () => import('@/pages/mensajeria/index.vue'),
+        },
+        // Rutas viejas → tab equivalente. Se conservan (con su `name`) para no
+        // romper links guardados ni favoritos. Conservan la query original.
+        {
           path: 'email-queue',
           name: 'email-queue',
-          component: () => import('@/pages/email-queue/index.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/mensajeria', query: { ...to.query, tab: 'email-queue' } }),
         },
         {
           path: 'devices',
@@ -390,8 +400,7 @@ const router = createRouter({
         {
           path: 'auto-messages',
           name: 'auto-messages',
-          component: () => import('@/pages/auto-messages/index.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/mensajeria', query: { ...to.query, tab: 'auto-messages' } }),
         },
         {
           // Estado de la prueba/suscripción y planes. A esta página apunta el
@@ -421,8 +430,7 @@ const router = createRouter({
         {
           path: 'whatsapp-templates',
           name: 'whatsapp-templates',
-          component: () => import('@/pages/whatsapp-templates/index.vue'),
-          meta: { requiresHotelAuth: true },
+          redirect: (to) => ({ path: '/panel/mensajeria', query: { ...to.query, tab: 'whatsapp-templates' } }),
         },
         {
           path: 'notifications',
@@ -469,14 +477,12 @@ const router = createRouter({
         {
           path: 'message-logs',
           name: 'message-logs',
-          component: () => import('@/pages/message-logs/index.vue'),
-          meta: { requiresHotelAuth: true },
+          redirect: (to) => ({ path: '/panel/mensajeria', query: { ...to.query, tab: 'message-logs' } }),
         },
         {
           path: 'push-tokens',
           name: 'push-tokens',
-          component: () => import('@/pages/push-tokens/index.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/mensajeria', query: { ...to.query, tab: 'push-tokens' } }),
         },
       ],
     },

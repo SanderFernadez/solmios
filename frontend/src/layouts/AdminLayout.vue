@@ -167,6 +167,7 @@ import { useDashboardStore } from '@/stores/dashboard.store'
 import { useRoomStore } from '@/stores/room.store'
 import { useNow } from '@/composables/useNow'
 import { useModulesStore } from '@/stores/modules.store'
+import { MESSAGING_PATH, MESSAGING_TABS } from '@/config/messaging-tabs'
 import AppHeader from '@/components/features/core-pms/AppHeader.vue'
 import TrialBanner from '@/components/features/TrialBanner.vue'
 import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanner.vue'
@@ -299,22 +300,19 @@ const nonavItems = [
   },
   {
     label: 'Configuración', icon: ICONS.cog, roles: ['hotel_admin'],
-    // `group` abre un bloque con encabezado dentro del submenú: los items de
-    // mensajería estaban intercalados con los de infraestructura y no se
-    // distinguía qué configuraba qué.
+    // Las 5 vistas de mensajería se colapsaron en una sola entrada con tabs
+    // (pages/mensajeria). Con 6 items la lista se lee de un vistazo, así que ya
+    // no hacen falta los encabezados de bloque que agrupaban los 10 anteriores.
     children: [
-      { group: 'General' },
       { label: 'Configuración Base', path: '/panel/settings', roles: ['hotel_admin'] },
       { label: 'Habitaciones', path: '/panel/rooms', roles: ['hotel_admin', 'receptionist'] },
-
-      { group: 'Mensajería' },
-      { label: 'Envíos Auto', path: '/panel/auto-messages', roles: ['hotel_admin'] },
-      { label: 'Plantillas WhatsApp', path: '/panel/whatsapp-templates', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Historial de Envíos', path: '/panel/message-logs', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Cola de Emails', path: '/panel/email-queue', roles: ['hotel_admin'] },
-      { label: 'Notificaciones Push', path: '/panel/push-tokens', roles: ['hotel_admin'] },
-
-      { group: 'Integraciones' },
+      // `anyOf`: /panel/mensajeria es CORE (no está en module-map), así que la
+      // entrada se gatea por sus tabs — si el hotel no tiene habilitado ningún
+      // módulo de mensajería, no se muestra.
+      {
+        label: 'Mensajería', path: MESSAGING_PATH, roles: ['hotel_admin', 'receptionist'],
+        anyOf: MESSAGING_TABS.map(t => t.path),
+      },
       { label: 'Pasarelas de Pago', path: '/panel/pagos', roles: ['hotel_admin'] },
       { label: 'Cerraduras', path: '/panel/cerraduras', roles: ['hotel_admin'] },
       { label: 'Dispositivos', path: '/panel/devices', roles: ['hotel_admin'] },
@@ -354,6 +352,17 @@ interface NavItem {
   expanded?: boolean
   /** Encabezado de bloque dentro de un submenú: no navega ni tiene roles. */
   group?: string
+  /**
+   * Rutas alternativas de gateo, para entradas que agrupan varias vistas en tabs
+   * (Mensajería). El item se muestra si AL MENOS UNA está habilitada, porque su
+   * propia ruta es CORE y por sí sola no gatea nada.
+   */
+  anyOf?: string[]
+}
+
+/** ¿El item pasa el gateo por módulo? `anyOf` gana sobre `path` cuando está. */
+function navEnabled(item: { path: string; anyOf?: string[] }) {
+  return item.anyOf ? item.anyOf.some(p => modules.routeEnabled(p)) : modules.routeEnabled(item.path)
 }
 
 function isSectionActive(item: any) {
@@ -376,7 +385,7 @@ const visibleItems = computed(() => {
         // después se descartan los que quedaron sin ningún item debajo (p. ej.
         // un recepcionista que no ve nada de "Integraciones").
         const withGroups = item.children.filter((c) =>
-          c.group ? true : c.roles.includes(role) && modules.routeEnabled(c.path),
+          c.group ? true : c.roles.includes(role) && navEnabled(c),
         )
         const children = withGroups.filter((c, i) => !c.group || !!withGroups[i + 1] && !withGroups[i + 1].group)
         return { ...item, children, expanded: !collapsedSections.value.has(item.label) }
@@ -387,7 +396,7 @@ const visibleItems = computed(() => {
       // Padre: visible si le queda al menos un hijo habilitado (por rol + módulo).
       if (item.children) return item.children.length > 0
       // Hoja: por rol + su ruta habilitada (las rutas CORE quedan siempre visibles).
-      return item.roles.includes(role) && modules.routeEnabled(item.path)
+      return item.roles.includes(role) && navEnabled(item)
     })
 })
 
