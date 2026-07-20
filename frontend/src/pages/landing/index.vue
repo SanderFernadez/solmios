@@ -72,7 +72,7 @@
             <!-- CTAs -->
             <div class="hero-fade-up flex flex-wrap gap-3.5 mb-12" style="animation-delay:.18s">
               <router-link
-                to="/login"
+                to="/registro"
                 class="group inline-flex items-center gap-2.5 bg-blue text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-blue-200"
               >
                 Comenzar Gratis
@@ -203,7 +203,7 @@
             </div>
           </div>
           <router-link
-            to="/login"
+            to="/registro"
             class="group inline-flex items-center gap-2.5 bg-blue text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-blue-200"
           >
             Comenzar Gratis
@@ -302,13 +302,15 @@
               <span class="text-sm mb-1.5" :class="plan.featured ? 'text-white/40' : 'text-slate-400'">/mes</span>
             </div>
             <p class="text-sm mb-6" :class="plan.featured ? 'text-white/55' : 'text-slate-500'">{{ plan.desc }}</p>
-            <router-link to="/login"
+            <component
+              :is="plan.href ? 'a' : 'router-link'"
+              v-bind="plan.href ? { href: plan.href } : { to: plan.to }"
               class="block w-full py-3 rounded-xl text-center text-sm font-bold mb-6 transition-all"
               :class="plan.featured
                 ? 'bg-blue-400 text-white hover:bg-blue-300'
                 : 'bg-slate-100 text-navy hover:bg-navy hover:text-white'">
               {{ plan.cta }}
-            </router-link>
+            </component>
             <div class="space-y-3">
               <div v-for="feat in plan.features" :key="feat" class="flex items-center gap-3 text-sm"
                 :class="plan.featured ? 'text-white/70' : 'text-slate-600'">
@@ -369,7 +371,7 @@
         <h2 class="text-3xl md:text-5xl font-black text-white mb-6 leading-tight">¿Listo para transformar<br>tu hotel?</h2>
         <p class="text-white/60 mb-10 max-w-xl mx-auto">Únete a 500+ hoteles que ya gestionan todo desde SolmiOS. Sin tarjeta de crédito, cancela cuando quieras.</p>
         <div class="flex flex-wrap gap-4 justify-center">
-          <router-link to="/login" class="group inline-flex items-center gap-2 bg-white text-blue font-bold text-sm px-8 py-4 rounded-xl hover:bg-blue-50 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-blue-900/30">
+          <router-link to="/registro" class="group inline-flex items-center gap-2 bg-white text-blue font-bold text-sm px-8 py-4 rounded-xl hover:bg-blue-50 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-blue-900/30">
             Comenzar Gratis
             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </router-link>
@@ -538,17 +540,24 @@ const integrations = [
   { name: 'API Propia', cat: 'Personalizada', color: '#3B82F6', icon: '<svg class="w-9 h-9" fill="none" stroke="#3B82F6" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7l-5 5 5 5m8-16l5 5-5 5M14 4l-4 16"/></svg>' },
 ]
 
+// `to` = ruta interna; `href` = destino externo (Enterprise es venta asistida,
+// no autoservicio). Antes los tres botones eran un router-link fijo a /login:
+// "Empezar Gratis" no llevaba a registrarse y "Contactar Ventas" tampoco
+// contactaba a nadie.
 const plans = [
   {
     name: 'Starter', price: '$49', desc: 'Para hoteles pequeños que empiezan a digitalizar.', cta: 'Empezar Gratis', featured: false,
+    to: '/registro',
     features: ['Hasta 30 habitaciones', '2 usuarios', 'Channel Manager básico', 'Reservas & Check-in', 'Soporte por email'],
   },
   {
     name: 'Professional', price: '$99', desc: 'Para hoteles en crecimiento que necesitan más control.', cta: 'Empezar Gratis', featured: true,
+    to: '/registro',
     features: ['Hasta 100 habitaciones', '6 usuarios', 'Channel Manager completo', 'Housekeeping & Mantenimiento', 'Facturación electrónica', 'Reportes avanzados', 'Soporte prioritario'],
   },
   {
     name: 'Enterprise', price: '$199', desc: 'Para hoteles grandes y cadenas multi-propiedad.', cta: 'Contactar Ventas', featured: false,
+    href: 'mailto:ventas@solmios.com?subject=Consulta%20plan%20Enterprise',
     features: ['Habitaciones ilimitadas', 'Usuarios ilimitados', 'Multi-propiedad', 'AI & Automatizaciones', 'API personalizada', 'Soporte 24/7', 'Account Manager dedicado'],
   },
 ]
