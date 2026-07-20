@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex items-center gap-2.5 mb-6">
-      <h2 class="text-xl font-black text-navy">Housekeeping</h2>
+      <h2 class="text-xl font-black text-navy">Limpieza</h2>
       <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
         <span class="relative flex h-1.5 w-1.5">
           <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
@@ -210,7 +210,7 @@
             <td colspan="8" class="p-0">
               <div class="flex flex-col items-center justify-center py-16 text-center">
                 <span class="w-10 h-10 mb-3 text-text-muted opacity-40" v-html="ICON_SPARKLE"></span>
-                <p class="text-sm font-bold text-navy">Sin tareas de housekeeping</p>
+                <p class="text-sm font-bold text-navy">Sin tareas de limpieza</p>
                 <p class="text-xs text-text-muted mt-1">No hay tareas para los filtros actuales.<br>Creá una nueva tarea o ajustá los filtros.</p>
               </div>
             </td>
@@ -831,7 +831,7 @@ const stats = computed(() => [
 ])
 
 const availableRooms = computed(() =>
-  store.rooms.map(r => ({ id: r.id, number: r.number, type: r.type || 'Standard' })),
+  store.rooms.map(r => ({ id: r.id, number: r.number, type: r.type || 'Estándar' })),
 )
 
 // Opciones para el SearchSelect de habitación (buscador dinámico en Nueva Tarea).
@@ -942,18 +942,20 @@ function statusLabel(status: string) {
   return labels[status] || status
 }
 
+// Las tarjetas renderizan el label ya traducido (task.priority), pero alguna vista puede pasar el
+// valor crudo del backend. Ambos vocabularios se mapean al mismo color para que no diverjan.
 function priorityClass(priority: string) {
   const classes: Record<string, string> = {
-    Normal: 'bg-surface text-text-muted', High: 'bg-coral/10 text-coral', Urgent: 'bg-danger/10 text-danger',
-    low: 'bg-surface text-text-muted', medium: 'bg-gold/10 text-gold', high: 'bg-coral/10 text-coral', urgent: 'bg-danger/10 text-danger',
+    Baja: 'bg-surface text-text-muted', Normal: 'bg-surface text-text-muted', Alta: 'bg-coral/10 text-coral', Urgente: 'bg-danger/10 text-danger',
+    low: 'bg-surface text-text-muted', medium: 'bg-surface text-text-muted', high: 'bg-coral/10 text-coral', urgent: 'bg-danger/10 text-danger',
   }
   return classes[priority] || 'bg-surface text-text-muted'
 }
 
 function priorityBadgeClass(priority: string) {
   const classes: Record<string, string> = {
-    Normal: 'bg-surface text-text-muted', High: 'bg-coral/10 text-coral', Urgent: 'bg-danger text-white',
-    low: 'bg-surface text-text-muted', medium: 'bg-gold/10 text-gold', high: 'bg-coral/10 text-coral', urgent: 'bg-danger text-white',
+    Baja: 'bg-surface text-text-muted', Normal: 'bg-surface text-text-muted', Alta: 'bg-coral/10 text-coral', Urgente: 'bg-danger text-white',
+    low: 'bg-surface text-text-muted', medium: 'bg-surface text-text-muted', high: 'bg-coral/10 text-coral', urgent: 'bg-danger text-white',
   }
   return classes[priority] || 'bg-surface text-text-muted'
 }

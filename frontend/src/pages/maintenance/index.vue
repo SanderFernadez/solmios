@@ -495,8 +495,13 @@
           v-for="status in availableStatuses"
           :key="status.value"
           @click="changeStatus(status.value)"
-          class="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer"
-          :class="selectedOrder.status === status.value ? [statusClass(status.value), statusBorderFromDot(status.dotColor)] : 'border-border text-text-secondary hover:border-navy/30'"
+          :disabled="!canTransitionTo(status.value)"
+          :title="canTransitionTo(status.value) ? '' : `No se puede pasar de ${statusLabel(selectedOrder.status)} a ${status.label}`"
+          class="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          :class="[
+            canTransitionTo(status.value) ? 'cursor-pointer' : '',
+            selectedOrder.status === status.value ? [statusClass(status.value), statusBorderFromDot(status.dotColor)] : 'border-border text-text-secondary hover:border-navy/30',
+          ]"
         >
           <span class="h-1.5 w-1.5 shrink-0 rounded-full" :class="status.dotColor"></span>
           {{ status.label }}
@@ -578,6 +583,26 @@ const availableStatuses = [
   { value: 'waiting', label: 'Esperando', description: 'Esperando repuestos o aprobación', dotColor: 'bg-purple' },
   { value: 'closed', label: 'Completada', description: 'Problema resuelto verificado', dotColor: 'bg-teal' }
 ]
+
+// Espejo de STATUS_TRANSITIONS del backend (mantenimiento/usecases/timings.ts).
+// Sin esto el modal ofrece los 4 estados siempre y la transición prohibida se
+// descubre recién con el error del servidor (feedback #420).
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  open: ['in_progress', 'resolved', 'closed'],
+  in_progress: ['open', 'waiting', 'resolved', 'closed'],
+  waiting: ['in_progress', 'resolved', 'closed', 'open'],
+  resolved: ['closed', 'open'],
+  closed: ['open'],
+}
+
+function isAllowedTransition(from: string, to: string): boolean {
+  if (from === to) return true
+  return (STATUS_TRANSITIONS[from] || []).includes(to)
+}
+
+function canTransitionTo(target: string): boolean {
+  return isAllowedTransition(selectedOrder.value?.status || 'open', target)
+}
 
 // Solo el personal de mantenimiento (rol `maintenance`) se ofrece para asignar un
 // ticket interno. Los tickets guardan assignedTo = users.id.
@@ -1135,6 +1160,13 @@ async function onDrop(e: DragEvent, newStatus: string) {
   dragOverCol.value = null
   if (!draggedOrder.value || draggedOrder.value.status === newStatus) { draggedOrder.value = null; return }
   const order = draggedOrder.value
+  // El backend rechaza las transiciones no permitidas; avisamos acá con el motivo
+  // en vez de dejar que falle el request con un error genérico.
+  if (!isAllowedTransition(order.status, newStatus)) {
+    toast.error(`No se puede pasar de "${statusLabel(order.status)}" a "${statusLabel(newStatus)}"`)
+    draggedOrder.value = null
+    return
+  }
   try {
     await OperationsService.mantenimiento.update(order.id, { status: newStatus })
     const o = orders.value.find(o => o.id === order.id)

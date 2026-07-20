@@ -132,6 +132,17 @@ describe('MantenimientoService', () => {
       const svc = new MantenimientoService(repo, log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo())
       await expect(svc.update('t1', { status: 'in_progress' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
+
+    // Feedback #420: los estados no podían revertirse a "abierta" de forma consistente.
+    // Toda orden que todavía no se cerró debe poder volver a open (se asignó por error,
+    // el técnico no puede tomarla, el repuesto nunca llegó).
+    it.each(['in_progress', 'waiting', 'resolved', 'closed'])('allows reverting %s -> open', async (from) => {
+      const ticket = { id: 't1', hotelId: 'h1', title: 'Leak', status: from } as MantenimientoDTO
+      const repo = makeRepo({ findById: async () => ticket, update: async (id, data) => ({ id, ...data } as MantenimientoDTO) })
+      const svc = new MantenimientoService(repo, log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo())
+      const result = await svc.update('t1', { status: 'open' }, hotelAdmin)
+      expect(result.status).toBe('open')
+    })
   })
 
   // Un ticket tiene UN dueño: técnico interno (assignedTo) O servicio externo

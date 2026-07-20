@@ -10,7 +10,7 @@ import { assertOwnership } from '../helpers'
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   open: ['in_progress', 'resolved', 'closed'],
   in_progress: ['open', 'waiting', 'resolved', 'closed'],
-  waiting: ['in_progress', 'resolved', 'closed'],
+  waiting: ['in_progress', 'resolved', 'closed', 'open'],
   resolved: ['closed', 'open'],
   closed: ['open'],
 }

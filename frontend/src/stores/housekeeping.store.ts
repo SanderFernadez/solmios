@@ -8,10 +8,10 @@ import { RoomService } from '@/services/Room.service'
 import { TeamService, type TeamMember } from '@/services/Team.service'
 
 const TYPE_LABELS: Record<string, string> = {
-  full_cleaning: 'Full Cleaning', quick_cleaning: 'Quick Clean', deep_cleaning: 'Deep Clean',
-  inspection: 'Inspection', maintenance: 'Maintenance',
+  full_cleaning: 'Limpieza completa', quick_cleaning: 'Limpieza rápida', deep_cleaning: 'Limpieza profunda',
+  inspection: 'Inspección', maintenance: 'Mantenimiento',
 }
-const PRI_LABELS: Record<string, string> = { high: 'High', medium: 'Normal', low: 'Low', urgent: 'Urgent' }
+const PRI_LABELS: Record<string, string> = { high: 'Alta', medium: 'Normal', low: 'Baja', urgent: 'Urgente' }
 
 export interface HousekeepingViewTask {
   id: string
@@ -90,7 +90,7 @@ function mapTask(t: HousekeepingTask, roomMap: Map<string, any>, staffMap: Map<s
     id: t.id,
     rawType: t.type,
     roomNumber: room?.number || '—',
-    type: TYPE_LABELS[t.type ?? ''] || t.type || 'Cleaning',
+    type: TYPE_LABELS[t.type ?? ''] || t.type || 'Limpieza',
     floor: room?.floor || '',
     status: t.status || 'pending',
     priorityRaw: t.priority || 'medium',
