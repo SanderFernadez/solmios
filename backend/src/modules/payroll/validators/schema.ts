@@ -11,12 +11,19 @@ export const CreateConceptSchema: Record<string, ValidationRule> = {
   priority: { type: 'number' as const },
 }
 
+// El período identifica la liquidación y es la clave de unicidad por hotel (ver usecases/runs.ts).
+// Sin patrón, un cliente podía mandar `2026-09-1783750850` (epoch pegado al mes) para esquivar esa
+// unicidad y crear liquidaciones duplicadas del mismo mes: hay 2 filas así en producción.
+// Las fechas van con patrón por el mismo motivo — se muestran crudas en la UI y en los recibos.
+const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
+const DATE_PATTERN = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+
 export const CreateRunSchema: Record<string, ValidationRule> = {
   hotelId: { type: 'string' as const, required: true },
-  period: { type: 'string' as const, required: true },
-  startDate: { type: 'string' as const, required: true },
-  endDate: { type: 'string' as const, required: true },
-  paymentDate: { type: 'string' as const, required: true },
+  period: { type: 'string' as const, required: true, pattern: PERIOD_PATTERN, message: 'period debe tener formato YYYY-MM' },
+  startDate: { type: 'string' as const, required: true, pattern: DATE_PATTERN, message: 'startDate debe tener formato YYYY-MM-DD' },
+  endDate: { type: 'string' as const, required: true, pattern: DATE_PATTERN, message: 'endDate debe tener formato YYYY-MM-DD' },
+  paymentDate: { type: 'string' as const, required: true, pattern: DATE_PATTERN, message: 'paymentDate debe tener formato YYYY-MM-DD' },
 }
 
 // `validateSchema` no tiene tipo `array`: declararlo como tal hacía que el campo NO se copiara al
