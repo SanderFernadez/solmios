@@ -147,6 +147,11 @@
                 </td>
                 <td class="px-4 py-3 text-right">
                   <div class="flex items-center justify-end gap-1.5">
+                    <button v-if="lock.roomId" @click="manageLock(lock)" title="Gestionar cerradura"
+                      class="rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-navy hover:bg-navy/10 transition-colors cursor-pointer">
+                      Gestionar
+                    </button>
+                    <span v-else class="text-[11px] text-text-muted" title="Asigná una habitación para poder operarla">Asigná una habitación</span>
                     <button v-if="lock.roomId" @click="viewCodes(lock)" title="Ver códigos guardados"
                       class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
                       <span class="h-4 w-4" v-html="ICON_KEY"></span>
@@ -584,6 +589,18 @@
         <button @click="codesModal = null" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Cerrar</button>
       </template>
     </AppModal>
+
+    <!-- Gestión completa de la cerradura (abrir remoto, códigos fijos, PINs del hardware,
+         auto-códigos, gateways). Es el mismo modal que usa el planning: sin esto la página
+         de cerraduras solo leía y había que ir al calendario para operar (feedback #398). -->
+    <RoomLockModal
+      v-if="lockRoom"
+      :room-id="lockRoom.id"
+      :room-number="lockRoom.number"
+      :reservation-id="lockRoom.reservationId"
+      @close="lockRoom = null"
+      @changed="load()"
+    />
   </div>
 </template>
 
@@ -593,10 +610,12 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { TTLockService, type TTLockConfig, type LockGateway, type LockActiveCode, type LockRecord, type MasterKey, type MasterKeyAccess, type MasterKeyLock } from '@/services/TTLock.service'
 import { TeamService } from '@/services/Team.service'
+import { OperationsService } from '@/services/Operations.service'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import RoomLockModal from '@/components/features/RoomLockModal.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -615,6 +634,39 @@ const ttlockConfig = ref({ clientId: '', clientSecret: '', username: '', passwor
 const connecting = ref(false)
 
 const codesModal = ref<{ lockName: string; codes: { code: string; status: string; startDate: string; endDate: string }[] } | null>(null)
+
+// Gestión completa de una cerradura, reusando el modal del planning (feedback #398).
+const lockRoom = ref<{ id: string; number: string; reservationId: string | null } | null>(null)
+
+/**
+ * El modal necesita la reserva en curso para poder generar el código del huésped.
+ * Acá no tenemos el calendario cargado, así que se resuelve on-demand: la reserva
+ * activa es la que cubre el día de hoy en esa habitación. Si no hay (o falla la
+ * consulta) el modal igual abre — solo queda sin la acción de generar código.
+ */
+async function activeReservationId(roomId: string): Promise<string | null> {
+  const today = new Date().toISOString().slice(0, 10)
+  try {
+    const d = await OperationsService.planning(hid.value)
+    const res = (d?.reservas ?? []).find((b: any) =>
+      String(b.roomId) === String(roomId) &&
+      b.status !== 'cancelled' &&
+      today >= String(b.checkIn || '').slice(0, 10) &&
+      today < String(b.checkOut || '').slice(0, 10),
+    )
+    return res?.id ? String(res.id) : null
+  } catch { return null }
+}
+
+async function manageLock(lock: any) {
+  const room = rooms.value.find((r: any) => String(r.id) === String(lock.roomId))
+  if (!room) { toast.error('La habitación asignada a esta cerradura ya no existe'); return }
+  lockRoom.value = {
+    id: String(room.id),
+    number: String(room.number ?? ''),
+    reservationId: await activeReservationId(String(room.id)),
+  }
+}
 
 // Gateways
 const gateways = ref<LockGateway[]>([])

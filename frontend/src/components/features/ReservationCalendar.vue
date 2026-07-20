@@ -942,7 +942,14 @@ async function loadLocks() {
 /** Abrir la gestión completa de una cerradura desde el panel de la barra (reusa RoomLockModal). */
 function manageLock(l: any) {
   const room = planRooms.value.find((r: any) => String(r.id) === String(l.roomId))
-  if (!room) { toast.info('Asigná esta cerradura a una habitación para gestionarla'); return }
+  // Una cerradura recién sincronizada aparece en la lista pero todavía no tiene
+  // habitación, y el modal se apoya en el roomId. En vez de dejar al usuario en un
+  // callejón sin salida, lo mandamos a la vista donde sí puede asignarla (feedback #399).
+  if (!room) {
+    toast.info('Esta cerradura todavía no tiene habitación. Te llevamos a Cerraduras para asignarla.')
+    router.push('/panel/cerraduras')
+    return
+  }
   quickAction.value = null
   openRoomLock(room)
 }
