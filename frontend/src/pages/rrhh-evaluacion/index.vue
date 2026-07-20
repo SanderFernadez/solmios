@@ -266,7 +266,15 @@ function applyConfig(cfg: NonNullable<typeof config.value>) {
   form.weights = { ...cfg.weights }
   form.thresholds = { ...cfg.thresholds }
   form.standardTaskMinutes = cfg.standardTaskMinutes
-  form.enabled = cfg.enabled === 1
+  // El backend persiste 1/0 pero el modelo ORM declara el campo `boolean`, así que la API
+  // devuelve `true`/`false`. Comparar contra `=== 1` daba SIEMPRE false: el checkbox se veía
+  // desmarcado con el motor activo y, al guardar cualquier otro cambio, lo apagaba sin avisar.
+  form.enabled = isEnabled(cfg.enabled)
+}
+
+/** Acepta las dos formas en que puede viajar el flag (boolean del ORM o 1/0 legacy). */
+function isEnabled(v: unknown): boolean {
+  return v === true || v === 1 || v === '1'
 }
 
 async function saveConfig() {

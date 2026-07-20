@@ -373,7 +373,12 @@ export interface PerformanceEvalConfig {
   weights: EvalWeights
   thresholds: EvalThresholds
   standardTaskMinutes: number
-  enabled: number
+  /**
+   * El backend lo persiste como 1/0, pero el modelo ORM lo declara `boolean` y lo deserializa,
+   * así que por la API viaja como booleano. Se tipa `boolean | number` porque los registros
+   * viejos de la DB todavía pueden devolver 1/0 — normalizar siempre antes de usar.
+   */
+  enabled: boolean | number
 }
 
 export interface UpdatePerformanceEvalConfig {
