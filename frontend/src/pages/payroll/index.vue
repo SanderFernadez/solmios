@@ -15,11 +15,11 @@
       <KpiHeroCard label="Empleados" :value="lastRun?.employeeCount ?? 0" icon="users" accent="blue"
         :unit="lastRunLabel" />
       <KpiHeroCard label="Bruto Total" :value="lastRun?.totalGross ?? 0" icon="money" accent="teal"
-        prefix="$" :unit="lastRunLabel" />
+        :prefix="currencyPrefix" :unit="lastRunLabel" />
       <KpiHeroCard label="Deducciones" :value="lastRun?.totalDeductions ?? 0" icon="checkout" accent="rose"
-        prefix="$" :unit="lastRunLabel" :progress="deductionsShare" />
+        :prefix="currencyPrefix" :unit="lastRunLabel" :progress="deductionsShare" />
       <KpiHeroCard label="Neto a Pagar" :value="lastRun?.totalNet ?? 0" icon="checkin" accent="amber"
-        prefix="$" :unit="lastRunLabel" />
+        :prefix="currencyPrefix" :unit="lastRunLabel" />
     </div>
 
     <div class="flex gap-2 mb-6 flex-wrap">
@@ -86,7 +86,7 @@
                 </span>
               </td>
               <td class="px-4 py-3 text-right whitespace-nowrap">
-                <div class="text-sm font-extrabold text-navy tabular-nums">${{ run.totalNet.toLocaleString() }}</div>
+                <div class="text-sm font-extrabold text-navy tabular-nums">{{ money(run.totalNet) }}</div>
                 <div v-if="run.employeeCount" class="text-[11px] text-text-muted tabular-nums">{{ run.employeeCount }} empleado(s)</div>
               </td>
               <td class="px-4 py-3 text-right">
@@ -261,6 +261,7 @@
     <PayrollDetailModal
       v-if="detailRun"
       :run="detailRun"
+      :currency="payrollCurrency"
       @close="detailRun = null"
     />
 
@@ -308,6 +309,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
+import { formatCurrency, currencySymbol } from '@/composables/useCurrency'
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
 const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5M21 12h-4a1.5 1.5 0 0 0 0 3h4v-3Z"/></svg>'
@@ -335,6 +337,13 @@ const tabs = [
 const runs = ref<PayrollRun[]>([])
 const config = ref<PayrollConfig | null>(null)
 const concepts = ref<PayrollConcept[]>([])
+
+// Moneda de la nómina (configurable por hotel). Un único formateador para toda la vista y el modal
+// de detalle: antes convivían `toLocaleString()` sin locale (que sigue el idioma del navegador) y
+// otro con locale 'es' fijo, y el mismo monto se veía distinto según dónde se lo mirara.
+const payrollCurrency = computed(() => config.value?.currency || 'DOP')
+const money = (n: number) => formatCurrency(Number(n) || 0, payrollCurrency.value)
+const currencyPrefix = computed(() => currencySymbol(payrollCurrency.value))
 
 const calcRun = ref<PayrollRun | null>(null)
 const detailRun = ref<PayrollRun | null>(null)
@@ -413,7 +422,7 @@ function calculateRun(run: PayrollRun) {
 }
 
 function onCalculated(result: { employeeCount: number; totalNet: number }) {
-  toast.success(`Nómina calculada: ${result.employeeCount} empleados, $${result.totalNet.toLocaleString()} neto`)
+  toast.success(`Nómina calculada: ${result.employeeCount} empleados, ${money(result.totalNet)} neto`)
   calcRun.value = null
   loadData()
 }
@@ -432,7 +441,7 @@ async function runConfirm() {
 function approveRun(run: PayrollRun) {
   confirmDialog.value = {
     title: 'Aprobar liquidación',
-    message: `¿Aprobar la liquidación del período ${run.period} por $${run.totalNet.toLocaleString()} neto? Se generan los recibos.`,
+    message: `¿Aprobar la liquidación del período ${run.period} por ${money(run.totalNet)} neto? Se generan los recibos.`,
     confirmLabel: 'Aprobar',
     onConfirm: async () => {
       try { await PayrollService.approve(run.id); toast.success('Nómina aprobada — recibos generados'); loadData() }

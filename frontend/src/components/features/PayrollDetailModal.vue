@@ -117,8 +117,9 @@ import { PayrollService, type PayrollRun, type PayrollRunDetail } from '@/servic
 import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.service'
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
+import { formatCurrency } from '@/composables/useCurrency'
 
-const props = defineProps<{ run: PayrollRun }>()
+const props = withDefaults(defineProps<{ run: PayrollRun; currency?: string }>(), { currency: 'DOP' })
 defineEmits<{ close: [] }>()
 const toast = useToast()
 const busy = ref<string | null>(null)
@@ -165,7 +166,10 @@ const loading = ref(true)
 const loadError = ref('')
 const expanded = ref<string | null>(null)
 
-const money = (n: number) => '$' + (Number(n) || 0).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+// Formatea con la moneda configurada en la nómina (RD$ por defecto en RD). Antes era un '$' pelado
+// con locale 'es', mientras la tabla de la vista usaba el locale del navegador: el mismo importe se
+// veía "$31.875,00" acá y "$31,875.00" allá. `formatCurrency` es la única fuente de formato.
+const money = (n: number) => formatCurrency(Number(n) || 0, props.currency)
 const employeeName = (id: string) => { const p = profiles.value.find((x) => x.id === id || x.userId === id); return p?.userName || p?.position || id.slice(0, 8) }
 function statusLabel(s: string) { return ({ draft: 'Borrador', calculated: 'Calculado', approved: 'Aprobado', paid: 'Pagado', cancelled: 'Cancelado' } as Record<string, string>)[s] ?? s }
 function statusClass(s: string) { return ({ draft: 'text-text-muted', calculated: 'text-blue', approved: 'text-gold', paid: 'text-teal', cancelled: 'text-coral' } as Record<string, string>)[s] ?? 'text-navy' }

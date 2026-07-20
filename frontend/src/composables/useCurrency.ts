@@ -44,15 +44,24 @@ export function convertAmount(
   return Math.round((amount * exchangeRate + Number.EPSILON) * 100) / 100
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', DOP: 'RD$', EUR: '€', COP: '$', MXN: '$', ARS: '$', CLP: '$',
+}
+
+/**
+ * Símbolo de la moneda. Se expone aparte de `formatCurrency` para los componentes que reciben
+ * el prefijo y el número por separado (KpiHeroCard anima el valor, así que no puede recibirlo
+ * ya formateado). Evita que las vistas hardcodeen '$' cuando el hotel factura en otra moneda.
+ */
+export function currencySymbol(currency: string): string {
+  return CURRENCY_SYMBOLS[currency] || currency + ' '
+}
+
 /**
  * Formatea un monto con su moneda.
  */
 export function formatCurrency(amount: number, currency: string): string {
-  const symbols: Record<string, string> = {
-    USD: '$', DOP: 'RD$', EUR: '€', COP: '$', MXN: '$', ARS: '$', CLP: '$',
-  }
-  const symbol = symbols[currency] || currency + ' '
-  return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `${currencySymbol(currency)}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 /**
