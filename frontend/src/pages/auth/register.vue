@@ -101,18 +101,22 @@
               class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
               placeholder="Hotel Boutique Palma">
           </div>
+          <div>
+            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">País</label>
+            <SearchSelect v-model="form.country" :options="COUNTRIES" placeholder="Buscar país..." />
+          </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Ciudad</label>
               <input v-model="form.address" type="text"
                 class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
-                placeholder="Punta Cana">
+                placeholder="Ciudad donde está el hotel">
             </div>
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Teléfono</label>
               <input v-model="form.phone" type="tel"
                 class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
-                placeholder="809-555-0100">
+                placeholder="+1 809 555 0100">
             </div>
           </div>
           <div v-if="plans.length">
@@ -153,6 +157,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { SignupService, type PublicPlan } from '@/services/Signup.service'
+import SearchSelect from '@/components/ui/SearchSelect.vue'
+import { COUNTRIES } from '@/data/locales'
 
 /** Debe coincidir con `TRIAL_DAYS` del backend. Se muestra en 4 lugares. */
 const trialDays = 7
@@ -175,7 +181,7 @@ const plans = ref<PublicPlan[]>([])
 
 const form = ref({
   ownerName: '', email: '', password: '',
-  hotelName: '', address: '', phone: '', planId: '',
+  hotelName: '', country: '', address: '', phone: '', planId: '',
 })
 
 onMounted(async () => {
@@ -208,6 +214,7 @@ async function submit() {
       email: form.value.email.trim(),
       password: form.value.password,
       ownerName: form.value.ownerName.trim(),
+      country: form.value.country.trim(),
       address: form.value.address.trim(),
       phone: form.value.phone.trim(),
       planId: form.value.planId || undefined,

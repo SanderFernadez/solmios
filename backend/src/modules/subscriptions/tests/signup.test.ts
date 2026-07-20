@@ -74,6 +74,21 @@ describe('SignupUseCase', () => {
     expect(hotels[0]).not.toHaveProperty('location')
   })
 
+  // El producto es internacional: el alta elige país de un catálogo. Si el
+  // usecase no lo copia a la fila, se pierde sin error (el ORM descarta los
+  // campos que no llegan) y el hotel queda sin país aunque se haya elegido uno.
+  it('persiste el país elegido en el alta', async () => {
+    const { uc, hotels } = setup()
+    await uc.signup({ ...VALID, country: 'España' }, NOW)
+    expect(hotels[0].country).toBe('España')
+  })
+
+  it('sin país queda vacío, no undefined: la fila se crea igual', async () => {
+    const { uc, hotels } = setup()
+    await uc.signup(VALID, NOW)
+    expect(hotels[0].country).toBe('')
+  })
+
   it('la prueba vence a los 7 días exactos', async () => {
     const { uc, subs } = setup()
     const res = await uc.signup(VALID, NOW)

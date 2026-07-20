@@ -24,6 +24,8 @@ export interface SignupInput {
   ownerName?: string
   phone?: string
   address?: string
+  /** País del hotel. Se elige de un catálogo en el alta (data/locales.ts). */
+  country?: string
   /** Plan que quiere probar. Si no viene, se prueba sin plan asignado. */
   planId?: string
 }
@@ -91,6 +93,7 @@ export class SignupUseCase {
       // `address`, no `location`: el formulario del super-admin manda `location`,
       // que el ORM descarta sin avisar, y la dirección se pierde.
       address: input.address ?? '',
+      country: input.country ?? '',
       status: 'active',
       active: 1,
     })
