@@ -20,6 +20,8 @@ export interface SignupPayload {
   address?: string
   phone?: string
   planId?: string
+  /** Token del captcha (Turnstile). Solo si el build tiene site key. */
+  captchaToken?: string
 }
 
 export interface SignupResult {

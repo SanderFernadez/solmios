@@ -68,27 +68,67 @@
         <!-- Paso 1: la persona -->
         <form v-if="step === 1" @submit.prevent="goToStep2" class="space-y-4">
           <div>
-            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Tu nombre *</label>
-            <input v-model="form.ownerName" type="text" required autocomplete="name"
+            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
+              Tu nombre <span class="text-danger">*</span>
+            </label>
+            <input v-model="form.ownerName" type="text" required autocomplete="name" :maxlength="LIMITS.ownerName"
               class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
               placeholder="Ana Pérez">
           </div>
           <div>
-            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Email *</label>
-            <input v-model="form.email" type="email" required autocomplete="email"
-              class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
+            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
+              Email <span class="text-danger">*</span>
+            </label>
+            <input v-model="form.email" type="email" required autocomplete="email" :maxlength="LIMITS.email"
+              class="w-full px-4 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-navy"
+              :class="emailTouched && !emailValid ? 'border-danger' : 'border-border'"
+              @blur="emailTouched = true"
               placeholder="vos@tuhotel.com">
-            <p class="text-[11px] text-text-muted mt-1">Con este email vas a iniciar sesión.</p>
+            <p v-if="emailTouched && !emailValid" class="text-[11px] text-danger mt-1">
+              Escribí un email válido, con dominio completo (ej: ana@tuhotel.com).
+            </p>
+            <p v-else class="text-[11px] text-text-muted mt-1">Con este email vas a iniciar sesión.</p>
           </div>
           <div>
-            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Contraseña *</label>
-            <input v-model="form.password" type="password" required autocomplete="new-password" :minlength="MIN_PASSWORD"
-              class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
-              placeholder="Mínimo 8 caracteres">
+            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
+              Contraseña <span class="text-danger">*</span>
+            </label>
+            <div class="relative">
+              <input v-model="form.password" :type="showPassword ? 'text' : 'password'" required
+                autocomplete="new-password" :maxlength="PASSWORD_MAX"
+                class="w-full px-4 py-2.5 pr-16 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
+                placeholder="Elegí una contraseña segura">
+              <button type="button" @click="showPassword = !showPassword"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-text-muted hover:text-navy cursor-pointer">
+                {{ showPassword ? 'Ocultar' : 'Ver' }}
+              </button>
+            </div>
+
+            <!-- Fuerza + checklist. Se muestran recién al escribir: en blanco,
+                 una lista de requisitos en rojo recibe mal a quien llega. -->
+            <div v-if="form.password" class="mt-2">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-300"
+                    :class="passwordBarClass" :style="{ width: `${(passwordScore + 1) * 20}%` }"></div>
+                </div>
+                <span class="text-[11px] font-bold" :class="passwordValid ? 'text-success' : 'text-text-muted'">
+                  {{ passwordLabel }}
+                </span>
+              </div>
+              <ul class="mt-2 space-y-1">
+                <li v-for="req in passwordRequirements" :key="req.label"
+                  class="flex items-center gap-1.5 text-[11px]"
+                  :class="req.met ? 'text-success' : 'text-text-muted'">
+                  <span class="w-3 h-3 shrink-0" v-html="req.met ? ICON_CHECK : ICON_DOT"></span>
+                  {{ req.label }}
+                </li>
+              </ul>
+            </div>
           </div>
           <div v-if="error" class="text-xs text-danger bg-danger/5 border border-danger/20 rounded-xl px-3 py-2">{{ error }}</div>
-          <button type="submit"
-            class="w-full py-3 rounded-xl bg-navy text-white text-sm font-black hover:bg-navy-light transition-colors cursor-pointer">
+          <button type="submit" :disabled="!step1Valid"
+            class="w-full py-3 rounded-xl bg-navy text-white text-sm font-black hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             Continuar
           </button>
         </form>
@@ -96,8 +136,10 @@
         <!-- Paso 2: el hotel -->
         <form v-else @submit.prevent="submit" class="space-y-4">
           <div>
-            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Nombre del hotel *</label>
-            <input v-model="form.hotelName" type="text" required
+            <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">
+              Nombre del hotel <span class="text-danger">*</span>
+            </label>
+            <input v-model="form.hotelName" type="text" required :minlength="2" :maxlength="LIMITS.hotelName"
               class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
               placeholder="Hotel Boutique Palma">
           </div>
@@ -108,13 +150,13 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Ciudad</label>
-              <input v-model="form.address" type="text"
+              <input v-model="form.address" type="text" :maxlength="LIMITS.address"
                 class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
                 placeholder="Ciudad donde está el hotel">
             </div>
             <div>
               <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Teléfono</label>
-              <input v-model="form.phone" type="tel"
+              <input v-model="form.phone" type="tel" :maxlength="LIMITS.phone"
                 class="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
                 placeholder="+1 809 555 0100">
             </div>
@@ -127,6 +169,13 @@
                 {{ p.name }} — ${{ p.price }}/mes (después de la prueba)
               </option>
             </select>
+          </div>
+
+          <!-- Captcha. Solo aparece si hay site key configurada: sin ella el
+               backend tampoco lo exige, y un hueco vacío confundiría. -->
+          <div v-if="captchaSiteKey">
+            <div ref="captchaEl" class="cf-turnstile"></div>
+            <p v-if="captchaError" class="text-[11px] text-danger mt-1">{{ captchaError }}</p>
           </div>
 
           <div v-if="error" class="text-xs text-danger bg-danger/5 border border-danger/20 rounded-xl px-3 py-2">{{ error }}</div>
@@ -153,16 +202,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { SignupService, type PublicPlan } from '@/services/Signup.service'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import { COUNTRIES } from '@/data/locales'
+import { usePasswordStrength, PASSWORD_MAX } from '@/composables/usePasswordStrength'
 
 /** Debe coincidir con `TRIAL_DAYS` del backend. Se muestra en 4 lugares. */
 const trialDays = 7
-const MIN_PASSWORD = 8
+
+/**
+ * Topes de cada campo. Espejan los `max` de SignupSchema en el backend: acá
+ * evitan que se escriba de más, allá que alguien se saltee el formulario.
+ */
+const LIMITS = {
+  ownerName: 120,
+  email: 254,
+  hotelName: 120,
+  address: 200,
+  phone: 40,
+} as const
+
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'
+const ICON_DOT = '<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full"><circle cx="12" cy="12" r="4"/></svg>'
+
+/**
+ * Site key del captcha (Cloudflare Turnstile). Es pública por diseño. Si no
+ * está definida en el build, el captcha no se muestra y el backend tampoco lo
+ * exige: el registro sigue funcionando, protegido solo por rate-limit.
+ */
+const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? ''
 
 const perks = [
   'Reservas, habitaciones y huéspedes',
@@ -184,6 +255,101 @@ const form = ref({
   hotelName: '', country: '', address: '', phone: '', planId: '',
 })
 
+const showPassword = ref(false)
+const emailTouched = ref(false)
+
+// Espejo de shared/password-policy.ts del backend. La validación que decide es
+// la del servidor; esto es para no tener que apretar "Continuar" para saber qué
+// falta.
+const {
+  requirements: passwordRequirements,
+  isValid: passwordValid,
+  score: passwordScore,
+  label: passwordLabel,
+  barClass: passwordBarClass,
+} = usePasswordStrength(
+  computed(() => form.value.password),
+  () => ({ email: form.value.email, name: form.value.hotelName }),
+)
+
+/**
+ * Mismo criterio que `isValidEmail` del backend: algo, arroba, dominio con
+ * punto y TLD de 2+. No pretende cubrir el RFC entero, solo descartar lo
+ * imposible. Que la dirección exista de verdad lo dirá la verificación por
+ * correo.
+ */
+const emailValid = computed(() => {
+  const e = form.value.email.trim()
+  if (!e || e.length > LIMITS.email || e.includes('..')) return false
+  return /^[^\s@,;:<>()[\]\\]+@[^\s@.]+(\.[^\s@.]+)*\.[A-Za-z]{2,}$/.test(e)
+})
+
+/** El botón de "Continuar" se habilita recién cuando el paso 1 está completo. */
+const step1Valid = computed(() =>
+  form.value.ownerName.trim().length > 0 && emailValid.value && passwordValid.value,
+)
+
+// — Captcha —
+const captchaEl = ref<HTMLElement | null>(null)
+const captchaToken = ref('')
+const captchaError = ref('')
+let captchaWidgetId: string | undefined
+
+/** API que inyecta el script de Turnstile en `window`. */
+interface TurnstileApi {
+  render: (el: HTMLElement, opts: Record<string, unknown>) => string
+  reset: (id?: string) => void
+  remove: (id?: string) => void
+}
+function turnstile(): TurnstileApi | undefined {
+  return (window as unknown as { turnstile?: TurnstileApi }).turnstile
+}
+
+/** Carga el script una sola vez, aunque se entre y salga del paso 2. */
+function loadCaptchaScript(): Promise<void> {
+  const SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+  if (turnstile()) return Promise.resolve()
+  const existing = document.querySelector(`script[src="${SRC}"]`)
+  if (existing) return new Promise((res) => existing.addEventListener('load', () => res()))
+  return new Promise((res, rej) => {
+    const sc = document.createElement('script')
+    sc.src = SRC
+    sc.async = true
+    sc.defer = true
+    sc.onload = () => res()
+    sc.onerror = () => rej(new Error('no se pudo cargar el captcha'))
+    document.head.appendChild(sc)
+  })
+}
+
+async function mountCaptcha() {
+  if (!captchaSiteKey || captchaWidgetId !== undefined) return
+  try {
+    await loadCaptchaScript()
+    await nextTick()
+    const api = turnstile()
+    if (!api || !captchaEl.value) return
+    captchaWidgetId = api.render(captchaEl.value, {
+      sitekey: captchaSiteKey,
+      callback: (token: string) => { captchaToken.value = token; captchaError.value = '' },
+      'expired-callback': () => { captchaToken.value = '' },
+      'error-callback': () => {
+        captchaToken.value = ''
+        captchaError.value = 'No se pudo cargar la verificación. Revisá tu conexión.'
+      },
+    })
+  } catch {
+    captchaError.value = 'No se pudo cargar la verificación anti-robots. Recargá la página.'
+  }
+}
+
+// El widget vive en el paso 2, que no está montado hasta que se llega.
+watch(step, (s) => { if (s === 2) void mountCaptcha() })
+
+onUnmounted(() => {
+  if (captchaWidgetId !== undefined) turnstile()?.remove(captchaWidgetId)
+})
+
 onMounted(async () => {
   try {
     const res = await SignupService.publicPlans()
@@ -194,8 +360,13 @@ onMounted(async () => {
 
 function goToStep2() {
   error.value = ''
-  if (form.value.password.length < MIN_PASSWORD) {
-    error.value = `La contraseña debe tener al menos ${MIN_PASSWORD} caracteres.`
+  emailTouched.value = true
+  if (!emailValid.value) {
+    error.value = 'Revisá el email: falta el dominio o tiene un error de tipeo.'
+    return
+  }
+  if (!passwordValid.value) {
+    error.value = 'La contraseña todavía no cumple los requisitos de seguridad.'
     return
   }
   step.value = 2
@@ -207,6 +378,12 @@ function goToStep2() {
  */
 async function submit() {
   error.value = ''
+  // Sin token no se manda: el backend lo rechazaría igual, pero el token se
+  // consume en el intento y habría que resolver el captcha de nuevo por nada.
+  if (captchaSiteKey && !captchaToken.value) {
+    captchaError.value = 'Completá la verificación anti-robots para continuar.'
+    return
+  }
   saving.value = true
   try {
     await SignupService.signup({
@@ -218,12 +395,17 @@ async function submit() {
       address: form.value.address.trim(),
       phone: form.value.phone.trim(),
       planId: form.value.planId || undefined,
+      captchaToken: captchaToken.value || undefined,
     })
     await auth.login(form.value.email.trim(), form.value.password)
     router.push('/panel/dashboard')
   } catch (e: any) {
     // El email repetido se decide en el paso 1: se vuelve ahí para corregirlo.
     error.value = e?.message || 'No se pudo crear la cuenta. Intentá de nuevo.'
+    // El token de Turnstile es de un solo uso: sin resetear, todo reintento
+    // vuelve a fallar por captcha aunque se corrija lo que estaba mal.
+    captchaToken.value = ''
+    if (captchaWidgetId !== undefined) turnstile()?.reset(captchaWidgetId)
     if (/email/i.test(error.value)) step.value = 1
   } finally {
     saving.value = false
