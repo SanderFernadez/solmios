@@ -9,7 +9,7 @@
         <button @click="openOrgChart" class="flex items-center gap-1.5 px-4 py-2 border border-border rounded-xl text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_BUILDING"></span>Organigrama
         </button>
-        <button @click="() => openNewEmployee()" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <button v-if="canManageStaff" @click="() => openNewEmployee()" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>Nuevo Empleado
         </button>
       </div>
@@ -66,7 +66,7 @@
         title="Todavía no hay empleados"
         message="Registrá al primer miembro del equipo para armar su expediente, contrato y evaluaciones.">
         <template #action>
-          <button @click="() => openNewEmployee()" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
+          <button v-if="canManageStaff" @click="() => openNewEmployee()" class="px-5 py-2.5 rounded-full bg-navy text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
             Nuevo Empleado
           </button>
         </template>
@@ -85,7 +85,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="emp in profiles" :key="emp.id" @click="openProfile(emp)"
+            <tr v-for="emp in profiles" :key="emp.id" @click="canManageStaff ? openProfile(emp) : openExpediente(emp)"
               class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer"
               :class="{ 'opacity-60': !emp.active }">
               <td class="px-4 py-3">
@@ -129,11 +129,11 @@
                     class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_FOLDER"></span>
                   </button>
-                  <button @click.stop="openProfile(emp)" title="Editar datos"
+                  <button v-if="canManageStaff" @click.stop="openProfile(emp)" title="Editar datos"
                     class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_PENCIL"></span>
                   </button>
-                  <button v-if="emp.active" @click.stop="deactivateEmployee(emp)" title="Desactivar empleado"
+                  <button v-if="canManageStaff && emp.active" @click.stop="deactivateEmployee(emp)" title="Desactivar empleado"
                     class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-coral/10 hover:text-coral transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_POWER"></span>
                   </button>
@@ -511,6 +511,14 @@ const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
+
+/**
+ * Alta/edición/baja de personal es de admin. El backend ya lo impone (`users:create` → 403) y
+ * además le oculta los salarios a recepción, pero la UI seguía mostrando los botones: recepción
+ * podía abrirlos y solo se enteraba del rechazo al guardar. Acá se espeja esa regla del servidor.
+ * La lectura del listado sigue habilitada — es deliberado que recepción vea a sus compañeros.
+ */
+const canManageStaff = computed(() => auth.isHotelAdmin || auth.isSuperAdmin)
 const toast = useToast()
 const activeTab = ref('profiles')
 const loading = ref(true)
@@ -544,10 +552,21 @@ const SYSTEM_ROLE_OPTIONS = [
   { value: 'maintenance', label: 'Mantenimiento' },
   { value: 'supervisor', label: 'Supervisor' },
 ]
-const roleOptions = () => [
-  ...SYSTEM_ROLE_OPTIONS,
-  ...customRoles.value.map((r) => ({ value: r.name, label: `${r.icon ?? '👤'} ${r.name}` })),
-]
+/**
+ * `customRoles` viene de `/roles`, que devuelve TODOS los roles del hotel — incluidos los de
+ * sistema, cuyo `name` es el slug en inglés. Sin deduplicar, el desplegable listaba cada rol de
+ * sistema dos veces ("Recepcionista" y "🔑 receptionist") y el admin no sabía cuál elegir.
+ * Se filtran los ya cubiertos por SYSTEM_ROLE_OPTIONS y se traduce la etiqueta de los que quedan.
+ */
+const roleOptions = () => {
+  const systemValues = new Set(SYSTEM_ROLE_OPTIONS.map((o) => o.value))
+  return [
+    ...SYSTEM_ROLE_OPTIONS,
+    ...customRoles.value
+      .filter((r) => !systemValues.has(r.name))
+      .map((r) => ({ value: r.name, label: `${r.icon ?? '👤'} ${ROLE_LABELS[r.name] ?? r.name}` })),
+  ]
+}
 
 // #172: mostrar el ROL (no el cargo) en el listado. hotel_admin/super_admin incluidos.
 const ROLE_LABELS: Record<string, string> = {
