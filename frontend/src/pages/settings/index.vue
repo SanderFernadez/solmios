@@ -693,12 +693,68 @@
         </div>
       </div>
     </div>
+
+    <!-- EMERGENCIAS -->
+    <div v-if="(activeTab as string) === 'emergency'" class="space-y-6">
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 class="font-extrabold text-navy">Contactos de emergencia</h3>
+            <p class="text-[11px] text-text-muted mt-1 leading-relaxed">
+              Estos números aparecen en el botón de Emergencia del panel, disponible en todas las pantallas.
+            </p>
+          </div>
+          <button @click="saveEmergencyContacts" :disabled="emergencySaving"
+            class="shrink-0 px-4 py-2 bg-navy text-white rounded-full text-sm font-bold hover:shadow-lg cursor-pointer disabled:opacity-50">
+            {{ emergencySaving ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+
+        <div v-if="emergencyContacts.length === 0" class="p-6 bg-surface rounded-xl text-center">
+          <p class="text-xs text-text-muted">Todavía no cargaste contactos de emergencia.</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div v-for="c in emergencyContacts" :key="c.id"
+            class="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] items-center p-3 bg-surface rounded-xl">
+            <div>
+              <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Nombre</label>
+              <input v-model="c.label" type="text" placeholder="Nombre del contacto"
+                class="w-full rounded-xl border border-border px-3 py-2 text-sm focus:border-navy focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Teléfono</label>
+              <input v-model="c.phone" type="tel" placeholder="Número de contacto"
+                class="w-full rounded-xl border border-border px-3 py-2 text-sm focus:border-navy focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Tipo</label>
+              <select v-model="c.kind"
+                class="w-full rounded-xl border border-border px-3 py-2 text-sm focus:border-navy focus:outline-none cursor-pointer">
+                <option value="external">Externo</option>
+                <option value="internal">Interno</option>
+              </select>
+            </div>
+            <button @click="removeEmergencyContact(c.id)" aria-label="Eliminar contacto"
+              class="self-end px-3 py-2 rounded-xl bg-danger/10 text-danger text-xs font-bold hover:bg-danger/20 transition-colors cursor-pointer">
+              Eliminar
+            </button>
+          </div>
+        </div>
+
+        <button @click="addEmergencyContact"
+          class="mt-4 px-4 py-2 bg-navy/10 text-navy rounded-full text-sm font-bold hover:bg-navy/20 transition-colors cursor-pointer">
+          + Agregar contacto
+        </button>
+      </div>
+    </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, reactive } from 'vue'
+import { useRoute } from 'vue-router'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
@@ -707,6 +763,7 @@ import { GuaranteeService } from '@/services/Guarantee.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import type { AmenityCatalog } from '@/services/Hotel.service'
+import type { HotelEmergencyContact } from '@/types'
 
 // Leaflet (mapa interactivo — lazy import para no romper SSR)
 import leaflet from 'leaflet'
@@ -746,6 +803,41 @@ async function loadCurrency() {
   } catch { /* default */ }
 }
 onMounted(loadCurrency)
+// Contactos de emergencia del hotel (feedback #414). Viven en configuration['contactos_emergencia'];
+// si el hotel no tiene los suyos, el backend cae al default global (hotelId='platform').
+const emergencyContacts = ref<HotelEmergencyContact[]>([])
+const emergencySaving = ref(false)
+async function loadEmergencyContacts() {
+  try {
+    const cfg = await ConfigService.get('contactos_emergencia') as { contacts?: HotelEmergencyContact[] } | null
+    emergencyContacts.value = Array.isArray(cfg?.contacts) ? cfg.contacts : []
+  } catch { emergencyContacts.value = [] }
+}
+onMounted(loadEmergencyContacts)
+function addEmergencyContact() {
+  emergencyContacts.value.push({ id: crypto.randomUUID(), label: '', phone: '', kind: 'external' })
+}
+function removeEmergencyContact(id: string) {
+  emergencyContacts.value = emergencyContacts.value.filter(c => c.id !== id)
+}
+async function saveEmergencyContacts() {
+  const clean = emergencyContacts.value.map(c => ({ ...c, label: c.label.trim(), phone: c.phone.trim() }))
+  if (clean.some(c => !c.label || !c.phone)) {
+    toast.error('Cada contacto necesita nombre y teléfono')
+    return
+  }
+  emergencySaving.value = true
+  try {
+    await ConfigService.set('contactos_emergencia', { contacts: clean })
+    emergencyContacts.value = clean
+    toast.success('Contactos de emergencia guardados')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo guardar')
+  } finally {
+    emergencySaving.value = false
+  }
+}
+
 async function saveCurrency() {
   currencySaving.value = true
   try {
@@ -805,6 +897,12 @@ async function saveAutomation() {
 }
 
 const activeTab = ref('hotel' as string)
+// Deep-link ?tab=... (el botón de Emergencia del header entra directo a su pestaña)
+const route = useRoute()
+onMounted(() => {
+  const t = route.query.tab
+  if (typeof t === 'string' && tabs.some(tab => tab.value === t)) activeTab.value = t
+})
 const saving = ref(false)
 const loading = ref(true)
 
@@ -816,6 +914,7 @@ const tabs = [
   { value: 'conditions' as string, label: 'Condiciones' },
   { value: 'description' as string, label: 'Descripción' },
   { value: 'integrations' as string, label: 'Integraciones' },
+  { value: 'emergency' as string, label: 'Emergencias' },
 ]
 
 type HotelForm = Partial<HotelFull> & { cancellationType?: string; freeCancellation?: boolean }

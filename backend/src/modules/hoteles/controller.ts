@@ -89,6 +89,15 @@ export class HotelesController {
     return { status: 200, body: result }
   }
 
+  // Lectura solo-login de los contactos de emergencia. Mismo resolveHotel que el resto:
+  // el hotel sale del token, solo super_admin puede apuntar a otro con ?hotelId=.
+  async getEmergencyContacts(req: HttpRequest) {
+    const id = await this.resolveHotel(req)
+    if (!id) return { status: 404, body: { error: 'Sin hotel' } }
+    const result = await this.service.getEmergencyContacts(id)
+    return { status: 200, body: result }
+  }
+
   private async resolveHotel(req: any): Promise<string | undefined> {
     // Seguridad (IDOR cross-tenant): el hotel sale del usuario/token. Solo super_admin (platform)
     // puede apuntar a otro hotel via ?hotelId=; un usuario de hotel NO puede overridearlo.

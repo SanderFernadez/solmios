@@ -64,7 +64,13 @@ export function HotelesModule() {
       router.get('/api/configuracion/:key', guard('settings', 'view'), (req) => controller.getConfig(req))
       router.post('/api/configuracion', guard('settings', 'edit'), (req) => controller.setConfig(req))
 
-      log.info('Módulo hoteles v2 listo (5 settings endpoints)')
+      // Contactos de emergencia — lectura SOLO-LOGIN (sin `settings:view`).
+      // housekeeper/supervisor/maintenance están en el piso ante un incidente y necesitan los
+      // números; darles `settings:view` les abriría toda la configuración del hotel. La ESCRITURA
+      // sigue en POST /api/configuracion con `settings:edit`.
+      router.get('/api/contactos-emergencia', [auth.authenticate()], (req) => controller.getEmergencyContacts(req))
+
+      log.info('Módulo hoteles v2 listo (5 settings endpoints + contactos de emergencia)')
       return service
     },
   })

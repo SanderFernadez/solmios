@@ -164,6 +164,12 @@ export class HotelesService {
     return this.queries.getConfig(hotelId, key)
   }
 
+  /** Contactos de emergencia (lectura solo-login). Delega en queries. */
+  async getEmergencyContacts(hotelId: string): Promise<any> {
+    if (!this.queries) throw new Error('Queries no disponible')
+    return this.queries.getEmergencyContacts(hotelId)
+  }
+
   async setConfig(body: { clave: string; valor: any; hotelId?: string }, user?: any): Promise<any> {
     if (!this.queries) throw new Error('Queries no disponible')
     return this.queries.setConfig(body, user)

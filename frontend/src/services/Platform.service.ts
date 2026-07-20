@@ -24,6 +24,16 @@ export const ConfigService = {
   },
 }
 
+// Contactos de emergencia — LECTURA solo-login (cualquier usuario del hotel, incluido
+// housekeeper/supervisor/maintenance, que no tienen `settings:view`). El hotel lo resuelve
+// el backend desde el token. La EDICIÓN sigue por ConfigService.set (`settings:edit`).
+export const EmergencyContactsService = {
+  get: async (): Promise<any> => {
+    const r = await _http.get<{ valor: any }>('/contactos-emergencia')
+    return r.valor
+  },
+}
+
 // Módulos del producto (activar/desactivar). Admin edita; el panel del hotel lee para filtrar su menú.
 // Un módulo puede tener submódulos (entradas hijas del menú) que se togglean por separado.
 export interface SubModuleMeta { key: string; label: string; description: string }

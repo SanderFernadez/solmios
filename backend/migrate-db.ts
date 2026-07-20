@@ -805,6 +805,27 @@ async function seedCurrencyConfig(): Promise<void> {
   } catch { /* hotels/configuration puede no existir en runs tempranos — seguro */ }
 }
 
+// ─── Seed: contactos de emergencia (default GLOBAL) ──────────────────────
+// Se guarda en hotelId='platform': la lectura de configuración cae a 'platform'
+// cuando el hotel no tiene la key propia, así que esto es el punto de partida
+// que cada hotel sobreescribe desde Ajustes → Emergencias. Números de RD.
+async function seedEmergencyContacts(): Promise<void> {
+  try {
+    const value = JSON.stringify({
+      contacts: [
+        { id: uuid(), label: "Emergencias (911)", phone: "911", kind: "external" },
+        { id: uuid(), label: "Policía Nacional", phone: "809-682-2151", kind: "external" },
+        { id: uuid(), label: "Cuerpo de Bomberos", phone: "809-682-2000", kind: "external" },
+        { id: uuid(), label: "Cruz Roja Dominicana", phone: "809-682-4545", kind: "external" },
+      ],
+    })
+    await db.run(
+      "INSERT INTO configuration (id, hotelId, key, value, updatedAt) VALUES (?,?,?,?,?) ON CONFLICT(hotelId, key) DO NOTHING",
+      [uuid(), "platform", "contactos_emergencia", value, now()],
+    )
+  } catch { /* configuration puede no existir en runs tempranos — seguro */ }
+}
+
 // ─── Seed BASE: datos demo mínimos para DB limpia ────────────────────────
 // Crea hotels/users/rooms/guests/reservations demo si no existen (idempotente).
 // IDs estables para que las relaciones (users→hotel, reservations→guest/room) resuelvan.
@@ -912,6 +933,9 @@ async function main(): Promise<void> {
 
   // currency_config para todos los hoteles (idempotente)
   await seedCurrencyConfig()
+
+  // contactos de emergencia — default global en hotelId='platform' (idempotente)
+  await seedEmergencyContacts()
 
   // Tablas para app móvil housekeeping
   await createHousekeepingMobileTables()

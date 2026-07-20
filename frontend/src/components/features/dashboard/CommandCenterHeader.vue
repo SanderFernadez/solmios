@@ -99,6 +99,7 @@
 
     <!-- Herramientas — sin card propia, se integra con el fondo claro del dashboard -->
     <div class="ml-auto flex items-center gap-1.5 py-1">
+      <EmergencyButton />
       <NotificationBell />
       <UserMenu placeholder transparent />
     </div>
@@ -109,6 +110,7 @@
 import { computed } from 'vue'
 import { useNow } from '@/composables/useNow'
 import { relativeTime } from '@/composables/useRelativeTime'
+import EmergencyButton from '@/components/features/core-pms/EmergencyButton.vue'
 import NotificationBell from '@/components/features/core-pms/NotificationBell.vue'
 import UserMenu from '@/components/features/core-pms/UserMenu.vue'
 

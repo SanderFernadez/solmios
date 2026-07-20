@@ -67,6 +67,18 @@ export interface EmergencyContact {
   email?: string
 }
 
+// === CONTACTOS DE EMERGENCIA DEL HOTEL ===
+// Distinto de `EmergencyContact` (ese es el contacto de emergencia del huésped).
+// Se persisten en la tabla `configuration` bajo la key `contactos_emergencia`.
+export type HotelEmergencyContactKind = 'external' | 'internal'
+
+export interface HotelEmergencyContact {
+  id: string
+  label: string
+  phone: string
+  kind: HotelEmergencyContactKind
+}
+
 // === CREDIT CARD ( reservation form only ) ===
 export interface CreditCardInfo {
   holderName: string

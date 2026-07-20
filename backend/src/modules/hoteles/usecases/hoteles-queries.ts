@@ -31,6 +31,18 @@ export class HotelesQueries {
     return { valor: row ? safeParse(row.value) : null }
   }
 
+  /**
+   * Contactos de emergencia del hotel — lectura SOLO-LOGIN.
+   * Reusa getConfig (incluye el fallback a hotelId:'platform'). El hotelId lo resuelve
+   * el controller desde el token; acá nunca llega un valor elegido por el cliente.
+   * Se expone aparte de /configuracion/:key para no exigir `settings:view`: housekeeper,
+   * supervisor y maintenance necesitan los números ante un incidente, pero NO el resto
+   * de la configuración del hotel.
+   */
+  async getEmergencyContacts(hotelId: string): Promise<any> {
+    return this.getConfig(hotelId, 'contactos_emergencia')
+  }
+
   async setConfig(body: { clave: string; valor: any; hotelId?: string }, user?: any): Promise<any> {
     const { clave, valor } = body
     if (!clave || valor === undefined) throw new Error('clave y valor requeridos')
