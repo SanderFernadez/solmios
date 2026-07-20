@@ -12,7 +12,7 @@
       </span>
     </div>
 
-    <div class="flex items-start justify-between gap-3 mb-6">
+    <div class="flex items-start justify-between gap-3 mb-6 flex-wrap">
       <p class="text-sm text-text-secondary max-w-lg">A quién llamar cuando algo no se arregla adentro.</p>
       <button @click="openNew" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer shrink-0">
         <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
@@ -20,205 +20,249 @@
       </button>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) flex items-center justify-center py-16 text-text-muted text-sm">
-      <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-navy" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-      Cargando proveedores...
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+      <KpiHeroCard label="Proveedores" :value="providers.length" icon="users" accent="blue"
+        unit="Contactos guardados" />
+      <KpiHeroCard label="Activos" :value="activeCount" icon="checkin" accent="teal"
+        :unit="inactiveCount ? `${inactiveCount} inactivo(s)` : 'Todos disponibles'" :progress="activeSharePct" />
+      <KpiHeroCard label="Sin WhatsApp" :value="noWaCount" icon="building" accent="amber"
+        unit="Falta código de país" />
     </div>
 
-    <!-- Error -->
-    <div v-else-if="error" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) flex flex-col items-center justify-center py-16 text-center">
-      <span class="w-10 h-10 mb-3 text-danger opacity-60" v-html="ICON_WRENCH"></span>
-      <p class="text-sm font-bold text-navy">{{ error }}</p>
-      <button @click="load" class="mt-3 text-xs font-bold text-cyan hover:underline cursor-pointer">Reintentar</button>
-    </div>
+    <!-- Directorio -->
+    <SectionCard title="Directorio" :subtitle="`${filteredProviders.length} de ${providers.length} proveedor(es)`">
+      <template #actions>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" v-html="ICON_SEARCH"></span>
+          <input
+            v-model="search"
+            type="text"
+            placeholder="Buscar nombre, rubro, zona..."
+            class="pl-9 pr-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm text-white placeholder:text-white/45 w-56 focus:outline-none focus:border-cyan"
+          />
+        </div>
+        <select v-model="statusFilter"
+          class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
+          <option class="text-navy" value="all">Todos</option>
+          <option class="text-navy" value="active">Activos</option>
+          <option class="text-navy" value="inactive">Inactivos</option>
+        </select>
+      </template>
 
-    <!-- Empty state -->
-    <div v-else-if="providers.length === 0" class="rounded-[20px] border border-dashed border-border bg-white shadow-(--shadow-card) flex flex-col items-center justify-center py-20 text-center">
-      <span class="w-12 h-12 mb-4 text-text-muted opacity-40" v-html="ICON_WRENCH"></span>
-      <p class="text-base font-black text-navy">Todavía no cargaste ningún proveedor de servicios</p>
-      <p class="text-sm text-text-muted mt-1 max-w-sm">Sumá al plomero, electricista o técnico de A/C de confianza para tenerlos a mano.</p>
-      <button @click="openNew" class="mt-5 flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
-        <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
-        Nuevo proveedor de servicios
-      </button>
-    </div>
+      <!-- Loading -->
+      <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div v-for="i in 3" :key="i" class="h-40 animate-pulse rounded-2xl bg-surface"></div>
+      </div>
 
-    <!-- Lista -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      <div
-        v-for="p in providers"
-        :key="p.id"
-        class="rounded-[20px] border border-border bg-white p-5 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 flex flex-col"
+      <!-- Error -->
+      <EmptyState
+        v-else-if="error"
+        :icon="ICON_WRENCH"
+        title="No se pudieron cargar los proveedores"
+        :message="error"
       >
-        <div class="flex items-start gap-3 mb-3">
-          <div class="w-11 h-11 rounded-xl bg-navy/10 flex items-center justify-center shrink-0">
-            <span class="text-sm font-black text-navy">{{ initials(p.name) }}</span>
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <h3 class="text-base font-black text-navy truncate">{{ p.name }}</h3>
-              <span
-                class="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                :class="p.active === false ? 'bg-surface text-text-muted' : 'bg-teal/10 text-teal'"
-              >{{ p.active === false ? 'Inactivo' : 'Activo' }}</span>
-            </div>
-            <p class="text-xs text-text-secondary mt-0.5 truncate">
-              {{ p.specialty || 'Sin rubro' }}<template v-if="p.phone"> · {{ p.phone }}</template>
-            </p>
-            <div v-if="p.phone" class="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              <a
-                v-if="waHref(p.phone)"
-                :href="waHref(p.phone)!"
-                target="_blank"
-                rel="noopener"
-                class="text-[10px] font-bold px-2 py-1 rounded-lg bg-success/10 text-success hover:bg-success/20"
-              >WhatsApp</a>
-              <button
-                v-else
-                type="button"
-                @click="openEdit(p)"
-                title="WhatsApp necesita el número con código de país (ej: +1 809 555 0000). Tocá para completarlo."
-                class="text-[10px] font-bold px-2 py-1 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 cursor-pointer"
-              >Falta código de país</button>
-              <a :href="telHref(p.phone)" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-navy/10 text-navy hover:bg-navy/20">Llamar</a>
-            </div>
-          </div>
-        </div>
+        <template #action>
+          <button @click="load" class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer">Reintentar</button>
+        </template>
+      </EmptyState>
 
-        <div class="space-y-2 text-xs mb-4">
-          <div class="flex items-center gap-2 text-text-secondary">
-            <span class="w-3.5 h-3.5 shrink-0 text-text-muted" v-html="ICON_CLOCK"></span>
-            <span>{{ scheduleLabel(p) }}</span>
-          </div>
-          <div v-if="p.rate" class="flex items-center gap-2 text-text-secondary">
-            <span class="w-3.5 h-3.5 shrink-0 text-text-muted" v-html="ICON_WALLET"></span>
-            <span>{{ p.rate }}</span>
-          </div>
-          <div v-if="p.address" class="flex items-center gap-2 text-text-secondary">
-            <span class="w-3.5 h-3.5 shrink-0 text-text-muted" v-html="ICON_PIN"></span>
-            <span class="truncate">{{ p.address }}</span>
-          </div>
-          <div v-if="p.email" class="flex items-center gap-2 text-text-secondary">
-            <span class="w-3.5 h-3.5 shrink-0 text-text-muted" v-html="ICON_MAIL"></span>
-            <a :href="`mailto:${p.email}`" class="truncate hover:text-navy hover:underline">{{ p.email }}</a>
-          </div>
-        </div>
+      <!-- Sin datos -->
+      <EmptyState
+        v-else-if="providers.length === 0"
+        :icon="ICON_WRENCH"
+        title="Todavía no cargaste ningún proveedor de servicios"
+        message="Sumá al plomero, electricista o técnico de A/C de confianza para tenerlos a mano."
+      >
+        <template #action>
+          <button @click="openNew" class="flex items-center gap-1.5 mx-auto bg-navy text-white font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer">
+            <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
+            Nuevo proveedor de servicios
+          </button>
+        </template>
+      </EmptyState>
 
-        <div class="flex items-center gap-4 justify-end pt-3 mt-auto border-t border-border">
-          <button @click="openEdit(p)" class="text-[11px] font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Editar</button>
-          <button @click="askDelete(p)" class="text-[11px] font-bold text-text-secondary hover:text-danger transition-colors cursor-pointer">Eliminar</button>
+      <!-- Filtro sin resultados -->
+      <EmptyState
+        v-else-if="filteredProviders.length === 0"
+        :icon="ICON_SEARCH"
+        title="Sin proveedores con este filtro"
+        message="Probá con otra búsqueda o mirá todos los proveedores."
+      >
+        <template #action>
+          <button @click="clearFilters" class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer">Ver todos</button>
+        </template>
+      </EmptyState>
+
+      <!-- Lista -->
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div
+          v-for="p in filteredProviders"
+          :key="p.id"
+          class="rounded-[20px] border border-border bg-white p-5 shadow-(--shadow-card) transition-transform duration-300 hover:-translate-y-0.5 flex flex-col"
+        >
+          <div class="flex items-start gap-3 mb-3">
+            <div class="w-11 h-11 rounded-xl bg-navy/10 flex items-center justify-center shrink-0">
+              <span class="text-sm font-black text-navy">{{ initials(p.name) }}</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-black text-navy truncate">{{ p.name }}</h3>
+                <span
+                  class="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                  :class="p.active === false ? 'bg-surface text-text-muted' : 'bg-teal/10 text-teal'"
+                >{{ p.active === false ? 'Inactivo' : 'Activo' }}</span>
+              </div>
+              <p v-if="p.specialty || p.phone" class="text-xs text-text-secondary mt-0.5 truncate">
+                {{ p.specialty || 'Sin rubro' }}<template v-if="p.phone"> · {{ p.phone }}</template>
+              </p>
+              <div v-if="p.phone" class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                <a
+                  v-if="waHref(p.phone)"
+                  :href="waHref(p.phone)!"
+                  target="_blank"
+                  rel="noopener"
+                  class="text-[10px] font-bold px-2 py-1 rounded-lg bg-success/10 text-success hover:bg-success/20"
+                >WhatsApp</a>
+                <button
+                  v-else
+                  type="button"
+                  @click="openEdit(p)"
+                  title="WhatsApp necesita el número con código de país (ej: +1 809 555 0000). Tocá para completarlo."
+                  class="text-[10px] font-bold px-2 py-1 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 cursor-pointer"
+                >Falta código de país</button>
+                <a :href="telHref(p.phone)" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-navy/10 text-navy hover:bg-navy/20">Llamar</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-2 text-xs mb-4">
+            <div class="flex items-center gap-2 text-text-secondary">
+              <span class="w-3.5 h-3.5 shrink-0 text-text-muted" v-html="ICON_CLOCK"></span>
+              <span>{{ scheduleLabel(p) }}</span>
+            </div>
+            <div v-if="p.rate" class="flex items-center gap-2 text-text-secondary">
+              <span class="w-3.5 h-3.5 shrink-0 text-text-muted" v-html="ICON_WALLET"></span>
+              <span>{{ p.rate }}</span>
+            </div>
+            <div v-if="p.address" class="flex items-center gap-2 text-text-secondary">
+              <span class="w-3.5 h-3.5 shrink-0 text-text-muted" v-html="ICON_PIN"></span>
+              <span class="truncate">{{ p.address }}</span>
+            </div>
+            <div v-if="p.email" class="flex items-center gap-2 text-text-secondary">
+              <span class="w-3.5 h-3.5 shrink-0 text-text-muted" v-html="ICON_MAIL"></span>
+              <a :href="`mailto:${p.email}`" class="truncate hover:text-navy hover:underline">{{ p.email }}</a>
+            </div>
+          </div>
+
+          <div v-if="p.notes" class="text-[11px] text-text-muted italic mb-4 line-clamp-2">{{ p.notes }}</div>
+
+          <div class="flex items-center justify-end gap-1 pt-3 mt-auto border-t border-border">
+            <button @click="openEdit(p)" title="Editar" aria-label="Editar"
+              class="w-8 h-8 grid place-items-center rounded-lg text-text-secondary hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
+              <span class="w-4 h-4" v-html="ICON_EDIT"></span>
+            </button>
+            <button @click="askDelete(p)" title="Eliminar" aria-label="Eliminar"
+              class="w-8 h-8 grid place-items-center rounded-lg text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors cursor-pointer">
+              <span class="w-4 h-4" v-html="ICON_TRASH"></span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Modal: alta / edición -->
-    <Transition name="modal-fade">
-      <div v-if="showModal" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-          <div class="flex items-center justify-between px-7 pt-7 pb-5 shrink-0">
-            <h3 class="text-xl font-black text-navy tracking-tight">{{ editing ? 'Editar proveedor de servicios' : 'Nuevo proveedor de servicios' }}</h3>
-            <button @click="closeModal" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface hover:text-navy transition-colors cursor-pointer shrink-0">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
+    <AppModal
+      :open="showModal"
+      size="lg"
+      :title="editing ? 'Editar proveedor de servicios' : 'Nuevo proveedor de servicios'"
+      subtitle="Datos de contacto y disponibilidad"
+      @close="closeModal"
+    >
+      <div class="grid grid-cols-2 gap-4">
+        <div class="col-span-2">
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Nombre *</label>
+          <input v-model="form.name" maxlength="120" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" :class="nameError ? 'border-danger' : ''" placeholder="Ej: Juan el plomero">
+          <p v-if="nameError" class="text-[10px] text-danger mt-1">{{ nameError }}</p>
+        </div>
 
-          <div class="px-7 pb-7 overflow-y-auto flex-1">
-            <div class="grid grid-cols-2 gap-4">
-              <div class="col-span-2">
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Nombre *</label>
-                <input v-model="form.name" maxlength="120" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" :class="nameError ? 'border-danger' : ''" placeholder="Ej: Juan el plomero">
-                <p v-if="nameError" class="text-[10px] text-danger mt-1">{{ nameError }}</p>
-              </div>
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Rubro</label>
+          <input v-model="form.specialty" maxlength="80" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Plomería, Electricidad...">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Teléfono</label>
+          <input v-model="form.phone" maxlength="40" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="+1 809 555 0000">
+          <p class="text-[10px] text-text-muted mt-1">Con código de país (+1, +34…) para poder abrir WhatsApp.</p>
+        </div>
 
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Rubro</label>
-                <input v-model="form.specialty" maxlength="80" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Plomería, Electricidad...">
-              </div>
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Teléfono</label>
-                <input v-model="form.phone" maxlength="40" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="+1 809 555 0000">
-                <p class="text-[10px] text-text-muted mt-1">Con código de país (+1, +34…) para poder abrir WhatsApp.</p>
-              </div>
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Email</label>
+          <input v-model="form.email" type="email" maxlength="120" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="correo@ejemplo.com">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Dirección / zona</label>
+          <input v-model="form.address" maxlength="160" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Zona / barrio">
+        </div>
 
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Email</label>
-                <input v-model="form.email" type="email" maxlength="120" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="correo@ejemplo.com">
-              </div>
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Dirección / zona</label>
-                <input v-model="form.address" maxlength="160" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Zona / barrio">
-              </div>
+        <div class="col-span-2">
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Tarifa</label>
+          <input v-model="form.rate" maxlength="120" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Ej: RD$1500 por visita">
+        </div>
 
-              <div class="col-span-2">
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Tarifa</label>
-                <input v-model="form.rate" maxlength="120" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Ej: RD$1500 por visita">
-              </div>
-
-              <div class="col-span-2">
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Días de trabajo</label>
-                <div class="flex flex-wrap gap-1.5">
-                  <button
-                    v-for="d in DAYS"
-                    :key="d.key"
-                    type="button"
-                    @click="toggleDay(d.key)"
-                    class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors cursor-pointer"
-                    :class="selectedDays.has(d.key) ? 'bg-navy text-white border-navy' : 'bg-white text-text-secondary border-border hover:border-navy/30'"
-                  >{{ d.label }}</button>
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Desde</label>
-                <input v-model="form.workStart" type="time" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy">
-              </div>
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Hasta</label>
-                <input v-model="form.workEnd" type="time" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy">
-              </div>
-
-              <div class="col-span-2">
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Notas</label>
-                <textarea v-model="form.notes" rows="3" maxlength="500" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Detalles, referencias, disponibilidad..."></textarea>
-              </div>
-
-              <div class="col-span-2 flex items-center gap-2">
-                <input id="tp-active" v-model="form.active" type="checkbox" class="w-4 h-4 accent-cyan cursor-pointer">
-                <label for="tp-active" class="text-xs font-bold text-text-secondary cursor-pointer">Proveedor activo</label>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border shrink-0">
-            <button @click="closeModal" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
-            <button @click="save" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {{ saving ? 'Guardando...' : (editing ? 'Guardar cambios' : 'Crear proveedor') }}
-            </button>
+        <div class="col-span-2">
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Días de trabajo</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="d in DAYS"
+              :key="d.key"
+              type="button"
+              @click="toggleDay(d.key)"
+              class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors cursor-pointer"
+              :class="selectedDays.has(d.key) ? 'bg-navy text-white border-navy' : 'bg-white text-text-secondary border-border hover:border-navy/30'"
+            >{{ d.label }}</button>
           </div>
         </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Desde</label>
+          <input v-model="form.workStart" type="time" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Hasta</label>
+          <input v-model="form.workEnd" type="time" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy">
+        </div>
+
+        <div class="col-span-2">
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Notas</label>
+          <textarea v-model="form.notes" rows="3" maxlength="500" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy resize-none" placeholder="Detalles, referencias, disponibilidad..."></textarea>
+        </div>
+
+        <div class="col-span-2 flex items-center gap-2">
+          <input id="tp-active" v-model="form.active" type="checkbox" class="w-4 h-4 accent-cyan cursor-pointer">
+          <label for="tp-active" class="text-xs font-bold text-text-secondary cursor-pointer">Proveedor activo</label>
+        </div>
       </div>
-    </Transition>
+
+      <template #footer>
+        <button @click="closeModal" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
+        <button @click="save" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ saving ? 'Guardando...' : (editing ? 'Guardar cambios' : 'Crear proveedor') }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Modal: confirmar eliminación -->
-    <Transition name="modal-fade">
-      <div v-if="deleteTarget" class="fixed inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="modal-panel bg-white rounded-[20px] shadow-2xl w-full max-w-sm overflow-hidden">
-          <div class="px-7 pt-7 pb-5">
-            <h3 class="text-lg font-black text-navy tracking-tight">Eliminar proveedor</h3>
-            <p class="text-sm text-text-secondary mt-2">
-              ¿Seguro que querés eliminar a <span class="font-bold text-navy">{{ deleteTarget.name }}</span>? Esta acción no se puede deshacer.
-            </p>
-          </div>
-          <div class="flex items-center gap-4 justify-end px-7 py-5 border-t border-border">
-            <button @click="deleteTarget = null" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cancelar</button>
-            <button @click="confirmDelete" :disabled="deleting" class="px-5 py-2.5 bg-danger text-white rounded-full text-sm font-extrabold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {{ deleting ? 'Eliminando...' : 'Eliminar' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <ConfirmModal
+      v-if="deleteTarget"
+      title="Eliminar proveedor"
+      :message="`¿Seguro que querés eliminar a ${deleteTarget.name}? Esta acción no se puede deshacer.`"
+      confirm-label="Eliminar"
+      danger
+      :loading="deleting"
+      @close="deleteTarget = null"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>
 
@@ -226,6 +270,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import {
   TechnicalProvidersService,
   type TechnicalProvider,
@@ -244,6 +293,9 @@ const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" 
 const ICON_PIN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>'
 const ICON_MAIL = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>'
 const ICON_WRENCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>'
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>'
+const ICON_EDIT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5v4.875A2.625 2.625 0 0 1 16.875 21H5.625A2.625 2.625 0 0 1 3 18.375V7.125A2.625 2.625 0 0 1 5.625 4.5H10.5"/></svg>'
+const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>'
 
 // Orden canónico de días (inglés) + etiqueta corta ES.
 const DAYS: Array<{ key: string; label: string }> = [
@@ -261,6 +313,9 @@ const DAY_LABEL: Record<string, string> = Object.fromEntries(DAYS.map(d => [d.ke
 const providers = ref<TechnicalProvider[]>([])
 const loading = ref(false)
 const error = ref('')
+
+const search = ref('')
+const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 
 const showModal = ref(false)
 const editing = ref<TechnicalProvider | null>(null)
@@ -288,6 +343,33 @@ function emptyForm(): ProviderForm {
   return { name: '', specialty: '', phone: '', email: '', address: '', rate: '', notes: '', workStart: '', workEnd: '', active: true }
 }
 const form = ref<ProviderForm>(emptyForm())
+
+// ── KPIs ──────────────────────────────────────────────────────────────────
+const activeCount = computed(() => providers.value.filter(p => p.active !== false).length)
+const inactiveCount = computed(() => providers.value.length - activeCount.value)
+const activeSharePct = computed(() => providers.value.length ? Math.round((activeCount.value / providers.value.length) * 100) : 0)
+// Mismo criterio que el badge de la card: tiene teléfono pero sin '+' → wa.me no lo resuelve.
+const noWaCount = computed(() =>
+  providers.value.filter(p => p.active !== false && p.phone && !p.phone.trim().startsWith('+')).length
+)
+
+// ── Filtro ────────────────────────────────────────────────────────────────
+function norm(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+const filteredProviders = computed(() => {
+  const q = norm(search.value.trim())
+  return providers.value.filter(p => {
+    if (statusFilter.value === 'active' && p.active === false) return false
+    if (statusFilter.value === 'inactive' && p.active !== false) return false
+    if (!q) return true
+    return norm(p.name).includes(q) || norm(p.specialty ?? '').includes(q) || norm(p.address ?? '').includes(q)
+  })
+})
+function clearFilters() {
+  search.value = ''
+  statusFilter.value = 'all'
+}
 
 onMounted(load)
 
@@ -467,23 +549,3 @@ async function confirmDelete() {
   }
 }
 </script>
-
-<style scoped>
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-.modal-fade-enter-active .modal-panel,
-.modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel,
-.modal-fade-leave-to .modal-panel {
-  opacity: 0;
-  transform: scale(0.95) translateY(12px);
-}
-</style>
