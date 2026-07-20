@@ -40,7 +40,13 @@
         <h2 class="text-xl font-black text-navy">Configuración</h2>
         <p class="text-sm text-text-muted mt-0.5">Datos del hotel, amenities, tarifas e integraciones</p>
       </div>
-      <button @click="saveAll" :disabled="saving" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+      <span v-if="hasErrors" class="mr-3 text-[11px] font-bold text-danger">
+        {{ Object.keys(fieldErrors).length }} campo(s) con errores
+      </span>
+      <span v-else-if="isDirty" class="mr-3 text-[11px] font-bold text-text-muted">Cambios sin guardar</span>
+      <button @click="saveAll" :disabled="saving || hasErrors"
+        :title="hasErrors ? 'Corregí los campos marcados en rojo para poder guardar' : ''"
+        class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
         {{ saving ? 'Guardando...' : 'Guardar' }}
       </button>
     </div>
@@ -66,7 +72,8 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Nombre *</label>
-              <input v-model="form.name" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.name" type="text" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('name')" data-field="name" @blur="touchField('name')">
+              <p v-if="errorOf('name')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('name') }}</p>
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Tipo de alojamiento</label>
@@ -99,15 +106,18 @@
             </div>
             <div class="sm:col-span-2">
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Dirección</label>
-              <input v-model="form.address" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.address" type="text" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('address')" data-field="address" @blur="touchField('address')">
+              <p v-if="errorOf('address')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('address') }}</p>
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Provincia</label>
-              <input v-model="form.province" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.province" type="text" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('province')" data-field="province" @blur="touchField('province')">
+              <p v-if="errorOf('province')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('province') }}</p>
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Municipio</label>
-              <input v-model="form.municipality" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.municipality" type="text" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('municipality')" data-field="municipality" @blur="touchField('municipality')">
+              <p v-if="errorOf('municipality')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('municipality') }}</p>
             </div>
           </div>
         </SectionCard>
@@ -124,11 +134,13 @@
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Email</label>
-              <input v-model="form.email" type="email" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.email" type="email" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('email')" data-field="email" @blur="touchField('email')">
+              <p v-if="errorOf('email')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('email') }}</p>
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Sitio web</label>
-              <input v-model="form.website" type="url" placeholder="https://" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.website" type="url" placeholder="https://" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('website')" data-field="website" @blur="touchField('website')">
+              <p v-if="errorOf('website')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('website') }}</p>
             </div>
           </div>
         </SectionCard>
@@ -137,11 +149,13 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Nombre del propietario</label>
-              <input v-model="form.ownerName" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.ownerName" type="text" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('ownerName')" data-field="ownerName" @blur="touchField('ownerName')">
+              <p v-if="errorOf('ownerName')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('ownerName') }}</p>
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">CIF/NIF/RNC</label>
-              <input v-model="form.ownerTaxId" type="text" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.ownerTaxId" type="text" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('ownerTaxId')" data-field="ownerTaxId" @blur="touchField('ownerTaxId')">
+              <p v-if="errorOf('ownerTaxId')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('ownerTaxId') }}</p>
             </div>
           </div>
         </SectionCard>
@@ -150,11 +164,13 @@
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Check-in</label>
-              <input v-model="form.checkIn" type="time" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.checkIn" type="time" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('checkIn')" data-field="checkIn" @blur="touchField('checkIn')">
+              <p v-if="errorOf('checkIn')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('checkIn') }}</p>
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Check-out</label>
-              <input v-model="form.checkOut" type="time" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+              <input v-model="form.checkOut" type="time" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" :class="fieldClass('checkOut')" data-field="checkOut" @blur="touchField('checkOut')">
+              <p v-if="errorOf('checkOut')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('checkOut') }}</p>
             </div>
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Zona horaria</label>
@@ -267,12 +283,14 @@
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Latitud</label>
               <input v-model.number="form.latitude" type="number" step="0.000001" @change="syncMarkerFromForm"
-                class="w-full px-3 py-2 rounded-full border border-border text-sm font-bold text-navy" />
+                class="w-full px-3 py-2 rounded-full border text-sm font-bold text-navy" :class="fieldClass('latitude')" data-field="latitude" @blur="touchField('latitude')">
+              <p v-if="errorOf('latitude')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('latitude') }}</p>
             </div>
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Longitud</label>
               <input v-model.number="form.longitude" type="number" step="0.000001" @change="syncMarkerFromForm"
-                class="w-full px-3 py-2 rounded-full border border-border text-sm font-bold text-navy" />
+                class="w-full px-3 py-2 rounded-full border text-sm font-bold text-navy" :class="fieldClass('longitude')" data-field="longitude" @blur="touchField('longitude')">
+              <p v-if="errorOf('longitude')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('longitude') }}</p>
             </div>
           </div>
           <button @click="useMyLocation" class="mt-3 w-full text-xs font-bold text-teal hover:underline cursor-pointer">
@@ -284,11 +302,13 @@
           <div class="space-y-3">
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Localidad</label>
-              <input v-model="form.locality" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
+              <input v-model="form.locality" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('locality')" data-field="locality" @blur="touchField('locality')">
+              <p v-if="errorOf('locality')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('locality') }}</p>
             </div>
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Código Postal</label>
-              <input v-model="form.postalCode" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
+              <input v-model="form.postalCode" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('postalCode')" data-field="postalCode" @blur="touchField('postalCode')">
+              <p v-if="errorOf('postalCode')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('postalCode') }}</p>
             </div>
           </div>
         </div>
@@ -487,7 +507,8 @@
           </div>
           <div v-if="form.depositRequired" class="flex items-center gap-3 bg-surface rounded-xl p-3">
             <span class="text-sm text-text-secondary">% Depósito</span>
-            <input v-model.number="form.depositPercent" type="number" min="1" max="100" class="w-20 px-3 py-2 rounded-full border border-border text-sm font-bold text-navy text-right" />
+            <input v-model.number="form.depositPercent" type="number" min="1" max="100" class="w-20 px-3 py-2 rounded-full border text-sm font-bold text-navy text-right" :class="fieldClass('depositPercent')" data-field="depositPercent" @blur="touchField('depositPercent')">
+              <p v-if="errorOf('depositPercent')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('depositPercent') }}</p>
             <span class="text-sm text-text-muted">%</span>
           </div>
         </div>
@@ -499,11 +520,13 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nombre</label>
-              <input v-model="form.taxName" placeholder="ITBIS" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
+              <input v-model="form.taxName" placeholder="ITBIS" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('taxName')" data-field="taxName" @blur="touchField('taxName')">
+              <p v-if="errorOf('taxName')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('taxName') }}</p>
             </div>
             <div>
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Tasa (%)</label>
-              <input v-model.number="form.taxRate" type="number" min="0" max="100" class="w-full px-3 py-2 rounded-full border border-border text-sm font-bold text-navy text-right" />
+              <input v-model.number="form.taxRate" type="number" min="0" max="100" class="w-full px-3 py-2 rounded-full border text-sm font-bold text-navy text-right" :class="fieldClass('taxRate')" data-field="taxRate" @blur="touchField('taxRate')">
+              <p v-if="errorOf('taxRate')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('taxRate') }}</p>
             </div>
           </div>
         </div>
@@ -524,7 +547,8 @@
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Valor</label>
             <div class="flex items-center gap-2">
               <span class="text-sm text-text-muted">{{ form.depositType === 'fixed' ? '$' : '' }}</span>
-              <input v-model.number="form.depositFixed" type="number" min="0" class="w-24 px-3 py-2 rounded-full border border-border text-sm font-bold text-navy text-right" />
+              <input v-model.number="form.depositFixed" type="number" min="0" class="w-24 px-3 py-2 rounded-full border text-sm font-bold text-navy text-right" :class="fieldClass('depositFixed')" data-field="depositFixed" @blur="touchField('depositFixed')">
+              <p v-if="errorOf('depositFixed')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('depositFixed') }}</p>
               <span v-if="form.depositType === 'percentage'" class="text-sm text-text-muted">%</span>
             </div>
           </div>
@@ -600,7 +624,8 @@
           </div>
           <div class="flex-1">
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">URL del Logo</label>
-            <input v-model="form.logo" type="url" placeholder="https://ejemplo.com/logo.png" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
+            <input v-model="form.logo" type="url" placeholder="https://ejemplo.com/logo.png" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('logo')" data-field="logo" @blur="touchField('logo')">
+              <p v-if="errorOf('logo')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('logo') }}</p>
             <p class="text-[10px] text-text-muted mt-1">Se muestra en facturas, pre-checkin y emails</p>
           </div>
         </div>
@@ -611,11 +636,13 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Red</label>
-            <input v-model="form.wifiNetwork" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
+            <input v-model="form.wifiNetwork" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('wifiNetwork')" data-field="wifiNetwork" @blur="touchField('wifiNetwork')">
+              <p v-if="errorOf('wifiNetwork')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('wifiNetwork') }}</p>
           </div>
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Contraseña</label>
-            <input v-model="form.wifiPassword" type="password" class="w-full px-3 py-2 rounded-full border border-border text-sm" />
+            <input v-model="form.wifiPassword" type="password" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('wifiPassword')" data-field="wifiPassword" @blur="touchField('wifiPassword')">
+              <p v-if="errorOf('wifiPassword')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('wifiPassword') }}</p>
           </div>
         </div>
       </div>
@@ -742,12 +769,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch, reactive } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch, reactive } from 'vue'
+import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
 import { COUNTRIES, countryName } from '@/data/locales'
+import { TIMEZONES, CURRENCIES } from '@/data/intl-catalogs'
+import { validateField, validateAll, warnOnUnsavedChanges, HOTEL_RULES } from '@/composables/useFieldValidation'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
 import { ConfigService } from '@/services/Platform.service'
@@ -924,6 +953,72 @@ const tabGroups: SettingsTabGroup[] = [
     ],
   },
 ]
+
+// ─── Validación por campo ────────────────────────────────────────────────────
+// `touchedFields` evita el patrón molesto de marcar en rojo un formulario recién abierto:
+// un campo sólo muestra su error después de que el usuario pasó por él (o al intentar guardar).
+const fieldErrors = ref<Record<string, string>>({})
+const touchedFields = ref<Set<string>>(new Set())
+
+/** En qué pestaña vive cada campo — para poder llevar al usuario hasta el error. */
+const FIELD_TAB: Record<string, string> = {
+  name: 'hotel', country: 'hotel', address: 'hotel', phone: 'hotel', phone2: 'hotel',
+  email: 'hotel', website: 'hotel', timezone: 'hotel', currency: 'hotel',
+  checkIn: 'hotel', checkOut: 'hotel', ownerName: 'hotel', ownerTaxId: 'hotel',
+  province: 'location', municipality: 'location', locality: 'location',
+  postalCode: 'location', latitude: 'location', longitude: 'location',
+  logo: 'description', wifiNetwork: 'description', wifiPassword: 'description',
+  depositPercent: 'conditions', weekendSurcharge: 'conditions', depositFixed: 'conditions',
+  advanceAmount: 'conditions', releaseHours: 'conditions', taxName: 'conditions', taxRate: 'conditions',
+}
+function tabOfField(field: string): string | undefined {
+  return FIELD_TAB[field]
+}
+
+/** Valida un campo al salir de él. Se llama desde @blur. */
+function touchField(field: string) {
+  touchedFields.value = new Set(touchedFields.value).add(field)
+  const rule = HOTEL_RULES[field]
+  if (!rule) return
+  const msg = validateField((form.value as Record<string, unknown>)[field], rule)
+  const next = { ...fieldErrors.value }
+  if (msg) next[field] = msg
+  else delete next[field]
+  fieldErrors.value = next
+}
+
+/** Mensaje a mostrar bajo el campo: sólo si ya fue tocado. */
+function errorOf(field: string): string {
+  return touchedFields.value.has(field) ? (fieldErrors.value[field] ?? '') : ''
+}
+
+/** Clase del input: borde rojo cuando el campo tiene error visible. */
+function fieldClass(field: string): string {
+  return errorOf(field) ? 'border-danger' : 'border-border'
+}
+
+const hasErrors = computed(() => Object.keys(fieldErrors.value).length > 0)
+
+// ─── Cambios sin guardar ─────────────────────────────────────────────────────
+// Se compara contra una foto del formulario tomada al cargar (y renovada al guardar bien).
+// Antes se podía salir de la pantalla y perder todo lo tipeado sin ningún aviso.
+const savedSnapshot = ref('')
+function snapshot(): string {
+  return JSON.stringify({ form: form.value, descriptions: descriptions.value })
+}
+function markClean() {
+  savedSnapshot.value = snapshot()
+}
+const isDirty = computed(() => savedSnapshot.value !== '' && snapshot() !== savedSnapshot.value)
+
+onBeforeRouteLeave(() => {
+  if (!isDirty.value) return true
+  return window.confirm('Tenés cambios sin guardar en la configuración. ¿Salir y descartarlos?')
+})
+
+let stopUnloadWarning: (() => void) | null = null
+onMounted(() => { stopUnloadWarning = warnOnUnsavedChanges(() => isDirty.value) })
+onUnmounted(() => { stopUnloadWarning?.() })
 
 const allTabs = computed<SettingsTab[]>(() => tabGroups.flatMap(g => g.tabs))
 
@@ -1109,18 +1204,31 @@ onMounted(async () => {
     toast.error('Error al cargar datos')
   } finally {
     loading.value = false
+    // Foto inicial DESPUÉS de poblar el formulario: sin esto todo se vería como "cambios sin guardar"
+    // apenas se abre la pantalla.
+    await nextTick()
+    markClean()
   }
 })
 
 async function saveAll() {
   if (saving.value) return
 
-  // Client-side validation
-  const validationErrors: string[] = []
-  if (!form.value.name?.trim()) validationErrors.push('Nombre del hotel es obligatorio')
-  if (!form.value.country?.trim()) validationErrors.push('País es obligatorio')
-  if (validationErrors.length) {
-    toast.error(validationErrors.join('. '))
+  // Se revalida todo y se marcan los campos: antes sólo se comprobaban nombre y país, y cualquier
+  // otro problema aparecía como un 400 con un toast genérico que no decía cuál era el campo.
+  touchedFields.value = new Set(Object.keys(HOTEL_RULES))
+  fieldErrors.value = validateAll(form.value as Record<string, unknown>, HOTEL_RULES)
+  const bad = Object.keys(fieldErrors.value)
+  if (bad.length) {
+    const first = bad[0]!
+    // Llevar al usuario hasta el problema: la pestaña que lo contiene y el foco en el campo.
+    const tab = tabOfField(first)
+    if (tab && activeTab.value !== tab) activeTab.value = tab
+    await nextTick()
+    document.querySelector<HTMLElement>(`[data-field="${first}"]`)?.focus()
+    toast.error(bad.length === 1
+      ? fieldErrors.value[first]!
+      : `Hay ${bad.length} campos con errores. Revisá los marcados en rojo.`)
     return
   }
 
@@ -1173,6 +1281,7 @@ async function saveAll() {
   if (errors.length) {
     toast.error(`Error guardando: ${errors.join(', ')}`)
   } else {
+    markClean()   // la foto se renueva: lo guardado ya no cuenta como cambio pendiente
     toast.success('Configuración guardada')
   }
 }
