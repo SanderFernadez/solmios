@@ -16,13 +16,26 @@ export interface MessageDTO {
   updatedAt: string
 }
 
+/** Página de mensajes del monitor. Los más recientes primero. */
+export interface PagedMessages {
+  data: MessageDTO[]
+  total: number
+  hasMore: boolean
+}
+
 export const TeamChatService = {
   /**
-   * Trae TODOS los mensajes del hotel (solo managers/admin).
-   * El backend devuelve un array plano; el cliente agrupa en conversaciones.
+   * Trae una PÁGINA de mensajes del hotel (solo managers/admin), los más recientes
+   * primero. Antes traía TODOS de una y con muchos chats el panel se colgaba.
+   * El cliente pide páginas más viejas al scrollear (`offset`) y agrupa en conversaciones.
    */
-  async listAll(): Promise<MessageDTO[]> {
-    const res = await http.get<MessageDTO[]>('/messages/all')
-    return Array.isArray(res) ? res : ((res as { data?: MessageDTO[] })?.data ?? [])
+  async listAll(offset = 0, limit = 200): Promise<PagedMessages> {
+    const res = await http.get<PagedMessages>(`/messages/all?offset=${offset}&limit=${limit}`)
+    const body = (res ?? {}) as Partial<PagedMessages>
+    return {
+      data: Array.isArray(body.data) ? body.data : [],
+      total: typeof body.total === 'number' ? body.total : 0,
+      hasMore: Boolean(body.hasMore),
+    }
   },
 }

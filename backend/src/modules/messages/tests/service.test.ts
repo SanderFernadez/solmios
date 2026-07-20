@@ -32,11 +32,21 @@ function dirOf(staff: ContactDTO[]): UserDirectory {
 
 /** Repo que respeta los filtros exactos, como el ORM real. */
 function repoWith(rows: MessageDTO[], sink: any[] = []): RepositoryAdapter<MessageDTO> {
+  const applyFilter = (f: any) => rows.filter((r) => Object.entries(f ?? {}).every(([k, v]) => (r as any)[k] === v))
   return {
-    findMany: async (f: any) => rows.filter((r) => Object.entries(f ?? {}).every(([k, v]) => (r as any)[k] === v)),
+    findMany: async (f: any) => applyFilter(f),
     findById: async (id: string) => rows.find((r) => r.id === id) ?? null,
     create: async (d: any) => { const r = { id: 'new', ...d }; sink.push(r); return r },
     update: async (id: string, d: any) => { sink.push({ id, ...d }); return { ...msg({ id }), ...d } },
+    paginate: async (f: any, opts: any) => {
+      const filtered = applyFilter(f)
+      const sorted = opts?.orderBy?.dir === 'DESC'
+        ? [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        : filtered
+      const offset = opts?.offset ?? 0
+      const limit = opts?.limit ?? filtered.length
+      return { data: sorted.slice(offset, offset + limit), total: filtered.length }
+    },
   } as unknown as RepositoryAdapter<MessageDTO>
 }
 
@@ -88,12 +98,33 @@ describe('MessagesService', () => {
     expect(sink[0]).toMatchObject({ id: 'm1', isRead: true })
   })
 
-  it('getAllConversations es solo para managers', async () => {
+  it('getAllConversations es solo para managers, paginado', async () => {
     const rows = [msg({})]
     const svc = new MessagesService(repoWith(rows), log)
 
-    expect(await svc.getAllConversations(me)).toEqual([])
-    expect(await svc.getAllConversations(boss)).toHaveLength(1)
+    expect(await svc.getAllConversations(me)).toEqual({ data: [], total: 0, hasMore: false })
+    const page = await svc.getAllConversations(boss)
+    expect(page.data).toHaveLength(1)
+    expect(page.total).toBe(1)
+    expect(page.hasMore).toBe(false)
+  })
+
+  it('getAllConversations pagina: trae los más recientes primero y marca hasMore', async () => {
+    const rows = [
+      msg({ id: 'a', createdAt: '2026-07-01T10:00:00Z' }),
+      msg({ id: 'b', createdAt: '2026-07-03T10:00:00Z' }),
+      msg({ id: 'c', createdAt: '2026-07-02T10:00:00Z' }),
+    ]
+    const svc = new MessagesService(repoWith(rows), log)
+
+    const first = await svc.getAllConversations(boss, { limit: 2, offset: 0 })
+    expect(first.data.map((m) => m.id)).toEqual(['b', 'c']) // los 2 más recientes
+    expect(first.total).toBe(3)
+    expect(first.hasMore).toBe(true)
+
+    const second = await svc.getAllConversations(boss, { limit: 2, offset: 2 })
+    expect(second.data.map((m) => m.id)).toEqual(['a']) // el más viejo
+    expect(second.hasMore).toBe(false)
   })
 })
 

@@ -5,8 +5,10 @@ import type { MessagesSockets } from './sockets'
 import { TEAM_ALIAS, isTeamId, resolveRecipient, teamIdFor } from './usecases/team-channel'
 import { markTeamRead, type ReadMarker } from './usecases/team-reads'
 import { listConversations } from './usecases/list-conversations'
+import { listAllPaged, type PagedMessages } from './usecases/all-conversations'
 
 export type { MessageDTO, MessageUser, Conversation, ContactDTO, UserDirectory, MessageWithSender } from './types'
+export type { PagedMessages } from './usecases/all-conversations'
 
 const isManager = (role: string) => role === 'hotel_admin' || role === 'super_admin'
 
@@ -165,8 +167,11 @@ export class MessagesService {
     await this.repo.update(messageId, { isRead: true } as Partial<Omit<MessageDTO, 'id'>>)
   }
 
-  async getAllConversations(currentUser: MessageUser): Promise<MessageDTO[]> {
-    if (!isManager(currentUser.role)) return []
-    return this.repo.findMany({ hotelId: currentUser.hotelId })
+  /** Monitor de chats del hotel (solo managers), PAGINADO. Ver `usecases/all-conversations`. */
+  async getAllConversations(
+    currentUser: MessageUser,
+    opts: { limit?: number; offset?: number } = {},
+  ): Promise<PagedMessages> {
+    return listAllPaged(this.repo, currentUser, opts)
   }
 }

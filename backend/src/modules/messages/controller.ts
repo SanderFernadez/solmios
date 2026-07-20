@@ -6,6 +6,12 @@ import type { FileUpload, StorageService } from 'arckode-framework/modules/stora
 import type { MessagesService } from './service'
 import { SendMessageSchema } from './validators/schema'
 
+/** Query param entero seguro: NaN/ausente → undefined (el service aplica su default). */
+function parseIntParam(v: unknown): number | undefined {
+  const n = typeof v === 'string' ? parseInt(v, 10) : NaN
+  return Number.isFinite(n) ? n : undefined
+}
+
 // Decodifica un data URL base64 (data:<mime>;base64,<data>) → buffer + metadata.
 function parseDataUrl(dataUrl: string): { buffer: Buffer; mimeType: string; ext: string } | null {
   const m = dataUrl.match(/^data:([^;]+);base64,(.*)$/s)
@@ -73,7 +79,10 @@ export class MessagesController {
 
   async allConversations(req: HttpRequest) {
     const user = req.user as any
-    const result = await this.service.getAllConversations(user)
+    const result = await this.service.getAllConversations(user, {
+      limit: parseIntParam(req.query['limit']),
+      offset: parseIntParam(req.query['offset']),
+    })
     return { status: 200, body: result }
   }
 

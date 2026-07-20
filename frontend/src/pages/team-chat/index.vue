@@ -71,6 +71,11 @@
               </p>
             </div>
           </button>
+          <!-- Sentinel: al entrar en viewport dispara la carga de la página anterior -->
+          <div v-if="hasMore || loadingMore" ref="sentinel" class="py-3 flex items-center justify-center gap-2 text-[11px] text-text-muted">
+            <span v-if="loadingMore" class="w-3 h-3 animate-spin" v-html="ICON_REFRESH"></span>
+            {{ loadingMore ? 'Cargando más…' : 'Deslizá para ver mensajes anteriores' }}
+          </div>
         </div>
       </div>
 
@@ -132,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { TeamChatService, type MessageDTO } from '@/services/TeamChat.service'
 import { TeamService } from '@/services/Team.service'
 import { useAuthStore } from '@/stores/auth.store'
@@ -144,10 +149,18 @@ const ICON_TEAM = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 const auth = useAuthStore()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
+const PAGE_SIZE = 200
 const loading = ref(false)
+const loadingMore = ref(false)
+const hasMore = ref(false)
+const loadedCount = ref(0)
 const messages = ref<MessageDTO[]>([])
 const userNames = ref<Map<string, string>>(new Map())
 const selectedKey = ref<string | null>(null)
+// Sentinel al fondo de la lista: cuando entra en viewport, se autocarga la
+// siguiente página de mensajes más viejos (scroll infinito).
+const sentinel = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
 
 const TEAM_KEY = 'team'
 
@@ -256,14 +269,49 @@ async function loadNames() {
 async function load() {
   loading.value = true
   try {
-    const [msgs] = await Promise.all([TeamChatService.listAll(), loadNames()])
-    messages.value = msgs
+    const [page] = await Promise.all([TeamChatService.listAll(0, PAGE_SIZE), loadNames()])
+    messages.value = page.data
+    loadedCount.value = page.data.length
+    hasMore.value = page.hasMore
   } catch {
     messages.value = []
+    hasMore.value = false
   } finally {
     loading.value = false
   }
 }
 
-onMounted(load)
+/** Trae la siguiente página de mensajes más viejos y los suma sin duplicar. */
+async function loadMore() {
+  if (loadingMore.value || loading.value || !hasMore.value) return
+  loadingMore.value = true
+  try {
+    const page = await TeamChatService.listAll(loadedCount.value, PAGE_SIZE)
+    const seen = new Set(messages.value.map((m) => m.id))
+    const fresh = page.data.filter((m) => !seen.has(m.id))
+    messages.value = [...messages.value, ...fresh]
+    loadedCount.value += page.data.length
+    hasMore.value = page.hasMore
+  } catch {
+    /* se reintenta al próximo scroll: hasMore queda como estaba */
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+onMounted(() => {
+  observer = new IntersectionObserver(
+    (entries) => { if (entries[0]?.isIntersecting) loadMore() },
+    { rootMargin: '150px' },
+  )
+  load()
+})
+
+// El sentinel aparece/desaparece con `hasMore`: re-observar cuando se monta.
+watch(sentinel, (el) => {
+  observer?.disconnect()
+  if (el && observer) observer.observe(el)
+})
+
+onUnmounted(() => observer?.disconnect())
 </script>
