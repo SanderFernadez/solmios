@@ -193,9 +193,12 @@
         </div>
         <div>
           <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Rol inicial</label>
+          <!-- Mismo availableRoles que "Cambiar rol" más abajo: este select tenía
+               solo 2 opciones hardcodeadas y era el único punto donde se podía
+               asignar housekeeper/maintenance/supervisor AL INVITAR (quedaba el
+               rodeo de invitar como recepcionista y cambiar el rol después). -->
           <select v-model="inviteForm.role" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-            <option value="receptionist">Recepcionista</option>
-            <option value="hotel_admin">Admin Hotel</option>
+            <option v-for="role in availableRoles" :key="role.key" :value="role.key">{{ role.label }}</option>
           </select>
         </div>
         <div>
