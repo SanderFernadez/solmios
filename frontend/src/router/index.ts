@@ -218,6 +218,12 @@ const router = createRouter({
           component: () => import('@/pages/rooms/index.vue'),
         },
         {
+          path: 'config/tarifas',
+          name: 'tarifas',
+          component: () => import('@/pages/tarifas/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'guests',
           name: 'guests',
           component: () => import('@/pages/guests/index.vue'),

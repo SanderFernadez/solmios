@@ -306,6 +306,7 @@ const nonavItems = [
     children: [
       { label: 'Configuración Base', path: '/panel/config', roles: ['hotel_admin'] },
       { label: 'Habitaciones', path: '/panel/config/habitaciones', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Temporadas y Tarifas', path: '/panel/config/tarifas', roles: ['hotel_admin'] },
       // `anyOf`: /panel/config/mensajeria es CORE (no está en module-map), así que la
       // entrada se gatea por sus tabs — si el hotel no tiene habilitado ningún
       // módulo de mensajería, no se muestra.

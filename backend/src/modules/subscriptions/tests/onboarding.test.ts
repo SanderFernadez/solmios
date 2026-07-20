@@ -99,7 +99,7 @@ describe('OnboardingUseCase — la guía tiene que explicar', () => {
     // "Definí tus tarifas" mandaba a /panel/pricing, que no existe: el botón
     // sacaba al usuario del panel.
     const EXISTENTES = [
-      '/panel/config/habitaciones', '/panel/config', '/panel/channel-manager', '/panel/rrhh/team',
+      '/panel/config/habitaciones', '/panel/config', '/panel/config/tarifas', '/panel/channel-manager', '/panel/rrhh/team',
     ]
     const st = await setup().status('h1')
     for (const step of st.steps) {
