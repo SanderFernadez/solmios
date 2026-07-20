@@ -31,7 +31,7 @@
       </div>
     </div>
 
-    <router-link to="/panel/ai-receptionist"
+    <router-link to="/panel/ia/recepcionista"
       class="relative mt-4 block rounded-xl border border-[#2563EB]/30 bg-[#2563EB]/8 px-4 py-2.5 text-center text-[11px] font-extrabold text-[#2563EB] transition-all hover:bg-[#2563EB]/15">
       Ver todas las recomendaciones
     </router-link>

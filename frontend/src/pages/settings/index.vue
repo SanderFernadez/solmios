@@ -655,7 +655,7 @@
 
       <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Pasarela de Pagos</h3>
-        <!-- Las pasarelas se configuran en /panel/pagos: acá había una segunda fuente de verdad
+        <!-- Las pasarelas se configuran en /panel/config/pasarelas: acá había una segunda fuente de verdad
              (configuration.stripe_config, sin cifrar) que solo la usaba uno de los tres flujos de cobro. -->
         <div class="p-4 bg-surface rounded-xl">
           <div class="flex items-center justify-between mb-3">
@@ -667,7 +667,7 @@
           <p class="text-[11px] text-text-secondary mb-3 leading-relaxed">
             Conectá la cuenta donde querés recibir el dinero de tus reservas. Las llaves se guardan cifradas.
           </p>
-          <router-link to="/panel/pagos" class="block text-center w-full px-4 py-2 bg-navy text-white rounded-full text-sm font-bold hover:shadow-lg cursor-pointer">
+          <router-link to="/panel/config/pasarelas" class="block text-center w-full px-4 py-2 bg-navy text-white rounded-full text-sm font-bold hover:shadow-lg cursor-pointer">
             Configurar pasarelas
           </router-link>
         </div>
@@ -794,7 +794,7 @@ const auth = useAuthStore()
 const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
-// Stripe se configura en /panel/pagos (tabla payment_gateways, cifrada y por hotel).
+// Stripe se configura en /panel/config/pasarelas (tabla payment_gateways, cifrada y por hotel).
 // El bloque anterior leía configuration['stripe_config'] y traía la secretKey EN CLARO al
 // navegador: el endpoint genérico de configuración devuelve el JSON entero, secretos incluidos.
 

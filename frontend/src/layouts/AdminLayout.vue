@@ -232,17 +232,17 @@ const nonavItems = [
   {
     label: 'Reservas', icon: ICONS.calendar, roles: ['hotel_admin', 'receptionist'],
     children: [
-      { label: 'Reservas', path: '/panel/reservations', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Check-in/out', path: '/panel/checkin', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Reservas', path: '/panel/reservas', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Check-in/out', path: '/panel/reservas/checkin', roles: ['hotel_admin', 'receptionist'] },
     ]
   },
   {
     label: 'Operaciones', icon: ICONS.tools, roles: ['hotel_admin'],
     children: [
-      { label: 'Limpieza', path: '/panel/housekeeping', roles: ['hotel_admin'] },
-      { label: 'Mantenimiento', path: '/panel/maintenance', roles: ['hotel_admin'] },
-      { label: 'Proveedores de servicios', path: '/panel/technical-providers', roles: ['hotel_admin'] },
-      { label: 'Chats del equipo', path: '/panel/team-chat', roles: ['hotel_admin'] },
+      { label: 'Limpieza', path: '/panel/operaciones/limpieza', roles: ['hotel_admin'] },
+      { label: 'Mantenimiento', path: '/panel/operaciones/mantenimiento', roles: ['hotel_admin'] },
+      { label: 'Proveedores de servicios', path: '/panel/operaciones/proveedores', roles: ['hotel_admin'] },
+      { label: 'Chats del equipo', path: '/panel/operaciones/chats', roles: ['hotel_admin'] },
     ]
   },
   {
@@ -250,29 +250,29 @@ const nonavItems = [
   {
     label: 'Finanzas', icon: ICONS.wallet, roles: ['hotel_admin'],
     children: [
-      { label: 'Facturación', path: '/panel/billing', roles: ['hotel_admin'] },
-      { label: 'Folios In-House', path: '/panel/folios', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Links de Pago', path: '/panel/payments', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Caja', path: '/panel/caja', roles: ['hotel_admin'] },
-      { label: 'Gastos', path: '/panel/gastos', roles: ['hotel_admin'] },
-      { label: 'Reportes', path: '/panel/reports', roles: ['hotel_admin'] },
-      { label: 'Night Audit', path: '/panel/night-audit', roles: ['hotel_admin'] },
+      { label: 'Facturación', path: '/panel/finanzas/facturacion', roles: ['hotel_admin'] },
+      { label: 'Folios In-House', path: '/panel/finanzas/folios', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Links de Pago', path: '/panel/finanzas/links-pago', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Caja', path: '/panel/finanzas/caja', roles: ['hotel_admin'] },
+      { label: 'Gastos', path: '/panel/finanzas/gastos', roles: ['hotel_admin'] },
+      { label: 'Reportes', path: '/panel/finanzas/reportes', roles: ['hotel_admin'] },
+      { label: 'Night Audit', path: '/panel/finanzas/night-audit', roles: ['hotel_admin'] },
     ]
   },
   {
     label: 'Ventas', icon: ICONS.link, roles: ['hotel_admin'],
     children: [
-      { label: 'Grupos', path: '/panel/groups', roles: ['hotel_admin'] },
-      { label: 'Promociones', path: '/panel/packages', roles: ['hotel_admin'] },
-      { label: 'Reseñas', path: '/panel/opiniones', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Grupos', path: '/panel/ventas/grupos', roles: ['hotel_admin'] },
+      { label: 'Promociones', path: '/panel/ventas/promociones', roles: ['hotel_admin'] },
+      { label: 'Reseñas', path: '/panel/ventas/opiniones', roles: ['hotel_admin', 'receptionist'] },
     ]
   },
   {
     label: 'IA', icon: ICONS.sparkles, roles: ['hotel_admin', 'receptionist'],
     children: [
-      { label: 'Recepcionista', path: '/panel/ai-receptionist', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Gerente IA', path: '/panel/ai-gerente', roles: ['hotel_admin', 'receptionist'] },
-      { label: 'Configuración IA', path: '/panel/ai-receptionist/config', roles: ['hotel_admin'] },
+      { label: 'Recepcionista', path: '/panel/ia/recepcionista', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Gerente IA', path: '/panel/ia/gerente', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Configuración IA', path: '/panel/ia/recepcionista/config', roles: ['hotel_admin'] },
     ]
   },
   {
@@ -304,18 +304,18 @@ const nonavItems = [
     // (pages/mensajeria). Con 6 items la lista se lee de un vistazo, así que ya
     // no hacen falta los encabezados de bloque que agrupaban los 10 anteriores.
     children: [
-      { label: 'Configuración Base', path: '/panel/settings', roles: ['hotel_admin'] },
-      { label: 'Habitaciones', path: '/panel/rooms', roles: ['hotel_admin', 'receptionist'] },
-      // `anyOf`: /panel/mensajeria es CORE (no está en module-map), así que la
+      { label: 'Configuración Base', path: '/panel/config', roles: ['hotel_admin'] },
+      { label: 'Habitaciones', path: '/panel/config/habitaciones', roles: ['hotel_admin', 'receptionist'] },
+      // `anyOf`: /panel/config/mensajeria es CORE (no está en module-map), así que la
       // entrada se gatea por sus tabs — si el hotel no tiene habilitado ningún
       // módulo de mensajería, no se muestra.
       {
         label: 'Mensajería', path: MESSAGING_PATH, roles: ['hotel_admin', 'receptionist'],
         anyOf: MESSAGING_TABS.map(t => t.path),
       },
-      { label: 'Pasarelas de Pago', path: '/panel/pagos', roles: ['hotel_admin'] },
-      { label: 'Cerraduras', path: '/panel/cerraduras', roles: ['hotel_admin'] },
-      { label: 'Dispositivos', path: '/panel/devices', roles: ['hotel_admin'] },
+      { label: 'Pasarelas de Pago', path: '/panel/config/pasarelas', roles: ['hotel_admin'] },
+      { label: 'Cerraduras', path: '/panel/config/cerraduras', roles: ['hotel_admin'] },
+      { label: 'Dispositivos', path: '/panel/config/dispositivos', roles: ['hotel_admin'] },
     ]
   },
   {
@@ -440,8 +440,29 @@ const userInitials = computed(() => {
 })
 
 
+// Todas las rutas que el menú conoce (items sueltos + hijos de sección).
+const ALL_MENU_PATHS: string[] = nonavItems.flatMap((i: any) =>
+  [i.path, ...(i.children ?? []).map((c: any) => c.path)].filter(Boolean),
+)
+
+/**
+ * Ruta del menú que mejor describe la ubicación actual: la MÁS LARGA que coincida.
+ *
+ * Con `startsWith` a secas se encendían dos items a la vez desde que las rutas pasaron a ser
+ * anidadas: en /panel/config/habitaciones prendían "Configuración Base" (/panel/config) y
+ * "Habitaciones". El match más largo elige uno solo, y las rutas de detalle sin entrada propia
+ * (/panel/reservas/:id) siguen resaltando a su padre.
+ */
+const activeMenuPath = computed(() => {
+  let best = ''
+  for (const p of ALL_MENU_PATHS) {
+    if ((route.path === p || route.path.startsWith(p + '/')) && p.length > best.length) best = p
+  }
+  return best
+})
+
 function isActive(path: string) {
-  return route.path.startsWith(path)
+  return activeMenuPath.value === path
 }
 
 async function handleLogout() {

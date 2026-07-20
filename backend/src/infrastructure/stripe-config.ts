@@ -37,7 +37,7 @@ export function configureStripe(orm: any, logger?: any): void {
     if (cfg?.secretKey) {
       logger?.warn?.(
         `Hotel ${hotelId} usa el esquema viejo de llaves Stripe (configuration.stripe_config, sin cifrar). ` +
-        'Migrar a payment_gateways desde /panel/pagos.',
+        'Migrar a payment_gateways desde /panel/config/pasarelas.',
       )
       return cfg
     }

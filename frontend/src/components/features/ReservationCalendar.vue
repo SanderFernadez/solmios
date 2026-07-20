@@ -947,7 +947,7 @@ function manageLock(l: any) {
   // callejón sin salida, lo mandamos a la vista donde sí puede asignarla (feedback #399).
   if (!room) {
     toast.info('Esta cerradura todavía no tiene habitación. Te llevamos a Cerraduras para asignarla.')
-    router.push('/panel/cerraduras')
+    router.push('/panel/config/cerraduras')
     return
   }
   quickAction.value = null
@@ -1182,9 +1182,9 @@ async function doSync() {
 // Página dedicada de cada acción rápida (botón "Avanzado").
 const quickAdvancedPath = computed(() => {
   switch (quickAction.value) {
-    case 'arrivals': return '/panel/checkin'
-    case 'search': return '/panel/reservations'
-    case 'locks': return '/panel/cerraduras'
+    case 'arrivals': return '/panel/reservas/checkin'
+    case 'search': return '/panel/reservas'
+    case 'locks': return '/panel/config/cerraduras'
     case 'sync': return '/panel/channel-manager'
     default: return '/panel/planning'
   }
@@ -1421,7 +1421,7 @@ function viewResDetail(rb: any) {
 
 function onEditFromPlanning(d: { id: string }) {
   detailId.value = null
-  router.push({ path: '/panel/reservations', query: { edit: d.id } })
+  router.push({ path: '/panel/reservas', query: { edit: d.id } })
 }
 
 /** Context menu (right-click) sobre una reserva existente */

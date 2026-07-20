@@ -38,7 +38,7 @@
           <input
             v-model="search"
             type="text"
-            placeholder="Buscar nombre, rubro, zona..."
+            placeholder="Buscar nombre, especialidad, zona..."
             class="pl-9 pr-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm text-white placeholder:text-white/45 w-56 focus:outline-none focus:border-cyan"
           />
         </div>
@@ -114,7 +114,7 @@
                 >{{ p.active === false ? 'Inactivo' : 'Activo' }}</span>
               </div>
               <p v-if="p.specialty || p.phone" class="text-xs text-text-secondary mt-0.5 truncate">
-                {{ p.specialty || 'Sin rubro' }}<template v-if="p.phone"> · {{ p.phone }}</template>
+                {{ p.specialty || 'Sin especialidad' }}<template v-if="p.phone"> · {{ p.phone }}</template>
               </p>
               <div v-if="p.phone" class="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <a
@@ -187,7 +187,7 @@
         </div>
 
         <div>
-          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Rubro</label>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">Especialidad</label>
           <input v-model="form.specialty" maxlength="80" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="Plomería, Electricidad...">
         </div>
         <div>

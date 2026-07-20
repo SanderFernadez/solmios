@@ -128,7 +128,7 @@ const ICON_KEY = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" str
 const options = computed(() => {
   const isSuperAdmin = auth.userRole === 'super_admin'
   return [
-    { icon: ICON_SETTINGS, label: 'Configuración', path: isSuperAdmin ? '/admin/settings' : '/panel/settings' },
+    { icon: ICON_SETTINGS, label: 'Configuración', path: isSuperAdmin ? '/admin/settings' : '/panel/config' },
     { icon: ICON_KEY, label: 'Cambiar contraseña', path: '/change-password' },
   ]
 })

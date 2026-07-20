@@ -154,11 +154,11 @@ async function remove(n: AppNotification) {
 function handleRow(n: AppNotification) {
   if (!n.read) markAsRead(n)
   const meta = (n.metadata || {}) as any
-  if (meta.reservationId) router.push('/panel/reservations')
-  else if (n.type === 'payment') router.push('/panel/billing')
-  else if (n.type === 'housekeeping') router.push('/panel/housekeeping')
-  else if (n.type === 'maintenance') router.push('/panel/maintenance')
-  else if (n.type === 'review') router.push('/panel/opiniones')
+  if (meta.reservationId) router.push('/panel/reservas')
+  else if (n.type === 'payment') router.push('/panel/finanzas/facturacion')
+  else if (n.type === 'housekeeping') router.push('/panel/operaciones/limpieza')
+  else if (n.type === 'maintenance') router.push('/panel/operaciones/mantenimiento')
+  else if (n.type === 'review') router.push('/panel/ventas/opiniones')
 }
 
 function formatRelative(date?: string): string {

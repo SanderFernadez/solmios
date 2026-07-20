@@ -161,8 +161,8 @@ export class PaymentRequestsService {
         amount: Number(pr.amount),
         currency: pr.currency || 'usd',
         description: `Reserva ${String(pr.reservationId || '').slice(0, 8)}`,
-        successUrl: `${origin || fallbackOrigin}/panel/payments?status=paid&id=${id}`,
-        cancelUrl: `${origin || fallbackOrigin}/panel/payments?status=cancelled&id=${id}`,
+        successUrl: `${origin || fallbackOrigin}/panel/finanzas/links-pago?status=paid&id=${id}`,
+        cancelUrl: `${origin || fallbackOrigin}/panel/finanzas/links-pago?status=cancelled&id=${id}`,
         customerEmail: guestEmail,
         metadata: { hotelId: pr.hotelId, reservationId: pr.reservationId || '' },
       })

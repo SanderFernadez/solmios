@@ -7,25 +7,25 @@ export const ROUTE_TO_KEY: Record<string, string> = {
   '/panel/planning': 'planning',
   '/panel/channel-manager': 'channel',
   '/panel/channel': 'channel',                       // detalle /panel/channel/:id
-  '/panel/reservations': 'reservations.list',
-  '/panel/checkin': 'reservations.checkin',
+  '/panel/reservas': 'reservations.list',
+  '/panel/reservas/checkin': 'reservations.checkin',
   '/panel/guests': 'guests',
-  '/panel/housekeeping': 'operations.housekeeping',
-  '/panel/maintenance': 'operations.maintenance',
-  '/panel/technical-providers': 'operations.providers',
-  '/panel/team-chat': 'operations.team-chat',
-  '/panel/billing': 'finance.billing',
-  '/panel/folios': 'finance.folios',
-  '/panel/payments': 'finance.payments',
-  '/panel/caja': 'finance.caja',
-  '/panel/gastos': 'finance.gastos',
-  '/panel/reports': 'finance.reports',
-  '/panel/night-audit': 'finance.night-audit',
-  '/panel/groups': 'sales.groups',
-  '/panel/packages': 'sales.packages',
-  '/panel/opiniones': 'sales.reviews',
-  '/panel/ai-receptionist': 'ai.receptionist',       // incluye /panel/ai-receptionist/config (prefijo)
-  '/panel/ai-gerente': 'ai.manager',
+  '/panel/operaciones/limpieza': 'operations.housekeeping',
+  '/panel/operaciones/mantenimiento': 'operations.maintenance',
+  '/panel/operaciones/proveedores': 'operations.providers',
+  '/panel/operaciones/chats': 'operations.team-chat',
+  '/panel/finanzas/facturacion': 'finance.billing',
+  '/panel/finanzas/folios': 'finance.folios',
+  '/panel/finanzas/links-pago': 'finance.payments',
+  '/panel/finanzas/caja': 'finance.caja',
+  '/panel/finanzas/gastos': 'finance.gastos',
+  '/panel/finanzas/reportes': 'finance.reports',
+  '/panel/finanzas/night-audit': 'finance.night-audit',
+  '/panel/ventas/grupos': 'sales.groups',
+  '/panel/ventas/promociones': 'sales.packages',
+  '/panel/ventas/opiniones': 'sales.reviews',
+  '/panel/ia/recepcionista': 'ai.receptionist',       // incluye /panel/ia/recepcionista/config (prefijo)
+  '/panel/ia/gerente': 'ai.manager',
   '/panel/crm': 'crm',
   '/panel/rrhh/dashboard': 'hr.dashboard',
   '/panel/rrhh/empleados': 'hr.employees',
@@ -39,20 +39,20 @@ export const ROUTE_TO_KEY: Record<string, string> = {
   '/panel/rrhh/activos': 'hr.activos',
   '/panel/rrhh/capacitacion': 'hr.capacitacion',
   '/panel/rrhh/roles': 'hr.roles',
-  '/panel/rooms': 'settings.rooms',
+  '/panel/config/habitaciones': 'settings.rooms',
   '/panel/auto-messages': 'settings.auto-messages',
   '/panel/message-logs': 'settings.message-logs',
   '/panel/email-queue': 'settings.email-queue',
   '/panel/whatsapp-templates': 'settings.whatsapp',
-  '/panel/cerraduras': 'settings.locks',
-  '/panel/pagos': 'settings.gateways',
-  '/panel/devices': 'settings.devices',
+  '/panel/config/cerraduras': 'settings.locks',
+  '/panel/config/pasarelas': 'settings.gateways',
+  '/panel/config/dispositivos': 'settings.devices',
   '/panel/push-tokens': 'settings.push',
 }
 
 /**
  * Clave de módulo/submódulo para una ruta, por prefijo más largo (así los detalles como
- * /panel/reservations/:id o /panel/rrhh/empleados/:id/expediente heredan la clave del padre).
+ * /panel/reservas/:id o /panel/rrhh/empleados/:id/expediente heredan la clave del padre).
  * Devuelve undefined si la ruta es CORE (no gateada).
  */
 export function moduleKeyForPath(path: string): string | undefined {

@@ -16,7 +16,7 @@ export interface MessagingTab {
   roles: string[]
 }
 
-export const MESSAGING_PATH = '/panel/mensajeria'
+export const MESSAGING_PATH = '/panel/config/mensajeria'
 
 export const MESSAGING_TABS: MessagingTab[] = [
   { value: 'auto-messages', label: 'Envíos Auto', path: '/panel/auto-messages', roles: ['hotel_admin'] },

@@ -7,7 +7,7 @@ import { AuthError } from 'arckode-framework'
  *
  * @example
  * router.get('/admin/hotels', [requireUserType('admin')], handler)
- * router.get('/panel/reservations', [requireUserType('merchant')], handler)
+ * router.get('/panel/reservas', [requireUserType('merchant')], handler)
  */
 export function requireUserType(...allowedTypes: string[]): MiddlewareHandler {
   return async (req, next) => {

@@ -4,7 +4,7 @@
 // (connector `payments-caja`) y la conciliación bancaria (`payments/usecases/reconciliation.ts`).
 //
 // Antes, `pay()` escribía un comprobante `type:'payment'` dentro de `invoices` y no avisaba a nadie:
-// un cobro en efectivo desde /panel/billing nunca entraba al turno de caja. Verificado en local —
+// un cobro en efectivo desde /panel/finanzas/facturacion nunca entraba al turno de caja. Verificado en local —
 // ver openspec/changes/billing-money-consolidation/proposal.md.
 //
 // `facturas` no importa `payments`: declara este puerto y el connector `facturas-payments` inyecta

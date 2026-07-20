@@ -31,7 +31,7 @@
             <p class="text-[11px] text-text-muted mb-3 leading-relaxed">
               Cargá los números de emergencia del hotel para tenerlos siempre a mano.
             </p>
-            <router-link :to="{ path: '/panel/settings', query: { tab: 'emergency' } }" @click="open = false"
+            <router-link :to="{ path: '/panel/config', query: { tab: 'emergency' } }" @click="open = false"
               class="inline-block px-4 py-2 bg-danger text-white rounded-full text-xs font-bold hover:shadow-lg cursor-pointer">
               Configurar ahora
             </router-link>
@@ -56,7 +56,7 @@
               </a>
             </div>
             <div class="px-4 py-2.5 border-t border-border/60 text-center">
-              <router-link :to="{ path: '/panel/settings', query: { tab: 'emergency' } }" @click="open = false"
+              <router-link :to="{ path: '/panel/config', query: { tab: 'emergency' } }" @click="open = false"
                 class="text-xs font-bold text-navy hover:underline cursor-pointer">
                 Editar contactos →
               </router-link>

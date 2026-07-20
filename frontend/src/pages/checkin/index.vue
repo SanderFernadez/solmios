@@ -915,7 +915,7 @@ function closeRoomDetail() {
 }
 
 function viewReservation(resId: string) {
-  router.push(`/panel/reservations?id=${resId}`)
+  router.push(`/panel/reservas?id=${resId}`)
 }
 
 async function checkoutFromRoom(room: CheckinRoom) {

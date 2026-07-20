@@ -3,7 +3,7 @@
 // el arqueo de caja (connector `payments-caja`) y la conciliación bancaria.
 //
 // Antes `facturas.pay()` escribía un comprobante `type:'payment'` dentro de `invoices` y no emitía
-// ningún evento: un cobro en efectivo desde /panel/billing nunca entraba al turno de caja.
+// ningún evento: un cobro en efectivo desde /panel/finanzas/facturacion nunca entraba al turno de caja.
 // Ver openspec/changes/billing-money-consolidation/proposal.md (reproducido en local).
 
 import type { ConnectorContext } from 'arckode-framework'

@@ -5,7 +5,7 @@
 //
 // El movimiento de dinero se asienta en la tabla `payments` (única fuente de verdad: alimenta el
 // arqueo de caja y la conciliación bancaria). Antes se escribía un comprobante `type:'payment'`
-// dentro de `invoices` que no llegaba a ningún lado: un cobro en efectivo desde /panel/billing
+// dentro de `invoices` que no llegaba a ningún lado: un cobro en efectivo desde /panel/finanzas/facturacion
 // nunca entraba al turno. Ver openspec/changes/billing-money-consolidation.
 //
 // Orden importante: primero el asiento del dinero, después la factura. Si falla el asiento, el cobro
