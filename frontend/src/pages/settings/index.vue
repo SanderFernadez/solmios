@@ -269,12 +269,20 @@
       </div>
     </div>
 
-    <!-- ========== LOCATION (Leaflet map) ========== -->
+    <!-- ========== LOCATION (mapa de Google) ========== -->
     <div v-if="activeTab === 'location'" class="grid lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Mapa Interactivo</h3>
-        <div ref="mapEl" class="w-full h-96 rounded-xl border border-border overflow-hidden"></div>
-        <p class="text-[11px] text-text-muted mt-2">Click en el mapa para ajustar la ubicación exacta.</p>
+        <iframe :src="googleMapsEmbedUrl" class="w-full h-96 rounded-xl border border-border"
+          style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+          title="Ubicación del hotel en Google Maps"></iframe>
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <p class="text-[11px] text-text-muted">
+            Para mover el pin: pegá abajo el enlace de Google Maps del lugar, o escribí las coordenadas.
+          </p>
+          <a :href="googleMapsLinkUrl" target="_blank" rel="noopener"
+            class="shrink-0 text-[11px] font-bold text-teal hover:underline">Abrir en Google Maps</a>
+        </div>
       </div>
       <div class="space-y-4">
         <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
@@ -292,6 +300,15 @@
                 class="w-full px-3 py-2 rounded-full border text-sm font-bold text-navy" :class="fieldClass('longitude')" data-field="longitude" @blur="touchField('longitude')">
               <p v-if="errorOf('longitude')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('longitude') }}</p>
             </div>
+          </div>
+          <div class="mt-3">
+            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Pegar enlace de Google Maps</label>
+            <input v-model="mapsPaste" @input="applyMapsPaste" type="text"
+              placeholder="https://maps.google.com/… o 18.4861, -69.9312"
+              class="w-full px-3 py-2 rounded-full border border-border text-sm">
+            <p class="text-[10px] text-text-muted mt-1">
+              En Google Maps, clic derecho sobre el punto → copiar coordenadas, y pegalas acá.
+            </p>
           </div>
           <button @click="useMyLocation" class="mt-3 w-full text-xs font-bold text-teal hover:underline cursor-pointer">
             Usar mi ubicación actual
@@ -776,6 +793,7 @@ import SearchSelect from '@/components/ui/SearchSelect.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
 import { COUNTRIES, countryName } from '@/data/locales'
 import { TIMEZONES, CURRENCIES } from '@/data/intl-catalogs'
+import { parseLatLng } from '@/composables/useLatLngParse'
 import { validateField, validateAll, warnOnUnsavedChanges, HOTEL_RULES } from '@/composables/useFieldValidation'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
@@ -785,19 +803,6 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import type { AmenityCatalog } from '@/services/Hotel.service'
 import type { HotelEmergencyContact } from '@/types'
-
-// Leaflet (mapa interactivo — lazy import para no romper SSR)
-import leaflet from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import type { Map as LeafletMap, Marker as LeafletMarker } from 'leaflet'
-
-// Fix default icon paths para Leaflet con bundlers
-delete (leaflet.Icon.Default.prototype as any)._getIconUrl
-leaflet.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-})
 
 const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
 const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>'
@@ -1287,42 +1292,45 @@ async function saveAll() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Leaflet — mapa interactivo de ubicación
+// Mapa de ubicación (Google Maps embed)
 // ════════════════════════════════════════════════════════════════════════════
-const mapEl = ref<HTMLElement | null>(null)
-let map: LeafletMap | null = null
-let marker: LeafletMarker | null = null
+// Google Maps por iframe embed (`output=embed`): no requiere API key ni facturación.
+//
+// Contrapartida asumida: un iframe es de otro origen, así que NO puede avisarnos dónde hizo clic
+// el usuario — se pierden el marcador arrastrable y el clic-para-fijar que tenía Leaflet. Para
+// compensar, la posición se fija por tres vías sin salir de la pantalla: pegar el enlace/coordenadas
+// de Google Maps, escribir lat/long a mano, o "usar mi ubicación".
+//
+// Si algún día se carga una Maps JavaScript API key, conviene volver al mapa interactivo real:
+// ahí sí se recupera el clic sobre el mapa.
 
-function initMap() {
-  if (!mapEl.value || map) return
-  const lat = Number(form.value.latitude) || 18.4861 // Default: Santo Domingo
-  const lng = Number(form.value.longitude) || -69.9312
-  map = leaflet.map(mapEl.value).setView([lat, lng], 14)
-  leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap',
-    maxZoom: 19,
-  }).addTo(map)
-  marker = leaflet.marker([lat, lng], { draggable: true }).addTo(map)
-  marker.on('dragend', () => {
-    const pos = marker!.getLatLng()
-    form.value.latitude = pos.lat
-    form.value.longitude = pos.lng
-  })
-  map.on('click', (e: any) => {
-    form.value.latitude = e.latlng.lat
-    form.value.longitude = e.latlng.lng
-    marker!.setLatLng(e.latlng)
-  })
+/** Centro por defecto cuando el hotel todavía no tiene coordenadas. */
+const DEFAULT_LAT = 18.4861
+const DEFAULT_LNG = -69.9312
+
+const mapLat = computed(() => Number(form.value.latitude) || DEFAULT_LAT)
+const mapLng = computed(() => Number(form.value.longitude) || DEFAULT_LNG)
+
+const googleMapsEmbedUrl = computed(
+  () => `https://www.google.com/maps?q=${mapLat.value},${mapLng.value}&z=16&output=embed`,
+)
+const googleMapsLinkUrl = computed(
+  () => `https://www.google.com/maps/search/?api=1&query=${mapLat.value},${mapLng.value}`,
+)
+
+const mapsPaste = ref('')
+
+function applyMapsPaste() {
+  const parsed = parseLatLng(mapsPaste.value)
+  if (!parsed) return          // se escribe de a poco: no molestar hasta que haya un par válido
+  form.value.latitude = parsed.lat
+  form.value.longitude = parsed.lng
+  mapsPaste.value = ''
+  toast.success('Ubicación actualizada desde Google Maps')
 }
 
-function syncMarkerFromForm() {
-  const lat = Number(form.value.latitude)
-  const lng = Number(form.value.longitude)
-  if (Number.isFinite(lat) && Number.isFinite(lng) && marker && map) {
-    marker.setLatLng([lat, lng])
-    map.setView([lat, lng], 14)
-  }
-}
+/** El iframe se recentra solo por el computed; no hace falta sincronizar un marcador. */
+function syncMarkerFromForm() {}
 
 function useMyLocation() {
   if (!navigator.geolocation) {
@@ -1339,15 +1347,6 @@ function useMyLocation() {
     () => toast.error('No se pudo obtener tu ubicación'),
   )
 }
-
-// Inicializar mapa cuando se entra al tab location
-watch(activeTab, async (val) => {
-  if (val === 'location') {
-    await nextTick()
-    initMap()
-    if (map) setTimeout(() => map!.invalidateSize(), 100)
-  }
-})
 
 // ════════════════════════════════════════════════════════════════════════════
 // Descripción multilingüe (12 idiomas)
