@@ -82,6 +82,25 @@ describe('MasterKeysUseCase.create', () => {
     expect(res.code).toBe('4471')
   })
 
+  // #394: el PIN autogenerado de la llave maestra abre TODAS las puertas. Debe salir de un CSPRNG,
+  // no de Math.random (predecible observando varios PINs → acceso físico a todo el hotel).
+  it('el PIN autogenerado es siempre 6 dígitos en rango', async () => {
+    const { uc } = setup()
+    for (let i = 0; i < 500; i++) {
+      const res = await uc.create('h1', { userId: 'u1' }, 'admin1')
+      expect(res.code).toMatch(/^[0-9]{6}$/)
+      const n = Number(res.code)
+      expect(n).toBeGreaterThanOrEqual(100_000)
+      expect(n).toBeLessThanOrEqual(999_999)
+    }
+  })
+
+  it('el fuente no usa Math.random para el PIN (guardrail de regresión)', async () => {
+    const src = await Bun.file(new URL('../usecases/master-keys.ts', import.meta.url)).text()
+    expect(src).not.toContain('Math.random')
+    expect(src).toContain('randomInt')
+  })
+
   it('rechaza un PIN que la cerradura no acepta', async () => {
     const { uc } = setup()
     await expect(uc.create('h1', { userId: 'u1', code: '12' }, 'a')).rejects.toThrow('4 y 9 dígitos')

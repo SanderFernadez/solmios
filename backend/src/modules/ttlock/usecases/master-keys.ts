@@ -14,6 +14,7 @@
 //  - Es una llave que abre todo: revocar tiene que borrarla del hardware, no
 //    solo marcarla en la base. Un registro que dice "revocada" mientras la
 //    puerta sigue abriendo es peor que no tener el registro.
+import { randomInt } from 'node:crypto'
 import { ValidationError, NotFoundError } from 'arckode-framework'
 
 /**
@@ -304,7 +305,10 @@ const PIN_MIN = 100_000
 const PIN_MAX = 999_999
 
 function randomPin(): string {
-  return String(Math.floor(PIN_MIN + Math.random() * (PIN_MAX - PIN_MIN + 1)))
+  // CSPRNG obligatorio: este PIN es la llave maestra que abre TODAS las cerraduras del hotel. Un
+  // PRNG no criptográfico es predecible observando algunos PINs, y acá eso significa acceso físico
+  // a todas las habitaciones. randomInt(min, max) devuelve [min, max).
+  return String(randomInt(PIN_MIN, PIN_MAX + 1))
 }
 
 function messageOf(err: unknown): string {
