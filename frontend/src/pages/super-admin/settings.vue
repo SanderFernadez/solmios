@@ -106,6 +106,36 @@
     <div v-if="activeTab === 'integrations'" class="space-y-6">
       <ChannexPlatformConfig />
 
+      <!-- Google Maps: se configura una sola vez para toda la plataforma. Cada hotel la hereda
+           por el fallback a hotelId:'platform' de getConfig. -->
+      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🗺️</span>
+            <div>
+              <h3 class="text-lg font-black text-navy">Google Maps</h3>
+              <div class="text-sm text-text-muted">
+                Habilita el mapa interactivo en la ubicación del hotel (clic y arrastre del pin)
+              </div>
+            </div>
+          </div>
+          <span class="text-[10px] font-bold px-3 py-1 rounded-full"
+            :class="mapsKey ? 'bg-teal/10 text-teal' : 'bg-surface text-text-muted'">
+            {{ mapsKey ? 'Configurado' : 'Sin configurar' }}
+          </span>
+        </div>
+        <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Maps JavaScript API Key</label>
+        <input v-model="mapsKey" type="text" placeholder="AIza…"
+          class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy">
+        <p class="mt-2 text-[11px] text-text-muted">
+          Sin key, la ubicación se muestra igual con el mapa de Google, pero no se puede mover el pin
+          con el mouse: hay que pegar las coordenadas.
+          <strong class="text-navy">Restringí la key por dominio</strong>
+          (HTTP referrers → <code>hotel.zx89.site/*</code>) en Google Cloud: al vivir en el navegador,
+          una key sin restringir la puede usar cualquiera y el consumo te lo facturan a vos.
+        </p>
+      </div>
+
       <div class="grid grid-cols-2 gap-6">
       <div v-for="integration in integrations" :key="integration.name" class="bg-white rounded-2xl border border-border card-shadow p-6">
         <div class="flex items-center justify-between mb-4">
@@ -172,6 +202,10 @@ import ChannexPlatformConfig from '@/components/features/ChannexPlatformConfig.v
 const toast = useToast()
 
 const activeTab = ref('platform')
+
+// Key de Google Maps — se guarda en configuration(hotelId:'platform', key:'google_maps').
+// Cada hotel la hereda por el fallback a 'platform' de getConfig.
+const mapsKey = ref('')
 const selectedTemplate = ref<any>(null)
 const showSaved = ref(false)
 
@@ -203,24 +237,24 @@ const integrations = ref<any[]>([
     fields: [{ name: 'Publishable Key', value: '', type: 'text' }, { name: 'Secret Key', value: '', type: 'password' }] },
   { name: 'WhatsApp Business', icon: '💬', description: 'API de WhatsApp para mensajes', connected: false,
     fields: [{ name: 'Phone Number ID', value: '', type: 'text' }, { name: 'Access Token', value: '', type: 'password' }] },
-  { name: 'Google Maps', icon: '🗺️', description: 'API de Google Maps para ubicación', connected: false,
-    fields: [{ name: 'API Key', value: '', type: 'text' }] },
 ])
 
 onMounted(async () => {
   try {
-    const [plataforma, smtp, tmpl, seg, integ] = await Promise.all([
+    const [plataforma, smtp, tmpl, seg, integ, maps] = await Promise.all([
       ConfigService.get('plataforma', 'platform'),
       ConfigService.get('smtp', 'platform'),
       ConfigService.get('email_templates', 'platform'),
       ConfigService.get('seguridad', 'platform'),
       ConfigService.get('integraciones', 'platform'),
+      ConfigService.get('google_maps', 'platform'),
     ])
     if (plataforma) Object.assign(settings.value, plataforma)
     if (smtp) Object.assign(settings.value, smtp)
     if (Array.isArray(tmpl)) emailTemplates.value = tmpl
     if (Array.isArray(seg)) securityOptions.value = seg
     if (Array.isArray(integ)) integrations.value = integ
+    if (maps?.apiKey) mapsKey.value = String(maps.apiKey)
   } catch { /* silent */ }
 })
 
@@ -231,6 +265,7 @@ const saveSettings = async () => {
       ConfigService.set('plataforma', { platformName: toSave.platformName, supportEmail: toSave.supportEmail, supportPhone: toSave.supportPhone, currency: toSave.currency, timezone: toSave.timezone, customDomain: toSave.customDomain }, 'platform'),
       ConfigService.set('smtp', { server: toSave.smtpServer, port: toSave.smtpPort, user: toSave.smtpUser, password: toSave.smtpPassword, fromEmail: toSave.fromEmail, fromName: toSave.fromName }, 'platform'),
       ConfigService.set('integraciones', integrations.value, 'platform'),
+      ConfigService.set('google_maps', { apiKey: mapsKey.value.trim() }, 'platform'),
     ])
     showSaved.value = true
     setTimeout(() => showSaved.value = false, 2000)

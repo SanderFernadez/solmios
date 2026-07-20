@@ -10,6 +10,7 @@ import { CanalesQueries } from './usecases/canales-queries'
 import { ConfigUseCase } from './usecases/config'
 import { ChannexUseCase } from './usecases/channex'
 import { ChannexAdminService } from './service-channex-admin'
+import { getOrCreateOpenChannelKey, verifyOpenChannelKey, buildMappingDetails, applyChanges, logOpenChannelCall, buildEndpointUrl } from './usecases/open-channel-api'
 import type { RoomTypeSummary, CanalesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 import { createModuleGuard } from '../../infrastructure/auth/require-module'
@@ -122,6 +123,61 @@ export function CanalesModule() {
         if (!hotelId) return { status: 404, body: { error: 'Hotel no encontrado' } }
         const channel = (req.body as any)?.channel
         return { status: 200, body: await service.pushSeasonalRates(hotelId, channel) }
+      })
+
+      // ── Open Channel API (https://docs.channex.io/for-ota/open-channel-api) ──────────────
+      // SolmiOS actúa de "canal" propio para Channex: sirve para conectar el channel manager sin
+      // depender de credenciales de ninguna OTA real. `open-channel-api.ts` tiene el detalle de
+      // cada pieza; acá solo el wiring HTTP.
+      const ocDeps = { canalesRepo: repo, syncLogRepo, findMany: (model: string, q: any) => queries.findMany(model, q) }
+
+      // El hotel logueado pide sus credenciales para pegar en el asistente de Channex
+      // ("Endpoint", "API Key", "Hotel Code"). Genera la clave la primera vez que se pide.
+      router.get('/api/channels/open-channel-key', guard('channel-manager', 'view'), async (req) => {
+        const hotelId = resolveTenant(req)
+        if (!hotelId) return { status: 404, body: { error: 'Hotel no encontrado' } }
+        const apiKey = await getOrCreateOpenChannelKey(ocDeps, hotelId)
+        return { status: 200, body: { apiKey, hotelCode: hotelId, endpoint: buildEndpointUrl(req) } }
+      })
+
+      // Las 3 rutas de abajo las llama CHANNEX, no un usuario logueado: sin JWT, autenticación por
+      // header `api-key` contra la clave guardada del hotel que indica `hotel_code`. Público a
+      // propósito (mismo patrón que el webhook de WhatsApp: verificación explícita adentro, no
+      // auth.authenticate()).
+      router.get('/api/channels/open-ari/test_connection', async (req: any) => {
+        const hotelId = String(req.query?.hotel_code || '')
+        const apiKey = req.headers?.['api-key']
+        if (!(await verifyOpenChannelKey(ocDeps, hotelId, apiKey))) {
+          return { status: 401, body: { success: false } }
+        }
+        await logOpenChannelCall(ocDeps, hotelId, 'open_channel_test')
+        return { status: 200, body: { success: true } }
+      })
+
+      router.get('/api/channels/open-ari/mapping_details', async (req: any) => {
+        const hotelId = String(req.query?.hotel_code || '')
+        const apiKey = req.headers?.['api-key']
+        if (!(await verifyOpenChannelKey(ocDeps, hotelId, apiKey))) {
+          return { status: 401, body: { success: false } }
+        }
+        const body = await buildMappingDetails(ocDeps, hotelId)
+        await logOpenChannelCall(ocDeps, hotelId, 'open_channel_mapping')
+        return { status: 200, body }
+      })
+
+      router.post('/api/channels/open-ari/changes', async (req: any) => {
+        // Forma exacta del payload: doc oficial, sección "changes" — { data: [{ attributes: { hotel_code, changes: [...] } }] }.
+        const entry = (req.body as any)?.data?.[0]?.attributes
+        const hotelId = String(entry?.hotel_code || '')
+        const apiKey = req.headers?.['api-key']
+        if (!(await verifyOpenChannelKey(ocDeps, hotelId, apiKey))) {
+          return { status: 401, body: { success: false } }
+        }
+        if (!Array.isArray(entry?.changes)) {
+          return { status: 400, body: { success: false, error: 'changes debe ser un array' } }
+        }
+        const { recorded } = await applyChanges(ocDeps, hotelId, entry.changes)
+        return { status: 200, body: { success: true, unique_id: crypto.randomUUID(), recorded } }
       })
 
       log.info('Módulo canales (Channex) listo')

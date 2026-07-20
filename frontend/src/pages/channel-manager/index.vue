@@ -173,7 +173,12 @@
     </SectionCard>
 
     <!-- Available Channels -->
-    <SectionCard title="Canales Disponibles para Conectar" subtitle="Pedí la conexión y te guiamos con el mapeo en Channex" class="mb-8">
+    <SectionCard title="Canales Disponibles para Conectar" subtitle="Pedí la conexión y te guiamos con el mapeo" class="mb-8">
+      <template #actions>
+        <button @click="openOpenChannelCreds" class="text-[11px] font-bold text-text-secondary hover:text-navy underline decoration-dotted cursor-pointer">
+          ¿Tenés tu propio sistema? Conectalo como canal
+        </button>
+      </template>
       <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <div v-for="channel in availableChannels" :key="channel.id"
           class="rounded-2xl border-2 border-navy bg-white p-4 flex flex-col gap-3 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg">
@@ -194,6 +199,29 @@
         </div>
       </div>
     </SectionCard>
+
+    <!-- Credenciales para conectar un sistema propio (Open Channel) -->
+    <AppModal v-if="openChannelModal" size="md" title="Conectar tu propio sistema" subtitle="Pegá estos 3 datos en el asistente de conexión" @close="openChannelModal = false">
+      <div v-if="openChannelLoading" class="text-center py-6 text-sm text-text-muted">Generando credenciales…</div>
+      <div v-else-if="openChannelCreds" class="space-y-4">
+        <div v-for="field in openChannelFields" :key="field.key">
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5">{{ field.label }}</label>
+          <div class="flex items-center gap-2">
+            <input :value="field.value" readonly class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm font-mono text-navy" />
+            <button @click="copyField(field.key, field.value)"
+              class="shrink-0 px-3 py-2.5 rounded-xl border border-border text-xs font-bold text-text-secondary hover:border-navy/30 hover:text-navy transition-colors cursor-pointer">
+              {{ copiedField === field.key ? '✓' : 'Copiar' }}
+            </button>
+          </div>
+        </div>
+        <p class="text-[11px] text-text-muted">
+          En el asistente de conexión, elegí "Solicitar Conexión" en cualquier canal, después "Crear Canal" y pegá estos 3 valores en "Configuración general".
+        </p>
+      </div>
+      <template #footer>
+        <button @click="openChannelModal = false" class="text-sm font-bold text-text-secondary hover:text-navy cursor-pointer transition-colors">Cerrar</button>
+      </template>
+    </AppModal>
 
     <!-- Sync Log -->
     <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
@@ -241,6 +269,8 @@ import { useToast } from '@/composables/useToast'
 import { http } from '@/services/http'
 import { resolveChannelLogo } from '@/utils/channelLogos'
 import SectionCard from '@/components/ui/SectionCard.vue'
+import AppModal from '@/components/ui/AppModal.vue'
+import type { OpenChannelCredentials } from '@/services/Channel.service'
 
 const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
 const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>'

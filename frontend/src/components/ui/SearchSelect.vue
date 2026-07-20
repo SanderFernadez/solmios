@@ -7,10 +7,11 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 type Opt = { value: string; label: string }
 
 const props = withDefaults(defineProps<{
-  modelValue: string
+  /** Puede llegar undefined mientras el formulario no cargó: se trata como vacío. */
+  modelValue: string | undefined
   options: string[] | Opt[]
   placeholder?: string
-}>(), { placeholder: 'Buscar...' })
+}>(), { modelValue: '', placeholder: 'Buscar...' })
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 

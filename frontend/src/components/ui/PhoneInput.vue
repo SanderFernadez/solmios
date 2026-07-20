@@ -49,13 +49,14 @@ import type { CountryCode } from 'libphonenumber-js'
 import { countryCode } from '@/data/locales'
 
 const props = withDefaults(defineProps<{
-  modelValue: string
+  /** Puede llegar undefined mientras el formulario no cargó: se trata como vacío. */
+  modelValue: string | undefined
   /** Nombre del país en español, tal como lo devuelve el selector. */
   country?: string
   placeholder?: string
   hint?: string
   maxlength?: number
-}>(), { country: '', placeholder: '', hint: '', maxlength: 25 })
+}>(), { modelValue: '', country: '', placeholder: '', hint: '', maxlength: 25 })
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 

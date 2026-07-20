@@ -153,7 +153,7 @@ Reglas SDD (`openspec/config.yaml`):
 - Cambios riesgosos: incluir rollback plan
 - Specs: Given/When/Then + RFC 2119 + secciones DB/API/UI REQUIRED
 - Apply: `make:module` + `RepositoryAdapter<T>`, NEVER raw SQL en services
-- Verify: `bun run typecheck` + `npx vue-tsc --noEmit` + `arckode analyze` (0 violations)
+- Verify: `bun run typecheck` (backend) + `cd frontend && bun run typecheck` (= vue-tsc **-b**; sin -b no revisa nada) + `arckode analyze` (0 violations)
 - Spanish UI / English DB-API-code
 
 ## GitLab Sync — openspec-gitlab-sync
@@ -239,7 +239,7 @@ de un usuario del hotel resuelve por `/usuarios`.**
 cd backend && bun run node_modules/arckode-framework/bin/arckode.js analyze   # → ✅ VÁLIDO (0 violaciones)
 cd backend && bun run typecheck && bun test
 # Frontend
-cd frontend && npx vue-tsc --noEmit && bun run build
+cd frontend && bun run typecheck && bun run build   # typecheck = vue-tsc -b (SIN -b no revisa nada: tsconfig usa project references)
 ```
 > Si `arckode analyze` muestra ❌ violaciones, el backend **NO está terminado**.
 

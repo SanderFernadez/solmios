@@ -273,12 +273,15 @@
     <div v-if="activeTab === 'location'" class="grid lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Mapa Interactivo</h3>
-        <iframe :src="googleMapsEmbedUrl" class="w-full h-96 rounded-xl border border-border"
+        <!-- Con API key: mapa interactivo (clic y arrastre). Sin key: iframe embed. -->
+        <div v-show="mapsInteractive" ref="mapEl" class="w-full h-96 rounded-xl border border-border overflow-hidden"></div>
+        <iframe v-if="!mapsInteractive" :src="googleMapsEmbedUrl" class="w-full h-96 rounded-xl border border-border"
           style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
           title="Ubicación del hotel en Google Maps"></iframe>
         <div class="mt-2 flex items-center justify-between gap-3">
           <p class="text-[11px] text-text-muted">
-            Para mover el pin: pegá abajo el enlace de Google Maps del lugar, o escribí las coordenadas.
+            <template v-if="mapsInteractive">Hacé clic en el mapa o arrastrá el pin para ajustar la ubicación.</template>
+            <template v-else>Para mover el pin: pegá abajo el enlace de Google Maps del lugar, o escribí las coordenadas.</template>
           </p>
           <a :href="googleMapsLinkUrl" target="_blank" rel="noopener"
             class="shrink-0 text-[11px] font-bold text-teal hover:underline">Abrir en Google Maps</a>
@@ -794,6 +797,7 @@ import PhoneInput from '@/components/ui/PhoneInput.vue'
 import { COUNTRIES, countryName } from '@/data/locales'
 import { TIMEZONES, CURRENCIES } from '@/data/intl-catalogs'
 import { parseLatLng } from '@/composables/useLatLngParse'
+import { loadGoogleMaps } from '@/composables/useGoogleMaps'
 import { validateField, validateAll, warnOnUnsavedChanges, HOTEL_RULES } from '@/composables/useFieldValidation'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
@@ -1326,11 +1330,57 @@ function applyMapsPaste() {
   form.value.latitude = parsed.lat
   form.value.longitude = parsed.lng
   mapsPaste.value = ''
+  syncMarkerFromForm()
   toast.success('Ubicación actualizada desde Google Maps')
 }
 
-/** El iframe se recentra solo por el computed; no hace falta sincronizar un marcador. */
-function syncMarkerFromForm() {}
+// ─── Mapa interactivo (sólo si hay API key configurada en Admin → Integraciones) ─────
+const mapEl = ref<HTMLElement | null>(null)
+const mapsInteractive = ref(false)
+let gmap: google.maps.Map | null = null
+let gmarker: google.maps.Marker | null = null
+
+function setCoords(lat: number, lng: number) {
+  form.value.latitude = Number(lat.toFixed(6))
+  form.value.longitude = Number(lng.toFixed(6))
+}
+
+async function initInteractiveMap() {
+  if (gmap || !mapEl.value) return
+  const maps = await loadGoogleMaps()
+  if (!maps) return                      // sin key o key inválida → queda el iframe
+  mapsInteractive.value = true
+  await nextTick()                       // el div estaba en v-show: necesita estar medido
+  const center = { lat: mapLat.value, lng: mapLng.value }
+  gmap = new maps.Map(mapEl.value, { center, zoom: 16, mapTypeControl: true, streetViewControl: false })
+  gmarker = new maps.Marker({ position: center, map: gmap, draggable: true })
+  gmarker.addListener('dragend', () => {
+    const p = gmarker!.getPosition()
+    if (p) setCoords(p.lat(), p.lng())
+  })
+  gmap.addListener('click', (e: google.maps.MapMouseEvent) => {
+    if (!e.latLng) return
+    setCoords(e.latLng.lat(), e.latLng.lng())
+    gmarker!.setPosition(e.latLng)
+  })
+}
+
+/** Recentra el mapa cuando las coordenadas cambian por otra vía (pegar enlace, geolocalización). */
+function syncMarkerFromForm() {
+  if (!gmap || !gmarker) return
+  const pos = { lat: mapLat.value, lng: mapLng.value }
+  gmarker.setPosition(pos)
+  gmap.setCenter(pos)
+}
+
+// El mapa se crea al entrar a la pestaña: antes el contenedor no tiene tamaño y Google lo
+// renderiza en gris.
+watch(activeTab, async (val) => {
+  if (val === 'location') {
+    await nextTick()
+    await initInteractiveMap()
+  }
+})
 
 function useMyLocation() {
   if (!navigator.geolocation) {

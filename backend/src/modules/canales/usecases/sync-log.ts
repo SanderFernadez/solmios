@@ -1,6 +1,9 @@
 const SYNC_ACTION_LABELS: Record<string, string> = {
   sync_property: 'Sincronización de propiedad',
   ingest_bookings: 'Recepción de reservas',
+  open_channel_test: 'Open Channel: prueba de conexión',
+  open_channel_mapping: 'Open Channel: pedido de mapeo',
+  open_channel_change: 'Open Channel: cambio recibido',
 }
 
 /** Convierte el objeto `details` (json) del sync_log en un texto legible para la tabla del panel. */

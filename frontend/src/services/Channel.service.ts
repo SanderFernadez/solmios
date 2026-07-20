@@ -43,6 +43,12 @@ export interface TestConnectionResult {
   details?: unknown
 }
 
+export interface OpenChannelCredentials {
+  apiKey: string
+  hotelCode: string
+  endpoint: string
+}
+
 export interface MappingDetail {
   id: number
   title: string
@@ -152,5 +158,14 @@ export const ChannelService = {
 
   async syncLog(hotelId?: string): Promise<any> {
     return http.get(`/channels/sync-log${hotelId ? `?hotelId=${hotelId}` : ''}`)
+  },
+
+  /**
+   * Credenciales para conectar el canal "Open Channel" de Channex (self-service, sin depender de
+   * ninguna OTA real): endpoint fijo del backend, la clave propia del hotel (se genera la primera
+   * vez que se pide) y el "Hotel Code" a pegar en el asistente de Channex.
+   */
+  async openChannelCredentials(): Promise<OpenChannelCredentials> {
+    return http.get('/channels/open-channel-key')
   },
 }
