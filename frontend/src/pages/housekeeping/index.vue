@@ -207,12 +207,15 @@
         </thead>
         <tbody>
           <tr v-if="paginatedTasks.length === 0">
-            <td colspan="8" class="p-0">
-              <div class="flex flex-col items-center justify-center py-16 text-center">
-                <span class="w-10 h-10 mb-3 text-text-muted opacity-40" v-html="ICON_SPARKLE"></span>
-                <p class="text-sm font-bold text-navy">Sin tareas de limpieza</p>
-                <p class="text-xs text-text-muted mt-1">No hay tareas para los filtros actuales.<br>Creá una nueva tarea o ajustá los filtros.</p>
-              </div>
+            <td colspan="8" class="p-0 py-6">
+              <EmptyState :icon="ICON_SPARKLE" title="Sin tareas de limpieza"
+                message="No hay tareas para los filtros actuales. Creá una nueva tarea o ajustá los filtros.">
+                <template #action>
+                  <button @click="openNewTask" class="bg-navy text-white font-bold text-sm px-5 py-2.5 rounded-full hover:bg-navy-light transition-colors cursor-pointer">
+                    Nueva tarea
+                  </button>
+                </template>
+              </EmptyState>
             </td>
           </tr>
           <tr v-for="task in paginatedTasks" :key="task.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
@@ -610,6 +613,7 @@ import { useCountUp } from '@/composables/useCountUp'
 import { useHousekeepingStore, humanizeMs, type HousekeepingViewTask } from '@/stores/housekeeping.store'
 import { HousekeepingService, type PhotoRequirement } from '@/services/Housekeeping.service'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useNow } from '@/composables/useNow'

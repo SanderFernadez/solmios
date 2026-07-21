@@ -65,6 +65,16 @@ describe('VideoUseCase.attachVideo — verificación contra el bucket', () => {
     await expect(uc.attachVideo('t1', input, camarera)).rejects.toThrow('almacenamiento S3')
   })
 
+  // #392: no adjuntar como evidencia el video de OTRA tarea que ya exista en el bucket.
+  it('rechaza un path que no corresponde a esta tarea', async () => {
+    const { repo, saved } = makeRepo()
+    const uc = new VideoUseCase(repo, settingsStub, s3With({ sizeBytes: 100, durationSeconds: 15 }))
+    await expect(
+      uc.attachVideo('t1', { ...input, path: 'housekeeping/OTRA-TAREA/video/robado.mp4' }, camarera),
+    ).rejects.toThrow('no corresponde a esta tarea')
+    expect(saved).toHaveLength(0)
+  })
+
   it('rechaza lo que no es un video antes de tocar el bucket', async () => {
     const { repo } = makeRepo()
     const uc = new VideoUseCase(repo, settingsStub, s3With({ sizeBytes: 100 }))

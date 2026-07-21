@@ -175,13 +175,15 @@
             </td>
           </tr>
           <tr v-if="filtered.length === 0">
-            <td colspan="9" class="px-4 py-12 text-center">
-              <div class="flex flex-col items-center gap-2 text-text-muted">
-                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"/>
-                </svg>
-                <span class="text-sm font-medium">No hay reservas que coincidan con los filtros</span>
-              </div>
+            <td colspan="9" class="px-4 py-12">
+              <EmptyState title="No hay reservas"
+                message="Ninguna reserva coincide con los filtros, o todavía no hay reservas cargadas.">
+                <template #action>
+                  <button @click="openNew" class="bg-navy text-white font-bold text-sm px-5 py-2.5 rounded-full hover:bg-navy-light transition-colors cursor-pointer">
+                    Nueva Reserva
+                  </button>
+                </template>
+              </EmptyState>
             </td>
           </tr>
         </tbody>
@@ -595,7 +597,9 @@
                 <button @click="modal.show=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition">Cancelar</button>
                 <button v-if="wizardStep > 1" @click="wizardStep--" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition">Atrás</button>
                 <button v-if="wizardStep < WIZARD_STEPS.length" @click="goNextStep" class="px-6 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy-light transition">Siguiente</button>
-                <button v-else @click="save" :disabled="saving" class="px-6 py-2.5 bg-teal text-white rounded-xl text-sm font-black cursor-pointer hover:opacity-90 disabled:opacity-50 transition">
+                <button v-else @click="save" :disabled="saving || !isOnline"
+                  :title="!isOnline ? 'Sin conexión: no se puede guardar la reserva' : ''"
+                  class="px-6 py-2.5 bg-teal text-white rounded-xl text-sm font-black cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition">
                   {{ saving ? 'Guardando...' : (modal.edit ? 'Actualizar Reserva' : 'Crear Reserva') }}
                 </button>
               </div>
@@ -633,12 +637,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useOnline } from '@/composables/useOnline'
 import { useCountUp } from '@/composables/useCountUp'
 import { ReservationService } from '@/services/Reservation.service'
 import { BillingService } from '@/services/Billing.service'
 import { CompanionsService } from '@/services/Companions.service'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
 import type { Guest } from '@/types'
@@ -648,6 +654,8 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import { http } from '@/services/http'
+
+const { isOnline } = useOnline()
 
 // ── Wizard (modal Nueva/Editar Reserva) ──
 const WIZARD_STEPS = [

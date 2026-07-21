@@ -60,6 +60,10 @@
         </div>
       </button>
     </div>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -70,10 +74,16 @@ import { NotificationsService, notifMeta } from '@/services/Notifications.servic
 import type { AppNotification } from '@/services/Notifications.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => toast.success('Eliminada'),
+  onError: () => toast.error('Error'),
+})
 
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 const userId = computed(() => auth.user?.id)
@@ -143,12 +153,18 @@ async function markAllRead() {
   }
 }
 
-async function remove(n: AppNotification) {
-  try {
-    await NotificationsService.remove(n.id)
-    allNotifications.value = allNotifications.value.filter(x => x.id !== n.id)
-    toast.success('Eliminada')
-  } catch { toast.error('Error') }
+// Borrar es destructivo e irreversible: se pide confirmación (#259). Antes el 🗑️ borraba al click.
+function remove(n: AppNotification) {
+  askConfirm({
+    title: 'Eliminar notificación',
+    message: '¿Seguro que querés eliminar esta notificación? No se puede deshacer.',
+    confirmLabel: 'Eliminar',
+    danger: true,
+    run: async () => {
+      await NotificationsService.remove(n.id)
+      allNotifications.value = allNotifications.value.filter(x => x.id !== n.id)
+    },
+  })
 }
 
 function handleRow(n: AppNotification) {

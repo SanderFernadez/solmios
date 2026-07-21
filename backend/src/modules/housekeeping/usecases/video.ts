@@ -139,6 +139,14 @@ export class VideoUseCase {
       throw new ValidationError('Solo se permiten videos como evidencia de fin')
     }
 
+    // El path tiene que ser el que emitió el presign para ESTA tarea. Sin esto, `attachVideo`
+    // aceptaba cualquier key del bucket: un cliente podía adjuntar como evidencia el video de OTRA
+    // tarea/hotel que ya existiera, pasando probeMp4 (el objeto es real) pero con contenido ajeno
+    // (#392). El taskId ya viene validado por ownership en writableTask.
+    if (!input.path.startsWith(`housekeeping/${taskId}/video/`)) {
+      throw new ValidationError('El video no corresponde a esta tarea')
+    }
+
     const { maxVideoSeconds } = await this.settings.get((task as any).hotelId)
     this.assertDuration(input.durationSeconds, maxVideoSeconds)
 

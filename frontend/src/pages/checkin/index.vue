@@ -418,7 +418,7 @@
           </div>
           <div class="p-5 border-t border-border flex items-center justify-end gap-4">
             <button @click="closeCheckinModal" :disabled="processing" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer disabled:opacity-50">Cancelar</button>
-            <button @click="confirmCheckin" :disabled="processing || !isOnline" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <button @click="confirmCheckin" :disabled="processing || !isOnline" :title="!isOnline ? 'Sin conexión: no se puede confirmar el check-in' : ''" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ processing ? 'Procesando...' : 'Confirmar Check-in' }}
             </button>
           </div>
@@ -537,7 +537,7 @@
           </div>
           <div class="p-5 border-t border-border flex items-center justify-end gap-4">
             <button @click="closeCheckoutModal" :disabled="processing" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer disabled:opacity-50">Cancelar</button>
-            <button @click="confirmCheckout" :disabled="processing || folioLoading || !isOnline" class="rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <button @click="confirmCheckout" :disabled="processing || folioLoading || !isOnline" :title="!isOnline ? 'Sin conexión: no se puede confirmar el check-out' : ''" class="rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ processing ? 'Procesando...' : checkoutSettleLabel }}
             </button>
           </div>
