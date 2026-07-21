@@ -67,7 +67,7 @@
                   </div>
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Teléfono <span class="text-coral">*</span></label>
-                    <input v-model="form.phone" type="tel" maxlength="20" placeholder="+1 809 000 0000" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="contactError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-purple/20 focus:border-purple'" />
+                    <PhoneInput v-model="form.phone" :country="form.country" />
                   </div>
                 <p v-if="contactError" class="sm:col-span-2 text-[10px] text-coral font-semibold -mt-2">{{ contactError }}</p>
                 <p v-else class="sm:col-span-2 text-[10px] text-text-muted -mt-2">* Se requiere al menos un email o teléfono de contacto</p>
@@ -206,7 +206,7 @@
                   </div>
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Teléfono</label>
-                    <input v-model="form.emergencyPhone" type="tel" maxlength="20" placeholder="+1 809 000 0000" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition" />
+                    <PhoneInput v-model="form.emergencyPhone" :country="form.country" />
                   </div>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -436,6 +436,7 @@ import { CompanionsService } from '@/services/Companions.service'
 import { PaymentsService } from '@/services/Payments.service'
 import { TTLockService } from '@/services/TTLock.service'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
+import PhoneInput from '@/components/ui/PhoneInput.vue'
 import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
 import type { Guest } from '@/types'
 

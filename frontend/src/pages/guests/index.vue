@@ -408,8 +408,7 @@
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Teléfono</label>
-                  <input v-model="form.phone" type="tel" placeholder="+1 809-555-0101" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('phone')" data-field="phone" @blur="touchField('phone')" />
-                  <p v-if="errorOf('phone')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('phone') }}</p>
+                  <PhoneInput v-model="form.phone" :country="form.country" />
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
@@ -509,7 +508,7 @@
                 <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Contacto de Emergencia</label>
                 <div class="grid grid-cols-2 gap-3">
                   <input v-model="form.emergencyContact.name" type="text" placeholder="Nombre" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-                  <input v-model="form.emergencyContact.phone" type="text" placeholder="Teléfono" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <PhoneInput v-model="form.emergencyContact.phone" :country="form.country" placeholder="Teléfono" />
                   <input v-model="form.emergencyContact.relation" type="text" placeholder="Relación (esposa, hijo...)" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                   <input v-model="form.emergencyContact.email" type="email" placeholder="Email" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
@@ -570,6 +569,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useApiError } from '@/composables/useApiError'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
+import PhoneInput from '@/components/ui/PhoneInput.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
