@@ -112,6 +112,22 @@
           </div>
         </SectionCard>
 
+        <SectionCard title="Logo del Hotel" subtitle="Identidad visual — se muestra en facturas, pre-checkin y emails">
+          <div class="flex items-center gap-4">
+            <div v-if="form.logo" class="w-20 h-20 rounded-xl border border-border overflow-hidden bg-surface flex items-center justify-center shrink-0">
+              <img :src="form.logo" alt="Logo" class="w-full h-full object-contain" />
+            </div>
+            <div v-else class="w-20 h-20 rounded-xl border-2 border-dashed border-border bg-surface flex items-center justify-center shrink-0">
+              <span class="w-6 h-6 text-navy/30" v-html="ICON_BUILDING"></span>
+            </div>
+            <div class="flex-1">
+              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">URL del Logo</label>
+              <input v-model="form.logo" type="url" placeholder="https://ejemplo.com/logo.png" class="w-full px-3 py-2 rounded-lg border text-sm" :class="fieldClass('logo')" data-field="logo" @blur="touchField('logo')">
+              <p v-if="errorOf('logo')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('logo') }}</p>
+            </div>
+          </div>
+        </SectionCard>
+
         <SectionCard title="Contacto" subtitle="Datos visibles para huéspedes y en las comunicaciones automáticas">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -494,15 +510,7 @@
 
     <!-- ========== DESCRIPTION (multilingüe) ========== -->
     <div v-if="(activeTab as string) === 'description'" class="space-y-6">
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-extrabold text-navy">Descripción Multilingüe</h3>
-          <div class="flex gap-2">
-            <select v-model="activeLang" class="px-3 py-1.5 rounded-full border border-border text-sm font-bold text-navy cursor-pointer">
-              <option v-for="lang in supportedLangs" :key="lang.code" :value="lang.code">{{ lang.flag }} {{ lang.name }}</option>
-            </select>
-          </div>
-        </div>
+      <SectionCard title="Descripción Multilingüe" subtitle="Copy del hotel que ven huéspedes y OTAs, por idioma">
         <div class="flex flex-wrap gap-2 mb-4">
           <button v-for="lang in supportedLangs" :key="lang.code" @click="activeLang = lang.code"
             class="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer"
@@ -512,45 +520,27 @@
           </button>
         </div>
         <textarea v-model="descriptions[activeLang]" :placeholder="`Descripción del hotel en ${currentLangName}...`"
-          rows="10" class="w-full px-4 py-3 rounded-full border border-border text-sm focus:outline-none focus:border-navy resize-y"></textarea>
+          rows="10" class="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-y"></textarea>
         <div class="flex items-center justify-between mt-2">
           <span class="text-[10px] text-text-muted">{{ (descriptions[activeLang] || '').length }} / 2000 caracteres</span>
           <span class="text-[10px] text-text-muted">{{ completedLangsCount }} / {{ supportedLangs.length }} idiomas completados</span>
         </div>
-      </div>
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-        <h3 class="font-extrabold text-navy mb-4">Logo del Hotel</h3>
-        <div class="flex items-center gap-4">
-          <div v-if="form.logo" class="w-20 h-20 rounded-xl border border-border overflow-hidden bg-surface flex items-center justify-center">
-            <img :src="form.logo" alt="Logo" class="w-full h-full object-contain" />
-          </div>
-          <div v-else class="w-20 h-20 rounded-xl border-2 border-dashed border-border bg-surface flex items-center justify-center">
-            <span class="w-6 h-6 text-navy/30" v-html="ICON_BUILDING"></span>
-          </div>
-          <div class="flex-1">
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">URL del Logo</label>
-            <input v-model="form.logo" type="url" placeholder="https://ejemplo.com/logo.png" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('logo')" data-field="logo" @blur="touchField('logo')">
-              <p v-if="errorOf('logo')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('logo') }}</p>
-            <p class="text-[10px] text-text-muted mt-1">Se muestra en facturas, pre-checkin y emails</p>
-          </div>
-        </div>
-      </div>
+      </SectionCard>
 
-      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-        <h3 class="font-extrabold text-navy mb-4">WiFi (compartido en pre-checkin)</h3>
+      <SectionCard title="WiFi" subtitle="Se comparte con el huésped en el pre-checkin">
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Red</label>
-            <input v-model="form.wifiNetwork" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('wifiNetwork')" data-field="wifiNetwork" @blur="touchField('wifiNetwork')">
+            <input v-model="form.wifiNetwork" class="w-full px-3 py-2 rounded-lg border text-sm" :class="fieldClass('wifiNetwork')" data-field="wifiNetwork" @blur="touchField('wifiNetwork')">
               <p v-if="errorOf('wifiNetwork')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('wifiNetwork') }}</p>
           </div>
           <div>
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Contraseña</label>
-            <input v-model="form.wifiPassword" type="password" class="w-full px-3 py-2 rounded-full border text-sm" :class="fieldClass('wifiPassword')" data-field="wifiPassword" @blur="touchField('wifiPassword')">
+            <input v-model="form.wifiPassword" type="password" class="w-full px-3 py-2 rounded-lg border text-sm" :class="fieldClass('wifiPassword')" data-field="wifiPassword" @blur="touchField('wifiPassword')">
               <p v-if="errorOf('wifiPassword')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('wifiPassword') }}</p>
           </div>
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- ========== INTEGRACIONES ========== -->
@@ -940,10 +930,10 @@ const touchedFields = ref<Set<string>>(new Set())
 const FIELD_TAB: Record<string, string> = {
   name: 'hotel', country: 'hotel', address: 'hotel', phone: 'hotel', phone2: 'hotel',
   email: 'hotel', website: 'hotel', timezone: 'hotel', currency: 'hotel',
-  checkIn: 'hotel', checkOut: 'hotel', ownerName: 'hotel', ownerTaxId: 'hotel',
+  checkIn: 'hotel', checkOut: 'hotel', ownerName: 'hotel', ownerTaxId: 'hotel', logo: 'hotel',
   province: 'location', municipality: 'location', locality: 'location',
   postalCode: 'location', latitude: 'location', longitude: 'location',
-  logo: 'description', wifiNetwork: 'description', wifiPassword: 'description',
+  wifiNetwork: 'description', wifiPassword: 'description',
   depositPercent: 'conditions', weekendSurcharge: 'conditions', depositFixed: 'conditions',
   advanceAmount: 'conditions', releaseHours: 'conditions', taxName: 'conditions', taxRate: 'conditions',
 }
