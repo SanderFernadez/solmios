@@ -1,4 +1,5 @@
 import { createModule, OrmRepository } from 'arckode-framework'
+import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
 import { registerAiRecepcionistaModels } from './model'
 import { AiRecepcionistaService } from './service'
 import { AiRecepcionistaController } from './controller'
@@ -133,11 +134,20 @@ export function AiRecepcionistaModule() {
       router.get('/api/ai/whatsapp/qr/:hotelId?', guard('ai', 'edit'), (req) => controller.getWhatsappQR(req))
       router.get('/api/ai/whatsapp/status/:hotelId?', guard('ai', 'edit'), (req) => controller.getWhatsappStatus(req))
 
-      // Public webhook endpoints
-      router.get('/api/ai/whatsapp/webhook/:hotelId', (req) => controller.whatsappWebhookVerify(req))
-      router.post('/api/ai/whatsapp/webhook/:hotelId', (req) => controller.whatsappWebhookReceive(req))
+      // Endpoints públicos (sin auth): cada mensaje dispara una llamada a la LLM, que cuesta plata.
+      // El rate-limit global (200/min/IP) es compartido con toda la API; sin un límite propio, un
+      // anónimo puede quemar la API key de la LLM a ritmo industrial. #397.
+      const aiRateLimited = (req: any, handler: (r: any) => any) => {
+        const { allowed, retryAfter } = rateLimit(`ai-public:${getClientIp(req)}`)
+        if (!allowed) return { status: 429, body: { error: `Demasiadas solicitudes. Intentá en ${retryAfter} segundos` } }
+        return handler(req)
+      }
 
-      router.post('/api/ai/chat/:slug', (req) => controller.webChatMessage(req))
+      // Public webhook endpoints. El verify (GET) no gasta LLM; el receive (POST) sí.
+      router.get('/api/ai/whatsapp/webhook/:hotelId', (req) => controller.whatsappWebhookVerify(req))
+      router.post('/api/ai/whatsapp/webhook/:hotelId', (req) => aiRateLimited(req, (r) => controller.whatsappWebhookReceive(r)))
+
+      router.post('/api/ai/chat/:slug', (req) => aiRateLimited(req, (r) => controller.webChatMessage(r)))
 
       router.get('/api/ai/metrics', guard('ai', 'view'), (req) => controller.metrics(req))
       router.get('/api/ai/metrics/dashboard', guard('ai', 'view'), (req) => controller.dashboardMetrics(req))

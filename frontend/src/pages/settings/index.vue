@@ -604,13 +604,53 @@
       </div>
 
       <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-        <h3 class="font-extrabold text-navy mb-4">Facturación Electrónica</h3>
-        <div class="p-4 bg-surface rounded-xl">
-          <div class="flex items-center gap-3 mb-3">
-            <span class="w-5 h-5 text-navy/50" v-html="ICON_RECEIPT"></span>
-            <div><div class="text-sm font-bold text-navy">DGII - Rep. Dominicana</div><div class="text-[10px] text-text-muted">NCF automático</div></div>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-extrabold text-navy">Facturación Electrónica</h3>
+          <span class="text-[10px] font-bold px-2 py-1 rounded-full"
+            :class="fiscalConfig.enabled ? 'bg-teal/10 text-teal' : 'bg-surface text-text-muted'">
+            {{ fiscalConfig.enabled ? 'Numeración activa' : 'Desactivada' }}
+          </span>
+        </div>
+        <div class="p-4 bg-surface rounded-xl space-y-3">
+          <div class="flex items-center gap-3">
+            <span class="w-5 h-5 text-navy/50 shrink-0" v-html="ICON_RECEIPT"></span>
+            <div class="min-w-0">
+              <div class="text-sm font-bold text-navy">NCF (Comprobante Fiscal)</div>
+              <div class="text-[10px] text-text-muted">Numera cada factura correlativamente según la autoridad fiscal de tu país</div>
+            </div>
           </div>
-          <p class="text-xs text-text-muted">Disponible según el país de operación del hotel.</p>
+          <div class="flex items-center justify-between p-3 bg-white rounded-xl">
+            <div class="text-sm font-bold text-navy">Activar numeración fiscal</div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input v-model="fiscalConfig.enabled" type="checkbox" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal"></div>
+            </label>
+          </div>
+          <div v-if="fiscalConfig.enabled" class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Autoridad</label>
+              <select v-model="fiscalConfig.authority" class="w-full px-3 py-2 rounded-full border border-border text-sm cursor-pointer">
+                <option value="DGII">DGII (Rep. Dominicana)</option>
+                <option value="DIAN">DIAN (Colombia)</option>
+                <option value="SAT">SAT (México)</option>
+                <option value="SUNAT">SUNAT (Perú)</option>
+                <option value="SII">SII (Chile)</option>
+                <option value="AFIP">AFIP (Argentina)</option>
+                <option value="none">Otra / Manual</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Serie</label>
+              <input v-model="fiscalConfig.serie" placeholder="E31" class="w-full px-3 py-2 rounded-full border border-border text-sm">
+            </div>
+          </div>
+          <p v-if="fiscalConfig.enabled" class="text-[10px] text-text-muted">
+            Próximo NCF: {{ nextNcfPreview }}. El envío a {{ fiscalConfig.authority === 'none' ? 'la autoridad' : fiscalConfig.authority }} requiere credenciales del país — todavía no está conectado, así que el NCF queda local por ahora.
+          </p>
+          <button @click="saveFiscalConfig" :disabled="fiscalSaving"
+            class="w-full px-4 py-2 bg-navy text-white rounded-full text-sm font-bold hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+            {{ fiscalSaving ? 'Guardando...' : 'Guardar' }}
+          </button>
         </div>
       </div>
     </div>
@@ -728,7 +768,6 @@ async function loadEmergencyContacts() {
     emergencyContacts.value = Array.isArray(cfg?.contacts) ? cfg.contacts : []
   } catch { emergencyContacts.value = [] }
 }
-onMounted(loadEmergencyContacts)
 function addEmergencyContact() {
   emergencyContacts.value.push({ id: crypto.randomUUID(), label: '', phone: '', kind: 'external' })
 }
@@ -745,6 +784,8 @@ async function saveEmergencyContacts() {
   try {
     await ConfigService.set('contactos_emergencia', { contacts: clean })
     emergencyContacts.value = clean
+    await nextTick()
+    markClean()   // se guardó por afuera del botón global: la foto se renueva igual
     toast.success('Contactos de emergencia guardados')
   } catch (e) {
     toast.error((e as Error).message || 'No se pudo guardar')
@@ -897,7 +938,13 @@ const hasErrors = computed(() => Object.keys(fieldErrors.value).length > 0)
 // Antes se podía salir de la pantalla y perder todo lo tipeado sin ningún aviso.
 const savedSnapshot = ref('')
 function snapshot(): string {
-  return JSON.stringify({ form: form.value, descriptions: descriptions.value })
+  // selectedAmenities y emergencyContacts entran acá: antes solo se rastreaba `form`/`descriptions`,
+  // así que tildar un amenity o editar un contacto de emergencia y navegar afuera sin guardar no
+  // mostraba ningún aviso — ni el banner "Cambios sin guardar" ni la confirmación al salir.
+  return JSON.stringify({
+    form: form.value, descriptions: descriptions.value,
+    selectedAmenities: selectedAmenities.value, emergencyContacts: emergencyContacts.value,
+  })
 }
 function markClean() {
   savedSnapshot.value = snapshot()
@@ -1072,6 +1119,12 @@ onMounted(async () => {
     amenityCatalog.value = cat
     selectedAmenities.value = sel.data.map((a: any) => a.amenityKey)
     await loadCustomAmenities()
+
+    // Contactos de emergencia: adentro del mismo onMounted (no uno aparte) para que la foto
+    // inicial de markClean() los incluya. Antes cargaban en un onMounted separado, en una carrera
+    // con éste — si llegaban después de markClean(), el snapshot quedaba viejo y la pantalla
+    // marcaba "cambios sin guardar" apenas terminaba de cargar, sin que el usuario tocara nada.
+    await loadEmergencyContacts()
   } catch (e) {
     toast.error('Error al cargar datos')
   } finally {

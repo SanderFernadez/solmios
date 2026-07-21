@@ -34,7 +34,13 @@ const isExhausted = (coupon: CouponDTO): boolean =>
 export class CouponUseCase {
   constructor(private readonly deps: CouponDeps) {}
 
-  create(dto: CreateCouponDTO): Promise<CouponDTO> {
+  async create(dto: CreateCouponDTO): Promise<CouponDTO> {
+    // Un descuento porcentual > 100% no tiene sentido (regalaría el cuarto y pagaría de más). El
+    // schema valida `value >= 1` pero no puede topear condicionalmente por tipo, así que se hace acá.
+    // async: el throw viaja como promesa rechazada, no como excepción síncrona.
+    if (dto.type === 'percentage' && Number(dto.value) > 100) {
+      throw new ValidationError('Un descuento porcentual no puede superar el 100%')
+    }
     return this.deps.repo.create({ ...dto, useCount: 0, active: 1 } as any)
   }
 
