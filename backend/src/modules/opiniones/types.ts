@@ -1,4 +1,5 @@
 export type ReviewChannel = 'direct' | 'booking' | 'airbnb' | 'expedia' | 'google' | 'other'
+export type ReviewStatus = 'visible' | 'pending' // pending = invite creado en checkout, esperando respuesta del huésped
 
 export interface OpinionesDTO {
   id: string
@@ -12,6 +13,7 @@ export interface OpinionesDTO {
   date?: string
   visible?: number
   channel?: ReviewChannel
+  status?: ReviewStatus
   createdAt: string
   updatedAt: string
 }

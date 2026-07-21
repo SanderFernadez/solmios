@@ -167,6 +167,12 @@ export class PaymentsService {
     return deposit
   }
 
+  /** Libera los depósitos 'held' de una reserva al checkout (connector `reservas-deposits`).
+   *  La lógica vive en `DepositsUseCase.releaseHeldByReservation`; acá solo auditamos cada release. */
+  async releaseHeldDepositsByReservation(reservationId: string, user?: { id?: string; role?: string }): Promise<DepositDTO[]> {
+    return this.deposits.releaseHeldByReservation(reservationId, (d) => this.audit(depositReleaseEntry(d, user)))
+  }
+
   async listDeposits(hotelId: string, status?: string): Promise<DepositDTO[]> {
     return this.deposits.list(hotelId, status)
   }

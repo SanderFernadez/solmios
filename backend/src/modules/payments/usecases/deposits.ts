@@ -91,6 +91,30 @@ export class DepositsUseCase {
     } as any) as Promise<DepositDTO>
   }
 
+  /**
+   * Libera TODOS los depósitos 'held' de una reserva al hacer check-out sin incidencias.
+   * Lo dispara el connector `reservas-deposits`: antes el hold quedaba colgando hasta acción
+   * manual (los endpoints /refund y /release existían pero nada los llamaba en el checkout).
+   * Best-effort por depósito: un fallo aislado no frena a los demás. `onReleased` deja que el
+   * service audite cada liberación (el puerto de audit vive en el service). Solo toca 'held':
+   * un 'partially_refunded' implica intervención manual previa y se resuelve a mano.
+   */
+  async releaseHeldByReservation(reservationId: string, onReleased?: (d: DepositDTO) => Promise<void> | void): Promise<DepositDTO[]> {
+    const deposits = await this.depositRepo.findMany({ reservationId, status: 'held' })
+    const released: DepositDTO[] = []
+    for (const d of deposits) {
+      try {
+        const updated = await this.release(d.id)
+        await onReleased?.(updated)
+        released.push(updated)
+      } catch (e) {
+        this.logger.warn('release de depósito en checkout falló', { id: d.id, error: (e as Error).message })
+      }
+    }
+    if (released.length > 0) this.logger.info('Depósitos liberados en checkout', { reservationId, count: released.length })
+    return released
+  }
+
   async autoReleaseByCheckOut(reservationId: string, delayHours = 48): Promise<DepositDTO[]> {
     const deposits = await this.depositRepo.findMany({
       reservationId,

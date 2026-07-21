@@ -6,10 +6,14 @@ export class DashboardQueries {
   constructor(private readonly orm: any) {}
 
   async getDashboard(hotelId: string): Promise<any> {
-    const [rooms, res, guests] = await Promise.all([
+    const [rooms, res, guests, payments, folios, invoices] = await Promise.all([
       this.orm.findMany('Rooms', { hotelId }),
       this.orm.findMany('Reservations', { hotelId }),
       this.orm.findMany('Guests', { hotelId }),
+      // Conexión dashboard→payments (antes ausente): el home no veía dinero, solo reservas.
+      this.orm.findMany('Payment', { hotelId }),
+      this.orm.findMany('Folios', { hotelId }),
+      this.orm.findMany('Invoices', { hotelId }),
     ])
     const occupied = rooms.filter((r: any) => r.status === 'occupied').length
     const dirty = rooms.filter((r: any) => r.status === 'dirty').length
@@ -37,6 +41,37 @@ export class DashboardQueries {
         ocupacion: { value: occYesterday, direction: occToday > occYesterday ? 'up' : occToday < occYesterday ? 'down' : 'stable' },
         revenue: { value: revYesterday, direction: revenueToday > revYesterday ? 'up' : revenueToday < revYesterday ? 'down' : 'stable' },
       },
+      // KPIs financieros REALES (conexión dashboard→payments antes faltante): dinero desde la
+      // fuente de verdad (payments), no inferido de reservas.
+      financial: this.computeFinancial(payments as any[], folios as any[], invoices as any[]),
+    }
+  }
+
+  // KPIs financieros desde payments/folios/facturas. `payments` = fuente de verdad del dinero
+  // (mem: payments-is-money-source-of-truth); `invoices` filtra type='invoice' porque la tabla
+  // mezcla 3 tipos de documento (mem: invoices guarda 3 tipos — sin filtro cuenta doble).
+  private computeFinancial(payments: any[], folios: any[], invoices: any[]) {
+    const completed = payments.filter((p) => p.status === 'completed')
+    const charges = completed.filter((p) => p.type === 'charge').reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const refunds = completed.filter((p) => p.type === 'refund').reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const t = new Date().toISOString().split('T')[0]
+    const revenueToday = completed
+      .filter((p) => p.type === 'charge' && String(p.processedAt || '').slice(0, 10) === t)
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const byMethod = completed
+      .filter((p) => p.type === 'charge')
+      .reduce((a, p) => { const m = p.method || 'other'; a[m] = (a[m] || 0) + (Number(p.amount) || 0); return a }, {} as Record<string, number>)
+    const foliosOpen = folios.filter((f) => f.status === 'open').length
+    const outstandingInvoices = invoices
+      .filter((i) => i.type === 'invoice' && i.status !== 'paid' && i.status !== 'void')
+      .reduce((s, i) => s + (Number(i.amount) - Number(i.amountPaid || 0)), 0)
+    return {
+      revenue: charges - refunds,
+      revenueToday,
+      refunds,
+      byMethod,
+      foliosOpen,
+      outstandingInvoices,
     }
   }
 

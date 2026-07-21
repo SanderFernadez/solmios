@@ -102,4 +102,40 @@ describe('PaymentsService', () => {
       expect(result.amount).toBe(500)
     })
   })
+
+  describe('releaseHeldDepositsByReservation (checkout)', () => {
+    // Repo de depósitos en memoria: findMany por reservationId + findById + update.
+    function depositRepoFor(deposits: DepositDTO[]): RepositoryAdapter<DepositDTO> {
+      const store = new Map(deposits.map((d) => [d.id, { ...d }]))
+      return makeRepo({
+        // Honra todos los filtros como un repo real (reservationId Y status): el usecase consulta
+        // findMany({ reservationId, status: 'held' }), así que el filtro por status pasa en el repo.
+        findMany: async (f: any = {}) => [...store.values()].filter((d) => Object.entries(f).every(([k, v]) => (d as any)[k] === v)) as DepositDTO[],
+        findById: async (id: string) => (store.get(id) as DepositDTO) ?? null,
+        update: async (id: string, data: any) => { const cur = store.get(id)!; const next = { ...cur, ...data }; store.set(id, next); return next as DepositDTO },
+      })
+    }
+    const dep = (over: Partial<DepositDTO>): DepositDTO => ({ id: 'd', hotelId: 'h1', reservationId: 'r1', amount: 500, currency: 'USD', status: 'held', paymentMethod: 'card', stripePaymentId: '', refundAmount: 0, releasedAt: null, ...over } as any)
+
+    it('libera solo los depósitos held de la reserva', async () => {
+      const depositRepo = depositRepoFor([
+        dep({ id: 'd1', status: 'held' }),
+        dep({ id: 'd2', status: 'held' }),
+        dep({ id: 'd3', status: 'released' }),      // ya liberado → se ignora
+        dep({ id: 'd4', status: 'fully_refunded' }), // ya devuelto → se ignora
+      ])
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
+      const released = await service.releaseHeldDepositsByReservation('r1')
+      expect(released.map((d) => d.id).sort()).toEqual(['d1', 'd2'])
+      expect(released.every((d) => d.status === 'released')).toBe(true)
+      expect(released.every((d) => d.releasedAt !== null)).toBe(true)
+    })
+
+    it('no libera nada si la reserva no tiene depósitos held', async () => {
+      const depositRepo = depositRepoFor([dep({ id: 'd5', status: 'released' })])
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
+      const released = await service.releaseHeldDepositsByReservation('r1')
+      expect(released).toEqual([])
+    })
+  })
 })

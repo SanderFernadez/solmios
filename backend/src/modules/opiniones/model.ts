@@ -15,6 +15,7 @@ export const OpinionesModel: ModelDefinition = {
     date: { type: 'string' },
     visible: { type: 'number', default: 1 },
     channel: { type: 'string', default: 'direct' },
+    status: { type: 'string', default: 'visible' }, // visible | pending (invite post-checkout, connector reservas-opiniones)
   },
   timestamps: true,
 }

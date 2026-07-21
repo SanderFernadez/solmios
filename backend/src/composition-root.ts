@@ -171,6 +171,8 @@ import { mantenimientoNotificacionesConnector } from './connectors/mantenimiento
 import { mantenimientoHabitacionesConnector } from './connectors/mantenimiento-habitaciones'
 import { bookingChannexConnector } from './connectors/booking-channex'
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
+import { reservasOpinionesConnector } from './connectors/reservas-opiniones'
+import { reservasDepositsConnector } from './connectors/reservas-deposits'
 import { paymentsCajaConnector } from './connectors/payments-caja'
 import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-payments'
 import { paymentRequestsTtlockConnector } from './connectors/payment-requests-ttlock'
@@ -239,6 +241,14 @@ system.addConnector('mantenimiento-notificaciones', mantenimientoNotificacionesC
 system.addConnector('mantenimiento-habitaciones', mantenimientoHabitacionesConnector)
 system.addConnector('booking-channex', bookingChannexConnector)
 system.addConnector('reservas-huespedes', reservasHuespedesConnector(logger))
+// Invitación a opinar post-checkout: reservas emite onReservationCheckedOut → opiniones crea
+// review 'pending'. Cierra el gap "opiniones sin disparador post-checkout". Seguro: reservas
+// compone sockets, no pisa a reservas-huespedes (CRM). Best-effort.
+system.addConnector('reservas-opiniones', reservasOpinionesConnector)
+// Libera el depósito/garantía en el checkout: reservas emite onReservationCheckedOut → payments
+// libera los holds 'held' de la reserva. Cierra el bug CONFIRMADO "el hold queda colgando" (el
+// checkout no tocaba deposits). Best-effort, no pisa a reservas-opiniones (sockets se componen).
+system.addConnector('reservas-deposits', reservasDepositsConnector)
 system.addConnector('payments-caja', paymentsCajaConnector)
 // Un gasto en efectivo saca plata del cajón: sin esto el arqueo del turno no lo ve.
 system.addConnector('gastos-caja', gastosCajaConnector)

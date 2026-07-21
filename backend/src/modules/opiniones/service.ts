@@ -87,6 +87,37 @@ export class OpinionesService {
     return item
   }
 
+  /**
+   * Crea una invitación a opinar tras el checkout (status='pending', visible=0, rating=0).
+   * La dispara el connector `reservas-opiniones` desde onReservationCheckedOut.
+   * Idempotente: si ya existe una review con ese reservationId, no duplica.
+   * Best-effort: nunca lanza — un fallo acá no debe romper el checkout.
+   */
+  async createReviewInvite(input: { hotelId: string; reservationId: string; guestId?: string | null }): Promise<OpinionesDTO | null> {
+    try {
+      const existing = await this.repo.findMany({ reservationId: input.reservationId } as any)
+      if (existing && existing.length > 0) return existing[0]
+      const today = new Date().toISOString().split('T')[0]
+      const invite = await this.repo.create({
+        hotelId: input.hotelId,
+        guestId: input.guestId ?? undefined,
+        reservationId: input.reservationId,
+        rating: 0,                 // el huésped aún no respondió
+        title: 'Encuesta post-estadía',
+        channel: 'direct',
+        visible: 0,                // oculta del listado público hasta responder
+        status: 'pending',
+        date: today,
+      } as any)
+      await this.cache.delete(`opiniones:list:${input.hotelId}`)
+      this.logger.info('Invite de opinión creado', { reservationId: input.reservationId })
+      return invite
+    } catch (e) {
+      this.logger.warn('createReviewInvite falló', { reservationId: input.reservationId, error: (e as Error).message })
+      return null
+    }
+  }
+
   async update(id: string, dto: UpdateOpinionesDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<OpinionesDTO> {
     const existing = await this.repo.findById(id)
     if (!existing) throw new NotFoundError('Opinión no encontrada')
