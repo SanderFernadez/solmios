@@ -4,9 +4,12 @@ import { FeedbackService } from '@/services/Feedback.service'
 import type { FeedbackStatus } from '@/types'
 import { useConfirm } from '@/composables/useConfirm'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import { useToast } from '@/composables/useToast'
 
+const toast = useToast()
 const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
-  onError: (e) => console.error('Error deleting pin:', e),
+  onDone: () => toast.success('Feedback eliminado'),
+  onError: (e) => { console.error('Error deleting pin:', e); toast.error('No se pudo eliminar el feedback') },
 })
 
 interface FeedbackPin {
@@ -67,8 +70,10 @@ async function updateStatus(pin: FeedbackPin, status: string) {
   try {
     await FeedbackService.update(pin.id, { status: status as FeedbackStatus })
     pin.status = status
+    toast.success('Estado actualizado')
   } catch (e) {
     console.error('Error updating pin:', e)
+    toast.error('No se pudo actualizar el estado')
   }
 }
 

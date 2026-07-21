@@ -190,7 +190,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { TeamService } from '@/services/Team.service'
+const toast = useToast()
 import AppModal from '@/components/ui/AppModal.vue'
 
 const selectedRole = ref<any>(null)
@@ -286,8 +288,10 @@ async function savePermissions() {
     role.permissions = updated.permissions
     const idx = roles.value.findIndex((r: any) => r.id === role.id)
     if (idx >= 0) roles.value[idx].permissions = updated.permissions
+    toast.success('Permisos guardados')
   } catch (e) {
     console.error('savePermissions: no se pudieron guardar los permisos', e)
+    toast.error('No se pudieron guardar los permisos')
   }
 }
 
