@@ -193,6 +193,10 @@
         <button @click="revealKey = null" class="bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer px-4 py-2.5">Listo, ya la guardé</button>
       </template>
     </AppModal>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -203,8 +207,13 @@ import AppModal from '@/components/ui/AppModal.vue'
 import { ApikeysService } from '@/services/Apikeys.service'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onError: (e) => toast.error(e instanceof Error ? e.message : 'Error'),
+})
 const showCreateKey = ref(false)
 const creating = ref(false)
 const revealKey = ref<string | null>(null)
@@ -287,23 +296,31 @@ async function generateKey() {
   }
 }
 
-async function revokeKey(id: string) {
+function revokeKey(id: string) {
   const key = apiKeys.value.find(k => k.id === id)
   if (!key) return
   if (key.active) {
-    if (!confirm(`¿Revocar la API Key "${key.name}"?`)) return
-    try {
-      await ApikeysService.revoke(id)
-      key.active = false
-      toast.success('Revocada')
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') }
+    askConfirm({
+      title: 'Revocar API Key',
+      message: `¿Revocar la API Key "${key.name}"? Dejará de funcionar inmediatamente.`,
+      confirmLabel: 'Revocar', danger: true,
+      run: async () => {
+        await ApikeysService.revoke(id)
+        key.active = false
+        toast.success('Revocada')
+      },
+    })
   } else {
-    try {
-      await ApikeysService.reactivate(id)
-      key.active = true
-      toast.success('Reactivada')
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') }
+    reactivateKey(id, key)
   }
+}
+
+async function reactivateKey(id: string, key: any) {
+  try {
+    await ApikeysService.reactivate(id)
+    key.active = true
+    toast.success('Reactivada')
+  } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') }
 }
 
 async function copyKey(key: any) {
@@ -320,12 +337,16 @@ async function copyPlainKey() {
   } catch { toast.error('No se pudo copiar') }
 }
 
-async function deleteKey(id: string) {
-  if (!confirm('¿Eliminar definitivamente esta API Key?')) return
-  try {
-    await ApikeysService.remove(id)
-    apiKeys.value = apiKeys.value.filter(k => k.id !== id)
-    toast.success('Eliminada')
-  } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error') }
+function deleteKey(id: string) {
+  askConfirm({
+    title: 'Eliminar API Key',
+    message: '¿Eliminar definitivamente esta API Key? No se puede deshacer.',
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      await ApikeysService.remove(id)
+      apiKeys.value = apiKeys.value.filter(k => k.id !== id)
+      toast.success('Eliminada')
+    },
+  })
 }
 </script>

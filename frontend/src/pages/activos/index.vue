@@ -138,6 +138,10 @@
 
     <FormModal v-if="modal" :title="modal.title" :fields="modal.fields" :loading="saving" :submit-label="modal.submitLabel"
       @close="modal = null" @submit="modal.onSubmit" />
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -150,9 +154,15 @@ import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { useAuthStore } from '@/stores/auth.store'
 
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => toast.success('Activo eliminado'),
+  onError: () => toast.error('Error al eliminar'),
+})
 const auth = useAuthStore()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 const loading = ref(true)
@@ -250,10 +260,13 @@ async function doReturn(a: Asset) {
   catch { toast.error('Error al devolver') }
 }
 
-async function del(a: Asset) {
-  if (!confirm(`¿Eliminar el activo "${a.name}"?`)) return
-  try { await AssetsService.remove(a.id); toast.success('Activo eliminado'); await load() }
-  catch { toast.error('Error al eliminar') }
+function del(a: Asset) {
+  askConfirm({
+    title: 'Eliminar activo',
+    message: `¿Eliminar el activo "${a.name}"? No se puede deshacer.`,
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => { await AssetsService.remove(a.id); await load() },
+  })
 }
 
 // Iconos SVG inline (el <svg> ocupa el 100% del <span> contenedor, que define el tamaño)

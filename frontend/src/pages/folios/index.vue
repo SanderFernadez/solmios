@@ -269,6 +269,10 @@
         </button>
       </template>
     </AppModal>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -279,6 +283,8 @@ import type { Folio } from '@/services/Folios.service'
 import { OperationsService } from '@/services/Operations.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -303,6 +309,10 @@ const paymentMethods = [
 
 const auth = useAuthStore()
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => toast.success('Folio cerrado y factura generada'),
+  onError: (e) => toast.error((e as any)?.message || 'Error al cerrar folio'),
+})
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 const folios = ref<Folio[]>([])
@@ -438,18 +448,21 @@ async function savePayment() {
   }
 }
 
-async function closeAndInvoice(f: Folio) {
-  if (!confirm(`¿Cerrar folio de ${f.guestName} y generar factura?`)) return
-  closing.value = f.id
-  try {
-    await FoliosService.closeAndInvoice(f.id)
-    toast.success('Folio cerrado y factura generada')
-    folios.value = folios.value.filter(x => x.id !== f.id)
-  } catch (e: any) {
-    toast.error(e.message || 'Error al cerrar folio')
-  } finally {
-    closing.value = null
-  }
+function closeAndInvoice(f: Folio) {
+  askConfirm({
+    title: 'Cerrar folio',
+    message: `¿Cerrar folio de ${f.guestName} y generar factura?`,
+    confirmLabel: 'Cerrar y facturar', danger: false,
+    run: async () => {
+      closing.value = f.id
+      try {
+        await FoliosService.closeAndInvoice(f.id)
+        folios.value = folios.value.filter(x => x.id !== f.id)
+      } finally {
+        closing.value = null
+      }
+    },
+  })
 }
 
 function formatMoney(n: number): string {

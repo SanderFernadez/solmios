@@ -376,6 +376,10 @@
         </button>
       </template>
     </AppModal>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -388,6 +392,8 @@ import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { useCountUp } from '@/composables/useCountUp'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { ApiError } from '@/services/http'
 import type { Room } from '@/types'
 
@@ -435,6 +441,10 @@ interface EditForm {
 
 const auth = useAuthStore()
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => toast.success('Eliminada'),
+  onError: () => toast.error('Error al eliminar'),
+})
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 const activeFilter = ref('all')
@@ -742,17 +752,20 @@ async function save() {
   saving.value = false; modal.value.show = false; await load()
 }
 
-async function deleteRoomFromDetail() {
+function deleteRoomFromDetail() {
   const room = detailRoom.value
   if (!room) return
-  if (!confirm(`¿Eliminar habitación ${room.number}?`)) return
-  try {
-    const { RoomService } = await import('@/services/Room.service')
-    await RoomService.delete(room.id)
-    toast.success('Eliminada')
-    detailModal.value.show = false
-    await load()
-  } catch { toast.error('Error al eliminar') }
+  askConfirm({
+    title: 'Eliminar habitación',
+    message: `¿Eliminar habitación ${room.number}? No se puede deshacer.`,
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      const { RoomService } = await import('@/services/Room.service')
+      await RoomService.delete(room.id)
+      detailModal.value.show = false
+      await load()
+    },
+  })
 }
 
 function openBatch() {

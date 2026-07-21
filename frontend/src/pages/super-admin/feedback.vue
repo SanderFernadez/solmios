@@ -2,6 +2,12 @@
 import { ref, onMounted, computed } from 'vue'
 import { FeedbackService } from '@/services/Feedback.service'
 import type { FeedbackStatus } from '@/types'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
+
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onError: (e) => console.error('Error deleting pin:', e),
+})
 
 interface FeedbackPin {
   id: string
@@ -66,15 +72,17 @@ async function updateStatus(pin: FeedbackPin, status: string) {
   }
 }
 
-async function deletePin(pin: FeedbackPin) {
-  if (!confirm('¿Eliminar este feedback?')) return
-  try {
-    await FeedbackService.remove(pin.id)
-    pins.value = pins.value.filter(p => p.id !== pin.id)
-    if (selectedPin.value?.id === pin.id) selectedPin.value = null
-  } catch (e) {
-    console.error('Error deleting pin:', e)
-  }
+function deletePin(pin: FeedbackPin) {
+  askConfirm({
+    title: 'Eliminar feedback',
+    message: '¿Eliminar este feedback? No se puede deshacer.',
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      await FeedbackService.remove(pin.id)
+      pins.value = pins.value.filter(p => p.id !== pin.id)
+      if (selectedPin.value?.id === pin.id) selectedPin.value = null
+    },
+  })
 }
 
 function formatDate(date: string | Date): string {
@@ -251,6 +259,10 @@ onMounted(loadPins)
         </div>
       </div>
     </div>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 

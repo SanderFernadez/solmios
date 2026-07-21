@@ -219,6 +219,10 @@
         </button>
       </template>
     </AppModal>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -229,6 +233,8 @@ import type { PaymentRequest } from '@/services/Payments.service'
 import { ReservationService } from '@/services/Reservation.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -247,6 +253,9 @@ const ICON_TRASH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" s
 
 const auth = useAuthStore()
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onError: (e) => toast.error((e as any)?.message || 'Error'),
+})
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 const payments = ref<PaymentRequest[]>([])
@@ -459,26 +468,30 @@ async function markAsPaid(p: PaymentRequest) {
   }
 }
 
-async function cancel(p: PaymentRequest) {
-  if (!confirm('¿Cancelar este link de pago?')) return
-  try {
-    await PaymentsService.update(p.id!, { status: 'cancelled' })
-    p.status = 'cancelled'
-    toast.success('Cancelado')
-  } catch (e: any) {
-    toast.error(e.message || 'Error')
-  }
+function cancel(p: PaymentRequest) {
+  askConfirm({
+    title: 'Cancelar link',
+    message: '¿Cancelar este link de pago?',
+    confirmLabel: 'Cancelar link', danger: true,
+    run: async () => {
+      await PaymentsService.update(p.id!, { status: 'cancelled' })
+      p.status = 'cancelled'
+      toast.success('Cancelado')
+    },
+  })
 }
 
-async function remove(p: PaymentRequest) {
-  if (!confirm('¿Eliminar este link?')) return
-  try {
-    await PaymentsService.remove(p.id!)
-    payments.value = payments.value.filter(x => x.id !== p.id)
-    toast.success('Eliminado')
-  } catch (e: any) {
-    toast.error(e.message || 'Error')
-  }
+function remove(p: PaymentRequest) {
+  askConfirm({
+    title: 'Eliminar link',
+    message: '¿Eliminar este link? No se puede deshacer.',
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      await PaymentsService.remove(p.id!)
+      payments.value = payments.value.filter(x => x.id !== p.id)
+      toast.success('Eliminado')
+    },
+  })
 }
 
 function resend(p: PaymentRequest, channel: 'email' | 'whatsapp') {

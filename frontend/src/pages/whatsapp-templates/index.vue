@@ -183,6 +183,10 @@
         <button @click="save" :disabled="saving" class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ saving ? 'Guardando...' : 'Guardar' }}</button>
       </template>
     </AppModal>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -195,6 +199,8 @@ import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { WhatsappService } from '@/services/Whatsapp.service'
 import type { WhatsappTemplate } from '@/services/Whatsapp.service'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 
 const SVG_OPEN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
 const ICON_X = `${SVG_OPEN}<path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`
@@ -208,6 +214,10 @@ const ICON_SEND = `${SVG_OPEN}<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 1
 const ICON_PENCIL = `${SVG_OPEN}<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>`
 
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => toast.success('Eliminada'),
+  onError: (e) => toast.error((e as any)?.message || 'Error'),
+})
 const templates = ref<WhatsappTemplate[]>([])
 const loading = ref(true)
 const saving = ref(false)
@@ -319,17 +329,18 @@ async function save() {
   }
 }
 
-async function deleteTemplate() {
+function deleteTemplate() {
   if (!editId.value) return
-  if (!confirm('¿Eliminar esta plantilla?')) return
-  try {
-    await WhatsappService.remove(editId.value)
-    toast.success('Eliminada')
-    modal.value.show = false
-    await load()
-  } catch (e: any) {
-    toast.error(e.message || 'Error')
-  }
+  askConfirm({
+    title: 'Eliminar plantilla',
+    message: '¿Eliminar esta plantilla? No se puede deshacer.',
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      await WhatsappService.remove(editId.value)
+      modal.value.show = false
+      await load()
+    },
+  })
 }
 
 /** Abre WhatsApp Web con datos demo */

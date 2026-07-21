@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { CajaService, type CashMovement, type CashShift, type CashStats, type Reconcile } from '@/services/Caja.service'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -29,6 +31,10 @@ const movMethods = [
 ]
 
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => toast.success('Movimiento eliminado'),
+  onError: (e) => toast.error('No se pudo eliminar', e instanceof Error ? e.message : undefined),
+})
 
 const stats = ref<CashStats | null>(null)
 const currentShift = ref<CashShift | null>(null)
@@ -105,16 +111,17 @@ async function saveMov() {
   }
 }
 
-async function removeMov(m: CashMovement) {
+function removeMov(m: CashMovement) {
   if (!m.id) return
-  if (!confirm(`¿Eliminar movimiento "${m.concept || 'sin concepto'}" ($${m.amount})?`)) return
-  try {
-    await CajaService.removeMovement(m.id)
-    toast.success('Movimiento eliminado')
-    await load()
-  } catch (e: unknown) {
-    toast.error('No se pudo eliminar', e instanceof Error ? e.message : undefined)
-  }
+  askConfirm({
+    title: 'Eliminar movimiento',
+    message: `¿Eliminar movimiento "${m.concept || 'sin concepto'}" ($${m.amount})? No se puede deshacer.`,
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      await CajaService.removeMovement(m.id!)
+      await load()
+    },
+  })
 }
 
 async function doOpenShift() {
@@ -419,6 +426,10 @@ function sourceLabel(source?: string) {
         </button>
       </template>
     </AppModal>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 

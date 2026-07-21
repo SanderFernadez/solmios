@@ -601,6 +601,10 @@
       @close="lockRoom = null"
       @changed="load()"
     />
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -608,6 +612,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { TTLockService, type TTLockConfig, type LockGateway, type LockActiveCode, type LockRecord, type MasterKey, type MasterKeyAccess, type MasterKeyLock } from '@/services/TTLock.service'
 import { TeamService } from '@/services/Team.service'
 import { OperationsService } from '@/services/Operations.service'
@@ -619,6 +625,9 @@ import RoomLockModal from '@/components/features/RoomLockModal.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onError: (e) => toast.error('No se pudo revocar', (e as any)?.message),
+})
 const hid = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 type Tab = 'config' | 'locks' | 'gateways' | 'active' | 'records' | 'master'
@@ -789,25 +798,27 @@ async function createMasterKey() {
   }
 }
 
-async function revokeMasterKey(k: MasterKey) {
-  if (!confirm(`¿Revocar la llave de ${personName(k.userId)}? Dejará de abrir todas las puertas.`)) return
-  try {
-    const res = await TTLockService.revokeMasterKey(k.masterKeyId)
-    if (res.failed?.length) {
-      // Una puerta que no se pudo borrar sigue abriéndose con ese PIN: no se
-      // puede reportar como revocada sin más.
-      toast.error(
-        `Revocada en ${res.revoked} puerta(s), pero quedó activa en otras`,
-        `Revisar: ${res.failed.map(f => f.lockName).join(', ')}`,
-      )
-    } else {
-      toast.success(`Llave revocada en ${res.revoked} puerta(s)`)
-    }
-    masterKeysLoaded.value = false
-    await loadMasterKeys()
-  } catch (e: any) {
-    toast.error('No se pudo revocar', e?.message)
-  }
+function revokeMasterKey(k: MasterKey) {
+  askConfirm({
+    title: 'Revocar llave',
+    message: `¿Revocar la llave de ${personName(k.userId)}? Dejará de abrir todas las puertas. No se puede deshacer.`,
+    confirmLabel: 'Revocar', danger: true,
+    run: async () => {
+      const res = await TTLockService.revokeMasterKey(k.masterKeyId)
+      if (res.failed?.length) {
+        // Una puerta que no se pudo borrar sigue abriéndose con ese PIN: no se
+        // puede reportar como revocada sin más.
+        toast.error(
+          `Revocada en ${res.revoked} puerta(s), pero quedó activa en otras`,
+          `Revisar: ${res.failed.map(f => f.lockName).join(', ')}`,
+        )
+      } else {
+        toast.success(`Llave revocada en ${res.revoked} puerta(s)`)
+      }
+      masterKeysLoaded.value = false
+      await loadMasterKeys()
+    },
+  })
 }
 
 const keyLocksModal = ref<{ key: MasterKey; locks: MasterKeyLock[] } | null>(null)

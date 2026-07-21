@@ -203,6 +203,10 @@
         <button @click="save" :disabled="saving" class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ saving?'Guardando...':'Guardar' }}</button>
       </template>
     </AppModal>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -210,6 +214,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { AutoMessagesService } from '@/services/AutoMessages.service'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
@@ -223,6 +229,10 @@ const ICON_MAIL = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="
 
 const auth = useAuthStore()
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => toast.success('Eliminado'),
+  onError: () => toast.error('Error'),
+})
 
 const messages = ref<any[]>([])
 const loading = ref(true)
@@ -295,9 +305,17 @@ async function save() {
   } catch { toast.error('Error') }
   saving.value=false; modal.value.show=false; await load()
 }
-async function deleteMsg() {
-  if(!confirm('¿Eliminar este mensaje?')) return
-  try { await AutoMessagesService.remove(editId.value); toast.success('Eliminado'); modal.value.show=false; await load() } catch { toast.error('Error') }
+function deleteMsg() {
+  askConfirm({
+    title: 'Eliminar mensaje',
+    message: '¿Eliminar este mensaje? No se puede deshacer.',
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      await AutoMessagesService.remove(editId.value)
+      modal.value.show = false
+      await load()
+    },
+  })
 }
 function removeMsg(m: any) {
   editId.value = m.id

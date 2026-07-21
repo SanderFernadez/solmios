@@ -173,6 +173,10 @@
       @close="createModal = false"
       @submit="create"
     />
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -185,6 +189,8 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useModulesStore } from '@/stores/modules.store'
 import { permissionModuleEnabled } from '@/config/module-map'
@@ -194,6 +200,10 @@ const ICON_SLIDERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none"
 const ICON_SHIELD = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v6c0 4.4-3 8.1-7 9-4-.9-7-4.6-7-9V6l7-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 12.2l1.8 1.8 3.4-3.6"/></svg>'
 
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => toast.success('Rol eliminado'),
+  onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al eliminar'),
+})
 const auth = useAuthStore()
 const modules = useModulesStore()
 const loading = ref(true)
@@ -264,16 +274,17 @@ async function save() {
   } finally { saving.value = false }
 }
 
-async function confirmDelete(role: Role) {
-  if (!confirm(`¿Eliminar el rol "${roleLabel(role)}"? Los empleados con este rol quedarán sin permisos hasta reasignarlos.`)) return
-  try {
-    await RolesService.remove(role.id)
-    toast.success('Rol eliminado')
-    if (selected.value?.id === role.id) selected.value = null
-    await load()
-  } catch (e: unknown) {
-    toast.error(e instanceof Error ? e.message : 'Error al eliminar')
-  }
+function confirmDelete(role: Role) {
+  askConfirm({
+    title: 'Eliminar rol',
+    message: `¿Eliminar el rol "${roleLabel(role)}"? Los empleados con este rol quedarán sin permisos hasta reasignarlos.`,
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      await RolesService.remove(role.id)
+      if (selected.value?.id === role.id) selected.value = null
+      await load()
+    },
+  })
 }
 
 const createModal = ref(false)

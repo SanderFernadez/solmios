@@ -111,6 +111,10 @@
         <button @click="save" :disabled="saving" class="px-5 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">{{ saving ? 'Guardando...' : 'Guardar' }}</button>
       </template>
     </AppModal>
+
+    <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"
+      @confirm="runConfirm" @close="confirmModal = null" />
   </div>
 </template>
 
@@ -120,7 +124,13 @@ import AppModal from '@/components/ui/AppModal.vue'
 import { PlansService } from '@/services/Plans.service'
 import { ModulesService, type ModuleMeta, type SubModuleMeta } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 const toast = useToast()
+const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
+  onDone: () => toast.success('Plan eliminado'),
+  onError: (e) => toast.error((e as any)?.message || 'Error al eliminar'),
+})
 
 const plans = ref<any[]>([])
 const showModal = ref(false)
@@ -214,15 +224,16 @@ async function save() {
   } finally { saving.value = false }
 }
 
-async function deletePlan(plan: any) {
-  if (!confirm(`¿Eliminar plan "${plan.name}"?`)) return
-  try {
-    await PlansService.remove(plan.id)
-    toast.success('Plan eliminado')
-    await loadPlans()
-  } catch (e: any) {
-    toast.error(e.message || 'Error al eliminar')
-  }
+function deletePlan(plan: any) {
+  askConfirm({
+    title: 'Eliminar plan',
+    message: `¿Eliminar plan "${plan.name}"? No se puede deshacer.`,
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      await PlansService.remove(plan.id)
+      await loadPlans()
+    },
+  })
 }
 
 onMounted(() => { loadPlans(); loadModuleCatalog() })
