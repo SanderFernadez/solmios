@@ -53,8 +53,10 @@
         </select>
       </template>
 
+      <SkeletonLoader v-if="loading" variant="table" :rows="6" />
+
       <EmptyState
-        v-if="!totalFiltered"
+        v-else-if="!totalFiltered"
         :icon="ICON_USERS_EMPTY"
         :title="searchQuery || filterType !== 'all' ? 'Sin resultados' : 'Todavía no hay huéspedes'"
         :message="searchQuery || filterType !== 'all' ? 'Probá con otro término de búsqueda o quitá el filtro.' : 'Registrá el primer huésped para empezar a construir tu CRM.'"
@@ -529,6 +531,7 @@ import { useToast } from '@/composables/useToast'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
@@ -735,7 +738,10 @@ function mapGuestRow(g: any) {
 
 // Carga guests + reservas del hotel (limit 100) en paralelo; 1 sola llamada de reservas
 // sirve para derivar lastVisit y activeToday por fila (sin N+1).
+const loading = ref(true)
+
 async function loadGuests() {
+  loading.value = true
   try {
     const [{ guests: data }, resResult] = await Promise.all([
       GuestService.list({ hotelId: hotelId.value }),
@@ -744,6 +750,7 @@ async function loadGuests() {
     reservationsCache.value = resResult.reservations
     guests.value = data.map(mapGuestRow)
   } catch { toast.error("Error al cargar datos") }
+  finally { loading.value = false }
 }
 
 onMounted(loadGuests)

@@ -55,10 +55,9 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"></div>
-      <span class="ml-3 text-sm text-text-muted font-bold">Cargando datos...</span>
-    </div>
+    <SectionCard v-if="loading" title="Facturas" body-class="p-0">
+      <SkeletonLoader variant="table" :rows="8" />
+    </SectionCard>
 
     <!-- Invoices Tab -->
     <SectionCard v-if="activeTab === 'invoices' && !loading"
@@ -681,6 +680,7 @@ import { useCurrency } from '@/composables/useCurrency'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import { FoliosService, type Folio } from '@/services/Folios.service'
 import { useAuthStore } from '@/stores/auth.store'

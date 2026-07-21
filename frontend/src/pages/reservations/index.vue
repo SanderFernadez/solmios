@@ -76,7 +76,8 @@
       </div>
 
       <!-- Table -->
-      <table class="w-full">
+      <SkeletonLoader v-if="loading" variant="table" :rows="8" />
+      <table v-else class="w-full">
         <thead>
           <tr class="border-b border-border bg-surface/50">
             <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Huésped</th>
@@ -645,6 +646,7 @@ import { CompanionsService } from '@/services/Companions.service'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
 import type { Guest } from '@/types'
@@ -656,6 +658,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { http } from '@/services/http'
 
 const { isOnline } = useOnline()
+const loading = ref(true)
 
 // ── Wizard (modal Nueva/Editar Reserva) ──
 const WIZARD_STEPS = [
@@ -970,6 +973,7 @@ function calcDepositFromPercentage() {
 
 // ── Data Loading ──
 async function load() {
+  loading.value = true
   try {
     const [{ RoomService }, { GuestService }] = await Promise.all([import('@/services/Room.service'), import('@/services/Guest.service')])
     const [res, rom, gst] = await Promise.all([
@@ -992,6 +996,7 @@ async function load() {
       }
     })
   } catch (e: any) { console.error('[reservations/load]', e); toast.error('No se pudieron cargar las reservas') }
+  finally { loading.value = false }
 }
 
 function nBetween(a?: string, b?: string): number {
