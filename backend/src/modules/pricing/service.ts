@@ -1,7 +1,10 @@
 import { AuthError } from 'arckode-framework'
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import { hotelIdOfUserLegacy } from '../../shared/usecases/hotel-of-legacy'
+import { composeSockets } from '../../shared/usecases/compose-sockets'
 import type { PricingQueries } from './usecases/pricing-queries'
+import type { PricingSockets } from './sockets'
+import { defaultSeasons } from './usecases/defaults'
 import {
   auditSafely, rateChangeEntry, rateCopyEntry, seasonsChangeEntry,
   restrictionsChangeEntry, blockDeleteEntry,
@@ -10,6 +13,8 @@ import {
 
 export class PricingService {
   private auditPort: AuditPort | null = null
+  private sockets: PricingSockets = {}
+  setSockets(s: Partial<PricingSockets>): void { composeSockets(this.sockets as any, s as any) }
 
   constructor(
     private readonly seasonsRepo: RepositoryAdapter<any>,
@@ -35,22 +40,11 @@ export class PricingService {
     return auditSafely(this.auditPort, this.logger, entry)
   }
 
-  /** Temporadas por defecto (rangos del año en curso) — se siembran la 1ª vez que un hotel abre la sección. */
-  private defaultSeasons(): any[] {
-    const y = new Date().getFullYear()
-    return [
-      { name: 'baja', label: 'Temporada Baja', startDate: `${y}-01-01`, endDate: `${y}-05-31`, color: '#3b82f6', sortOrder: 0, active: 1 },
-      { name: 'media', label: 'Temporada Media', startDate: `${y}-06-01`, endDate: `${y}-11-30`, color: '#14b8a6', sortOrder: 1, active: 0 },
-      { name: 'alta', label: 'Temporada Alta', startDate: `${y}-12-01`, endDate: `${y}-12-31`, color: '#84cc16', sortOrder: 2, active: 0 },
-      { name: 'especial', label: 'Temporada Especial', startDate: '', endDate: '', color: '#f59e0b', sortOrder: 3, active: 0 },
-    ]
-  }
-
   async listSeasons(hotelId: string): Promise<any[]> {
     let data = await this.seasonsRepo.findMany({ hotelId }) as any[]
     // Seed la 1ª vez: sin esto la temporada activa no tendría sobre qué operar.
     if (data.length === 0) {
-      for (const s of this.defaultSeasons()) {
+      for (const s of defaultSeasons()) {
         await this.seasonsRepo.create({ id: crypto.randomUUID(), hotelId, ...s })
       }
       data = await this.seasonsRepo.findMany({ hotelId }) as any[]
@@ -132,7 +126,11 @@ export class PricingService {
       }
       saved++
     }
-    if (changes.length > 0) await this.audit(rateChangeEntry(hotelId, changes, actor))
+    if (changes.length > 0) {
+      await this.audit(rateChangeEntry(hotelId, changes, actor))
+      // Tarifas cambiaron → push a OTAs (connector pricing-canales, fire-and-forget: no bloquea el grid).
+      await this.sockets.onRatesUpdated?.(hotelId, saved)
+    }
     return saved
   }
 

@@ -173,6 +173,7 @@ import { bookingChannexConnector } from './connectors/booking-channex'
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 import { reservasOpinionesConnector } from './connectors/reservas-opiniones'
 import { reservasDepositsConnector } from './connectors/reservas-deposits'
+import { pricingCanalesConnector } from './connectors/pricing-canales'
 import { paymentsCajaConnector } from './connectors/payments-caja'
 import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-payments'
 import { paymentRequestsTtlockConnector } from './connectors/payment-requests-ttlock'
@@ -249,6 +250,9 @@ system.addConnector('reservas-opiniones', reservasOpinionesConnector)
 // libera los holds 'held' de la reserva. Cierra el bug CONFIRMADO "el hold queda colgando" (el
 // checkout no tocaba deposits). Best-effort, no pisa a reservas-opiniones (sockets se componen).
 system.addConnector('reservas-deposits', reservasDepositsConnector)
+// Auto-push de tarifas a OTAs: pricing emite onRatesUpdated al cambiar tarifas → canales las empuja
+// a Channex. Cierra el gap "push manual": editar tarifas ya no requiere apretar el botón. Fire-and-forget.
+system.addConnector('pricing-canales', pricingCanalesConnector)
 system.addConnector('payments-caja', paymentsCajaConnector)
 // Un gasto en efectivo saca plata del cajón: sin esto el arqueo del turno no lo ve.
 system.addConnector('gastos-caja', gastosCajaConnector)

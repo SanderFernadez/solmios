@@ -256,4 +256,26 @@ describe('PricingService — tenancy (SEC-2.2)', () => {
       await expect(svc.activateSeason('h1', 'inexistente')).rejects.toThrow()
     })
   })
+
+  describe('updateRates → onRatesUpdated (push a OTAs)', () => {
+    it('emite onRatesUpdated con el hotelId cuando una tarifa cambia', async () => {
+      const svc = makeService()
+      let emitted: { hotelId: string; count: number } | null = null
+      svc.setSockets({ onRatesUpdated: async (hotelId, count) => { emitted = { hotelId, count } } })
+      // La tarifa existente (r1) tiene price 120; basePrice 100 + 0% → price 100 ≠ 120 → cambió.
+      await svc.updateRates('h1', [{ roomType: 'standard', season: 'Summer', occupancy: 2, basePrice: 100, percentage: 0 }])
+      expect(emitted).not.toBeNull()
+      expect(emitted!.hotelId).toBe('h1')
+    })
+
+    it('NO emite si ninguna tarifa cambió', async () => {
+      // El grid manda todas las celdas; si el precio computado coincide con el guardado, no hay cambio.
+      const svc = makeService()
+      let calls = 0
+      svc.setSockets({ onRatesUpdated: async () => { calls++ } })
+      // basePrice 100 + 20% → price 120 == existing.price 120 → sin cambio.
+      await svc.updateRates('h1', [{ roomType: 'standard', season: 'Summer', occupancy: 2, basePrice: 100, percentage: 20 }])
+      expect(calls).toBe(0)
+    })
+  })
 })

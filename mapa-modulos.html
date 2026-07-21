@@ -314,8 +314,8 @@ const N = [
   {id:'pricing',label:'🏷️ Pricing',group:'finanzas',panel:'hotel',info:{
     que:'Tarifas por canal / temporada / min-max stay (room_rates). Estilo MisterPlan (rates grid).',
     porque:'Motor de precios: las tarifas viven en RoomRates (modelo COMPARTIDO) y canales las empuja a las OTAs.',
-    conectado:['habitaciones (room_rates)','canales (push a OTAs ✅ vía POST /api/channels/push-rates)','auditlog'],
-    falta:['El push de tarifas a OTAs es MANUAL (endpoint). Falta connector pricing-canales que dispare onRatesUpdated → pushSeasonalRates automáticamente.']
+    conectado:['habitaciones (room_rates)','canales (auto-push ✅: onRatesUpdated → pushSeasonalRates)','auditlog'],
+    falta:[]
   }},
 
   // ─── CANALES / IoT ───
@@ -390,10 +390,10 @@ const N = [
     falta:[]
   }},
   {id:'feedback',label:'💬 Feedback',group:'crm',panel:'hotel',info:{
-    que:'Feedback in-app / encuestas de satisfacción con pins.',
-    porque:'Pulso del huésped en tiempo real.',
-    conectado:['auditlog'],
-    falta:['Sin connector con reservas/huespedes: el feedback no se vincula a la reserva que lo originó']
+    que:'Herramienta de QA de UI: pins con coordenadas x/y sobre rutas del panel (screenshot, browser, viewport) que crean issues de GitLab. NO es feedback del huésped.',
+    porque:'Reporte de bugs/mejoras del panel por el equipo. El feedback del huésped ligado a su estadía lo cubre opiniones (invite post-checkout), NO este módulo.',
+    conectado:['auditlog','gitlab (crea issues)'],
+    falta:['[MAPA CORREGIDO] No es un gap: feedback≠encuestas de satisfacción. Es QA de UI (pins→GitLab). Vincularlo a reservas no tiene sentido; el pulso del huésped vive en opiniones.']
   }},
   {id:'anuncios',label:'📢 Anuncios',group:'crm',panel:'hotel',info:{
     que:'Anuncios internos del hotel (y globales del SaaS vía admin).',
@@ -508,6 +508,7 @@ const E = [
   {f:'dashboard',t:'payments',y:'datos',l:'KPIs financieros ✅'},
   {f:'pricing',t:'habitaciones',y:'datos'},
   {f:'pricing',t:'canales',y:'datos',l:'RoomRates compartido → push OTAs ✅'},
+  {f:'pricing',t:'canales',y:'hook',l:'auto-push tarifas ✅'},
   {f:'roles',t:'usuarios',y:'datos'},
   {f:'hoteles',t:'usuarios',y:'datos',l:'hotelId'},
   {f:'staff-auth',t:'usuarios',y:'datos',l:'staffId=users.id'},
@@ -548,7 +549,6 @@ const E = [
   {f:'reservas',t:'payment-requests',y:'hook',l:'checkout libera depósito ✅'},
   {f:'ai-gerente',t:'dashboard',y:'falta',l:'insights no cableados'},
   {f:'amenities',t:'habitaciones',y:'falta',l:'dualidad Rooms.amenities CSV'},
-  {f:'feedback',t:'reservas',y:'falta',l:'sin vínculo'},
   {f:'reclutamiento',t:'empleados',y:'falta',l:'postulante→empleado'},
   {f:'capacitacion',t:'empleados',y:'falta',l:'no alimenta expediente'},
   {f:'subscriptions',t:'payments',y:'falta',l:'cobro SaaS sin ledger'},
@@ -574,7 +574,7 @@ const GAPS_HTML = `
 
   <details open><summary>🔗 Módulos aislados / cables flojos (CONFIRMADO en código)</summary>
     <div class="gap-card warn"><div class="gtitle">ai-gerente — isla total</div><div class="gwhy">Lee 6 tablas por ORM directo (index.ts:33-39), nadie lo referencia (rg vacío), no escribe auditlog. Sus <code>AiManagerInteraction</code> solo se ven en su propia UI.</div></div>
-    <div class="gap-card info"><div class="gtitle">pricing → canales ✅ CONECTADO <span class="tag conf">FIX MAPA</span></div><div class="gwhy"><b>No era un gap.</b> <code>RoomRates</code> es modelo compartido (<code>shared/models.ts:175</code>): pricing lo gestiona, y <code>canales/usecases/push-rates.ts</code> lo lee y lo empuja a las OTAs vía <code>POST /api/channels/push-rates</code>. Lo que canales evita es importar el <i>service</i> de pricing (desacoplamiento correcto), no los datos. <b>Pendiente real:</b> el push es manual; falta un connector que dispare <code>onRatesUpdated → pushSeasonalRates</code> automáticamente.</div></div>
+    <div class="gap-card info"><div class="gtitle">pricing → canales ✅ AUTO-PUSH <span class="tag conf">RESUELTO</span></div><div class="gwhy"><code>RoomRates</code> es modelo compartido: pricing lo gestiona, canales lo empuja a las OTAs (<code>pushSeasonalRates</code>). <b>Antes</b> el push era manual (<code>POST /api/channels/push-rates</code>): editar tarifas no las reflejaba en las OTAs hasta apretar el botón. <b>Fix:</b> <code>pricing.updateRates</code> emite <code>onRatesUpdated</code> cuando una tarifa cambia, y el connector <code>pricing-canales</code> dispara <code>canales.pushSeasonalRates</code> automáticamente. Fire-and-forget: no bloquea el guardado del grid por la latencia de Channex; si el hotel no tiene Channex, el push no-opea sin romper. Cubierto por test en <code>pricing/tests/service.test.ts</code>.</div></div>
     <div class="gap-card"><div class="gtitle">email-queue — panel de cola, no sender</div><div class="gwhy">Ningún módulo encola a través de él (solo admin catálogo lo referencia). Métodos <code>list/requeue</code>. El envío real lo hace <code>EmailService</code> (bootstrapEmail).</div></div>
     <div class="gap-card info"><div class="gtitle">opiniones → reservas ✅ RESUELTO <span class="tag conf">FIX</span></div><div class="gwhy">Connector <code>reservas-opiniones</code>: al <code>onReservationCheckedOut</code>, opiniones crea una review <code>status='pending'</code> (visible=0, rating=0) vinculada a la reserva. Dedup por reservationId, best-effort. Requiere <code>RUN_MIGRATE</code> para la columna <code>status</code>. <code>feedback</code> sigue sin vínculo (feature aparte).</div></div>
     <div class="gap-card"><div class="gtitle">amenities — dualidad de datos</div><div class="gwhy">Módulo <code>amenities</code> usa <code>RoomAmenities</code> (relacional; bookingengine lo lee en public-booking.ts:23) PERO <code>habitaciones</code> tiene su propio <code>Rooms.amenities</code> (CSV string, model.ts:14) → dos fuentes de verdad.</div></div>
