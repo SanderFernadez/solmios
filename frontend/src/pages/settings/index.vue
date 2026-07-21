@@ -113,17 +113,29 @@
         </SectionCard>
 
         <SectionCard title="Logo del Hotel" subtitle="Identidad visual — se muestra en facturas, pre-checkin y emails">
-          <div class="flex items-center gap-4">
-            <div v-if="form.logo" class="w-20 h-20 rounded-xl border border-border overflow-hidden bg-surface flex items-center justify-center shrink-0">
-              <img :src="form.logo" alt="Logo" class="w-full h-full object-contain" />
+          <div class="flex items-start gap-4">
+            <div
+              @dragover.prevent="logoDragging = true"
+              @dragleave.prevent="logoDragging = false"
+              @drop.prevent="onLogoDrop"
+              @click="logoFileInput?.click()"
+              class="relative w-28 h-28 rounded-xl border-2 border-dashed overflow-hidden bg-surface flex items-center justify-center shrink-0 cursor-pointer transition-colors"
+              :class="logoDragging ? 'border-cyan bg-cyan/5' : 'border-border hover:border-navy/40'">
+              <img v-if="form.logo" :src="form.logo" alt="Logo" class="w-full h-full object-contain" />
+              <div v-else class="flex flex-col items-center gap-1 px-2 text-center pointer-events-none">
+                <span class="w-5 h-5 text-navy/40" v-html="ICON_UPLOAD"></span>
+                <span class="text-[9px] font-bold text-text-muted uppercase">Arrastrá o hacé clic</span>
+              </div>
+              <div v-if="logoUploading" class="absolute inset-0 bg-white/80 flex items-center justify-center">
+                <span class="text-[10px] font-bold text-navy">Subiendo…</span>
+              </div>
             </div>
-            <div v-else class="w-20 h-20 rounded-xl border-2 border-dashed border-border bg-surface flex items-center justify-center shrink-0">
-              <span class="w-6 h-6 text-navy/30" v-html="ICON_BUILDING"></span>
-            </div>
+            <input ref="logoFileInput" type="file" accept="image/*" class="hidden" @change="onLogoFileChange">
             <div class="flex-1">
               <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">URL del Logo</label>
               <input v-model="form.logo" type="url" placeholder="https://ejemplo.com/logo.png" class="w-full px-3 py-2 rounded-lg border text-sm" :class="fieldClass('logo')" data-field="logo" @blur="touchField('logo')">
               <p v-if="errorOf('logo')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('logo') }}</p>
+              <p class="text-[10px] text-text-muted mt-1">PNG o JPG, máximo 5MB — o pegá la URL de un logo que ya tengas alojado</p>
             </div>
           </div>
         </SectionCard>
@@ -729,6 +741,7 @@ const ICON_GLOBE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" s
 const ICON_CARD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>'
 const ICON_MESSAGE = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>'
 const ICON_RECEIPT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>'
+const ICON_UPLOAD = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -747,6 +760,52 @@ async function loadCurrency() {
     if (c) { currencyConfig.secondaryCurrency = c.secondaryCurrency || 'DOP'; currencyConfig.exchangeRate = c.exchangeRate ?? 60 }
   } catch { /* default */ }
 }
+// Logo del hotel — arrastrar/soltar o elegir archivo, con preview. Sube de una (endpoint dedicado,
+// data URL base64) en vez de esperar al "Guardar" general: mismo patrón que el avatar de usuario.
+const logoFileInput = ref<HTMLInputElement | null>(null)
+const logoDragging = ref(false)
+const logoUploading = ref(false)
+const LOGO_MAX_BYTES = 5 * 1024 * 1024
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function uploadLogoFile(file: File) {
+  if (!file.type.startsWith('image/')) { toast.error('Solo se permiten imágenes'); return }
+  if (file.size > LOGO_MAX_BYTES) { toast.error('Máximo 5MB'); return }
+  logoUploading.value = true
+  try {
+    const dataUrl = await readFileAsDataUrl(file)
+    const result = await HotelService.uploadLogo(dataUrl, file.name)
+    form.value.logo = result.logo
+    markLogoClean()
+    toast.success('Logo actualizado')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo subir el logo')
+  } finally {
+    logoUploading.value = false
+  }
+}
+
+function onLogoFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''   // permite volver a elegir el mismo archivo si el usuario se arrepiente y reintenta
+  if (file) uploadLogoFile(file)
+}
+
+function onLogoDrop(e: DragEvent) {
+  logoDragging.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file) uploadLogoFile(file)
+}
+
 // Contactos de emergencia del hotel (feedback #414). Viven en configuration['contactos_emergencia'];
 // si el hotel no tiene los suyos, el backend cae al default global (hotelId='platform').
 const emergencyContacts = ref<HotelEmergencyContact[]>([])
@@ -983,6 +1042,22 @@ function snapshot(): string {
 function markClean() {
   savedSnapshot.value = snapshot()
 }
+
+/**
+ * El logo se sube y persiste SOLO (endpoint dedicado, no pasa por saveAll): un `markClean()` común
+ * marcaría como "guardado" cualquier otro campo del form que el usuario haya tocado sin apretar el
+ * botón "Guardar" general — perdería ese aviso sin haber guardado nada de eso en realidad. Acá se
+ * actualiza únicamente `form.logo` dentro de la foto base, dejando el resto del diff intacto.
+ */
+function markLogoClean() {
+  if (!savedSnapshot.value) return
+  try {
+    const baseline = JSON.parse(savedSnapshot.value)
+    baseline.form = { ...(baseline.form ?? {}), logo: form.value.logo }
+    savedSnapshot.value = JSON.stringify(baseline)
+  } catch { /* snapshot no parseable: no debería pasar, no rompe nada dejarlo como estaba */ }
+}
+
 const isDirty = computed(() => savedSnapshot.value !== '' && snapshot() !== savedSnapshot.value)
 
 onBeforeRouteLeave(() => {

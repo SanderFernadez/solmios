@@ -48,6 +48,11 @@ export const HotelService = {
     return http.put<any>('/settings/hotel', { id, ...patch })
   },
 
+  /** Sube el logo (data URL base64 — el backend no acepta multipart) y devuelve el hotel con la URL guardada. */
+  async uploadLogo(logo: string, fileName?: string): Promise<{ logo: string }> {
+    return http.post('/settings/logo', { logo, fileName })
+  },
+
   // Amenities
   async amenitiesCatalog(): Promise<AmenityCatalog> {
     return http.get<AmenityCatalog>('/amenities/catalog')
