@@ -3,6 +3,7 @@ import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-fram
 import { NotFoundError, AuthError } from 'arckode-framework'
 import { normalizePhone, looksLikePhone, toStoredPhone } from './usecases/normalize-phone'
 import { getProfile, updateProfile, type ProfilePatch } from './usecases/profile'
+import { verifyEmailToken, resendVerificationEmail, type VerifyOutcome } from './usecases/email-verification'
 import {
   auditSafely, roleChangeEntry, userDeleteEntry, type AuditPort, type Actor,
 } from './usecases/audit'
@@ -93,6 +94,25 @@ export class UsuariosService {
 
   async me(id: string): Promise<any> {
     return getProfile(this.repo, this.hotelRepo, id, this.configRepo)
+  }
+
+  // ─── Verificación de email (#421) ────────────────────────────────────────
+  /** Envío del correo de verificación + base pública del link. Lo inyecta el composition-root. */
+  private emailSender?: { enqueue: (i: { to: string; subject: string; html: string; hotelId: string; relatedType?: string }) => Promise<string> }
+  private appUrl = ''
+  setEmailVerificationDeps(sender: NonNullable<typeof this.emailSender>, appUrl: string): void {
+    this.emailSender = sender
+    this.appUrl = appUrl
+  }
+
+  /** Marca el email como verificado si el token es válido. Devuelve el motivo (para el mensaje). */
+  async verifyEmail(token: string): Promise<VerifyOutcome> {
+    return verifyEmailToken(this.repo, token)
+  }
+
+  /** Regenera el token y reenvía el correo al usuario del token. */
+  resendVerification(userId: string): Promise<{ sent: boolean }> {
+    return resendVerificationEmail(this.repo, this.emailSender, this.appUrl, userId)
   }
 
   async updateProfile(userId: string, data: ProfilePatch): Promise<any> {

@@ -51,7 +51,7 @@ describe('getProfile', () => {
     const p = await getProfile(repo, hotelRepo, 'rosa')
 
     expect(Object.keys(p).sort()).toEqual(
-      ['avatar', 'email', 'hotelId', 'hotelName', 'id', 'name', 'phone', 'role', 'rolePermissions', 'userType'],
+      ['avatar', 'email', 'emailVerified', 'hotelId', 'hotelName', 'id', 'name', 'phone', 'role', 'rolePermissions', 'userType'],
     )
   })
 

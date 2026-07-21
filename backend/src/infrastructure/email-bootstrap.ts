@@ -39,6 +39,17 @@ export function bootstrapEmail(orm: any, logger: Logger, resolveModule: <T>(name
     capacitacionForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Users'), process.env.PUBLIC_URL)
   }
 
+  // Verificación de email del alta (#421): el correo con el link va al registrarse, y el reenvío
+  // desde el banner del panel. PUBLIC_URL arma el link absoluto.
+  const subsForEmail = resolveModule<{ setEmailDeps(es: EmailSender, url?: string): void }>('subscriptions')
+  if (subsForEmail && typeof subsForEmail.setEmailDeps === 'function') {
+    subsForEmail.setEmailDeps(emailService, process.env.PUBLIC_URL)
+  }
+  const usuariosForEmail = resolveModule<{ setEmailVerificationDeps(es: EmailSender, url: string): void }>('usuarios')
+  if (usuariosForEmail && typeof usuariosForEmail.setEmailVerificationDeps === 'function') {
+    usuariosForEmail.setEmailVerificationDeps(emailService, process.env.PUBLIC_URL || '')
+  }
+
   const marketingSvc = resolveModule<{ setTriggerDeps(deps: any): void }>('marketing')
   if (marketingSvc && typeof marketingSvc.setTriggerDeps === 'function') {
     marketingSvc.setTriggerDeps({

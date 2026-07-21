@@ -71,6 +71,9 @@ export async function getProfile(
     hotelId: u.hotelId,
     hotelName,
     rolePermissions,
+    // Estado de verificación de email (#421). Solo el booleano — nunca el token.
+    // El frontend muestra el banner de "verificá tu email" cuando es false.
+    emailVerified: !!u.emailVerifiedAt,
   }
 }
 

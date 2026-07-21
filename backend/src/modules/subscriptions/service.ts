@@ -27,6 +27,11 @@ export class SubscriptionsService {
     this.onboardingUc = new OnboardingUseCase({ roomsRepo, usersRepo, ratesRepo, hotelsRepo, channelsRepo })
   }
 
+  /** Cablea el correo de verificación del alta (#421). Lo llama el bootstrap de email. */
+  setEmailDeps(sender: any, appUrl?: string): void {
+    this.signupUc.setEmailDeps(sender, appUrl || '')
+  }
+
   signup(input: SignupInput): Promise<SignupResult> {
     return this.signupUc.signup(input)
   }

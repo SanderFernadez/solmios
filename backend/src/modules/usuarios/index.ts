@@ -70,6 +70,19 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       // Cambia la contraseña del `req.user.id` del token y exige la actual:
       // `users:edit` es el permiso para editar a OTROS, no a uno mismo.
       router.post('/api/auth/change-password', [auth.authenticate()], (req) => controller.changePassword(req))
+
+      // Verificación de email (#421). El GET es público (llega desde el link del correo) con
+      // rate-limit por IP; el reenvío es autenticado y limitado para no ser un cañón de spam.
+      router.get('/api/public/verify-email', (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`verify-email:${getClientIp(req)}`)
+        if (!allowed) return { status: 429, body: { error: `Demasiados intentos. Probá en ${retryAfter}s` } }
+        return controller.verifyEmail(req)
+      })
+      router.post('/api/auth/resend-verification', [auth.authenticate()], (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`resend-verif:${(req.user as any)?.id || getClientIp(req)}`)
+        if (!allowed) return { status: 429, body: { error: `Demasiados reenvíos. Probá en ${retryAfter}s` } }
+        return controller.resendVerification(req)
+      })
       // forgot-password SIEMPRE responde 200 con el mismo mensaje genérico exista o no
       // el email (anti-enumeración, ver controller.forgotPassword). Por eso NO se resetea
       // el contador nunca acá: si se reseteara en cada respuesta "exitosa" (que es

@@ -10,6 +10,7 @@ import { ValidationError } from 'arckode-framework'
 import type { RepositoryAdapter } from 'arckode-framework'
 import { passwordIssues } from '../../../shared/password-policy'
 import { isValidEmail } from '../../../shared/email'
+import { newVerificationToken, verificationEmail } from '../../usuarios/usecases/email-verification'
 import { DEFAULT_ROLE_PERMISSIONS } from '../../../shared/permissions'
 
 /** Días de prueba gratis. Es la promesa de la landing: si cambia, cambia acá. */
@@ -44,10 +45,21 @@ export interface SignupDeps {
   rolesRepo: RepositoryAdapter<any>
   subscriptionsRepo: RepositoryAdapter<any>
   hashPassword: (plain: string) => Promise<string>
+  /** Envío del correo de verificación (#421). Opcional y best-effort: si falta o falla, el alta
+   *  igual funciona — no se pierde el hotel porque el SMTP esté caído. */
+  emailSender?: { enqueue: (input: { to: string; subject: string; html: string; hotelId: string; relatedType?: string }) => Promise<string> }
+  /** Base pública para armar el link de verificación (ej. https://hotel.zx89.site). */
+  appUrl?: string
 }
 
 export class SignupUseCase {
   constructor(private readonly deps: SignupDeps) {}
+
+  /** Inyecta el envío del correo de verificación (best-effort). Lo cablea el composition-root. */
+  setEmailDeps(sender: SignupDeps['emailSender'], appUrl: string): void {
+    this.deps.emailSender = sender
+    this.deps.appUrl = appUrl
+  }
 
   async signup(input: SignupInput, now: Date = new Date()): Promise<SignupResult> {
     const email = String(input.email ?? '').trim().toLowerCase()
@@ -104,6 +116,8 @@ export class SignupUseCase {
     })
 
     const userId = crypto.randomUUID()
+    // Verificación de email (#421): el token va hasheado en la BD; el claro viaja en el link.
+    const verification = newVerificationToken()
     await this.deps.usersRepo.create({
       id: userId,
       hotelId,
@@ -113,6 +127,8 @@ export class SignupUseCase {
       role: 'hotel_admin',
       userType: 'merchant',
       active: 1,
+      emailVerificationToken: verification.tokenHash,
+      emailVerificationExpires: verification.expires,
     })
 
     await this.createDefaultRoles(hotelId)
@@ -124,6 +140,17 @@ export class SignupUseCase {
       status: 'trialing',
       trialEndsAt: trialEnds.toISOString(),
     })
+
+    // Encolar el correo de verificación. BEST-EFFORT: un fallo acá NO tumba el alta (el hotel ya
+    // está creado y entra igual; puede reenviar el correo desde el banner del panel).
+    if (this.deps.emailSender) {
+      try {
+        const base = (this.deps.appUrl || '').replace(/\/$/, '')
+        const link = `${base}/api/public/verify-email?token=${verification.token}`
+        const mail = verificationEmail(link, hotelName)
+        await this.deps.emailSender.enqueue({ to: email, subject: mail.subject, html: mail.html, hotelId, relatedType: 'email_verification' })
+      } catch { /* SMTP caído no puede perder el hotel */ }
+    }
 
     return {
       hotelId,

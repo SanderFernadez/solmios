@@ -31,6 +31,20 @@ export class UsuariosController {
     return { status: 200, body: user }
   }
 
+  /** GET público: verifica el email y redirige a la página del panel con el resultado (#421). */
+  async verifyEmail(req: HttpRequest) {
+    const token = String((req.query as any)?.token ?? '')
+    const outcome = await this.service.verifyEmail(token)
+    // Redirige al front con el estado; nunca revela si un email existe (solo el motivo del token).
+    return { status: 302, headers: { Location: `/verificar-email?status=${outcome}` }, body: '' }
+  }
+
+  /** POST autenticado: reenvía el correo de verificación al usuario del token. */
+  async resendVerification(req: HttpRequest) {
+    const r = await this.service.resendVerification((req.user as any).id)
+    return { status: 200, body: r }
+  }
+
   /** Edita el perfil propio. Siempre el del token: no recibe un id. */
   async updateMe(req: HttpRequest) {
     const data = validateSchema(UpdateProfileSchema, req.body) as any

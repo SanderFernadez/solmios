@@ -16,6 +16,11 @@ export const UsuariosModel: ModelDefinition = {
     token: { type: 'string' },
     resetToken: { type: 'string', indexed: true },
     resetExpires: { type: 'number' },
+    // Verificación de email (#421). Se guarda el HASH del token (no el claro): un dump de `users`
+    // no debe regalar accesos. emailVerifiedAt null = todavía sin verificar (solo avisa, no bloquea).
+    emailVerifiedAt: { type: 'string' },
+    emailVerificationToken: { type: 'string', indexed: true },
+    emailVerificationExpires: { type: 'number' },
     avatar: { type: 'string' },
     phone: { type: 'string' },
     // PIN auth para staff móvil (6 dígitos, bcrypt hash)
