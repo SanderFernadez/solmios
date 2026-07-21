@@ -2,7 +2,7 @@
 // Entry point. SOLO: config, infra, módulos, conectores, start/stop.
 
 import {
-  System, ConfigStore, Logger, Router, MemoryCache, ORM, Container, NodeServer,
+  System, ConfigStore, Logger, Router, MemoryCache, ORM, Container, NodeServer, OrmRepository,
 } from 'arckode-framework'
 import { cors, rateLimit, requestLogger, bodyLimit, timeout, compression } from 'arckode-framework/middlewares'
 import { securityHeaders } from './shared/middlewares/security-headers'
@@ -18,6 +18,8 @@ import { createPushAvailability } from './shared/utils/push-availability'
 import { createNoShowCron } from './modules/reports/usecases/no-show-cron'
 import { createAutoMessagesCron } from './modules/marketing/usecases/auto-messages-cron'
 import { createNightAuditCron } from './shared/usecases/night-audit-cron'
+import { createEvidenceRetentionCron } from './shared/usecases/evidence-retention-cron'
+import { HousekeepingSettingsUseCase } from './modules/housekeeping/usecases/settings'
 import { reservasPaymentRequestsConnector } from './connectors/reservas-payment-requests'
 
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -144,7 +146,7 @@ const mods = [
   PaymentGatewaysModule(),
   UsuariosModule({ storage }), HabitacionesModule(), ReservasModule(), HuespedesModule(),
   FacturasModule(), HousekeepingModule({ storage, videoStorage: s3Adapter }), MantenimientoModule({ storage }), PaquetesModule(),
-  GruposModule(), HotelesModule(), RolesModule(), DispositivosModule(),
+  GruposModule(), HotelesModule({ storage }), RolesModule(), DispositivosModule(),
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),
   CanalesModule(), OpinionesModule(), GastosModule(), FoliosModule(), PaymentsModule(),
   EmpleadosModule({ storage }), PayrollModule(), AttendanceModule(), ActivosModule(), CapacitacionModule(), CrmModule(), MarketingModule(),
@@ -377,6 +379,20 @@ if (autoMsgTrigger) {
   setInterval(() => { autoMsgCron().catch((e) => logger.warn('auto-messages cron failed', { error: (e as Error).message })) }, AUTO_MESSAGES_TICK_MS)
   logger.info('Auto-messages cron listo', { tickMs: AUTO_MESSAGES_TICK_MS })
 }
+
+// Retención de evidencias multimedia (#326): borra fotos/video de limpieza pasados los N días
+// configurados por hotel (default 35), avisando antes al admin. Solo el archivo — la tarea queda.
+const evidenceSettings = new HousekeepingSettingsUseCase(new OrmRepository(orm, 'Configuration'))
+const evidenceRetentionCron = createEvidenceRetentionCron(
+  orm,
+  (name) => system.resolveModule(name),
+  s3Adapter,
+  (hotelId) => evidenceSettings.get(hotelId).then((s) => s.evidenceRetentionDays),
+  logger,
+)
+setInterval(() => {
+  evidenceRetentionCron().catch((e) => logger.warn('evidence-retention cron failed', { error: (e as Error).message }))
+}, ONE_DAY_MS)
 
 const NIGHT_AUDIT_TICK_MS = 60_000 * 60 * 3 // cada 3h (postea si hay nuevas reservas in-house)
 const nightAuditCron = createNightAuditCron(orm, (name) => system.resolveModule(name), logger)

@@ -89,6 +89,9 @@ export const UpdateHousekeepingSettingsSchema: Record<string, ValidationRule> = 
   // no la afecta. El usecase normaliza cualquier valor raro al default.
   completionEvidence: { type: 'string' as const, enum: ['photos', 'video'] },
   maxVideoSeconds: { type: 'number' as const },
+  // Retención de evidencias multimedia en días (#326). 0 = conservar para siempre. El usecase
+  // topea el máximo y normaliza cualquier valor raro.
+  evidenceRetentionDays: { type: 'number' as const, min: 0 },
 }
 
 /** Pedido de URL prefirmada para subir el video directo al bucket. */

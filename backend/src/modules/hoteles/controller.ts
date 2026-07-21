@@ -5,15 +5,18 @@
 
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
+import type { StorageService } from 'arckode-framework/modules/storage'
 import type { HotelesService } from './service'
 import type { HotelesQueries } from './usecases/hoteles-queries'
 import { CreateHotelesSchema, UpdateHotelesSchema, SetConfigSchema } from './validators/schema'
+import { parseDataUrl, isImage } from '../../shared/utils/data-url'
 
 export class HotelesController {
   constructor(
     private readonly service: HotelesService,
     private readonly logger: Logger,
     private readonly queries?: HotelesQueries,
+    private readonly storage?: StorageService,
   ) {}
 
   async index(req: HttpRequest) {
@@ -72,6 +75,32 @@ export class HotelesController {
     const id = await this.resolveHotel(req); if (!id) return { status: 404, body: { error: 'Sin hotel' } }
     const result = await this.service.getSettingsFull(id, req.user as any)
     return { status: 200, body: result }
+  }
+
+  /** Sube el logo del hotel y lo deja guardado — mismo patrón que uploadAvatar (usuarios/controller.ts). */
+  async uploadLogo(req: HttpRequest) {
+    if (!this.storage) return { status: 500, body: { error: 'Storage no configurado' } }
+    const id = await this.resolveHotel(req)
+    if (!id) return { status: 404, body: { error: 'Sin hotel' } }
+
+    const body = (req.body ?? {}) as { logo?: string; fileName?: string }
+    if (!body.logo) return { status: 400, body: { error: 'Falta el campo logo (data URL base64)' } }
+    const parsed = parseDataUrl(body.logo)
+    if (!parsed) return { status: 400, body: { error: 'Formato inválido (se espera data URL base64)' } }
+    if (!isImage(parsed.mimeType)) return { status: 400, body: { error: 'Solo se permiten imágenes' } }
+
+    const stored = await this.storage.upload(
+      {
+        fieldName: 'file',
+        originalName: body.fileName || `logo-${id}.${parsed.ext}`,
+        buffer: parsed.buffer,
+        mimeType: parsed.mimeType,
+        size: parsed.buffer.length,
+      },
+      'hotel-logos',
+    )
+    const hotel = await this.service.updateHotel(id, { logo: stored.url } as any, req.user as any)
+    return { status: 201, body: hotel }
   }
 
   // ── Configuration KV ────────────────────────────────────────────────

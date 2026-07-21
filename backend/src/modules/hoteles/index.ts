@@ -3,6 +3,8 @@
 // ⚠ REGLA: Append-only. No sacar ni modificar exports existentes.
 
 import { createModule, OrmRepository } from 'arckode-framework'
+import { bodyLimit } from 'arckode-framework/middlewares'
+import type { StorageService } from 'arckode-framework/modules/storage'
 import { registerHotelesModels } from './model'
 import { HotelesService } from './service'
 import { HotelesController } from './controller'
@@ -11,13 +13,15 @@ import { HotelesQueries } from './usecases/hoteles-queries'
 import type { HotelesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
+const LOGO_UPLOAD_LIMIT = 5 * 1024 * 1024
+
 export { HotelesService }
 export { SettingsFullUseCase }
 export type { HotelesDTO, CreateHotelesDTO, UpdateHotelesDTO, HotelesQuery, HotelesPaginated } from './types'
 export type { HotelesSockets } from './sockets'
 export { HotelesValidator, CreateHotelesSchema, UpdateHotelesSchema } from './validators/schema'
 
-export function HotelesModule() {
+export function HotelesModule(opts: { storage?: StorageService } = {}) {
   return createModule({
     name: 'hoteles',
     version: '2.0.0',
@@ -43,7 +47,7 @@ export function HotelesModule() {
       const settingsFull = new SettingsFullUseCase(orm)
       const queries = new HotelesQueries(orm)
       const service = new HotelesService(repo, log, cache, auth, settingsFull, queries)
-      const controller = new HotelesController(service, log, queries)
+      const controller = new HotelesController(service, log, queries, opts.storage)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const guard = createPermissionGuard(auth, roleRepo)
@@ -61,6 +65,9 @@ export function HotelesModule() {
       router.get('/api/settings', guard('settings', 'view'), (req) => controller.getSettings(req))
       router.put('/api/settings/hotel', guard('settings', 'edit'), (req) => controller.updateHotel(req))
       router.get('/api/settings/full', guard('settings', 'view'), (req) => controller.getSettingsFull(req))
+      // Logo del hotel: mismo patrón que /api/auth/avatar — data URL base64 en JSON (el router no
+      // propaga multipart), sube a StorageService y guarda la URL devuelta en hotels.logo.
+      router.post('/api/settings/logo', [...guard('settings', 'edit'), bodyLimit(LOGO_UPLOAD_LIMIT)], (req) => controller.uploadLogo(req))
       router.get('/api/configuracion/:key', guard('settings', 'view'), (req) => controller.getConfig(req))
       router.post('/api/configuracion', guard('settings', 'edit'), (req) => controller.setConfig(req))
 

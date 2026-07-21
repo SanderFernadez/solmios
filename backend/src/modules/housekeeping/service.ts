@@ -13,7 +13,7 @@ import { PhotosUseCase } from './usecases/photos'
 import { StatsUseCase } from './usecases/stats'
 import { ApproveUseCase } from './usecases/approve'
 import { ConfigListsUseCase } from './usecases/config-lists'
-import { HousekeepingSettingsUseCase, type HousekeepingSettings, DEFAULT_MAX_VIDEO_SECONDS } from './usecases/settings'
+import { HousekeepingSettingsUseCase, type HousekeepingSettings, DEFAULT_MAX_VIDEO_SECONDS, DEFAULT_EVIDENCE_RETENTION_DAYS } from './usecases/settings'
 import { getRoomLockCode } from './usecases/lock-code'
 import { VideoUseCase, type VideoUploadTicket } from './usecases/video'
 import { VideoTranscoder } from './usecases/transcode'
@@ -25,9 +25,8 @@ const CACHE_TTL = 300
 
 /** Sin `configRepo` no hay settings del hotel: se responde el default de fábrica. */
 const FALLBACK_SETTINGS: HousekeepingSettings = {
-  requireSupervisorPhoto: false,
-  completionEvidence: 'photos',
-  maxVideoSeconds: DEFAULT_MAX_VIDEO_SECONDS,
+  requireSupervisorPhoto: false, completionEvidence: 'photos',
+  maxVideoSeconds: DEFAULT_MAX_VIDEO_SECONDS, evidenceRetentionDays: DEFAULT_EVIDENCE_RETENTION_DAYS,
 }
 
 export class HousekeepingService {
