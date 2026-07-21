@@ -1,7 +1,13 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import { hotelIdOfUserLegacy } from '../../shared/usecases/hotel-of-legacy'
+import { composeSockets } from '../../shared/usecases/compose-sockets'
+import type { AmenitiesSockets } from './sockets'
 
 export class AmenitiesService {
+  private sockets: AmenitiesSockets = {}
+  /** onRoomAmenitiesUpdated → sync CSV Rooms.amenities (connector amenities-habitaciones). */
+  setSockets(s: Partial<AmenitiesSockets>): void { composeSockets(this.sockets as any, s as any) }
+
   constructor(
     private readonly hotelAmenitiesRepo: RepositoryAdapter<any>,
     private readonly roomAmenitiesRepo: RepositoryAdapter<any>,
@@ -63,6 +69,8 @@ export class AmenitiesService {
       const found = existing.find((e: any) => e.amenityKey === key)
       if (found) { await this.roomAmenitiesRepo.update(found.id, { isActive: 1 }) } else { await this.roomAmenitiesRepo.create({ id: crypto.randomUUID(), roomId, amenityKey: key, isShared: 0, isActive: 1 }) }
     }
+    // Mantiene en sync el CSV vestigial Rooms.amenities (connector amenities-habitaciones).
+    await this.sockets.onRoomAmenitiesUpdated?.(roomId, amenities)
     return amenities.length
   }
 }

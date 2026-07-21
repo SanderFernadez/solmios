@@ -176,6 +176,7 @@ import { reservasDepositsConnector } from './connectors/reservas-deposits'
 import { pricingCanalesConnector } from './connectors/pricing-canales'
 import { reclutamientoEmpleadosConnector } from './connectors/reclutamiento-empleados'
 import { capacitacionEmpleadosConnector } from './connectors/capacitacion-empleados'
+import { amenitiesHabitacionesConnector } from './connectors/amenities-habitaciones'
 import { paymentsCajaConnector } from './connectors/payments-caja'
 import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-payments'
 import { paymentRequestsTtlockConnector } from './connectors/payment-requests-ttlock'
@@ -260,6 +261,9 @@ system.addConnector('pricing-canales', pricingCanalesConnector)
 system.addConnector('reclutamiento-empleados', reclutamientoEmpleadosConnector(orm))
 // Curso completado → documento en el expediente del empleado (sin scoring). Cierra capacitacion→empleados.
 system.addConnector('capacitacion-empleados', capacitacionEmpleadosConnector)
+// Elimina la dualidad de amenities: al reasignar RoomAmenities (fuente de verdad) se sincroniza el
+// CSV vestigial Rooms.amenities que leen ai-recepcionista y bookingengine/availability. No destructivo.
+system.addConnector('amenities-habitaciones', amenitiesHabitacionesConnector(orm))
 system.addConnector('payments-caja', paymentsCajaConnector)
 // Un gasto en efectivo saca plata del cajón: sin esto el arqueo del turno no lo ve.
 system.addConnector('gastos-caja', gastosCajaConnector)

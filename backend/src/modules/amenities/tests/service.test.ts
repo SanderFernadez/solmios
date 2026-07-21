@@ -61,4 +61,17 @@ describe('AmenitiesService', () => {
       expect(result[0].amenityKey).toBe('ac')
     })
   })
+
+  describe('updateRoomAmenities → onRoomAmenitiesUpdated (sync CSV)', () => {
+    it('emite onRoomAmenitiesUpdated con las keys asignadas', async () => {
+      const orm = makeOrm({ findMany: async () => [] })  // sin existentes → todas se crean
+      const svc = new AmenitiesService(makeRepo(orm, 'HotelAmenities'), makeRepo(orm, 'RoomAmenities'), log)
+      let payload: { roomId: string; keys: string[] } | null = null
+      svc.setSockets({ onRoomAmenitiesUpdated: async (roomId, keys) => { payload = { roomId, keys } } })
+      await svc.updateRoomAmenities('rm1', ['wifi', 'pool', 'tv'])
+      expect(payload).not.toBeNull()
+      expect(payload!.roomId).toBe('rm1')
+      expect(payload!.keys).toEqual(['wifi', 'pool', 'tv'])
+    })
+  })
 })
