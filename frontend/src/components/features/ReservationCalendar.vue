@@ -691,6 +691,16 @@
       @edit="onEditFromPlanning"
     />
 
+    <!-- Wizard de crear/editar reserva — modal in-place, sin navegar del Calendario -->
+    <ReservationWizardModal
+      v-if="wizardOpen"
+      :edit-id="wizardEditId"
+      :prefill="wizardPrefill"
+      :rooms="planRooms"
+      @close="wizardOpen = false"
+      @saved="onWizardSaved"
+    />
+
     <!-- Cerradura por habitación (Fase A) -->
     <RoomLockModal
       :room-id="lockRoom?.id ?? null"
@@ -758,6 +768,7 @@ import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import ReservationModal from '@/components/features/ReservationModal.vue'
+import ReservationWizardModal from '@/components/features/ReservationWizardModal.vue'
 import RoomLockModal from '@/components/features/RoomLockModal.vue'
 import ChannelIcon from '@/components/ui/ChannelIcon.vue'
 import Icon from '@/components/ui/Icon.vue'
@@ -859,6 +870,11 @@ const popup = ref<{ show: boolean; x: number; y: number; room: any; fromDate: st
 const blockDlg = ref<{ show: boolean; room: string; from: string; to: string; reason: string; customReason: string; rid: string }>({ show: false, room: '', from: '', to: '', reason: '', customReason: '', rid: '' })
 const unblock = ref<{ show: boolean; id: string; room: string; reason: string; from: string; to: string }>({ show: false, id: '', room: '', reason: '', from: '', to: '' })
 const detailId = ref<string | null>(null)
+// Wizard de crear/editar reserva — modal in-place (mismo componente que /panel/reservas,
+// sin navegar a otra página). `wizardEditId` null = crear; seteado = editar esa reserva.
+const wizardOpen = ref(false)
+const wizardEditId = ref<string | null>(null)
+const wizardPrefill = ref<{ roomId?: string; checkIn?: string; checkOut?: string }>({})
 const quote = ref<{ show: boolean; id: string; today: string; hotel: string; hotelAddress: string; hotelPhone: string; hotelEmail: string; rooms: { type: string; qty: number; price: number }[]; checkIn: string; checkOut: string; nights: number; guest: string; email: string; phone: string; adults: number; kids: number; taxName: string; taxRate: number; notes: string }>({ show: false, id: '', today: '', hotel: '', hotelAddress: '', hotelPhone: '', hotelEmail: '', rooms: [{ type: 'Standard', qty: 1, price: 100 }], checkIn: '', checkOut: '', nights: 0, guest: '', email: '', phone: '', adults: 1, kids: 0, taxName: 'ITBIS', taxRate: 18, notes: '' })
 // Noches de la cotización: se calculan de check-in/check-out (ahora editables en el modal).
 // Antes era un valor fijo tomado del rango inicial y NO reaccionaba al cambiar las fechas,
@@ -1235,7 +1251,20 @@ function viewResDetail(rb: any) {
 
 function onEditFromPlanning(d: { id: string }) {
   detailId.value = null
-  router.push({ path: '/panel/reservas', query: { edit: d.id } })
+  wizardPrefill.value = {}
+  wizardEditId.value = d.id
+  wizardOpen.value = true
+}
+
+/** Recarga el planning tras crear/editar una reserva desde el wizard (sin salir de la página). */
+async function onWizardSaved() {
+  wizardOpen.value = false
+  try {
+    const d = await OperationsService.planning(hid.value)
+    planRooms.value = d.rooms ?? []
+    planReservas.value = d.reservas ?? []
+  } catch { /* recarga best-effort */ }
+  emit('changed')
 }
 
 /** Context menu (right-click) sobre una reserva existente */
@@ -1417,8 +1446,9 @@ async function popupCancel() {
     emit('changed')
   } catch { toast.error('Error') }
 }
-// Crear reserva: delega en el wizard de 5 pasos de /panel/reservas (mismo patrón que
-// onEditFromPlanning ya usaba para editar) — evita duplicar el formulario y sus validaciones.
+// Crear reserva: abre el mismo wizard de 5 pasos de /panel/reservas como modal in-place
+// (ReservationWizardModal) — evita duplicar el formulario y sus validaciones, sin navegar
+// fuera del Calendario.
 function popupNewRes() {
   const p = popup.value
   lastSel.value = null
@@ -1426,7 +1456,9 @@ function popupNewRes() {
   // siguiente. Así N celdas resaltadas = N noches y la barra cubre las celdas exactas (C1).
   const cout = addDaysStr(p.toDate, 1)
   popup.value.show = false
-  router.push({ path: '/panel/reservas', query: { newRoomId: p.room?.id, newCheckIn: p.fromDate, newCheckOut: cout } })
+  wizardEditId.value = null
+  wizardPrefill.value = { roomId: p.room?.id, checkIn: p.fromDate, checkOut: cout }
+  wizardOpen.value = true
 }
 function popupQuote() {
   const p = popup.value
