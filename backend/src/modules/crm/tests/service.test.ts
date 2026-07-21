@@ -35,7 +35,7 @@ describe('CrmService', () => {
     it('rechaza si puntos insuficientes', async () => {
       const guestMock = makeRepo({ findById: async () => ({ id: 'g1', loyaltyPoints: 10 }) })
       const svc = new CrmService(makeRepo(), makeRepo(), makeRepo(), guestMock, makeRepo(), log, silentCache)
-      await expect(svc.redeemPoints('g1', 'h1', 100, 'Canje')).rejects.toThrow('Insufficient')
+      await expect(svc.redeemPoints('g1', 'h1', 100, 'Canje')).rejects.toThrow('insuficientes')
     })
   })
 

@@ -326,6 +326,51 @@
       </template>
     </AppModal>
 
+    <!-- Modal: Huéspedes del segmento -->
+    <AppModal v-if="openSegment" size="lg" :title="openSegment.name" subtitle="Huéspedes que caen en este segmento hoy" body-class="p-0" @close="openSegment = null">
+      <div v-if="loadingGuests" class="space-y-2 p-4">
+        <div v-for="i in 4" :key="i" class="h-10 animate-pulse rounded-lg bg-surface"></div>
+      </div>
+      <EmptyState v-else-if="!segmentGuests.length" :icon="ICON_TARGET_EMPTY"
+        title="Sin huéspedes en este segmento"
+        message="Nadie cumple hoy las reglas de tier/estadías que definiste." />
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[560px] text-sm tbl-head">
+          <thead>
+            <tr>
+              <th class="text-left px-4 py-3 text-[10px]">Huésped</th>
+              <th class="text-left px-4 py-3 text-[10px]">Tier</th>
+              <th class="text-right px-4 py-3 text-[10px]">Estancias</th>
+              <th class="text-right px-4 py-3 text-[10px]">Gastado</th>
+              <th class="text-right px-4 py-3 text-[10px]">Puntos</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="g in segmentGuests" :key="g.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  <div class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy/10 text-[10px] font-black text-navy">{{ initialsOf(g.name) }}</div>
+                  <div class="min-w-0">
+                    <div class="font-bold text-navy whitespace-nowrap">{{ g.name }}</div>
+                    <div v-if="g.email" class="text-[11px] text-text-muted truncate">{{ g.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3"><span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase" :class="tierBadge(g.tier)">{{ g.tier }}</span></td>
+              <td class="px-4 py-3 text-right tabular-nums text-text-secondary">{{ g.totalStays }}</td>
+              <td class="px-4 py-3 text-right font-bold tabular-nums text-navy">${{ g.totalSpent.toLocaleString() }}</td>
+              <td class="px-4 py-3 text-right">
+                <span class="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-gold">{{ g.loyaltyPoints }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <template #footer>
+        <button @click="openSegment = null" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cerrar</button>
+      </template>
+    </AppModal>
+
     <!-- Confirmación de borrado (reemplaza el confirm() nativo) -->
     <ConfirmModal v-if="confirmModal" :title="confirmModal.title" :message="confirmModal.message"
       :confirm-label="confirmModal.confirmLabel" :danger="confirmModal.danger" :loading="confirmBusy"

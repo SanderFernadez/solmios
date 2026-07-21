@@ -287,11 +287,17 @@
 
           <!-- Movimientos de puntos -->
           <section class="overflow-hidden rounded-2xl border border-border">
-            <header class="flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5">
-              <span class="grid h-6 w-6 place-items-center rounded-lg bg-gold/10 text-gold">
-                <span class="h-3.5 w-3.5" v-html="UI_ICON.coins"></span>
-              </span>
-              <h4 class="text-[11px] font-black uppercase tracking-wide text-navy">Movimientos de puntos</h4>
+            <header class="flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2.5">
+              <div class="flex items-center gap-2">
+                <span class="grid h-6 w-6 place-items-center rounded-lg bg-gold/10 text-gold">
+                  <span class="h-3.5 w-3.5" v-html="UI_ICON.coins"></span>
+                </span>
+                <h4 class="text-[11px] font-black uppercase tracking-wide text-navy">Movimientos de puntos</h4>
+              </div>
+              <button v-if="(viewGuest.points ?? 0) > 0" @click="openRedeemModal"
+                class="text-[11px] font-bold text-cyan hover:text-navy transition-colors cursor-pointer">
+                Canjear →
+              </button>
             </header>
 
             <div v-if="viewGuest.loadingDetail" class="space-y-3 p-4">
@@ -322,6 +328,30 @@
           class="inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">
           <span class="h-4 w-4" v-html="UI_ICON.pencil"></span>
           Editar perfil
+        </button>
+      </template>
+    </AppModal>
+
+    <!-- Canjear puntos -->
+    <AppModal v-if="showRedeemModal" size="sm" title="Canjear puntos"
+      :subtitle="`Saldo disponible: ${(viewGuest?.points ?? 0).toLocaleString()} puntos`" @close="showRedeemModal = false">
+      <div class="space-y-4">
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Puntos a canjear</label>
+          <input v-model.number="redeemForm.points" type="number" min="1" :max="viewGuest?.points ?? 0"
+            class="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-bold text-navy tabular-nums focus:border-navy focus:outline-none">
+        </div>
+        <div>
+          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Motivo</label>
+          <input v-model="redeemForm.description" placeholder="Ej: Descuento en factura #1024"
+            class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:border-navy">
+        </div>
+      </div>
+      <template #footer>
+        <button @click="showRedeemModal = false" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="redeemPoints" :disabled="redeeming"
+          class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
+          {{ redeeming ? 'Canjeando…' : 'Canjear' }}
         </button>
       </template>
     </AppModal>
@@ -528,6 +558,7 @@ import { ReservationService } from '@/services/Reservation.service'
 import { CrmService } from '@/services/Crm.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { useApiError } from '@/composables/useApiError'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -538,6 +569,7 @@ import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
 
 const auth = useAuthStore()
 const toast = useToast()
+const { handle } = useApiError()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
@@ -975,6 +1007,41 @@ async function openViewGuest(guest: any) {
 function closeViewModal() {
   showViewModal.value = false
   viewGuest.value = null
+}
+
+const showRedeemModal = ref(false)
+const redeemForm = ref({ points: 0, description: '' })
+const redeeming = ref(false)
+
+function openRedeemModal() {
+  redeemForm.value = { points: 0, description: '' }
+  showRedeemModal.value = true
+}
+
+async function redeemPoints() {
+  if (!viewGuest.value) return
+  const points = Number(redeemForm.value.points) || 0
+  if (points <= 0) { toast.warning('Ingresá una cantidad de puntos válida'); return }
+  redeeming.value = true
+  try {
+    await CrmService.redeemPoints(viewGuest.value.id, points, redeemForm.value.description || 'Canje manual')
+    toast.success('Puntos canjeados')
+    showRedeemModal.value = false
+    const [pointsHistory, balance] = await Promise.all([
+      CrmService.getPointsHistory(viewGuest.value.id).catch(() => viewGuest.value!.pointsHistory ?? []),
+      CrmService.getPointsBalance(viewGuest.value.id).catch(() => null),
+    ])
+    viewGuest.value = {
+      ...viewGuest.value,
+      pointsHistory: [...pointsHistory].sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, DETAIL_HISTORY_LIMIT),
+      points: balance ? balance.balance : viewGuest.value.points,
+    }
+    await loadGuests()
+  } catch (e) {
+    handle(e, 'No se pudieron canjear los puntos')
+  } finally {
+    redeeming.value = false
+  }
 }
 
 function openNewGuest() {

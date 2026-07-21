@@ -102,7 +102,7 @@ export class CrmService {
     if (points <= 0) throw new ValidationError('Los puntos a canjear deben ser positivos')
 
     const available = Number(guest.loyaltyPoints ?? 0)
-    if (available < points) throw new ValidationError(`Insufficient points. Available: ${available}`)
+    if (available < points) throw new ValidationError(`Puntos insuficientes. Disponibles: ${available}`)
 
     const txn = await this.loyaltyRepo.create({ guestId, hotelId, type: 'redeem', points: -points, description } as any)
     await this.guestRepo.update(guestId, { loyaltyPoints: applyPoints(available, -points) } as any)
