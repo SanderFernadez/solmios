@@ -392,7 +392,8 @@
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Nombre Completo <span class="text-red-500">*</span></label>
-                  <input v-model="form.name" type="text" placeholder="Nombre y apellido" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.name" type="text" placeholder="Nombre y apellido" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('name')" data-field="name" @blur="touchField('name')" />
+                  <p v-if="errorOf('name')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('name') }}</p>
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Nacionalidad</label>
@@ -402,17 +403,20 @@
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Email <span class="text-red-500">*</span></label>
-                  <input v-model="form.email" type="email" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.email" type="email" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('email')" data-field="email" @blur="touchField('email')" />
+                  <p v-if="errorOf('email')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('email') }}</p>
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Teléfono</label>
-                  <input v-model="form.phone" type="tel" placeholder="+1 809-555-0101" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.phone" type="tel" placeholder="+1 809-555-0101" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('phone')" data-field="phone" @blur="touchField('phone')" />
+                  <p v-if="errorOf('phone')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('phone') }}</p>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Documento</label>
-                  <input v-model="form.document" type="text" placeholder="Pasaporte o ID" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.document" type="text" placeholder="Pasaporte o ID" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('document')" data-field="document" @blur="touchField('document')" />
+                  <p v-if="errorOf('document')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('document') }}</p>
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Tipo Documento</label>
@@ -452,21 +456,25 @@
               <div class="grid grid-cols-3 gap-4">
                 <div class="col-span-2">
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Dirección</label>
-                  <input v-model="form.address" type="text" placeholder="Calle, número..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.address" type="text" placeholder="Calle, número..." class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('address')" data-field="address" @blur="touchField('address')" />
+                  <p v-if="errorOf('address')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('address') }}</p>
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Ciudad</label>
-                  <input v-model="form.city" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.city" type="text" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('city')" data-field="city" @blur="touchField('city')" />
+                  <p v-if="errorOf('city')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('city') }}</p>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Provincia</label>
-                  <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('province')" data-field="province" @blur="touchField('province')" />
+                  <p v-if="errorOf('province')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('province') }}</p>
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Profesión</label>
-                  <input v-model="form.profession" type="text" placeholder="Médico, ingeniero..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model="form.profession" type="text" placeholder="Médico, ingeniero..." class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('profession')" data-field="profession" @blur="touchField('profession')" />
+                  <p v-if="errorOf('profession')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('profession') }}</p>
                 </div>
               </div>
               <div>
@@ -493,7 +501,8 @@
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Puntos de Fidelización</label>
-                  <input v-model.number="form.loyaltyPoints" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input v-model.number="form.loyaltyPoints" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('loyaltyPoints')" data-field="loyaltyPoints" @blur="touchField('loyaltyPoints')" />
+                  <p v-if="errorOf('loyaltyPoints')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('loyaltyPoints') }}</p>
                 </div>
               </div>
               <div>
@@ -552,7 +561,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { validateField, validateAll, type FieldRule } from '@/composables/useFieldValidation'
 import { GuestService } from '@/services/Guest.service'
 import { ReservationService } from '@/services/Reservation.service'
 import { CrmService } from '@/services/Crm.service'
@@ -629,8 +639,9 @@ const FORM_STEPS = [
 ]
 
 function nextFormStep() {
-  if (formStep.value === 1 && (!form.value.name || !form.value.email)) {
-    toast.warning('Nombre y email requeridos')
+  const bad = validateStep(formStep.value)
+  if (bad.length) {
+    toast.warning(bad.length === 1 ? fieldErrors.value[bad[0]!]! : 'Revisá los campos marcados en rojo')
     return
   }
   formStep.value = Math.min(formStep.value + 1, FORM_STEPS.length)
@@ -670,6 +681,82 @@ const form = ref({
 })
 
 const allPreferences = ['Habitación silenciosa', 'Piso alto', 'Vista al mar', 'Cama king', 'Almohadas extras', 'Sin gluten', 'Vegetariano', 'Business center', 'Gimnasio', 'Piscina']
+
+// Validación del form de huésped (mismo composable que settings). Espeja
+// `huespedes/validators/schema.ts`: name required min 2 / max 200; el resto opcional.
+// El backend no exige formato de email, pero acá se valida por UX antes del submit.
+const GUEST_RULES: Record<string, FieldRule> = {
+  name: { label: 'Nombre completo', required: true, min: 2, max: 200 },
+  email: { label: 'Email', required: true, type: 'email', max: 200 },
+  phone: { label: 'Teléfono', max: 30 },
+  document: { label: 'Documento', max: 50 },
+  address: { label: 'Dirección', max: 200 },
+  city: { label: 'Ciudad', max: 100 },
+  province: { label: 'Provincia', max: 100 },
+  profession: { label: 'Profesión', max: 100 },
+  loyaltyPoints: { label: 'Puntos de fidelización', type: 'number', minValue: 0 },
+}
+
+// En qué paso del wizard vive cada campo — para llevar al usuario hasta el error.
+const STEP_FIELDS: Record<number, string[]> = {
+  1: ['name', 'email', 'phone', 'document'],
+  2: ['address', 'city', 'province', 'profession'],
+  3: ['loyaltyPoints'],
+  4: [],
+}
+const FIELD_STEP: Record<string, number> = {
+  name: 1, email: 1, phone: 1, document: 1,
+  address: 2, city: 2, province: 2, profession: 2,
+  loyaltyPoints: 3,
+}
+
+// Un campo sólo muestra su error después de que el usuario pasó por él (o al intentar guardar).
+const fieldErrors = ref<Record<string, string>>({})
+const touchedFields = ref<Set<string>>(new Set())
+
+/** Valida un campo al salir de él. Se llama desde @blur. */
+function touchField(field: string) {
+  touchedFields.value = new Set(touchedFields.value).add(field)
+  const rule = GUEST_RULES[field]
+  if (!rule) return
+  const msg = validateField((form.value as Record<string, unknown>)[field], rule)
+  const next = { ...fieldErrors.value }
+  if (msg) next[field] = msg
+  else delete next[field]
+  fieldErrors.value = next
+}
+
+/** Mensaje a mostrar bajo el campo: sólo si ya fue tocado. */
+function errorOf(field: string): string {
+  return touchedFields.value.has(field) ? (fieldErrors.value[field] ?? '') : ''
+}
+
+/** Clase del input: borde rojo cuando el campo tiene error visible. */
+function fieldClass(field: string): string {
+  return errorOf(field) ? 'border-danger' : 'border-border'
+}
+
+/** Revalida los campos de un paso; devuelve los que fallan y los marca tocados. */
+function validateStep(step: number): string[] {
+  const fields = STEP_FIELDS[step] ?? []
+  const next = { ...fieldErrors.value }
+  const bad: string[] = []
+  for (const f of fields) {
+    const rule = GUEST_RULES[f]
+    if (!rule) continue
+    const msg = validateField((form.value as Record<string, unknown>)[f], rule)
+    if (msg) { next[f] = msg; bad.push(f) }
+    else delete next[f]
+  }
+  fieldErrors.value = next
+  touchedFields.value = new Set([...touchedFields.value, ...fields])
+  return bad
+}
+
+function resetValidation() {
+  fieldErrors.value = {}
+  touchedFields.value = new Set()
+}
 
 function initialsOf(name?: string): string {
   if (!name) return '?'
@@ -1048,6 +1135,7 @@ async function redeemPoints() {
 function openNewGuest() {
   editingGuest.value = null
   form.value = { name: '', email: '', phone: '', nationality: '', document: '', documentType: '', documentIssueDate: '', birthDate: '', sex: '', language: '', country: '', address: '', city: '', province: '', loyaltyPoints: 0, tier: '', profession: '', emergencyContact: { name: '', phone: '', relation: '', email: '' }, preferences: [], notes: '' }
+  resetValidation()
   formStep.value = 1
   showFormModal.value = true
 }
@@ -1076,6 +1164,7 @@ function openEditGuest(guest: any) {
     preferences: [...(guest.preferences ?? [])],
     notes: guest.notes ?? '',
   }
+  resetValidation()
   formStep.value = 1
   showFormModal.value = true
 }
@@ -1083,6 +1172,7 @@ function openEditGuest(guest: any) {
 function closeFormModal() {
   showFormModal.value = false
   editingGuest.value = null
+  resetValidation()
 }
 
 function togglePreference(pref: string) {
@@ -1092,7 +1182,23 @@ function togglePreference(pref: string) {
 }
 
 async function saveGuest() {
-  if (!form.value.name || !form.value.email) { toast.warning('Nombre y email requeridos'); return }
+  // Se revalida todo y se marcan los campos: antes sólo se comprobaba nombre/email y cualquier
+  // otro problema (email mal escrito, campo demasiado largo) aparecía recién como un 400 genérico.
+  touchedFields.value = new Set(Object.keys(GUEST_RULES))
+  fieldErrors.value = validateAll(form.value as Record<string, unknown>, GUEST_RULES)
+  const bad = Object.keys(fieldErrors.value)
+  if (bad.length) {
+    const first = bad[0]!
+    // Llevar al usuario hasta el problema: el paso del wizard que lo contiene y el foco en el campo.
+    const step = FIELD_STEP[first]
+    if (step && formStep.value !== step) formStep.value = step
+    await nextTick()
+    document.querySelector<HTMLElement>(`[data-field="${first}"]`)?.focus()
+    toast.warning(bad.length === 1
+      ? fieldErrors.value[first]!
+      : `Hay ${bad.length} campos con errores. Revisá los marcados en rojo.`)
+    return
+  }
 
   try {
     if (editingGuest.value) {
