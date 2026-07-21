@@ -90,8 +90,11 @@
       </div>
     </div>
 
+    <!-- Skeleton de carga -->
+    <SkeletonLoader v-if="loading" variant="table" :rows="6" />
+
     <!-- Vista Tabla -->
-    <div v-if="viewMode === 'table'" class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <div v-else-if="viewMode === 'table'" class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
       <table class="w-full tbl-head">
         <thead>
           <tr class="border-b border-border">
@@ -272,6 +275,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import AppModal from '@/components/ui/AppModal.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { HotelAdminService } from '@/services/Platform.service'
 import { PlansService } from '@/services/Plans.service'
@@ -311,8 +315,10 @@ const stats = computed(() => {
 })
 
 const hotels = ref<any[]>([])
+const loading = ref(true)
 
 onMounted(async () => {
+  loading.value = true
   try { plansList.value = (await PlansService.list()).data || [] } catch { /* opcional */ }
   try {
     const { hotels: data } = await SuperAdminService.hotels()
@@ -330,7 +336,7 @@ onMounted(async () => {
       status: h.status === 'pendiente' ? 'Pendiente' : h.status === 'suspendido' ? 'Suspendido' : 'Activo',
       registered: h.createdAt ? String(h.createdAt).slice(0, 10) : '',
     }))
-  } catch { /* silent */ }
+  } catch { /* silent */ } finally { loading.value = false }
 })
 
 const locations = computed(() => [...new Set(hotels.value.map(h => h.location))].sort())

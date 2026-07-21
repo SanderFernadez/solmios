@@ -98,6 +98,7 @@
     </div>
 
     <!-- Board View (Kanban) -->
+    <SkeletonLoader v-else-if="activeView === 'board' && store.loading" variant="list" :rows="6" />
     <div v-else-if="activeView === 'board'" class="grid grid-cols-4 gap-4">
       <div v-for="column in kanbanColumns" :key="column.id"
         class="bg-surface rounded-xl p-4 min-h-[300px] transition-all"
@@ -192,7 +193,8 @@
           </span>
         </div>
       </div>
-      <table class="w-full">
+      <SkeletonLoader v-if="store.loading" variant="table" :rows="6" class="p-4" />
+      <table v-else class="w-full">
         <thead>
           <tr class="border-b border-border">
             <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hab</th>
@@ -619,6 +621,7 @@ import { useToast } from '@/composables/useToast'
 import { useNow } from '@/composables/useNow'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import AppModal from '@/components/ui/AppModal.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
 const store = useHousekeepingStore()
 const auth = useAuthStore()

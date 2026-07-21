@@ -62,7 +62,8 @@
     </div>
 
     <!-- Audit Table -->
-    <div class="bg-white rounded-2xl border border-border overflow-hidden">
+    <SkeletonLoader v-if="loading" variant="table" :rows="6" />
+    <div v-else class="bg-white rounded-2xl border border-border overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full tbl-head">
           <thead>
@@ -127,7 +128,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { AuditLogService } from '@/services/AuditLog.service'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
+const loading = ref(true)
 const searchQuery = ref('')
 const filterAction = ref('all')
 const filterHotel = ref('all')
@@ -138,6 +141,7 @@ const ACTION_LABEL: Record<string, string> = { login: 'Login', logout: 'Logout',
 const logs = ref<any[]>([])
 
 onMounted(async () => {
+  loading.value = true
   try {
     const { data } = await AuditLogService.list()
     logs.value = data.map((l: any) => {
@@ -158,7 +162,7 @@ onMounted(async () => {
         ip: l.ip ?? '',
       }
     })
-  } catch { /* silent */ }
+  } catch { /* silent */ } finally { loading.value = false }
 })
 
 const hotelList = computed(() => [...new Set(logs.value.map((l: any) => l.hotel).filter(Boolean))])

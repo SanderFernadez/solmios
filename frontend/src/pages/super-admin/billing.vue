@@ -54,7 +54,8 @@
     </div>
 
     <!-- Tabla -->
-    <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <SkeletonLoader v-if="loading" variant="table" :rows="6" />
+    <div v-else class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
       <table class="w-full tbl-head">
         <thead>
           <tr class="border-b border-border">
@@ -189,7 +190,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { PlatformService } from '@/services/Platform.service'
 import AppModal from '@/components/ui/AppModal.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
+const loading = ref(true)
 const searchQuery = ref('')
 const statusFilter = ref('all')
 const planFilter = ref('all')
@@ -214,6 +217,7 @@ const PLAN_PRICE: Record<string, number> = { enterprise: 199, professional: 99, 
 const invoices = ref<any[]>([])
 
 onMounted(async () => {
+  loading.value = true
   try {
     const d = await PlatformService.subscriptions()
     invoices.value = (d.data ?? []).map((h: any, i: number) => {
@@ -230,7 +234,7 @@ onMounted(async () => {
         dueDate: '', notes: '',
       }
     })
-  } catch { /* silent */ }
+  } catch { /* silent */ } finally { loading.value = false }
 })
 
 const tabs = computed(() => {

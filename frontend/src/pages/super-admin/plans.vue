@@ -8,7 +8,8 @@
       <button @click="openNew" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">+ Nuevo Plan</button>
     </div>
 
-    <div class="grid grid-cols-3 gap-6 mb-8">
+    <SkeletonLoader v-if="loading" variant="card" :rows="3" class="mb-8" />
+    <div v-else class="grid grid-cols-3 gap-6 mb-8">
       <div v-for="plan in plans" :key="plan.id" class="bg-white rounded-2xl border border-border card-shadow p-6 relative">
         <button @click="openEdit(plan)" class="absolute top-4 right-4 px-2 py-1 bg-surface rounded-lg text-[10px] font-bold hover:bg-surface-dark transition-colors cursor-pointer">Editar</button>
         <button @click="deletePlan(plan)" class="absolute top-4 right-20 px-2 py-1 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-colors cursor-pointer">Eliminar</button>
@@ -121,6 +122,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import AppModal from '@/components/ui/AppModal.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import { PlansService } from '@/services/Plans.service'
 import { ModulesService, type ModuleMeta, type SubModuleMeta } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
@@ -133,6 +135,7 @@ const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
 })
 
 const plans = ref<any[]>([])
+const loading = ref(true)
 const showModal = ref(false)
 const editing = ref<any>(null)
 const saving = ref(false)
@@ -199,8 +202,11 @@ function openEdit(plan: any) {
 }
 
 async function loadPlans() {
-  const { data } = await PlansService.list()
-  plans.value = data || []
+  loading.value = true
+  try {
+    const { data } = await PlansService.list()
+    plans.value = data || []
+  } finally { loading.value = false }
 }
 async function loadModuleCatalog() {
   try { moduleCatalog.value = (await ModulesService.adminGet()).catalog || [] } catch { /* opcional */ }

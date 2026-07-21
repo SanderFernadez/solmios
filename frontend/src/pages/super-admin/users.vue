@@ -61,7 +61,8 @@
     </div>
 
     <!-- Tabla -->
-    <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <SkeletonLoader v-if="loading" variant="table" :rows="6" />
+    <div v-else class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
       <table class="w-full tbl-head">
         <thead>
           <tr class="border-b border-border">
@@ -207,10 +208,12 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import AppModal from '@/components/ui/AppModal.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 
+const loading = ref(true)
 const searchQuery = ref('')
 const roleFilter = ref('all')
 const hotelFilter = ref('all')
@@ -250,6 +253,7 @@ const stats = computed(() => {
 })
 
 onMounted(async () => {
+  loading.value = true
   try {
     const { users: data } = await SuperAdminService.users()
     users.value = data.map((u: any) => {
@@ -271,7 +275,7 @@ onMounted(async () => {
         permissionsList: [],
       }
     })
-  } catch { /* silent */ }
+  } catch { /* silent */ } finally { loading.value = false }
 })
 
 const activeFiltersCount = computed(() => {

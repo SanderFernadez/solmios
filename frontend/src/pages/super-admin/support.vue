@@ -22,7 +22,8 @@
       </div>
 
       <!-- Tabla -->
-      <div class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+      <SkeletonLoader v-if="loading" variant="table" :rows="6" />
+      <div v-else class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
         <table class="w-full tbl-head">
           <thead><tr class="border-b border-border">
             <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">ID</th>
@@ -148,7 +149,9 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
+const loading = ref(true)
 const activeFilter = ref('all')
 const searchQuery = ref('')
 const selectedTicket = ref<any>(null)
@@ -184,6 +187,7 @@ const supportMetrics = computed(() => {
 })
 
 onMounted(async () => {
+  loading.value = true
   try {
     const { data } = await OperationsService.tickets.list()
     tickets.value = data.map((t: any) => ({
@@ -193,7 +197,7 @@ onMounted(async () => {
       createdAt: t.createdAt ? String(t.createdAt).replace('T', ' ').slice(0, 16) : '',
       attachments: [], replies: (() => { try { return JSON.parse(t.mensajes || '[]') } catch { return [] } })(),
     }))
-  } catch { /* silent */ }
+  } catch { /* silent */ } finally { loading.value = false }
 })
 
 const filteredTickets = computed(() => {

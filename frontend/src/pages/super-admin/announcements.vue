@@ -17,7 +17,8 @@
       <div class="px-5 py-4 bg-navy">
         <h3 class="font-extrabold text-white text-sm">Anuncios Enviados</h3>
       </div>
-      <div class="overflow-x-auto">
+      <SkeletonLoader v-if="loading" variant="table" :rows="5" class="p-4" />
+      <div v-else class="overflow-x-auto">
         <table class="w-full tbl-head">
           <thead>
             <tr class="border-b border-border">
@@ -157,7 +158,9 @@
 import { ref, onMounted } from 'vue'
 import { PlatformService } from '@/services/Platform.service'
 import AppModal from '@/components/ui/AppModal.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
+const loading = ref(true)
 const showCreateModal = ref(false)
 
 const newAnnouncement = ref({
@@ -179,6 +182,7 @@ const templates = [
 const scheduled = ref<any[]>([])
 
 onMounted(async () => {
+  loading.value = true
   try {
     const { data } = await PlatformService.announcements()
     announcements.value = data.map((a: any) => ({
@@ -192,7 +196,7 @@ onMounted(async () => {
       views: 0, reads: 0,
       status: a.active === 1 ? 'Enviado' : 'Borrador',
     }))
-  } catch { /* silent */ }
+  } catch { /* silent */ } finally { loading.value = false }
 })
 
 function sendAnnouncement() {

@@ -18,7 +18,8 @@
           <h3 class="font-extrabold text-white">API Keys Activas</h3>
         </div>
         <div class="p-6">
-        <div class="overflow-x-auto">
+        <SkeletonLoader v-if="loading" variant="table" :rows="4" />
+        <div v-else class="overflow-x-auto">
           <table class="w-full tbl-head">
             <thead>
               <tr class="border-b border-border">
@@ -204,6 +205,7 @@
 import { ref, computed, onMounted } from 'vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import AppModal from '@/components/ui/AppModal.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import { ApikeysService } from '@/services/Apikeys.service'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { useToast } from '@/composables/useToast'
@@ -216,6 +218,7 @@ const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
 })
 const showCreateKey = ref(false)
 const creating = ref(false)
+const loading = ref(true)
 const revealKey = ref<string | null>(null)
 const hotels = ref<Array<{ id: string; name: string }>>([])
 
@@ -242,6 +245,7 @@ async function loadHotels() {
 }
 
 async function loadKeys() {
+  loading.value = true
   try {
     const r = await ApikeysService.list()
     apiKeys.value = (r.data || []).map((k: any) => ({
@@ -256,7 +260,7 @@ async function loadKeys() {
     }))
   } catch {
     apiKeys.value = []
-  }
+  } finally { loading.value = false }
 }
 
 onMounted(async () => {

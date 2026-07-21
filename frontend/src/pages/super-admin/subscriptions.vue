@@ -39,7 +39,8 @@
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
       </div>
-      <table class="w-full tbl-head">
+      <SkeletonLoader v-if="loading" variant="table" :rows="6" class="p-4" />
+      <table v-else class="w-full tbl-head">
         <thead><tr class="border-b border-border">
           <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hotel</th>
           <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Plan</th>
@@ -89,8 +90,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { PlatformService } from '@/services/Platform.service'
 import AppModal from '@/components/ui/AppModal.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
 const searchQuery = ref('')
+const loading = ref(true)
 const showEditPlanModal = ref(false)
 const editingPlan = ref<any>({})
 
@@ -114,6 +117,7 @@ const plans = computed(() => {
 const payments = ref<any[]>([])
 
 onMounted(async () => {
+  loading.value = true
   try {
     const d = await PlatformService.subscriptions()
     payments.value = (d.data ?? []).map((h: any) => ({
@@ -124,7 +128,7 @@ onMounted(async () => {
       date: h.createdAt ? String(h.createdAt).slice(0, 10) : '',
       status: h.status === 'pendiente' ? 'Pendiente' : h.status === 'suspendido' ? 'Vencido' : 'Pagado',
     }))
-  } catch { /* silent */ }
+  } catch { /* silent */ } finally { loading.value = false }
 })
 
 const filteredPayments = computed(() => {
