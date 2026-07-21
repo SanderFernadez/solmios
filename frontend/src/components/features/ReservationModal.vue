@@ -48,18 +48,6 @@ const hotelInfo = ref<HotelData | null>(null)
 type PrintMode = 'detail' | 'voucherLodging' | 'voucherClient' | 'invoice'
 const printMode = ref<PrintMode>('detail')
 
-// Wizard de solo lectura: agrupa las secciones en pasos navegables. Sin gating
-// (no hay nada que validar, es una vista de detalle) — Siguiente/Atrás son libres.
-const viewStep = ref(1)
-const VIEW_STEPS = [
-  { n: 1, label: 'Reserva y Cliente' },
-  { n: 2, label: 'Pago' },
-  { n: 3, label: 'Extras y Acceso' },
-  { n: 4, label: 'Comunicación e Historial' },
-]
-function nextViewStep() { viewStep.value = Math.min(viewStep.value + 1, VIEW_STEPS.length) }
-function prevViewStep() { viewStep.value = Math.max(viewStep.value - 1, 1) }
-
 // Tarjeta de garantía (MisterPlan): se revela solo tras ingresar el PIN del hotel.
 const guaranteeUnlocked = ref(false)
 const guaranteePin = ref('')
@@ -91,7 +79,6 @@ function cardBrandLabel(b?: string): string {
 // ── Carga ──
 async function load() {
   loading.value = true
-  viewStep.value = 1
   guaranteeUnlocked.value = false
   guaranteeCard.value = null
   guaranteePin.value = ''
@@ -412,27 +399,13 @@ function editar() { if (d.value) emit('edit', d.value) }
               </button>
             </div>
           </div>
-          <!-- Progreso del wizard: stepper numerado, navegación libre (sin gating) -->
-          <div class="mt-4">
-            <span class="text-[11px] font-bold text-white/70">Paso {{ viewStep }} de {{ VIEW_STEPS.length }} · {{ VIEW_STEPS[viewStep - 1].label }}</span>
-            <div class="mt-2 flex items-center">
-              <template v-for="(step, i) in VIEW_STEPS" :key="step.n">
-                <button type="button" @click="viewStep = step.n" class="flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-black shrink-0 cursor-pointer transition-colors"
-                  :class="step.n === viewStep ? 'bg-cyan text-navy' : step.n < viewStep ? 'bg-white text-navy' : 'bg-white/15 text-white/60 hover:bg-white/25'">
-                  <svg v-if="step.n < viewStep" class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-                  <span v-else>{{ step.n }}</span>
-                </button>
-                <div v-if="i < VIEW_STEPS.length - 1" class="flex-1 h-px mx-1.5" :class="step.n < viewStep ? 'bg-white/60' : 'bg-white/20'"></div>
-              </template>
-            </div>
-          </div>
         </div>
 
-        <!-- ═══ BODY paginado por pasos (área de impresión) ═══ -->
+        <!-- ═══ BODY: una sola vista continua con scroll, sin pasos (área de impresión) ═══ -->
         <div class="flex-1 overflow-y-auto rm-print-area">
 
-          <!-- Paso 1: Reserva y Cliente -->
-          <div v-show="viewStep === 1" class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
+          <!-- Reserva y Cliente -->
+          <div class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
             <div class="p-5 space-y-4">
               <!-- Datos de la Reserva -->
               <details open class="bg-white border border-border/70 border-l-[3px] border-l-navy/60 rounded-2xl overflow-hidden shadow-card">
@@ -522,8 +495,8 @@ function editar() { if (d.value) emit('edit', d.value) }
             </div>
           </div>
 
-          <!-- Paso 2: Pago -->
-          <div v-show="viewStep === 2" class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
+          <!-- Pago -->
+          <div class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
             <div class="p-5 space-y-4">
               <!-- Importe y Pago -->
               <div class="bg-white border border-border/70 border-l-[3px] border-l-teal/60 rounded-2xl p-4 shadow-card">
@@ -593,8 +566,8 @@ function editar() { if (d.value) emit('edit', d.value) }
             </div>
           </div>
 
-          <!-- Paso 3: Extras y Acceso -->
-          <div v-show="viewStep === 3" class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
+          <!-- Extras y Acceso -->
+          <div class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
             <div class="p-5 space-y-4">
               <!-- Otros servicios y descuentos -->
               <div class="bg-white border border-border/70 border-l-[3px] border-l-purple/60 rounded-2xl p-4 shadow-card">
@@ -679,8 +652,8 @@ function editar() { if (d.value) emit('edit', d.value) }
             </div>
           </div>
 
-          <!-- Paso 4: Comunicación e Historial -->
-          <div v-show="viewStep === 4" class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
+          <!-- Comunicación e Historial -->
+          <div class="wizard-step grid lg:grid-cols-2 gap-1 lg:gap-0">
             <div class="p-5 space-y-4">
               <!-- Comunicaciones -->
               <details open class="bg-white border border-border/70 border-l-[3px] border-l-teal/60 rounded-2xl overflow-hidden shadow-card">
@@ -760,7 +733,7 @@ function editar() { if (d.value) emit('edit', d.value) }
           </div>
         </div>
 
-        <!-- ═══ FOOTER — navegación del wizard (Atrás/Cerrar ⇄ Siguiente/Editar) ═══ -->
+        <!-- ═══ FOOTER ═══ -->
         <div class="p-4 shadow-[0_-6px_16px_-10px_rgba(13,43,78,0.15)] bg-surface/60 shrink-0 flex items-center justify-between rm-no-print">
           <div class="flex items-center gap-2 text-sm">
             <span class="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center text-navy shrink-0"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg></span>
@@ -771,16 +744,8 @@ function editar() { if (d.value) emit('edit', d.value) }
             </span>
           </div>
           <div class="flex gap-3">
-            <button v-if="viewStep === 1" @click="emit('close')" class="px-5 py-2.5 border border-border/60 rounded-full text-sm font-bold text-text-secondary cursor-pointer hover:bg-white transition">Cerrar</button>
-            <button v-else @click="prevViewStep" class="flex items-center gap-1.5 px-5 py-2.5 border border-border/60 rounded-full text-sm font-bold text-text-secondary cursor-pointer hover:bg-white transition">
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-              Atrás
-            </button>
-            <button v-if="viewStep < VIEW_STEPS.length" @click="nextViewStep" class="flex items-center gap-1.5 px-6 py-2.5 bg-navy text-white rounded-full text-sm font-black cursor-pointer hover:bg-navy-light transition">
-              Siguiente
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </button>
-            <button v-else @click="editar" class="flex items-center gap-1.5 px-6 py-2.5 bg-teal text-white rounded-full text-sm font-black cursor-pointer hover:opacity-90 transition">
+            <button @click="emit('close')" class="px-5 py-2.5 border border-border/60 rounded-full text-sm font-bold text-text-secondary cursor-pointer hover:bg-white transition">Cerrar</button>
+            <button @click="editar" class="flex items-center gap-1.5 px-6 py-2.5 bg-teal text-white rounded-full text-sm font-black cursor-pointer hover:opacity-90 transition">
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.932zM19.5 21H4.5a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5h9"/></svg>
               Editar Reserva
             </button>
@@ -912,6 +877,8 @@ details > summary::-webkit-details-marker { display: none; }
 details[open] > summary .ml-auto { transform: rotate(180deg); }
 /* Los bonos no se ven en pantalla */
 .rm-voucher { display: none; }
+/* Separador entre los 4 bloques de la vista de detalle, ahora todos visibles a la vez. */
+.wizard-step + .wizard-step { border-top: 1px solid var(--color-border, #e5e7eb); margin-top: 0.5rem; padding-top: 0.5rem; }
 </style>
 
 <style>
@@ -921,9 +888,6 @@ details[open] > summary .ml-auto { transform: rotate(180deg); }
   .rm-print-area, .rm-print-area * { visibility: visible; }
   .rm-print-area { position: absolute; left: 0; top: 0; width: 100%; max-height: none; overflow: visible; }
   .rm-no-print { display: none !important; }
-  /* El detalle se pagina en pasos (v-show) para la vista en pantalla — al imprimir se
-     fuerzan todos los pasos visibles para no perder contenido fuera del paso activo. */
-  .rm-print-area .wizard-step { display: grid !important; }
   .rm-print-area .wizard-step + .wizard-step { margin-top: 16px; padding-top: 16px; border-top: 1px solid #ddd; }
 
   /* Modo bono alojamiento */
