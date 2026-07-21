@@ -119,7 +119,11 @@
       <template #actions>
         <span class="px-3 py-1 rounded-lg bg-white/10 text-xs font-black text-white">{{ connectedChannels.filter(c => c.connected).length }} de {{ connectedChannels.length }}</span>
       </template>
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <EmptyState v-if="connectedChannels.length === 0"
+        title="Sin canales conectados"
+        message="Todavía no conectaste ninguna OTA. Elegí uno de los canales disponibles abajo para empezar a sincronizar precios y reservas.">
+      </EmptyState>
+      <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <div v-for="channel in connectedChannels" :key="channel.id"
           class="rounded-2xl border-2 border-navy bg-white overflow-hidden flex flex-col transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg">
           <!-- Header con logo + estado -->
@@ -229,9 +233,8 @@
         <h2 class="text-lg font-black text-navy">Historial de Sincronización</h2>
         <span class="text-[10px] text-text-muted">{{ syncLog.length }} registros</span>
       </div>
-      <div v-if="syncLog.length === 0" class="text-center py-8 text-text-muted text-sm">
-        Sin sincronizaciones registradas
-      </div>
+      <EmptyState v-if="syncLog.length === 0" title="Sin sincronizaciones"
+        message="Todavía no hubo sincronizaciones con los canales. Aparecerán acá a medida que se envíen precios o lleguen reservas." />
       <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead>
@@ -270,6 +273,7 @@ import { http } from '@/services/http'
 import { resolveChannelLogo } from '@/utils/channelLogos'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import AppModal from '@/components/ui/AppModal.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import type { OpenChannelCredentials } from '@/services/Channel.service'
 
 const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'
