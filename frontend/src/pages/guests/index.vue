@@ -575,7 +575,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
-import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
+import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES, nationalityToCountryName, countryNameToNationality } from '@/data/locales'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -681,6 +681,39 @@ const form = ref({
 })
 
 const allPreferences = ['Habitación silenciosa', 'Piso alto', 'Vista al mar', 'Cama king', 'Almohadas extras', 'Sin gluten', 'Vegetariano', 'Business center', 'Gimnasio', 'Piscina']
+
+// País y nacionalidad se sincronizan entre sí mientras ninguno de los dos haya sido
+// elegido a mano: el primero que el usuario complete propone el otro (mismo dato en
+// COUNTRY_DATA), pero apenas toca el campo restante, ese campo queda "suyo" y deja de
+// seguir al otro — evita que un huésped con nacionalidad ≠ país de residencia (caso
+// común) se vea forzado a coincidir. `formReady` evita que la carga programática
+// (nuevo/editar) dispare el sync como si fuera el usuario.
+let syncingPaisNacionalidad = false
+const formReady = ref(false)
+const countryTouched = ref(false)
+const nationalityTouched = ref(false)
+watch(() => form.value.country, (val) => {
+  if (!formReady.value) return
+  if (syncingPaisNacionalidad) { syncingPaisNacionalidad = false; return }
+  countryTouched.value = true
+  if (nationalityTouched.value || !val) return
+  const mapped = countryNameToNationality(val)
+  if (mapped && mapped !== form.value.nationality) {
+    syncingPaisNacionalidad = true
+    form.value.nationality = mapped
+  }
+})
+watch(() => form.value.nationality, (val) => {
+  if (!formReady.value) return
+  if (syncingPaisNacionalidad) { syncingPaisNacionalidad = false; return }
+  nationalityTouched.value = true
+  if (countryTouched.value || !val) return
+  const mapped = nationalityToCountryName(val)
+  if (mapped && mapped !== form.value.country) {
+    syncingPaisNacionalidad = true
+    form.value.country = mapped
+  }
+})
 
 // Validación del form de huésped (mismo composable que settings). Espeja
 // `huespedes/validators/schema.ts`: name required min 2 / max 200; el resto opcional.
@@ -1132,15 +1165,21 @@ async function redeemPoints() {
   }
 }
 
-function openNewGuest() {
+async function openNewGuest() {
+  formReady.value = false
   editingGuest.value = null
   form.value = { name: '', email: '', phone: '', nationality: '', document: '', documentType: '', documentIssueDate: '', birthDate: '', sex: '', language: '', country: '', address: '', city: '', province: '', loyaltyPoints: 0, tier: '', profession: '', emergencyContact: { name: '', phone: '', relation: '', email: '' }, preferences: [], notes: '' }
   resetValidation()
   formStep.value = 1
   showFormModal.value = true
+  await nextTick()
+  countryTouched.value = false
+  nationalityTouched.value = false
+  formReady.value = true
 }
 
-function openEditGuest(guest: any) {
+async function openEditGuest(guest: any) {
+  formReady.value = false
   editingGuest.value = { id: guest.id }
   form.value = {
     name: guest.name,
@@ -1167,6 +1206,10 @@ function openEditGuest(guest: any) {
   resetValidation()
   formStep.value = 1
   showFormModal.value = true
+  await nextTick()
+  countryTouched.value = false
+  nationalityTouched.value = false
+  formReady.value = true
 }
 
 function closeFormModal() {

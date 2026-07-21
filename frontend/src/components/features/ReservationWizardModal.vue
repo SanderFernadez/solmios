@@ -426,7 +426,7 @@
 // huésped existente ni sync de acompañantes). `editId`/`prefill` deciden si abre vacío,
 // precargado con datos de una reserva existente, o con habitación/fechas ya elegidas
 // (celda clickeada del Calendario).
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useOnline } from '@/composables/useOnline'
@@ -437,7 +437,7 @@ import { PaymentsService } from '@/services/Payments.service'
 import { TTLockService } from '@/services/TTLock.service'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
-import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES } from '@/data/locales'
+import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES, nationalityToCountryName, countryNameToNationality } from '@/data/locales'
 import type { Guest } from '@/types'
 
 const props = defineProps<{
@@ -514,6 +514,39 @@ const countries = COUNTRIES
 const nationalities = NATIONALITIES
 const docTypes = DOC_TYPES
 const relations = ['Familiar', 'Amigo/a', 'Empleado/a', 'Agente de viajes', 'Otro']
+
+// País y nacionalidad se sincronizan entre sí mientras ninguno de los dos haya sido
+// elegido a mano: el primero que el usuario complete propone el otro (mismo dato en
+// COUNTRY_DATA), pero apenas toca el campo restante, ese campo queda "suyo" y deja de
+// seguir al otro — evita que un huésped con nacionalidad ≠ país de residencia (caso
+// común) se vea forzado a coincidir. `formReady` evita que la carga programática de
+// una reserva existente (loadForEdit) dispare el sync como si fuera el usuario.
+let syncingPaisNacionalidad = false
+const formReady = ref(false)
+const countryTouched = ref(false)
+const nationalityTouched = ref(false)
+watch(() => form.value.country, (val) => {
+  if (!formReady.value) return
+  if (syncingPaisNacionalidad) { syncingPaisNacionalidad = false; return }
+  countryTouched.value = true
+  if (nationalityTouched.value || !val) return
+  const mapped = countryNameToNationality(val)
+  if (mapped && mapped !== form.value.nationality) {
+    syncingPaisNacionalidad = true
+    form.value.nationality = mapped
+  }
+})
+watch(() => form.value.nationality, (val) => {
+  if (!formReady.value) return
+  if (syncingPaisNacionalidad) { syncingPaisNacionalidad = false; return }
+  nationalityTouched.value = true
+  if (countryTouched.value || !val) return
+  const mapped = nationalityToCountryName(val)
+  if (mapped && mapped !== form.value.country) {
+    syncingPaisNacionalidad = true
+    form.value.country = mapped
+  }
+})
 
 const selRoom = computed(() => props.rooms.find((r: any) => r.id === form.value.roomId))
 // Opciones del selector de habitación (buscador dinámico): value=id, label='número — tipo ($precio/n)'.
@@ -913,6 +946,7 @@ async function loadForEdit(id: string) {
 }
 
 watch(() => props.editId, async (id) => {
+  formReady.value = false
   err.value = ''
   lockCode.value = ''
   resetForm()
@@ -926,6 +960,12 @@ watch(() => props.editId, async (id) => {
     if (props.prefill.checkIn) form.value.checkIn = props.prefill.checkIn
     if (props.prefill.checkOut) form.value.checkOut = props.prefill.checkOut
   }
+  // Recién ahora se activa el sync país↔nacionalidad: lo anterior fue carga
+  // programática (reset o datos de la reserva), no una elección del usuario.
+  await nextTick()
+  countryTouched.value = false
+  nationalityTouched.value = false
+  formReady.value = true
 }, { immediate: true })
 
 // Silencioso a propósito: sin tasa configurada, taxRatePct queda en 0 y el wizard

@@ -268,6 +268,16 @@ export function countryName(value: string | undefined | null): string {
 /** Entradas completas, para quien necesite nombre + código juntos. */
 export const COUNTRY_ENTRIES: readonly CountryEntry[] = COUNTRY_DATA
 
+/** Nombre de país a partir del gentilicio ('Dominicana' → 'República Dominicana'). '' si no matchea. */
+export function nationalityToCountryName(nationality: string): string {
+  return COUNTRY_DATA.find((c) => c.nationality === nationality)?.name ?? ''
+}
+
+/** Gentilicio a partir del nombre de país ('República Dominicana' → 'Dominicana'). '' si no matchea. */
+export function countryNameToNationality(name: string): string {
+  return COUNTRY_DATA.find((c) => c.name === name)?.nationality ?? ''
+}
+
 // Formato { v: value, l: label } — mismo formato que usa reservations/index.vue en sus <option>.
 export const LANGUAGES: { v: string; l: string }[] = [
   { v: 'Español', l: 'Español' }, { v: 'English', l: 'English' },
