@@ -3,6 +3,18 @@ import type { RepositoryAdapter, Auth } from 'arckode-framework'
 import { NotFoundError } from 'arckode-framework'
 import type { CanalesDTO, CreateCanalesDTO, UpdateCanalesDTO, CanalesQuery, CanalesPaginated } from '../types'
 
+/**
+ * Enmascara la API key de Channex por-hotel antes de devolverla al cliente. GET /api/canales[/:id]
+ * la exponía cruda (#394): un merchant —o cualquiera que interceptara la respuesta— podía leer la
+ * credencial completa. Mismo criterio que la key de plataforma (service-channex-admin.maskKey).
+ * El uso interno de la key NO pasa por acá: va por service.getConfig, que devuelve el DTO crudo.
+ */
+function maskChannexKey(item: CanalesDTO): CanalesDTO {
+  const k = item.channexApiKey
+  if (!k) return item
+  return { ...item, channexApiKey: k.length <= 8 ? '••••' : `${k.slice(0, 4)}••••${k.slice(-4)}` }
+}
+
 export class CanalesCrudUseCase {
   constructor(
     private readonly repo: RepositoryAdapter<CanalesDTO>,
@@ -21,7 +33,7 @@ export class CanalesCrudUseCase {
       filters.hotelId = query.hotelId
     }
     const result = await this.repo.paginate(filters, { limit, offset })
-    return { data: result.data, pagination: { page, limit, total: result.total, totalPages: result.pages, hasNext: offset + limit < result.total, hasPrev: page > 1 } }
+    return { data: result.data.map(maskChannexKey), pagination: { page, limit, total: result.total, totalPages: result.pages, hasNext: offset + limit < result.total, hasPrev: page > 1 } }
   }
 
   async getById(id: string, user: { id: string; role?: string; hotelId?: string }): Promise<CanalesDTO> {
@@ -29,7 +41,7 @@ export class CanalesCrudUseCase {
     if (!item) throw new NotFoundError('Canales no encontrado')
     const me = await this.userRepo.findById(user.id)
     this.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    return item
+    return maskChannexKey(item)
   }
 
   async create(dto: CreateCanalesDTO): Promise<CanalesDTO> {

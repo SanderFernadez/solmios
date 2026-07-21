@@ -54,6 +54,15 @@ describe('CanalesService', () => {
       const service = new CanalesService(makeRepo({ findById: async () => item }), makeUserRepo(), log, silentCache, mockAuth, makeQueries())
       expect(await service.getById('1', mockUser)).toEqual(item)
     })
+
+    // #394: la API key de Channex no puede salir cruda en la respuesta.
+    it('enmascara channexApiKey (no la devuelve cruda)', async () => {
+      const item = { id: '1', hotelId: 'hotel-1', channexApiKey: 'sk_live_ABCD1234WXYZ' } as CanalesDTO
+      const service = new CanalesService(makeRepo({ findById: async () => item }), makeUserRepo(), log, silentCache, mockAuth, makeQueries())
+      const got = await service.getById('1', mockUser)
+      expect(got.channexApiKey).not.toBe('sk_live_ABCD1234WXYZ')
+      expect(got.channexApiKey).toBe('sk_l••••WXYZ')
+    })
   })
 
   describe('create', () => {

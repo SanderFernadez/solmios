@@ -757,7 +757,6 @@ async function loadCurrency() {
     if (c) { currencyConfig.secondaryCurrency = c.secondaryCurrency || 'DOP'; currencyConfig.exchangeRate = c.exchangeRate ?? 60 }
   } catch { /* default */ }
 }
-onMounted(loadCurrency)
 // Contactos de emergencia del hotel (feedback #414). Viven en configuration['contactos_emergencia'];
 // si el hotel no tiene los suyos, el backend cae al default global (hotelId='platform').
 const emergencyContacts = ref<HotelEmergencyContact[]>([])
@@ -813,7 +812,6 @@ const hasGuaranteePin = ref(false)
 async function loadGuaranteePin() {
   try { hasGuaranteePin.value = (await GuaranteeService.hasPin()).hasPin } catch { /* ignore */ }
 }
-onMounted(loadGuaranteePin)
 async function saveGuaranteePin() {
   const pin = (guaranteePinDraft.value || '').trim()
   if (!/^\d{4,8}$/.test(pin)) { toast.error('El PIN debe tener entre 4 y 8 dígitos'); return }
@@ -822,6 +820,8 @@ async function saveGuaranteePin() {
     await GuaranteeService.setPin(pin)
     hasGuaranteePin.value = true
     guaranteePinDraft.value = ''
+    await nextTick()
+    markClean()
     toast.success('PIN de garantía guardado')
   } catch (e) {
     toast.error((e as Error).message || 'No se pudo guardar el PIN')
@@ -839,16 +839,58 @@ async function loadAutomation() {
     if (c) { automation.autoLockCode = !!c.autoLockCode; automation.autoPaymentRequest = !!c.autoPaymentRequest }
   } catch { /* default off */ }
 }
-onMounted(loadAutomation)
 async function saveAutomation() {
   automationSaving.value = true
   try {
     await ConfigService.set('automation_config', { autoLockCode: automation.autoLockCode, autoPaymentRequest: automation.autoPaymentRequest })
+    await nextTick()
+    markClean()
     toast.success('Automatización guardada')
   } catch (e) {
     toast.error((e as Error).message || 'No se pudo guardar')
   } finally {
     automationSaving.value = false
+  }
+}
+
+// Facturación electrónica / NCF (configuration['electronic_invoicing']) — antes esta tab solo
+// mostraba una card informativa sin ningún campo: no existía forma de setear `enabled`, así que
+// nextNcf() (fiscal.ts) siempre devolvía null aunque la UI insinuara "NCF automático".
+const fiscalConfig = reactive({ enabled: false, serie: 'E31', authority: 'DGII', sequence: 0 })
+const fiscalSaving = ref(false)
+async function loadFiscalConfig() {
+  try {
+    const c = await ConfigService.get('electronic_invoicing') as
+      { enabled?: boolean; serie?: string; authority?: string; sequence?: number } | null
+    if (c) {
+      fiscalConfig.enabled = !!c.enabled
+      fiscalConfig.serie = c.serie || 'E31'
+      fiscalConfig.authority = c.authority || 'DGII'
+      fiscalConfig.sequence = c.sequence ?? 0
+    }
+  } catch { /* default: desactivado */ }
+}
+// Mismo formato que buildNcf() en fiscal.ts — preview, la numeración real la arma el backend.
+const nextNcfPreview = computed(() => {
+  const seq = String((fiscalConfig.sequence || 0) + 1).padStart(11, '0')
+  const serie = fiscalConfig.serie || 'E31'
+  const auth = fiscalConfig.authority || 'MANUAL'
+  return `${serie}${auth === 'DGII' ? '' : '-'}${seq}`.replace('--', '-')
+})
+async function saveFiscalConfig() {
+  fiscalSaving.value = true
+  try {
+    await ConfigService.set('electronic_invoicing', {
+      enabled: fiscalConfig.enabled, serie: fiscalConfig.serie.trim() || 'E31',
+      authority: fiscalConfig.authority, sequence: fiscalConfig.sequence,
+    })
+    await nextTick()
+    markClean()
+    toast.success('Facturación electrónica guardada')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo guardar')
+  } finally {
+    fiscalSaving.value = false
   }
 }
 
@@ -938,12 +980,14 @@ const hasErrors = computed(() => Object.keys(fieldErrors.value).length > 0)
 // Antes se podía salir de la pantalla y perder todo lo tipeado sin ningún aviso.
 const savedSnapshot = ref('')
 function snapshot(): string {
-  // selectedAmenities y emergencyContacts entran acá: antes solo se rastreaba `form`/`descriptions`,
-  // así que tildar un amenity o editar un contacto de emergencia y navegar afuera sin guardar no
-  // mostraba ningún aviso — ni el banner "Cambios sin guardar" ni la confirmación al salir.
+  // Antes solo se rastreaba `form`/`descriptions`: tildar un amenity, editar un contacto de
+  // emergencia, tipear un PIN de garantía o tocar cualquiera de los toggles satélite y navegar
+  // afuera sin guardar no mostraba ningún aviso — ni el banner "Cambios sin guardar" ni la
+  // confirmación al salir. Cada bloque que tiene su PROPIO botón "Guardar" entra acá.
   return JSON.stringify({
     form: form.value, descriptions: descriptions.value,
     selectedAmenities: selectedAmenities.value, emergencyContacts: emergencyContacts.value,
+    currencyConfig, guaranteePinDraft: guaranteePinDraft.value, automation, fiscalConfig,
   })
 }
 function markClean() {
@@ -1120,11 +1164,14 @@ onMounted(async () => {
     selectedAmenities.value = sel.data.map((a: any) => a.amenityKey)
     await loadCustomAmenities()
 
-    // Contactos de emergencia: adentro del mismo onMounted (no uno aparte) para que la foto
-    // inicial de markClean() los incluya. Antes cargaban en un onMounted separado, en una carrera
-    // con éste — si llegaban después de markClean(), el snapshot quedaba viejo y la pantalla
-    // marcaba "cambios sin guardar" apenas terminaba de cargar, sin que el usuario tocara nada.
+    // Todo lo de abajo cargaba en onMounted() separados, en carrera con éste: si llegaban
+    // DESPUÉS del markClean() de acá abajo, el snapshot quedaba viejo y la pantalla marcaba
+    // "cambios sin guardar" apenas terminaba de cargar, sin que el usuario tocara nada.
     await loadEmergencyContacts()
+    await loadCurrency()
+    await loadGuaranteePin()
+    await loadAutomation()
+    await loadFiscalConfig()
   } catch (e) {
     toast.error('Error al cargar datos')
   } finally {
