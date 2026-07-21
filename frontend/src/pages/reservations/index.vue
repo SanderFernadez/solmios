@@ -1395,6 +1395,20 @@ onMounted(async () => {
     if (r) openEdit(r)
     router.replace({ query: {} })
   }
+
+  // Si viene del Calendario con ?newRoomId/newCheckIn/newCheckOut (celda clickeada para
+  // crear), abrir el wizard de creación con la habitación y fechas ya precargadas en el
+  // paso 4 (Alojamiento) — mismo wizard que "Nueva Reserva" desde esta página.
+  const newRoomId = route.query.newRoomId
+  const newCheckIn = route.query.newCheckIn
+  const newCheckOut = route.query.newCheckOut
+  if (typeof newRoomId === 'string' || typeof newCheckIn === 'string') {
+    openNew()
+    if (typeof newRoomId === 'string') form.value.roomId = newRoomId
+    if (typeof newCheckIn === 'string') form.value.checkIn = newCheckIn
+    if (typeof newCheckOut === 'string') form.value.checkOut = newCheckOut
+    router.replace({ query: {} })
+  }
 })
 </script>
 

@@ -287,154 +287,6 @@
       </div>
     </Teleport>
 
-    <!-- New reservation — modal completo -->
-    <Teleport to="body">
-      <div v-if="newRes.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
-          <!-- Header -->
-          <div class="p-5 border-b border-border flex items-center justify-between shrink-0 bg-gradient-to-r from-navy to-navy/90">
-            <div class="flex items-center gap-3">
-              <h3 class="text-lg font-black text-white">Nueva Reserva</h3>
-              <span class="text-xs text-white/60 flex items-center gap-1"><Icon name="building" :size="13" /> {{ newRes.room?.number }} — {{ newRes.room?.type }} · ${{ newRes.room?.basePrice }}/n</span>
-            </div>
-            <button @click="newRes.show=false" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20"><Icon name="x" :size="16" /></button>
-          </div>
-          <!-- Body -->
-          <div class="flex-1 overflow-y-auto">
-            <div class="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
-              <!-- IZQUIERDA: Cliente + Emergencia -->
-              <div class="p-5 space-y-5">
-                <div>
-                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-navy"><Icon name="user" :size="12" /></span> Cliente</h4>
-                  <div class="space-y-3">
-                    <div>
-                      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre completo <span class="text-coral">*</span></label><input v-model="newRes.name" type="text" placeholder="Nombre y apellido" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-                    </div>
-                    <div class="grid grid-cols-3 gap-3">
-                      <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Email</label><input v-model="newRes.email" type="email" class="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Idioma</label><select v-model="newRes.language" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option>Español</option><option>English</option><option>Français</option><option>Português</option><option>Deutsch</option></select></div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">País</label><input v-model="newRes.country" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nacionalidad</label><input v-model="newRes.nationality" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Teléfono</label><input v-model="newRes.phone" type="tel" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-3">
-                      <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Dirección</label><input v-model="newRes.address" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Ciudad</label><input v-model="newRes.city" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Provincia</label><input v-model="newRes.province" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                      <div></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Sexo</label><select v-model="newRes.sex" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="">Seleccionar</option><option value="male">Masculino</option><option value="female">Femenino</option><option value="non_binary">No binario</option><option value="other">Otro</option></select></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha nacimiento</label><input v-model="newRes.birthDate" type="date" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Tipo documento</label><select v-model="newRes.documentType" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="dni">DNI / NIF</option><option value="passport">Pasaporte</option><option value="cedula">Cédula</option><option value="rif">RIF</option><option value="other">Otro</option></select></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">N° documento</label><input v-model="newRes.document" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Fecha expedición</label><input v-model="newRes.documentIssueDate" type="date" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                    </div>
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Comunicar al cliente</label><select v-model="newRes.communicateClient" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="none">No enviar bono</option><option value="email_confirmation">Enviar email confirmación</option><option value="email_presaless">Enviar email preventa</option></select></div>
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Observaciones</label><textarea v-model="newRes.guestNotes" rows="2" class="w-full px-3 py-2 rounded-xl border border-border text-sm resize-none"></textarea></div>
-                  </div>
-                </div>
-                <!-- Emergencia -->
-                <div class="border border-coral/20 rounded-xl p-4 bg-coral/5">
-                  <h4 class="text-xs font-black text-coral uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-coral/20 flex items-center justify-center text-coral"><Icon name="alert" :size="12" /></span> Contacto de Emergencia</h4>
-                  <div class="space-y-3">
-                    <div class="grid grid-cols-2 gap-3">
-                      <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Nombre completo</label><input v-model="newRes.emergencyName" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Teléfono</label><input v-model="newRes.emergencyPhone" type="tel" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Parentesco</label><select v-model="newRes.emergencyRelation" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="">Seleccionar</option><option>Familiar</option><option>Amigo/a</option><option>Empleado/a</option><option>Agente de viajes</option><option>Otro</option></select></div>
-                    </div>
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Email</label><input v-model="newRes.emergencyEmail" type="email" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                  </div>
-                </div>
-                <!-- OTA -->
-                <div v-if="newRes.ch!=='direct'" class="border border-border rounded-xl p-4 bg-surface/50">
-                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><Icon name="globe" :size="14" /> Datos del Canal</h4>
-                  <div class="grid grid-cols-2 gap-3">
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Comisión (%)</label><input v-model.number="newRes.commission" type="number" min="0" max="50" class="w-full px-3 py-2 rounded-lg border border-border text-sm" /></div>
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Locator OTA</label><input v-model="newRes.extLocator" type="text" class="w-full px-3 py-2 rounded-lg border border-border text-sm" /></div>
-                  </div>
-                </div>
-              </div>
-              <!-- DERECHA: Tarjeta + Alojamiento + Anticipo -->
-              <div class="p-5 space-y-5">
-                <!-- Tarjeta -->
-                <div class="border border-purple/20 rounded-xl p-4 bg-purple/5">
-                  <h4 class="text-xs font-black text-purple uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-purple/20 flex items-center justify-center text-purple"><Icon name="card" :size="12" /></span> Tarjeta de Crédito/Débito</h4>
-                  <div class="space-y-3">
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Titular</label><input v-model="newRes.cardHolder" type="text" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                    <div class="grid grid-cols-3 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Tipo</label><select v-model="newRes.cardBrand" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="visa">Visa</option><option value="mastercard">Mastercard</option><option value="amex">Amex</option><option value="other">Otra</option></select></div>
-                      <div class="col-span-2"><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">N° tarjeta</label><input v-model="newRes.cardNumber" type="text" maxlength="19" placeholder="XXXX XXXX XXXX XXXX" class="w-full px-3 py-2 rounded-xl border border-border text-sm font-mono" /></div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">CVV</label><input v-model="newRes.cardCvv" type="text" maxlength="4" class="w-full px-3 py-2 rounded-xl border border-border text-sm font-mono" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Mes</label><select v-model="newRes.cardExpMonth" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="">Mes</option><option v-for="m in ['01','02','03','04','05','06','07','08','09','10','11','12']" :key="m" :value="m">{{ m }}</option></select></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Año</label><select v-model="newRes.cardExpYear" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="">Año</option><option v-for="y in 10" :key="y" :value="new Date().getFullYear()+y-1">{{ new Date().getFullYear()+y-1 }}</option></select></div>
-                    </div>
-                  </div>
-                </div>
-                <!-- Alojamiento -->
-                <div>
-                  <h4 class="text-xs font-black text-navy uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-navy/10 flex items-center justify-center text-navy"><Icon name="building" :size="12" /></span> Alojamiento</h4>
-                  <div class="bg-surface rounded-xl p-3 text-sm space-y-2 mb-3">
-                    <div class="flex justify-between"><span class="text-text-secondary">Habitación</span><span class="font-bold text-navy">{{ newRes.room?.number }} — {{ newRes.room?.type }}</span></div>
-                    <div class="flex justify-between items-center gap-2"><span class="text-text-secondary shrink-0">Fecha entrada</span><input v-model="newRes.cin" type="date" class="min-w-0 flex-1 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy" /></div>
-                    <div class="flex justify-between items-center gap-2"><span class="text-text-secondary shrink-0">Fecha salida</span><input v-model="newRes.cout" type="date" class="min-w-0 flex-1 px-2 py-1 rounded-lg border border-border text-xs font-bold text-navy" /></div>
-                    <div class="flex justify-between"><span class="text-text-secondary">Noches</span><span class="font-bold text-navy">{{ newResNights }}</span></div>
-                  </div>
-                  <div class="grid grid-cols-2 gap-3">
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Adultos</label><input v-model.number="newRes.adults" type="number" min="1" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Niños</label><input v-model.number="newRes.kids" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                  </div>
-                  <div class="grid grid-cols-2 gap-3 mt-3">
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Régimen</label><select v-model="newRes.regime" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="room_only">Solo alojamiento</option><option value="breakfast">Desayuno incluido</option><option value="half_board">Media pensión</option><option value="full_board">Pensión completa</option><option value="all_inclusive">Todo incluido</option></select></div>
-                    <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Canal</label><select v-model="newRes.ch" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="direct">Directa</option><option value="booking">Booking</option><option value="expedia">Expedia</option><option value="airbnb">Airbnb</option><option value="google">Google</option><option value="whatsapp">WhatsApp</option></select></div>
-                  </div>
-                  <div v-if="newRes.room" class="bg-white rounded-xl p-3 mt-3 space-y-1.5 border border-border text-sm">
-                    <div class="flex justify-between"><span class="text-text-secondary">{{ newResNights }}n × ${{ newResRoomBase }}</span><span class="font-bold">${{ newResRoomBase * newResNights }}</span></div>
-                    <div v-if="hotelTaxRate > 0" class="flex justify-between"><span class="text-text-secondary">{{ hotelTaxName }} ({{ hotelTaxRate }}%)</span><span class="font-bold">${{ newResTax }}</span></div>
-                  </div>
-                </div>
-                <!-- Anticipo -->
-                <div class="border border-teal/20 rounded-xl p-4 bg-teal/5">
-                  <h4 class="text-xs font-black text-teal uppercase mb-3 flex items-center gap-2"><span class="w-5 h-5 rounded bg-teal/20 flex items-center justify-center text-teal"><Icon name="money" :size="12" /></span> Anticipo y Total</h4>
-                  <div class="space-y-3">
-                    <div class="grid grid-cols-2 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Anticipo (%)</label><input v-model.number="newRes.depositPercentage" type="number" min="0" max="100" class="w-full px-3 py-2 rounded-xl border border-border text-sm" /></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Monto ($)</label><input v-model.number="newRes.deposit" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm font-bold text-navy" /></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Estado</label><select v-model="newRes.depositStatus" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="unpaid">Sin pagar</option><option value="partial">Parcial</option><option value="paid">Pagado</option></select></div>
-                      <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Pago con</label><select v-model="newRes.payMethod" class="w-full px-3 py-2 rounded-xl border border-border text-sm cursor-pointer"><option value="transfer">Transferencia</option><option value="card">Tarjeta</option><option value="cash">Efectivo</option><option value="link">Link de pago</option></select></div>
-                    </div>
-                    <div class="bg-white rounded-xl p-3 space-y-1.5 border border-border">
-                      <div class="flex justify-between text-sm"><span class="text-text-secondary">Precio final</span><span class="font-extrabold text-navy text-lg">${{ newResAmt }}</span></div>
-                      <div v-if="newResAmt > 0" class="flex justify-between text-sm"><span class="text-text-secondary">Pendiente</span><span class="font-black" :class="newResAmt - newRes.deposit > 0 ? 'text-coral' : 'text-teal'">${{ newResAmt - newRes.deposit }}</span></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Footer -->
-          <div class="p-4 border-t border-border bg-surface/80 shrink-0 flex items-center justify-between">
-            <div class="text-sm font-extrabold text-navy">Total: <span class="text-lg">${{ newResAmt }}</span></div>
-            <div class="flex gap-3">
-              <button @click="newRes.show=false" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-              <button @click="saveNewRes" class="px-6 py-2.5 bg-teal text-white rounded-xl text-sm font-black cursor-pointer hover:opacity-90">Crear Reserva</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
     <!-- Quote / Cotización Modal -->
     <Teleport to="body">
       <div v-if="quote.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -899,7 +751,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
 import { ReservationService, type RescheduleQuote, type RescheduleCommitInput } from '@/services/Reservation.service'
-import { GuestService } from '@/services/Guest.service'
 import { HotelService } from '@/services/Hotel.service'
 import { ConfigService } from '@/services/Platform.service'
 import { ChannelService } from '@/services/Channel.service'
@@ -1008,28 +859,6 @@ const popup = ref<{ show: boolean; x: number; y: number; room: any; fromDate: st
 const blockDlg = ref<{ show: boolean; room: string; from: string; to: string; reason: string; customReason: string; rid: string }>({ show: false, room: '', from: '', to: '', reason: '', customReason: '', rid: '' })
 const unblock = ref<{ show: boolean; id: string; room: string; reason: string; from: string; to: string }>({ show: false, id: '', room: '', reason: '', from: '', to: '' })
 const detailId = ref<string | null>(null)
-const newRes = ref({
-  show: false, room: null as any, cin: '', cout: '',
-  // Cliente (naming canónico guests)
-  name: '', email: '', phone: '',
-  language: 'Español', country: 'República Dominicana', nationality: 'Dominicana',
-  address: '', city: '', province: '',
-  sex: '', birthDate: '',
-  documentType: 'dni', document: '', documentIssueDate: '',
-  communicateClient: 'none', guestNotes: '',
-  // Contacto emergencia
-  emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
-  // Alojamiento
-  adults: 2, kids: 0, regime: 'room_only', promoCode: '',
-  // Canal
-  ch: 'direct', commission: 0, extLocator: '', otaNotes: '',
-  // Tarjeta
-  cardHolder: '', cardBrand: 'visa', cardNumber: '', cardCvv: '', cardExpMonth: '', cardExpYear: '',
-  // Pago
-  payMethod: 'transfer', deposit: 0, depositPercentage: 100, depositStatus: 'unpaid',
-  // Total
-  amt: 0,
-})
 const quote = ref<{ show: boolean; id: string; today: string; hotel: string; hotelAddress: string; hotelPhone: string; hotelEmail: string; rooms: { type: string; qty: number; price: number }[]; checkIn: string; checkOut: string; nights: number; guest: string; email: string; phone: string; adults: number; kids: number; taxName: string; taxRate: number; notes: string }>({ show: false, id: '', today: '', hotel: '', hotelAddress: '', hotelPhone: '', hotelEmail: '', rooms: [{ type: 'Standard', qty: 1, price: 100 }], checkIn: '', checkOut: '', nights: 0, guest: '', email: '', phone: '', adults: 1, kids: 0, taxName: 'ITBIS', taxRate: 18, notes: '' })
 // Noches de la cotización: se calculan de check-in/check-out (ahora editables en el modal).
 // Antes era un valor fijo tomado del rango inicial y NO reaccionaba al cambiar las fechas,
@@ -1047,25 +876,10 @@ const quoteRoomTypes = computed(() => {
   return Array.from(types)
 })
 
-const newResNights = computed(() => {
-  if (!newRes.value.cin || !newRes.value.cout) return 0
-  return Math.max(1, Math.round((new Date(newRes.value.cout).getTime() - new Date(newRes.value.cin).getTime()) / MS_PER_DAY))
-})
 // Impuesto del hotel — config real, NO el 10% hardcodeado de antes (C2). Cargado en onMounted.
+// Usado por popupQuote() (cotización); la creación de reservas se hace ahora en /panel/reservas.
 const hotelTaxRate = ref(0)
 const hotelTaxName = ref('Impuesto')
-// Total de la nueva reserva: REACTIVO a fechas (noches) y tarifa (A1). Antes era un `amt`
-// fijo que no reaccionaba al cambiar las fechas y usaba impuesto 10% fijo (C2).
-const newResRoomBase = computed(() => Number(newRes.value.room?.basePrice) || 0)
-const newResTax = computed(() => Math.round(newResRoomBase.value * newResNights.value * hotelTaxRate.value / 100))
-const newResAmt = computed(() => newResRoomBase.value * newResNights.value + newResTax.value)
-// Depósito sincronizado con el total y el % (A3): al abrir, cambiar fechas o el %, se
-// recalcula y clampa a [0, total] (m3). El usuario puede sobreescribir el monto a mano.
-watch([newResAmt, () => newRes.value.depositPercentage, () => newRes.value.show], () => {
-  if (!newRes.value.show) return
-  const pct = Number(newRes.value.depositPercentage) || 0
-  newRes.value.deposit = Math.min(newResAmt.value, Math.max(0, Math.round(newResAmt.value * pct / 100)))
-})
 
 // Channels
 const CH: Record<string, any> = {
@@ -1603,29 +1417,16 @@ async function popupCancel() {
     emit('changed')
   } catch { toast.error('Error') }
 }
+// Crear reserva: delega en el wizard de 5 pasos de /panel/reservas (mismo patrón que
+// onEditFromPlanning ya usaba para editar) — evita duplicar el formulario y sus validaciones.
 function popupNewRes() {
   const p = popup.value
   lastSel.value = null
-  const roomData = planRooms.value.find((r: any) => r.id === p.room?.id)
   // Checkout EXCLUSIVO: la última celda seleccionada es la última noche; el checkout es el día
   // siguiente. Así N celdas resaltadas = N noches y la barra cubre las celdas exactas (C1).
   const cout = addDaysStr(p.toDate, 1)
-  newRes.value = {
-    show: true, room: { ...p.room, basePrice: roomData?.basePrice ?? p.room?.basePrice ?? 0 }, cin: p.fromDate, cout,
-    name: '', email: '', phone: '',
-    language: 'Español', country: 'República Dominicana', nationality: 'Dominicana',
-    address: '', city: '', province: '',
-    sex: '', birthDate: '',
-    documentType: 'dni', document: '', documentIssueDate: '',
-    communicateClient: 'none', guestNotes: '',
-    emergencyName: '', emergencyPhone: '', emergencyRelation: '', emergencyEmail: '',
-    adults: 2, kids: 0, regime: 'room_only', promoCode: '',
-    ch: 'direct', commission: 0, extLocator: '', otaNotes: '',
-    cardHolder: '', cardBrand: 'visa', cardNumber: '', cardCvv: '', cardExpMonth: '', cardExpYear: '',
-    payMethod: 'transfer', deposit: 0, depositPercentage: 100, depositStatus: 'unpaid',
-    amt: 0, // el total real es el computed `newResAmt` (reactivo)
-  }
   popup.value.show = false
+  router.push({ path: '/panel/reservas', query: { newRoomId: p.room?.id, newCheckIn: p.fromDate, newCheckOut: cout } })
 }
 function popupQuote() {
   const p = popup.value
@@ -1723,75 +1524,6 @@ function confirmUnblock(b: any) {
 async function doUnblock() {
   try { await HotelService.deleteBlock(unblock.value.id); planBlocks.value = planBlocks.value.filter((b: any) => b.id !== unblock.value.id); toast.success('Desbloqueado'); emit('changed') } catch { toast.error('Error') }
   unblock.value.show = false
-}
-
-// New reservation
-async function saveNewRes() {
-  const n = newRes.value
-  const hotelId = hid.value || planRooms.value[0]?.hotelId
-  if (!n.room) { toast.error('Falta habitación'); return }
-  if (!n.name?.trim()) { toast.error('Falta nombre del huésped'); return }
-  let cout = n.cout
-  if (!cout || cout <= n.cin) {
-    const d = new Date(n.cin + 'T00:00:00')
-    d.setDate(d.getDate() + 1)
-    cout = fDate(d)
-  }
-  const guestName = n.name.trim()
-  try {
-    // 1. Crear huésped con todos los campos
-    const guest: any = await GuestService.create({
-      hotelId,
-      name: guestName,
-      email: n.email.trim(),
-      phone: n.phone.trim(),
-      nationality: n.nationality,
-      language: n.language,
-      country: n.country,
-      sex: n.sex,
-      birthDate: n.birthDate,
-      address: n.address,
-      city: n.city,
-      province: n.province,
-      documentType: n.documentType,
-      document: n.document,
-      documentIssueDate: n.documentIssueDate,
-      notes: n.guestNotes,
-      communicateClient: n.communicateClient,
-    })
-    // 2. Crear reserva
-    const r = await ReservationService.create({
-      hotelId, roomId: n.room.id, guestId: guest.id,
-      checkIn: n.cin, checkOut: cout, totalAmount: newResAmt.value,
-      channel: n.ch, status: 'confirmed',
-      paymentMethod: n.payMethod, deposit: n.deposit || 0,
-      depositPercentage: n.depositPercentage,
-      depositStatus: newResAmt.value > 0 && (n.deposit || 0) >= newResAmt.value ? 'paid' : (n.deposit || 0) > 0 ? 'partial' : 'unpaid',
-      adults: n.adults, children: n.kids,
-      notes: n.guestNotes,
-      regime: n.regime,
-      commission: n.commission,
-      externalLocator: n.extLocator,
-    })
-    // 3. Push local
-    const amt = newResAmt.value || 0
-    const dep = n.deposit || 0
-    const paymentStatus = amt > 0 && dep >= amt ? 'paid' : dep > 0 ? 'partial' : 'pending'
-    planReservas.value.push({
-      id: r.id, roomId: n.room.id, guestId: guest.id,
-      guestName, guestEmail: n.email.trim(),
-      checkIn: n.cin, checkOut: cout, totalAmount: amt,
-      status: 'confirmed', channel: n.ch,
-      adults: n.adults, children: n.kids,
-      roomNumber: n.room.number, paymentMethod: n.payMethod, deposit: dep,
-      paymentStatus,
-    })
-    toast.success('Reserva creada')
-    newRes.value.show = false
-    emit('changed')
-  } catch (e: any) {
-    toast.error(e?.message || 'Error al crear la reserva')
-  }
 }
 
 // ── Días Mínimos por fecha (estadía mínima de una reserva que ENTRA ese día) ──
