@@ -354,14 +354,14 @@ const N = [
   {id:'reclutamiento',label:'📝 Reclutamiento',group:'rrhh',panel:'hotel',info:{
     que:'Postulantes y pipeline de selección.',
     porque:'Bolsa de candidatos para empleados.',
-    conectado:['auditlog'],
-    falta:['Sin connector con empleados: un postulante aceptado no se convierte en empleado automáticamente']
+    conectado:['auditlog','empleados (contratado→expediente ✅)'],
+    falta:['Parcial: al contratar se crea el expediente SOLO si el postulante ya tiene cuenta de usuario (match por email). Provisionar el login del nuevo empleado es una decisión de producto aparte (no se fabrican credenciales).']
   }},
   {id:'capacitacion',label:'🎓 Capacitación',group:'rrhh',panel:'hotel',info:{
     que:'Cursos y capacitación del staff.',
     porque:'Desarrollo. Borrado sensible (historial).',
-    conectado:['auditlog'],
-    falta:['Sin connector con empleados: los cursos no alimentan el expediente/scoring de desempeño']
+    conectado:['auditlog','empleados (curso completado→documento ✅)'],
+    falta:['El curso completado ahora deja un documento en el expediente (connector capacitacion-empleados). El SCORING de desempeño (#321) sigue pendiente: no hay fórmula definida, solo se registra el rastro.']
   }},
   {id:'activos',label:'📦 Activos',group:'rrhh',panel:'hotel',info:{
     que:'Inventario de bienes asignados al staff (equipos, uniforms).',
@@ -437,7 +437,7 @@ const N = [
     que:'Gerente IA: insights/análisis del negocio. Vista /panel/ia/gerente.',
     porque:'Sugerencias data-driven para el hotelero.',
     conectado:['—'],
-    falta:['🔴 AISLADO del wiring: sin connectors, no se le inyectan módulos, no escribe a auditlog, y el dashboard no muestra sus insights. Lee datos por su cuenta pero no está cableado al resto como ai-recepcionista.']
+    falta:['🟡 EN CURSO (otra sesión): el cableado de ai-gerente (auditlog + insights al dashboard) lo está trabajando otra sesión en paralelo (gerente-ia-mapa.html). No se toca desde acá para evitar conflictos.']
   }},
 
   // ─── ANALÍTICA ───
@@ -549,8 +549,8 @@ const E = [
   {f:'reservas',t:'payment-requests',y:'hook',l:'checkout libera depósito ✅'},
   {f:'ai-gerente',t:'dashboard',y:'falta',l:'insights no cableados'},
   {f:'amenities',t:'habitaciones',y:'falta',l:'dualidad Rooms.amenities CSV'},
-  {f:'reclutamiento',t:'empleados',y:'falta',l:'postulante→empleado'},
-  {f:'capacitacion',t:'empleados',y:'falta',l:'no alimenta expediente'},
+  {f:'reclutamiento',t:'empleados',y:'hook',l:'contratado→expediente ✅'},
+  {f:'capacitacion',t:'empleados',y:'hook',l:'curso→documento ✅'},
   {f:'subscriptions',t:'payments',y:'falta',l:'cobro SaaS sin ledger'},
 
   // ===== GAPS: BUGS en conexión existente (rojo sólido) =====
@@ -568,7 +568,7 @@ const GAPS_HTML = `
   </details>
 
   <details open><summary>🧠 IA y analítica sin reflejo</summary>
-    <div class="gap-card warn"><div class="gtitle">ai-gerente AISLADO del wiring <span class="tag conf">verificar</span></div><div class="gwhy">A diferencia de ai-recepcionista (que recibe channexPusher post-init), ai-gerente no tiene connectors, no se le inyectan módulos, no escribe a auditlog. Lee datos por su cuenta pero sus insights no llegan al dashboard ni a reports. Es una isla con vista propia.</div></div>
+    <div class="gap-card warn"><div class="gtitle">ai-gerente AISLADO del wiring <span class="tag rev">EN CURSO (otra sesión)</span></div><div class="gwhy">A diferencia de ai-recepcionista (que recibe channexPusher post-init), ai-gerente no tiene connectors, no se le inyectan módulos, no escribe a auditlog. Lee datos por su cuenta pero sus insights no llegan al dashboard ni a reports. <b>El cableado lo está trabajando otra sesión en paralelo</b> (gerente-ia-mapa.html) — no se toca desde acá para evitar conflictos.</div></div>
     <div class="gap-card"><div class="gtitle">dashboard no consume IA <span class="tag rev">revisar</span></div><div class="gwhy">El home del hotel muestra KPIs clásicos; los insights/sugerencias de ai-gerente no se reflejan en dashboard. Falta un connector ai-gerente→dashboard.</div></div>
   </details>
 
@@ -579,7 +579,7 @@ const GAPS_HTML = `
     <div class="gap-card info"><div class="gtitle">opiniones → reservas ✅ RESUELTO <span class="tag conf">FIX</span></div><div class="gwhy">Connector <code>reservas-opiniones</code>: al <code>onReservationCheckedOut</code>, opiniones crea una review <code>status='pending'</code> (visible=0, rating=0) vinculada a la reserva. Dedup por reservationId, best-effort. Requiere <code>RUN_MIGRATE</code> para la columna <code>status</code>. <code>feedback</code> sigue sin vínculo (feature aparte).</div></div>
     <div class="gap-card"><div class="gtitle">amenities — dualidad de datos</div><div class="gwhy">Módulo <code>amenities</code> usa <code>RoomAmenities</code> (relacional; bookingengine lo lee en public-booking.ts:23) PERO <code>habitaciones</code> tiene su propio <code>Rooms.amenities</code> (CSV string, model.ts:14) → dos fuentes de verdad.</div></div>
     <div class="gap-card info"><div class="gtitle">dashboard → payments ✅ RESUELTO <span class="tag conf">FIX</span></div><div class="gwhy"><code>dashboard-queries.ts</code> ahora lee Payment/Folios/Invoices y expone <code>financial</code> (revenue, revenueToday, byMethod, outstandingInvoices, foliosOpen) en <code>getDashboard</code>. Lectura pura desde la fuente de verdad del dinero. Conexión que pasa de roja a azul en el mapa.</div></div>
-    <div class="gap-card"><div class="gtitle">reclutamiento / capacitacion → empleados</div><div class="gwhy">Ciclo abierto: postulante aceptado no crea empleado; cursos no alimentan expediente/scoring (#321). Mantenimiento fuera del scoring (sin connector empleados-mantenimiento).</div></div>
+    <div class="gap-card info"><div class="gtitle">reclutamiento / capacitacion → empleados ✅ <span class="tag conf">RESUELTO (parcial)</span></div><div class="gwhy"><b>reclutamiento→empleados:</b> connector <code>reclutamiento-empleados</code> — al contratar (<code>onApplicantHired</code>), <code>linkHiredApplicantToEmployee</code> crea el expediente si el postulante ya tiene cuenta (match por email en el hotel) y liga <code>hiredEmployeeId</code>. NO fabrica credenciales (el login del nuevo empleado es decisión de producto). <b>capacitacion→empleados:</b> connector <code>capacitacion-empleados</code> — al completar un curso (<code>onEnrollmentCompleted</code>) se registra un documento <code>training</code> en el expediente. El <b>scoring de desempeño (#321)</b> sigue pendiente (sin fórmula). Cubierto por tests. Mantenimiento fuera del scoring sigue sin connector.</div></div>
     <div class="gap-card info"><div class="gtitle">payment-gateways — BIEN cableado <span class="tag conf">OK</span></div><div class="gwhy">NO es gap: payments y bookingengine consumen <code>PaymentGatewayRegistry</code> (services/payment-gateway/registry.ts). Añadir pasarelas funciona sin tocar cada flujo.</div></div>
   </details>
 

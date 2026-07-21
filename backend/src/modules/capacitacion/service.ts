@@ -9,6 +9,8 @@ import type {
 } from './types'
 import { buildEnrollmentEmail } from './usecases/emails'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
+import { composeSockets } from '../../shared/usecases/compose-sockets'
+import type { CapacitacionSockets } from './sockets'
 
 /** Puerto de email (lo cablea email-bootstrap con setEmailDeps). */
 export interface EmailPort {
@@ -20,9 +22,13 @@ export class CapacitacionService {
   private userRepo?: RepositoryAdapter<{ id: string; name?: string; email?: string }>
   private publicUrl?: string
   private auditPort: AuditPort | null = null
+  private sockets: CapacitacionSockets = {}
 
   /** Conecta el audit log. Lo inyecta el connector `capacitacion-auditlog`. */
   setAuditDeps(port: AuditPort): void { this.auditPort = port }
+
+  /** onEnrollmentCompleted → expediente del empleado (connector `capacitacion-empleados`). */
+  setSockets(s: Partial<CapacitacionSockets>): void { composeSockets(this.sockets as any, s as any) }
 
   constructor(
     private readonly courseRepo: RepositoryAdapter<CourseDTO>,
@@ -120,9 +126,12 @@ export class CapacitacionService {
     const enrollment = await this.enrollRepo.findOne({ id, hotelId })
     if (!enrollment) throw new NotFoundError('Inscripción no encontrada')
     const course = await this.courseRepo.findOne({ id: enrollment.courseId, hotelId })
-    return this.enrollRepo.update(id, {
+    const updated = await this.enrollRepo.update(id, {
       status: 'completed', completedAt: new Date().toISOString(), expiresAt: this.expiresFor(course), score: score ?? null,
-    } as any) as Promise<EnrollmentDTO>
+    } as any) as EnrollmentDTO
+    // Curso completado → registrarlo en el expediente del empleado (connector capacitacion-empleados).
+    await this.sockets.onEnrollmentCompleted?.(updated, course?.name)
+    return updated
   }
 
   /** Solo lectura: nombre del curso de un token (para la PÁGINA de confirmación; no marca nada). */

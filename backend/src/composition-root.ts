@@ -174,6 +174,8 @@ import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 import { reservasOpinionesConnector } from './connectors/reservas-opiniones'
 import { reservasDepositsConnector } from './connectors/reservas-deposits'
 import { pricingCanalesConnector } from './connectors/pricing-canales'
+import { reclutamientoEmpleadosConnector } from './connectors/reclutamiento-empleados'
+import { capacitacionEmpleadosConnector } from './connectors/capacitacion-empleados'
 import { paymentsCajaConnector } from './connectors/payments-caja'
 import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-payments'
 import { paymentRequestsTtlockConnector } from './connectors/payment-requests-ttlock'
@@ -253,6 +255,11 @@ system.addConnector('reservas-deposits', reservasDepositsConnector)
 // Auto-push de tarifas a OTAs: pricing emite onRatesUpdated al cambiar tarifas → canales las empuja
 // a Channex. Cierra el gap "push manual": editar tarifas ya no requiere apretar el botón. Fire-and-forget.
 system.addConnector('pricing-canales', pricingCanalesConnector)
+// Postulante contratado → expediente de empleado, solo si ya existe la cuenta de usuario (match por
+// email en el hotel). No fabrica credenciales. Cierra el ciclo reclutamiento→empleados.
+system.addConnector('reclutamiento-empleados', reclutamientoEmpleadosConnector(orm))
+// Curso completado → documento en el expediente del empleado (sin scoring). Cierra capacitacion→empleados.
+system.addConnector('capacitacion-empleados', capacitacionEmpleadosConnector)
 system.addConnector('payments-caja', paymentsCajaConnector)
 // Un gasto en efectivo saca plata del cajón: sin esto el arqueo del turno no lo ve.
 system.addConnector('gastos-caja', gastosCajaConnector)

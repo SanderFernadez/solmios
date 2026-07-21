@@ -73,6 +73,16 @@ describe('CapacitacionService', () => {
     expect(e.expiresAt).toBeNull()
   })
 
+  it('completar emite onEnrollmentCompleted con la inscripción y el nombre del curso', async () => {
+    const { svc } = make({ courses: [COURSE], enrollments: [{ id: 'en1', hotelId: 'h1', courseId: 'c1', employeeId: 'e1', status: 'enrolled' }] })
+    let payload: { enrollment: any; courseName?: string } | null = null
+    svc.setSockets({ onEnrollmentCompleted: async (enrollment, courseName) => { payload = { enrollment, courseName } } })
+    await svc.complete('en1', 'h1', 88)
+    expect(payload).not.toBeNull()
+    expect(payload!.enrollment.employeeId).toBe('e1')
+    expect(payload!.courseName).toBe('Manejo de alimentos')
+  })
+
   it('borrar un curso borra sus inscripciones', async () => {
     const { svc, enrollRepo } = make({ courses: [COURSE], enrollments: [{ id: 'en1', hotelId: 'h1', courseId: 'c1', employeeId: 'e1', status: 'enrolled' }] })
     await svc.deleteCourse('c1', 'h1')
