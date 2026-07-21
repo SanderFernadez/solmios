@@ -9,6 +9,9 @@
     "doctor": "bun run doctor.ts",
     "analyze": "bun run node_modules/arckode-framework/bin/arckode.js analyze",
     "test": "bun test --env-file .env.test",
+    "load:reservations": "bun run scripts/e2e/load-reservations.e2e.ts",
+    "load:guests": "bun run scripts/e2e/load-guests.e2e.ts",
+    "load:latency": "bun run scripts/e2e/latency.e2e.ts",
     "typecheck": "bun run tsc --noEmit",
     "lint": "echo 'No linter configured — add eslint to package.json'"
   },
