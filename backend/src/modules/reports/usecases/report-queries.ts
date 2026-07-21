@@ -182,20 +182,24 @@ export class ReportQueries {
 
   async markNoShows(hotelId?: string): Promise<number> {
     const todayStr = new Date().toISOString().split('T')[0]
-    const filters: any = {}
-    if (hotelId) filters.hotelId = hotelId
-    const reservas = (await this.orm.findMany('Reservations', filters)) as any[]
-    let count = 0
-    for (const r of reservas) {
+    // Solo pending/confirmed pueden ser no-show. Filtrar por status en la query (2 findMany) en vez
+    // de traer TODAS las reservas históricas y descartarlas en JS (#276): una reserva vieja no se
+    // relee cada corrida. Los updates de cada no-show van en paralelo, no encadenados.
+    const base = hotelId ? { hotelId } : {}
+    const [pending, confirmed] = await Promise.all([
+      this.orm.findMany('Reservations', { ...base, status: 'pending' }) as Promise<any[]>,
+      this.orm.findMany('Reservations', { ...base, status: 'confirmed' }) as Promise<any[]>,
+    ])
+    const vencidas = [...pending, ...confirmed].filter((r) => {
       const ci = String(r.checkIn || '').slice(0, 10)
-      if ((r.status === 'pending' || r.status === 'confirmed') && ci && ci < todayStr) {
-        await this.orm.update('Reservations', r.id, { status: 'no_show' })
-        // BUG FIX: liberar la habitación asociada — antes quedaba occupied/reserved y Channex la
-        // seguía mostrando fuera de inventario → overbooking real.
-        if (r.roomId) await this.orm.update('Rooms', r.roomId, { status: 'available' })
-        count++
-      }
-    }
-    return count
+      return ci && ci < todayStr
+    })
+    await Promise.all(vencidas.map((r) => Promise.all([
+      this.orm.update('Reservations', r.id, { status: 'no_show' }),
+      // BUG FIX: liberar la habitación asociada — antes quedaba occupied/reserved y Channex la
+      // seguía mostrando fuera de inventario → overbooking real.
+      r.roomId ? this.orm.update('Rooms', r.roomId, { status: 'available' }) : Promise.resolve(),
+    ])))
+    return vencidas.length
   }
 }

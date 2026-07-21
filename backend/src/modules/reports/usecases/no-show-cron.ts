@@ -5,11 +5,18 @@ import type { EmailSender } from '../../../services/email-sender'
 export function createNoShowCron(orm: any, emailSender: EmailSender, logger: any): () => Promise<number> {
   return async (): Promise<number> => {
     const todayStr = new Date().toISOString().split('T')[0]
-    const reservas = (await orm.findMany('Reservations', {})) as any[]
+    // Antes traía TODAS las reservas de TODOS los hoteles (findMany sin filtro) cada 24h y las
+    // descartaba en JS. Solo pending/confirmed pueden ser no-show: se filtran por status en la
+    // query (#276). Reduce de "todo el histórico" a las que realmente pueden vencer.
+    const [pending, confirmed] = await Promise.all([
+      orm.findMany('Reservations', { status: 'pending' }) as Promise<any[]>,
+      orm.findMany('Reservations', { status: 'confirmed' }) as Promise<any[]>,
+    ])
+    const reservas = [...pending, ...confirmed]
     let count = 0
     for (const r of reservas) {
       const ci = String(r.checkIn || '').slice(0, 10)
-      if ((r.status === 'pending' || r.status === 'confirmed') && ci && ci < todayStr) {
+      if (ci && ci < todayStr) {
         await orm.update('Reservations', r.id, { status: 'no_show' })
         // BUG FIX: liberar la habitación asociada (mismo fix que markNoShows del endpoint) — antes
         // quedaba occupied/reserved y Channex la mostraba fuera de inventario → overbooking.
