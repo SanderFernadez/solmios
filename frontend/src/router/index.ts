@@ -55,6 +55,13 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      // #421: destino del redirect de GET /api/public/verify-email?token=… → ?status=<outcome>
+      path: '/verificar-email',
+      name: 'verificar-email',
+      component: () => import('@/pages/verificar-email.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/admin',
       component: () => import('@/layouts/SuperAdminLayout.vue'),
       meta: { requiresSuperAdmin: true },

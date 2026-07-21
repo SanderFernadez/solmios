@@ -356,6 +356,7 @@ export interface User {
   plan?: string
   rooms?: number
   permissions?: string[]
+  emailVerified?: boolean
 }
 
 // === CHECKIN ===

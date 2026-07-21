@@ -21,6 +21,7 @@ interface MeResponse {
   role: string
   hotelId: string | null
   hotelName: string
+  emailVerified?: boolean
 }
 
 function mapUser(raw: LoginResponse['user'] | MeResponse): User {
@@ -32,6 +33,8 @@ function mapUser(raw: LoginResponse['user'] | MeResponse): User {
     role,
     hotelId: raw.hotelId || '',
     hotelName: raw.hotelName || '',
+    // Solo /auth/me trae emailVerified; en login queda undefined (se resuelve al hidratar el perfil).
+    emailVerified: 'emailVerified' in raw ? raw.emailVerified : undefined,
     permissions:
       role === 'super_admin'
         ? ['total', 'config', 'users', 'billing', 'support', 'analytics']
@@ -52,6 +55,11 @@ export const AuthService = {
 
   async logout() {
     return http.post('/auth/logout')
+  },
+
+  /** Reenvía el correo de verificación al usuario autenticado. */
+  async resendVerification(): Promise<{ sent: boolean }> {
+    return http.post<{ sent: boolean }>('/auth/resend-verification')
   },
 
   async changePassword(currentPassword: string, newPassword: string) {

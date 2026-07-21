@@ -134,6 +134,19 @@
 
     <!-- Main Content -->
     <div class="flex-1 min-w-0 lg:ml-64 flex flex-col" :class="auth.impersonating ? 'mt-10' : ''">
+      <!-- Verificación de email pendiente (#421): banner persistente para merchants sin email verificado -->
+      <div v-if="showVerifyEmailBanner"
+        class="bg-warning/12 border-b border-warning/30 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-base shrink-0">✉️</span>
+          <span class="text-[13px] font-bold text-navy">Verificá tu email para asegurar tu cuenta.</span>
+        </div>
+        <button @click="handleResendVerification" :disabled="resendingVerification"
+          class="shrink-0 text-[12px] font-extrabold text-white bg-navy px-3.5 py-1.5 rounded-lg hover:bg-navy-light transition-colors disabled:opacity-50 cursor-pointer">
+          {{ resendingVerification ? 'Enviando…' : 'Reenviar correo' }}
+        </button>
+      </div>
+
       <!-- Header (el dashboard general trae su propia barra oscura de comando) -->
       <!-- Header global "command center" (mismo en todas las páginas). El dashboard trae el suyo. -->
       <div v-if="!isCommandCenter" class="px-4 md:px-6 pt-4">
@@ -167,6 +180,8 @@ import { useDashboardStore } from '@/stores/dashboard.store'
 import { useRoomStore } from '@/stores/room.store'
 import { useNow } from '@/composables/useNow'
 import { useModulesStore } from '@/stores/modules.store'
+import { useToast } from '@/composables/useToast'
+import { AuthService } from '@/services/Auth.service'
 import { MESSAGING_PATH, MESSAGING_TABS } from '@/config/messaging-tabs'
 import AppHeader from '@/components/features/core-pms/AppHeader.vue'
 import TrialBanner from '@/components/features/TrialBanner.vue'
@@ -412,9 +427,35 @@ const occupancyBreakdown = computed(() => {
   }
 })
 
+const toast = useToast()
+
+// Verificación de email (#421): solo merchants (no super_admin ni impersonación) con emailVerified === false.
+// `emailVerified` lo trae GET /auth/me (hidratado por restoreSession); undefined = todavía sin dato → no mostrar.
+const showVerifyEmailBanner = computed(() =>
+  !auth.impersonating &&
+  auth.userRole !== 'super_admin' &&
+  auth.user?.emailVerified === false,
+)
+
+const resendingVerification = ref(false)
+async function handleResendVerification() {
+  if (resendingVerification.value) return
+  resendingVerification.value = true
+  try {
+    await AuthService.resendVerification()
+    toast.success('Te reenviamos el correo', 'Revisá tu bandeja de entrada.')
+  } catch (e) {
+    toast.error('No se pudo reenviar', e instanceof Error ? e.message : 'Intentá de nuevo en un momento.')
+  } finally {
+    resendingVerification.value = false
+  }
+}
+
 onMounted(() => {
   dashboard.fetchStats(auth.user?.hotelId)
   modules.ensure(auth.user?.hotelId)
+  // Asegura que emailVerified esté hidratado desde /auth/me (login no lo trae).
+  if (auth.isAuthenticated && auth.user?.emailVerified === undefined) auth.restoreSession()
 })
 
 const roleLabel = computed(() => {
