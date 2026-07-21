@@ -5,7 +5,7 @@
 // —sockets, invalidación de caché, auditoría— entran por callbacks: el usecase
 // no conoce el transporte.
 import type { RepositoryAdapter } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import { NotFoundError, ValidationError } from 'arckode-framework'
 import type {
   MantenimientoDTO,
   CreateMantenimientoDTO,
@@ -41,6 +41,12 @@ export interface CrudEffects {
   invalidate: (hotelId?: string) => Promise<void>
   /** Audit log GLOBAL, para dejar rastro de quién borró el ticket. */
   auditDelete: (existing: MantenimientoDTO, user: User, id: string) => Promise<void>
+  /**
+   * Verifica que el técnico (assignedTo) o el proveedor (providerId) EXISTA y sea de este hotel.
+   * Sin esto se aceptaba cualquier id —de otro hotel o inexistente— y el ticket quedaba asignado
+   * a un fantasma (#392). Lo resuelve el service, que tiene userRepo/providerRepo.
+   */
+  validateAssignee?: (a: { assignedTo?: string; providerId?: string }, hotelId: string) => Promise<void>
 }
 
 export class CrudUseCase {
@@ -55,6 +61,7 @@ export class CrudUseCase {
     if (user.role !== 'super_admin' && dto.hotelId !== user.hotelId) {
       throw new NotFoundError('No autorizado para crear en otro hotel')
     }
+    await this.effects.validateAssignee?.(dto, dto.hotelId)
     // `reportedBy` sale del token, nunca del cliente: es trazabilidad de quién reportó.
     const item = await this.repo.create({ ...dto, reportedBy: user.id, ...exclusiveAssignee(dto) } as any)
     await this.audit.log(item.id, dto.hotelId, user.id, 'created', null, item.title)
@@ -67,6 +74,7 @@ export class CrudUseCase {
 
   async update(id: string, dto: UpdateMantenimientoDTO, user: User): Promise<MantenimientoDTO> {
     const existing = await findOwnedTicket(this.repo, id, user)
+    await this.effects.validateAssignee?.(dto, existing.hotelId)
     // Un ticket tiene UN dueño: técnico interno O servicio externo, nunca los dos.
     // Asignar uno desaloja al otro acá, en el servidor, sin importar por qué ruta
     // vino el request (el diálogo de la app lo respeta, pero no es la garantía).

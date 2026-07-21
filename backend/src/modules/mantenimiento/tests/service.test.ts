@@ -28,7 +28,11 @@ function makeRepo(overrides: Partial<RepositoryAdapter<MantenimientoDTO>> = {}):
 }
 
 function makeUserRepo() {
-  return { findById: async () => ({ id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }) } as unknown as RepositoryAdapter<any>
+  return {
+    findById: async () => ({ id: 'user-1', hotelId: 'hotel-1', role: 'hotel_admin' }),
+    // Por defecto el técnico existe y es del hotel (validateAssignee lo acepta).
+    findOne: async () => ({ id: 'tech', hotelId: 'h1', role: 'maintenance' }),
+  } as unknown as RepositoryAdapter<any>
 }
 
 function makeAuditRepo(): RepositoryAdapter<any> {
@@ -188,10 +192,35 @@ describe('MantenimientoService', () => {
     it('crear ya asignado a un servicio externo nace sin técnico', async () => {
       let created: Record<string, unknown> = {}
       const repo = makeRepo({ create: async (data) => { created = data as Record<string, unknown>; return { id: 'maint-1', ...data } as MantenimientoDTO } })
-      const svc = new MantenimientoService(repo, log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo())
+      // providerRepo (8º arg) con el proveedor existente, para que validateAssignee lo acepte.
+      const providerRepo = { findOne: async () => ({ id: 'prov-1', hotelId: 'h1' }) } as unknown as RepositoryAdapter<any>
+      const svc = new MantenimientoService(repo, log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo(), undefined, providerRepo)
       await svc.create({ hotelId: 'h1', title: 'Leak', providerId: 'prov-1' } as any, hotelAdmin)
       expect(created.providerId).toBe('prov-1')
       expect(created.assignedTo).toBe('')
+    })
+  })
+
+  // #392: no se asigna un ticket a un técnico/proveedor inexistente o de otro hotel.
+  describe('validación de asignación', () => {
+    it('rechaza un técnico que no pertenece al hotel', async () => {
+      const userRepo = { findById: async () => ({ id: 'u', hotelId: 'h1' }), findOne: async () => null } as unknown as RepositoryAdapter<any>
+      const svc = new MantenimientoService(makeRepo(), log, silentCache, userRepo, fakeAuth, makeAuditRepo())
+      await expect(svc.create({ hotelId: 'h1', title: 'Leak', assignedTo: 'ajeno' } as any, hotelAdmin))
+        .rejects.toThrow('no pertenece a este hotel')
+    })
+
+    it('rechaza un proveedor que no pertenece al hotel', async () => {
+      const providerRepo = { findOne: async () => null } as unknown as RepositoryAdapter<any>
+      const svc = new MantenimientoService(makeRepo(), log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo(), undefined, providerRepo)
+      await expect(svc.create({ hotelId: 'h1', title: 'Leak', providerId: 'ajeno' } as any, hotelAdmin))
+        .rejects.toThrow('no pertenece a este hotel')
+    })
+
+    it('acepta un técnico del propio hotel', async () => {
+      const svc = new MantenimientoService(makeRepo(), log, silentCache, makeUserRepo(), fakeAuth, makeAuditRepo())
+      const r = await svc.create({ hotelId: 'h1', title: 'Leak', assignedTo: 'tech' } as any, hotelAdmin)
+      expect(r.assignedTo).toBe('tech')
     })
   })
 

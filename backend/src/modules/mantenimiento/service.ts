@@ -1,6 +1,6 @@
 // mantenimiento/service.ts — Facade del módulo. CRUD + delegación a usecases.
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
+import { NotFoundError, ValidationError } from 'arckode-framework'
 import type {
   MantenimientoDTO, CreateMantenimientoDTO, UpdateMantenimientoDTO,
   MantenimientoQuery, MantenimientoPaginated,
@@ -63,6 +63,18 @@ export class MantenimientoService {
       onDeleted: (id) => this.sockets.onMantenimientoDeleted?.(id) ?? Promise.resolve(),
       onAssigned: (i) => this.sockets.onMantenimientoAssigned?.(i) ?? Promise.resolve(),
       invalidate: (h) => this.listUc.invalidate(h),
+      // Un ticket no se asigna a un técnico/proveedor que no exista o sea de otro hotel (#392).
+      // Solo se valida el que viene con valor: '' (desasignar) no dispara chequeo.
+      validateAssignee: async (a, hotelId) => {
+        if (a.assignedTo) {
+          const u = await userRepo.findOne({ id: a.assignedTo, hotelId })
+          if (!u) throw new ValidationError('El técnico asignado no pertenece a este hotel')
+        }
+        if (a.providerId && providerRepo) {
+          const p = await providerRepo.findOne({ id: a.providerId, hotelId })
+          if (!p) throw new ValidationError('El proveedor asignado no pertenece a este hotel')
+        }
+      },
       auditDelete: (existing, user, id) =>
         auditSafely(this.auditPort, this.logger, {
           hotelId: existing.hotelId, userId: user.id, action: 'maintenance.delete',
