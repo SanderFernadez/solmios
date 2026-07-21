@@ -188,10 +188,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { PlatformService } from '@/services/Platform.service'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
+const toast = useToast()
 const loading = ref(true)
 const searchQuery = ref('')
 const statusFilter = ref('all')
@@ -234,7 +236,7 @@ onMounted(async () => {
         dueDate: '', notes: '',
       }
     })
-  } catch { /* silent */ } finally { loading.value = false }
+  } catch { toast.error('No se pudo cargar la facturación') } finally { loading.value = false }
 })
 
 const tabs = computed(() => {

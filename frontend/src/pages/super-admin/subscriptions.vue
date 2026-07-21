@@ -88,10 +88,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { PlatformService } from '@/services/Platform.service'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
+const toast = useToast()
 const searchQuery = ref('')
 const loading = ref(true)
 const showEditPlanModal = ref(false)
@@ -128,7 +130,7 @@ onMounted(async () => {
       date: h.createdAt ? String(h.createdAt).slice(0, 10) : '',
       status: h.status === 'pendiente' ? 'Pendiente' : h.status === 'suspendido' ? 'Vencido' : 'Pagado',
     }))
-  } catch { /* silent */ } finally { loading.value = false }
+  } catch { toast.error('No se pudieron cargar las suscripciones') } finally { loading.value = false }
 })
 
 const filteredPayments = computed(() => {

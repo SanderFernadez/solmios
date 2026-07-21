@@ -127,6 +127,7 @@ async function load() {
     allNotifications.value = r.data || []
   } catch {
     allNotifications.value = []
+    toast.error('No se pudieron cargar las notificaciones')
   } finally {
     loading.value = false
   }

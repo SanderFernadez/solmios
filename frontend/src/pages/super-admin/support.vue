@@ -148,9 +148,11 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { OperationsService } from '@/services/Operations.service'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
+const toast = useToast()
 const loading = ref(true)
 const activeFilter = ref('all')
 const searchQuery = ref('')
@@ -197,7 +199,7 @@ onMounted(async () => {
       createdAt: t.createdAt ? String(t.createdAt).replace('T', ' ').slice(0, 16) : '',
       attachments: [], replies: (() => { try { return JSON.parse(t.mensajes || '[]') } catch { return [] } })(),
     }))
-  } catch { /* silent */ } finally { loading.value = false }
+  } catch { toast.error('No se pudieron cargar los tickets de soporte') } finally { loading.value = false }
 })
 
 const filteredTickets = computed(() => {

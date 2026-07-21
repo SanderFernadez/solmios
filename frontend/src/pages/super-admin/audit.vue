@@ -127,9 +127,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { AuditLogService } from '@/services/AuditLog.service'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
+const toast = useToast()
 const loading = ref(true)
 const searchQuery = ref('')
 const filterAction = ref('all')
@@ -162,7 +164,7 @@ onMounted(async () => {
         ip: l.ip ?? '',
       }
     })
-  } catch { /* silent */ } finally { loading.value = false }
+  } catch { toast.error('No se pudo cargar el registro de auditoría') } finally { loading.value = false }
 })
 
 const hotelList = computed(() => [...new Set(logs.value.map((l: any) => l.hotel).filter(Boolean))])

@@ -61,6 +61,7 @@ async function loadPins() {
     pins.value = Array.isArray(result) ? result : (result as any).data || []
   } catch {
     pins.value = []
+    toast.error('No se pudieron cargar los reportes de feedback')
   } finally {
     loading.value = false
   }

@@ -250,6 +250,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import Icon from '@/components/ui/Icon.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
@@ -257,6 +258,7 @@ import { PlatformService } from '@/services/Platform.service'
 import { AuditLogService } from '@/services/AuditLog.service'
 import type { AuditLogRecord } from '@/types'
 
+const toast = useToast()
 const analytics = ref<Awaited<ReturnType<typeof SuperAdminService.analytics>> | null>(null)
 
 // Cards KPI con gradiente (mismo componente que el dashboard del hotel).
@@ -361,7 +363,7 @@ const uptimeLabel = computed(() => {
 const memoriaMb = computed(() => Number(monitoring.value?.memoria ?? 0))
 
 onMounted(async () => {
-  try { analytics.value = await SuperAdminService.analytics() } catch { /* silent */ }
+  try { analytics.value = await SuperAdminService.analytics() } catch { toast.error('No se pudieron cargar las métricas de la plataforma') }
   try { monitoring.value = await PlatformService.monitoring() } catch { /* silent */ }
   try {
     const a = await AuditLogService.list()

@@ -406,6 +406,7 @@ async function load() {
     payments.value = (r.data || []) as PaymentRequest[]
   } catch {
     payments.value = []
+    toast.error('No se pudieron cargar los pagos')
   } finally {
     loading.value = false
   }

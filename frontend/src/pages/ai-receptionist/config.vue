@@ -79,7 +79,7 @@ async function loadConfig() {
       businessHoursStart.value = cfg.businessHoursStart || '08:00'
       businessHoursEnd.value = cfg.businessHoursEnd || '22:00'
     }
-  } catch {}
+  } catch { toast.error('No se pudo cargar la configuración del recepcionista IA') }
   try {
     if (!hid) return
     const status = await AiReceptionistService.getWhatsappStatus(hid)
@@ -164,7 +164,7 @@ function stopPolling() {
 }
 
 async function loadIntents() {
-  try { const res = await AiReceptionistService.listIntents(); intents.value = res.data || [] } catch {} finally { intentsLoading.value = false }
+  try { const res = await AiReceptionistService.listIntents(); intents.value = res.data || [] } catch { toast.error('No se pudieron cargar las intenciones') } finally { intentsLoading.value = false }
 }
 
 async function toggleIntentActive(intent: any) {

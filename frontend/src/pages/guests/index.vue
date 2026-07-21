@@ -1001,6 +1001,7 @@ async function openViewGuest(guest: any) {
     }
   } catch {
     viewGuest.value = { ...viewGuest.value, loadingDetail: false }
+    toast.error('No se pudieron cargar los detalles del huésped')
   }
 }
 

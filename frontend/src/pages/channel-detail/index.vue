@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 import { ChannelService } from '@/services/Channel.service'
 import { resolveChannelLogo } from '@/utils/channelLogos'
 import ChannelRatesEditor from '@/components/features/ChannelRatesEditor.vue'
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 const channelId = computed(() => route.params.id as string)
 const detail = ref<any>(null)
 const loading = ref(true)
@@ -19,7 +21,7 @@ const channelForRates = computed(() =>
 onMounted(async () => {
   try { 
     detail.value = await ChannelService.detail(channelId.value)
-  } catch {} 
+  } catch { toast.error('No se pudo cargar el detalle del canal') }
   finally { loading.value = false }
 })
 

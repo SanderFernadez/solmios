@@ -283,7 +283,7 @@ function insertVariable(v: string) {
 
 async function load() {
   loading.value = true
-  try { const r = await AutoMessagesService.list(); messages.value = r.data||[] } catch {}
+  try { const r = await AutoMessagesService.list(); messages.value = r.data||[] } catch { toast.error('No se pudieron cargar los mensajes automáticos') }
   loading.value = false
 }
 function openNew() {

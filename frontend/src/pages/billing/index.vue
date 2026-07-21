@@ -870,7 +870,7 @@ function applyInvoiceFilter() {
 async function loadFolios() {
   try {
     folios.value = await FoliosService.list(hotelId.value)
-  } catch { folios.value = [] }
+  } catch { folios.value = []; toast.error('No se pudieron cargar los folios') }
 }
 onMounted(async () => {
   await loadCurrencyConfig(hotelId.value)

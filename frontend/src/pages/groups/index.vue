@@ -433,7 +433,7 @@ async function loadData() {
         tags: [], notes: g.notes || '',
       }
     })
-  } catch { } finally { loading.value = false }
+  } catch { toast.error('No se pudieron cargar los grupos') } finally { loading.value = false }
 }
 onMounted(loadData)
 

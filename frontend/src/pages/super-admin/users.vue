@@ -205,6 +205,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -212,6 +213,7 @@ import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToast()
 
 const loading = ref(true)
 const searchQuery = ref('')
@@ -275,7 +277,7 @@ onMounted(async () => {
         permissionsList: [],
       }
     })
-  } catch { /* silent */ } finally { loading.value = false }
+  } catch { toast.error('No se pudieron cargar los usuarios') } finally { loading.value = false }
 })
 
 const activeFiltersCount = computed(() => {

@@ -260,6 +260,7 @@ async function loadKeys() {
     }))
   } catch {
     apiKeys.value = []
+    toast.error('No se pudieron cargar las API keys')
   } finally { loading.value = false }
 }
 

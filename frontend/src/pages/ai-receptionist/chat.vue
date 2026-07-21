@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, nextTick, computed, watch } from 'vue'
 import { AiReceptionistService } from '@/services/AiReceptionist.service'
 import type { AiConversation, AiMessage } from '@/services/AiReceptionist.service'
+import { useToast } from '@/composables/useToast'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -27,6 +28,7 @@ function formatMessage(content: string): string {
   return escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')
 }
 
+const toast = useToast()
 const conversations = ref<AiConversation[]>([])
 const selectedId = ref<string | null>(null)
 const messages = ref<AiMessage[]>([])
@@ -112,7 +114,7 @@ async function selectConversation(id: string) {
     await nextTick()
     scrollToBottom()
     startMsgPolling()
-  } catch {}
+  } catch { toast.error('No se pudo cargar la conversación') }
 }
 
 function startMsgPolling() {
@@ -122,30 +124,38 @@ function startMsgPolling() {
 
 async function sendMessage() {
   if (!newMessage.value.trim() || !selectedId.value) return
-  const msg = await AiReceptionistService.sendMessage(selectedId.value, newMessage.value.trim())
-  messages.value.push(msg); newMessage.value = ''; await nextTick(); scrollToBottom()
-  lastMsgCount.value = messages.value.length
+  try {
+    const msg = await AiReceptionistService.sendMessage(selectedId.value, newMessage.value.trim())
+    messages.value.push(msg); newMessage.value = ''; await nextTick(); scrollToBottom()
+    lastMsgCount.value = messages.value.length
+  } catch { toast.error('No se pudo enviar el mensaje') }
 }
 
 async function takeConversation() {
   if (!selectedId.value) return
-  await AiReceptionistService.transferConversation(selectedId.value, 'me')
-  const conv = conversations.value.find(c => c.id === selectedId.value)
-  if (conv) conv.status = 'transferred'
+  try {
+    await AiReceptionistService.transferConversation(selectedId.value, 'me')
+    const conv = conversations.value.find(c => c.id === selectedId.value)
+    if (conv) conv.status = 'transferred'
+  } catch { toast.error('No se pudo tomar la conversación') }
 }
 
 async function returnToBot() {
   if (!selectedId.value) return
-  await AiReceptionistService.transferConversation(selectedId.value, null)
-  const conv = conversations.value.find(c => c.id === selectedId.value)
-  if (conv) conv.status = 'active'
+  try {
+    await AiReceptionistService.transferConversation(selectedId.value, null)
+    const conv = conversations.value.find(c => c.id === selectedId.value)
+    if (conv) conv.status = 'active'
+  } catch { toast.error('No se pudo devolver la conversación al bot') }
 }
 
 async function closeConversation() {
   if (!selectedId.value) return
-  await AiReceptionistService.closeConversation(selectedId.value)
-  const conv = conversations.value.find(c => c.id === selectedId.value)
-  if (conv) conv.status = 'resolved'
+  try {
+    await AiReceptionistService.closeConversation(selectedId.value)
+    const conv = conversations.value.find(c => c.id === selectedId.value)
+    if (conv) conv.status = 'resolved'
+  } catch { toast.error('No se pudo cerrar la conversación') }
 }
 
 function scrollToBottom() {

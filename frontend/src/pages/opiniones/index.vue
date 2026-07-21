@@ -246,7 +246,7 @@ async function load() {
   try {
     const r = await OpinionesService.list()
     reviews.value = Array.isArray(r) ? r : []
-  } catch { reviews.value = [] }
+  } catch { reviews.value = []; toast.error('No se pudieron cargar las opiniones') }
   try {
     const c = await ConfigService.get('opiniones_config')
     if (c) config.value = typeof c === 'string' ? JSON.parse(c) : c
@@ -269,7 +269,7 @@ async function saveResponse() {
 }
 
 async function saveConfig() {
-  try { await ConfigService.set('opiniones_config', JSON.stringify(config.value)) } catch {}
+  try { await ConfigService.set('opiniones_config', JSON.stringify(config.value)) } catch { toast.error('No se pudo guardar la configuración') }
 }
 
 function requestReviews() {

@@ -247,7 +247,7 @@ onMounted(async () => {
       users: r.usuarios ?? 0,
       permissions: (() => { try { return JSON.parse(r.permissions || '[]') } catch { return [] } })(),
     }))
-  } catch { /* silent */ }
+  } catch { toast.error('No se pudieron cargar los roles') }
   try {
     const { ConfigService } = await import('@/services/Platform.service')
     const flags = await ConfigService.get('feature_flags', 'platform')

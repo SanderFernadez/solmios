@@ -216,8 +216,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { PlatformService } from '@/services/Platform.service'
 
+const toast = useToast()
 const monData = ref<Awaited<ReturnType<typeof PlatformService.monitoring>> | null>(null)
 
 const apiEndpoints = computed(() => {
@@ -246,6 +248,6 @@ const stats = computed(() => ({
 }))
 
 onMounted(async () => {
-  try { monData.value = await PlatformService.monitoring() } catch { /* silent */ }
+  try { monData.value = await PlatformService.monitoring() } catch { toast.error('No se pudo cargar el monitoreo del sistema') }
 })
 </script>

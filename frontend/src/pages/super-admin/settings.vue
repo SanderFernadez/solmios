@@ -255,7 +255,7 @@ onMounted(async () => {
     if (Array.isArray(seg)) securityOptions.value = seg
     if (Array.isArray(integ)) integrations.value = integ
     if (maps?.apiKey) mapsKey.value = String(maps.apiKey)
-  } catch { /* silent */ }
+  } catch { toast.error('No se pudo cargar la configuración de la plataforma') }
 })
 
 const saveSettings = async () => {

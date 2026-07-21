@@ -156,10 +156,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { PlatformService } from '@/services/Platform.service'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 
+const toast = useToast()
 const loading = ref(true)
 const showCreateModal = ref(false)
 
@@ -196,7 +198,7 @@ onMounted(async () => {
       views: 0, reads: 0,
       status: a.active === 1 ? 'Enviado' : 'Borrador',
     }))
-  } catch { /* silent */ } finally { loading.value = false }
+  } catch { toast.error('No se pudieron cargar los anuncios') } finally { loading.value = false }
 })
 
 function sendAnnouncement() {

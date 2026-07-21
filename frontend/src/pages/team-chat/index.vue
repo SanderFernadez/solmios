@@ -141,12 +141,14 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { TeamChatService, type MessageDTO } from '@/services/TeamChat.service'
 import { TeamService } from '@/services/Team.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { useToast } from '@/composables/useToast'
 
 const ICON_REFRESH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>'
 const ICON_CHAT = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.8L3 20l1.3-3.9A7.9 7.9 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>'
 const ICON_TEAM = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4 0m8-4a3 3 0 11-2.5 1.34M7 8a3 3 0 10-2.5 1.34"/></svg>'
 
 const auth = useAuthStore()
+const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 const PAGE_SIZE = 200
@@ -274,6 +276,7 @@ async function load() {
     loadedCount.value = page.data.length
     hasMore.value = page.hasMore
   } catch {
+    toast.error('No se pudieron cargar los chats del equipo')
     messages.value = []
     hasMore.value = false
   } finally {

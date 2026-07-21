@@ -160,6 +160,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 import type { Room, RoomStatus, Reservation } from '@/types'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useRoomStore } from '@/stores/room.store'
@@ -182,6 +183,7 @@ import RevenueChart, { type DailyPoint } from '@/components/features/dashboard/R
 import FloorHeatMap from '@/components/features/dashboard/FloorHeatMap.vue'
 
 const router = useRouter()
+const toast = useToast()
 const dashboard = useDashboardStore()
 const roomStore = useRoomStore()
 const reservationStore = useReservationStore()
@@ -556,7 +558,8 @@ async function setRoomStatus(status: RoomStatus) {
     await roomStore.updateRoomStatus(id, status)
     dashboard.fetchStats(hotelId.value)
   } catch {
-    await roomStore.fetchRooms({ hotelId: hotelId.value })
+    toast.error('No se pudo actualizar el estado de la habitación')
+    await roomStore.fetchRooms({ hotelId: hotelId.value }).catch(() => {})
   }
 }
 </script>

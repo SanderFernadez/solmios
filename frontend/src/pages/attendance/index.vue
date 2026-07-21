@@ -472,7 +472,7 @@ async function loadData() {
     todayRecord.value = rec.status === 'fulfilled' ? rec.value : null
     schedules.value = sch.status === 'fulfilled' ? sch.value : []
     profiles.value = profRes.status === 'fulfilled' ? (profRes.value.data ?? []) : []
-  } catch { /* silent */ }
+  } catch { toast.error('No se pudieron cargar los datos de asistencia') }
   finally { loading.value = false }
 }
 
@@ -524,7 +524,7 @@ const scheduleName = (id: string) => schedules.value.find((s) => s.id === id)?.n
 
 async function loadWeek() {
   try { assignments.value = await AttendanceService.listShiftAssignments(weekDays.value[0], weekDays.value[6]) }
-  catch { /* silent */ }
+  catch { toast.error('No se pudo cargar la planilla de turnos') }
 }
 function shiftWeek(delta: number) {
   const d = new Date(weekStart.value); d.setDate(d.getDate() + delta); weekStart.value = d

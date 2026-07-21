@@ -336,7 +336,7 @@ onMounted(async () => {
       status: h.status === 'pendiente' ? 'Pendiente' : h.status === 'suspendido' ? 'Suspendido' : 'Activo',
       registered: h.createdAt ? String(h.createdAt).slice(0, 10) : '',
     }))
-  } catch { /* silent */ } finally { loading.value = false }
+  } catch { toast.error('No se pudieron cargar los hoteles') } finally { loading.value = false }
 })
 
 const locations = computed(() => [...new Set(hotels.value.map(h => h.location))].sort())
