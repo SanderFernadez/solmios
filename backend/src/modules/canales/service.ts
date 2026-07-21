@@ -17,6 +17,7 @@ import type { CanalesQueries } from './usecases/canales-queries'
 import { auditSafely, channelDeleteEntry, type AuditPort } from './usecases/audit'
 import { getSyncLog as getSyncLogFromTable } from './usecases/sync-log'
 import { pushSeasonalRatesToChannex } from './usecases/push-rates'
+import { readPricingMode } from './usecases/pricing-mode'
 
 export class CanalesService {
   private sockets: CanalesSockets = {}
@@ -73,22 +74,19 @@ export class CanalesService {
 
   async syncProperty(hotelId: string, hotel: { name: string; currency?: string; email?: string; address?: string; timezone?: string }, rooms: RoomTypeSummary[]): Promise<SyncResultDTO> {
     const cfg = await this.getConfig(hotelId)
-    const { result, newPropertyId } = await this.channex.syncProperty(hotel, rooms, cfg)
+    const pricingMode = await readPricingMode((m, q) => this.queries.findMany(m, q), hotelId)
+    const { result, newPropertyId } = await this.channex.syncProperty(hotel, rooms, cfg, pricingMode)
     if (newPropertyId) await this.upsertConfig(hotelId, { channexPropertyId: newPropertyId, syncEnabled: 1, lastSync: new Date().toISOString() })
     else await this.upsertConfig(hotelId, { lastSync: new Date().toISOString() })
 
-    // Log sync operation to DB
-    if (this.syncLogRepo) {
-      try {
-        await this.syncLogRepo.create({
-          id: crypto.randomUUID(), hotelId, channel: 'channex', action: 'sync_property',
-          status: result.success ? 'success' : 'error',
-          details: { roomTypes: result.roomTypes, ratePlans: result.ratePlans, newPropertyId },
-          createdAt: new Date().toISOString(),
-        })
-      } catch {}
-    }
-
+    if (this.syncLogRepo) try {
+      await this.syncLogRepo.create({
+        id: crypto.randomUUID(), hotelId, channel: 'channex', action: 'sync_property',
+        status: result.success ? 'success' : 'error',
+        details: { roomTypes: result.roomTypes, ratePlans: result.ratePlans, newPropertyId },
+        createdAt: new Date().toISOString(),
+      })
+    } catch {}
     return result
   }
 
@@ -136,18 +134,14 @@ export class CanalesService {
     const cfg = await this.getConfig(hotelId)
     const result = await this.bookings.ingestBookings(hotelId, cfg)
 
-    // Log ingest operation
-    if (this.syncLogRepo) {
-      try {
-        await this.syncLogRepo.create({
-          id: crypto.randomUUID(), hotelId, channel: 'channex', action: 'ingest_bookings',
-          status: result.success ? 'success' : 'error',
-          details: { ingested: result.ingested, acknowledged: result.acknowledged, errors: result.errors },
-          createdAt: new Date().toISOString(),
-        })
-      } catch {}
-    }
-
+    if (this.syncLogRepo) try {
+      await this.syncLogRepo.create({
+        id: crypto.randomUUID(), hotelId, channel: 'channex', action: 'ingest_bookings',
+        status: result.success ? 'success' : 'error',
+        details: { ingested: result.ingested, acknowledged: result.acknowledged, errors: result.errors },
+        createdAt: new Date().toISOString(),
+      })
+    } catch {}
     return result
   }
 
@@ -165,9 +159,13 @@ export class CanalesService {
 
   async getSyncLog(hotelId?: string): Promise<any[]> { return getSyncLogFromTable(this.syncLogRepo, hotelId) }
 
-  /** Etapa 2 — empuja las tarifas por temporada del hotel a Channex (rate + cerrar ventas + min/max stay). */
+  /** Etapa 2 — empuja las tarifas por temporada a Channex. getPricingMode: per_person → OBP (#404). */
   async pushSeasonalRates(hotelId: string, channel?: string): Promise<PushRatesResultDTO> {
-    return pushSeasonalRatesToChannex({ getConfig: (h) => this.getConfig(h), findMany: (m, q) => this.queries.findMany(m, q), pushSeasonalRates: (c, r, s, a) => this.channex.pushSeasonalRates(c, r, s, a) }, hotelId, channel)
+    return pushSeasonalRatesToChannex({
+      getConfig: (h) => this.getConfig(h), findMany: (m, q) => this.queries.findMany(m, q),
+      getPricingMode: (h) => readPricingMode((m, q) => this.queries.findMany(m, q), h),
+      pushSeasonalRates: (c, r, s, a, mode) => this.channex.pushSeasonalRates(c, r, s, a, mode),
+    }, hotelId, channel)
   }
 
   // ─── CRUD delegado a usecase ─────────────────────────────────────────
