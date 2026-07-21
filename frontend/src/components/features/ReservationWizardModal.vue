@@ -426,7 +426,7 @@
 // huésped existente ni sync de acompañantes). `editId`/`prefill` deciden si abre vacío,
 // precargado con datos de una reserva existente, o con habitación/fechas ya elegidas
 // (celda clickeada del Calendario).
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useOnline } from '@/composables/useOnline'
@@ -967,6 +967,13 @@ watch(() => props.editId, async (id) => {
   nationalityTouched.value = false
   formReady.value = true
 }, { immediate: true })
+
+// El padre monta/desmonta este componente con v-if: su sola existencia ES el modal
+// abierto, así que el bloqueo de scroll del body va en el ciclo de vida del componente
+// (mismo patrón que AppModal.vue) — sin esto, la rueda del mouse sobre el modal también
+// scrollea la página de atrás.
+onMounted(() => { document.body.style.overflow = 'hidden' })
+onBeforeUnmount(() => { document.body.style.overflow = '' })
 
 // Silencioso a propósito: sin tasa configurada, taxRatePct queda en 0 y el wizard
 // simplemente no desglosa impuesto — mejor eso que romper la apertura del modal.
