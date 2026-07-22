@@ -11,6 +11,7 @@ interface LoginResponse {
     role: string
     hotelId: string | null
     hotelName: string
+    permissions?: string[]
   }
 }
 
@@ -22,6 +23,7 @@ interface MeResponse {
   hotelId: string | null
   hotelName: string
   emailVerified?: boolean
+  permissions?: string[]
 }
 
 function mapUser(raw: LoginResponse['user'] | MeResponse): User {
@@ -35,10 +37,9 @@ function mapUser(raw: LoginResponse['user'] | MeResponse): User {
     hotelName: raw.hotelName || '',
     // Solo /auth/me trae emailVerified; en login queda undefined (se resuelve al hidratar el perfil).
     emailVerified: 'emailVerified' in raw ? raw.emailVerified : undefined,
-    permissions:
-      role === 'super_admin'
-        ? ['total', 'config', 'users', 'billing', 'support', 'analytics']
-        : ['dashboard', 'reservations', 'rooms', 'guests'],
+    // Permisos granulares `module:action` resueltos por el backend (login + /auth/me).
+    // Ya NO se hardcodean por rol: los roles custom no tenían permisos y la UI no podía gatear.
+    permissions: Array.isArray(raw.permissions) ? raw.permissions : [],
   }
 }
 

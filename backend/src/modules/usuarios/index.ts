@@ -36,8 +36,8 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
       const log = logger.child('usuarios')
-      const service = new UsuariosService(repo, log, cache, auth, hotelRepo, configRepo)
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const service = new UsuariosService(repo, log, cache, auth, hotelRepo, configRepo, roleRepo)
       const controller = new UsuariosController(service, log, opts.storage, roleRepo)
 
       const guard = createPermissionGuard(auth, roleRepo)

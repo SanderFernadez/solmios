@@ -7,6 +7,7 @@
 import type { RepositoryAdapter } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import { toStoredPhone } from './normalize-phone'
+import { resolveUserPermissions } from './resolve-permissions'
 
 /** Lo que la app puede cambiar de sí misma. */
 export interface ProfilePatch {
@@ -30,6 +31,7 @@ export async function getProfile(
   hotelRepo: RepositoryAdapter<any> | undefined,
   userId: string,
   configRepo?: RepositoryAdapter<any>,
+  roleRepo?: RepositoryAdapter<any>,
 ): Promise<Record<string, unknown>> {
   // @ignore IDOR_RISK — `userId` sale del JWT (req.user.id), es un self-lookup.
   const u = await repo.findById(userId)
@@ -60,6 +62,12 @@ export async function getProfile(
     }
   }
 
+  // Permisos granulares `module:action` del rol (tabla `roles` por hotel, o defaults del
+  // rol de sistema). Los consume la UI web para gatear menús/botones — sobre todo los roles
+  // custom, que no matchean ningún nombre de rol hardcodeado en el frontend. `rolePermissions`
+  // (arriba) es OTRA cosa: el mapa de pestañas de la APP MÓVIL. No confundir.
+  const permissions = await resolveUserPermissions(roleRepo, u.role, u.hotelId)
+
   return {
     id: u.id,
     name: u.name,
@@ -70,6 +78,7 @@ export async function getProfile(
     userType: u.userType ?? 'merchant',
     hotelId: u.hotelId,
     hotelName,
+    permissions,
     rolePermissions,
     // Estado de verificación de email (#421). Solo el booleano — nunca el token.
     // El frontend muestra el banner de "verificá tu email" cuando es false.

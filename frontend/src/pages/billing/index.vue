@@ -20,7 +20,7 @@
           <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
           Exportar CSV
         </button>
-        <button @click="openNewInvoice" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+        <button v-if="canCreateInvoice" @click="openNewInvoice" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
           <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>
           Nueva Factura
         </button>
@@ -80,7 +80,7 @@
         <template #action>
           <button v-if="invoiceFilter !== 'all'" @click="invoiceFilter = 'all'; applyInvoiceFilter()"
             class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-navy hover:bg-surface transition-colors cursor-pointer">Ver todas</button>
-          <button v-else @click="openNewInvoice"
+          <button v-else-if="canCreateInvoice" @click="openNewInvoice"
             class="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-light transition-colors cursor-pointer">Nueva factura</button>
         </template>
       </EmptyState>
@@ -685,9 +685,14 @@ import AppModal from '@/components/ui/AppModal.vue'
 import { FoliosService, type Folio } from '@/services/Folios.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import { usePermissions } from '@/composables/usePermissions'
 
 const auth = useAuthStore()
 const toast = useToast()
+const { can } = usePermissions()
+// Gatea las acciones de escritura: un rol sin `billing:create` ve las facturas pero no puede
+// emitirlas (el backend igual responde 403; esto evita ofrecer un botón que va a fallar).
+const canCreateInvoice = computed(() => can('billing', 'create'))
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 const { formatSecondary, loadCurrencyConfig } = useCurrency()
 

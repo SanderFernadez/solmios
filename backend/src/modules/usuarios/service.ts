@@ -14,6 +14,8 @@ import { assertOwnership, pickDefined } from './usecases/ownership'
 import { jtiOf, refreshSession } from './usecases/token-session'
 import { assertHotelCanOperate, type AccessCheck } from './usecases/subscription-gate'
 import { switchHotel } from './usecases/switch-hotel'
+import { resolveUserPermissions } from './usecases/resolve-permissions'
+import { listUserHotels } from './usecases/list-hotels'
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required')
@@ -28,6 +30,9 @@ export class UsuariosService {
     private readonly auth: Auth,
     private readonly hotelRepo?: RepositoryAdapter<any>,
     private readonly configRepo?: RepositoryAdapter<any>,
+    // Tabla `roles` del hotel: para resolver los permisos granulares del rol (custom o de
+    // sistema) y devolverlos en el login y en `/auth/me`. La UI web los usa para gatear.
+    private readonly roleRepo?: RepositoryAdapter<any>,
   ) {}
 
   /** Corte de servicio por suscripción. Lo inyecta el connector `usuarios-subscriptions`. */
@@ -39,16 +44,8 @@ export class UsuariosService {
     this.auditPort = port
   }
 
-  async getHotels(userId: string, role: string): Promise<any[]> {
-    if (!this.hotelRepo) return []
-    const hotels = await this.hotelRepo.findMany({})
-    // super_admin ve todos los hoteles; hotel_admin solo el suyo
-    if (role === 'super_admin') {
-      return hotels.map(({ ...rest }: any) => rest)
-    }
-    const user = await this.repo.findById(userId)
-    if (!user) return []
-    return hotels.filter((h: any) => h.id === user.hotelId)
+  getHotels(userId: string, role: string): Promise<any[]> {
+    return listUserHotels(this.repo, this.hotelRepo, userId, role)
   }
 
   /** Cambio de hotel activo (super_admin entre hoteles, hotel_admin al suyo). */
@@ -88,12 +85,15 @@ export class UsuariosService {
         hotelName = (hotel as any)?.name || ''
       } catch { /* graceful */ }
     }
+    // Permisos del rol para que la UI web gatee menús/botones ya desde el login (sin esperar
+    // el /auth/me). Los roles custom no matchean ningún nombre hardcodeado en el frontend.
+    const permissions = await resolveUserPermissions(this.roleRepo, user.role, user.hotelId)
     // `phone` para la app móvil: lo lee del login y lo guarda (igual que `/api/auth/me`).
-    return { token, refreshToken, user: { id: user.id, name: user.name, email: user.email, phone: user.phone ?? '', role: user.role, hotelId: user.hotelId, hotelName } }
+    return { token, refreshToken, user: { id: user.id, name: user.name, email: user.email, phone: user.phone ?? '', role: user.role, hotelId: user.hotelId, hotelName, permissions } }
   }
 
   async me(id: string): Promise<any> {
-    return getProfile(this.repo, this.hotelRepo, id, this.configRepo)
+    return getProfile(this.repo, this.hotelRepo, id, this.configRepo, this.roleRepo)
   }
 
   // ─── Verificación de email (#421) ────────────────────────────────────────

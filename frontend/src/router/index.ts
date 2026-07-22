@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useModulesStore } from '@/stores/modules.store'
+import { permissionModuleForPath } from '@/config/module-map'
+import { hasPermission, isSystemRole } from '@/config/permissions'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -585,7 +587,15 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresHotelAdmin) {
     if (!auth.isAuthenticated) return '/login'
-    if (!auth.isSuperAdmin && !auth.isHotelAdmin) return '/panel'
+    // super_admin y hotel_admin pasan siempre. Un rol CUSTOM pasa si su permiso cubre la ruta
+    // (mismo criterio que el menú: <module>:view, CORE siempre accesible). Roles de sistema
+    // no-admin (recepción, limpieza…) → a su panel, como antes. El backend igual valida 403.
+    if (!auth.isSuperAdmin && !auth.isHotelAdmin) {
+      const role = auth.userRole ?? ''
+      const mod = permissionModuleForPath(to.path)
+      const allowed = !isSystemRole(role) && (!mod || hasPermission(auth.user?.permissions, mod, 'view'))
+      if (!allowed) return '/panel'
+    }
   }
 
   // ── Bloqueo por módulo/submódulo: no basta con ocultar del menú, la URL directa también se bloquea ──

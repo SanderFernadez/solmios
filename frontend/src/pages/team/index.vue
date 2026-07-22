@@ -222,8 +222,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { TeamService, roleMeta, ROLE_META } from '@/services/Team.service'
-import type { TeamMember } from '@/services/Team.service'
+import { TeamService, roleMeta, ROLE_META, ICON_USER } from '@/services/Team.service'
+import type { TeamMember, Role } from '@/services/Team.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import SectionCard from '@/components/ui/SectionCard.vue'
@@ -286,18 +286,40 @@ function isActive(m: TeamMember): boolean {
   return m.active === 1 || m.active === true || m.active === undefined
 }
 
-// Se derivan de ROLE_META para no desincronizarse del backend: antes esta lista tenía
-// solo 2 roles y era imposible asignar limpieza/mantenimiento/supervisor desde el panel.
+// Catálogo de roles del hotel (sistema + PERSONALIZADOS) traído del backend GET /roles.
+// Antes se derivaba solo de ROLE_META (los 6 de sistema): un rol custom se creaba pero era
+// IMPOSIBLE asignarlo a un empleado desde acá. Ahora los custom aparecen en los desplegables.
+const rolesCatalog = ref<Role[]>([])
+
 // `super_admin` se excluye: es rol de plataforma, no se asigna desde el panel del hotel.
-const availableRoles = (Object.keys(ROLE_META) as string[])
-  .filter(key => key !== 'super_admin')
-  .map(key => ({ key, ...roleMeta(key) }))
+// Roles de sistema usan su meta (label/icono/descripción); los custom, su propio nombre e icono.
+const availableRoles = computed(() => {
+  const fromBackend = rolesCatalog.value
+    .filter(r => r.name && r.name !== 'super_admin')
+    .map(r => {
+      const meta = ROLE_META[r.name]
+      return meta
+        ? { key: r.name, label: meta.label, icon: meta.icon, description: meta.description }
+        : { key: r.name, label: r.name, icon: r.icon || ICON_USER, description: 'Rol personalizado del hotel' }
+    })
+  // Fallback si el fetch falló/vino vacío: los de sistema (comportamiento previo, nunca lista vacía).
+  if (fromBackend.length === 0) {
+    return (Object.keys(ROLE_META) as string[])
+      .filter(key => key !== 'super_admin')
+      .map(key => ({ key, label: roleMeta(key).label, icon: roleMeta(key).icon, description: roleMeta(key).description }))
+  }
+  return fromBackend
+})
 
 async function load() {
   loading.value = true
   try {
-    const r = await TeamService.list()
-    members.value = (r.data || []).map((u: any) => ({
+    // Miembros y catálogo de roles en paralelo. Si /roles falla, se cae al fallback de sistema.
+    const [membersRes, rolesRes] = await Promise.all([
+      TeamService.list(),
+      TeamService.listRoles().catch(() => ({ data: [] as Role[], total: 0 })),
+    ])
+    members.value = (membersRes.data || []).map((u: any) => ({
       id: u.id,
       name: u.name,
       email: u.email,
@@ -306,6 +328,7 @@ async function load() {
       active: u.active,
       createdAt: u.createdAt,
     }))
+    rolesCatalog.value = rolesRes.data || []
   } catch (e: any) {
     toast.error(e.message || 'Error al cargar equipo')
     members.value = []

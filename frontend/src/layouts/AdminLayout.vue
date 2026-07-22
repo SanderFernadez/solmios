@@ -181,6 +181,8 @@ import { useRoomStore } from '@/stores/room.store'
 import { useNow } from '@/composables/useNow'
 import { useModulesStore } from '@/stores/modules.store'
 import { useToast } from '@/composables/useToast'
+import { usePermissions } from '@/composables/usePermissions'
+import { isSystemRole } from '@/config/permissions'
 import { AuthService } from '@/services/Auth.service'
 import { MESSAGING_PATH, MESSAGING_TABS } from '@/config/messaging-tabs'
 import AppHeader from '@/components/features/core-pms/AppHeader.vue'
@@ -197,6 +199,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const dashboard = useDashboardStore()
 const roomStore = useRoomStore()
+const { canRoute } = usePermissions()
 const mobileMenuOpen = ref(false)
 
 // Cierra el drawer mobile al navegar a otra ruta
@@ -388,6 +391,12 @@ const modules = useModulesStore()
 
 const visibleItems = computed(() => {
   const role = auth.userRole ?? ''
+  // Roles de SISTEMA: se muestran por nombre de rol (comportamiento histórico, intacto).
+  // Roles CUSTOM (los que crea el dueño): por permiso granular — no matchean ningún nombre
+  // de rol del literal, así que sin esto verían el menú vacío. `visibleLeaf` unifica ambos.
+  const custom = !isSystemRole(role)
+  const visibleLeaf = (item: { path: string; roles: string[]; anyOf?: string[] }) =>
+    (custom ? canRoute(item.path) : item.roles.includes(role)) && navEnabled(item)
   // El literal nonavItems mezcla padres (con children, sin path) y hojas (con path);
   // unificamos a NavItem. El template usa path/expanded solo en la rama que corresponde.
   const items = nonavItems as unknown as NavItem[]
@@ -397,19 +406,17 @@ const visibleItems = computed(() => {
         // Los encabezados de bloque no tienen roles ni path: pasan el filtro y
         // después se descartan los que quedaron sin ningún item debajo (p. ej.
         // un recepcionista que no ve nada de "Integraciones").
-        const withGroups = item.children.filter((c) =>
-          c.group ? true : c.roles.includes(role) && navEnabled(c),
-        )
+        const withGroups = item.children.filter((c) => (c.group ? true : visibleLeaf(c)))
         const children = withGroups.filter((c, i) => !c.group || !!withGroups[i + 1] && !withGroups[i + 1].group)
         return { ...item, children, expanded: !collapsedSections.value.has(item.label) }
       }
       return item
     })
     .filter((item) => {
-      // Padre: visible si le queda al menos un hijo habilitado (por rol + módulo).
+      // Padre: visible si le queda al menos un hijo habilitado (por rol/permiso + módulo).
       if (item.children) return item.children.length > 0
-      // Hoja: por rol + su ruta habilitada (las rutas CORE quedan siempre visibles).
-      return item.roles.includes(role) && navEnabled(item)
+      // Hoja: por rol/permiso + su ruta habilitada (las rutas CORE quedan siempre visibles).
+      return visibleLeaf(item)
     })
 })
 

@@ -104,3 +104,49 @@ export function permissionModuleEnabled(permKey: string, state: Record<string, b
   const productKey = PERMISSION_TO_MODULE[permKey]
   return !productKey || state[productKey] !== false
 }
+
+// Ruta del panel → MÓDULO de permiso (shared/permissions.ts MODULES). Decide, para los roles
+// CUSTOM, qué entradas del menú ve y a qué rutas puede entrar (gateo por `<module>:view`).
+// Los roles de sistema NO usan esta tabla (siguen por nombre de rol). Match por prefijo más
+// largo, igual que moduleKeyForPath. Lo NO mapeado es CORE: accesible para cualquiera con sesión
+// de hotel (Dashboard, Configuración Base sí está mapeada a settings, Soporte, etc.).
+export const ROUTE_TO_PERMISSION: Record<string, string> = {
+  '/panel/planning': 'reservations',
+  '/panel/channel-manager': 'channel-manager',
+  '/panel/channel': 'channel-manager',
+  '/panel/reservas': 'reservations',
+  '/panel/operaciones/limpieza': 'housekeeping',
+  '/panel/operaciones/mantenimiento': 'maintenance',
+  '/panel/operaciones/proveedores': 'maintenance',
+  '/panel/operaciones/chats': 'users',
+  '/panel/guests': 'guests',
+  '/panel/crm': 'guests',
+  '/panel/finanzas/facturacion': 'billing',
+  '/panel/finanzas/folios': 'billing',
+  '/panel/finanzas/links-pago': 'billing',
+  '/panel/finanzas/caja': 'billing',
+  '/panel/finanzas/gastos': 'billing',
+  '/panel/finanzas/reportes': 'reports',
+  '/panel/finanzas/night-audit': 'reports',
+  '/panel/resenas': 'feedback',
+  '/panel/ia': 'ai',
+  '/panel/rrhh/attendance': 'attendance',
+  '/panel/rrhh/payroll': 'payroll',
+  '/panel/rrhh': 'users',            // dashboard, empleados, evaluación, reclutamiento, reembolsos, organigrama, team, activos, capacitación, roles
+  '/panel/config/habitaciones': 'rooms',
+  '/panel/config/cerraduras': 'ttlock',
+  '/panel/config': 'settings',       // base, tarifas, promociones, mensajería, pasarelas, dispositivos
+}
+
+/** MÓDULO de permiso para una ruta, por prefijo más largo. undefined = CORE (no gateada por permiso). */
+export function permissionModuleForPath(path: string): string | undefined {
+  let best: string | undefined
+  let bestLen = -1
+  for (const route in ROUTE_TO_PERMISSION) {
+    if ((path === route || path.startsWith(route + '/')) && route.length > bestLen) {
+      best = ROUTE_TO_PERMISSION[route]
+      bestLen = route.length
+    }
+  }
+  return best
+}
