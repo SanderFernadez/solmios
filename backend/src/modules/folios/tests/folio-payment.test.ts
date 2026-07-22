@@ -33,7 +33,7 @@ describe('applyPayment — asiento del dinero en payments (BM-2.3 / BM-2.4)', ()
     const port: FolioPaymentPort = { recordPayment: async (input) => { calls.push(input); return { id: 'pay-1', status: 'completed' } } }
     const { deps } = makeDeps([{ folioId: 'f1', kind: 'charge', total: 100 }], port)
 
-    await applyPayment(deps, 'f1', { amount: 40, method: 'efectivo' }, { id: 'u1' } as any)
+    await applyPayment(deps, 'f1', { amount: 40, method: 'cash' }, { id: 'u1' } as any)
 
     expect(calls).toHaveLength(1)
     expect(calls[0].folioId).toBe('f1')
