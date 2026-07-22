@@ -401,6 +401,9 @@ export interface PerformanceEvalConfigDTO {
   weights: EvalWeights
   thresholds: EvalThresholds
   standardTaskMinutes: number
+  /** Horas estándar de resolución de un ticket de mantenimiento (criterio maintenance, #321). Opcional
+   *  por retrocompat: las configs viejas no lo tienen → el motor cae a un default. */
+  standardResolutionHours?: number
   enabled: number
   createdAt: string
   updatedAt: string
@@ -411,6 +414,7 @@ export interface UpdatePerformanceEvalConfigDTO {
   weights?: EvalWeights
   thresholds?: EvalThresholds
   standardTaskMinutes?: number
+  standardResolutionHours?: number
   enabled?: boolean
 }
 
@@ -429,6 +433,8 @@ export interface EvalBreakdown {
   quality: EvalCriterionResult
   punctuality: EvalCriterionResult
   attendance: EvalCriterionResult
+  /** Productividad de mantenimiento (técnicos). Opcional: solo presente si el criterio corrió. */
+  maintenance?: EvalCriterionResult
 }
 
 export interface AutoEvalResult {

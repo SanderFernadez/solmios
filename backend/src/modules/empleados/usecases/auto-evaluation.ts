@@ -19,6 +19,11 @@ import type {
 
 const REVIEWER_SYSTEM = 'system'
 const MS_PER_MINUTE = 60_000
+const MS_PER_HOUR = 3_600_000
+// Peso del criterio maintenance. NO va en EvalWeights (los 4 core siguen sumando 100 sin migración):
+// es un peso adicional que la renormalización del score pondera solo para quien tiene data de mant.
+const DEFAULT_MAINTENANCE_WEIGHT = 30
+const DEFAULT_STANDARD_RESOLUTION_HOURS = 24
 
 /** Métricas de limpieza por camarera (staffId = users.id). Lo provee el connector empleados-housekeeping. */
 export interface HkStaffStat {
@@ -42,6 +47,16 @@ export interface AttendanceStatsPort {
   getStaffAttendance(hotelId: string, from: string, to: string): Promise<AttStaffStat[]>
 }
 
+/** Productividad de mantenimiento por técnico (staffId = users.id = assignedTo). Connector empleados-mantenimiento. */
+export interface MaintStaffStat {
+  staffId: string
+  resolved: number
+  avgResolutionMs: number
+}
+export interface MaintenanceStatsPort {
+  getStaffStats(hotelId: string, from: string, to: string): Promise<MaintStaffStat[]>
+}
+
 /** Score acotado a [0,100]. */
 function clamp100(n: number): number {
   if (!Number.isFinite(n)) return 0
@@ -51,6 +66,7 @@ function clamp100(n: number): number {
 export class AutoEvaluationUseCase {
   private hkPort?: HkStatsPort
   private attPort?: AttendanceStatsPort
+  private maintPort?: MaintenanceStatsPort
 
   constructor(
     private readonly config: EvalConfigUseCase,
@@ -62,6 +78,7 @@ export class AutoEvaluationUseCase {
   // Inyectados por connector. Sin ellos el criterio correspondiente simplemente no tiene data.
   setHousekeepingPort(port: HkStatsPort): void { this.hkPort = port }
   setAttendancePort(port: AttendanceStatsPort): void { this.attPort = port }
+  setMaintenancePort(port: MaintenanceStatsPort): void { this.maintPort = port }
 
   /** Corre la evaluación del período (actual por defecto) para TODOS los empleados activos del hotel. */
   async run(hotelId: string, periodType?: EvalPeriodType): Promise<AutoEvalSummary> {
@@ -69,21 +86,25 @@ export class AutoEvaluationUseCase {
     const type = periodType ?? cfg.period
     const { label, fromIso, toIso, fromDate, toDate } = periodBounds(type)
 
-    const [profiles, hkStats, attStats] = await Promise.all([
+    const [profiles, hkStats, attStats, maintStats] = await Promise.all([
       this.profileRepo.findMany({ hotelId, active: 1 } as any),
       this.hkPort ? this.hkPort.getStaffStats(hotelId, fromIso, toIso) : Promise.resolve([] as HkStaffStat[]),
       this.attPort ? this.attPort.getStaffAttendance(hotelId, fromDate, toDate) : Promise.resolve([] as AttStaffStat[]),
+      // Mantenimiento se agrega por técnico (assignedTo = users.id), como housekeeping → join por profile.userId.
+      this.maintPort ? this.maintPort.getStaffStats(hotelId, fromIso, toIso) : Promise.resolve([] as MaintStaffStat[]),
     ])
 
     const hkByStaff = new Map(hkStats.map((s) => [s.staffId, s]))
     const attByEmployee = new Map(attStats.map((s) => [s.employeeId, s]))
+    const maintByStaff = new Map(maintStats.map((s) => [s.staffId, s]))
 
     const results: AutoEvalResult[] = []
     let skipped = 0
     for (const profile of profiles) {
       const hk = hkByStaff.get(profile.userId)
       const att = attByEmployee.get(profile.id)
-      const scored = scoreEmployee(cfg, hk, att)
+      const maint = maintByStaff.get(profile.userId)
+      const scored = scoreEmployee(cfg, hk, att, maint)
       if (!scored) { skipped++; continue } // sin data en ningún criterio → no se inventa un score
       const review = await this.persist(hotelId, profile.id, label, scored)
       results.push({ employeeId: profile.id, reviewId: review.id, score: scored.score, band: scored.band, breakdown: scored.breakdown })
@@ -112,6 +133,7 @@ export class AutoEvaluationUseCase {
       quality: scored.breakdown.quality.score,
       punctuality: scored.breakdown.punctuality.score,
       attendance: scored.breakdown.attendance.score,
+      maintenance: scored.breakdown.maintenance?.hasData ? scored.breakdown.maintenance.score : undefined,
       band: scored.band,
       breakdown: scored.breakdown,
     })
@@ -144,20 +166,21 @@ interface ScoredEmployee {
  * Score ponderado renormalizado sobre los criterios CON data. Si un criterio no tiene data,
  * su peso sale del denominador (no se asume 0 ni 100). Sin ningún criterio con data → null (se omite).
  */
-function scoreEmployee(cfg: PerformanceEvalConfigDTO, hk?: HkStaffStat, att?: AttStaffStat): ScoredEmployee | null {
+function scoreEmployee(cfg: PerformanceEvalConfigDTO, hk?: HkStaffStat, att?: AttStaffStat, maint?: MaintStaffStat): ScoredEmployee | null {
   const w = cfg.weights
   const breakdown: EvalBreakdown = {
     productivity: productivityScore(hk, cfg.standardTaskMinutes, w),
     quality: qualityScore(hk, w),
     punctuality: punctualityScore(att, w),
     attendance: attendanceScore(att, w),
+    maintenance: maintenanceScore(maint, cfg.standardResolutionHours ?? DEFAULT_STANDARD_RESOLUTION_HOURS),
   }
 
   let weighted = 0
   let totalWeight = 0
   for (const key of Object.keys(breakdown) as (keyof EvalBreakdown)[]) {
     const c = breakdown[key]
-    if (!c.hasData) continue
+    if (!c || !c.hasData) continue
     weighted += c.score * c.weight
     totalWeight += c.weight
   }
@@ -193,6 +216,15 @@ function attendanceScore(att: AttStaffStat | undefined, w: EvalWeights): EvalCri
   const scheduled = att ? att.present + att.absent : 0
   if (!att || scheduled <= 0) return { score: 0, weight: w.attendance, hasData: false }
   return { score: Math.round(clamp100((att.present / scheduled) * 100)), weight: w.attendance, hasData: true }
+}
+
+/** Productividad de mantenimiento: tiempo de resolución real vs estándar. A tiempo o mejor = 100;
+ *  más lento escala hacia abajo (mismo criterio que productividad de housekeeping). Sin data → se renormaliza. */
+function maintenanceScore(maint: MaintStaffStat | undefined, standardResolutionHours: number): EvalCriterionResult {
+  if (!maint || maint.resolved <= 0 || maint.avgResolutionMs <= 0) return { score: 0, weight: DEFAULT_MAINTENANCE_WEIGHT, hasData: false }
+  const avgHours = maint.avgResolutionMs / MS_PER_HOUR
+  const score = clamp100((standardResolutionHours / avgHours) * 100)
+  return { score: Math.round(score), weight: DEFAULT_MAINTENANCE_WEIGHT, hasData: true }
 }
 
 function bandOf(score: number, t: EvalThresholds): EvalBand {

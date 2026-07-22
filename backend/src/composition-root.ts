@@ -246,6 +246,7 @@ import { housekeepingNotificacionesConnector } from './connectors/housekeeping-n
 import { housekeepingHabitacionesConnector } from './connectors/housekeeping-habitaciones'
 import { empleadosHousekeepingConnector } from './connectors/empleados-housekeeping'
 import { empleadosAttendanceConnector } from './connectors/empleados-attendance'
+import { empleadosMantenimientoConnector } from './connectors/empleados-mantenimiento'
 import { usuariosSubscriptionsConnector } from './connectors/usuarios-subscriptions'
 import { publicapiReservasConnector } from './connectors/publicapi-reservas'
 import { reservasWebhooksConnector } from './connectors/reservas-webhooks'
@@ -366,6 +367,9 @@ system.addConnector('housekeeping-habitaciones', housekeepingHabitacionesConnect
 // puntualidad/asistencia de attendance — datos reales, sin importar esos módulos.
 system.addConnector('empleados-housekeeping', empleadosHousekeepingConnector)
 system.addConnector('empleados-attendance', empleadosAttendanceConnector)
+// Productividad de mantenimiento → motor de evaluación #321: el técnico se puntúa por tickets resueltos
+// (criterio maintenance). Cierra el gap "Mantenimiento fuera del scoring".
+system.addConnector('empleados-mantenimiento', empleadosMantenimientoConnector)
 // El login pregunta si el hotel puede operar (prueba vigente / suscripción al día).
 system.addConnector('usuarios-subscriptions', usuariosSubscriptionsConnector)
 // La API pública v1 (auth por API key) delega en habitaciones/reservas/huespedes — publicapi no

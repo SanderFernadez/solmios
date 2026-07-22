@@ -173,4 +173,9 @@ export class MantenimientoService {
   async getStats(hotelId: string) {
     return this.statsUc.getStats(hotelId)
   }
+
+  /** Productividad por técnico para el motor de evaluación #321 (connector empleados-mantenimiento). */
+  async getStaffStats(hotelId: string, from: string, to: string) {
+    return this.statsUc.getStaffStats(hotelId, from, to)
+  }
 }

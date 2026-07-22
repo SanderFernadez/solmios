@@ -13,6 +13,7 @@ import type {
 const DEFAULT_WEIGHTS: EvalWeights = { productivity: 30, quality: 35, punctuality: 20, attendance: 15 }
 const DEFAULT_THRESHOLDS: EvalThresholds = { excellent: 90, good: 75, fair: 60 }
 const DEFAULT_STANDARD_TASK_MINUTES = 30
+const DEFAULT_STANDARD_RESOLUTION_HOURS = 24
 const WEIGHT_KEYS: (keyof EvalWeights)[] = ['productivity', 'quality', 'punctuality', 'attendance']
 const VALID_PERIODS: EvalPeriodType[] = ['monthly', 'quarterly']
 
@@ -32,6 +33,7 @@ export class EvalConfigUseCase {
       weights: DEFAULT_WEIGHTS,
       thresholds: DEFAULT_THRESHOLDS,
       standardTaskMinutes: DEFAULT_STANDARD_TASK_MINUTES,
+      standardResolutionHours: DEFAULT_STANDARD_RESOLUTION_HOURS,
       enabled: 1,
     } as any)
   }
@@ -55,6 +57,10 @@ export class EvalConfigUseCase {
     if (patch.standardTaskMinutes !== undefined) {
       if (!(patch.standardTaskMinutes > 0)) throw new ValidationError('standardTaskMinutes debe ser mayor que 0')
       next.standardTaskMinutes = patch.standardTaskMinutes
+    }
+    if (patch.standardResolutionHours !== undefined) {
+      if (!(patch.standardResolutionHours > 0)) throw new ValidationError('standardResolutionHours debe ser mayor que 0')
+      next.standardResolutionHours = patch.standardResolutionHours
     }
     if (patch.enabled !== undefined) next.enabled = patch.enabled ? 1 : 0
 

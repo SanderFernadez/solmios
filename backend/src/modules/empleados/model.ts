@@ -243,7 +243,8 @@ const PerformanceEvalConfigModel: ModelDefinition = {
     period: { type: 'string', default: 'monthly' },          // 'monthly' | 'quarterly'
     weights: { type: 'json' },                                 // {productivity,quality,punctuality,attendance} suman 100
     thresholds: { type: 'json' },                              // {excellent,good,fair} descendentes
-    standardTaskMinutes: { type: 'number', default: 30 },      // tiempo estándar por tarea (score productividad)
+    standardTaskMinutes: { type: 'number', default: 30 },      // tiempo estándar por tarea (score productividad housekeeping)
+    standardResolutionHours: { type: 'number', default: 24 },  // horas estándar de resolución (score productividad mantenimiento, #321)
     enabled: { type: 'boolean', default: 1 },
   },
   timestamps: true,

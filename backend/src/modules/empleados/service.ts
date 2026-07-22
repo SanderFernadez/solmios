@@ -23,7 +23,7 @@ import { LeaveConfigUseCase } from './usecases/leave-config'
 import { ReviewUseCase } from './usecases/reviews'
 import { OrgChartUseCase } from './usecases/org-chart'
 import type { DashboardUseCase, AttendanceSummaryPort } from './usecases/dashboard'
-import type { AutoEvaluationUseCase, HkStatsPort, AttendanceStatsPort } from './usecases/auto-evaluation'
+import type { AutoEvaluationUseCase, HkStatsPort, AttendanceStatsPort, MaintenanceStatsPort } from './usecases/auto-evaluation'
 import type { SimpleUser } from './usecases/ownership'
 import type { AuditPort } from '../../shared/usecases/audit'
 
@@ -71,12 +71,12 @@ export class EmpleadosService {
   private dashboard?: DashboardUseCase
   attachDashboard(d: DashboardUseCase): void { this.dashboard = d }
   setAttendancePort(port: AttendanceSummaryPort): void { this.dashboard?.setAttendancePort(port) }
-
-  // Motor de evaluación automática (#321): el controller usa el usecase; los connectors le inyectan los puertos hk/attendance.
+  // Motor de evaluación automática (#321): el controller usa el usecase; los connectors le inyectan hk/attendance/maintenance.
   private autoEval?: AutoEvaluationUseCase
   attachAutoEvaluation(uc: AutoEvaluationUseCase): void { this.autoEval = uc }
   setHousekeepingStatsPort(port: HkStatsPort): void { this.autoEval?.setHousekeepingPort(port) }
   setAttendanceStatsPort(port: AttendanceStatsPort): void { this.autoEval?.setAttendancePort(port) }
+  setMaintenanceStatsPort(port: MaintenanceStatsPort): void { this.autoEval?.setMaintenancePort(port) }
 
   // ─── Departments ──────────────────────────────────────
 
