@@ -40,6 +40,8 @@ export interface MySubscription {
   allowed: boolean
   reason: string | null
   daysLeft: number | null
+  /** Ya pagó al menos una vez (tiene Customer de Stripe) → puede abrir el Billing Portal. */
+  hasStripeCustomer: boolean
 }
 
 /**

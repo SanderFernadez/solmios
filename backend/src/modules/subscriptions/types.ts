@@ -28,6 +28,13 @@ export interface MySubscriptionDTO {
   reason: string | null
   /** Días que faltan para que se venza la prueba. */
   daysLeft: number | null
+  /** Ya tiene un Customer de Stripe (pagó al menos una vez) → puede abrir el Billing Portal. */
+  hasStripeCustomer: boolean
+}
+
+/** Respuesta de /subscriptions/checkout y /subscriptions/portal: a dónde redirigir al hotel. */
+export interface StripeRedirectDTO {
+  url: string
 }
 
 /** Plan tal como lo ve alguien que todavía no es cliente. */

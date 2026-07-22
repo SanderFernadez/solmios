@@ -5,12 +5,13 @@
 // con acceso de lectura al panel podría cobrar y reembolsar contra la cuenta del hotel.
 
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import { ValidationError, NotFoundError } from 'arckode-framework'
+import { NotFoundError } from 'arckode-framework'
 import type { PaymentGatewayRow, PaymentGatewayDTO, UpsertPaymentGatewayDTO, TestConnectionResult } from './types'
-import type { PaymentProvider } from '../../services/payment-gateway/types'
+import { IMPLEMENTED_PROVIDERS, type PaymentProvider } from '../../services/payment-gateway/types'
 import { encryptCredentials, decryptCredentials, maskSecret } from '../../services/payment-gateway/crypto'
-import { StripeGateway } from '../../services/payment-gateway/stripe-gateway'
 import type { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
+import { buildCredentials } from './usecases/build-credentials'
+import { testGatewayConnection } from './usecases/test-connection'
 
 /** Capacidades declaradas por proveedor. La UI las lee para no ofrecer botones que van a fallar. */
 const CAPABILITIES: Record<PaymentProvider, PaymentGatewayDTO['capabilities']> = {
@@ -22,9 +23,6 @@ const CAPABILITIES: Record<PaymentProvider, PaymentGatewayDTO['capabilities']> =
   // CardNet-Ztrans confirma por consulta, no por push.
   cardnet: { refund: true, void: true, paymentLinks: false, confirmation: 'pull' },
 }
-
-/** Proveedores con adapter escrito. El resto: el puerto los admite, falta implementarlos. */
-const IMPLEMENTED: PaymentProvider[] = ['stripe']
 
 export class PaymentGatewaysService {
   constructor(
@@ -68,7 +66,9 @@ export class PaymentGatewaysService {
       hasWebhookSecret: readable && !!creds.webhookSecret,
       currency: readable ? (creds.currency as string | undefined) : undefined,
       capabilities: CAPABILITIES[row.provider],
-      implemented: IMPLEMENTED.includes(row.provider),
+      implemented: IMPLEMENTED_PROVIDERS.includes(row.provider),
+      hasMerchantId: readable && !!creds.merchantId,
+      hasCert: readable && !!creds.certPem && !!creds.certKeyPem,
       updatedAt: row.updatedAt,
     }
   }
@@ -84,25 +84,14 @@ export class PaymentGatewaysService {
    */
   async upsert(hotelId: string, body: UpsertPaymentGatewayDTO): Promise<PaymentGatewayDTO> {
     const existing = (await this.repo.findMany({ hotelId, provider: body.provider, mode: body.mode }))[0]
-
     const prev = existing ? this.safeDecrypt(existing.credentials) : {}
-    const keep = (k: string, incoming?: string): string =>
-      (incoming === undefined || incoming === '') ? String(prev[k] ?? '') : incoming
 
-    const creds = {
-      secretKey: keep('secretKey', body.secretKey),
-      publishableKey: keep('publishableKey', body.publishableKey),
-      webhookSecret: keep('webhookSecret', body.webhookSecret),
-      currency: keep('currency', body.currency) || 'usd',
-    }
+    // Arma y valida las credenciales según el proveedor (usecases/build-credentials.ts): un
+    // sk_live_ guardado en modo 'test' cobraría plata real, y Azul/CardNet necesitan sus propios
+    // identificadores además de la llave.
+    const creds = buildCredentials(body, prev)
 
-    if (!creds.secretKey) {
-      throw new ValidationError('Falta la llave secreta de la pasarela')
-    }
-    // Un sk_live_ guardado en modo 'test' cobraría plata real creyendo que es una prueba.
-    if (body.provider === 'stripe') this.assertStripeKeyMatchesMode(creds.secretKey, body.mode)
-
-    const credentials = encryptCredentials(creds)
+    const credentials = encryptCredentials(creds as unknown as Record<string, unknown>)
     const enabled = body.enabled ?? Boolean(existing?.enabled)
     const isDefault = body.isDefault ?? Boolean(existing?.isDefault)
 
@@ -123,19 +112,6 @@ export class PaymentGatewaysService {
     this.registry.invalidate(hotelId)
     this.logger.info(`Pasarela ${body.provider} (${body.mode}) guardada para el hotel ${hotelId}`)
     return this.toDTO(row)
-  }
-
-  /** Stripe distingue test/live por prefijo. Guardar una llave live en modo test cobra plata real. */
-  private assertStripeKeyMatchesMode(secretKey: string, mode: string): void {
-    const isLiveKey = secretKey.startsWith('sk_live_')
-    const isTestKey = secretKey.startsWith('sk_test_')
-    if (!isLiveKey && !isTestKey) return // sk_... restringidas u otros formatos: no bloquear
-    if (isLiveKey && mode !== 'live') {
-      throw new ValidationError('La llave es de PRODUCCIÓN (sk_live_) pero el modo es "test". Cobrarías dinero real.')
-    }
-    if (isTestKey && mode === 'live') {
-      throw new ValidationError('La llave es de PRUEBA (sk_test_) pero el modo es "live". Ningún cobro sería real.')
-    }
   }
 
   private safeDecrypt(payload: string): Record<string, unknown> {
@@ -164,23 +140,9 @@ export class PaymentGatewaysService {
     this.registry.invalidate(hotelId)
   }
 
-  /** Golpea de verdad al proveedor: una llave que "se guardó" no significa que sirva. */
+  /** Golpea de verdad al proveedor: una llave que "se guardó" no significa que sirva. Ver usecases/test-connection.ts. */
   async testConnection(hotelId: string, id: string): Promise<TestConnectionResult> {
     const row = await this.ownedById(id, hotelId)
-    if (!IMPLEMENTED.includes(row.provider)) {
-      return { ok: false, message: `El adapter de ${row.provider} todavía no está implementado` }
-    }
-    try {
-      const creds = decryptCredentials(row.credentials) as any
-      const gw = new StripeGateway(creds, row.mode)
-      const account = await gw.retrieveAccount()
-      return {
-        ok: true,
-        message: `Conectado a ${account.name || 'la cuenta'} (${row.mode})`,
-        accountName: account.name,
-      }
-    } catch (e: any) {
-      return { ok: false, message: e?.message || 'No se pudo conectar con la pasarela' }
-    }
+    return testGatewayConnection(row)
   }
 }

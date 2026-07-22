@@ -18,6 +18,12 @@
         <div v-else-if="sub && !sub.allowed" class="text-sm text-danger font-bold">
           Tu acceso está cortado. Elegí un plan para volver a entrar.
         </div>
+        <button
+          v-if="sub?.hasStripeCustomer"
+          @click="openPortal"
+          :disabled="portalLoading"
+          class="ml-auto text-xs font-bold px-3 py-1.5 rounded-lg bg-surface text-navy hover:bg-surface-dark transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+        >{{ portalLoading ? 'Abriendo…' : 'Gestionar método de pago' }}</button>
       </div>
     </SectionCard>
 
@@ -57,46 +63,31 @@
           </ul>
           <button
             @click="choose(p)"
-            class="mt-auto w-full py-2.5 rounded-xl text-sm font-bold transition-colors cursor-pointer bg-navy text-white hover:bg-navy-light"
-          >Elegir {{ p.name }}</button>
+            :disabled="checkoutLoading !== null"
+            class="mt-auto w-full py-2.5 rounded-xl text-sm font-bold transition-colors cursor-pointer bg-navy text-white hover:bg-navy-light disabled:opacity-60 disabled:cursor-wait"
+          >{{ checkoutLoading === p.id ? 'Redirigiendo…' : (p.id === sub?.planId && sub?.status === 'active' ? 'Tu plan actual' : `Suscribirse a ${p.name}`) }}</button>
         </div>
       </div>
     </div>
-
-    <!-- El cobro todavía no está conectado: se dice, en vez de simular que
-         funciona y dejar al hotel esperando una pantalla de pago que no llega. -->
-    <AppModal v-if="chosen" size="md" title="Activar tu plan" @close="chosen = null">
-      <div class="space-y-3">
-        <p class="text-sm text-navy font-bold">{{ chosen.name }} — ${{ chosen.price }}/mes</p>
-        <p class="text-sm text-text-secondary">
-          El pago con tarjeta todavía no está habilitado. Escribinos y activamos tu
-          plan a mano en el momento.
-        </p>
-        <a
-          :href="`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Activar plan ' + chosen.name)}`"
-          class="inline-flex px-4 py-2 rounded-xl bg-navy text-white text-sm font-bold"
-        >Escribir a soporte</a>
-      </div>
-      <template #footer>
-        <button @click="chosen = null" class="px-5 py-2.5 rounded-full bg-surface text-sm font-bold text-text-secondary cursor-pointer">Cerrar</button>
-      </template>
-    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { SignupService, type PublicPlan, type MySubscription } from '@/services/Signup.service'
+import { SubscriptionsService } from '@/services/Subscriptions.service'
+import { useToast } from '@/composables/useToast'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
-import AppModal from '@/components/ui/AppModal.vue'
 
-const SUPPORT_EMAIL = 'soporte@solmios.com'
+const toast = useToast()
 
 const loading = ref(true)
 const sub = ref<MySubscription | null>(null)
 const plans = ref<PublicPlan[]>([])
-const chosen = ref<PublicPlan | null>(null)
+/** id del plan cuyo checkout está en curso — null cuando no hay ninguno en vuelo. */
+const checkoutLoading = ref<string | null>(null)
+const portalLoading = ref(false)
 
 const STATUS_LABELS: Record<string, string> = {
   trialing: 'En prueba', active: 'Activa', past_due: 'Pago pendiente',
@@ -116,7 +107,31 @@ const stateSubtitle = computed(() =>
   sub.value?.trialEndsAt ? `Prueba hasta el ${new Date(sub.value.trialEndsAt).toLocaleDateString('es-DO')}` : '',
 )
 
-function choose(p: PublicPlan) { chosen.value = p }
+/** Elige un plan: crea la Checkout Session de Stripe y redirige el navegador ahí mismo
+ * (no una pestaña nueva — el hotel tiene que volver a `/panel/suscripcion` al terminar). */
+async function choose(p: PublicPlan) {
+  if (checkoutLoading.value) return
+  checkoutLoading.value = p.id
+  try {
+    const { url } = await SubscriptionsService.checkout(p.id)
+    window.location.href = url
+  } catch (e: any) {
+    toast.error('No se pudo iniciar el pago', e.message)
+    checkoutLoading.value = null
+  }
+}
+
+async function openPortal() {
+  if (portalLoading.value) return
+  portalLoading.value = true
+  try {
+    const { url } = await SubscriptionsService.portal()
+    window.location.href = url
+  } catch (e: any) {
+    toast.error('No se pudo abrir el portal de facturación', e.message)
+    portalLoading.value = false
+  }
+}
 
 onMounted(async () => {
   try {
@@ -128,6 +143,14 @@ onMounted(async () => {
     plans.value = p
   } finally {
     loading.value = false
+  }
+
+  // Vuelta del Checkout/Portal de Stripe (success_url/cancel_url en create-checkout-session.ts).
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('checkout') === 'success') {
+    toast.success('¡Listo! Tu pago se está confirmando — puede tardar unos segundos en reflejarse acá.')
+  } else if (params.get('checkout') === 'cancelled') {
+    toast.info('Pago cancelado. Podés intentar de nuevo cuando quieras.')
   }
 })
 </script>

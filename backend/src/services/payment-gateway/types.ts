@@ -10,6 +10,13 @@
 
 export type PaymentProvider = 'stripe' | 'paypal' | 'azul' | 'cardnet'
 
+/**
+ * Proveedores con adapter escrito. ÚNICA fuente de verdad — antes vivía duplicado en
+ * `modules/payment-gateways/service.ts` y en `registry.ts` (podían divergir en silencio).
+ * El resto (paypal): el puerto lo admite, falta el adapter.
+ */
+export const IMPLEMENTED_PROVIDERS: PaymentProvider[] = ['stripe', 'azul', 'cardnet']
+
 export type GatewayMode = 'test' | 'live'
 
 /** Cómo se entera el sistema de que el dinero entró. */

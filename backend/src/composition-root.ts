@@ -138,6 +138,8 @@ import { StaffAuthModule } from './modules/staff-auth'
 import { MessagesModule } from './modules/messages'
 import { PushTokensModule } from './modules/pushtokens'
 import { EmailQueueModule } from './modules/email-queue'
+import { PublicapiModule } from './modules/publicapi'
+import { WebhooksModule } from './modules/webhooks'
 import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
@@ -152,13 +154,22 @@ const mods = [
   EmpleadosModule({ storage }), PayrollModule(), AttendanceModule(), ActivosModule(), CapacitacionModule(), CrmModule(), MarketingModule(),
   ReclutamientoModule(), ReembolsosModule(),
   AiRecepcionistaModule(), AiGerenteModule(), BookingengineModule({ pushAvailability }),
-  CashModule(), PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
+  CashModule(),
+  // ANTES que PaymentRequestsModule: ambos registran una ruta bajo /api/stripe/webhook/.
+  // payment-requests usa el comodín /api/stripe/webhook/:hotelId (cobro a huéspedes);
+  // subscriptions usa el literal /api/stripe/webhook/platform (el hotel pagándole a la
+  // plataforma). El Router prueba las rutas en orden de registro y :hotelId matchea
+  // CUALQUIER segmento — incluida la palabra "platform" — así que subscriptions tiene
+  // que registrarse primero o su webhook nunca se alcanza.
+  SubscriptionsModule(),
+  PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
   StaffAuthModule(),
   MessagesModule({ storage }),
   PushTokensModule(),
   EmailQueueModule(),
-  SubscriptionsModule(),
+  PublicapiModule(),
+  WebhooksModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -236,6 +247,9 @@ import { housekeepingHabitacionesConnector } from './connectors/housekeeping-hab
 import { empleadosHousekeepingConnector } from './connectors/empleados-housekeeping'
 import { empleadosAttendanceConnector } from './connectors/empleados-attendance'
 import { usuariosSubscriptionsConnector } from './connectors/usuarios-subscriptions'
+import { publicapiReservasConnector } from './connectors/publicapi-reservas'
+import { reservasWebhooksConnector } from './connectors/reservas-webhooks'
+import { paymentsWebhooksConnector } from './connectors/payments-webhooks'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -354,6 +368,13 @@ system.addConnector('empleados-housekeeping', empleadosHousekeepingConnector)
 system.addConnector('empleados-attendance', empleadosAttendanceConnector)
 // El login pregunta si el hotel puede operar (prueba vigente / suscripción al día).
 system.addConnector('usuarios-subscriptions', usuariosSubscriptionsConnector)
+// La API pública v1 (auth por API key) delega en habitaciones/reservas/huespedes — publicapi no
+// tiene tabla propia ni importa esos módulos directo.
+system.addConnector('publicapi-reservas', publicapiReservasConnector)
+// Webhooks salientes: reservas/payments emiten sus sockets → webhooks.dispatch() los entrega a
+// las subscriptions activas del hotel (best-effort, no puede tumbar el flujo que los dispara).
+system.addConnector('reservas-webhooks', reservasWebhooksConnector)
+system.addConnector('payments-webhooks', paymentsWebhooksConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm, logger)

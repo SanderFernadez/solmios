@@ -11,8 +11,10 @@
 // El fallback se borra cuando ningún hotel dependa de él. Mientras exista, se avisa por log.
 
 import type { Logger } from 'arckode-framework'
-import type { GatewayMode, PaymentGateway, PaymentProvider } from './types'
+import { IMPLEMENTED_PROVIDERS, type GatewayMode, type PaymentGateway, type PaymentProvider } from './types'
 import { StripeGateway, type StripeCredentials } from './stripe-gateway'
+import { AzulGateway, toAzulCredentials } from './azul-gateway'
+import { CardnetGateway, toCardnetCredentials } from './cardnet-gateway'
 import { decryptCredentials } from './crypto'
 
 export interface GatewayRow {
@@ -28,9 +30,6 @@ export interface GatewayRow {
 type GatewayRepo = {
   findMany(filter: Record<string, unknown>): Promise<GatewayRow[]>
 }
-
-/** Proveedores con adapter implementado. Azul/CardNet/PayPal: el puerto los admite, faltan adapters. */
-const IMPLEMENTED: PaymentProvider[] = ['stripe']
 
 export class PaymentGatewayRegistry {
   /** Cachea por hotel+provider+mode. Se invalida al guardar config (ver invalidate()). */
@@ -58,7 +57,7 @@ export class PaymentGatewayRegistry {
    */
   async resolve(hotelId: string, provider?: PaymentProvider): Promise<PaymentGateway | null> {
     const rows = (await this.repo.findMany({ hotelId })) || []
-    const usable = rows.filter(r => Boolean(r.enabled) && IMPLEMENTED.includes(r.provider))
+    const usable = rows.filter(r => Boolean(r.enabled) && IMPLEMENTED_PROVIDERS.includes(r.provider))
 
     const row = provider
       ? usable.find(r => r.provider === provider)
@@ -89,6 +88,10 @@ export class PaymentGatewayRegistry {
     switch (row.provider) {
       case 'stripe':
         return new StripeGateway(creds as unknown as StripeCredentials, row.mode)
+      case 'azul':
+        return new AzulGateway(toAzulCredentials(creds), row.mode)
+      case 'cardnet':
+        return new CardnetGateway(toCardnetCredentials(creds), row.mode)
       default:
         this.logger.warn(`Pasarela '${row.provider}' configurada pero sin adapter implementado`)
         return null

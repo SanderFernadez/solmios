@@ -1,0 +1,89 @@
+// subscriptions/usecases/create-checkout-session.ts — El HOTEL paga a la PLATAFORMA.
+//
+// Ojo con la confusión de cuentas Stripe: `StripeService.getClient(hotelId)` con un hotelId
+// resuelve las keys DE ESE HOTEL (lo que cobra a sus huéspedes). Acá se llama sin argumento
+// a propósito: el cobro de la suscripción SaaS siempre corre contra la cuenta de la
+// PLATAFORMA (env STRIPE_SECRET_KEY), nunca contra la cuenta del hotel.
+import type { RepositoryAdapter, Logger } from 'arckode-framework'
+import { ValidationError, NotFoundError } from 'arckode-framework'
+import { StripeService } from '../../../services/stripe-service'
+
+export interface CreateCheckoutDeps {
+  subscriptionsRepo: RepositoryAdapter<any>
+  hotelsRepo: RepositoryAdapter<any>
+  plansRepo: RepositoryAdapter<any>
+  logger: Logger
+}
+
+export interface CreateCheckoutResult {
+  url: string
+}
+
+/**
+ * Crea (o reutiliza) el Customer de Stripe del hotel y arma la Checkout Session de la
+ * suscripción. `origin` viene del header `Origin` del request (mismo patrón que
+ * payment-requests/service.ts:createCheckout) — evita depender de una env var de frontend
+ * que el proyecto no tiene hoy.
+ */
+export async function createCheckoutSession(
+  deps: CreateCheckoutDeps,
+  hotelId: string,
+  planId: string,
+  origin: string,
+): Promise<CreateCheckoutResult> {
+  const { subscriptionsRepo, hotelsRepo, plansRepo, logger } = deps
+  if (!hotelId) throw new ValidationError('Falta el hotel')
+  if (!planId) throw new ValidationError('Falta el plan')
+
+  const plan = await plansRepo.findById(planId) as any
+  if (!plan) throw new NotFoundError('Plan no encontrado')
+  if (!plan.stripePriceId) {
+    throw new ValidationError('Plan sin precio configurado en Stripe')
+  }
+
+  const hotel = await hotelsRepo.findById(hotelId) as any
+  if (!hotel) throw new NotFoundError('Hotel no encontrado')
+
+  const stripe = await StripeService.getClient()
+  if (!stripe) throw new ValidationError('Stripe no está configurado en la plataforma')
+
+  let sub = (await subscriptionsRepo.findMany({ hotelId }))[0] as any
+
+  let stripeCustomerId: string | undefined = sub?.stripeCustomerId
+  if (!stripeCustomerId) {
+    const customer = await stripe.customers.create({
+      name: hotel.name,
+      email: hotel.email || undefined,
+      metadata: { hotelId },
+    })
+    stripeCustomerId = customer.id
+
+    if (sub) {
+      await subscriptionsRepo.update(sub.id, { stripeCustomerId })
+    } else {
+      // Hotel sin fila en `subscriptions` todavía (altas viejas, previas a este módulo).
+      sub = await subscriptionsRepo.create({
+        id: crypto.randomUUID(),
+        hotelId,
+        planId,
+        status: 'trialing',
+        stripeCustomerId,
+      } as any)
+    }
+  }
+
+  const base = origin.replace(/\/$/, '')
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    customer: stripeCustomerId,
+    line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+    success_url: `${base}/panel/suscripcion?checkout=success`,
+    cancel_url: `${base}/panel/suscripcion?checkout=cancelled`,
+    metadata: { hotelId, planId },
+    subscription_data: { metadata: { hotelId, planId } },
+  })
+
+  if (!session.url) throw new Error('Stripe no devolvió una URL de checkout')
+  logger.info('Checkout de suscripción creado', { hotelId, planId })
+  return { url: session.url }
+}

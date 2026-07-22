@@ -9,6 +9,10 @@ export { ApikeysService }
 export type { ApikeysDTO, CreateApikeysDTO, UpdateApikeysDTO, ApikeysQuery, ApikeysPaginated } from './types'
 export type { ApikeysSockets } from './sockets'
 export { ApikeysValidator, CreateApikeysSchema, UpdateApikeysSchema } from './validators/schema'
+// Autenticación por x-api-key (usada por infrastructure/auth/api-key-auth.ts, capa transversal —
+// no un módulo de negocio, mismo criterio que create-permission-guard.ts importando de shared/permissions).
+export { validateApiKey } from './usecases/validate-key'
+export type { ValidatedApiKey } from './usecases/validate-key'
 
 export function ApikeysModule() {
   return createModule({

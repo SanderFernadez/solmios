@@ -36,6 +36,8 @@ export function registerSharedModels(orm: ORM): void {
       limits: { type: 'json', default: { rooms: 30, users: 2, properties: 1 } },
       isActive: { type: 'number', default: 1 },
       sortOrder: { type: 'number', default: 0 },
+      /** Price ID de Stripe (cuenta de PLATAFORMA) para el Checkout de suscripción del hotel a este plan. */
+      stripePriceId: { type: 'string' },
     },
   })
 

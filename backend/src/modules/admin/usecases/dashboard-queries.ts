@@ -14,9 +14,39 @@ export class DashboardQueries {
     return { data: data.map((u: any) => { const { password, ...rest } = u; return rest }), total: data.length }
   }
 
+  /**
+   * Suscripción REAL de cada hotel a la plataforma (tabla `subscriptions` + `plans`), no el
+   * `hotels.plan` de texto libre con un precio inventado en `PLAN_PRICE`. Antes esta consulta
+   * ignoraba por completo el módulo `subscriptions`: el super-admin veía "Pagado" para
+   * cualquier hotel con estado `active` en `hotels` (nada que ver con el cobro de Stripe) y un
+   * MRR que sumaba el precio de planes que nadie facturó. `mrr` acá solo cuenta lo que
+   * REALMENTE está `active` en Stripe — `trialing`/`past_due`/`expired`/`canceled` no suman.
+   */
   async listSubscriptions(): Promise<{ data: any[]; total: number; mrrTotal: number }> {
-    const data = (await this.orm.findMany('Hotels', {})).map((h: any) => ({ ...h, mrr: PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49 }))
-    return { data, total: data.length, mrrTotal: data.reduce((s: number, h: any) => s + h.mrr, 0) }
+    const hotels = await this.orm.findMany('Hotels', {})
+    const subs = await this.orm.findMany('Subscriptions', {}) as any[]
+    const plans = await this.orm.findMany('Plans', {}) as any[]
+    const subByHotel = new Map(subs.map((s: any) => [s.hotelId, s]))
+    const planById = new Map(plans.map((p: any) => [p.id, p]))
+
+    const data = hotels.map((h: any) => {
+      const sub = subByHotel.get(h.id)
+      const plan = sub?.planId ? planById.get(sub.planId) : undefined
+      const status = sub?.status ?? 'none'
+      return {
+        hotelId: h.id,
+        hotelName: h.name,
+        status,
+        planId: sub?.planId ?? '',
+        planName: plan?.name ?? '',
+        trialEndsAt: sub?.trialEndsAt ?? null,
+        currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+        canceledAt: sub?.canceledAt ?? null,
+        hasStripeCustomer: !!sub?.stripeCustomerId,
+        mrr: status === 'active' ? Number(plan?.price ?? 0) : 0,
+      }
+    })
+    return { data, total: data.length, mrrTotal: data.reduce((s: number, r: any) => s + r.mrr, 0) }
   }
 
   async listAuditLogs(): Promise<{ data: any[]; total: number }> {

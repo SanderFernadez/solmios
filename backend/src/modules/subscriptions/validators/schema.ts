@@ -43,3 +43,8 @@ export const SignupSchema: Record<string, ValidationRule> = {
   // controller antes de crear nada.
   captchaToken: { type: 'string' as const, max: 4096 },
 }
+
+/** POST /api/subscriptions/checkout — a qué plan se quiere suscribir el hotel logueado. */
+export const CheckoutSchema: Record<string, ValidationRule> = {
+  planId: { type: 'string' as const, required: true, max: 60 },
+}

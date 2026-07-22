@@ -38,8 +38,12 @@ export interface PaymentGatewayDTO {
     paymentLinks: boolean
     confirmation: ConfirmationMode
   }
-  /** false = el puerto lo admite pero todavía no hay adapter (Azul, CardNet, PayPal). */
+  /** false = el puerto lo admite pero todavía no hay adapter (hoy solo PayPal). */
   implemented: boolean
+  /** MerchantId (Azul) / Comercio (CardNet) guardado. Mismo criterio que hasSecret: nunca el valor. */
+  hasMerchantId: boolean
+  /** Certificado cliente (mTLS) de Azul guardado (cert + key). */
+  hasCert: boolean
   updatedAt?: string
 }
 
@@ -51,6 +55,14 @@ export interface UpsertPaymentGatewayDTO {
   publishableKey?: string
   webhookSecret?: string
   currency?: string
+  /** Azul: MerchantId · CardNet: Comercio. */
+  merchantId?: string
+  /** CardNet: Terminal. Azul no lo usa. */
+  terminalId?: string
+  /** Azul (mTLS): certificado cliente PEM, codificado en base64 por el frontend antes de enviar. */
+  certPem?: string
+  /** Azul (mTLS): llave privada del certificado, PEM, codificada en base64. */
+  certKeyPem?: string
   enabled?: boolean
   isDefault?: boolean
 }

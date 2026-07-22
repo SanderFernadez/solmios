@@ -46,6 +46,14 @@
 
         <!-- Formulario -->
         <div v-if="openForm === p.provider" class="border-t border-border bg-surface/40 p-5">
+          <!-- Sin credenciales de comercio reales: este flujo no se pudo probar contra el procesador -->
+          <div v-if="PENDING_VERIFICATION.includes(p.provider)" class="mb-4 flex gap-3 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3">
+            <span class="mt-0.5 h-4 w-4 shrink-0 text-warning" v-html="ICON_ALERT"></span>
+            <p class="text-[11px] font-bold text-warning">
+              Modo prueba — pendiente verificación con procesador real. Todavía no probamos esta pasarela contra el sandbox real de {{ p.name }} (sin credenciales de comercio).
+            </p>
+          </div>
+
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Modo</label>
@@ -62,21 +70,52 @@
                 <option value="eur">EUR — Euro</option>
               </select>
             </div>
+            <div v-if="needsMerchantId(p.provider)">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">{{ merchantIdLabel(p.provider) }}</label>
+              <input
+                v-model="form.merchantId" type="text"
+                :placeholder="current?.hasMerchantId ? '•••••••• (guardado)' : 'Asignado por el procesador'"
+                class="w-full rounded-xl border border-border bg-white px-4 py-2.5 font-mono text-sm focus:border-navy focus:outline-none"
+              />
+              <p v-if="current?.hasMerchantId" class="mt-1.5 text-[11px] text-text-muted">Guardado. Dejalo vacío para conservarlo.</p>
+            </div>
+            <div v-if="p.provider === 'cardnet'">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Terminal (CardNet)</label>
+              <input v-model="form.terminalId" type="text" placeholder="Terminal asignada por CardNet"
+                class="w-full rounded-xl border border-border bg-white px-4 py-2.5 font-mono text-sm focus:border-navy focus:outline-none" />
+            </div>
             <div>
-              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Llave secreta</label>
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">{{ secretLabel(p.provider) }}</label>
               <input
                 v-model="form.secretKey" type="password"
-                :placeholder="current?.hasSecret ? `${current.secretMask} (guardada)` : 'sk_test_… o sk_live_…'"
+                :placeholder="current?.hasSecret ? `${current.secretMask} (guardada)` : secretPlaceholder(p.provider)"
                 class="w-full rounded-xl border border-border bg-white px-4 py-2.5 font-mono text-sm focus:border-navy focus:outline-none"
               />
               <p v-if="current?.hasSecret" class="mt-1.5 text-[11px] text-text-muted">Guardada. Dejala vacía para conservarla.</p>
             </div>
-            <div>
+            <div v-if="p.provider === 'stripe' || p.provider === 'paypal'">
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Llave pública</label>
               <input v-model="form.publishableKey" type="text" placeholder="pk_test_… o pk_live_…"
                 class="w-full rounded-xl border border-border bg-white px-4 py-2.5 font-mono text-sm focus:border-navy focus:outline-none" />
             </div>
-            <div class="md:col-span-2">
+            <div v-if="p.provider === 'azul'">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Certificado cliente (PEM)</label>
+              <textarea
+                v-model="form.certPem" rows="3"
+                :placeholder="current?.hasCert ? '•••••••• (guardado)' : '-----BEGIN CERTIFICATE-----…'"
+                class="w-full rounded-xl border border-border bg-white px-4 py-2.5 font-mono text-xs focus:border-navy focus:outline-none"
+              ></textarea>
+            </div>
+            <div v-if="p.provider === 'azul'">
+              <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Llave del certificado (PEM)</label>
+              <textarea
+                v-model="form.certKeyPem" rows="3"
+                :placeholder="current?.hasCert ? '•••••••• (guardada)' : '-----BEGIN PRIVATE KEY-----…'"
+                class="w-full rounded-xl border border-border bg-white px-4 py-2.5 font-mono text-xs focus:border-navy focus:outline-none"
+              ></textarea>
+              <p v-if="current?.hasCert" class="mt-1.5 text-[11px] text-text-muted">Guardados. Dejalos vacíos para conservarlos.</p>
+            </div>
+            <div v-if="p.provider === 'stripe' || p.provider === 'paypal'" class="md:col-span-2">
               <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Secreto del webhook</label>
               <input
                 v-model="form.webhookSecret" type="password"
@@ -165,7 +204,36 @@ const form = reactive({
   secretKey: '',
   publishableKey: '',
   webhookSecret: '',
+  // Azul: MerchantId · CardNet: Comercio.
+  merchantId: '',
+  // CardNet: Terminal. Azul no lo usa.
+  terminalId: '',
+  // Azul (mTLS): el usuario pega el PEM tal cual (con sus saltos de línea) en un textarea; se
+  // codifica a base64 recién al armar el payload (ver save()) para que el validador del backend
+  // no le colapse los saltos de línea a un espacio.
+  certPem: '',
+  certKeyPem: '',
 })
+
+/** Pendientes de verificación real: sin credenciales de comercio, Azul/CardNet no se probaron end-to-end. */
+const PENDING_VERIFICATION: PaymentProvider[] = ['azul', 'cardnet']
+
+function needsMerchantId(provider: PaymentProvider): boolean {
+  return provider === 'azul' || provider === 'cardnet'
+}
+function merchantIdLabel(provider: PaymentProvider): string {
+  return provider === 'azul' ? 'Merchant ID (Azul)' : 'Comercio (CardNet)'
+}
+function secretLabel(provider: PaymentProvider): string {
+  if (provider === 'azul') return 'AuthKey (llave de firma de Azul)'
+  if (provider === 'cardnet') return 'Llave (firma de CardNet)'
+  return 'Llave secreta'
+}
+function secretPlaceholder(provider: PaymentProvider): string {
+  if (provider === 'azul') return 'AuthKey que te dio Azul…'
+  if (provider === 'cardnet') return 'Llave que te dio CardNet…'
+  return 'sk_test_… o sk_live_…'
+}
 
 /**
  * Catálogo de proveedores. Las capacidades reales las manda el backend por cada pasarela ya
@@ -187,7 +255,7 @@ const CATALOG = [
     name: 'Azul (Banco Popular)',
     icon: '🇩🇴',
     description: 'Pasarela dominicana. El huésped paga en el sitio de Azul y vuelve.',
-    implemented: false,
+    implemented: true,
     confirmation: 'return' as ConfirmationMode,
     capabilities: { refund: false, void: false, paymentLinks: false, confirmation: 'return' as ConfirmationMode },
   },
@@ -196,7 +264,7 @@ const CATALOG = [
     name: 'CardNet',
     icon: '🏦',
     description: 'Pasarela dominicana. Requiere confirmar el tipo de contrato con tu ejecutivo.',
-    implemented: false,
+    implemented: true,
     confirmation: 'pull' as ConfirmationMode,
     capabilities: { refund: true, void: true, paymentLinks: false, confirmation: 'pull' as ConfirmationMode },
   },
@@ -275,6 +343,15 @@ function toggleForm(provider: PaymentProvider) {
   form.secretKey = ''
   form.publishableKey = ''
   form.webhookSecret = ''
+  form.merchantId = ''
+  form.terminalId = ''
+  form.certPem = ''
+  form.certKeyPem = ''
+}
+
+/** btoa asume Latin1; un PEM (dashes, base64, saltos de línea) es ASCII puro, así que es seguro. */
+function toBase64(s: string): string {
+  return btoa(s)
 }
 
 async function save(provider: PaymentProvider) {
@@ -293,11 +370,18 @@ async function save(provider: PaymentProvider) {
       ...(form.secretKey ? { secretKey: form.secretKey } : {}),
       ...(form.publishableKey ? { publishableKey: form.publishableKey } : {}),
       ...(form.webhookSecret ? { webhookSecret: form.webhookSecret } : {}),
+      ...(form.merchantId ? { merchantId: form.merchantId } : {}),
+      ...(form.terminalId ? { terminalId: form.terminalId } : {}),
+      // PEM codificado en base64: el backend lo decodifica antes de guardar (ver PaymentGatewaysService.upsert).
+      ...(form.certPem ? { certPem: toBase64(form.certPem) } : {}),
+      ...(form.certKeyPem ? { certKeyPem: toBase64(form.certKeyPem) } : {}),
       ...(existing ? {} : { enabled: true, isDefault: gateways.value.length === 0 }),
     })
     toast.success('Pasarela guardada')
     form.secretKey = ''
     form.webhookSecret = ''
+    form.certPem = ''
+    form.certKeyPem = ''
     await load()
   } catch (e) {
     // El backend rechaza, por ejemplo, una llave sk_live_ guardada en modo prueba.

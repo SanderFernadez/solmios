@@ -4,6 +4,7 @@ import { SubscriptionsService } from './service'
 import { SubscriptionsController } from './controller'
 import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
 import { verifyCaptcha, isCaptchaEnabled } from '../../infrastructure/captcha'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { SubscriptionsService }
 
@@ -15,11 +16,14 @@ export function SubscriptionsModule() {
     contract: {
       name: 'subscriptions', version: '1.0.0',
       description: 'SaaS subscription lifecycle',
-      actions: ['signup', 'publicPlans', 'myStatus', 'onboarding'],
+      actions: ['signup', 'publicPlans', 'myStatus', 'onboarding', 'checkout', 'portal', 'webhookPlatform'],
       events: [],
       tables: ['subscriptions'],
       dependencies: [],
-      rules: [],
+      rules: [
+        'checkout/portal: hotelId forzado del JWT, cobro SIEMPRE contra la cuenta de PLATAFORMA (StripeService.getClient() sin hotelId)',
+        'webhookPlatform: sin auth, la autoridad es la firma de Stripe verificada con STRIPE_WEBHOOK_SECRET_PLATFORM',
+      ],
     },
     create({ logger, orm, router, auth }) {
       if (!auth) throw new Error('subscriptions: auth dependency required')
@@ -42,6 +46,11 @@ export function SubscriptionsModule() {
         new OrmRepository<any>(orm, 'Canales'),
       )
       const controller = new SubscriptionsController(service, log)
+
+      // Igual patrón que hoteles/index.ts para escritura de configuración del hotel:
+      // cualquier rol autenticado con el permiso `settings:edit` (hotel_admin por defecto).
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const guard = createPermissionGuard(auth, roleRepo)
 
       // PÚBLICAS. El alta es la única puerta abierta que escribe en la base, así
       // que va con el mismo rate-limit por IP que el login.
@@ -70,6 +79,13 @@ export function SubscriptionsModule() {
       router.get('/api/subscription/me', [auth.authenticate()], (req: any) => controller.myStatus(req))
       router.get('/api/onboarding/status', [auth.authenticate()], (req: any) => controller.onboarding(req))
 
+      // El hotel paga a la plataforma: elegir plan (Checkout) y gestionar método de pago (Portal).
+      router.post('/api/subscriptions/checkout', guard('settings', 'edit'), (req: any) => controller.checkout(req))
+      router.post('/api/subscriptions/portal', guard('settings', 'edit'), (req: any) => controller.portal(req))
+      // Webhook de la cuenta de PLATAFORMA: sin auth, firma Stripe verificada en el service
+      // (mismo patrón que payment-requests/index.ts:75, secret separado — ver contract.rules).
+      router.post('/api/stripe/webhook/platform', (req: any) => controller.webhookPlatform(req))
+
       // Sin secret el alta queda sin captcha: se avisa fuerte porque el modo
       // "sin captcha" es indistinguible a simple vista del modo protegido.
       if (isCaptchaEnabled()) {
@@ -78,7 +94,7 @@ export function SubscriptionsModule() {
         log.warn('Captcha del alta: DESACTIVADO — falta TURNSTILE_SECRET. El registro público solo está protegido por rate-limit por IP.')
       }
 
-      log.info('Módulo subscriptions listo (4 endpoints)')
+      log.info('Módulo subscriptions listo (7 endpoints)')
       return service
     },
   })

@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-21T19:43:53.538Z",
+  "_generated": "2026-07-21T21:32:35.091Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -334,6 +334,19 @@
       "complete": true
     },
     {
+      "name": "publicapi",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "messages",
       "structure": {
         "index": true,
@@ -478,6 +491,19 @@
     },
     {
       "name": "dashboard",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "webhooks",
       "structure": {
         "index": true,
         "types": true,
@@ -650,12 +676,17 @@
     "reservas-auditlog.ts",
     "reservas-reschedule-charge.ts",
     "gastos-auditlog.ts",
+    "pricing-canales.ts",
     "notificaciones-auditlog.ts",
     "payment-requests-auditlog.ts",
+    "reclutamiento-empleados.ts",
     "marketing-auditlog.ts",
+    "amenities-habitaciones.ts",
     "folios-payments.ts",
+    "payments-webhooks.ts",
     "pushtokens-usuarios.ts",
     "payment-requests-payments.ts",
+    "capacitacion-empleados.ts",
     "reservas-canales.ts",
     "dispositivos-auditlog.ts",
     "anuncios-auditlog.ts",
@@ -665,6 +696,7 @@
     "messages-pushtokens.ts",
     "apikeys-auditlog.ts",
     "reservas-huespedes.ts",
+    "publicapi-reservas.ts",
     "activos-auditlog.ts",
     "gastos-caja.ts",
     "ai-recepcionista-auditlog.ts",
@@ -690,8 +722,10 @@
     "reclutamiento-auditlog.ts",
     "messages-usuarios.ts",
     "payment-requests-ttlock.ts",
+    "reservas-deposits.ts",
     "mantenimiento-notificaciones.ts",
     "facturas-reservas.ts",
+    "reservas-webhooks.ts",
     "housekeeping-auditlog.ts",
     "opiniones-auditlog.ts",
     "housekeeping-habitaciones.ts",

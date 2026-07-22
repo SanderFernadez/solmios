@@ -11,88 +11,62 @@
       </button>
     </div>
 
-    <div class="grid lg:grid-cols-3 gap-6 mb-6">
-      <!-- API Keys -->
-      <div class="lg:col-span-2 bg-white rounded-2xl border border-border overflow-hidden">
-        <div class="px-5 py-4 bg-navy">
-          <h3 class="font-extrabold text-white">API Keys Activas</h3>
-        </div>
-        <div class="p-6">
-        <SkeletonLoader v-if="loading" variant="table" :rows="4" />
-        <div v-else class="overflow-x-auto">
-          <table class="w-full tbl-head">
-            <thead>
-              <tr class="border-b border-border">
-                <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Nombre</th>
-                <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Clave</th>
-                <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Hotel</th>
-                <th class="text-center py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Peticiones</th>
-                <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Último Uso</th>
-                <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-                <th class="text-right py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="key in apiKeys" :key="key.id" class="border-b border-border/50 hover:bg-surface/50 transition-colors">
-                <td class="py-3 px-3">
-                  <div class="text-xs font-bold text-navy">{{ key.name }}</div>
-                  <div class="text-[9px] text-text-muted">{{ key.scope }}</div>
-                </td>
-                <td class="py-3 px-3">
-                  <div class="flex items-center gap-2">
-                    <code class="text-[10px] font-mono text-text-muted bg-surface px-2 py-0.5 rounded">{{ key.masked }}</code>
-                    <button @click="copyKey(key)" class="text-text-muted hover:text-cyan transition-colors cursor-pointer">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke-width="2"/></svg>
-                    </button>
-                  </div>
-                </td>
-                <td class="py-3 px-3 text-xs text-navy">{{ key.hotel }}</td>
-                <td class="py-3 px-3 text-center text-xs font-bold text-navy">{{ key.requests.toLocaleString() }}</td>
-                <td class="py-3 px-3 text-xs text-text-muted">{{ key.lastUsed }}</td>
-                <td class="py-3 px-3">
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="key.active ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">
-                    {{ key.active ? 'Activa' : 'Revocada' }}
-                  </span>
-                </td>
-                <td class="py-3 px-3 text-right">
-                  <button @click="revokeKey(key.id)" class="text-[10px] font-bold text-coral hover:underline cursor-pointer">
-                    {{ key.active ? 'Revocar' : 'Reactivar' }}
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="!apiKeys.length">
-                <td colspan="7">
-                  <EmptyState title="Sin API keys" message="Todavía no generaste ninguna clave. Creá una para conectar servicios externos." />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        </div>
+    <!-- API Keys -->
+    <div class="bg-white rounded-2xl border border-border overflow-hidden mb-6">
+      <div class="px-5 py-4 bg-navy">
+        <h3 class="font-extrabold text-white">API Keys Activas</h3>
       </div>
-
-      <!-- Rate Limits -->
-      <div class="bg-white rounded-2xl border border-border overflow-hidden">
-        <div class="px-5 py-4 bg-navy">
-          <h3 class="font-extrabold text-white">Rate Limits</h3>
-        </div>
-        <div class="p-6">
-        <div class="space-y-3">
-          <div v-for="plan in rateLimits" :key="plan.plan" class="bg-surface rounded-xl p-3">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-navy">{{ plan.plan }}</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-navy/10 text-navy">{{ plan.rpm }} req/min</span>
-            </div>
-            <div class="flex justify-between text-[10px] text-text-muted">
-              <span>{{ plan.used }} usados hoy</span>
-              <span>{{ plan.remaining }} restantes</span>
-            </div>
-            <div class="h-1.5 bg-white rounded-full overflow-hidden mt-2">
-              <div class="h-full rounded-full transition-all" :class="plan.used / plan.daily * 100 > 80 ? 'bg-coral' : 'bg-cyan'" :style="{ width: (plan.used / plan.daily * 100) + '%' }"></div>
-            </div>
-          </div>
-        </div>
-        </div>
+      <div class="p-6">
+      <SkeletonLoader v-if="loading" variant="table" :rows="4" />
+      <div v-else class="overflow-x-auto">
+        <table class="w-full tbl-head">
+          <thead>
+            <tr class="border-b border-border">
+              <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Nombre</th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Clave</th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Hotel</th>
+              <th class="text-center py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Peticiones</th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Último Uso</th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Estado</th>
+              <th class="text-right py-3 px-3 text-[10px] font-bold text-text-muted uppercase">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="key in apiKeys" :key="key.id" class="border-b border-border/50 hover:bg-surface/50 transition-colors">
+              <td class="py-3 px-3">
+                <div class="text-xs font-bold text-navy">{{ key.name }}</div>
+                <div class="text-[9px] text-text-muted">{{ key.scope }}</div>
+              </td>
+              <td class="py-3 px-3">
+                <div class="flex items-center gap-2">
+                  <code class="text-[10px] font-mono text-text-muted bg-surface px-2 py-0.5 rounded">{{ key.masked }}</code>
+                  <button @click="copyKey(key)" class="text-text-muted hover:text-cyan transition-colors cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke-width="2"/></svg>
+                  </button>
+                </div>
+              </td>
+              <td class="py-3 px-3 text-xs text-navy">{{ key.hotel }}</td>
+              <td class="py-3 px-3 text-center text-xs font-bold text-navy">{{ key.requests.toLocaleString() }}</td>
+              <td class="py-3 px-3 text-xs text-text-muted">{{ key.lastUsed }}</td>
+              <td class="py-3 px-3">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="key.active ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">
+                  {{ key.active ? 'Activa' : 'Revocada' }}
+                </span>
+              </td>
+              <td class="py-3 px-3 text-right">
+                <button @click="revokeKey(key.id)" class="text-[10px] font-bold text-coral hover:underline cursor-pointer">
+                  {{ key.active ? 'Revocar' : 'Reactivar' }}
+                </button>
+              </td>
+            </tr>
+            <tr v-if="!apiKeys.length">
+              <td colspan="7">
+                <EmptyState title="Sin API keys" message="Todavía no generaste ninguna clave. Creá una para conectar servicios externos." />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       </div>
     </div>
 
@@ -100,12 +74,13 @@
     <div class="bg-white rounded-2xl border border-border overflow-hidden">
       <div class="flex items-center justify-between px-5 py-4 bg-navy">
         <h3 class="font-extrabold text-white">Webhooks Configurados</h3>
-        <button class="px-3 py-2 bg-white/10 text-white text-xs font-bold rounded-xl cursor-pointer">
+        <button @click="openCreateWebhook" class="px-3 py-2 bg-white/10 text-white text-xs font-bold rounded-xl cursor-pointer">
           + Nuevo Webhook
         </button>
       </div>
       <div class="p-6">
-      <div class="overflow-x-auto">
+      <SkeletonLoader v-if="loadingWebhooks" variant="table" :rows="3" />
+      <div v-else class="overflow-x-auto">
         <table class="w-full tbl-head">
           <thead>
             <tr class="border-b border-border">
@@ -135,8 +110,10 @@
                 </span>
               </td>
               <td class="py-3 px-3 text-right">
-                <button class="text-[10px] font-bold text-cyan hover:underline cursor-pointer mr-2">Probar</button>
-                <button class="text-[10px] font-bold text-coral hover:underline cursor-pointer">Eliminar</button>
+                <button @click="testWebhook(wh.id)" :disabled="testingId === wh.id" class="text-[10px] font-bold text-cyan hover:underline cursor-pointer mr-2 disabled:opacity-50">
+                  {{ testingId === wh.id ? 'Probando...' : 'Probar' }}
+                </button>
+                <button @click="deleteWebhook(wh.id)" class="text-[10px] font-bold text-coral hover:underline cursor-pointer">Eliminar</button>
               </td>
             </tr>
             <tr v-if="!webhooks.length">
@@ -149,6 +126,51 @@
       </div>
       </div>
     </div>
+
+    <!-- Create Webhook Modal -->
+    <AppModal v-if="showCreateWebhook" size="sm" title="Nuevo Webhook" @close="showCreateWebhook = false">
+      <div class="space-y-3">
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">URL de destino</label>
+          <input v-model="newWebhook.url" type="text" placeholder="https://tu-servidor.com/webhooks/solmios" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan" />
+        </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Hotel</label>
+          <select v-model="newWebhook.hotel" class="w-full h-10 px-4 rounded-xl border border-border text-sm cursor-pointer">
+            <option value="">Seleccioná un hotel</option>
+            <option v-for="h in hotels" :key="h.id" :value="h.id">{{ h.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Eventos</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button v-for="ev in webhookEvents" :key="ev" @click="toggleWebhookEvent(ev)"
+              class="text-[10px] font-bold px-2 py-1 rounded-full border transition-all cursor-pointer"
+              :class="newWebhook.events.includes(ev) ? 'bg-cyan border-cyan text-navy' : 'bg-surface border-border text-text-muted hover:border-cyan'">
+              {{ ev }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button @click="showCreateWebhook = false" class="bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer px-4 py-2.5">Cancelar</button>
+        <button @click="createWebhook" :disabled="creatingWebhook" class="bg-navy text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50 px-4 py-2.5">
+          {{ creatingWebhook ? 'Creando...' : 'Crear' }}
+        </button>
+      </template>
+    </AppModal>
+
+    <!-- Reveal new webhook secret (one-time — necesario para configurar la verificación HMAC) -->
+    <AppModal v-if="revealWebhookSecret" size="md" title="Guardá el secreto del webhook ahora" @close="revealWebhookSecret = null">
+      <p class="text-xs text-coral font-bold mb-3">⚠️ Por seguridad no se volverá a mostrar. Usalo para verificar la firma HMAC-SHA256 (header x-solmios-signature) en tu servidor.</p>
+      <div class="bg-surface rounded-xl p-3 flex items-center gap-2">
+        <code class="flex-1 text-xs font-mono text-navy break-all">{{ revealWebhookSecret }}</code>
+        <button @click="copyWebhookSecret" class="shrink-0 px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-lg cursor-pointer hover:bg-navy-light">Copiar</button>
+      </div>
+      <template #footer>
+        <button @click="revealWebhookSecret = null" class="bg-surface text-navy text-sm font-bold rounded-xl cursor-pointer px-4 py-2.5">Listo, ya lo guardé</button>
+      </template>
+    </AppModal>
 
     <!-- Create API Key Modal -->
     <AppModal v-if="showCreateKey" size="sm" title="Nueva API Key" @close="showCreateKey = false">
@@ -207,6 +229,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import { ApikeysService } from '@/services/Apikeys.service'
+import { WebhooksService } from '@/services/Webhooks.service'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -228,11 +251,17 @@ const newKey = ref<{ name: string; hotel: string; scopes: string[] }>({ name: ''
 
 const apiKeys = ref<any[]>([])
 
-const rateLimits = ref<any[]>([
-  { plan: 'Enterprise', rpm: 600, used: 234, daily: 50000, remaining: 49766 },
-  { plan: 'Professional', rpm: 200, used: 89, daily: 10000, remaining: 9911 },
-  { plan: 'Starter', rpm: 60, used: 12, daily: 2000, remaining: 1988 },
-])
+const webhookEvents = [
+  'reservation.created', 'reservation.updated', 'reservation.checked_out',
+  'payment.completed', 'payment.failed', 'payment.refunded',
+]
+
+const showCreateWebhook = ref(false)
+const creatingWebhook = ref(false)
+const loadingWebhooks = ref(true)
+const revealWebhookSecret = ref<string | null>(null)
+const testingId = ref<string | null>(null)
+const newWebhook = ref<{ url: string; hotel: string; events: string[] }>({ url: '', hotel: '', events: [] })
 
 const webhooks = ref<any[]>([])
 
@@ -264,9 +293,28 @@ async function loadKeys() {
   } finally { loading.value = false }
 }
 
+async function loadWebhooks() {
+  loadingWebhooks.value = true
+  try {
+    const r = await WebhooksService.list()
+    webhooks.value = (r.data || []).map((w: any) => ({
+      id: w.id,
+      url: w.url,
+      events: w.events || [],
+      hotel: w.hotelId ? (hotels.value.find(h => h.id === w.hotelId)?.name || w.hotelId) : 'Global',
+      delivered: w.delivered || 0,
+      failed: w.failed || 0,
+    }))
+  } catch {
+    webhooks.value = []
+    toast.error('No se pudieron cargar los webhooks')
+  } finally { loadingWebhooks.value = false }
+}
+
 onMounted(async () => {
   await loadHotels()
   await loadKeys()
+  await loadWebhooks()
 })
 
 function toggleScope(s: string) {
@@ -353,5 +401,71 @@ function deleteKey(id: string) {
       toast.success('Eliminada')
     },
   })
+}
+
+function openCreateWebhook() {
+  newWebhook.value = { url: '', hotel: '', events: [] }
+  showCreateWebhook.value = true
+}
+
+function toggleWebhookEvent(ev: string) {
+  const idx = newWebhook.value.events.indexOf(ev)
+  if (idx >= 0) newWebhook.value.events.splice(idx, 1)
+  else newWebhook.value.events.push(ev)
+}
+
+async function createWebhook() {
+  if (!newWebhook.value.url) { toast.error('URL requerida'); return }
+  if (!newWebhook.value.hotel) { toast.error('Seleccioná un hotel'); return }
+  if (!newWebhook.value.events.length) { toast.error('Seleccioná al menos un evento'); return }
+  creatingWebhook.value = true
+  try {
+    const created = await WebhooksService.create({
+      hotelId: newWebhook.value.hotel, url: newWebhook.value.url, events: newWebhook.value.events,
+    })
+    const secret = (created as { secret?: string } | null)?.secret
+    if (secret) revealWebhookSecret.value = secret
+    else toast.success('Webhook creado')
+    showCreateWebhook.value = false
+    await loadWebhooks()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Error al crear el webhook')
+  } finally {
+    creatingWebhook.value = false
+  }
+}
+
+async function testWebhook(id: string) {
+  testingId.value = id
+  try {
+    const result = await WebhooksService.test(id)
+    if (result?.delivered) toast.success('Entrega exitosa: el endpoint respondió 2xx')
+    else toast.error('No se pudo entregar: el endpoint no respondió 2xx tras los reintentos')
+    await loadWebhooks()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Error al probar el webhook')
+  } finally {
+    testingId.value = null
+  }
+}
+
+function deleteWebhook(id: string) {
+  askConfirm({
+    title: 'Eliminar webhook',
+    message: '¿Eliminar definitivamente este webhook? Dejará de recibir eventos.',
+    confirmLabel: 'Eliminar', danger: true,
+    run: async () => {
+      await WebhooksService.remove(id)
+      webhooks.value = webhooks.value.filter(w => w.id !== id)
+      toast.success('Eliminado')
+    },
+  })
+}
+
+async function copyWebhookSecret() {
+  try {
+    await navigator.clipboard.writeText(revealWebhookSecret.value || '')
+    toast.success('Secreto copiado')
+  } catch { toast.error('No se pudo copiar') }
 }
 </script>

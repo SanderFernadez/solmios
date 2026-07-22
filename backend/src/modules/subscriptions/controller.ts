@@ -1,7 +1,17 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { SubscriptionsService } from './service'
-import { SignupSchema } from './validators/schema'
+import { SignupSchema, CheckoutSchema } from './validators/schema'
+
+// Mismo fallback que payment-requests/service.ts:DEFAULT_PORT (dev sin header Origin).
+const DEFAULT_PORT = 3000
+
+/** Origin del navegador para armar success/cancel/return URLs (mismo patrón que
+ * payment-requests/service.ts:createCheckout — sin env var de frontend que el proyecto no tiene). */
+function originOf(req: HttpRequest): string {
+  const origin = (req.headers?.origin as string) || ''
+  return origin || `http://localhost:${process.env.PORT || DEFAULT_PORT}`
+}
 
 export class SubscriptionsController {
   constructor(
@@ -34,5 +44,33 @@ export class SubscriptionsController {
   async myStatus(req: HttpRequest) {
     const hotelId = (req.user as any)?.hotelId
     return { status: 200, body: { data: await this.service.statusOf(hotelId) } }
+  }
+
+  /** El hotel elige un plan y arranca a pagar: Checkout Session de Stripe. */
+  async checkout(req: HttpRequest) {
+    const hotelId = (req.user as any)?.hotelId
+    const data = validateSchema(CheckoutSchema, req.body ?? {}) as { planId: string }
+    const result = await this.service.createCheckout(hotelId, data.planId, originOf(req))
+    return { status: 200, body: result }
+  }
+
+  /** El hotel gestiona su método de pago / ve facturas: Billing Portal de Stripe. */
+  async portal(req: HttpRequest) {
+    const hotelId = (req.user as any)?.hotelId
+    const result = await this.service.createPortal(hotelId, originOf(req))
+    return { status: 200, body: result }
+  }
+
+  /**
+   * Webhook de la cuenta de PLATAFORMA. Sin auth: la autoridad es la firma de Stripe
+   * (mismo patrón que payment-requests/controller.ts:webhook).
+   */
+  async webhookPlatform(req: HttpRequest) {
+    const signature = (req.headers as any)?.['stripe-signature'] || ''
+    const rawBody = (req as any).rawBody
+    if (!rawBody) return { status: 400, body: { error: 'Webhook sin body' } }
+    const result = await this.service.handlePlatformWebhook(rawBody, signature)
+    if (result && typeof (result as any).status === 'number') return result as { status: number; body: any }
+    return { status: 200, body: result }
   }
 }

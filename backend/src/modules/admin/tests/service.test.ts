@@ -76,6 +76,30 @@ describe('AdminService', () => {
     })
   })
 
+  describe('listSubscriptions', () => {
+    it('cruza Hotels con Subscriptions/Plans reales — no inventa un mrr desde hotels.plan', async () => {
+      const repos = makeRepos()
+      const orm = makeOrm({
+        findMany: async (table: string) => {
+          if (table === 'Hotels') return [{ id: 'h1', name: 'Hotel 1', plan: 'professional' }, { id: 'h2', name: 'Hotel 2', plan: 'starter' }]
+          if (table === 'Subscriptions') return [{ id: 's1', hotelId: 'h1', planId: 'p1', status: 'active', currentPeriodEnd: '2027-01-01T00:00:00.000Z', stripeCustomerId: 'cus_1' }]
+          if (table === 'Plans') return [{ id: 'p1', name: 'Professional', price: 99 }]
+          return []
+        },
+      })
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(orm))
+      const result = await svc.listSubscriptions()
+
+      expect(result.total).toBe(2)
+      const h1 = result.data.find((r: any) => r.hotelId === 'h1')
+      const h2 = result.data.find((r: any) => r.hotelId === 'h2')
+      expect(h1).toMatchObject({ status: 'active', planName: 'Professional', mrr: 99, hasStripeCustomer: true })
+      // h2 no tiene fila en `subscriptions`: no se inventa un plan ni un cobro.
+      expect(h2).toMatchObject({ status: 'none', planName: '', mrr: 0, hasStripeCustomer: false })
+      expect(result.mrrTotal).toBe(99)
+    })
+  })
+
   describe('listPlans', () => {
     it('returns plans list', async () => {
       const repos = makeRepos()

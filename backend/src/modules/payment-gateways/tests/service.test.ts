@@ -97,11 +97,48 @@ describe('PaymentGatewaysService', () => {
 
   it('declara que Azul NO soporta reembolsos (la UI no debe ofrecer el botón)', async () => {
     const { svc } = makeService()
-    await svc.upsert('h1', { provider: 'azul', mode: 'test', secretKey: 'authkey-de-azul' })
+    await svc.upsert('h1', { provider: 'azul', mode: 'test', secretKey: 'authkey-de-azul', merchantId: 'MERCH123' })
     const [dto] = await svc.list('h1')
     expect(dto.capabilities.refund).toBe(false)
     expect(dto.capabilities.confirmation).toBe('return') // no tiene webhook
-    expect(dto.implemented).toBe(false) // el puerto lo admite, falta el adapter
+    expect(dto.implemented).toBe(true) // adapter agregado (AzulGateway)
+  })
+
+  it('Azul exige merchantId (sin él no se puede armar el request a Payment Page)', async () => {
+    const { svc } = makeService()
+    await expect(
+      svc.upsert('h1', { provider: 'azul', mode: 'test', secretKey: 'authkey-de-azul' }),
+    ).rejects.toThrow(/Merchant ID/)
+  })
+
+  it('CardNet exige comercio y terminal', async () => {
+    const { svc } = makeService()
+    await expect(
+      svc.upsert('h1', { provider: 'cardnet', mode: 'test', secretKey: 'llave-de-cardnet' }),
+    ).rejects.toThrow(/Comercio y Terminal/)
+  })
+
+  it('un PEM de Azul mandado en base64 se guarda decodificado (no corrompido por el validador)', async () => {
+    const { svc, repo } = makeService()
+    const pem = '-----BEGIN CERTIFICATE-----\nMIIBFAKECERTDATA\n-----END CERTIFICATE-----'
+    await svc.upsert('h1', {
+      provider: 'azul', mode: 'test', secretKey: 'authkey', merchantId: 'MERCH123',
+      certPem: Buffer.from(pem, 'utf8').toString('base64'),
+    })
+    const creds = decryptCredentials(repo.rows[0].credentials)
+    expect(creds.certPem).toBe(pem) // se guarda el PEM real, con sus saltos de línea intactos
+  })
+
+  it('CardNet queda implementado y NO permite paymentLinks', async () => {
+    const { svc } = makeService()
+    await svc.upsert('h1', {
+      provider: 'cardnet', mode: 'test', secretKey: 'llave-de-cardnet',
+      merchantId: 'COMERCIO1', terminalId: 'TERM1',
+    })
+    const [dto] = await svc.list('h1')
+    expect(dto.implemented).toBe(true)
+    expect(dto.capabilities.confirmation).toBe('pull')
+    expect(dto.capabilities.paymentLinks).toBe(false)
   })
 
   it('un solo default por hotel', async () => {
@@ -111,6 +148,28 @@ describe('PaymentGatewaysService', () => {
     const defaults = repo.rows.filter((r: PaymentGatewayRow) => r.isDefault)
     expect(defaults).toHaveLength(1)
     expect(defaults[0].provider).toBe('paypal')
+  })
+})
+
+describe('testConnection — despacha por provider (bug: antes SIEMPRE armaba un StripeGateway)', () => {
+  it('Azul: credenciales con formato válido → ok, sin llamar a ningún API real', async () => {
+    const { svc, repo } = makeService()
+    await svc.upsert('h1', { provider: 'azul', mode: 'test', secretKey: 'authkey', merchantId: 'MERCH1' })
+    const gwId = repo.rows[0].id
+    const r = await svc.testConnection('h1', gwId)
+    expect(r.ok).toBe(true)
+    expect(r.message).toMatch(/Azul/)
+  })
+
+  it('CardNet: credenciales con formato válido → ok', async () => {
+    const { svc, repo } = makeService()
+    await svc.upsert('h1', {
+      provider: 'cardnet', mode: 'test', secretKey: 'llave', merchantId: 'COMERCIO1', terminalId: 'TERM1',
+    })
+    const gwId = repo.rows[0].id
+    const r = await svc.testConnection('h1', gwId)
+    expect(r.ok).toBe(true)
+    expect(r.message).toMatch(/CardNet/)
   })
 })
 
@@ -156,5 +215,23 @@ describe('PaymentGatewayRegistry — aislamiento entre hoteles', () => {
 
     expect(await registry.resolve('h1')).toBeNull() // NO devuelve la pasarela global
     delete process.env.STRIPE_SECRET_KEY
+  })
+
+  it('resuelve Azul y CardNet a su propio adapter (ya no caen en "sin adapter")', async () => {
+    const { svc, registry } = makeService()
+    await svc.upsert('h1', {
+      provider: 'azul', mode: 'test', secretKey: 'authkey', merchantId: 'MERCH1', enabled: true,
+    })
+    await svc.upsert('h1', {
+      provider: 'cardnet', mode: 'test', secretKey: 'llave', merchantId: 'COMERCIO1', terminalId: 'TERM1', enabled: true,
+    })
+
+    const azul = await registry.resolve('h1', 'azul') as any
+    const cardnet = await registry.resolve('h1', 'cardnet') as any
+
+    expect(azul).not.toBeNull()
+    expect(azul.provider).toBe('azul')
+    expect(cardnet).not.toBeNull()
+    expect(cardnet.provider).toBe('cardnet')
   })
 })

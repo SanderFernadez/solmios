@@ -3,6 +3,9 @@ import { SignupUseCase, type SignupInput, type SignupResult } from './usecases/s
 import { SubscriptionAccess, type AccessResult } from './usecases/access'
 import { OnboardingUseCase, type OnboardingStatus } from './usecases/onboarding'
 import { hashPassword } from '../usuarios/usecases/password'
+import { createCheckoutSession, type CreateCheckoutResult } from './usecases/create-checkout-session'
+import { createPortalSession, type CreatePortalResult } from './usecases/create-portal-session'
+import { processSubscriptionWebhook } from './usecases/handle-stripe-event'
 
 export class SubscriptionsService {
   private readonly signupUc: SignupUseCase
@@ -72,6 +75,27 @@ export class SubscriptionsService {
       allowed: access.allowed,
       reason: access.reason ?? null,
       daysLeft: access.daysLeft ?? null,
+      // Sin esto el frontend no puede decidir si mostrar "Gestionar método de pago"
+      // (requiere un Customer de Stripe ya creado, es decir: pagó al menos una vez).
+      hasStripeCustomer: !!sub?.stripeCustomerId,
     }
+  }
+
+  /** Suscribirse a un plan: Checkout Session de Stripe (cuenta de PLATAFORMA). */
+  createCheckout(hotelId: string, planId: string, origin: string): Promise<CreateCheckoutResult> {
+    return createCheckoutSession(
+      { subscriptionsRepo: this.subscriptionsRepo, hotelsRepo: this.hotelsRepo, plansRepo: this.plansRepo, logger: this.logger },
+      hotelId, planId, origin,
+    )
+  }
+
+  /** Gestionar método de pago / ver facturas: Billing Portal de Stripe. */
+  createPortal(hotelId: string, origin: string): Promise<CreatePortalResult> {
+    return createPortalSession({ subscriptionsRepo: this.subscriptionsRepo, logger: this.logger }, hotelId, origin)
+  }
+
+  /** Webhook de la cuenta de PLATAFORMA (checkout/renovación/cancelación de la suscripción SaaS). */
+  handlePlatformWebhook(rawBody: string | Buffer, signature: string) {
+    return processSubscriptionWebhook({ subscriptionsRepo: this.subscriptionsRepo, logger: this.logger }, rawBody, signature)
   }
 }
