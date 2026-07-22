@@ -69,8 +69,13 @@ describe('facturasPaymentsConnector', () => {
 describe('facturasReservasConnector', () => {
   it('anota en la reserva cuando la factura queda PAGADA', async () => {
     const updates: any[] = []
+    // Mock con la firma REAL de ReservasService: getById(id,user) + update(id,data,user). El bug
+    // vivía porque el mock viejo tenía update(id,data) de 2 args y no exigía el currentUser.
     const { ctx, captured } = makeCtx(['facturas'], {
-      reservas: { update: async (id: string, data: any) => { updates.push({ id, data }); return {} } },
+      reservas: {
+        getById: async (_id: string, _user: any) => ({ id: _id, notes: '' }),
+        update: async (id: string, data: any, user: any) => { updates.push({ id, data, user }); return {} },
+      },
     })
     facturasReservasConnector(ctx)
     await captured.sockets.onFacturasUpdated({ reservationId: 'res1', status: 'paid', invoiceNumber: 'INV-1', amount: 100, currency: 'USD' })
@@ -78,6 +83,7 @@ describe('facturasReservasConnector', () => {
     expect(updates).toHaveLength(1)
     expect(updates[0].id).toBe('res1')
     expect(updates[0].data.notes).toContain('INV-1')
+    expect(updates[0].user?.role).toBe('super_admin')   // el 3er arg (currentUser) SÍ se pasa — blinda el bug
   })
 
   it('NO anota si la factura no está pagada, ni si no tiene reserva', async () => {
