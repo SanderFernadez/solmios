@@ -175,7 +175,7 @@ function handleRow(n: AppNotification) {
   else if (n.type === 'payment') router.push('/panel/finanzas/facturacion')
   else if (n.type === 'housekeeping') router.push('/panel/operaciones/limpieza')
   else if (n.type === 'maintenance') router.push('/panel/operaciones/mantenimiento')
-  else if (n.type === 'review') router.push('/panel/ventas/opiniones')
+  else if (n.type === 'review') router.push('/panel/resenas')
 }
 
 function formatRelative(date?: string): string {

@@ -40,6 +40,7 @@ const LABELS: Record<string, string> = {
   groups: 'Grupos',
   packages: 'Promociones',
   opiniones: 'Reseñas',
+  resenas: 'Reseñas',
   crm: 'CRM',
   ai: 'IA',
   'ai-receptionist': 'Recepcionista IA',

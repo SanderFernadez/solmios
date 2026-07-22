@@ -21,9 +21,11 @@ export const ROUTE_TO_KEY: Record<string, string> = {
   '/panel/finanzas/gastos': 'finance.gastos',
   '/panel/finanzas/reportes': 'finance.reports',
   '/panel/finanzas/night-audit': 'finance.night-audit',
-  '/panel/ventas/grupos': 'sales.groups',
-  '/panel/ventas/promociones': 'sales.packages',
-  '/panel/ventas/opiniones': 'sales.reviews',
+  // Reorg "Ventas" (alineado con MisterPlan): las vistas se movieron, pero las KEYS de módulo
+  // (sales.*) se mantienen para no romper el gating por plan (los planes listan estas keys).
+  '/panel/reservas/grupos': 'sales.groups',
+  '/panel/config/promociones': 'sales.packages',
+  '/panel/resenas': 'sales.reviews',
   '/panel/ia/recepcionista': 'ai.receptionist',       // incluye /panel/ia/recepcionista/config (prefijo)
   '/panel/ia/gerente': 'ai.manager',
   '/panel/crm': 'crm',

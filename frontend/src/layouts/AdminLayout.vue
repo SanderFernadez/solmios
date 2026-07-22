@@ -229,6 +229,7 @@ const ICONS = {
   support: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"/></svg>',
   tools: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>',
   ticket: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a2.25 2.25 0 0 0-2.25-2.25V8.25A2.25 2.25 0 0 0 16.5 6h-9a2.25 2.25 0 0 0-2.25 2.25v1.5a2.25 2.25 0 0 1 0 4.5v1.5A2.25 2.25 0 0 0 7.5 18h9a2.25 2.25 0 0 0 2.25-2.25v-1.5A2.25 2.25 0 0 0 21 12Z"/></svg>',
+  star: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.5a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>',
 }
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.22 4.22l1.77 1.77M18 18l1.78 1.78M2.5 12H5M19 12h2.5M4.22 19.78 6 18M18 6l1.78-1.78"/></svg>'
@@ -249,6 +250,7 @@ const nonavItems = [
     children: [
       { label: 'Reservas', path: '/panel/reservas', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Check-in/out', path: '/panel/reservas/checkin', roles: ['hotel_admin', 'receptionist'] },
+      { label: 'Grupos', path: '/panel/reservas/grupos', roles: ['hotel_admin'] },
     ]
   },
   {
@@ -275,13 +277,7 @@ const nonavItems = [
     ]
   },
   {
-    label: 'Ventas', icon: ICONS.link, roles: ['hotel_admin'],
-    children: [
-      { label: 'Grupos', path: '/panel/ventas/grupos', roles: ['hotel_admin'] },
-      { label: 'Promociones', path: '/panel/ventas/promociones', roles: ['hotel_admin'] },
-      { label: 'Reseñas', path: '/panel/ventas/opiniones', roles: ['hotel_admin', 'receptionist'] },
-    ]
-  },
+    label: 'Reseñas', icon: ICONS.star, path: '/panel/resenas', roles: ['hotel_admin', 'receptionist'] },
   {
     label: 'IA', icon: ICONS.sparkles, roles: ['hotel_admin', 'receptionist'],
     children: [
@@ -322,6 +318,7 @@ const nonavItems = [
       { label: 'Configuración Base', path: '/panel/config', roles: ['hotel_admin'] },
       { label: 'Habitaciones', path: '/panel/config/habitaciones', roles: ['hotel_admin', 'receptionist'] },
       { label: 'Temporadas y Tarifas', path: '/panel/config/tarifas', roles: ['hotel_admin'] },
+      { label: 'Promociones', path: '/panel/config/promociones', roles: ['hotel_admin'] },
       // `anyOf`: /panel/config/mensajeria es CORE (no está en module-map), así que la
       // entrada se gatea por sus tabs — si el hotel no tiene habilitado ningún
       // módulo de mensajería, no se muestra.
