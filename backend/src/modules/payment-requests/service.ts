@@ -19,18 +19,22 @@ import type {
 import type { PaymentRequestsSockets } from './sockets'
 import { processStripeWebhook } from './usecases/stripe-webhook'
 import type { StripePaymentPort } from './usecases/payment-port'
+import type { EmailSender } from '../../services/email-sender'
+import { createCheckoutForRequest } from './usecases/create-checkout'
 import {
-  auditSafely, deleteEntry, statusChangeEntry, isSensitiveStatus, checkoutSessionCreatedEntry,
+  auditSafely, deleteEntry, statusChangeEntry, isSensitiveStatus,
   type AuditEntry, type AuditPort,
 } from './usecases/audit'
-
-/** Puerto por defecto para el fallback de URLs de checkout en dev (sin header Origin). */
-const DEFAULT_PORT = 3000
 
 export class PaymentRequestsService {
   private sockets: PaymentRequestsSockets = {}
   private paymentPort: StripePaymentPort | null = null
   private auditPort: AuditPort | null = null
+  private emailSender: EmailSender | null = null
+  private hotelRepoForEmail: RepositoryAdapter<any> | null = null
+
+  /** Cablea el envío del link de pago por email (connector email-bootstrap). */
+  setEmailDeps(es: EmailSender, hotelRepo: RepositoryAdapter<any>): void { this.emailSender = es; this.hotelRepoForEmail = hotelRepo }
 
   constructor(
     private readonly repo: RepositoryAdapter<PaymentRequestDTO>,
@@ -151,29 +155,10 @@ export class PaymentRequestsService {
     }
     const pr = await this.assertOwned(id, user)
     if (pr.status === 'paid') return { status: 400, body: { error: 'Ya está pagado' } }
-
-    const fallbackOrigin = `http://localhost:${process.env.PORT || DEFAULT_PORT}`
-    const guestEmail = pr.sentTo?.includes('@') ? pr.sentTo : undefined
-    try {
-      const result = await StripeService.createCheckoutSession({
-        hotelId,
-        paymentRequestId: id,
-        amount: Number(pr.amount),
-        currency: pr.currency || 'usd',
-        description: `Reserva ${String(pr.reservationId || '').slice(0, 8)}`,
-        successUrl: `${origin || fallbackOrigin}/panel/finanzas/links-pago?status=paid&id=${id}`,
-        cancelUrl: `${origin || fallbackOrigin}/panel/finanzas/links-pago?status=cancelled&id=${id}`,
-        customerEmail: guestEmail,
-        metadata: { hotelId: pr.hotelId, reservationId: pr.reservationId || '' },
-      })
-      await this.repo.update(id, { stripeSessionId: result.sessionId, stripePaymentUrl: result.sessionUrl } as Partial<PaymentRequestDTO>)
-      // Rastro de auditoría: se abrió una sesión de cobro con Stripe (append-only, no tumba la operación).
-      await this.audit(checkoutSessionCreatedEntry(pr, result.sessionId, user))
-      return { url: result.sessionUrl, sessionId: result.sessionId }
-    } catch (e: any) {
-      this.logger.error('Stripe create checkout failed', e)
-      return { status: 500, body: { error: 'Error al crear sesión de pago', detail: e.message } }
-    }
+    return createCheckoutForRequest(
+      { repo: this.repo, reservationRepo: this.reservationRepo, userRepo: this.userRepo, hotelRepoForEmail: this.hotelRepoForEmail, emailSender: this.emailSender, audit: (e) => this.audit(e), logger: this.logger },
+      pr, id, hotelId, origin, user,
+    )
   }
 
   /**

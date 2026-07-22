@@ -4,7 +4,7 @@
 // vive en auto_messages; este archivo es el fallback. Versionado con git, testeable sin DB.
 // Las variables {key} se interpolan con renderTemplate() de email-service (6.1.2).
 
-export type NotificationEvent = 'reservation_confirmed' | 'reservation_presale' | 'checkin_welcome' | 'no_show' | 'checkout' | 'invoice' | 'reminder'
+export type NotificationEvent = 'reservation_confirmed' | 'reservation_presale' | 'checkin_welcome' | 'no_show' | 'checkout' | 'invoice' | 'reminder' | 'payment_link'
 export type NotificationLanguage = 'es' | 'en' | 'pt'
 
 export interface NotificationDefault {
@@ -535,6 +535,27 @@ const REMINDER_PT = `<!DOCTYPE html>
 
 // ─── Registro central ───────────────────────────────────────────────────────
 
+// ─── payment_link ───────────────────────────────────────────────────────────
+// Link de pago (Stripe) generado para una reserva. Variables: hotel_name, amount, currency, payment_url.
+const PAYMENT_LINK_ES = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111827;">
+  <h2 style="color:#0f172a;">Pago pendiente — {hotel_name}</h2>
+  <p>Hola, tenés un pago pendiente por <b>{amount} {currency}</b>.</p>
+  <p style="text-align:center;margin:28px 0;"><a href="{payment_url}" style="background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;display:inline-block;">Pagar ahora</a></p>
+  <p style="font-size:12px;color:#6b7280;">Si el botón no funciona, copiá y pegá este enlace:<br>{payment_url}</p>
+</div>`
+const PAYMENT_LINK_EN = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111827;">
+  <h2 style="color:#0f172a;">Payment pending — {hotel_name}</h2>
+  <p>Hi, you have a pending payment of <b>{amount} {currency}</b>.</p>
+  <p style="text-align:center;margin:28px 0;"><a href="{payment_url}" style="background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;display:inline-block;">Pay now</a></p>
+  <p style="font-size:12px;color:#6b7280;">If the button doesn't work, copy and paste this link:<br>{payment_url}</p>
+</div>`
+const PAYMENT_LINK_PT = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111827;">
+  <h2 style="color:#0f172a;">Pagamento pendente — {hotel_name}</h2>
+  <p>Olá, você tem um pagamento pendente de <b>{amount} {currency}</b>.</p>
+  <p style="text-align:center;margin:28px 0;"><a href="{payment_url}" style="background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;display:inline-block;">Pagar agora</a></p>
+  <p style="font-size:12px;color:#6b7280;">Se o botão não funcionar, copie e cole este link:<br>{payment_url}</p>
+</div>`
+
 export const NOTIFICATION_DEFAULTS: Record<NotificationEvent, Partial<Record<NotificationLanguage, NotificationDefault>>> = {
   reservation_confirmed: {
     es: { subject: 'Confirmación de reserva — {hotel_name}', body: CONFIRMED_ES },
@@ -570,6 +591,11 @@ export const NOTIFICATION_DEFAULTS: Record<NotificationEvent, Partial<Record<Not
     es: { subject: 'Recordatorio de tu llegada — {hotel_name}', body: REMINDER_ES },
     en: { subject: 'Your arrival reminder — {hotel_name}', body: REMINDER_EN },
     pt: { subject: 'Lembrete da sua chegada — {hotel_name}', body: REMINDER_PT },
+  },
+  payment_link: {
+    es: { subject: 'Pago pendiente — {hotel_name}', body: PAYMENT_LINK_ES },
+    en: { subject: 'Payment pending — {hotel_name}', body: PAYMENT_LINK_EN },
+    pt: { subject: 'Pagamento pendente — {hotel_name}', body: PAYMENT_LINK_PT },
   },
 }
 

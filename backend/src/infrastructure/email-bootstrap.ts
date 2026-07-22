@@ -32,6 +32,12 @@ export function bootstrapEmail(orm: any, logger: Logger, resolveModule: <T>(name
     payrollForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Hotels'))
   }
 
+  // Payment-requests: envía el link de pago (Stripe) por email al generar el checkout (sentVia='email').
+  const payReqForEmail = resolveModule<{ setEmailDeps(es: any, hr: any): void }>('payment-requests')
+  if (payReqForEmail && typeof payReqForEmail.setEmailDeps === 'function') {
+    payReqForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Hotels'))
+  }
+
   // Capacitación: correo de inscripción con material + link de autoconfirmación. PUBLIC_URL arma el
   // link absoluto del correo (ej: https://hotel.zx89.site); sin él, el correo va sin botón de confirmar.
   const capacitacionForEmail = resolveModule<{ setEmailDeps(es: EmailSender, ur: any, publicUrl?: string): void }>('capacitacion')
