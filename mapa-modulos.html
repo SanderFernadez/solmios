@@ -442,10 +442,10 @@ const N = [
 
   // ─── ANALÍTICA ───
   {id:'reports',label:'📈 Reports',group:'analitica',panel:'hotel',info:{
-    que:'Reportes financieros y operacionales (advanced, export). Lee de reservas/facturas/payments/caja.',
-    porque:'Visibilidad para el hotelero y compliance fiscal.',
-    conectado:['facturas','payments','cash','reservas'],
-    falta:['PG sin seed financiero: reports computan desde reservas (folios/facturas/gastos/caja = 0 en prod nuevo)']
+    que:'Reportes financieros y operacionales (advanced, export). Fuente REAL (verificado en código): reservas (primaria) + folio_charges = "facturado" (devengado); payments = "ingresado"; gastos. NO lee las tablas invoices ni cash.',
+    porque:'Visibilidad para el hotelero. El reporte fiscal/tax real vive aparte en facturas (/api/facturas/tax-report).',
+    conectado:['reservas (primaria)','payments (ingresado)','folios/folio_charges','gastos'],
+    falta:['CORRECCIÓN DE MAPA: el mapa dibujaba reports→facturas y reports→caja, pero reports NO lee esas tablas (0 reads, verificado). "facturado" = devengado (reservas + folio_charges); "ingresado" = payments (fuente de verdad del dinero; caja es solo efectivo físico, subconjunto). Correcto por diseño y anda con tablas financieras vacías (prod nuevo). GAP OPCIONAL (decisión de producto, NO bug): reconciliar "facturado" contra el libro real de facturas (NCF/notas de crédito/anulaciones) — cambiaría los números y rompería hoteles nuevos (invoices=0).']
   }},
   {id:'dashboard',label:'📊 Dashboard',group:'analitica',panel:'hotel',info:{
     que:'KPIs del home del hotel + dashboard RRHH (presentes/ausentes). Ahora incluye financial (revenue, revenueToday, byMethod, outstandingInvoices, foliosOpen).',
@@ -500,9 +500,10 @@ const E = [
   {f:'facturas',t:'folios',y:'datos'},
   {f:'crm',t:'huespedes',y:'datos'},
   {f:'crm',t:'reservas',y:'datos'},
-  {f:'reports',t:'facturas',y:'datos'},
-  {f:'reports',t:'payments',y:'datos'},
-  {f:'reports',t:'cash',y:'datos'},
+  {f:'reports',t:'reservas',y:'datos',l:'devengado (primaria)'},
+  {f:'reports',t:'payments',y:'datos',l:'ingresado'},
+  {f:'reports',t:'folios',y:'datos',l:'folio_charges (extras)'},
+  {f:'reports',t:'gastos',y:'datos'},
   {f:'dashboard',t:'reservas',y:'datos'},
   {f:'dashboard',t:'habitaciones',y:'datos'},
   {f:'dashboard',t:'payments',y:'datos',l:'KPIs financieros ✅'},
