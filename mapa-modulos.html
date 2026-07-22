@@ -423,7 +423,7 @@ const N = [
     que:'Cola de envío de emails con worker. SMTP/Resend vía bootstrapEmail.',
     porque:'Desacopla el envío (transacciones, auto-messages, facturas por mail).',
     conectado:['admin (catálogo de módulos: list/requeue)'],
-    falta:['🔴 AISLADO: ningún módulo encola a través de él. Es PANEL de gestión de cola (list/requeue), NO el sender. El envío real lo hace EmailService (bootstrapEmail worker), no este módulo.']
+    falta:['NO está aislado (corrección): comparte la tabla EmailQueue con EmailService (email-bootstrap.ts usa OrmRepository(orm, "EmailQueue")). EmailService (worker) DRENA la cola; este módulo la GESTIONA (list/requeue). Es el panel de administración de la misma cola — separación por diseño, no un cable suelto.']
   }},
 
   // ─── IA ───
@@ -553,7 +553,6 @@ const E = [
   {f:'amenities',t:'habitaciones',y:'hook',l:'sync CSV Rooms.amenities ✅'},
   {f:'reclutamiento',t:'empleados',y:'hook',l:'contratado→expediente ✅'},
   {f:'capacitacion',t:'empleados',y:'hook',l:'curso→documento ✅'},
-  {f:'subscriptions',t:'payments',y:'falta',l:'cobro SaaS sin ledger'},
 
   // ===== GAPS: BUGS en conexión existente (rojo sólido) =====
   {f:'facturas',t:'hoteles',y:'bug',l:'NCF local, no transmitido (stub fiscal)'},
