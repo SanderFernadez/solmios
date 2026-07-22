@@ -16,6 +16,7 @@ export const OpinionesModel: ModelDefinition = {
     visible: { type: 'number', default: 1 },
     channel: { type: 'string', default: 'direct' },
     status: { type: 'string', default: 'visible' }, // visible | pending (invite post-checkout, connector reservas-opiniones)
+    token: { type: 'string' }, // token público del invite: el huésped responde la reseña sin login (/resena/:token)
   },
   timestamps: true,
 }

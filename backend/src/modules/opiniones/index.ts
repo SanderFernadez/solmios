@@ -46,6 +46,11 @@ export function OpinionesModule() {
       router.put('/api/opiniones/:id', guard('reports', 'edit'), (req) => controller.update(req))
       router.delete('/api/opiniones/:id', guard('reports', 'delete'), (req) => controller.destroy(req))
 
+      // Público: el huésped responde el invite de reseña vía /resena/:token (sin login). El token es
+      // la autorización (único por reseña, tenant-safe). Cerrado tras responder (409 si ya está).
+      router.get('/api/public/reviews/:token', (req: any) => controller.publicGet(req))
+      router.post('/api/public/reviews/:token', (req: any) => controller.publicSubmit(req))
+
       log.info('Módulo opiniones v2 listo')
       return service
     },

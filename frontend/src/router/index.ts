@@ -62,6 +62,25 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      // Reseña pública post-checkout: el huésped responde el invite sin login (token = autorización).
+      path: '/resena/:token',
+      name: 'resena',
+      component: () => import('@/pages/resena/index.vue'),
+      meta: { layout: 'none' },
+    },
+    {
+      path: '/legal/terminos',
+      name: 'legal-terminos',
+      component: () => import('@/pages/legal/terminos.vue'),
+      meta: { layout: 'none' },
+    },
+    {
+      path: '/legal/privacidad',
+      name: 'legal-privacidad',
+      component: () => import('@/pages/legal/privacidad.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/admin',
       component: () => import('@/layouts/SuperAdminLayout.vue'),
       meta: { requiresSuperAdmin: true },

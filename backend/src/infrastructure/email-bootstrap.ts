@@ -38,6 +38,12 @@ export function bootstrapEmail(orm: any, logger: Logger, resolveModule: <T>(name
     payReqForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Hotels'))
   }
 
+  // Opiniones: email de invitación a reseña post-checkout con link público /resena/:token.
+  const opinionesForEmail = resolveModule<{ setEmailDeps(es: any, gr: any, hr: any, url: string): void }>('opiniones')
+  if (opinionesForEmail && typeof opinionesForEmail.setEmailDeps === 'function') {
+    opinionesForEmail.setEmailDeps(emailService, new OrmRepository<any>(orm, 'Guests'), new OrmRepository<any>(orm, 'Hotels'), process.env.PUBLIC_URL || '')
+  }
+
   // Capacitación: correo de inscripción con material + link de autoconfirmación. PUBLIC_URL arma el
   // link absoluto del correo (ej: https://hotel.zx89.site); sin él, el correo va sin botón de confirmar.
   const capacitacionForEmail = resolveModule<{ setEmailDeps(es: EmailSender, ur: any, publicUrl?: string): void }>('capacitacion')

@@ -34,7 +34,7 @@ describe('notification-defaults (spec 11.1.6)', () => {
   })
 
   it('NOTIFICATION_DEFAULTS registra todos los eventos × 3 idiomas', () => {
-    expect(Object.keys(NOTIFICATION_DEFAULTS).sort()).toEqual(['checkin_welcome', 'checkout', 'invoice', 'no_show', 'payment_link', 'reminder', 'reservation_confirmed', 'reservation_presale'])
+    expect(Object.keys(NOTIFICATION_DEFAULTS).sort()).toEqual(['checkin_welcome', 'checkout', 'invoice', 'no_show', 'payment_link', 'reminder', 'reservation_confirmed', 'reservation_presale', 'review_request'])
     for (const event of Object.keys(NOTIFICATION_DEFAULTS)) {
       const langs = Object.keys((NOTIFICATION_DEFAULTS as any)[event])
       expect(langs.sort()).toEqual(['en', 'es', 'pt'])

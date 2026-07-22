@@ -40,4 +40,21 @@ export class OpinionesController {
     await this.service.delete(req.params.id, currentUser)
     return { status: 204, body: null }
   }
+
+  // ─── Público por token (sin auth: el token es la autorización) ───
+  async publicGet(req: HttpRequest) {
+    const data = await this.service.getByToken(req.params.token)
+    if (!data) return { status: 404, body: { error: 'Reseña no encontrada' } }
+    return { status: 200, body: data }
+  }
+
+  async publicSubmit(req: HttpRequest) {
+    const body = (req.body ?? {}) as { rating?: number; comment?: string; title?: string }
+    const result = await this.service.submitByToken(req.params.token, { rating: Number(body.rating), comment: body.comment, title: body.title })
+    if (!result.ok) {
+      const code = result.reason === 'not_found' ? 404 : result.reason === 'already_submitted' ? 409 : 400
+      return { status: code, body: { error: result.reason } }
+    }
+    return { status: 200, body: { ok: true } }
+  }
 }

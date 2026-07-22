@@ -201,4 +201,38 @@ describe('OpinionesService', () => {
       await expect(svc.delete('r1', adminUser)).rejects.toThrow('no encontrada')
     })
   })
+
+  // ─── Flujo público por token (/resena/:token) ────────
+  describe('submitByToken', () => {
+    function svcWith(review: any) {
+      const updates: any[] = []
+      const repo = makeRepo({
+        findMany: async (f: any) => (f?.token === 't1' ? [review] : []),
+        update: async (id: string, data: any) => { updates.push({ id, data }); return { id, ...data } as OpinionesDTO },
+      })
+      return { svc: new OpinionesService(repo, log, silentCache, makeUserRepo(), fakeAuth), updates }
+    }
+
+    it('responde un invite pending → visible + rating + comment', async () => {
+      const { svc, updates } = svcWith({ id: 'r1', hotelId: 'h1', status: 'pending', token: 't1' })
+      const res = await svc.submitByToken('t1', { rating: 5, comment: 'Excelente' })
+      expect(res.ok).toBe(true)
+      expect(updates[0].data).toMatchObject({ rating: 5, comment: 'Excelente', status: 'visible', visible: 1 })
+    })
+
+    it('rechaza si ya fue respondida (409)', async () => {
+      const { svc } = svcWith({ id: 'r1', hotelId: 'h1', status: 'visible', token: 't1' })
+      expect(await svc.submitByToken('t1', { rating: 4 })).toEqual({ ok: false, reason: 'already_submitted' })
+    })
+
+    it('rechaza rating fuera de 1-5', async () => {
+      const { svc } = svcWith({ id: 'r1', hotelId: 'h1', status: 'pending', token: 't1' })
+      expect(await svc.submitByToken('t1', { rating: 9 })).toEqual({ ok: false, reason: 'invalid_rating' })
+    })
+
+    it('token inexistente → not_found', async () => {
+      const { svc } = svcWith({ id: 'r1', hotelId: 'h1', status: 'pending', token: 't1' })
+      expect(await svc.submitByToken('nope', { rating: 5 })).toEqual({ ok: false, reason: 'not_found' })
+    })
+  })
 })

@@ -14,6 +14,7 @@ export interface OpinionesDTO {
   visible?: number
   channel?: ReviewChannel
   status?: ReviewStatus
+  token?: string
   createdAt: string
   updatedAt: string
 }

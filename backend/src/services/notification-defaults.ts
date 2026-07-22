@@ -4,7 +4,7 @@
 // vive en auto_messages; este archivo es el fallback. Versionado con git, testeable sin DB.
 // Las variables {key} se interpolan con renderTemplate() de email-service (6.1.2).
 
-export type NotificationEvent = 'reservation_confirmed' | 'reservation_presale' | 'checkin_welcome' | 'no_show' | 'checkout' | 'invoice' | 'reminder' | 'payment_link'
+export type NotificationEvent = 'reservation_confirmed' | 'reservation_presale' | 'checkin_welcome' | 'no_show' | 'checkout' | 'invoice' | 'reminder' | 'payment_link' | 'review_request'
 export type NotificationLanguage = 'es' | 'en' | 'pt'
 
 export interface NotificationDefault {
@@ -556,6 +556,27 @@ const PAYMENT_LINK_PT = `<div style="font-family:Arial,sans-serif;max-width:520p
   <p style="font-size:12px;color:#6b7280;">Se o botão não funcionar, copie e cole este link:<br>{payment_url}</p>
 </div>`
 
+// ─── review_request ─────────────────────────────────────────────────────────
+// Invitación a dejar una reseña tras el checkout. Variables: hotel_name, guest_name, review_url.
+const REVIEW_ES = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111827;">
+  <h2 style="color:#0f172a;">¿Cómo fue tu estadía en {hotel_name}?</h2>
+  <p>Hola {guest_name}, nos encantaría conocer tu opinión. Solo te toma un minuto.</p>
+  <p style="text-align:center;margin:28px 0;"><a href="{review_url}" style="background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;display:inline-block;">Dejar mi reseña</a></p>
+  <p style="font-size:12px;color:#6b7280;">Si el botón no funciona, copiá y pegá este enlace:<br>{review_url}</p>
+</div>`
+const REVIEW_EN = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111827;">
+  <h2 style="color:#0f172a;">How was your stay at {hotel_name}?</h2>
+  <p>Hi {guest_name}, we'd love to hear your feedback. It only takes a minute.</p>
+  <p style="text-align:center;margin:28px 0;"><a href="{review_url}" style="background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;display:inline-block;">Leave my review</a></p>
+  <p style="font-size:12px;color:#6b7280;">If the button doesn't work, copy and paste this link:<br>{review_url}</p>
+</div>`
+const REVIEW_PT = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111827;">
+  <h2 style="color:#0f172a;">Como foi a sua estadia em {hotel_name}?</h2>
+  <p>Olá {guest_name}, adoraríamos saber a sua opinião. Leva só um minuto.</p>
+  <p style="text-align:center;margin:28px 0;"><a href="{review_url}" style="background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;display:inline-block;">Deixar a minha avaliação</a></p>
+  <p style="font-size:12px;color:#6b7280;">Se o botão não funcionar, copie e cole este link:<br>{review_url}</p>
+</div>`
+
 export const NOTIFICATION_DEFAULTS: Record<NotificationEvent, Partial<Record<NotificationLanguage, NotificationDefault>>> = {
   reservation_confirmed: {
     es: { subject: 'Confirmación de reserva — {hotel_name}', body: CONFIRMED_ES },
@@ -596,6 +617,11 @@ export const NOTIFICATION_DEFAULTS: Record<NotificationEvent, Partial<Record<Not
     es: { subject: 'Pago pendiente — {hotel_name}', body: PAYMENT_LINK_ES },
     en: { subject: 'Payment pending — {hotel_name}', body: PAYMENT_LINK_EN },
     pt: { subject: 'Pagamento pendente — {hotel_name}', body: PAYMENT_LINK_PT },
+  },
+  review_request: {
+    es: { subject: '¿Cómo fue tu estadía en {hotel_name}?', body: REVIEW_ES },
+    en: { subject: 'How was your stay at {hotel_name}?', body: REVIEW_EN },
+    pt: { subject: 'Como foi a sua estadia em {hotel_name}?', body: REVIEW_PT },
   },
 }
 
