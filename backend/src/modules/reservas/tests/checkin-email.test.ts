@@ -89,4 +89,43 @@ describe('sendCheckinEmail (spec 11.1.1 + 11.1.6)', () => {
     )
     expect(logs.length).toBe(0)
   })
+
+  it('llena lock_code con el código TTLock activo de la reserva', async () => {
+    const logs: MessageLogSummary[] = []
+    enqueueNotifMock.mockClear()
+    await sendCheckinEmail(
+      {
+        emailSender,
+        guestRepo: makeRepo([{ id: 'g1', hotelId: 'h1', name: 'Ana', email: 'a@b.com' }]),
+        roomRepo: makeRepo([{ id: 'room1', hotelId: 'h1', number: '101' }]),
+        hotelRepo: makeRepo([{ id: 'h1', name: 'Palma' }]),
+        messageLogRepo: makeRepo(logs),
+        // status 'pending' además del activo: debe preferir el 'active'.
+        lockCodeRepo: makeRepo([
+          { id: 'lc0', reservationId: 'r1', hotelId: 'h1', code: '0000', status: 'expired' },
+          { id: 'lc1', reservationId: 'r1', hotelId: 'h1', code: '4821', status: 'active' },
+        ]) as any,
+        logger: log,
+      },
+      { reservationId: 'r1', hotelId: 'h1', guestId: 'g1', roomId: 'room1', checkIn: '2026-01-01', checkOut: '2026-01-03' },
+    )
+    const call = (enqueueNotifMock.mock.calls as unknown[][])[0]?.[0] as NotificationInput
+    expect(call.variables.lock_code).toBe('4821')
+  })
+
+  it('sin lockCodeRepo → lock_code queda vacío (comportamiento previo)', async () => {
+    enqueueNotifMock.mockClear()
+    await sendCheckinEmail(
+      {
+        emailSender,
+        guestRepo: makeRepo([{ id: 'g1', hotelId: 'h1', name: 'Ana', email: 'a@b.com' }]),
+        roomRepo: makeRepo([{ id: 'room1', hotelId: 'h1', number: '101' }]),
+        hotelRepo: makeRepo([{ id: 'h1', name: 'Palma' }]),
+        messageLogRepo: makeRepo([]), logger: log,
+      },
+      { reservationId: 'r1', hotelId: 'h1', guestId: 'g1', roomId: 'room1', checkIn: '2026-01-01', checkOut: '2026-01-03' },
+    )
+    const call = (enqueueNotifMock.mock.calls as unknown[][])[0]?.[0] as NotificationInput
+    expect(call.variables.lock_code).toBe('')
+  })
 })

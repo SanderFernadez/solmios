@@ -18,6 +18,9 @@ interface CheckinEmailDeps {
   roomRepo: RepositoryAdapter<RoomSummary>
   hotelRepo: RepositoryAdapter<HotelSummary>
   messageLogRepo: RepositoryAdapter<MessageLogSummary>
+  /** Códigos de acceso (TTLock) de la reserva — para llenar lock_code en el email. Opcional: sin él
+   *  el campo queda vacío (comportamiento previo). Read-only, solo para armar el contenido. */
+  lockCodeRepo?: RepositoryAdapter<{ reservationId?: string; hotelId?: string; code?: string; status?: string }>
   logger: Logger
 }
 
@@ -37,7 +40,7 @@ interface CheckinEmailInput {
  * Registra cada intento en message_logs (status sent/failed/skipped, spec 11.1.1).
  */
 export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEmailInput): Promise<{ status: 'sent' | 'skipped' | 'failed' }> {
-  const { emailSender, guestRepo, roomRepo, hotelRepo, messageLogRepo, logger } = deps
+  const { emailSender, guestRepo, roomRepo, hotelRepo, messageLogRepo, lockCodeRepo, logger } = deps
   if (!input.guestId) {
     logger.info('checkin-email: sin guestId', { reservationId: input.reservationId })
     return { status: 'skipped' }
@@ -63,8 +66,18 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
     return { status: 'skipped' }
   }
 
+  // Código de acceso TTLock: se busca el código activo/pendiente de la reserva (LockCodes). Si el hotel
+  // no usa cerraduras o aún no se generó, queda vacío (no rompe el email). Read-only para el contenido.
+  let lockCode = ''
+  if (lockCodeRepo) {
+    const codes = await lockCodeRepo.findMany({ reservationId: input.reservationId }).catch(() => [])
+    const active = codes.find((c) => c.status === 'active') ?? codes.find((c) => c.status === 'pending')
+    if (active?.hotelId && active.hotelId !== input.hotelId) { /* tenacy: ignorar código de otro hotel */ }
+    else lockCode = active?.code ?? ''
+  }
+
   // Variables de plantilla 11.1.1. wifi viene del hotel (spec 11.1.4); logo del hotel (spec 11.1.5).
-  // lock_code (F5 TTLock) y pre_checkin_url (F8) quedan vacíos — dependen de fases externas a F11.
+  // pre_checkin_url (F8) queda vacío — depende de fase externa a F11.
   const variables: Record<string, string | number> = {
     guest_name: guestName,
     hotel_name: hotel?.name || 'Hotel',
@@ -76,7 +89,7 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
     wifi_network: (hotel as { wifiNetwork?: string } | null)?.wifiNetwork ?? '',
     wifi_password: (hotel as { wifiPassword?: string } | null)?.wifiPassword ?? '',
     logo_url: (hotel as { logo?: string } | null)?.logo ?? '',
-    lock_code: '',
+    lock_code: lockCode,
     pre_checkin_url: '',
   }
 
