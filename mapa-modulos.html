@@ -451,7 +451,7 @@ const N = [
     que:'KPIs del home del hotel + dashboard RRHH (presentes/ausentes). Ahora incluye financial (revenue, revenueToday, byMethod, outstandingInvoices, foliosOpen).',
     porque:'Pantalla de aterrizaje con métricas clave. Lee Rooms/Reservations/Guests/Users/Hotels + Payment/Folios/Invoices por ORM directo.',
     conectado:['attendance','reservas','habitaciones','payments (KPIs financieros ✅)','folios','invoices'],
-    falta:['attendance-dashboard es engañoso: cablea attendance→empleados (RRHH), no hacia dashboard. No consume insights de ai-gerente (todavía).']
+    falta:['El módulo dashboard (home) NO muestra KPIs de fichaje: eso vive en el panel de RRHH (empleados). El connector "attendance-dashboard" está MAL NOMBRADO — cablea attendance→empleados (verificado VIVO: getTodaySummary → RRHH dashboard usecase → presentes/ausentes/tarde, #198), no al home. No es un bug, es cosmético. Traer fichaje al home sería decisión de producto. El dashboard tampoco consume insights de ai-gerente (aislado, en curso por otra sesión).']
   }},
 ];
 
@@ -477,7 +477,7 @@ const E = [
   {f:'empleados',t:'housekeeping',y:'hook',l:'productividad'},
   {f:'empleados',t:'attendance',y:'hook',l:'scoring'},
   {f:'attendance',t:'payroll',y:'hook',l:'horas'},
-  {f:'attendance',t:'dashboard',y:'hook',l:'RRHH KPIs'},
+  {f:'attendance',t:'empleados',y:'hook',l:'fichaje de hoy → dashboard RRHH ✅'},
   {f:'payroll',t:'gastos',y:'hook',l:'pago=nómina'},
   {f:'reembolsos',t:'gastos',y:'hook'},
   {f:'payments',t:'cash',y:'hook',l:'efectivo'},
