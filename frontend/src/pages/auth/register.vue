@@ -194,12 +194,28 @@
 
           <div v-if="error" class="text-xs text-danger bg-danger/5 border border-danger/20 rounded-xl px-3 py-2">{{ error }}</div>
 
+          <!-- Aceptación legal. Obligatoria: sin marcar no se puede crear la cuenta.
+               Los links abren en pestaña nueva (target="_blank") para no perder el
+               progreso del formulario (2 pasos ya completados) si el usuario quiere
+               leerlos antes de aceptar. -->
+          <label class="flex items-start gap-2.5 cursor-pointer select-none">
+            <input v-model="acceptedTerms" type="checkbox"
+              class="mt-0.5 w-4 h-4 rounded border-border text-navy focus:ring-navy cursor-pointer shrink-0">
+            <span class="text-[12px] leading-relaxed text-text-secondary">
+              Acepto los
+              <a href="/legal/terminos" target="_blank" rel="noopener" class="text-cyan font-bold hover:underline">Términos y Condiciones</a>
+              y la
+              <a href="/legal/privacidad" target="_blank" rel="noopener" class="text-cyan font-bold hover:underline">Política de Privacidad</a>
+              de SolmiOS.
+            </span>
+          </label>
+
           <div class="flex gap-2">
             <button type="button" @click="step = 1; error = ''"
               class="px-4 py-3 rounded-xl border border-border text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
               Atrás
             </button>
-            <button type="submit" :disabled="saving"
+            <button type="submit" :disabled="saving || !acceptedTerms"
               class="flex-1 py-3 rounded-xl bg-navy text-white text-sm font-black hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ saving ? 'Creando tu hotel…' : `Empezar mis ${trialDays} días gratis` }}
             </button>
@@ -279,6 +295,7 @@ const form = ref({
 
 const showPassword = ref(false)
 const emailTouched = ref(false)
+const acceptedTerms = ref(false)
 
 // Espejo de shared/password-policy.ts del backend. La validación que decide es
 // la del servidor; esto es para no tener que apretar "Continuar" para saber qué
@@ -400,6 +417,12 @@ function goToStep2() {
  */
 async function submit() {
   error.value = ''
+  // El botón ya queda deshabilitado sin aceptar, pero se valida de nuevo acá
+  // por si se dispara el submit del form por otro medio (Enter, etc.).
+  if (!acceptedTerms.value) {
+    error.value = 'Tenés que aceptar los Términos y la Política de Privacidad para continuar.'
+    return
+  }
   // Sin token no se manda: el backend lo rechazaría igual, pero el token se
   // consume en el intento y habría que resolver el captcha de nuevo por nada.
   if (captchaSiteKey && !captchaToken.value) {

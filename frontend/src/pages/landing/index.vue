@@ -437,7 +437,8 @@
         <div class="border-t border-white/8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div class="text-sm text-white/30">© 2026 SolmiOS. Todos los derechos reservados.</div>
           <div class="flex gap-6">
-            <span v-for="link in legalLinks" :key="link" class="text-sm text-white/30 transition-colors">{{ link }}</span>
+            <router-link v-for="link in legalLinks" :key="link.label" :to="link.to"
+              class="text-sm text-white/30 hover:text-blue-400 transition-colors">{{ link.label }}</router-link>
           </div>
         </div>
       </div>
@@ -574,7 +575,11 @@ const footerCols = [
   { title: 'Soporte', links: [{ label: 'Centro de Ayuda', href: '#' }, { label: 'Documentación', href: '#' }, { label: 'Estado del Sistema', href: '#' }, { label: 'Comunidad', href: '#' }] },
 ]
 
-const legalLinks = ['Privacidad', 'Términos', 'Cookies']
+const legalLinks = [
+  { label: 'Privacidad', to: '/legal/privacidad' },
+  { label: 'Términos', to: '/legal/terminos' },
+  { label: 'Cookies', to: { path: '/legal/privacidad', hash: '#cookies' } },
+]
 </script>
 
 <style scoped>
