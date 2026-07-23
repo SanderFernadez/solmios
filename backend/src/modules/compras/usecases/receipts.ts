@@ -41,29 +41,35 @@ export async function receive(deps: ReceiptsDeps, orderId: string, dto: ReceiveI
   const orderItems = (await deps.orderItems.findMany({ orderId })) as PurchaseOrderItemDTO[]
   const byId = new Map(orderItems.map((i) => [i.id, i]))
 
-  // Validar cantidades ANTES de escribir nada (≤ pendiente y > 0).
+  // QA-H1: AGREGAR por orderItemId ANTES de validar. Sin esto, dos líneas del payload con el mismo
+  // orderItemId ([{x,6},{x,6}]) pasaban el check "≤ pendiente" cada una por separado y se procesaban dos
+  // veces → stock inflado 2× y receivedQty pisado (no acumulado). Ahora: 1 cantidad por ítem, 1 movimiento.
+  const reqByItem = new Map<string, number>()
   for (const l of dto.lines) {
-    const oi = byId.get(l.orderItemId)
-    if (!oi) throw new ValidationError('Línea de OC inválida')
+    if (!byId.has(l.orderItemId)) throw new ValidationError('Línea de OC inválida')
     const qty = Number(l.quantity)
     if (!Number.isFinite(qty) || qty <= 0) throw new ValidationError('Cantidad recibida inválida')
+    reqByItem.set(l.orderItemId, round4((reqByItem.get(l.orderItemId) || 0) + qty))
+  }
+  for (const [orderItemId, sum] of reqByItem) {
+    const oi = byId.get(orderItemId)!
     const pending = Number(oi.quantity) - Number(oi.receivedQty || 0)
-    if (qty > pending + 1e-9) throw new ValidationError(`Se recibe más de lo pendiente (${pending}) en "${oi.description}"`)
+    if (sum > pending + 1e-9) throw new ValidationError(`Se recibe más de lo pendiente (${pending}) en "${oi.description}"`)
   }
 
   const number = await nextNumber(deps.config, hotelId, 'REC', 'receipt')
   const receipt = await deps.receipts.create({ hotelId, number, orderId, receivedBy: user.id, notes: dto.notes } as Omit<GoodsReceiptDTO, 'id'>)
 
   const lines: ReceiptItemDTO[] = []
-  for (const l of dto.lines) {
-    const oi = byId.get(l.orderItemId)!
-    const qty = round4(Number(l.quantity))
+  for (const [orderItemId, sum] of reqByItem) {
+    const oi = byId.get(orderItemId)!
+    const qty = round4(sum)
     const ri = await deps.receiptItems.create({
       hotelId, receiptId: receipt.id, orderItemId: oi.id, inventoryItemId: oi.inventoryItemId,
       quantity: qty, unitCost: round4(Number(oi.unitPrice) || 0),
     } as Omit<ReceiptItemDTO, 'id'>)
     lines.push(ri)
-    // Actualizar lo recibido en la línea de OC.
+    // Acumula lo recibido (una sola vez por ítem, ya agregado arriba).
     await deps.orderItems.update(oi.id, { receivedQty: round4(Number(oi.receivedQty || 0) + qty) } as any)
     // Sumar stock al inventario (idempotente por receiptItemId). Best-effort: si el inventario no está
     // disponible, la recepción NO falla (el stock se puede reconciliar; la OC ya registró la recepción).
@@ -99,6 +105,11 @@ export async function markInvoiced(deps: ReceiptsDeps, orderId: string, dto: { i
   if (order.expenseId) return order   // ya facturada (dedup): NO crear otro gasto
   if (Number(order.total) <= 0) throw new ValidationError('La orden no tiene monto para facturar')
   if (!deps.ports.createExpenseFromPO) throw new ValidationError('Facturación no disponible (gastos no conectado)')
+
+  // QA-H2: re-leer justo antes de crear el gasto (achica la ventana TOCTOU del doble-click). El backstop
+  // duro es el UNIQUE INDEX en expenses(hotelId,source,sourceId) + el conector que resuelve el ganador.
+  const fresh = await deps.orders.findById(orderId)
+  if ((fresh as PurchaseOrderDTO)?.expenseId) return fresh as PurchaseOrderDTO
 
   const { expenseId } = await deps.ports.createExpenseFromPO({
     orderId: order.id, supplierId: order.supplierId, amount: Number(order.total),

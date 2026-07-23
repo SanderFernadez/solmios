@@ -132,6 +132,16 @@ async function createTablesBlock1(): Promise<void> {
     await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_mov_source ON stock_movements(hotelId, source, sourceId)`)
   } catch { /* la tabla se crea con RUN_MIGRATE; el índice se aplica en la próxima corrida */ }
 
+  // Compras (COM-4, QA-H2): backstop DURO contra doble gasto por una misma OC. `markInvoiced` deduplica
+  // por `order.expenseId` (check-then-write, no atómico): un doble-click en "Facturar" podía crear DOS
+  // gastos del total → doble egreso real (caja + contabilidad). El UNIQUE (hotelId, source, sourceId) —
+  // el conector setea source='purchase_order', sourceId=orderId — hace fallar el segundo INSERT. NULLs
+  // distintos → los gastos manuales (source='manual', sourceId NULL) NO chocan. Si hay duplicados legacy,
+  // el índice no se crea (se ignora) y se reconcilian aparte.
+  try {
+    await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_source ON expenses(hotelId, source, sourceId)`)
+  } catch { /* duplicados legacy o tabla ausente: se aplica en la próxima corrida tras reconciliar */ }
+
   await exec(`CREATE TABLE IF NOT EXISTS email_queue (
     id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, recipient TEXT NOT NULL, subject TEXT NOT NULL,
     html TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,

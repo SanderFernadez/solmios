@@ -77,6 +77,32 @@ describe('GastosService', () => {
     })
   })
 
+  describe('upsertBySource (QA-H2 idempotencia)', () => {
+    it('devuelve el gasto existente si ya hay uno con ese (source,sourceId) — NO crea otro', async () => {
+      let creates = 0
+      const existing = { id: 'exp-1', hotelId: 'h1', concept: 'Compra', amount: 100, source: 'purchase_order', sourceId: 'oc-1' } as any
+      const repo = makeRepo({
+        findMany: async (q: any) => (q?.source === 'purchase_order' && q?.sourceId === 'oc-1' ? [existing] : []),
+        create: async (d: any) => { creates++; return { id: 'exp-new', ...d } as GastosDTO },
+      })
+      const service = new GastosService(repo, makeUserRepo(), log, silentCache, passAuth)
+      const r = await service.upsertBySource({ concept: 'Compra', amount: 100, source: 'purchase_order', sourceId: 'oc-1' } as any, currentUser)
+      expect(r.id).toBe('exp-1')
+      expect(creates).toBe(0)   // no creó un segundo gasto
+    })
+
+    it('crea si no existe; ante UNIQUE violation resuelve el ganador de la carrera', async () => {
+      let found: any = null
+      const repo = makeRepo({
+        findMany: async () => (found ? [found] : []),
+        create: async () => { found = { id: 'winner', hotelId: 'h1', source: 'purchase_order', sourceId: 'oc-2' }; throw new Error('UNIQUE constraint failed: expenses.sourceId') },
+      })
+      const service = new GastosService(repo, makeUserRepo(), log, silentCache, passAuth)
+      const r = await service.upsertBySource({ concept: 'x', amount: 5, source: 'purchase_order', sourceId: 'oc-2' } as any, currentUser)
+      expect(r.id).toBe('winner')   // el INSERT falló por unique → devolvió el existente
+    })
+  })
+
   describe('delete', () => {
     it('lanza NotFound si el item no existe', async () => {
       const service = new GastosService(makeRepo({ delete: async () => false }), makeUserRepo(), log, silentCache, passAuth)

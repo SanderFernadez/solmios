@@ -128,6 +128,27 @@ describe('ComprasService — recepción + facturación (COM-3/4)', () => {
     await expect(s.receive(o.id, { lines: [{ orderItemId: ordI[0].id, quantity: 11 }] }, user)).rejects.toThrow('pendiente')
   })
 
+  it('QA-H1: líneas DUPLICADAS del mismo ítem se AGREGAN (no burlan el ≤ pendiente)', async () => {
+    const added: any[] = []
+    const { s, o, ordI } = await sentOrder({ addStock: async (i) => { added.push(i) } })
+    const lineId = ordI[0].id   // quantity 10
+    // dos líneas de 6 c/u = 12 > 10 pendiente → rechazado (antes del fix pasaba y sumaba 12 de stock)
+    await expect(s.receive(o.id, { lines: [{ orderItemId: lineId, quantity: 6 }, { orderItemId: lineId, quantity: 6 }] }, user)).rejects.toThrow('pendiente')
+    expect(added.length).toBe(0)
+  })
+
+  it('QA-H1: dos líneas del mismo ítem que suman ≤ pendiente → UN movimiento agregado', async () => {
+    const added: any[] = []
+    const { s, o, ordI, ord } = await sentOrder({ addStock: async (i) => { added.push(i) } })
+    const lineId = ordI[0].id
+    // 5 + 5 = 10 (= total) → un solo addStock de 10, receivedQty 10, OC received
+    await s.receive(o.id, { lines: [{ orderItemId: lineId, quantity: 5 }, { orderItemId: lineId, quantity: 5 }] }, user)
+    expect(added.length).toBe(1)
+    expect(added[0].quantity).toBe(10)
+    expect(ordI[0].receivedQty).toBe(10)
+    expect(ord[0].status).toBe('received')
+  })
+
   it('facturar genera UN gasto (puerto) y setea expenseId; segunda vez NO duplica', async () => {
     let calls = 0
     const { s, o, ord } = await sentOrder({ createExpenseFromPO: async () => { calls++; return { expenseId: 'exp1' } } })

@@ -117,6 +117,31 @@ export class GastosService {
     return item
   }
 
+  /**
+   * Crea un gasto automático de forma IDEMPOTENTE por (hotelId, source, sourceId). Lo usan los conectores
+   * (ej. compras: 1 gasto por OC) para que un doble-click/reintento NO genere dos egresos. Fast-path por
+   * `findBySource`; si la carrera crea dos, el UNIQUE INDEX en expenses(hotelId,source,sourceId) rechaza el
+   * segundo y devolvemos el ganador. El módulo dueño de `expenses` es quien encapsula esta garantía.
+   */
+  async upsertBySource(dto: CreateGastosDTO, user: CurrentUser): Promise<GastosDTO> {
+    const hotelId = user.role === 'super_admin' ? (dto.hotelId || user.hotelId || '') : (user.hotelId || '')
+    if (dto.source && dto.sourceId) {
+      const existing = await this.findBySource(hotelId, dto.source, dto.sourceId)
+      if (existing) return existing
+    }
+    try {
+      return await this.create(dto, user)
+    } catch (e) {
+      const msg = (e instanceof Error ? e.message : String(e)).toLowerCase()
+      const dup = msg.includes('unique') || msg.includes('duplicate') || msg.includes('23505')
+      if (dup && dto.source && dto.sourceId) {
+        const won = await this.findBySource(hotelId, dto.source, dto.sourceId)
+        if (won) return won
+      }
+      throw e
+    }
+  }
+
   async update(id: string, dto: UpdateGastosDTO, user: CurrentUser): Promise<GastosDTO> {
     this.logger.info('Actualizando gastos', { id })
     const existing = await this.repo.findById(id)
