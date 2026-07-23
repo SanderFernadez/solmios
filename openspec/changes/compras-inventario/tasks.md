@@ -6,22 +6,22 @@ Dos módulos arckode nuevos (`inventario`, `compras`) + conectores. Cada sprint:
 ## INV — Inventario
 
 ### INV-0 — Schema + módulo base  ⟵ infra
-- [ ] 0.1 `make:module Inventario` (estructura canónica)
-- [ ] 0.2 Modelos ORM: `InventoryItems` (sku, name, category food|beverage|supply, unit, currentStock, minStock, avgCost, active, hotelId) · `StockMovements` (itemId, type in|out|adjust, quantity, unitCost, reason, source, sourceId, balanceAfter, hotelId, createdAt)
-- [ ] 0.3 Wiring en `composition-root.ts` (surgical) + permisos módulo `inventory`
-- [ ] 0.4 GATE: `arckode analyze` ✅ · migración RUN_MIGRATE local
+- [x] 0.1 `make:module Inventario` (estructura canónica)
+- [x] 0.2 Modelos ORM: `InventoryItems` (sku, name, category food|beverage|supply, unit, currentStock, minStock, avgCost, active, hotelId) · `StockMovements` (itemId, type in|out|adjust, quantity, unitCost, reason, source, sourceId, balanceAfter, hotelId, createdAt)
+- [x] 0.3 Wiring en `composition-root.ts` (surgical) + permisos módulo `inventory`
+- [x] 0.4 GATE: `arckode analyze` ✅ · migración RUN_MIGRATE local
 
 ### INV-1 — CRUD ítems + ajuste manual  ⟵ INV-0
-- [ ] 1.1 CRUD `inventory_items` (ownership + validación cantidad/costo ≥ 0)
-- [ ] 1.2 Ajuste manual de stock (`type='adjust'`) → crea movimiento + actualiza `currentStock`
-- [ ] 1.3 Listado con filtro por categoría (comida/bebida/bar/suministro) + bajo-mínimo
-- [ ] 1.4 Tests + QA
+- [x] 1.1 CRUD `inventory_items` (ownership + validación cantidad/costo ≥ 0)
+- [x] 1.2 Ajuste manual de stock (`type='adjust'`) → crea movimiento + actualiza `currentStock`
+- [x] 1.3 Listado con filtro por categoría (comida/bebida/bar/suministro) + bajo-mínimo
+- [x] 1.4 Tests + QA
 
 ### INV-2 — Ledger de movimientos + valuación  ⟵ INV-1
-- [ ] 2.1 `applyMovement()` idempotente (dedup por `source`+`sourceId`): entrada suma, salida resta, ajuste fija
-- [ ] 2.2 Costo promedio ponderado: recalcular `avgCost` en cada entrada con `unitCost`
-- [ ] 2.3 `balanceAfter` por movimiento (auditable) + endpoint historial por ítem + valuación total
-- [ ] 2.4 Tests (suma/resta/ajuste, dedup, costo promedio) + QA
+- [x] 2.1 `applyMovement()` idempotente (dedup por `source`+`sourceId`): entrada suma, salida resta, ajuste fija
+- [x] 2.2 Costo promedio ponderado: recalcular `avgCost` en cada entrada con `unitCost`
+- [x] 2.3 `balanceAfter` por movimiento (auditable) + endpoint historial por ítem + valuación total
+- [x] 2.4 Tests (suma/resta/ajuste, dedup, costo promedio) + QA
 
 ## COM — Compras
 

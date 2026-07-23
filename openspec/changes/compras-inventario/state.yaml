@@ -5,9 +5,9 @@ misterplan_ref: Almacén/Compras
 created: 2026-07-23
 
 sprints:
-  inv-0-schema:      { title: "Inventario: schema + módulo base + wiring", status: pending, priority: critical, phase: infra }
-  inv-1-crud:        { title: "Inventario: CRUD ítems + ajuste manual", status: pending, priority: high, phase: implementation, dep: inv-0 }
-  inv-2-ledger:      { title: "Inventario: ledger movimientos + costo promedio", status: pending, priority: high, phase: implementation, dep: inv-1 }
+  inv-0-schema:      { title: "Inventario: schema + módulo base + wiring", status: done, priority: critical, phase: infra }
+  inv-1-crud:        { title: "Inventario: CRUD ítems + ajuste manual", status: done, priority: high, phase: implementation, dep: inv-0 }
+  inv-2-ledger:      { title: "Inventario: ledger movimientos + costo promedio", status: done, priority: high, phase: implementation, dep: inv-1 }
   com-0-schema:      { title: "Compras: schema + módulo base + wiring", status: pending, priority: critical, phase: infra }
   com-1-requis:      { title: "Compras: requisiciones (ciclo + aprobación)", status: pending, priority: high, phase: implementation, dep: com-0 }
   com-2-orders:      { title: "Compras: órdenes de compra", status: pending, priority: high, phase: implementation, dep: com-1 }
