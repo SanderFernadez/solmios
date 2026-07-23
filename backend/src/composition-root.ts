@@ -115,6 +115,7 @@ import { AccountingModule } from './modules/accounting'
 import { TreasuryModule } from './modules/treasury'
 import { RestaurantModule } from './modules/restaurant'
 import { InventarioModule } from './modules/inventario'
+import { ComprasModule } from './modules/compras'
 import { EmpleadosModule } from './modules/empleados'
 import { ReclutamientoModule } from './modules/reclutamiento'
 import { ReembolsosModule } from './modules/reembolsos'
@@ -170,6 +171,9 @@ const mods = [
   // Inventario de insumos (INV-0): comida/bebida/bar/suministro, stock, costo promedio, ledger de
   // movimientos. Los conectores (recepción de compra suma stock, venta del POS resta) se enganchan luego.
   InventarioModule(),
+  // Compras (COM-0): requisición → orden de compra → recepción → gasto. Conectores a inventario (suma
+  // stock), treasury (valida proveedor) y gastos (genera el gasto que pega en caja/contabilidad).
+  ComprasModule(),
   // ANTES que PaymentRequestsModule: ambos registran una ruta bajo /api/stripe/webhook/.
   // payment-requests usa el comodín /api/stripe/webhook/:hotelId (cobro a huéspedes);
   // subscriptions usa el literal /api/stripe/webhook/platform (el hotel pagándole a la
@@ -210,6 +214,9 @@ import { gastosAccountingConnector } from './connectors/gastos-accounting'
 import { restauranteFoliosConnector } from './connectors/restaurante-folios'
 import { restaurantePaymentsConnector } from './connectors/restaurante-payments'
 import { restauranteAccountingConnector } from './connectors/restaurante-accounting'
+import { comprasInventarioConnector } from './connectors/compras-inventario'
+import { comprasTreasuryConnector } from './connectors/compras-treasury'
+import { comprasGastosConnector } from './connectors/compras-gastos'
 import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-payments'
 import { paymentRequestsTtlockConnector } from './connectors/payment-requests-ttlock'
 import { facturasReservasConnector } from './connectors/facturas-reservas'
@@ -313,6 +320,11 @@ system.addConnector('restaurante-folios', restauranteFoliosConnector)
 system.addConnector('restaurante-payments', restaurantePaymentsConnector)
 // Venta directa del POS → asiento "Ventas Restaurante" (RES-6). El cargo a folio lo asienta folios-accounting.
 system.addConnector('restaurante-accounting', restauranteAccountingConnector)
+// Compras (COM-3/4): recepción suma stock (inventario), la OC valida proveedor (treasury), y al facturar
+// genera un gasto (gastos) que ya pega en caja + contabilidad por los conectores existentes.
+system.addConnector('compras-inventario', comprasInventarioConnector)
+system.addConnector('compras-treasury', comprasTreasuryConnector)
+system.addConnector('compras-gastos', comprasGastosConnector)
 // Pagar la nómina es un gasto. Cae en `gastos` y de ahí, si fue en efectivo, en la caja.
 // Se registra después de gastos-caja para que el egreso encuentre el socket ya inyectado.
 system.addConnector('payroll-gastos', payrollGastosConnector)

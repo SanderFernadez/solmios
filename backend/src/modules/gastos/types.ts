@@ -5,7 +5,7 @@
 export type ExpensePaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
 
 /** `manual` lo cargó una persona; el resto lo generó un conector y no se edita a mano. */
-export type ExpenseSource = 'manual' | 'payroll'
+export type ExpenseSource = 'manual' | 'payroll' | 'purchase_order'
 
 export interface GastosDTO {
   id: string
@@ -39,6 +39,8 @@ export interface CreateGastosDTO {
   /** Solo lo setean los conectores: `validateSchema` los descarta si vinieran del body. */
   source?: ExpenseSource
   sourceId?: string
+  /** Proveedor del catálogo (treasury.suppliers) para el aging de AP. Lo setea el conector de compras. */
+  supplierId?: string
 }
 
 export interface UpdateGastosDTO {
