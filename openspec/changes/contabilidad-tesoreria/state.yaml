@@ -1,0 +1,49 @@
+# SDD State: contabilidad-tesoreria
+
+change_name: contabilidad-tesoreria
+created: 2026-07-23
+status: proposed   # plan + tareas listos; NO implementado. Aprobar antes de aplicar.
+current_phase: propose
+parent_changes: []
+
+motivation: |
+  Contabilidad de doble entrada + tesorería completa, IN-HOUSE, integradas por conectores a la
+  infraestructura financiera existente (payments = fuente de verdad). Alcance solicitado y acotado
+  por el dueño (el intento previo `contabilidad`/ACC-0..6 se invalidó por ser auto-generado fuera de
+  scope). NO mezclar devengado (invoices/folio_charges) con cobrado (payments) — evita el doble conteo.
+
+architecture_decision: in-house   # NO Odoo. Export a ERP externo queda como fase futura separada.
+
+scope:
+  accounting: [plan-cuentas, asientos-doble-entrada, periodos, asientos-automaticos, mayor, trial-balance, pnl, balance-sheet, frontend]
+  treasury: [bancos-conciliacion, cash-flow, AR-aging, AP-proveedores, presupuesto, frontend]
+  out_of_scope: [integracion-fiscal-real, conector-odoo, multi-moneda-en-asientos, activos-fijos, import-bancario-automatico-API]
+
+sprints:
+  # Fase 1 — Contabilidad
+  ctb-0-schema-base:        { title: "Schema ORM + módulo accounting base + wiring", status: pending, priority: critical, phase: infra }
+  ctb-1-plan-cuentas:       { title: "Plan de cuentas + seed base", status: pending, priority: high, phase: implementation, dep: ctb-0 }
+  ctb-2-asientos-manuales:  { title: "Asientos manuales + doble entrada + post/reverse", status: pending, priority: high, phase: implementation, dep: ctb-1 }
+  ctb-3-periodos:           { title: "Períodos contables open/close/lock", status: pending, priority: medium, phase: implementation, dep: ctb-2 }
+  ctb-4-asientos-auto:      { title: "Asientos automáticos (5 conectores)", status: pending, priority: high, phase: implementation, dep: ctb-2 }
+  ctb-5-mayor-comprobacion: { title: "Libro mayor + balance de comprobación", status: pending, priority: high, phase: implementation, dep: ctb-4 }
+  ctb-6-estados:            { title: "Estados financieros (P&L + Balance general)", status: pending, priority: high, phase: implementation, dep: ctb-5 }
+  ctb-7-frontend:           { title: "Frontend contabilidad", status: pending, priority: medium, phase: implementation, dep: ctb-6 }
+  # Fase 2 — Tesorería
+  tes-0-schema-base:        { title: "Módulo treasury base + schema + wiring", status: pending, priority: high, phase: infra }
+  tes-1-bancos:             { title: "Cuentas bancarias + conciliación", status: pending, priority: high, phase: implementation, dep: tes-0 }
+  tes-2-cash-flow:          { title: "Flujo de caja", status: pending, priority: high, phase: implementation, dep: tes-0 }
+  tes-3-ar-aging:           { title: "Cuentas por cobrar (AR) con aging", status: pending, priority: high, phase: implementation, dep: tes-0 }
+  tes-4-ap-proveedores:     { title: "Cuentas por pagar (AP) + proveedores", status: pending, priority: high, phase: implementation, dep: tes-0 }
+  tes-5-presupuesto:        { title: "Presupuesto + control de gastos", status: pending, priority: medium, phase: implementation, dep: tes-0 }
+  tes-6-frontend:           { title: "Frontend tesorería", status: pending, priority: medium, phase: implementation, dep: [tes-1, tes-2, tes-3, tes-4, tes-5] }
+  # Fase 3 — Transversal
+  ctg-1-permisos-entitlements: { title: "Permisos + entitlements + menú", status: pending, priority: high, phase: implementation }
+  ctg-2-gate:               { title: "Gate final de verificación", status: pending, priority: critical, phase: testing }
+
+rollback: |
+  Módulos aditivos y aislados: desregistrar 2 módulos + 5 conectores en composition-root.ts y dropear
+  8 tablas nuevas no toca ninguna tabla financiera existente. Conectores best-effort (un asiento que
+  falla no afecta el cobro/gasto real). Se apaga por entitlement de plan sin desplegar.
+
+estimate_days: 18-24   # in-house completo (contabilidad + tesorería con 4 features)
