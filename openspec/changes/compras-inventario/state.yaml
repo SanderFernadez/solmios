@@ -8,12 +8,12 @@ sprints:
   inv-0-schema:      { title: "Inventario: schema + módulo base + wiring", status: done, priority: critical, phase: infra }
   inv-1-crud:        { title: "Inventario: CRUD ítems + ajuste manual", status: done, priority: high, phase: implementation, dep: inv-0 }
   inv-2-ledger:      { title: "Inventario: ledger movimientos + costo promedio", status: done, priority: high, phase: implementation, dep: inv-1 }
-  com-0-schema:      { title: "Compras: schema + módulo base + wiring", status: pending, priority: critical, phase: infra }
-  com-1-requis:      { title: "Compras: requisiciones (ciclo + aprobación)", status: pending, priority: high, phase: implementation, dep: com-0 }
-  com-2-orders:      { title: "Compras: órdenes de compra", status: pending, priority: high, phase: implementation, dep: com-1 }
-  com-3-receipt:     { title: "Compras: recepción → suma stock", status: pending, priority: high, phase: implementation, dep: [com-2, inv-2] }
-  com-4-expense:     { title: "Compras: OC facturada → genera gasto", status: pending, priority: high, phase: implementation, dep: com-3 }
-  int-1-recipes:     { title: "Recetas → venta descuenta stock", status: pending, priority: high, phase: implementation, dep: inv-2 }
+  com-0-schema:      { title: "Compras: schema + módulo base + wiring", status: done, priority: critical, phase: infra }
+  com-1-requis:      { title: "Compras: requisiciones (ciclo + aprobación)", status: done, priority: high, phase: implementation, dep: com-0 }
+  com-2-orders:      { title: "Compras: órdenes de compra", status: done, priority: high, phase: implementation, dep: com-1 }
+  com-3-receipt:     { title: "Compras: recepción → suma stock", status: done, priority: high, phase: implementation, dep: [com-2, inv-2] }
+  com-4-expense:     { title: "Compras: OC facturada → genera gasto", status: done, priority: high, phase: implementation, dep: com-3 }
+  int-1-recipes:     { title: "Recetas → venta descuenta stock", status: done, priority: high, phase: implementation, dep: inv-2 }
   int-2-minstock:    { title: "Stock mínimo → requisición", status: pending, priority: medium, phase: implementation, dep: [int-1, com-1] }
   fe-frontend:       { title: "Frontend inventario + compras", status: pending, priority: high, phase: implementation, dep: [inv-2, com-4, int-1] }
   g-gate-deploy:     { title: "Permisos + entitlement + gate + deploy", status: pending, priority: critical, phase: testing, dep: fe }
