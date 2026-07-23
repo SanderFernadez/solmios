@@ -453,6 +453,18 @@ const N = [
     conectado:['attendance','reservas','habitaciones','payments (KPIs financieros ✅)','folios','invoices'],
     falta:['El módulo dashboard (home) NO muestra KPIs de fichaje: eso vive en el panel de RRHH (empleados). El connector "attendance-dashboard" está MAL NOMBRADO — cablea attendance→empleados (verificado VIVO: getTodaySummary → RRHH dashboard usecase → presentes/ausentes/tarde, #198), no al home. No es un bug, es cosmético. Traer fichaje al home sería decisión de producto. El dashboard tampoco consume insights de ai-gerente (aislado, en curso por otra sesión).']
   }},
+  {id:'contabilidad',label:'📗 Contabilidad',group:'finanzas',panel:'hotel',info:{
+    que:'Contabilidad de DOBLE ENTRADA (in-house): plan de cuentas (36 base), asientos, períodos (open/close/lock), libro mayor, balance de comprobación, estado de resultados (P&L) y balance general. Backend + frontend, DESPLEGADO y verificado en prod ✅ (comprobación y balance cuadran).',
+    porque:'El libro contable formal del hotel. Los asientos se generan SOLOS al operar vía 3 conectores automáticos; el INGRESO se devenga desde folio charges (NO facturas) para NO doble-contar. Módulo aislado, gateado por entitlement de plan + permiso.',
+    conectado:['payments (cobro→asiento DR Caja/CR Clientes ✅)','folios (cargo→ingreso DR Clientes/CR Ingresos+ITBIS ✅)','gastos (egreso→asiento DR Gasto/CR Caja|AP ✅)','ACTIVABLE/QUITABLE desde admin de plataforma (catálogo de módulos, toggle verificado VIVO) ✅','permisos accounting:view/create/edit/delete en la matriz de roles ✅'],
+    falta:['Diferido y documentado (NO bug): facturas-accounting (asiento de nota de crédito), cash-accounting (diferencia de arqueo del turno), P&L base caja. El ingreso ya se devenga por folio charges — evita el doble conteo.']
+  }},
+  {id:'tesoreria',label:'🏦 Tesorería',group:'finanzas',panel:'hotel',info:{
+    que:'Gestión de liquidez: FLUJO DE CAJA, cuentas por cobrar (AR) y por pagar (AP) con AGING, cuentas bancarias + CONCILIACIÓN, presupuesto vs real, proveedores. Backend + frontend, DESPLEGADO y verificado en prod ✅ (cash-flow lee gastos reales).',
+    porque:'La liquidez del hotel. Lee payments/expenses/invoices READ-ONLY (patrón del módulo reports, no duplica datos): cobrado NETO = charge − refund; NUNCA cuenta depósitos (garantía, no ingreso). Conciliación matchea bancos↔payments por monto firmado + fecha, sin doble-match.',
+    conectado:['payments (cash flow: cobros netos)','gastos (cash flow: pagos + AP con aging)','facturas/invoices (AR: saldo pendiente por huésped)','bancos↔payments (conciliación bancaria)','ACTIVABLE/QUITABLE desde admin de plataforma (toggle verificado VIVO) ✅','permisos treasury:view/create/edit/delete en la matriz de roles ✅'],
+    falta:['Diferido (deuda documentada): currentBalance del banco no se recalcula (la liquidez lee payments/expenses, no ese campo). Los depósitos siguen desconectados del ledger real (no son plata capturada).']
+  }},
 ];
 
 // ============ ARISTAS ============
@@ -481,6 +493,14 @@ const E = [
   {f:'attendance',t:'empleados',y:'hook',l:'fichaje de hoy → dashboard RRHH ✅'},
   {f:'payroll',t:'gastos',y:'hook',l:'pago=nómina'},
   {f:'reembolsos',t:'gastos',y:'hook'},
+  // --- Contabilidad automática (CTB-4): 3 conectores que asientan al operar ---
+  {f:'payments',t:'contabilidad',y:'hook',l:'cobro→asiento ✅'},
+  {f:'folios',t:'contabilidad',y:'hook',l:'cargo→ingreso ✅'},
+  {f:'gastos',t:'contabilidad',y:'hook',l:'egreso→asiento ✅'},
+  // --- Tesorería (TES): lee las tablas del dinero READ-ONLY (no duplica) ---
+  {f:'payments',t:'tesoreria',y:'datos',l:'cash flow / conciliación'},
+  {f:'gastos',t:'tesoreria',y:'datos',l:'AP + salidas'},
+  {f:'facturas',t:'tesoreria',y:'datos',l:'AR (saldo)'},
   {f:'payments',t:'cash',y:'hook',l:'efectivo'},
   {f:'gastos',t:'cash',y:'hook',l:'efectivo'},
   {f:'facturas',t:'payments',y:'hook',l:'cobro'},
