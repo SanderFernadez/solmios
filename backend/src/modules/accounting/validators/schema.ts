@@ -22,4 +22,12 @@ export const UpdateAccountSchema: Record<string, ValidationRule> = {
   active: { type: 'number' as const },
 }
 
+// Asiento manual: solo los campos escalares (validateSchema no soporta arrays → `lines` se
+// valida en el usecase journal-entry, igual que los permisos de roles, mem 1805).
+export const CreateJournalEntrySchema: Record<string, ValidationRule> = {
+  entryDate: { type: 'string' as const, required: true },
+  description: { type: 'text' as const },
+  reference: { type: 'string' as const },
+}
+
 export const AccountingValidator = { create: CreateAccountSchema, update: UpdateAccountSchema }

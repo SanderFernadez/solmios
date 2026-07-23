@@ -3,7 +3,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from '../../shared/validators/validate-body'
 import type { AccountingService } from './service'
-import { CreateAccountSchema, UpdateAccountSchema } from './validators/schema'
+import { CreateAccountSchema, UpdateAccountSchema, CreateJournalEntrySchema } from './validators/schema'
 
 export class AccountingController {
   constructor(
@@ -41,5 +41,44 @@ export class AccountingController {
     this.logger.info('DELETE /accounting/accounts/:id', { id: req.params.id })
     await this.service.deleteAccount(req.params.id, req.user as any)
     return { status: 204, body: null }
+  }
+
+  // ─── Plan de cuentas base (CTB-1.3) ───
+  async seedChart(req: HttpRequest) {
+    this.logger.info('POST /accounting/seed')
+    const res = await this.service.seedChart(req.user as any)
+    return { status: 200, body: res }
+  }
+
+  // ─── Asientos (CTB-2) ───
+  async indexJournal(req: HttpRequest) {
+    this.logger.info('GET /accounting/journal')
+    const period = (req.query as any)?.period as string | undefined
+    const items = await this.service.listEntries(period, req.user as any)
+    return { status: 200, body: { data: items, total: items.length } }
+  }
+
+  async storeJournal(req: HttpRequest) {
+    this.logger.info('POST /accounting/journal')
+    // Campos escalares por validateSchema; `lines` (array) se pasa del body y lo valida el usecase.
+    const scalar = validateSchema(CreateJournalEntrySchema, req.body) as any
+    const body = (req.body ?? {}) as any
+    const item = await this.service.createEntry(
+      { ...scalar, lines: Array.isArray(body.lines) ? body.lines : [] },
+      req.user as any,
+    )
+    return { status: 201, body: item }
+  }
+
+  async postJournal(req: HttpRequest) {
+    this.logger.info('POST /accounting/journal/:id/post', { id: req.params.id })
+    await this.service.postEntry(req.params.id, req.user as any)
+    return { status: 200, body: { ok: true } }
+  }
+
+  async reverseJournal(req: HttpRequest) {
+    this.logger.info('POST /accounting/journal/:id/reverse', { id: req.params.id })
+    const res = await this.service.reverseEntry(req.params.id, req.user as any)
+    return { status: 200, body: res }
   }
 }

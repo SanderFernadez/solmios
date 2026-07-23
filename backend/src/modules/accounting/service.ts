@@ -2,12 +2,17 @@
 // CTB-0/CTB-1: plan de cuentas (chart of accounts). Los asientos, períodos y reportes
 // se agregan en usecases/ en tareas posteriores (CTB-2..6). Depende de RepositoryAdapter,
 // no del ORM. NO importa de otros módulos.
-import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
+import type { RepositoryAdapter, Logger, CacheAdapter, Auth, ORM } from 'arckode-framework'
 import { NotFoundError, ValidationError, ConflictError } from 'arckode-framework'
 import type {
   AccountDTO, CreateAccountDTO, UpdateAccountDTO, AccountsQuery, AccountsPaginated, CurrentUser,
 } from './types'
 import type { AccountingSockets } from './sockets'
+import { seedChartOfAccounts } from './usecases/seed-chart-of-accounts'
+import {
+  createJournalEntry, postEntry, reverseEntry, listEntries,
+  type CreateEntryInput, type JournalDeps,
+} from './usecases/journal-entry'
 
 export class AccountingService {
   private sockets: AccountingSockets = {}
@@ -22,7 +27,23 @@ export class AccountingService {
     private readonly auth: Auth,
     // Líneas de asiento: para impedir borrar una cuenta con movimientos (rompería el mayor).
     private readonly lines: RepositoryAdapter<any>,
+    // Cabecera de asientos + orm (transacciones atómicas cabecera+líneas). `orm` opcional: es la
+    // escotilla para transacciones multi-tabla, no la dependencia principal (esas son los repos).
+    private readonly entries?: RepositoryAdapter<any>,
+    private readonly orm?: ORM,
   ) {}
+
+  /** Deps para los usecases de asientos. Requiere orm+entries (siempre inyectados por el módulo). */
+  private journalDeps(): JournalDeps {
+    if (!this.orm || !this.entries) throw new ValidationError('Contabilidad sin transacciones configurada')
+    return { orm: this.orm, accounts: this.accounts, entries: this.entries, lines: this.lines }
+  }
+
+  private hotelFor(user: CurrentUser): string {
+    const h = user.hotelId || ''
+    if (!h) throw new ValidationError('Sin hotel asignado')
+    return h
+  }
 
   // Acumula handlers, nunca pisa el anterior (composición de sockets).
   setSockets(s: Partial<AccountingSockets>): void {
@@ -125,5 +146,28 @@ export class AccountingService {
     const deleted = await this.accounts.delete(id)
     if (!deleted) throw new NotFoundError('Cuenta no encontrada')
     this.listVersion++
+  }
+
+  // ─── Plan de cuentas base (CTB-1.3) ───
+  /** Siembra el plan de cuentas base para el hotel del usuario. Idempotente. */
+  async seedChart(user: CurrentUser): Promise<{ created: number; total: number }> {
+    const hotelId = this.hotelFor(user)
+    const res = await seedChartOfAccounts(this.accounts, hotelId)
+    this.listVersion++
+    return res
+  }
+
+  // ─── Asientos de doble entrada (CTB-2) — delegan a usecases/journal-entry ───
+  createEntry(input: CreateEntryInput, user: CurrentUser) {
+    return createJournalEntry(this.journalDeps(), this.hotelFor(user), input, user.id)
+  }
+  postEntry(id: string, user: CurrentUser) {
+    return postEntry(this.journalDeps(), id, this.hotelFor(user))
+  }
+  reverseEntry(id: string, user: CurrentUser) {
+    return reverseEntry(this.journalDeps(), id, this.hotelFor(user), user.id)
+  }
+  listEntries(period: string | undefined, user: CurrentUser) {
+    return listEntries(this.journalDeps(), this.hotelFor(user), period)
   }
 }

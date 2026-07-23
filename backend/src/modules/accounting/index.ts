@@ -38,8 +38,9 @@ export function AccountingModule() {
       const accounts = new OrmRepository<AccountDTO>(orm, 'Accounts')
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const lines = new OrmRepository<any>(orm, 'JournalLines')
+      const entries = new OrmRepository<any>(orm, 'JournalEntries')
       const log = logger.child('accounting')
-      const service = new AccountingService(accounts, userRepo, log, cache, auth, lines)
+      const service = new AccountingService(accounts, userRepo, log, cache, auth, lines, entries, orm)
       const controller = new AccountingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -53,6 +54,14 @@ export function AccountingModule() {
       router.post('/api/accounting/accounts', guard('accounting', 'create'), (req) => controller.storeAccount(req))
       router.put('/api/accounting/accounts/:id', guard('accounting', 'edit'), (req) => controller.updateAccount(req))
       router.delete('/api/accounting/accounts/:id', guard('accounting', 'delete'), (req) => controller.destroyAccount(req))
+      // Seed del plan de cuentas base (CTB-1.3)
+      router.post('/api/accounting/seed', guard('accounting', 'create'), (req) => controller.seedChart(req))
+
+      // Asientos de doble entrada (CTB-2)
+      router.get('/api/accounting/journal', guard('accounting', 'view'), (req) => controller.indexJournal(req))
+      router.post('/api/accounting/journal', guard('accounting', 'create'), (req) => controller.storeJournal(req))
+      router.post('/api/accounting/journal/:id/post', guard('accounting', 'edit'), (req) => controller.postJournal(req))
+      router.post('/api/accounting/journal/:id/reverse', guard('accounting', 'edit'), (req) => controller.reverseJournal(req))
 
       log.info('Módulo accounting listo')
       return service

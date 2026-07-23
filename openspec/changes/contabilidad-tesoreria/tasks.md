@@ -20,18 +20,18 @@
 ### CTB-1 — Plan de cuentas (chart of accounts) + seed base  ⟵ dep: CTB-0
 - [x] 1.1 CRUD de `accounts` (service + controller + validators), con `isPostable` y jerarquía `parentId` (validada por hotel)
 - [x] 1.2 Endpoints `GET/POST/PUT/DELETE /api/accounting/accounts` (guard `accounting:*` + moduleGuard)
-- [ ] 1.3 Seed del catálogo base hotelero (design.md §plan de cuentas) — script idempotente por hotel
+- [x] 1.3 Seed del catálogo base hotelero (36 cuentas, `usecases/seed-chart-of-accounts.ts`) — idempotente por hotel · endpoint `POST /api/accounting/seed`
 - [x] 1.4 Validación: `code` único por hotel; no borrar cuenta con hijos ni con asientos (integridad referencial)
-- [ ] 1.5 Tests: seed crea el catálogo; cuenta de agrupación rechaza asiento directo (los tests de CRUD/dup/IDOR/integridad ✅)
+- [x] 1.5 Tests: seed crea el catálogo (idempotente); cuenta de agrupación rechaza asiento directo ✅
 - **Aceptación:** un hotel nuevo obtiene el plan base; el catálogo es editable; tests verdes.
 
-### CTB-2 — Asientos manuales + doble entrada + post/reverse  ⟵ dep: CTB-1
-- [ ] 2.1 `usecases/journal-entry.ts`: crear asiento con líneas debe/haber, validar `SUM(debit)=SUM(credit)`
-- [ ] 2.2 Rechazar líneas contra cuentas no-postable; rechazar descuadre (`ValidationError`)
-- [ ] 2.3 `post` (draft→posted) y `reverse` (crea asiento espejo `reversalOf`); posteado inmutable (409 en edit)
-- [ ] 2.4 Endpoints `POST /journal`, `/journal/:id/post`, `/journal/:id/reverse`, `GET /journal?period=`
-- [ ] 2.5 Tests: asiento balanceado OK; descuadre rechazado; edición de posteado rechazada; reversión invierte debe/haber
-- **Aceptación:** se puede asentar a mano, postear y revertir; nunca queda un asiento descuadrado.
+### CTB-2 — Asientos manuales + doble entrada + post/reverse  ✅ HECHO ⟵ dep: CTB-1
+- [x] 2.1 `usecases/journal-entry.ts`: crear asiento con líneas debe/haber, validar `SUM(debit)=SUM(credit)` (epsilon 0.01, atómico por transacción)
+- [x] 2.2 Rechazar líneas contra cuentas no-postable; rechazar descuadre, monto cero, débito+crédito en una línea, <2 líneas (`ValidationError`)
+- [x] 2.3 `post` (draft→posted) y `reverse` (asiento espejo invertido `reversalOf` + original `reversed`, atómico); re-postear/revertir no-posteado rechazado
+- [x] 2.4 Endpoints `POST /journal`, `/journal/:id/post`, `/journal/:id/reverse`, `GET /journal?period=`
+- [x] 2.5 Tests: balanceado OK; descuadre/no-postable/débito+crédito rechazados; dedup; post; reversión invierte debe/haber. **+ integración real SQLite end-to-end** ✅
+- **Aceptación:** ✅ asentar/postear/revertir funciona; nunca queda descuadrado; verificado con ORM real. Dedup por reference+referenceType listo para CTB-4.
 
 ### CTB-3 — Períodos contables (open/close/lock)  ⟵ dep: CTB-2
 - [ ] 3.1 `usecases/period.ts`: abrir período `YYYY-MM`, cerrar (valida trial balance cuadra), lock

@@ -31,8 +31,22 @@ function makeUserRepo(hotelId = 'h1'): RepositoryAdapter<any> {
 function makeLines(rows: any[] = []): RepositoryAdapter<any> {
   return { ...makeRepo() as any, findMany: async () => rows }
 }
-function svc(repo: RepositoryAdapter<AccountDTO>, auth: Auth = passAuth, lines: RepositoryAdapter<any> = makeLines()) {
-  return new AccountingService(repo, makeUserRepo(), log, silentCache, auth, lines)
+// ORM fake con transaction: acumula las filas creadas por tabla, para verificar asientos.
+function makeOrm(store: Record<string, any[]> = {}) {
+  const tx = {
+    create: async (table: string, data: any) => { (store[table] ??= []).push(data); return data },
+    update: async (table: string, id: string, data: any) => {
+      const row = (store[table] ??= []).find((r) => r.id === id); if (row) Object.assign(row, data); return row
+    },
+  }
+  return { store, orm: { transaction: async (fn: any) => fn(tx) } as any }
+}
+function svc(
+  repo: RepositoryAdapter<AccountDTO>, auth: Auth = passAuth,
+  lines: RepositoryAdapter<any> = makeLines(), entries: RepositoryAdapter<any> = makeLines(),
+  orm: any = makeOrm().orm,
+) {
+  return new AccountingService(repo, makeUserRepo(), log, silentCache, auth, lines, entries, orm)
 }
 
 describe('AccountingService — plan de cuentas', () => {
@@ -117,5 +131,155 @@ describe('AccountingService — plan de cuentas', () => {
     const repo = makeRepo({ findById: async () => existing, findMany: async () => [], delete: async () => true })
     const service = svc(repo)
     await expect(service.deleteAccount('a1', currentUser)).resolves.toBeUndefined()
+  })
+})
+
+describe('AccountingService — seed del plan de cuentas', () => {
+  it('siembra el catálogo base y es idempotente', async () => {
+    const created: AccountDTO[] = []
+    const repo = makeRepo({
+      findMany: async () => created,   // refleja lo ya creado (idempotencia)
+      create: async (d) => { const row = { id: `id-${created.length}`, ...d } as AccountDTO; created.push(row); return row },
+    })
+    const service = svc(repo)
+    const res = await service.seedChart(currentUser)
+    expect(res.created).toBe(36)                 // el catálogo base tiene 36 cuentas
+    expect(res.created).toBe(res.total)
+    // Segunda corrida: nada nuevo (idempotente)
+    const res2 = await service.seedChart(currentUser)
+    expect(res2.created).toBe(0)
+  })
+})
+
+describe('AccountingService — asientos de doble entrada', () => {
+  // Dos cuentas posteables del hotel h1.
+  const caja = { id: 'caja', hotelId: 'h1', code: '1.1.01', name: 'Caja', type: 'asset', isPostable: 1 } as AccountDTO
+  const clientes = { id: 'cli', hotelId: 'h1', code: '1.1.03', name: 'Clientes', type: 'asset', isPostable: 1 } as AccountDTO
+  const grupo = { id: 'grp', hotelId: 'h1', code: '1', name: 'Activo', type: 'asset', isPostable: 0 } as AccountDTO
+  const accountsRepo = (map: Record<string, AccountDTO>) => makeRepo({ findOne: async (q: any) => map[q.id] ?? null })
+
+  it('crea un asiento balanceado (debe = haber) con sus líneas', async () => {
+    const { store, orm } = makeOrm()
+    const service = svc(accountsRepo({ caja, cli: clientes }), passAuth, makeLines(), makeLines(), orm)
+    const out = await service.createEntry({
+      entryDate: '2026-07-15', description: 'Cobro',
+      lines: [{ accountId: 'caja', debit: 100 }, { accountId: 'cli', credit: 100 }],
+    }, currentUser)
+    expect(out.deduped).toBe(false)
+    expect(store.JournalEntries).toHaveLength(1)
+    expect(store.JournalEntries[0].period).toBe('2026-07')
+    expect(store.JournalLines).toHaveLength(2)
+  })
+
+  it('rechaza un asiento descuadrado', async () => {
+    const service = svc(accountsRepo({ caja, cli: clientes }))
+    await expect(service.createEntry({
+      entryDate: '2026-07-15',
+      lines: [{ accountId: 'caja', debit: 100 }, { accountId: 'cli', credit: 90 }],
+    }, currentUser)).rejects.toThrow(/no cuadra/i)
+  })
+
+  it('rechaza un descuadre de EXACTAMENTE 1 centavo (borde del epsilon)', async () => {
+    const service = svc(accountsRepo({ caja, cli: clientes }))
+    await expect(service.createEntry({
+      entryDate: '2026-07-15',
+      lines: [{ accountId: 'caja', debit: 100.00 }, { accountId: 'cli', credit: 100.01 }],
+    }, currentUser)).rejects.toThrow(/no cuadra/i)
+  })
+
+  it('rechaza una línea con débito no numérico (NaN)', async () => {
+    const service = svc(accountsRepo({ caja, cli: clientes }))
+    await expect(service.createEntry({
+      entryDate: '2026-07-15',
+      lines: [{ accountId: 'caja', debit: 'abc' as any }, { accountId: 'cli', credit: 100 }],
+    }, currentUser)).rejects.toThrow(/numéric/i)
+  })
+
+  it('rechaza entryDate con formato inválido', async () => {
+    const service = svc(accountsRepo({ caja, cli: clientes }))
+    await expect(service.createEntry({
+      entryDate: '2026-7-5',
+      lines: [{ accountId: 'caja', debit: 100 }, { accountId: 'cli', credit: 100 }],
+    }, currentUser)).rejects.toThrow(/YYYY-MM-DD/)
+  })
+
+  it('rechaza un asiento con menos de 2 líneas', async () => {
+    const service = svc(accountsRepo({ caja, cli: clientes }))
+    await expect(service.createEntry({
+      entryDate: '2026-07-15', lines: [{ accountId: 'caja', debit: 100 }],
+    }, currentUser)).rejects.toThrow(/2 líneas/i)
+  })
+
+  it('rechaza una línea contra una cuenta de agrupación (no posteable)', async () => {
+    const service = svc(accountsRepo({ grp: grupo, cli: clientes }))
+    await expect(service.createEntry({
+      entryDate: '2026-07-15',
+      lines: [{ accountId: 'grp', debit: 100 }, { accountId: 'cli', credit: 100 }],
+    }, currentUser)).rejects.toThrow(/agrupación/i)
+  })
+
+  it('rechaza una línea con débito Y crédito a la vez', async () => {
+    const service = svc(accountsRepo({ caja, cli: clientes }))
+    await expect(service.createEntry({
+      entryDate: '2026-07-15',
+      lines: [{ accountId: 'caja', debit: 100, credit: 100 }, { accountId: 'cli', credit: 100 }],
+    }, currentUser)).rejects.toThrow(/débito O crédito/i)
+  })
+
+  it('dedup: mismo reference+referenceType no duplica', async () => {
+    const existing = [{ id: 'e0', hotelId: 'h1', reference: 'pay-1', referenceType: 'payment', status: 'posted' }]
+    const service = svc(accountsRepo({ caja, cli: clientes }), passAuth, makeLines(), makeLines(existing))
+    const out = await service.createEntry({
+      entryDate: '2026-07-15', reference: 'pay-1', referenceType: 'payment',
+      lines: [{ accountId: 'caja', debit: 100 }, { accountId: 'cli', credit: 100 }],
+    }, currentUser)
+    expect(out.deduped).toBe(true)
+    expect(out.id).toBe('e0')
+  })
+
+  it('postEntry pasa draft → posted; re-postear falla', async () => {
+    const entry = { id: 'e1', hotelId: 'h1', status: 'draft' }
+    const entriesRepo = makeLines([entry]) as any
+    entriesRepo.findOne = async () => entry
+    entriesRepo.update = async (_id: string, d: any) => { Object.assign(entry, d); return entry }
+    const service = svc(makeRepo(), passAuth, makeLines(), entriesRepo)
+    await service.postEntry('e1', currentUser)
+    expect(entry.status).toBe('posted')
+    await expect(service.postEntry('e1', currentUser)).rejects.toThrow(/posted/)
+  })
+
+  it('reverseEntry crea el espejo invertido y marca el original reversed', async () => {
+    const entry: any = { id: 'e1', hotelId: 'h1', status: 'posted', description: 'Cobro' }
+    const origLines = [{ id: 'l1', entryId: 'e1', accountId: 'caja', debit: 100, credit: 0 }]
+    // e1 va en el store para que tx.update('JournalEntries','e1',...) lo encuentre y lo marque reversed.
+    const { store, orm } = makeOrm({ JournalEntries: [entry] })
+    const entriesRepo = makeLines([entry]) as any
+    entriesRepo.findOne = async () => entry
+    const linesRepo = makeLines(origLines)
+    const service = svc(makeRepo(), passAuth, linesRepo, entriesRepo, orm)
+    const res = await service.reverseEntry('e1', currentUser)
+    expect(res.reversalId).toBeTruthy()
+    // El espejo invierte: la línea que era débito 100 ahora es crédito 100.
+    const mirror = store.JournalLines[0]
+    expect(mirror.credit).toBe(100)
+    expect(mirror.debit).toBe(0)
+    // El original quedó marcado reversed.
+    expect(store.JournalEntries.find((e: any) => e.id === 'e1')?.status).toBe('reversed')
+  })
+
+  it('reverseEntry rechaza un asiento en draft (solo posteados se revierten)', async () => {
+    const entry = { id: 'e1', hotelId: 'h1', status: 'draft' }
+    const entriesRepo = makeLines([entry]) as any
+    entriesRepo.findOne = async () => entry
+    const service = svc(makeRepo(), passAuth, makeLines(), entriesRepo)
+    await expect(service.reverseEntry('e1', currentUser)).rejects.toThrow(/posteado/i)
+  })
+
+  it('postEntry de un asiento de OTRO hotel → NotFound (multi-tenant)', async () => {
+    const ajeno = { id: 'e1', hotelId: 'OTRO', status: 'draft' }
+    const entriesRepo = makeLines([ajeno]) as any
+    entriesRepo.findOne = async () => ajeno
+    const service = svc(makeRepo(), passAuth, makeLines(), entriesRepo)
+    await expect(service.postEntry('e1', currentUser)).rejects.toThrow(/no encontrado/i)
   })
 })
