@@ -98,7 +98,7 @@
 - [x] 8.3 Gate: `arckode analyze` ✅ · `bun test` restaurant 57 ✅ · frontend `vue-tsc -b` + build ✅.
 - [x] 8.4 Deploy prod: push main → pull → `bun install` → RUN_MIGRATE (6 tablas + col `taxrate`, EXIT=0, verificadas) → restart backend (active) → `bun --bun vite build` (✓) → `UPDATE roles.permissions` → re-seed plan (`POST /api/accounting/seed` created:2 total:38 → 4.2.02/2.1.05). Smoke E2E en vivo: order 2×250 → subtotal 500 / tax 90 (18% config) / total 590 ✅; KDS mostró 1 ticket tras enviar ✅; datos de prueba truncados.
 - [x] 8.5 `mapa-modulos.html`: nodo Restaurante + edges a folios/payments/contabilidad (commit f8d8686). Memoria pendiente.
-- **NOTA permisos**: en prod di a receptionist `restaurant:view/create/edit` (operable: tomar/enviar/cobrar). `permissions.ts` DEFAULT_ROLE_PERMISSIONS seedea receptionist con solo `view+create` para hoteles NUEVOS → decidir si alinear el código (recepción no podría enviar a cocina ni cobrar con view+create).
+- **NOTA permisos** ✅ RESUELTO (commit 92e32ff, desplegado): receptionist tiene `restaurant:view/create/edit` tanto en prod (`UPDATE roles.permissions`) como en el código (`DEFAULT_ROLE_PERMISSIONS`), así que los hoteles NUEVOS también lo heredan. `delete` (cancelar/quitar-línea) sigue exclusivo de hotel_admin.
 - **Aceptación:** desplegado, controlable desde admin, permisos creables, verificado end-to-end en prod.
 
 ---
