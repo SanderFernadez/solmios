@@ -102,4 +102,10 @@ export const PaySchema: Record<string, ValidationRule> = {
   method: { type: 'string' as const, required: true },
 }
 
+// ─── KDS (RES-4) ───
+const LINE_STATUSES = ['new', 'preparing', 'ready', 'served', 'cancelled']
+export const KdsLineStatusSchema: Record<string, ValidationRule> = {
+  status: { type: 'string' as const, required: true, enum: LINE_STATUSES },
+}
+
 export const RestaurantValidator = { createStation: CreateStationSchema, updateStation: UpdateStationSchema }

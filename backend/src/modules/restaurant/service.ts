@@ -12,6 +12,8 @@ import * as tablesCrud from './usecases/tables-crud'
 import * as orders from './usecases/orders'
 import * as orderLines from './usecases/order-lines'
 import * as settlement from './usecases/settlement'
+import * as kds from './usecases/kds'
+import type { LineStatus } from './types'
 
 export class RestaurantService {
   private sockets: RestaurantSockets = {}
@@ -77,6 +79,10 @@ export class RestaurantService {
   private settlementDeps(): settlement.SettlementDeps {
     if (!this.orders || !this.lines || !this.hotels) throw new ValidationError('Comandas no configuradas')
     return { orders: this.orders, lines: this.lines, tables: this.tables, hotels: this.hotels, userRepo: this.userRepo, auth: this.auth, sockets: this.sockets, ports: this.settlementPorts }
+  }
+  private kdsDeps(): kds.KdsDeps {
+    if (!this.orders || !this.lines) throw new ValidationError('Comandas no configuradas')
+    return { orders: this.orders, lines: this.lines, userRepo: this.userRepo, auth: this.auth, sockets: this.sockets }
   }
 
   // ─── Estaciones (RES-0) — pantallas KDS configurables por hotel ───
@@ -161,4 +167,8 @@ export class RestaurantService {
   billOrder(id: string, dto: { tip?: number }, user: CurrentUser) { return settlement.billOrder(this.settlementDeps(), id, dto, user) }
   chargeToRoom(id: string, dto: { reservationId?: string }, user: CurrentUser) { return settlement.chargeToRoom(this.settlementDeps(), id, dto, user) }
   payOrder(id: string, dto: { method: string }, user: CurrentUser) { return settlement.payOrder(this.settlementDeps(), id, dto, user) }
+
+  // ─── KDS / cocina (RES-4) — delegan a usecases/kds ───
+  kdsQueue(station: string | undefined, user: CurrentUser) { return kds.kdsQueue(this.kdsDeps(), station, user) }
+  setLineStatus(lineId: string, status: LineStatus, user: CurrentUser) { return kds.setLineStatus(this.kdsDeps(), lineId, status, user) }
 }

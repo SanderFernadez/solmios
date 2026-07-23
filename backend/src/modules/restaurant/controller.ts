@@ -10,6 +10,7 @@ import {
   CreateTableSchema, UpdateTableSchema,
   OpenOrderSchema, AddLineSchema, UpdateLineSchema,
   BillSchema, ChargeToRoomSchema, PaySchema,
+  KdsLineStatusSchema,
 } from './validators/schema'
 
 export class RestaurantController {
@@ -200,6 +201,19 @@ export class RestaurantController {
     this.logger.info('POST /restaurant/orders/:id/pay', { id: req.params.id })
     const data = validateSchema(PaySchema, req.body)
     const item = await this.service.payOrder(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+
+  // ─── KDS / cocina (RES-4) ───
+  async kdsQueue(req: HttpRequest) {
+    this.logger.info('GET /restaurant/kds')
+    const station = (req.query as any)?.station as string | undefined
+    return { status: 200, body: await this.service.kdsQueue(station, req.user as any) }
+  }
+  async setLineStatus(req: HttpRequest) {
+    this.logger.info('PUT /restaurant/kds/lines/:id', { id: req.params.id })
+    const data = validateSchema(KdsLineStatusSchema, req.body) as any
+    const item = await this.service.setLineStatus(req.params.id, data.status, req.user as any)
     return { status: 200, body: item }
   }
 }

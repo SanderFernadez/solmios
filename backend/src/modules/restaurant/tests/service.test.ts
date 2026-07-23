@@ -488,3 +488,95 @@ describe('RestaurantService — cuenta + cobro (RES-5)', () => {
     expect(payCalled).toBe(false)   // una venta, una vía: no toca payments
   })
 })
+
+// ─── RES-4: KDS / cocina ─────────────────────────────────────────────────────
+describe('RestaurantService — KDS (RES-4)', () => {
+  function kdsSetup(linesSeed: any[], orderOverrides: any = {}) {
+    const ordersStore: any[] = [{ id: 'o1', hotelId: 'h1', number: 'CMD-1', type: 'dine_in', tableId: 't1', openedAt: '2026-07-15T10:00', status: 'sent', ...orderOverrides }]
+    const linesStore: any[] = linesSeed
+    const build = () => svc3({ orders: backed<OrderDTO>(ordersStore), lines: backed<any>(linesStore), config: taxConfig(), hotels: makeRepo<any>() }, strictAuth)
+    return { ordersStore, linesStore, build }
+  }
+
+  it('cola: agrupa por comanda, excluye served/cancelled, FIFO', async () => {
+    const { build } = kdsSetup([
+      { id: 'l1', hotelId: 'h1', orderId: 'o1', stationId: 'st1', status: 'new', name: 'Pizza' },
+      { id: 'l2', hotelId: 'h1', orderId: 'o1', stationId: 'st2', status: 'preparing', name: 'Coca' },
+      { id: 'l3', hotelId: 'h1', orderId: 'o1', stationId: 'st1', status: 'served', name: 'Pan' },
+    ])
+    const q = await build().kdsQueue(undefined, user)
+    expect(q.total).toBe(1)
+    expect(q.data[0].lines.map((l: any) => l.id).sort()).toEqual(['l1', 'l2'])   // l3 served excluida
+  })
+
+  it('cola filtra por estación', async () => {
+    const { build } = kdsSetup([
+      { id: 'l1', hotelId: 'h1', orderId: 'o1', stationId: 'st1', status: 'new', name: 'Pizza' },
+      { id: 'l2', hotelId: 'h1', orderId: 'o1', stationId: 'st2', status: 'new', name: 'Coca' },
+    ])
+    const q = await build().kdsQueue('st1', user)
+    expect(q.data[0].lines.map((l: any) => l.id)).toEqual(['l1'])
+  })
+
+  it("station='__none__' devuelve líneas sin estación", async () => {
+    const { build } = kdsSetup([
+      { id: 'l1', hotelId: 'h1', orderId: 'o1', stationId: 'st1', status: 'new' },
+      { id: 'l2', hotelId: 'h1', orderId: 'o1', status: 'new' },   // sin estación
+    ])
+    const q = await build().kdsQueue('__none__', user)
+    expect(q.data[0].lines.map((l: any) => l.id)).toEqual(['l2'])
+  })
+
+  it('transición válida new→preparing; inválida served→preparing rechazada', async () => {
+    const { build } = kdsSetup([{ id: 'l1', hotelId: 'h1', orderId: 'o1', status: 'new' }])
+    const line = await build().setLineStatus('l1', 'preparing', user)
+    expect(line.status).toBe('preparing')
+    const s2 = kdsSetup([{ id: 'l2', hotelId: 'h1', orderId: 'o1', status: 'served' }]).build()
+    await expect(s2.setLineStatus('l2', 'preparing', user)).rejects.toThrow('Transición inválida')
+  })
+
+  it('deriva el estado de la comanda: todas ready → orden ready; todas served → orden served', async () => {
+    const { ordersStore, build } = kdsSetup([
+      { id: 'l1', hotelId: 'h1', orderId: 'o1', status: 'preparing' },
+      { id: 'l2', hotelId: 'h1', orderId: 'o1', status: 'ready' },
+    ])
+    const s = build()
+    await s.setLineStatus('l1', 'ready', user)          // ahora ambas ready
+    expect(ordersStore[0].status).toBe('ready')
+    await s.setLineStatus('l1', 'served', user)
+    await s.setLineStatus('l2', 'served', user)          // ambas served
+    expect(ordersStore[0].status).toBe('served')
+  })
+
+  it('IDOR: cambiar el estado de una línea de otro hotel es inaccesible', async () => {
+    const orders = backed<OrderDTO>([], [{ id: 'o1', hotelId: 'OTRO', status: 'sent' }])
+    const lines = backed<any>([], [{ id: 'l1', hotelId: 'OTRO', orderId: 'o1', status: 'new' }])
+    const s = svc3({ orders, lines, config: taxConfig(), hotels: makeRepo<any>() }, strictAuth)
+    await expect(s.setLineStatus('l1', 'preparing', user)).rejects.toThrow('IDOR')
+  })
+
+  it('NO filtra comandas open (aún no enviadas a cocina)', async () => {
+    // El mesero está tipeando: líneas `new` sobre una comanda `open`. No deben aparecer en el KDS.
+    const { build } = kdsSetup(
+      [{ id: 'l1', hotelId: 'h1', orderId: 'o1', status: 'new', name: 'Pizza' }],
+      { status: 'open' },
+    )
+    const q = await build().kdsQueue(undefined, user)
+    expect(q.total).toBe(0)
+  })
+
+  it('NO muestra líneas de una comanda cancelada', async () => {
+    // cancelOrder no toca las líneas; el filtro por estado de orden las saca de la pantalla igual.
+    const { build } = kdsSetup(
+      [{ id: 'l1', hotelId: 'h1', orderId: 'o1', status: 'new', name: 'Pizza' }],
+      { status: 'cancelled' },
+    )
+    const q = await build().kdsQueue(undefined, user)
+    expect(q.total).toBe(0)
+  })
+
+  it('salto inválido new→ready (sin pasar por preparing) rechazado', async () => {
+    const { build } = kdsSetup([{ id: 'l1', hotelId: 'h1', orderId: 'o1', status: 'new' }])
+    await expect(build().setLineStatus('l1', 'ready', user)).rejects.toThrow('Transición inválida')
+  })
+})
