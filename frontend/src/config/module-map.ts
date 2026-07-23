@@ -53,6 +53,8 @@ export const ROUTE_TO_KEY: Record<string, string> = {
   // Contabilidad y tesorería (entitlement de plan: claves top-level accounting/treasury).
   '/panel/contabilidad': 'accounting',
   '/panel/tesoreria': 'treasury',
+  // Restaurante / POS (entitlement de plan: clave top-level restaurant).
+  '/panel/restaurante': 'restaurant',
 }
 
 /**
@@ -96,6 +98,7 @@ export const PERMISSION_TO_MODULE: Record<string, string> = {
   'channel-manager': 'channel',
   ttlock: 'settings.locks',
   ai: 'ai',
+  restaurant: 'restaurant',
 }
 
 /**
@@ -141,6 +144,7 @@ export const ROUTE_TO_PERMISSION: Record<string, string> = {
   '/panel/config': 'settings',       // base, tarifas, promociones, mensajería, pasarelas, dispositivos
   '/panel/contabilidad': 'accounting',
   '/panel/tesoreria': 'treasury',
+  '/panel/restaurante': 'restaurant',
 }
 
 /** MÓDULO de permiso para una ruta, por prefijo más largo. undefined = CORE (no gateada por permiso). */

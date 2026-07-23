@@ -281,6 +281,12 @@ const router = createRouter({
         { path: 'tesoreria/bancos', name: 'treasury-banks', component: () => import('@/pages/tesoreria/bancos.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'tesoreria/cuentas', name: 'treasury-accounts', component: () => import('@/pages/tesoreria/cuentas.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'tesoreria/presupuesto', name: 'treasury-budget', component: () => import('@/pages/tesoreria/presupuesto.vue'), meta: { requiresHotelAdmin: true } },
+        // Restaurante / POS (RES-7) — operacional (meseros/recepción); gateado por module-map (restaurant).
+        { path: 'restaurante/carta', name: 'restaurant-menu', component: () => import('@/pages/restaurante/carta.vue') },
+        { path: 'restaurante/salon', name: 'restaurant-floor', component: () => import('@/pages/restaurante/salon.vue') },
+        { path: 'restaurante/comanda/:id', name: 'restaurant-order', component: () => import('@/pages/restaurante/comanda.vue') },
+        { path: 'restaurante/cocina', name: 'restaurant-kds', component: () => import('@/pages/restaurante/cocina.vue') },
+        { path: 'restaurante/cobrar/:id', name: 'restaurant-pay', component: () => import('@/pages/restaurante/cobrar.vue') },
         {
           path: 'operaciones/limpieza',
           name: 'housekeeping',
