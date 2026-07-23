@@ -1,0 +1,38 @@
+# SDD State: restaurante-pos
+
+change_name: restaurante-pos
+created: 2026-07-23
+status: planned   # plan + specs + tasks listos; PENDIENTE aprobación del dueño antes de escribir código
+current_phase: propose
+parent_changes: []
+
+motivation: |
+  POS de restaurante completo (carta + mesas + comandas + KDS + cuenta/split/propina + cargo a habitación
+  o cobro directo + cierre de caja), IN-HOUSE, integrado por conectores a la infraestructura financiera
+  existente (folios = cargo a habitación, payments = cobro, accounting = asiento, cash = arqueo). NO duplica
+  la fuente de verdad del dinero: una venta se cuenta UNA vez (o folio o payment, nunca ambos).
+
+architecture_decision: in-house-pos-completo   # POS completo con KDS, confirmado con el dueño.
+
+scope:
+  restaurant: [carta-menu, mesas-salon, comandas, kds-cocina, cuenta-split-propina, cargo-a-folio, cobro-directo, contabilidad-pos, frontend]
+  reuse: [folios.postCharge, payments.createPayment, folios-accounting, payments-accounting, cash-caja, configuration-taxes]
+  out_of_scope: [inventario-food-cost, compras-proveedor-restaurante, reserva-mesa-online, delivery-terceros, impresion-termica-hardware, multi-moneda]
+
+sprints:
+  res-0-schema-base:   { title: "Schema ORM + módulo restaurant base + wiring", status: pending, priority: critical, phase: infra }
+  res-1-carta:         { title: "Carta / menú (categorías + ítems)", status: pending, priority: high, phase: implementation, dep: res-0 }
+  res-2-mesas:         { title: "Mesas + salón", status: pending, priority: high, phase: implementation, dep: res-0 }
+  res-3-comandas:      { title: "Comandas (órdenes + líneas)", status: pending, priority: high, phase: implementation, dep: [res-1, res-2] }
+  res-4-kds:           { title: "KDS (pantalla de cocina)", status: pending, priority: high, phase: implementation, dep: res-3 }
+  res-5-cuenta-cobro:  { title: "Cuenta + cobro (cargo a folio | pago directo)", status: pending, priority: high, phase: implementation, dep: res-3 }
+  res-6-contabilidad:  { title: "Contabilidad del POS (reconocimiento de ingreso)", status: pending, priority: high, phase: implementation, dep: res-5 }
+  res-7-frontend:      { title: "Frontend POS", status: pending, priority: high, phase: implementation, dep: [res-1, res-2, res-3, res-4, res-5, res-6] }
+  res-8-gate:          { title: "Permisos + entitlement + gate final + deploy", status: pending, priority: critical, phase: testing, dep: res-7 }
+
+rollback: |
+  Módulo aditivo y aislado: desregistrar RestaurantModule + 2-3 conectores en composition-root.ts y dropear
+  las 5 tablas nuevas no toca ninguna tabla financiera existente. Conectores best-effort (un asiento que falla
+  no afecta el cobro/cargo real). Se apaga por entitlement de plan sin desplegar.
+
+estimate_days: 12-16
