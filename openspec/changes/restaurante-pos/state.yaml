@@ -20,7 +20,7 @@ scope:
   out_of_scope: [inventario-food-cost, compras-proveedor-restaurante, reserva-mesa-online, delivery-terceros, impresion-termica-hardware, multi-moneda]
 
 sprints:
-  res-0-schema-base:   { title: "Schema ORM + módulo restaurant base + wiring", status: pending, priority: critical, phase: infra }
+  res-0-schema-base:   { title: "Schema ORM + módulo restaurant base + wiring", status: done, priority: critical, phase: infra }   # commit 0ad4633 · analyze ✅ · 6 tablas · 7 tests
   res-1-carta:         { title: "Estaciones configurables + carta / menú (ruteo categoría→estación)", status: pending, priority: high, phase: implementation, dep: res-0 }
   res-2-mesas:         { title: "Mesas + salón", status: pending, priority: high, phase: implementation, dep: res-0 }
   res-3-comandas:      { title: "Comandas (órdenes + líneas)", status: pending, priority: high, phase: implementation, dep: [res-1, res-2] }

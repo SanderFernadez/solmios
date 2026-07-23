@@ -6,17 +6,18 @@
 
 ---
 
-## RES-0 — Schema ORM + módulo `restaurant` base + wiring  ⟵ infra
-- [ ] 0.1 `make:module Restaurant` → estructura canónica (index/model/service/controller/types/sockets/validators/tests)
-- [ ] 0.2 `model.ts`: modelos ORM `restaurant_stations`, `menu_categories` (con `stationId`), `menu_items`
+## RES-0 — Schema ORM + módulo `restaurant` base + wiring  ✅ HECHO (commit 0ad4633) ⟵ infra
+- [x] 0.1 Estructura canónica (index/model/service/controller/types/sockets/validators/tests) — calcada de accounting
+- [x] 0.2 `model.ts`: 6 modelos ORM `restaurant_stations`, `menu_categories` (con `stationId`), `menu_items`
       (con `stationId?` override), `restaurant_tables`, `restaurant_orders`, `restaurant_order_items`
-      (con `stationId`/`stationName` snapshot) — ver design.md; inglés, `hotelId` indexed, booleanos INTEGER
-- [ ] 0.3 Registrar en `composition-root.ts` (import + array `mods` + `addModule`)
-- [ ] 0.4 `RUN_MIGRATE` crea las 6 tablas (verificar SQLite; PG por deploy)
-- [ ] 0.5 Permiso `restaurant:view/create/edit/delete` en `shared/permissions.ts` (MODULES + MODULE_ACTIONS +
-      DEFAULT_ROLE_PERMISSIONS hotel_admin completo, receptionist view/create)
-- [ ] 0.6 Clave de catálogo `restaurant` en `admin/usecases/modules.ts` (entitlement de plan) + `moduleGuard('restaurant')`
-- **Aceptación:** `arckode analyze` 0 violaciones · 6 tablas creadas · typecheck limpio · módulo carga en composition-root.
+      (con `stationId`/`stationName` snapshot) — inglés, `hotelId` indexed, booleanos INTEGER
+- [x] 0.3 Registrar en `composition-root.ts` (import + array `mods`) — hunks quirúrgicos (evitar sesión paralela)
+- [x] 0.4 `RUN_MIGRATE` crea las 6 tablas (verificado SQLite; PG por deploy en RES-8)
+- [x] 0.5 Permiso `restaurant:*` en `shared/permissions.ts` (MODULES + hotel_admin completo + receptionist view/create).
+      ⚠️ `MODULE_ACTIONS.restaurant` queda sin commitear (bloque de la sesión paralela, ver #520)
+- [x] 0.6 Clave `restaurant` en `admin/usecases/modules.ts` (entitlement) + `moduleGuard('restaurant')` en rutas
+- [x] 0.7 CRUD de estaciones (primer vertical): pantallas KDS configurables, ownership + hotelId del JWT, 7 tests
+- **Aceptación:** ✅ `arckode analyze` sin violaciones · 6 tablas creadas · typecheck limpio · módulo carga · 7 tests verdes.
 
 ## RES-1 — Estaciones + Carta / Menú  ⟵ dep: RES-0
 - [ ] 1.0 CRUD `restaurant_stations` (pantallas configurables: name, active, sortOrder)
