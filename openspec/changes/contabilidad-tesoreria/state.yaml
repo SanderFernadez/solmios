@@ -2,8 +2,8 @@
 
 change_name: contabilidad-tesoreria
 created: 2026-07-23
-status: proposed   # plan + tareas listos; NO implementado. Aprobar antes de aplicar.
-current_phase: propose
+status: implemented   # CTB-0..7 + TES-0..6 completos (backend + frontend). Falta desplegar + habilitar por plan.
+current_phase: verify
 parent_changes: []
 
 motivation: |
@@ -36,7 +36,7 @@ sprints:
   tes-3-ar-aging:           { title: "Cuentas por cobrar (AR) con aging", status: done, priority: high, phase: implementation, dep: tes-0 }
   tes-4-ap-proveedores:     { title: "Cuentas por pagar (AP) + proveedores", status: done, priority: high, phase: implementation, dep: tes-0 }
   tes-5-presupuesto:        { title: "Presupuesto + control de gastos", status: done, priority: medium, phase: implementation, dep: tes-0 }
-  tes-6-frontend:           { title: "Frontend tesorería", status: pending, priority: medium, phase: implementation, dep: [tes-1, tes-2, tes-3, tes-4, tes-5] }
+  tes-6-frontend:           { title: "Frontend tesorería", status: done, priority: medium, phase: implementation, dep: [tes-1, tes-2, tes-3, tes-4, tes-5] }
   # Fase 3 — Transversal
   ctg-1-permisos-entitlements: { title: "Permisos + entitlements + menú", status: pending, priority: high, phase: implementation }
   ctg-2-gate:               { title: "Gate final de verificación", status: pending, priority: critical, phase: testing }

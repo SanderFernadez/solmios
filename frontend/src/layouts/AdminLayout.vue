@@ -289,6 +289,15 @@ const nonavItems = [
     ]
   },
   {
+    label: 'Tesorería', icon: ICONS.wallet, roles: ['hotel_admin'],
+    children: [
+      { label: 'Liquidez', path: '/panel/tesoreria/dashboard', roles: ['hotel_admin'] },
+      { label: 'Bancos', path: '/panel/tesoreria/bancos', roles: ['hotel_admin'] },
+      { label: 'Por Cobrar / Pagar', path: '/panel/tesoreria/cuentas', roles: ['hotel_admin'] },
+      { label: 'Presupuesto', path: '/panel/tesoreria/presupuesto', roles: ['hotel_admin'] },
+    ]
+  },
+  {
     label: 'Reseñas', icon: ICONS.star, path: '/panel/resenas', roles: ['hotel_admin', 'receptionist'] },
   {
     label: 'IA', icon: ICONS.sparkles, roles: ['hotel_admin', 'receptionist'],

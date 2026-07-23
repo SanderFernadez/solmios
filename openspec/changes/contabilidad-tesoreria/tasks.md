@@ -124,14 +124,14 @@
 - [x] 5.4 Tests: comparación correcta; señala sobre-ejecución; incluye categorías con gasto sin presupuesto
 - **Aceptación:** ✅ presupuesto vs real por categoría; flag de sobre-ejecución.
 
-### TES-6 — Frontend tesorería  ⟵ dep: TES-1..5
-- [ ] 6.1 `services/Treasury.service.ts` + tipos
-- [ ] 6.2 `pages/tesoreria/dashboard.vue` (liquidez + gráfico de flujo de caja)
-- [ ] 6.3 `pages/tesoreria/bancos.vue` (cuentas + import CSV + conciliación)
-- [ ] 6.4 `pages/tesoreria/cuentas.vue` (AR / AP con aging, tabs)
-- [ ] 6.5 `pages/tesoreria/presupuesto.vue` (presupuesto vs real)
-- [ ] 6.6 Rutas + menú (sección Tesorería) gateadas por permiso + entitlement
-- **Aceptación:** `vue-tsc -b` limpio; pantallas con datos reales; menú gateado.
+### TES-6 — Frontend tesorería  ✅ HECHO ⟵ dep: TES-1..5
+- [x] 6.1 `services/Treasury.service.ts` (cliente completo: liquidez, proveedores, bancos, presupuesto)
+- [x] 6.2 `pages/tesoreria/dashboard.vue` (liquidez: KPIs entradas/salidas/AR/AP + tabla de flujo de caja)
+- [x] 6.3 `pages/tesoreria/bancos.vue` (cuentas + import por pegado CSV + conciliación)
+- [x] 6.4 `pages/tesoreria/cuentas.vue` (AR / AP con aging, tabs)
+- [x] 6.5 `pages/tesoreria/presupuesto.vue` (presupuesto vs real + flag de excedido)
+- [x] 6.6 4 rutas `/panel/tesoreria/*` (requiresHotelAdmin) + sección de menú + module-map (treasury)
+- **Aceptación:** ✅ `vue-tsc -b` limpio; `bun run build` OK (4 chunks); menú gateado por permiso + entitlement.
 
 ---
 

@@ -276,6 +276,11 @@ const router = createRouter({
         { path: 'contabilidad/libro-diario', name: 'accounting-journal', component: () => import('@/pages/contabilidad/libro-diario.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'contabilidad/mayor', name: 'accounting-ledger', component: () => import('@/pages/contabilidad/mayor.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'contabilidad/reportes', name: 'accounting-reports', component: () => import('@/pages/contabilidad/reportes.vue'), meta: { requiresHotelAdmin: true } },
+        // Tesorería (TES-6) — liquidez, bancos, AR/AP, presupuesto.
+        { path: 'tesoreria/dashboard', name: 'treasury-dashboard', component: () => import('@/pages/tesoreria/dashboard.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'tesoreria/bancos', name: 'treasury-banks', component: () => import('@/pages/tesoreria/bancos.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'tesoreria/cuentas', name: 'treasury-accounts', component: () => import('@/pages/tesoreria/cuentas.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'tesoreria/presupuesto', name: 'treasury-budget', component: () => import('@/pages/tesoreria/presupuesto.vue'), meta: { requiresHotelAdmin: true } },
         {
           path: 'operaciones/limpieza',
           name: 'housekeeping',
