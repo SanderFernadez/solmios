@@ -1,17 +1,23 @@
-// restaurant/service.ts — Facade del módulo POS de restaurante. Orquesta; la lógica que crece va a
+// restaurant/service.ts — Facade del módulo POS de restaurante. Orquesta; la lógica que crece vive en
 // usecases/. Depende de RepositoryAdapter, NO del ORM directo. NO importa de otros módulos (eso va por
-// conectores). RES-0: CRUD de estaciones (pantallas KDS configurables). Sprints siguientes agregan
-// carta, mesas, comandas, KDS y cobro. Ver openspec/changes/restaurante-pos.
+// conectores). RES-0: estaciones (inline). RES-1: carta (categorías + ítems, usecases). RES-2: mesas
+// (usecases). Sprints siguientes agregan comandas, KDS y cobro. Ver openspec/changes/restaurante-pos.
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
-import type { StationDTO, CurrentUser } from './types'
+import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, CurrentUser } from './types'
 import type { RestaurantSockets } from './sockets'
+import * as categoriesCrud from './usecases/categories-crud'
+import * as itemsCrud from './usecases/items-crud'
+import * as tablesCrud from './usecases/tables-crud'
 
 export class RestaurantService {
   private sockets: RestaurantSockets = {}
 
   constructor(
     private readonly stations: RepositoryAdapter<StationDTO>,
+    private readonly categories: RepositoryAdapter<CategoryDTO>,
+    private readonly items: RepositoryAdapter<MenuItemDTO>,
+    private readonly tables: RepositoryAdapter<TableDTO>,
     private readonly userRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly auth: Auth,
@@ -34,6 +40,16 @@ export class RestaurantService {
     const h = user.hotelId || ''
     if (!h) throw new ValidationError('Sin hotel asignado')
     return h
+  }
+
+  private catDeps(): categoriesCrud.CategoriesCrudDeps {
+    return { categories: this.categories, items: this.items, stations: this.stations, userRepo: this.userRepo, auth: this.auth }
+  }
+  private itemDeps(): itemsCrud.ItemsCrudDeps {
+    return { items: this.items, categories: this.categories, stations: this.stations, userRepo: this.userRepo, auth: this.auth }
+  }
+  private tableDeps(): tablesCrud.TablesCrudDeps {
+    return { tables: this.tables, userRepo: this.userRepo, auth: this.auth }
   }
 
   // ─── Estaciones (RES-0) — pantallas KDS configurables por hotel ───
@@ -77,9 +93,30 @@ export class RestaurantService {
     if (!existing) throw new NotFoundError('Estación no encontrada')
     const me = await this.userRepo.findById(user.id)
     this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    // No hay integridad dura: las categorías/ítems que la referencian caen al fallback de ruteo
-    // (1ª estación activa / "Sin estación"), y las líneas ya emitidas guardan stationName snapshot.
+    // Las categorías/ítems que la referencian caen al fallback de ruteo (1ª estación activa / "Sin estación").
     const deleted = await this.stations.delete(id)
     if (!deleted) throw new NotFoundError('Estación no encontrada')
   }
+
+  // ─── Carta: categorías (RES-1) — delegan a usecases/categories-crud ───
+  listCategories(user: CurrentUser) { return categoriesCrud.listCategories(this.catDeps(), user) }
+  getCategory(id: string, user: CurrentUser) { return categoriesCrud.getCategory(this.catDeps(), id, user) }
+  createCategory(dto: categoriesCrud.CreateCategoryInput, user: CurrentUser) { return categoriesCrud.createCategory(this.catDeps(), dto, user) }
+  updateCategory(id: string, dto: categoriesCrud.UpdateCategoryInput, user: CurrentUser) { return categoriesCrud.updateCategory(this.catDeps(), id, dto, user) }
+  deleteCategory(id: string, user: CurrentUser) { return categoriesCrud.deleteCategory(this.catDeps(), id, user) }
+
+  // ─── Carta: ítems (RES-1) — delegan a usecases/items-crud ───
+  listItems(categoryId: string | undefined, user: CurrentUser) { return itemsCrud.listItems(this.itemDeps(), categoryId, user) }
+  getItem(id: string, user: CurrentUser) { return itemsCrud.getItem(this.itemDeps(), id, user) }
+  createItem(dto: itemsCrud.CreateItemInput, user: CurrentUser) { return itemsCrud.createItem(this.itemDeps(), dto, user) }
+  updateItem(id: string, dto: itemsCrud.UpdateItemInput, user: CurrentUser) { return itemsCrud.updateItem(this.itemDeps(), id, dto, user) }
+  setItemAvailability(id: string, available: number | undefined, user: CurrentUser) { return itemsCrud.setAvailability(this.itemDeps(), id, available, user) }
+  deleteItem(id: string, user: CurrentUser) { return itemsCrud.deleteItem(this.itemDeps(), id, user) }
+
+  // ─── Mesas (RES-2) — delegan a usecases/tables-crud ───
+  listTables(user: CurrentUser) { return tablesCrud.listTables(this.tableDeps(), user) }
+  getTable(id: string, user: CurrentUser) { return tablesCrud.getTable(this.tableDeps(), id, user) }
+  createTable(dto: tablesCrud.CreateTableInput, user: CurrentUser) { return tablesCrud.createTable(this.tableDeps(), dto, user) }
+  updateTable(id: string, dto: tablesCrud.UpdateTableInput, user: CurrentUser) { return tablesCrud.updateTable(this.tableDeps(), id, dto, user) }
+  deleteTable(id: string, user: CurrentUser) { return tablesCrud.deleteTable(this.tableDeps(), id, user) }
 }

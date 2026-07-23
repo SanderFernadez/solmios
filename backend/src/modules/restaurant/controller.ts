@@ -3,7 +3,12 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from '../../shared/validators/validate-body'
 import type { RestaurantService } from './service'
-import { CreateStationSchema, UpdateStationSchema } from './validators/schema'
+import {
+  CreateStationSchema, UpdateStationSchema,
+  CreateCategorySchema, UpdateCategorySchema,
+  CreateItemSchema, UpdateItemSchema, AvailabilitySchema,
+  CreateTableSchema, UpdateTableSchema,
+} from './validators/schema'
 
 export class RestaurantController {
   constructor(
@@ -41,6 +46,94 @@ export class RestaurantController {
   async destroyStation(req: HttpRequest) {
     this.logger.info('DELETE /restaurant/stations/:id', { id: req.params.id })
     await this.service.deleteStation(req.params.id, req.user as any)
+    return { status: 204, body: null }
+  }
+
+  // ─── Carta: categorías (RES-1) ───
+  async indexCategories(req: HttpRequest) {
+    this.logger.info('GET /restaurant/categories')
+    return { status: 200, body: await this.service.listCategories(req.user as any) }
+  }
+  async showCategory(req: HttpRequest) {
+    const item = await this.service.getCategory(req.params.id, req.user as any)
+    return { status: 200, body: item }
+  }
+  async storeCategory(req: HttpRequest) {
+    this.logger.info('POST /restaurant/categories')
+    const data = validateSchema(CreateCategorySchema, req.body)
+    const item = await this.service.createCategory(data as any, req.user as any)
+    return { status: 201, body: item }
+  }
+  async updateCategory(req: HttpRequest) {
+    this.logger.info('PUT /restaurant/categories/:id', { id: req.params.id })
+    const data = validateSchema(UpdateCategorySchema, req.body)
+    const item = await this.service.updateCategory(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+  async destroyCategory(req: HttpRequest) {
+    this.logger.info('DELETE /restaurant/categories/:id', { id: req.params.id })
+    await this.service.deleteCategory(req.params.id, req.user as any)
+    return { status: 204, body: null }
+  }
+
+  // ─── Carta: ítems (RES-1) ───
+  async indexItems(req: HttpRequest) {
+    this.logger.info('GET /restaurant/menu-items')
+    const categoryId = (req.query as any)?.categoryId as string | undefined
+    return { status: 200, body: await this.service.listItems(categoryId, req.user as any) }
+  }
+  async showItem(req: HttpRequest) {
+    const item = await this.service.getItem(req.params.id, req.user as any)
+    return { status: 200, body: item }
+  }
+  async storeItem(req: HttpRequest) {
+    this.logger.info('POST /restaurant/menu-items')
+    const data = validateSchema(CreateItemSchema, req.body)
+    const item = await this.service.createItem(data as any, req.user as any)
+    return { status: 201, body: item }
+  }
+  async updateItem(req: HttpRequest) {
+    this.logger.info('PUT /restaurant/menu-items/:id', { id: req.params.id })
+    const data = validateSchema(UpdateItemSchema, req.body)
+    const item = await this.service.updateItem(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+  async setItemAvailability(req: HttpRequest) {
+    this.logger.info('PUT /restaurant/menu-items/:id/availability', { id: req.params.id })
+    const data = validateSchema(AvailabilitySchema, req.body) as any
+    const item = await this.service.setItemAvailability(req.params.id, data.available, req.user as any)
+    return { status: 200, body: item }
+  }
+  async destroyItem(req: HttpRequest) {
+    this.logger.info('DELETE /restaurant/menu-items/:id', { id: req.params.id })
+    await this.service.deleteItem(req.params.id, req.user as any)
+    return { status: 204, body: null }
+  }
+
+  // ─── Mesas (RES-2) ───
+  async indexTables(req: HttpRequest) {
+    this.logger.info('GET /restaurant/tables')
+    return { status: 200, body: await this.service.listTables(req.user as any) }
+  }
+  async showTable(req: HttpRequest) {
+    const item = await this.service.getTable(req.params.id, req.user as any)
+    return { status: 200, body: item }
+  }
+  async storeTable(req: HttpRequest) {
+    this.logger.info('POST /restaurant/tables')
+    const data = validateSchema(CreateTableSchema, req.body)
+    const item = await this.service.createTable(data as any, req.user as any)
+    return { status: 201, body: item }
+  }
+  async updateTable(req: HttpRequest) {
+    this.logger.info('PUT /restaurant/tables/:id', { id: req.params.id })
+    const data = validateSchema(UpdateTableSchema, req.body)
+    const item = await this.service.updateTable(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+  async destroyTable(req: HttpRequest) {
+    this.logger.info('DELETE /restaurant/tables/:id', { id: req.params.id })
+    await this.service.deleteTable(req.params.id, req.user as any)
     return { status: 204, body: null }
   }
 }
