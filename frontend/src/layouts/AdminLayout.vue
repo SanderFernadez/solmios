@@ -280,6 +280,15 @@ const nonavItems = [
     ]
   },
   {
+    label: 'Contabilidad', icon: ICONS.wallet, roles: ['hotel_admin'],
+    children: [
+      { label: 'Plan de Cuentas', path: '/panel/contabilidad/plan-cuentas', roles: ['hotel_admin'] },
+      { label: 'Libro Diario', path: '/panel/contabilidad/libro-diario', roles: ['hotel_admin'] },
+      { label: 'Libro Mayor', path: '/panel/contabilidad/mayor', roles: ['hotel_admin'] },
+      { label: 'Reportes', path: '/panel/contabilidad/reportes', roles: ['hotel_admin'] },
+    ]
+  },
+  {
     label: 'Reseñas', icon: ICONS.star, path: '/panel/resenas', roles: ['hotel_admin', 'receptionist'] },
   {
     label: 'IA', icon: ICONS.sparkles, roles: ['hotel_admin', 'receptionist'],

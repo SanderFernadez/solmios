@@ -28,7 +28,7 @@ sprints:
   ctb-4-asientos-auto:      { title: "Asientos automáticos (conectores)", status: done, priority: high, phase: implementation, dep: [ctb-2, ctb-3] }  # payments/folios/gastos ✅; facturas(nota crédito)/cash diferidos
   ctb-5-mayor-comprobacion: { title: "Libro mayor + balance de comprobación", status: done, priority: high, phase: implementation, dep: ctb-4 }
   ctb-6-estados:            { title: "Estados financieros (P&L + Balance general)", status: done, priority: high, phase: implementation, dep: ctb-5 }  # accrual ✅; cash basis diferido
-  ctb-7-frontend:           { title: "Frontend contabilidad", status: pending, priority: medium, phase: implementation, dep: ctb-6 }
+  ctb-7-frontend:           { title: "Frontend contabilidad", status: done, priority: medium, phase: implementation, dep: ctb-6 }
   # Fase 2 — Tesorería
   tes-0-schema-base:        { title: "Módulo treasury base + schema + wiring", status: done, priority: high, phase: infra }
   tes-1-bancos:             { title: "Cuentas bancarias + conciliación", status: done, priority: high, phase: implementation, dep: tes-0 }

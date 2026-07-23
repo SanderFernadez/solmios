@@ -50,6 +50,9 @@ export const ROUTE_TO_KEY: Record<string, string> = {
   '/panel/config/pasarelas': 'settings.gateways',
   '/panel/config/dispositivos': 'settings.devices',
   '/panel/push-tokens': 'settings.push',
+  // Contabilidad y tesorería (entitlement de plan: claves top-level accounting/treasury).
+  '/panel/contabilidad': 'accounting',
+  '/panel/tesoreria': 'treasury',
 }
 
 /**
@@ -136,6 +139,8 @@ export const ROUTE_TO_PERMISSION: Record<string, string> = {
   '/panel/config/habitaciones': 'rooms',
   '/panel/config/cerraduras': 'ttlock',
   '/panel/config': 'settings',       // base, tarifas, promociones, mensajería, pasarelas, dispositivos
+  '/panel/contabilidad': 'accounting',
+  '/panel/tesoreria': 'treasury',
 }
 
 /** MÓDULO de permiso para una ruta, por prefijo más largo. undefined = CORE (no gateada por permiso). */

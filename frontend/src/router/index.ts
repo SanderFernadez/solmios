@@ -271,6 +271,11 @@ const router = createRouter({
           component: () => import('@/pages/reports/index.vue'),
           meta: { requiresHotelAdmin: true },
         },
+        // Contabilidad (CTB-7) — plan de cuentas, libro diario, mayor, reportes.
+        { path: 'contabilidad/plan-cuentas', name: 'accounting-accounts', component: () => import('@/pages/contabilidad/plan-cuentas.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'contabilidad/libro-diario', name: 'accounting-journal', component: () => import('@/pages/contabilidad/libro-diario.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'contabilidad/mayor', name: 'accounting-ledger', component: () => import('@/pages/contabilidad/mayor.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'contabilidad/reportes', name: 'accounting-reports', component: () => import('@/pages/contabilidad/reportes.vue'), meta: { requiresHotelAdmin: true } },
         {
           path: 'operaciones/limpieza',
           name: 'housekeeping',

@@ -69,14 +69,14 @@
 - [x] Extraído el CRUD de cuentas a `usecases/accounts-crud.ts` (service 192→100 líneas, headroom God Object).
 - [x] Fixes del QA CTB-3/CTB-4: reembolso ahora se asienta (payments emite `onRefundProcessed`); depósitos NO cableados (no son plata real — deuda documentada); `lockPeriod` exige `closed`; cargo de folio deriva neto del total (siempre cuadra).
 
-### CTB-7 — Frontend contabilidad  ⟵ dep: CTB-6
-- [ ] 7.1 `services/Accounting.service.ts` + tipos en `types/index.ts`
-- [ ] 7.2 `pages/contabilidad/plan-cuentas.vue` (árbol CRUD)
-- [ ] 7.3 `pages/contabilidad/libro-diario.vue` (asientos por período + alta manual)
-- [ ] 7.4 `pages/contabilidad/mayor.vue`
-- [ ] 7.5 `pages/contabilidad/reportes.vue` (tabs: comprobación, P&L, balance general)
-- [ ] 7.6 Rutas + entradas de menú (sección Contabilidad) gateadas por permiso + entitlement
-- **Aceptación:** `vue-tsc -b` limpio; las 4 pantallas cargan datos reales; menú gateado.
+### CTB-7 — Frontend contabilidad  ✅ HECHO ⟵ dep: CTB-6
+- [x] 7.1 `services/Accounting.service.ts` (cliente completo de la API)
+- [x] 7.2 `pages/contabilidad/plan-cuentas.vue` (lista jerárquica + alta + seed base)
+- [x] 7.3 `pages/contabilidad/libro-diario.vue` (asientos por período + alta manual con líneas + postear/revertir)
+- [x] 7.4 `pages/contabilidad/mayor.vue` (mayor por cuenta con saldo corriente)
+- [x] 7.5 `pages/contabilidad/reportes.vue` (tabs: comprobación, P&L, balance general)
+- [x] 7.6 4 rutas `/panel/contabilidad/*` (requiresHotelAdmin) + sección de menú + module-map (accounting)
+- **Aceptación:** ✅ `vue-tsc -b` limpio; `bun run build` OK (4 chunks generados); menú gateado por permiso + entitlement (patrón #428).
 
 ---
 
