@@ -36,14 +36,22 @@ export async function applyMovement(deps: MovementDeps, input: ApplyMovementInpu
   const qty = Number(input.quantity)
   if (!Number.isFinite(qty) || qty < 0) throw new ValidationError('La cantidad debe ser ≥ 0')
 
+  // QA-M1: validar unitCost ANTES de usarlo (applyExternalMovement entra directo desde conectores, sin
+  // validateSchema). Distinguir "no informado" (undefined) de "0" para el promedio (QA-M2).
+  const hasCost = input.unitCost !== undefined && input.unitCost !== null
+  const unitCost = Number(input.unitCost) || 0
+  if (hasCost && (!Number.isFinite(unitCost) || unitCost < 0)) throw new ValidationError('El costo unitario debe ser un número ≥ 0')
+
   const item = await deps.items.findById(input.itemId)
   if (!item) throw new NotFoundError('Insumo no encontrado')
   const me = await deps.userRepo.findById(user.id)
-  deps.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
+  const ownerHotel = (me as any)?.hotelId ?? ''
+  deps.auth.assertOwnership(item.hotelId, ownerHotel, user.role, 'super_admin')
 
-  // Idempotencia: mismo (source,sourceId) → devolver el ítem tal cual (ya se aplicó).
+  // Idempotencia (fast-path): mismo (source,sourceId) → devolver el ítem tal cual (ya se aplicó).
+  // La garantía dura está en el UNIQUE INDEX (hotelId,source,sourceId): el create de abajo la respeta.
   if (input.source && input.sourceId) {
-    const dup = await deps.movements.findMany({ hotelId, source: input.source, sourceId: input.sourceId, itemId: input.itemId })
+    const dup = await deps.movements.findMany({ hotelId: item.hotelId, source: input.source, sourceId: input.sourceId })
     if (dup.length > 0) return item
   }
 
@@ -54,10 +62,12 @@ export async function applyMovement(deps: MovementDeps, input: ApplyMovementInpu
 
   if (input.type === 'in') {
     newStock = round4(cur + qty)
-    // Costo promedio ponderado: solo si viene unitCost (>0) y el nuevo stock es positivo.
-    const unitCost = Number(input.unitCost) || 0
-    if (unitCost > 0 && newStock > 0) {
-      newAvg = round4((cur * curAvg + qty * unitCost) / newStock)
+    // Costo promedio ponderado. QA-A1: el tramo NEGATIVO del stock no aporta costo (base = max(cur,0)),
+    // si no, un stock oversold contamina el promedio (podía dar avgCost negativo o inflado). Con cur<=0
+    // colapsa a newAvg = unitCost (base de costo fresca), que es lo correcto. Solo si vino unitCost (M2).
+    if (hasCost && qty > 0) {
+      const base = cur > 0 ? cur : 0
+      newAvg = round4((base * curAvg + qty * unitCost) / (base + qty))
     }
   } else if (input.type === 'out') {
     // Se permite quedar en negativo (no bloqueamos una venta por descuadre de stock); queda como señal.
@@ -69,17 +79,27 @@ export async function applyMovement(deps: MovementDeps, input: ApplyMovementInpu
     throw new ValidationError(`Tipo de movimiento inválido: ${input.type}`)
   }
 
-  await deps.movements.create({
-    hotelId,
-    itemId: input.itemId,
-    type: input.type,
-    quantity: round4(qty),
-    unitCost: round4(Number(input.unitCost) || 0),
-    reason: input.reason,
-    source: input.source || 'manual',
-    sourceId: input.sourceId,
-    balanceAfter: newStock,
-  } as Omit<StockMovementDTO, 'id'>)
+  // QA-A3: el create es el gate de idempotencia. El UNIQUE INDEX (hotelId,source,sourceId) hace que una
+  // carrera con el mismo sourceId falle acá; lo tratamos como no-op idempotente (releemos y devolvemos).
+  try {
+    await deps.movements.create({
+      hotelId: item.hotelId,       // QA-BAJO: hotelId del recurso (DB), no del JWT
+      itemId: input.itemId,
+      type: input.type,
+      quantity: round4(qty),
+      unitCost: round4(unitCost),
+      reason: input.reason,
+      source: input.source || 'manual',
+      sourceId: input.sourceId,
+      balanceAfter: newStock,
+    } as Omit<StockMovementDTO, 'id'>)
+  } catch (e: unknown) {
+    if (input.source && input.sourceId && isUniqueViolation(e)) {
+      const fresh = await deps.items.findById(input.itemId)
+      return (fresh as InventoryItemDTO) ?? item
+    }
+    throw e
+  }
 
   const updated = await deps.items.update(input.itemId, {
     currentStock: newStock,
@@ -87,6 +107,12 @@ export async function applyMovement(deps: MovementDeps, input: ApplyMovementInpu
   } as Partial<Omit<InventoryItemDTO, 'id'>>)
   if (!updated) throw new NotFoundError('Insumo no encontrado')
   return updated
+}
+
+/** Detecta violación de unique constraint (SQLite y Postgres) para tratar la carrera como idempotente. */
+function isUniqueViolation(e: unknown): boolean {
+  const msg = (e instanceof Error ? e.message : String(e)).toLowerCase()
+  return msg.includes('unique') || msg.includes('duplicate') || msg.includes('23505')
 }
 
 /** Historial de movimientos de un ítem (más reciente primero). Valida ownership. */

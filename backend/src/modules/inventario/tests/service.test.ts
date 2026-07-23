@@ -144,6 +144,42 @@ describe('InventarioService — ledger de stock (INV-2)', () => {
     expect(v.items).toBe(2)
   })
 
+  it('QA-A1: entrada tras stock NEGATIVO no corrompe el costo (base = max(cur,0))', async () => {
+    // oversold: stock -5, avg 10. Entra 10 @ $2. El tramo negativo NO aporta costo → avg = 2 (no -6).
+    const items = [{ id: 'i1', hotelId: 'h1', name: 'Ron', currentStock: -5, avgCost: 10 }]
+    const s = svc(items, [])
+    const it = await s.moveStock('i1', { type: 'in', quantity: 10, unitCost: 2 }, user)
+    expect(it.currentStock).toBe(5)
+    expect(it.avgCost).toBe(2)   // antes del fix daba -6 (costo negativo)
+  })
+
+  it('QA-A1b: entrada tras negativo con avg 0 no sobrevalúa (avg = unitCost)', async () => {
+    const items = [{ id: 'i1', hotelId: 'h1', name: 'Ron', currentStock: -5, avgCost: 0 }]
+    const s = svc(items, [])
+    const it = await s.moveStock('i1', { type: 'in', quantity: 10, unitCost: 2 }, user)
+    expect(it.avgCost).toBe(2)   // antes del fix daba 4 (2× sobrevaluado)
+  })
+
+  it('QA-M1: unitCost no finito o negativo se rechaza', async () => {
+    const items = [{ id: 'i1', hotelId: 'h1', name: 'Ron', currentStock: 0, avgCost: 0 }]
+    const s = svc(items, [])
+    await expect(s.moveStock('i1', { type: 'in', quantity: 1, unitCost: Infinity }, user)).rejects.toThrow()
+    await expect(s.moveStock('i1', { type: 'in', quantity: 1, unitCost: -3 }, user)).rejects.toThrow()
+  })
+
+  it('QA-M2: costo 0 explícito DILUYE el promedio; sin costo (undefined) NO lo toca', async () => {
+    const items = [{ id: 'i1', hotelId: 'h1', name: 'Ron', currentStock: 10, avgCost: 5 }]
+    const s = svc(items, [])
+    // sin unitCost → avg intacto
+    let it = await s.moveStock('i1', { type: 'in', quantity: 10 }, user)
+    expect(it.avgCost).toBe(5)
+    expect(it.currentStock).toBe(20)
+    // costo 0 explícito (cortesía/muestra) → diluye: (20*5 + 10*0)/30 = 3.3333
+    it = await s.moveStock('i1', { type: 'in', quantity: 10, unitCost: 0 }, user)
+    expect(it.currentStock).toBe(30)
+    expect(it.avgCost).toBeCloseTo(3.3333, 3)
+  })
+
   it('historial de movimientos ordenado (más reciente primero)', async () => {
     const items = [{ id: 'i1', hotelId: 'h1', name: 'Ron', currentStock: 0, avgCost: 0 }]
     const movStore: any[] = []

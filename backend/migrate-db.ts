@@ -122,6 +122,16 @@ async function createTablesBlock1(): Promise<void> {
   // IF NOT EXISTS lo saltea sin error.
   await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_configuration_hotel_key ON configuration(hotelId, key)`)
 
+  // Inventario (INV-2, QA-A3): garantía DURA de idempotencia del ledger de stock. El dedup en JS es
+  // check-then-create (no atómico): dos conectores concurrentes con el mismo sourceId (recepción de
+  // compra / venta POS reintentando) aplicarían el movimiento dos veces → stock doble. El UNIQUE
+  // (hotelId, source, sourceId) hace fallar la carrera; applyMovement captura el conflicto como no-op.
+  // NULLs distintos en SQL → los movimientos manuales sin sourceId NO chocan (pueden repetirse). La
+  // tabla la crea ormMigrate (RUN_MIGRATE) antes; si no existe aún, se ignora el error (idempotente).
+  try {
+    await exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_mov_source ON stock_movements(hotelId, source, sourceId)`)
+  } catch { /* la tabla se crea con RUN_MIGRATE; el índice se aplica en la próxima corrida */ }
+
   await exec(`CREATE TABLE IF NOT EXISTS email_queue (
     id TEXT PRIMARY KEY, hotelId TEXT NOT NULL, recipient TEXT NOT NULL, subject TEXT NOT NULL,
     html TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
