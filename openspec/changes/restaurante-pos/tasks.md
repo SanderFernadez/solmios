@@ -36,14 +36,15 @@
 - [x] 2.4 Tests: alta/edición, status inválido rechazado, IDOR
 - **Aceptación:** ✅ salón operable (CRUD); la consistencia con comandas se cierra en RES-3.
 
-## RES-3 — Comandas (órdenes + líneas)  ⟵ dep: RES-1, RES-2
-- [ ] 3.1 `usecases` abrir comanda (dine_in/room_service/takeaway) con validación de `tableId`/`reservationId` por tipo
-- [ ] 3.2 Agregar/editar/borrar líneas con snapshot de name/unitPrice/station; `quantity`≥1; recálculo server de subtotal/tax/total
-- [ ] 3.3 `number` correlativo por hotel (counter atómico en `configuration`)
-- [ ] 3.4 `POST /:id/send` (open→sent); rechazar líneas en `charged/paid/cancelled`; `cancel` libera mesa (`restaurant:delete`)
-- [ ] 3.5 `waiterId` = users.id; nombre resuelto por `/usuarios` (regla del proyecto)
-- [ ] 3.6 Tests: apertura por tipo, doble-comanda en mesa rechazada, snapshot inmutable, totales del server, cancel libera mesa
-- **Aceptación:** ciclo de comanda hasta `sent`; totales confiables; multi-tenant con assertOwnership.
+## RES-3 — Comandas (órdenes + líneas)  ✅ HECHO (commit f279cf5) ⟵ dep: RES-1, RES-2
+- [x] 3.1 Abrir comanda (dine_in/room_service/takeaway) con validación de `tableId`/`reservationId` por tipo (`usecases/orders.ts`)
+- [x] 3.2 Agregar/editar/borrar líneas con snapshot name/unitPrice/**taxRate**/estación; `quantity`≥1; recálculo server subtotal/tax/total (`usecases/order-lines.ts` + `order-totals.ts`)
+- [x] 3.3 `number` correlativo por hotel (`usecases/order-number.ts`, counter en `configuration` — misma convención que invoice-number)
+- [x] 3.4 `POST /:id/send` (open→sent, emite `onOrderSent`); líneas bloqueadas en `charged/paid/cancelled`; `cancel` libera mesa (`restaurant:delete`)
+- [x] 3.5 `waiterId` = users.id (por defecto quien abre); nombre se resuelve por `/usuarios` en el frontend (RES-7)
+- [x] 3.6 Tests (38 totales): apertura por tipo, doble-comanda rechazada, snapshot, totales+impuesto, cancel libera mesa, IDOR mutaciones, updateLine/removeLine recompute
+- [x] 3.7 Resolución de estación por línea (item→categoría→1ª activa) — snapshot `stationId`/`stationName`
+- **Aceptación:** ✅ ciclo hasta `sent`; totales confiables (impuesto de config, no hardcode); multi-tenant con assertOwnership; QA adversarial sin críticos/altos.
 
 ## RES-4 — KDS (pantalla de cocina, por estación)  ⟵ dep: RES-3
 - [ ] 4.1 `GET /kds?station=<stationId>` — líneas activas de ESA pantalla, FIFO por hotel (cada estación su cola)
