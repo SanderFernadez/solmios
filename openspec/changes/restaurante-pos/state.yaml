@@ -28,7 +28,7 @@ sprints:
   res-5-cuenta-cobro:  { title: "Cuenta + cobro (cargo a folio | pago directo)", status: done, priority: high, phase: implementation, dep: res-3 }   # commit fb33189 · QA: A1 alto fixeado (cancelled) + M2/M3 · deuda M1 no-atomicidad documentada · 48 tests
   res-6-contabilidad:  { title: "Contabilidad del POS (reconocimiento de ingreso)", status: done, priority: high, phase: implementation, dep: res-5 }   # commit 4500a68 · QA: sin doble conteo (Clientes netea a 0) · precondición re-seed en RES-8
   res-7-frontend:      { title: "Frontend POS", status: done, priority: high, phase: implementation, dep: [res-1, res-2, res-3, res-4, res-5, res-6] }
-  res-8-gate:          { title: "Permisos + entitlement + gate final + deploy", status: pending, priority: critical, phase: testing, dep: res-7 }
+  res-8-gate:          { title: "Permisos + entitlement + gate final + deploy", status: done, priority: critical, phase: testing, dep: res-7 }
 
 rollback: |
   Módulo aditivo y aislado: desregistrar RestaurantModule + 2-3 conectores en composition-root.ts y dropear

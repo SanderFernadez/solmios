@@ -92,13 +92,13 @@
 - **Deuda (perf, no correctitud)**: `salon.vue` trae `listOrders()` sin filtro de status (todo el histórico) y filtra vivos en el cliente. Correcto HOY porque el backend NO pagina (`findMany` sin `limit`). Si se agrega paginación, mover a un filtro server-side `live=1`. Sin ese filtro el payload crece O(n) con el histórico de comandas.
 - **Aceptación:** flujo completo usable desde el panel; español; sin `<a>` internos; nombres por `/usuarios`.
 
-## RES-8 — Permisos + entitlement + gate final  ⟵ dep: RES-7
-- [ ] 8.1 Verificar `moduleGuard('restaurant')` en todas las rutas; permiso `restaurant:*` en la matriz de roles
-- [ ] 8.2 Entitlement: `restaurant` en `plans.modules` del/los plan(es) que lo incluyan; toggle admin ON/OFF probado
-- [ ] 8.3 Gate: `arckode analyze` 0 violaciones · `bun test` backend · `bun run typecheck`+`build` frontend
-- [ ] 8.4 Deploy: RUN_MIGRATE (6 tablas + columna taxRate) + `UPDATE roles.permissions` (3 pasos, ver memoria) +
-      **re-seed del plan** (`POST /api/accounting/seed` → agrega 4.2.02/2.1.05 para el asiento del POS, QA RES-6) + verificación en vivo
-- [ ] 8.5 Actualizar `mapa-modulos.html` (nodo restaurante + edges a folios/payments/accounting) + memoria
+## RES-8 — Permisos + entitlement + gate final  ⟵ dep: RES-7  ✅ DESPLEGADO en prod 2026-07-23
+- [x] 8.1 `moduleGuard('restaurant')` en todas las rutas (index.ts) + `restaurant:*` en roles: prod `UPDATE roles.permissions` (5 hotel_admin CRUD + 5 receptionist view/create/edit).
+- [x] 8.2 Entitlement: `restaurant` agregado a `plans.modules` de Professional y Starter (Enterprise `[]`=todos). Hotel demo (Boutique Palma) usa Professional → módulo visible.
+- [x] 8.3 Gate: `arckode analyze` ✅ · `bun test` restaurant 57 ✅ · frontend `vue-tsc -b` + build ✅.
+- [x] 8.4 Deploy prod: push main → pull → `bun install` → RUN_MIGRATE (6 tablas + col `taxrate`, EXIT=0, verificadas) → restart backend (active) → `bun --bun vite build` (✓) → `UPDATE roles.permissions` → re-seed plan (`POST /api/accounting/seed` created:2 total:38 → 4.2.02/2.1.05). Smoke E2E en vivo: order 2×250 → subtotal 500 / tax 90 (18% config) / total 590 ✅; KDS mostró 1 ticket tras enviar ✅; datos de prueba truncados.
+- [x] 8.5 `mapa-modulos.html`: nodo Restaurante + edges a folios/payments/contabilidad (commit f8d8686). Memoria pendiente.
+- **NOTA permisos**: en prod di a receptionist `restaurant:view/create/edit` (operable: tomar/enviar/cobrar). `permissions.ts` DEFAULT_ROLE_PERMISSIONS seedea receptionist con solo `view+create` para hoteles NUEVOS → decidir si alinear el código (recepción no podría enviar a cocina ni cobrar con view+create).
 - **Aceptación:** desplegado, controlable desde admin, permisos creables, verificado end-to-end en prod.
 
 ---
