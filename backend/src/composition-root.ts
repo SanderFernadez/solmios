@@ -114,6 +114,7 @@ import { PaymentsModule } from './modules/payments'
 import { AccountingModule } from './modules/accounting'
 import { TreasuryModule } from './modules/treasury'
 import { RestaurantModule } from './modules/restaurant'
+import { InventarioModule } from './modules/inventario'
 import { EmpleadosModule } from './modules/empleados'
 import { ReclutamientoModule } from './modules/reclutamiento'
 import { ReembolsosModule } from './modules/reembolsos'
@@ -166,6 +167,9 @@ const mods = [
   // POS de restaurante (RES-0): estaciones/KDS configurables, carta, mesas, comandas, cuenta. Los conectores
   // a folios/payments/accounting se enganchan en RES-5/RES-6. Ver openspec restaurante-pos.
   RestaurantModule(),
+  // Inventario de insumos (INV-0): comida/bebida/bar/suministro, stock, costo promedio, ledger de
+  // movimientos. Los conectores (recepción de compra suma stock, venta del POS resta) se enganchan luego.
+  InventarioModule(),
   // ANTES que PaymentRequestsModule: ambos registran una ruta bajo /api/stripe/webhook/.
   // payment-requests usa el comodín /api/stripe/webhook/:hotelId (cobro a huéspedes);
   // subscriptions usa el literal /api/stripe/webhook/platform (el hotel pagándole a la

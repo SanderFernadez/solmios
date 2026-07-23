@@ -99,6 +99,12 @@ export const MODULE_CATALOG: ModuleMeta[] = [
   {
     key: 'restaurant', label: 'Restaurante', description: 'POS de restaurante: estaciones/KDS configurables, carta, mesas, comandas y cuenta',
   },
+  {
+    key: 'inventory', label: 'Inventario', description: 'Insumos (comida/bebida/bar/suministro): stock, costo promedio y movimientos',
+  },
+  {
+    key: 'purchasing', label: 'Compras', description: 'Requisiciones, órdenes de compra y recepción de mercancía (genera gasto)',
+  },
 ]
 
 export type ModuleState = Record<string, boolean>

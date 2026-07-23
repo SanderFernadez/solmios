@@ -29,6 +29,10 @@ export const MODULES = {
   treasury: 'Tesorería',
   /** POS de restaurante (estaciones/KDS, carta, mesas, comandas, cuenta). */
   restaurant: 'Restaurante',
+  /** Inventario de insumos (comida/bebida/bar/suministro): stock, costo, movimientos. */
+  inventory: 'Inventario',
+  /** Compras: requisiciones, órdenes de compra, recepción de mercancía. */
+  purchasing: 'Compras',
 } as const
 
 // Available actions per module
@@ -81,6 +85,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'treasury:view', 'treasury:create', 'treasury:edit', 'treasury:delete',
     // POS de restaurante: el dueño configura todo (estaciones, carta, mesas) y opera.
     'restaurant:view', 'restaurant:create', 'restaurant:edit', 'restaurant:delete',
+    // Inventario y compras: el dueño gestiona insumos, stock, requisiciones y órdenes de compra.
+    'inventory:view', 'inventory:create', 'inventory:edit', 'inventory:delete',
+    'purchasing:view', 'purchasing:create', 'purchasing:edit', 'purchasing:delete',
   ],
 
   // Receptionist — la operación del mostrador. Los permisos siguen a lo que el menú del panel le

@@ -1,0 +1,113 @@
+// inventario/usecases/movements.ts — Ledger de stock (INV-2). ÚNICA vía para mover existencias.
+// Idempotente: (source,sourceId) no se aplica dos veces (una recepción suma una vez, una venta resta una
+// vez). Valuación = costo promedio ponderado, recalculado en cada entrada con costo. `balanceAfter` deja
+// el rastro auditable. currentStock del ítem es el balance materializado.
+import type { RepositoryAdapter, Auth } from 'arckode-framework'
+import { NotFoundError, ValidationError } from 'arckode-framework'
+import type { InventoryItemDTO, StockMovementDTO, MovementType, CurrentUser } from '../types'
+
+export interface MovementDeps {
+  items: RepositoryAdapter<InventoryItemDTO>
+  movements: RepositoryAdapter<StockMovementDTO>
+  userRepo: RepositoryAdapter<any>
+  auth: Auth
+}
+
+export interface ApplyMovementInput {
+  itemId: string
+  type: MovementType
+  quantity: number
+  unitCost?: number
+  reason?: string
+  source?: string
+  sourceId?: string
+}
+
+const round2 = (n: number): number => Math.round((Number(n) || 0) * 100) / 100
+const round4 = (n: number): number => Math.round((Number(n) || 0) * 10000) / 10000
+
+/**
+ * Aplica un movimiento de stock y devuelve el ítem actualizado. Valida ownership (findById + assertOwnership
+ * inline). Idempotente por (source,sourceId): si ya existe un movimiento con esa clave, NO reaplica.
+ */
+export async function applyMovement(deps: MovementDeps, input: ApplyMovementInput, user: CurrentUser): Promise<InventoryItemDTO> {
+  const hotelId = hotelOf(user)
+  if (!input.itemId) throw new ValidationError('itemId requerido')
+  const qty = Number(input.quantity)
+  if (!Number.isFinite(qty) || qty < 0) throw new ValidationError('La cantidad debe ser ≥ 0')
+
+  const item = await deps.items.findById(input.itemId)
+  if (!item) throw new NotFoundError('Insumo no encontrado')
+  const me = await deps.userRepo.findById(user.id)
+  deps.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
+
+  // Idempotencia: mismo (source,sourceId) → devolver el ítem tal cual (ya se aplicó).
+  if (input.source && input.sourceId) {
+    const dup = await deps.movements.findMany({ hotelId, source: input.source, sourceId: input.sourceId, itemId: input.itemId })
+    if (dup.length > 0) return item
+  }
+
+  const cur = Number(item.currentStock) || 0
+  const curAvg = Number(item.avgCost) || 0
+  let newStock: number
+  let newAvg = curAvg
+
+  if (input.type === 'in') {
+    newStock = round4(cur + qty)
+    // Costo promedio ponderado: solo si viene unitCost (>0) y el nuevo stock es positivo.
+    const unitCost = Number(input.unitCost) || 0
+    if (unitCost > 0 && newStock > 0) {
+      newAvg = round4((cur * curAvg + qty * unitCost) / newStock)
+    }
+  } else if (input.type === 'out') {
+    // Se permite quedar en negativo (no bloqueamos una venta por descuadre de stock); queda como señal.
+    newStock = round4(cur - qty)
+  } else if (input.type === 'adjust') {
+    // adjust FIJA el stock al valor absoluto `quantity` (conteo físico). No toca el costo promedio.
+    newStock = round4(qty)
+  } else {
+    throw new ValidationError(`Tipo de movimiento inválido: ${input.type}`)
+  }
+
+  await deps.movements.create({
+    hotelId,
+    itemId: input.itemId,
+    type: input.type,
+    quantity: round4(qty),
+    unitCost: round4(Number(input.unitCost) || 0),
+    reason: input.reason,
+    source: input.source || 'manual',
+    sourceId: input.sourceId,
+    balanceAfter: newStock,
+  } as Omit<StockMovementDTO, 'id'>)
+
+  const updated = await deps.items.update(input.itemId, {
+    currentStock: newStock,
+    avgCost: round4(newAvg),
+  } as Partial<Omit<InventoryItemDTO, 'id'>>)
+  if (!updated) throw new NotFoundError('Insumo no encontrado')
+  return updated
+}
+
+/** Historial de movimientos de un ítem (más reciente primero). Valida ownership. */
+export async function listMovements(deps: MovementDeps, itemId: string, user: CurrentUser): Promise<{ data: StockMovementDTO[]; total: number }> {
+  const hotelId = hotelOf(user)
+  const item = await deps.items.findById(itemId)
+  if (!item) throw new NotFoundError('Insumo no encontrado')
+  const me = await deps.userRepo.findById(user.id)
+  deps.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
+  const data = (await deps.movements.findMany({ hotelId, itemId })) as StockMovementDTO[]
+  data.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+  return { data, total: data.length }
+}
+
+/** Valuación total del inventario del hotel: Σ currentStock × avgCost. */
+export function valuation(items: InventoryItemDTO[]): number {
+  return round2(items.reduce((acc, i) => acc + (Number(i.currentStock) || 0) * (Number(i.avgCost) || 0), 0))
+}
+
+function hotelOf(user: CurrentUser): string {
+  const h = user.hotelId || ''
+  if (!h) throw new ValidationError('Sin hotel asignado')
+  return h
+}
