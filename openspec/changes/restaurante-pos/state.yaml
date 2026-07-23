@@ -24,7 +24,7 @@ sprints:
   res-1-carta:         { title: "Estaciones configurables + carta / menú (ruteo categoría→estación)", status: done, priority: high, phase: implementation, dep: res-0 }   # commit 208c573 · QA-fixed (M1/M2 stationId)
   res-2-mesas:         { title: "Mesas + salón", status: done, priority: high, phase: implementation, dep: res-0 }   # commit 208c573
   res-3-comandas:      { title: "Comandas (órdenes + líneas)", status: done, priority: high, phase: implementation, dep: [res-1, res-2] }   # commit f279cf5 · QA sin críticos · 38 tests
-  res-4-kds:           { title: "KDS (pantalla de cocina)", status: pending, priority: high, phase: implementation, dep: res-3 }
+  res-4-kds:           { title: "KDS (pantalla de cocina)", status: done, priority: high, phase: implementation, dep: res-3 }
   res-5-cuenta-cobro:  { title: "Cuenta + cobro (cargo a folio | pago directo)", status: done, priority: high, phase: implementation, dep: res-3 }   # commit fb33189 · QA: A1 alto fixeado (cancelled) + M2/M3 · deuda M1 no-atomicidad documentada · 48 tests
   res-6-contabilidad:  { title: "Contabilidad del POS (reconocimiento de ingreso)", status: done, priority: high, phase: implementation, dep: res-5 }   # commit 4500a68 · QA: sin doble conteo (Clientes netea a 0) · precondición re-seed en RES-8
   res-7-frontend:      { title: "Frontend POS", status: pending, priority: high, phase: implementation, dep: [res-1, res-2, res-3, res-4, res-5, res-6] }

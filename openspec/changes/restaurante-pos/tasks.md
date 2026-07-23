@@ -47,12 +47,12 @@
 - **Aceptación:** ✅ ciclo hasta `sent`; totales confiables (impuesto de config, no hardcode); multi-tenant con assertOwnership; QA adversarial sin críticos/altos.
 
 ## RES-4 — KDS (pantalla de cocina, por estación)  ⟵ dep: RES-3
-- [ ] 4.1 `GET /kds?station=<stationId>` — líneas activas de ESA pantalla, FIFO por hotel (cada estación su cola)
-- [ ] 4.2 `PUT /kds/lines/:id` — transiciones new→preparing→ready→served (+cancelled); rechazar saltos inválidos
-- [ ] 4.3 Estado agregado de la orden recalculado al cambiar línea (ready/served)
-- [ ] 4.4 Eventos socket `order.sent`/`line.status_changed`; endpoint resiliente sin socket (polling fallback)
-- [ ] 4.5 Ruteo por `line.stationId` (snapshot); fallback "Sin estación" si el hotel no tiene ninguna
-- [ ] 4.6 Tests: cola por estación (bar vs cocina), transiciones válidas/inválidas, agregado de orden, multi-tenant
+- [x] 4.1 `GET /kds?station=<stationId>` — líneas activas de ESA pantalla, FIFO por hotel (cada estación su cola). Filtra por estado de ORDEN (solo fase cocina) además de estado de línea (QA ALTO)
+- [x] 4.2 `PUT /kds/lines/:id` — transiciones new→preparing→ready→served (+cancelled); rechazar saltos inválidos
+- [x] 4.3 Estado agregado de la orden recalculado al cambiar línea (ready/served)
+- [x] 4.4 Eventos socket `order.sent`/`line.status_changed`; endpoint resiliente sin socket (polling fallback)
+- [x] 4.5 Ruteo por `line.stationId` (snapshot); fallback "Sin estación" si el hotel no tiene ninguna
+- [x] 4.6 Tests: cola por estación (bar vs cocina), transiciones válidas/inválidas, agregado de orden, multi-tenant, fuga open/cancelled
 - **Aceptación:** la cocina ve y avanza líneas en vivo; ninguna comanda se pierde.
 
 ## RES-5 — Cuenta + cobro (billing & settlement)  ✅ HECHO (commit fb33189) ⟵ dep: RES-3
