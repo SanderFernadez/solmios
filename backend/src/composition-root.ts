@@ -112,6 +112,7 @@ import { GastosModule } from './modules/gastos'
 import { FoliosModule } from './modules/folios'
 import { PaymentsModule } from './modules/payments'
 import { AccountingModule } from './modules/accounting'
+import { TreasuryModule } from './modules/treasury'
 import { EmpleadosModule } from './modules/empleados'
 import { ReclutamientoModule } from './modules/reclutamiento'
 import { ReembolsosModule } from './modules/reembolsos'
@@ -159,6 +160,8 @@ const mods = [
   // Contabilidad de doble entrada (CTB-0). Módulo aislado; los asientos automáticos se
   // enganchan por conectores en tareas posteriores (CTB-4). Ver openspec contabilidad-tesoreria.
   AccountingModule(),
+  // Tesorería (TES-0): bancos, flujo de caja, AR/AP, presupuesto. Reportes leen payments/expenses/invoices.
+  TreasuryModule(),
   // ANTES que PaymentRequestsModule: ambos registran una ruta bajo /api/stripe/webhook/.
   // payment-requests usa el comodín /api/stripe/webhook/:hotelId (cobro a huéspedes);
   // subscriptions usa el literal /api/stripe/webhook/platform (el hotel pagándole a la

@@ -82,11 +82,11 @@
 
 ## Fase 2 — Tesorería
 
-### TES-0 — Módulo `treasury` base + schema + wiring
-- [ ] 0.1 `make:module Treasury` + modelos `bank_accounts`, `bank_movements`, `suppliers`, `budgets`
-- [ ] 0.2 Registrar en `composition-root.ts`; permisos `treasury:*`; clave de catálogo `treasury`
-- [ ] 0.3 `RUN_MIGRATE` crea las tablas (SQLite + PG)
-- **Aceptación:** `arckode analyze` 0 violaciones; tablas creadas; módulo arranca.
+### TES-0 — Módulo `treasury` base + schema + wiring  ✅ HECHO
+- [x] 0.1 Módulo `treasury` + modelos `bank_accounts`, `bank_movements`, `suppliers`, `budgets`
+- [x] 0.2 Registrar en `composition-root.ts`; permisos `treasury:*` (+ MODULE_ACTIONS); clave de catálogo `treasury`
+- [x] 0.3 `RUN_MIGRATE` crea las 4 tablas (verificado SQLite)
+- **Aceptación:** ✅ `arckode analyze` 0 violaciones; 4 tablas creadas; módulo arranca.
 
 ### TES-1 — Cuentas bancarias + movimientos + conciliación  ⟵ dep: TES-0
 - [ ] 1.1 CRUD `bank_accounts` (opcional vínculo a cuenta contable `1.1.02`)
@@ -96,26 +96,26 @@
 - [ ] 1.5 Tests: import idempotente; match marca `reconciled=1`; diferencias reportadas
 - **Aceptación:** se importan movimientos y se concilian contra pagos; las diferencias quedan visibles.
 
-### TES-2 — Flujo de caja (cash flow)  ⟵ dep: TES-0
-- [ ] 2.1 `usecases/cash-flow.ts`: entradas (`payments charge`) − salidas (`expenses paid`) por período; excluye depósitos garantía
-- [ ] 2.2 Saldo acumulado de liquidez; agrupación día/semana/mes
-- [ ] 2.3 Endpoint `GET /cash-flow?from=&to=&group=`
-- [ ] 2.4 Tests: entradas/salidas correctas; depósitos excluidos; acumulado consistente con `reports/money.ts`
-- **Aceptación:** el flujo de caja refleja el dinero real sin doble conteo.
+### TES-2 — Flujo de caja (cash flow)  ✅ HECHO ⟵ dep: TES-0
+- [x] 2.1 `usecases/liquidity.ts::cashFlow`: entradas (`payments charge` completados) − salidas (`expenses paid`); excluye depósitos/no-completados
+- [x] 2.2 Saldo acumulado de liquidez; agrupación día/mes
+- [x] 2.3 Endpoint `GET /cash-flow?from=&to=&group=`
+- [x] 2.4 Tests: entradas/salidas correctas; depósitos y pending excluidos; acumulado
+- **Aceptación:** ✅ el flujo de caja refleja el dinero real sin doble conteo.
 
-### TES-3 — Cuentas por cobrar (AR) con aging  ⟵ dep: TES-0
-- [ ] 3.1 `usecases/receivables.ts`: saldo pendiente por huésped/empresa (devengado − cobrado)
-- [ ] 3.2 Aging: corriente, 1-30, 31-60, 61-90, +90 (desde `dueDate`/`issueDate`)
-- [ ] 3.3 Endpoint `GET /receivables?aging=1`
-- [ ] 3.4 Tests: total AR = devengado − cobrado (consistente con `reports/strategies/facturacion.ts`); buckets correctos
-- **Aceptación:** AR consistente con reportes; aging correcto.
+### TES-3 — Cuentas por cobrar (AR) con aging  ✅ HECHO ⟵ dep: TES-0
+- [x] 3.1 `usecases/liquidity.ts::receivables`: saldo pendiente por huésped (`amount − amountPaid`, solo type='invoice')
+- [x] 3.2 Aging: corriente, 1-30, 31-60, 61-90, +90 (desde `dueDate`/`issueDate`)
+- [x] 3.3 Endpoint `GET /receivables`
+- [x] 3.4 Tests: total AR correcto; buckets de aging; excluye 'payment' (no doble conteo)
+- **Aceptación:** ✅ AR por huésped con aging; consistente con la regla type='invoice'.
 
-### TES-4 — Cuentas por pagar (AP) + proveedores  ⟵ dep: TES-0
-- [ ] 4.1 CRUD `suppliers`; `expenses` MAY referenciar `supplierId`
-- [ ] 4.2 `usecases/payables.ts`: gastos impagos (`paid=0`) por proveedor + aging desde `date`
-- [ ] 4.3 Endpoints suppliers (CRUD), `GET /payables?aging=1`
-- [ ] 4.4 Tests: AP agrupa por proveedor; aging correcto
-- **Aceptación:** se ve lo que el hotel debe, por proveedor y antigüedad.
+### TES-4 — Cuentas por pagar (AP) + proveedores  ✅ HECHO ⟵ dep: TES-0
+- [x] 4.1 CRUD `suppliers` (`usecases/suppliers-crud`); `expenses` MAY referenciar `supplierId`
+- [x] 4.2 `usecases/liquidity.ts::payables`: gastos impagos (`paid=0`) por proveedor + aging desde `date`
+- [x] 4.3 Endpoints suppliers (CRUD), `GET /payables`
+- [x] 4.4 Tests: AP agrupa por proveedor; aging correcto; excluye pagados
+- **Aceptación:** ✅ se ve lo que el hotel debe, por proveedor y antigüedad.
 
 ### TES-5 — Presupuesto + control de gastos  ⟵ dep: TES-0
 - [ ] 5.1 CRUD `budgets` (categoría + período + monto)

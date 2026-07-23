@@ -30,11 +30,11 @@ sprints:
   ctb-6-estados:            { title: "Estados financieros (P&L + Balance general)", status: done, priority: high, phase: implementation, dep: ctb-5 }  # accrual ✅; cash basis diferido
   ctb-7-frontend:           { title: "Frontend contabilidad", status: pending, priority: medium, phase: implementation, dep: ctb-6 }
   # Fase 2 — Tesorería
-  tes-0-schema-base:        { title: "Módulo treasury base + schema + wiring", status: pending, priority: high, phase: infra }
+  tes-0-schema-base:        { title: "Módulo treasury base + schema + wiring", status: done, priority: high, phase: infra }
   tes-1-bancos:             { title: "Cuentas bancarias + conciliación", status: pending, priority: high, phase: implementation, dep: tes-0 }
-  tes-2-cash-flow:          { title: "Flujo de caja", status: pending, priority: high, phase: implementation, dep: tes-0 }
-  tes-3-ar-aging:           { title: "Cuentas por cobrar (AR) con aging", status: pending, priority: high, phase: implementation, dep: tes-0 }
-  tes-4-ap-proveedores:     { title: "Cuentas por pagar (AP) + proveedores", status: pending, priority: high, phase: implementation, dep: tes-0 }
+  tes-2-cash-flow:          { title: "Flujo de caja", status: done, priority: high, phase: implementation, dep: tes-0 }
+  tes-3-ar-aging:           { title: "Cuentas por cobrar (AR) con aging", status: done, priority: high, phase: implementation, dep: tes-0 }
+  tes-4-ap-proveedores:     { title: "Cuentas por pagar (AP) + proveedores", status: done, priority: high, phase: implementation, dep: tes-0 }
   tes-5-presupuesto:        { title: "Presupuesto + control de gastos", status: pending, priority: medium, phase: implementation, dep: tes-0 }
   tes-6-frontend:           { title: "Frontend tesorería", status: pending, priority: medium, phase: implementation, dep: [tes-1, tes-2, tes-3, tes-4, tes-5] }
   # Fase 3 — Transversal

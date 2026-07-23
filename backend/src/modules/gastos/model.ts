@@ -11,6 +11,9 @@ export const GastosModel: ModelDefinition = {
     amount: { type: 'number', required: true },
     date: { type: 'string' },
     provider: { type: 'string' },
+    // Vínculo opcional a un proveedor del catálogo (treasury.suppliers) para el aging de cuentas
+    // por pagar (AP). Si está vacío, el AP agrupa por el texto libre `provider`.
+    supplierId: { type: 'string', indexed: true },
     invoiceNumber: { type: 'string' },
     notes: { type: 'text' },
     paid: { type: 'number', default: 0 },
