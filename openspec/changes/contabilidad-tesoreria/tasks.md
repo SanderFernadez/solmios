@@ -88,13 +88,13 @@
 - [x] 0.3 `RUN_MIGRATE` crea las 4 tablas (verificado SQLite)
 - **Aceptación:** ✅ `arckode analyze` 0 violaciones; 4 tablas creadas; módulo arranca.
 
-### TES-1 — Cuentas bancarias + movimientos + conciliación  ⟵ dep: TES-0
-- [ ] 1.1 CRUD `bank_accounts` (opcional vínculo a cuenta contable `1.1.02`)
-- [ ] 1.2 Import CSV de `bank_movements` (dedup por cuenta+fecha+monto+ref)
-- [ ] 1.3 `usecases/reconcile.ts`: match `bank_movements` ↔ `payments` por monto+fecha; reutiliza `payments.reconcile()`
-- [ ] 1.4 Endpoints bank-accounts (CRUD), `/import`, `/reconcile`
-- [ ] 1.5 Tests: import idempotente; match marca `reconciled=1`; diferencias reportadas
-- **Aceptación:** se importan movimientos y se concilian contra pagos; las diferencias quedan visibles.
+### TES-1 — Cuentas bancarias + movimientos + conciliación  ✅ HECHO ⟵ dep: TES-0
+- [x] 1.1 CRUD `bank_accounts` (`usecases/bank.ts`, opcional vínculo a cuenta contable `1.1.02` vía accountId)
+- [x] 1.2 Import de `bank_movements` (array del body; dedup por cuenta+fecha+monto+ref, idempotente)
+- [x] 1.3 `reconcile`: match `bank_movements` ↔ `payments` completados por monto exacto + fecha ±3 días; anti doble-match (un pago = un movimiento)
+- [x] 1.4 Endpoints bank-accounts (CRUD), `/:id/import`, `/reconcile`
+- [x] 1.5 Tests: import idempotente; match marca `reconciled=1`+paymentId; anti doble-match; diferencias reportadas
+- **Aceptación:** ✅ se importan movimientos y se concilian contra pagos sin doble-match; las diferencias quedan visibles.
 
 ### TES-2 — Flujo de caja (cash flow)  ✅ HECHO ⟵ dep: TES-0
 - [x] 2.1 `usecases/liquidity.ts::cashFlow`: entradas (`payments charge` completados) − salidas (`expenses paid`); excluye depósitos/no-completados
@@ -117,12 +117,12 @@
 - [x] 4.4 Tests: AP agrupa por proveedor; aging correcto; excluye pagados
 - **Aceptación:** ✅ se ve lo que el hotel debe, por proveedor y antigüedad.
 
-### TES-5 — Presupuesto + control de gastos  ⟵ dep: TES-0
-- [ ] 5.1 CRUD `budgets` (categoría + período + monto)
-- [ ] 5.2 `usecases/budget-vs-actual.ts`: presupuestado vs real (`expenses` por categoría/período), desviación y % ejecución
-- [ ] 5.3 Endpoints budgets (CRUD), `GET /budget-vs-actual?period=`
-- [ ] 5.4 Tests: comparación correcta; señala sobre-ejecución
-- **Aceptación:** presupuesto vs real por categoría; alerta de sobre-ejecución.
+### TES-5 — Presupuesto + control de gastos  ✅ HECHO ⟵ dep: TES-0
+- [x] 5.1 CRUD `budgets` (`usecases/budget.ts`, categoría + período + monto)
+- [x] 5.2 `budgetVsActual`: presupuestado vs real (`expenses` por categoría/período), desviación y % ejecución (null si presupuesto 0)
+- [x] 5.3 Endpoints budgets (CRUD), `GET /budget-vs-actual?period=`
+- [x] 5.4 Tests: comparación correcta; señala sobre-ejecución; incluye categorías con gasto sin presupuesto
+- **Aceptación:** ✅ presupuesto vs real por categoría; flag de sobre-ejecución.
 
 ### TES-6 — Frontend tesorería  ⟵ dep: TES-1..5
 - [ ] 6.1 `services/Treasury.service.ts` + tipos

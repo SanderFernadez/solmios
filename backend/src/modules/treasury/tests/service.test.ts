@@ -5,6 +5,8 @@ import { silentLogger } from 'arckode-framework/testing'
 import { TreasuryService } from '../service'
 import type { SupplierDTO, CurrentUser } from '../types'
 import { cashFlow, receivables, payables } from '../usecases/liquidity'
+import { reconcile, importMovements } from '../usecases/bank'
+import { budgetVsActual } from '../usecases/budget'
 
 const log = silentLogger()
 const passAuth: Auth = { assertOwnership: () => {}, authenticate: (() => []) as any } as unknown as Auth
@@ -71,6 +73,86 @@ describe('treasury — cuentas por pagar AP (TES-4)', () => {
     expect(ap.total).toBe(450)
     expect(ap.aging['1-30']).toBe(300)
     expect(ap.rows.find(r => r.provider === 'Lavandería')?.owed).toBe(300)
+  })
+})
+
+describe('treasury — conciliación bancaria (TES-1)', () => {
+  const userRepo = { ...repoOf([{ id: 'u1', hotelId: 'h1' }]), findById: async () => ({ id: 'u1', hotelId: 'h1' }) } as any
+  it('import dedup: no re-crea un movimiento ya importado', async () => {
+    const existing = [{ id: 'm0', bankAccountId: 'b1', date: '2026-07-10', amount: 100, reference: 'REF1' }]
+    const mov = repoOf(existing) as any; let created = 0; mov.create = async (d: any) => { created++; return { id: 'x', ...d } }
+    const deps = { bankAccounts: repoOf([{ id: 'b1', hotelId: 'h1' }]), bankMovements: mov, payments: repoOf(), userRepo, auth: passAuth }
+    const res = await importMovements(deps as any, 'b1', [
+      { date: '2026-07-10', amount: 100, reference: 'REF1' },   // duplicado → salta
+      { date: '2026-07-11', amount: 200, reference: 'REF2' },   // nuevo
+    ], user)
+    expect(res.created).toBe(1)
+  })
+
+  it('reconcile matchea un movimiento con un pago de igual monto y fecha cercana', async () => {
+    const movs = [
+      { id: 'm1', bankAccountId: 'b1', hotelId: 'h1', date: '2026-07-10', amount: 100, reconciled: 0 },
+      { id: 'm2', bankAccountId: 'b1', hotelId: 'h1', date: '2026-07-20', amount: 999, reconciled: 0 },  // sin match
+    ]
+    const mov = repoOf(movs) as any; const marked: any[] = []; mov.update = async (id: string, d: any) => { marked.push({ id, ...d }); return d }
+    const pays = repoOf([{ id: 'p1', hotelId: 'h1', status: 'completed', amount: 100, processedAt: '2026-07-11' }])
+    const deps = { bankAccounts: repoOf([{ id: 'b1', hotelId: 'h1' }]), bankMovements: mov, payments: pays, userRepo, auth: passAuth }
+    const res = await reconcile(deps as any, 'b1', user)
+    expect(res.matched).toBe(1)
+    expect(res.unmatchedCount).toBe(1)
+    expect(marked[0]).toMatchObject({ id: 'm1', reconciled: 1, paymentId: 'p1' })
+  })
+
+  it('un egreso bancario (−80) NO concilia contra un cobro entrante (+80) — matching por signo', async () => {
+    const movs = [{ id: 'm1', bankAccountId: 'b1', hotelId: 'h1', date: '2026-07-10', amount: -80, reconciled: 0 }]
+    const mov = repoOf(movs) as any; mov.update = async (id: string, d: any) => ({ id, ...d })
+    const pays = repoOf([{ id: 'p1', hotelId: 'h1', status: 'completed', type: 'charge', amount: 80, processedAt: '2026-07-10' }])
+    const deps = { bankAccounts: repoOf([{ id: 'b1', hotelId: 'h1' }]), bankMovements: mov, payments: pays, userRepo, auth: passAuth }
+    const res = await reconcile(deps as any, 'b1', user)
+    expect(res.matched).toBe(0)          // charge (+80) no matchea un egreso (−80)
+  })
+
+  it('un mismo pago NO concilia dos movimientos (anti doble-match)', async () => {
+    const movs = [
+      { id: 'm1', bankAccountId: 'b1', hotelId: 'h1', date: '2026-07-10', amount: 100, reconciled: 0 },
+      { id: 'm2', bankAccountId: 'b1', hotelId: 'h1', date: '2026-07-10', amount: 100, reconciled: 0 },
+    ]
+    const mov = repoOf(movs) as any; mov.update = async (id: string, d: any) => ({ id, ...d })
+    const pays = repoOf([{ id: 'p1', hotelId: 'h1', status: 'completed', amount: 100, processedAt: '2026-07-10' }])
+    const deps = { bankAccounts: repoOf([{ id: 'b1', hotelId: 'h1' }]), bankMovements: mov, payments: pays, userRepo, auth: passAuth }
+    const res = await reconcile(deps as any, 'b1', user)
+    expect(res.matched).toBe(1)          // solo un movimiento matchea el único pago
+    expect(res.unmatchedCount).toBe(1)
+  })
+})
+
+describe('treasury — presupuesto vs real (TES-5)', () => {
+  const userRepo = { ...repoOf([{ id: 'u1', hotelId: 'h1' }]), findById: async () => ({ id: 'u1', hotelId: 'h1' }) } as any
+  it('compara presupuesto vs gasto real por categoría y señala sobre-ejecución', async () => {
+    const budgets = repoOf([{ hotelId: 'h1', period: '2026-07', category: 'Limpieza', budgetedAmount: 100 }])
+    const exps = repoOf([
+      { hotelId: 'h1', category: 'Limpieza', amount: 130, date: '2026-07-05' },   // sobre presupuesto
+      { hotelId: 'h1', category: 'Limpieza', amount: 999, date: '2026-06-05' },    // otro mes → excluido
+    ])
+    const deps = { budgets, expenses: exps, userRepo, auth: passAuth }
+    const bva = await budgetVsActual(deps as any, user, '2026-07')
+    const row = bva.rows.find(r => r.category === 'Limpieza')!
+    expect(row.budgeted).toBe(100)
+    expect(row.actual).toBe(130)
+    expect(row.variance).toBe(30)
+    expect(row.overBudget).toBe(true)
+    expect(row.pctExecuted).toBe(130)
+  })
+
+  it('gasto en una categoría SIN presupuesto se marca sobre-ejecutado (descontrol)', async () => {
+    const budgets = repoOf([])   // sin presupuestos
+    const exps = repoOf([{ hotelId: 'h1', category: 'Varios', amount: 70, date: '2026-07-05' }])
+    const bva = await budgetVsActual({ budgets, expenses: exps, userRepo, auth: passAuth } as any, user, '2026-07')
+    const row = bva.rows.find(r => r.category === 'Varios')!
+    expect(row.budgeted).toBe(0)
+    expect(row.actual).toBe(70)
+    expect(row.overBudget).toBe(true)     // gasto sin partida asignada = descontrol
+    expect(row.pctExecuted).toBeNull()
   })
 })
 

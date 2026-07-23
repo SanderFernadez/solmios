@@ -5,6 +5,8 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import type { CreateSupplierDTO, UpdateSupplierDTO, CurrentUser, SupplierDTO } from './types'
 import { cashFlow, receivables, payables, type LiquidityDeps } from './usecases/liquidity'
 import * as suppliersCrud from './usecases/suppliers-crud'
+import * as bank from './usecases/bank'
+import * as budget from './usecases/budget'
 
 export class TreasuryService {
   constructor(
@@ -16,7 +18,18 @@ export class TreasuryService {
     private readonly payments: RepositoryAdapter<any>,
     private readonly expenses: RepositoryAdapter<any>,
     private readonly invoices: RepositoryAdapter<any>,
+    // Tablas propias de tesorería (TES-1 bancos, TES-5 presupuesto).
+    private readonly bankAccounts?: RepositoryAdapter<any>,
+    private readonly bankMovements?: RepositoryAdapter<any>,
+    private readonly budgets?: RepositoryAdapter<any>,
   ) {}
+
+  private bankDeps(): bank.BankDeps {
+    return { bankAccounts: this.bankAccounts!, bankMovements: this.bankMovements!, payments: this.payments, userRepo: this.userRepo, auth: this.auth }
+  }
+  private budgetDeps(): budget.BudgetDeps {
+    return { budgets: this.budgets!, expenses: this.expenses, userRepo: this.userRepo, auth: this.auth }
+  }
 
   private hotelFor(user: CurrentUser): string {
     const h = user.hotelId || ''
@@ -42,4 +55,17 @@ export class TreasuryService {
   createSupplier(dto: CreateSupplierDTO, user: CurrentUser) { return suppliersCrud.createSupplier(this.suppliersDeps(), dto, user) }
   updateSupplier(id: string, dto: UpdateSupplierDTO, user: CurrentUser) { return suppliersCrud.updateSupplier(this.suppliersDeps(), id, dto, user) }
   deleteSupplier(id: string, user: CurrentUser) { return suppliersCrud.deleteSupplier(this.suppliersDeps(), id, user) }
+
+  // ─── Cuentas bancarias + conciliación (TES-1) ───
+  listBankAccounts(user: CurrentUser) { return bank.listBankAccounts(this.bankDeps(), user) }
+  createBankAccount(dto: any, user: CurrentUser) { return bank.createBankAccount(this.bankDeps(), dto, user) }
+  updateBankAccount(id: string, dto: any, user: CurrentUser) { return bank.updateBankAccount(this.bankDeps(), id, dto, user) }
+  importMovements(bankAccountId: string, rows: any[], user: CurrentUser) { return bank.importMovements(this.bankDeps(), bankAccountId, rows, user) }
+  reconcile(bankAccountId: string, user: CurrentUser) { return bank.reconcile(this.bankDeps(), bankAccountId, user) }
+
+  // ─── Presupuesto (TES-5) ───
+  listBudgets(period: string | undefined, user: CurrentUser) { return budget.listBudgets(this.budgetDeps(), user, period) }
+  createBudget(dto: any, user: CurrentUser) { return budget.createBudget(this.budgetDeps(), dto, user) }
+  updateBudget(id: string, dto: any, user: CurrentUser) { return budget.updateBudget(this.budgetDeps(), id, dto, user) }
+  budgetVsActual(period: string, user: CurrentUser) { return budget.budgetVsActual(this.budgetDeps(), user, period) }
 }

@@ -36,8 +36,11 @@ export function TreasuryModule() {
       const payments = new OrmRepository<any>(orm, 'Payment')
       const expenses = new OrmRepository<any>(orm, 'Expenses')
       const invoices = new OrmRepository<any>(orm, 'Invoices')
+      const bankAccounts = new OrmRepository<any>(orm, 'BankAccounts')
+      const bankMovements = new OrmRepository<any>(orm, 'BankMovements')
+      const budgets = new OrmRepository<any>(orm, 'Budgets')
       const log = logger.child('treasury')
-      const service = new TreasuryService(suppliers, userRepo, auth, log, payments, expenses, invoices)
+      const service = new TreasuryService(suppliers, userRepo, auth, log, payments, expenses, invoices, bankAccounts, bankMovements, budgets)
       const controller = new TreasuryController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -55,6 +58,19 @@ export function TreasuryModule() {
       router.post('/api/treasury/suppliers', guard('treasury', 'create'), (req) => controller.storeSupplier(req))
       router.put('/api/treasury/suppliers/:id', guard('treasury', 'edit'), (req) => controller.updateSupplier(req))
       router.delete('/api/treasury/suppliers/:id', guard('treasury', 'delete'), (req) => controller.destroySupplier(req))
+
+      // Cuentas bancarias + conciliación (TES-1)
+      router.get('/api/treasury/bank-accounts', guard('treasury', 'view'), (req) => controller.indexBankAccounts(req))
+      router.post('/api/treasury/bank-accounts', guard('treasury', 'create'), (req) => controller.storeBankAccount(req))
+      router.put('/api/treasury/bank-accounts/:id', guard('treasury', 'edit'), (req) => controller.updateBankAccount(req))
+      router.post('/api/treasury/bank-accounts/:id/import', guard('treasury', 'edit'), (req) => controller.importMovements(req))
+      router.post('/api/treasury/reconcile', guard('treasury', 'edit'), (req) => controller.reconcile(req))
+
+      // Presupuesto (TES-5)
+      router.get('/api/treasury/budgets', guard('treasury', 'view'), (req) => controller.indexBudgets(req))
+      router.post('/api/treasury/budgets', guard('treasury', 'create'), (req) => controller.storeBudget(req))
+      router.put('/api/treasury/budgets/:id', guard('treasury', 'edit'), (req) => controller.updateBudget(req))
+      router.get('/api/treasury/budget-vs-actual', guard('treasury', 'view'), (req) => controller.budgetVsActual(req))
 
       log.info('Módulo treasury listo')
       return service
