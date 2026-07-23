@@ -49,6 +49,14 @@ Dos módulos arckode nuevos (`inventario`, `compras`) + conectores. Cada sprint:
 - [x] 6.3 OC pasa a `received` (o parcial) según lo recibido
 - [x] 6.4 Tests (recepción total/parcial, suma stock, costo promedio, dedup) + QA
 
+### QA compras (adversarial) — hallazgos
+- ✅ **H1 (ALTO)** fixeado: líneas duplicadas en recepción inflaban stock 2× → agregación por orderItemId.
+- ✅ **H2 (ALTO)** fixeado: doble-click en Facturar creaba 2 gastos → UNIQUE INDEX expenses(hotelId,source,sourceId) + gastos.upsertBySource + re-lectura.
+- ⏳ **M1 (deuda aceptada)**: dos `receive` concurrentes sobre la misma OC hacen read-modify-write de `receivedQty` (last-write-wins) → posible over-receipt. Fix real = incremento atómico a nivel repo (`SET receivedQty = receivedQty + ?`), no expuesto por RepositoryAdapter. Mismo clase que la no-atomicidad de settlement (RES-5 M1).
+- ⏳ **M2 (política)**: `markInvoiced` permite facturar una OC `sent` (nada recibido) → pago contra factura antes de recibir. Es un caso de negocio válido; se deja habilitado a propósito.
+- ⏳ **M3 (política contable)**: el gasto se asienta por el TOTAL BRUTO (con ITBIS). En RD el ITBIS de compras suele ser crédito fiscal, no gasto. Consistente con cómo el sistema ya maneja `gastos` (bruto); separar el crédito fiscal es un cambio de contabilidad fuera de este módulo.
+- ✅ **M4 mitigado**: `inventoryItemId` de otro hotel en la OC → al recibir, `applyMovement` hace assertOwnership y el conector es best-effort (no suma stock cross-tenant, sin fuga).
+
 ### COM-4 — OC facturada → genera Gasto  ⟵ COM-3
 - [x] 7.1 Marcar OC facturada (invoiceNumber del proveedor) → connector `compras→gastos`: crea `Expense` (`source='purchase_order'`, `sourceId=poId`, `supplierId`, amount=total, category) — dedup por source+sourceId
 - [x] 7.2 El Gasto ya pega en caja + contabilidad (connectors existentes). Verificar cuenta de gasto correcta (`expenseAccountForSource` → agregar `purchase_order`)
