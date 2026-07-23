@@ -113,6 +113,7 @@ import { FoliosModule } from './modules/folios'
 import { PaymentsModule } from './modules/payments'
 import { AccountingModule } from './modules/accounting'
 import { TreasuryModule } from './modules/treasury'
+import { RestaurantModule } from './modules/restaurant'
 import { EmpleadosModule } from './modules/empleados'
 import { ReclutamientoModule } from './modules/reclutamiento'
 import { ReembolsosModule } from './modules/reembolsos'
@@ -162,6 +163,9 @@ const mods = [
   AccountingModule(),
   // Tesorería (TES-0): bancos, flujo de caja, AR/AP, presupuesto. Reportes leen payments/expenses/invoices.
   TreasuryModule(),
+  // POS de restaurante (RES-0): estaciones/KDS configurables, carta, mesas, comandas, cuenta. Los conectores
+  // a folios/payments/accounting se enganchan en RES-5/RES-6. Ver openspec restaurante-pos.
+  RestaurantModule(),
   // ANTES que PaymentRequestsModule: ambos registran una ruta bajo /api/stripe/webhook/.
   // payment-requests usa el comodín /api/stripe/webhook/:hotelId (cobro a huéspedes);
   // subscriptions usa el literal /api/stripe/webhook/platform (el hotel pagándole a la

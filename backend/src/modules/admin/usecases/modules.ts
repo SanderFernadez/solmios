@@ -96,6 +96,9 @@ export const MODULE_CATALOG: ModuleMeta[] = [
   {
     key: 'treasury', label: 'Tesorería', description: 'Bancos, conciliación, flujo de caja, cuentas por cobrar/pagar y presupuesto',
   },
+  {
+    key: 'restaurant', label: 'Restaurante', description: 'POS de restaurante: estaciones/KDS configurables, carta, mesas, comandas y cuenta',
+  },
 ]
 
 export type ModuleState = Record<string, boolean>

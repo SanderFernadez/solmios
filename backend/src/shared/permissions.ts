@@ -27,6 +27,8 @@ export const MODULES = {
   accounting: 'Contabilidad',
   /** Tesorería (bancos, conciliación, flujo de caja, AR/AP, presupuesto). */
   treasury: 'Tesorería',
+  /** POS de restaurante (estaciones/KDS, carta, mesas, comandas, cuenta). */
+  restaurant: 'Restaurante',
 } as const
 
 // Available actions per module
@@ -77,6 +79,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Contabilidad y tesorería: son del dueño del hotel (finanzas), no de recepción.
     'accounting:view', 'accounting:create', 'accounting:edit', 'accounting:delete',
     'treasury:view', 'treasury:create', 'treasury:edit', 'treasury:delete',
+    // POS de restaurante: el dueño configura todo (estaciones, carta, mesas) y opera.
+    'restaurant:view', 'restaurant:create', 'restaurant:edit', 'restaurant:delete',
   ],
 
   // Receptionist — la operación del mostrador. Los permisos siguen a lo que el menú del panel le
@@ -102,6 +106,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'attendance:view', 'attendance:create',
     'ttlock:view',
     'ai:view', 'ai:edit',
+    // Toma comandas y las cobra desde el mostrador; la config (estaciones/carta) es del hotel_admin.
+    'restaurant:view', 'restaurant:create',
   ],
 
   // Housekeeper - cleaning tasks only
