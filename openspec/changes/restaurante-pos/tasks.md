@@ -68,15 +68,17 @@
       side-effects; cancelada rechazada; propina en charge-to-room rechazada (M2); sin reserva → charge rechazado; IDOR
 - **Aceptación:** ✅ dos vías mutuamente excluyentes, sin doble cobro; anti-doble-impuesto (neto→folio); QA sin críticos, 1 alto (A1) fixeado.
 
-## RES-6 — Contabilidad del POS (reconocimiento de ingreso)  ⟵ dep: RES-5
-- [ ] 6.1 Agregar cuenta `Ventas Restaurante` (+ contrapartida ITBIS por pagar) al plan base sembrado
-      (`accounting/usecases/seed-chart-of-accounts.ts`) y a `account-codes.ts`
-- [ ] 6.2 Connector `restaurante-accounting.ts` (setSockets): `onOrderPaid` (venta directa) → reconoce ingreso
-      neto + ITBIS **sin** re-mover Caja (payments-accounting ya lo hizo) — regla anti-doble-conteo
-- [ ] 6.3 Verificar que `charge-to-room` NO genera asiento del POS (lo hace folios-accounting) — no doblar
-- [ ] 6.4 Registrar el connector en `composition-root.ts`; self-gating si el hotel no tiene plan de cuentas
-- [ ] 6.5 Tests de integración: venta directa asienta ingreso una vez; venta a folio asienta por folios; caja no se dobla
-- **Aceptación:** cada venta se cuenta UNA vez; comprobación contable cuadra; caja no se dobla.
+## RES-6 — Contabilidad del POS (reconocimiento de ingreso)  ✅ HECHO (commit 4500a68) ⟵ dep: RES-5
+- [x] 6.1 Cuentas `4.2.02 Ingresos por Restaurante` + `2.1.05 Propinas por Pagar` en el plan base (idempotente) y `account-codes.ts`
+- [x] 6.2 Connector `restaurante-accounting.ts` (setSockets `onOrderPaid`) → `recordRestaurantSale`: DR Clientes (total) /
+      CR Ventas (neto, DERIVADO del total) / CR ITBIS / CR Propinas → neteado con el pago = DR Caja / CR Ventas+ITBIS+Propinas
+- [x] 6.3 `charge-to-room` NO genera asiento del POS (`onOrderCharged` NO cableado); lo devenga folios-accounting con
+      category 'restaurant' → **misma cuenta 4.2.02** (unifica ambas vías)
+- [x] 6.4 Connector en `composition-root.ts`; self-gating por resolución de códigos
+- [x] 6.5 Tests (QA verificó con números: Clientes netea a 0, ingreso/caja una sola vez; total 0 → skip)
+- **Aceptación:** ✅ cada venta se cuenta UNA vez; asiento cuadra; caja no se dobla; QA sin críticos/altos.
+- ⚠️ **Precondición (QA MEDIO)**: hotel que sembró el plan antes de RES-6 → **re-seed** (`POST /api/accounting/seed`) antes de
+      habilitar la contabilidad del POS, o el pago postea y la venta se auto-saltea → Clientes con crédito huérfano. Ver RES-8.4.
 
 ## RES-7 — Frontend POS  ⟵ dep: RES-1..RES-6
 - [ ] 7.1 `RestaurantService` (API client, sin fetch en componentes) + tipos en `types/`
@@ -92,7 +94,8 @@
 - [ ] 8.1 Verificar `moduleGuard('restaurant')` en todas las rutas; permiso `restaurant:*` en la matriz de roles
 - [ ] 8.2 Entitlement: `restaurant` en `plans.modules` del/los plan(es) que lo incluyan; toggle admin ON/OFF probado
 - [ ] 8.3 Gate: `arckode analyze` 0 violaciones · `bun test` backend · `bun run typecheck`+`build` frontend
-- [ ] 8.4 Deploy: RUN_MIGRATE (5 tablas) + `UPDATE roles.permissions` (3 pasos, ver memoria) + verificación en vivo
+- [ ] 8.4 Deploy: RUN_MIGRATE (6 tablas + columna taxRate) + `UPDATE roles.permissions` (3 pasos, ver memoria) +
+      **re-seed del plan** (`POST /api/accounting/seed` → agrega 4.2.02/2.1.05 para el asiento del POS, QA RES-6) + verificación en vivo
 - [ ] 8.5 Actualizar `mapa-modulos.html` (nodo restaurante + edges a folios/payments/accounting) + memoria
 - **Aceptación:** desplegado, controlable desde admin, permisos creables, verificado end-to-end en prod.
 
