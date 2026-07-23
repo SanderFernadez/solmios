@@ -24,10 +24,10 @@ sprints:
   ctb-0-schema-base:        { title: "Schema ORM + módulo accounting base + wiring", status: done, priority: critical, phase: infra }
   ctb-1-plan-cuentas:       { title: "Plan de cuentas + seed base", status: done, priority: high, phase: implementation, dep: ctb-0 }
   ctb-2-asientos-manuales:  { title: "Asientos manuales + doble entrada + post/reverse", status: done, priority: high, phase: implementation, dep: ctb-1 }
-  ctb-3-periodos:           { title: "Períodos contables open/close/lock", status: pending, priority: medium, phase: implementation, dep: ctb-2 }
-  ctb-4-asientos-auto:      { title: "Asientos automáticos (5 conectores)", status: pending, priority: high, phase: implementation, dep: ctb-2 }
-  ctb-5-mayor-comprobacion: { title: "Libro mayor + balance de comprobación", status: pending, priority: high, phase: implementation, dep: ctb-4 }
-  ctb-6-estados:            { title: "Estados financieros (P&L + Balance general)", status: pending, priority: high, phase: implementation, dep: ctb-5 }
+  ctb-3-periodos:           { title: "Períodos contables open/close/lock", status: done, priority: medium, phase: implementation, dep: ctb-2 }
+  ctb-4-asientos-auto:      { title: "Asientos automáticos (conectores)", status: done, priority: high, phase: implementation, dep: [ctb-2, ctb-3] }  # payments/folios/gastos ✅; facturas(nota crédito)/cash diferidos
+  ctb-5-mayor-comprobacion: { title: "Libro mayor + balance de comprobación", status: done, priority: high, phase: implementation, dep: ctb-4 }
+  ctb-6-estados:            { title: "Estados financieros (P&L + Balance general)", status: done, priority: high, phase: implementation, dep: ctb-5 }  # accrual ✅; cash basis diferido
   ctb-7-frontend:           { title: "Frontend contabilidad", status: pending, priority: medium, phase: implementation, dep: ctb-6 }
   # Fase 2 — Tesorería
   tes-0-schema-base:        { title: "Módulo treasury base + schema + wiring", status: pending, priority: high, phase: infra }

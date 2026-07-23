@@ -193,6 +193,9 @@ import { reclutamientoEmpleadosConnector } from './connectors/reclutamiento-empl
 import { capacitacionEmpleadosConnector } from './connectors/capacitacion-empleados'
 import { amenitiesHabitacionesConnector } from './connectors/amenities-habitaciones'
 import { paymentsCajaConnector } from './connectors/payments-caja'
+import { paymentsAccountingConnector } from './connectors/payments-accounting'
+import { foliosAccountingConnector } from './connectors/folios-accounting'
+import { gastosAccountingConnector } from './connectors/gastos-accounting'
 import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-payments'
 import { paymentRequestsTtlockConnector } from './connectors/payment-requests-ttlock'
 import { facturasReservasConnector } from './connectors/facturas-reservas'
@@ -286,6 +289,11 @@ system.addConnector('amenities-habitaciones', amenitiesHabitacionesConnector(orm
 system.addConnector('payments-caja', paymentsCajaConnector)
 // Un gasto en efectivo saca plata del cajón: sin esto el arqueo del turno no lo ve.
 system.addConnector('gastos-caja', gastosCajaConnector)
+// Contabilidad automática (CTB-4): cada cobro/reembolso/depósito, cargo de folio (ingreso) y gasto
+// genera su asiento de doble entrada. Self-gating (no-op si el hotel no tiene plan de cuentas seedeado).
+system.addConnector('payments-accounting', paymentsAccountingConnector)
+system.addConnector('folios-accounting', foliosAccountingConnector)
+system.addConnector('gastos-accounting', gastosAccountingConnector)
 // Pagar la nómina es un gasto. Cae en `gastos` y de ahí, si fue en efectivo, en la caja.
 // Se registra después de gastos-caja para que el egreso encuentre el socket ya inyectado.
 system.addConnector('payroll-gastos', payrollGastosConnector)

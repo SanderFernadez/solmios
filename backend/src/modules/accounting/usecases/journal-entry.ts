@@ -5,6 +5,7 @@
 import type { ORM, RepositoryAdapter } from 'arckode-framework'
 import { ValidationError, NotFoundError, ConflictError } from 'arckode-framework'
 import type { AccountDTO } from '../types'
+import { assertAndEnsurePeriod } from './period'
 
 // 0.005: como los totales ya van redondeados a 2 decimales, su diferencia es múltiplo de 0.01.
 // Con 0.01 un descuadre de exactamente 1 centavo (0.01 > 0.01 = false) se colaba. Con 0.005,
@@ -33,6 +34,7 @@ export interface JournalDeps {
   accounts: RepositoryAdapter<AccountDTO>
   entries: RepositoryAdapter<any>
   lines: RepositoryAdapter<any>
+  periods: RepositoryAdapter<any>
 }
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
@@ -81,6 +83,8 @@ export async function createJournalEntry(
 
   const entryId = crypto.randomUUID()
   const period = String(input.entryDate).slice(0, 7)  // YYYY-MM
+  // Rechaza si el período está cerrado/bloqueado; si no existe, lo crea `open` (CTB-3).
+  await assertAndEnsurePeriod(deps, hotelId, period)
   await deps.orm.transaction(async (tx: any) => {
     await tx.create('JournalEntries', {
       id: entryId, hotelId, entryDate: input.entryDate, description: input.description ?? null,
@@ -104,6 +108,9 @@ export async function postEntry(deps: JournalDeps, id: string, hotelId: string):
   const entry = await deps.entries.findOne({ id })
   if (!entry || entry.hotelId !== hotelId) throw new NotFoundError('Asiento no encontrado')
   if (entry.status !== 'draft') throw new ConflictError(`El asiento ya está ${entry.status}`)
+  // El período pudo cerrarse entre la creación del draft y el posteo → no dejar postear en cerrado.
+  const pr = (await deps.periods.findMany({ hotelId, period: entry.period }))[0]
+  if (pr && pr.status !== 'open') throw new ConflictError(`El período ${entry.period} está ${pr.status}`)
   await deps.entries.update(id, { status: 'posted', postedAt: new Date().toISOString() })
 }
 

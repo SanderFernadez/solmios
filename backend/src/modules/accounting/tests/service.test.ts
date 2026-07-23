@@ -5,6 +5,7 @@ import type { RepositoryAdapter, CacheAdapter, Auth } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { AccountingService } from '../service'
 import type { AccountDTO, CurrentUser } from '../types'
+import { recordPaymentCompleted, recordRefund, recordFolioCharge, recordExpense } from '../usecases/auto-from-events'
 
 const log = silentLogger()
 const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
@@ -44,9 +45,19 @@ function makeOrm(store: Record<string, any[]> = {}) {
 function svc(
   repo: RepositoryAdapter<AccountDTO>, auth: Auth = passAuth,
   lines: RepositoryAdapter<any> = makeLines(), entries: RepositoryAdapter<any> = makeLines(),
-  orm: any = makeOrm().orm,
+  orm: any = makeOrm().orm, periods: RepositoryAdapter<any> = makeLines(),
 ) {
-  return new AccountingService(repo, makeUserRepo(), log, silentCache, auth, lines, entries, orm)
+  return new AccountingService(repo, makeUserRepo(), log, silentCache, auth, lines, entries, orm, periods)
+}
+// Repo respaldado por el store del orm: en la DB real, tx.create y el repo ven la MISMA tabla.
+function makeBacked(store: Record<string, any[]>, table: string): RepositoryAdapter<any> {
+  const match = (r: any, q: any) => Object.keys(q || {}).every((k) => r[k] === q[k])
+  return {
+    ...makeRepo() as any,
+    findOne: async (q: any) => (store[table] ?? []).find((r) => match(r, q)) ?? null,
+    findMany: async (q: any = {}) => (store[table] ?? []).filter((r) => match(r, q)),
+    update: async (id: string, d: any) => { const r = (store[table] ??= []).find((x) => x.id === id); if (r) Object.assign(r, d); return r },
+  }
 }
 
 describe('AccountingService — plan de cuentas', () => {
@@ -281,5 +292,219 @@ describe('AccountingService — asientos de doble entrada', () => {
     entriesRepo.findOne = async () => ajeno
     const service = svc(makeRepo(), passAuth, makeLines(), entriesRepo)
     await expect(service.postEntry('e1', currentUser)).rejects.toThrow(/no encontrado/i)
+  })
+})
+
+describe('AccountingService — períodos contables (CTB-3)', () => {
+  const caja = { id: 'caja', hotelId: 'h1', code: '1.1.01', name: 'Caja', type: 'asset', isPostable: 1 } as AccountDTO
+  const cli = { id: 'cli', hotelId: 'h1', code: '1.1.03', name: 'Clientes', type: 'asset', isPostable: 1 } as AccountDTO
+  const accountsRepo = () => makeRepo({ findOne: async (q: any) => ({ caja, cli } as any)[q.id] ?? null })
+
+  it('crear un asiento en un período CERRADO se rechaza', async () => {
+    const periods = makeLines([{ id: 'p1', hotelId: 'h1', period: '2026-07', status: 'closed' }])
+    const service = svc(accountsRepo(), passAuth, makeLines(), makeLines(), makeOrm().orm, periods)
+    await expect(service.createEntry({
+      entryDate: '2026-07-15',
+      lines: [{ accountId: 'caja', debit: 100 }, { accountId: 'cli', credit: 100 }],
+    }, currentUser)).rejects.toThrow(/está closed/i)
+  })
+
+  it('lockPeriod rechaza un período que no está cerrado (lifecycle closed→locked)', async () => {
+    const period = { id: 'p1', hotelId: 'h1', period: '2026-07', status: 'open' }
+    const periods = makeLines([period]) as any
+    periods.findOne = async () => period
+    const service = svc(makeRepo(), passAuth, makeLines(), makeLines(), makeOrm().orm, periods)
+    await expect(service.lockPeriod('p1', currentUser)).rejects.toThrow(/cerrado/i)
+  })
+
+  it('closePeriod cuadrado pasa; descuadrado falla', async () => {
+    const period = { id: 'p1', hotelId: 'h1', period: '2026-07', status: 'open' }
+    const periods = makeLines([period]) as any
+    periods.findOne = async () => period
+    periods.update = async (_id: string, d: any) => { Object.assign(period, d); return period }
+    // Un asiento posteado balanceado en el período (débitos = créditos)
+    const entries = makeLines([{ id: 'e1', hotelId: 'h1', period: '2026-07', status: 'posted' }])
+    const linesRepo = makeLines([{ id: 'l1', entryId: 'e1', debit: 100, credit: 0 }, { id: 'l2', entryId: 'e1', debit: 0, credit: 100 }])
+    const service = svc(makeRepo(), passAuth, linesRepo, entries, makeOrm().orm, periods)
+    await service.closePeriod('p1', currentUser)
+    expect(period.status).toBe('closed')
+  })
+})
+
+describe('AccountingService — recordAuto (CTB-4, conectores)', () => {
+  const caja = { id: 'caja', hotelId: 'h1', code: '1.1.01', isPostable: 1 } as AccountDTO
+  const cli = { id: 'cli', hotelId: 'h1', code: '1.1.03', isPostable: 1 } as AccountDTO
+
+  it('resuelve códigos → ids, crea y postea el asiento', async () => {
+    const byCode: Record<string, AccountDTO> = { '1.1.01': caja, '1.1.03': cli }
+    const { store, orm } = makeOrm()
+    const repo = makeRepo({ findOne: async (q: any) => ({ caja, cli } as any)[q.id] ?? null, findMany: async (q: any) => byCode[q.code] ? [byCode[q.code]] : [] })
+    // entries respaldado por el store del orm → tx.create + postEntry.update ven la misma tabla.
+    const entries = makeBacked(store, 'JournalEntries')
+    const service = svc(repo, passAuth, makeLines(), entries, orm)
+    const res = await service.recordAuto('h1', {
+      entryDate: '2026-07-15', reference: 'pay-1', referenceType: 'payment',
+      lines: [{ code: '1.1.01', debit: 100 }, { code: '1.1.03', credit: 100 }],
+    })
+    expect(res.skipped).toBeUndefined()
+    expect(store.JournalEntries).toHaveLength(1)
+    expect(store.JournalEntries[0].status).toBe('posted')   // automático se postea directo
+    expect(store.JournalEntries[0].source).toBe('connector')
+  })
+
+  it('self-gating: si falta el plan de cuentas (código no resuelve) → no-op (skipped)', async () => {
+    const repo = makeRepo({ findMany: async () => [] })   // ningún código resuelve
+    const service = svc(repo)
+    const res = await service.recordAuto('h1', {
+      entryDate: '2026-07-15', reference: 'pay-1', referenceType: 'payment',
+      lines: [{ code: '1.1.01', debit: 100 }, { code: '1.1.03', credit: 100 }],
+    })
+    expect(res.skipped).toBe(true)
+  })
+})
+
+describe('AccountingService — reportes (CTB-5 comprobación/mayor, CTB-6 P&L/balance)', () => {
+  // Ciclo completo posteado: cargo de folio (ingreso), su cobro, y un gasto.
+  const accounts = [
+    { id: 'cli', hotelId: 'h1', code: '1.1.03', name: 'Clientes', type: 'asset' },
+    { id: 'caja', hotelId: 'h1', code: '1.1.01', name: 'Caja', type: 'asset' },
+    { id: 'ing', hotelId: 'h1', code: '4.1.01', name: 'Ingresos Hab.', type: 'income' },
+    { id: 'itbis', hotelId: 'h1', code: '2.1.02', name: 'ITBIS por Pagar', type: 'liability' },
+    { id: 'gasto', hotelId: 'h1', code: '5.3.01', name: 'Gastos', type: 'expense' },
+  ] as any[]
+  const entries = [
+    { id: 'e1', hotelId: 'h1', period: '2026-07', entryDate: '2026-07-15', status: 'posted' },
+    { id: 'e2', hotelId: 'h1', period: '2026-07', entryDate: '2026-07-15', status: 'posted' },
+    { id: 'e3', hotelId: 'h1', period: '2026-07', entryDate: '2026-07-16', status: 'posted' },
+    { id: 'd1', hotelId: 'h1', period: '2026-07', entryDate: '2026-07-17', status: 'draft' }, // NO cuenta
+  ]
+  const linesByEntry: Record<string, any[]> = {
+    e1: [{ accountId: 'cli', debit: 118, credit: 0 }, { accountId: 'ing', debit: 0, credit: 100 }, { accountId: 'itbis', debit: 0, credit: 18 }],
+    e2: [{ accountId: 'caja', debit: 118, credit: 0 }, { accountId: 'cli', debit: 0, credit: 118 }],
+    e3: [{ accountId: 'gasto', debit: 50, credit: 0 }, { accountId: 'caja', debit: 0, credit: 50 }],
+    d1: [{ accountId: 'gasto', debit: 999, credit: 0 }, { accountId: 'caja', debit: 0, credit: 999 }],
+  }
+  function reportSvc() {
+    const accountsRepo = makeRepo({ findMany: async () => accounts })
+    const entriesRepo = makeLines(entries)
+    const linesRepo = makeRepo({ findMany: async (q: any) => linesByEntry[q.entryId] ?? [] })
+    return new AccountingService(accountsRepo, makeUserRepo(), log, silentCache, passAuth, linesRepo, entriesRepo, makeOrm().orm, makeLines())
+  }
+
+  it('balance de comprobación cuadra (débitos = créditos)', async () => {
+    const tb = await reportSvc().trialBalance('2026-07', currentUser)
+    expect(tb.balanced).toBe(true)
+    expect(tb.totalDebit).toBe(286)   // 118+118+50 (draft excluido)
+    expect(tb.totalCredit).toBe(286)  // 118+100+18+50
+  })
+
+  it('estado de resultados: Ingresos − Gastos = Resultado (draft excluido)', async () => {
+    const pnl = await reportSvc().profitLoss(undefined, undefined, currentUser)
+    expect(pnl.revenue).toBe(100)
+    expect(pnl.expense).toBe(50)     // el gasto en draft (999) NO cuenta
+    expect(pnl.result).toBe(50)
+  })
+
+  it('balance general: Activo = Pasivo + Patrimonio (incluye resultado)', async () => {
+    const bs = await reportSvc().balanceSheet('2026-07', currentUser)
+    expect(bs.assets).toBe(68)         // Clientes 0 + Caja 68
+    expect(bs.liabilities).toBe(18)    // ITBIS
+    expect(bs.equity).toBe(50)         // 0 + resultado 50
+    expect(bs.balanced).toBe(true)
+  })
+
+  it('libro mayor de Caja: saldo corriente correcto', async () => {
+    const led = await reportSvc().generalLedger('caja', currentUser)
+    expect(led.account?.code).toBe('1.1.01')
+    expect(led.balance).toBe(68)       // +118 −50
+    expect(led.movements).toHaveLength(2)
+  })
+})
+
+describe('auto-from-events — mapeo evento → asiento (CTB-4)', () => {
+  // Port falso que captura la última llamada a recordAuto.
+  function fakePort() {
+    const calls: any[] = []
+    return { calls, port: { recordAuto: async (hotelId: string, input: any) => { calls.push({ hotelId, input }); return {} } } }
+  }
+
+  it('cobro en efectivo: DR Caja / CR Clientes', async () => {
+    const { calls, port } = fakePort()
+    await recordPaymentCompleted(port, { id: 'p1', hotelId: 'h1', type: 'charge', method: 'cash', amount: 100, processedAt: '2026-07-15' })
+    const l = calls[0].input.lines
+    expect(l).toEqual([{ code: '1.1.01', debit: 100 }, { code: '1.1.03', credit: 100 }])
+  })
+
+  it('cobro con tarjeta va a Bancos, no a Caja', async () => {
+    const { calls, port } = fakePort()
+    await recordPaymentCompleted(port, { id: 'p1', hotelId: 'h1', type: 'charge', method: 'card', amount: 50 })
+    expect(calls[0].input.lines[0].code).toBe('1.1.02')  // Bancos
+  })
+
+  it('un pago que no es charge (deposit) no genera asiento por este evento', async () => {
+    const { calls, port } = fakePort()
+    await recordPaymentCompleted(port, { id: 'p1', hotelId: 'h1', type: 'deposit', amount: 100 })
+    expect(calls).toHaveLength(0)
+  })
+
+  it('reembolso: DR Clientes / CR Caja (inverso del cobro), reference único', async () => {
+    const { calls, port } = fakePort()
+    await recordRefund(port, { id: 'p1', hotelId: 'h1', method: 'cash', amount: 40, processedAt: '2026-07-15' })
+    expect(calls[0].input.lines).toEqual([{ code: '1.1.03', debit: 40 }, { code: '1.1.01', credit: 40 }])
+    expect(calls[0].input.reference).toBe('p1-ref')   // no choca con el cobro original 'p1'
+    expect(calls[0].input.referenceType).toBe('refund')
+  })
+
+  it('cargo de folio con impuesto: DR Clientes(total) / CR Ingresos(neto) / CR ITBIS(impuesto)', async () => {
+    const { calls, port } = fakePort()
+    await recordFolioCharge(port, { hotelId: 'h1' }, { id: 'c1', hotelId: 'h1', kind: 'charge', category: 'room', amount: 100, taxes: 18, total: 118 })
+    const l = calls[0].input.lines
+    expect(l).toEqual([
+      { code: '1.1.03', debit: 118 },
+      { code: '4.1.01', credit: 100 },
+      { code: '2.1.02', credit: 18 },
+    ])
+  })
+
+  it('cargo de folio con descuento (total < neto+impuesto): el neto se deriva del total y CUADRA', async () => {
+    const { calls, port } = fakePort()
+    // amount 100, taxes 18, pero total 100 (descuento): net = total-tax = 82
+    await recordFolioCharge(port, {}, { id: 'c1', hotelId: 'h1', kind: 'charge', category: 'room', amount: 100, taxes: 18, total: 100 })
+    const l = calls[0].input.lines
+    const debe = l.reduce((s: number, x: any) => s + (x.debit || 0), 0)
+    const haber = l.reduce((s: number, x: any) => s + (x.credit || 0), 0)
+    expect(debe).toBe(haber)   // 100 = 82 + 18
+    expect(l[1].credit).toBe(82)
+  })
+
+  it('cargo de folio sin impuesto: solo 2 líneas', async () => {
+    const { calls, port } = fakePort()
+    await recordFolioCharge(port, {}, { id: 'c1', hotelId: 'h1', kind: 'charge', category: 'extra', amount: 40, taxes: 0, total: 40 })
+    expect(calls[0].input.lines).toHaveLength(2)
+    expect(calls[0].input.lines[1].code).toBe('4.2.01')  // servicios
+  })
+
+  it('línea de folio kind=payment NO genera ingreso', async () => {
+    const { calls, port } = fakePort()
+    await recordFolioCharge(port, {}, { id: 'c1', hotelId: 'h1', kind: 'payment', amount: 100 })
+    expect(calls).toHaveLength(0)
+  })
+
+  it('gasto pagado en efectivo: DR Gasto / CR Caja', async () => {
+    const { calls, port } = fakePort()
+    await recordExpense(port, { id: 'g1', hotelId: 'h1', amount: 30, paid: 1, paymentMethod: 'cash', source: 'manual' })
+    expect(calls[0].input.lines).toEqual([{ code: '5.3.01', debit: 30 }, { code: '1.1.01', credit: 30 }])
+  })
+
+  it('gasto a crédito (impago): CR Cuentas por Pagar', async () => {
+    const { calls, port } = fakePort()
+    await recordExpense(port, { id: 'g1', hotelId: 'h1', amount: 30, paid: 0, source: 'manual' })
+    expect(calls[0].input.lines[1].code).toBe('2.1.01')  // AP
+  })
+
+  it('gasto de nómina va a su cuenta 5.2.01', async () => {
+    const { calls, port } = fakePort()
+    await recordExpense(port, { id: 'g1', hotelId: 'h1', amount: 500, paid: 1, paymentMethod: 'transfer', source: 'payroll' })
+    expect(calls[0].input.lines[0].code).toBe('5.2.01')
   })
 })

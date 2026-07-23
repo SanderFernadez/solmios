@@ -13,6 +13,12 @@ export type { AccountDTO, CreateAccountDTO, UpdateAccountDTO, AccountsQuery, Acc
 export type { AccountingSockets } from './sockets'
 export { AccountingValidator, CreateAccountSchema, UpdateAccountSchema } from './validators/schema'
 export { registerAccountingModels } from './model'
+export { ACC, cashAccountForMethod, incomeAccountForCategory, expenseAccountForSource } from './usecases/account-codes'
+export type { RecordAutoInput } from './usecases/record-auto'
+export {
+  recordPaymentCompleted, recordRefund, recordDeposit, recordDepositRelease,
+  recordFolioCharge, recordExpense, type AccountingPort,
+} from './usecases/auto-from-events'
 
 export function AccountingModule() {
   return createModule({
@@ -39,8 +45,9 @@ export function AccountingModule() {
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const lines = new OrmRepository<any>(orm, 'JournalLines')
       const entries = new OrmRepository<any>(orm, 'JournalEntries')
+      const periods = new OrmRepository<any>(orm, 'AccountingPeriods')
       const log = logger.child('accounting')
-      const service = new AccountingService(accounts, userRepo, log, cache, auth, lines, entries, orm)
+      const service = new AccountingService(accounts, userRepo, log, cache, auth, lines, entries, orm, periods)
       const controller = new AccountingController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -62,6 +69,17 @@ export function AccountingModule() {
       router.post('/api/accounting/journal', guard('accounting', 'create'), (req) => controller.storeJournal(req))
       router.post('/api/accounting/journal/:id/post', guard('accounting', 'edit'), (req) => controller.postJournal(req))
       router.post('/api/accounting/journal/:id/reverse', guard('accounting', 'edit'), (req) => controller.reverseJournal(req))
+
+      // Períodos contables (CTB-3)
+      router.get('/api/accounting/periods', guard('accounting', 'view'), (req) => controller.indexPeriods(req))
+      router.post('/api/accounting/periods/:id/close', guard('accounting', 'edit'), (req) => controller.closePeriod(req))
+      router.post('/api/accounting/periods/:id/lock', guard('accounting', 'edit'), (req) => controller.lockPeriod(req))
+
+      // Reportes (CTB-5 mayor + balance de comprobación, CTB-6 P&L + balance general)
+      router.get('/api/accounting/trial-balance', guard('accounting', 'view'), (req) => controller.trialBalance(req))
+      router.get('/api/accounting/ledger', guard('accounting', 'view'), (req) => controller.ledger(req))
+      router.get('/api/accounting/pnl', guard('accounting', 'view'), (req) => controller.pnl(req))
+      router.get('/api/accounting/balance-sheet', guard('accounting', 'view'), (req) => controller.balanceSheet(req))
 
       log.info('Módulo accounting listo')
       return service

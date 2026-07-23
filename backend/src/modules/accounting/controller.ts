@@ -81,4 +81,40 @@ export class AccountingController {
     const res = await this.service.reverseEntry(req.params.id, req.user as any)
     return { status: 200, body: res }
   }
+
+  // ─── Períodos (CTB-3) ───
+  async indexPeriods(req: HttpRequest) {
+    const items = await this.service.listPeriods(req.user as any)
+    return { status: 200, body: { data: items, total: items.length } }
+  }
+
+  async closePeriod(req: HttpRequest) {
+    this.logger.info('POST /accounting/periods/:id/close', { id: req.params.id })
+    await this.service.closePeriod(req.params.id, req.user as any)
+    return { status: 200, body: { ok: true } }
+  }
+
+  async lockPeriod(req: HttpRequest) {
+    this.logger.info('POST /accounting/periods/:id/lock', { id: req.params.id })
+    await this.service.lockPeriod(req.params.id, req.user as any)
+    return { status: 200, body: { ok: true } }
+  }
+
+  // ─── Reportes (CTB-5/CTB-6) ───
+  async trialBalance(req: HttpRequest) {
+    const period = (req.query as any)?.period as string | undefined
+    return { status: 200, body: await this.service.trialBalance(period, req.user as any) }
+  }
+  async ledger(req: HttpRequest) {
+    const accountId = (req.query as any)?.account as string
+    return { status: 200, body: await this.service.generalLedger(accountId, req.user as any) }
+  }
+  async pnl(req: HttpRequest) {
+    const q = req.query as any
+    return { status: 200, body: await this.service.profitLoss(q?.from, q?.to, req.user as any) }
+  }
+  async balanceSheet(req: HttpRequest) {
+    const period = (req.query as any)?.period as string | undefined
+    return { status: 200, body: await this.service.balanceSheet(period, req.user as any) }
+  }
 }

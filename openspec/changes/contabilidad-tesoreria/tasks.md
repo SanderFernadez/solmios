@@ -33,37 +33,41 @@
 - [x] 2.5 Tests: balanceado OK; descuadre/no-postable/débito+crédito rechazados; dedup; post; reversión invierte debe/haber. **+ integración real SQLite end-to-end** ✅
 - **Aceptación:** ✅ asentar/postear/revertir funciona; nunca queda descuadrado; verificado con ORM real. Dedup por reference+referenceType listo para CTB-4.
 
-### CTB-3 — Períodos contables (open/close/lock)  ⟵ dep: CTB-2
-- [ ] 3.1 `usecases/period.ts`: abrir período `YYYY-MM`, cerrar (valida trial balance cuadra), lock
-- [ ] 3.2 Al postear, resolver el período por `entryDate`; rechazar si `locked` (409)
-- [ ] 3.3 Endpoints `GET /periods`, `POST /periods/:id/close`
-- [ ] 3.4 Tests: asiento en período locked rechazado; cierre valida cuadre
-- **Aceptación:** los asientos caen en su período; un período cerrado no acepta más asientos.
+### CTB-3 — Períodos contables (open/close/lock)  ✅ HECHO ⟵ dep: CTB-2
+- [x] 3.1 `usecases/period.ts`: abrir período `YYYY-MM` (lazy al crear asiento), cerrar (valida cuadre del período), lock
+- [x] 3.2 Al crear/postear, resolver el período por `entryDate`; rechazar si `closed`/`locked` (409)
+- [x] 3.3 Endpoints `GET /periods`, `POST /periods/:id/close`, `POST /periods/:id/lock`
+- [x] 3.4 Tests: asiento en período cerrado rechazado; cierre valida cuadre. **+ integración real** (cerrar → cobro no genera asiento) ✅
+- **Aceptación:** ✅ los asientos caen en su período; un período cerrado no acepta más asientos.
 
-### CTB-4 — Asientos automáticos (conectores desde eventos)  ⟵ dep: CTB-2
-- [ ] 4.1 `connectors/payments-accounting.ts`: `onPaymentCompleted`/`onRefundProcessed`/deposit → asiento (design.md §mapeo), dedup por `reference`
-- [ ] 4.2 `connectors/facturas-accounting.ts`: `onFacturasCreated` → DR Clientes / CR Ingresos + ITBIS (tasa de config, no hardcode)
-- [ ] 4.3 `connectors/gastos-accounting.ts`: `onGastosCreated` → gasto pagado (Caja) vs impago (AP)
-- [ ] 4.4 `connectors/folios-accounting.ts`: `onFolioCharged` (night audit) → DR Clientes / CR Ingresos habitación
-- [ ] 4.5 `connectors/cash-accounting.ts`: `onShiftClosed` → asiento de diferencia de arqueo (si la hay)
-- [ ] 4.6 Todos: no-op si `accounting` no está habilitado por plan; best-effort (no rompe el origen); idempotentes
-- [ ] 4.7 Registrar los 5 conectores en `composition-root.ts`
-- [ ] 4.8 Tests: cada evento genera el asiento correcto y cuadrado; re-emisión no duplica; módulo apagado = no-op
-- **Aceptación:** operar el hotel (cobrar, facturar, gastar) genera los asientos solo; cero doble conteo.
+### CTB-4 — Asientos automáticos (conectores desde eventos)  ✅ HECHO (núcleo) ⟵ dep: CTB-2/CTB-3
+- [x] 4.1 `connectors/payments-accounting.ts`: `onPaymentCompleted`/`onRefundProcessed`/`onDepositCreated`/`onDepositReleased` → asiento, dedup por `reference`
+- [~] 4.2 `facturas-accounting`: **DIFERIDO (decisión de diseño)** — el ingreso se devenga desde folio charges (consistente con `reports/money.ts`), NO desde facturas, para NO doble-contar. La factura es documento. Pendiente solo el asiento de nota de crédito.
+- [x] 4.3 `connectors/gastos-accounting.ts`: `onGastosCreated` → gasto pagado (Caja/Bancos) vs impago (Cuentas por Pagar); nómina a su cuenta
+- [x] 4.4 `connectors/folios-accounting.ts`: `onFolioCharged` (night audit + manual) → DR Clientes / CR Ingresos + ITBIS (habitación vs servicios por categoría)
+- [~] 4.5 `cash-accounting` (diferencia de arqueo): **DIFERIDO** — refinamiento de bajo valor; el cash real ya se asienta por payments-accounting.
+- [x] 4.6 Todos: no-op si el hotel no tiene plan de cuentas (self-gating por resolución de códigos); best-effort (try/catch, no rompe el origen); idempotentes por `reference`
+- [x] 4.7 Registrar los 3 conectores núcleo en `composition-root.ts`
+- [x] 4.8 Tests: cada evento genera el asiento correcto y cuadrado; re-emisión no duplica (dedup); sin plan de cuentas = no-op. **+ integración real SQLite end-to-end** ✅
+- **Aceptación:** ✅ operar el hotel (cobrar, cargar folio, gastar) genera los asientos solo, balanceados, idempotentes, cero doble conteo (ingreso solo desde folio charges). facturas/cash diferidos con razón documentada.
 
-### CTB-5 — Libro mayor + balance de comprobación  ⟵ dep: CTB-4
-- [ ] 5.1 `usecases/general-ledger.ts`: mayor por cuenta (movimientos + saldo corriente)
-- [ ] 5.2 `usecases/trial-balance.ts`: saldos deudor/acreedor por cuenta; verifica `SUM(débitos)=SUM(créditos)`
-- [ ] 5.3 Endpoints `GET /ledger?account=`, `GET /trial-balance?period=`
-- [ ] 5.4 Tests: mayor suma correcto; trial balance cuadra sobre asientos de prueba
-- **Aceptación:** el balance de comprobación siempre cuadra; el mayor refleja los asientos.
+### CTB-5 — Libro mayor + balance de comprobación  ✅ HECHO ⟵ dep: CTB-4
+- [x] 5.1 `usecases/reports.ts::generalLedger`: mayor por cuenta (movimientos ordenados + saldo corriente)
+- [x] 5.2 `usecases/reports.ts::trialBalance`: saldos deudor/acreedor por cuenta; verifica `SUM(débitos)=SUM(créditos)` (solo posteados)
+- [x] 5.3 Endpoints `GET /ledger?account=`, `GET /trial-balance?period=`
+- [x] 5.4 Tests: mayor suma correcto; trial balance cuadra. **+ integración real: DR 286 = CR 286** ✅
+- **Aceptación:** ✅ el balance de comprobación siempre cuadra; el mayor refleja los asientos; los draft se excluyen.
 
-### CTB-6 — Estados financieros (P&L + Balance general)  ⟵ dep: CTB-5
-- [ ] 6.1 `usecases/profit-loss.ts`: Ingresos(4) − Gastos(5) = Resultado, base `accrual` y `cash`
-- [ ] 6.2 `usecases/balance-sheet.ts`: Activo = Pasivo + Patrimonio (incluye resultado del ejercicio)
-- [ ] 6.3 Endpoints `GET /pnl?from=&to=&basis=`, `GET /balance-sheet?period=`
-- [ ] 6.4 Tests anti-doble-conteo (R10): emitir+cobrar la misma factura no duplica ingreso; balance cuadra
-- **Aceptación:** P&L y Balance general correctos y cuadrados; test anti-doble-conteo verde.
+### CTB-6 — Estados financieros (P&L + Balance general)  ✅ HECHO ⟵ dep: CTB-5
+- [x] 6.1 `usecases/reports.ts::profitLoss`: Ingresos(4) − Gastos(5) = Resultado, base `accrual`. [~] base `cash` diferida (requiere trazar cobro→devengado; el ledger devenga por folio charges).
+- [x] 6.2 `usecases/reports.ts::balanceSheet`: Activo = Pasivo + Patrimonio (incluye resultado del ejercicio)
+- [x] 6.3 Endpoints `GET /pnl?from=&to=`, `GET /balance-sheet?period=`
+- [x] 6.4 Tests: ingreso solo desde folio charges (sin doble conteo); balance cuadra. **+ integración real: P&L 100−50=50, Balance 68=18+50** ✅
+- **Aceptación:** ✅ P&L y Balance general correctos y cuadrados; cero doble conteo (verificado end-to-end).
+
+### Refactor (habilitante de CTB-5/CTB-6)
+- [x] Extraído el CRUD de cuentas a `usecases/accounts-crud.ts` (service 192→100 líneas, headroom God Object).
+- [x] Fixes del QA CTB-3/CTB-4: reembolso ahora se asienta (payments emite `onRefundProcessed`); depósitos NO cableados (no son plata real — deuda documentada); `lockPeriod` exige `closed`; cargo de folio deriva neto del total (siempre cuadra).
 
 ### CTB-7 — Frontend contabilidad  ⟵ dep: CTB-6
 - [ ] 7.1 `services/Accounting.service.ts` + tipos en `types/index.ts`

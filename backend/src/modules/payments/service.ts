@@ -101,6 +101,10 @@ export class PaymentsService {
       paymentId, amount, user,
     )
     await this.audit(refundEntry(refunded, amount, user))
+    // La devolución Stripe ya se ejecutó (plata real que salió) → notificar a quien escuche
+    // (contabilidad la asienta DR Clientes / CR Caja). El `payment type:'refund'` queda 'pending',
+    // así que `onPaymentCompleted` no lo cubre: por eso se emite su propio evento acá.
+    await this.sockets.onRefundProcessed?.(refunded)
     return refunded
   }
 
