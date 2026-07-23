@@ -15,13 +15,13 @@ motivation: |
 architecture_decision: in-house-pos-completo   # POS completo con KDS, confirmado con el dueño.
 
 scope:
-  restaurant: [carta-menu, mesas-salon, comandas, kds-cocina, cuenta-split-propina, cargo-a-folio, cobro-directo, contabilidad-pos, frontend]
+  restaurant: [estaciones-configurables, carta-menu, ruteo-categoria-estacion, mesas-salon, comandas, kds-cocina, cuenta-split-propina, cargo-a-folio, cobro-directo, contabilidad-pos, frontend]
   reuse: [folios.postCharge, payments.createPayment, folios-accounting, payments-accounting, cash-caja, configuration-taxes]
   out_of_scope: [inventario-food-cost, compras-proveedor-restaurante, reserva-mesa-online, delivery-terceros, impresion-termica-hardware, multi-moneda]
 
 sprints:
   res-0-schema-base:   { title: "Schema ORM + módulo restaurant base + wiring", status: pending, priority: critical, phase: infra }
-  res-1-carta:         { title: "Carta / menú (categorías + ítems)", status: pending, priority: high, phase: implementation, dep: res-0 }
+  res-1-carta:         { title: "Estaciones configurables + carta / menú (ruteo categoría→estación)", status: pending, priority: high, phase: implementation, dep: res-0 }
   res-2-mesas:         { title: "Mesas + salón", status: pending, priority: high, phase: implementation, dep: res-0 }
   res-3-comandas:      { title: "Comandas (órdenes + líneas)", status: pending, priority: high, phase: implementation, dep: [res-1, res-2] }
   res-4-kds:           { title: "KDS (pantalla de cocina)", status: pending, priority: high, phase: implementation, dep: res-3 }
@@ -32,7 +32,7 @@ sprints:
 
 rollback: |
   Módulo aditivo y aislado: desregistrar RestaurantModule + 2-3 conectores en composition-root.ts y dropear
-  las 5 tablas nuevas no toca ninguna tabla financiera existente. Conectores best-effort (un asiento que falla
+  las 6 tablas nuevas no toca ninguna tabla financiera existente. Conectores best-effort (un asiento que falla
   no afecta el cobro/cargo real). Se apaga por entitlement de plan sin desplegar.
 
 estimate_days: 12-16

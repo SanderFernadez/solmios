@@ -9,12 +9,25 @@ frontend `frontend/src/pages/restaurante/`. Registro en `composition-root.ts` (p
 
 ## Modelo de datos (ORM — inglés, `hotelId` en toda tabla, id = TEXT UUID, timestamps camelCase)
 
+### `restaurant_stations`  (pantallas de preparación — CONFIGURABLE por hotel)
+| campo | tipo | notas |
+|-------|------|-------|
+| id | text | UUID |
+| hotelId | text | multi-tenant, indexed |
+| name | text | "Cocina", "Bar", "Parrilla", "Pizzería" — lo define cada hotel |
+| active | boolean | INTEGER 0/1 (una estación inactiva no recibe comandas nuevas) |
+| sortOrder | number | orden de despliegue |
+
+> Cada estación = **una pantalla KDS**. Un hotel puede tener solo Cocina, o Cocina+Bar, o más.
+> NO hay estaciones hardcodeadas: se crean/editan desde la config del restaurante.
+
 ### `menu_categories`
 | campo | tipo | notas |
 |-------|------|-------|
 | id | text | UUID |
 | hotelId | text | multi-tenant, indexed |
 | name | text | "Entradas", "Platos fuertes", "Bebidas" |
+| stationId | text | **ruteo KDS**: FK a `restaurant_stations`. Los ítems de esta categoría van a esa pantalla. |
 | sortOrder | number | orden de despliegue |
 | active | boolean | INTEGER 0/1 |
 
@@ -28,7 +41,7 @@ frontend `frontend/src/pages/restaurante/`. Registro en `composition-root.ts` (p
 | description | text | opcional |
 | price | number | **unitario, sin impuesto** (el impuesto se aplica al facturar, como folio_charges) |
 | taxRate | number | opcional; si null → `taxRateFor(config, hotelId)` (NO hardcode) |
-| station | text | ruteo KDS: `kitchen` \| `bar` \| `grill`… (config del hotel; default `kitchen`) |
+| stationId | text | **override** opcional de estación. Si null → hereda `category.stationId`. Para el caso raro (un postre de categoría comida que arma el bar). |
 | available | boolean | 86'd = out of stock del día |
 | imageUrl | text | opcional |
 | sortOrder | number | |
@@ -75,12 +88,23 @@ frontend `frontend/src/pages/restaurante/`. Registro en `composition-root.ts` (p
 | unitPrice | number | snapshot del precio neto |
 | quantity | number | ≥1 |
 | notes | text | "sin cebolla", modificadores |
-| station | text | snapshot para KDS |
+| stationId | text | snapshot de la estación RESUELTA (item.stationId ?? category.stationId) → a qué pantalla KDS va |
+| stationName | text | snapshot del nombre de la estación (para mostrar sin join, sobrevive si la estación se borra) |
 | status | text | `new` \| `preparing` \| `ready` \| `served` \| `cancelled` (KDS por línea) |
 | lineTotal | number | unitPrice * quantity (server) |
 
-> **Snapshot de precio/nombre en la línea**: una comanda es un contrato con el comensal; si mañana sube
-> el precio del ítem del menú, la cuenta ya emitida NO cambia. Mismo criterio que un folio_charge.
+> **Snapshot de precio/nombre/estación en la línea**: una comanda es un contrato con el comensal; si mañana
+> sube el precio del ítem o se re-rutea la categoría a otra estación, la cuenta/comanda ya emitida NO cambia.
+> Mismo criterio que un folio_charge.
+
+### Resolución de estación (ruteo a pantalla)
+Al agregar una línea, el server resuelve la estación una vez y la congela en la línea:
+```
+stationId = item.stationId ?? category.stationId ?? (primera estación activa del hotel) ?? null
+```
+- Si el hotel tiene **una sola** estación (solo Cocina), todo cae ahí sin configurar nada.
+- Si tiene varias, cada categoría enruta a la suya; un ítem puede sobrescribir.
+- `stationId = null` (hotel sin estaciones definidas) → la línea entra a una cola "Sin estación" (fail-safe: la comanda no se pierde, aparece en una pantalla general).
 
 ## Máquina de estados de la comanda
 
@@ -156,6 +180,7 @@ cada N segundos si el socket no está disponible (mismo criterio defensivo que e
 
 | Método | Ruta | Permiso |
 |--------|------|---------|
+| GET/POST/PUT/DELETE | `/api/restaurant/stations` | restaurant:view/create/edit/delete |
 | GET/POST/PUT/DELETE | `/api/restaurant/categories` | restaurant:view/create/edit/delete |
 | GET/POST/PUT/DELETE | `/api/restaurant/menu-items` | restaurant:view/create/edit/delete |
 | PUT | `/api/restaurant/menu-items/:id/availability` | restaurant:edit (86' rápido) |
@@ -168,7 +193,7 @@ cada N segundos si el socket no está disponible (mismo criterio defensivo que e
 | POST | `/api/restaurant/orders/:id/charge-to-room` (→ folio) | restaurant:edit |
 | POST | `/api/restaurant/orders/:id/pay` (→ payment directo) | restaurant:edit |
 | POST | `/api/restaurant/orders/:id/cancel` | restaurant:delete |
-| GET | `/api/restaurant/kds` (líneas activas por estación) | restaurant:view |
+| GET | `/api/restaurant/kds?station=<stationId>` (líneas activas de UNA pantalla) | restaurant:view |
 | PUT | `/api/restaurant/kds/lines/:id` (transición de estado) | restaurant:edit |
 
 ## Verificación (gate)

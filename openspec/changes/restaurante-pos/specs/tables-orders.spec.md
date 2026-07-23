@@ -7,7 +7,7 @@ Gestión del salón (mesas por zona) y del ciclo de una comanda: abrir, agregar 
 - `restaurant_tables(id, hotelId, name, zone, capacity, status)` — `status` ∈ {free, occupied, reserved}.
 - `restaurant_orders(id, hotelId, number, type, tableId?, reservationId?, guestId?, roomId?, waiterId, status,
   subtotal, tax, tip, total, settlement?, folioId?, paymentId?, openedAt, closedAt?)`.
-- `restaurant_order_items(id, hotelId, orderId, menuItemId, name, unitPrice, quantity, notes?, station, status, lineTotal)`.
+- `restaurant_order_items(id, hotelId, orderId, menuItemId, name, unitPrice, quantity, notes?, stationId, stationName, status, lineTotal)`.
 - `order.number` = correlativo por hotel (counter atómico en `configuration`, patrón `invoice_counter`).
 
 ## API
@@ -22,8 +22,9 @@ Gestión del salón (mesas por zona) y del ciclo de una comanda: abrir, agregar 
   `takeaway` **MUST** tener ninguno de los dos. El sistema **MUST** rechazar combinaciones inválidas.
 - `subtotal`, `tax`, `total`, `lineTotal` **MUST** calcularse en el servidor a partir de `unitPrice*quantity`
   y la tasa de impuesto; el sistema **MUST NOT** confiar en montos enviados por el cliente.
-- Al agregar una línea, el sistema **MUST** copiar `name`, `unitPrice` y `station` del `menu_item` (snapshot);
-  cambios posteriores al ítem **MUST NOT** alterar comandas existentes.
+- Al agregar una línea, el sistema **MUST** copiar `name`, `unitPrice` y resolver + congelar `stationId`/`stationName`
+  (= `item.stationId ?? category.stationId ?? 1ª estación activa`); cambios posteriores al ítem, a la categoría o a
+  las estaciones **MUST NOT** alterar comandas existentes.
 - `quantity` **MUST** ser ≥ 1 entero.
 - El sistema **MUST** rechazar agregar líneas a una comanda en estado `charged`/`paid`/`cancelled` (409).
 - Abrir una comanda en una mesa `occupied` **MUST** rechazarse o adjuntarse a la comanda abierta existente

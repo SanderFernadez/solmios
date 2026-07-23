@@ -8,22 +8,25 @@
 
 ## RES-0 — Schema ORM + módulo `restaurant` base + wiring  ⟵ infra
 - [ ] 0.1 `make:module Restaurant` → estructura canónica (index/model/service/controller/types/sockets/validators/tests)
-- [ ] 0.2 `model.ts`: modelos ORM `menu_categories`, `menu_items`, `restaurant_tables`, `restaurant_orders`,
-      `restaurant_order_items` (ver design.md; inglés, `hotelId` indexed, booleanos INTEGER)
+- [ ] 0.2 `model.ts`: modelos ORM `restaurant_stations`, `menu_categories` (con `stationId`), `menu_items`
+      (con `stationId?` override), `restaurant_tables`, `restaurant_orders`, `restaurant_order_items`
+      (con `stationId`/`stationName` snapshot) — ver design.md; inglés, `hotelId` indexed, booleanos INTEGER
 - [ ] 0.3 Registrar en `composition-root.ts` (import + array `mods` + `addModule`)
-- [ ] 0.4 `RUN_MIGRATE` crea las 5 tablas (verificar SQLite; PG por deploy)
+- [ ] 0.4 `RUN_MIGRATE` crea las 6 tablas (verificar SQLite; PG por deploy)
 - [ ] 0.5 Permiso `restaurant:view/create/edit/delete` en `shared/permissions.ts` (MODULES + MODULE_ACTIONS +
       DEFAULT_ROLE_PERMISSIONS hotel_admin completo, receptionist view/create)
 - [ ] 0.6 Clave de catálogo `restaurant` en `admin/usecases/modules.ts` (entitlement de plan) + `moduleGuard('restaurant')`
-- **Aceptación:** `arckode analyze` 0 violaciones · 5 tablas creadas · typecheck limpio · módulo carga en composition-root.
+- **Aceptación:** `arckode analyze` 0 violaciones · 6 tablas creadas · typecheck limpio · módulo carga en composition-root.
 
-## RES-1 — Carta / Menú (categorías + ítems)  ⟵ dep: RES-0
-- [ ] 1.1 CRUD `menu_categories` (service + controller + validators) con `sortOrder`, `active`
-- [ ] 1.2 CRUD `menu_items` con `price` neto, `taxRate?`, `station`, `available`, snapshot-safe
+## RES-1 — Estaciones + Carta / Menú  ⟵ dep: RES-0
+- [ ] 1.0 CRUD `restaurant_stations` (pantallas configurables: name, active, sortOrder)
+- [ ] 1.1 CRUD `menu_categories` con `stationId` (ruteo a estación), `sortOrder`, `active`
+- [ ] 1.2 CRUD `menu_items` con `price` neto, `taxRate?`, `stationId?` (override), `available`, snapshot-safe
 - [ ] 1.3 `PUT /menu-items/:id/availability` (86' rápido)
-- [ ] 1.4 Reglas: item sin categoría válida → 400; no borrar categoría con ítems → 409; impuesto de config si taxRate null
-- [ ] 1.5 Tests: CRUD, 86', borrado bloqueado, tasa de impuesto tomada de config
-- **Aceptación:** carta editable; impuesto NO hardcodeado; tests verdes.
+- [ ] 1.4 Reglas: item sin categoría válida → 400; no borrar categoría con ítems → 409; impuesto de config si taxRate null;
+      `stationId` (categoría/ítem) del mismo hotel o null; borrar estación no rompe categorías/ítems (fallback de ruteo)
+- [ ] 1.5 Tests: CRUD estaciones/categorías/ítems, ruteo categoría→estación, 86', borrado bloqueado, tasa de impuesto de config
+- **Aceptación:** estaciones configurables + carta editable; ruteo por categoría; impuesto NO hardcodeado; tests verdes.
 
 ## RES-2 — Mesas + salón  ⟵ dep: RES-0
 - [ ] 2.1 CRUD `restaurant_tables` (name, zone, capacity, status)
@@ -41,13 +44,13 @@
 - [ ] 3.6 Tests: apertura por tipo, doble-comanda en mesa rechazada, snapshot inmutable, totales del server, cancel libera mesa
 - **Aceptación:** ciclo de comanda hasta `sent`; totales confiables; multi-tenant con assertOwnership.
 
-## RES-4 — KDS (pantalla de cocina)  ⟵ dep: RES-3
-- [ ] 4.1 `GET /kds?station=` — líneas activas agrupadas por estación, FIFO por hotel
+## RES-4 — KDS (pantalla de cocina, por estación)  ⟵ dep: RES-3
+- [ ] 4.1 `GET /kds?station=<stationId>` — líneas activas de ESA pantalla, FIFO por hotel (cada estación su cola)
 - [ ] 4.2 `PUT /kds/lines/:id` — transiciones new→preparing→ready→served (+cancelled); rechazar saltos inválidos
 - [ ] 4.3 Estado agregado de la orden recalculado al cambiar línea (ready/served)
 - [ ] 4.4 Eventos socket `order.sent`/`line.status_changed`; endpoint resiliente sin socket (polling fallback)
-- [ ] 4.5 Ruteo por `line.station` con fallback `kitchen`
-- [ ] 4.6 Tests: cola por estación, transiciones válidas/ inválidas, agregado de orden, multi-tenant
+- [ ] 4.5 Ruteo por `line.stationId` (snapshot); fallback "Sin estación" si el hotel no tiene ninguna
+- [ ] 4.6 Tests: cola por estación (bar vs cocina), transiciones válidas/inválidas, agregado de orden, multi-tenant
 - **Aceptación:** la cocina ve y avanza líneas en vivo; ninguna comanda se pierde.
 
 ## RES-5 — Cuenta + cobro (billing & settlement)  ⟵ dep: RES-3
