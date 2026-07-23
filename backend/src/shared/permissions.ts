@@ -106,8 +106,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'attendance:view', 'attendance:create',
     'ttlock:view',
     'ai:view', 'ai:edit',
-    // Toma comandas y las cobra desde el mostrador; la config (estaciones/carta) es del hotel_admin.
-    'restaurant:view', 'restaurant:create',
+    // Toma comandas, las envía a cocina y las cobra desde el mostrador (create+edit); la config
+    // (estaciones/carta) y el borrado/cancelación (delete) son del hotel_admin.
+    'restaurant:view', 'restaurant:create', 'restaurant:edit',
   ],
 
   // Housekeeper - cleaning tasks only
