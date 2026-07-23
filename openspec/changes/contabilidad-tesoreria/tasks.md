@@ -8,21 +8,21 @@
 
 ## Fase 1 — Infraestructura contable
 
-### CTB-0 — Schema ORM + módulo `accounting` base + wiring
-- [ ] 0.1 `make:module Accounting` → estructura canónica (index/model/service/controller/types/sockets/validators/tests)
-- [ ] 0.2 `model.ts`: modelos ORM `accounts`, `journal_entries`, `journal_lines`, `accounting_periods` (ver design.md)
-- [ ] 0.3 Registrar en `composition-root.ts` (módulo + permisos + moduleGuard `accounting`)
-- [ ] 0.4 `RUN_MIGRATE` crea las 4 tablas (SQLite + Postgres); verificar columnas lowercase en PG
-- [ ] 0.5 Permisos `accounting:view/create/edit/delete` en `shared/permissions.ts` (hotel_admin completo)
-- [ ] 0.6 Clave de catálogo `accounting` en `admin/usecases/modules.ts` (entitlement de plan)
-- **Aceptación:** `arckode analyze` 0 violaciones · tablas creadas en ambos motores · el módulo arranca sin romper composition-root.
+### CTB-0 — Schema ORM + módulo `accounting` base + wiring  ✅ HECHO (commit accounting-module-ctb0)
+- [x] 0.1 `make:module Accounting` → estructura canónica (index/model/service/controller/types/sockets/validators/tests)
+- [x] 0.2 `model.ts`: modelos ORM `accounts`, `journal_entries`, `journal_lines`, `accounting_periods` (ver design.md)
+- [x] 0.3 Registrar en `composition-root.ts` (módulo + permisos + moduleGuard `accounting`)
+- [x] 0.4 `RUN_MIGRATE` crea las 4 tablas (verificado en SQLite; PG por deploy) · lowercase nativo fw 1.6.2
+- [x] 0.5 Permisos `accounting:view/create/edit/delete` en `shared/permissions.ts` (hotel_admin completo)
+- [x] 0.6 Clave de catálogo `accounting` en `admin/usecases/modules.ts` (entitlement de plan)
+- **Aceptación:** ✅ `arckode analyze` 0 violaciones · 4 tablas creadas (RUN_MIGRATE) · 11 tests verdes · typecheck limpio.
 
 ### CTB-1 — Plan de cuentas (chart of accounts) + seed base  ⟵ dep: CTB-0
-- [ ] 1.1 CRUD de `accounts` (service + controller + validators), con `isPostable` y jerarquía `parentId`
-- [ ] 1.2 Endpoints `GET/POST/PUT /api/accounting/accounts` (guard `accounting:*` + moduleGuard)
+- [x] 1.1 CRUD de `accounts` (service + controller + validators), con `isPostable` y jerarquía `parentId` (validada por hotel)
+- [x] 1.2 Endpoints `GET/POST/PUT/DELETE /api/accounting/accounts` (guard `accounting:*` + moduleGuard)
 - [ ] 1.3 Seed del catálogo base hotelero (design.md §plan de cuentas) — script idempotente por hotel
-- [ ] 1.4 Validación: `code` único por hotel; no borrar cuenta con asientos
-- [ ] 1.5 Tests: seed crea el catálogo; cuenta de agrupación rechaza asiento directo
+- [x] 1.4 Validación: `code` único por hotel; no borrar cuenta con hijos ni con asientos (integridad referencial)
+- [ ] 1.5 Tests: seed crea el catálogo; cuenta de agrupación rechaza asiento directo (los tests de CRUD/dup/IDOR/integridad ✅)
 - **Aceptación:** un hotel nuevo obtiene el plan base; el catálogo es editable; tests verdes.
 
 ### CTB-2 — Asientos manuales + doble entrada + post/reverse  ⟵ dep: CTB-1

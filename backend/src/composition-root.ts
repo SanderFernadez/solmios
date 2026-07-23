@@ -111,6 +111,7 @@ import { OpinionesModule } from './modules/opiniones'
 import { GastosModule } from './modules/gastos'
 import { FoliosModule } from './modules/folios'
 import { PaymentsModule } from './modules/payments'
+import { AccountingModule } from './modules/accounting'
 import { EmpleadosModule } from './modules/empleados'
 import { ReclutamientoModule } from './modules/reclutamiento'
 import { ReembolsosModule } from './modules/reembolsos'
@@ -155,6 +156,9 @@ const mods = [
   ReclutamientoModule(), ReembolsosModule(),
   AiRecepcionistaModule(), AiGerenteModule(), BookingengineModule({ pushAvailability }),
   CashModule(),
+  // Contabilidad de doble entrada (CTB-0). Módulo aislado; los asientos automáticos se
+  // enganchan por conectores en tareas posteriores (CTB-4). Ver openspec contabilidad-tesoreria.
+  AccountingModule(),
   // ANTES que PaymentRequestsModule: ambos registran una ruta bajo /api/stripe/webhook/.
   // payment-requests usa el comodín /api/stripe/webhook/:hotelId (cobro a huéspedes);
   // subscriptions usa el literal /api/stripe/webhook/platform (el hotel pagándole a la

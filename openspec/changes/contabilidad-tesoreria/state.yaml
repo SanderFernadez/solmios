@@ -21,8 +21,8 @@ scope:
 
 sprints:
   # Fase 1 — Contabilidad
-  ctb-0-schema-base:        { title: "Schema ORM + módulo accounting base + wiring", status: pending, priority: critical, phase: infra }
-  ctb-1-plan-cuentas:       { title: "Plan de cuentas + seed base", status: pending, priority: high, phase: implementation, dep: ctb-0 }
+  ctb-0-schema-base:        { title: "Schema ORM + módulo accounting base + wiring", status: done, priority: critical, phase: infra }
+  ctb-1-plan-cuentas:       { title: "Plan de cuentas + seed base", status: in_progress, priority: high, phase: implementation, dep: ctb-0 }  # CRUD+validaciones ✅; falta seed (1.3)
   ctb-2-asientos-manuales:  { title: "Asientos manuales + doble entrada + post/reverse", status: pending, priority: high, phase: implementation, dep: ctb-1 }
   ctb-3-periodos:           { title: "Períodos contables open/close/lock", status: pending, priority: medium, phase: implementation, dep: ctb-2 }
   ctb-4-asientos-auto:      { title: "Asientos automáticos (5 conectores)", status: pending, priority: high, phase: implementation, dep: ctb-2 }

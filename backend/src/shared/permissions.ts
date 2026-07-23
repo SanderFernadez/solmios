@@ -23,6 +23,10 @@ export const MODULES = {
   'channel-manager': 'Channel Manager',
   ttlock: 'Cerraduras',
   ai: 'Inteligencia Artificial',
+  /** Contabilidad de doble entrada (plan de cuentas, asientos, estados financieros). */
+  accounting: 'Contabilidad',
+  /** Tesorería (bancos, conciliación, flujo de caja, AR/AP, presupuesto). */
+  treasury: 'Tesorería',
 } as const
 
 // Available actions per module
@@ -70,6 +74,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'channel-manager:view', 'channel-manager:edit',
     'ttlock:view', 'ttlock:edit',
     'ai:view', 'ai:edit',
+    // Contabilidad y tesorería: son del dueño del hotel (finanzas), no de recepción.
+    'accounting:view', 'accounting:create', 'accounting:edit', 'accounting:delete',
+    'treasury:view', 'treasury:create', 'treasury:edit', 'treasury:delete',
   ],
 
   // Receptionist — la operación del mostrador. Los permisos siguen a lo que el menú del panel le

@@ -90,6 +90,12 @@ export const MODULE_CATALOG: ModuleMeta[] = [
       { key: 'settings.push', label: 'Notificaciones Push', description: 'Tokens de notificaciones push' },
     ],
   },
+  {
+    key: 'accounting', label: 'Contabilidad', description: 'Contabilidad de doble entrada: plan de cuentas, asientos, estados financieros',
+  },
+  {
+    key: 'treasury', label: 'Tesorería', description: 'Bancos, conciliación, flujo de caja, cuentas por cobrar/pagar y presupuesto',
+  },
 ]
 
 export type ModuleState = Record<string, boolean>
