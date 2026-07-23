@@ -19,22 +19,22 @@
 - [x] 0.7 CRUD de estaciones (primer vertical): pantallas KDS configurables, ownership + hotelId del JWT, 7 tests
 - **Aceptación:** ✅ `arckode analyze` sin violaciones · 6 tablas creadas · typecheck limpio · módulo carga · 7 tests verdes.
 
-## RES-1 — Estaciones + Carta / Menú  ⟵ dep: RES-0
-- [ ] 1.0 CRUD `restaurant_stations` (pantallas configurables: name, active, sortOrder)
-- [ ] 1.1 CRUD `menu_categories` con `stationId` (ruteo a estación), `sortOrder`, `active`
-- [ ] 1.2 CRUD `menu_items` con `price` neto, `taxRate?`, `stationId?` (override), `available`, snapshot-safe
-- [ ] 1.3 `PUT /menu-items/:id/availability` (86' rápido)
-- [ ] 1.4 Reglas: item sin categoría válida → 400; no borrar categoría con ítems → 409; impuesto de config si taxRate null;
-      `stationId` (categoría/ítem) del mismo hotel o null; borrar estación no rompe categorías/ítems (fallback de ruteo)
-- [ ] 1.5 Tests: CRUD estaciones/categorías/ítems, ruteo categoría→estación, 86', borrado bloqueado, tasa de impuesto de config
-- **Aceptación:** estaciones configurables + carta editable; ruteo por categoría; impuesto NO hardcodeado; tests verdes.
+## RES-1 — Estaciones + Carta / Menú  ✅ HECHO (commit 208c573) ⟵ dep: RES-0
+- [x] 1.0 CRUD `restaurant_stations` (pantallas configurables) — hecho en RES-0
+- [x] 1.1 CRUD `menu_categories` con `stationId` (ruteo a estación), `sortOrder`, `active` (`usecases/categories-crud.ts`)
+- [x] 1.2 CRUD `menu_items` con `price` neto, `taxRate?`, `stationId?` (override), `available` (`usecases/items-crud.ts`)
+- [x] 1.3 `PUT /menu-items/:id/availability` (86' rápido; fija o invierte)
+- [x] 1.4 Reglas: item sin categoría válida → 400; no borrar categoría con ítems → 409; impuesto de config si taxRate null;
+      `stationId` (categoría/ítem) del mismo hotel o null (QA M1/M2: `''` des-rutea → null, no referencia colgante)
+- [x] 1.5 Tests + validación taxRate/precio ≥ 0 · IDOR en mutaciones (25 tests totales)
+- **Aceptación:** ✅ estaciones configurables + carta editable; ruteo por categoría; impuesto NO hardcodeado; analyze ✅; 25 tests.
 
-## RES-2 — Mesas + salón  ⟵ dep: RES-0
-- [ ] 2.1 CRUD `restaurant_tables` (name, zone, capacity, status)
-- [ ] 2.2 Estado derivado/cacheado free/occupied/reserved; consistencia con comanda abierta
-- [ ] 2.3 Reglas: una mesa, una comanda abierta (ver RES-3); cancelar comanda libera la mesa
-- [ ] 2.4 Tests: alta/edición, transición de estado
-- **Aceptación:** salón operable; estado de mesa coherente con comandas.
+## RES-2 — Mesas + salón  ✅ HECHO (commit 208c573) ⟵ dep: RES-0
+- [x] 2.1 CRUD `restaurant_tables` (name, zone, capacity ≥ 0, status ∈ free|occupied|reserved) (`usecases/tables-crud.ts`)
+- [~] 2.2 Estado free/occupied/reserved: el CRUD lo setea; la sincronía automática mesa↔comanda abierta se aplica en RES-3
+- [~] 2.3 Una mesa, una comanda abierta / cancelar libera la mesa → RES-3 (al abrir/cerrar comandas)
+- [x] 2.4 Tests: alta/edición, status inválido rechazado, IDOR
+- **Aceptación:** ✅ salón operable (CRUD); la consistencia con comandas se cierra en RES-3.
 
 ## RES-3 — Comandas (órdenes + líneas)  ⟵ dep: RES-1, RES-2
 - [ ] 3.1 `usecases` abrir comanda (dine_in/room_service/takeaway) con validación de `tableId`/`reservationId` por tipo

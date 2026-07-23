@@ -21,8 +21,8 @@ scope:
 
 sprints:
   res-0-schema-base:   { title: "Schema ORM + módulo restaurant base + wiring", status: done, priority: critical, phase: infra }   # commit 0ad4633 · analyze ✅ · 6 tablas · 7 tests
-  res-1-carta:         { title: "Estaciones configurables + carta / menú (ruteo categoría→estación)", status: pending, priority: high, phase: implementation, dep: res-0 }
-  res-2-mesas:         { title: "Mesas + salón", status: pending, priority: high, phase: implementation, dep: res-0 }
+  res-1-carta:         { title: "Estaciones configurables + carta / menú (ruteo categoría→estación)", status: done, priority: high, phase: implementation, dep: res-0 }   # commit 208c573 · QA-fixed (M1/M2 stationId)
+  res-2-mesas:         { title: "Mesas + salón", status: done, priority: high, phase: implementation, dep: res-0 }   # commit 208c573
   res-3-comandas:      { title: "Comandas (órdenes + líneas)", status: pending, priority: high, phase: implementation, dep: [res-1, res-2] }
   res-4-kds:           { title: "KDS (pantalla de cocina)", status: pending, priority: high, phase: implementation, dep: res-3 }
   res-5-cuenta-cobro:  { title: "Cuenta + cobro (cargo a folio | pago directo)", status: pending, priority: high, phase: implementation, dep: res-3 }
