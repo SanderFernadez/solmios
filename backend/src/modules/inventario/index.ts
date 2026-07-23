@@ -3,7 +3,7 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerInventarioModels } from './model'
 import { InventarioService } from './service'
 import { InventarioController } from './controller'
-import type { InventoryItemDTO, StockMovementDTO } from './types'
+import type { InventoryItemDTO, StockMovementDTO, MenuItemRecipeDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
@@ -36,9 +36,10 @@ export function InventarioModule() {
 
       const items = new OrmRepository<InventoryItemDTO>(orm, 'InventoryItems')
       const movements = new OrmRepository<StockMovementDTO>(orm, 'StockMovements')
+      const recipes = new OrmRepository<MenuItemRecipeDTO>(orm, 'MenuItemRecipes')
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('inventario')
-      const service = new InventarioService(items, movements, userRepo, log, auth)
+      const service = new InventarioService(items, movements, userRepo, log, auth, recipes)
       const controller = new InventarioController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -57,6 +58,10 @@ export function InventarioModule() {
       // Ledger de stock (INV-2)
       router.get('/api/inventario/items/:id/movements', guard('inventory', 'view'), (req) => controller.movements(req))
       router.post('/api/inventario/items/:id/movements', guard('inventory', 'edit'), (req) => controller.move(req))
+
+      // Recetas / BOM (INT-1): consumo de insumos por ítem de menú
+      router.get('/api/inventario/recipes', guard('inventory', 'view'), (req) => controller.listRecipes(req))
+      router.post('/api/inventario/recipes', guard('inventory', 'edit'), (req) => controller.setRecipe(req))
 
       log.info('Módulo inventario listo')
       return service

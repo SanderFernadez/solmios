@@ -49,7 +49,25 @@ export const StockMovementModel: ModelDefinition = {
   timestamps: true,
 }
 
+/**
+ * Receta (BOM) de un ítem de menú: qué insumos y cuánto consume cada unidad vendida. Vive en inventario
+ * (dueño del stock); el restaurante NO la importa. Al vender/servir una comanda, el conector descuenta
+ * `quantity × unidades vendidas` del insumo. `menuItemId` referencia restaurant.menu_items (id lógico).
+ */
+export const MenuItemRecipeModel: ModelDefinition = {
+  table: 'menu_item_recipes',
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    menuItemId: { type: 'string', required: true, indexed: true },
+    inventoryItemId: { type: 'string', required: true, indexed: true },
+    quantity: { type: 'number', default: 0 },   // consumo por unidad vendida del ítem de menú
+  },
+  timestamps: true,
+}
+
 export function registerInventarioModels(orm: ORM): void {
   orm.define('InventoryItems', InventoryItemModel)
   orm.define('StockMovements', StockMovementModel)
+  orm.define('MenuItemRecipes', MenuItemRecipeModel)
 }

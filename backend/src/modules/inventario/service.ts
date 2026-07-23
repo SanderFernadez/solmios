@@ -3,10 +3,11 @@
 // El stock se mueve SOLO por el ledger (applyMovement); currentStock es el balance materializado.
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
-import type { InventoryItemDTO, StockMovementDTO, MovementType, CurrentUser } from './types'
+import type { InventoryItemDTO, StockMovementDTO, MenuItemRecipeDTO, MovementType, CurrentUser } from './types'
 import type { InventarioSockets } from './sockets'
 import * as itemsCrud from './usecases/items-crud'
 import * as ledger from './usecases/movements'
+import * as recipesUc from './usecases/recipes'
 
 export class InventarioService {
   private sockets: InventarioSockets = {}
@@ -17,6 +18,7 @@ export class InventarioService {
     private readonly userRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly auth: Auth,
+    private readonly recipes?: RepositoryAdapter<MenuItemRecipeDTO>,
   ) {}
 
   /** Acumula handlers, nunca pisa el anterior (composición de sockets). */
@@ -69,4 +71,14 @@ export class InventarioService {
     const { data } = await itemsCrud.listItems(this.itemDeps(), undefined, user)
     return { total: ledger.valuation(data), items: data.length }
   }
+
+  // ─── Recetas / consumo por venta (INT-1) ───
+  private recipeDeps(): recipesUc.RecipeDeps {
+    if (!this.recipes) throw new ValidationError('Recetas no configuradas')
+    return { recipes: this.recipes, items: this.items, movements: this.movements, userRepo: this.userRepo, auth: this.auth }
+  }
+  listRecipes(menuItemId: string, user: CurrentUser) { return recipesUc.listRecipes(this.recipeDeps(), menuItemId, user) }
+  setRecipe(dto: { menuItemId: string; inventoryItemId: string; quantity: number }, user: CurrentUser) { return recipesUc.setRecipe(this.recipeDeps(), dto, user) }
+  /** Descuenta stock por la venta de una línea de comanda (lo llama el conector restaurant→inventario). */
+  consumeForSale(input: { hotelId: string; menuItemId: string; soldQty: number; lineId: string }, user: CurrentUser) { return recipesUc.consumeForSale(this.recipeDeps(), input, user) }
 }

@@ -45,10 +45,10 @@ function backed<T extends object>(store: any[], seed: any[] = []): RepositoryAda
   } as RepositoryAdapter<T>
 }
 
-function svc(itemsStore: any[], movStore: any[], auth: Auth = passAuth, userHotel = 'h1') {
+function svc(itemsStore: any[], movStore: any[], auth: Auth = passAuth, userHotel = 'h1', recipesStore: any[] = []) {
   return new InventarioService(
     backed<InventoryItemDTO>(itemsStore), backed<StockMovementDTO>(movStore),
-    makeUserRepo(userHotel), log, auth,
+    makeUserRepo(userHotel), log, auth, backed<any>(recipesStore),
   )
 }
 
@@ -188,5 +188,49 @@ describe('InventarioService — ledger de stock (INV-2)', () => {
     const h = await s.listMovements('i1', user)
     expect(h.total).toBe(1)
     expect(h.data[0].balanceAfter).toBe(5)
+  })
+})
+
+describe('InventarioService — recetas + consumo por venta (INT-1)', () => {
+  it('setRecipe hace upsert; quantity 0 elimina', async () => {
+    const items = [{ id: 'inv1', hotelId: 'h1', name: 'Ron' }]
+    const recipes: any[] = []
+    const s = svc(items, [], passAuth, 'h1', recipes)
+    await s.setRecipe({ menuItemId: 'm1', inventoryItemId: 'inv1', quantity: 0.05 }, user)
+    expect(recipes.length).toBe(1)
+    await s.setRecipe({ menuItemId: 'm1', inventoryItemId: 'inv1', quantity: 0.06 }, user)
+    expect(recipes.length).toBe(1)          // upsert, no duplica
+    expect(recipes[0].quantity).toBe(0.06)
+    await s.setRecipe({ menuItemId: 'm1', inventoryItemId: 'inv1', quantity: 0 }, user)
+    expect(recipes.length).toBe(0)          // 0 elimina
+  })
+
+  it('venta descuenta stock según la receta (idempotente por línea)', async () => {
+    // 1 trago "Cuba Libre" (m1) consume 0.05 botella de Ron (inv1) + 0.2 de Coca (inv2).
+    const items = [
+      { id: 'inv1', hotelId: 'h1', name: 'Ron', currentStock: 10, avgCost: 5 },
+      { id: 'inv2', hotelId: 'h1', name: 'Coca', currentStock: 20, avgCost: 1 },
+    ]
+    const recipes = [
+      { id: 'r1', hotelId: 'h1', menuItemId: 'm1', inventoryItemId: 'inv1', quantity: 0.05 },
+      { id: 'r2', hotelId: 'h1', menuItemId: 'm1', inventoryItemId: 'inv2', quantity: 0.2 },
+    ]
+    const s = svc(items, [], passAuth, 'h1', recipes)
+    const sys = { id: 'system', hotelId: 'h1', role: 'super_admin' }
+    // venden 3 Cuba Libre en la línea L1
+    await s.consumeForSale({ hotelId: 'h1', menuItemId: 'm1', soldQty: 3, lineId: 'L1' }, sys)
+    expect(items.find((i) => i.id === 'inv1')!.currentStock).toBe(9.85)   // 10 - 3*0.05
+    expect(items.find((i) => i.id === 'inv2')!.currentStock).toBe(19.4)   // 20 - 3*0.2
+    // reintento de la MISMA línea → no vuelve a descontar (dedup por lineId)
+    await s.consumeForSale({ hotelId: 'h1', menuItemId: 'm1', soldQty: 3, lineId: 'L1' }, sys)
+    expect(items.find((i) => i.id === 'inv1')!.currentStock).toBe(9.85)
+  })
+
+  it('ítem de menú sin receta no descuenta nada', async () => {
+    const items = [{ id: 'inv1', hotelId: 'h1', name: 'Ron', currentStock: 10, avgCost: 5 }]
+    const s = svc(items, [], passAuth, 'h1', [])
+    const sys = { id: 'system', hotelId: 'h1', role: 'super_admin' }
+    await s.consumeForSale({ hotelId: 'h1', menuItemId: 'sin-receta', soldQty: 5, lineId: 'L9' }, sys)
+    expect(items[0].currentStock).toBe(10)   // intacto
   })
 })

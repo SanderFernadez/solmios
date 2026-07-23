@@ -214,6 +214,7 @@ import { gastosAccountingConnector } from './connectors/gastos-accounting'
 import { restauranteFoliosConnector } from './connectors/restaurante-folios'
 import { restaurantePaymentsConnector } from './connectors/restaurante-payments'
 import { restauranteAccountingConnector } from './connectors/restaurante-accounting'
+import { restauranteInventarioConnector } from './connectors/restaurante-inventario'
 import { comprasInventarioConnector } from './connectors/compras-inventario'
 import { comprasTreasuryConnector } from './connectors/compras-treasury'
 import { comprasGastosConnector } from './connectors/compras-gastos'
@@ -322,6 +323,8 @@ system.addConnector('restaurante-payments', restaurantePaymentsConnector)
 system.addConnector('restaurante-accounting', restauranteAccountingConnector)
 // Compras (COM-3/4): recepción suma stock (inventario), la OC valida proveedor (treasury), y al facturar
 // genera un gasto (gastos) que ya pega en caja + contabilidad por los conectores existentes.
+// Venta del POS → descuenta stock de insumos según la receta de cada ítem (INT-1). Best-effort.
+system.addConnector('restaurante-inventario', restauranteInventarioConnector)
 system.addConnector('compras-inventario', comprasInventarioConnector)
 system.addConnector('compras-treasury', comprasTreasuryConnector)
 system.addConnector('compras-gastos', comprasGastosConnector)

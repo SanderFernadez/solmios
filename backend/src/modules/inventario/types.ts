@@ -34,6 +34,16 @@ export interface StockMovementDTO {
   updatedAt: string
 }
 
+export interface MenuItemRecipeDTO {
+  id: string
+  hotelId: string
+  menuItemId: string
+  inventoryItemId: string
+  quantity: number
+  createdAt: string
+  updatedAt: string
+}
+
 // Usuario autenticado del JWT (req.user). Para ownership (IDOR) y forzar hotelId.
 export interface CurrentUser {
   id: string

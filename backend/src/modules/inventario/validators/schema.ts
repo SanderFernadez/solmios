@@ -30,4 +30,11 @@ export const MovementSchema: Record<string, ValidationRule> = {
   reason: { type: 'string' as const },
 }
 
+// Receta (BOM): consumo de un insumo por unidad vendida de un ítem de menú (INT-1).
+export const RecipeSchema: Record<string, ValidationRule> = {
+  menuItemId: { type: 'string' as const, required: true },
+  inventoryItemId: { type: 'string' as const, required: true },
+  quantity: { type: 'number' as const, required: true },
+}
+
 export const InventarioValidator = { createItem: CreateItemSchema, updateItem: UpdateItemSchema }

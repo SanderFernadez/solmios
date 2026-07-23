@@ -3,7 +3,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from '../../shared/validators/validate-body'
 import type { InventarioService } from './service'
-import { CreateItemSchema, UpdateItemSchema, MovementSchema } from './validators/schema'
+import { CreateItemSchema, UpdateItemSchema, MovementSchema, RecipeSchema } from './validators/schema'
 
 export class InventarioController {
   constructor(
@@ -56,5 +56,16 @@ export class InventarioController {
 
   async valuation(req: HttpRequest) {
     return { status: 200, body: await this.service.valuation(req.user as any) }
+  }
+
+  // ─── Recetas (INT-1) ───
+  async listRecipes(req: HttpRequest) {
+    const menuItemId = (req.query as any)?.menuItemId as string
+    return { status: 200, body: await this.service.listRecipes(menuItemId, req.user as any) }
+  }
+  async setRecipe(req: HttpRequest) {
+    this.logger.info('POST /inventario/recipes')
+    const data = validateSchema(RecipeSchema, req.body)
+    return { status: 200, body: await this.service.setRecipe(data as any, req.user as any) }
   }
 }
