@@ -38,6 +38,7 @@ const activeCategoryId = ref<string>('all')
 
 const editPerm = computed(() => can('restaurant', 'edit'))
 const createPerm = computed(() => can('restaurant', 'create'))
+const deletePerm = computed(() => can('restaurant', 'delete'))
 
 // La comanda es editable solo antes de facturar/cobrar/cancelar.
 const LOCKED = ['billed', 'charged', 'paid', 'cancelled']
@@ -95,7 +96,7 @@ async function setQty(line: OrderLine, qty: number) {
 }
 
 async function remove(line: OrderLine) {
-  if (!editable.value || busy.value) return
+  if (!editable.value || !deletePerm.value || busy.value) return
   busy.value = true
   try {
     await RestaurantService.removeLine(orderId.value, line.id)
@@ -121,6 +122,7 @@ function goPay() {
 }
 
 function cancel() {
+  if (!deletePerm.value) { toast.warning('Sin permiso para cancelar'); return }
   askConfirm({
     title: 'Cancelar comanda', message: '¿Cancelar esta comanda? No se podrá cobrar.', confirmLabel: 'Cancelar comanda', danger: true,
     run: async () => { await RestaurantService.cancelOrder(orderId.value); router.push('/panel/restaurante/salon') },
@@ -173,11 +175,14 @@ function cancel() {
                 <div class="font-bold text-navy text-sm truncate">{{ l.name }}</div>
                 <div class="text-[11px] text-text-muted tabular-nums">{{ money(l.unitPrice) }} c/u · {{ money(l.lineTotal) }}</div>
               </div>
-              <div v-if="editable" class="flex items-center gap-1.5 shrink-0">
-                <button @click="setQty(l, l.quantity - 1)" :disabled="busy" class="w-7 h-7 rounded-lg border-2 border-border font-black text-navy hover:bg-surface disabled:opacity-40">−</button>
-                <span class="w-6 text-center font-black text-navy tabular-nums">{{ l.quantity }}</span>
-                <button @click="setQty(l, l.quantity + 1)" :disabled="busy" class="w-7 h-7 rounded-lg border-2 border-border font-black text-navy hover:bg-surface disabled:opacity-40">+</button>
-                <button @click="remove(l)" :disabled="busy" class="ml-1 w-7 h-7 rounded-lg text-coral font-black hover:bg-coral/10 disabled:opacity-40">✕</button>
+              <div v-if="editable && (editPerm || deletePerm)" class="flex items-center gap-1.5 shrink-0">
+                <template v-if="editPerm">
+                  <button @click="setQty(l, l.quantity - 1)" :disabled="busy" class="w-7 h-7 rounded-lg border-2 border-border font-black text-navy hover:bg-surface disabled:opacity-40">−</button>
+                  <span class="w-6 text-center font-black text-navy tabular-nums">{{ l.quantity }}</span>
+                  <button @click="setQty(l, l.quantity + 1)" :disabled="busy" class="w-7 h-7 rounded-lg border-2 border-border font-black text-navy hover:bg-surface disabled:opacity-40">+</button>
+                </template>
+                <span v-else class="font-black text-navy tabular-nums">×{{ l.quantity }}</span>
+                <button v-if="deletePerm" @click="remove(l)" :disabled="busy" class="ml-1 w-7 h-7 rounded-lg text-coral font-black hover:bg-coral/10 disabled:opacity-40">✕</button>
               </div>
               <div v-else class="font-black text-navy tabular-nums shrink-0">×{{ l.quantity }}</div>
             </div>
@@ -197,7 +202,7 @@ function cancel() {
               class="flex-1 min-w-[140px] py-2.5 rounded-xl bg-navy text-white font-bold hover:bg-navy-light disabled:opacity-50">Enviar a cocina</button>
             <button v-if="editable && editPerm" @click="goPay" :disabled="busy || !order.lines.length"
               class="flex-1 min-w-[140px] py-2.5 rounded-xl bg-teal text-white font-bold hover:bg-teal/80 disabled:opacity-50">Cobrar</button>
-            <button v-if="editable" @click="cancel" :disabled="busy"
+            <button v-if="editable && deletePerm" @click="cancel" :disabled="busy"
               class="px-4 py-2.5 rounded-xl border-2 border-coral/40 text-coral font-bold hover:bg-coral/10 disabled:opacity-50">Cancelar</button>
           </div>
         </SectionCard>

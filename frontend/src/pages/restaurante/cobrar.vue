@@ -25,6 +25,9 @@ const canPay = computed(() => can('restaurant', 'edit'))
 
 const loading = ref(true)
 const busy = ref(false)
+// Si tras un cobro no podemos confirmar el estado (falló el reload), bloqueamos reintentos: el backend
+// pudo haber registrado el pago. El usuario recarga para ver el estado real. Evita re-cobrar a ciegas.
+const unknownState = ref(false)
 const order = ref<OrderWithLines | null>(null)
 const currency = ref('USD')
 const tip = ref(0)
@@ -75,11 +78,29 @@ async function load() {
 }
 onMounted(load)
 
+/**
+ * Recarga la comanda y avisa si el subtotal/impuesto cambió respecto a lo que se está mostrando (otra
+ * tablet pudo agregar líneas). Devuelve true si cambió → hay que re-confirmar antes de cobrar, así el
+ * cajero no cobra un monto y el backend registra otro (caja corta).
+ */
+async function refetchAndDetectChange(): Promise<boolean> {
+  const prev = order.value!
+  const fresh = await RestaurantService.getOrder(orderId.value)
+  const changed = Number(fresh.subtotal || 0) !== Number(prev.subtotal || 0) || Number(fresh.tax || 0) !== Number(prev.tax || 0)
+  order.value = fresh
+  return changed
+}
+
 async function payDirect() {
-  if (!canPay.value || busy.value || !order.value) return
+  if (!canPay.value || busy.value || unknownState.value || !order.value) return
   if (previewTotal.value <= 0) { toast.warning('La comanda no tiene monto para cobrar'); return }
   busy.value = true
   try {
+    // Anti-caja-corta: revalidar el monto contra el backend justo antes de cobrar.
+    if (await refetchAndDetectChange()) {
+      toast.warning('El total de la comanda cambió. Revisá el monto y volvé a cobrar.')
+      return
+    }
     // Persistir la propina (billOrder la fija y deja la comanda en `billed`), luego cobrar el total bruto.
     await RestaurantService.billOrder(orderId.value, { tip: Number(tip.value) || 0 })
     await RestaurantService.payOrder(orderId.value, { method: method.value })
@@ -87,24 +108,29 @@ async function payDirect() {
     router.push('/panel/restaurante/salon')
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'No se pudo cobrar')
-    await load()
+    // Reflejar el estado real; si NO podemos, bloqueamos reintentos (el pago pudo haberse registrado).
+    try { await load() } catch { unknownState.value = true }
   } finally {
     busy.value = false
   }
 }
 
 async function chargeRoom() {
-  if (!canPay.value || busy.value || !order.value) return
+  if (!canPay.value || busy.value || unknownState.value || !order.value) return
   if (Number(tip.value) > 0) { toast.warning('El cargo a habitación no incluye propina. Quitala o cobrá directo.'); return }
   busy.value = true
   try {
+    if (await refetchAndDetectChange()) {
+      toast.warning('El total de la comanda cambió. Revisá el monto y volvé a cargar.')
+      return
+    }
     const rid = reservationId.value.trim() || order.value.reservationId
     await RestaurantService.chargeToRoom(orderId.value, { reservationId: rid || undefined })
     toast.success('Cargado a la habitación')
     router.push('/panel/restaurante/salon')
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'No se pudo cargar a la habitación')
-    await load()
+    try { await load() } catch { unknownState.value = true }
   } finally {
     busy.value = false
   }
@@ -138,6 +164,9 @@ async function chargeRoom() {
       </div>
 
       <template v-else>
+        <div v-if="unknownState" class="mb-4 p-3 rounded-xl border-2 border-coral/40 bg-coral/5 text-sm text-coral font-bold">
+          No se pudo confirmar el estado de la comanda tras el último intento. Recargá la página para ver si el cobro quedó registrado antes de reintentar.
+        </div>
         <!-- Desglose -->
         <SectionCard title="Cuenta" class="mb-4">
           <div class="divide-y divide-border mb-3">
@@ -177,21 +206,22 @@ async function chargeRoom() {
               {{ m.label }}
             </button>
           </div>
-          <button @click="payDirect" :disabled="!canPay || busy"
+          <button @click="payDirect" :disabled="!canPay || busy || unknownState"
             class="w-full py-3 rounded-xl bg-teal text-white font-black hover:bg-teal/80 disabled:opacity-50">
             Cobrar {{ money(previewTotal) }}
           </button>
         </SectionCard>
 
         <!-- Cargo a habitación -->
-        <SectionCard title="Cargar a habitación" subtitle="Suma el consumo neto al folio de una reserva. Sin propina.">
+        <SectionCard title="Cargar a habitación" subtitle="Suma el consumo neto al folio de una reserva. Sin propina; el impuesto lo aplica el folio.">
           <label class="block text-xs font-bold text-text-muted mb-1">ID de reserva</label>
           <input v-model="reservationId" type="text" placeholder="Reserva asociada (si la comanda ya la tiene, se usa esa)"
             class="w-full px-3 py-2 rounded-lg border-2 border-border text-sm text-navy focus:border-navy focus:outline-none mb-3" />
-          <button @click="chargeRoom" :disabled="!canPay || busy || !canChargeRoom"
+          <button @click="chargeRoom" :disabled="!canPay || busy || unknownState || !canChargeRoom"
             class="w-full py-3 rounded-xl bg-navy text-white font-black hover:bg-navy-light disabled:opacity-50">
-            Cargar {{ money(order.subtotal) }} al folio
+            Cargar {{ money(order.subtotal) }} neto al folio
           </button>
+          <p class="text-[11px] text-text-muted mt-2">El folio le aplica el impuesto al facturar (no se dobla el ITBIS).</p>
           <p v-if="!canChargeRoom" class="text-[11px] text-text-muted mt-2">La comanda no tiene reserva asociada. Ingresá un ID de reserva o cobrá directo.</p>
         </SectionCard>
       </template>
