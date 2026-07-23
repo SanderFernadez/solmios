@@ -4,7 +4,7 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerRestaurantModels } from './model'
 import { RestaurantService } from './service'
 import { RestaurantController } from './controller'
-import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO } from './types'
+import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
@@ -45,9 +45,13 @@ export function RestaurantModule() {
       const categories = new OrmRepository<CategoryDTO>(orm, 'MenuCategories')
       const items = new OrmRepository<MenuItemDTO>(orm, 'MenuItems')
       const tables = new OrmRepository<TableDTO>(orm, 'RestaurantTables')
+      const ordersRepo = new OrmRepository<OrderDTO>(orm, 'RestaurantOrders')
+      const linesRepo = new OrmRepository<OrderItemDTO>(orm, 'RestaurantOrderItems')
+      const configRepo = new OrmRepository<any>(orm, 'Configuration')
+      const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('restaurant')
-      const service = new RestaurantService(stations, categories, items, tables, userRepo, log, auth)
+      const service = new RestaurantService(stations, categories, items, tables, userRepo, log, auth, ordersRepo, linesRepo, configRepo, hotelsRepo)
       const controller = new RestaurantController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -83,6 +87,16 @@ export function RestaurantModule() {
       router.post('/api/restaurant/tables', guard('restaurant', 'create'), (req) => controller.storeTable(req))
       router.put('/api/restaurant/tables/:id', guard('restaurant', 'edit'), (req) => controller.updateTable(req))
       router.delete('/api/restaurant/tables/:id', guard('restaurant', 'delete'), (req) => controller.destroyTable(req))
+
+      // Comandas (RES-3)
+      router.get('/api/restaurant/orders', guard('restaurant', 'view'), (req) => controller.indexOrders(req))
+      router.get('/api/restaurant/orders/:id', guard('restaurant', 'view'), (req) => controller.showOrder(req))
+      router.post('/api/restaurant/orders', guard('restaurant', 'create'), (req) => controller.openOrder(req))
+      router.post('/api/restaurant/orders/:id/send', guard('restaurant', 'edit'), (req) => controller.sendOrder(req))
+      router.post('/api/restaurant/orders/:id/cancel', guard('restaurant', 'delete'), (req) => controller.cancelOrder(req))
+      router.post('/api/restaurant/orders/:id/items', guard('restaurant', 'create'), (req) => controller.addLine(req))
+      router.put('/api/restaurant/orders/:id/items/:lineId', guard('restaurant', 'edit'), (req) => controller.updateLine(req))
+      router.delete('/api/restaurant/orders/:id/items/:lineId', guard('restaurant', 'delete'), (req) => controller.removeLine(req))
 
       log.info('Módulo restaurant listo')
       return service

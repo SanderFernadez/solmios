@@ -88,6 +88,7 @@ export interface OrderItemDTO {
   unitPrice: number
   quantity: number
   notes?: string
+  taxRate?: number
   stationId?: string
   stationName?: string
   status: LineStatus

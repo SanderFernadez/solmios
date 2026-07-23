@@ -4,11 +4,13 @@
 // (usecases). Sprints siguientes agregan comandas, KDS y cobro. Ver openspec/changes/restaurante-pos.
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
-import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, CurrentUser } from './types'
+import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO, CurrentUser } from './types'
 import type { RestaurantSockets } from './sockets'
 import * as categoriesCrud from './usecases/categories-crud'
 import * as itemsCrud from './usecases/items-crud'
 import * as tablesCrud from './usecases/tables-crud'
+import * as orders from './usecases/orders'
+import * as orderLines from './usecases/order-lines'
 
 export class RestaurantService {
   private sockets: RestaurantSockets = {}
@@ -21,6 +23,11 @@ export class RestaurantService {
     private readonly userRepo: RepositoryAdapter<any>,
     private readonly logger: Logger,
     private readonly auth: Auth,
+    // RES-3: comandas. Opcionales para no romper tests que solo ejercitan carta/mesas.
+    private readonly orders?: RepositoryAdapter<OrderDTO>,
+    private readonly lines?: RepositoryAdapter<OrderItemDTO>,
+    private readonly config?: RepositoryAdapter<any>,
+    private readonly hotels?: RepositoryAdapter<any>,
   ) {}
 
   // Acumula handlers, nunca pisa el anterior (composición de sockets).
@@ -50,6 +57,14 @@ export class RestaurantService {
   }
   private tableDeps(): tablesCrud.TablesCrudDeps {
     return { tables: this.tables, userRepo: this.userRepo, auth: this.auth }
+  }
+  private ordersDeps(): orders.OrdersDeps {
+    if (!this.orders || !this.lines || !this.config) throw new ValidationError('Comandas no configuradas')
+    return { orders: this.orders, lines: this.lines, tables: this.tables, config: this.config, userRepo: this.userRepo, auth: this.auth, sockets: this.sockets }
+  }
+  private orderLinesDeps(): orderLines.OrderLinesDeps {
+    if (!this.orders || !this.lines || !this.config || !this.hotels) throw new ValidationError('Comandas no configuradas')
+    return { orders: this.orders, lines: this.lines, items: this.items, categories: this.categories, stations: this.stations, config: this.config, hotels: this.hotels, userRepo: this.userRepo, auth: this.auth }
   }
 
   // ─── Estaciones (RES-0) — pantallas KDS configurables por hotel ───
@@ -119,4 +134,14 @@ export class RestaurantService {
   createTable(dto: tablesCrud.CreateTableInput, user: CurrentUser) { return tablesCrud.createTable(this.tableDeps(), dto, user) }
   updateTable(id: string, dto: tablesCrud.UpdateTableInput, user: CurrentUser) { return tablesCrud.updateTable(this.tableDeps(), id, dto, user) }
   deleteTable(id: string, user: CurrentUser) { return tablesCrud.deleteTable(this.tableDeps(), id, user) }
+
+  // ─── Comandas (RES-3) — delegan a usecases/orders + usecases/order-lines ───
+  openOrder(dto: orders.OpenOrderInput, user: CurrentUser) { return orders.openOrder(this.ordersDeps(), dto, user) }
+  listOrders(query: { status?: string; tableId?: string } | undefined, user: CurrentUser) { return orders.listOrders(this.ordersDeps(), query, user) }
+  getOrder(id: string, user: CurrentUser) { return orders.getOrder(this.ordersDeps(), id, user) }
+  sendOrder(id: string, user: CurrentUser) { return orders.sendOrder(this.ordersDeps(), id, user) }
+  cancelOrder(id: string, user: CurrentUser) { return orders.cancelOrder(this.ordersDeps(), id, user) }
+  addLine(orderId: string, dto: orderLines.AddLineInput, user: CurrentUser) { return orderLines.addLine(this.orderLinesDeps(), orderId, dto, user) }
+  updateLine(orderId: string, lineId: string, dto: orderLines.UpdateLineInput, user: CurrentUser) { return orderLines.updateLine(this.orderLinesDeps(), orderId, lineId, dto, user) }
+  removeLine(orderId: string, lineId: string, user: CurrentUser) { return orderLines.removeLine(this.orderLinesDeps(), orderId, lineId, user) }
 }

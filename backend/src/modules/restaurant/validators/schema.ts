@@ -71,4 +71,24 @@ export const UpdateTableSchema: Record<string, ValidationRule> = {
   status: { type: 'string' as const, enum: TABLE_STATUSES },
 }
 
+// ─── Comandas (RES-3) ───
+const ORDER_TYPES = ['dine_in', 'room_service', 'takeaway']
+export const OpenOrderSchema: Record<string, ValidationRule> = {
+  type: { type: 'string' as const, required: true, enum: ORDER_TYPES },
+  tableId: { type: 'string' as const },
+  reservationId: { type: 'string' as const },
+  guestId: { type: 'string' as const },
+  roomId: { type: 'string' as const },
+  waiterId: { type: 'string' as const },
+}
+export const AddLineSchema: Record<string, ValidationRule> = {
+  menuItemId: { type: 'string' as const, required: true },
+  quantity: { type: 'number' as const },
+  notes: { type: 'text' as const },
+}
+export const UpdateLineSchema: Record<string, ValidationRule> = {
+  quantity: { type: 'number' as const },
+  notes: { type: 'text' as const },
+}
+
 export const RestaurantValidator = { createStation: CreateStationSchema, updateStation: UpdateStationSchema }

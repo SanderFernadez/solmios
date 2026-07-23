@@ -111,6 +111,9 @@ export const RestaurantOrderItemModel: ModelDefinition = {
     unitPrice: { type: 'number', required: true }, // snapshot (neto)
     quantity: { type: 'number', default: 1 },
     notes: { type: 'text' },
+    // Tasa de impuesto (%) congelada al agregar la línea (item.taxRate ?? tasa del hotel). Snapshot:
+    // la cuenta no cambia si después se reconfigura el impuesto del hotel. NO hardcodeada.
+    taxRate: { type: 'number', default: 0 },
     // Estación resuelta y congelada (item.stationId ?? category.stationId ?? 1ª activa).
     stationId: { type: 'string', indexed: true },
     stationName: { type: 'string' },   // snapshot: sobrevive si la estación se borra

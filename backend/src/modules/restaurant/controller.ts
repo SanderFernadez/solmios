@@ -8,6 +8,7 @@ import {
   CreateCategorySchema, UpdateCategorySchema,
   CreateItemSchema, UpdateItemSchema, AvailabilitySchema,
   CreateTableSchema, UpdateTableSchema,
+  OpenOrderSchema, AddLineSchema, UpdateLineSchema,
 } from './validators/schema'
 
 export class RestaurantController {
@@ -134,6 +135,50 @@ export class RestaurantController {
   async destroyTable(req: HttpRequest) {
     this.logger.info('DELETE /restaurant/tables/:id', { id: req.params.id })
     await this.service.deleteTable(req.params.id, req.user as any)
+    return { status: 204, body: null }
+  }
+
+  // ─── Comandas (RES-3) ───
+  async indexOrders(req: HttpRequest) {
+    this.logger.info('GET /restaurant/orders')
+    const q = req.query as any
+    return { status: 200, body: await this.service.listOrders({ status: q?.status, tableId: q?.tableId }, req.user as any) }
+  }
+  async showOrder(req: HttpRequest) {
+    const item = await this.service.getOrder(req.params.id, req.user as any)
+    return { status: 200, body: item }
+  }
+  async openOrder(req: HttpRequest) {
+    this.logger.info('POST /restaurant/orders')
+    const data = validateSchema(OpenOrderSchema, req.body)
+    const item = await this.service.openOrder(data as any, req.user as any)
+    return { status: 201, body: item }
+  }
+  async sendOrder(req: HttpRequest) {
+    this.logger.info('POST /restaurant/orders/:id/send', { id: req.params.id })
+    const item = await this.service.sendOrder(req.params.id, req.user as any)
+    return { status: 200, body: item }
+  }
+  async cancelOrder(req: HttpRequest) {
+    this.logger.info('POST /restaurant/orders/:id/cancel', { id: req.params.id })
+    const item = await this.service.cancelOrder(req.params.id, req.user as any)
+    return { status: 200, body: item }
+  }
+  async addLine(req: HttpRequest) {
+    this.logger.info('POST /restaurant/orders/:id/items', { id: req.params.id })
+    const data = validateSchema(AddLineSchema, req.body)
+    const item = await this.service.addLine(req.params.id, data as any, req.user as any)
+    return { status: 201, body: item }
+  }
+  async updateLine(req: HttpRequest) {
+    this.logger.info('PUT /restaurant/orders/:id/items/:lineId', { id: req.params.id, lineId: req.params.lineId })
+    const data = validateSchema(UpdateLineSchema, req.body)
+    const item = await this.service.updateLine(req.params.id, req.params.lineId, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+  async removeLine(req: HttpRequest) {
+    this.logger.info('DELETE /restaurant/orders/:id/items/:lineId', { id: req.params.id, lineId: req.params.lineId })
+    await this.service.removeLine(req.params.id, req.params.lineId, req.user as any)
     return { status: 204, body: null }
   }
 }
