@@ -81,13 +81,15 @@
       habilitar la contabilidad del POS, o el pago postea y la venta se auto-saltea → Clientes con crédito huérfano. Ver RES-8.4.
 
 ## RES-7 — Frontend POS  ⟵ dep: RES-1..RES-6
-- [ ] 7.1 `RestaurantService` (API client, sin fetch en componentes) + tipos en `types/`
-- [ ] 7.2 `pages/restaurante/carta.vue` (carta admin) · `salon.vue` (mapa de mesas)
-- [ ] 7.3 `pages/restaurante/comanda.vue` (toma de comanda: carta + líneas + total en vivo + enviar a cocina)
-- [ ] 7.4 `pages/restaurante/cocina.vue` (KDS por estación, tablet, auto-refresh)
-- [ ] 7.5 `pages/restaurante/cobrar.vue` (desglose + propina + cargar a habitación | cobro directo)
-- [ ] 7.6 Rutas en `router/index.ts` (/panel/restaurante/*) + `module-map.ts` (ROUTE_TO_KEY/PERMISSION) + menú en `AdminLayout.vue`
-- [ ] 7.7 `bun run typecheck` (vue-tsc -b) + `bun run build` limpios
+- [x] 7.1 `RestaurantService` (API client, sin fetch en componentes) + tipos en `types/`
+- [x] 7.2 `pages/restaurante/carta.vue` (carta admin) · `salon.vue` (mapa de mesas)
+- [x] 7.3 `pages/restaurante/comanda.vue` (toma de comanda: carta + líneas + total en vivo + enviar a cocina)
+- [x] 7.4 `pages/restaurante/cocina.vue` (KDS por estación, tablet, auto-refresh)
+- [x] 7.5 `pages/restaurante/cobrar.vue` (desglose + propina + cargar a habitación | cobro directo)
+- [x] 7.6 Rutas en `router/index.ts` (/panel/restaurante/*) + `module-map.ts` (ROUTE_TO_KEY/PERMISSION) + menú en `AdminLayout.vue`
+- [x] 7.7 `bun run typecheck` (vue-tsc -b) + `bun run build` limpios
+- **QA RES-7** (adversarial): sin ALTO real. Fixeados: permisos de comanda (Cancelar/quitar-línea gateados por `delete`, +/− por `edit`); anti-caja-corta en cobrar (revalida monto vs backend antes de cobrar); estado no-atómico bill+pay (bloquea reintento si no confirma); label cargo-a-folio aclara neto+impuesto.
+- **Deuda (perf, no correctitud)**: `salon.vue` trae `listOrders()` sin filtro de status (todo el histórico) y filtra vivos en el cliente. Correcto HOY porque el backend NO pagina (`findMany` sin `limit`). Si se agrega paginación, mover a un filtro server-side `live=1`. Sin ese filtro el payload crece O(n) con el histórico de comandas.
 - **Aceptación:** flujo completo usable desde el panel; español; sin `<a>` internos; nombres por `/usuarios`.
 
 ## RES-8 — Permisos + entitlement + gate final  ⟵ dep: RES-7
