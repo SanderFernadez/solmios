@@ -11,9 +11,12 @@ import * as itemsCrud from './usecases/items-crud'
 import * as tablesCrud from './usecases/tables-crud'
 import * as orders from './usecases/orders'
 import * as orderLines from './usecases/order-lines'
+import * as settlement from './usecases/settlement'
 
 export class RestaurantService {
   private sockets: RestaurantSockets = {}
+  // Puertos de liquidación (folios/payments) que inyecta un conector. RES-5.
+  private settlementPorts: settlement.SettlementPorts = {}
 
   constructor(
     private readonly stations: RepositoryAdapter<StationDTO>,
@@ -42,6 +45,11 @@ export class RestaurantService {
     }
   }
 
+  /** Puertos de liquidación (folios/payments) inyectados por conector. Acumula (no pisa). */
+  setSettlementDeps(p: Partial<settlement.SettlementPorts>): void {
+    this.settlementPorts = { ...this.settlementPorts, ...p }
+  }
+
   /** hotelId SIEMPRE del JWT (nunca del body) — anti-IDOR multi-tenant. */
   private hotelFor(user: CurrentUser): string {
     const h = user.hotelId || ''
@@ -65,6 +73,10 @@ export class RestaurantService {
   private orderLinesDeps(): orderLines.OrderLinesDeps {
     if (!this.orders || !this.lines || !this.config || !this.hotels) throw new ValidationError('Comandas no configuradas')
     return { orders: this.orders, lines: this.lines, items: this.items, categories: this.categories, stations: this.stations, config: this.config, hotels: this.hotels, userRepo: this.userRepo, auth: this.auth }
+  }
+  private settlementDeps(): settlement.SettlementDeps {
+    if (!this.orders || !this.lines || !this.hotels) throw new ValidationError('Comandas no configuradas')
+    return { orders: this.orders, lines: this.lines, tables: this.tables, hotels: this.hotels, userRepo: this.userRepo, auth: this.auth, sockets: this.sockets, ports: this.settlementPorts }
   }
 
   // ─── Estaciones (RES-0) — pantallas KDS configurables por hotel ───
@@ -144,4 +156,9 @@ export class RestaurantService {
   addLine(orderId: string, dto: orderLines.AddLineInput, user: CurrentUser) { return orderLines.addLine(this.orderLinesDeps(), orderId, dto, user) }
   updateLine(orderId: string, lineId: string, dto: orderLines.UpdateLineInput, user: CurrentUser) { return orderLines.updateLine(this.orderLinesDeps(), orderId, lineId, dto, user) }
   removeLine(orderId: string, lineId: string, user: CurrentUser) { return orderLines.removeLine(this.orderLinesDeps(), orderId, lineId, user) }
+
+  // ─── Cuenta + cobro (RES-5) — delegan a usecases/settlement ───
+  billOrder(id: string, dto: { tip?: number }, user: CurrentUser) { return settlement.billOrder(this.settlementDeps(), id, dto, user) }
+  chargeToRoom(id: string, dto: { reservationId?: string }, user: CurrentUser) { return settlement.chargeToRoom(this.settlementDeps(), id, dto, user) }
+  payOrder(id: string, dto: { method: string }, user: CurrentUser) { return settlement.payOrder(this.settlementDeps(), id, dto, user) }
 }

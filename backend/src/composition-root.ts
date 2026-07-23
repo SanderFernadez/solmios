@@ -203,6 +203,8 @@ import { paymentsCajaConnector } from './connectors/payments-caja'
 import { paymentsAccountingConnector } from './connectors/payments-accounting'
 import { foliosAccountingConnector } from './connectors/folios-accounting'
 import { gastosAccountingConnector } from './connectors/gastos-accounting'
+import { restauranteFoliosConnector } from './connectors/restaurante-folios'
+import { restaurantePaymentsConnector } from './connectors/restaurante-payments'
 import { paymentRequestsPaymentsConnector } from './connectors/payment-requests-payments'
 import { paymentRequestsTtlockConnector } from './connectors/payment-requests-ttlock'
 import { facturasReservasConnector } from './connectors/facturas-reservas'
@@ -301,6 +303,9 @@ system.addConnector('gastos-caja', gastosCajaConnector)
 system.addConnector('payments-accounting', paymentsAccountingConnector)
 system.addConnector('folios-accounting', foliosAccountingConnector)
 system.addConnector('gastos-accounting', gastosAccountingConnector)
+// POS de restaurante: cargo a habitación (folios) y cobro directo (payments). RES-5.
+system.addConnector('restaurante-folios', restauranteFoliosConnector)
+system.addConnector('restaurante-payments', restaurantePaymentsConnector)
 // Pagar la nómina es un gasto. Cae en `gastos` y de ahí, si fue en efectivo, en la caja.
 // Se registra después de gastos-caja para que el egreso encuentre el socket ya inyectado.
 system.addConnector('payroll-gastos', payrollGastosConnector)

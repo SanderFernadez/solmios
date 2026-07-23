@@ -391,3 +391,100 @@ describe('RestaurantService — comandas (RES-3)', () => {
     await expect(svc3({ orders: foreign(), config: taxConfig() }, strictAuth).cancelOrder('o1', user)).rejects.toThrow('IDOR')
   })
 })
+
+// ─── RES-5: cuenta + cobro ───────────────────────────────────────────────────
+describe('RestaurantService — cuenta + cobro (RES-5)', () => {
+  // Comanda servida: 2× $10 net @ 18% → subtotal 20, tax 3.6, total 23.6.
+  function setup(orderOverrides: any = {}) {
+    const ordersStore: any[] = [{ id: 'o1', hotelId: 'h1', number: 'CMD-2026-0001', status: 'served', tableId: 't1', tip: 0, subtotal: 0, tax: 0, total: 0, ...orderOverrides }]
+    const linesStore: any[] = [{ id: 'l1', hotelId: 'h1', orderId: 'o1', unitPrice: 10, quantity: 2, taxRate: 18, lineTotal: 20, status: 'served' }]
+    const tablesStore: any[] = [{ id: 't1', hotelId: 'h1', name: 'M1', status: 'occupied' }]
+    const build = (ports?: any) => {
+      const s = svc3({ orders: backed<OrderDTO>(ordersStore), lines: backed<any>(linesStore), tables: backed<TableDTO>(tablesStore), config: taxConfig(), hotels: makeRepo<any>() }, strictAuth)
+      if (ports) s.setSettlementDeps(ports)
+      return s
+    }
+    return { ordersStore, tablesStore, build }
+  }
+
+  it('billOrder fija propina y recalcula (subtotal 20 + tax 3.6 + tip 5 = 28.6, estado billed)', async () => {
+    const { build } = setup()
+    const o = await build().billOrder('o1', { tip: 5 }, user)
+    expect(o.status).toBe('billed')
+    expect(o.tip).toBe(5)
+    expect(o.total).toBe(28.6)
+  })
+
+  it('chargeToRoom postea el NETO al folio, marca charged y libera la mesa', async () => {
+    const { tablesStore, build } = setup({ reservationId: 'r1' })
+    let charged: any = null
+    const o = await build({ chargeToFolio: async (i: any) => { charged = i; return { folioId: 'f1' } } }).chargeToRoom('o1', {}, user)
+    expect(charged.amount).toBe(20)          // NETO (el folio le aplica su impuesto)
+    expect(charged.reservationId).toBe('r1')
+    expect(o.status).toBe('charged')
+    expect(o.settlement).toBe('folio')
+    expect(o.folioId).toBe('f1')
+    expect(tablesStore[0].status).toBe('free')
+  })
+
+  it('chargeToRoom sin reserva → ValidationError (solo cobro directo)', async () => {
+    const { build } = setup()
+    await expect(build({ chargeToFolio: async () => ({ folioId: 'f1' }) }).chargeToRoom('o1', {}, user)).rejects.toThrow('reserva')
+  })
+
+  it('chargeToRoom sin conector wireado → ValidationError', async () => {
+    const { build } = setup({ reservationId: 'r1' })
+    await expect(build().chargeToRoom('o1', {}, user)).rejects.toThrow('no disponible')
+  })
+
+  it('payOrder cobra el BRUTO (23.6), marca paid, libera la mesa y emite onOrderPaid', async () => {
+    const { tablesStore, build } = setup()
+    let paid: any = null, evt = false
+    const s = build({ recordPayment: async (i: any) => { paid = i; return { paymentId: 'p1' } } })
+    s.setSockets({ onOrderPaid: async () => { evt = true } })
+    const o = await s.payOrder('o1', { method: 'cash' }, user)
+    expect(paid.amount).toBe(23.6)           // BRUTO (subtotal + tax + tip)
+    expect(o.status).toBe('paid')
+    expect(o.settlement).toBe('payment')
+    expect(o.paymentId).toBe('p1')
+    expect(tablesStore[0].status).toBe('free')
+    expect(evt).toBe(true)
+  })
+
+  it('exclusividad folio XOR payment: cargar y luego cobrar → ConflictError (una venta, una vez)', async () => {
+    const { build } = setup({ reservationId: 'r1' })
+    const s = build({ chargeToFolio: async () => ({ folioId: 'f1' }), recordPayment: async () => ({ paymentId: 'p1' }) })
+    await s.chargeToRoom('o1', {}, user)
+    await expect(s.payOrder('o1', { method: 'cash' }, user)).rejects.toThrow('ya fue liquidada')
+  })
+
+  it('IDOR: liquidar una comanda de otro hotel es inaccesible', async () => {
+    const s = svc3({ orders: backed<OrderDTO>([], [{ id: 'o1', hotelId: 'OTRO', status: 'served', tip: 0 }]), lines: backed<any>([]), config: taxConfig(), hotels: makeRepo<any>() }, strictAuth)
+    s.setSettlementDeps({ recordPayment: async () => ({ paymentId: 'p1' }) })
+    await expect(s.payOrder('o1', { method: 'cash' }, user)).rejects.toThrow('IDOR')
+  })
+
+  it('A1: una comanda CANCELADA no se cobra ni se carga (guard de estado)', async () => {
+    const { build } = setup({ status: 'cancelled', reservationId: 'r1' })
+    const s = build({ chargeToFolio: async () => ({ folioId: 'f1' }), recordPayment: async () => ({ paymentId: 'p1' }) })
+    await expect(s.payOrder('o1', { method: 'cash' }, user)).rejects.toThrow('cancelada')
+    await expect(s.chargeToRoom('o1', {}, user)).rejects.toThrow('cancelada')
+  })
+
+  it('M2: chargeToRoom con propina se rechaza (el folio no la transfiere)', async () => {
+    const { build } = setup({ reservationId: 'r1', tip: 5 })
+    await expect(build({ chargeToFolio: async () => ({ folioId: 'f1' }) }).chargeToRoom('o1', {}, user)).rejects.toThrow('propina')
+  })
+
+  it('exclusividad de side-effects: chargeToRoom NO invoca el pago', async () => {
+    const { build } = setup({ reservationId: 'r1' })
+    let chargeCalled = false, payCalled = false
+    const s = build({
+      chargeToFolio: async () => { chargeCalled = true; return { folioId: 'f1' } },
+      recordPayment: async () => { payCalled = true; return { paymentId: 'p1' } },
+    })
+    await s.chargeToRoom('o1', {}, user)
+    expect(chargeCalled).toBe(true)
+    expect(payCalled).toBe(false)   // una venta, una vía: no toca payments
+  })
+})

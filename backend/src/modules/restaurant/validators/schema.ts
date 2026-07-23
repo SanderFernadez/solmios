@@ -91,4 +91,15 @@ export const UpdateLineSchema: Record<string, ValidationRule> = {
   notes: { type: 'text' as const },
 }
 
+// ─── Cuenta + cobro (RES-5) ───
+export const BillSchema: Record<string, ValidationRule> = {
+  tip: { type: 'number' as const },
+}
+export const ChargeToRoomSchema: Record<string, ValidationRule> = {
+  reservationId: { type: 'string' as const },
+}
+export const PaySchema: Record<string, ValidationRule> = {
+  method: { type: 'string' as const, required: true },
+}
+
 export const RestaurantValidator = { createStation: CreateStationSchema, updateStation: UpdateStationSchema }

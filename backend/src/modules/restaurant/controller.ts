@@ -9,6 +9,7 @@ import {
   CreateItemSchema, UpdateItemSchema, AvailabilitySchema,
   CreateTableSchema, UpdateTableSchema,
   OpenOrderSchema, AddLineSchema, UpdateLineSchema,
+  BillSchema, ChargeToRoomSchema, PaySchema,
 } from './validators/schema'
 
 export class RestaurantController {
@@ -180,5 +181,25 @@ export class RestaurantController {
     this.logger.info('DELETE /restaurant/orders/:id/items/:lineId', { id: req.params.id, lineId: req.params.lineId })
     await this.service.removeLine(req.params.id, req.params.lineId, req.user as any)
     return { status: 204, body: null }
+  }
+
+  // ─── Cuenta + cobro (RES-5) ───
+  async billOrder(req: HttpRequest) {
+    this.logger.info('POST /restaurant/orders/:id/bill', { id: req.params.id })
+    const data = validateSchema(BillSchema, req.body)
+    const item = await this.service.billOrder(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+  async chargeToRoom(req: HttpRequest) {
+    this.logger.info('POST /restaurant/orders/:id/charge-to-room', { id: req.params.id })
+    const data = validateSchema(ChargeToRoomSchema, req.body)
+    const item = await this.service.chargeToRoom(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+  async payOrder(req: HttpRequest) {
+    this.logger.info('POST /restaurant/orders/:id/pay', { id: req.params.id })
+    const data = validateSchema(PaySchema, req.body)
+    const item = await this.service.payOrder(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
   }
 }

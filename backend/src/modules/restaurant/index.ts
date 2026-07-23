@@ -16,6 +16,7 @@ export type {
 export type { RestaurantSockets } from './sockets'
 export { RestaurantValidator, CreateStationSchema, UpdateStationSchema } from './validators/schema'
 export { registerRestaurantModels } from './model'
+export type { SettlementPorts, ChargeToFolioInput, RecordPaymentInput } from './usecases/settlement'
 
 export function RestaurantModule() {
   return createModule({
@@ -97,6 +98,11 @@ export function RestaurantModule() {
       router.post('/api/restaurant/orders/:id/items', guard('restaurant', 'create'), (req) => controller.addLine(req))
       router.put('/api/restaurant/orders/:id/items/:lineId', guard('restaurant', 'edit'), (req) => controller.updateLine(req))
       router.delete('/api/restaurant/orders/:id/items/:lineId', guard('restaurant', 'delete'), (req) => controller.removeLine(req))
+
+      // Cuenta + cobro (RES-5)
+      router.post('/api/restaurant/orders/:id/bill', guard('restaurant', 'edit'), (req) => controller.billOrder(req))
+      router.post('/api/restaurant/orders/:id/charge-to-room', guard('restaurant', 'edit'), (req) => controller.chargeToRoom(req))
+      router.post('/api/restaurant/orders/:id/pay', guard('restaurant', 'edit'), (req) => controller.payOrder(req))
 
       log.info('Módulo restaurant listo')
       return service
