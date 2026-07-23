@@ -5,7 +5,7 @@ import type { RepositoryAdapter, CacheAdapter, Auth } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { AccountingService } from '../service'
 import type { AccountDTO, CurrentUser } from '../types'
-import { recordPaymentCompleted, recordRefund, recordFolioCharge, recordExpense } from '../usecases/auto-from-events'
+import { recordPaymentCompleted, recordRefund, recordFolioCharge, recordExpense, recordRestaurantSale } from '../usecases/auto-from-events'
 
 const log = silentLogger()
 const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
@@ -154,7 +154,7 @@ describe('AccountingService — seed del plan de cuentas', () => {
     })
     const service = svc(repo)
     const res = await service.seedChart(currentUser)
-    expect(res.created).toBe(36)                 // el catálogo base tiene 36 cuentas
+    expect(res.created).toBe(38)                 // catálogo base: 36 + Ventas Restaurante + Propinas por Pagar (RES-6)
     expect(res.created).toBe(res.total)
     // Segunda corrida: nada nuevo (idempotente)
     const res2 = await service.seedChart(currentUser)
@@ -464,6 +464,42 @@ describe('auto-from-events — mapeo evento → asiento (CTB-4)', () => {
       { code: '4.1.01', credit: 100 },
       { code: '2.1.02', credit: 18 },
     ])
+  })
+
+  it('cargo de folio category=restaurant va a Ventas Restaurante (4.2.02), unifica con la venta directa', async () => {
+    const { calls, port } = fakePort()
+    await recordFolioCharge(port, {}, { id: 'c1', hotelId: 'h1', kind: 'charge', category: 'restaurant', amount: 20, taxes: 3.6, total: 23.6 })
+    expect(calls[0].input.lines[1].code).toBe('4.2.02')
+  })
+
+  it('venta directa de restaurante (RES-6): DR Clientes(total) / CR Ventas(neto) / CR ITBIS / CR Propinas — cuadra', async () => {
+    const { calls, port } = fakePort()
+    await recordRestaurantSale(port, { id: 'o1', hotelId: 'h1', number: 'CMD-2026-0001', subtotal: 20, tax: 3.6, tip: 5, total: 28.6, closedAt: '2026-07-15' })
+    const l = calls[0].input.lines
+    expect(l).toEqual([
+      { code: '1.1.03', debit: 28.6 },   // Clientes (total)
+      { code: '4.2.02', credit: 20 },    // Ventas Restaurante (neto)
+      { code: '2.1.02', credit: 3.6 },   // ITBIS
+      { code: '2.1.05', credit: 5 },     // Propinas por pagar
+    ])
+    expect(calls[0].input.reference).toBe('o1')
+    expect(calls[0].input.referenceType).toBe('restaurant_sale')
+    const debe = l.reduce((s: number, x: any) => s + (x.debit || 0), 0)
+    const haber = l.reduce((s: number, x: any) => s + (x.credit || 0), 0)
+    expect(debe).toBeCloseTo(haber, 2)
+  })
+
+  it('venta directa sin propina ni impuesto: solo 2 líneas (Clientes / Ventas)', async () => {
+    const { calls, port } = fakePort()
+    await recordRestaurantSale(port, { id: 'o2', hotelId: 'h1', subtotal: 15, tax: 0, tip: 0, total: 15 })
+    expect(calls[0].input.lines).toHaveLength(2)
+    expect(calls[0].input.lines[1].code).toBe('4.2.02')
+  })
+
+  it('venta directa con total 0 no genera asiento', async () => {
+    const { calls, port } = fakePort()
+    await recordRestaurantSale(port, { id: 'o3', hotelId: 'h1', subtotal: 0, tax: 0, tip: 0, total: 0 })
+    expect(calls).toHaveLength(0)
   })
 
   it('cargo de folio con descuento (total < neto+impuesto): el neto se deriva del total y CUADRA', async () => {

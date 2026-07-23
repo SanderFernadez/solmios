@@ -11,6 +11,7 @@ export interface AccountingPort {
 
 const day = (d?: string) => (d ? String(d).slice(0, 10) : new Date().toISOString().slice(0, 10))
 const amt = (v: any) => Math.abs(Number(v || 0))
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
 
 /** Envía el asiento al port, best-effort. Un fallo contable nunca rompe el flujo del dinero. */
 async function emit(port: AccountingPort, hotelId: string, input: RecordAutoInput | null): Promise<void> {
@@ -77,6 +78,34 @@ export async function recordFolioCharge(port: AccountingPort, folio: any, charge
   await emit(port, charge.hotelId || folio?.hotelId, {
     entryDate: day(charge.postedAt), reference: charge.id, referenceType: 'folio_charge',
     description: charge.description || 'Cargo de folio', lines,
+  })
+}
+
+/**
+ * Venta directa de restaurante (cobro en mostrador, RES-6): DR Clientes (total) / CR Ventas Restaurante
+ * (neto) [+ CR ITBIS] [+ CR Propinas por pagar]. Neteado con el asiento del pago (DR Caja / CR Clientes,
+ * que hace payments-accounting) queda DR Caja / CR Ventas + ITBIS + Propinas. SOLO cobro directo: el
+ * cargo a habitación ya devenga el ingreso por el folio (folios-accounting), no se dobla.
+ */
+export async function recordRestaurantSale(port: AccountingPort, order: any): Promise<void> {
+  const tax = round2(Number(order?.tax || 0))
+  const tip = round2(Number(order?.tip || 0))
+  const total = round2(Number(order?.total ?? Number(order?.subtotal || 0) + tax + tip))
+  if (total <= 0) return
+  // El neto se DERIVA del total (como recordFolioCharge): así el asiento SIEMPRE cuadra aunque a
+  // futuro se aplique un descuento al total y no al subtotal. Antes usaba order.subtotal directo, lo
+  // que podría descuadrar (y emit lo tragaría → venta perdida del libro en silencio).
+  const net = round2(total - tax - tip)
+  if (net < 0) return
+  const lines: RecordAutoInput['lines'] = [
+    { code: ACC.CLIENTES, debit: total },
+    { code: ACC.ING_RESTAURANTE, credit: net },
+  ]
+  if (tax > 0) lines.push({ code: ACC.ITBIS_POR_PAGAR, credit: tax })
+  if (tip > 0) lines.push({ code: ACC.PROPINAS_POR_PAGAR, credit: tip })
+  await emit(port, order.hotelId, {
+    entryDate: day(order.closedAt), reference: order.id, referenceType: 'restaurant_sale',
+    description: `Venta restaurante ${order.number || ''}`.trim(), lines,
   })
 }
 

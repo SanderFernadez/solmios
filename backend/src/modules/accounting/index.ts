@@ -17,7 +17,7 @@ export { ACC, cashAccountForMethod, incomeAccountForCategory, expenseAccountForS
 export type { RecordAutoInput } from './usecases/record-auto'
 export {
   recordPaymentCompleted, recordRefund, recordDeposit, recordDepositRelease,
-  recordFolioCharge, recordExpense, type AccountingPort,
+  recordFolioCharge, recordExpense, recordRestaurantSale, type AccountingPort,
 } from './usecases/auto-from-events'
 
 export function AccountingModule() {
