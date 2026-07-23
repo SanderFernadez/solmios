@@ -269,6 +269,12 @@ const N = [
     conectado:['folios (folio→factura en 1 op)','payments','reservas','auditlog'],
     falta:['NCF se GENERA localmente (fiscal.ts nextNcf, secuencia en config) pero la TRANSMISIÓN a DGII/DIAN/SAT es STUB (stubFiscalAdapter devuelve sent:false). El número existe, no se envía electrónicamente a la autoridad fiscal.']
   }},
+  {id:'restaurant',label:'🍽️ Restaurante',group:'operacion',panel:'hotel',info:{
+    que:'POS de restaurante: estaciones/KDS configurables, carta, mesas, comandas, cuenta. Cobro directo XOR cargo a habitación.',
+    porque:'La venta se cuenta UNA vez: cargo a folio (neto, el folio aplica el impuesto) XOR cobro directo (payment, total bruto). Contabilidad reconoce el ingreso (Ventas Restaurante 4.2.02).',
+    conectado:['folios (cargo a habitación, neto)','payments (cobro directo, bruto)','contabilidad (asiento Ventas Restaurante 4.2.02)'],
+    falta:['Deuda perf: salón trae histórico completo sin filtro de status (correcto hoy: el backend no pagina)']
+  }},
   {id:'folios',label:'📒 Folios',group:'finanzas',panel:'hotel',info:{
     que:'Cuenta corriente de la reserva: cargos (hab., extras) + pagos. Se cierra → factura en una sola op del server.',
     porque:'Núcleo del checkout. folio→factura NO se orquesta desde el frontend (server-side atómico).',
@@ -470,6 +476,9 @@ const N = [
 // ============ ARISTAS ============
 const E = [
   // --- HOOKS automáticos (connectors) ---
+  {f:'restaurant',t:'folios',y:'hook',l:'cargo a habitación (neto)'},
+  {f:'restaurant',t:'payments',y:'hook',l:'cobro directo (bruto)'},
+  {f:'restaurant',t:'contabilidad',y:'hook',l:'venta→asiento 4.2.02'},
   {f:'reservas',t:'housekeeping',y:'hook',l:'checkout→tarea'},
   {f:'reservas',t:'ttlock',y:'hook',l:'PIN auto'},
   {f:'reservas',t:'canales',y:'hook',l:'ARI sync'},
