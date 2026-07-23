@@ -25,7 +25,7 @@ sprints:
   res-2-mesas:         { title: "Mesas + salón", status: done, priority: high, phase: implementation, dep: res-0 }   # commit 208c573
   res-3-comandas:      { title: "Comandas (órdenes + líneas)", status: done, priority: high, phase: implementation, dep: [res-1, res-2] }   # commit f279cf5 · QA sin críticos · 38 tests
   res-4-kds:           { title: "KDS (pantalla de cocina)", status: pending, priority: high, phase: implementation, dep: res-3 }
-  res-5-cuenta-cobro:  { title: "Cuenta + cobro (cargo a folio | pago directo)", status: pending, priority: high, phase: implementation, dep: res-3 }
+  res-5-cuenta-cobro:  { title: "Cuenta + cobro (cargo a folio | pago directo)", status: done, priority: high, phase: implementation, dep: res-3 }   # commit fb33189 · QA: A1 alto fixeado (cancelled) + M2/M3 · deuda M1 no-atomicidad documentada · 48 tests
   res-6-contabilidad:  { title: "Contabilidad del POS (reconocimiento de ingreso)", status: pending, priority: high, phase: implementation, dep: res-5 }
   res-7-frontend:      { title: "Frontend POS", status: pending, priority: high, phase: implementation, dep: [res-1, res-2, res-3, res-4, res-5, res-6] }
   res-8-gate:          { title: "Permisos + entitlement + gate final + deploy", status: pending, priority: critical, phase: testing, dep: res-7 }

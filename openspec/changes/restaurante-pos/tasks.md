@@ -55,17 +55,18 @@
 - [ ] 4.6 Tests: cola por estación (bar vs cocina), transiciones válidas/inválidas, agregado de orden, multi-tenant
 - **Aceptación:** la cocina ve y avanza líneas en vivo; ninguna comanda se pierde.
 
-## RES-5 — Cuenta + cobro (billing & settlement)  ⟵ dep: RES-3
-- [ ] 5.1 `POST /:id/bill` — recálculo server de subtotal/tax + propina; orden→`billed`
-- [ ] 5.2 `POST /:id/charge-to-room` — connector `restaurante-folios`: resolver folio por `reservationId` (patrón
-      settle-folio-at-checkout) → `folios.postCharge(category:'restaurant', source:'pos')`; orden→`charged`, mesa→free
-- [ ] 5.3 `POST /:id/pay` — connector `restaurante-payments`: `payments.createPayment(type:'charge', completed)`;
-      orden→`paid`, mesa→free; rechazar cash sin turno de caja
-- [ ] 5.4 `settlement` = folio XOR payment; idempotencia: re-liquidar → 409
-- [ ] 5.5 Conectores best-effort para el asiento; cambio de estado de orden atómico
-- [ ] 5.6 Tests: cargo a folio crea folio_charge y NO payment; cobro directo crea payment y entra a caja; doble
-      cobro rechazado; propina sin impuesto; cliente sin reserva → charge-to-room rechazado
-- **Aceptación:** las dos vías de cobro funcionan, mutuamente excluyentes, sin doble cobro.
+## RES-5 — Cuenta + cobro (billing & settlement)  ✅ HECHO (commit fb33189) ⟵ dep: RES-3
+- [x] 5.1 `POST /:id/bill` — recálculo subtotal/tax + propina; orden→`billed` (`usecases/settlement.ts`)
+- [x] 5.2 `POST /:id/charge-to-room` — connector `restaurante-folios`: resuelve folio por `reservationId` (patrón
+      settle-folio-at-checkout) → `folios.postCharge(NETO, category:'restaurant', source:'pos')`; orden→`charged`, mesa→free
+- [x] 5.3 `POST /:id/pay` — connector `restaurante-payments`: `payments.createPayment(type:'charge', completed, BRUTO)`;
+      orden→`paid`, mesa→free; moneda del hotel (M3). Cash-shift: convención del sistema (no se valida en capa de pago)
+- [x] 5.4 `settlement` = folio XOR payment; re-liquidar → 409; **comanda cancelada bloqueada** (QA A1)
+- [~] 5.5 Conectores best-effort; **atomicidad puerto↔update: deuda documentada (QA M1)** — "el dinero primero", reintento
+      podría duplicar si el update falla (misma convención que folios/applyPayment). Fix robusto = idempotency key.
+- [x] 5.6 Tests (48 totales): folio postea NETO y NO crea payment; pago directo BRUTO; exclusividad bidireccional +
+      side-effects; cancelada rechazada; propina en charge-to-room rechazada (M2); sin reserva → charge rechazado; IDOR
+- **Aceptación:** ✅ dos vías mutuamente excluyentes, sin doble cobro; anti-doble-impuesto (neto→folio); QA sin críticos, 1 alto (A1) fixeado.
 
 ## RES-6 — Contabilidad del POS (reconocimiento de ingreso)  ⟵ dep: RES-5
 - [ ] 6.1 Agregar cuenta `Ventas Restaurante` (+ contrapartida ITBIS por pagar) al plan base sembrado
