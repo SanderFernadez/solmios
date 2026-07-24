@@ -466,7 +466,13 @@ startWorker()
 // ─── Cron jobs ──────────────────────────────────────────────────────────────
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 const noShowCron = createNoShowCron(orm, emailService, logger)
+// FIX G1 (fix-noshow-cron-init): corrida inicial a los 10s de arrancar (igual que night-audit). Antes
+// solo setInterval(24h): si el backend restarteaba antes de 24h (deploy/crash/OOM) el contador se
+// reiniciaba y el cron podía no llegar a ejecutarse nunca → reservas confirmed vencidas quedaban
+// colgadas bloqueando disponibilidad (overbooking). El cron es idempotente (solo marca pending/confirmed).
+setTimeout(() => { noShowCron().catch((e) => logger.warn('markNoShows initial run failed', { error: (e as Error).message })) }, 10_000)
 setInterval(() => { noShowCron().catch((e) => logger.warn('markNoShows failed', { error: (e as Error).message })) }, ONE_DAY_MS)
+logger.info('No-show cron listo (con corrida inicial a los 10s)', { tickMs: ONE_DAY_MS })
 
 const AUTO_MESSAGES_TICK_MS = 60_000 * 60
 const autoMsgTrigger = system.resolveModule<{ triggerAutoMessages: (params: any) => Promise<void> }>('marketing')
