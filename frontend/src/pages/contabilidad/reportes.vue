@@ -105,6 +105,12 @@ onMounted(load)
         Activo {{ format(balance.assets) }} = Pasivo + Patrimonio {{ format(balance.liabilities + balance.equity) }}
       </div>
     </SectionCard>
+
+    <EmptyState v-else title="No se pudo cargar" message="Hubo un error consultando este reporte para el período elegido. Probá de nuevo.">
+      <template #action>
+        <button @click="load" class="px-4 py-2 rounded-xl bg-navy text-white text-sm font-bold">Reintentar</button>
+      </template>
+    </EmptyState>
   </div>
 </template>
 

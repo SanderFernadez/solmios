@@ -62,6 +62,12 @@
       </SectionCard>
     </template>
 
+    <EmptyState v-else title="No se pudo cargar" message="Hubo un error consultando los indicadores de CRM. Probá de nuevo." class="mb-6">
+      <template #action>
+        <button @click="loadData" class="px-4 py-2 rounded-xl bg-navy text-white text-sm font-bold">Reintentar</button>
+      </template>
+    </EmptyState>
+
     <!-- Tabs -->
     <div class="flex gap-2 mb-6">
       <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value"

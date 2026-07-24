@@ -78,6 +78,12 @@ onMounted(load)
       </div>
     </SectionCard>
 
+    <EmptyState v-else title="No se pudo cargar" message="Hubo un error consultando el presupuesto de este período. Probá de nuevo.">
+      <template #action>
+        <button @click="load" class="px-4 py-2 rounded-xl bg-navy text-white text-sm font-bold">Reintentar</button>
+      </template>
+    </EmptyState>
+
     <AppModal v-if="showModal" size="md" title="Nuevo presupuesto" :subtitle="`Período ${period}`" @close="showModal = false">
       <div class="space-y-4">
         <div>
