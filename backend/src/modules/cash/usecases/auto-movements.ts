@@ -13,12 +13,12 @@
 // varias veces. Sin ella, cada edición movería plata de nuevo.
 
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import type { CashMovementDTO } from '../types'
+import type { CashMovementDTO, CashRegister } from '../types'
 
 export interface AutoMovementDeps {
   repo: RepositoryAdapter<CashMovementDTO>
   logger: Logger
-  resolveShift(hotelId: string): Promise<string | null>
+  resolveShift(hotelId: string, register?: CashRegister): Promise<string | null>
   onCreated?(movement: CashMovementDTO): Promise<void>
   onDeleted?(id: string): Promise<void>
 }
@@ -31,6 +31,8 @@ export interface PaymentIncomeInput {
   folioId?: string
   method?: string
   reference?: string
+  /** De qué punto de venta vino el cobro (default reception). Lo decide el conector según el origen del payment, nunca el cliente. */
+  register?: CashRegister
 }
 
 /** Ingreso por un pago en efectivo ya cobrado. Idempotente por `paymentId`. */
@@ -44,9 +46,10 @@ export async function registerPaymentIncome(
     return null
   }
 
-  const shiftId = await deps.resolveShift(input.hotelId)
+  const register = input.register || 'reception'
+  const shiftId = await deps.resolveShift(input.hotelId, register)
   const item = await deps.repo.create({
-    hotelId: input.hotelId, shiftId: shiftId || null,
+    hotelId: input.hotelId, shiftId: shiftId || null, register,
     type: 'income', amount: input.amount, method: (input.method as any) || 'cash',
     concept: 'Pago automático', category: 'payment', source: 'payment_connector',
     reservationId: input.reservationId, folioId: input.folioId,

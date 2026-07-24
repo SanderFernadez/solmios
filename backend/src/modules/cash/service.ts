@@ -3,24 +3,22 @@
 // Depende de RepositoryAdapter (no del ORM directo). hotelId forzado del JWT en create (P0 IDOR).
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
-import { NotFoundError } from 'arckode-framework'
 import type {
-  CashMovementDTO, CashShiftDTO, CreateMovementDTO, UpdateMovementDTO,
-  MovementQuery, CashPaginated, CurrentUser, MovementType,
+  CashMovementDTO, CashShiftDTO, CashRegister, CreateMovementDTO, UpdateMovementDTO,
+  MovementQuery, CashPaginated, CurrentUser,
 } from './types'
 import type { CashSockets } from './sockets'
 import { computeStats } from './usecases/stats'
 import * as shiftsUc from './usecases/shifts'
 import type { ShiftDeps } from './usecases/shifts'
+import * as movementsUc from './usecases/movements'
+import type { MovementDeps } from './usecases/movements'
 import { registerPaymentIncome, registerExpenseOutflow, removeExpenseOutflow } from './usecases/auto-movements'
 import type { AutoMovementDeps, PaymentIncomeInput, ExpenseOutflowInput } from './usecases/auto-movements'
-import { listMovements } from './usecases/list'
 import {
   auditSafely, movementDeleteEntry, shiftOpenEntry, shiftCloseEntry, shiftReconcileEntry,
   type AuditEntry, type AuditPort,
 } from './usecases/audit'
-
-const MOVEMENT_TYPES: MovementType[] = ['income', 'expense', 'opening', 'closing']
 
 export class CashService {
   private sockets: CashSockets = {}
@@ -71,67 +69,30 @@ export class CashService {
   private autoDeps(): AutoMovementDeps {
     return {
       repo: this.repo, logger: this.logger,
-      resolveShift: (hotelId) => shiftsUc.resolveOpenShift(this.shiftDeps(), hotelId),
+      resolveShift: (hotelId, register) => shiftsUc.resolveOpenShift(this.shiftDeps(), hotelId, register),
       onCreated: async (m) => { await this.sockets.onCashMovementCreated?.(m) },
       onDeleted: async (id) => { await this.sockets.onCashMovementDeleted?.(id) },
     }
   }
 
-  // ─── Movimientos ───────────────────────────────────────
-  async list(query: MovementQuery, user: CurrentUser): Promise<CashPaginated> {
-    const hotelId = this.hotelOfUser(user, query.hotelId)
-    return listMovements({ repo: this.repo, cache: this.cache, version: this.listVersion }, hotelId, query)
-  }
-
-  async getById(id: string, user: CurrentUser): Promise<CashMovementDTO> {
-    const item = await this.repo.findById(id)
-    if (!item) throw new NotFoundError('Movimiento no encontrado')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    return item
-  }
-
-  async create(dto: CreateMovementDTO, user: CurrentUser): Promise<CashMovementDTO> {
-    if (!MOVEMENT_TYPES.includes(dto.type)) throw new Error(`Tipo de movimiento inválido: ${dto.type}`)
-    const hotelId = this.hotelOfUser(user)
-    const shiftId = await shiftsUc.resolveOpenShift(this.shiftDeps(), hotelId)
-    const item = await this.repo.create({
-      ...dto, hotelId, shiftId: shiftId || null,
-      category: dto.category || (dto.type === 'income' ? 'payment' : 'expense'),
-      source: 'manual', createdBy: user.id,
-    } as Omit<CashMovementDTO, 'id'>)
-    await this.sockets.onCashMovementCreated?.(item)
-    this.listVersion++
-    return item
-  }
-
-  async update(id: string, dto: UpdateMovementDTO, user: CurrentUser): Promise<CashMovementDTO> {
-    const existing = await this.repo.findById(id)
-    if (!existing) throw new NotFoundError('Movimiento no encontrado')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    if (existing.source === 'payment_connector') {
-      throw new Error('Los movimientos automáticos (pago) no se pueden editar manualmente')
+  private movementDeps(): MovementDeps {
+    return {
+      repo: this.repo, userRepo: this.userRepo, auth: this.auth, cache: this.cache,
+      sockets: this.sockets, shiftDeps: this.shiftDeps(),
+      hotelOfUser: (u, h) => this.hotelOfUser(u, h),
+      listVersion: () => this.listVersion,
+      bumpVersion: () => { this.listVersion++ },
     }
-    if (existing.source === 'expense_connector') {
-      throw new Error('Los movimientos automáticos (gasto) no se editan acá: modificá el gasto')
-    }
-    const item = await this.repo.update(id, dto as Partial<Omit<CashMovementDTO, 'id'>>)
-    if (!item) throw new NotFoundError('Movimiento no encontrado')
-    await this.sockets.onCashMovementUpdated?.(item)
-    this.listVersion++
-    return item
   }
 
-  async delete(id: string, user: CurrentUser): Promise<void> {
-    const existing = await this.repo.findById(id)
-    if (!existing) throw new NotFoundError('Movimiento no encontrado')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    const deleted = await this.repo.delete(id)
-    if (!deleted) throw new NotFoundError('Movimiento no encontrado')
-    await this.sockets.onCashMovementDeleted?.(id)
-    this.listVersion++
+  // ─── Movimientos (delegan a usecases/movements) ────────
+  list(query: MovementQuery, user: CurrentUser, register?: CashRegister): Promise<CashPaginated> { return movementsUc.list(this.movementDeps(), query, user, register) }
+  getById(id: string, user: CurrentUser, expectedRegister?: CashRegister): Promise<CashMovementDTO> { return movementsUc.getById(this.movementDeps(), id, user, expectedRegister) }
+  create(dto: CreateMovementDTO, user: CurrentUser, register: CashRegister = 'reception'): Promise<CashMovementDTO> { return movementsUc.create(this.movementDeps(), dto, user, register) }
+  update(id: string, dto: UpdateMovementDTO, user: CurrentUser, expectedRegister?: CashRegister): Promise<CashMovementDTO> { return movementsUc.update(this.movementDeps(), id, dto, user, expectedRegister) }
+
+  async delete(id: string, user: CurrentUser, expectedRegister?: CashRegister): Promise<void> {
+    const existing = await movementsUc.destroy(this.movementDeps(), id, user, expectedRegister)
     await this.audit(movementDeleteEntry(existing, user))
   }
 
@@ -158,31 +119,33 @@ export class CashService {
   }
 
   // ─── Turnos (delegan a usecases/shifts) ────────────────
-  listShifts(hotelId: string | undefined, user: CurrentUser) { return shiftsUc.listShifts(this.shiftDeps(), hotelId, user) }
-  getCurrentShift(user: CurrentUser) { return shiftsUc.getCurrentShift(this.shiftDeps(), user) }
+  listShifts(hotelId: string | undefined, user: CurrentUser, register?: CashRegister) { return shiftsUc.listShifts(this.shiftDeps(), hotelId, user, register) }
+  getCurrentShift(user: CurrentUser, register: CashRegister = 'reception') { return shiftsUc.getCurrentShift(this.shiftDeps(), user, register) }
 
-  async openShift(dto: OpenShiftLike, user: CurrentUser) {
-    const shift = await shiftsUc.openShift(this.shiftDeps(), dto, user)
+  async openShift(dto: OpenShiftLike, user: CurrentUser, register: CashRegister = 'reception') {
+    const shift = await shiftsUc.openShift(this.shiftDeps(), dto, user, register)
     await this.audit(shiftOpenEntry(shift, user))
     return shift
   }
 
-  async closeShift(id: string, dto: CloseShiftLike, user: CurrentUser) {
-    const shift = await shiftsUc.closeShift(this.shiftDeps(), id, dto, user)
+  async closeShift(id: string, dto: CloseShiftLike, user: CurrentUser, expectedRegister?: CashRegister) {
+    const shift = await shiftsUc.closeShift(this.shiftDeps(), id, dto, user, expectedRegister)
     await this.audit(shiftCloseEntry(shift, user))
     return shift
   }
 
-  async reconcile(id: string, user: CurrentUser) {
-    const result = await shiftsUc.reconcile(this.shiftDeps(), id, user)
+  async reconcile(id: string, user: CurrentUser, expectedRegister?: CashRegister) {
+    const result = await shiftsUc.reconcile(this.shiftDeps(), id, user, expectedRegister)
     await this.audit(shiftReconcileEntry(result, user))
     return result
   }
 
   // ─── Stats ─────────────────────────────────────────────
-  async stats(hotelId: string | undefined, user: CurrentUser) {
+  // register default 'reception': sin esto, /api/caja/stats (recepción, no manda register)
+  // sumaba también los movimientos del restaurante — encontrado en vivo (QA-ALTO).
+  async stats(hotelId: string | undefined, user: CurrentUser, register: CashRegister = 'reception') {
     const hid = this.hotelOfUser(user, hotelId)
-    const movs = await this.repo.findMany({ hotelId: hid || '__none__' } as any)
+    const movs = await this.repo.findMany({ hotelId: hid || '__none__', register } as any)
     return computeStats(movs, Date.now())
   }
 }

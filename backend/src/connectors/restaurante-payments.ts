@@ -23,6 +23,9 @@ export function restaurantePaymentsConnector(ctx: ConnectorContext): void {
         currency: input.currency,   // moneda del hotel (M3); si undefined, payments defaultea
         description: input.description,
         folioId: input.folioId,
+        // Tag de origen: payments-caja lo lee para asentar el efectivo en el cajón del
+        // restaurante, NO en el de recepción (antes se mezclaban en un único turno del hotel).
+        metadata: { source: 'restaurant' },
       })
       return { paymentId: payment.id }
     },

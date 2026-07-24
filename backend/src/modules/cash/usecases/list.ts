@@ -16,6 +16,7 @@ export interface ListDeps {
 
 function filtersOf(hotelId: string, query: MovementQuery): Record<string, unknown> {
   const filters: Record<string, unknown> = { hotelId: hotelId || '__none__' }
+  if (query.register) filters.register = query.register
   if (query.shiftId) filters.shiftId = query.shiftId
   if (query.type) filters.type = query.type
   if (query.method) filters.method = query.method

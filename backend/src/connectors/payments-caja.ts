@@ -3,6 +3,10 @@
 // Así caja deja de ser módulo isla y concilia con los pagos reales del hotel.
 // Dedup por paymentId dentro de CashService.registerPaymentIncome (no duplica en re-entradas).
 // Best-effort: si caja no está disponible, no falla el módulo payments.
+//
+// register: qué cajón físico recibe el efectivo. payment.metadata.source lo tagea el módulo que
+// originó el cobro (restaurante-payments.ts pone 'restaurant'); todo lo demás (folios, links de
+// pago, cargos de reserva) cae en 'reception' — es el mostrador, comportamiento histórico.
 
 import type { ConnectorContext } from 'arckode-framework'
 
@@ -15,6 +19,7 @@ export function paymentsCajaConnector(ctx: ConnectorContext): void {
       if (payment.method !== 'cash') return
       try {
         const caja = ctx.resolveModule<{ registerPaymentIncome: (i: any) => Promise<any> }>('caja')
+        const register = payment.metadata?.source === 'restaurant' ? 'restaurant' : 'reception'
         await caja.registerPaymentIncome({
           hotelId: payment.hotelId,
           paymentId: payment.id,
@@ -22,6 +27,7 @@ export function paymentsCajaConnector(ctx: ConnectorContext): void {
           method: 'cash',
           folioId: payment.folioId, // V23: PaymentDTO no tiene reservationId
           reference: payment.reference,
+          register,
         })
       } catch {
         // Conector best-effort: no falla el módulo principal si caja no resuelve.

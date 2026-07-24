@@ -40,18 +40,26 @@ export interface Reconcile {
   expected: number; counted: number; difference: number; byMethod: Record<string, number>
 }
 
-export const CajaService = {
-  movements: (params: Record<string, string | number> = {}) => {
-    const qs = Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${v}`).join('&')
-    return http.get<MovementList>(`/caja/movements${qs ? '?' + qs : ''}`)
-  },
-  createMovement: (data: Partial<CashMovement>) => http.post<CashMovement>('/caja/movements', data),
-  updateMovement: (id: string, data: Partial<CashMovement>) => http.put<CashMovement>(`/caja/movements/${id}`, data),
-  removeMovement: (id: string) => http.delete<{ success: boolean }>(`/caja/movements/${id}`),
-  currentShift: () => http.get<CashShift | null>('/caja/shifts/current'),
-  openShift: (openingAmount: number) => http.post<CashShift>('/caja/shifts/open', { openingAmount }),
-  closeShift: (id: string, countedAmount: number, denominations?: string) =>
-    http.post<CashShift>(`/caja/shifts/${id}/close`, { countedAmount, denominations }),
-  reconcile: (id: string) => http.get<Reconcile>(`/caja/shifts/${id}/reconcile`),
-  stats: () => http.get<CashStats>('/caja/stats'),
+// Fábrica: recepción (`/caja`) y restaurante (`/caja/restaurant`) son el MISMO cliente, apuntado
+// a la ruta scopeada por punto de venta — el backend ya separa el turno/movimientos por `register`,
+// acá solo evitamos duplicar el archivo entero para 2 base paths.
+function makeCajaService(base: string) {
+  return {
+    movements: (params: Record<string, string | number> = {}) => {
+      const qs = Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${v}`).join('&')
+      return http.get<MovementList>(`${base}/movements${qs ? '?' + qs : ''}`)
+    },
+    createMovement: (data: Partial<CashMovement>) => http.post<CashMovement>(`${base}/movements`, data),
+    updateMovement: (id: string, data: Partial<CashMovement>) => http.put<CashMovement>(`${base}/movements/${id}`, data),
+    removeMovement: (id: string) => http.delete<{ success: boolean }>(`${base}/movements/${id}`),
+    currentShift: () => http.get<CashShift | null>(`${base}/shifts/current`),
+    openShift: (openingAmount: number) => http.post<CashShift>(`${base}/shifts/open`, { openingAmount }),
+    closeShift: (id: string, countedAmount: number, denominations?: string) =>
+      http.post<CashShift>(`${base}/shifts/${id}/close`, { countedAmount, denominations }),
+    reconcile: (id: string) => http.get<Reconcile>(`${base}/shifts/${id}/reconcile`),
+    stats: () => http.get<CashStats>(`${base}/stats`),
+  }
 }
+
+export const CajaService = makeCajaService('/caja')
+export const RestaurantCajaService = makeCajaService('/caja/restaurant')

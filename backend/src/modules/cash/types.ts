@@ -4,11 +4,16 @@
 export type MovementType = 'income' | 'expense' | 'opening' | 'closing'
 export type MovementMethod = 'cash' | 'card' | 'transfer' | 'link' | 'other'
 export type ShiftStatus = 'open' | 'closed'
+// Punto de venta físico dueño del turno/movimiento. reception = mostrador (default histórico,
+// gate hotel_admin), restaurant = caja del POS (gate permiso `restaurant`). Cada uno solo ve/opera
+// lo suyo — nunca se mezclan pagos de mesas con el cajón de recepción ni al revés.
+export type CashRegister = 'reception' | 'restaurant'
 
 export interface CashMovementDTO {
   id: string
   hotelId: string
   shiftId?: string | null
+  register?: CashRegister
   type: MovementType
   amount: number
   method?: MovementMethod
@@ -59,6 +64,7 @@ export interface CashShiftDTO {
   id: string
   hotelId: string
   status: ShiftStatus
+  register?: CashRegister
   openingAmount: number
   countedAmount?: number
   expectedAmount?: number
@@ -86,6 +92,7 @@ export interface CloseShiftDTO {
 
 export interface MovementQuery {
   hotelId?: string
+  register?: CashRegister
   shiftId?: string
   type?: MovementType
   method?: MovementMethod

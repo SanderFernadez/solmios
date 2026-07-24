@@ -297,6 +297,7 @@ const router = createRouter({
         { path: 'restaurante/comanda/:id', name: 'restaurant-order', component: () => import('@/pages/restaurante/comanda.vue') },
         { path: 'restaurante/cocina', name: 'restaurant-kds', component: () => import('@/pages/restaurante/cocina.vue') },
         { path: 'restaurante/cobrar/:id', name: 'restaurant-pay', component: () => import('@/pages/restaurante/cobrar.vue') },
+        { path: 'restaurante/caja', name: 'restaurant-cash', component: () => import('@/pages/restaurante/caja.vue') },
         // Inventario + Compras (INV/COM) — gateado por module-map (inventory / purchasing).
         { path: 'inventario', name: 'inventory', component: () => import('@/pages/inventario/index.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'compras/requisiciones', name: 'purchasing-requisitions', component: () => import('@/pages/compras/requisiciones.vue'), meta: { requiresHotelAdmin: true } },

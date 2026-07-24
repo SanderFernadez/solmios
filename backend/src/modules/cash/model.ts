@@ -15,6 +15,7 @@ export const CashMovementsModel: ModelDefinition = {
     concept: { type: 'string' },
     category: { type: 'string', default: 'general' },  // payment | expense | adjustment | opening | closing
     source: { type: 'string', default: 'manual' },     // manual | payment_connector | migrated
+    register: { type: 'string', default: 'reception' }, // reception | restaurant — punto de venta físico dueño del movimiento
     guestName: { type: 'string' },
     roomNumber: { type: 'string' },
     reservationId: { type: 'string', indexed: true },
@@ -34,6 +35,7 @@ export const CashShiftsModel: ModelDefinition = {
   fields: {
     hotelId: { type: 'string', required: true, indexed: true },
     status: { type: 'string', default: 'open' },       // open | closed
+    register: { type: 'string', default: 'reception' }, // reception | restaurant — cajón físico de este turno
     openingAmount: { type: 'number', default: 0 },
     countedAmount: { type: 'number' },
     expectedAmount: { type: 'number' },
