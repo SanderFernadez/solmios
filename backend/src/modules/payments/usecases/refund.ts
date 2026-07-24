@@ -35,10 +35,16 @@ export async function refundPayment(
     amount,
   })
 
+  // El reembolso ya está confirmado por Stripe síncronamente (deps.stripe.refund retornó con
+  // refund.id acá arriba), así que el documento de reembolso nace `completed`. Si cayera al default
+  // (`pending` por method=card) nunca llegaría a `completed` — el webhook sólo actúa en `paid` (ver
+  // settle-webhook.ts) — y entonces el cashFlow y los reportes (ambos filtran status==='completed')
+  // no lo restarían → ingresos inflados: un cobro de 1000 con devolución de 1000 figuraba como 1000.
   const refundPaymentDoc = await deps.createPayment({
     hotelId: payment.hotelId,
     type: 'refund',
     method: 'card',
+    status: 'completed',
     amount: amount ?? payment.amount,
     currency: payment.currency,
     description: `Refund for payment ${paymentId}`,
