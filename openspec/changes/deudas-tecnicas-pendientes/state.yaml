@@ -1,0 +1,51 @@
+# SDD State: deudas-tecnicas-pendientes
+
+change_name: deudas-tecnicas-pendientes
+created: 2026-07-24
+status: draft
+current_phase: proposal
+
+sprints:
+  dt-07-search-facturas:
+    title: Search de facturas — mover filtro a WHERE del repo
+    status: pending
+    tasks_total: 9
+    tasks_done: 0
+    priority: medium
+    note: deuda de PERF, no de correctitud — no bloquea nada, se puede ejecutar cuando haya ventana
+
+  dt-08-depositos-ledger:
+    title: Depósitos — conectar el ledger real (Stripe o payments)
+    status: pending
+    tasks_total: 8
+    tasks_done: 0
+    priority: high
+    note: "REQUIERE decisión del usuario en 1.1 antes de codear (opción A mínima vs B Stripe real)"
+
+  dt-09-facturacion-electronica:
+    title: Facturación electrónica real (DGII/DIAN/SAT)
+    status: blocked
+    tasks_total: 2
+    tasks_done: 0
+    priority: low
+    blocked_reason: requiere credenciales/certificados de la autoridad fiscal del país — decisión de negocio, no ejecutable por código
+
+total_tasks: 19
+tasks_done: 0
+
+execution_order:
+  - dt-08-depositos-ledger
+  - dt-07-search-facturas
+  - dt-09-facturacion-electronica
+
+artifacts:
+  proposal: true
+  tasks: true
+  state: true
+  specs: false
+
+notes:
+  - "2026-07-24: se verificaron 4 filas candidatas de la tabla 'Deudas técnicas' de CLAUDE.md contra
+     el código actual. 2 de las 4 ya estaban resueltas (electronic_invoicing.enabled shape fix vía
+     settings/index.vue, y PC-4 Service Worker reactivado en commit 5857848) — CLAUDE.md corregido
+     en el mismo turno para no dejar documentación desactualizada."
