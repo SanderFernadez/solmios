@@ -1484,6 +1484,10 @@ function popupBlock() {
 // precio vacíos o fechas inválidas, la hoja salía en blanco o con "$NaN" — el usuario lo percibía
 // como "no imprime nada". Ahora valida ANTES de llamar a window.print().
 function printQuote() {
+  if (!quote.value.guest.trim()) {
+    toast.warning('Completá el nombre del cliente antes de imprimir')
+    return
+  }
   const rooms = quote.value.rooms
   if (!rooms.length || rooms.some((r) => !r.type || !(r.qty > 0) || !(r.price > 0))) {
     toast.warning('Completá habitación, cantidad y precio en todas las líneas antes de imprimir')
