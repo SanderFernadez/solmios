@@ -45,7 +45,7 @@ const newAddon = ref({ description: '', amount: 0, kind: 'service' as 'service' 
 const folioCharges = ref<{ description?: string; amount?: number; kind?: string }[] | null>(null)
 // Emisor de la factura (nombre, dirección, RNC, impuesto). Se carga del hotel de la reserva.
 const hotelInfo = ref<HotelData | null>(null)
-type PrintMode = 'detail' | 'voucherLodging' | 'voucherClient' | 'invoice'
+type PrintMode = 'detail' | 'voucherLodging' | 'voucherClient' | 'invoice' | 'quote'
 const printMode = ref<PrintMode>('detail')
 
 // Tarjeta de garantía (MisterPlan): se revela solo tras ingresar el PIN del hotel.
@@ -634,6 +634,10 @@ function editar() { if (d.value) emit('edit', d.value) }
                 <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
               </summary>
               <div class="px-4 pb-4 pt-1 space-y-2 text-sm">
+                <button @click="printAs('quote')" class="flex w-full items-center gap-2 text-left px-3 py-2 bg-surface rounded-lg border border-border/70 hover:border-teal hover:text-teal cursor-pointer" title="Imprimir cotización / proforma de esta reserva">
+                  <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
+                  Cotización / Proforma
+                </button>
                 <button @click="printAs('voucherLodging')" class="flex w-full items-center gap-2 text-left px-3 py-2 bg-surface rounded-lg border border-border/70 hover:border-teal hover:text-teal cursor-pointer">
                   <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
                   Bono del alojamiento
@@ -841,6 +845,61 @@ function editar() { if (d.value) emit('edit', d.value) }
             <p v-if="invoiceTax === 0" style="font-size:10px;color:#bbb;margin:4px 0 0">Documento sin desglose fiscal</p>
           </div>
         </div>
+
+        <!-- ═══ COTIZACIÓN / PROFORMA (oculta en pantalla, visible solo al imprimir) ═══ -->
+        <div v-if="d" class="rm-voucher rm-quote">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a2b4c;padding-bottom:16px;margin-bottom:20px">
+            <div>
+              <h1 style="font-size:22px;font-weight:900;color:#1a2b4c;margin:0">{{ hotelInfo?.name || 'Hotel' }}</h1>
+              <p v-if="hotelInfo?.address" style="font-size:12px;color:#555;margin:4px 0 0">{{ hotelInfo.address }}<span v-if="hotelInfo?.municipality || hotelInfo?.province">, {{ [hotelInfo.municipality, hotelInfo.province].filter(Boolean).join(', ') }}</span></p>
+              <p style="font-size:12px;color:#555;margin:2px 0 0"><span v-if="hotelInfo?.phone">Tel: {{ hotelInfo.phone }}</span><span v-if="hotelInfo?.email"> · {{ hotelInfo.email }}</span></p>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:20px;font-weight:900;color:#1a2b4c;letter-spacing:1px">COTIZACIÓN / PROFORMA</div>
+              <div style="font-size:12px;color:#555;margin-top:4px">Nº {{ locator }}</div>
+              <div style="font-size:12px;color:#555">Fecha: {{ invoiceDate }}</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:24px;margin-bottom:20px">
+            <div style="flex:1">
+              <div style="font-size:10px;font-weight:bold;color:#999;text-transform:uppercase;margin-bottom:4px">Cliente</div>
+              <div style="font-size:14px;font-weight:bold;color:#1a2b4c">{{ d.guest?.name || 'Consumidor final' }}</div>
+              <div v-if="d.guest?.email" style="font-size:12px;color:#555">{{ d.guest.email }}</div>
+              <div v-if="d.guest?.phone" style="font-size:12px;color:#555">{{ d.guest.phone }}</div>
+            </div>
+            <div style="flex:1;text-align:right">
+              <div style="font-size:10px;font-weight:bold;color:#999;text-transform:uppercase;margin-bottom:4px">Estadía</div>
+              <div style="font-size:12px;color:#555">Entrada: <b style="color:#1a2b4c">{{ fmtDate(d.checkIn) }}</b></div>
+              <div style="font-size:12px;color:#555">Salida: <b style="color:#1a2b4c">{{ fmtDate(d.checkOut) }}</b></div>
+              <div style="font-size:12px;color:#555">{{ nights }} noche(s) · {{ d.adults }} adulto(s){{ d.children ? ', ' + d.children + ' niño(s)' : '' }}</div>
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px">
+            <thead>
+              <tr style="border-bottom:2px solid #1a2b4c">
+                <th style="text-align:left;padding:8px 0;font-size:11px;text-transform:uppercase;color:#555">Concepto</th>
+                <th style="text-align:right;padding:8px 0;font-size:11px;text-transform:uppercase;color:#555">Importe</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(it, i) in invoiceItems" :key="i" style="border-bottom:1px solid #eee">
+                <td style="padding:8px 0;color:#333">{{ it.desc }}</td>
+                <td style="padding:8px 0;text-align:right;font-weight:bold;color:#1a2b4c">{{ money(it.amount) }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
+            <table style="font-size:13px;min-width:260px">
+              <tr v-if="invoiceTax > 0"><td style="padding:4px 16px 4px 0;color:#555">Subtotal</td><td style="padding:4px 0;text-align:right;font-weight:bold">{{ money(invoiceSubtotal) }}</td></tr>
+              <tr v-if="invoiceTax > 0"><td style="padding:4px 16px 4px 0;color:#555">{{ invoiceTaxName }} ({{ invoiceTaxRate }}%)</td><td style="padding:4px 0;text-align:right;font-weight:bold">{{ money(invoiceTax) }}</td></tr>
+              <tr style="border-top:2px solid #1a2b4c"><td style="padding:8px 16px 4px 0;font-weight:900;color:#1a2b4c;font-size:15px">TOTAL ESTIMADO</td><td style="padding:8px 0 4px;text-align:right;font-weight:900;color:#1a2b4c;font-size:15px">{{ money(grandTotal) }}</td></tr>
+            </table>
+          </div>
+          <div style="border-top:1px solid #ddd;padding-top:12px;text-align:center">
+            <p style="font-size:11px;color:#999;margin:0">Gracias por su preferencia · {{ hotelInfo?.name }}</p>
+            <p style="font-size:10px;color:#bbb;margin:4px 0 0">Documento informativo · No válido como factura fiscal</p>
+          </div>
+        </div>
       </div>
     </div>
     </Transition>
@@ -891,5 +950,9 @@ details[open] > summary .ml-auto { transform: rotate(180deg); }
      .modal-panel centrado (con overflow:hidden) y el contenido caía fuera del A4 → hoja en blanco. */
   .print-invoice .rm-invoice { display: block !important; position: fixed; left: 0; top: 0; width: 100%; padding: 32px 40px; visibility: visible; }
   .print-invoice .rm-invoice, .print-invoice .rm-invoice * { visibility: visible; }
+  /* Modo cotización */
+  .print-quote .rm-print-area { display: none !important; }
+  .print-quote .rm-quote { display: block !important; position: fixed; left: 0; top: 0; width: 100%; padding: 32px 40px; visibility: visible; }
+  .print-quote .rm-quote, .print-quote .rm-quote * { visibility: visible; }
 }
 </style>

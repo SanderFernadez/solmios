@@ -288,14 +288,7 @@
     </Teleport>
 
     <!-- Quote / Cotización Modal -->
-    <Teleport to="body">
-      <div v-if="quote.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between mb-4 no-print">
-            <h3 class="text-lg font-black text-navy flex items-center gap-2"><Icon name="document" :size="18" /> Cotización</h3>
-            <button @click="quote.show = false" class="text-text-muted hover:text-coral font-bold cursor-pointer"><Icon name="x" :size="16" /></button>
-          </div>
-
+    <AppModal :open="quote.show" title="Cotización" size="lg" body-class="p-6" @close="quote.show = false">
           <!-- PRINT VIEW -->
           <div class="print-only">
             <div class="text-center mb-6">
@@ -419,13 +412,12 @@
             <textarea v-model="quote.notes" rows="2" placeholder="Condiciones, políticas de cancelación..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm resize-none"></textarea>
           </div>
           </div><!-- end screen-only -->
-          <div class="flex gap-3">
-            <button @click="quote.show = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer no-print">Cerrar</button>
-            <button @click="printQuote" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer no-print inline-flex items-center justify-center gap-2"><Icon name="printer" :size="15" /> Imprimir</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+
+      <template #footer>
+        <button @click="quote.show = false" class="flex-1 py-2.5 border-2 border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer no-print">Cerrar</button>
+        <button @click="printQuote" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer no-print inline-flex items-center justify-center gap-2"><Icon name="printer" :size="15" /> Imprimir</button>
+      </template>
+    </AppModal>
 
     <!-- Modal: mover / extender reserva + cobro de diferencia (#204/#207) -->
     <Teleport to="body">
@@ -772,6 +764,7 @@ import ReservationWizardModal from '@/components/features/ReservationWizardModal
 import RoomLockModal from '@/components/features/RoomLockModal.vue'
 import ChannelIcon from '@/components/ui/ChannelIcon.vue'
 import Icon from '@/components/ui/Icon.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { TTLockService } from '@/services/TTLock.service'
 import { useRouter } from 'vue-router'
 
@@ -1487,7 +1480,21 @@ function popupBlock() {
   blockDlg.value = { show: true, room: `${p.room?.number} - ${p.room?.type}`, from: p.fromDate, to: p.toDate, reason: '', customReason: '', rid: p.room?.id }
   popup.value.show = false
 }
-function printQuote() { window.print() }
+// El botón "Imprimir" abría el diálogo de impresión sin chequear nada: con habitación/cantidad/
+// precio vacíos o fechas inválidas, la hoja salía en blanco o con "$NaN" — el usuario lo percibía
+// como "no imprime nada". Ahora valida ANTES de llamar a window.print().
+function printQuote() {
+  const rooms = quote.value.rooms
+  if (!rooms.length || rooms.some((r) => !r.type || !(r.qty > 0) || !(r.price > 0))) {
+    toast.warning('Completá habitación, cantidad y precio en todas las líneas antes de imprimir')
+    return
+  }
+  if (!quote.value.checkIn || !quote.value.checkOut || !(quoteNights.value > 0)) {
+    toast.warning('Las fechas de check-in / check-out no son válidas')
+    return
+  }
+  window.print()
+}
 function onQuoteRoomTypeChange(i: number) {
   const item = quote.value.rooms[i]
   if (!item) return
@@ -1680,5 +1687,21 @@ function goToday() { weekOffset.value = 0; lastSel.value = null; popup.value.sho
 .planning-dragging-move, .planning-dragging-move * { cursor: move !important; }
 .planning-dragging-resize, .planning-dragging-resize * { cursor: ew-resize !important; }
 @media screen { .print-only { display: none !important; } }
-@media print { .no-print, .screen-only { display: none !important; } .print-only { display: block !important; } body { background: white !important; } }
+@media print {
+  /* Mismo patrón que ReservationModal.vue (.rm-invoice): la Cotización vive dentro de un
+     AppModal centrado (position:fixed + overflow-y-auto + max-height). Antes solo se ocultaba
+     con display, así que el contenido quedaba anclado/recortado a ese contenedor y la hoja
+     salía en blanco o cortada. Ocultar TODO el documento y reanclar .print-only a la página
+     (position:fixed, sin max-height/overflow) es lo que hace que imprima completo. */
+  body * { visibility: hidden; }
+  .print-only, .print-only * { visibility: visible; }
+  .print-only {
+    display: block !important;
+    position: fixed; left: 0; top: 0; width: 100%;
+    max-height: none; overflow: visible;
+    padding: 32px 40px;
+  }
+  .no-print, .screen-only { display: none !important; }
+  body { background: white !important; }
+}
 </style>
