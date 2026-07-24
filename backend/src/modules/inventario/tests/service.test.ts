@@ -4,6 +4,7 @@ import { describe, it, expect } from 'bun:test'
 import type { RepositoryAdapter, Auth } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { InventarioService } from '../service'
+import { consumeForSale } from '../usecases/recipes'
 import type { InventoryItemDTO, StockMovementDTO, CurrentUser } from '../types'
 
 const log = silentLogger()
@@ -232,5 +233,25 @@ describe('InventarioService — recetas + consumo por venta (INT-1)', () => {
     const sys = { id: 'system', hotelId: 'h1', role: 'super_admin' }
     await s.consumeForSale({ hotelId: 'h1', menuItemId: 'sin-receta', soldQty: 5, lineId: 'L9' }, sys)
     expect(items[0].currentStock).toBe(10)   // intacto
+  })
+
+  it('ítem de menú sin receta AVISA con logger.warn (stock fantasma visible)', async () => {
+    // FIX recetas-stock-warning: antes el descuento omitido era silencioso; ahora emite un warn con
+    // hotelId/menuItemId/lineId/soldQty para que se sepa qué platos faltan recetar.
+    const warnings: any[] = []
+    const spyLogger = { warn: (m: string, ctx?: any) => warnings.push({ m, ctx }), info() {}, error() {}, debug() {} } as any
+    const deps = {
+      recipes: { findMany: async () => [] } as any,
+      items: makeRepo<InventoryItemDTO>(),
+      movements: makeRepo<StockMovementDTO>(),
+      userRepo: makeUserRepo('h1'),
+      auth: passAuth,
+      logger: spyLogger,
+    } as any
+    const sys = { id: 'system', hotelId: 'h1', role: 'super_admin' } as CurrentUser
+    await consumeForSale(deps, { hotelId: 'h1', menuItemId: 'sin-receta', soldQty: 5, lineId: 'L9' }, sys)
+    expect(warnings.length).toBe(1)
+    expect(warnings[0].ctx.menuItemId).toBe('sin-receta')
+    expect(warnings[0].ctx.soldQty).toBe(5)
   })
 })

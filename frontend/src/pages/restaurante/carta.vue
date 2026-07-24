@@ -347,6 +347,7 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
               <div class="flex items-center gap-2">
                 <span class="font-bold text-navy truncate">{{ i.name }}</span>
                 <span v-if="!i.available" class="text-[10px] px-1.5 py-0.5 rounded bg-coral/10 text-coral font-bold">Agotado</span>
+                <span v-if="i.hasRecipe === false" class="text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold font-bold" title="No descuenta inventario al venderse — cargá su receta">Sin receta</span>
               </div>
               <div class="text-xs text-text-muted truncate">{{ categoryName(i.categoryId) }} · {{ stationName(i.stationId || categories.find(c => c.id === i.categoryId)?.stationId) }}</div>
             </div>

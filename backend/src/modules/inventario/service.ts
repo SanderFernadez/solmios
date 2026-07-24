@@ -75,10 +75,19 @@ export class InventarioService {
   // ─── Recetas / consumo por venta (INT-1) ───
   private recipeDeps(): recipesUc.RecipeDeps {
     if (!this.recipes) throw new ValidationError('Recetas no configuradas')
-    return { recipes: this.recipes, items: this.items, movements: this.movements, userRepo: this.userRepo, auth: this.auth }
+    return { recipes: this.recipes, items: this.items, movements: this.movements, userRepo: this.userRepo, auth: this.auth, logger: this.logger }
   }
   listRecipes(menuItemId: string, user: CurrentUser) { return recipesUc.listRecipes(this.recipeDeps(), menuItemId, user) }
   setRecipe(dto: { menuItemId: string; inventoryItemId: string; quantity: number }, user: CurrentUser) { return recipesUc.setRecipe(this.recipeDeps(), dto, user) }
   /** Descuenta stock por la venta de una línea de comanda (lo llama el conector restaurant→inventario). */
   consumeForSale(input: { hotelId: string; menuItemId: string; soldQty: number; lineId: string }, user: CurrentUser) { return recipesUc.consumeForSale(this.recipeDeps(), input, user) }
+
+  /** Menu items del hotel que TIENEN al menos una receta. Lo inyecta el conector en restaurant para el badge "Sin receta". */
+  async menuItemsWithRecipe(user: CurrentUser): Promise<string[]> {
+    if (!this.recipes) return []
+    const hotelId = user.hotelId || ''
+    if (!hotelId) return []
+    const rows = (await this.recipes.findMany({ hotelId })) as MenuItemRecipeDTO[]
+    return [...new Set(rows.map((r) => r.menuItemId))]
+  }
 }

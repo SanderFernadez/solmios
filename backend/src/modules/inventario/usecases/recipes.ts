@@ -1,7 +1,7 @@
 // inventario/usecases/recipes.ts — Recetas (BOM) por ítem de menú (INT-1). Define cuánto insumo consume
 // cada unidad vendida. `consumeForSale` descuenta stock al vender/servir una comanda, reusando el ledger
 // idempotente (source='pos_sale', sourceId=`${lineId}:${inventoryItemId}` → cada insumo dedup por su cuenta).
-import type { RepositoryAdapter, Auth } from 'arckode-framework'
+import type { RepositoryAdapter, Auth, Logger } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { MenuItemRecipeDTO, InventoryItemDTO, StockMovementDTO, CurrentUser } from '../types'
 import { applyMovement, type MovementDeps } from './movements'
@@ -12,6 +12,7 @@ export interface RecipeDeps {
   movements: RepositoryAdapter<StockMovementDTO>
   userRepo: RepositoryAdapter<any>
   auth: Auth
+  logger: Logger
 }
 
 function hotelOf(u: CurrentUser): string { const h = u.hotelId || ''; if (!h) throw new ValidationError('Sin hotel asignado'); return h }
@@ -55,6 +56,16 @@ export async function consumeForSale(deps: RecipeDeps, input: { hotelId: string;
   const soldQty = Number(input.soldQty)
   if (!Number.isFinite(soldQty) || soldQty <= 0) return
   const recipes = (await deps.recipes.findMany({ hotelId: input.hotelId, menuItemId: input.menuItemId })) as MenuItemRecipeDTO[]
+  // Stock fantasma: el plato vendido no tiene receta → no hay insumos modelados que descontar. Antes esto
+  // era silencioso y el admin no se enteraba de qué platos faltaba recetar (vendía y el stock no bajaba).
+  // Lo avisamos para que se sepa qué cargar. NO descuenta por acá (correcto): sin receta no hay consumo
+  // modelado; inventario real se descuenta cuando el admin dé de alta la receta y se vuelva a vender.
+  if (recipes.length === 0) {
+    deps.logger.warn('stock fantasma: plato vendido sin receta, descuento de inventario omitido', {
+      hotelId: input.hotelId, menuItemId: input.menuItemId, lineId: input.lineId, soldQty,
+    })
+    return
+  }
   for (const r of recipes) {
     const qty = Number(r.quantity) * soldQty
     if (!Number.isFinite(qty) || qty <= 0) continue

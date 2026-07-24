@@ -13,8 +13,13 @@ interface InventarioModule {
 }
 
 export function restauranteInventarioConnector(ctx: ConnectorContext): void {
-  const restaurant = ctx.resolveModule<{ setSockets: (s: any) => void } & RestaurantModule>('restaurant')
-  const inventario = () => ctx.resolveModule<InventarioModule>('inventario')
+  const restaurant = ctx.resolveModule<{ setSockets: (s: any) => void; setRecipePorts?: (p: any) => void } & RestaurantModule>('restaurant')
+  const inventario = () => ctx.resolveModule<InventarioModule & { menuItemsWithRecipe: (user: any) => Promise<string[]> }>('inventario')
+
+  // Nivel 2 stock fantasma: inyecta el port para que la carta marque los platos sin receta.
+  restaurant.setRecipePorts?.({
+    menuItemsWithRecipe: (user: any) => inventario().menuItemsWithRecipe(user),
+  })
 
   async function consumeOrder(order: any): Promise<void> {
     try {

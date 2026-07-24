@@ -19,6 +19,9 @@ export class RestaurantService {
   private sockets: RestaurantSockets = {}
   // Puertos de liquidación (folios/payments) que inyecta un conector. RES-5.
   private settlementPorts: settlement.SettlementPorts = {}
+  // Puerto de recetas (inventario) inyectado por el conector restaurante-inventario.
+  // Nivel 2 stock fantasma: permite marcar platos sin receta en la carta.
+  private recipePorts: { menuItemsWithRecipe?: (user: CurrentUser) => Promise<string[]> } = {}
 
   constructor(
     private readonly stations: RepositoryAdapter<StationDTO>,
@@ -50,6 +53,11 @@ export class RestaurantService {
   /** Puertos de liquidación (folios/payments) inyectados por conector. Acumula (no pisa). */
   setSettlementDeps(p: Partial<settlement.SettlementPorts>): void {
     this.settlementPorts = { ...this.settlementPorts, ...p }
+  }
+
+  /** Puerto de recetas (inventario) inyectado por conector. Acumula (no pisa). Best-effort + graceful. */
+  setRecipePorts(p: { menuItemsWithRecipe?: (user: CurrentUser) => Promise<string[]> }): void {
+    this.recipePorts = { ...this.recipePorts, ...p }
   }
 
   /** hotelId SIEMPRE del JWT (nunca del body) — anti-IDOR multi-tenant. */
@@ -139,7 +147,19 @@ export class RestaurantService {
   deleteCategory(id: string, user: CurrentUser) { return categoriesCrud.deleteCategory(this.catDeps(), id, user) }
 
   // ─── Carta: ítems (RES-1) — delegan a usecases/items-crud ───
-  listItems(categoryId: string | undefined, user: CurrentUser) { return itemsCrud.listItems(this.itemDeps(), categoryId, user) }
+  async listItems(categoryId: string | undefined, user: CurrentUser) {
+    const res = await itemsCrud.listItems(this.itemDeps(), categoryId, user)
+    // Nivel 2 stock fantasma: enriquece cada plato con `hasRecipe` si el port de inventario está
+    // inyectado, para que la UI pinte "Sin receta" y el admin sepa qué recetar. Best-effort + graceful:
+    // sin inventario, hasRecipe queda undefined y el badge no se renderiza (la carta no depende del catálogo).
+    if (this.recipePorts?.menuItemsWithRecipe) {
+      try {
+        const withRecipe = new Set(await this.recipePorts.menuItemsWithRecipe(user))
+        res.data.forEach((i) => { i.hasRecipe = withRecipe.has(i.id) })
+      } catch { /* best-effort: la carta nunca depende del catálogo de inventario */ }
+    }
+    return res
+  }
   getItem(id: string, user: CurrentUser) { return itemsCrud.getItem(this.itemDeps(), id, user) }
   createItem(dto: itemsCrud.CreateItemInput, user: CurrentUser) { return itemsCrud.createItem(this.itemDeps(), dto, user) }
   updateItem(id: string, dto: itemsCrud.UpdateItemInput, user: CurrentUser) { return itemsCrud.updateItem(this.itemDeps(), id, dto, user) }

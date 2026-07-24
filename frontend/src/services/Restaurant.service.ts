@@ -44,6 +44,7 @@ export interface MenuItem {
   available?: number
   imageUrl?: string
   sortOrder?: number
+  hasRecipe?: boolean
   createdAt?: string
   updatedAt?: string
 }
