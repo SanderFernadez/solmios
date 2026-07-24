@@ -27,8 +27,15 @@ export const MODULES = {
   accounting: 'Contabilidad',
   /** Tesorería (bancos, conciliación, flujo de caja, AR/AP, presupuesto). */
   treasury: 'Tesorería',
-  /** POS de restaurante (estaciones/KDS, carta, mesas, comandas, cuenta). */
+  /** POS de restaurante — operación: mesas, comandas, cuenta, KDS. NO incluye configurar la carta
+   *  (eso es `restaurant-catalog`) — un mesero/cocinero opera el POS, no reconfigura precios/menú. */
   restaurant: 'Restaurante',
+  /** Config de la carta del restaurante: estaciones, categorías, ítems (precio/disponibilidad).
+   *  Separado de `restaurant` a propósito (QA-ALTO): antes compartían el mismo permiso y un mesero
+   *  con `restaurant:create/edit` (para abrir/editar comandas) podía TAMBIÉN crear estaciones y
+   *  cambiar precios del menú — nadie se lo dio a propósito, era el mismo bucket sirviendo dos cosas
+   *  con nivel de confianza muy distinto. Solo hotel_admin tiene este permiso. */
+  'restaurant-catalog': 'Carta del restaurante',
   /** Inventario de insumos (comida/bebida/bar/suministro): stock, costo, movimientos. */
   inventory: 'Inventario',
   /** Compras: requisiciones, órdenes de compra, recepción de mercancía. */
@@ -85,6 +92,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'treasury:view', 'treasury:create', 'treasury:edit', 'treasury:delete',
     // POS de restaurante: el dueño configura todo (estaciones, carta, mesas) y opera.
     'restaurant:view', 'restaurant:create', 'restaurant:edit', 'restaurant:delete',
+    'restaurant-catalog:view', 'restaurant-catalog:create', 'restaurant-catalog:edit', 'restaurant-catalog:delete',
     // Inventario y compras: el dueño gestiona insumos, stock, requisiciones y órdenes de compra.
     'inventory:view', 'inventory:create', 'inventory:edit', 'inventory:delete',
     'purchasing:view', 'purchasing:create', 'purchasing:edit', 'purchasing:delete',
@@ -114,7 +122,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'ttlock:view',
     'ai:view', 'ai:edit',
     // Toma comandas, las envía a cocina y las cobra desde el mostrador (create+edit); la config
-    // (estaciones/carta) y el borrado/cancelación (delete) son del hotel_admin.
+    // (estaciones/carta = `restaurant-catalog`) y el borrado/cancelación (delete) son del hotel_admin.
     'restaurant:view', 'restaurant:create', 'restaurant:edit',
   ],
 
@@ -148,8 +156,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
 
   // Mesero — solo el POS del restaurante desde el Salón: abre comandas, agrega/edita líneas,
   // las envía a cocina, cobra en el mostrador. Sin acceso a reservas/huéspedes/facturación del
-  // hotel (eso es receptionist). Config de la carta/estaciones y cancelar comandas (delete) son
-  // del hotel_admin — mismo recorte que ya tiene receptionist para `restaurant`.
+  // hotel (eso es receptionist). Config de la carta/estaciones (`restaurant-catalog`) y cancelar
+  // comandas (`restaurant:delete`) son del hotel_admin — NO se le da `restaurant-catalog` a
+  // propósito (QA-ALTO): sin este split, `restaurant:edit` alcanzaba para cambiar precios/menú.
   waiter: [
     'restaurant:view', 'restaurant:create', 'restaurant:edit',
     // Ficha desde el panel, igual que el resto del personal operativo.
@@ -157,7 +166,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
 
   // Cocina — solo el KDS: ve la cola de pedidos por estación y marca el estado de cada línea
-  // (nueva → preparando → lista). No abre comandas, no cobra, no edita la carta.
+  // (nueva → preparando → lista). No abre comandas, no cobra, no edita la carta
+  // (`restaurant-catalog` no se le da — mismo criterio que waiter).
   kitchen: [
     'restaurant:view', 'restaurant:edit',
     'attendance:view', 'attendance:create',

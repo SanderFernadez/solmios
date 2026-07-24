@@ -551,6 +551,8 @@ const SYSTEM_ROLE_OPTIONS = [
   { value: 'housekeeper', label: 'Limpieza' },
   { value: 'maintenance', label: 'Mantenimiento' },
   { value: 'supervisor', label: 'Supervisor' },
+  { value: 'waiter', label: 'Mesero' },
+  { value: 'kitchen', label: 'Cocina' },
 ]
 /**
  * `customRoles` viene de `/roles`, que devuelve TODOS los roles del hotel — incluidos los de
@@ -572,6 +574,7 @@ const roleOptions = () => {
 const ROLE_LABELS: Record<string, string> = {
   hotel_admin: 'Admin Hotel', super_admin: 'Super Admin', receptionist: 'Recepcionista',
   housekeeper: 'Limpieza', maintenance: 'Mantenimiento', supervisor: 'Supervisor',
+  waiter: 'Mesero', kitchen: 'Cocina',
 }
 function roleLabel(role?: string): string {
   if (!role) return '—'

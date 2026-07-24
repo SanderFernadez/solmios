@@ -227,6 +227,7 @@ const initials = computed(() => {
 const ROLE_LABELS: Record<string, string> = {
   hotel_admin: 'Admin Hotel', super_admin: 'Super Admin', receptionist: 'Recepcionista',
   housekeeper: 'Limpieza', maintenance: 'Mantenimiento', supervisor: 'Supervisor',
+  waiter: 'Mesero', kitchen: 'Cocina',
 }
 const roleLabel = computed(() => {
   const r = dossier.value?.profile.userRole

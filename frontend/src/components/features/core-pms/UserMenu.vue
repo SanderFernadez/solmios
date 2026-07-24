@@ -105,10 +105,17 @@ const initials = computed(() =>
   name.value.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
 )
 
+// QA-MEDIO: le faltaban housekeeper/maintenance/supervisor/waiter/kitchen — esos roles veían la
+// línea de rol vacía bajo su nombre (y el avatar caía al color de admin por defecto).
 const ROLE_LABELS: Record<string, string> = {
   hotel_admin: 'Hotel Admin',
   receptionist: 'Recepción',
   super_admin: 'Super Admin',
+  housekeeper: 'Limpieza',
+  maintenance: 'Mantenimiento',
+  supervisor: 'Supervisor',
+  waiter: 'Mesero',
+  kitchen: 'Cocina',
 }
 const roleLabel = computed(() => ROLE_LABELS[auth.userRole ?? ''] ?? '')
 
@@ -117,6 +124,11 @@ const avatarClass = computed(() => {
     hotel_admin: 'bg-cyan/30 text-white',
     receptionist: 'bg-teal/30 text-white',
     super_admin: 'bg-coral/30 text-white',
+    housekeeper: 'bg-teal-light/30 text-white',
+    maintenance: 'bg-gold/30 text-white',
+    supervisor: 'bg-navy-light/30 text-white',
+    waiter: 'bg-blue/30 text-white',
+    kitchen: 'bg-coral-light/30 text-white',
   }
   return classes[auth.userRole ?? ''] ?? 'bg-cyan/30 text-white'
 })

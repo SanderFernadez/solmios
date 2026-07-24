@@ -29,7 +29,7 @@ import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
 /** Todo el personal del hotel puede leer su propio perfil. */
 const STAFF_ROLES: [string, ...string[]] = [
-  'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor', 'super_admin',
+  'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor', 'super_admin', 'waiter', 'kitchen',
 ]
 
 export { EmpleadosService }

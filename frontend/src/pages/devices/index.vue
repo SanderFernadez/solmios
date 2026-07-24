@@ -50,6 +50,11 @@
           <option class="text-navy" value="hotel_admin">Admin</option>
           <option class="text-navy" value="receptionist">Recepción</option>
           <option class="text-navy" value="super_admin">Super Admin</option>
+          <option class="text-navy" value="housekeeper">Limpieza</option>
+          <option class="text-navy" value="maintenance">Mantenimiento</option>
+          <option class="text-navy" value="supervisor">Supervisor</option>
+          <option class="text-navy" value="waiter">Mesero</option>
+          <option class="text-navy" value="kitchen">Cocina</option>
         </select>
         <select v-model="filterDevice" class="px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-sm font-semibold text-white focus:outline-none focus:border-cyan cursor-pointer">
           <option class="text-navy" value="all">Todos los dispositivos</option>

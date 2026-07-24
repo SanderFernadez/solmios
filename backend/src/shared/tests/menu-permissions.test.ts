@@ -70,7 +70,7 @@ describe('receptionist — el menú y la API coinciden', () => {
 
 describe('todo el personal puede fichar', () => {
   // `attendance` existe justamente para esto: fichar no es administrar usuarios.
-  for (const role of ['hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor']) {
+  for (const role of ['hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor', 'waiter', 'kitchen']) {
     it(`${role} ficha entrada y salida`, () => {
       expect(hasPermission(DEFAULT_ROLE_PERMISSIONS[role], 'attendance', 'create')).toBe(true)
     })
@@ -84,7 +84,7 @@ describe('todo el personal puede fichar', () => {
   })
 
   it('nadie ficha con `users:create`: eso es crear un usuario', () => {
-    for (const role of ['receptionist', 'housekeeper', 'maintenance', 'supervisor']) {
+    for (const role of ['receptionist', 'housekeeper', 'maintenance', 'supervisor', 'waiter', 'kitchen']) {
       expect(hasPermission(DEFAULT_ROLE_PERMISSIONS[role], 'users', 'create')).toBe(false)
     }
   })

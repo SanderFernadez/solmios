@@ -66,6 +66,30 @@ describe('mesero y cocina — staff de restaurante, acceso mínimo', () => {
     expect(hasPermission(perms, 'restaurant', 'create')).toBe(false)
   })
 
+  it('QA-ALTO: ninguno de los dos puede tocar la carta (restaurant-catalog es del hotel_admin)', () => {
+    // Regresión: antes de separar 'restaurant-catalog' de 'restaurant', restaurant:create/edit
+    // (que mesero/cocina SÍ tienen para operar el POS) alcanzaba para crear estaciones/categorías
+    // y cambiar precios/disponibilidad del menú — un mesero podía reconfigurar la carta entera.
+    for (const role of ['waiter', 'kitchen']) {
+      const perms = DEFAULT_ROLE_PERMISSIONS[role]
+      expect(hasPermission(perms, 'restaurant-catalog', 'view')).toBe(false)
+      expect(hasPermission(perms, 'restaurant-catalog', 'create')).toBe(false)
+      expect(hasPermission(perms, 'restaurant-catalog', 'edit')).toBe(false)
+      expect(hasPermission(perms, 'restaurant-catalog', 'delete')).toBe(false)
+    }
+  })
+
+  it('QA-ALTO: hotel_admin sí administra la carta completa', () => {
+    const perms = DEFAULT_ROLE_PERMISSIONS.hotel_admin
+    expect(hasPermission(perms, 'restaurant-catalog', 'create')).toBe(true)
+    expect(hasPermission(perms, 'restaurant-catalog', 'edit')).toBe(true)
+    expect(hasPermission(perms, 'restaurant-catalog', 'delete')).toBe(true)
+  })
+
+  it('QA-ALTO: receptionist tampoco administra la carta (mismo bucket que ya tenía de más)', () => {
+    expect(hasPermission(DEFAULT_ROLE_PERMISSIONS.receptionist, 'restaurant-catalog', 'edit')).toBe(false)
+  })
+
   it('ninguno de los dos ve reservas, huéspedes ni facturación del hotel', () => {
     for (const role of ['waiter', 'kitchen']) {
       const perms = DEFAULT_ROLE_PERMISSIONS[role]

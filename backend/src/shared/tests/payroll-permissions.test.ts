@@ -35,7 +35,7 @@ describe('permiso payroll:*', () => {
   })
 
   it('ningún otro rol de sistema accede a nómina', () => {
-    for (const role of ['housekeeper', 'supervisor', 'maintenance']) {
+    for (const role of ['housekeeper', 'supervisor', 'maintenance', 'waiter', 'kitchen']) {
       expect(hasPermission(DEFAULT_ROLE_PERMISSIONS[role], 'payroll', 'view')).toBe(false)
     }
   })

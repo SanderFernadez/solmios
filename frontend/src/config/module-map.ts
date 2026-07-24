@@ -102,6 +102,8 @@ export const PERMISSION_TO_MODULE: Record<string, string> = {
   ttlock: 'settings.locks',
   ai: 'ai',
   restaurant: 'restaurant',
+  // Config de la carta: mismo producto 'restaurant', permiso separado (QA-ALTO, ver permissions.ts).
+  'restaurant-catalog': 'restaurant',
   inventory: 'inventory',
   purchasing: 'purchasing',
 }
@@ -149,6 +151,8 @@ export const ROUTE_TO_PERMISSION: Record<string, string> = {
   '/panel/config': 'settings',       // base, tarifas, promociones, mensajería, pasarelas, dispositivos
   '/panel/contabilidad': 'accounting',
   '/panel/tesoreria': 'treasury',
+  // Match por prefijo más largo: /panel/restaurante/carta gana sobre /panel/restaurante.
+  '/panel/restaurante/carta': 'restaurant-catalog',
   '/panel/restaurante': 'restaurant',
   '/panel/inventario': 'inventory',
   '/panel/compras': 'purchasing',

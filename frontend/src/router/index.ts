@@ -294,7 +294,10 @@ const router = createRouter({
         { path: 'tesoreria/cuentas', name: 'treasury-accounts', component: () => import('@/pages/tesoreria/cuentas.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'tesoreria/presupuesto', name: 'treasury-budget', component: () => import('@/pages/tesoreria/presupuesto.vue'), meta: { requiresHotelAdmin: true } },
         // Restaurante / POS (RES-7) — operacional (meseros/recepción); gateado por module-map (restaurant).
-        { path: 'restaurante/carta', name: 'restaurant-menu', component: () => import('@/pages/restaurante/carta.vue') },
+        // QA-ALTO: defensa en profundidad — el backend ya rechaza mutaciones de carta sin
+        // restaurant-catalog:*, pero sin esta meta un mesero/cocina podía navegar acá por URL
+        // directa y ver los botones de editar habilitados (aunque el submit fallara 403).
+        { path: 'restaurante/carta', name: 'restaurant-menu', component: () => import('@/pages/restaurante/carta.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'restaurante/salon', name: 'restaurant-floor', component: () => import('@/pages/restaurante/salon.vue') },
         { path: 'restaurante/comanda/:id', name: 'restaurant-order', component: () => import('@/pages/restaurante/comanda.vue') },
         { path: 'restaurante/cocina', name: 'restaurant-kds', component: () => import('@/pages/restaurante/cocina.vue') },
@@ -628,6 +631,17 @@ router.beforeEach(async (to) => {
       const allowed = !isSystemRole(role) && (!mod || hasPermission(auth.user?.permissions, mod, 'view'))
       if (!allowed) return '/panel'
     }
+  }
+
+  // ── Bloqueo genérico por permiso (QA-MEDIO): `requiresHotelAdmin` arriba solo cubre las rutas
+  // marcadas con esa meta. Un rol de permisos mínimos (mesero, cocina) navegando por URL directa a
+  // una ruta /panel/* SIN esa meta pero SÍ mapeada en ROUTE_TO_PERMISSION (reservas, huéspedes,
+  // facturación…) no rebotaba — quedaba en una pantalla que no es la suya (el backend igual le
+  // niega los datos con 403, esto es UX, no el gate de seguridad). Rutas CORE (sin mapeo, ej.
+  // dashboard) siguen accesibles a cualquiera con sesión, a propósito.
+  if (to.path.startsWith('/panel/') && auth.isAuthenticated && !auth.isSuperAdmin && !auth.isHotelAdmin) {
+    const mod = permissionModuleForPath(to.path)
+    if (mod && !hasPermission(auth.user?.permissions, mod, 'view')) return '/panel'
   }
 
   // ── Bloqueo por módulo/submódulo: no basta con ocultar del menú, la URL directa también se bloquea ──

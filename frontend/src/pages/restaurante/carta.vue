@@ -34,9 +34,11 @@ const inventory = ref<InventoryItem[]>([])
 const currency = ref('USD')
 const activeCategoryId = ref<string>('all')
 
-const editPerm = computed(() => can('restaurant', 'edit'))
-const createPerm = computed(() => can('restaurant', 'create'))
-const deletePerm = computed(() => can('restaurant', 'delete'))
+// La carta (estaciones/categorías/ítems/recetas) es config, no operación del POS — gateada por
+// 'restaurant-catalog' (QA-ALTO: separado de 'restaurant' para que mesero/cocina no la editen).
+const editPerm = computed(() => can('restaurant-catalog', 'edit'))
+const createPerm = computed(() => can('restaurant-catalog', 'create'))
+const deletePerm = computed(() => can('restaurant-catalog', 'delete'))
 
 const stationName = (id?: string): string => stations.value.find((s) => s.id === id)?.name || 'Sin estación'
 const categoryName = (id: string): string => categories.value.find((c) => c.id === id)?.name || '—'

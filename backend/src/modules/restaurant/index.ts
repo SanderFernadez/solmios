@@ -60,27 +60,32 @@ export function RestaurantModule() {
       const moduleGuard = createModuleGuard(orm)
       const guard = (m: string, a: string) => [...permGuard(m, a), moduleGuard('restaurant')]
 
-      // Estaciones (pantallas KDS configurables) — RES-0
+      // Estaciones (pantallas KDS configurables) — RES-0. Lectura: 'restaurant' (el POS necesita
+      // listarlas para rutear la carta). Mutación: 'restaurant-catalog' (QA-ALTO: separado de
+      // 'restaurant' para que mesero/cocina, que tienen restaurant:create/edit para operar el POS,
+      // NO puedan crear/editar/borrar estaciones — antes compartían el mismo permiso).
       router.get('/api/restaurant/stations', guard('restaurant', 'view'), (req) => controller.indexStations(req))
       router.get('/api/restaurant/stations/:id', guard('restaurant', 'view'), (req) => controller.showStation(req))
-      router.post('/api/restaurant/stations', guard('restaurant', 'create'), (req) => controller.storeStation(req))
-      router.put('/api/restaurant/stations/:id', guard('restaurant', 'edit'), (req) => controller.updateStation(req))
-      router.delete('/api/restaurant/stations/:id', guard('restaurant', 'delete'), (req) => controller.destroyStation(req))
+      router.post('/api/restaurant/stations', guard('restaurant-catalog', 'create'), (req) => controller.storeStation(req))
+      router.put('/api/restaurant/stations/:id', guard('restaurant-catalog', 'edit'), (req) => controller.updateStation(req))
+      router.delete('/api/restaurant/stations/:id', guard('restaurant-catalog', 'delete'), (req) => controller.destroyStation(req))
 
-      // Carta: categorías (RES-1)
+      // Carta: categorías (RES-1). Mismo criterio: lectura operativa, mutación es config.
       router.get('/api/restaurant/categories', guard('restaurant', 'view'), (req) => controller.indexCategories(req))
       router.get('/api/restaurant/categories/:id', guard('restaurant', 'view'), (req) => controller.showCategory(req))
-      router.post('/api/restaurant/categories', guard('restaurant', 'create'), (req) => controller.storeCategory(req))
-      router.put('/api/restaurant/categories/:id', guard('restaurant', 'edit'), (req) => controller.updateCategory(req))
-      router.delete('/api/restaurant/categories/:id', guard('restaurant', 'delete'), (req) => controller.destroyCategory(req))
+      router.post('/api/restaurant/categories', guard('restaurant-catalog', 'create'), (req) => controller.storeCategory(req))
+      router.put('/api/restaurant/categories/:id', guard('restaurant-catalog', 'edit'), (req) => controller.updateCategory(req))
+      router.delete('/api/restaurant/categories/:id', guard('restaurant-catalog', 'delete'), (req) => controller.destroyCategory(req))
 
-      // Carta: ítems (RES-1)
+      // Carta: ítems (RES-1). Mismo criterio: lectura operativa (armar el pedido), mutación es
+      // config (precio/disponibilidad) — `availability` (agotar/reactivar) también es config: hoy
+      // solo vive en la pantalla Carta (admin), ningún rol operativo tiene ese botón.
       router.get('/api/restaurant/menu-items', guard('restaurant', 'view'), (req) => controller.indexItems(req))
       router.get('/api/restaurant/menu-items/:id', guard('restaurant', 'view'), (req) => controller.showItem(req))
-      router.post('/api/restaurant/menu-items', guard('restaurant', 'create'), (req) => controller.storeItem(req))
-      router.put('/api/restaurant/menu-items/:id', guard('restaurant', 'edit'), (req) => controller.updateItem(req))
-      router.put('/api/restaurant/menu-items/:id/availability', guard('restaurant', 'edit'), (req) => controller.setItemAvailability(req))
-      router.delete('/api/restaurant/menu-items/:id', guard('restaurant', 'delete'), (req) => controller.destroyItem(req))
+      router.post('/api/restaurant/menu-items', guard('restaurant-catalog', 'create'), (req) => controller.storeItem(req))
+      router.put('/api/restaurant/menu-items/:id', guard('restaurant-catalog', 'edit'), (req) => controller.updateItem(req))
+      router.put('/api/restaurant/menu-items/:id/availability', guard('restaurant-catalog', 'edit'), (req) => controller.setItemAvailability(req))
+      router.delete('/api/restaurant/menu-items/:id', guard('restaurant-catalog', 'delete'), (req) => controller.destroyItem(req))
 
       // Mesas / salón (RES-2)
       router.get('/api/restaurant/tables', guard('restaurant', 'view'), (req) => controller.indexTables(req))

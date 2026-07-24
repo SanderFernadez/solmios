@@ -18,7 +18,7 @@ export type { ContactDTO, UserDirectory } from './types'
 
 /** Roles que pueden usar el chat interno: cualquier miembro autenticado del hotel. */
 const STAFF_ROLES: [string, ...string[]] = [
-  'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor', 'super_admin',
+  'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor', 'super_admin', 'waiter', 'kitchen',
 ]
 
 export function MessagesModule(opts: { storage?: StorageService } = {}) {

@@ -96,7 +96,9 @@ async function setQty(line: OrderLine, qty: number) {
 }
 
 async function remove(line: OrderLine) {
-  if (!editable.value || !deletePerm.value || busy.value) return
+  if (!editable.value || busy.value) return
+  // Sin restaurant:delete (mesero/cocina), bajar a 0 quedaba en silencio — igual que 'cancel()'.
+  if (!deletePerm.value) { toast.warning('Sin permiso para quitar ítems'); return }
   busy.value = true
   try {
     await RestaurantService.removeLine(orderId.value, line.id)
