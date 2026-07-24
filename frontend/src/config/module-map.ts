@@ -55,6 +55,9 @@ export const ROUTE_TO_KEY: Record<string, string> = {
   '/panel/tesoreria': 'treasury',
   // Restaurante / POS (entitlement de plan: clave top-level restaurant).
   '/panel/restaurante': 'restaurant',
+  // Inventario + Compras (entitlement de plan: claves top-level inventory / purchasing).
+  '/panel/inventario': 'inventory',
+  '/panel/compras': 'purchasing',
 }
 
 /**
@@ -99,6 +102,8 @@ export const PERMISSION_TO_MODULE: Record<string, string> = {
   ttlock: 'settings.locks',
   ai: 'ai',
   restaurant: 'restaurant',
+  inventory: 'inventory',
+  purchasing: 'purchasing',
 }
 
 /**
@@ -145,6 +150,8 @@ export const ROUTE_TO_PERMISSION: Record<string, string> = {
   '/panel/contabilidad': 'accounting',
   '/panel/tesoreria': 'treasury',
   '/panel/restaurante': 'restaurant',
+  '/panel/inventario': 'inventory',
+  '/panel/compras': 'purchasing',
 }
 
 /** MÓDULO de permiso para una ruta, por prefijo más largo. undefined = CORE (no gateada por permiso). */

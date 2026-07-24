@@ -168,6 +168,11 @@ const router = createRouter({
           component: () => import('@/pages/super-admin/api-keys.vue'),
         },
         {
+          path: 'email-templates',
+          name: 'super-admin-email-templates',
+          component: () => import('@/pages/super-admin/email-templates.vue'),
+        },
+        {
           path: 'roles',
           name: 'super-admin-roles',
           component: () => import('@/pages/super-admin/roles.vue'),
@@ -287,6 +292,10 @@ const router = createRouter({
         { path: 'restaurante/comanda/:id', name: 'restaurant-order', component: () => import('@/pages/restaurante/comanda.vue') },
         { path: 'restaurante/cocina', name: 'restaurant-kds', component: () => import('@/pages/restaurante/cocina.vue') },
         { path: 'restaurante/cobrar/:id', name: 'restaurant-pay', component: () => import('@/pages/restaurante/cobrar.vue') },
+        // Inventario + Compras (INV/COM) — gateado por module-map (inventory / purchasing).
+        { path: 'inventario', name: 'inventory', component: () => import('@/pages/inventario/index.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'compras/requisiciones', name: 'purchasing-requisitions', component: () => import('@/pages/compras/requisiciones.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'compras/ordenes', name: 'purchasing-orders', component: () => import('@/pages/compras/ordenes.vue'), meta: { requiresHotelAdmin: true } },
         {
           path: 'operaciones/limpieza',
           name: 'housekeeping',

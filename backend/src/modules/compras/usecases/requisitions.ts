@@ -94,6 +94,19 @@ export async function transition(deps: RequisitionDeps, id: string, to: Requisit
   return updated
 }
 
+/**
+ * Enviar la PROPIA requisición a aprobación (draft→submitted). Ruta separada gateada por
+ * `purchasing:create` (no `edit`): quien solo puede crear/solicitar también debe poder mandar su
+ * borrador a revisión — segregación de funciones (quien pide ≠ quien aprueba). Restringido al
+ * creador: si otro usuario con solo `create` intentara enviar la requisición de un tercero, se
+ * rechaza (para eso está `transition`, gateado por `edit`, que sí puede operar sobre cualquiera).
+ */
+export async function submitOwn(deps: RequisitionDeps, id: string, user: CurrentUser): Promise<RequisitionDTO> {
+  const req = await loadOwned(deps, id, user)
+  if (req.requestedBy && req.requestedBy !== user.id) throw new ConflictError('Solo quien creó la requisición puede enviarla a aprobación')
+  return transition(deps, id, 'submitted', user)
+}
+
 export async function deleteRequisition(deps: RequisitionDeps, id: string, user: CurrentUser): Promise<void> {
   const req = await loadOwned(deps, id, user); assertDraft(req)
   const items = (await deps.reqItems.findMany({ requisitionId: id })) as RequisitionItemDTO[]

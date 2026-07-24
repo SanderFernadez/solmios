@@ -47,6 +47,8 @@ export class ComprasService {
   addRequisitionLine(id: string, l: reqUc.RequisitionLineInput, user: CurrentUser) { return reqUc.addLine(this.reqDeps(), id, l, user) }
   removeRequisitionLine(id: string, lineId: string, user: CurrentUser) { return reqUc.removeLine(this.reqDeps(), id, lineId, user) }
   transitionRequisition(id: string, to: RequisitionStatus, user: CurrentUser) { return reqUc.transition(this.reqDeps(), id, to, user) }
+  /** Enviar la propia requisición a aprobación — gateada por `purchasing:create` en la ruta (COM-1). */
+  submitRequisition(id: string, user: CurrentUser) { return reqUc.submitOwn(this.reqDeps(), id, user) }
   deleteRequisition(id: string, user: CurrentUser) { return reqUc.deleteRequisition(this.reqDeps(), id, user) }
 
   // ─── Órdenes de compra (COM-2) ───

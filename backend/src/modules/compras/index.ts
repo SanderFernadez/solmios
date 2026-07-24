@@ -63,6 +63,9 @@ export function ComprasModule() {
       router.post('/api/compras/requisitions/:id/items', guard('purchasing', 'create'), (req) => controller.addReqLine(req))
       router.delete('/api/compras/requisitions/:id/items/:lineId', guard('purchasing', 'edit'), (req) => controller.removeReqLine(req))
       router.post('/api/compras/requisitions/:id/transition', guard('purchasing', 'edit'), (req) => controller.transitionReq(req))
+      // Enviar la PROPIA requisición a aprobación: gateado por 'create' (no 'edit'), segregación de
+      // funciones quien-pide≠quien-aprueba. Restringido al creador dentro del usecase (submitOwn).
+      router.post('/api/compras/requisitions/:id/submit', guard('purchasing', 'create'), (req) => controller.submitReq(req))
       router.delete('/api/compras/requisitions/:id', guard('purchasing', 'delete'), (req) => controller.destroyReq(req))
 
       // Órdenes de compra (COM-2)

@@ -50,24 +50,36 @@ const emit = defineEmits<{ close: [] }>()
 const SIZES: Record<string, string> = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-5xl' }
 const sizeClass = computed(() => SIZES[props.size] || SIZES.md)
 
-// Robustez: ESC cierra (si closable) + bloqueo de scroll del body mientras está abierto.
+// Pila de modales abiertos (módulo, compartida entre instancias): con modales apilados (uno abre otro
+// encima, ej. detalle de OC → recibir mercancía), un solo listener global de Escape cerraba AMBOS a la
+// vez (QA-MEDIO). Solo el modal en el TOPE de la pila reacciona a Escape; y el overflow del body solo
+// se libera cuando no queda ninguno abierto (si no, cerrar el de encima destapaba el scroll del de atrás).
+const modalStack: symbol[] = []
+const instanceId = Symbol('app-modal')
+const isTop = (): boolean => modalStack[modalStack.length - 1] === instanceId
+
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && props.closable) emit('close')
+  if (e.key === 'Escape' && props.closable && isTop()) emit('close')
+}
+function popStack() {
+  const idx = modalStack.indexOf(instanceId)
+  if (idx !== -1) modalStack.splice(idx, 1)
+  document.removeEventListener('keydown', onKeydown)
+  if (!modalStack.length) document.body.style.overflow = ''
 }
 watch(() => props.open, (isOpen) => {
   if (typeof document === 'undefined') return
   if (isOpen) {
+    if (!modalStack.includes(instanceId)) modalStack.push(instanceId)
     document.addEventListener('keydown', onKeydown)
     document.body.style.overflow = 'hidden'
   } else {
-    document.removeEventListener('keydown', onKeydown)
-    document.body.style.overflow = ''
+    popStack()
   }
 }, { immediate: true })
 onBeforeUnmount(() => {
   if (typeof document === 'undefined') return
-  document.removeEventListener('keydown', onKeydown)
-  document.body.style.overflow = ''
+  popStack()
 })
 </script>
 

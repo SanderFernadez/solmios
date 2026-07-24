@@ -36,6 +36,10 @@ export class ComprasController {
     const data = validateSchema(RequisitionTransitionSchema, req.body) as any
     return { status: 200, body: await this.service.transitionRequisition(req.params.id, data.status, req.user as any) }
   }
+  async submitReq(req: HttpRequest) {
+    this.logger.info('POST /compras/requisitions/:id/submit', { id: req.params.id })
+    return { status: 200, body: await this.service.submitRequisition(req.params.id, req.user as any) }
+  }
   async destroyReq(req: HttpRequest) {
     await this.service.deleteRequisition(req.params.id, req.user as any)
     return { status: 204, body: null }

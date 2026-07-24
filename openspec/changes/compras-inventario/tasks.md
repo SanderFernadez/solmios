@@ -66,22 +66,30 @@ Dos módulos arckode nuevos (`inventario`, `compras`) + conectores. Cada sprint:
 
 ### INT-1 — Recetas → venta descuenta stock  ⟵ INV-2
 - [x] 8.1 Modelo `MenuItemRecipes` (menuItemId, inventoryItemId, quantity) — BOM por ítem de menú. En `inventario` o `restaurant`? → en `inventario` (dueño del stock), el restaurant no lo importa
-- [ ] 8.2 UI en la carta (restaurante): asignar receta a un ítem (opcional)
+- [x] 8.2 UI en la carta (restaurante): asignar receta a un ítem (modal "Receta" por ítem en `carta.vue`; add/remove línea vía setRecipe, qty 0 elimina)
 - [x] 8.3 Connector `restaurant→inventario`: al cobrar/servir una comanda, por cada línea con receta → `applyMovement(out, qty*recipeQty)` (dedup por orderLineId). Best-effort (no rompe la venta)
 - [x] 8.4 Tests (venta descuenta, sin receta no descuenta, dedup) + QA
 
 ### INT-2 — Stock mínimo → requisición  ⟵ INT-1 + COM-1
-- [ ] 9.1 Al bajar de `minStock`, marcar el ítem y exponer "sugeridos para requisición"
-- [ ] 9.2 Acción "generar requisición" desde los bajo-mínimo (junta líneas → requisición `draft`)
-- [ ] 9.3 Tests + QA
+- [x] 9.1 Al bajar de `minStock`, marcar el ítem (rojo + KPI "bajo mínimo" + filtro) en `inventario/index.vue`
+- [x] 9.2 Acción "Requisición de reposición" desde el inventario: junta los bajo-mínimo en una requisición `draft` (cantidad sugerida = faltante para el mínimo). Reusa `ComprasService.createRequisition` — sin backend nuevo
+- [~] 9.3 Tests: cubierto por el flujo de requisiciones (COM-1). La acción FE es un wrapper de create; sin test dedicado (deuda menor).
 
 ## FE + GATE
 
 ### FE — Frontend
-- [ ] 10.1 `Inventario.service.ts` + `Compras.service.ts`
-- [ ] 10.2 Páginas: inventario (lista + ajuste), requisiciones, órdenes de compra, recepción, recetas (en carta)
-- [ ] 10.3 Rutas + module-map (`inventory`, `purchasing`) + menú
-- [ ] 10.4 typecheck (vue-tsc -b) + build
+- [x] 10.1 `Inventario.service.ts` + `Compras.service.ts` (tipos espejo, labels ES, estilos de estado)
+- [x] 10.2 Páginas: `inventario/index.vue` (lista + KPIs + valuación + ajuste + historial), `compras/requisiciones.vue` (multi-línea + ciclo aprobación), `compras/ordenes.vue` (crear + recibir + facturar), recetas en `restaurante/carta.vue`. Todas con EmptyState.
+- [x] 10.3 Rutas (`/panel/inventario`, `/panel/compras/*`) + module-map (`inventory`, `purchasing` en 3 mapas) + menú (Inventario + grupo Compras con iconos box/cart)
+- [x] 10.4 typecheck (vue-tsc -b --force) ✅ 0 errores + build ✅ (chunks inventario/requisiciones/ordenes generados)
+
+### QA frontend (adversarial) — hallazgos
+- ✅ **ALTO** fixeado: insumo `active:0` (desactivado) no se filtraba en ningún lado (KPIs, dropdowns de línea) — toggle "Activo" era cosmético. Fix: `activeItems`/`activeInventory` computed en las 4 vistas + badge "Inactivo" visible.
+- ✅ **ALTO** fixeado: requisición en `draft` creada por un usuario con solo `purchasing:create` no tenía forma de enviarse a aprobación (el botón estaba gateado por `edit`, y la ruta genérica de transición también). Fix real (no cosmético): endpoint dedicado `POST /compras/requisitions/:id/submit` gateado por `purchasing:create`, restringido en el usecase (`submitOwn`) a que solo el creador (`requestedBy`) pueda enviar la propia — segregación de funciones (quien pide ≠ quien aprueba). Tests agregados.
+- ✅ **ALTO** fixeado: una misma requisición aprobada podía generar N órdenes de compra duplicadas (el dropdown "Desde requisición" no se refrescaba tras crear una OC ni excluía las ya usadas). Fix: `availableReqs` computed que excluye requisiciones con una OC no cancelada asociada + `reload()` ahora refresca también `approvedReqs`.
+- ✅ **MEDIO** fixeado: `AppModal` compartido — un solo listener global de Escape cerraba TODOS los modales apilados a la vez (ej. detalle de OC + modal de recepción abiertos juntos). Fix: pila de módulo (`modalStack`) — solo el modal en el tope reacciona a Escape; el overflow del body solo se libera cuando no queda ninguno abierto (bug latente aparte que también arregla).
+- ✅ **MEDIO** fixeado: hint de "Ajuste (conteo físico)" no aclaraba si la cantidad es delta o valor absoluto (backend: `adjust` FIJA el stock, no lo suma). Fix: labels y hint explícitos.
+- ✅ **BAJO** fixeado: botones Quitar/Agregar del modal de Receta no gateados individualmente por `editPerm` (solo el punto de entrada lo estaba).
 
 ### G — Gate + deploy
 - [ ] 11.1 Permisos: `inventory:*`, `purchasing:*` en MODULES + DEFAULT_ROLE_PERMISSIONS + catálogo admin

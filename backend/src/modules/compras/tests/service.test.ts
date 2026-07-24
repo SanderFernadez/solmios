@@ -73,6 +73,25 @@ describe('ComprasService — requisiciones (COM-1)', () => {
     const r = await s.createRequisition({ items: [] }, user)
     await expect(s.transitionRequisition(r.id, 'submitted', user)).rejects.toThrow()
   })
+
+  describe('submitRequisition (QA-ALTO: segregación de funciones, purchasing:create)', () => {
+    it('el creador envía su propia requisición a aprobación', async () => {
+      const req: any[] = [], reqI: any[] = []
+      const s = svc({ req, reqI })
+      const r = await s.createRequisition({ items: [{ description: 'Ron', quantity: 2 }] }, user)
+      expect(req[0].requestedBy).toBe('u1')
+      const updated = await s.submitRequisition(r.id, user)
+      expect(updated.status).toBe('submitted')
+    })
+    it('otro usuario (misma hotel) NO puede enviar una requisición ajena', async () => {
+      const req: any[] = [], reqI: any[] = []
+      const s = svc({ req, reqI })
+      const r = await s.createRequisition({ items: [{ description: 'Ron', quantity: 2 }] }, user)
+      const otherUser = { id: 'u2', hotelId: 'h1', role: 'hotel_admin' } as CurrentUser
+      await expect(s.submitRequisition(r.id, otherUser)).rejects.toThrow('Solo quien creó')
+      expect(req[0].status).toBe('draft') // no mutó
+    })
+  })
 })
 
 describe('ComprasService — órdenes de compra (COM-2)', () => {
