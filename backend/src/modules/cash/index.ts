@@ -73,17 +73,20 @@ export function CashModule() {
       router.get('/api/caja/stats', guard('billing', 'view'), (req) => controller.stats(req))
 
       // ── Caja del restaurante — mismo cajón lógico, punto de venta separado (register='restaurant') ──
-      router.get('/api/caja/restaurant/movements', guardR('restaurant', 'view'), (req) => controller.index(req, 'restaurant'))
-      router.get('/api/caja/restaurant/movements/:id', guardR('restaurant', 'view'), (req) => controller.show(req, 'restaurant'))
+      // QA-ALTO: 'restaurant:view'/'restaurant:edit' también los tiene `kitchen` (piensa en KDS,
+      // no en el cajón). Se gatea TODO —lectura incluida— con 'restaurant:create', que solo tienen
+      // hotel_admin/receptionist/waiter — así cocina queda afuera del cajón por completo.
+      router.get('/api/caja/restaurant/movements', guardR('restaurant', 'create'), (req) => controller.index(req, 'restaurant'))
+      router.get('/api/caja/restaurant/movements/:id', guardR('restaurant', 'create'), (req) => controller.show(req, 'restaurant'))
       router.post('/api/caja/restaurant/movements', guardR('restaurant', 'create'), (req) => controller.store(req, 'restaurant'))
-      router.put('/api/caja/restaurant/movements/:id', guardR('restaurant', 'edit'), (req) => controller.update(req, 'restaurant'))
+      router.put('/api/caja/restaurant/movements/:id', guardR('restaurant', 'create'), (req) => controller.update(req, 'restaurant'))
       router.delete('/api/caja/restaurant/movements/:id', guardR('restaurant', 'delete'), (req) => controller.destroy(req, 'restaurant'))
-      router.get('/api/caja/restaurant/shifts', guardR('restaurant', 'view'), (req) => controller.listShifts(req, 'restaurant'))
-      router.get('/api/caja/restaurant/shifts/current', guardR('restaurant', 'view'), (req) => controller.currentShift(req, 'restaurant'))
+      router.get('/api/caja/restaurant/shifts', guardR('restaurant', 'create'), (req) => controller.listShifts(req, 'restaurant'))
+      router.get('/api/caja/restaurant/shifts/current', guardR('restaurant', 'create'), (req) => controller.currentShift(req, 'restaurant'))
       router.post('/api/caja/restaurant/shifts/open', guardR('restaurant', 'create'), (req) => controller.openShift(req, 'restaurant'))
-      router.post('/api/caja/restaurant/shifts/:id/close', guardR('restaurant', 'edit'), (req) => controller.closeShift(req, 'restaurant'))
-      router.get('/api/caja/restaurant/shifts/:id/reconcile', guardR('restaurant', 'view'), (req) => controller.reconcile(req, 'restaurant'))
-      router.get('/api/caja/restaurant/stats', guardR('restaurant', 'view'), (req) => controller.stats(req, 'restaurant'))
+      router.post('/api/caja/restaurant/shifts/:id/close', guardR('restaurant', 'create'), (req) => controller.closeShift(req, 'restaurant'))
+      router.get('/api/caja/restaurant/shifts/:id/reconcile', guardR('restaurant', 'create'), (req) => controller.reconcile(req, 'restaurant'))
+      router.get('/api/caja/restaurant/stats', guardR('restaurant', 'create'), (req) => controller.stats(req, 'restaurant'))
 
       log.info('Módulo caja listo')
       return service

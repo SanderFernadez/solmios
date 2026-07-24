@@ -42,6 +42,16 @@ export async function getCurrentShift(deps: ShiftDeps, user: CurrentUser, regist
   return open[0] ?? null
 }
 
+// DEUDA CONOCIDA (QA-MEDIO, sin resolver a propósito): el check (getCurrentShift) y la mutación
+// (shiftRepo.create) no están en una transacción — no hay unique constraint en DB sobre
+// (hotelId, register, status='open'). Dos requests casi simultáneos de "abrir turno" para el
+// mismo register/hotel pueden pasar el check antes de que cualquiera cree, dejando 2 turnos
+// abiertos del mismo cajón. No se resuelve acá: este módulo depende de RepositoryAdapter (regla
+// del proyecto: "service NUNCA importa el orm directo"), y una transacción real (como la de
+// reservas/usecases/checkin.ts) exigiría inyectar el orm crudo, rompiendo esa convención — cambio
+// de arquitectura que hay que decidir a propósito, no colar en un fix de otra cosa. Consecuencia
+// si pasa: dos turnos 'open' del mismo register; se resuelve cerrando ambos a mano (recuperable,
+// no hay pérdida de plata — cada turno arquea sus propios movimientos por separado).
 export async function openShift(deps: ShiftDeps, dto: OpenShiftDTO, user: CurrentUser, register: CashRegister = DEFAULT_REGISTER): Promise<CashShiftDTO> {
   const hotelId = deps.hotelOfUser(user)
   const current = await getCurrentShift(deps, user, register)

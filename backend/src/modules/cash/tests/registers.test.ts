@@ -171,4 +171,26 @@ describe('registers — reception y restaurant no comparten turno', () => {
       await expect(s.reconcile('s-rest', currentUser)).rejects.toThrow('otro punto de venta')
     })
   })
+
+  // QA-ALTO encontrado por revisión adversarial: cash/index.ts gatea TODAS las rutas
+  // /api/caja/restaurant/* (incluida la lectura) con 'restaurant:create', a propósito — es el
+  // único permiso que waiter/receptionist/hotel_admin tienen y `kitchen` NO. `kitchen` sí tiene
+  // 'restaurant:view'/'restaurant:edit' (para el KDS), así que gatear con esos hubiera dejado a
+  // cocina abrir/cerrar/editar el cajón del restaurante — no le corresponde, no maneja plata.
+  describe('kitchen no puede tocar la caja del restaurante (index.ts gatea con restaurant:create)', () => {
+    it('kitchen NO tiene restaurant:create — motivo por el que index.ts elige ese permiso para gatear la caja', async () => {
+      const { DEFAULT_ROLE_PERMISSIONS, hasPermission } = await import('../../../shared/permissions')
+      expect(hasPermission(DEFAULT_ROLE_PERMISSIONS.kitchen, 'restaurant', 'create')).toBe(false)
+      // Sí tiene view/edit (KDS) — por eso NO se puede gatear la caja con esos dos.
+      expect(hasPermission(DEFAULT_ROLE_PERMISSIONS.kitchen, 'restaurant', 'view')).toBe(true)
+      expect(hasPermission(DEFAULT_ROLE_PERMISSIONS.kitchen, 'restaurant', 'edit')).toBe(true)
+    })
+
+    it('waiter/receptionist/hotel_admin sí tienen restaurant:create — mantienen acceso a su caja', async () => {
+      const { DEFAULT_ROLE_PERMISSIONS, hasPermission } = await import('../../../shared/permissions')
+      for (const role of ['waiter', 'receptionist', 'hotel_admin']) {
+        expect(hasPermission(DEFAULT_ROLE_PERMISSIONS[role], 'restaurant', 'create')).toBe(true)
+      }
+    })
+  })
 })
