@@ -168,11 +168,6 @@ const router = createRouter({
           component: () => import('@/pages/super-admin/api-keys.vue'),
         },
         {
-          path: 'email-templates',
-          name: 'super-admin-email-templates',
-          component: () => import('@/pages/super-admin/email-templates.vue'),
-        },
-        {
           path: 'roles',
           name: 'super-admin-roles',
           component: () => import('@/pages/super-admin/roles.vue'),
