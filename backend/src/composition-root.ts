@@ -19,6 +19,9 @@ import { createNoShowCron } from './modules/reports/usecases/no-show-cron'
 import { createAutoMessagesCron } from './modules/marketing/usecases/auto-messages-cron'
 import { createNightAuditCron } from './shared/usecases/night-audit-cron'
 import { createEvidenceRetentionCron } from './shared/usecases/evidence-retention-cron'
+import { createTrialReminderCron } from './shared/usecases/trial-reminder-cron'
+import { createSubscriptionSuspensionCron } from './shared/usecases/subscription-suspension-cron'
+import { createReferralCreditsCron } from './shared/usecases/referral-credits-cron'
 import { HousekeepingSettingsUseCase } from './modules/housekeeping/usecases/settings'
 import { reservasPaymentRequestsConnector } from './connectors/reservas-payment-requests'
 
@@ -137,6 +140,7 @@ import { PricingModule } from './modules/pricing'
 import { AmenitiesModule } from './modules/amenities'
 import { TtlockModule } from './modules/ttlock'
 import { SubscriptionsModule } from './modules/subscriptions'
+import { ReferralsModule } from './modules/referrals'
 import { DashboardModule } from './modules/dashboard'
 import { FeedbackModule } from './modules/feedback'
 import { StaffAuthModule } from './modules/staff-auth'
@@ -145,6 +149,7 @@ import { PushTokensModule } from './modules/pushtokens'
 import { EmailQueueModule } from './modules/email-queue'
 import { PublicapiModule } from './modules/publicapi'
 import { WebhooksModule } from './modules/webhooks'
+import { PlatformEmailsModule } from './modules/platform-emails'
 import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
@@ -181,6 +186,7 @@ const mods = [
   // CUALQUIER segmento — incluida la palabra "platform" — así que subscriptions tiene
   // que registrarse primero o su webhook nunca se alcanza.
   SubscriptionsModule(),
+  ReferralsModule(),
   PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
   StaffAuthModule(),
@@ -189,6 +195,7 @@ const mods = [
   EmailQueueModule(),
   PublicapiModule(),
   WebhooksModule(),
+  PlatformEmailsModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -277,6 +284,7 @@ import { empleadosHousekeepingConnector } from './connectors/empleados-housekeep
 import { empleadosAttendanceConnector } from './connectors/empleados-attendance'
 import { empleadosMantenimientoConnector } from './connectors/empleados-mantenimiento'
 import { usuariosSubscriptionsConnector } from './connectors/usuarios-subscriptions'
+import { subscriptionsReferralsConnector } from './connectors/subscriptions-referrals'
 import { publicapiReservasConnector } from './connectors/publicapi-reservas'
 import { reservasWebhooksConnector } from './connectors/reservas-webhooks'
 import { paymentsWebhooksConnector } from './connectors/payments-webhooks'
@@ -418,6 +426,8 @@ system.addConnector('empleados-attendance', empleadosAttendanceConnector)
 system.addConnector('empleados-mantenimiento', empleadosMantenimientoConnector)
 // El login pregunta si el hotel puede operar (prueba vigente / suscripción al día).
 system.addConnector('usuarios-subscriptions', usuariosSubscriptionsConnector)
+// Alta con código de referido (`/r/:code`) → referrals crea la fila `referrals` (PLAN-REFERIDOS.md).
+system.addConnector('subscriptions-referrals', subscriptionsReferralsConnector)
 // La API pública v1 (auth por API key) delega en habitaciones/reservas/huespedes — publicapi no
 // tiene tabla propia ni importa esos módulos directo.
 system.addConnector('publicapi-reservas', publicapiReservasConnector)
@@ -466,7 +476,13 @@ startWorker()
 // ─── Cron jobs ──────────────────────────────────────────────────────────────
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 const noShowCron = createNoShowCron(orm, emailService, logger)
+// FIX G1 (fix-noshow-cron-init): corrida inicial a los 10s de arrancar (igual que night-audit). Antes
+// solo setInterval(24h): si el backend restarteaba antes de 24h (deploy/crash/OOM) el contador se
+// reiniciaba y el cron podía no llegar a ejecutarse nunca → reservas confirmed vencidas quedaban
+// colgadas bloqueando disponibilidad (overbooking). El cron es idempotente (solo marca pending/confirmed).
+setTimeout(() => { noShowCron().catch((e) => logger.warn('markNoShows initial run failed', { error: (e as Error).message })) }, 10_000)
 setInterval(() => { noShowCron().catch((e) => logger.warn('markNoShows failed', { error: (e as Error).message })) }, ONE_DAY_MS)
+logger.info('No-show cron listo (con corrida inicial a los 10s)', { tickMs: ONE_DAY_MS })
 
 const AUTO_MESSAGES_TICK_MS = 60_000 * 60
 const autoMsgTrigger = system.resolveModule<{ triggerAutoMessages: (params: any) => Promise<void> }>('marketing')
@@ -499,6 +515,44 @@ setInterval(() => {
   nightAuditCron().catch((e) => logger.warn('night-audit cron failed', { error: (e as Error).message }))
 }, NIGHT_AUDIT_TICK_MS)
 logger.info('Night-audit cron listo', { tickMs: NIGHT_AUDIT_TICK_MS })
+
+// Aviso de trial por vencer/vencido (correos welcome/trial_ending/trial_expired son de
+// platform-emails; welcome y payment_*/subscription_canceled los dispara subscriptions directo).
+const TRIAL_REMINDER_TICK_MS = 6 * 60 * 60 * 1000 // cada 6h
+const trialReminderCron = createTrialReminderCron(orm, (name) => system.resolveModule(name), logger)
+setTimeout(() => {
+  trialReminderCron().catch((e) => logger.warn('trial-reminder initial run failed', { error: (e as Error).message }))
+}, 10_000) // primer corrida a los 10s de iniciar
+setInterval(() => {
+  trialReminderCron().catch((e) => logger.warn('trial-reminder cron failed', { error: (e as Error).message }))
+}, TRIAL_REMINDER_TICK_MS)
+logger.info('Trial-reminder cron listo', { tickMs: TRIAL_REMINDER_TICK_MS })
+
+// Ciclo de cobro post-trial: recordatorio a N días → gracia → suspensión real (PLAN-SUSCRIPCIONES.md).
+// Hermano de trial-reminder-cron (mismo tick, mismo molde) — ese cubre `trialing`, este cubre
+// `active`/`past_due`/`suspended`. Reactivación NO es un cron: es el efecto del pago real
+// (subscriptions/usecases/handle-stripe-event.ts, caso invoice.paid).
+const SUSPENSION_TICK_MS = 6 * 60 * 60 * 1000 // cada 6h
+const suspensionCron = createSubscriptionSuspensionCron(orm, (name) => system.resolveModule(name), logger)
+setTimeout(() => {
+  suspensionCron().catch((e) => logger.warn('subscription-suspension initial run failed', { error: (e as Error).message }))
+}, 10_000)
+setInterval(() => {
+  suspensionCron().catch((e) => logger.warn('subscription-suspension cron failed', { error: (e as Error).message }))
+}, SUSPENSION_TICK_MS)
+logger.info('Subscription-suspension cron listo', { tickMs: SUSPENSION_TICK_MS })
+
+// Validación y liberación de créditos del programa de Referidos (PLAN-REFERIDOS.md §5).
+// No-op si `referral_program.enabled` está en false — el propio cron lo chequea primero.
+const REFERRAL_CREDITS_TICK_MS = 6 * 60 * 60 * 1000 // cada 6h
+const referralCreditsCron = createReferralCreditsCron(orm, (name) => system.resolveModule(name), logger)
+setTimeout(() => {
+  referralCreditsCron().catch((e) => logger.warn('referral-credits initial run failed', { error: (e as Error).message }))
+}, 10_000)
+setInterval(() => {
+  referralCreditsCron().catch((e) => logger.warn('referral-credits cron failed', { error: (e as Error).message }))
+}, REFERRAL_CREDITS_TICK_MS)
+logger.info('Referral-credits cron listo', { tickMs: REFERRAL_CREDITS_TICK_MS })
 
 // ─── Shutdown ──────────────────────────────────────────────────────────────
 process.on('SIGINT', async () => { await system.stop(); process.exit(0) })
