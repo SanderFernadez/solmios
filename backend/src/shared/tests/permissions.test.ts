@@ -50,6 +50,38 @@ describe('hotel_admin administra todo su hotel', () => {
   })
 })
 
+describe('mesero y cocina — staff de restaurante, acceso mínimo', () => {
+  it('mesero puede operar el salón (ver/crear/editar comandas) pero no config ni cancelar', () => {
+    const perms = DEFAULT_ROLE_PERMISSIONS.waiter
+    expect(hasPermission(perms, 'restaurant', 'view')).toBe(true)
+    expect(hasPermission(perms, 'restaurant', 'create')).toBe(true)
+    expect(hasPermission(perms, 'restaurant', 'edit')).toBe(true)
+    expect(hasPermission(perms, 'restaurant', 'delete')).toBe(false)
+  })
+
+  it('cocina puede ver y marcar el estado del KDS pero no abrir comandas', () => {
+    const perms = DEFAULT_ROLE_PERMISSIONS.kitchen
+    expect(hasPermission(perms, 'restaurant', 'view')).toBe(true)
+    expect(hasPermission(perms, 'restaurant', 'edit')).toBe(true)
+    expect(hasPermission(perms, 'restaurant', 'create')).toBe(false)
+  })
+
+  it('ninguno de los dos ve reservas, huéspedes ni facturación del hotel', () => {
+    for (const role of ['waiter', 'kitchen']) {
+      const perms = DEFAULT_ROLE_PERMISSIONS[role]
+      expect(hasPermission(perms, 'reservations', 'view')).toBe(false)
+      expect(hasPermission(perms, 'guests', 'view')).toBe(false)
+      expect(hasPermission(perms, 'billing', 'view')).toBe(false)
+    }
+  })
+
+  it('ninguno de los dos puede crear hoteles', () => {
+    for (const role of ['waiter', 'kitchen']) {
+      expect(hasPermission(DEFAULT_ROLE_PERMISSIONS[role] ?? [], 'hotels', 'create')).toBe(false)
+    }
+  })
+})
+
 describe('getRolePermissions — permisos de la DB', () => {
   it('usa los de la DB cuando están en formato `modulo:accion`', () => {
     expect(getRolePermissions('receptionist', ['billing:view', 'rooms:*'])).toEqual(['billing:view', 'rooms:*'])

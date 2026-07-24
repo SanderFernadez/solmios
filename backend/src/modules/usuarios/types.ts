@@ -1,7 +1,7 @@
 // usuarios/types.ts — DTOs de autenticación
 
 // Roles disponibles en el sistema
-export type UserRole = 'super_admin' | 'hotel_admin' | 'receptionist' | 'housekeeper' | 'supervisor' | 'maintenance'
+export type UserRole = 'super_admin' | 'hotel_admin' | 'receptionist' | 'housekeeper' | 'supervisor' | 'maintenance' | 'waiter' | 'kitchen'
 
 // DTO interno — incluye campos sensibles. NUNCA exponer en responses HTTP.
 export interface UsuarioDTO {

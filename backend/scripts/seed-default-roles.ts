@@ -78,6 +78,26 @@ async function seed() {
           permissions: JSON.stringify(DEFAULT_ROLE_PERMISSIONS.maintenance),
           users: 0,
         },
+        {
+          id: `role-${hotelId}-waiter`,
+          name: 'waiter',
+          icon: '🍽️',
+          color: 'bg-blue-100 text-blue-700',
+          system: 1,
+          hotelId,
+          permissions: JSON.stringify(DEFAULT_ROLE_PERMISSIONS.waiter),
+          users: 0,
+        },
+        {
+          id: `role-${hotelId}-kitchen`,
+          name: 'kitchen',
+          icon: '👨‍🍳',
+          color: 'bg-red-100 text-red-700',
+          system: 1,
+          hotelId,
+          permissions: JSON.stringify(DEFAULT_ROLE_PERMISSIONS.kitchen),
+          users: 0,
+        },
       ]
 
       for (const role of defaultRoles) {

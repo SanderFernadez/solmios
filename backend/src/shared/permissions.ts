@@ -145,6 +145,23 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Ficha desde la app, igual que el resto del personal.
     'attendance:view', 'attendance:create',
   ],
+
+  // Mesero — solo el POS del restaurante desde el Salón: abre comandas, agrega/edita líneas,
+  // las envía a cocina, cobra en el mostrador. Sin acceso a reservas/huéspedes/facturación del
+  // hotel (eso es receptionist). Config de la carta/estaciones y cancelar comandas (delete) son
+  // del hotel_admin — mismo recorte que ya tiene receptionist para `restaurant`.
+  waiter: [
+    'restaurant:view', 'restaurant:create', 'restaurant:edit',
+    // Ficha desde el panel, igual que el resto del personal operativo.
+    'attendance:view', 'attendance:create',
+  ],
+
+  // Cocina — solo el KDS: ve la cola de pedidos por estación y marca el estado de cada línea
+  // (nueva → preparando → lista). No abre comandas, no cobra, no edita la carta.
+  kitchen: [
+    'restaurant:view', 'restaurant:edit',
+    'attendance:view', 'attendance:create',
+  ],
 }
 
 /**

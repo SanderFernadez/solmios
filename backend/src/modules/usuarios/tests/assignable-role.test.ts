@@ -26,9 +26,16 @@ describe('assignable-role', () => {
     expect(canAssignRole('hotel_admin', 'CajeroDeOtroHotel', ['Cajero'])).toBe(false)
   })
 
-  it('receptionist solo asigna limpieza/mantenimiento', () => {
+  it('receptionist solo asigna limpieza/mantenimiento/mesero/cocina', () => {
     expect(canAssignRole('receptionist', 'housekeeper')).toBe(true)
+    expect(canAssignRole('receptionist', 'waiter')).toBe(true)
+    expect(canAssignRole('receptionist', 'kitchen')).toBe(true)
     expect(canAssignRole('receptionist', 'receptionist')).toBe(false)
+  })
+
+  it('hotel_admin asigna mesero/cocina (staff de restaurante)', () => {
+    expect(canAssignRole('hotel_admin', 'waiter')).toBe(true)
+    expect(canAssignRole('hotel_admin', 'kitchen')).toBe(true)
   })
 
   it('un rol desconocido (creador sin jerarquía) no asigna nada', () => {

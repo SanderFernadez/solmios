@@ -342,7 +342,7 @@ export interface DashboardStats {
 }
 
  // === USER ===
-export type UserRole = 'super_admin' | 'hotel_admin' | 'receptionist'
+export type UserRole = 'super_admin' | 'hotel_admin' | 'receptionist' | 'housekeeper' | 'maintenance' | 'supervisor' | 'waiter' | 'kitchen'
 
 export interface User {
   id: string

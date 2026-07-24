@@ -9,7 +9,7 @@
  * gatean por permiso granular. Así ningún usuario existente cambia de comportamiento.
  * DEBE coincidir con los roles que el backend define en DEFAULT_ROLE_PERMISSIONS.
  */
-export const SYSTEM_ROLES = ['super_admin', 'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor'] as const
+export const SYSTEM_ROLES = ['super_admin', 'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor', 'waiter', 'kitchen'] as const
 
 export function isSystemRole(role?: string | null): boolean {
   return !!role && (SYSTEM_ROLES as readonly string[]).includes(role)

@@ -5,9 +5,9 @@
 // inutilizables). Los custom llegan ya filtrados por hotelId, así que nadie asigna el rol de otro hotel.
 
 const SYSTEM_HIERARCHY: Record<string, string[]> = {
-  super_admin: ['super_admin', 'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor'],
-  hotel_admin: ['receptionist', 'housekeeper', 'maintenance', 'supervisor'],
-  receptionist: ['housekeeper', 'maintenance'],
+  super_admin: ['super_admin', 'hotel_admin', 'receptionist', 'housekeeper', 'maintenance', 'supervisor', 'waiter', 'kitchen'],
+  hotel_admin: ['receptionist', 'housekeeper', 'maintenance', 'supervisor', 'waiter', 'kitchen'],
+  receptionist: ['housekeeper', 'maintenance', 'waiter', 'kitchen'],
 }
 
 /** Roles del sistema que `callerRole` puede asignar (por jerarquía). */

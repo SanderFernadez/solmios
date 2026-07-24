@@ -190,8 +190,15 @@ const router = createRouter({
       meta: { requiresHotelAuth: true },
       children: [
         {
+          // Mesero/cocina solo tienen UN ítem en el menú (Salón/Cocina) — aterrizar en el
+          // dashboard general (que no pueden usar) sería confuso. Van directo a su pantalla.
           path: '',
-          redirect: '/panel/dashboard',
+          redirect: () => {
+            const role = useAuthStore().userRole
+            if (role === 'waiter') return '/panel/restaurante/salon'
+            if (role === 'kitchen') return '/panel/restaurante/cocina'
+            return '/panel/dashboard'
+          },
         },
         // Compat: las URLs viejas de RRHH (planas) redirigen a las nuevas bajo /panel/rrhh/*,
         // así no se rompen links guardados ni bookmarks.
