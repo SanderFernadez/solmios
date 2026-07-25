@@ -113,6 +113,7 @@ import { FoliosModule } from './modules/folios'
 import { PaymentsModule } from './modules/payments'
 import { AccountingModule } from './modules/accounting'
 import { TreasuryModule } from './modules/treasury'
+import { CajaChicaModule } from './modules/caja-chica'
 import { RestaurantModule } from './modules/restaurant'
 import { InventarioModule } from './modules/inventario'
 import { ComprasModule } from './modules/compras'
@@ -165,6 +166,9 @@ const mods = [
   AccountingModule(),
   // Tesorería (TES-0): bancos, flujo de caja, AR/AP, presupuesto. Reportes leen payments/expenses/invoices.
   TreasuryModule(),
+  // Caja chica (PETTY-0): fondos fijos con custodio para gastos menores + reposición. Reusa permiso
+  // de treasury. El conector caja-chica-gastos descuenta el saldo al crear un gasto vinculado.
+  CajaChicaModule(),
   // POS de restaurante (RES-0): estaciones/KDS configurables, carta, mesas, comandas, cuenta. Los conectores
   // a folios/payments/accounting se enganchan en RES-5/RES-6. Ver openspec restaurante-pos.
   RestaurantModule(),
@@ -261,6 +265,7 @@ import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { foliosPaymentsConnector } from './connectors/folios-payments'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
 import { gastosCajaConnector } from './connectors/gastos-caja'
+import { cajaChicaGastosConnector } from './connectors/caja-chica-gastos'
 import { payrollGastosConnector } from './connectors/payroll-gastos'
 import { reembolsosGastosConnector } from './connectors/reembolsos-gastos'
 import { reservasRescheduleChargeConnector } from './connectors/reservas-reschedule-charge'
@@ -311,6 +316,9 @@ system.addConnector('amenities-habitaciones', amenitiesHabitacionesConnector(orm
 system.addConnector('payments-caja', paymentsCajaConnector)
 // Un gasto en efectivo saca plata del cajón: sin esto el arqueo del turno no lo ve.
 system.addConnector('gastos-caja', gastosCajaConnector)
+// Un gasto con pettyCashFundId descuenta el saldo del fondo fijo (caja chica). Best-effort e
+// idempotente (dedup por expenseId). El gasto sigue viviendo en `expenses` (AP + contabilidad).
+system.addConnector('caja-chica-gastos', cajaChicaGastosConnector)
 // Contabilidad automática (CTB-4): cada cobro/reembolso/depósito, cargo de folio (ingreso) y gasto
 // genera su asiento de doble entrada. Self-gating (no-op si el hotel no tiene plan de cuentas seedeado).
 system.addConnector('payments-accounting', paymentsAccountingConnector)

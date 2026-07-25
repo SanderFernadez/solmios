@@ -25,6 +25,9 @@ export const GastosModel: ModelDefinition = {
     source: { type: 'string', default: 'manual' },
     // Id de la entidad que lo originó (el `runId` de la nómina). Clave de deduplicación.
     sourceId: { type: 'string', indexed: true },
+    // Fondo de caja chica del que salió el gasto (petty_cash_funds.id). Si está seteado, el
+    // conector caja-chica-gastos descuenta/reverte `fund.currentBalance`. Vacío = gasto común.
+    pettyCashFundId: { type: 'string', indexed: true },
   },
   timestamps: true,
 }

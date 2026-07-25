@@ -21,6 +21,8 @@ export interface GastosDTO {
   paymentMethod?: ExpensePaymentMethod
   source?: ExpenseSource
   sourceId?: string
+  /** Fondo de caja chica (petty_cash_funds.id). Si está, descuenta del saldo del fondo. */
+  pettyCashFundId?: string
   createdAt: string
   updatedAt: string
 }
@@ -41,6 +43,8 @@ export interface CreateGastosDTO {
   sourceId?: string
   /** Proveedor del catálogo (treasury.suppliers) para el aging de AP. Lo setea el conector de compras. */
   supplierId?: string
+  /** Fondo de caja chica (petty_cash_funds.id). Descuenta del saldo del fondo vía conector. */
+  pettyCashFundId?: string
 }
 
 export interface UpdateGastosDTO {

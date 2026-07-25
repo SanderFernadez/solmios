@@ -16,6 +16,9 @@ export const CreateGastosSchema: Record<string, ValidationRule> = {
     notes: { type: 'text' as const },
     paid: { type: 'number' as const },
     paymentMethod: { type: 'string' as const, enum: PAYMENT_METHODS },
+  // Fondo de caja chica (petty_cash_funds.id). Opcional; NO en update (el gasto se mueve de fondo
+  // borrando y recreando, no editando — simetría con el conector caja-chica-gastos).
+  pettyCashFundId: { type: 'string' as const },
 }
 
 export const UpdateGastosSchema: Record<string, ValidationRule> = {
