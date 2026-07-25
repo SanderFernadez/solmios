@@ -25,6 +25,20 @@ function makeRepo(rows: any[]): { repo: RepositoryAdapter<any>; updates: Array<{
   return { repo, updates }
 }
 
+/** hotels: fila mínima con `email`/`name` — usada por notifyPlatformEmail (findById). */
+function makeHotelsRepo(rows: any[] = [{ id: 'h1', name: 'Hotel Sol', email: 'dueno@hotel.com' }]): RepositoryAdapter<any> {
+  return {
+    findMany: async () => rows,
+    findById: async (id: string) => rows.find((r) => r.id === id) ?? null,
+    findOne: async () => null,
+    create: async (d: any) => d,
+    update: async () => null,
+    delete: async () => true,
+    count: async () => rows.length,
+    paginate: async () => ({ data: rows, total: rows.length, limit: 20, offset: 0, pages: 1 }),
+  } as unknown as RepositoryAdapter<any>
+}
+
 // La API version 2025-08-27 mueve `current_period_end` de la Subscription al SubscriptionItem
 // (ver handle-stripe-event.ts:currentPeriodEndOf) — el mock respeta esa forma real.
 function fakeStripe(currentPeriodEnd = CURRENT_PERIOD_END_UNIX) {
@@ -50,7 +64,7 @@ describe('handleStripeEvent — suscripción SaaS del hotel', () => {
       },
     } as any
 
-    await handleStripeEvent({ subscriptionsRepo: repo, logger: silentLogger(), stripe: fakeStripe() }, event)
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe() }, event)
 
     expect(updates).toHaveLength(1)
     expect(updates[0]!.id).toBe('sub1')
@@ -64,7 +78,7 @@ describe('handleStripeEvent — suscripción SaaS del hotel', () => {
     const { repo, updates } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'trialing' }])
     const event = { type: 'checkout.session.completed', data: { object: { mode: 'payment', metadata: {} } } } as any
 
-    await handleStripeEvent({ subscriptionsRepo: repo, logger: silentLogger(), stripe: fakeStripe() }, event)
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe() }, event)
     expect(updates).toHaveLength(0)
   })
 
@@ -75,7 +89,7 @@ describe('handleStripeEvent — suscripción SaaS del hotel', () => {
       data: { object: { parent: { subscription_details: { subscription: 'sub_stripe_1' } } } },
     } as any
 
-    await handleStripeEvent({ subscriptionsRepo: repo, logger: silentLogger(), stripe: fakeStripe() }, event)
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe() }, event)
 
     expect(updates).toHaveLength(1)
     expect(updates[0]!.id).toBe('sub1')
@@ -90,7 +104,7 @@ describe('handleStripeEvent — suscripción SaaS del hotel', () => {
       data: { object: { parent: { subscription_details: { subscription: 'sub_stripe_1' } } } },
     } as any
 
-    await handleStripeEvent({ subscriptionsRepo: repo, logger: silentLogger(), stripe: fakeStripe() }, event)
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe() }, event)
 
     expect(updates).toEqual([{ id: 'sub1', patch: { status: 'past_due' } }])
   })
@@ -99,7 +113,7 @@ describe('handleStripeEvent — suscripción SaaS del hotel', () => {
     const { repo, updates } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1' }])
     const event = { type: 'customer.subscription.deleted', data: { object: { id: 'sub_stripe_1' } } } as any
 
-    await handleStripeEvent({ subscriptionsRepo: repo, logger: silentLogger(), stripe: fakeStripe() }, event)
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe() }, event)
 
     expect(updates).toHaveLength(1)
     expect(updates[0]!.patch.status).toBe('canceled')
@@ -110,7 +124,7 @@ describe('handleStripeEvent — suscripción SaaS del hotel', () => {
     const { repo, updates } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active' }])
     const event = { type: 'customer.updated', data: { object: {} } } as any
 
-    await handleStripeEvent({ subscriptionsRepo: repo, logger: silentLogger(), stripe: fakeStripe() }, event)
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe() }, event)
     expect(updates).toHaveLength(0)
   })
 
@@ -121,7 +135,131 @@ describe('handleStripeEvent — suscripción SaaS del hotel', () => {
       data: { object: { mode: 'subscription', metadata: { hotelId: 'h-desconocido' } } },
     } as any
 
-    await handleStripeEvent({ subscriptionsRepo: repo, logger: silentLogger(), stripe: fakeStripe() }, event)
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe() }, event)
     expect(updates).toHaveLength(0)
+  })
+})
+
+describe('handleStripeEvent — correos de platform-emails (best-effort)', () => {
+  it('invoice.paid: dispara payment_succeeded con el email/nombre del hotel', async () => {
+    const { repo } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'past_due', stripeSubscriptionId: 'sub_stripe_1' }])
+    const event = { type: 'invoice.paid', data: { object: { parent: { subscription_details: { subscription: 'sub_stripe_1' } } } } } as any
+    const calls: any[] = []
+    const sendPlatformEmail = async (ev: string, to: string, hotelId: string, vars: Record<string, string>) => {
+      calls.push({ ev, to, hotelId, vars })
+      return { sent: true }
+    }
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe(), sendPlatformEmail }, event)
+
+    // El sub arrancó `past_due` (bloqueado) — además de payment_succeeded, este pago lo
+    // reactiva y dispara subscription_reactivated (handle-stripe-event.ts, patch de grace/suspend).
+    expect(calls).toHaveLength(2)
+    expect(calls[0].ev).toBe('payment_succeeded')
+    expect(calls[0].to).toBe('dueno@hotel.com')
+    expect(calls[0].hotelId).toBe('h1')
+    expect(calls[0].vars.hotel_name).toBe('Hotel Sol')
+    expect(calls[1].ev).toBe('subscription_reactivated')
+  })
+
+  it('invoice.paid sobre una suscripción `active` (nunca estuvo bloqueada): solo payment_succeeded, sin subscription_reactivated', async () => {
+    const { repo } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1' }])
+    const event = { type: 'invoice.paid', data: { object: { parent: { subscription_details: { subscription: 'sub_stripe_1' } } } } } as any
+    const calls: any[] = []
+    const sendPlatformEmail = async (ev: string, to: string, hotelId: string, vars: Record<string, string>) => {
+      calls.push({ ev, to, hotelId, vars })
+      return { sent: true }
+    }
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe(), sendPlatformEmail }, event)
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0].ev).toBe('payment_succeeded')
+  })
+
+  it('invoice.paid sobre `suspended`: limpia graceEndsAt/suspendedAt/suspendedReason y reactiva', async () => {
+    const { repo, updates } = makeRepo([{
+      id: 'sub1', hotelId: 'h1', status: 'suspended', stripeSubscriptionId: 'sub_stripe_1',
+      graceEndsAt: '2026-01-01T00:00:00.000Z', suspendedAt: '2026-01-06T00:00:00.000Z', suspendedReason: 'grace_period_expired',
+    }])
+    const event = { type: 'invoice.paid', data: { object: { parent: { subscription_details: { subscription: 'sub_stripe_1' } } } } } as any
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe() }, event)
+
+    expect(updates[0]!.patch).toMatchObject({ status: 'active', graceEndsAt: null, suspendedAt: null, suspendedReason: null })
+  })
+
+  it('invoice.payment_failed: dispara payment_failed', async () => {
+    const { repo } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1' }])
+    const event = { type: 'invoice.payment_failed', data: { object: { parent: { subscription_details: { subscription: 'sub_stripe_1' } } } } } as any
+    const calls: any[] = []
+    const sendPlatformEmail = async (ev: string, to: string, hotelId: string, _vars: Record<string, string>) => {
+      calls.push({ ev, to, hotelId })
+      return { sent: true }
+    }
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe(), sendPlatformEmail }, event)
+
+    expect(calls).toEqual([{ ev: 'payment_failed', to: 'dueno@hotel.com', hotelId: 'h1' }])
+  })
+
+  it('customer.subscription.deleted: dispara subscription_canceled', async () => {
+    const { repo } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1' }])
+    const event = { type: 'customer.subscription.deleted', data: { object: { id: 'sub_stripe_1' } } } as any
+    const calls: any[] = []
+    const sendPlatformEmail = async (ev: string, to: string, hotelId: string, _vars: Record<string, string>) => {
+      calls.push({ ev, to, hotelId })
+      return { sent: true }
+    }
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe(), sendPlatformEmail }, event)
+
+    expect(calls).toEqual([{ ev: 'subscription_canceled', to: 'dueno@hotel.com', hotelId: 'h1' }])
+  })
+
+  it('sin sendPlatformEmail inyectado: no explota (opcional)', async () => {
+    const { repo, updates } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1' }])
+    const event = { type: 'customer.subscription.deleted', data: { object: { id: 'sub_stripe_1' } } } as any
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe() }, event)
+    expect(updates).toHaveLength(1) // el webhook igual movió el status
+  })
+
+  it('hotel sin email: no llama a sendPlatformEmail', async () => {
+    const { repo } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1' }])
+    const calls: any[] = []
+    const sendPlatformEmail = async (ev: string, to: string, hotelId: string, _vars: Record<string, string>) => {
+      calls.push({ ev, to, hotelId }); return { sent: true }
+    }
+    const event = { type: 'customer.subscription.deleted', data: { object: { id: 'sub_stripe_1' } } } as any
+
+    await handleStripeEvent(
+      { subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo([{ id: 'h1', name: 'Hotel Sol' /* sin email */ }]), logger: silentLogger(), stripe: fakeStripe(), sendPlatformEmail },
+      event,
+    )
+    expect(calls).toHaveLength(0)
+  })
+
+  it('sendPlatformEmail que explota NO rompe el handler: el status igual se actualiza', async () => {
+    const { repo, updates } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1' }])
+    const event = { type: 'customer.subscription.deleted', data: { object: { id: 'sub_stripe_1' } } } as any
+    const sendPlatformEmail = async () => { throw new Error('SMTP caído') }
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe(), sendPlatformEmail }, event)
+
+    expect(updates).toHaveLength(1)
+    expect(updates[0]!.patch.status).toBe('canceled')
+  })
+
+  it('hotelsRepo.findById que explota NO rompe el handler', async () => {
+    const { repo, updates } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1' }])
+    const event = { type: 'customer.subscription.deleted', data: { object: { id: 'sub_stripe_1' } } } as any
+    const brokenHotelsRepo = { findById: async () => { throw new Error('DB caída') } } as unknown as RepositoryAdapter<any>
+    const sendPlatformEmail = async () => ({ sent: true })
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: brokenHotelsRepo, logger: silentLogger(), stripe: fakeStripe(), sendPlatformEmail }, event)
+
+    expect(updates).toHaveLength(1)
+    expect(updates[0]!.patch.status).toBe('canceled')
   })
 })

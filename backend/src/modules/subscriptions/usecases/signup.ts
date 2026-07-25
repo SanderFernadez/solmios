@@ -30,6 +30,9 @@ export interface SignupInput {
   country?: string
   /** Plan que quiere probar. Si no viene, se prueba sin plan asignado. */
   planId?: string
+  /** Código de referido (link `/r/:code`), si vino uno. No se guarda en el hotel — solo se
+   *  propaga vía socket para que `referrals` (módulo aparte) vincule el alta. */
+  referralCode?: string
 }
 
 export interface SignupResult {
@@ -50,6 +53,8 @@ export interface SignupDeps {
   emailSender?: { enqueue: (input: { to: string; subject: string; html: string; hotelId: string; relatedType?: string }) => Promise<string> }
   /** Base pública para armar el link de verificación (ej. https://hotel.zx89.site). */
   appUrl?: string
+  /** `platform-emails.sendEvent('welcome', ...)`. Opcional y best-effort: igual criterio que emailSender. */
+  platformEmailSender?: (event: string, to: string, hotelId: string, vars: Record<string, string>) => Promise<{ sent: boolean }>
 }
 
 export class SignupUseCase {
@@ -59,6 +64,11 @@ export class SignupUseCase {
   setEmailDeps(sender: SignupDeps['emailSender'], appUrl: string): void {
     this.deps.emailSender = sender
     this.deps.appUrl = appUrl
+  }
+
+  /** Inyecta `platform-emails.sendEvent()` para el correo de bienvenida (best-effort). */
+  setPlatformEmailSender(fn: SignupDeps['platformEmailSender']): void {
+    this.deps.platformEmailSender = fn
   }
 
   async signup(input: SignupInput, now: Date = new Date()): Promise<SignupResult> {
@@ -150,6 +160,15 @@ export class SignupUseCase {
         const mail = verificationEmail(link, hotelName)
         await this.deps.emailSender.enqueue({ to: email, subject: mail.subject, html: mail.html, hotelId, relatedType: 'email_verification' })
       } catch { /* SMTP caído no puede perder el hotel */ }
+    }
+
+    // Correo de bienvenida (platform-emails, plantilla `welcome`). BEST-EFFORT: el alta ya terminó
+    // (201 con la cuenta creada) — un fallo acá no puede deshacer nada de lo anterior.
+    if (this.deps.platformEmailSender) {
+      try {
+        const base = (this.deps.appUrl || '').replace(/\/$/, '')
+        await this.deps.platformEmailSender('welcome', email, hotelId, { hotel_name: hotelName, link: `${base}/panel/dashboard` })
+      } catch { /* un correo de bienvenida caído no puede perder el hotel */ }
     }
 
     return {

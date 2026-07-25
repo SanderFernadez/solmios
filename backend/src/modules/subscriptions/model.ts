@@ -34,9 +34,85 @@ export const SubscriptionsModel: ModelDefinition = {
     /** Identificadores de la cuenta Stripe de la PLATAFORMA (no la del hotel). */
     stripeCustomerId: { type: 'string' },
     stripeSubscriptionId: { type: 'string' },
+    /** Dedup del cron de aviso de trial (trial-reminder-cron): sin esto se reenviaría cada tick. */
+    trialReminderSentAt: { type: 'string' },
+    trialExpiredEmailSentAt: { type: 'string' },
+    /** Categoría especial (Fundador/Pionero) asignada por el Super Admin. Ver `special_category_config`. */
+    specialCategory: { type: 'string' },
+    specialCategoryGrantedAt: { type: 'string' },
+    /** ¿Tiene tarjeta autorizada para auto-cobro? Distingue pago recurrente de pago manual. */
+    isRecurring: { type: 'boolean', default: false },
+    /** Fin del período de gracia post-vencimiento (ISO). Null salvo en `past_due`. */
+    graceEndsAt: { type: 'string' },
+    suspendedAt: { type: 'string' },
+    /** 'grace_period_expired' (automático, dispara founder_history si aplica) | 'manual' (no la dispara). */
+    suspendedReason: { type: 'string' },
+    /** Dedup del recordatorio a N días del vencimiento (subscription-suspension-cron). Distinto de trialReminderSentAt: ese es del trial, este es de cada ciclo pago. */
+    renewalReminderSentAt: { type: 'string' },
+  },
+}
+
+/** Historial de condiciones especiales (descuento/mes gratis/categoría) aplicadas por un Super Admin. Auditable, nunca se pisa. */
+export const SubscriptionDiscountsModel: ModelDefinition = {
+  table: 'subscription_discounts',
+  timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    subscriptionId: { type: 'string', required: true, indexed: true },
+    /** percentage | free_month | category_bonus */
+    type: { type: 'string', required: true },
+    discountPct: { type: 'number', required: true },
+    startAt: { type: 'string' },
+    /** null = permanente (dura mientras la categoría/beneficio esté activo). */
+    endsAt: { type: 'string' },
+    appliedByUserId: { type: 'string' },
+    reason: { type: 'string' },
+    /** active | expired | revoked */
+    status: { type: 'string', required: true, default: 'active' },
+  },
+}
+
+/** Config de cupos/reglas de Fundador Uno, Fundador Dos y Pionero — 3 filas, editable desde /admin. Cero hardcode: cupos, %, plan mínimo y secuencia de apertura viven acá, no en código. */
+export const SpecialCategoryConfigModel: ModelDefinition = {
+  table: 'special_category_config',
+  timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    /** founder_one | founder_two | pioneer */
+    key: { type: 'string', required: true, indexed: true },
+    totalSlots: { type: 'number', required: true },
+    /** Solo se toca vía CAS (orm.updateMany WHERE occupiedCount=expected) — nunca leer-modificar-escribir. */
+    occupiedCount: { type: 'number', required: true, default: 0 },
+    discountPct: { type: 'number', required: true },
+    /** plans.sortOrder mínimo requerido. Null = cualquier plan (caso Pionero). */
+    minPlanSortOrder: { type: 'number' },
+    /** Categorías del mismo grupo no pueden estar 'open' a la vez (ej. Fundador Uno/Dos). Null = sin exclusión. */
+    sequenceGroup: { type: 'string' },
+    /** key de la categoría que debe estar 'full'/'closed' antes de poder abrir esta. */
+    opensAfter: { type: 'string' },
+    /** closed | open | full */
+    status: { type: 'string', required: true, default: 'closed' },
+  },
+}
+
+/** Anti-recuperación: un hotel que perdió una categoría Fundador (canceló o quedó moroso) no puede volver a calificar aunque haya cupo. Solo INSERT, nunca UPDATE/DELETE desde la app. */
+export const FounderHistoryModel: ModelDefinition = {
+  table: 'founder_history',
+  timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    category: { type: 'string', required: true },
+    lostAt: { type: 'string', required: true },
+    /** canceled | delinquent */
+    reason: { type: 'string', required: true },
   },
 }
 
 export function registerSubscriptionModels(orm: ORM): void {
   orm.define('Subscriptions', SubscriptionsModel)
+  orm.define('SubscriptionDiscounts', SubscriptionDiscountsModel)
+  orm.define('SpecialCategoryConfig', SpecialCategoryConfigModel)
+  orm.define('FounderHistory', FounderHistoryModel)
 }

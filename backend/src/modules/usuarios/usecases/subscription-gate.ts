@@ -18,6 +18,7 @@ const MESSAGES: Record<string, string> = {
   subscription_expired: 'Tu suscripción venció. Renovala para volver a entrar.',
   hotel_suspended: 'La cuenta del hotel está suspendida. Escribinos para reactivarla.',
   hotel_inactive: 'La cuenta del hotel está desactivada.',
+  subscription_suspended: 'Tu suscripción está suspendida por falta de pago. Regularizá el pago para reactivarla.',
 }
 
 /**

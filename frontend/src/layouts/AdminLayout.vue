@@ -316,6 +316,7 @@ const nonavItems = [
       { label: 'Bancos', path: '/panel/tesoreria/bancos', roles: ['hotel_admin'] },
       { label: 'Por Cobrar / Pagar', path: '/panel/tesoreria/cuentas', roles: ['hotel_admin'] },
       { label: 'Presupuesto', path: '/panel/tesoreria/presupuesto', roles: ['hotel_admin'] },
+      { label: 'Proveedores', path: '/panel/tesoreria/proveedores', roles: ['hotel_admin'] },
     ]
   },
   {
@@ -375,6 +376,9 @@ const nonavItems = [
   },
   {
     label: 'Soporte', icon: ICONS.support, path: '/panel/support', roles: ['hotel_admin', 'receptionist'],
+  },
+  {
+    label: 'Mis Referidos', icon: ICONS.link, path: '/panel/referidos', roles: ['hotel_admin'],
   },
 ]
 

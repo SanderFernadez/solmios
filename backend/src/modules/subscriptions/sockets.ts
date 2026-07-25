@@ -5,8 +5,9 @@
 // que este módulo tenga que conocerlos.
 
 export interface SubscriptionSockets {
-  /** Se creó una cuenta nueva y arrancó su prueba gratis. */
-  onTrialStarted?: (payload: { hotelId: string; trialEndsAt: string }) => Promise<void>
+  /** Se creó una cuenta nueva y arrancó su prueba gratis. `referralCode`: código de referido
+   *  usado en el alta, si vino uno — lo consume el módulo `referrals` (connector subscriptions-referrals.ts). */
+  onTrialStarted?: (payload: { hotelId: string; trialEndsAt: string; referralCode?: string }) => Promise<void>
   /** Se venció la prueba y se cortó el acceso. */
   onTrialExpired?: (payload: { hotelId: string }) => Promise<void>
   /** Cambió el estado de la suscripción (pagó, falló el cobro, se dio de baja). */

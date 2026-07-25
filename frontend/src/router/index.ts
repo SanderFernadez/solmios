@@ -39,6 +39,12 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      // Link de referido (PLAN-REFERIDOS.md). Redirige al registro con el código pre-cargado
+      // en vez de una página propia — es solo un puente, la UI real vive en /registro.
+      path: '/r/:code',
+      redirect: (to) => ({ path: '/registro', query: { ref: to.params.code } }),
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/pages/auth/forgot-password.vue'),
@@ -101,6 +107,16 @@ const router = createRouter({
           path: 'subscriptions',
           name: 'super-admin-subscriptions',
           component: () => import('@/pages/super-admin/subscriptions.vue'),
+        },
+        {
+          path: 'subscriptions/founders-pioneers',
+          name: 'super-admin-subscriptions-founders',
+          component: () => import('@/pages/super-admin/subscriptions-founders.vue'),
+        },
+        {
+          path: 'referrals',
+          name: 'super-admin-referrals',
+          component: () => import('@/pages/super-admin/referrals.vue'),
         },
         {
           path: 'support',
@@ -288,6 +304,7 @@ const router = createRouter({
         { path: 'tesoreria/bancos', name: 'treasury-banks', component: () => import('@/pages/tesoreria/bancos.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'tesoreria/cuentas', name: 'treasury-accounts', component: () => import('@/pages/tesoreria/cuentas.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'tesoreria/presupuesto', name: 'treasury-budget', component: () => import('@/pages/tesoreria/presupuesto.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'tesoreria/proveedores', name: 'treasury-suppliers', component: () => import('@/pages/tesoreria/proveedores.vue'), meta: { requiresHotelAdmin: true } },
         // Restaurante / POS (RES-7) — operacional (meseros/recepción); gateado por module-map (restaurant).
         // QA-ALTO: defensa en profundidad — el backend ya rechaza mutaciones de carta sin
         // restaurant-catalog:*, pero sin esta meta un mesero/cocina podía navegar acá por URL
@@ -506,6 +523,11 @@ const router = createRouter({
           path: 'suscripcion',
           name: 'suscripcion',
           component: () => import('@/pages/suscripcion/index.vue'),
+        },
+        {
+          path: 'referidos',
+          name: 'referidos',
+          component: () => import('@/pages/referidos/index.vue'),
         },
         {
           path: 'config/cerraduras',

@@ -15,6 +15,7 @@ export type DenyReason =
   | 'subscription_expired'
   | 'hotel_suspended'
   | 'hotel_inactive'
+  | 'subscription_suspended'
 
 export interface AccessResult {
   allowed: boolean
@@ -74,6 +75,13 @@ export class SubscriptionAccess {
         return { allowed: false, reason: 'subscription_expired', status: 'expired' }
       }
       return { allowed: true, status: sub.status }
+    }
+
+    // Gracia agotada sin pagar (subscription-suspension-cron) o suspensión manual del admin.
+    // Va ANTES del chequeo genérico: sin esto caería en el 'trial_expired' de abajo, que no
+    // es el motivo real y confunde al hotel sobre qué le pasó.
+    if (sub.status === 'suspended') {
+      return { allowed: false, reason: 'subscription_suspended', status: 'suspended' }
     }
 
     if (!WORKING_STATUSES.has(sub.status)) {

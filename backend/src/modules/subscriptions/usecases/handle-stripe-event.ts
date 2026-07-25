@@ -16,9 +16,42 @@ const MS_PER_SECOND = 1000
 
 export interface HandleStripeEventDeps {
   subscriptionsRepo: RepositoryAdapter<any>
+  /** Para resolver el email del hotel al mandar los correos de pago/cancelación (#platform-emails). */
+  hotelsRepo: RepositoryAdapter<any>
   logger: Logger
   /** Cliente Stripe ya resuelto (cuenta de plataforma) — usado para retrieve() de la subscription. */
   stripe: Stripe
+  /** Envío de los correos de PLATAFORMA (payment_succeeded/payment_failed/subscription_canceled).
+   *  Opcional y best-effort: un fallo acá NUNCA puede tumbar el webhook — el dinero ya se cobró. */
+  sendPlatformEmail?: (event: string, to: string, hotelId: string, vars: Record<string, string>) => Promise<{ sent: boolean }>
+}
+
+/** Link a la pantalla de suscripción del panel, mismo patrón que create-checkout-session.ts. */
+function subscriptionLink(): string {
+  return `${(process.env.PUBLIC_URL || '').replace(/\/$/, '')}/panel/suscripcion`
+}
+
+/**
+ * Manda el correo de PLATAFORMA best-effort: resuelve el hotel, y si tiene email, dispara el
+ * evento. Cualquier error (hotel no encontrado, sender caído) se loguea y se descarta — el
+ * webhook de Stripe ya hizo lo importante (mover el status de la suscripción).
+ */
+async function notifyPlatformEmail(
+  deps: HandleStripeEventDeps,
+  event: string,
+  hotelId: string,
+  vars: Record<string, string>,
+): Promise<void> {
+  if (!deps.sendPlatformEmail) return
+  try {
+    // @ignore IDOR_RISK — hotelId sale de la Subscription local ya resuelta por stripeSubscriptionId,
+    // no de un parámetro de request del cliente.
+    const hotel = await deps.hotelsRepo.findById(hotelId)
+    if (!hotel?.email) return
+    await deps.sendPlatformEmail(event, hotel.email, hotel.id, { hotel_name: hotel.name, ...vars })
+  } catch (e) {
+    deps.logger.warn(`platform-emails: no se pudo enviar "${event}"`, { hotelId, error: (e as Error).message })
+  }
 }
 
 /**
@@ -96,7 +129,15 @@ export async function handleStripeEvent(deps: HandleStripeEventDeps, event: Stri
         break
       }
 
-      const patch: Record<string, any> = { status: 'active' }
+      // Limpia gracia/suspensión: es la única puerta de reactivación real (pago confirmado).
+      // Sin esto, un hotel que paga tras quedar `suspended` vuelve a `active` con basura en
+      // graceEndsAt/suspendedAt/suspendedReason — subscription-suspension-cron los ignora
+      // porque solo mira status, pero quedan mintiendo en el detalle admin.
+      const wasBlocked = sub.status === 'past_due' || sub.status === 'suspended'
+      const patch: Record<string, any> = {
+        status: 'active',
+        ...(wasBlocked ? { graceEndsAt: null, suspendedAt: null, suspendedReason: null } : {}),
+      }
       try {
         const stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId)
         const periodEnd = currentPeriodEndOf(stripeSub)
@@ -106,6 +147,10 @@ export async function handleStripeEvent(deps: HandleStripeEventDeps, event: Stri
       }
       await subscriptionsRepo.update(sub.id, patch)
       logger.info('Suscripción renovada', { stripeSubscriptionId })
+      // plan_name/amount no tienen dato fácil acá sin otro fetch a Stripe (line_items del invoice):
+      // se dejan vacíos a propósito, sin agregar complejidad (ver instrucciones de la tarea).
+      await notifyPlatformEmail(deps, 'payment_succeeded', sub.hotelId, { plan_name: '', amount: '', link: subscriptionLink() })
+      if (wasBlocked) await notifyPlatformEmail(deps, 'subscription_reactivated', sub.hotelId, { link: subscriptionLink() })
       break
     }
 
@@ -121,6 +166,7 @@ export async function handleStripeEvent(deps: HandleStripeEventDeps, event: Stri
       }
       await subscriptionsRepo.update(sub.id, { status: 'past_due' })
       logger.warn('Cobro de suscripción falló', { stripeSubscriptionId })
+      await notifyPlatformEmail(deps, 'payment_failed', sub.hotelId, { plan_name: '', amount: '', link: subscriptionLink() })
       break
     }
 
@@ -133,6 +179,7 @@ export async function handleStripeEvent(deps: HandleStripeEventDeps, event: Stri
       }
       await subscriptionsRepo.update(sub.id, { status: 'canceled', canceledAt: new Date().toISOString() })
       logger.info('Suscripción cancelada', { stripeSubscriptionId: stripeSub.id })
+      await notifyPlatformEmail(deps, 'subscription_canceled', sub.hotelId, { link: subscriptionLink() })
       break
     }
 

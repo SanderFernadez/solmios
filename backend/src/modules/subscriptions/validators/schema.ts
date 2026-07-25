@@ -38,6 +38,9 @@ export const SignupSchema: Record<string, ValidationRule> = {
   country: { type: 'string' as const, max: 80 },
   address: { type: 'string' as const, max: 200 },
   planId: { type: 'string' as const, max: 60 },
+  // Código de referido (`/r/:code`). Mismo motivo que el comentario de `country` arriba:
+  // si no está declarado acá, validateSchema lo descarta antes de llegar al usecase.
+  referralCode: { type: 'string' as const, max: 40 },
   // Token del captcha (Cloudflare Turnstile). Opcional en el schema porque el
   // backend solo lo exige cuando hay secret configurado; lo verifica el
   // controller antes de crear nada.

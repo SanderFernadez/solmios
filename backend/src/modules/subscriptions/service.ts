@@ -6,11 +6,17 @@ import { hashPassword } from '../usuarios/usecases/password'
 import { createCheckoutSession, type CreateCheckoutResult } from './usecases/create-checkout-session'
 import { createPortalSession, type CreatePortalResult } from './usecases/create-portal-session'
 import { processSubscriptionWebhook } from './usecases/handle-stripe-event'
+import { applyStripeDiscount, type ApplyStripeDiscountResult, type ApplyStripeDiscountMeta } from './usecases/apply-stripe-discount'
+import type { SubscriptionSockets } from './sockets'
 
 export class SubscriptionsService {
   private readonly signupUc: SignupUseCase
   private readonly onboardingUc: OnboardingUseCase
   private readonly accessUc: SubscriptionAccess
+  /** `platform-emails.sendEvent()` — welcome (signup) + payment_succeeded/failed/subscription_canceled
+   *  (webhook de Stripe). Opcional: sin cablear, el correo simplemente no sale (best-effort). */
+  private sendPlatformEmail?: (event: string, to: string, hotelId: string, vars: Record<string, string>) => Promise<{ sent: boolean }>
+  private sockets: SubscriptionSockets = {}
 
   constructor(
     private readonly subscriptionsRepo: RepositoryAdapter<any>,
@@ -22,6 +28,8 @@ export class SubscriptionsService {
     ratesRepo: RepositoryAdapter<any> | undefined,
     private readonly logger: Logger,
     channelsRepo?: RepositoryAdapter<any>,
+    /** `subscription_discounts` — historial de condiciones especiales (admin). Opcional: sin cablear, `statusOf` no muestra descuento activo pero no rompe. */
+    private readonly discountsRepo?: RepositoryAdapter<any>,
   ) {
     this.signupUc = new SignupUseCase({
       hotelsRepo, usersRepo, rolesRepo, subscriptionsRepo, hashPassword,
@@ -35,8 +43,38 @@ export class SubscriptionsService {
     this.signupUc.setEmailDeps(sender, appUrl || '')
   }
 
-  signup(input: SignupInput): Promise<SignupResult> {
-    return this.signupUc.signup(input)
+  /** Cablea `platform-emails.sendEvent()` — welcome (signup) + payment_succeeded/failed/
+   *  subscription_canceled (webhook de Stripe). Lo llama el bootstrap de email. */
+  setPlatformEmailSender(fn: NonNullable<typeof this.sendPlatformEmail>): void {
+    this.sendPlatformEmail = fn
+    this.signupUc.setPlatformEmailSender(fn)
+  }
+
+  // ACUMULA handlers — nunca pisa el anterior (mismo patrón que reservas/service.ts).
+  // Si dos conectores registran el mismo evento, ambos corren en cadena.
+  setSockets(s: Partial<SubscriptionSockets>): void {
+    const next = s as Record<string, any>
+    const cur = this.sockets as Record<string, any>
+    for (const key of Object.keys(next)) {
+      const h = next[key]
+      if (!h) continue
+      const prev = cur[key]
+      cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
+    }
+  }
+
+  async signup(input: SignupInput): Promise<SignupResult> {
+    const result = await this.signupUc.signup(input)
+    // Best-effort: el alta ya terminó (201 con la cuenta creada) — un connector caído
+    // (ej. referrals sin cargar) no puede deshacer nada de lo anterior.
+    try {
+      await this.sockets.onTrialStarted?.({
+        hotelId: result.hotelId, trialEndsAt: result.trialEndsAt, referralCode: input.referralCode,
+      })
+    } catch (e: any) {
+      this.logger.warn('onTrialStarted socket falló', { hotelId: result.hotelId, error: e.message })
+    }
+    return result
   }
 
   /** ¿Este hotel puede trabajar hoy? Lo usan el login y el guard de las rutas. */
@@ -67,6 +105,15 @@ export class SubscriptionsService {
   async statusOf(hotelId: string): Promise<any> {
     const access = await this.accessUc.check(hotelId)
     const sub = (await this.subscriptionsRepo.findMany({ hotelId }))[0]
+    // El mayor % vigente entre los descuentos activos (una fila 'active' sin vencer) — puede
+    // venir de una categoría (category_bonus) o de un descuento manual (percentage/free_month).
+    let activeDiscountPct: number | null = null
+    if (sub && this.discountsRepo) {
+      const now = new Date()
+      const discounts = await this.discountsRepo.findMany({ hotelId, status: 'active' })
+      const vigentes = (discounts as any[]).filter((d) => !d.endsAt || new Date(d.endsAt) > now)
+      if (vigentes.length > 0) activeDiscountPct = Math.max(...vigentes.map((d) => Number(d.discountPct) || 0))
+    }
     return {
       status: sub?.status ?? 'none',
       trialEndsAt: sub?.trialEndsAt ?? null,
@@ -78,7 +125,22 @@ export class SubscriptionsService {
       // Sin esto el frontend no puede decidir si mostrar "Gestionar método de pago"
       // (requiere un Customer de Stripe ya creado, es decir: pagó al menos una vez).
       hasStripeCustomer: !!sub?.stripeCustomerId,
+      specialCategory: sub?.specialCategory ?? null,
+      activeDiscountPct,
     }
+  }
+
+  /** Cupón real de Stripe sobre la suscripción activa del hotel (F6 de PLAN-SUSCRIPCIONES.md,
+   *  también usado por los créditos de `referrals`). Invocado desde otros módulos vía
+   *  `system.resolveModule('subscriptions')` — nunca import directo entre módulos. Best-effort:
+   *  si Stripe falla, el registro de negocio del llamador ya quedó creado, no se revierte. */
+  applyStripeDiscount(
+    hotelId: string, discountPct: number, durationMonths: number | null, meta?: ApplyStripeDiscountMeta,
+  ): Promise<ApplyStripeDiscountResult> {
+    return applyStripeDiscount(
+      { subscriptionsRepo: this.subscriptionsRepo, discountsRepo: this.discountsRepo, logger: this.logger },
+      hotelId, discountPct, durationMonths, meta,
+    )
   }
 
   /** Suscribirse a un plan: Checkout Session de Stripe (cuenta de PLATAFORMA). */
@@ -96,6 +158,9 @@ export class SubscriptionsService {
 
   /** Webhook de la cuenta de PLATAFORMA (checkout/renovación/cancelación de la suscripción SaaS). */
   handlePlatformWebhook(rawBody: string | Buffer, signature: string) {
-    return processSubscriptionWebhook({ subscriptionsRepo: this.subscriptionsRepo, logger: this.logger }, rawBody, signature)
+    return processSubscriptionWebhook(
+      { subscriptionsRepo: this.subscriptionsRepo, hotelsRepo: this.hotelsRepo, logger: this.logger, sendPlatformEmail: this.sendPlatformEmail },
+      rawBody, signature,
+    )
   }
 }

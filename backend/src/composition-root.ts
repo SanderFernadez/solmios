@@ -19,6 +19,9 @@ import { createNoShowCron } from './modules/reports/usecases/no-show-cron'
 import { createAutoMessagesCron } from './modules/marketing/usecases/auto-messages-cron'
 import { createNightAuditCron } from './shared/usecases/night-audit-cron'
 import { createEvidenceRetentionCron } from './shared/usecases/evidence-retention-cron'
+import { createTrialReminderCron } from './shared/usecases/trial-reminder-cron'
+import { createSubscriptionSuspensionCron } from './shared/usecases/subscription-suspension-cron'
+import { createReferralCreditsCron } from './shared/usecases/referral-credits-cron'
 import { HousekeepingSettingsUseCase } from './modules/housekeeping/usecases/settings'
 import { reservasPaymentRequestsConnector } from './connectors/reservas-payment-requests'
 
@@ -138,6 +141,7 @@ import { PricingModule } from './modules/pricing'
 import { AmenitiesModule } from './modules/amenities'
 import { TtlockModule } from './modules/ttlock'
 import { SubscriptionsModule } from './modules/subscriptions'
+import { ReferralsModule } from './modules/referrals'
 import { DashboardModule } from './modules/dashboard'
 import { FeedbackModule } from './modules/feedback'
 import { StaffAuthModule } from './modules/staff-auth'
@@ -185,6 +189,12 @@ const mods = [
   // CUALQUIER segmento — incluida la palabra "platform" — así que subscriptions tiene
   // que registrarse primero o su webhook nunca se alcanza.
   SubscriptionsModule(),
+  // Programa de referidos B2B (PLAN-REFERIDOS.md). Crea referrals/referral_codes/referral_credits/
+  // referral_tiers y los endpoints admin/* + /api/referrals/me + público /resolve. El connector
+  // subscriptions-referrals vincula el alta cuando viene con referralCode; el cron
+  // referral-credits-cron valida/libera los créditos. Descuento bienvenida al referido (1er mes
+  // gratis, referredRewardValue): PENDIENTE — ver notas del cableeo (requiere model change).
+  ReferralsModule(),
   PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
   StaffAuthModule(),
@@ -285,6 +295,7 @@ import { usuariosSubscriptionsConnector } from './connectors/usuarios-subscripti
 import { publicapiReservasConnector } from './connectors/publicapi-reservas'
 import { reservasWebhooksConnector } from './connectors/reservas-webhooks'
 import { paymentsWebhooksConnector } from './connectors/payments-webhooks'
+import { subscriptionsReferralsConnector } from './connectors/subscriptions-referrals'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -433,6 +444,9 @@ system.addConnector('publicapi-reservas', publicapiReservasConnector)
 // las subscriptions activas del hotel (best-effort, no puede tumbar el flujo que los dispara).
 system.addConnector('reservas-webhooks', reservasWebhooksConnector)
 system.addConnector('payments-webhooks', paymentsWebhooksConnector)
+// Programa de referidos: subscriptions emite onTrialStarted con el referralCode del alta pública →
+// referrals.linkSignup() vincula al referido con el referidor. Best-effort (un fallo nunca volta el alta).
+system.addConnector('subscriptions-referrals', subscriptionsReferralsConnector)
 
 // ─── Infraestructura transversal ────────────────────────────────────────────
 configureStripe(orm, logger)
@@ -513,6 +527,43 @@ setInterval(() => {
   nightAuditCron().catch((e) => logger.warn('night-audit cron failed', { error: (e as Error).message }))
 }, NIGHT_AUDIT_TICK_MS)
 logger.info('Night-audit cron listo', { tickMs: NIGHT_AUDIT_TICK_MS })
+
+// Crones del ciclo SaaS (PLAN-SUSCRIPCIONES.md). Mismo molde que night-audit: factory, corrida
+// inicial a los 10s (anti-restart), setInterval con catch que no tira. Los tres son idempotentes
+// (dedup por marcas tipo trialReminderSentAt / status en referrals) → re-correrlos no duplica.
+const SAAS_TICK_MS = 60_000 * 60 * 6 // cada 6h
+// Aviso de trial por vencer/vencido: manda el correo (vía platform-emails) a las suscripciones
+// `trialing` a <=2 días del fin o ya vencidas. Dedup con trialReminderSentAt/trialExpiredEmailSentAt.
+const trialReminderCron = createTrialReminderCron(orm, (name) => system.resolveModule(name), logger)
+setTimeout(() => {
+  trialReminderCron().catch((e) => logger.warn('trial-reminder initial run failed', { error: (e as Error).message }))
+}, 10_000)
+setInterval(() => {
+  trialReminderCron().catch((e) => logger.warn('trial-reminder cron failed', { error: (e as Error).message }))
+}, SAAS_TICK_MS)
+logger.info('Trial-reminder cron listo', { tickMs: SAAS_TICK_MS })
+
+// Recordatorio → gracia → suspensión para suscripciones active/past_due (el hermano post-trial del
+// anterior). Reactivación NO vive acá: es efecto del pago real (handle-stripe-event invoice.paid).
+const subscriptionSuspensionCron = createSubscriptionSuspensionCron(orm, (name) => system.resolveModule(name), logger)
+setTimeout(() => {
+  subscriptionSuspensionCron().catch((e) => logger.warn('subscription-suspension initial run failed', { error: (e as Error).message }))
+}, 10_000)
+setInterval(() => {
+  subscriptionSuspensionCron().catch((e) => logger.warn('subscription-suspension cron failed', { error: (e as Error).message }))
+}, SAAS_TICK_MS)
+logger.info('Subscription-suspension cron listo', { tickMs: SAAS_TICK_MS })
+
+// Créditos del programa de referidos (PLAN-REFERIDOS.md §5): trial→active al empezar a pagar,
+// active→validated al cumplir los meses (genera crédito al referidor), clawback si churnea pronto.
+const referralCreditsCron = createReferralCreditsCron(orm, (name) => system.resolveModule(name), logger)
+setTimeout(() => {
+  referralCreditsCron().catch((e) => logger.warn('referral-credits initial run failed', { error: (e as Error).message }))
+}, 10_000)
+setInterval(() => {
+  referralCreditsCron().catch((e) => logger.warn('referral-credits cron failed', { error: (e as Error).message }))
+}, SAAS_TICK_MS)
+logger.info('Referral-credits cron listo', { tickMs: SAAS_TICK_MS })
 
 // ─── Shutdown ──────────────────────────────────────────────────────────────
 process.on('SIGINT', async () => { await system.stop(); process.exit(0) })

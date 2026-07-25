@@ -16,9 +16,9 @@ export function SubscriptionsModule() {
     contract: {
       name: 'subscriptions', version: '1.0.0',
       description: 'SaaS subscription lifecycle',
-      actions: ['signup', 'publicPlans', 'myStatus', 'onboarding', 'checkout', 'portal', 'webhookPlatform'],
+      actions: ['signup', 'publicPlans', 'myStatus', 'onboarding', 'checkout', 'portal', 'webhookPlatform', 'applyStripeDiscount'],
       events: [],
-      tables: ['subscriptions'],
+      tables: ['subscriptions', 'subscription_discounts', 'special_category_config', 'founder_history'],
       dependencies: [],
       rules: [
         'checkout/portal: hotelId forzado del JWT, cobro SIEMPRE contra la cuenta de PLATAFORMA (StripeService.getClient() sin hotelId)',
@@ -44,6 +44,8 @@ export function SubscriptionsModule() {
         log,
         // `Canales` = channel_config: dice si el hotel ya conectó sus OTAs.
         new OrmRepository<any>(orm, 'Canales'),
+        // Historial de condiciones especiales — statusOf() lo usa para mostrar el descuento activo.
+        new OrmRepository<any>(orm, 'SubscriptionDiscounts'),
       )
       const controller = new SubscriptionsController(service, log)
 
