@@ -44,7 +44,7 @@ describe('createReferralCreditsCron', () => {
     const { orm } = makeOrm({ Referrals: [{ id: 'r1', referrerHotelId: 'a', referredHotelId: 'b', status: 'trial' }], Configuration: [] })
     const cron = createReferralCreditsCron(orm, makeResolveModule(async () => ({ applied: true })), silentLogger())
     const result = await cron(NOW)
-    expect(result).toEqual({ toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0 })
+    expect(result).toEqual({ toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0, welcomeApplied: 0, welcomeSkipped: 0 })
   })
 
   it('trial → active: cuando el referido ya tiene Subscription active', async () => {
@@ -157,6 +157,90 @@ describe('createReferralCreditsCron', () => {
     expect(store.ReferralCredits[0].status).toBe('released')
   })
 
+  // ─── Descuento de bienvenida al REFERIDO (1er mes gratis, referredRewardValue) ───────────────
+  function makeRecordingResolveModule(impl: (...a: any[]) => Promise<any>) {
+    const calls: any[][] = []
+    const applyStripeDiscount = (...args: any[]) => { calls.push(args); return impl(...args) }
+    return { resolveModule: (name: string) => (name === 'subscriptions' ? { applyStripeDiscount } : null), calls }
+  }
+
+  it('welcome reward: trial→active con referredRewardValue=100 aplica el cupón al referido', async () => {
+    const referral = { id: 'r1', referrerHotelId: 'a', referredHotelId: 'b', status: 'trial', activeSince: null }
+    const { orm, store } = makeOrm({
+      Referrals: [referral],
+      Subscriptions: [{ id: 's1', hotelId: 'b', status: 'active', stripeSubscriptionId: 'sub_b' }],
+      Configuration: PROGRAM({ referredRewardValue: 100 }),
+    })
+    const { resolveModule, calls } = makeRecordingResolveModule(async () => ({ applied: true }))
+    const cron = createReferralCreditsCron(orm, resolveModule, silentLogger())
+    const result = await cron(NOW)
+
+    // Transición trial→active quedó registrada.
+    expect(result.toActive).toBe(1)
+    expect(store.Referrals[0].status).toBe('active')
+    // applyStripeDiscount se llamó contra el hotel REFERIDO, con 100% off por 1 mes y meta referral_welcome.
+    expect(result.welcomeApplied).toBe(1)
+    expect(calls).toHaveLength(1)
+    expect(calls[0][0]).toBe('b') // referredHotelId
+    expect(calls[0][1]).toBe(100) // referredRewardValue
+    expect(calls[0][2]).toBe(1) // durationMonths
+    expect(calls[0][3]).toMatchObject({ type: 'referral_welcome', reason: 'Mes de bienvenida por referido' })
+    expect(store.Referrals[0].welcomeRewardStatus).toBe('applied')
+  })
+
+  it('welcome reward: sin stripeSubscriptionId → queda pending (reintenta próximo tick)', async () => {
+    // El applyStripeDiscount real devuelve {applied:false, reason} cuando el referido no tiene
+    // stripeSubscriptionId. Acá lo simulamos: el cron NO debe marcarlo 'applied' ni 'skipped'.
+    const referral = { id: 'r1', referrerHotelId: 'a', referredHotelId: 'b', status: 'active', activeSince: NOW.toISOString(), welcomeRewardStatus: 'pending' }
+    const { orm, store } = makeOrm({
+      Referrals: [referral],
+      Subscriptions: [{ id: 's1', hotelId: 'b', status: 'active' }], // sin stripeSubscriptionId
+      Configuration: PROGRAM({ referredRewardValue: 100 }),
+    })
+    const { resolveModule, calls } = makeRecordingResolveModule(async () => ({ applied: false, reason: 'sin suscripción de Stripe activa' }))
+    const cron = createReferralCreditsCron(orm, resolveModule, silentLogger())
+    const result = await cron(NOW)
+
+    expect(result.welcomeApplied).toBe(0)
+    expect(result.welcomeSkipped).toBe(0)
+    expect(calls).toHaveLength(1) // lo intentó
+    expect(store.Referrals[0].welcomeRewardStatus).toBe('pending') // sigue pendiente → reintenta
+  })
+
+  it('welcome reward: referredRewardValue=0 → skipped (no reintenta)', async () => {
+    const referral = { id: 'r1', referrerHotelId: 'a', referredHotelId: 'b', status: 'active', activeSince: NOW.toISOString(), welcomeRewardStatus: 'pending' }
+    const { orm, store } = makeOrm({
+      Referrals: [referral],
+      Subscriptions: [{ id: 's1', hotelId: 'b', status: 'active', stripeSubscriptionId: 'sub_b' }],
+      Configuration: PROGRAM({ referredRewardValue: 0 }),
+    })
+    const { resolveModule, calls } = makeRecordingResolveModule(async () => ({ applied: true }))
+    const cron = createReferralCreditsCron(orm, resolveModule, silentLogger())
+    const result = await cron(NOW)
+
+    expect(result.welcomeApplied).toBe(0)
+    expect(result.welcomeSkipped).toBe(1)
+    expect(calls).toHaveLength(0) // ni siquiera lo intenta: 0 → skip directo
+    expect(store.Referrals[0].welcomeRewardStatus).toBe('skipped')
+  })
+
+  it('welcome reward: idempotente — una vez applied no se vuelve a aplicar', async () => {
+    // Segundo tick: el referral ya está 'applied'. No debe llamarse applyStripeDiscount de nuevo.
+    const referral = { id: 'r1', referrerHotelId: 'a', referredHotelId: 'b', status: 'active', activeSince: NOW.toISOString(), welcomeRewardStatus: 'applied' }
+    const { orm, store } = makeOrm({
+      Referrals: [referral],
+      Subscriptions: [{ id: 's1', hotelId: 'b', status: 'active', stripeSubscriptionId: 'sub_b' }],
+      Configuration: PROGRAM({ referredRewardValue: 100 }),
+    })
+    const { resolveModule, calls } = makeRecordingResolveModule(async () => ({ applied: true }))
+    const cron = createReferralCreditsCron(orm, resolveModule, silentLogger())
+    const result = await cron(NOW)
+
+    expect(result.welcomeApplied).toBe(0)
+    expect(calls).toHaveLength(0)
+    expect(store.Referrals[0].welcomeRewardStatus).toBe('applied')
+  })
+
   it('un error inesperado no rompe el cron (try/catch general)', async () => {
     const orm = {
       findMany: async () => { throw new Error('DB caída') },
@@ -165,6 +249,6 @@ describe('createReferralCreditsCron', () => {
     }
     const cron = createReferralCreditsCron(orm, makeResolveModule(async () => ({ applied: true })), silentLogger())
     const result = await cron(NOW)
-    expect(result).toEqual({ toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0 })
+    expect(result).toEqual({ toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0, welcomeApplied: 0, welcomeSkipped: 0 })
   })
 })

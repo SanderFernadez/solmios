@@ -26,6 +26,8 @@ export interface ReferralTierDTO {
 
 export type ReferralStatus = 'trial' | 'active' | 'validated' | 'churned'
 export type ReferralCreditStatus = 'pending' | 'released' | 'revoked'
+/** Estado del descuento de bienvenida al referido (1er mes gratis). Ver `ReferralsModel.welcomeRewardStatus`. */
+export type WelcomeRewardStatus = 'pending' | 'applied' | 'skipped'
 
 export interface ReferralDTO {
   id: string
@@ -35,6 +37,8 @@ export interface ReferralDTO {
   status: ReferralStatus
   activeSince: string | null
   validatedAt: string | null
+  /** Opcional: referrals creados antes de la feature pueden no tenerlo (backfillean a 'pending' en DB). */
+  welcomeRewardStatus?: WelcomeRewardStatus
   createdAt?: string
 }
 

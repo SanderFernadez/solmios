@@ -11,10 +11,14 @@ interface ReferralProgramLike {
   requirePaidStatus: boolean
   maxAccumulatedMonths: number | null
   clawbackWindowDays: number
+  /** % de descuento del mes de bienvenida al referido (0 = sin reward). Mismo default que
+   *  `DEFAULT_REFERRAL_PROGRAM` en referrals/usecases/program-settings.ts. */
+  referredRewardValue: number
 }
 
 const DEFAULT_PROGRAM: ReferralProgramLike = {
   enabled: false, activeMonthsRequired: 3, requirePaidStatus: true, maxAccumulatedMonths: 12, clawbackWindowDays: 30,
+  referredRewardValue: 100,
 }
 
 async function readProgram(orm: any): Promise<ReferralProgramLike> {
@@ -38,6 +42,8 @@ export interface ReferralCreditsCronResult {
   released: number
   churned: number
   revoked: number
+  welcomeApplied: number
+  welcomeSkipped: number
 }
 
 export function createReferralCreditsCron(
@@ -46,7 +52,7 @@ export function createReferralCreditsCron(
   logger: any,
 ): (now?: Date) => Promise<ReferralCreditsCronResult> {
   return async (now: Date = new Date()): Promise<ReferralCreditsCronResult> => {
-    const zero: ReferralCreditsCronResult = { toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0 }
+    const zero: ReferralCreditsCronResult = { toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0, welcomeApplied: 0, welcomeSkipped: 0 }
     try {
       const program = await readProgram(orm)
       if (!program.enabled) return zero
@@ -56,6 +62,8 @@ export function createReferralCreditsCron(
       let released = 0
       let churned = 0
       let revoked = 0
+      let welcomeApplied = 0
+      let welcomeSkipped = 0
 
       // 1) trial → active: el referido ya está pagando de verdad.
       const trialReferrals = (await orm.findMany('Referrals', { status: 'trial' })) as any[]
@@ -63,8 +71,42 @@ export function createReferralCreditsCron(
         const sub = (await orm.findMany('Subscriptions', { hotelId: r.referredHotelId }))[0] as any
         const paying = sub?.status === 'active' || (!program.requirePaidStatus && sub?.status === 'past_due')
         if (!paying) continue
-        await orm.update('Referrals', r.id, { status: 'active', activeSince: now.toISOString() })
+        // welcomeRewardStatus:'pending' explícito — el default del modelo ya lo pone, pero así
+        // cubre rows legacy que existían antes de la columna (ADD COLUMN DEFAULT backfillea, esto
+        // es belt-and-suspenders) y deja clara la transición. El reward NO se aplica acá: si
+        // applyStripeDiscount fallara (Stripe caído, race), este update ya quedó commiteado y
+        // el próximo tick del paso 1.5 lo reintenta sin perder el estado.
+        await orm.update('Referrals', r.id, { status: 'active', activeSince: now.toISOString(), welcomeRewardStatus: 'pending' })
         toActive++
+      }
+
+      // 1.5) Descuento de bienvenida al REFERIDO: 1er mes gratis (referredRewardValue % off sobre
+      // SU suscripción, no la del referidor). Idempotente por welcomeRewardStatus: una vez
+      // 'applied' o 'skipped' no se vuelve a tocar. Si no se puede aplicar (referido sin
+      // stripeSubscriptionId todavía, o Stripe caído) queda 'pending' y reintenta próximo tick.
+      const welcomePending = (await orm.findMany('Referrals', { status: 'active', welcomeRewardStatus: 'pending' })) as any[]
+      if (welcomePending.length > 0) {
+        const subscriptionsModule = resolveModule('subscriptions')
+        for (const r of welcomePending) {
+          // Sin reward configurado → skip definitivo, no reintenta.
+          if (!program.referredRewardValue || program.referredRewardValue <= 0) {
+            await orm.update('Referrals', r.id, { welcomeRewardStatus: 'skipped' })
+            welcomeSkipped++
+            continue
+          }
+          // Módulo subscriptions sin cablear (o sin la fn exportada) → no rompe el cron, reintenta.
+          if (!subscriptionsModule?.applyStripeDiscount) continue
+          const result = await subscriptionsModule.applyStripeDiscount(
+            r.referredHotelId, program.referredRewardValue, 1,
+            { type: 'referral_welcome', reason: 'Mes de bienvenida por referido' },
+          )
+          if (result?.applied) {
+            await orm.update('Referrals', r.id, { welcomeRewardStatus: 'applied' })
+            welcomeApplied++
+          }
+          // result.applied === false: applyStripeDiscount ya explicó por qué (sin stripeSubscriptionId,
+          // Stripe no configurado, error de API). Queda 'pending', reintenta próximo tick.
+        }
       }
 
       // 2) active → validated (cumplió los meses) o churned (el referido se fue antes de validar)
@@ -137,8 +179,8 @@ export function createReferralCreditsCron(
         }
       }
 
-      logger.info('referral-credits-cron completado', { toActive, validated, released, churned, revoked })
-      return { toActive, validated, released, churned, revoked }
+      logger.info('referral-credits-cron completado', { toActive, validated, released, churned, revoked, welcomeApplied, welcomeSkipped })
+      return { toActive, validated, released, churned, revoked, welcomeApplied, welcomeSkipped }
     } catch (e: any) {
       logger.warn('referral-credits-cron falló', { error: e.message })
       return zero

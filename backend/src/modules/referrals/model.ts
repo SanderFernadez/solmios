@@ -37,6 +37,15 @@ export const ReferralsModel: ModelDefinition = {
     activeSince: { type: 'string' },
     /** Cuándo se validó (cumplió los meses). Null hasta entonces. */
     validatedAt: { type: 'string' },
+    /**
+     * Estado del descuento de bienvenida al REFERIDO (1er mes gratis, `referredRewardValue` % off):
+     * pending  — todavía no se aplicó (acaba de pasar a active, o el referido no tiene
+     *            stripeSubscriptionId todavía, o Stripe estaba caído → reintenta próximo tick)
+     * applied  — applyStripeDiscount confirmó el cupón sobre la suscripción del referido
+     * skipped  — referredRewardValue es 0/null → no hay reward que dar, no reintenta
+     * Persistido (no en memoria) para sobrevivir restarts y evitar duplicar el cupón en Stripe.
+     */
+    welcomeRewardStatus: { type: 'string', default: 'pending' },
   },
 }
 

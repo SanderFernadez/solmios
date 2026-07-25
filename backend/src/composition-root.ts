@@ -192,8 +192,8 @@ const mods = [
   // Programa de referidos B2B (PLAN-REFERIDOS.md). Crea referrals/referral_codes/referral_credits/
   // referral_tiers y los endpoints admin/* + /api/referrals/me + público /resolve. El connector
   // subscriptions-referrals vincula el alta cuando viene con referralCode; el cron
-  // referral-credits-cron valida/libera los créditos. Descuento bienvenida al referido (1er mes
-  // gratis, referredRewardValue): PENDIENTE — ver notas del cableeo (requiere model change).
+  // referral-credits-cron valida/libera los créditos Y aplica el descuento de bienvenida al
+  // referido (1er mes gratis, referredRewardValue % off) persistido en Referrals.welcomeRewardStatus.
   ReferralsModule(),
   PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
