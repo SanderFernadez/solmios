@@ -150,6 +150,7 @@ import { PushTokensModule } from './modules/pushtokens'
 import { EmailQueueModule } from './modules/email-queue'
 import { PublicapiModule } from './modules/publicapi'
 import { WebhooksModule } from './modules/webhooks'
+import { PlatformEmailsModule } from './modules/platform-emails'
 import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
@@ -203,6 +204,10 @@ const mods = [
   EmailQueueModule(),
   PublicapiModule(),
   WebhooksModule(),
+  // Plantillas editables de los correos de PLATAFORMA (ciclo de vida SaaS: welcome, trial_*,
+  // payment_*, subscription_canceled). Solo super_admin. Lo consumen subscriptions (webhook/signup)
+  // y el cron de trial vía resolveModule('platform-emails').sendEvent().
+  PlatformEmailsModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
