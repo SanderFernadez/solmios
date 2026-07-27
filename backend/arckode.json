@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-22T17:01:39.676Z",
+  "_generated": "2026-07-27T20:04:29.742Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -8,6 +8,19 @@
     "warnings": 0
   },
   "modules": [
+    {
+      "name": "restaurant",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
     {
       "name": "housekeeping",
       "structure": {
@@ -36,6 +49,19 @@
     },
     {
       "name": "folios",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "caja-chica",
       "structure": {
         "index": true,
         "types": true,
@@ -451,6 +477,19 @@
       "complete": true
     },
     {
+      "name": "accounting",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "payroll",
       "structure": {
         "index": true,
@@ -478,6 +517,32 @@
     },
     {
       "name": "huespedes",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "inventario",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "compras",
       "structure": {
         "index": true,
         "types": true,
@@ -555,6 +620,19 @@
       "complete": true
     },
     {
+      "name": "platform-emails",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "dispositivos",
       "structure": {
         "index": true,
@@ -594,6 +672,19 @@
       "complete": true
     },
     {
+      "name": "referrals",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "notificaciones",
       "structure": {
         "index": true,
@@ -621,6 +712,19 @@
     },
     {
       "name": "payment-gateways",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "treasury",
       "structure": {
         "index": true,
         "types": true,
@@ -673,16 +777,19 @@
     }
   ],
   "connectors": [
+    "restaurante-folios.ts",
     "reservas-auditlog.ts",
     "reservas-reschedule-charge.ts",
     "gastos-auditlog.ts",
     "pricing-canales.ts",
     "notificaciones-auditlog.ts",
     "payment-requests-auditlog.ts",
+    "subscriptions-referrals.ts",
     "reclutamiento-empleados.ts",
     "marketing-auditlog.ts",
     "amenities-habitaciones.ts",
     "folios-payments.ts",
+    "gastos-accounting.ts",
     "payments-webhooks.ts",
     "pushtokens-usuarios.ts",
     "payment-requests-payments.ts",
@@ -694,21 +801,26 @@
     "reembolsos-auditlog.ts",
     "attendance-auditlog.ts",
     "messages-pushtokens.ts",
+    "compras-treasury.ts",
     "apikeys-auditlog.ts",
     "reservas-huespedes.ts",
     "publicapi-reservas.ts",
     "activos-auditlog.ts",
     "gastos-caja.ts",
+    "compras-gastos.ts",
     "ai-recepcionista-auditlog.ts",
     "huespedes-auditlog.ts",
     "reservas-opiniones.ts",
     "folios-facturas.ts",
+    "compras-inventario.ts",
     "facturas-payments.ts",
     "crm-auditlog.ts",
     "habitaciones-canales.ts",
     "empleados-housekeeping.ts",
     "reservas-housekeeping.ts",
     "attendance-dashboard.ts",
+    "caja-chica-gastos.ts",
+    "folios-accounting.ts",
     "roles-auditlog.ts",
     "admin-auditlog.ts",
     "habitaciones-auditlog.ts",
@@ -717,8 +829,10 @@
     "payroll-gastos.ts",
     "attendance-payroll.ts",
     "reservas-payment-requests.ts",
+    "payments-accounting.ts",
     "canales-auditlog.ts",
     "pricing-auditlog.ts",
+    "restaurante-payments.ts",
     "reclutamiento-auditlog.ts",
     "messages-usuarios.ts",
     "payment-requests-ttlock.ts",
@@ -734,6 +848,7 @@
     "housekeeping-mantenimiento.ts",
     "payments-caja.ts",
     "reembolsos-gastos.ts",
+    "restaurante-inventario.ts",
     "reservas-folios-settlement.ts",
     "feedback-auditlog.ts",
     "capacitacion-auditlog.ts",
@@ -750,7 +865,8 @@
     "tickets-auditlog.ts",
     "reservas-ttlock.ts",
     "mantenimiento-auditlog.ts",
-    "booking-channex.ts"
+    "booking-channex.ts",
+    "restaurante-accounting.ts"
   ],
   "violations": [],
   "warnings": [],
