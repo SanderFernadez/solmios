@@ -10,4 +10,5 @@ export interface RestaurantSockets {
   // Liquidación (RES-5/RES-6): cargo a folio vs cobro directo → contabilidad
   onOrderCharged?: (order: OrderDTO) => Promise<void>   // cargado a la habitación (folio)
   onOrderPaid?: (order: OrderDTO) => Promise<void>      // cobrado directo (payment) → asiento de ingreso
+  onOrderRefunded?: (order: OrderDTO) => Promise<void>  // reembolso de cobro directo (payment) → reversión contable + inventario
 }

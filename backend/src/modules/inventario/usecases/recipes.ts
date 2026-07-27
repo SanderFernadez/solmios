@@ -77,3 +77,30 @@ export async function consumeForSale(deps: RecipeDeps, input: { hotelId: string;
     } catch { /* best-effort: un descuento de stock no debe romper el cobro de la comanda */ }
   }
 }
+
+/**
+ * F1 (carta-experiencia-avanzada) — Descuenta el insumo declarado por cada modificador elegido en el
+ * snapshot de la línea (`line.modifiers`), ADEMÁS del insumo de la receta base del ítem (`consumeForSale`,
+ * llamado aparte por el conector). Un modificador sin `inventoryItemId` no genera movimiento. Best-effort
+ * por opción: un fallo de descuento nunca rompe el cobro. `sourceId` distinto del de receta base
+ * (`${lineId}:${modifierId}:${inventoryItemId}`) para no colisionar con la dedup existente
+ * (`${lineId}:${inventoryItemId}`) y mantener idempotencia independiente por reintento.
+ */
+export async function consumeForSaleWithModifiers(deps: RecipeDeps, input: { hotelId: string; line: any }, user: CurrentUser): Promise<void> {
+  const line = input?.line
+  if (!line?.id || !Array.isArray(line.modifiers)) return
+  const soldQty = Number(line.quantity)
+  if (!Number.isFinite(soldQty) || soldQty <= 0) return
+  for (const m of line.modifiers) {
+    const inventoryItemId = m?.inventoryItemId
+    const inventoryQuantity = Number(m?.inventoryQuantity)
+    if (!inventoryItemId || !Number.isFinite(inventoryQuantity) || inventoryQuantity <= 0) continue
+    const qty = inventoryQuantity * soldQty
+    try {
+      await applyMovement(movDeps(deps), {
+        itemId: inventoryItemId, type: 'out', quantity: qty,
+        reason: 'Venta POS (modificador)', source: 'pos_sale', sourceId: `${line.id}:${m.modifierId}:${inventoryItemId}`,
+      }, user)
+    } catch { /* best-effort: un descuento de stock no debe romper el cobro de la comanda */ }
+  }
+}

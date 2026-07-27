@@ -85,10 +85,48 @@ export const AddLineSchema: Record<string, ValidationRule> = {
   menuItemId: { type: 'string' as const, required: true },
   quantity: { type: 'number' as const },
   notes: { type: 'text' as const },
+  // F1: opciones elegidas ({ modifierId }[]). El validator NO valida required/minSelect/maxSelect
+  // de grupo (eso vive en el usecase, order-lines.ts) — acá solo la forma del array.
+  modifiers: { type: 'array' as const },
 }
 export const UpdateLineSchema: Record<string, ValidationRule> = {
   quantity: { type: 'number' as const },
   notes: { type: 'text' as const },
+}
+
+// ─── F1: modificadores/variantes de la carta ───
+const SELECTION_TYPES = ['single', 'multiple']
+export const CreateModifierGroupSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, required: true },
+  selectionType: { type: 'string' as const, enum: SELECTION_TYPES },
+  required: { type: 'number' as const },
+  minSelect: { type: 'number' as const },
+  maxSelect: { type: 'number' as const },
+  sortOrder: { type: 'number' as const },
+}
+export const UpdateModifierGroupSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const },
+  selectionType: { type: 'string' as const, enum: SELECTION_TYPES },
+  required: { type: 'number' as const },
+  minSelect: { type: 'number' as const },
+  maxSelect: { type: 'number' as const },
+  sortOrder: { type: 'number' as const },
+}
+export const CreateModifierSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, required: true },
+  priceDelta: { type: 'number' as const, required: true },
+  inventoryItemId: { type: 'string' as const },
+  inventoryQuantity: { type: 'number' as const },
+  active: { type: 'number' as const },
+  sortOrder: { type: 'number' as const },
+}
+export const UpdateModifierSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const },
+  priceDelta: { type: 'number' as const },
+  inventoryItemId: { type: 'string' as const },
+  inventoryQuantity: { type: 'number' as const },
+  active: { type: 'number' as const },
+  sortOrder: { type: 'number' as const },
 }
 
 // ─── Cuenta + cobro (RES-5) ───

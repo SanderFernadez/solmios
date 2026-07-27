@@ -4,7 +4,7 @@
 import { ref, computed, onMounted } from 'vue'
 import {
   RestaurantService,
-  type Station, type MenuCategory, type MenuItem,
+  type Station, type MenuCategory, type MenuItem, type ModifierGroup,
 } from '@/services/Restaurant.service'
 import { SettingsService } from '@/services/Settings.service'
 import { InventarioService, type InventoryItem, type MenuItemRecipe } from '@/services/Inventario.service'
@@ -33,6 +33,8 @@ const items = ref<MenuItem[]>([])
 const inventory = ref<InventoryItem[]>([])
 const currency = ref('USD')
 const activeCategoryId = ref<string>('all')
+const defaultTaxName = ref('')
+const defaultTaxRate = ref(0)
 
 // La carta (estaciones/categorías/ítems/recetas) es config, no operación del POS — gateada por
 // 'restaurant-catalog' (QA-ALTO: separado de 'restaurant' para que mesero/cocina no la editen).
@@ -63,6 +65,8 @@ async function load() {
     items.value = it.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     inventory.value = inv
     currency.value = (settings as any)?.hotel?.currency || 'USD'
+    defaultTaxName.value = (settings as any)?.hotel?.taxName || 'impuesto'
+    defaultTaxRate.value = Number((settings as any)?.hotel?.taxRate) || 0
   } catch (e: unknown) {
     toast.error(e instanceof Error ? e.message : 'No se pudo cargar la carta')
   } finally {
@@ -157,15 +161,20 @@ function newItem() {
     fields: [
       { key: 'name', label: 'Nombre del plato', required: true, minLength: 2, maxLength: 120 },
       { key: 'categoryId', label: 'Categoría', type: 'select', required: true, default: categories.value[0]?.id, options: categories.value.map((c) => ({ value: c.id, label: c.name })) },
-      { key: 'price', label: 'Precio', type: 'number', required: true, min: 0 },
+      { key: 'price', label: 'Precio de venta', type: 'number', required: true, min: 0 },
+      { key: 'taxRate', label: `Impuesto (%)`, type: 'number', min: 0,
+        hint: `Vacío = usa el ${defaultTaxName.value} general del hotel (${defaultTaxRate.value}%)` },
       { key: 'description', label: 'Descripción', type: 'textarea', maxLength: 300 },
+      { key: 'imageUrl', label: 'Foto del plato', type: 'file', accept: 'image/*', hint: 'Opcional' },
       { key: 'stationId', label: 'Estación (override)', type: 'select', options: stationOptions(), hint: 'Vacío = hereda de la categoría' },
       { key: 'sortOrder', label: 'Orden', type: 'number', min: 0 },
     ],
     onSubmit: async (v) => {
       await save(() => RestaurantService.createItem({
         name: String(v.name).trim(), categoryId: String(v.categoryId), price: Number(v.price) || 0,
+        taxRate: v.taxRate !== undefined && v.taxRate !== '' ? Number(v.taxRate) : undefined,
         description: v.description ? String(v.description) : undefined,
+        imageUrl: v.imageUrl ? String(v.imageUrl) : undefined,
         stationId: v.stationId ? String(v.stationId) : undefined, sortOrder: Number(v.sortOrder) || 0,
       }))
     },
@@ -177,15 +186,20 @@ function editItem(i: MenuItem) {
     fields: [
       { key: 'name', label: 'Nombre del plato', required: true, minLength: 2, maxLength: 120, default: i.name },
       { key: 'categoryId', label: 'Categoría', type: 'select', required: true, default: i.categoryId, options: categories.value.map((c) => ({ value: c.id, label: c.name })) },
-      { key: 'price', label: 'Precio', type: 'number', required: true, min: 0, default: i.price },
+      { key: 'price', label: 'Precio de venta', type: 'number', required: true, min: 0, default: i.price },
+      { key: 'taxRate', label: `Impuesto (%)`, type: 'number', min: 0, default: i.taxRate ?? '',
+        hint: `Vacío = usa el ${defaultTaxName.value} general del hotel (${defaultTaxRate.value}%)` },
       { key: 'description', label: 'Descripción', type: 'textarea', maxLength: 300, default: i.description ?? '' },
+      { key: 'imageUrl', label: 'Foto del plato', type: 'file', accept: 'image/*', default: i.imageUrl ?? '', hint: 'Opcional' },
       { key: 'stationId', label: 'Estación (override)', type: 'select', default: i.stationId ?? '', options: stationOptions() },
       { key: 'sortOrder', label: 'Orden', type: 'number', min: 0, default: i.sortOrder ?? 0 },
     ],
     onSubmit: async (v) => {
       await save(() => RestaurantService.updateItem(i.id, {
         name: String(v.name).trim(), categoryId: String(v.categoryId), price: Number(v.price) || 0,
+        taxRate: v.taxRate !== undefined && v.taxRate !== '' ? Number(v.taxRate) : undefined,
         description: v.description ? String(v.description) : undefined,
+        imageUrl: v.imageUrl ? String(v.imageUrl) : undefined,
         stationId: v.stationId ? String(v.stationId) : undefined, sortOrder: Number(v.sortOrder) || 0,
       }))
     },
@@ -271,10 +285,82 @@ const availableInventory = computed(() => {
 })
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
+
+// ─── Modificadores/variantes (F1) — grupos (Tamaño, Extras…) y sus opciones por ítem ───
+const modifierItem = ref<MenuItem | null>(null)
+const modifierGroups = ref<ModifierGroup[]>([])
+const loadingModifiers = ref(false)
+const newGroup = ref<{ name: string; selectionType: 'single' | 'multiple'; required: boolean }>({ name: '', selectionType: 'single', required: false })
+const newModifierByGroup = ref<Record<string, { name: string; priceDelta: number | string; inventoryItemId: string }>>({})
+
+function blankModifierDraft() { return { name: '', priceDelta: 0, inventoryItemId: '' } }
+
+async function openModifiers(i: MenuItem) {
+  modifierItem.value = i
+  newGroup.value = { name: '', selectionType: 'single', required: false }
+  newModifierByGroup.value = {}
+  loadingModifiers.value = true
+  modifierGroups.value = []
+  try {
+    modifierGroups.value = await RestaurantService.listModifierGroups(i.id)
+    for (const g of modifierGroups.value) newModifierByGroup.value[g.id] = blankModifierDraft()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'No se pudieron cargar los modificadores')
+  } finally {
+    loadingModifiers.value = false
+  }
+}
+async function reloadModifierGroups() {
+  if (!modifierItem.value) return
+  modifierGroups.value = await RestaurantService.listModifierGroups(modifierItem.value.id)
+  for (const g of modifierGroups.value) if (!newModifierByGroup.value[g.id]) newModifierByGroup.value[g.id] = blankModifierDraft()
+}
+async function addGroup() {
+  if (!modifierItem.value) return
+  if (!newGroup.value.name.trim()) { toast.warning('Ponele un nombre al grupo'); return }
+  try {
+    await RestaurantService.createModifierGroup(modifierItem.value.id, {
+      name: newGroup.value.name.trim(), selectionType: newGroup.value.selectionType, required: newGroup.value.required ? 1 : 0,
+    })
+    newGroup.value = { name: '', selectionType: 'single', required: false }
+    await reloadModifierGroups()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'No se pudo crear el grupo')
+  }
+}
+async function removeGroup(g: ModifierGroup) {
+  try {
+    await RestaurantService.deleteModifierGroup(g.id)
+    await reloadModifierGroups()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'No se pudo eliminar el grupo')
+  }
+}
+async function addModifier(g: ModifierGroup) {
+  const draft = newModifierByGroup.value[g.id]
+  if (!draft?.name?.trim()) { toast.warning('Ponele un nombre a la opción'); return }
+  const priceDelta = Number(draft.priceDelta)
+  if (!Number.isFinite(priceDelta)) { toast.warning('Ajuste de precio inválido'); return }
+  try {
+    await RestaurantService.createModifier(g.id, { name: draft.name.trim(), priceDelta, inventoryItemId: draft.inventoryItemId || undefined })
+    newModifierByGroup.value[g.id] = blankModifierDraft()
+    await reloadModifierGroups()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'No se pudo agregar la opción')
+  }
+}
+async function removeModifier(m: { id: string }) {
+  try {
+    await RestaurantService.deleteModifier(m.id)
+    await reloadModifierGroups()
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'No se pudo quitar la opción')
+  }
+}
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+  <div class="space-y-6">
     <header class="flex items-center justify-between gap-3">
       <div>
         <h1 class="text-xl sm:text-2xl font-black text-navy">Carta del restaurante</h1>
@@ -343,17 +429,22 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
         <EmptyState v-if="!filteredItems.length" title="Sin ítems" message="Agregá platos a la carta." />
         <div v-else class="divide-y divide-border">
           <div v-for="i in filteredItems" :key="i.id" class="flex items-center justify-between py-2.5 gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-navy truncate">{{ i.name }}</span>
-                <span v-if="!i.available" class="text-[10px] px-1.5 py-0.5 rounded bg-coral/10 text-coral font-bold">Agotado</span>
-                <span v-if="i.hasRecipe === false" class="text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold font-bold" title="No descuenta inventario al venderse — cargá su receta">Sin receta</span>
+            <div class="min-w-0 flex items-center gap-3">
+              <img v-if="i.imageUrl" :src="i.imageUrl" class="w-10 h-10 rounded-lg object-cover shrink-0 border border-border" />
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-navy truncate">{{ i.name }}</span>
+                  <span v-if="!i.available" class="text-[10px] px-1.5 py-0.5 rounded bg-coral/10 text-coral font-bold">Agotado</span>
+                  <span v-if="i.hasRecipe === false" class="text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold font-bold" title="No descuenta inventario al venderse — cargá su receta">Sin receta</span>
+                </div>
+                <div class="text-xs text-text-muted truncate">{{ categoryName(i.categoryId) }} · {{ stationName(i.stationId || categories.find(c => c.id === i.categoryId)?.stationId) }}</div>
               </div>
-              <div class="text-xs text-text-muted truncate">{{ categoryName(i.categoryId) }} · {{ stationName(i.stationId || categories.find(c => c.id === i.categoryId)?.stationId) }}</div>
             </div>
             <div class="flex items-center gap-3 shrink-0">
+              <span v-if="i.taxRate !== undefined" class="text-[10px] px-1.5 py-0.5 rounded bg-navy/5 text-navy font-bold" :title="`Impuesto propio: ${i.taxRate}%`">{{ i.taxRate }}%</span>
               <span class="font-black text-navy tabular-nums">{{ money(i.price) }}</span>
               <button v-if="editPerm && inventory.length" @click="openRecipe(i)" class="text-xs font-bold text-teal hover:underline">Receta</button>
+              <button v-if="editPerm" @click="openModifiers(i)" class="text-xs font-bold text-teal hover:underline">Modificadores</button>
               <button v-if="editPerm" @click="toggleAvailability(i)" class="text-xs font-bold text-gold hover:underline">{{ i.available ? 'Agotar' : 'Reactivar' }}</button>
               <button v-if="editPerm" @click="editItem(i)" class="text-xs font-bold text-navy hover:underline">Editar</button>
               <button v-if="deletePerm" @click="delItem(i)" class="text-xs font-bold text-coral hover:underline">Eliminar</button>
@@ -391,6 +482,76 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
             <input v-model.number="newRecipe.quantity" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
           </div>
           <button @click="addRecipeLine" class="shrink-0 px-4 py-2 rounded-lg bg-navy text-white text-sm font-bold">Agregar</button>
+        </div>
+      </div>
+    </AppModal>
+
+    <!-- Modificadores/variantes (F1): grupos de opciones (Tamaño, Extras…) por ítem -->
+    <AppModal v-if="modifierItem" :title="`Modificadores — ${modifierItem.name}`" subtitle="Grupos de opciones (ej. Tamaño, Extras) que ajustan el precio de la línea." size="lg" @close="modifierItem = null">
+      <div v-if="loadingModifiers" class="py-10 text-center text-text-muted">Cargando…</div>
+      <div v-else class="space-y-4">
+        <EmptyState v-if="!modifierGroups.length" title="Sin grupos de modificadores" message="Creá un grupo para ofrecer variantes (ej. Tamaño) o extras." />
+        <div v-else class="space-y-4">
+          <div v-for="g in modifierGroups" :key="g.id" class="rounded-xl border-2 border-border p-3">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <span class="font-bold text-navy">{{ g.name }}</span>
+                <span class="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-navy/5 text-navy font-bold">{{ g.selectionType === 'single' ? 'Única' : 'Múltiple' }}</span>
+                <span v-if="g.required" class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold font-bold">Obligatorio</span>
+              </div>
+              <button @click="removeGroup(g)" class="text-xs font-bold text-coral hover:underline">Eliminar grupo</button>
+            </div>
+
+            <div class="mt-2 divide-y divide-border">
+              <div v-for="m in g.modifiers ?? []" :key="m.id" class="flex items-center justify-between py-1.5">
+                <span class="text-sm text-navy">{{ m.name }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold tabular-nums" :class="m.priceDelta < 0 ? 'text-coral' : 'text-navy'">{{ m.priceDelta >= 0 ? '+' : '' }}{{ money(m.priceDelta) }}</span>
+                  <button @click="removeModifier(m)" class="text-xs font-bold text-coral hover:underline">Quitar</button>
+                </div>
+              </div>
+              <div v-if="!(g.modifiers ?? []).length" class="py-1.5 text-xs text-text-muted">Sin opciones todavía.</div>
+            </div>
+
+            <div v-if="newModifierByGroup[g.id]" class="flex items-end gap-2 border-t border-border pt-2.5 mt-2.5">
+              <div class="flex-1 min-w-0">
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Opción</label>
+                <input v-model="newModifierByGroup[g.id].name" type="text" placeholder="ej. Grande"
+                  class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+              <div class="w-24 shrink-0">
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Ajuste</label>
+                <input v-model.number="newModifierByGroup[g.id].priceDelta" type="number" step="0.01"
+                  class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
+              </div>
+              <div class="w-36 shrink-0">
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Insumo (opcional)</label>
+                <select v-model="newModifierByGroup[g.id].inventoryItemId" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy">
+                  <option value="">Ninguno</option>
+                  <option v-for="inv in inventory" :key="inv.id" :value="inv.id">{{ inv.name }}</option>
+                </select>
+              </div>
+              <button @click="addModifier(g)" class="shrink-0 px-4 py-2 rounded-lg bg-navy text-white text-sm font-bold">Agregar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-end gap-2 border-t-2 border-navy/10 pt-3">
+          <div class="flex-1 min-w-0">
+            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Nuevo grupo</label>
+            <input v-model="newGroup.name" type="text" placeholder="ej. Tamaño" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy" />
+          </div>
+          <div class="w-32 shrink-0">
+            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">Selección</label>
+            <select v-model="newGroup.selectionType" class="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy">
+              <option value="single">Única</option>
+              <option value="multiple">Múltiple</option>
+            </select>
+          </div>
+          <label class="shrink-0 flex items-center gap-1.5 text-xs font-bold text-navy pb-2">
+            <input v-model="newGroup.required" type="checkbox" /> Obligatorio
+          </label>
+          <button @click="addGroup" class="shrink-0 px-4 py-2 rounded-lg bg-navy text-white text-sm font-bold">Crear grupo</button>
         </div>
       </div>
     </AppModal>

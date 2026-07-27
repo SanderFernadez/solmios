@@ -4,7 +4,7 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerRestaurantModels } from './model'
 import { RestaurantService } from './service'
 import { RestaurantController } from './controller'
-import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO } from './types'
+import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO, ModifierGroupDTO, ModifierDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 import { createModuleGuard } from '../../infrastructure/auth/require-module'
 
@@ -12,6 +12,7 @@ export { RestaurantService }
 export type {
   StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO,
   OrderType, OrderStatus, LineStatus, TableStatus, Settlement,
+  ModifierGroupDTO, ModifierDTO, ModifierSelectionType, OrderItemModifierSnapshot,
 } from './types'
 export type { RestaurantSockets } from './sockets'
 export { RestaurantValidator, CreateStationSchema, UpdateStationSchema } from './validators/schema'
@@ -29,7 +30,7 @@ export function RestaurantModule() {
       version: '1.0.0',
       description: 'POS de restaurante',
       actions: ['listStations', 'getStation', 'createStation', 'updateStation', 'deleteStation'],
-      events: ['onOrderSent', 'onLineStatusChanged', 'onOrderCharged', 'onOrderPaid'],
+      events: ['onOrderSent', 'onLineStatusChanged', 'onOrderCharged', 'onOrderPaid', 'onOrderRefunded'],
       tables: [
         'restaurant_stations', 'menu_categories', 'menu_items',
         'restaurant_tables', 'restaurant_orders', 'restaurant_order_items',
@@ -51,8 +52,14 @@ export function RestaurantModule() {
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
       const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
       const userRepo = new OrmRepository<any>(orm, 'Users')
+      // F1: modificadores/variantes de la carta.
+      const modifierGroupsRepo = new OrmRepository<ModifierGroupDTO>(orm, 'MenuItemModifierGroups')
+      const modifiersRepo = new OrmRepository<ModifierDTO>(orm, 'MenuItemModifiers')
       const log = logger.child('restaurant')
-      const service = new RestaurantService(stations, categories, items, tables, userRepo, log, auth, ordersRepo, linesRepo, configRepo, hotelsRepo)
+      const service = new RestaurantService(
+        stations, categories, items, tables, userRepo, log, auth,
+        ordersRepo, linesRepo, configRepo, hotelsRepo, modifierGroupsRepo, modifiersRepo,
+      )
       const controller = new RestaurantController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -108,10 +115,24 @@ export function RestaurantModule() {
       router.post('/api/restaurant/orders/:id/bill', guard('restaurant', 'edit'), (req) => controller.billOrder(req))
       router.post('/api/restaurant/orders/:id/charge-to-room', guard('restaurant', 'edit'), (req) => controller.chargeToRoom(req))
       router.post('/api/restaurant/orders/:id/pay', guard('restaurant', 'edit'), (req) => controller.payOrder(req))
+      // Refund: permiso billing:create (alinea con POST /api/payments/:id/refund). El POS no expone
+      // un permiso propio de reembolso; billing:create es el gate financiero del dinero.
+      router.post('/api/restaurant/orders/:id/refund', guard('billing', 'create'), (req) => controller.refundOrder(req))
 
       // KDS / cocina (RES-4)
       router.get('/api/restaurant/kds', guard('restaurant', 'view'), (req) => controller.kdsQueue(req))
       router.put('/api/restaurant/kds/lines/:id', guard('restaurant', 'edit'), (req) => controller.setLineStatus(req))
+
+      // Modificadores/variantes (F1). Mismo criterio que categorías/ítems: lectura operativa
+      // ('restaurant', el mesero necesita ver las opciones para armar la comanda), mutación es
+      // config de la carta ('restaurant-catalog').
+      router.get('/api/restaurant/menu-items/:menuItemId/modifier-groups', guard('restaurant', 'view'), (req) => controller.indexModifierGroups(req))
+      router.post('/api/restaurant/menu-items/:menuItemId/modifier-groups', guard('restaurant-catalog', 'create'), (req) => controller.storeModifierGroup(req))
+      router.put('/api/restaurant/modifier-groups/:id', guard('restaurant-catalog', 'edit'), (req) => controller.updateModifierGroup(req))
+      router.delete('/api/restaurant/modifier-groups/:id', guard('restaurant-catalog', 'delete'), (req) => controller.destroyModifierGroup(req))
+      router.post('/api/restaurant/modifier-groups/:groupId/modifiers', guard('restaurant-catalog', 'create'), (req) => controller.storeModifier(req))
+      router.put('/api/restaurant/modifiers/:id', guard('restaurant-catalog', 'edit'), (req) => controller.updateModifier(req))
+      router.delete('/api/restaurant/modifiers/:id', guard('restaurant-catalog', 'delete'), (req) => controller.destroyModifier(req))
 
       log.info('Módulo restaurant listo')
       return service

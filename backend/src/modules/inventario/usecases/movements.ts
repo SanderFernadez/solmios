@@ -127,6 +127,16 @@ export async function listMovements(deps: MovementDeps, itemId: string, user: Cu
   return { data, total: data.length }
 }
 
+/**
+ * Lista movimientos por `source` para un hotel (sin ownership check: es query interna de conectores
+ * de sistema — p.ej. el conector restaurante→inventario la usa para hallar los `out` pos_sale a
+ * revertir en un refund). NO expone datos cross-hotel: el hotelId lo aporta el conector desde la
+ * comanda (ownership ya validado por el módulo restaurant).
+ */
+export async function listMovementsBySource(deps: MovementDeps, hotelId: string, source: string): Promise<StockMovementDTO[]> {
+  return (await deps.movements.findMany({ hotelId, source })) as StockMovementDTO[]
+}
+
 /** Valuación total del inventario del hotel: Σ currentStock × avgCost. */
 export function valuation(items: InventoryItemDTO[]): number {
   return round2(items.reduce((acc, i) => acc + (Number(i.currentStock) || 0) * (Number(i.avgCost) || 0), 0))

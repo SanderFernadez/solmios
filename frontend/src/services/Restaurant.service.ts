@@ -6,7 +6,7 @@ import { http } from './http'
 // ─── Tipos del dominio (espejo de backend/src/modules/restaurant/types.ts) ───
 export type OrderType = 'dine_in' | 'room_service' | 'takeaway'
 export type OrderStatus =
-  | 'open' | 'sent' | 'preparing' | 'ready' | 'served' | 'billed' | 'charged' | 'paid' | 'cancelled'
+  | 'open' | 'sent' | 'preparing' | 'ready' | 'served' | 'billed' | 'charged' | 'paid' | 'refunded' | 'cancelled'
 export type LineStatus = 'new' | 'preparing' | 'ready' | 'served' | 'cancelled'
 export type TableStatus = 'free' | 'occupied' | 'reserved'
 export type Settlement = 'folio' | 'payment'
@@ -60,6 +60,17 @@ export interface RestaurantTable {
   updatedAt?: string
 }
 
+// F1 — snapshot de una opción elegida, congelado en la línea (sobrevive a editar/borrar el modificador).
+export interface OrderLineModifierSnapshot {
+  groupId: string
+  groupName: string
+  modifierId: string
+  name: string
+  priceDelta: number
+  inventoryItemId?: string
+  inventoryQuantity?: number
+}
+
 export interface OrderLine {
   id: string
   hotelId: string
@@ -74,6 +85,41 @@ export interface OrderLine {
   stationName?: string
   status: LineStatus
   lineTotal: number
+  // F1: modificadores elegidos, snapshot en la MISMA fila. null/ausente = sin modificadores.
+  modifiers?: OrderLineModifierSnapshot[] | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+// F1 — Grupo de modificadores de un ítem (ej. "Tamaño": chico/grande).
+export type ModifierSelectionType = 'single' | 'multiple'
+export interface ModifierGroup {
+  id: string
+  hotelId: string
+  menuItemId: string
+  name: string
+  selectionType: ModifierSelectionType
+  required?: number
+  minSelect?: number
+  maxSelect?: number
+  sortOrder?: number
+  // Derivado: sus opciones, adjuntadas por GET .../modifier-groups (no hay ruta propia de listado).
+  modifiers?: Modifier[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+// F1 — Opción de un grupo de modificadores (ej. "Grande", "+tocino").
+export interface Modifier {
+  id: string
+  hotelId: string
+  groupId: string
+  name: string
+  priceDelta: number
+  inventoryItemId?: string
+  inventoryQuantity?: number
+  active?: number
+  sortOrder?: number
   createdAt?: string
   updatedAt?: string
 }
@@ -121,8 +167,10 @@ export interface TablePayload { name: string; zone?: string; capacity?: number; 
 export interface OpenOrderPayload {
   type: OrderType; tableId?: string; reservationId?: string; guestId?: string; roomId?: string; waiterId?: string
 }
-export interface AddLinePayload { menuItemId: string; quantity?: number; notes?: string }
+export interface AddLinePayload { menuItemId: string; quantity?: number; notes?: string; modifiers?: { modifierId: string }[] }
 export interface UpdateLinePayload { quantity?: number; notes?: string }
+export interface ModifierGroupPayload { name: string; selectionType?: ModifierSelectionType; required?: number; minSelect?: number; maxSelect?: number; sortOrder?: number }
+export interface ModifierPayload { name: string; priceDelta: number; inventoryItemId?: string; inventoryQuantity?: number; active?: number; sortOrder?: number }
 
 export const RestaurantService = {
   // ─── Estaciones (pantallas KDS configurables) ───
@@ -184,6 +232,9 @@ export const RestaurantService = {
   billOrder: (id: string, data: { tip?: number }): Promise<Order> => http.post(`/restaurant/orders/${id}/bill`, data),
   chargeToRoom: (id: string, data: { reservationId?: string }): Promise<Order> => http.post(`/restaurant/orders/${id}/charge-to-room`, data),
   payOrder: (id: string, data: { method: string }): Promise<Order> => http.post(`/restaurant/orders/${id}/pay`, data),
+  // Reembolso: solo órdenes status='paid' con settlement='payment' (cobro con tarjeta).
+  // Backend devuelve 409 ConflictError si la orden no cumple la condición.
+  refundOrder: (id: string): Promise<Order> => http.post(`/restaurant/orders/${id}/refund`),
 
   // ─── KDS / cocina ───
   async kdsQueue(station?: string): Promise<KdsTicket[]> {
@@ -192,6 +243,18 @@ export const RestaurantService = {
     return res.data ?? []
   },
   setLineStatus: (lineId: string, status: LineStatus): Promise<OrderLine> => http.put(`/restaurant/kds/lines/${lineId}`, { status }),
+
+  // ─── Modificadores/variantes (F1) ───
+  async listModifierGroups(menuItemId: string): Promise<ModifierGroup[]> {
+    const res = await http.get<{ data: ModifierGroup[]; total: number }>(`/restaurant/menu-items/${menuItemId}/modifier-groups`)
+    return res.data ?? []
+  },
+  createModifierGroup: (menuItemId: string, data: ModifierGroupPayload): Promise<ModifierGroup> => http.post(`/restaurant/menu-items/${menuItemId}/modifier-groups`, data),
+  updateModifierGroup: (id: string, data: Partial<ModifierGroupPayload>): Promise<ModifierGroup> => http.put(`/restaurant/modifier-groups/${id}`, data),
+  deleteModifierGroup: (id: string): Promise<void> => http.delete(`/restaurant/modifier-groups/${id}`),
+  createModifier: (groupId: string, data: ModifierPayload): Promise<Modifier> => http.post(`/restaurant/modifier-groups/${groupId}/modifiers`, data),
+  updateModifier: (id: string, data: Partial<ModifierPayload>): Promise<Modifier> => http.put(`/restaurant/modifiers/${id}`, data),
+  deleteModifier: (id: string): Promise<void> => http.delete(`/restaurant/modifiers/${id}`),
 }
 
 // ─── Labels ES para la UI ───
@@ -200,7 +263,7 @@ export const ORDER_TYPE_LABELS: Record<string, string> = {
 }
 export const ORDER_STATUS_LABELS: Record<string, string> = {
   open: 'Abierta', sent: 'Enviada', preparing: 'En preparación', ready: 'Lista', served: 'Servida',
-  billed: 'Con cuenta', charged: 'Cargada a habitación', paid: 'Pagada', cancelled: 'Cancelada',
+  billed: 'Con cuenta', charged: 'Cargada a habitación', paid: 'Pagada', refunded: 'Reembolsada', cancelled: 'Cancelada',
 }
 export const LINE_STATUS_LABELS: Record<string, string> = {
   new: 'Nueva', preparing: 'Preparando', ready: 'Lista', served: 'Servida', cancelled: 'Cancelada',

@@ -6,13 +6,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   RestaurantService,
-  type OrderWithLines, type MenuCategory, type MenuItem, type OrderLine,
+  type OrderWithLines, type MenuCategory, type MenuItem, type OrderLine, type ModifierGroup,
   ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
 } from '@/services/Restaurant.service'
 import { SettingsService } from '@/services/Settings.service'
 import { currencySymbol } from '@/composables/useCurrency'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -74,14 +75,65 @@ async function load() {
 }
 onMounted(load)
 
+// ─── Selector de modificadores (F1) — se abre ANTES de agregar la línea si el ítem tiene grupos ───
+const modifierPickItem = ref<MenuItem | null>(null)
+const modifierPickGroups = ref<ModifierGroup[]>([])
+const modifierPickLoading = ref(false)
+// groupId → modifierId(s) elegidos (single: máximo 1; multiple: N)
+const modifierSelection = ref<Record<string, string[]>>({})
+
+const modifierPickReady = computed(() => {
+  for (const g of modifierPickGroups.value) {
+    const chosen = modifierSelection.value[g.id] ?? []
+    if (g.required && chosen.length < 1) return false
+  }
+  return true
+})
+
 async function addItem(i: MenuItem) {
   if (!editable.value || !createPerm.value || busy.value) return
+  modifierPickLoading.value = true
+  try {
+    const groups = await RestaurantService.listModifierGroups(i.id)
+    if (groups.length) {
+      modifierPickItem.value = i
+      modifierPickGroups.value = groups
+      modifierSelection.value = Object.fromEntries(groups.map((g) => [g.id, []]))
+      return
+    }
+  } catch { /* si falla la carga de grupos, se agrega sin selector (no bloquea el flujo del mesero) */ }
+  finally { modifierPickLoading.value = false }
+  await commitAddItem(i, [])
+}
+
+function pickSingle(groupId: string, modifierId: string) { modifierSelection.value[groupId] = [modifierId] }
+function toggleMultiple(groupId: string, modifierId: string) {
+  const cur = modifierSelection.value[groupId] ?? []
+  modifierSelection.value[groupId] = cur.includes(modifierId) ? cur.filter((id) => id !== modifierId) : [...cur, modifierId]
+}
+
+async function confirmModifierPick() {
+  if (!modifierPickItem.value || !modifierPickReady.value) return
+  const modifiers = Object.values(modifierSelection.value).flat().map((modifierId) => ({ modifierId }))
+  const item = modifierPickItem.value
+  modifierPickItem.value = null
+  await commitAddItem(item, modifiers)
+}
+
+async function commitAddItem(i: MenuItem, modifiers: { modifierId: string }[]) {
+  if (busy.value) return
   busy.value = true
   try {
-    await RestaurantService.addLine(orderId.value, { menuItemId: i.id, quantity: 1 })
+    await RestaurantService.addLine(orderId.value, { menuItemId: i.id, quantity: 1, modifiers: modifiers.length ? modifiers : undefined })
     await reloadOrder()
   } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'No se pudo agregar') }
   finally { busy.value = false }
+}
+
+/** Etiqueta entre paréntesis con los modificadores elegidos, ej. "(Grande, +tocino)". */
+function modifiersLabel(l: OrderLine): string {
+  const names = (l.modifiers ?? []).map((m) => m.name)
+  return names.length ? `(${names.join(', ')})` : ''
 }
 
 async function setQty(line: OrderLine, qty: number) {
@@ -133,7 +185,7 @@ function cancel() {
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 max-w-6xl mx-auto">
+  <div>
     <div v-if="loading" class="py-20 text-center text-text-muted">Cargando…</div>
 
     <template v-else-if="order">
@@ -159,7 +211,7 @@ function cancel() {
             </div>
             <EmptyState v-if="!availableItems.length" title="Sin ítems disponibles" message="Configurá la carta primero." />
             <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <button v-for="i in availableItems" :key="i.id" @click="addItem(i)" :disabled="busy"
+              <button v-for="i in availableItems" :key="i.id" @click="addItem(i)" :disabled="busy || modifierPickLoading"
                 class="p-2.5 rounded-xl border-2 border-border text-left hover:border-navy hover:bg-surface disabled:opacity-50">
                 <div class="font-bold text-navy text-sm leading-tight">{{ i.name }}</div>
                 <div class="text-xs text-text-muted tabular-nums mt-0.5">{{ money(i.price) }}</div>
@@ -174,7 +226,7 @@ function cancel() {
           <div v-else class="divide-y divide-border">
             <div v-for="l in order.lines" :key="l.id" class="py-2.5 flex items-center gap-3">
               <div class="min-w-0 flex-1">
-                <div class="font-bold text-navy text-sm truncate">{{ l.name }}</div>
+                <div class="font-bold text-navy text-sm truncate">{{ l.name }} <span v-if="modifiersLabel(l)" class="font-normal text-text-muted">{{ modifiersLabel(l) }}</span></div>
                 <div class="text-[11px] text-text-muted tabular-nums">{{ money(l.unitPrice) }} c/u · {{ money(l.lineTotal) }}</div>
               </div>
               <div v-if="editable && (editPerm || deletePerm)" class="flex items-center gap-1.5 shrink-0">
@@ -212,6 +264,34 @@ function cancel() {
     </template>
 
     <EmptyState v-else title="Comanda no encontrada" message="La comanda no existe o no tenés acceso." />
+
+    <!-- Selector de modificadores (F1): se abre ANTES de agregar la línea -->
+    <AppModal v-if="modifierPickItem" :title="modifierPickItem.name" subtitle="Elegí las opciones antes de agregar a la comanda." @close="modifierPickItem = null">
+      <div class="space-y-4">
+        <div v-for="g in modifierPickGroups" :key="g.id">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="text-xs font-black text-navy uppercase">{{ g.name }}</span>
+            <span v-if="g.required" class="text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold font-bold">Obligatorio</span>
+          </div>
+          <div class="space-y-1.5">
+            <label v-for="m in g.modifiers ?? []" :key="m.id" class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border-2 border-border cursor-pointer hover:bg-surface">
+              <span class="flex items-center gap-2 text-sm text-navy">
+                <input v-if="g.selectionType === 'single'" type="radio" :name="`g-${g.id}`"
+                  :checked="(modifierSelection[g.id] ?? []).includes(m.id)" @change="pickSingle(g.id, m.id)" />
+                <input v-else type="checkbox"
+                  :checked="(modifierSelection[g.id] ?? []).includes(m.id)" @change="toggleMultiple(g.id, m.id)" />
+                {{ m.name }}
+              </span>
+              <span v-if="m.priceDelta" class="text-xs font-bold tabular-nums" :class="m.priceDelta < 0 ? 'text-coral' : 'text-navy'">{{ m.priceDelta > 0 ? '+' : '' }}{{ money(m.priceDelta) }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button @click="modifierPickItem = null" class="px-4 py-2 rounded-lg border-2 border-border text-navy font-bold text-sm">Cancelar</button>
+        <button @click="confirmModifierPick" :disabled="!modifierPickReady || busy" class="px-4 py-2 rounded-lg bg-navy text-white font-bold text-sm disabled:opacity-50">Agregar</button>
+      </template>
+    </AppModal>
 
     <ConfirmModal v-if="confirmModal" v-bind="confirmModal" :loading="confirmBusy" @confirm="runConfirm" @close="confirmModal = null" />
   </div>

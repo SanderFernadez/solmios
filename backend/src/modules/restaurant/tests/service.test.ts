@@ -489,6 +489,80 @@ describe('RestaurantService — cuenta + cobro (RES-5)', () => {
   })
 })
 
+// ─── RES-5: refund de orden POS ─────────────────────────────────────────────
+describe('RestaurantService — refundOrder (RES-5 refund)', () => {
+  // Comanda ya cobrada con tarjeta: status paid + settlement payment + paymentId.
+  function setupPaid(orderOverrides: any = {}) {
+    const ordersStore: any[] = [{
+      id: 'o1', hotelId: 'h1', number: 'CMD-2026-0001',
+      status: 'paid', settlement: 'payment', paymentId: 'p1',
+      tableId: 't1', tip: 0, subtotal: 20, tax: 3.6, total: 23.6,
+      ...orderOverrides,
+    }]
+    const tablesStore: any[] = [{ id: 't1', hotelId: 'h1', name: 'M1', status: 'free' }]
+    const build = (ports?: any) => {
+      const s = svc3({ orders: backed<OrderDTO>(ordersStore), lines: backed<any>([]), tables: backed<TableDTO>(tablesStore), config: taxConfig(), hotels: makeRepo<any>() }, strictAuth)
+      if (ports) s.setSettlementDeps(ports)
+      return s
+    }
+    return { ordersStore, tablesStore, build }
+  }
+
+  it('6.1: rechaza refund de orden open/cancelled/charged (solo paid+payment)', async () => {
+    const ports = { refundPayment: async () => {} }
+    for (const status of ['open', 'cancelled', 'charged'] as const) {
+      const { build } = setupPaid({ status, settlement: status === 'charged' ? 'folio' : undefined })
+      await expect(build(ports).refundOrder('o1', user)).rejects.toThrow('Solo se puede reembolsar')
+    }
+  })
+
+  it('6.2: paid+payment → llama refundPayment, marca refunded, emite onOrderRefunded', async () => {
+    const { ordersStore, build } = setupPaid()
+    const calls: any[] = []
+    let evt = false
+    const s = build({ refundPayment: async (i: any) => { calls.push(i) } })
+    s.setSockets({ onOrderRefunded: async () => { evt = true } })
+    const o = await s.refundOrder('o1', user)
+    expect(o.status).toBe('refunded')
+    expect(ordersStore[0].status).toBe('refunded')
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toEqual({ paymentId: 'p1' })
+    expect(evt).toBe(true)
+  })
+
+  it('6.3: reentrada — segundo refund de la MISMA orden no duplica port ni socket', async () => {
+    const { build } = setupPaid()
+    const portCalls: any[] = []
+    let evtCount = 0
+    const s = build({ refundPayment: async (i: any) => { portCalls.push(i) } })
+    s.setSockets({ onOrderRefunded: async () => { evtCount++ } })
+    const first = await s.refundOrder('o1', user)
+    expect(first.status).toBe('refunded')
+    // Segunda llamada: la orden ya está refunded → debe ser no-op (devuelve sin tocar port/socket).
+    const second = await s.refundOrder('o1', user)
+    expect(second.status).toBe('refunded')
+    expect(portCalls).toHaveLength(1)   // idempotente: NO se vuelve a llamar
+    expect(evtCount).toBe(1)            // idem socket
+  })
+
+  it('6.2b: paid PERO settlement=folio (cargo a hab) → rechazado (v1 solo payment)', async () => {
+    const { build } = setupPaid({ settlement: 'folio' })
+    await expect(build({ refundPayment: async () => {} }).refundOrder('o1', user)).rejects.toThrow('Solo se puede reembolsar')
+  })
+
+  it('6.2c: sin conector refundPayment wireado → ValidationError', async () => {
+    const { build } = setupPaid()
+    await expect(build().refundOrder('o1', user)).rejects.toThrow('no disponible')
+  })
+
+  it('IDOR: refund de comanda de otro hotel es inaccesible', async () => {
+    const orders = backed<OrderDTO>([], [{ id: 'o1', hotelId: 'OTRO', status: 'paid', settlement: 'payment', paymentId: 'p1', tip: 0 }])
+    const s = svc3({ orders, lines: backed<any>([]), config: taxConfig(), hotels: makeRepo<any>() }, strictAuth)
+    s.setSettlementDeps({ refundPayment: async () => {} })
+    await expect(s.refundOrder('o1', user)).rejects.toThrow('IDOR')
+  })
+})
+
 // ─── RES-4: KDS / cocina ─────────────────────────────────────────────────────
 describe('RestaurantService — KDS (RES-4)', () => {
   function kdsSetup(linesSeed: any[], orderOverrides: any = {}) {

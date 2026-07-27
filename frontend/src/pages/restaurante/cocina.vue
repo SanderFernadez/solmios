@@ -70,6 +70,12 @@ function hhmm(iso?: string): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
 }
 
+/** F1: modificadores elegidos junto al nombre del plato — la cocina necesita "Grande, sin cebolla". */
+function modifiersLabel(l: OrderLine): string {
+  const names = (l.modifiers ?? []).map((m) => m.name)
+  return names.length ? `(${names.join(', ')})` : ''
+}
+
 onMounted(async () => {
   try {
     stations.value = (await RestaurantService.listStations()).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -81,7 +87,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+  <div class="space-y-4">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-xl sm:text-2xl font-black text-navy">Cocina — KDS</h1>
@@ -109,7 +115,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="p-2.5 space-y-2 flex-1">
           <div v-for="l in t.lines" :key="l.id" :class="['rounded-xl border-2 p-2.5', lineTint[l.status] || 'border-border']">
             <div class="flex items-center justify-between gap-2">
-              <span class="font-bold text-navy text-sm">{{ l.quantity }}× {{ l.name }}</span>
+              <span class="font-bold text-navy text-sm">{{ l.quantity }}× {{ l.name }} <span v-if="modifiersLabel(l)" class="font-normal text-text-muted">{{ modifiersLabel(l) }}</span></span>
             </div>
             <div v-if="l.notes" class="text-[11px] text-gold font-bold mt-0.5">⚑ {{ l.notes }}</div>
             <div v-if="editPerm && NEXT[l.status]" class="flex flex-wrap gap-1.5 mt-2">

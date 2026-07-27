@@ -11,6 +11,8 @@ import {
   OpenOrderSchema, AddLineSchema, UpdateLineSchema,
   BillSchema, ChargeToRoomSchema, PaySchema,
   KdsLineStatusSchema,
+  CreateModifierGroupSchema, UpdateModifierGroupSchema,
+  CreateModifierSchema, UpdateModifierSchema,
 } from './validators/schema'
 
 export class RestaurantController {
@@ -203,6 +205,12 @@ export class RestaurantController {
     const item = await this.service.payOrder(req.params.id, data as any, req.user as any)
     return { status: 200, body: item }
   }
+  // Refund: clon de cancelOrder (sin validateSchema: NO hay body). El usecase valida estado + paymentId.
+  async refundOrder(req: HttpRequest) {
+    this.logger.info('POST /restaurant/orders/:id/refund', { id: req.params.id })
+    const item = await this.service.refundOrder(req.params.id, req.user as any)
+    return { status: 200, body: item }
+  }
 
   // ─── KDS / cocina (RES-4) ───
   async kdsQueue(req: HttpRequest) {
@@ -215,5 +223,45 @@ export class RestaurantController {
     const data = validateSchema(KdsLineStatusSchema, req.body) as any
     const item = await this.service.setLineStatus(req.params.id, data.status, req.user as any)
     return { status: 200, body: item }
+  }
+
+  // ─── Modificadores/variantes (F1) ───
+  async indexModifierGroups(req: HttpRequest) {
+    this.logger.info('GET /restaurant/menu-items/:menuItemId/modifier-groups', { menuItemId: req.params.menuItemId })
+    return { status: 200, body: await this.service.listModifierGroups(req.params.menuItemId, req.user as any) }
+  }
+  async storeModifierGroup(req: HttpRequest) {
+    this.logger.info('POST /restaurant/menu-items/:menuItemId/modifier-groups', { menuItemId: req.params.menuItemId })
+    const data = validateSchema(CreateModifierGroupSchema, req.body)
+    const item = await this.service.createModifierGroup(req.params.menuItemId, data as any, req.user as any)
+    return { status: 201, body: item }
+  }
+  async updateModifierGroup(req: HttpRequest) {
+    this.logger.info('PUT /restaurant/modifier-groups/:id', { id: req.params.id })
+    const data = validateSchema(UpdateModifierGroupSchema, req.body)
+    const item = await this.service.updateModifierGroup(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+  async destroyModifierGroup(req: HttpRequest) {
+    this.logger.info('DELETE /restaurant/modifier-groups/:id', { id: req.params.id })
+    await this.service.deleteModifierGroup(req.params.id, req.user as any)
+    return { status: 204, body: null }
+  }
+  async storeModifier(req: HttpRequest) {
+    this.logger.info('POST /restaurant/modifier-groups/:groupId/modifiers', { groupId: req.params.groupId })
+    const data = validateSchema(CreateModifierSchema, req.body)
+    const item = await this.service.createModifier(req.params.groupId, data as any, req.user as any)
+    return { status: 201, body: item }
+  }
+  async updateModifier(req: HttpRequest) {
+    this.logger.info('PUT /restaurant/modifiers/:id', { id: req.params.id })
+    const data = validateSchema(UpdateModifierSchema, req.body)
+    const item = await this.service.updateModifier(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+  async destroyModifier(req: HttpRequest) {
+    this.logger.info('DELETE /restaurant/modifiers/:id', { id: req.params.id })
+    await this.service.deleteModifier(req.params.id, req.user as any)
+    return { status: 204, body: null }
   }
 }

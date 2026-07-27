@@ -13,6 +13,7 @@ import { SettingsService } from '@/services/Settings.service'
 import { currencySymbol } from '@/composables/useCurrency'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { useToast } from '@/composables/useToast'
 import { usePermissions } from '@/composables/usePermissions'
 
@@ -22,6 +23,11 @@ const toast = useToast()
 const { can } = usePermissions()
 const orderId = computed(() => String(route.params.id))
 const canPay = computed(() => can('restaurant', 'edit'))
+// Reembolso: solo órdenes pagadas con tarjeta (settlement='payment') y con permiso billing:create.
+const canRefund = computed(() => can('billing', 'create'))
+
+const refundOpen = ref(false)
+const refundBusy = ref(false)
 
 const loading = ref(true)
 const busy = ref(false)
@@ -44,6 +50,11 @@ const TIP_PRESETS = [0, 0.1, 0.15, 0.2]
 const SETTLED = ['charged', 'paid']
 const settled = computed(() => !!order.value && SETTLED.includes(order.value.status))
 const cancelled = computed(() => order.value?.status === 'cancelled')
+const refunded = computed(() => order.value?.status === 'refunded')
+// Botón visible solo si la orden está pagada con tarjeta y el user tiene permiso.
+const refundable = computed(() =>
+  canRefund.value && order.value?.status === 'paid' && order.value?.settlement === 'payment'
+)
 const money = (n: number): string => `${currencySymbol(currency.value)}${Number(n || 0).toFixed(2)}`
 
 // Subtotal/impuesto vienen del backend; la propina es editable y NO se grava. Total = subtotal + tax + tip.
@@ -135,10 +146,25 @@ async function chargeRoom() {
     busy.value = false
   }
 }
+
+async function confirmRefund() {
+  if (!refundable.value || refundBusy.value || !order.value) return
+  refundBusy.value = true
+  try {
+    await RestaurantService.refundOrder(orderId.value)
+    toast.success('Orden reembolsada', 'Se devolvió el dinero al cliente y se repuso el inventario.')
+    await load()
+  } catch (e: unknown) {
+    toast.error('No se pudo reembolsar', e instanceof Error ? e.message : 'Intentá de nuevo.')
+  } finally {
+    refundBusy.value = false
+    refundOpen.value = false
+  }
+}
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 max-w-2xl mx-auto">
+  <div>
     <div v-if="loading" class="py-20 text-center text-text-muted">Cargando…</div>
 
     <template v-else-if="order">
@@ -151,6 +177,16 @@ async function chargeRoom() {
       <div v-if="cancelled">
         <EmptyState title="Comanda cancelada" message="Una comanda cancelada no se puede cobrar." />
       </div>
+      <div v-else-if="refunded">
+        <SectionCard title="Comanda reembolsada">
+          <div class="py-6 text-center">
+            <p class="text-coral font-bold">Reembolsada. El dinero fue devuelto al cliente.</p>
+            <p class="text-2xl font-black text-navy mt-2 tabular-nums">{{ money(order.total) }}</p>
+            <router-link to="/panel/restaurante/salon" class="inline-block mt-4 px-4 py-2 rounded-lg bg-navy text-white text-sm font-bold">Volver al salón</router-link>
+          </div>
+        </SectionCard>
+      </div>
+
       <div v-else-if="settled">
         <SectionCard title="Comanda liquidada">
           <div class="py-6 text-center">
@@ -158,7 +194,13 @@ async function chargeRoom() {
               {{ order.status === 'paid' ? 'Cobrada directamente.' : 'Cargada a la habitación.' }}
             </p>
             <p class="text-2xl font-black text-navy mt-2 tabular-nums">{{ money(order.total) }}</p>
-            <router-link to="/panel/restaurante/salon" class="inline-block mt-4 px-4 py-2 rounded-lg bg-navy text-white text-sm font-bold">Volver al salón</router-link>
+            <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <router-link to="/panel/restaurante/salon" class="px-4 py-2 rounded-lg bg-navy text-white text-sm font-bold">Volver al salón</router-link>
+              <button v-if="refundable" @click="refundOpen = true"
+                class="px-4 py-2 rounded-lg bg-coral text-white text-sm font-bold hover:bg-coral/80 disabled:opacity-50">
+                Reembolsar
+              </button>
+            </div>
           </div>
         </SectionCard>
       </div>
@@ -228,5 +270,22 @@ async function chargeRoom() {
     </template>
 
     <EmptyState v-else title="Comanda no encontrada" message="La comanda no existe o no tenés acceso." />
+
+    <!-- Confirmación de reembolso -->
+    <AppModal :open="refundOpen" title="Reembolsar orden" size="sm" @close="refundOpen = false">
+      <div class="space-y-3 text-sm text-navy">
+        <p>Se <strong>devolverá el dinero al cliente</strong> y se <strong>repondrá el inventario vendido</strong>.</p>
+        <p class="text-coral font-bold">Esta acción no se puede deshacer.</p>
+        <p class="text-text-muted">Total: <span class="font-black text-navy tabular-nums">{{ money(order?.total ?? 0) }}</span></p>
+      </div>
+      <template #footer>
+        <button @click="refundOpen = false" :disabled="refundBusy"
+          class="px-4 py-2 rounded-lg border-2 border-border text-navy text-sm font-bold hover:bg-surface disabled:opacity-50">Cancelar</button>
+        <button @click="confirmRefund" :disabled="refundBusy"
+          class="px-4 py-2 rounded-lg bg-coral text-white text-sm font-bold hover:bg-coral/80 disabled:opacity-50">
+          {{ refundBusy ? 'Procesando…' : 'Reembolsar' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>

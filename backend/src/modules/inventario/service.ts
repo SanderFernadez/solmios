@@ -8,6 +8,7 @@ import type { InventarioSockets } from './sockets'
 import * as itemsCrud from './usecases/items-crud'
 import * as ledger from './usecases/movements'
 import * as recipesUc from './usecases/recipes'
+import * as revertUc from './usecases/revert-pos-sale'
 
 export class InventarioService {
   private sockets: InventarioSockets = {}
@@ -67,6 +68,15 @@ export class InventarioService {
 
   listMovements(itemId: string, user: CurrentUser) { return ledger.listMovements(this.ledgerDeps(), itemId, user) }
 
+  /**
+   * Lista movimientos por `source` (query interna para conectores — p.ej. reversión de inventario
+   * ante un refund POS: halla los `out` pos_sale originales). El `hotelId` lo aporta el conector
+   * desde el recurso disparador (comanda, cuya ownership ya fue validada por el módulo origen).
+   */
+  listMovementsBySource(hotelId: string, source: string): Promise<StockMovementDTO[]> {
+    return ledger.listMovementsBySource(this.ledgerDeps(), hotelId, source)
+  }
+
   async valuation(user: CurrentUser): Promise<{ total: number; items: number }> {
     const { data } = await itemsCrud.listItems(this.itemDeps(), undefined, user)
     return { total: ledger.valuation(data), items: data.length }
@@ -81,6 +91,18 @@ export class InventarioService {
   setRecipe(dto: { menuItemId: string; inventoryItemId: string; quantity: number }, user: CurrentUser) { return recipesUc.setRecipe(this.recipeDeps(), dto, user) }
   /** Descuenta stock por la venta de una línea de comanda (lo llama el conector restaurant→inventario). */
   consumeForSale(input: { hotelId: string; menuItemId: string; soldQty: number; lineId: string }, user: CurrentUser) { return recipesUc.consumeForSale(this.recipeDeps(), input, user) }
+
+  /** F1: descuenta el insumo extra declarado por cada modificador elegido en el snapshot de la línea. */
+  consumeForSaleWithModifiers(input: { hotelId: string; line: any }, user: CurrentUser) { return recipesUc.consumeForSaleWithModifiers(this.recipeDeps(), input, user) }
+
+  /**
+   * Revierte el stock descontado por una venta POS reembolsada (lo llama el conector restaurant→inventario
+   * ante `onOrderRefunded`). Crea un `in` pos_refund espejo por cada `out` pos_sale de las líneas de la
+   * orden. Idempotente por UNIQUE (hotelId,source,sourceId). Best-effort: nunca rompe el refund del payment.
+   */
+  revertPosSale(input: { hotelId: string; lineIds: string[] }, user: CurrentUser) {
+    return revertUc.revertPosSale(this.ledgerDeps(), input, user)
+  }
 
   /** Menu items del hotel que TIENEN al menos una receta. Lo inyecta el conector en restaurant para el badge "Sin receta". */
   async menuItemsWithRecipe(user: CurrentUser): Promise<string[]> {

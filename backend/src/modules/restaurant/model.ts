@@ -120,6 +120,46 @@ export const RestaurantOrderItemModel: ModelDefinition = {
     // new | preparing | ready | served | cancelled (ciclo KDS por línea)
     status: { type: 'string', default: 'new' },
     lineTotal: { type: 'number', default: 0 },
+    // F1 (carta-experiencia-avanzada): snapshot de modificadores elegidos, EN LA MISMA fila (no
+    // sub-líneas) — [{ groupId, groupName, modifierId, name, priceDelta }]. null = sin modificadores
+    // (compat retro con líneas viejas). order-totals.ts/settlement.ts no lo leen ni lo necesitan.
+    modifiers: { type: 'json' },
+  },
+  timestamps: true,
+}
+
+/** F1 — Grupo de modificadores de un ítem (ej. "Tamaño": chico/grande). selectionType: single|multiple. */
+export const MenuItemModifierGroupModel: ModelDefinition = {
+  table: 'menu_item_modifier_groups',
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    menuItemId: { type: 'string', required: true, indexed: true },
+    name: { type: 'string', required: true },
+    selectionType: { type: 'string', default: 'single' },   // single | multiple
+    required: { type: 'number', default: 0 },                // booleano como INTEGER
+    minSelect: { type: 'number', default: 1 },               // solo aplica si selectionType='multiple'
+    maxSelect: { type: 'number' },                           // null = sin tope
+    sortOrder: { type: 'number', default: 0 },
+  },
+  timestamps: true,
+}
+
+/** F1 — Opción de un grupo de modificadores (ej. "Grande", "+tocino"). priceDelta puede ser negativo. */
+export const MenuItemModifierModel: ModelDefinition = {
+  table: 'menu_item_modifiers',
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    groupId: { type: 'string', required: true, indexed: true },
+    name: { type: 'string', required: true },
+    priceDelta: { type: 'number', default: 0 },
+    // Consumo opcional de inventario propio (FK lógica a inventory_items, dueño del módulo inventario;
+    // ninguna FK física — mismo patrón que menu_item_recipes.inventoryItemId).
+    inventoryItemId: { type: 'string', indexed: true },
+    inventoryQuantity: { type: 'number' },
+    active: { type: 'number', default: 1 },
+    sortOrder: { type: 'number', default: 0 },
   },
   timestamps: true,
 }
@@ -131,4 +171,6 @@ export function registerRestaurantModels(orm: ORM): void {
   orm.define('RestaurantTables', RestaurantTableModel)
   orm.define('RestaurantOrders', RestaurantOrderModel)
   orm.define('RestaurantOrderItems', RestaurantOrderItemModel)
+  orm.define('MenuItemModifierGroups', MenuItemModifierGroupModel)
+  orm.define('MenuItemModifiers', MenuItemModifierModel)
 }

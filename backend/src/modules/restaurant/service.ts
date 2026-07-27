@@ -3,8 +3,8 @@
 // conectores). RES-0: estaciones (inline). RES-1: carta (categorías + ítems, usecases). RES-2: mesas
 // (usecases). Sprints siguientes agregan comandas, KDS y cobro. Ver openspec/changes/restaurante-pos.
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
-import { NotFoundError, ValidationError } from 'arckode-framework'
-import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO, CurrentUser } from './types'
+import { ValidationError } from 'arckode-framework'
+import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO, CurrentUser, ModifierGroupDTO, ModifierDTO } from './types'
 import type { RestaurantSockets } from './sockets'
 import * as categoriesCrud from './usecases/categories-crud'
 import * as itemsCrud from './usecases/items-crud'
@@ -13,6 +13,8 @@ import * as orders from './usecases/orders'
 import * as orderLines from './usecases/order-lines'
 import * as settlement from './usecases/settlement'
 import * as kds from './usecases/kds'
+import * as modifiersCrud from './usecases/modifiers-crud'
+import * as stationsCrud from './usecases/stations-crud'
 import type { LineStatus } from './types'
 
 export class RestaurantService {
@@ -36,6 +38,9 @@ export class RestaurantService {
     private readonly lines?: RepositoryAdapter<OrderItemDTO>,
     private readonly config?: RepositoryAdapter<any>,
     private readonly hotels?: RepositoryAdapter<any>,
+    // F1: modificadores/variantes. Opcionales al final (retrocompat con callers/tests existentes).
+    private readonly modifierGroups?: RepositoryAdapter<ModifierGroupDTO>,
+    private readonly modifiers?: RepositoryAdapter<ModifierDTO>,
   ) {}
 
   // Acumula handlers, nunca pisa el anterior (composición de sockets).
@@ -60,13 +65,9 @@ export class RestaurantService {
     this.recipePorts = { ...this.recipePorts, ...p }
   }
 
-  /** hotelId SIEMPRE del JWT (nunca del body) — anti-IDOR multi-tenant. */
-  private hotelFor(user: CurrentUser): string {
-    const h = user.hotelId || ''
-    if (!h) throw new ValidationError('Sin hotel asignado')
-    return h
+  private stationDeps(): stationsCrud.StationsCrudDeps {
+    return { stations: this.stations, userRepo: this.userRepo, auth: this.auth }
   }
-
   private catDeps(): categoriesCrud.CategoriesCrudDeps {
     return { categories: this.categories, items: this.items, stations: this.stations, userRepo: this.userRepo, auth: this.auth }
   }
@@ -82,7 +83,15 @@ export class RestaurantService {
   }
   private orderLinesDeps(): orderLines.OrderLinesDeps {
     if (!this.orders || !this.lines || !this.config || !this.hotels) throw new ValidationError('Comandas no configuradas')
-    return { orders: this.orders, lines: this.lines, items: this.items, categories: this.categories, stations: this.stations, config: this.config, hotels: this.hotels, userRepo: this.userRepo, auth: this.auth }
+    return {
+      orders: this.orders, lines: this.lines, items: this.items, categories: this.categories, stations: this.stations,
+      config: this.config, hotels: this.hotels, userRepo: this.userRepo, auth: this.auth,
+      modifierGroups: this.modifierGroups, modifiers: this.modifiers,
+    }
+  }
+  private modifierDeps(): modifiersCrud.ModifiersCrudDeps {
+    if (!this.modifierGroups || !this.modifiers) throw new ValidationError('Modificadores no configurados')
+    return { modifierGroups: this.modifierGroups, modifiers: this.modifiers, items: this.items, userRepo: this.userRepo, auth: this.auth }
   }
   private settlementDeps(): settlement.SettlementDeps {
     if (!this.orders || !this.lines || !this.hotels) throw new ValidationError('Comandas no configuradas')
@@ -93,51 +102,12 @@ export class RestaurantService {
     return { orders: this.orders, lines: this.lines, userRepo: this.userRepo, auth: this.auth, sockets: this.sockets }
   }
 
-  // ─── Estaciones (RES-0) — pantallas KDS configurables por hotel ───
-  async listStations(user: CurrentUser): Promise<{ data: StationDTO[]; total: number }> {
-    const data = await this.stations.findMany({ hotelId: this.hotelFor(user) })
-    data.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    return { data, total: data.length }
-  }
-
-  async getStation(id: string, user: CurrentUser): Promise<StationDTO> {
-    const item = await this.stations.findById(id)
-    if (!item) throw new NotFoundError('Estación no encontrada')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    return item
-  }
-
-  async createStation(dto: { name: string; active?: number; sortOrder?: number }, user: CurrentUser): Promise<StationDTO> {
-    const hotelId = this.hotelFor(user)
-    if (!dto.name?.trim()) throw new ValidationError('El nombre de la estación es obligatorio')
-    return this.stations.create({
-      hotelId,
-      name: dto.name.trim(),
-      active: dto.active ?? 1,
-      sortOrder: dto.sortOrder ?? 0,
-    } as Omit<StationDTO, 'id'>)
-  }
-
-  async updateStation(id: string, dto: { name?: string; active?: number; sortOrder?: number }, user: CurrentUser): Promise<StationDTO> {
-    const existing = await this.stations.findById(id)
-    if (!existing) throw new NotFoundError('Estación no encontrada')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    const item = await this.stations.update(id, dto as Partial<Omit<StationDTO, 'id'>>)
-    if (!item) throw new NotFoundError('Estación no encontrada')
-    return item
-  }
-
-  async deleteStation(id: string, user: CurrentUser): Promise<void> {
-    const existing = await this.stations.findById(id)
-    if (!existing) throw new NotFoundError('Estación no encontrada')
-    const me = await this.userRepo.findById(user.id)
-    this.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-    // Las categorías/ítems que la referencian caen al fallback de ruteo (1ª estación activa / "Sin estación").
-    const deleted = await this.stations.delete(id)
-    if (!deleted) throw new NotFoundError('Estación no encontrada')
-  }
+  // ─── Estaciones (RES-0) — pantallas KDS configurables por hotel — delegan a usecases/stations-crud ───
+  listStations(user: CurrentUser) { return stationsCrud.listStations(this.stationDeps(), user) }
+  getStation(id: string, user: CurrentUser) { return stationsCrud.getStation(this.stationDeps(), id, user) }
+  createStation(dto: stationsCrud.CreateStationInput, user: CurrentUser) { return stationsCrud.createStation(this.stationDeps(), dto, user) }
+  updateStation(id: string, dto: stationsCrud.UpdateStationInput, user: CurrentUser) { return stationsCrud.updateStation(this.stationDeps(), id, dto, user) }
+  deleteStation(id: string, user: CurrentUser) { return stationsCrud.deleteStation(this.stationDeps(), id, user) }
 
   // ─── Carta: categorías (RES-1) — delegan a usecases/categories-crud ───
   listCategories(user: CurrentUser) { return categoriesCrud.listCategories(this.catDeps(), user) }
@@ -187,8 +157,18 @@ export class RestaurantService {
   billOrder(id: string, dto: { tip?: number }, user: CurrentUser) { return settlement.billOrder(this.settlementDeps(), id, dto, user) }
   chargeToRoom(id: string, dto: { reservationId?: string }, user: CurrentUser) { return settlement.chargeToRoom(this.settlementDeps(), id, dto, user) }
   payOrder(id: string, dto: { method: string }, user: CurrentUser) { return settlement.payOrder(this.settlementDeps(), id, dto, user) }
+  refundOrder(id: string, user: CurrentUser) { return settlement.refundOrder(this.settlementDeps(), id, user) }
 
   // ─── KDS / cocina (RES-4) — delegan a usecases/kds ───
   kdsQueue(station: string | undefined, user: CurrentUser) { return kds.kdsQueue(this.kdsDeps(), station, user) }
   setLineStatus(lineId: string, status: LineStatus, user: CurrentUser) { return kds.setLineStatus(this.kdsDeps(), lineId, status, user) }
+
+  // ─── Modificadores/variantes (F1) — delegan a usecases/modifiers-crud ───
+  listModifierGroups(menuItemId: string, user: CurrentUser) { return modifiersCrud.listGroups(this.modifierDeps(), menuItemId, user) }
+  createModifierGroup(menuItemId: string, dto: modifiersCrud.CreateModifierGroupInput, user: CurrentUser) { return modifiersCrud.createGroup(this.modifierDeps(), menuItemId, dto, user) }
+  updateModifierGroup(id: string, dto: modifiersCrud.UpdateModifierGroupInput, user: CurrentUser) { return modifiersCrud.updateGroup(this.modifierDeps(), id, dto, user) }
+  deleteModifierGroup(id: string, user: CurrentUser) { return modifiersCrud.deleteGroup(this.modifierDeps(), id, user) }
+  createModifier(groupId: string, dto: modifiersCrud.CreateModifierInput, user: CurrentUser) { return modifiersCrud.createModifier(this.modifierDeps(), groupId, dto, user) }
+  updateModifier(id: string, dto: modifiersCrud.UpdateModifierInput, user: CurrentUser) { return modifiersCrud.updateModifier(this.modifierDeps(), id, dto, user) }
+  deleteModifier(id: string, user: CurrentUser) { return modifiersCrud.deleteModifier(this.modifierDeps(), id, user) }
 }
