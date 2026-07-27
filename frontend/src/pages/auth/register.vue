@@ -58,9 +58,13 @@
           </div>
         </div>
 
-        <div v-if="referrerHotelName" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan/10 border border-cyan/30 mb-4">
-          <span class="w-1.5 h-1.5 rounded-full bg-cyan shrink-0"></span>
-          <span class="text-xs font-bold text-navy">Te invitó <strong>{{ referrerHotelName }}</strong> — al validar tu cuenta, gana meses gratis.</span>
+        <div v-if="referrerHotelName" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-cyan/10 border-2 border-cyan/40 mb-4">
+          <span class="w-2 h-2 rounded-full bg-cyan shrink-0"></span>
+          <div class="min-w-0">
+            <div class="text-[11px] font-bold uppercase tracking-wide text-text-muted">Te invitó</div>
+            <div class="text-base font-black text-navy truncate">{{ referrerHotelName }}</div>
+            <div class="text-[11px] text-text-muted">Al validar tu cuenta, gana meses gratis.</div>
+          </div>
         </div>
 
         <h1 class="text-2xl font-black text-navy mb-1">
