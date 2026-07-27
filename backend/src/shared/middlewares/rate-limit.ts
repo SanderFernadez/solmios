@@ -16,16 +16,21 @@ setInterval(() => {
   }
 }, SWEEP_INTERVAL_MS)
 
-export function rateLimit(key: string): { allowed: boolean; retryAfter?: number } {
+export function rateLimit(
+  key: string,
+  opts?: { maxAttempts?: number; windowMs?: number },
+): { allowed: boolean; retryAfter?: number } {
+  const maxAttempts = opts?.maxAttempts ?? MAX_ATTEMPTS
+  const windowMs = opts?.windowMs ?? WINDOW_MS
   const now = Date.now()
   const record = attempts.get(key)
 
   if (!record || now > record.resetAt) {
-    attempts.set(key, { count: 1, resetAt: now + WINDOW_MS })
+    attempts.set(key, { count: 1, resetAt: now + windowMs })
     return { allowed: true }
   }
 
-  if (record.count >= MAX_ATTEMPTS) {
+  if (record.count >= maxAttempts) {
     const retryAfter = Math.ceil((record.resetAt - now) / MS_TO_SEC)
     return { allowed: false, retryAfter }
   }
