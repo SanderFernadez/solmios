@@ -20,6 +20,8 @@ export interface SignupPayload {
   address?: string
   phone?: string
   planId?: string
+  /** Código de referido (`?ref=` en la URL, ver `/r/:code`). */
+  referralCode?: string
   /** Token del captcha (Turnstile). Solo si el build tiene site key. */
   captchaToken?: string
 }
@@ -42,6 +44,10 @@ export interface MySubscription {
   daysLeft: number | null
   /** Ya pagó al menos una vez (tiene Customer de Stripe) → puede abrir el Billing Portal. */
   hasStripeCustomer: boolean
+  /** Categoría especial activa (Fundador Uno/Dos, Pionero), si tiene. */
+  specialCategory?: 'founder_one' | 'founder_two' | 'pioneer' | null
+  /** % de descuento activo (manual o de categoría), si tiene. */
+  activeDiscountPct?: number | null
 }
 
 /**

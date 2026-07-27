@@ -10,10 +10,15 @@
       <div v-if="loading" class="h-16 animate-pulse rounded-xl bg-surface"></div>
       <div v-else class="flex items-center gap-4 flex-wrap">
         <span class="text-[11px] font-bold px-3 py-1.5 rounded-full" :class="statusClass">{{ statusLabel }}</span>
+        <span v-if="sub?.specialCategory" class="text-[11px] font-bold px-3 py-1.5 rounded-full bg-warning/10 text-warning">{{ categoryLabel(sub.specialCategory) }}</span>
+        <span v-if="sub?.activeDiscountPct" class="text-[11px] font-bold px-3 py-1.5 rounded-full bg-teal/10 text-teal">{{ sub.activeDiscountPct }}% de descuento activo</span>
         <div v-if="sub?.status === 'trialing' && sub.daysLeft !== null" class="text-sm text-text-secondary">
           Te {{ sub.daysLeft === 1 ? 'queda' : 'quedan' }}
           <strong class="text-navy">{{ sub.daysLeft }} {{ sub.daysLeft === 1 ? 'día' : 'días' }}</strong>
           de prueba.
+        </div>
+        <div v-else-if="sub?.status === 'past_due'" class="text-sm text-warning font-bold">
+          Tu pago está pendiente. Regularizalo antes de que termine el período de gracia para no perder el acceso.
         </div>
         <div v-else-if="sub && !sub.allowed" class="text-sm text-danger font-bold">
           Tu acceso está cortado. Elegí un plan para volver a entrar.
@@ -27,8 +32,24 @@
       </div>
     </SectionCard>
 
+    <!-- Suspendido: bloquea el resto del panel, solo queda pagar/reactivar -->
+    <SectionCard v-if="sub?.status === 'suspended'" title="Suscripción suspendida" class="mt-6">
+      <div class="text-center py-6">
+        <p class="text-sm text-text-secondary mb-4 max-w-md mx-auto">
+          Tu suscripción fue suspendida por falta de pago. Regularizá el pago para volver a acceder
+          al panel y a tus reservas.
+        </p>
+        <button
+          v-if="sub?.hasStripeCustomer"
+          @click="openPortal"
+          :disabled="portalLoading"
+          class="px-6 py-2.5 bg-navy text-white rounded-xl text-sm font-bold hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-60"
+        >{{ portalLoading ? 'Abriendo…' : 'Regularizar pago' }}</button>
+      </div>
+    </SectionCard>
+
     <!-- Planes -->
-    <div class="mt-6">
+    <div v-else class="mt-6">
       <div class="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-3">Planes disponibles</div>
       <div v-if="loading" class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div v-for="i in 3" :key="i" class="h-56 animate-pulse rounded-2xl bg-surface"></div>
@@ -91,8 +112,10 @@ const portalLoading = ref(false)
 
 const STATUS_LABELS: Record<string, string> = {
   trialing: 'En prueba', active: 'Activa', past_due: 'Pago pendiente',
-  expired: 'Vencida', canceled: 'Cancelada', none: 'Sin suscripción',
+  expired: 'Vencida', canceled: 'Cancelada', suspended: 'Suspendida', none: 'Sin suscripción',
 }
+const CATEGORY_LABELS: Record<string, string> = { founder_one: 'Fundador Uno', founder_two: 'Fundador Dos', pioneer: 'Pionero' }
+const categoryLabel = (key?: string | null) => (key ? CATEGORY_LABELS[key] ?? key : '')
 
 const statusLabel = computed(() => STATUS_LABELS[sub.value?.status ?? 'none'] ?? sub.value?.status ?? '—')
 const statusClass = computed(() => {
@@ -101,7 +124,7 @@ const statusClass = computed(() => {
   if (s === 'trialing') return 'bg-cyan/10 text-cyan'
   if (s === 'past_due') return 'bg-warning/10 text-warning'
   if (s === 'none') return 'bg-surface text-text-muted'
-  return 'bg-danger/10 text-danger'
+  return 'bg-danger/10 text-danger' // expired / canceled / suspended
 })
 const stateSubtitle = computed(() =>
   sub.value?.trialEndsAt ? `Prueba hasta el ${new Date(sub.value.trialEndsAt).toLocaleDateString('es-DO')}` : '',

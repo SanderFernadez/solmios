@@ -57,6 +57,21 @@ export function bootstrapEmail(orm: any, logger: Logger, resolveModule: <T>(name
   if (subsForEmail && typeof subsForEmail.setEmailDeps === 'function') {
     subsForEmail.setEmailDeps(emailService, process.env.PUBLIC_URL)
   }
+
+  // Plantillas editables de los 6 correos del ciclo de vida SaaS (welcome, trial_*, payment_*,
+  // subscription_canceled). platform-emails solo encola; subscriptions dispara sendEvent() desde
+  // el webhook de Stripe y el alta — sin connector porque no hay lógica de dominio cruzada.
+  const platformEmailsMod = resolveModule<{
+    setEmailDeps(s: EmailSender): void
+    sendEvent(event: string, to: string, hotelId: string, vars: Record<string, string>): Promise<{ sent: boolean }>
+  }>('platform-emails')
+  if (platformEmailsMod && typeof platformEmailsMod.setEmailDeps === 'function') {
+    platformEmailsMod.setEmailDeps(emailService)
+  }
+  if (subsForEmail && platformEmailsMod && typeof (subsForEmail as any).setPlatformEmailSender === 'function') {
+    (subsForEmail as any).setPlatformEmailSender((event: string, to: string, hotelId: string, vars: Record<string, string>) =>
+      platformEmailsMod.sendEvent(event, to, hotelId, vars))
+  }
   const usuariosForEmail = resolveModule<{ setEmailVerificationDeps(es: EmailSender, url: string): void }>('usuarios')
   if (usuariosForEmail && typeof usuariosForEmail.setEmailVerificationDeps === 'function') {
     usuariosForEmail.setEmailVerificationDeps(emailService, process.env.PUBLIC_URL || '')
