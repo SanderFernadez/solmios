@@ -55,9 +55,38 @@ export const UpdateHotelAdminSchema: Record<string, ValidationRule> = {
   status: { type: 'string' as const, max: 20 },
 }
 
+// "Condiciones especiales" (PLAN-SUSCRIPCIONES.md §6/§8). `category` acepta null explícito
+// (desasigna) — el framework no valida null en un string required=false, así que no se marca required.
+export const ApplySpecialConditionsSchema: Record<string, ValidationRule> = {
+  type: { type: 'string' as const, required: true, max: 20 }, // category | percentage | free_month
+  category: { type: 'string' as const, max: 20 }, // founder_one | founder_two | pioneer
+  discountPct: { type: 'number' as const, min: 0, max: 100 },
+  durationMonths: { type: 'number' as const, min: 1, max: 60 },
+  reason: { type: 'string' as const, max: 300 },
+}
+
+export const UpdateSpecialCategorySchema: Record<string, ValidationRule> = {
+  totalSlots: { type: 'number' as const, min: 0 },
+  discountPct: { type: 'number' as const, min: 0, max: 100 },
+  minPlanSortOrder: { type: 'number' as const, min: 0 },
+  sequenceGroup: { type: 'string' as const, max: 50 },
+  opensAfter: { type: 'string' as const, max: 20 },
+  status: { type: 'string' as const, max: 20 }, // closed | open | full
+}
+
+export const UpdateSubscriptionSettingsSchema: Record<string, ValidationRule> = {
+  reminderDaysBefore: { type: 'number' as const, min: 0, max: 60 },
+  gracePeriodDays: { type: 'number' as const, min: 0, max: 60 },
+  founderChurnBlocksReturn: { type: 'boolean' as const },
+  maxManualDiscountPct: { type: 'number' as const, min: 0, max: 100 },
+}
+
 export const AdminValidator = {
   createPlan: CreatePlanSchema,
   updatePlan: UpdatePlanSchema,
   createAmenityCatalog: CreateAmenityCatalogSchema,
   updateAmenityCatalog: UpdateAmenityCatalogSchema,
+  applySpecialConditions: ApplySpecialConditionsSchema,
+  updateSpecialCategory: UpdateSpecialCategorySchema,
+  updateSubscriptionSettings: UpdateSubscriptionSettingsSchema,
 }

@@ -4,6 +4,12 @@ import type { DashboardQueries } from './usecases/dashboard-queries'
 import {
   auditSafely, planDeleteEntry, amenityCatalogDeleteEntry, type AuditPort,
 } from './usecases/audit'
+import type { ApplySpecialConditionsInput, SpecialConditionsUseCase } from './usecases/special-conditions'
+import type { SubscriptionCategoriesUseCase } from './usecases/subscription-categories'
+import {
+  getSubscriptionSettings, setSubscriptionSettings,
+  type SubscriptionSettings,
+} from './usecases/subscription-settings'
 
 /**
  * Planes y catálogo de amenities son recursos de la plataforma: no pertenecen a ningún hotel ni
@@ -31,6 +37,9 @@ export class AdminService {
     private readonly auth?: any,
     private readonly queries?: DashboardQueries,
     private readonly hotelsRepo?: RepositoryAdapter<any>,
+    private readonly specialConditions?: SpecialConditionsUseCase,
+    private readonly categories?: SubscriptionCategoriesUseCase,
+    private readonly configRepo?: RepositoryAdapter<any>,
   ) {}
 
   async listHotels(): Promise<{ data: any[]; total: number }> { return this.queries!.listHotels() }
@@ -138,5 +147,43 @@ export class AdminService {
     if (this.auth) this.auth.assertOwnership(PLATFORM_RESOURCE, user?.id ?? '', user?.role, 'super_admin')
     await this.amenitiesRepo.delete(id)
     await auditSafely(this.auditPort, this.logger, amenityCatalogDeleteEntry(existing, user))
+  }
+
+  // ── Condiciones especiales / Fundador-Pionero (PLAN-SUSCRIPCIONES.md) ──────────────────
+
+  searchSubscriptionByEmail(email: string): Promise<any> {
+    return this.specialConditions!.searchByEmail(email)
+  }
+
+  subscriptionDetail(hotelId: string): Promise<any> {
+    return this.specialConditions!.detail(hotelId)
+  }
+
+  applySpecialConditions(hotelId: string, input: ApplySpecialConditionsInput, user?: any): Promise<any> {
+    return this.specialConditions!.apply(hotelId, input, { id: user?.id })
+  }
+
+  suspendSubscriptionManual(hotelId: string): Promise<any> {
+    return this.specialConditions!.suspendManual(hotelId)
+  }
+
+  reactivateSubscriptionManual(hotelId: string): Promise<any> {
+    return this.specialConditions!.reactivateManual(hotelId)
+  }
+
+  listSubscriptionCategories(): Promise<{ data: any[]; total: number }> {
+    return this.categories!.list()
+  }
+
+  updateSubscriptionCategory(key: string, patch: any): Promise<any> {
+    return this.categories!.update(key, patch)
+  }
+
+  getSubscriptionSettings(): Promise<SubscriptionSettings> {
+    return getSubscriptionSettings(this.configRepo!)
+  }
+
+  updateSubscriptionSettings(patch: Partial<SubscriptionSettings>): Promise<SubscriptionSettings> {
+    return setSubscriptionSettings(this.configRepo!, patch)
   }
 }

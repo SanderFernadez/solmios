@@ -44,6 +44,7 @@ export class DashboardQueries {
         canceledAt: sub?.canceledAt ?? null,
         hasStripeCustomer: !!sub?.stripeCustomerId,
         mrr: status === 'active' ? Number(plan?.price ?? 0) : 0,
+        specialCategory: sub?.specialCategory ?? null,
       }
     })
     return { data, total: data.length, mrrTotal: data.reduce((s: number, r: any) => s + r.mrr, 0) }

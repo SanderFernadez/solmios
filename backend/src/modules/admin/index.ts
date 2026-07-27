@@ -4,6 +4,8 @@ import { AdminService } from './service'
 import { AdminController } from './controller'
 import { DashboardQueries } from './usecases/dashboard-queries'
 import { MODULE_CATALOG, getModuleState, setModuleState, getModuleStateForPlan } from './usecases/modules'
+import { SpecialConditionsUseCase } from './usecases/special-conditions'
+import { SubscriptionCategoriesUseCase } from './usecases/subscription-categories'
 import { requireUserType } from '../../infrastructure/auth/require-user-type'
 
 export { AdminService }
@@ -16,7 +18,7 @@ export function AdminModule() {
     contract: {
       name: 'admin', version: '1.0.0',
       description: 'Platform-level management: hotels, users, plans, analytics',
-      actions: ['listHotels', 'updateHotel', 'listUsers', 'getAnalytics', 'listSubscriptions', 'listAuditLogs', 'listAnnouncements', 'getMonitoring', 'listPlans', 'createPlan', 'updatePlan', 'deletePlan', 'listAmenitiesCatalog', 'createAmenityCatalog', 'updateAmenityCatalog', 'deleteAmenityCatalog', 'getPublicUsers', 'getModules', 'setModules', 'getEnabledModules'],
+      actions: ['listHotels', 'updateHotel', 'listUsers', 'getAnalytics', 'listSubscriptions', 'listAuditLogs', 'listAnnouncements', 'getMonitoring', 'listPlans', 'createPlan', 'updatePlan', 'deletePlan', 'listAmenitiesCatalog', 'createAmenityCatalog', 'updateAmenityCatalog', 'deleteAmenityCatalog', 'getPublicUsers', 'getModules', 'setModules', 'getEnabledModules', 'searchSubscriptionByEmail', 'subscriptionDetail', 'applySpecialConditions', 'suspendSubscription', 'reactivateSubscription', 'listSubscriptionCategories', 'updateSubscriptionCategory', 'getSubscriptionSettings', 'updateSubscriptionSettings'],
       events: [],
       tables: [],
       dependencies: [],
@@ -30,7 +32,11 @@ export function AdminModule() {
       const queries = new DashboardQueries(orm)
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
       const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
-      const service = new AdminService(plansRepo, amenitiesRepo, log, auth, queries, hotelsRepo)
+      // `orm` crudo (no repos): el cupo de Fundador/Pionero necesita CAS (orm.updateMany), que
+      // RepositoryAdapter/OrmRepository no exponen. Mismo criterio que DashboardQueries.
+      const specialConditions = new SpecialConditionsUseCase(orm)
+      const categories = new SubscriptionCategoriesUseCase(orm)
+      const service = new AdminService(plansRepo, amenitiesRepo, log, auth, queries, hotelsRepo, specialConditions, categories, configRepo)
       const controller = new AdminController(service, log)
 
       const sa = [auth.authenticate('super_admin'), requireUserType('admin')]
@@ -68,7 +74,18 @@ export function AdminModule() {
       router.delete('/api/admin/amenities/catalog/:id', sa, (req: any) => controller.deleteAmenityCatalog(req))
       router.get('/api/public/users', () => controller.getPublicUsers())
 
-      log.info('Módulo admin listo (15 endpoints)')
+      // ── Condiciones especiales / Fundador-Pionero (PLAN-SUSCRIPCIONES.md) ──────────────
+      router.get('/api/admin/subscriptions/search', sa, (req: any) => controller.searchSubscriptionByEmail(req))
+      router.get('/api/admin/subscriptions/categories', sa, () => controller.listSubscriptionCategories())
+      router.put('/api/admin/subscriptions/categories/:key', sa, (req: any) => controller.updateSubscriptionCategory(req))
+      router.get('/api/admin/subscriptions/settings', sa, () => controller.getSubscriptionSettings())
+      router.put('/api/admin/subscriptions/settings', sa, (req: any) => controller.updateSubscriptionSettings(req))
+      router.get('/api/admin/subscriptions/:hotelId', sa, (req: any) => controller.subscriptionDetail(req))
+      router.post('/api/admin/subscriptions/:hotelId/special-conditions', sa, (req: any) => controller.applySpecialConditions(req))
+      router.post('/api/admin/subscriptions/:hotelId/suspend', sa, (req: any) => controller.suspendSubscription(req))
+      router.post('/api/admin/subscriptions/:hotelId/reactivate', sa, (req: any) => controller.reactivateSubscription(req))
+
+      log.info('Módulo admin listo (28 endpoints)')
       return service
     },
   })

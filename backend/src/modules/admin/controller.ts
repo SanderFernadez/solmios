@@ -1,7 +1,10 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { AdminService } from './service'
-import { CreatePlanSchema, UpdatePlanSchema, CreateAmenityCatalogSchema, UpdateAmenityCatalogSchema, UpdateHotelAdminSchema } from './validators/schema'
+import {
+  CreatePlanSchema, UpdatePlanSchema, CreateAmenityCatalogSchema, UpdateAmenityCatalogSchema, UpdateHotelAdminSchema,
+  ApplySpecialConditionsSchema, UpdateSpecialCategorySchema, UpdateSubscriptionSettingsSchema,
+} from './validators/schema'
 
 export class AdminController {
   constructor(
@@ -123,5 +126,83 @@ export class AdminController {
 
   async getPublicUsers() {
     return { status: 200, body: await this.service.getPublicUsers() }
+  }
+
+  // ── Condiciones especiales / Fundador-Pionero (PLAN-SUSCRIPCIONES.md) ──────────────────
+
+  async searchSubscriptionByEmail(req: HttpRequest) {
+    try {
+      const email = String((req.query as any)?.email ?? '').trim()
+      if (!email) return { status: 400, body: { error: 'Falta el parámetro email' } }
+      return { status: 200, body: await this.service.searchSubscriptionByEmail(email) }
+    } catch (e: any) {
+      return { status: /no se encontr|no encontrad/i.test(e.message ?? '') ? 404 : 400, body: { error: e.message } }
+    }
+  }
+
+  async subscriptionDetail(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.subscriptionDetail(req.params.hotelId) }
+    } catch (e: any) {
+      return { status: 404, body: { error: e.message } }
+    }
+  }
+
+  async applySpecialConditions(req: HttpRequest) {
+    try {
+      const data = validateSchema(ApplySpecialConditionsSchema, req.body) as any
+      // `category` viaja explícitamente en null para desasignar — validateSchema descarta
+      // undefined/null de entrada (kernel/validator.ts), así que se re-inyecta del body crudo,
+      // mismo criterio que mergeComplexPlanFields con features/modules/limits.
+      if (data.type === 'category') {
+        const raw = (req.body as any)?.category
+        data.category = raw === null || typeof raw === 'string' ? raw : undefined
+      }
+      return { status: 200, body: await this.service.applySpecialConditions(req.params.hotelId, data, req.user as any) }
+    } catch (e: any) {
+      return { status: e.message?.includes('no encontrado') || e.message?.includes('no tiene una suscripción') ? 404 : 400, body: { error: e.message } }
+    }
+  }
+
+  async suspendSubscription(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.suspendSubscriptionManual(req.params.hotelId) }
+    } catch (e: any) {
+      return { status: 404, body: { error: e.message } }
+    }
+  }
+
+  async reactivateSubscription(req: HttpRequest) {
+    try {
+      return { status: 200, body: await this.service.reactivateSubscriptionManual(req.params.hotelId) }
+    } catch (e: any) {
+      return { status: 404, body: { error: e.message } }
+    }
+  }
+
+  async listSubscriptionCategories() {
+    return { status: 200, body: await this.service.listSubscriptionCategories() }
+  }
+
+  async updateSubscriptionCategory(req: HttpRequest) {
+    try {
+      const data = validateSchema(UpdateSpecialCategorySchema, req.body) as any
+      return { status: 200, body: await this.service.updateSubscriptionCategory(req.params.key, data) }
+    } catch (e: any) {
+      return { status: e.message?.includes('no encontrada') ? 404 : 400, body: { error: e.message } }
+    }
+  }
+
+  async getSubscriptionSettings() {
+    return { status: 200, body: await this.service.getSubscriptionSettings() }
+  }
+
+  async updateSubscriptionSettings(req: HttpRequest) {
+    try {
+      const data = validateSchema(UpdateSubscriptionSettingsSchema, req.body) as any
+      return { status: 200, body: await this.service.updateSubscriptionSettings(data) }
+    } catch (e: any) {
+      return { status: 400, body: { error: e.message } }
+    }
   }
 }
