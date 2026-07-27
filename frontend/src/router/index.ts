@@ -617,7 +617,9 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
-  if (to.path === '/login') {
+  // Rutas solo para invitados (sin sesión): login y registro. Un usuario ya logueado no debe
+  // poder verlas —ni llegar vía /r/:code, que redirige a /registro—; se lo manda a su panel/admin.
+  if (to.path === '/login' || to.path === '/registro') {
     if (auth.isAuthenticated) {
       if (auth.isSuperAdmin && !auth.impersonating) {
         return '/admin'
