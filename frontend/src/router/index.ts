@@ -119,6 +119,11 @@ const router = createRouter({
           component: () => import('@/pages/super-admin/referrals.vue'),
         },
         {
+          path: 'email-templates',
+          name: 'super-admin-email-templates',
+          component: () => import('@/pages/super-admin/email-templates.vue'),
+        },
+        {
           path: 'support',
           name: 'super-admin-support',
           component: () => import('@/pages/super-admin/support.vue'),
