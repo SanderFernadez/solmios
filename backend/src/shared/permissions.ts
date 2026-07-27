@@ -53,6 +53,47 @@ export const ACTIONS = {
   checkout: 'Check-out',
 } as const
 
+/**
+ * Acciones que aplican a cada módulo. Define qué casillas ofrece la matriz de permisos al dueño.
+ *
+ * Sin esto, la matriz mostraba TODAS las acciones en TODOS los módulos → casillas sin sentido
+ * (`billing:checkin`, `housekeeping:export`) que no respalda ninguna ruta. Y peor: `checkin`/`checkout`
+ * estaban excluidos de la matriz entera, así que un rol custom nunca podía hacer check-in/out y
+ * "Marcar todo" le borraba esos permisos a Recepción en silencio.
+ *
+ * Reglas: CRUD estándar = view/create/edit/delete. `export` solo en reports (exportar a Excel/PDF).
+ * `checkin`/`checkout` son exclusivos de reservas (recibir/liberar al huésped). channel-manager,
+ * ttlock y ai son módulos de configuración: solo view/edit.
+ */
+export const MODULE_ACTIONS: Record<string, (keyof typeof ACTIONS)[]> = {
+  dashboard: ['view', 'create', 'edit', 'delete'],
+  reservations: ['view', 'create', 'edit', 'delete', 'checkin', 'checkout'],
+  guests: ['view', 'create', 'edit', 'delete'],
+  rooms: ['view', 'create', 'edit', 'delete'],
+  housekeeping: ['view', 'create', 'edit', 'delete'],
+  maintenance: ['view', 'create', 'edit', 'delete'],
+  billing: ['view', 'create', 'edit', 'delete'],
+  reports: ['view', 'create', 'edit', 'delete', 'export'],
+  settings: ['view', 'create', 'edit', 'delete'],
+  users: ['view', 'create', 'edit', 'delete'],
+  attendance: ['view', 'create', 'edit'],
+  payroll: ['view', 'create', 'edit', 'delete'],
+  feedback: ['view', 'create', 'edit', 'delete'],
+  'channel-manager': ['view', 'edit'],
+  ttlock: ['view', 'edit'],
+  ai: ['view', 'edit'],
+  accounting: ['view', 'create', 'edit', 'delete'],
+  treasury: ['view', 'create', 'edit', 'delete'],
+  restaurant: ['view', 'create', 'edit', 'delete'],
+  inventory: ['view', 'create', 'edit', 'delete'],
+  purchasing: ['view', 'create', 'edit', 'delete'],
+}
+
+/** Acciones válidas para un módulo. Fallback a ['view'] si el módulo no está mapeado (fail-cerrado). */
+export function actionsForModule(module: string): (keyof typeof ACTIONS)[] {
+  return MODULE_ACTIONS[module] ?? ['view']
+}
+
 // Permission format: "module:action" (e.g., "reservations:view", "billing:edit")
 export type Permission = string
 

@@ -3,6 +3,8 @@ import { NotFoundError, AuthError } from 'arckode-framework'
 import type { RolesDTO, CreateRolesDTO, UpdateRolesDTO, RolesQuery, RolesPaginated } from './types'
 import type { RolesSockets } from './sockets'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
+import { DEFAULT_ROLE_PERMISSIONS } from '../../shared/permissions'
+import { permissionsHash } from '../../shared/usecases/role-sync'
 
 const CACHE_TTL = 300
 
@@ -135,6 +137,41 @@ export class RolesService {
       hotelId: existing.hotelId, userId: currentUser.id, action: 'role.update',
       entity: 'role', entityId: id,
       detail: dto.permissions ? 'Permisos del rol modificados' : 'Rol actualizado',
+    })
+    return item
+  }
+
+  /**
+   * Restaura los permisos de un rol del SISTEMA a DEFAULT_ROLE_PERMISSIONS. Solo aplica a system:1: los
+   * roles personalizados no tienen un "original" al que volver (el dueño los arma de cero).
+   *
+   * A diferencia de planRoleSync (que rehúsa pisar roles editados porque no sabe si fue a conciencia),
+   * acá el dueño lo pide explícitamente → no hay ambigüedad: se escribe el default y se sella el hash.
+   * Es la vía de recuperación cuando una edición — o un "Marcar todo" que no incluía checkin/checkout —
+   * dejó al rol sin un permiso crítico (ej. recepción sin check-in).
+   */
+  async restore(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<RolesDTO> {
+    const existing = await this.repo.findById(id)
+    if (!existing) throw new NotFoundError('Rol no encontrado')
+    if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
+      throw new AuthError('No autorizado')
+    }
+    if (Number(existing.system) !== 1) {
+      throw new AuthError('Solo los roles del sistema tienen una configuración original para restaurar')
+    }
+    const defaults = DEFAULT_ROLE_PERMISSIONS[existing.name]
+    if (!defaults) {
+      throw new AuthError(`"${existing.name}" no es un rol del sistema con defaults`)
+    }
+    const nextHash = permissionsHash(defaults)
+    const item = await this.repo.update(id, { permissions: defaults, defaultsHash: nextHash } as any)
+    if (!item) throw new NotFoundError('Rol no encontrado')
+    await this.sockets.onRolesUpdated?.(item)
+    await this.cache.delete(`roles:list:${existing.hotelId}`)
+    await auditSafely(this.auditPort, this.logger, {
+      hotelId: existing.hotelId, userId: currentUser.id, action: 'role.restore',
+      entity: 'role', entityId: id,
+      detail: `Rol "${existing.name}" restaurado a la configuración original`,
     })
     return item
   }

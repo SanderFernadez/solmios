@@ -3,12 +3,8 @@ import { validateSchema } from 'arckode-framework'
 import type { RolesService } from './service'
 import { CreateRolesSchema, UpdateRolesSchema } from './validators/schema'
 import { parseRolePermissions } from '../../shared/usecases/parse-role-permissions'
-import { MODULES, ACTIONS } from '../../shared/permissions'
+import { MODULES, ACTIONS, actionsForModule } from '../../shared/permissions'
 import { assertGrantablePermissions } from './usecases/assert-grantable'
-
-// Acciones que la matriz de la UI ofrece por módulo. checkin/checkout viven en el rol de recepción por
-// defecto y son casos borde: no ensuciamos la matriz custom con ellas.
-const MATRIX_ACTIONS = ['view', 'create', 'edit', 'delete', 'export'] as const
 
 export class RolesController {
   constructor(
@@ -22,12 +18,18 @@ export class RolesController {
     return { status: 200, body: result }
   }
 
-  /** Catálogo de módulos y acciones para armar la matriz de permisos en la UI (server-driven, sin
-   *  duplicar la lista en el frontend). */
+  /** Catálogo server-driven para armar la matriz de permisos en la UI. Cada módulo trae SUS acciones
+   *  (ver MODULE_ACTIONS en shared/permissions.ts): checkin/checkout solo en reservas, export solo en
+   *  reportes. Sin esto la matriz mostraba casillas sin respaldo (billing:checkin) y, al revés,
+   *  ocultaba check-in/out — así un rol custom nunca podía hacer check-in y "Marcar todo" se los borraba
+   *  a Recepción en silencio. */
   async catalog(_req: HttpRequest) {
-    const modules = Object.entries(MODULES).map(([key, label]) => ({ key, label }))
-    const actions = MATRIX_ACTIONS.map((key) => ({ key, label: ACTIONS[key] }))
-    return { status: 200, body: { modules, actions } }
+    const modules = Object.entries(MODULES).map(([key, label]) => ({
+      key,
+      label,
+      actions: actionsForModule(key).map((a) => ({ key: a, label: ACTIONS[a] })),
+    }))
+    return { status: 200, body: { modules } }
   }
 
   async show(req: HttpRequest) {
@@ -70,5 +72,12 @@ export class RolesController {
     const currentUser = req.user as any
     await this.service.delete(req.params.id, currentUser)
     return { status: 204, body: null }
+  }
+
+  /** POST /api/roles/:id/restore — vuelve un rol del sistema a su configuración original. */
+  async restore(req: HttpRequest) {
+    const currentUser = req.user as any
+    const item = await this.service.restore(req.params.id, currentUser)
+    return { status: 200, body: item }
   }
 }

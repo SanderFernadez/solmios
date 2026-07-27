@@ -22,7 +22,7 @@
       <KpiHeroCard label="Usuarios Asignados" :value="assignedUsers" icon="users" accent="teal"
         :unit="rolesWithUsers ? `${rolesWithUsers} rol(es) en uso` : 'Ningún rol asignado todavía'" />
       <KpiHeroCard label="Módulos Disponibles" :value="visibleModules.length" icon="bookings" accent="purple"
-        :unit="`${catalog.actions.length} acción(es) por módulo`" />
+        :unit="`${totalAssignablePermissions} permisos configurables`" />
     </div>
 
     <div class="mb-5 p-3 rounded-xl bg-navy/5 border border-navy/10 text-xs text-text-secondary">
@@ -107,6 +107,11 @@
       :subtitle="selected ? 'Marcá lo que puede hacer este rol' : 'Elegí un rol del listado para editar sus permisos'"
       body-class="p-0">
       <template v-if="selected" #actions>
+        <button v-if="selected.system" @click="confirmRestore"
+          title="Volver a la configuración original de fábrica"
+          class="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
+          ↺ Restaurar original
+        </button>
         <button @click="selectAll"
           class="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
           Marcar todo
@@ -131,8 +136,8 @@
             <thead>
               <tr>
                 <th class="sticky top-0 z-10 bg-surface text-left px-4 py-3 text-[10px]">Módulo</th>
-                <th v-for="a in catalog.actions" :key="a.key"
-                  class="sticky top-0 z-10 bg-surface text-center px-3 py-3 text-[10px] whitespace-nowrap">{{ a.label }}</th>
+                <th v-for="a in allActions" :key="a"
+                  class="sticky top-0 z-10 bg-surface text-center px-3 py-3 text-[10px] whitespace-nowrap">{{ actionLabel(a) }}</th>
               </tr>
             </thead>
             <tbody>
@@ -140,11 +145,11 @@
                 class="border-b border-border/50 transition-colors hover:bg-surface/60">
                 <td class="px-4 py-2.5">
                   <div class="text-xs font-bold text-navy">{{ m.label }}</div>
-                  <div class="text-[10px] text-text-muted tabular-nums">{{ modulePermCount(m.key) }} de {{ catalog.actions.length }}</div>
+                  <div class="text-[10px] text-text-muted tabular-nums">{{ modulePermCount(m.key) }} de {{ moduleActionTotal(m.key) }}</div>
                 </td>
-                <td v-for="a in catalog.actions" :key="a.key" class="px-3 py-2.5 text-center">
-                  <input type="checkbox" :value="`${m.key}:${a.key}`" v-model="selected.permissions"
-                    :aria-label="`${m.label} — ${a.label}`"
+                <td v-for="a in allActions" :key="a" class="px-3 py-2.5 text-center">
+                  <input v-if="hasAction(m, a)" type="checkbox" :value="`${m.key}:${a}`" v-model="selected.permissions"
+                    :aria-label="`${m.label} — ${actionLabel(a)}`"
                     class="mx-auto block h-4 w-4 accent-navy rounded cursor-pointer" />
                 </td>
               </tr>
@@ -200,26 +205,46 @@ const ICON_SLIDERS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none"
 const ICON_SHIELD = '<svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v6c0 4.4-3 8.1-7 9-4-.9-7-4.6-7-9V6l7-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 12.2l1.8 1.8 3.4-3.6"/></svg>'
 
 const toast = useToast()
+// onDone queda libre: cada acción (eliminar / restaurar) emite su propio toast desde su `run`, así
+// restaurar no dispara "Rol eliminado" por error.
 const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
-  onDone: () => toast.success('Rol eliminado'),
-  onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al eliminar'),
+  onError: (e) => toast.error(e instanceof Error ? e.message : 'Ocurrió un error'),
 })
 const auth = useAuthStore()
 const modules = useModulesStore()
 const loading = ref(true)
 const saving = ref(false)
 const roles = ref<Role[]>([])
-const catalog = ref<PermissionCatalog>({ modules: [], actions: [] })
+const catalog = ref<PermissionCatalog>({ modules: [] })
 const selected = ref<Role | null>(null)
 
 // El dueño solo reparte permisos de los módulos que la plataforma le liberó (plan ∩ global).
 const visibleModules = computed(() =>
   catalog.value.modules.filter((m) => permissionModuleEnabled(m.key, modules.state)))
 
+// Columnas de la matriz = superconjunto de las acciones de los módulos visibles, en orden estable.
+// checkin/checkout aparecen como columnas, pero solo Reservas les pone casilla (hasAction) — no
+// ensuciamos con billing:checkin. Así un rol custom puede tener check-in/out y "Marcar todo" los respeta.
+const ACTION_ORDER = ['view', 'create', 'edit', 'delete', 'export', 'checkin', 'checkout']
+const allActions = computed<string[]>(() => {
+  const present = new Set<string>()
+  for (const m of visibleModules.value) for (const a of m.actions) present.add(a.key)
+  return ACTION_ORDER.filter((k) => present.has(k))
+})
+const ACTION_LABELS: Record<string, string> = {}
+function actionLabel(key: string): string { return ACTION_LABELS[key] ?? key }
+function hasAction(m: { actions: { key: string }[] }, key: string): boolean {
+  return m.actions.some((a) => a.key === key)
+}
+function moduleActionTotal(moduleKey: string): number {
+  return catalog.value.modules.find((x) => x.key === moduleKey)?.actions.length ?? 0
+}
+
 const customRolesCount = computed(() => roles.value.filter((r) => !r.system).length)
 const assignedUsers = computed(() => roles.value.reduce((sum, r) => sum + (r.users ?? 0), 0))
 const rolesWithUsers = computed(() => roles.value.filter((r) => (r.users ?? 0) > 0).length)
-const totalAssignablePermissions = computed(() => visibleModules.value.length * catalog.value.actions.length)
+const totalAssignablePermissions = computed(() =>
+  visibleModules.value.reduce((sum, m) => sum + m.actions.length, 0))
 
 /**
  * Nombre visible del rol. Los roles de sistema se guardan por slug en inglés (`housekeeper`,
@@ -233,7 +258,8 @@ function roleLabel(role: Role): string {
 /** Cuántas acciones del módulo tiene marcadas el rol seleccionado (solo lectura, no altera el payload). */
 function modulePermCount(moduleKey: string): number {
   if (!selected.value) return 0
-  return catalog.value.actions.filter((a) => selected.value!.permissions.includes(`${moduleKey}:${a.key}`)).length
+  const m = catalog.value.modules.find((x) => x.key === moduleKey)
+  return m ? m.actions.filter((a) => selected.value!.permissions.includes(`${moduleKey}:${a.key}`)).length : 0
 }
 
 async function load() {
@@ -242,6 +268,7 @@ async function load() {
     const [r, c] = await Promise.all([RolesService.list(), RolesService.catalog()])
     roles.value = r
     catalog.value = c
+    for (const m of c.modules) for (const a of m.actions) ACTION_LABELS[a.key] = a.label
     if (selected.value) selected.value = roles.value.find((x) => x.id === selected.value!.id) ?? null
   } catch { toast.error('No se pudieron cargar los roles') }
   finally { loading.value = false }
@@ -255,8 +282,11 @@ function select(role: Role) {
 
 function selectAll() {
   if (!selected.value) return
-  // Solo los módulos visibles (liberados al hotel): "Todo" no otorga permisos de módulos que no tiene.
-  selected.value.permissions = visibleModules.value.flatMap((m) => catalog.value.actions.map((a) => `${m.key}:${a.key}`))
+  // Solo módulos visibles (liberados al hotel) y las acciones que cada módulo admite. "Todo" no otorga
+  // permisos de módulos que no tiene ni casillas sin sentido (billing:checkin), e incluye checkin/checkout
+  // de reservas (antes quedaban fuera y se perdían al guardar).
+  selected.value.permissions = visibleModules.value.flatMap((m) =>
+    m.actions.map((a) => `${m.key}:${a.key}`))
 }
 function clearAll() {
   if (selected.value) selected.value.permissions = []
@@ -283,6 +313,24 @@ function confirmDelete(role: Role) {
       await RolesService.remove(role.id)
       if (selected.value?.id === role.id) selected.value = null
       await load()
+      toast.success('Rol eliminado')
+    },
+  })
+}
+
+function confirmRestore() {
+  const role = selected.value
+  if (!role) return
+  askConfirm({
+    title: 'Restaurar configuración original',
+    message: `¿Volver "${roleLabel(role)}" a los permisos de fábrica? Se pierden los cambios que le hayas hecho a este rol del sistema.`,
+    confirmLabel: 'Restaurar', danger: true,
+    run: async () => {
+      const updated = await RolesService.restore(role.id)
+      await load()
+      const fresh = roles.value.find((r) => r.id === updated.id)
+      if (fresh) select(fresh)
+      toast.success('Rol restaurado a la configuración original')
     },
   })
 }

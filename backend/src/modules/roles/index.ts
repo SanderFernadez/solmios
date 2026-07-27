@@ -46,6 +46,7 @@ export function RolesModule() {
       router.get('/api/roles/:id', guard('users', 'view'), (req) => controller.show(req))
       router.post('/api/roles', guard('users', 'create'), (req) => controller.store(req))
       router.put('/api/roles/:id', guard('users', 'edit'), (req) => controller.update(req))
+      router.post('/api/roles/:id/restore', guard('users', 'edit'), (req) => controller.restore(req))
       router.delete('/api/roles/:id', guard('users', 'delete'), (req) => controller.destroy(req))
 
       log.info('Módulo roles v2 listo')

@@ -314,6 +314,72 @@ describe('RolesService', () => {
     })
   })
 
+  // ─── RESTORE ──────────────────────────────────────────────────────────────
+
+  describe('restore', () => {
+    const receptionistRole: RolesDTO = {
+      ...baseRole,
+      id: 'role-recep',
+      name: 'receptionist',
+      system: 1,
+      permissions: ['rooms:view'], // personalizado (no es el default de fábrica)
+    }
+
+    it('restaura un rol del sistema a DEFAULT_ROLE_PERMISSIONS y sella el hash', async () => {
+      let updated: any
+      const repo = makeRepo({
+        findById: async () => receptionistRole,
+        update: async (id, data) => { updated = { id, ...data }; return updated as RolesDTO },
+      })
+      const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      const result = await svc.restore('role-recep', hotelAdmin)
+      // Los defaults de receptionist incluyen checkin/checkout — justamente lo que se perdía al editar.
+      expect(updated.permissions).toEqual(expect.arrayContaining(['reservations:checkin', 'reservations:checkout']))
+      expect(updated.defaultsHash).toBeTruthy()
+      expect(result.permissions).toEqual(updated.permissions)
+    })
+
+    it('rechaza restaurar un rol personalizado (no tiene original)', async () => {
+      const repo = makeRepo({ findById: async () => baseRole }) // system: 0
+      const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.restore('role-1', hotelAdmin)).rejects.toThrow('Solo los roles del sistema')
+    })
+
+    it('rechaza restaurar el rol de otro hotel', async () => {
+      const other = { ...receptionistRole, hotelId: 'h2' }
+      const repo = makeRepo({ findById: async () => other })
+      const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.restore('role-recep', hotelAdmin)).rejects.toThrow('No autorizado')
+    })
+
+    it('NotFoundError si el rol no existe', async () => {
+      const svc = new RolesService(makeRepo(), log, silentCache, makeUserRepo(), fakeAuth)
+      await expect(svc.restore('nope', hotelAdmin)).rejects.toThrow('Rol no encontrado')
+    })
+
+    it('invalida la caché tras restaurar', async () => {
+      const cache = makeCache()
+      const repo = makeRepo({ findById: async () => receptionistRole })
+      const svc = new RolesService(repo, log, cache, makeUserRepo(), fakeAuth)
+      await svc.restore('role-recep', hotelAdmin)
+      expect(cache.deleted).toContain('roles:list:h1')
+    })
+
+    it('dispara onRolesUpdated', async () => {
+      let fired: RolesDTO | undefined
+      // El repo real devuelve la entidad completa tras un PATCH; el mock por defecto solo spreadea
+      // `data` ({permissions, defaultsHash}, sin name) → mergemos con el rol existente como hace el ORM.
+      const repo = makeRepo({
+        findById: async () => receptionistRole,
+        update: async (id, data) => ({ ...receptionistRole, ...data } as RolesDTO),
+      })
+      const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+      svc.setSockets({ onRolesUpdated: async (r) => { fired = r } })
+      await svc.restore('role-recep', hotelAdmin)
+      expect(fired?.name).toBe('receptionist')
+    })
+  })
+
   // ─── DELETE ───────────────────────────────────────────────────────────────
 
   describe('delete', () => {
@@ -420,5 +486,15 @@ describe('RolesService — auditlog (SC-05)', () => {
     const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
     svc.setAuditDeps({ record: async () => { throw new Error('audit caído') } })
     await expect(svc.delete('role-1', hotelAdmin)).resolves.toBeUndefined()
+  })
+
+  it('registra role.restore al restaurar un rol del sistema', async () => {
+    const repo = makeRepo({ findById: async () => ({ ...baseRole, id: 'r-r', name: 'receptionist', system: 1 }) })
+    const svc = new RolesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+    const recorded: any[] = []
+    svc.setAuditDeps({ record: async (e) => { recorded.push(e) } })
+    await svc.restore('r-r', hotelAdmin)
+    expect(recorded).toHaveLength(1)
+    expect(recorded[0].action).toBe('role.restore')
   })
 })
