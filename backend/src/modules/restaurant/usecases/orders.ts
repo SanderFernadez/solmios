@@ -18,7 +18,10 @@ export interface OrdersDeps {
 }
 
 // Una comanda "ocupa" la mesa mientras no esté liquidada ni cancelada.
-const TERMINAL: OrderDTO['status'][] = ['charged', 'paid', 'cancelled']
+// `refunded` también es terminal: una orden reembolsada fue cobrada con tarjeta (la mesa ya se liberó
+// al pagar) y no se puede reabrir; sin este flag, openOrder la ignoraría al buscar comandas activas
+// en la mesa — correcto, pero deja la constant sin cobertura defensiva por si llegara otro estado derivado.
+const TERMINAL: OrderDTO['status'][] = ['charged', 'paid', 'cancelled', 'refunded']
 const ORDER_TYPES: OrderType[] = ['dine_in', 'room_service', 'takeaway']
 
 export interface OpenOrderInput {

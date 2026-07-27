@@ -14,6 +14,7 @@ export interface RecordPaymentInput { hotelId: string; method: string; amount: n
 export interface SettlementPorts {
   chargeToFolio?: (input: ChargeToFolioInput, user: CurrentUser) => Promise<{ folioId: string }>
   recordPayment?: (input: RecordPaymentInput, user: CurrentUser) => Promise<{ paymentId: string }>
+  refundPayment?: (input: { paymentId: string }, user: CurrentUser) => Promise<void>
 }
 
 export interface SettlementDeps {
@@ -38,7 +39,7 @@ function assertSettleable(order: OrderDTO): void {
 }
 
 /** Carga la comanda validando ownership (findById + assertOwnership inline en el mismo scope). */
-async function loadOrder(deps: SettlementDeps, id: string, user: CurrentUser): Promise<OrderDTO> {
+export async function loadOrder(deps: SettlementDeps, id: string, user: CurrentUser): Promise<OrderDTO> {
   const order = await deps.orders.findById(id)
   if (!order) throw new NotFoundError('Comanda no encontrada')
   const me = await deps.userRepo.findById(user.id)
@@ -131,5 +132,39 @@ export async function payOrder(deps: SettlementDeps, id: string, dto: { method: 
   } as Partial<Omit<OrderDTO, 'id'>>)) as OrderDTO
   await freeTable(deps, order)
   await deps.sockets.onOrderPaid?.(updated)
+  return updated
+}
+
+/**
+ * Reembolsa una comanda cobrada con tarjeta (settlement='payment'). Delega la devolución del dinero
+ * en payments vía `ports.refundPayment` (idempotente por paymentId del lado del gateway). v1 solo
+ * reembolsa cobros directos con tarjeta: el cargo a folio (settlement='folio') no tiene reversión
+ * aquí (deuda documentada). El inventario y la contabilidad se reversan por sockets (conectores).
+ * Idempotente por estado: una segunda llamada sobre la misma orden ya `refunded` devuelve sin repetir
+ * el port ni el socket (guard anti-reentrada).
+ */
+export async function refundOrder(deps: SettlementDeps, id: string, user: CurrentUser): Promise<OrderDTO> {
+  const order = await loadOrder(deps, id, user)
+  // Idempotencia por estado: ya reembolsada → no-op (no duplica port ni socket).
+  if (order.status === 'refunded') return order
+  // Solo se puede reembolsar una orden cobrada directo con tarjeta. Folio (cargo a habitación) y
+  // cash quedan fuera de v1 (ver deudas: reversal de folio requiere credit-note; cash no tiene gateway).
+  if (order.status !== 'paid' || order.settlement !== 'payment') {
+    throw new ConflictError('Solo se puede reembolsar una orden cobrada con tarjeta')
+  }
+  if (!order.paymentId) throw new ValidationError('La comanda no tiene payment asociado')
+  if (!deps.ports.refundPayment) throw new ValidationError('Reembolso no disponible (payments no conectado)')
+
+  // M1 (QA, deuda documentada): el refund del payment se llama ANTES del update de la comanda
+  // ("el dinero primero", misma convención que payOrder/chargeToRoom). Si el update fallara tras un
+  // refund exitoso, un reintento encontraría la orden aún `paid` y repetiría el refund. Aceptado: el
+  // refund de gateway es idempotente por paymentId (stripe); un fix robusto = idempotency key propia.
+  await deps.ports.refundPayment({ paymentId: order.paymentId }, user)
+
+  const updated = (await deps.orders.update(id, {
+    status: 'refunded',
+    closedAt: new Date().toISOString(),
+  } as Partial<Omit<OrderDTO, 'id'>>)) as OrderDTO
+  await deps.sockets.onOrderRefunded?.(updated)
   return updated
 }
