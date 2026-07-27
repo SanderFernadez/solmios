@@ -16,6 +16,7 @@ import { currencySymbol } from '@/composables/useCurrency'
 import AppModal from '@/components/ui/AppModal.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -42,6 +43,12 @@ const statusFilter = ref<string>('all')
 
 const STATUS_TABS = [{ value: 'all', label: 'Todas' }, ...Object.entries(OC_STATUS_LABELS).map(([value, label]) => ({ value, label }))]
 const filtered = computed(() => statusFilter.value === 'all' ? orders.value : orders.value.filter((o) => o.status === statusFilter.value))
+
+// KPIs — solo órdenes activas (una cancelada no compromete plata ni espera recepción).
+const activeOrders = computed(() => orders.value.filter((o) => o.status !== 'cancelled'))
+const totalCommitted = computed(() => activeOrders.value.reduce((s, o) => s + Number(o.total || 0), 0))
+const pendingSend = computed(() => orders.value.filter((o) => o.status === 'draft').length)
+const invoicedCount = computed(() => orders.value.filter((o) => o.expenseId).length)
 const money = (n: number): string => `${currencySymbol(currency.value)}${Number(n || 0).toFixed(2)}`
 const fmtDate = (s?: string): string => s ? new Date(s).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 const supplierName = (id?: string): string => id ? (suppliers.value.find((s) => s.id === id)?.name || 'Proveedor') : 'Sin proveedor'
@@ -230,7 +237,7 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+  <div class="space-y-6">
     <header class="flex items-center justify-between gap-3 flex-wrap">
       <div>
         <h1 class="text-xl sm:text-2xl font-black text-navy">Órdenes de compra</h1>
@@ -243,7 +250,16 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 
     <div v-if="loading" class="py-20 text-center text-text-muted">Cargando…</div>
 
-    <SectionCard v-else title="Órdenes de compra">
+    <template v-else>
+      <div v-if="orders.length" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KpiHeroCard label="Órdenes de compra" :value="orders.length" icon="bookings" accent="blue" unit="Total registradas" />
+        <KpiHeroCard label="Comprometido" :value="totalCommitted" icon="money" accent="amber"
+          :prefix="currencySymbol(currency)" unit="Órdenes activas (sin canceladas)" />
+        <KpiHeroCard label="Por enviar" :value="pendingSend" icon="checkout" :accent="pendingSend ? 'rose' : 'teal'" unit="En borrador" />
+        <KpiHeroCard label="Facturadas" :value="invoicedCount" icon="checkin" accent="purple" unit="Generaron gasto" />
+      </div>
+
+      <SectionCard title="Órdenes de compra">
       <div class="flex flex-wrap gap-1.5 mb-3">
         <button v-for="t in STATUS_TABS" :key="t.value" @click="statusFilter = t.value"
           :class="['px-2.5 py-1 rounded-full text-xs font-bold', statusFilter === t.value ? 'bg-navy text-white' : 'bg-surface text-text-muted']">{{ t.label }}</button>
@@ -286,7 +302,8 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
           </tbody>
         </table>
       </div>
-    </SectionCard>
+      </SectionCard>
+    </template>
 
     <!-- Crear OC -->
     <AppModal v-if="createOpen" title="Nueva orden de compra" size="xl" @close="createOpen = false">

@@ -12,6 +12,7 @@ import { InventarioService, type InventoryItem } from '@/services/Inventario.ser
 import AppModal from '@/components/ui/AppModal.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -35,6 +36,11 @@ const statusFilter = ref<string>('all')
 
 const STATUS_TABS = [{ value: 'all', label: 'Todas' }, ...Object.entries(REQ_STATUS_LABELS).map(([value, label]) => ({ value, label }))]
 const filtered = computed(() => statusFilter.value === 'all' ? requisitions.value : requisitions.value.filter((r) => r.status === statusFilter.value))
+
+// KPIs
+const pendingApproval = computed(() => requisitions.value.filter((r) => r.status === 'submitted').length)
+const approvedCount = computed(() => requisitions.value.filter((r) => r.status === 'approved').length)
+const draftCount = computed(() => requisitions.value.filter((r) => r.status === 'draft').length)
 const fmtDate = (s?: string): string => s ? new Date(s).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 const itemName = (id?: string): string => id ? (inventory.value.find((i) => i.id === id)?.name || 'Insumo') : ''
 // Solo insumos activos son seleccionables en líneas nuevas (uno inactivo no se repone).
@@ -142,7 +148,7 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+  <div class="space-y-6">
     <header class="flex items-center justify-between gap-3 flex-wrap">
       <div>
         <h1 class="text-xl sm:text-2xl font-black text-navy">Requisiciones</h1>
@@ -155,7 +161,15 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 
     <div v-if="loading" class="py-20 text-center text-text-muted">Cargando…</div>
 
-    <SectionCard v-else title="Requisiciones">
+    <template v-else>
+      <div v-if="requisitions.length" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KpiHeroCard label="Requisiciones" :value="requisitions.length" icon="bookings" accent="blue" unit="Total registradas" />
+        <KpiHeroCard label="Por aprobar" :value="pendingApproval" icon="checkout" :accent="pendingApproval ? 'rose' : 'teal'" unit="Esperando revisión" />
+        <KpiHeroCard label="Aprobadas" :value="approvedCount" icon="checkin" accent="teal" unit="Listas para orden de compra" />
+        <KpiHeroCard label="Borradores" :value="draftCount" icon="users" accent="purple" unit="Sin enviar todavía" />
+      </div>
+
+      <SectionCard title="Requisiciones">
       <div class="flex flex-wrap gap-1.5 mb-3">
         <button v-for="t in STATUS_TABS" :key="t.value" @click="statusFilter = t.value"
           :class="['px-2.5 py-1 rounded-full text-xs font-bold', statusFilter === t.value ? 'bg-navy text-white' : 'bg-surface text-text-muted']">{{ t.label }}</button>
@@ -198,7 +212,8 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
           </tbody>
         </table>
       </div>
-    </SectionCard>
+      </SectionCard>
+    </template>
 
     <!-- Crear requisición -->
     <AppModal v-if="createOpen" title="Nueva requisición" size="xl" @close="createOpen = false">

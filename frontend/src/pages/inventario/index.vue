@@ -17,6 +17,7 @@ import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { usePermissions } from '@/composables/usePermissions'
@@ -87,12 +88,25 @@ function newItem() {
       { key: 'category', label: 'Categoría', type: 'select', default: 'beverage', options: CATEGORY_OPTIONS },
       { key: 'unit', label: 'Unidad (ej: botella, kg, unidad)', maxLength: 20, default: 'unidad' },
       { key: 'minStock', label: 'Stock mínimo', type: 'number', min: 0, hint: 'Bajo este nivel se marca en rojo' },
+      { key: 'initialStock', label: 'Stock inicial', type: 'number', min: 0, hint: 'Opcional — cuánto tenés hoy de este insumo' },
+      { key: 'initialCost', label: 'Costo de compra (unitario)', type: 'number', min: 0, hint: 'Lo que pagaste por unidad. Define el costo promedio inicial' },
     ],
-    onSubmit: async (v) => save(() => InventarioService.createItem({
-      name: String(v.name).trim(), sku: v.sku ? String(v.sku).trim() : undefined,
-      category: String(v.category || 'beverage'), unit: v.unit ? String(v.unit).trim() : 'unidad',
-      minStock: Number(v.minStock) || 0,
-    })),
+    onSubmit: async (v) => save(async () => {
+      const created = await InventarioService.createItem({
+        name: String(v.name).trim(), sku: v.sku ? String(v.sku).trim() : undefined,
+        category: String(v.category || 'beverage'), unit: v.unit ? String(v.unit).trim() : 'unidad',
+        minStock: Number(v.minStock) || 0,
+      })
+      const initialStock = Number(v.initialStock) || 0
+      if (initialStock > 0) {
+        await InventarioService.moveStock(created.id, {
+          type: 'in', quantity: initialStock,
+          unitCost: v.initialCost !== undefined && v.initialCost !== '' ? Number(v.initialCost) : undefined,
+          reason: 'Carga inicial',
+        })
+      }
+      return created
+    }),
   }
 }
 function editItem(i: InventoryItem) {
@@ -211,7 +225,7 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+  <div class="space-y-6">
     <header class="flex items-center justify-between gap-3 flex-wrap">
       <div>
         <h1 class="text-xl sm:text-2xl font-black text-navy">Inventario</h1>
@@ -223,19 +237,15 @@ const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" st
     </header>
 
     <!-- KPIs -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <div class="rounded-2xl border border-border bg-white p-4 shadow-(--shadow-card)">
-        <p class="text-[11px] font-bold text-text-muted uppercase">Valor del inventario</p>
-        <p class="text-2xl font-black text-navy tabular-nums mt-1">{{ money(totalValue) }}</p>
-      </div>
-      <div class="rounded-2xl border border-border bg-white p-4 shadow-(--shadow-card)">
-        <p class="text-[11px] font-bold text-text-muted uppercase">Insumos activos</p>
-        <p class="text-2xl font-black text-navy tabular-nums mt-1">{{ activeItems.length }}</p>
-      </div>
-      <div class="rounded-2xl border border-border bg-white p-4 shadow-(--shadow-card)">
-        <p class="text-[11px] font-bold text-text-muted uppercase">Bajo mínimo</p>
-        <p class="text-2xl font-black tabular-nums mt-1" :class="lowCount ? 'text-coral' : 'text-navy'">{{ lowCount }}</p>
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <KpiHeroCard label="Valor del inventario" :value="totalValue" icon="money" accent="amber"
+        :prefix="currencySymbol(currency)" unit="Insumos activos a costo promedio" />
+      <KpiHeroCard label="Insumos activos" :value="activeItems.length" icon="building" accent="blue"
+        :unit="`${items.length} en catálogo`" />
+      <KpiHeroCard label="Bajo mínimo" :value="lowCount" icon="checkout" :accent="lowCount ? 'rose' : 'teal'"
+        unit="Necesitan reposición" />
+      <KpiHeroCard label="Categorías" :value="new Set(activeItems.map((i) => i.category)).size" icon="bookings" accent="purple"
+        unit="Comida, bebida, suministro" />
     </div>
 
     <div v-if="loading" class="py-20 text-center text-text-muted">Cargando…</div>
