@@ -3,12 +3,9 @@
 // payments (onPaymentCompleted); el ingreso "Ventas Restaurante" lo reconoce RES-6.
 import type { ConnectorContext } from 'arckode-framework'
 import type { RecordPaymentInput } from '../modules/restaurant'
-import type { CurrentUser } from '../modules/restaurant/types'
 
 interface PaymentsModule {
   createPayment: (dto: Record<string, unknown>) => Promise<{ id: string }>
-  // Total refund when `amount` is omitted. Returns the new `type:'refund'` payment row.
-  refundPayment: (paymentId: string, amount?: number, user?: { id?: string; role?: string }) => Promise<{ id: string }>
 }
 
 export function restaurantePaymentsConnector(ctx: ConnectorContext): void {
@@ -31,14 +28,6 @@ export function restaurantePaymentsConnector(ctx: ConnectorContext): void {
         metadata: { source: 'restaurant' },
       })
       return { paymentId: payment.id }
-    },
-    // RES-6 refund: full refund of the original POS payment. The port discards the returned
-    // PaymentDTO (caller expects Promise<void>). Synthetic system user — the refund fires from
-    // the restaurant socket, not an HTTP request, mirroring restaurante-inventario's `sys`.
-    // Inline param types: the local module cast uses `any` for setSettlementDeps, which disables
-    // contextual inference for the callback params. Annotate to match SettlementPorts.refundPayment.
-    refundPayment: async ({ paymentId }: { paymentId: string }, _user: CurrentUser) => {
-      await payments().refundPayment(paymentId, undefined, { id: 'system', role: 'super_admin' })
     },
   })
 }
