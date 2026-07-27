@@ -12,6 +12,7 @@ import {
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -43,6 +44,10 @@ const orderByTable = computed(() => {
   return map
 })
 const looseOrders = computed(() => openOrders.value.filter((o) => !o.tableId && LIVE.includes(o.status)))
+
+const occupiedCount = computed(() => orderByTable.value.size)
+const freeCount = computed(() => tables.value.length - occupiedCount.value)
+const openOrdersCount = computed(() => openOrders.value.filter((o) => LIVE.includes(o.status)).length)
 
 const zones = computed(() => {
   const map = new Map<string, RestaurantTable[]>()
@@ -149,7 +154,7 @@ async function save(fn: () => Promise<unknown>) {
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+  <div class="space-y-6">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-xl sm:text-2xl font-black text-navy">Salón</h1>
@@ -170,6 +175,15 @@ async function save(fn: () => Promise<unknown>) {
           <button v-if="createPerm" @click="newTable" class="px-4 py-2 rounded-lg bg-navy text-white text-sm font-bold">Agregar mesa</button>
         </template>
       </EmptyState>
+
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KpiHeroCard label="Mesas" :value="tables.length" icon="building" accent="blue" unit="Total en el salón" />
+        <KpiHeroCard label="Ocupadas" :value="occupiedCount" icon="bookings" accent="amber"
+          unit="Con comanda abierta" :progress="tables.length ? Math.round((occupiedCount / tables.length) * 100) : 0" />
+        <KpiHeroCard label="Libres" :value="freeCount" icon="checkin" accent="teal" unit="Disponibles ahora" />
+        <KpiHeroCard label="Comandas abiertas" :value="openOrdersCount" icon="users" accent="purple"
+          :unit="`${looseOrders.length} sin mesa`" />
+      </div>
 
       <!-- Comandas sin mesa (room service / para llevar) -->
       <SectionCard v-if="looseOrders.length" title="Comandas sin mesa">
