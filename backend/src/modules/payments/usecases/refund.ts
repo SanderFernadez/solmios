@@ -4,7 +4,7 @@
 // El rastro de los dos movimientos es lo que permite conciliar contra el extracto del banco, donde
 // el cobro y la devolución también figuran por separado.
 
-import { ValidationError } from 'arckode-framework'
+import { ValidationError, ConflictError } from 'arckode-framework'
 import type { PaymentDTO, CreatePaymentDTO } from '../types'
 import type { PaymentCrudUseCase } from './payment-crud'
 import type { StripeUseCase } from './stripe'
@@ -27,6 +27,20 @@ export async function refundPayment(
   // El reembolso sale de la cuenta DEL HOTEL que cobró, no de una cuenta global.
   if (!(await deps.stripe.isConfigured(payment.hotelId))) {
     throw new ValidationError('El hotel no tiene pasarela de pago configurada')
+  }
+
+  // Deuda refund-orden-pos: los cobros POS con tarjeta se registran como manuales (pago en mostrador),
+  // sin un cargo real de Stripe → `stripePaymentId=''`. El refund via Stripe requiere ese cargo. Hasta
+  // que el flujo `payOrder(card)` cree una Checkout Session que el webhook confirme y asocie el PI
+  // (openspec `fix-refund-pos-card`), estos cobros NO son reembolsables por acá: se devuelven manualmente
+  // desde el panel de Stripe. Sin este guard, `stripe.refund` recibe `payment_intent=''` y Stripe tira
+  // un error críptico de PI inválido.
+  if (!payment.stripePaymentId) {
+    throw new ConflictError(
+      'Este cobro con tarjeta no tiene un cargo de Stripe asociado (los cobros POS se registran como pago manual). ' +
+      'Reembolsalo manualmente desde el panel de Stripe y registrá la devolución. ' +
+      'Deuda: refund-orden-pos (openspec fix-refund-pos-card).'
+    )
   }
 
   const refund = await deps.stripe.refund({

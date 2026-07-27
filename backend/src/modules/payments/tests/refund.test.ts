@@ -31,4 +31,28 @@ describe('payments — refund (devolución)', () => {
     expect((captured as any).type).toBe('refund')
     expect((captured as any).status).toBe('completed')
   })
+
+  it('rechaza con ConflictError un cobro card SIN stripePaymentId (deuda refund-orden-pos)', async () => {
+    // Los cobros POS con tarjeta se registran manuales (sin cargo Stripe). Sin este guard, stripe.refund
+    // recibe payment_intent='' y Stripe tira error críptico. El guard devuelve 409 claro con workaround.
+    let stripeCalled = false
+    const deps = {
+      crud: {
+        getById: async () => ({
+          id: 'p1', hotelId: 'h1', status: 'completed', method: 'card',
+          amount: 1000, currency: 'USD', folioId: null, guestId: null, stripePaymentId: '',
+        }),
+        updateStatus: async () => ({}) as PaymentDTO,
+      } as any,
+      stripe: {
+        isConfigured: async () => true,
+        refund: async () => { stripeCalled = true; return { id: 're_1' } as any },
+      } as any,
+      createPayment: async () => { throw new Error('NO debió crear payment') },
+    }
+
+    await expect(refundPayment(deps as any, 'p1', undefined, { id: 'u1', role: 'hotel_admin' }))
+      .rejects.toThrow(/sin un cargo de Stripe asociado|fix-refund-pos-card/)
+    expect(stripeCalled).toBe(false)
+  })
 })
