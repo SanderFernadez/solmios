@@ -58,6 +58,11 @@
           </div>
         </div>
 
+        <div v-if="referrerHotelName" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan/10 border border-cyan/30 mb-4">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan shrink-0"></span>
+          <span class="text-xs font-bold text-navy">Te invitó <strong>{{ referrerHotelName }}</strong> — al validar tu cuenta, gana meses gratis.</span>
+        </div>
+
         <h1 class="text-2xl font-black text-navy mb-1">
           {{ step === 1 ? 'Creá tu cuenta' : 'Contanos de tu hotel' }}
         </h1>
@@ -233,9 +238,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { SignupService, type PublicPlan } from '@/services/Signup.service'
+import { ReferralsService } from '@/services/Referrals.service'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
 import { COUNTRIES } from '@/data/locales'
@@ -280,6 +286,7 @@ const perks = [
   'Sin tarjeta de crédito',
 ]
 
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
@@ -287,6 +294,11 @@ const step = ref(1)
 const saving = ref(false)
 const error = ref('')
 const plans = ref<PublicPlan[]>([])
+
+// Link de referido (`/r/:code` → redirige acá con `?ref=`). Se muestra "Te invitó X" si el
+// código existe; si no, se manda igual en el alta (el backend lo ignora sin romper el registro).
+const referralCode = ref((route.query.ref as string) || '')
+const referrerHotelName = ref('')
 
 const form = ref({
   ownerName: '', email: '', password: '',
@@ -395,6 +407,13 @@ onMounted(async () => {
     plans.value = res ?? []
     if (plans.value.length && !form.value.planId) form.value.planId = plans.value[0]!.id
   } catch { /* los planes son opcionales para registrarse */ }
+
+  if (referralCode.value) {
+    try {
+      const { referrerHotelName: name } = await ReferralsService.resolve(referralCode.value)
+      referrerHotelName.value = name
+    } catch { /* código inválido/vencido: no se muestra el banner, el alta sigue igual */ }
+  }
 })
 
 function goToStep2() {
@@ -440,6 +459,7 @@ async function submit() {
       address: form.value.address.trim(),
       phone: form.value.phone.trim(),
       planId: form.value.planId || undefined,
+      referralCode: referralCode.value || undefined,
       captchaToken: captchaToken.value || undefined,
     })
     await auth.login(form.value.email.trim(), form.value.password)
