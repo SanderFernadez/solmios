@@ -14,6 +14,7 @@ import {
 } from './validators/schema'
 import { getPublicBookingBySlug, createPublicBookingDirect } from './usecases/public-booking'
 import { getPublicHotelInfo } from './usecases/public-hotel-info'
+import { getPublicReservation } from './usecases/public-reservation'
 
 export class BookingengineController {
   constructor(
@@ -127,6 +128,18 @@ export class BookingengineController {
     this.logger.info('GET /api/public/bookings/:id', { id: req.params.id })
     const booking = await this.service.getBooking(req.params.id)
     return { status: 200, body: booking }
+  }
+
+  /**
+   * F0 0.14 — Endpoint público SEGURO para consultar reserva por id + token.
+   * Reemplaza al IDOR abierto `GET /api/public/bookings/:id`. Anti-enumeración:
+   * mismo 404 para "no existe / sin token / token incorrecto / accessToken null".
+   * El token se valida con HMAC-SHA256 + timingSafeEqual (anti timing attack).
+   */
+  async getPublicReservation(req: HttpRequest) {
+    this.logger.info('GET /api/public/reservations/:id', { id: req.params.id })
+    const token = (req.query?.token as string | undefined) || undefined
+    return getPublicReservation(this.orm, String(req.params?.id || ''), token)
   }
 
   async trackEvent(req: HttpRequest) {

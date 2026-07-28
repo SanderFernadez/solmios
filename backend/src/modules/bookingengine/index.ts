@@ -108,9 +108,20 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
           log.warn('GET /api/public/bookings/:id deprecated by BOOKING_USE_UNIFIED_FLOW — use /api/public/reservations/:id')
           return { status: 410, body: { error: 'Deprecated. Use GET /api/public/reservations/:id' } }
         }
+        // ⚠️ F0 0.14 — IDOR todavía vivo: el flag está en false (prod rollback mode), el
+        // flujo viejo sigue exponiendo cualquier reserva por UUID. Este log.warn URGENTE
+        // es para que prod migre a `BOOKING_USE_UNIFIED_FLOW=true` (que responde 410 acá)
+        // y se eliminen este branch + el endpoint en F4. Mientras tanto, NO sacar de acá.
+        log.warn('URGENT DEPRECATION — GET /api/public/bookings/:id still exposes IDOR (BOOKING_USE_UNIFIED_FLOW=false). Set flag=true in prod and remove this branch (F4 deletes the endpoint).')
         const { allowed, retryAfter } = rateLimit(`public-bookings-get:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getBooking(req)
+      })
+      // F0 0.14 — Endpoint público SEGURO. Token HMAC en ?token=X (anti-IDOR).
+      router.get('/api/public/reservations/:id', async (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`public-reservation-get:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
+        return controller.getPublicReservation(req)
       })
       router.post('/api/public/bookings/:id/checkout', async (req: any) => {
         if (useUnifiedBookingFlow()) {
