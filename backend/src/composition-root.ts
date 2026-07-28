@@ -151,6 +151,9 @@ import { EmailQueueModule } from './modules/email-queue'
 import { PublicapiModule } from './modules/publicapi'
 import { WebhooksModule } from './modules/webhooks'
 import { PlatformEmailsModule } from './modules/platform-emails'
+// F0 (solmi-direct-booking): media del hotel (hero/gallery/room) para la landing pública.
+// Modelo + service + usecases (tasks 0.6 + 0.7). Rutas (0.8) se agregan en pieza paralela.
+import { HotelMediaModule } from './modules/hotelmedia'
 import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
@@ -208,6 +211,10 @@ const mods = [
   // payment_*, subscription_canceled). Solo super_admin. Lo consumen subscriptions (webhook/signup)
   // y el cron de trial vía resolveModule('platform-emails').sendEvent().
   PlatformEmailsModule(),
+  // F0 (solmi-direct-booking) — Media del hotel (hero/gallery/room) para landing pública.
+  // Tasks 0.6 + 0.7: solo modelo + service + usecases. Rutas admin + pública van en task 0.8.
+  // Reusa el StorageService global (mismo adapter S3/local que hotel-logos, dir 'hotel-media').
+  HotelMediaModule({ storage }),
 ]
 for (const m of mods) system.addModule(m as any)
 
