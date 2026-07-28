@@ -153,7 +153,7 @@ import { WebhooksModule } from './modules/webhooks'
 import { PlatformEmailsModule } from './modules/platform-emails'
 // F0 (solmi-direct-booking): media del hotel (hero/gallery/room) para la landing pública.
 // Modelo + service + usecases (tasks 0.6 + 0.7). Rutas (0.8) se agregan en pieza paralela.
-import { HotelMediaModule } from './modules/hotelmedia'
+import { HotelMediaModule } from './modules/hotel-media'
 import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
