@@ -114,13 +114,13 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
 
 ### Backend — Unificación de flujos + Stripe cableado + IDOR fix (spec: booking-unification)
 
-- [ ] 0.12 Feature flag `BOOKING_USE_UNIFIED_FLOW` (env, default `true` en dev, `false` en
+- [x] 0.12 Feature flag `BOOKING_USE_UNIFIED_FLOW` (env, default `true` en dev, `false` en
       prod hasta activar por hotel). Cuando false, los endpoints `/public/bookings` (plural)
       siguen respondiendo como hoy. Cuando true, `/public/bookings` responde 410 Gone con
       mensaje "Use /public/booking instead".
       **Acceptance**: con flag false, test existente de `/public/bookings` pasa sin cambios.
 
-- [ ] 0.13 `reservations/model.ts`: agregar columna `accessToken` (`type:'string'`, nullable)
+- [x] 0.13 `reservations/model.ts`: agregar columna `accessToken` (`type:'string'`, nullable)
       a `ReservationModel` (D4). En `usecases/public-booking.ts:65 createPublicBookingDirect`,
       setear `accessToken: crypto.randomUUID()` al crear la reserva (solo cuando se crea por
       flujo público — las creadas desde panel no llevan token).

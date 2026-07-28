@@ -55,6 +55,11 @@ export const ReservasModel: ModelDefinition = {
     checkedInAt: { type: 'string' },
     checkedOutAt: { type: 'string' },
     folioId: { type: 'string' },
+    // F0 0.13 — AccessToken público (UUID) para consulta sin login (spec booking-unification).
+    // Lo setea `createPublicBookingDirect` al crear por flujo público (`/api/public/booking`).
+    // Las reservas creadas desde el panel NO lo setean → queda null → 404 en el endpoint público
+    // (anti-IDOR: no revela existencia). Anti-patrón ORM D5: declarado acá, case-sensitive.
+    accessToken: { type: 'string' },
   },
   timestamps: true,
 }

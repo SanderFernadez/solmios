@@ -62,11 +62,15 @@ export async function createPublicBookingDirect(orm: any, body: any, pushAvailab
     id: crypto.randomUUID(), hotelId, name: guestName, email: guestEmail, phone: guestPhone || '',
     documentType: 'passport', documentNumber: '', nationality: '', address: '',
   })
+  // F0 0.13 — AccessToken público (UUID). Solo el flujo público lo setea; las reservas
+  // creadas desde `/api/panel/reservas` NO lo reciben → `accessToken=null` → 404 en el
+  // endpoint público (anti-enumeración IDOR, spec booking-unification D4).
   const reservation = await orm.create('Reservations', {
     id: crypto.randomUUID(), hotelId, roomId, guestId: guest.id,
     checkIn, checkOut, status: 'pending', source: 'direct',
     adults: adults || 1, children: kids || 0, totalAmount, deposit: 0,
     notes: 'Reserva desde widget público',
+    accessToken: crypto.randomUUID(),
   })
 
   pushAvailability?.(hotelId, roomId)

@@ -11,6 +11,7 @@ import { createPermissionGuard } from '../../infrastructure/auth/create-permissi
 import { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 import { PaymentEventStore } from '../../services/payment-gateway/payment-events'
 import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
+import { useUnifiedBookingFlow } from './usecases/unified-flow'
 
 export { BookingengineService }
 export type { BookingConfigDTO, UpdateBookingConfigDTO, AvailabilityQuery, AvailabilityResult, PublicBookingDTO, CreatePublicBookingDTO, ConversionEventDTO, CreateConversionEventDTO, BookingAnalytics } from './types'
@@ -92,16 +93,30 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         return controller.createPublicBookingDirect(req)
       })
       router.post('/api/public/bookings', async (req: any) => {
+        // F0 0.12 — Feature flag de rollback. Con flag en true (default dev), el flujo plural
+        // queda 410 Gone para forzar al singular `/api/public/booking` (única fuente `Reservations`).
+        if (useUnifiedBookingFlow()) {
+          log.warn('POST /api/public/bookings deprecated by BOOKING_USE_UNIFIED_FLOW — use /api/public/booking')
+          return { status: 410, body: { error: 'Deprecated. Use POST /api/public/booking' } }
+        }
         const { allowed, retryAfter } = rateLimit(`public-bookings-create:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.createBooking(req)
       })
       router.get('/api/public/bookings/:id', async (req: any) => {
+        if (useUnifiedBookingFlow()) {
+          log.warn('GET /api/public/bookings/:id deprecated by BOOKING_USE_UNIFIED_FLOW — use /api/public/reservations/:id')
+          return { status: 410, body: { error: 'Deprecated. Use GET /api/public/reservations/:id' } }
+        }
         const { allowed, retryAfter } = rateLimit(`public-bookings-get:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getBooking(req)
       })
       router.post('/api/public/bookings/:id/checkout', async (req: any) => {
+        if (useUnifiedBookingFlow()) {
+          log.warn('POST /api/public/bookings/:id/checkout deprecated by BOOKING_USE_UNIFIED_FLOW — use /api/public/reservations/:id/checkout')
+          return { status: 410, body: { error: 'Deprecated. Use POST /api/public/reservations/:id/checkout' } }
+        }
         const { allowed, retryAfter } = rateLimit(`public-checkout:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.createCheckoutSession(req)
