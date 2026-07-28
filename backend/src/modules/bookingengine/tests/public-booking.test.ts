@@ -24,6 +24,13 @@ function makeOrm(overrides: Partial<{ room: any; reservations: any[] }> = {}) {
       created.push({ model, row })
       return row
     },
+    // F2 2.5 — El usecase ahora envuelve guest+reservation en orm.transaction. El mock
+    // simplemente invoca el callback pasándose a sí mismo como `tx` (los creates van al
+    // array `created` como antes). Sin promo no se llama a tx.update/findOne, pero los
+    // dejamos como no-op por si un test futuro los invoca.
+    transaction: async (cb: (tx: any) => Promise<any>) => cb(orm),
+    update: async () => null,
+    findOne: async () => null,
   }
   return { orm, created }
 }

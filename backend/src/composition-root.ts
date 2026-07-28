@@ -22,6 +22,7 @@ import { createEvidenceRetentionCron } from './shared/usecases/evidence-retentio
 import { createTrialReminderCron } from './shared/usecases/trial-reminder-cron'
 import { createSubscriptionSuspensionCron } from './shared/usecases/subscription-suspension-cron'
 import { createReferralCreditsCron } from './shared/usecases/referral-credits-cron'
+import { createCurrencyRatesCron, CURRENCY_RATES_TICK_MS } from './shared/usecases/currency-rates-cron'
 import { HousekeepingSettingsUseCase } from './modules/housekeeping/usecases/settings'
 import { reservasPaymentRequestsConnector } from './connectors/reservas-payment-requests'
 
@@ -594,6 +595,19 @@ setInterval(() => {
   referralCreditsCron().catch((e) => logger.warn('referral-credits cron failed', { error: (e as Error).message }))
 }, SAAS_TICK_MS)
 logger.info('Referral-credits cron listo', { tickMs: SAAS_TICK_MS })
+
+// F2 2.7 (D10 multi-moneda) — Cron daily de tasas de cambio: fetcha openexchangerates free tier
+// y guarda en configuration('currency_rates', hotelId='platform'). El endpoint público
+// /api/public/hotels/:slug/rates las consume para conversión display-only. Si
+// OPENEXCHANGERATES_APP_ID no está, skip silencioso (no rompe nada, solo no actualiza).
+const currencyRatesCron = createCurrencyRatesCron(orm, logger)
+setTimeout(() => {
+  currencyRatesCron().catch((e) => logger.warn('currency-rates initial run failed', { error: (e as Error).message }))
+}, 10_000)
+setInterval(() => {
+  currencyRatesCron().catch((e) => logger.warn('currency-rates cron failed', { error: (e as Error).message }))
+}, CURRENCY_RATES_TICK_MS)
+logger.info('Currency-rates cron listo', { tickMs: CURRENCY_RATES_TICK_MS })
 
 // ─── Shutdown ──────────────────────────────────────────────────────────────
 process.on('SIGINT', async () => { await system.stop(); process.exit(0) })

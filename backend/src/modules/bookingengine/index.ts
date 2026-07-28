@@ -61,6 +61,11 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       // (admin no puede tocar upsells de hotel ajeno).
       const upsellRepo = new OrmRepository<UpsellDTO>(orm, 'Upsells')
       const userRepoForUpsells = new OrmRepository<any>(orm, 'Users')
+      // F2 2.4 / 2.5 — Deps nuevos: configuration (taxes + currency_rates) y promo_codes
+      // (valida + incrementa uses en el flujo unificado). Sin estos, los endpoints públicos
+      // /rates y /booking procesan todo vacío (degradación graceful, no rompe el flujo).
+      const configurationRepo = new OrmRepository<any>(orm, 'Configuration')
+      const promoCodesRepo = new OrmRepository<any>(orm, 'PromoCodes')
 
       const service = new BookingengineService(
         configRepo, availabilityRepo, roomsRepo, reservationsRepo, hotelsRepo,
@@ -69,6 +74,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       const controller = new BookingengineController(
         service, log, orm, auth, opts?.pushAvailability, hotelsRepo,
         upsellRepo, userRepoForUpsells, auth,
+        configurationRepo, promoCodesRepo,
       )
 
       // Admin routes (protegidas con auth)
@@ -108,6 +114,21 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         const { allowed, retryAfter } = rateLimit(`public-hotel-info:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getHotelPublicInfo(req)
+      })
+      // F2 2.4 — Tarifas públicas del hotel por slug: room types disponibles + fromPrice +
+      // availableCount (D11 urgencia) + taxBreakdown. Rate-limit 60/60s (read-only, mismo
+      // techo que /public/hotel/:slug). Sin auth.
+      router.get('/api/public/hotels/:slug/rates', async (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`public-rates:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
+        return controller.getPublicRates(req)
+      })
+      // F2 2.6 — Lista upsells activos del hotel para el step de extras del widget. Rate-limit
+      // 60/60s (read-only). Sin auth. Filtro opcional ?kind=per_room|per_person|per_stay.
+      router.get('/api/public/hotels/:slug/upsells', async (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`public-upsells:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
+        return controller.getPublicUpsells(req)
       })
       // F1 1.11 — Sitemap dinámico. Público (sin auth), cache-control 1h. Rate-limit suave:
       // bots buenos respetan crawl-delay, pero un bot malicioso podría meter ruido. 60/min sobra.

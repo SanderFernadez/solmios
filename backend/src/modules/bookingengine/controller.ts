@@ -27,6 +27,10 @@ import { getPublicBookingBySlug, createPublicBookingDirect } from './usecases/pu
 import { getPublicHotelInfo } from './usecases/public-hotel-info'
 import { getPublicReservation } from './usecases/public-reservation'
 import { listActiveHotelSlugs, buildSitemapXml, resolveBaseUrl } from './usecases/sitemap'
+// F2 2.4 / 2.6 — Handlers públicos para /rates y /upsells (rates usa availability + config +
+// conversion; upsells lista los activos del hotel para el step de extras del widget).
+import { getPublicRates } from './usecases/public-rates'
+import { getPublicUpsells } from './usecases/public-upsells'
 
 export class BookingengineController {
   constructor(
@@ -45,6 +49,12 @@ export class BookingengineController {
     private readonly upsellRepo?: RepositoryAdapter<UpsellDTO>,
     private readonly userRepoForUpsells?: RepositoryAdapter<any>,
     private readonly authImpl?: Auth,
+    // F2 2.4 / 2.5 — Deps para los endpoints públicos de rates/booking. `configRepo` lee
+    // configuration('taxes') + configuration('currency_rates'); `promoCodesRepo` valida e
+    // incrementa uses de promo codes en el flujo unificado de booking. Opcionales para no
+    // romper tests legacy del controller (que instancian con 4 params).
+    private readonly configRepo?: RepositoryAdapter<any>,
+    private readonly promoCodesRepo?: RepositoryAdapter<any>,
   ) {}
 
   /** Deps para los usecases de upsells. Tirar si no están cableadas (claramente un bug de wiring). */
@@ -193,11 +203,56 @@ export class BookingengineController {
     const successUrl = body.successUrl || (baseUrl ? `${baseUrl}/booking/success` : '')
     const cancelUrl = body.cancelUrl || (baseUrl ? `${baseUrl}/booking/cancel` : '')
     const stripeUrls = successUrl && cancelUrl ? { successUrl, cancelUrl } : undefined
+    // F2 2.5 — Pasamos los deps de promo/upsells/config si están cableados. Si faltan, el
+    // usecase funciona como F0 0.16 (persiste promoCode/upsells sin validarlos). El wiring
+    // completo (index.ts) SIEMPRE cablea estos tres repos.
+    const extraDeps = (this.configRepo && this.promoCodesRepo && this.upsellRepo)
+      ? { config: this.configRepo, promoCodes: this.promoCodesRepo, upsells: this.upsellRepo }
+      : undefined
     return createPublicBookingDirect(
       this.orm, req.body,
       this.pushAvailability, this.auth,
       this.service, this.logger,
       stripeUrls,
+      extraDeps,
+    )
+  }
+
+  // ─── Público rates/upsells (F2 2.4 / 2.6) ──────────────────────────────────
+  // Estos handlers son DELGADOS: la lógica (resolve slug, availability, conversion, taxes,
+  // upsells activos) vive en los usecases para que los tests sean unitarios y aislados.
+
+  /** GET /api/public/hotels/:slug/rates — rates + taxes + availableCount (D11 urgencia). */
+  async getPublicRates(req: HttpRequest) {
+    this.logger.info('GET /api/public/hotels/:slug/rates', { slug: req.params.slug })
+    if (!this.hotelsRepo || !this.configRepo) {
+      return { status: 500, body: { error: 'rates deps no cableados' } }
+    }
+    const query = (req.query || {}) as { checkIn?: string; checkOut?: string; rooms?: string; guests?: string; currency?: string }
+    return getPublicRates(
+      { hotels: this.hotelsRepo, availability: this.service, config: this.configRepo },
+      String(req.params?.slug || ''),
+      {
+        checkIn: String(query.checkIn || ''),
+        checkOut: String(query.checkOut || ''),
+        rooms: query.rooms ? Number(query.rooms) : undefined,
+        guests: query.guests ? Number(query.guests) : undefined,
+        currency: query.currency,
+      },
+    )
+  }
+
+  /** GET /api/public/hotels/:slug/upsells — lista upsells activos (step de extras). */
+  async getPublicUpsells(req: HttpRequest) {
+    this.logger.info('GET /api/public/hotels/:slug/upsells', { slug: req.params.slug })
+    if (!this.hotelsRepo || !this.upsellRepo) {
+      return { status: 500, body: { error: 'upsells deps no cableados' } }
+    }
+    const kind = (req.query?.kind as string | undefined) || undefined
+    return getPublicUpsells(
+      { hotels: this.hotelsRepo, upsells: this.upsellRepo },
+      String(req.params?.slug || ''),
+      kind,
     )
   }
 
