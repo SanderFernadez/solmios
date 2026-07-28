@@ -103,16 +103,18 @@ cd frontend && npx vue-tsc -b  # 0 errores
 ### PC-4.1 — Manifest + service worker
 
 - [x] **PC-4.1.1** Crear `frontend/public/manifest.webmanifest` con name, short_name, icons (192/512), theme_color (#0F1E3D navy), background_color, display: standalone
-- [ ] **PC-4.1.2** Crear `frontend/public/sw.js` — service worker con cache de app shell (/, /login, /assets/*), fallback offline a index.html
-- [ ] **PC-4.1.3** Registrar SW en `frontend/src/main.ts` (`navigator.serviceWorker.register('/sw.js')`)
+- [x] **PC-4.1.2** Verificado (2026-07-28): `frontend/public/sw.js` existe — network-first para navegación + bypass total de `/api/*` (auth/logout nunca se cachean) + assets con hash cache-first. Reactivado tras el desactivado de `c79e8f9` (ver debt abajo, ya resuelta por commit `5857848` per CLAUDE.md).
+- [x] **PC-4.1.3** Verificado: `frontend/src/main.ts:28-36` registra el SW solo en `PROD`.
 - [x] **PC-4.1.4** `<link rel="manifest" href="/manifest.webmanifest">` + `<meta name="theme-color">` en `index.html`
-- [ ] **PC-4.1.5** Generar iconos 192/512 desde favicon.svg (puede ser PNG estático en `/public/icons/`)
+- [x] **PC-4.1.5** Verificado: `frontend/public/icons/{icon-192,icon-512}.svg` existen (SVG, no PNG — decisión ya documentada abajo, no bloqueante).
 
 ### PC-4.2 — Offline UX
 
 - [x] **PC-4.2.1** Detectar offline con `navigator.onLine` + evento `online`/`offline`
 - [x] **PC-4.2.2** Banner "Sin conexión — mostrando datos en caché" cuando offline
-- [ ] **PC-4.2.3** Botones de acción crítica (crear reserva, check-in) deshabilitados cuando offline + tooltip explicativo
+- [x] **PC-4.2.3** Verificado (2026-07-28): `ReservationWizardModal.vue:408-409,432,453` ya deshabilita
+      el botón de guardar (`:disabled="saving || !isOnline"`) con tooltip "Sin conexión: no se puede
+      guardar la reserva" — cubre crear reserva, no solo check-in/checkout.
 
 **Aceptación**:
 ```bash
@@ -158,7 +160,7 @@ cd frontend && npx vite build  # manifest + sw copiados a dist/
 ## 📝 Debt documentada (no bloqueante) — 2026-07-05
 
 - **PC-3.1.2** (helper `createPaymentLink`): el flujo real usa Checkout Session (`createCheckoutSession` provee la URL de cobro). Payment Links API de Stripe (objetos reutilizables) no se usa — sería dead code.
-- **PC-4.1.2/3** (SW con cache app shell): **DESACTIVADO intencionalmente** (commit `c79e8f9`). El SW anterior cacheaba el shell y rompía logout/navegación (servía versiones obsoletas). Reactivar requiere SW network-first + bypass `/api/*` + testing en prod cuidadoso.
-- **PC-4.1.5** (iconos PNG): manifest usa SVG (192/512). Funciona en la mayoría de navegadores; Chrome/Android históricamente prefieren PNG para el criterio "installable" estricto de Lighthouse.
-- **PC-4.2.3** (crear reserva offline): check-in/checkout SÍ deshabilitados offline (`useOnline`). Falta extender a "crear reserva" (ReservationModal).
-- **GATES manuales** (reports cargan, switcher, PWA instalable): requieren QA manual en prod.
+- ~~**PC-4.1.2/3**~~ ✅ RESUELTO — reactivado (commit `5857848`, ver CLAUDE.md), verificado presente 2026-07-28.
+- **PC-4.1.5** (iconos PNG): manifest usa SVG (192/512). Funciona en la mayoría de navegadores; Chrome/Android históricamente prefieren PNG para el criterio "installable" estricto de Lighthouse. No bloqueante, no resuelto.
+- ~~**PC-4.2.3**~~ ✅ RESUELTO — `ReservationWizardModal.vue` ya cubre crear reserva, no solo check-in/checkout.
+- **GATES manuales** (reports cargan, switcher, PWA instalable): siguen sin validar — requieren QA manual en prod, no se fabricó su cierre.
