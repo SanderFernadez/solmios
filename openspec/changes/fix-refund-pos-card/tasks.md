@@ -1,15 +1,16 @@
 # fix-refund-pos-card — Tasks
 
 > Decisiones ya resueltas (usuario, 2026-07-28, ver `proposal.md`): Stripe Checkout Session (NO Terminal),
-> expiración corta (15 min) y la mesa se LIBERA al expirar (no queda tomada esperando re-cobro sobre la
-> misma sesión — el cajero genera una Checkout Session nueva).
+> expiración corta (30 min — piso real de la API de Stripe; 15 min pedidos originalmente hubieran sido
+> rechazados) y la mesa se LIBERA al expirar (no queda tomada esperando re-cobro sobre la misma sesión
+> — el cajero genera una Checkout Session nueva).
 
 ## 1. Spec / Design (SDD)
 - [x] 1.1 Escenarios resueltos en `proposal.md`: payOrder card → processing_payment; webhook completed →
       paid; webhook expired (15min) → billed + mesa liberada; refund de orden paid con stripePaymentId → OK.
 - [x] 1.2 Secuencia del flujo async documentada en `proposal.md` (tabla "Plan técnico").
-- [x] 1.3 Timeout: 15 min (`expires_at` al crear la Checkout Session). Mesa: se libera al expirar. Re-cobro:
-      sesión nueva, NO se reintenta la expirada.
+- [x] 1.3 Timeout: 30 min (`expires_at` al crear la Checkout Session — piso real de Stripe, 15 min pedidos
+      hubieran sido rechazados). Mesa: se libera al expirar. Re-cobro: sesión nueva, NO se reintenta la expirada.
 
 ## 2. Contrato del módulo restaurant (`restaurant/usecases/settlement.ts`)
 - [x] 2.1 Agregar `'processing_payment'` a `OrderStatus` (`restaurant/types.ts`).
@@ -69,6 +70,6 @@
 ## Riesgos a vigilar
 - **Doble descuento de inventario**: hoy `recordPayment` (cash/folio) descuenta al cobrar; el nuevo flujo async debe hacerlo en `onOrderPaid` (webhook), NO antes. Si queda el descuento síncrono, el webhook lo duplica.
 - **`reference` compartido**: debe convivir con `idempotencia-settlement-pos` (`'pos:'+orderId`) — usar el mismo esquema para no romper el unique index de aquel.
-- **Mesa zombie**: resuelto — expiración de 15 min (`expires_at` en la Checkout Session) + `unsettleOrder` libera la mesa al expirar. Ventana máxima de exposición: 15 min.
+- **Mesa zombie**: resuelto — expiración de 30 min (`expires_at` en la Checkout Session, piso real de Stripe) + `unsettleOrder` libera la mesa al expirar. Ventana máxima de exposición: 30 min.
 - **Stripe no configurado**: `chargeCardPayment` debe fallar explícito (`ValidationError`) si el hotel no tiene pasarela — hoy `recordPayment` no valida eso porque no toca Stripe.
 - **Cobro directo `cash`/`folio`**: no se tocan — solo `method==='card'` cambia de path.
