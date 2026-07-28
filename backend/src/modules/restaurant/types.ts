@@ -1,8 +1,12 @@
 // restaurant/types.ts — Contrato TypeScript del módulo (API). El schema de DB vive en model.ts.
 
 export type OrderType = 'dine_in' | 'room_service' | 'takeaway'
+// 'processing_payment' (fix-refund-pos-card): cobro con tarjeta esperando la confirmación async del
+// webhook de Stripe (Checkout Session abierta). Transitorio entre 'billed' y 'paid' — nunca lo fija
+// el cliente, solo payOrder(card)/settlePaidOrder/unsettleOrder.
 export type OrderStatus =
   | 'open' | 'sent' | 'preparing' | 'ready' | 'served' | 'billed' | 'charged' | 'paid' | 'cancelled' | 'refunded'
+  | 'processing_payment'
 export type LineStatus = 'new' | 'preparing' | 'ready' | 'served' | 'cancelled'
 export type TableStatus = 'free' | 'occupied' | 'reserved'
 export type Settlement = 'folio' | 'payment'

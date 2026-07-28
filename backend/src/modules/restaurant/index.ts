@@ -18,7 +18,7 @@ export type {
 export type { RestaurantSockets } from './sockets'
 export { RestaurantValidator, CreateStationSchema, UpdateStationSchema } from './validators/schema'
 export { registerRestaurantModels } from './model'
-export type { SettlementPorts, ChargeToFolioInput, RecordPaymentInput } from './usecases/settlement'
+export type { SettlementPorts, ChargeToFolioInput, RecordPaymentInput, ChargeCardPaymentInput } from './usecases/settlement'
 export type { ComboDTO, ComboItemDTO } from './types'
 
 export function RestaurantModule() {

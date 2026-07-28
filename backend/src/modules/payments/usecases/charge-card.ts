@@ -29,6 +29,11 @@ export async function chargeCard(
     description: dto.description,
     folioId: dto.folioId,
     guestId: dto.guestId,
+    // fix-refund-pos-card: `reference`/`metadata` viajaban perdidos — sin ellos, el POS no podía
+    // reclamar la idempotencia de idempotencia-settlement-pos ('pos:'+orderId) ni el conector
+    // reconocer de qué módulo es el cobro al escuchar onPaymentCompleted/onPaymentExpired.
+    reference: dto.reference,
+    metadata: dto.metadata,
   } as CreatePaymentDTO)
 
   // La pasarela se resuelve para ESTE hotel: cobra contra su cuenta, no contra una global.
@@ -41,10 +46,14 @@ export async function chargeCard(
     amount: dto.amount,
     currency: dto.currency ?? 'USD',
     description: dto.description,
+    // El client_reference_id de la sesión SIEMPRE es el payment.id — es lo que settle-webhook.ts usa
+    // para encontrar el payment a confirmar/expirar. dto.reference (ej. 'pos:'+orderId) es la
+    // idempotency key del payment en SÍ, un concepto distinto.
     reference: payment.id,
-    metadata: { paymentId: payment.id, hotelId: dto.hotelId },
+    metadata: { paymentId: payment.id, hotelId: dto.hotelId, ...(dto.metadata || {}) },
     successUrl: dto.successUrl,
     cancelUrl: dto.cancelUrl,
+    expiresInMinutes: dto.expiresInMinutes,
   })
 
   await deps.crud.updateStatus(payment.id, 'processing')

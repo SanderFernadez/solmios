@@ -26,8 +26,10 @@ export interface OrderLinesDeps {
   comboItems?: RepositoryAdapter<ComboItemDTO>
 }
 
-// Una vez liquidada o cancelada, la comanda no acepta cambios de líneas.
-const LINES_LOCKED: OrderDTO['status'][] = ['charged', 'paid', 'cancelled']
+// Una vez liquidada o cancelada, la comanda no acepta cambios de líneas. fix-refund-pos-card:
+// 'processing_payment' también bloquea — el monto ya viaja en una Checkout Session de Stripe abierta;
+// si se editara una línea acá, el total recalculado NO coincidiría con lo que Stripe va a confirmar.
+const LINES_LOCKED: OrderDTO['status'][] = ['charged', 'paid', 'cancelled', 'processing_payment']
 
 export interface AddLineInput {
   menuItemId?: string

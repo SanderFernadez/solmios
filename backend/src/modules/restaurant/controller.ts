@@ -207,6 +207,9 @@ export class RestaurantController {
   async payOrder(req: HttpRequest) {
     this.logger.info('POST /restaurant/orders/:id/pay', { id: req.params.id })
     const data = validateSchema(PaySchema, req.body)
+    // fix-refund-pos-card: para method==='card' el usecase deja la comanda en `processing_payment` y
+    // el objeto devuelto trae `checkoutUrl` (Stripe Checkout Session) además de los campos de OrderDTO —
+    // el body ya lo incluye tal cual, el frontend redirige si viene presente.
     const item = await this.service.payOrder(req.params.id, data as any, req.user as any)
     return { status: 200, body: item }
   }

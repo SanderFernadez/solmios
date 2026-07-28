@@ -493,6 +493,111 @@ describe('RestaurantService — cuenta + cobro (RES-5)', () => {
   })
 })
 
+// ─── fix-refund-pos-card: payOrder(card) → processing_payment + settlePaidOrder/unsettleOrder ──────
+describe('RestaurantService — payOrder(card) vía Stripe Checkout (fix-refund-pos-card)', () => {
+  function setup(orderOverrides: any = {}) {
+    const ordersStore: any[] = [{ id: 'o1', hotelId: 'h1', number: 'CMD-2026-0001', status: 'served', tableId: 't1', tip: 0, subtotal: 0, tax: 0, total: 0, ...orderOverrides }]
+    const linesStore: any[] = [{ id: 'l1', hotelId: 'h1', orderId: 'o1', unitPrice: 10, quantity: 2, taxRate: 18, lineTotal: 20, status: 'served' }]
+    const tablesStore: any[] = [{ id: 't1', hotelId: 'h1', name: 'M1', status: 'occupied' }]
+    const build = (ports?: any) => {
+      const s = svc3({ orders: backed<OrderDTO>(ordersStore), lines: backed<any>(linesStore), tables: backed<TableDTO>(tablesStore), config: taxConfig(), hotels: makeRepo<any>() }, strictAuth)
+      if (ports) s.setSettlementDeps(ports)
+      return s
+    }
+    return { ordersStore, tablesStore, build }
+  }
+
+  it('payOrder(card) sin successUrl/cancelUrl → ValidationError (no abre sesión a ciegas)', async () => {
+    const { build } = setup()
+    const s = build({ chargeCardPayment: async () => ({ paymentId: 'p1', checkoutUrl: 'https://stripe/cs_1' }) })
+    await expect(s.payOrder('o1', { method: 'card' }, user)).rejects.toThrow('successUrl')
+  })
+
+  it('payOrder(card) deja processing_payment, guarda paymentId, devuelve checkoutUrl y NO libera la mesa todavía', async () => {
+    const { ordersStore, tablesStore, build } = setup()
+    let captured: any = null
+    const s = build({
+      chargeCardPayment: async (i: any) => { captured = i; return { paymentId: 'p1', checkoutUrl: 'https://stripe/cs_1' } },
+      recordPayment: async () => { throw new Error('NO debió llamar recordPayment para method=card') },
+    })
+    const o = await s.payOrder('o1', { method: 'card', successUrl: 'https://app/ok', cancelUrl: 'https://app/cancel' }, user)
+    expect(captured.orderId).toBe('o1')             // idempotencia-settlement-pos: el conector arma 'pos:'+orderId con esto
+    expect(captured.amount).toBe(23.6)               // BRUTO, igual que cash
+    expect(o.status).toBe('processing_payment')
+    expect(o.paymentId).toBe('p1')
+    expect((o as any).checkoutUrl).toBe('https://stripe/cs_1')
+    expect(ordersStore[0].status).toBe('processing_payment')
+    expect(tablesStore[0].status).toBe('occupied')   // la mesa NO se libera hasta confirmar
+  })
+
+  it('doble click en card: una comanda processing_payment no abre una SEGUNDA sesión', async () => {
+    const { build } = setup()
+    const s = build({ chargeCardPayment: async () => ({ paymentId: 'p1', checkoutUrl: 'https://stripe/cs_1' }) })
+    await s.payOrder('o1', { method: 'card', successUrl: 'https://app/ok', cancelUrl: 'https://app/cancel' }, user)
+    await expect(s.payOrder('o1', { method: 'card', successUrl: 'https://app/ok', cancelUrl: 'https://app/cancel' }, user))
+      .rejects.toThrow('esperando la confirmación')
+  })
+
+  it('settlePaidOrder: processing_payment → paid, libera la mesa y emite onOrderPaid', async () => {
+    const { ordersStore, tablesStore, build } = setup({ status: 'processing_payment', paymentId: 'p1' })
+    const s = build()
+    let evtCount = 0
+    s.setSockets({ onOrderPaid: async () => { evtCount++ } })
+    const o = await s.settlePaidOrder('o1', 'p1', user)
+    expect(o.status).toBe('paid')
+    expect(o.settlement).toBe('payment')
+    expect(ordersStore[0].status).toBe('paid')
+    expect(tablesStore[0].status).toBe('free')
+    expect(evtCount).toBe(1)
+  })
+
+  it('settlePaidOrder es idempotente: segunda llamada (reintento del webhook) no repite el socket', async () => {
+    const { build } = setup({ status: 'processing_payment', paymentId: 'p1' })
+    const s = build()
+    let evtCount = 0
+    s.setSockets({ onOrderPaid: async () => { evtCount++ } })
+    await s.settlePaidOrder('o1', 'p1', user)
+    const second = await s.settlePaidOrder('o1', 'p1', user)
+    expect(second.status).toBe('paid')
+    expect(evtCount).toBe(1)   // NO se repitió
+  })
+
+  it('settlePaidOrder rechaza una comanda que NUNCA estuvo processing_payment (ej. billed)', async () => {
+    const { build } = setup({ status: 'billed' })
+    await expect(build().settlePaidOrder('o1', 'p1', user)).rejects.toThrow('no está esperando')
+  })
+
+  it('unsettleOrder: processing_payment → billed y libera la mesa (checkout expirado)', async () => {
+    const { ordersStore, tablesStore, build } = setup({ status: 'processing_payment', paymentId: 'p1' })
+    const o = await build().unsettleOrder('o1', user)
+    expect(o.status).toBe('billed')
+    expect(ordersStore[0].status).toBe('billed')
+    expect(tablesStore[0].status).toBe('free')
+  })
+
+  it('unsettleOrder NO aplica a paid ni a billed (solo revierte processing_payment)', async () => {
+    const { ordersStore: paidStore, build: buildPaid } = setup({ status: 'paid', settlement: 'payment', paymentId: 'p1' })
+    const paidResult = await buildPaid().unsettleOrder('o1', user)
+    expect(paidResult.status).toBe('paid')          // no-op, no lo tocó
+    expect(paidStore[0].status).toBe('paid')
+
+    const { ordersStore: billedStore, build: buildBilled } = setup({ status: 'billed' })
+    const billedResult = await buildBilled().unsettleOrder('o1', user)
+    expect(billedResult.status).toBe('billed')       // ya estaba ahí, no-op
+    expect(billedStore[0].status).toBe('billed')
+  })
+
+  it('una comanda processing_payment NO se puede cancelar (la Checkout Session sigue abierta)', async () => {
+    const { build } = setup({ status: 'processing_payment', paymentId: 'p1' })
+    await expect(build().cancelOrder('o1', user)).rejects.toThrow('cobro con tarjeta en curso')
+  })
+
+  it('una comanda processing_payment NO admite agregar/editar líneas', async () => {
+    const { build } = setup({ status: 'processing_payment', paymentId: 'p1' })
+    await expect(build().addLine('o1', { menuItemId: 'm1' }, user)).rejects.toThrow('no admite cambios')
+  })
+})
+
 // ─── RES-5: refund de orden POS ─────────────────────────────────────────────
 describe('RestaurantService — refundOrder (RES-5 refund)', () => {
   // Comanda ya cobrada con tarjeta: status paid + settlement payment + paymentId.

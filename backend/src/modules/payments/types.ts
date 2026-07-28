@@ -2,7 +2,10 @@
 
 export type PaymentType = 'charge' | 'refund' | 'deposit' | 'withdrawal'
 export type PaymentMethod = 'card' | 'cash' | 'transfer' | 'link' | 'deposit' | 'other'
-export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded'
+// 'cancelled' (fix-refund-pos-card): Checkout Session que EXPIRÓ antes de que el huésped/cajero
+// completara el pago (webhook checkout.session.expired). Distinto de 'failed' (el proveedor rechazó
+// la tarjeta): acá nadie intentó pagar, solo se agotó el tiempo.
+export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'cancelled'
 export type DepositStatus = 'held' | 'partially_refunded' | 'fully_refunded' | 'released'
 export type LinkStatus = 'active' | 'used' | 'expired' | 'cancelled'
 
@@ -61,6 +64,17 @@ export interface ChargeCardDTO {
   guestId?: string
   successUrl: string
   cancelUrl: string
+  // fix-refund-pos-card: idempotency key propia del caller (ej. 'pos:'+orderId, ver
+  // idempotencia-settlement-pos) — se persiste en el payment, NO en el client_reference_id de Stripe
+  // (ese sigue siendo payment.id, así el webhook siempre encuentra el payment sin ambigüedad).
+  reference?: string
+  // Tag de origen (ej. { source: 'restaurant', orderId }) para que el conector que escucha
+  // onPaymentCompleted/onPaymentExpired sepa a qué módulo/entidad avisarle.
+  metadata?: Record<string, any>
+  // Minutos hasta que la Checkout Session expira sola. Sin esto, Stripe usa su default (24h). El
+  // caller pide el mínimo que necesite; StripeGateway.createCharge lo clampea al rango real de la
+  // API de Stripe (30min–24h).
+  expiresInMinutes?: number
 }
 
 // ─── Payment Link ──────────────────────────────────────

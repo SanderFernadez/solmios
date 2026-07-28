@@ -51,6 +51,33 @@ const SETTLED = ['charged', 'paid']
 const settled = computed(() => !!order.value && SETTLED.includes(order.value.status))
 const cancelled = computed(() => order.value?.status === 'cancelled')
 const refunded = computed(() => order.value?.status === 'refunded')
+// fix-refund-pos-card: cobro con tarjeta esperando el webhook de Stripe (Checkout Session abierta).
+const processingPayment = computed(() => order.value?.status === 'processing_payment')
+
+// ─── Poll tras volver de Stripe Checkout (fix-refund-pos-card) ───
+const POLL_INTERVAL_MS = 1500
+const POLL_TIMEOUT_MS = 60_000
+const polling = ref(false)
+async function pollUntilPaid() {
+  if (polling.value) return
+  polling.value = true
+  const deadline = Date.now() + POLL_TIMEOUT_MS
+  try {
+    while (Date.now() < deadline) {
+      try {
+        const fresh = await RestaurantService.getOrder(orderId.value)
+        order.value = fresh
+        if (fresh.status === 'paid') { toast.success('Cobro confirmado'); return }
+        // El webhook de expiración ya la devolvió a 'billed' (mesa liberada) — dejar de esperar.
+        if (fresh.status !== 'processing_payment') return
+      } catch { /* red intermitente: seguir intentando hasta el timeout */ }
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+    }
+    toast.error('No pudimos confirmar el cobro', 'Revisá el Dashboard de Stripe o reintentá el cobro.')
+  } finally {
+    polling.value = false
+  }
+}
 // Botón visible solo si la orden está pagada con tarjeta y el user tiene permiso.
 const refundable = computed(() =>
   canRefund.value && order.value?.status === 'paid' && order.value?.settlement === 'payment'
@@ -87,7 +114,18 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(async () => {
+  await load()
+  // fix-refund-pos-card: vuelta del Checkout de Stripe (successUrl/cancelUrl de payDirect).
+  const paidParam = route.query.paid
+  if (paidParam === 'cancelled') {
+    toast.warning('Cobro cancelado', 'No se completó el pago con tarjeta. Podés reintentar.')
+  } else if (paidParam === 'pending' || processingPayment.value) {
+    // paidParam==='pending': volvió de successUrl. Sin query pero processing_payment: recargó la
+    // página mientras esperaba — en ambos casos hay que retomar el poll.
+    pollUntilPaid()
+  }
+})
 
 /**
  * Recarga la comanda y avisa si el subtotal/impuesto cambió respecto a lo que se está mostrando (otra
@@ -114,7 +152,21 @@ async function payDirect() {
     }
     // Persistir la propina (billOrder la fija y deja la comanda en `billed`), luego cobrar el total bruto.
     await RestaurantService.billOrder(orderId.value, { tip: Number(tip.value) || 0 })
-    await RestaurantService.payOrder(orderId.value, { method: method.value })
+
+    // fix-refund-pos-card: tarjeta abre una Stripe Checkout Session — successUrl/cancelUrl vuelven a
+    // ESTA misma comanda con un query param que dispara el poll/aviso al volver (ver onMounted).
+    const payload: { method: string; successUrl?: string; cancelUrl?: string } = { method: method.value }
+    if (method.value === 'card') {
+      const base = `${window.location.origin}/panel/restaurante/cobrar/${orderId.value}`
+      payload.successUrl = `${base}?paid=pending`
+      payload.cancelUrl = `${base}?paid=cancelled`
+    }
+
+    const result = await RestaurantService.payOrder(orderId.value, payload)
+    if (result.checkoutUrl) {
+      window.location.href = result.checkoutUrl
+      return // navegando afuera del SPA — no hay nada más que hacer acá
+    }
     toast.success('Comanda cobrada')
     router.push('/panel/restaurante/salon')
   } catch (e: unknown) {
@@ -183,6 +235,20 @@ async function confirmRefund() {
             <p class="text-coral font-bold">Reembolsada. El dinero fue devuelto al cliente.</p>
             <p class="text-2xl font-black text-navy mt-2 tabular-nums">{{ money(order.total) }}</p>
             <router-link to="/panel/restaurante/salon" class="inline-block mt-4 px-4 py-2 rounded-lg bg-navy text-white text-sm font-bold">Volver al salón</router-link>
+          </div>
+        </SectionCard>
+      </div>
+      <!-- fix-refund-pos-card: Checkout de Stripe abierto/vuelto — esperando el webhook. -->
+      <div v-else-if="processingPayment">
+        <SectionCard title="Esperando confirmación de pago">
+          <div class="py-6 text-center">
+            <p class="text-navy font-bold">{{ polling ? 'Confirmando el cobro con Stripe…' : 'El cobro con tarjeta está pendiente de confirmación.' }}</p>
+            <p class="text-2xl font-black text-navy mt-2 tabular-nums">{{ money(order.total) }}</p>
+            <p class="text-xs text-text-muted mt-2">Si el cajero canceló el Checkout, la comanda vuelve sola a "Con cuenta" en unos minutos.</p>
+            <button @click="pollUntilPaid" :disabled="polling"
+              class="inline-block mt-4 px-4 py-2 rounded-lg bg-navy text-white text-sm font-bold disabled:opacity-50">
+              {{ polling ? 'Verificando…' : 'Verificar estado' }}
+            </button>
           </div>
         </SectionCard>
       </div>

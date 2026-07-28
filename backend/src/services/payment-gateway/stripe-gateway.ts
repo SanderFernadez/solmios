@@ -12,6 +12,14 @@ import type {
 /** Una sola apiVersion para todo el sistema (antes: 2026-05-27.dahlia vs 2025-08-27.basil). */
 const STRIPE_API_VERSION = '2025-08-27.basil'
 
+// fix-refund-pos-card: rango real que la API de Stripe acepta para `expires_at` en una Checkout
+// Session (documentado por Stripe: mínimo 30 minutos, máximo 24 horas desde `created`). El producto
+// pidió 15 minutos para el POS de restaurante — Stripe lo RECHAZARÍA (400, "expires_at too soon") —
+// así que se usa el mínimo real de 30 minutos, no el valor pedido. Ver proposal.md, sección "Decisiones
+// de diseño".
+const STRIPE_CHECKOUT_EXPIRY_MIN_MINUTES = 30
+const STRIPE_CHECKOUT_EXPIRY_MAX_MINUTES = 24 * 60
+
 export interface StripeCredentials {
   secretKey: string
   publishableKey?: string
@@ -49,7 +57,7 @@ export class StripeGateway implements RefundableGateway {
       // `reservationId` (única por reserva) — ver spec booking-unification §7. Stripe reusa la
       // sesión existente si la misma key llega de nuevo dentro de las 24h.
       const options = req.idempotencyKey ? { idempotencyKey: req.idempotencyKey } : undefined
-      const session = await this.stripe.checkout.sessions.create({
+      const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: 'payment',
         payment_method_types: ['card'],
         line_items: [{
@@ -66,7 +74,18 @@ export class StripeGateway implements RefundableGateway {
         customer_email: req.customerEmail,
         client_reference_id: req.reference,
         metadata: { reference: req.reference, hotelId: req.hotelId, ...(req.metadata || {}) },
-      }, options as any)
+      }
+      // fix-refund-pos-card: clampeado al rango real de Stripe (30min–24h) — un valor pedido fuera
+      // de rango (ej. los 15min que pidió el producto) se ajusta en vez de dejar que Stripe rechace
+      // la sesión con 400.
+      if (req.expiresInMinutes) {
+        const minutes = Math.min(
+          Math.max(req.expiresInMinutes, STRIPE_CHECKOUT_EXPIRY_MIN_MINUTES),
+          STRIPE_CHECKOUT_EXPIRY_MAX_MINUTES,
+        )
+        sessionParams.expires_at = Math.floor(Date.now() / 1000) + minutes * 60
+      }
+      const session = await this.stripe.checkout.sessions.create(sessionParams, options as any)
       if (!session.url) return { status: 'failed', reason: 'Stripe no devolvió URL de checkout' }
       return { status: 'redirect', redirectUrl: session.url, providerRef: session.id }
     } catch (e: any) {
@@ -130,6 +149,10 @@ export class StripeGateway implements RefundableGateway {
       case 'charge.refunded':
       case 'refund.created':
         return 'refunded'
+      // fix-refund-pos-card: la Checkout Session se agotó sin que nadie pagara (ver `expires_at` en
+      // createCharge). Distinto de 'failed': acá no hubo intento de cobro rechazado.
+      case 'checkout.session.expired':
+        return 'expired'
       default:
         return null
     }

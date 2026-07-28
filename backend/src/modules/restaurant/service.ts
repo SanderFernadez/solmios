@@ -1,7 +1,5 @@
-// restaurant/service.ts — Facade del módulo POS de restaurante. Orquesta; la lógica que crece vive en
-// usecases/. Depende de RepositoryAdapter, NO del ORM directo. NO importa de otros módulos (eso va por
-// conectores). RES-0: estaciones (inline). RES-1: carta (categorías + ítems, usecases). RES-2: mesas
-// (usecases). Sprints siguientes agregan comandas, KDS y cobro. Ver openspec/changes/restaurante-pos.
+// restaurant/service.ts — Facade del módulo POS de restaurante. Orquesta; la lógica que crece vive en usecases/.
+// Depende de RepositoryAdapter, NO del ORM directo. NO importa de otros módulos (va por conectores). Ver openspec/changes/restaurante-pos.
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO, CurrentUser, ModifierGroupDTO, ModifierDTO, ComboDTO, ComboItemDTO } from './types'
@@ -166,8 +164,10 @@ export class RestaurantService {
   // ─── Cuenta + cobro (RES-5) — delegan a usecases/settlement ───
   billOrder(id: string, dto: { tip?: number }, user: CurrentUser) { return settlement.billOrder(this.settlementDeps(), id, dto, user) }
   chargeToRoom(id: string, dto: { reservationId?: string }, user: CurrentUser) { return settlement.chargeToRoom(this.settlementDeps(), id, dto, user) }
-  payOrder(id: string, dto: { method: string }, user: CurrentUser) { return settlement.payOrder(this.settlementDeps(), id, dto, user) }
+  payOrder(id: string, dto: { method: string; successUrl?: string; cancelUrl?: string }, user: CurrentUser) { return settlement.payOrder(this.settlementDeps(), id, dto, user) }
   refundOrder(id: string, user: CurrentUser) { return settlement.refundOrder(this.settlementDeps(), id, user) }
+  settlePaidOrder(id: string, paymentId: string, user: CurrentUser) { return settlement.settlePaidOrder(this.settlementDeps(), id, paymentId, user) } // fix-refund-pos-card: llamado por el conector (webhook onPaymentCompleted)
+  unsettleOrder(id: string, user: CurrentUser) { return settlement.unsettleOrder(this.settlementDeps(), id, user) } // fix-refund-pos-card: llamado por el conector (webhook onPaymentExpired)
 
   // ─── KDS / cocina (RES-4) — delegan a usecases/kds ───
   kdsQueue(station: string | undefined, user: CurrentUser) { return kds.kdsQueue(this.kdsDeps(), station, user) }

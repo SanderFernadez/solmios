@@ -120,6 +120,13 @@ export async function cancelOrder(deps: OrdersDeps, id: string, user: CurrentUse
   if (order.status === 'charged' || order.status === 'paid') {
     throw new ConflictError('No se puede cancelar una comanda ya liquidada')
   }
+  // fix-refund-pos-card: cancelar acá NO cancela la Checkout Session de Stripe que sigue abierta. Si
+  // el huésped paga después, el webhook (`settlePaidOrder`) encontraría la orden `cancelled` en vez de
+  // `processing_payment` y fallaría al confirmar. Hay que esperar a que expire (unsettleOrder la
+  // vuelve a `billed`, recién ahí es cancelable) o a que confirme.
+  if (order.status === 'processing_payment') {
+    throw new ConflictError('La comanda tiene un cobro con tarjeta en curso — esperá a que se confirme o expire antes de cancelarla')
+  }
   if (order.status === 'cancelled') return order
   const updated = (await deps.orders.update(id, { status: 'cancelled', closedAt: new Date().toISOString() } as Partial<Omit<OrderDTO, 'id'>>)) as OrderDTO
   if (order.tableId) await deps.tables.update(order.tableId, { status: 'free' } as Partial<Omit<TableDTO, 'id'>>)

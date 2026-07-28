@@ -56,6 +56,12 @@ export interface ChargeRequest {
    * que no la pasen siguen funcionando (la pasarela simplemente no garantiza idempotencia).
    */
   idempotencyKey?: string
+  /**
+   * fix-refund-pos-card: minutos hasta que la sesión expira sola (checkout.session.expired). Solo
+   * Stripe lo soporta (`expires_at`); Azul/CardNet lo ignoran — no tienen sesión que expire, cada
+   * redirect es de un solo uso. Ausente = default del proveedor (Stripe: 24h).
+   */
+  expiresInMinutes?: number
 }
 
 /**
@@ -83,7 +89,8 @@ export interface PaymentOutcome {
   /** Id del evento en el proveedor. Clave de idempotencia: el mismo cobro llega más de una vez. */
   eventId: string
   providerRef: string
-  status: 'paid' | 'failed' | 'pending' | 'refunded'
+  // 'expired' (fix-refund-pos-card): checkout.session.expired — la sesión se agotó sin que nadie pagara.
+  status: 'paid' | 'failed' | 'pending' | 'refunded' | 'expired'
   amountMinor: number
   currency: string
   reference: string

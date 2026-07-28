@@ -1,5 +1,4 @@
 // payments/service.ts — Facade pública del módulo Payments. Orquestador delgado que delega a usecases/
-
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import type {
   PaymentDTO, CreatePaymentDTO, ChargeCardDTO, PaymentLinkDTO, CreatePaymentLinkDTO,
@@ -112,8 +111,9 @@ export class PaymentsService {
   ): Promise<{ type: string; paymentId?: string } | null> {
     if (!this.events) throw new Error('payments: PaymentEventStore es requerido para procesar webhooks')
     return settleStripeWebhook(
-      { stripe: this.stripe, crud: this.crud, events: this.events,
-        audit: (e) => this.audit(e), onCompleted: (p) => this.sockets.onPaymentCompleted?.(p) ?? Promise.resolve() },
+      { stripe: this.stripe, crud: this.crud, events: this.events, audit: (e) => this.audit(e),
+        onCompleted: (p) => this.sockets.onPaymentCompleted?.(p) ?? Promise.resolve(),
+        onExpired: (p) => this.sockets.onPaymentExpired?.(p) ?? Promise.resolve() },
       hotelId, payload, signature,
     )
   }

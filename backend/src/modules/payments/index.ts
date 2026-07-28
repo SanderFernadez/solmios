@@ -27,7 +27,7 @@ export function PaymentsModule() {
       version: '1.0.0',
       description: 'Payments: card charging, payment links, deposits, reconciliation',
       actions: ['createPayment', 'chargeCard', 'refund', 'listPayments', 'createLink', 'createDeposit', 'refundDeposit', 'releaseDeposit', 'reconcile'],
-      events: ['onPaymentCreated', 'onPaymentCompleted', 'onPaymentFailed', 'onRefundProcessed', 'onDepositCreated', 'onDepositReleased'],
+      events: ['onPaymentCreated', 'onPaymentCompleted', 'onPaymentExpired', 'onPaymentFailed', 'onRefundProcessed', 'onDepositCreated', 'onDepositReleased'],
       tables: ['payments', 'payment_links', 'deposits'],
       dependencies: ['folios', 'facturas'],
       rules: ['No importar de otros módulos directamente'],

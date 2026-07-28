@@ -15,6 +15,9 @@ export interface SettleWebhookDeps {
   events: PaymentEventStore
   audit: (entry: AuditEntry) => Promise<void>
   onCompleted?: (payment: PaymentDTO) => Promise<void>
+  // fix-refund-pos-card: checkout.session.expired — la sesión se agotó sin cobrar. Simétrico a
+  // onCompleted, pero para el payment que quedó `cancelled` en vez de `completed`.
+  onExpired?: (payment: PaymentDTO) => Promise<void>
 }
 
 export type SettleWebhookResult = { type: string; paymentId?: string } | null
@@ -49,6 +52,26 @@ export async function settleStripeWebhook(
     )
     if (result.outcome === 'duplicate') return { type: 'already_processed', paymentId }
     return { type: 'payment_completed', paymentId }
+  }
+
+  // fix-refund-pos-card: checkout.session.expired — mismo mecanismo de idempotencia (settleOnce),
+  // status distinto ('expired' en vez de 'paid') y efecto distinto (cancelled + onExpired en vez de
+  // completed + onCompleted). NO toca el path 'paid' de arriba.
+  if (outcome.status === 'expired' && outcome.reference) {
+    const paymentId = outcome.reference
+
+    const result = await deps.events.settleOnce(
+      hotelId, 'stripe', outcome.eventId,
+      { providerRef: outcome.providerRef, reference: paymentId, status: 'expired',
+        amountMinor: outcome.amountMinor, currency: outcome.currency },
+      async () => {
+        await deps.crud.updateStatus(paymentId, 'cancelled')
+        const payment = await deps.crud.getById(paymentId)
+        await deps.onExpired?.(payment)
+      },
+    )
+    if (result.outcome === 'duplicate') return { type: 'already_processed', paymentId }
+    return { type: 'payment_expired', paymentId }
   }
 
   return { type: outcome.status }

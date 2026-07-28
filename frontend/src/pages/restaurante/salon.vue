@@ -37,7 +37,9 @@ const editPerm = computed(() => can('restaurant', 'edit'))
 const deletePerm = computed(() => can('restaurant', 'delete'))
 
 // Estados "vivos" de una comanda (aún operable). El resto (paid/charged/cancelled) ya cerró.
-const LIVE = ['open', 'sent', 'preparing', 'ready', 'served', 'billed']
+// fix-refund-pos-card: 'processing_payment' también es viva — la mesa sigue tomada mientras la
+// Checkout Session de Stripe está abierta (recién se libera al confirmar o al expirar).
+const LIVE = ['open', 'sent', 'preparing', 'ready', 'served', 'billed', 'processing_payment']
 const orderByTable = computed(() => {
   const map = new Map<string, Order>()
   for (const o of openOrders.value) if (o.tableId && LIVE.includes(o.status)) map.set(o.tableId, o)

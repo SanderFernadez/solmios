@@ -194,6 +194,11 @@ export const ChargeToRoomSchema: Record<string, ValidationRule> = {
 }
 export const PaySchema: Record<string, ValidationRule> = {
   method: { type: 'string' as const, required: true },
+  // fix-refund-pos-card: obligatorios SOLO para method==='card' (Stripe Checkout Session). El schema
+  // no valida condicional-por-campo; el usecase (`settlement.payOrder`) rechaza con ValidationError si
+  // faltan y el método es 'card'. cash/transfer los ignoran.
+  successUrl: { type: 'string' as const },
+  cancelUrl: { type: 'string' as const },
 }
 
 // ─── KDS (RES-4) ───

@@ -43,8 +43,10 @@ const editPerm = computed(() => can('restaurant', 'edit'))
 const createPerm = computed(() => can('restaurant', 'create'))
 const deletePerm = computed(() => can('restaurant', 'delete'))
 
-// La comanda es editable solo antes de facturar/cobrar/cancelar.
-const LOCKED = ['billed', 'charged', 'paid', 'cancelled']
+// La comanda es editable solo antes de facturar/cobrar/cancelar. fix-refund-pos-card:
+// 'processing_payment' también bloquea (Cobrar/Cancelar) — el cobro con tarjeta ya abrió una Checkout
+// Session; el cajero espera la confirmación en cobrar.vue, no vuelve a tocar la comanda desde acá.
+const LOCKED = ['billed', 'charged', 'paid', 'cancelled', 'processing_payment']
 const editable = computed(() => !!order.value && !LOCKED.includes(order.value.status))
 const money = (n: number): string => `${currencySymbol(currency.value)}${Number(n || 0).toFixed(2)}`
 // F5 — tags de alérgenos/info dietética: SOLO informativos, nunca bloquean addItem/addCombo.

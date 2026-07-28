@@ -15,9 +15,23 @@ import { recomputeTotals, round2 } from './order-totals'
 // forma de armar esa referencia.
 export interface ChargeToFolioInput { hotelId: string; reservationId: string; guestId?: string; roomId?: string; description: string; amount: number; quantity: number; orderId: string }
 export interface RecordPaymentInput { hotelId: string; method: string; amount: number; description: string; folioId?: string; currency?: string; orderId: string }
+// fix-refund-pos-card: cobro con tarjeta vía Stripe Checkout Session (reemplaza el `recordPayment`
+// manual para method==='card'). `successUrl`/`cancelUrl` vienen del frontend (vuelta a la orden con
+// query param); `orderId` viaja igual que en recordPayment/chargeToFolio para que el conector arme
+// `reference: 'pos:' + orderId` (mismo esquema de idempotencia-settlement-pos).
+export interface ChargeCardPaymentInput {
+  orderId: string
+  hotelId: string
+  amount: number
+  currency?: string
+  description: string
+  successUrl: string
+  cancelUrl: string
+}
 export interface SettlementPorts {
   chargeToFolio?: (input: ChargeToFolioInput, user: CurrentUser) => Promise<{ folioId: string }>
   recordPayment?: (input: RecordPaymentInput, user: CurrentUser) => Promise<{ paymentId: string }>
+  chargeCardPayment?: (input: ChargeCardPaymentInput, user: CurrentUser) => Promise<{ paymentId: string; checkoutUrl: string }>
   refundPayment?: (input: { paymentId: string }, user: CurrentUser) => Promise<void>
 }
 
@@ -37,6 +51,12 @@ function assertSettleable(order: OrderDTO): void {
   // A1 (QA): sin este guard, una comanda `cancelled` (que NO cancela sus líneas) se podía cobrar/cargar
   // al folio → dinero por una venta anulada.
   if (order.status === 'cancelled') throw new ConflictError('La comanda está cancelada')
+  // fix-refund-pos-card: mientras espera el webhook de Stripe (Checkout Session abierta), un doble
+  // click de payOrder(card) NO debe abrir una SEGUNDA sesión — el cajero espera a que expire (15/30min,
+  // ver StripeGateway.createCharge) o a que confirme, nunca se reintenta sobre la misma orden.
+  if (order.status === 'processing_payment') {
+    throw new ConflictError('La comanda está esperando la confirmación del cobro con tarjeta')
+  }
   if (order.settlement || order.status === 'charged' || order.status === 'paid') {
     throw new ConflictError('La comanda ya fue liquidada')
   }
@@ -105,15 +125,26 @@ export async function chargeToRoom(deps: SettlementDeps, id: string, dto: { rese
 }
 
 /**
- * Cobra la comanda directo (efectivo/tarjeta). Crea un payment por el TOTAL BRUTO (subtotal + tax +
+ * Cobra la comanda directo (efectivo/tarjeta/transferencia). Cobra el TOTAL BRUTO (subtotal + tax +
  * propina). El asiento de caja lo hace payments; el ingreso "Ventas Restaurante" lo reconoce el
- * conector de contabilidad (RES-6) al escuchar onOrderPaid. Deja la comanda en `paid` y libera la mesa.
+ * conector de contabilidad (RES-6) al escuchar onOrderPaid.
+ *
+ * fix-refund-pos-card: `method==='card'` YA NO es síncrono. En vez de `recordPayment` (payment manual
+ * sin cargo real, irreembolsable — ver openspec fix-refund-pos-card) abre una Stripe Checkout Session
+ * vía `chargeCardPayment` y deja la comanda en `processing_payment` — NO `paid`, NO libera la mesa
+ * todavía. El webhook de Stripe (`settlePaidOrder`/`unsettleOrder`, cableados por el conector
+ * restaurante-payments) confirma o expira el cobro de forma asíncrona. `cash`/`transfer` no cambian:
+ * siguen síncronos vía `recordPayment`.
  */
-export async function payOrder(deps: SettlementDeps, id: string, dto: { method: string }, user: CurrentUser): Promise<OrderDTO> {
+export async function payOrder(
+  deps: SettlementDeps,
+  id: string,
+  dto: { method: string; successUrl?: string; cancelUrl?: string },
+  user: CurrentUser,
+): Promise<OrderDTO & { checkoutUrl?: string }> {
   const order = await loadOrder(deps, id, user)
   assertSettleable(order)
   if (!dto.method) throw new ValidationError('El método de cobro es obligatorio')
-  if (!deps.ports.recordPayment) throw new ValidationError('Cobro directo no disponible (payments no conectado)')
 
   const fresh = await recomputeTotals(deps, order)
   const amount = round2(Number(fresh.total || 0))   // bruto: incluye impuesto y propina
@@ -123,6 +154,28 @@ export async function payOrder(deps: SettlementDeps, id: string, dto: { method: 
   // validado por loadOrder; solo releo ESE hotel para su moneda. Si el hotel no la define, payments defaultea.
   const hotel = await deps.hotels.findOne({ id: order.hotelId })
   const currency = (hotel as any)?.currency || undefined
+  const description = `Restaurante · comanda ${order.number ?? id}`
+
+  if (dto.method === 'card') {
+    if (!deps.ports.chargeCardPayment) throw new ValidationError('Cobro con tarjeta no disponible (payments no conectado)')
+    if (!dto.successUrl || !dto.cancelUrl) {
+      throw new ValidationError('successUrl y cancelUrl son obligatorios para cobrar con tarjeta (retorno del Checkout de Stripe)')
+    }
+
+    const res = await deps.ports.chargeCardPayment({
+      orderId: id, hotelId: order.hotelId, amount, currency, description,
+      successUrl: dto.successUrl, cancelUrl: dto.cancelUrl,
+    }, user)
+
+    // NO se libera la mesa ni se marca settlement/closedAt todavía: el cobro no está confirmado.
+    // `settlePaidOrder` (webhook completed) o `unsettleOrder` (webhook expired) deciden el desenlace.
+    const updated = (await deps.orders.update(id, {
+      status: 'processing_payment', paymentId: res.paymentId,
+    } as Partial<Omit<OrderDTO, 'id'>>)) as OrderDTO
+    return { ...updated, checkoutUrl: res.checkoutUrl }
+  }
+
+  if (!deps.ports.recordPayment) throw new ValidationError('Cobro directo no disponible (payments no conectado)')
 
   // M1 (QA, RESUELTO — idempotencia-settlement-pos): el payment se sigue creando ANTES del update de
   // la comanda ("el dinero primero"), pero ya no puede duplicarse: `orderId` viaja hasta el conector,
@@ -131,7 +184,7 @@ export async function payOrder(deps: SettlementDeps, id: string, dto: { method: 
   // el MISMO payment en vez de crear uno nuevo.
   const res = await deps.ports.recordPayment({
     hotelId: order.hotelId, method: dto.method, amount, currency,
-    description: `Restaurante · comanda ${order.number ?? id}`, orderId: id,
+    description, orderId: id,
   }, user)
 
   const updated = (await deps.orders.update(id, {
@@ -174,5 +227,50 @@ export async function refundOrder(deps: SettlementDeps, id: string, user: Curren
     closedAt: new Date().toISOString(),
   } as Partial<Omit<OrderDTO, 'id'>>)) as OrderDTO
   await deps.sockets.onOrderRefunded?.(updated)
+  return updated
+}
+
+/**
+ * fix-refund-pos-card: confirma el cobro con tarjeta que el webhook de Stripe (checkout.session.completed)
+ * acaba de asentar. Lo llama el conector `restaurante-payments` (`onPaymentCompleted`), con un user
+ * sintético (sin request real) — por eso NO valida `dto.method`, solo el ESTADO de la comanda.
+ * Idempotente: si ya está `paid` (reintento del webhook / evento duplicado que igual llegó a llamar
+ * esto dos veces), no-op — no vuelve a liberar la mesa ni a emitir el socket.
+ */
+export async function settlePaidOrder(deps: SettlementDeps, id: string, paymentId: string, user: CurrentUser): Promise<OrderDTO> {
+  const order = await loadOrder(deps, id, user)
+  if (order.status === 'paid') return order   // idempotente: ya confirmada, no repetir el socket
+  if (order.status !== 'processing_payment') {
+    throw new ConflictError('La comanda no está esperando confirmación de un cobro con tarjeta')
+  }
+
+  const updated = (await deps.orders.update(id, {
+    status: 'paid', settlement: 'payment', paymentId,
+    closedAt: new Date().toISOString(),
+  } as Partial<Omit<OrderDTO, 'id'>>)) as OrderDTO
+  await freeTable(deps, order)
+  await deps.sockets.onOrderPaid?.(updated)
+  return updated
+}
+
+/**
+ * fix-refund-pos-card: revierte una comanda `processing_payment` cuya Checkout Session EXPIRÓ
+ * (checkout.session.expired, 15/30min — ver StripeGateway.createCharge) sin que el huésped completara
+ * el pago. Vuelve a `billed` (NO `served`: la cuenta ya se había calculado) y LIBERA LA MESA — decisión
+ * de producto 2026-07-28: el cajero re-cobra con una Checkout Session NUEVA, no se reintenta la
+ * expirada. Idempotente: si ya salió de `processing_payment` (billed/paid/lo que sea), no-op.
+ */
+export async function unsettleOrder(deps: SettlementDeps, id: string, user: CurrentUser): Promise<OrderDTO> {
+  const order = await loadOrder(deps, id, user)
+  if (order.status !== 'processing_payment') return order   // idempotente: ya no está esperando
+
+  // `paymentId: null` limpia el puntero al payment CANCELLED de la sesión expirada — así una
+  // comanda `billed` nunca queda apuntando a un payment que ya no representa nada cobrado. `null`
+  // (no `undefined`) porque el ORM solo persiste ausencia de columna con `undefined`; acá se quiere
+  // escribir explícitamente NULL. `unknown` de paso: OrderDTO tipa `paymentId?: string`, sin `null`.
+  const updated = (await deps.orders.update(id, {
+    status: 'billed', paymentId: null,
+  } as unknown as Partial<Omit<OrderDTO, 'id'>>)) as OrderDTO
+  await freeTable(deps, order)
   return updated
 }

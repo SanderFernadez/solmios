@@ -40,6 +40,10 @@ export class StripeUseCase {
     successUrl: string
     cancelUrl: string
     reference: string
+    // fix-refund-pos-card: expiración corta opcional (el POS la usa; folios/reservas siguen con el
+    // default de Stripe si no la pasan). El adapter (StripeGateway) clampea al mínimo/máximo reales
+    // que la API de Stripe acepta.
+    expiresInMinutes?: number
   }): Promise<{ id: string; url: string }> {
     const gw = await this.gatewayOf(params.hotelId)
     const result = await gw.createCharge({
@@ -52,6 +56,7 @@ export class StripeUseCase {
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
       metadata: params.metadata,
+      expiresInMinutes: params.expiresInMinutes,
     })
 
     if (result.status === 'redirect') return { id: result.providerRef, url: result.redirectUrl }

@@ -5,8 +5,11 @@ import { http } from './http'
 
 // ─── Tipos del dominio (espejo de backend/src/modules/restaurant/types.ts) ───
 export type OrderType = 'dine_in' | 'room_service' | 'takeaway'
+// 'processing_payment' (fix-refund-pos-card): cobro con tarjeta esperando la confirmación async del
+// webhook de Stripe (Checkout Session abierta). Ver cobrar.vue: poll a GET /orders/:id hasta 'paid'.
 export type OrderStatus =
   | 'open' | 'sent' | 'preparing' | 'ready' | 'served' | 'billed' | 'charged' | 'paid' | 'refunded' | 'cancelled'
+  | 'processing_payment'
 export type LineStatus = 'new' | 'preparing' | 'ready' | 'served' | 'cancelled'
 export type TableStatus = 'free' | 'occupied' | 'reserved'
 export type Settlement = 'folio' | 'payment'
@@ -392,7 +395,10 @@ export const RestaurantService = {
   // ─── Cuenta + cobro ───
   billOrder: (id: string, data: { tip?: number }): Promise<Order> => http.post(`/restaurant/orders/${id}/bill`, data),
   chargeToRoom: (id: string, data: { reservationId?: string }): Promise<Order> => http.post(`/restaurant/orders/${id}/charge-to-room`, data),
-  payOrder: (id: string, data: { method: string }): Promise<Order> => http.post(`/restaurant/orders/${id}/pay`, data),
+  // fix-refund-pos-card: method==='card' exige successUrl/cancelUrl (retorno del Checkout de Stripe)
+  // y la respuesta trae `checkoutUrl` cuando el pago quedó `processing` — cobrar.vue redirige ahí.
+  payOrder: (id: string, data: { method: string; successUrl?: string; cancelUrl?: string }): Promise<Order & { checkoutUrl?: string }> =>
+    http.post(`/restaurant/orders/${id}/pay`, data),
   // Reembolso: solo órdenes status='paid' con settlement='payment' (cobro con tarjeta).
   // Backend devuelve 409 ConflictError si la orden no cumple la condición.
   refundOrder: (id: string): Promise<Order> => http.post(`/restaurant/orders/${id}/refund`),
@@ -449,6 +455,7 @@ export const ORDER_TYPE_LABELS: Record<string, string> = {
 export const ORDER_STATUS_LABELS: Record<string, string> = {
   open: 'Abierta', sent: 'Enviada', preparing: 'En preparación', ready: 'Lista', served: 'Servida',
   billed: 'Con cuenta', charged: 'Cargada a habitación', paid: 'Pagada', refunded: 'Reembolsada', cancelled: 'Cancelada',
+  processing_payment: 'Esperando confirmación de pago',
 }
 export const LINE_STATUS_LABELS: Record<string, string> = {
   new: 'Nueva', preparing: 'Preparando', ready: 'Lista', served: 'Servida', cancelled: 'Cancelada',
