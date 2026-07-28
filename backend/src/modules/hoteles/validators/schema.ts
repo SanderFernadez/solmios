@@ -1,4 +1,4 @@
-import type { ValidationRule } from 'arckode-framework'
+import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
 const HOTEL_STATUS_ENUM = ['active', 'inactive', 'suspended']
 const HOTEL_PLAN_ENUM = ['essential', 'starter', 'professional', 'enterprise', 'ultra']
@@ -131,6 +131,15 @@ export const UpdateHotelesSchema: Record<string, ValidationRule> = {
   descriptionJson: { type: 'string' as const },
   wifiNetwork: { type: 'string' as const, max: 100 },
   wifiPassword: { type: 'string' as const, max: 100 },
+  // F0 0.21 (solmi-direct-booking) — Página pública. Slug estable (namespace público de la
+  // landing /h/:slug); amenities del hotel (nivel hotel, distinto de RoomAmenities);
+  // descriptionTranslations: { [lang]: { title, description } } — la clave 'es' la rechaza el
+  // usecase con assertNoBaseLangKey (el español base vive en descriptionJson). `pattern` cubre
+  // el formato y `max` la longitud razonable; uniqueness global la chequea el frontend en vivo
+  // y, fallback definitivo, el seeder/endpoint público al resolverlo.
+  slug: { type: 'string' as const, pattern: /^[a-z0-9-]+$/, max: 80, message: 'Solo minúsculas, números y guiones' },
+  amenities: { type: 'array' as const },
+  descriptionTranslations: { type: 'json' as const },
 }
 
 export const SetConfigSchema: Record<string, ValidationRule> = {

@@ -66,6 +66,13 @@ export interface HotelFull {
   // Condiciones opcionales (algunos son string libre)
   freeCancellationType?: string
   cancellationType?: string
+  // F0 0.21 — Página pública (solmi-direct-booking). `slug` estable para /h/:slug; `amenities`
+  // del hotel (nivel hotel, distinto de RoomAmenities); `descriptionTranslations` multilingüe
+  // con { [lang]: { title, description } } — la clave 'es' la rechaza el backend (español base
+  // vive en descriptionJson), así que acá solo va a tener 'en'/'pt'/etc.
+  slug?: string
+  amenities?: string[] | null
+  descriptionTranslations?: Record<string, { title?: string; description?: string }> | null
 }
 
 export interface SettingsFull {
@@ -97,6 +104,9 @@ const HOTEL_ALLOWED_FIELDS = [
   // 'logo' se descartaba acá aunque la pantalla lo edita y facturas/emails/marketing lo consumen:
   // no había ninguna vía para cambiar el logo del hotel.
   'logo',
+  // F0 0.21 — Página pública. El backend los descarta si no están en el allowlist de
+  // hoteles-queries.ts y en UpdateHotelesSchema (validators/schema.ts) — ambos actualizados.
+  'slug','amenities','descriptionTranslations',
 ] as const
 
 export const SettingsService = {

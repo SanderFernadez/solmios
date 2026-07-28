@@ -4,7 +4,11 @@
 // Toda mutación (POST/PUT/PATCH) DEBE pasar por validateSchema(). (REGLA #11)
 
 import type { HttpRequest, Logger } from 'arckode-framework'
-import { validateSchema } from 'arckode-framework'
+// `validateSchema` del framework no entiende `type:'array'` ni `type:'json'` (los descarta). El
+// módulo hoteles ahora valida `amenities` (array) y `descriptionTranslations` (json) en
+// UpdateHotelesSchema → hace falta el wrapper de shared/validators que sí los procesa. Es un
+// superconjunto: los tipos `string|number|boolean|email|url|date` siguen validando igual.
+import { validateSchema } from '../../shared/validators/validate-body'
 import type { StorageService } from 'arckode-framework/modules/storage'
 import type { HotelesService } from './service'
 import type { HotelesQueries } from './usecases/hoteles-queries'
