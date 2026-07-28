@@ -807,6 +807,15 @@ async function createTablesBlock3(): Promise<void> {
     query TEXT NOT NULL, response TEXT NOT NULL, queryType TEXT,
     dataSourcesUsed TEXT, confidence REAL, feedback TEXT, responseTimeMs INTEGER,
     createdAt TEXT, updatedAt TEXT)`)
+
+  // ALTER idempotente: menu_items += featured/availableFrom/availableTo (F6 carta-experiencia-avanzada).
+  // La tabla la modela el módulo restaurant (MenuItems); en DBs creadas antes de F6 faltan estas 3
+  // columnas y el ORM hace `UPDATE menu_items SET featured=?` → SQLite/PG tiran "no such column" →
+  // el PUT /api/restaurant/menu-items/:id devuelve 500 apenas el body trae uno de estos campos.
+  // El default `0` en `featured` replica el default del modelo ORM (model.ts:62-67).
+  await addColumnIfMissing("menu_items", "featured", "INTEGER DEFAULT 0")
+  await addColumnIfMissing("menu_items", "availableFrom", "TEXT")
+  await addColumnIfMissing("menu_items", "availableTo", "TEXT")
 }
 
 // Seed idempotente: currency_config por defecto para todos los hoteles (F3 — conversión de moneda).
@@ -870,9 +879,23 @@ async function seedBase(): Promise<void> {
     ['user-admin-0000-0000-000000000002', 'Admin Palma', 'admin@caribeparadise.com', ADMIN_HASH, 'hotel_admin', HOTEL_ID],
     ['user-recep-0000-0000-000000000003', 'Maria Lopez', 'maria@caribeparadise.com', RECEP_HASH, 'receptionist', HOTEL_ID],
   ]
+  // Verificación dual (id + email): `exists('users', id)` cubre el caso idempotente
+  // clásico (mismo ID ya insertado por un run previo). `ON CONFLICT(email) DO NOTHING`
+  // cubre el caso de DBs ya pobladas donde existe el email pero con OTRO ID
+  // (alta manual,迁移ación, otro seeder) — sin esto, el INSERT aborta con
+  // `UNIQUE constraint failed: users.email` (SQLite) / `duplicate key value violates
+  // unique constraint "users_email_key"` (PG) y mata migrate-db.ts entero antes de
+  // llegar a createTablesBlock3() (donde viven los addColumnIfMissing defensivos de
+  // menu_items y otros). `email` tiene UNIQUE real tanto en SQLite como PG (el modelo
+  // ORM usuarios/model.ts:9 lo declara `unique: true` y orm-migrate lo materializa
+  // como `email TEXT NOT NULL UNIQUE`). ON CONFLICT(col) DO NOTHING está soportado en
+  // SQLite 3.24+ y PG 9.5+; migrate-db.ts ya usa el mismo patrón (líneas 491, 830, 852).
+  // El lookup `USERS = SELECT id, ... FROM users` (main, línea 938) lee los IDs reales
+  // de la DB, así que los seeds posteriores que referencian USERS[n]?.id siguen
+  // resolviendo contra el usuario existente (no contra el ID estático del seed).
   for (const [id, name, email, password, role, hotelId] of users)
     if (!(await exists('users', id)))
-      await run("INSERT INTO users (id, name, email, password, role, hotelId, active, isDemo, createdAt, updatedAt) VALUES (?,?,?,?,?,?,1,1,?,?)",
+      await run("INSERT INTO users (id, name, email, password, role, hotelId, active, isDemo, createdAt, updatedAt) VALUES (?,?,?,?,?,?,1,1,?,?) ON CONFLICT(email) DO NOTHING",
         [id, name, email, password, role, hotelId, now(), now()])
 
   const rooms: Array<[string, string, string, string, number, string, number]> = [
