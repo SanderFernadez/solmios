@@ -46,6 +46,14 @@ export const MODULES = {
   /** Media del hotel (hero/gallery/room) para la landing pública (F0 solmi-direct-booking).
    *  CRUD de fotos + reorder + alt text. Solo hotel_admin lo gestiona. */
   media: 'Media del hotel',
+  /** Promo codes (F2 solmi-direct-booking): códigos de descuento % o monto fijo aplicables
+   *  en el widget público de reservas. Solo hotel_admin los crea/gestiona; el huésped
+   *  los valida vía endpoint público sin auth (no consume este permiso). */
+  promo: 'Códigos promocionales',
+  /** Upsells (F2 solmi-direct-booking): extras ofrecidos en el widget público (desayuno,
+   *  transfer, late checkout). Vive como sub-dominio del motor de reservas. Solo
+   *  hotel_admin los gestiona; el huésped los lee por endpoint público. */
+  upsells: 'Upsells del booking',
 } as const
 
 // Available actions per module
@@ -98,6 +106,10 @@ export const MODULE_ACTIONS: Record<string, (keyof typeof ACTIONS)[]> = {
   landing: ['view', 'edit'],
   // Media del hotel (F0): CRUD completo (subir/mover/borrar fotos) + reorder drag-and-drop.
   media: ['view', 'create', 'edit', 'delete'],
+  // Promo codes (F2): CRUD completo. El validador público no usa permisos (endpoint sin auth).
+  promo: ['view', 'create', 'edit', 'delete'],
+  // Upsells (F2): CRUD completo. El endpoint público los lista sin permisos.
+  upsells: ['view', 'create', 'edit', 'delete'],
 }
 
 /** Acciones válidas para un módulo. Fallback a ['view'] si el módulo no está mapeado (fail-cerrado). */
@@ -152,6 +164,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'landing:view', 'landing:edit',
     // Media del hotel (F0): el dueño sube/edita/reordena las fotos de la landing.
     'media:view', 'media:create', 'media:edit', 'media:delete',
+    // Promo codes (F2): el dueño crea/edita códigos de descuento del widget de reservas.
+    'promo:view', 'promo:create', 'promo:edit', 'promo:delete',
+    // Upsells (F2): el dueño gestiona los extras del widget (desayuno, transfer, late checkout).
+    'upsells:view', 'upsells:create', 'upsells:edit', 'upsells:delete',
   ],
 
   // Receptionist — la operación del mostrador. Los permisos siguen a lo que el menú del panel le

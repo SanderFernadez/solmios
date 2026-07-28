@@ -1,17 +1,28 @@
 // bookingengine/controller.ts — Adaptador HTTP del módulo
 // Endpoints protegidos (admin) + endpoints públicos (sin auth) + Stripe webhook
 
-import type { HttpRequest, Logger, RepositoryAdapter } from 'arckode-framework'
+import type { HttpRequest, Logger, RepositoryAdapter, Auth } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
+// `validateSchema` del shared (superconjunto del framework): acepta `BodyRule` (incluye
+// 'text' multilinea, etc.). Mismo import que landing/restaurant. El del framework se usa
+// para los schemas legacy que solo tienen tipos primitivos.
+import { validateSchema as validateBodySchema } from '../../shared/validators/validate-body'
 import type { BookingengineService } from './service'
-import type { AvailabilityQuery, CreatePublicBookingDTO, CreateConversionEventDTO, UpdateBookingConfigDTO } from './types'
+import type { AvailabilityQuery, CreatePublicBookingDTO, CreateConversionEventDTO, UpdateBookingConfigDTO, UpsellDTO, UpsellCurrentUser } from './types'
 import {
   UpdateBookingConfigSchema,
   CheckAvailabilitySchema,
   CreatePublicBookingSchema,
   TrackEventSchema,
   CreateCheckoutSessionSchema,
+  CreateUpsellSchema,
+  UpdateUpsellSchema,
 } from './validators/schema'
+// F2 2.3 — Upsells: el controller invoca los usecases directamente (sin pasar por service)
+// porque no hay lógica de orquestación entre el HTTP y el usecase. Mantener el service <
+// 200 líneas deja fuera los métodos passthrough. Mismo patrón que hotel-media/controller.ts
+// cuando un sub-dominio no amerita agrandar el facade principal.
+import * as upsellsCrud from './usecases/upsells-crud'
 import { getPublicBookingBySlug, createPublicBookingDirect } from './usecases/public-booking'
 import { getPublicHotelInfo } from './usecases/public-hotel-info'
 import { getPublicReservation } from './usecases/public-reservation'
@@ -28,7 +39,21 @@ export class BookingengineController {
     // Se pasa desde index.ts (donde ya existe hotelsRepo) en vez de instanciarlo acá:
     // el controller no debe saber del orm.define ni de nombres de modelo.
     private readonly hotelsRepo?: RepositoryAdapter<any>,
+    // F2 2.3 — Upsells deps. Opcionales para no romper tests legacy del controller que
+    // no construyen con estos params. Si faltan, los handlers de upsell tiran error 500
+    // explícito (defense-in-depth: el módulo debe cablearse completo desde index.ts).
+    private readonly upsellRepo?: RepositoryAdapter<UpsellDTO>,
+    private readonly userRepoForUpsells?: RepositoryAdapter<any>,
+    private readonly authImpl?: Auth,
   ) {}
+
+  /** Deps para los usecases de upsells. Tirar si no están cableadas (claramente un bug de wiring). */
+  private assertUpsellsDeps(): upsellsCrud.UpsellsCrudDeps {
+    if (!this.upsellRepo || !this.userRepoForUpsells || !this.authImpl) {
+      throw new Error('bookingengine: upsells deps no cableadas en el controller')
+    }
+    return { upsells: this.upsellRepo, userRepo: this.userRepoForUpsells, auth: this.authImpl }
+  }
 
   // ─── Admin (protegido con auth) ──────────────────────
 
@@ -191,6 +216,41 @@ export class BookingengineController {
       headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': SITEMAP_CACHE_CONTROL },
       body: xml,
     }
+  }
+
+  // ─── Upsells admin (F2 2.3) ────────────────────────────────────────────────
+  // Sub-dominio del booking engine: extras del widget (desayuno, transfer, late checkout).
+  // El controller invoca usecases directo (sin pasar por service) — no hay orquestación
+  // entre HTTP y usecase, y mantener el service < 200 líneas deja fuera los passthrough.
+
+  /** GET /api/upsells — lista los upsells del hotel del admin (ordenados por sortOrder). */
+  async listUpsells(req: HttpRequest) {
+    this.logger.info('GET /api/upsells', { hotelId: (req as any).hotelId })
+    const result = await upsellsCrud.list(this.assertUpsellsDeps(), req.user as UpsellCurrentUser)
+    return { status: 200, body: result }
+  }
+
+  /** POST /api/upsells — alta de upsell. */
+  async createUpsell(req: HttpRequest) {
+    this.logger.info('POST /api/upsells', { hotelId: (req as any).hotelId })
+    const data = validateBodySchema(CreateUpsellSchema, req.body)
+    const created = await upsellsCrud.create(this.assertUpsellsDeps(), data as any, req.user as UpsellCurrentUser)
+    return { status: 201, body: created }
+  }
+
+  /** PUT /api/upsells/:id — edición (partial). */
+  async updateUpsell(req: HttpRequest) {
+    this.logger.info('PUT /api/upsells/:id', { id: req.params.id })
+    const data = validateBodySchema(UpdateUpsellSchema, req.body)
+    const updated = await upsellsCrud.update(this.assertUpsellsDeps(), req.params.id, data as any, req.user as UpsellCurrentUser)
+    return { status: 200, body: updated }
+  }
+
+  /** DELETE /api/upsells/:id — borrado físico. */
+  async destroyUpsell(req: HttpRequest) {
+    this.logger.info('DELETE /api/upsells/:id', { id: req.params.id })
+    const result = await upsellsCrud.remove(this.assertUpsellsDeps(), req.params.id, req.user as UpsellCurrentUser)
+    return { status: 200, body: result }
   }
 }
 

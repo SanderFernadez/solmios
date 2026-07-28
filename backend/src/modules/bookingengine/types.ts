@@ -186,3 +186,50 @@ export interface PublicHotelInfoDTO {
   amenities: string[] | null
   onlineBookingStatus: string
 }
+
+// ─── Upsells (F2 2.3 — sub-dominio de bookingengine) ────────────
+/** Forma de cobro del upsell: cómo se multiplica al sumarlo al total de la reserva. */
+export type UpsellKind = 'per_room' | 'per_person' | 'per_stay'
+
+/** DTO de lectura. Espeja los campos persistidos en `upsells` (model.ts). */
+export interface UpsellDTO {
+  id: string
+  hotelId: string
+  name: string
+  description: string | null
+  /** Precio en la moneda del hotel. */
+  price: number
+  kind: UpsellKind
+  active: boolean
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** Body del POST /api/upsells. */
+export interface CreateUpsellDTO {
+  name: string
+  description?: string | null
+  price: number
+  kind: UpsellKind
+  active?: boolean
+  sortOrder?: number
+}
+
+/** Body del PUT /api/upsells/:id. Todos opcionales (partial). */
+export interface UpdateUpsellDTO {
+  name?: string
+  description?: string | null
+  price?: number
+  kind?: UpsellKind
+  active?: boolean
+  sortOrder?: number
+}
+
+/** Usuario autenticado (req.user). Para ownership (IDOR) y forzar hotelId. */
+export interface UpsellCurrentUser {
+  id: string
+  hotelId?: string | null
+  role?: string
+  userType?: string
+}

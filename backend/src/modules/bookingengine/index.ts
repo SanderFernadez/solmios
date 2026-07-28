@@ -6,17 +6,19 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerBookingengineModels } from './model'
 import { BookingengineService } from './service'
 import { BookingengineController } from './controller'
-import type { BookingConfigDTO, PublicBookingDTO, ConversionEventDTO } from './types'
+import type { BookingConfigDTO, PublicBookingDTO, ConversionEventDTO, UpsellDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { requireUserType } from '../../infrastructure/auth/require-user-type'
 import { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 import { PaymentEventStore } from '../../services/payment-gateway/payment-events'
 import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
 import { useUnifiedBookingFlow } from './usecases/unified-flow'
 
-export { BookingengineService }
-export type { BookingConfigDTO, UpdateBookingConfigDTO, AvailabilityQuery, AvailabilityResult, PublicBookingDTO, CreatePublicBookingDTO, ConversionEventDTO, CreateConversionEventDTO, BookingAnalytics } from './types'
+export { registerBookingengineModels, UpsellModel, BookingConfigModel, AvailabilityCacheModel, ConversionEventsModel, PublicBookingModel } from './model'
+export { BookingengineService } from './service'
+export type { BookingConfigDTO, UpdateBookingConfigDTO, AvailabilityQuery, AvailabilityResult, PublicBookingDTO, CreatePublicBookingDTO, ConversionEventDTO, CreateConversionEventDTO, BookingAnalytics, UpsellDTO, CreateUpsellDTO, UpdateUpsellDTO, UpsellKind } from './types'
 export type { BookingengineSockets } from './sockets'
-export { BookingengineValidator, UpdateBookingConfigSchema, CheckAvailabilitySchema, CreatePublicBookingSchema, TrackEventSchema } from './validators/schema'
+export { BookingengineValidator, UpdateBookingConfigSchema, CheckAvailabilitySchema, CreatePublicBookingSchema, TrackEventSchema, CreateUpsellSchema, UpdateUpsellSchema } from './validators/schema'
 
 export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string, roomId: string) => void }) {
   return createModule({
@@ -53,8 +55,21 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       const registry = new PaymentGatewayRegistry(gatewayRepo as any, log)
       // Barrera anti-doble-cobro para el webhook público.
       const eventStore = new PaymentEventStore(new OrmRepository<any>(orm, 'PaymentEvents') as any, log)
-      const service = new BookingengineService(configRepo, availabilityRepo, roomsRepo, reservationsRepo, hotelsRepo, bookingRepo, eventsRepo, log, cache, registry, eventStore)
-      const controller = new BookingengineController(service, log, orm, auth, opts?.pushAvailability, hotelsRepo)
+
+      // F2 2.3 — Upsells: deps para el controller (no el service, que se mantiene < 200 líneas).
+      // El controller invoca los usecases directo; userRepo + auth se necesitan para ownership
+      // (admin no puede tocar upsells de hotel ajeno).
+      const upsellRepo = new OrmRepository<UpsellDTO>(orm, 'Upsells')
+      const userRepoForUpsells = new OrmRepository<any>(orm, 'Users')
+
+      const service = new BookingengineService(
+        configRepo, availabilityRepo, roomsRepo, reservationsRepo, hotelsRepo,
+        bookingRepo, eventsRepo, log, cache, registry, eventStore,
+      )
+      const controller = new BookingengineController(
+        service, log, orm, auth, opts?.pushAvailability, hotelsRepo,
+        upsellRepo, userRepoForUpsells, auth,
+      )
 
       // Admin routes (protegidas con auth)
       if (auth) {
@@ -64,6 +79,18 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         router.get('/booking-engine/config', guard('settings', 'view'), (req: any) => controller.getConfig(req))
         router.put('/booking-engine/config', guard('settings', 'edit'), (req: any) => controller.updateConfig(req))
         router.get('/booking-engine/analytics', guard('reports', 'view'), (req: any) => controller.getAnalytics(req))
+
+        // F2 2.3 — Upsells admin. Permiso propio `upsells:*` (decisión: no reusar settings:* ni
+        // booking-engine:edit porque no existe; cada recurso con su permiso, mismo criterio que
+        // landing/media/promo). userType merchant asegura que no accede un staff userType=admin.
+        const upsellGuard = (action: 'view' | 'create' | 'edit' | 'delete') => [
+          ...guard('upsells', action),
+          requireUserType('merchant'),
+        ]
+        router.get('/api/upsells', upsellGuard('view'), (req: any) => controller.listUpsells(req))
+        router.post('/api/upsells', upsellGuard('create'), (req: any) => controller.createUpsell(req))
+        router.put('/api/upsells/:id', upsellGuard('edit'), (req: any) => controller.updateUpsell(req))
+        router.delete('/api/upsells/:id', upsellGuard('delete'), (req: any) => controller.destroyUpsell(req))
         // GET /api/booking-engine lo sirve el módulo `reservas`, que se registra antes y gana por orden de ruta.
       }
 

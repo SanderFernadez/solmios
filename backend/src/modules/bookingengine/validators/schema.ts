@@ -2,6 +2,10 @@
 // Schemas para config, disponibilidad pública, reservas, eventos
 
 import type { ValidationRule } from 'arckode-framework'
+// `BodyRule` del shared (superconjunto del framework): incluye 'text' multilinea,
+// 'array', 'object', 'json'. Necesario para `description` de upsells (texto libre con
+// saltos de línea — el `type: 'string'` del framework aplasta los \n a espacios).
+import type { BodyRule } from '../../../shared/validators/validate-body'
 
 // ─── Config (admin) ────────────────────────────────────
 
@@ -89,4 +93,28 @@ export const ExtendedPublicBookingSchema: Record<string, ValidationRule> = {
   ...CreatePublicBookingSchema,
   successUrl: { type: 'string' as const },
   cancelUrl: { type: 'string' as const },
+}
+
+// ─── Upsells (F2 2.3) ──────────────────────────────────────────────────────
+// `description` usa `text` (BodyRule structured) para no aplastar saltos de línea: el
+// admin podría escribir "Incluye jugo, frutas y café.\nServicio de 6 a 10 am.".
+
+/** POST /api/upsells — alta de upsell. */
+export const CreateUpsellSchema: Record<string, BodyRule> = {
+  name: { type: 'string' as const, required: true },
+  description: { type: 'text' as const },
+  price: { type: 'number' as const, required: true },
+  kind: { type: 'string' as const, required: true },
+  active: { type: 'boolean' as const },
+  sortOrder: { type: 'number' as const },
+}
+
+/** PUT /api/upsells/:id — edición (partial). */
+export const UpdateUpsellSchema: Record<string, BodyRule> = {
+  name: { type: 'string' as const },
+  description: { type: 'text' as const },
+  price: { type: 'number' as const },
+  kind: { type: 'string' as const },
+  active: { type: 'boolean' as const },
+  sortOrder: { type: 'number' as const },
 }

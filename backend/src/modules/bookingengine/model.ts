@@ -89,9 +89,43 @@ export const PublicBookingModel: ModelDefinition = {
   },
 }
 
+// F2 2.3 (spec booking-widget) — Upsells: extras del widget de reservas (desayuno,
+// transfer, late checkout). Modelo `Upsells`, tabla `upsells`. Vive como sub-dominio
+// de bookingengine (no es módulo aparte): comparte hotelId y se gestiona desde el
+// panel del hotel junto con la config del motor.
+//
+// Anti-patrón ORM (mem 1805): TODO campo persistido por service/DTO/validator está
+// declarado acá — case-sensitive (`sortOrder` ≠ `sortorder`). `kind` se valida en el
+// usecase (enum cerrado). `price` se guarda en la MONEDA DEL HOTEL (multi-moneda F2
+// es display-only, el cobro siempre es en hotels.currency).
+export const UpsellModel: ModelDefinition = {
+  table: 'upsells',
+  timestamps: true,
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    // 'Desayuno buffet', 'Transfer aeropuerto', 'Late checkout', etc.
+    name: { type: 'string', required: true },
+    // Descripción marketing para mostrar en el widget (opcional).
+    description: { type: 'text' },
+    // Precio en la moneda del hotel. >=0 validado en el usecase.
+    price: { type: 'number', required: true },
+    // 'per_room' | 'per_person' | 'per_stay' — cómo se calcula al multiplicar por qty/huésped.
+    kind: { type: 'string', required: true },
+    // Toggle visible desde el panel sin borrar. Default 1 (activo).
+    active: { type: 'boolean', default: true },
+    // Orden dentro del hotel para el step de upsells del widget. Default 0.
+    sortOrder: { type: 'number', default: 0 },
+  },
+}
+
 export function registerBookingengineModels(orm: ORM): void {
   orm.define('BookingConfig', BookingConfigModel)
   orm.define('AvailabilityCache', AvailabilityCacheModel)
   orm.define('ConversionEvents', ConversionEventsModel)
   orm.define('BookingEngine', PublicBookingModel)
+  // F2 2.3 (spec booking-widget) — Upsells: extras del widget público (desayuno, transfer,
+  // late checkout). Sub-dominio de bookingengine: comparte hotelId, NO amerita módulo
+  // aparte. Dueño: este modelo (NO definir en shared/models.ts — regla anti-modelo-dual).
+  orm.define('Upsells', UpsellModel)
 }

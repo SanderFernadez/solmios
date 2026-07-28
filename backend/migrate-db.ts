@@ -753,6 +753,34 @@ async function createPosIdempotencyIndexes(): Promise<void> {
   }
 }
 
+// ─── F2 2.1 (solmi-direct-booking) — UNIQUE index (hotelId, code) para promo_codes ──
+// El ORM no crea UNIQUE compuesto: hay que hacerlo a mano con `CREATE UNIQUE INDEX`.
+// Portable SQLite + Postgres: identificadores SIN comillas (PG los pliega a lowercase,
+// SQLite los respeta case-sensitive como están — mismo criterio que payments_pos_ref).
+//
+// Nombre físico `promo_codes_hotel_code` (sigue el patrón de `payments_pos_ref` —
+// tabla + columnas, sin prefijo `idx_` para distinguirlo de los UNIQUE simples de una
+// columna que crea el ORM). Se referencia textualmente en `promo-crud.isDuplicateError`.
+//
+// Pre-check de duplicados legacy: si la tabla ya tiene filas repetidas con el mismo
+// (hotelId, code) — data sucia previa al UNIQUE — el CREATE fallaría. Lo loggeamos para
+// reconciliar a mano y NO se crea el índice esta corrida (idempotente, reintenta la próxima).
+// La tabla la crea el ORM (RUN_MIGRATE) — si no existe aún, se ignora con try/catch.
+async function createPromoCodesUniqueIndex(): Promise<void> {
+  try {
+    const dupes = (await db.query(
+      `SELECT code, hotelId, COUNT(*) c FROM promo_codes GROUP BY code, hotelId HAVING COUNT(*) > 1`,
+    )) as Array<{ code: string; hotelId: string; c: number }>
+    if (dupes.length > 0) {
+      console.warn(`⚠ promo_codes: ${dupes.length} code(s) duplicados — promo_codes_hotel_code NO se crea hasta reconciliar.`, dupes)
+    } else {
+      await exec(`CREATE UNIQUE INDEX IF NOT EXISTS promo_codes_hotel_code ON promo_codes(hotelId, code)`)
+    }
+  } catch (e: unknown) {
+    console.log("promo_codes_hotel_code: tabla promo_codes aún no migrada (correr RUN_MIGRATE) —", e instanceof Error ? e.message.slice(0, 90) : String(e))
+  }
+}
+
 // ─── CRM / Marketing / Mensajería DDL + ALTERs portables ──────────────────
 async function createTablesBlock3(): Promise<void> {
   await exec(`CREATE TABLE IF NOT EXISTS loyalty_transactions (
@@ -1019,6 +1047,10 @@ async function main(): Promise<void> {
 
   // idempotencia-settlement-pos: UNIQUE index parcial anti-doble-cobro/cargo POS (idempotente)
   await createPosIdempotencyIndexes()
+
+  // F2 2.1 (solmi-direct-booking): UNIQUE (hotelId, code) para promo_codes (idempotente).
+  // El service captura la violación de este index y la traduce a ValidationError.
+  await createPromoCodesUniqueIndex()
 
   // currency_config para todos los hoteles (idempotente)
   await seedCurrencyConfig()

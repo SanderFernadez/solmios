@@ -157,6 +157,10 @@ import { HotelMediaModule } from './modules/hotel-media'
 // F1 (solmi-direct-booking): landing pública por bloques. Tasks 1.1–1.4 (modelo +
 // seeder + service + rutas admin/pública). El admin la edita desde /settings/landing.
 import { LandingModule } from './modules/landing'
+// F2 2.1–2.3 (solmi-direct-booking): códigos promocionales del widget de reservas.
+// Modelo promo_codes (con UNIQUE index creado en migrate-db.ts) + CRUD admin + validación
+// pública (sin auth, rate-limited). Upsells NO va acá: es sub-dominio de bookingengine.
+import { PromoCodesModule } from './modules/promo-codes'
 import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
@@ -223,6 +227,12 @@ const mods = [
   // rutas admin (`/api/landing` GET/PUT + `/api/landing/:id/toggle` PATCH) + ruta pública
   // (`/api/public/hotels/:slug/landing` rate-limited). Permisos: `landing:view|edit`.
   LandingModule(),
+  // F2 2.1–2.3 (solmi-direct-booking) — Códigos promocionales del widget de reservas.
+  // Modelo promo_codes (UNIQUE (hotelId, code) creado en migrate-db.ts) + CRUD admin
+  // (`/api/promo-codes` auth + permiso `promo:*`) + ruta pública de validación
+  // (`POST /api/public/hotels/:slug/promo/validate` rate-limited 30/min/IP). Permisos `promo:*`
+  // agregados a hotel_admin en shared/permissions.ts.
+  PromoCodesModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
