@@ -653,4 +653,31 @@ describe('RestaurantService — KDS (RES-4)', () => {
     const { build } = kdsSetup([{ id: 'l1', hotelId: 'h1', orderId: 'o1', status: 'new' }])
     await expect(build().setLineStatus('l1', 'ready', user)).rejects.toThrow('Transición inválida')
   })
+
+  // F2 (menu-combos): el header nunca aparece en el KDS, así que ningún transición de cocina lo toca.
+  // Sin excluirlo de recomputeOrderStatus, quedaría 'new' para siempre y la orden encallaría en 'preparing'.
+  it('F2: header combo_header nunca aparece en la cola, aunque venga sin estación', async () => {
+    const { build } = kdsSetup([
+      { id: 'hdr', hotelId: 'h1', orderId: 'o1', status: 'new', kind: 'combo_header', name: 'Combo Familiar' },
+      { id: 'c1', hotelId: 'h1', orderId: 'o1', stationId: 'st1', status: 'new', kind: 'combo_component', name: 'Hamburguesa' },
+      { id: 'c2', hotelId: 'h1', orderId: 'o1', stationId: 'st2', status: 'new', kind: 'combo_component', name: 'Refresco' },
+    ])
+    const q = await build().kdsQueue(undefined, user)
+    expect(q.total).toBe(1)
+    expect(q.data[0].lines.map((l: any) => l.id).sort()).toEqual(['c1', 'c2'])   // header excluido
+  })
+
+  it('F2: header "new" + componentes "served" → recomputeOrderStatus pasa la orden a "served"', async () => {
+    const { ordersStore, build } = kdsSetup([
+      { id: 'hdr', hotelId: 'h1', orderId: 'o1', status: 'new', kind: 'combo_header', name: 'Combo Familiar' },
+      { id: 'c1', hotelId: 'h1', orderId: 'o1', stationId: 'st1', status: 'preparing', kind: 'combo_component', name: 'Hamburguesa' },
+      { id: 'c2', hotelId: 'h1', orderId: 'o1', stationId: 'st2', status: 'ready', kind: 'combo_component', name: 'Refresco' },
+    ])
+    const s = build()
+    // El header nunca se toca (no aparece en el KDS): sigue 'new' durante todo el ciclo.
+    await s.setLineStatus('c1', 'ready', user)
+    await s.setLineStatus('c1', 'served', user)
+    await s.setLineStatus('c2', 'served', user)
+    expect(ordersStore[0].status).toBe('served')   // encallaría en 'preparing' si el header contara
+  })
 })

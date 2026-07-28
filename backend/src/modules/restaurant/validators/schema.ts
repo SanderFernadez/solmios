@@ -21,12 +21,16 @@ export const CreateCategorySchema: Record<string, ValidationRule> = {
   stationId: { type: 'string' as const },
   sortOrder: { type: 'number' as const },
   active: { type: 'number' as const },
+  // F4 — { [langCode]: { name } }. Forma validada acá (objeto/array); la clave 'es' prohibida y el
+  // contenido se validan en el usecase (categories-crud.ts), que sí puede inspeccionar las keys.
+  translations: { type: 'json' as const },
 }
 export const UpdateCategorySchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const },
   stationId: { type: 'string' as const },
   sortOrder: { type: 'number' as const },
   active: { type: 'number' as const },
+  translations: { type: 'json' as const },
 }
 
 // ─── Carta: ítems (RES-1) ───
@@ -40,6 +44,17 @@ export const CreateItemSchema: Record<string, ValidationRule> = {
   available: { type: 'number' as const },
   imageUrl: { type: 'string' as const },
   sortOrder: { type: 'number' as const },
+  // F4 — { [langCode]: { name?, description? } }. Forma validada acá; clave 'es' prohibida en el
+  // usecase (items-crud.ts).
+  translations: { type: 'json' as const },
+  // F5 — tags de alérgenos/info dietética. Forma validada acá (array); cada elemento se valida contra
+  // ALLERGEN_TAGS en el usecase (items-crud.ts:assertAllergens).
+  allergens: { type: 'array' as const },
+  // F6 — destacado + franja horaria. Formato "HH:mm" y regla todo-o-nada validados en el usecase
+  // (items-crud.ts:assertTimeWindow), acá solo la forma (número/string).
+  featured: { type: 'number' as const },
+  availableFrom: { type: 'string' as const },
+  availableTo: { type: 'string' as const },
 }
 export const UpdateItemSchema: Record<string, ValidationRule> = {
   categoryId: { type: 'string' as const },
@@ -51,6 +66,11 @@ export const UpdateItemSchema: Record<string, ValidationRule> = {
   available: { type: 'number' as const },
   imageUrl: { type: 'string' as const },
   sortOrder: { type: 'number' as const },
+  translations: { type: 'json' as const },
+  allergens: { type: 'array' as const },
+  featured: { type: 'number' as const },
+  availableFrom: { type: 'string' as const },
+  availableTo: { type: 'string' as const },
 }
 export const AvailabilitySchema: Record<string, ValidationRule> = {
   available: { type: 'number' as const },
@@ -82,7 +102,11 @@ export const OpenOrderSchema: Record<string, ValidationRule> = {
   waiterId: { type: 'string' as const },
 }
 export const AddLineSchema: Record<string, ValidationRule> = {
-  menuItemId: { type: 'string' as const, required: true },
+  // F2: menuItemId ya NO es required a nivel schema — un combo llega con comboId en su lugar.
+  // El schema no puede expresar XOR entre menuItemId/comboId (D3, design.md); esa regla ("exactamente
+  // uno de los dos, nunca ambos, nunca ninguno") la enforza el usecase addLine (order-lines.ts).
+  menuItemId: { type: 'string' as const },
+  comboId: { type: 'string' as const },
   quantity: { type: 'number' as const },
   notes: { type: 'text' as const },
   // F1: opciones elegidas ({ modifierId }[]). El validator NO valida required/minSelect/maxSelect
@@ -127,6 +151,38 @@ export const UpdateModifierSchema: Record<string, ValidationRule> = {
   inventoryQuantity: { type: 'number' as const },
   active: { type: 'number' as const },
   sortOrder: { type: 'number' as const },
+}
+
+// ─── F2: combos/paquetes ───
+// `items` viaja como array de { menuItemId, quantity, sortOrder? } — el validator solo valida la
+// forma (array); menuItemId de cada componente y su ownership (mismo hotel) se validan en el usecase
+// (combos-crud.ts:assertComponent), igual patrón que items-crud.ts:assertCategory.
+// F5 — `allergens` NO se declara acá a propósito: un combo NUNCA tiene allergens propio, se deriva de
+// sus componentes al leer (combos-crud.ts). Si llega en el body, el whitelist de validateSchema lo
+// descarta en silencio (mem 1805) — comportamiento esperado, no un bug.
+export const CreateComboSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const, required: true },
+  description: { type: 'text' as const },
+  price: { type: 'number' as const, required: true },
+  taxRate: { type: 'number' as const },
+  imageUrl: { type: 'string' as const },
+  available: { type: 'number' as const },
+  sortOrder: { type: 'number' as const },
+  items: { type: 'array' as const, required: true },
+  // F4 — { [langCode]: { name?, description? } }. Forma validada acá; clave 'es' prohibida en el
+  // usecase (combos-crud.ts).
+  translations: { type: 'json' as const },
+}
+export const UpdateComboSchema: Record<string, ValidationRule> = {
+  name: { type: 'string' as const },
+  description: { type: 'text' as const },
+  price: { type: 'number' as const },
+  taxRate: { type: 'number' as const },
+  imageUrl: { type: 'string' as const },
+  available: { type: 'number' as const },
+  sortOrder: { type: 'number' as const },
+  items: { type: 'array' as const },
+  translations: { type: 'json' as const },
 }
 
 // ─── Cuenta + cobro (RES-5) ───

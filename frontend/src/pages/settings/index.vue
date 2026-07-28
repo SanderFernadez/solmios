@@ -726,6 +726,7 @@ import { TIMEZONES, CURRENCIES } from '@/data/intl-catalogs'
 import { parseLatLng } from '@/composables/useLatLngParse'
 import { loadGoogleMaps } from '@/composables/useGoogleMaps'
 import { validateField, validateAll, warnOnUnsavedChanges, HOTEL_RULES } from '@/composables/useFieldValidation'
+import { supportedLangs } from '@/composables/useSupportedLangs'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
 import { ConfigService } from '@/services/Platform.service'
@@ -1459,22 +1460,9 @@ function useMyLocation() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Descripción multilingüe (12 idiomas)
+// Descripción multilingüe (12 idiomas — supportedLangs vive en composables/useSupportedLangs.ts,
+// reusado también por la carta del restaurante, F4)
 // ════════════════════════════════════════════════════════════════════════════
-const supportedLangs = [
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-  { code: 'pt', name: 'Português', flag: '🇵🇹' },
-  { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
-  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
-  { code: 'ca', name: 'Català', flag: '🇪🇸' },
-]
 const activeLang = ref('es')
 const descriptions = ref<Record<string, string>>({})
 const currentLangName = computed(() => supportedLangs.find(l => l.code === activeLang.value)?.name || '')

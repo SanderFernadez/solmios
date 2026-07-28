@@ -88,6 +88,8 @@ export class InventarioService {
     return { recipes: this.recipes, items: this.items, movements: this.movements, userRepo: this.userRepo, auth: this.auth, logger: this.logger }
   }
   listRecipes(menuItemId: string, user: CurrentUser) { return recipesUc.listRecipes(this.recipeDeps(), menuItemId, user) }
+  /** F3: costo de receta (Σ quantity×avgCost). Expuesto vía el puerto `getRecipeCost` al conector restaurante-inventario. */
+  recipeCost(menuItemId: string, user: CurrentUser) { return recipesUc.recipeCost(this.recipeDeps(), menuItemId, user) }
   setRecipe(dto: { menuItemId: string; inventoryItemId: string; quantity: number }, user: CurrentUser) { return recipesUc.setRecipe(this.recipeDeps(), dto, user) }
   /** Descuenta stock por la venta de una línea de comanda (lo llama el conector restaurant→inventario). */
   consumeForSale(input: { hotelId: string; menuItemId: string; soldQty: number; lineId: string }, user: CurrentUser) { return recipesUc.consumeForSale(this.recipeDeps(), input, user) }

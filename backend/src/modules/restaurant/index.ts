@@ -4,9 +4,10 @@ import { createModule, OrmRepository } from 'arckode-framework'
 import { registerRestaurantModels } from './model'
 import { RestaurantService } from './service'
 import { RestaurantController } from './controller'
-import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO, ModifierGroupDTO, ModifierDTO } from './types'
+import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO, ModifierGroupDTO, ModifierDTO, ComboDTO, ComboItemDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 import { createModuleGuard } from '../../infrastructure/auth/require-module'
+import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
 
 export { RestaurantService }
 export type {
@@ -18,6 +19,7 @@ export type { RestaurantSockets } from './sockets'
 export { RestaurantValidator, CreateStationSchema, UpdateStationSchema } from './validators/schema'
 export { registerRestaurantModels } from './model'
 export type { SettlementPorts, ChargeToFolioInput, RecordPaymentInput } from './usecases/settlement'
+export type { ComboDTO, ComboItemDTO } from './types'
 
 export function RestaurantModule() {
   return createModule({
@@ -55,10 +57,16 @@ export function RestaurantModule() {
       // F1: modificadores/variantes de la carta.
       const modifierGroupsRepo = new OrmRepository<ModifierGroupDTO>(orm, 'MenuItemModifierGroups')
       const modifiersRepo = new OrmRepository<ModifierDTO>(orm, 'MenuItemModifiers')
+      // F2: catálogo de combos/paquetes.
+      const combosRepo = new OrmRepository<ComboDTO>(orm, 'MenuCombos')
+      const comboItemsRepo = new OrmRepository<ComboItemDTO>(orm, 'MenuComboItems')
+      // F7: carta pública sin sesión — getModuleStateForPlan necesita el plan del hotel.
+      const plansRepo = new OrmRepository<any>(orm, 'Plans')
       const log = logger.child('restaurant')
       const service = new RestaurantService(
         stations, categories, items, tables, userRepo, log, auth,
         ordersRepo, linesRepo, configRepo, hotelsRepo, modifierGroupsRepo, modifiersRepo,
+        combosRepo, comboItemsRepo, plansRepo,
       )
       const controller = new RestaurantController(service, log)
 
@@ -133,6 +141,37 @@ export function RestaurantModule() {
       router.post('/api/restaurant/modifier-groups/:groupId/modifiers', guard('restaurant-catalog', 'create'), (req) => controller.storeModifier(req))
       router.put('/api/restaurant/modifiers/:id', guard('restaurant-catalog', 'edit'), (req) => controller.updateModifier(req))
       router.delete('/api/restaurant/modifiers/:id', guard('restaurant-catalog', 'delete'), (req) => controller.destroyModifier(req))
+
+      // Combos/paquetes (F2). Mismo criterio que categorías/ítems: lectura operativa ('restaurant',
+      // el mesero necesita ver el catálogo de combos para armar la comanda), mutación es config de la
+      // carta ('restaurant-catalog').
+      router.get('/api/restaurant/combos', guard('restaurant', 'view'), (req) => controller.indexCombos(req))
+      router.get('/api/restaurant/combos/:id', guard('restaurant', 'view'), (req) => controller.showCombo(req))
+      router.post('/api/restaurant/combos', guard('restaurant-catalog', 'create'), (req) => controller.storeCombo(req))
+      router.put('/api/restaurant/combos/:id', guard('restaurant-catalog', 'edit'), (req) => controller.updateCombo(req))
+      router.delete('/api/restaurant/combos/:id', guard('restaurant-catalog', 'delete'), (req) => controller.destroyCombo(req))
+
+      // Food cost (F3): costo de receta y margen por ítem/combo + reporte del hotel. Permiso
+      // 'restaurant-catalog:view' — MÁS estricto que 'restaurant:view' (que ya ve el precio de venta):
+      // el costo/margen es rentabilidad del negocio, ningún rol operativo (mesero/cocina) lo tiene
+      // (specs/menu-food-cost/spec.md, corrección post-QA).
+      router.get('/api/restaurant/menu-items/:id/food-cost', guard('restaurant-catalog', 'view'), (req) => controller.itemFoodCost(req))
+      router.get('/api/restaurant/combos/:id/food-cost', guard('restaurant-catalog', 'view'), (req) => controller.comboFoodCost(req))
+      router.get('/api/restaurant/food-cost/report', guard('restaurant-catalog', 'view'), (req) => controller.foodCostReport(req))
+
+      // Carta pública de solo lectura (F7) — huésped escaneando un QR de mesa, SIN sesión. Ruta SIN
+      // auth.authenticate() ni guard(...) (mismo criterio que /api/public/hotel/:slug de bookingengine).
+      // Rate-limit PROPIO por hotel+IP — clave y límite NUNCA compartidos con /api/auth/login (ver
+      // specs/menu-public/spec.md, "corrección post-QA": el login resetea el contador en éxito, esta
+      // ruta no tiene noción de éxito y un límite tan bajo cortaría tráfico legítimo de un WiFi compartido).
+      router.get('/api/public/menu/:hotelId', async (req: any) => {
+        const key = `public-menu:${req.params.hotelId}:${getClientIp(req)}`
+        const { allowed, retryAfter } = rateLimit(key, { maxAttempts: 120, windowMs: 5 * 60_000 })
+        if (!allowed) {
+          return { status: 429, body: { error: `Demasiadas solicitudes. Intentá en ${retryAfter} segundos`, retryAfter } }
+        }
+        return controller.publicMenu(req)
+      })
 
       log.info('Módulo restaurant listo')
       return service

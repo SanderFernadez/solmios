@@ -38,6 +38,16 @@
               <p v-if="values[f.key]" class="text-[10px] font-bold text-teal mt-1">✓ {{ values[f.key + 'Name'] || 'archivo cargado' }}</p>
             </div>
 
+            <!-- F5: multi-select de checkboxes (ej. catálogo fijo de alérgenos). values[f.key] es string[]. -->
+            <div v-else-if="f.type === 'checkbox-group'" class="flex flex-wrap gap-1.5">
+              <label v-for="o in f.options || []" :key="o.value"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-2 text-xs font-bold cursor-pointer select-none"
+                :class="isChecked(f.key, o.value) ? 'bg-navy text-white border-navy' : 'border-border text-navy hover:bg-surface'">
+                <input type="checkbox" class="hidden" :checked="isChecked(f.key, o.value)" :disabled="readOnly" @change="toggleCheckbox(f.key, o.value)" />
+                {{ o.label }}
+              </label>
+            </div>
+
             <input v-else :type="f.type || 'text'" v-model="values[f.key]" :placeholder="f.placeholder" :disabled="readOnly"
               :maxlength="f.maxLength"
               :max="f.type === 'date' ? '9999-12-31' : (f.type === 'month' ? '9999-12' : undefined)"
@@ -69,15 +79,18 @@ import { reactive, ref, watch } from 'vue'
 export interface FormField {
   key: string
   label: string
-  type?: 'text' | 'number' | 'date' | 'month' | 'select' | 'textarea' | 'email' | 'tel' | 'password' | 'file'
+  type?: 'text' | 'number' | 'date' | 'month' | 'time' | 'select' | 'textarea' | 'email' | 'tel' | 'password' | 'file' | 'checkbox-group'
   /** Solo para type 'file': filtro de tipos (ej: '.pdf,image/*'). El archivo se envía como data URL base64. */
   accept?: string
   /** Texto de ayuda gris bajo el campo (explica qué poner). */
   hint?: string
   required?: boolean
+  /** Para 'select' y 'checkbox-group'. */
   options?: { value: string; label: string }[]
   placeholder?: string
+  /** 'checkbox-group' usa un array de values marcados (ver defaultArray). */
   default?: string | number
+  defaultArray?: string[]
   min?: number
   max?: number
   /** Tope de caracteres del input (evita reventar la columna en la DB). */
@@ -88,11 +101,14 @@ export interface FormField {
 }
 
 const props = defineProps<{ title: string; fields: FormField[]; submitLabel?: string; loading?: boolean; readOnly?: boolean }>()
+// El evento sigue tipado como Record<string, string | number> (contrato histórico de todos los
+// onSubmit existentes en el repo) — 'checkbox-group' agrega string[] SOLO puertas adentro de este
+// componente; el payload final se castea al emitir (ver submit()) para no romper los ~12 callers.
 const emit = defineEmits<{ close: []; submit: [values: Record<string, string | number>] }>()
 
 const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
 
-const values = reactive<Record<string, string | number>>({})
+const values = reactive<Record<string, string | number | string[]>>({})
 const fieldErrors = reactive<Record<string, string>>({})
 const error = ref('')
 
@@ -102,9 +118,26 @@ watch(() => props.fields, (fields) => {
   for (const key of Object.keys(fieldErrors)) delete fieldErrors[key]
   // Los numéricos arrancan VACÍOS (no 0): un 0 fallaba validaciones con min ≥ 1 (ej: puntaje 1-10)
   // aunque el campo fuera opcional. Vacío + opcional = válido; vacío + requerido = "es requerido".
-  for (const f of fields) values[f.key] = f.default ?? ''
+  for (const f of fields) {
+    if (f.type === 'checkbox-group') values[f.key] = f.defaultArray ? [...f.defaultArray] : []
+    else values[f.key] = f.default ?? ''
+  }
   error.value = ''
 }, { immediate: true })
+
+/** F5: helpers del multi-select de checkboxes (allergens y similares). */
+function isChecked(key: string, value: string): boolean {
+  const arr = values[key]
+  return Array.isArray(arr) && arr.includes(value)
+}
+function toggleCheckbox(key: string, value: string): void {
+  const arr = Array.isArray(values[key]) ? [...(values[key] as string[])] : []
+  const idx = arr.indexOf(value)
+  if (idx >= 0) arr.splice(idx, 1)
+  else arr.push(value)
+  values[key] = arr
+  clearError(key)
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const digitCount = (s: string): number => (s.match(/\d/g) || []).length
@@ -136,7 +169,9 @@ function onBlur(f: FormField): void {
 }
 
 /** Devuelve el mensaje de error del campo, o '' si es válido. */
-function validateField(f: FormField, raw: string | number): string {
+function validateField(f: FormField, raw: string | number | string[]): string {
+  // F5: checkbox-group no tiene validaciones de texto/número (required tampoco aplica — 0 tags es válido).
+  if (f.type === 'checkbox-group') return ''
   const str = typeof raw === 'string' ? raw.trim() : String(raw ?? '')
   const isEmpty = str === '' || raw === null || raw === undefined
   if (f.required && isEmpty) return `${f.label} es requerido`
@@ -175,12 +210,13 @@ function submit() {
   }
   error.value = ''
   // Un numérico vacío se omite (no se manda '' — el backend espera número o nada).
-  const payload: Record<string, string | number> = {}
+  const payload: Record<string, string | number | string[]> = {}
   const numberKeys = new Set(props.fields.filter((f) => f.type === 'number').map((f) => f.key))
   for (const [k, v] of Object.entries(values)) {
     if (numberKeys.has(k) && (v === '' || v === null || v === undefined)) continue
     payload[k] = v
   }
-  emit('submit', payload)
+  // string[] (checkbox-group) viaja dentro del Record pese al tipo declarado del evento — ver comentario en emit.
+  emit('submit', payload as Record<string, string | number>)
 }
 </script>

@@ -29,6 +29,9 @@ export const MenuCategoryModel: ModelDefinition = {
     stationId: { type: 'string', indexed: true },
     sortOrder: { type: 'number', default: 0 },
     active: { type: 'number', default: 1 },
+    // F4 — { [langCode]: { name } }. NUNCA incluye la clave 'es' (el español vive en `name`, D7).
+    // type:'json' nativo del ORM (serializa/deserializa solo). nullable, sin default = sin traducciones.
+    translations: { type: 'json' },
   },
   timestamps: true,
 }
@@ -50,6 +53,18 @@ export const MenuItemModel: ModelDefinition = {
     available: { type: 'number', default: 1 },
     imageUrl: { type: 'string' },
     sortOrder: { type: 'number', default: 0 },
+    // F4 — { [langCode]: { name?, description? } }. NUNCA incluye la clave 'es' (D7).
+    translations: { type: 'json' },
+    // F5 — array de strings del catálogo fijo ALLERGEN_TAGS (types.ts). nullable, sin default = sin
+    // tags declarados (compat retro). menu_combos NO tiene esta columna — se deriva al leer (D9).
+    allergens: { type: 'json' },
+    // F6 — "plato del día"/recomendado. Puramente informativo, sin regla de negocio (specs/menu-featured-availability).
+    featured: { type: 'number', default: 0 },
+    // F6 — franja horaria de disponibilidad "HH:mm". Ambos null (default) = sin restricción horaria,
+    // comportamiento IDÉNTICO al actual (compat retro total). Todo-o-nada: se validan juntos en el
+    // usecase (items-crud.ts:assertTimeWindow), nunca uno sin el otro.
+    availableFrom: { type: 'string' },
+    availableTo: { type: 'string' },
   },
   timestamps: true,
 }
@@ -124,6 +139,13 @@ export const RestaurantOrderItemModel: ModelDefinition = {
     // sub-líneas) — [{ groupId, groupName, modifierId, name, priceDelta }]. null = sin modificadores
     // (compat retro con líneas viejas). order-totals.ts/settlement.ts no lo leen ni lo necesitan.
     modifiers: { type: 'json' },
+    // F2 — 'item' (default, retrocompat) | 'combo_header' | 'combo_component'. El ADD COLUMN con
+    // default:'item' deja las filas pre-F2 tratadas como ítem simple, sin migración de datos manual.
+    kind: { type: 'string', default: 'item' },
+    // F2 — solo en filas kind='combo_header': FK lógica a menu_combos.id.
+    comboId: { type: 'string', indexed: true },
+    // F2 — solo en filas kind='combo_component': FK lógica (self) a la fila combo_header hermana.
+    parentLineId: { type: 'string', indexed: true },
   },
   timestamps: true,
 }
@@ -164,6 +186,41 @@ export const MenuItemModifierModel: ModelDefinition = {
   timestamps: true,
 }
 
+/** F2 — Combo/paquete (ej. "Combo Familiar"). `price` es NETO propio del combo (no suma de componentes). */
+export const MenuComboModel: ModelDefinition = {
+  table: 'menu_combos',
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    name: { type: 'string', required: true },
+    description: { type: 'text' },
+    price: { type: 'number', required: true },
+    // Si null → tasa de configuration('taxes') del hotel al facturar (mismo criterio que menu_items.taxRate).
+    taxRate: { type: 'number' },
+    imageUrl: { type: 'string' },
+    available: { type: 'number', default: 1 },
+    sortOrder: { type: 'number', default: 0 },
+    // F4 — { [langCode]: { name?, description? } }. NUNCA incluye la clave 'es' (D7).
+    translations: { type: 'json' },
+  },
+  timestamps: true,
+}
+
+/** F2 — Componente de un combo. `quantity` = unidades del ítem por unidad de combo vendida. */
+export const MenuComboItemModel: ModelDefinition = {
+  table: 'menu_combo_items',
+  fields: {
+    id: { type: 'string', required: true },
+    hotelId: { type: 'string', required: true, indexed: true },
+    comboId: { type: 'string', required: true, indexed: true },
+    // FK lógica a menu_items.id, MISMO hotel (validada en combos-crud.ts, no hay FK física).
+    menuItemId: { type: 'string', required: true, indexed: true },
+    quantity: { type: 'number', default: 1 },
+    sortOrder: { type: 'number', default: 0 },
+  },
+  timestamps: true,
+}
+
 export function registerRestaurantModels(orm: ORM): void {
   orm.define('RestaurantStations', RestaurantStationModel)
   orm.define('MenuCategories', MenuCategoryModel)
@@ -173,4 +230,6 @@ export function registerRestaurantModels(orm: ORM): void {
   orm.define('RestaurantOrderItems', RestaurantOrderItemModel)
   orm.define('MenuItemModifierGroups', MenuItemModifierGroupModel)
   orm.define('MenuItemModifiers', MenuItemModifierModel)
+  orm.define('MenuCombos', MenuComboModel)
+  orm.define('MenuComboItems', MenuComboItemModel)
 }

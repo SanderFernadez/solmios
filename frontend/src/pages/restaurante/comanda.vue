@@ -6,8 +6,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   RestaurantService,
-  type OrderWithLines, type MenuCategory, type MenuItem, type OrderLine, type ModifierGroup,
-  ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
+  type OrderWithLines, type MenuCategory, type MenuItem, type OrderLine, type ModifierGroup, type Combo,
+  type AllergenTag,
+  ORDER_STATUS_LABELS, ORDER_TYPE_LABELS, LINE_STATUS_LABELS, ALLERGEN_LABELS,
 } from '@/services/Restaurant.service'
 import { SettingsService } from '@/services/Settings.service'
 import { currencySymbol } from '@/composables/useCurrency'
@@ -34,6 +35,7 @@ const busy = ref(false)
 const order = ref<OrderWithLines | null>(null)
 const categories = ref<MenuCategory[]>([])
 const items = ref<MenuItem[]>([])
+const combos = ref<Combo[]>([])
 const currency = ref('USD')
 const activeCategoryId = ref<string>('all')
 
@@ -45,11 +47,17 @@ const deletePerm = computed(() => can('restaurant', 'delete'))
 const LOCKED = ['billed', 'charged', 'paid', 'cancelled']
 const editable = computed(() => !!order.value && !LOCKED.includes(order.value.status))
 const money = (n: number): string => `${currencySymbol(currency.value)}${Number(n || 0).toFixed(2)}`
+// F5 — tags de alérgenos/info dietética: SOLO informativos, nunca bloquean addItem/addCombo.
+const allergenLabel = (tag: string): string => ALLERGEN_LABELS[tag as AllergenTag] ?? tag
 
+// F6 — un ítem fuera de su franja horaria actual (availableNow:false, DERIVADO por el backend) no
+// aparece en el selector: el mesero no necesita saber por qué, simplemente no está en la lista.
 const availableItems = computed(() => {
-  const list = items.value.filter((i) => i.available !== 0)
+  const list = items.value.filter((i) => i.available !== 0 && i.availableNow !== false)
   return activeCategoryId.value === 'all' ? list : list.filter((i) => i.categoryId === activeCategoryId.value)
 })
+// Los combos no tienen categoryId propio — aparecen siempre, sin importar el filtro de categoría activo.
+const availableCombos = computed(() => combos.value.filter((c) => c.available !== 0))
 
 async function reloadOrder() {
   order.value = await RestaurantService.getOrder(orderId.value)
@@ -58,13 +66,15 @@ async function reloadOrder() {
 async function load() {
   loading.value = true
   try {
-    const [cat, it, settings] = await Promise.all([
+    const [cat, it, combosRes, settings] = await Promise.all([
       RestaurantService.listCategories(),
       RestaurantService.listItems(),
+      RestaurantService.listCombos(),
       SettingsService.get().catch(() => null),
     ])
     categories.value = cat.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     items.value = it.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    combos.value = combosRes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     currency.value = (settings as any)?.hotel?.currency || 'USD'
     await reloadOrder()
   } catch (e: unknown) {
@@ -134,6 +144,40 @@ async function commitAddItem(i: MenuItem, modifiers: { modifierId: string }[]) {
 function modifiersLabel(l: OrderLine): string {
   const names = (l.modifiers ?? []).map((m) => m.name)
   return names.length ? `(${names.join(', ')})` : ''
+}
+
+// ─── Combos (F2) — se agregan como 1 sola línea (kind='combo_header'); el backend explota los
+// componentes en filas 'combo_component' propias (parentLineId → header). Nunca aceptan modificadores. ───
+async function addCombo(c: Combo) {
+  if (!editable.value || !createPerm.value || busy.value) return
+  busy.value = true
+  try {
+    await RestaurantService.addLine(orderId.value, { comboId: c.id, quantity: 1 })
+    await reloadOrder()
+  } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'No se pudo agregar el combo') }
+  finally { busy.value = false }
+}
+
+// Líneas de "primer nivel" del ticket: ítems sueltos + headers de combo. Los componentes
+// (kind='combo_component') NO aparecen acá — se muestran anidados bajo su header, solo informativos.
+const topLines = computed<OrderLine[]>(() => (order.value?.lines ?? []).filter((l) => l.kind !== 'combo_component'))
+function componentsOf(headerId: string): OrderLine[] {
+  return (order.value?.lines ?? []).filter((l) => l.kind === 'combo_component' && l.parentLineId === headerId)
+}
+// Estado (servido/preparando/etc) derivado de sus componentes — el header nunca transiciona en el KDS.
+function comboAggregateStatus(headerId: string): string {
+  const comps = componentsOf(headerId)
+  if (!comps.length) return ''
+  if (comps.every((c) => c.status === 'served')) return 'Servido'
+  if (comps.every((c) => c.status === 'cancelled')) return 'Cancelado'
+  if (comps.some((c) => c.status === 'ready')) return 'Listo'
+  if (comps.some((c) => c.status === 'preparing')) return 'Preparando'
+  return 'Nuevo'
+}
+const expandedCombos = ref<Set<string>>(new Set())
+function toggleExpand(headerId: string) {
+  if (expandedCombos.value.has(headerId)) expandedCombos.value.delete(headerId)
+  else expandedCombos.value.add(headerId)
 }
 
 async function setQty(line: OrderLine, qty: number) {
@@ -209,12 +253,30 @@ function cancel() {
               <button @click="activeCategoryId = 'all'" :class="['px-2.5 py-1 rounded-full text-xs font-bold', activeCategoryId === 'all' ? 'bg-navy text-white' : 'bg-surface text-text-muted']">Todas</button>
               <button v-for="c in categories" :key="c.id" @click="activeCategoryId = c.id" :class="['px-2.5 py-1 rounded-full text-xs font-bold', activeCategoryId === c.id ? 'bg-navy text-white' : 'bg-surface text-text-muted']">{{ c.name }}</button>
             </div>
-            <EmptyState v-if="!availableItems.length" title="Sin ítems disponibles" message="Configurá la carta primero." />
+            <EmptyState v-if="!availableItems.length && !availableCombos.length" title="Sin ítems disponibles" message="Configurá la carta primero." />
             <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button v-for="c in availableCombos" :key="`combo-${c.id}`" @click="addCombo(c)" :disabled="busy"
+                class="p-2.5 rounded-xl border-2 border-gold/50 bg-gold/5 text-left hover:border-gold hover:bg-gold/10 disabled:opacity-50">
+                <span class="inline-block text-[9px] px-1.5 py-0.5 rounded bg-gold/20 text-gold font-bold uppercase mb-1">Combo</span>
+                <div class="font-bold text-navy text-sm leading-tight">{{ c.name }}</div>
+                <div class="text-xs text-text-muted tabular-nums mt-0.5">{{ money(c.price) }}</div>
+                <!-- F5: alérgenos DERIVADOS de los componentes — informativo, no bloquea agregar. -->
+                <div v-if="(c.allergens ?? []).length" class="flex flex-wrap gap-1 mt-1">
+                  <span v-for="tag in c.allergens" :key="tag" class="text-[9px] px-1 py-0.5 rounded bg-navy/5 text-navy font-bold">{{ allergenLabel(tag) }}</span>
+                </div>
+              </button>
               <button v-for="i in availableItems" :key="i.id" @click="addItem(i)" :disabled="busy || modifierPickLoading"
                 class="p-2.5 rounded-xl border-2 border-border text-left hover:border-navy hover:bg-surface disabled:opacity-50">
-                <div class="font-bold text-navy text-sm leading-tight">{{ i.name }}</div>
+                <div class="font-bold text-navy text-sm leading-tight flex items-center gap-1">
+                  <!-- F6: destacado/plato del día — puramente informativo, sin efecto en disponibilidad. -->
+                  <span v-if="i.featured" class="text-gold shrink-0" title="Destacado">★</span>
+                  {{ i.name }}
+                </div>
                 <div class="text-xs text-text-muted tabular-nums mt-0.5">{{ money(i.price) }}</div>
+                <!-- F5: tags de alérgenos/info dietética — informativo, nunca bloquea agregar a la comanda. -->
+                <div v-if="(i.allergens ?? []).length" class="flex flex-wrap gap-1 mt-1">
+                  <span v-for="tag in i.allergens" :key="tag" class="text-[9px] px-1 py-0.5 rounded bg-navy/5 text-navy font-bold">{{ allergenLabel(tag) }}</span>
+                </div>
               </button>
             </div>
           </template>
@@ -222,23 +284,43 @@ function cancel() {
 
         <!-- Ticket -->
         <SectionCard title="Comanda">
-          <EmptyState v-if="!order.lines.length" title="Comanda vacía" message="Tocá un ítem de la carta para agregarlo." />
+          <EmptyState v-if="!topLines.length" title="Comanda vacía" message="Tocá un ítem de la carta para agregarlo." />
           <div v-else class="divide-y divide-border">
-            <div v-for="l in order.lines" :key="l.id" class="py-2.5 flex items-center gap-3">
-              <div class="min-w-0 flex-1">
-                <div class="font-bold text-navy text-sm truncate">{{ l.name }} <span v-if="modifiersLabel(l)" class="font-normal text-text-muted">{{ modifiersLabel(l) }}</span></div>
-                <div class="text-[11px] text-text-muted tabular-nums">{{ money(l.unitPrice) }} c/u · {{ money(l.lineTotal) }}</div>
+            <div v-for="l in topLines" :key="l.id" class="py-2.5">
+              <div class="flex items-center gap-3">
+                <div class="min-w-0 flex-1">
+                  <div class="font-bold text-navy text-sm truncate flex items-center gap-1.5">
+                    <span v-if="l.kind === 'combo_header'" class="text-[9px] px-1.5 py-0.5 rounded bg-gold/20 text-gold font-bold uppercase shrink-0">Combo</span>
+                    <span class="truncate">{{ l.name }} × {{ l.quantity }}</span>
+                    <span v-if="modifiersLabel(l)" class="font-normal text-text-muted">{{ modifiersLabel(l) }}</span>
+                  </div>
+                  <div class="text-[11px] text-text-muted tabular-nums">
+                    {{ money(l.unitPrice) }} c/u · {{ money(l.lineTotal) }}
+                  </div>
+                  <button v-if="l.kind === 'combo_header'" @click="toggleExpand(l.id)" class="text-[11px] font-bold text-teal hover:underline mt-0.5">
+                    {{ expandedCombos.has(l.id) ? '▲ Ocultar componentes' : `▼ Ver ${componentsOf(l.id).length} componente(s)` }}
+                    <span v-if="comboAggregateStatus(l.id)" class="text-text-muted font-normal">· {{ comboAggregateStatus(l.id) }}</span>
+                  </button>
+                </div>
+                <div v-if="editable && (editPerm || deletePerm)" class="flex items-center gap-1.5 shrink-0">
+                  <template v-if="editPerm">
+                    <button @click="setQty(l, l.quantity - 1)" :disabled="busy" class="w-7 h-7 rounded-lg border-2 border-border font-black text-navy hover:bg-surface disabled:opacity-40">−</button>
+                    <span class="w-6 text-center font-black text-navy tabular-nums">{{ l.quantity }}</span>
+                    <button @click="setQty(l, l.quantity + 1)" :disabled="busy" class="w-7 h-7 rounded-lg border-2 border-border font-black text-navy hover:bg-surface disabled:opacity-40">+</button>
+                  </template>
+                  <span v-else class="font-black text-navy tabular-nums">×{{ l.quantity }}</span>
+                  <button v-if="deletePerm" @click="remove(l)" :disabled="busy" class="ml-1 w-7 h-7 rounded-lg text-coral font-black hover:bg-coral/10 disabled:opacity-40">✕</button>
+                </div>
+                <div v-else class="font-black text-navy tabular-nums shrink-0">×{{ l.quantity }}</div>
               </div>
-              <div v-if="editable && (editPerm || deletePerm)" class="flex items-center gap-1.5 shrink-0">
-                <template v-if="editPerm">
-                  <button @click="setQty(l, l.quantity - 1)" :disabled="busy" class="w-7 h-7 rounded-lg border-2 border-border font-black text-navy hover:bg-surface disabled:opacity-40">−</button>
-                  <span class="w-6 text-center font-black text-navy tabular-nums">{{ l.quantity }}</span>
-                  <button @click="setQty(l, l.quantity + 1)" :disabled="busy" class="w-7 h-7 rounded-lg border-2 border-border font-black text-navy hover:bg-surface disabled:opacity-40">+</button>
-                </template>
-                <span v-else class="font-black text-navy tabular-nums">×{{ l.quantity }}</span>
-                <button v-if="deletePerm" @click="remove(l)" :disabled="busy" class="ml-1 w-7 h-7 rounded-lg text-coral font-black hover:bg-coral/10 disabled:opacity-40">✕</button>
+
+              <!-- Componentes del combo (F2): solo informativo, no editables por separado (se editan/quitan vía el header) -->
+              <div v-if="l.kind === 'combo_header' && expandedCombos.has(l.id)" class="mt-2 ml-3 pl-3 border-l-2 border-gold/40 space-y-1">
+                <div v-for="comp in componentsOf(l.id)" :key="comp.id" class="flex items-center justify-between gap-2 text-xs">
+                  <span class="text-text-secondary">{{ comp.name }} <span class="text-text-muted">×{{ comp.quantity }}</span></span>
+                  <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-navy/5 text-navy">{{ LINE_STATUS_LABELS[comp.status] }}</span>
+                </div>
               </div>
-              <div v-else class="font-black text-navy tabular-nums shrink-0">×{{ l.quantity }}</div>
             </div>
           </div>
 

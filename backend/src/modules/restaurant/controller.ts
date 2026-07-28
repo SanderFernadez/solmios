@@ -13,6 +13,7 @@ import {
   KdsLineStatusSchema,
   CreateModifierGroupSchema, UpdateModifierGroupSchema,
   CreateModifierSchema, UpdateModifierSchema,
+  CreateComboSchema, UpdateComboSchema,
 } from './validators/schema'
 
 export class RestaurantController {
@@ -57,10 +58,12 @@ export class RestaurantController {
   // ─── Carta: categorías (RES-1) ───
   async indexCategories(req: HttpRequest) {
     this.logger.info('GET /restaurant/categories')
-    return { status: 200, body: await this.service.listCategories(req.user as any) }
+    const lang = (req.query as any)?.lang as string | undefined
+    return { status: 200, body: await this.service.listCategories(req.user as any, lang) }
   }
   async showCategory(req: HttpRequest) {
-    const item = await this.service.getCategory(req.params.id, req.user as any)
+    const lang = (req.query as any)?.lang as string | undefined
+    const item = await this.service.getCategory(req.params.id, req.user as any, lang)
     return { status: 200, body: item }
   }
   async storeCategory(req: HttpRequest) {
@@ -85,10 +88,12 @@ export class RestaurantController {
   async indexItems(req: HttpRequest) {
     this.logger.info('GET /restaurant/menu-items')
     const categoryId = (req.query as any)?.categoryId as string | undefined
-    return { status: 200, body: await this.service.listItems(categoryId, req.user as any) }
+    const lang = (req.query as any)?.lang as string | undefined
+    return { status: 200, body: await this.service.listItems(categoryId, req.user as any, lang) }
   }
   async showItem(req: HttpRequest) {
-    const item = await this.service.getItem(req.params.id, req.user as any)
+    const lang = (req.query as any)?.lang as string | undefined
+    const item = await this.service.getItem(req.params.id, req.user as any, lang)
     return { status: 200, body: item }
   }
   async storeItem(req: HttpRequest) {
@@ -263,5 +268,60 @@ export class RestaurantController {
     this.logger.info('DELETE /restaurant/modifiers/:id', { id: req.params.id })
     await this.service.deleteModifier(req.params.id, req.user as any)
     return { status: 204, body: null }
+  }
+
+  // ─── Combos/paquetes (F2) ───
+  async indexCombos(req: HttpRequest) {
+    this.logger.info('GET /restaurant/combos')
+    const lang = (req.query as any)?.lang as string | undefined
+    return { status: 200, body: await this.service.listCombos(req.user as any, lang) }
+  }
+  async showCombo(req: HttpRequest) {
+    this.logger.info('GET /restaurant/combos/:id', { id: req.params.id })
+    const lang = (req.query as any)?.lang as string | undefined
+    const item = await this.service.getCombo(req.params.id, req.user as any, lang)
+    return { status: 200, body: item }
+  }
+  async storeCombo(req: HttpRequest) {
+    this.logger.info('POST /restaurant/combos')
+    const data = validateSchema(CreateComboSchema, req.body)
+    const item = await this.service.createCombo(data as any, req.user as any)
+    return { status: 201, body: item }
+  }
+  async updateCombo(req: HttpRequest) {
+    this.logger.info('PUT /restaurant/combos/:id', { id: req.params.id })
+    const data = validateSchema(UpdateComboSchema, req.body)
+    const item = await this.service.updateCombo(req.params.id, data as any, req.user as any)
+    return { status: 200, body: item }
+  }
+  async destroyCombo(req: HttpRequest) {
+    this.logger.info('DELETE /restaurant/combos/:id', { id: req.params.id })
+    await this.service.deleteCombo(req.params.id, req.user as any)
+    return { status: 204, body: null }
+  }
+
+  // ─── Food cost (F3) ───
+  async itemFoodCost(req: HttpRequest) {
+    this.logger.info('GET /restaurant/menu-items/:id/food-cost', { id: req.params.id })
+    const result = await this.service.itemFoodCost(req.params.id, req.user as any)
+    return { status: 200, body: result }
+  }
+  async comboFoodCost(req: HttpRequest) {
+    this.logger.info('GET /restaurant/combos/:id/food-cost', { id: req.params.id })
+    const result = await this.service.comboFoodCost(req.params.id, req.user as any)
+    return { status: 200, body: result }
+  }
+  async foodCostReport(req: HttpRequest) {
+    this.logger.info('GET /restaurant/food-cost/report')
+    const result = await this.service.foodCostReport(req.user as any)
+    return { status: 200, body: result }
+  }
+
+  // ─── Carta pública (F7) — SIN auth.authenticate(): NUNCA leer req.user acá ───
+  async publicMenu(req: HttpRequest) {
+    this.logger.info('GET /api/public/menu/:hotelId', { hotelId: req.params.hotelId })
+    const lang = (req.query as any)?.lang as string | undefined
+    const result = await this.service.publicMenu(req.params.hotelId, lang)
+    return { status: 200, body: result }
   }
 }

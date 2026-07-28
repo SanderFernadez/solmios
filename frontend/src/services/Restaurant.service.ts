@@ -11,6 +11,26 @@ export type LineStatus = 'new' | 'preparing' | 'ready' | 'served' | 'cancelled'
 export type TableStatus = 'free' | 'occupied' | 'reserved'
 export type Settlement = 'folio' | 'payment'
 
+// F5 — catálogo FIJO de tags de alérgenos/info dietética (espejo de backend/src/modules/restaurant/types.ts,
+// D8). En inglés (DB/código); acá se traduce cada key a su etiqueta en español + ícono para la UI.
+export const ALLERGEN_TAGS = [
+  'gluten', 'lactose', 'nuts', 'shellfish', 'egg', 'soy', 'spicy', 'vegan', 'vegetarian', 'gluten_free',
+] as const
+export type AllergenTag = typeof ALLERGEN_TAGS[number]
+export const ALLERGEN_LABELS: Record<AllergenTag, string> = {
+  gluten: '🌾 Gluten',
+  lactose: '🥛 Lactosa',
+  nuts: '🥜 Frutos secos',
+  shellfish: '🦐 Mariscos',
+  egg: '🥚 Huevo',
+  soy: '🌿 Soja',
+  spicy: '🌶️ Picante',
+  vegan: '🌱 Vegano',
+  vegetarian: '🥕 Vegetariano',
+  gluten_free: '🚫🌾 Sin gluten',
+}
+export const ALLERGEN_OPTIONS = ALLERGEN_TAGS.map((value) => ({ value, label: ALLERGEN_LABELS[value] }))
+
 export interface Station {
   id: string
   hotelId: string
@@ -21,6 +41,12 @@ export interface Station {
   updatedAt?: string
 }
 
+// F4 — mapa de traducciones por idioma (espejo de backend/src/modules/restaurant/types.ts).
+// NUNCA incluye la clave 'es' (el español vive en name/description, D7). Categoría solo traduce
+// `name` (no tiene `description`); ítem/combo traducen `name` + `description`.
+export interface CategoryTranslation { name?: string }
+export interface ItemTranslation { name?: string; description?: string }
+
 export interface MenuCategory {
   id: string
   hotelId: string
@@ -28,6 +54,8 @@ export interface MenuCategory {
   stationId?: string
   sortOrder?: number
   active?: number
+  // F4 — undefined cuando se pidió con `?lang=` resuelto (el backend no duplica el payload).
+  translations?: Record<string, CategoryTranslation> | null
   createdAt?: string
   updatedAt?: string
 }
@@ -45,6 +73,16 @@ export interface MenuItem {
   imageUrl?: string
   sortOrder?: number
   hasRecipe?: boolean
+  // F4 — undefined cuando se pidió con `?lang=` resuelto (el backend no duplica el payload).
+  translations?: Record<string, ItemTranslation> | null
+  // F5 — tags de alérgenos/info dietética del catálogo fijo ALLERGEN_TAGS. null/ausente = sin declarar.
+  allergens?: AllergenTag[] | null
+  // F6 — "plato del día"/recomendado (sin regla de negocio) + franja horaria "HH:mm" (null/ausente =
+  // sin restricción). `availableNow` es DERIVADO por el backend, solo lectura (nunca se reimplementa).
+  featured?: number
+  availableFrom?: string | null
+  availableTo?: string | null
+  availableNow?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -87,6 +125,12 @@ export interface OrderLine {
   lineTotal: number
   // F1: modificadores elegidos, snapshot en la MISMA fila. null/ausente = sin modificadores.
   modifiers?: OrderLineModifierSnapshot[] | null
+  // F2 — 'item' (default, retrocompat) | 'combo_header' | 'combo_component'.
+  kind?: 'item' | 'combo_header' | 'combo_component'
+  // F2 — solo en filas kind='combo_header': FK lógica a Combo.id.
+  comboId?: string
+  // F2 — solo en filas kind='combo_component': FK lógica (self) a la fila combo_header hermana.
+  parentLineId?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -150,6 +194,38 @@ export interface Order {
 
 export type OrderWithLines = Order & { lines: OrderLine[] }
 
+// F2 — Componente de un combo (ej. 2× Hamburguesa dentro de "Combo Familiar").
+export interface ComboItem {
+  id: string
+  comboId: string
+  menuItemId: string
+  quantity: number
+  sortOrder?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+// F2 — Combo/paquete de la carta. `price` es NETO propio del combo (no la suma de sus componentes).
+export interface Combo {
+  id: string
+  hotelId: string
+  name: string
+  description?: string
+  price: number
+  taxRate?: number
+  imageUrl?: string
+  available?: number
+  sortOrder?: number
+  // Derivado: sus componentes, adjuntados por listCombos/getCombo (mismo patrón que ModifierGroup.modifiers).
+  items?: ComboItem[]
+  // F4 — undefined cuando se pidió con `?lang=` resuelto (el backend no duplica el payload).
+  translations?: Record<string, ItemTranslation> | null
+  // F5 — DERIVADO por el backend (unión de allergens de sus componentes). NUNCA se envía en ComboPayload.
+  allergens?: AllergenTag[]
+  createdAt?: string
+  updatedAt?: string
+}
+
 /** Ticket del KDS: comanda + sus líneas activas (new/preparing/ready) de la estación. */
 export interface KdsTicket {
   order: Pick<Order, 'id' | 'number' | 'type' | 'tableId' | 'openedAt' | 'status'>
@@ -158,19 +234,100 @@ export interface KdsTicket {
 
 // ─── Payloads ───
 export interface StationPayload { name: string; active?: number; sortOrder?: number }
-export interface CategoryPayload { name: string; stationId?: string; sortOrder?: number; active?: number }
+export interface CategoryPayload {
+  name: string; stationId?: string; sortOrder?: number; active?: number
+  translations?: Record<string, CategoryTranslation> | null
+}
 export interface MenuItemPayload {
   categoryId: string; name: string; description?: string; price: number
   taxRate?: number; stationId?: string; available?: number; imageUrl?: string; sortOrder?: number
+  translations?: Record<string, ItemTranslation> | null
+  // F5 — tags de alérgenos/info dietética. NO existe en ComboPayload (D9: se deriva, nunca se persiste).
+  allergens?: AllergenTag[]
+  // F6 — "plato del día" + franja horaria "HH:mm". '' en availableFrom/availableTo = "Sin restricción"
+  // (el usecase lo persiste como null; ver items-crud.ts:assertTimeWindow).
+  featured?: number
+  availableFrom?: string
+  availableTo?: string
 }
 export interface TablePayload { name: string; zone?: string; capacity?: number; status?: TableStatus }
 export interface OpenOrderPayload {
   type: OrderType; tableId?: string; reservationId?: string; guestId?: string; roomId?: string; waiterId?: string
 }
-export interface AddLinePayload { menuItemId: string; quantity?: number; notes?: string; modifiers?: { modifierId: string }[] }
+// F2: menuItemId ya NO es obligatorio a nivel payload — un combo llega con comboId en su lugar
+// (mutuamente excluyente, la regla XOR la enforza el usecase `addLine` en el backend).
+export interface AddLinePayload { menuItemId?: string; comboId?: string; quantity?: number; notes?: string; modifiers?: { modifierId: string }[] }
 export interface UpdateLinePayload { quantity?: number; notes?: string }
 export interface ModifierGroupPayload { name: string; selectionType?: ModifierSelectionType; required?: number; minSelect?: number; maxSelect?: number; sortOrder?: number }
 export interface ModifierPayload { name: string; priceDelta: number; inventoryItemId?: string; inventoryQuantity?: number; active?: number; sortOrder?: number }
+
+// F2 — Combo/paquete: alta/edición vía carta.vue, venta vía comanda.vue (AddLinePayload.comboId).
+// F5 — a propósito SIN `allergens`: el combo nunca declara los suyos, se derivan de sus componentes
+// (Combo.allergens, solo lectura). Enviarlo acá sería inútil: el backend lo descarta en silencio.
+export interface ComboItemPayload { menuItemId: string; quantity: number; sortOrder?: number }
+export interface ComboPayload {
+  name: string; description?: string; price: number; taxRate?: number; imageUrl?: string
+  available?: number; sortOrder?: number; items: ComboItemPayload[]
+  translations?: Record<string, ItemTranslation> | null
+}
+
+// F3 — Food cost: costo de receta + margen de un ítem/combo (espejo de restaurant/usecases/food-cost.ts).
+// `cost`/`margin`/`marginPercent` null = inventario no montado en este hotel (available:false) o ítem sin
+// receta (hasRecipe:false) — en AMBOS casos el margen NO se muestra (no "0%" ni "100%" falso).
+export interface FoodCost {
+  menuItemId?: string
+  comboId?: string
+  price: number
+  cost: number | null
+  hasRecipe?: boolean
+  complete?: boolean
+  available: boolean
+  margin: number | null
+  marginPercent: number | null
+}
+export interface FoodCostReportRow {
+  id: string
+  kind: 'item' | 'combo'
+  name: string
+  price: number
+  cost: number
+  margin: number
+  marginPercent: number | null
+  complete: boolean
+  hasRecipe: boolean
+}
+
+// F7 — Carta pública de solo lectura (GET /api/public/menu/:hotelId, SIN sesión/token). DTO curado
+// por el backend (allow-list, nunca los mismos MenuItem/Combo internos — esos traen campos que acá
+// NUNCA deben existir: cost, hotelId, stationId, taxRate, etc.).
+export interface PublicMenuItem {
+  id: string
+  name: string
+  description?: string
+  price: number
+  imageUrl?: string
+  allergens?: AllergenTag[] | null
+  featured?: number
+  availableFrom?: string | null
+  availableTo?: string | null
+  availableNow?: boolean
+}
+export interface PublicMenuCategory { id: string; name: string; items: PublicMenuItem[] }
+export interface PublicMenuCombo {
+  id: string
+  name: string
+  description?: string
+  price: number
+  imageUrl?: string
+  allergens?: AllergenTag[]
+  featured?: number
+  components: { name: string; quantity: number }[]
+}
+export interface PublicMenu {
+  hotel: { name: string }
+  categories: PublicMenuCategory[]
+  combos: PublicMenuCombo[]
+}
 
 export const RestaurantService = {
   // ─── Estaciones (pantallas KDS configurables) ───
@@ -183,8 +340,9 @@ export const RestaurantService = {
   deleteStation: (id: string): Promise<void> => http.delete(`/restaurant/stations/${id}`),
 
   // ─── Carta: categorías ───
-  async listCategories(): Promise<MenuCategory[]> {
-    const res = await http.get<{ data: MenuCategory[]; total: number }>('/restaurant/categories')
+  async listCategories(lang?: string): Promise<MenuCategory[]> {
+    const qs = lang ? `?lang=${encodeURIComponent(lang)}` : ''
+    const res = await http.get<{ data: MenuCategory[]; total: number }>(`/restaurant/categories${qs}`)
     return res.data ?? []
   },
   createCategory: (data: CategoryPayload): Promise<MenuCategory> => http.post('/restaurant/categories', data),
@@ -192,9 +350,12 @@ export const RestaurantService = {
   deleteCategory: (id: string): Promise<void> => http.delete(`/restaurant/categories/${id}`),
 
   // ─── Carta: ítems ───
-  async listItems(categoryId?: string): Promise<MenuItem[]> {
-    const qs = categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : ''
-    const res = await http.get<{ data: MenuItem[]; total: number }>(`/restaurant/menu-items${qs}`)
+  async listItems(categoryId?: string, lang?: string): Promise<MenuItem[]> {
+    const qs = new URLSearchParams()
+    if (categoryId) qs.set('categoryId', categoryId)
+    if (lang) qs.set('lang', lang)
+    const q = qs.toString()
+    const res = await http.get<{ data: MenuItem[]; total: number }>(`/restaurant/menu-items${q ? `?${q}` : ''}`)
     return res.data ?? []
   },
   createItem: (data: MenuItemPayload): Promise<MenuItem> => http.post('/restaurant/menu-items', data),
@@ -255,6 +416,30 @@ export const RestaurantService = {
   createModifier: (groupId: string, data: ModifierPayload): Promise<Modifier> => http.post(`/restaurant/modifier-groups/${groupId}/modifiers`, data),
   updateModifier: (id: string, data: Partial<ModifierPayload>): Promise<Modifier> => http.put(`/restaurant/modifiers/${id}`, data),
   deleteModifier: (id: string): Promise<void> => http.delete(`/restaurant/modifiers/${id}`),
+
+  // ─── Combos/paquetes (F2) ───
+  async listCombos(lang?: string): Promise<Combo[]> {
+    const qs = lang ? `?lang=${encodeURIComponent(lang)}` : ''
+    const res = await http.get<{ data: Combo[]; total: number }>(`/restaurant/combos${qs}`)
+    return res.data ?? []
+  },
+  getCombo: (id: string): Promise<Combo> => http.get(`/restaurant/combos/${id}`),
+  createCombo: (data: ComboPayload): Promise<Combo> => http.post('/restaurant/combos', data),
+  updateCombo: (id: string, data: Partial<ComboPayload>): Promise<Combo> => http.put(`/restaurant/combos/${id}`, data),
+  deleteCombo: (id: string): Promise<void> => http.delete(`/restaurant/combos/${id}`),
+
+  // ─── Food cost (F3) — gate 'restaurant-catalog:view', solo hotel_admin lo ve ───
+  itemFoodCost: (id: string): Promise<FoodCost> => http.get(`/restaurant/menu-items/${id}/food-cost`),
+  comboFoodCost: (id: string): Promise<FoodCost> => http.get(`/restaurant/combos/${id}/food-cost`),
+  async foodCostReport(): Promise<FoodCostReportRow[]> {
+    const res = await http.get<{ data: FoodCostReportRow[]; total: number }>('/restaurant/food-cost/report')
+    return res.data ?? []
+  },
+
+  // ─── Carta pública (F7) — SIN sesión. `http` no fuerza Authorization si no hay token guardado, y
+  // `/public/` ya está en la whitelist de isPublicAuthPath (http.ts) para no disparar un logout falso. ───
+  getPublicMenu: (hotelId: string, lang?: string): Promise<PublicMenu> =>
+    http.get(`/public/menu/${hotelId}${lang ? `?lang=${encodeURIComponent(lang)}` : ''}`),
 }
 
 // ─── Labels ES para la UI ───

@@ -25,7 +25,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Backend
 
-- [ ] 0.1 Extender la firma de `rateLimit()` en
+- [x] 0.1 Extender la firma de `rateLimit()` en
       `backend/src/shared/middlewares/rate-limit.ts` a
       `rateLimit(key: string, opts?: { maxAttempts?: number; windowMs?: number }): { allowed: boolean; retryAfter?: number }`.
       Usar `opts?.maxAttempts ?? MAX_ATTEMPTS` y `opts?.windowMs ?? WINDOW_MS` como
@@ -37,7 +37,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       `rateLimit(key, { maxAttempts: 3 })` permite 3 intentos para esa key
       independientemente de cualquier otra key en 20/5min.
 
-- [ ] 0.2 Test de regresión nuevo: `backend/src/shared/tests/rate-limit-opts.test.ts`
+- [x] 0.2 Test de regresión nuevo: `backend/src/shared/tests/rate-limit-opts.test.ts`
       (no reusar `rate-limit-clientip.test.ts`, que testea `getClientIp` — dominio
       distinto). Cubrir, llamando `rateLimit()` directo (sin pasar por HTTP):
       1. Sin `opts`: 20 llamadas con la misma key permiten, la 21ª devuelve
@@ -64,7 +64,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Gate F0
 
-- [ ] 0.3 `cd backend && bun run typecheck` (0 errores) + `bun run node_modules/arckode-framework/bin/arckode.js analyze`
+- [x] 0.3 `cd backend && bun run typecheck` (0 errores) + `bun run node_modules/arckode-framework/bin/arckode.js analyze`
       (✅ VÁLIDO, 0 violaciones) + `bun test src/shared/tests/rate-limit-opts.test.ts` (verde).
       **Acceptance**: los tres comandos devuelven éxito antes de tocar F7.
 
@@ -74,7 +74,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Backend
 
-- [ ] 1.1 `backend/src/modules/restaurant/model.ts`: agregar `MenuItemModifierGroupModel`
+- [x] 1.1 `backend/src/modules/restaurant/model.ts`: agregar `MenuItemModifierGroupModel`
       (tabla `menu_item_modifier_groups`: `id, hotelId, menuItemId, name, selectionType
       default 'single', required default 0, minSelect default 1, maxSelect nullable,
       sortOrder default 0` + timestamps) y `MenuItemModifierModel` (tabla
@@ -87,7 +87,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       las 2 tablas nuevas y agrega la columna `modifiers` sin error; filas existentes de
       `restaurant_order_items` quedan con `modifiers=null`.
 
-- [ ] 1.2 `backend/src/modules/restaurant/validators/schema.ts`: agregar
+- [x] 1.2 `backend/src/modules/restaurant/validators/schema.ts`: agregar
       `CreateModifierGroupSchema`/`UpdateModifierGroupSchema`
       (`name, selectionType, required?, minSelect?, maxSelect?, sortOrder?`) y
       `CreateModifierSchema`/`UpdateModifierSchema`
@@ -98,7 +98,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       `POST /orders/:id/items` con `modifiers` bien formado pasa el validator sin tocar
       `menuItemId: { required: true }` (eso lo toca F2, no esta tarea).
 
-- [ ] 1.3 Crear `backend/src/modules/restaurant/usecases/modifiers-crud.ts`: CRUD de
+- [x] 1.3 Crear `backend/src/modules/restaurant/usecases/modifiers-crud.ts`: CRUD de
       grupos y opciones (`listGroups`, `createGroup`, `updateGroup`, `deleteGroup`
       cascada sobre sus opciones, `createModifier`, `updateModifier`, `deleteModifier`).
       Ownership: TODO `findById` de grupo/opción se resuelve con `findOne({id})` +
@@ -109,7 +109,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       ("El ítem no existe o es de otro hotel"); borrar un grupo borra sus opciones en la
       misma operación.
 
-- [ ] 1.4 `backend/src/modules/restaurant/usecases/order-lines.ts`: `addLine` valida,
+- [x] 1.4 `backend/src/modules/restaurant/usecases/order-lines.ts`: `addLine` valida,
       por cada `modifierId` recibido en `dto.modifiers`: la opción existe, pertenece a
       un grupo del `menuItemId` de la línea y al mismo hotel (`findOne+assertOwnership`),
       y se cumple `required`/`minSelect`/`maxSelect` de CADA grupo del ítem antes de
@@ -123,7 +123,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       (grupo obligatorio bloquea, grupo opcional no bloquea, `priceDelta` negativo
       resta del total).
 
-- [ ] 1.5 `backend/src/modules/inventario/usecases/recipes.ts`: nueva función
+- [x] 1.5 `backend/src/modules/inventario/usecases/recipes.ts`: nueva función
       `consumeForSaleWithModifiers(deps, line, user)` que recibe la línea completa,
       parsea `line.modifiers` (JSON) y, por cada modificador con `inventoryItemId`
       declarado, descuenta `inventoryQuantity` con
@@ -135,7 +135,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       duplica el movimiento de stock del modificador (dedup por `source`+`sourceId`);
       un modificador sin `inventoryItemId` no genera ningún movimiento adicional.
 
-- [ ] 1.6 `backend/src/connectors/restaurante-inventario.ts`: en `consumeOrder`, después
+- [x] 1.6 `backend/src/connectors/restaurante-inventario.ts`: en `consumeOrder`, después
       de `consumeForSale` por línea, llamar también
       `inv.consumeForSaleWithModifiers({ hotelId: order.hotelId, line: l }, sys)` si
       `l.modifiers` no es null. El conector sigue siendo un loop tonto — la lógica de
@@ -144,7 +144,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: grep de `restaurante-inventario.ts` confirma que NO hay ningún
       `JSON.parse`/`for (... of ... modifiers)` inline en el conector.
 
-- [ ] 1.7 `backend/src/modules/restaurant/service.ts`: agregar repos de
+- [x] 1.7 `backend/src/modules/restaurant/service.ts`: agregar repos de
       `menuItemModifierGroups`/`menuItemModifiers` al constructor de `RestaurantService`,
       método `modifierDeps()` (mismo patrón que `catDeps()`/`itemDeps()`), y delegar
       `listModifierGroups/createModifierGroup/updateModifierGroup/deleteModifierGroup/
@@ -152,7 +152,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: `RestaurantService` expone los 7 métodos nuevos sin romper ningún
       método existente (compila, `bun run typecheck` limpio).
 
-- [ ] 1.8 `backend/src/modules/restaurant/controller.ts` + `index.ts`: agregar rutas
+- [x] 1.8 `backend/src/modules/restaurant/controller.ts` + `index.ts`: agregar rutas
       (permisos EXACTOS de `specs/menu-modifiers/spec.md`, sección API):
       `GET /api/restaurant/menu-items/:menuItemId/modifier-groups` (`restaurant:view`),
       `POST` mismo path (`restaurant-catalog:create`),
@@ -165,7 +165,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: mesero (rol `waiter`, solo `restaurant:*`) recibe 403 en
       `POST /modifier-groups`; `hotel_admin` (con `restaurant-catalog:create`) recibe 201.
 
-- [ ] 1.9 Tests: `backend/src/modules/restaurant/tests/modifiers-crud.test.ts` (CRUD +
+- [x] 1.9 Tests: `backend/src/modules/restaurant/tests/modifiers-crud.test.ts` (CRUD +
       ownership cross-hotel rechazado) y extender
       `backend/src/modules/restaurant/tests/service.test.ts` (o archivo nuevo
       `order-lines-modifiers.test.ts`) con: precio final con modificador (250+50)×2=600,
@@ -178,7 +178,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Frontend
 
-- [ ] 1.10 `frontend/src/services/Restaurant.service.ts`: agregar tipos
+- [x] 1.10 `frontend/src/services/Restaurant.service.ts`: agregar tipos
       `ModifierGroup { id, hotelId, menuItemId, name, selectionType, required, minSelect,
       maxSelect, sortOrder }`, `Modifier { id, hotelId, groupId, name, priceDelta,
       inventoryItemId, inventoryQuantity, active, sortOrder }`, extender
@@ -187,14 +187,14 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       métodos de API (`listModifierGroups`, `createModifierGroup`, etc.).
       **Acceptance**: `bun run typecheck` (vue-tsc -b) sin errores de tipos nuevos.
 
-- [ ] 1.11 `frontend/src/pages/restaurante/carta.vue`: sección/tab "Modificadores" en el
+- [x] 1.11 `frontend/src/pages/restaurante/carta.vue`: sección/tab "Modificadores" en el
       editor de ítem (reusa `AppModal`/`SectionCard`) — crear grupos
       (nombre + `selectionType` + `required`) y sus opciones (nombre + `priceDelta` +
       insumo opcional).
       **Acceptance**: crear un grupo "Tamaño" con 2 opciones desde la UI y verlo
       reflejado tras recargar (persistencia real, no solo estado local).
 
-- [ ] 1.12 `frontend/src/pages/restaurante/comanda.vue`: al tocar un ítem con grupos
+- [x] 1.12 `frontend/src/pages/restaurante/comanda.vue`: al tocar un ítem con grupos
       configurados, abrir selector (radio `single` / checkbox `multiple`) ANTES de
       agregar la línea; grupos `required` bloquean el botón "Agregar" hasta
       completarse. La línea agregada muestra "Hamburguesa (Grande, +tocino)" con el
@@ -206,7 +206,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Gate F1
 
-- [ ] 1.13 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
+- [x] 1.13 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
       `cd frontend && bun run typecheck && bun run build` (0 errores, build ✓ built).
       **Acceptance**: los 4 comandos en verde antes de empezar F2.
 
@@ -216,7 +216,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Backend
 
-- [ ] 2.1 `backend/src/modules/restaurant/model.ts`: agregar `MenuComboModel` (tabla
+- [x] 2.1 `backend/src/modules/restaurant/model.ts`: agregar `MenuComboModel` (tabla
       `menu_combos`: `id, hotelId, name, description nullable, price, taxRate nullable,
       imageUrl nullable, available default 1, sortOrder default 0` + timestamps) y
       `MenuComboItemModel` (tabla `menu_combo_items`:
@@ -227,7 +227,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: filas `restaurant_order_items` PRE-existentes quedan con
       `kind='item'` tras el `ADD COLUMN` (retrocompat sin migración de datos manual).
 
-- [ ] 2.2 `backend/src/modules/restaurant/validators/schema.ts`: agregar
+- [x] 2.2 `backend/src/modules/restaurant/validators/schema.ts`: agregar
       `CreateComboSchema`/`UpdateComboSchema`
       (`name, description?, price, taxRate?, imageUrl?, available?, sortOrder?,
       items: [{menuItemId, quantity, sortOrder?}]`). **Cambiar `AddLineSchema.menuItemId`
@@ -237,14 +237,14 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: un `POST /orders/:id/items` con SOLO `comboId` (sin `menuItemId`)
       ya NO es rechazado por el validator (pasa al usecase, que decide).
 
-- [ ] 2.3 Crear `backend/src/modules/restaurant/usecases/combos-crud.ts`: CRUD de
+- [x] 2.3 Crear `backend/src/modules/restaurant/usecases/combos-crud.ts`: CRUD de
       combos (`listCombos`, `getCombo`, `createCombo`, `updateCombo` — reemplaza
       `items` completo si viene —, `deleteCombo`). Cada `menuItemId` de `items` se
       valida `findOne({id})` + `hotelId` igual (rechaza componente de otro hotel, 400).
       **Acceptance**: crear un combo con un componente de otro hotel responde 400
       ("El ítem no existe o es de otro hotel"), el combo NO se crea.
 
-- [ ] 2.4 `backend/src/modules/restaurant/usecases/order-lines.ts` — cambios en `addLine`:
+- [x] 2.4 `backend/src/modules/restaurant/usecases/order-lines.ts` — cambios en `addLine`:
       1. Validar EXACTAMENTE uno de `menuItemId`/`comboId` presente (nunca ambos, nunca
          ninguno) → `ValidationError` 400 si se incumple.
       2. **Si `dto.comboId` está presente Y `dto.modifiers` también viene poblado →
@@ -273,7 +273,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       multiplicador de cantidad ×2, cambiar quantity del header propaga a componentes,
       borrar header borra todo, editar componente directo rechaza).
 
-- [ ] 2.5 `backend/src/modules/restaurant/usecases/kds.ts` — **dos exclusiones
+- [x] 2.5 `backend/src/modules/restaurant/usecases/kds.ts` — **dos exclusiones
       explícitas de `kind==='combo_header'`, no una sola**:
       1. `kdsQueue` (línea ~45): reforzar explícito el filtro para excluir
          `kind==='combo_header'` (hoy se auto-excluye por no tener `stationId`, pero la
@@ -288,7 +288,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       `specs/menu-combos/spec.md` — el header nunca aparece en `GET /kds`, y una orden
       con 2 componentes `served` + header `new` pasa a `order.status='served'`.
 
-- [ ] 2.6 `backend/src/modules/restaurant/service.ts` + `controller.ts` + `index.ts`:
+- [x] 2.6 `backend/src/modules/restaurant/service.ts` + `controller.ts` + `index.ts`:
       wiring de repos `menuCombos`/`menuComboItems`, método `comboDeps()`, delegar
       `listCombos/getCombo/createCombo/updateCombo/deleteCombo`, y rutas:
       `GET /api/restaurant/combos` (`restaurant:view`), `GET /api/restaurant/combos/:id`
@@ -298,7 +298,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: `arckode analyze` no marca ningún `findById` sin
       `assertOwnership` posterior en las rutas nuevas.
 
-- [ ] 2.7 `backend/src/connectors/restaurante-inventario.ts`: **CERO cambios de
+- [x] 2.7 `backend/src/connectors/restaurante-inventario.ts`: **CERO cambios de
       código** — confirmar (no modificar) que el loop `for (const l of lines)` ya
       salta el header por `if (!l.menuItemId ...) continue` y consume cada
       `combo_component` igual que un ítem suelto (tienen `menuItemId` propio y
@@ -308,7 +308,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       diff no vacío, revisar que no se esté violando D2 (lógica de explosión en el
       conector, prohibida).
 
-- [ ] 2.8 Tests: `backend/src/modules/restaurant/tests/combos-crud.test.ts` (CRUD +
+- [x] 2.8 Tests: `backend/src/modules/restaurant/tests/combos-crud.test.ts` (CRUD +
       componente de otro hotel rechazado) y extender/crear
       `order-lines-combos.test.ts`: vender combo genera 1 header + N componentes con
       `lineTotal` correcto; vender 2 unidades multiplica cantidades de componentes;
@@ -322,18 +322,18 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Frontend
 
-- [ ] 2.9 `frontend/src/services/Restaurant.service.ts`: tipos `Combo { id, hotelId,
+- [x] 2.9 `frontend/src/services/Restaurant.service.ts`: tipos `Combo { id, hotelId,
       name, description, price, taxRate, imageUrl, available, sortOrder, items:
       ComboItem[] }`, `ComboItem { id, comboId, menuItemId, quantity, sortOrder }`;
       extender `AddLineInput` con `comboId?: string`; 5 métodos de API de combos.
       **Acceptance**: `bun run typecheck` sin errores.
 
-- [ ] 2.10 `frontend/src/pages/restaurante/carta.vue`: pestaña "Combos" — alta/edición
+- [x] 2.10 `frontend/src/pages/restaurante/carta.vue`: pestaña "Combos" — alta/edición
       con selector multi-ítem + cantidad por componente.
       **Acceptance**: crear "Combo Familiar" con 3 componentes desde la UI, verlo
       persistido tras recargar.
 
-- [ ] 2.11 `frontend/src/pages/restaurante/comanda.vue`: combos listados junto a ítems
+- [x] 2.11 `frontend/src/pages/restaurante/comanda.vue`: combos listados junto a ítems
       sueltos con badge "Combo"; al agregar, una sola línea "Combo Familiar × 1 — $800"
       con componentes desplegables debajo (solo informativo). KDS agrupa
       visualmente bajo "de: Combo Familiar" (cada componente transiciona
@@ -343,7 +343,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Gate F2
 
-- [ ] 2.12 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
+- [x] 2.12 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
       `cd frontend && bun run typecheck && bun run build`.
       **Acceptance**: los 4 comandos en verde antes de empezar F3. Correr también
       `RUN_MIGRATE=1 bun run src/composition-root.ts` en dev y confirmar que
@@ -356,7 +356,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Backend
 
-- [ ] 3.1 `backend/src/modules/inventario/usecases/recipes.ts`: nueva función
+- [x] 3.1 `backend/src/modules/inventario/usecases/recipes.ts`: nueva función
       `recipeCost(deps, menuItemId, user)` (junto a `listRecipes`/`consumeForSale`,
       mismo archivo) que calcula `Σ (recipe.quantity × inventoryItem.avgCost)` sobre
       `menu_item_recipes` del ítem. Devuelve `{ cost: 0, hasRecipe: false }` si no hay
@@ -364,12 +364,12 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: ítem con receta `[{Pan qty:1, avgCost:15}, {Carne qty:0.2,
       avgCost:200}]` → `cost=55`.
 
-- [ ] 3.2 `backend/src/modules/inventario/service.ts`: exponer `recipeCost` en la
+- [x] 3.2 `backend/src/modules/inventario/service.ts`: exponer `recipeCost` en la
       facade (junto a `listRecipes`), sin romper la firma de `recipesUc`.
       **Acceptance**: `InventarioService.recipeCost(menuItemId, user)` disponible para
       el conector.
 
-- [ ] 3.3 `backend/src/connectors/restaurante-inventario.ts`: **una sola línea nueva**
+- [x] 3.3 `backend/src/connectors/restaurante-inventario.ts`: **una sola línea nueva**
       — agregar `getRecipeCost: (menuItemId, user) => inventario().recipeCost(menuItemId, user)`
       al MISMO objeto que ya inyecta `setRecipePorts({ menuItemsWithRecipe: ... })`
       (D4/D das de `design.md`: extender el puerto, no crear uno paralelo). NO
@@ -377,7 +377,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: `git diff` de este archivo muestra solo la línea agregada
       dentro del objeto de `setRecipePorts`, cero cambios en `consumeOrder`.
 
-- [ ] 3.4 `backend/src/modules/restaurant/service.ts`: extender el tipo de
+- [x] 3.4 `backend/src/modules/restaurant/service.ts`: extender el tipo de
       `recipePorts` (línea ~24) con `getRecipeCost?: (menuItemId: string, user:
       CurrentUser) => Promise<{ cost: number; hasRecipe: boolean }>`. `setRecipePorts`
       ya soporta merge parcial vía spread (línea ~60) — no tocar esa mecánica. Si
@@ -386,7 +386,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: en un hotel sin módulo `inventario`, `GET /menu-items/:id/food-cost`
       responde `{ cost: null, available: false }` con 200, no 500.
 
-- [ ] 3.5 Crear `backend/src/modules/restaurant/usecases/food-cost.ts`:
+- [x] 3.5 Crear `backend/src/modules/restaurant/usecases/food-cost.ts`:
       - `itemFoodCost(deps, menuItemId, user)`: cruza `menu_items.price` +
         `recipePorts.getRecipeCost` → `{ cost, hasRecipe, margin: price-cost,
         marginPercent: price>0 ? round2(margin/price*100) : null }`. Ítems sin receta
@@ -404,7 +404,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       "Food cost de un combo", y el de "Reporte ordenable" de
       `specs/menu-food-cost/spec.md`.
 
-- [ ] 3.6 `backend/src/modules/restaurant/controller.ts` + `index.ts`: rutas
+- [x] 3.6 `backend/src/modules/restaurant/controller.ts` + `index.ts`: rutas
       `GET /api/restaurant/menu-items/:id/food-cost`, `GET /api/restaurant/combos/:id/food-cost`
       (requiere F2), `GET /api/restaurant/food-cost/report` — TODAS con
       `guard('restaurant-catalog', 'view')` (permiso YA existente en `permissions.ts`,
@@ -415,7 +415,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       `shared/permissions.ts:198-213` (ningún rol operativo tiene
       `restaurant-catalog:view`).
 
-- [ ] 3.7 Tests: `backend/src/modules/restaurant/tests/food-cost.test.ts` — ítem con 2
+- [x] 3.7 Tests: `backend/src/modules/restaurant/tests/food-cost.test.ts` — ítem con 2
       insumos, ítem sin receta (`hasRecipe:false`, excluido de margen), margen negativo
       no trunca, combo con 3 componentes costeados, combo con 1 componente sin receta
       (`complete:false`), reporte ordenado ascendente, inventario no montado
@@ -425,12 +425,12 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Frontend
 
-- [ ] 3.8 `frontend/src/services/Restaurant.service.ts`: tipos `FoodCost { menuItemId?,
+- [x] 3.8 `frontend/src/services/Restaurant.service.ts`: tipos `FoodCost { menuItemId?,
       comboId?, price, cost, hasRecipe?, complete?, margin, marginPercent }`,
       `FoodCostReportRow` y 3 métodos de API.
       **Acceptance**: `bun run typecheck` limpio.
 
-- [ ] 3.9 `frontend/src/pages/restaurante/carta.vue`: badge de margen junto al precio
+- [x] 3.9 `frontend/src/pages/restaurante/carta.vue`: badge de margen junto al precio
       (línea ~373, junto a `money(i.price)`) — verde >50%, ámbar 20-50%, rojo <20% o
       negativo — visible SOLO si `editPerm` (mismo gate que "Receta"/"Editar", el
       mesero no lo ve). NO se muestra si `hasRecipe===false` (ya existe el badge "Sin
@@ -443,7 +443,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Gate F3
 
-- [ ] 3.10 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
+- [x] 3.10 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
       `cd frontend && bun run typecheck && bun run build`.
       **Acceptance**: los 4 comandos en verde antes de empezar F4.
 
@@ -453,7 +453,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Backend
 
-- [ ] 4.1 `backend/src/modules/restaurant/model.ts`: agregar columna `translations`
+- [x] 4.1 `backend/src/modules/restaurant/model.ts`: agregar columna `translations`
       (`type:'json'`, nullable) a `MenuCategoryModel`, `MenuItemModel`, y `MenuComboModel`
       (esta última solo si F2 ya está aplicado — el ADD COLUMN corre sobre la tabla
       creada en F2.1). **`type:'json'` nativo del ORM** (D6), NO un `string`
@@ -461,7 +461,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: `RUN_MIGRATE=1` agrega las 3 columnas sin backfill; filas
       existentes quedan `translations:null`.
 
-- [ ] 4.2 `backend/src/modules/restaurant/validators/schema.ts`: extender
+- [x] 4.2 `backend/src/modules/restaurant/validators/schema.ts`: extender
       `CreateCategorySchema`/`UpdateCategorySchema`, `CreateItemSchema`/`UpdateItemSchema`,
       `CreateComboSchema`/`UpdateComboSchema` con
       `translations?: { type: 'json' }` (`Record<string, {name?, description?}>` para
@@ -471,25 +471,25 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       rechazarlo por forma (la validación de contenido, incluida la clave `es`
       prohibida, vive en el usecase, no acá).
 
-- [ ] 4.3 `backend/src/modules/restaurant/usecases/categories-crud.ts`: `createCategory`/
+- [x] 4.3 `backend/src/modules/restaurant/usecases/categories-crud.ts`: `createCategory`/
       `updateCategory` aceptan `translations`; rechazan con `ValidationError` si trae
       la clave `'es'` (`"El idioma base (es) no se traduce; usá el campo name"`).
       **Acceptance**: `translations: {es: {name:'x'}}` → 400; `translations: {en:
       {name:'Appetizers'}}` → 200, categoría queda con `name` base en español intacto.
 
-- [ ] 4.4 `backend/src/modules/restaurant/usecases/items-crud.ts`: `createItem`/
+- [x] 4.4 `backend/src/modules/restaurant/usecases/items-crud.ts`: `createItem`/
       `updateItem` aceptan `translations`; rechazan clave `'es'` (mismo mensaje,
       adaptado a `name`/`description`).
       **Acceptance**: traducción parcial (`{en:{name:'Fries'}}`, sin `description`)
       persiste correctamente — el fallback campo-por-campo se resuelve en lectura (ver
       4.6), no en escritura.
 
-- [ ] 4.5 `backend/src/modules/restaurant/usecases/combos-crud.ts` (si F2 aplicado):
+- [x] 4.5 `backend/src/modules/restaurant/usecases/combos-crud.ts` (si F2 aplicado):
       `createCombo`/`updateCombo` aceptan `translations`, misma validación de clave
       `'es'` prohibida.
       **Acceptance**: combo traducido a `en` persiste `translations.en.name`.
 
-- [ ] 4.6 Helper de resolución compartido (nuevo, ej.
+- [x] 4.6 Helper de resolución compartido (nuevo, ej.
       `backend/src/modules/restaurant/usecases/i18n.ts`, o función interna reusada por
       `categories-crud.ts`/`items-crud.ts`/`combos-crud.ts`): `resolveTranslation(entity,
       lang)` — si `lang` es `'es'` o se omite, devuelve el valor base SIN tocar
@@ -505,7 +505,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       traducción completa, `lang=es` explícito ignora el mapa, categoría traduce
       nombre).
 
-- [ ] 4.7 `backend/src/modules/restaurant/controller.ts`: pasar `req.query.lang` a
+- [x] 4.7 `backend/src/modules/restaurant/controller.ts`: pasar `req.query.lang` a
       `listCategories`/`listItems`/`listCombos` (y a los `get*` singulares) sin romper
       la firma para quien no pasa `lang` (comportamiento IDÉNTICO al actual si se
       omite).
@@ -513,7 +513,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       payload que antes de F4 (mismas keys, mismo orden) — regresión cero para el POS
       actual.
 
-- [ ] 4.8 Tests: `backend/src/modules/restaurant/tests/i18n.test.ts` — traducción
+- [x] 4.8 Tests: `backend/src/modules/restaurant/tests/i18n.test.ts` — traducción
       completa (`en`), traducción parcial (fallback de `description`), idioma sin
       ninguna traducción (`fr` cae a español), `lang=es` explícito ignora el mapa,
       clave `es` rechazada en categoría/ítem/combo, combo traducido junto a ítem
@@ -523,13 +523,13 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Frontend
 
-- [ ] 4.9 `frontend/src/services/Restaurant.service.ts`: agregar
+- [x] 4.9 `frontend/src/services/Restaurant.service.ts`: agregar
       `translations?: Record<string, { name?: string; description?: string }>` a
       `MenuCategory`/`MenuItem`/`Combo`; parámetro `lang?: string` en los métodos
       `listCategories`/`listItems`/`listCombos`.
       **Acceptance**: `bun run typecheck` limpio.
 
-- [ ] 4.10 `frontend/src/pages/restaurante/carta.vue`: selector de idioma en el editor
+- [x] 4.10 `frontend/src/pages/restaurante/carta.vue`: selector de idioma en el editor
       de categoría/ítem/combo — mismo patrón que `settings/index.vue:525-538` (pestañas
       con `●` verde en las que tienen contenido, contador "N/M idiomas completados"),
       mismos 12 idiomas de `supportedLangs` (`settings/index.vue:1464-1477`, no
@@ -540,7 +540,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Gate F4
 
-- [ ] 4.11 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
+- [x] 4.11 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
       `cd frontend && bun run typecheck && bun run build`.
       **Acceptance**: los 4 comandos en verde antes de empezar F5.
 
@@ -550,7 +550,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Backend
 
-- [ ] 5.1 `backend/src/modules/restaurant/types.ts`: agregar constante
+- [x] 5.1 `backend/src/modules/restaurant/types.ts`: agregar constante
       `ALLERGEN_TAGS = ['gluten', 'lactose', 'nuts', 'shellfish', 'egg', 'soy', 'spicy',
       'vegan', 'vegetarian', 'gluten_free'] as const` — catálogo FIJO en código (D8), NO
       tabla nueva, mismo patrón que `OrderType`/`LineStatus` ya existentes en ese
@@ -558,12 +558,12 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: el tipo `AllergenTag = typeof ALLERGEN_TAGS[number]` se exporta y
       es usable en `MenuItemDTO.allergens?: AllergenTag[]`.
 
-- [ ] 5.2 `backend/src/modules/restaurant/model.ts`: agregar columna `allergens`
+- [x] 5.2 `backend/src/modules/restaurant/model.ts`: agregar columna `allergens`
       (`type:'json'`, nullable — array de strings) a `MenuItemModel`. **`menu_combos`
       NO recibe columna `allergens`** (se deriva al leer, nunca se persiste — D9).
       **Acceptance**: `RUN_MIGRATE=1` agrega la columna sin backfill.
 
-- [ ] 5.3 `backend/src/modules/restaurant/validators/schema.ts`: extender
+- [x] 5.3 `backend/src/modules/restaurant/validators/schema.ts`: extender
       `CreateItemSchema`/`UpdateItemSchema` con `allergens?: { type: 'array' }`. NO
       agregar `allergens` a `CreateComboSchema`/`UpdateComboSchema` — si llega en el
       body de combo, se descarta en silencio por el whitelist de `validateSchema`
@@ -571,7 +571,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: `POST /combos` con `allergens` en el body no falla, pero el campo
       no se persiste (confirmado leyendo la fila creada).
 
-- [ ] 5.4 `backend/src/modules/restaurant/usecases/items-crud.ts`: nueva función
+- [x] 5.4 `backend/src/modules/restaurant/usecases/items-crud.ts`: nueva función
       `assertAllergens(allergens)` (mismo estilo que `assertPrice`/`assertTaxRate`) que
       valida cada elemento contra `ALLERGEN_TAGS`, rechaza con `ValidationError` 400
       (`"{tag}" no es un alérgeno/tag válido`) ante cualquier valor desconocido.
@@ -581,7 +581,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: `allergens: ['gluten', 'invented_tag']` → 400; `['spicy',
       'lactose']` → 200, persistido tal cual.
 
-- [ ] 5.5 `backend/src/modules/restaurant/usecases/combos-crud.ts`: `getCombo`/
+- [x] 5.5 `backend/src/modules/restaurant/usecases/combos-crud.ts`: `getCombo`/
       `listCombos` calculan `allergens` como la UNIÓN de los `allergens` de todos sus
       `menu_combo_items.menuItemId` — CALCULADO al leer, nunca persistido, nunca
       aceptado en el body de create/update.
@@ -590,7 +590,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       nadie haya tocado el combo directamente (cubre el scenario de
       `specs/menu-allergens/spec.md`).
 
-- [ ] 5.6 Tests: `backend/src/modules/restaurant/tests/allergens.test.ts` — tags
+- [x] 5.6 Tests: `backend/src/modules/restaurant/tests/allergens.test.ts` — tags
       válidos persisten, tag inválido rechaza 400 sin actualizar el ítem, ítem con
       alérgenos se agrega a comanda SIN fricción (ningún `ValidationError` en
       `addLine`), combo deriva unión de componentes, componente sin `allergens`
@@ -600,14 +600,14 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Frontend
 
-- [ ] 5.7 `frontend/src/pages/restaurante/carta.vue`: multi-select de checkboxes con
+- [x] 5.7 `frontend/src/pages/restaurante/carta.vue`: multi-select de checkboxes con
       el catálogo fijo en el editor de ítem, cada uno con ícono + etiqueta en español
       (🌾 Gluten, 🥛 Lactosa, 🥜 Frutos secos, 🦐 Mariscos, 🌶️ Picante, 🌱 Vegano, 🥕
       Vegetariano, etc. — 10 tags de `ALLERGEN_TAGS`).
       **Acceptance**: guardar 2 tags, verlos reflejados como checkboxes marcados tras
       recargar.
 
-- [ ] 5.8 `frontend/src/pages/restaurante/carta.vue` (lista) + `comanda.vue`: tags como
+- [x] 5.8 `frontend/src/pages/restaurante/carta.vue` (lista) + `comanda.vue`: tags como
       badges pequeños junto al nombre (mismo patrón visual que "Agotado"/"Sin receta",
       `carta.vue:365-366`). El combo muestra "Contiene (según sus componentes):" para
       dejar explícito que es un cálculo derivado.
@@ -616,7 +616,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Gate F5
 
-- [ ] 5.9 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
+- [x] 5.9 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
       `cd frontend && bun run typecheck && bun run build`.
       **Acceptance**: los 4 comandos en verde antes de empezar F6.
 
@@ -626,19 +626,19 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Backend
 
-- [ ] 6.1 `backend/src/modules/restaurant/model.ts`: agregar a `MenuItemModel`:
+- [x] 6.1 `backend/src/modules/restaurant/model.ts`: agregar a `MenuItemModel`:
       `featured` (`type:'number'`, default 0), `availableFrom`/`availableTo`
       (`type:'string'`, nullable, formato `"HH:mm"`). Ambos `null` (default) = sin
       restricción horaria, comportamiento IDÉNTICO al actual.
       **Acceptance**: `RUN_MIGRATE=1` agrega las 3 columnas sin backfill.
 
-- [ ] 6.2 `backend/src/modules/restaurant/validators/schema.ts`: extender
+- [x] 6.2 `backend/src/modules/restaurant/validators/schema.ts`: extender
       `CreateItemSchema`/`UpdateItemSchema` con `featured?: {type:'number'}`,
       `availableFrom?: {type:'string'}`, `availableTo?: {type:'string'}`.
       **Acceptance**: el validator acepta los 3 campos opcionales sin romper payloads
       existentes que no los envían.
 
-- [ ] 6.3 `backend/src/modules/restaurant/usecases/items-crud.ts`: nueva función
+- [x] 6.3 `backend/src/modules/restaurant/usecases/items-crud.ts`: nueva función
       `assertTimeWindow(from, to)` (mismo estilo que `assertPrice`) que valida formato
       `HH:mm` y rechaza si viene solo uno de los dos (`availableFrom` sin
       `availableTo` o viceversa — franja todo-o-nada). Llamada desde
@@ -646,7 +646,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: `availableFrom:"07:00"` sin `availableTo` → 400; ambos con
       formato válido → 200.
 
-- [ ] 6.4 `backend/src/modules/restaurant/usecases/order-totals.ts` (junto a
+- [x] 6.4 `backend/src/modules/restaurant/usecases/order-totals.ts` (junto a
       `resolveStation`/`round2`): nueva función `isWithinAvailabilityWindow(item, now:
       Date)`. Si `availableFrom`/`availableTo` son `null` → `true` (sin restricción).
       Compara `now` (hora del SERVIDOR, `new Date()` — **NO conversión a
@@ -657,7 +657,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       `specs/menu-featured-availability/spec.md` (fuera de horario diurno, dentro de
       horario diurno, franja que cruza medianoche en ambos sentidos).
 
-- [ ] 6.5 `backend/src/modules/restaurant/usecases/order-lines.ts`: `addLine` llama
+- [x] 6.5 `backend/src/modules/restaurant/usecases/order-lines.ts`: `addLine` llama
       `isWithinAvailabilityWindow(item, new Date())` INMEDIATAMENTE después del
       chequeo existente de `item.available` (línea ~65) — se agrega, no reemplaza.
       Rechaza con `ValidationError` 400 (`""{item.name}" no está disponible en este
@@ -667,14 +667,14 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       crea; una línea ya `preparing` sigue avanzando en el KDS aunque de la hora en
       curso el ítem salga de franja.
 
-- [ ] 6.6 `backend/src/modules/restaurant/usecases/items-crud.ts` (`listItems`/
+- [x] 6.6 `backend/src/modules/restaurant/usecases/items-crud.ts` (`listItems`/
       `getItem`): agregar campo derivado `availableNow: boolean` al DTO
       (`available=1 AND isWithinAvailabilityWindow(item, new Date())`) — el cálculo
       vive en un solo lugar (backend), el frontend solo lee el booleano.
       **Acceptance**: `GET /menu-items` incluye `availableNow` en cada fila sin que el
       frontend reimplemente la lógica de franja.
 
-- [ ] 6.7 Tests: `backend/src/modules/restaurant/tests/availability.test.ts` — ítem
+- [x] 6.7 Tests: `backend/src/modules/restaurant/tests/availability.test.ts` — ítem
       destacado sin regla de negocio, franja normal dentro/fuera de horario, franja
       que cruza medianoche (dentro a las 00:30, fuera a las 15:00), `addLine` rechaza
       fuera de franja, snapshot ya vendido no se ve afectado retroactivamente,
@@ -684,7 +684,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Frontend
 
-- [ ] 6.8 `frontend/src/pages/restaurante/carta.vue`: checkbox "Destacado" + 2 campos
+- [x] 6.8 `frontend/src/pages/restaurante/carta.vue`: checkbox "Destacado" + 2 campos
       de hora (`availableFrom`/`availableTo`) con opción "Sin restricción" (deja
       ambos `null`) en el editor de ítem. Ítem destacado con estrella/badge dorado en
       Carta/Comanda. Ítem fuera de franja se muestra atenuado (`opacity` reducida) con
@@ -693,7 +693,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: marcar "Destacado" muestra la estrella en la lista de Carta sin
       recargar la página completa.
 
-- [ ] 6.9 `frontend/src/pages/restaurante/comanda.vue`: `availableItems` (línea ~48-49,
+- [x] 6.9 `frontend/src/pages/restaurante/comanda.vue`: `availableItems` (línea ~48-49,
       hoy `items.value.filter(i => i.available !== 0)`) agrega
       `&& i.availableNow !== false` — un ítem fuera de horario simplemente no aparece
       en la lista para agregar.
@@ -702,7 +702,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Gate F6
 
-- [ ] 6.10 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
+- [x] 6.10 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
        `cd frontend && bun run typecheck && bun run build`.
        **Acceptance**: los 4 comandos en verde antes de empezar F7.
 
@@ -712,7 +712,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Backend
 
-- [ ] 7.1 Crear `backend/src/modules/restaurant/usecases/public-menu.ts`: función
+- [x] 7.1 Crear `backend/src/modules/restaurant/usecases/public-menu.ts`: función
       `publicMenu(deps, hotelId, lang, user)` que arma el DTO por **allow-list
       explícito, campo por campo — NUNCA spread del DTO interno**. Cada fila de ítem
       incluye ÚNICAMENTE: `id, name, description, price, imageUrl, allergens,
@@ -733,7 +733,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       `JSON.stringify` y confirma con regex/substring que ninguna de las 11 claves
       prohibidas aparece en ningún nivel.
 
-- [ ] 7.2 `public-menu.ts`: resolución de módulo SIN sesión — llamar DIRECTO a
+- [x] 7.2 `public-menu.ts`: resolución de módulo SIN sesión — llamar DIRECTO a
       `getModuleStateForPlan(configRepo, plansRepo, hotel.plan)`
       (`admin/usecases/modules.ts:153`), **NO usar `createModuleGuard`** (depende de
       `req.user`, que no existe en una ruta sin `auth.authenticate()`). Si
@@ -744,19 +744,19 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       `/api/public/menu/{hotelId-sin-modulo-restaurant}` devuelven exactamente el
       mismo body de 404.
 
-- [ ] 7.3 `backend/src/modules/restaurant/index.ts`: inyectar `configRepo`/`plansRepo`
+- [x] 7.3 `backend/src/modules/restaurant/index.ts`: inyectar `configRepo`/`plansRepo`
       (nuevos `OrmRepository` si no existen ya en `create()`) para que `public-menu.ts`
       pueda llamar `getModuleStateForPlan`. `index.ts` sigue APPEND-ONLY.
       **Acceptance**: el módulo `restaurant` sigue arrancando sin error si `plans` no
       tiene filas (fallback a `planModules=null`, mismo criterio que
       `getModuleStateForPlan` ya implementa).
 
-- [ ] 7.4 `backend/src/modules/restaurant/controller.ts`: handler `publicMenu(req)` que
+- [x] 7.4 `backend/src/modules/restaurant/controller.ts`: handler `publicMenu(req)` que
       llama al usecase con `req.params.hotelId`, `req.query.lang`.
       **Acceptance**: el controller no requiere `req.user` en ningún punto de este
       handler.
 
-- [ ] 7.5 `backend/src/modules/restaurant/index.ts`: agregar
+- [x] 7.5 `backend/src/modules/restaurant/index.ts`: agregar
       `router.get('/api/public/menu/:hotelId', (req) => { ... })` **SIN
       `auth.authenticate()` ni `guard(...)` en el array de middlewares** (mismo
       criterio que `/api/public/hotel/:slug` de `bookingengine`). Dentro del handler,
@@ -769,7 +769,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       por IP" de `specs/menu-public/spec.md` — request sin ningún header de auth
       recibe 200; 121ª request de la misma IP+hotel en la ventana recibe 429.
 
-- [ ] 7.6 Tests: `backend/src/modules/restaurant/tests/public-menu.test.ts` — allow-list
+- [x] 7.6 Tests: `backend/src/modules/restaurant/tests/public-menu.test.ts` — allow-list
       (ninguna de las 11 claves prohibidas aparece), 404 genérico idéntico para
       hotel-inexistente y módulo-deshabilitado, 429 al superar 120/5min, ítem 86'd no
       aparece, ítem fuera de franja aparece con `availableNow:false`, `?lang=en`
@@ -780,7 +780,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Frontend
 
-- [ ] 7.7 `frontend/src/services/Restaurant.service.ts` (o nuevo
+- [x] 7.7 `frontend/src/services/Restaurant.service.ts` (o nuevo
       `frontend/src/services/PublicMenu.service.ts` si se prefiere aislar el cliente
       sin token): método `getPublicMenu(hotelId, lang?)` que llama
       `GET /api/public/menu/:hotelId?lang=` SIN pasar el header de auth (cliente HTTP
@@ -788,7 +788,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: `bun run typecheck` limpio; la llamada funciona sin sesión
       iniciada (probado manualmente en incógnito o `curl`).
 
-- [ ] 7.8 Crear `frontend/src/pages/public/menu.vue`: layout propio mobile-first, SIN
+- [x] 7.8 Crear `frontend/src/pages/public/menu.vue`: layout propio mobile-first, SIN
       sidebar/header de panel (`SuperAdminLayout` u otro). Selector de idioma visible
       si hay traducciones cargadas; sección "Recomendados" arriba con los `featured`;
       ítems fuera de horario atenuados con su franja visible (NO ocultos); alérgenos
@@ -797,14 +797,14 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: abrir `/menu/{hotelId}` sin sesión iniciada muestra la carta
       completa con el layout mobile-first, sin ningún elemento del panel admin.
 
-- [ ] 7.9 `frontend/src/router/index.ts` (o archivo de rutas correspondiente): agregar
+- [x] 7.9 `frontend/src/router/index.ts` (o archivo de rutas correspondiente): agregar
       ruta pública `/menu/:hotelId` → `pages/public/menu.vue`, SIN guard de
       autenticación, fuera del layout de panel.
       **Acceptance**: navegar a `/menu/{hotelId}` sin token no redirige a `/login`.
 
 ### Gate F7
 
-- [ ] 7.10 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
+- [x] 7.10 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze && bun test` (0 errores, ✅ VÁLIDO, tests verdes);
        `cd frontend && bun run typecheck && bun run build`.
        **Acceptance**: los 4 comandos en verde antes de empezar F8. Confirmar además
        que el gate de F0 (0.3, regresión de `rateLimit`) sigue verde tras F7 — el
@@ -816,14 +816,14 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Frontend (sin cambios de backend — `sortOrder`, `PUT /categories/:id`, `PUT /menu-items/:id` ya existen)
 
-- [ ] 8.1 `frontend/src/pages/restaurante/carta.vue`: retirar el campo "Orden"
+- [x] 8.1 `frontend/src/pages/restaurante/carta.vue`: retirar el campo "Orden"
       (`<input type="number">`) de los `FormModal` de categoría/ítem (líneas ~92, 105,
       128, 141, 170, 195) — el modelo/schema/backend NO se tocan, `sortOrder` sigue
       siendo un `number` común en el server.
       **Acceptance**: abrir "Nueva categoría"/"Nuevo ítem" no muestra ningún campo
       "Orden".
 
-- [ ] 8.2 `carta.vue`: agregar `draggable="true"` + `@dragstart`/`@dragover.prevent`/
+- [x] 8.2 `carta.vue`: agregar `draggable="true"` + `@dragstart`/`@dragover.prevent`/
       `@drop.prevent` a las filas de categorías, con handle visual `⋮⋮` (sin el handle,
       un click sobre "Editar"/"Eliminar" podría iniciar un drag por error) — mismo
       patrón HTML5 nativo YA usado en `pages/maintenance/index.vue:70-96` (NO instalar
@@ -832,14 +832,14 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       **Acceptance**: arrastrar una categoría a otra posición la mueve visualmente
       antes de soltar.
 
-- [ ] 8.3 `carta.vue`: mismo mecanismo de drag para ítems DENTRO de su categoría activa
+- [x] 8.3 `carta.vue`: mismo mecanismo de drag para ítems DENTRO de su categoría activa
       (mover de categoría sigue siendo el campo `categoryId` del formulario, sin
       cambios — no se reordena entre categorías en un solo drag).
       **Acceptance**: arrastrar un ítem a otra posición de la MISMA categoría lo mueve
       visualmente; arrastrarlo "a otra categoría" no es una operación soportada por
       esta UI (sigue siendo editar `categoryId`).
 
-- [ ] 8.4 `carta.vue`: al soltar (`@drop`), recalcular el `sortOrder` de la lista
+- [x] 8.4 `carta.vue`: al soltar (`@drop`), recalcular el `sortOrder` de la lista
       completa (categorías o ítems de la categoría activa) y comparar contra el orden
       ANTERIOR — mandar `PUT /api/restaurant/categories/:id` / `PUT
       /api/restaurant/menu-items/:id` con `{ sortOrder }` **SOLO a los que
@@ -849,7 +849,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       adyacentes → PUT solo a esos 2) y el de "Reordenar categorías" de
       `specs/menu-ordering/spec.md`.
 
-- [ ] 8.5 `carta.vue`: si algún `PUT` disparado por el drop falla, revertir el orden
+- [x] 8.5 `carta.vue`: si algún `PUT` disparado por el drop falla, revertir el orden
       visual COMPLETO al último estado confirmado por el servidor (re-fetch o snapshot
       previo) y mostrar un toast de error — nunca dejar un estado mixto (algunos
       persistidos, otros no) invisible para el admin. Toast de éxito "Orden
@@ -858,7 +858,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
       reorder de 3 ítems" de `specs/menu-ordering/spec.md` — simular un fallo de red
       en 1 de 3 `PUT` y confirmar que la lista vuelve al orden pre-drag, no un híbrido.
 
-- [ ] 8.6 `carta.vue`: crear una categoría/ítem nuevo calcula `sortOrder` automático
+- [x] 8.6 `carta.vue`: crear una categoría/ítem nuevo calcula `sortOrder` automático
       = `max(sortOrder existente en su categoría) + 1`, o `0` si está vacía — sin que
       el admin tenga que escribir un número (el campo ya no existe en el form, tarea
       8.1).
@@ -867,7 +867,7 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ### Gate F8
 
-- [ ] 8.7 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze` (0 errores, ✅ VÁLIDO — confirma que F8 no tocó nada de backend);
+- [x] 8.7 `cd backend && bun run typecheck && bun run node_modules/arckode-framework/bin/arckode.js analyze` (0 errores, ✅ VÁLIDO — confirma que F8 no tocó nada de backend);
       `cd frontend && bun run typecheck && bun run build`.
       **Acceptance**: los 3 comandos en verde. Change completo: correr también el Gate
       F0 (0.3) una última vez para confirmar que la firma extendida de `rateLimit`
@@ -877,21 +877,21 @@ frontend) — no solo al final del change, por fase, tal como exige `design.md` 
 
 ## Definición de Hecho (mapea a `proposal.md`, sección Success Criteria)
 
-- [ ] F1: un ítem con modificadores permite elegir variante/extra y el precio final de
+- [x] F1: un ítem con modificadores permite elegir variante/extra y el precio final de
       la línea de comanda refleja el ajuste.
-- [ ] F2: un combo se vende como una sola línea, snapshotea sus componentes, y el
+- [x] F2: un combo se vende como una sola línea, snapshotea sus componentes, y el
       conector de inventario descuenta stock de cada ítem componente.
-- [ ] F3: Carta muestra el margen (precio venta − costo receta) por ítem; hay un
+- [x] F3: Carta muestra el margen (precio venta − costo receta) por ítem; hay un
       reporte de food cost ordenable por menor margen.
-- [ ] F4: la carta pública (F7) respeta el idioma del huésped con fallback correcto.
-- [ ] F5: los alérgenos configurados en un ítem se muestran en Carta y en la vista
+- [x] F4: la carta pública (F7) respeta el idioma del huésped con fallback correcto.
+- [x] F5: los alérgenos configurados en un ítem se muestran en Carta y en la vista
       pública.
-- [ ] F6: un ítem fuera de su franja horaria no aparece disponible en Salón/Comanda.
-- [ ] F7: `/api/public/menu/:hotelId` sirve la carta sin login, sin exponer
+- [x] F6: un ítem fuera de su franja horaria no aparece disponible en Salón/Comanda.
+- [x] F7: `/api/public/menu/:hotelId` sirve la carta sin login, sin exponer
       costo/insumo.
-- [ ] F8: reordenar categorías/ítems por drag-and-drop persiste `sortOrder` sin
+- [x] F8: reordenar categorías/ítems por drag-and-drop persiste `sortOrder` sin
       recargar.
-- [ ] Los 9 Gates de fase (F0-F8) pasaron en verde, uno por uno, en orden — no un solo
+- [x] Los 9 Gates de fase (F0-F8) pasaron en verde, uno por uno, en orden — no un solo
       gate al final.
 
 ## Fuera de alcance de este tasks.md (deuda ya trackeada, no silenciar)

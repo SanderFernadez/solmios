@@ -17,12 +17,33 @@ export interface RecipeDeps {
 
 function hotelOf(u: CurrentUser): string { const h = u.hotelId || ''; if (!h) throw new ValidationError('Sin hotel asignado'); return h }
 function movDeps(d: RecipeDeps): MovementDeps { return { items: d.items, movements: d.movements, userRepo: d.userRepo, auth: d.auth } }
+const round2 = (n: number): number => Math.round((Number(n) || 0) * 100) / 100
 
 /** Recetas de un ítem de menú (los insumos que consume). */
 export async function listRecipes(deps: RecipeDeps, menuItemId: string, user: CurrentUser): Promise<{ data: MenuItemRecipeDTO[]; total: number }> {
   const hotelId = hotelOf(user)
   const data = (await deps.recipes.findMany({ hotelId, menuItemId })) as MenuItemRecipeDTO[]
   return { data, total: data.length }
+}
+
+/**
+ * F3 (carta-experiencia-avanzada) — Costo de receta de un ítem de menú:
+ * Σ (recipe.quantity × inventoryItem.avgCost) sobre todas sus filas de `menu_item_recipes`.
+ * Consumido por `restaurant` vía el puerto `getRecipeCost` (conector restaurante-inventario.ts) para
+ * calcular margen (precio de venta − costo). Sin filas de receta → `hasRecipe: false`, `cost: 0` (NO
+ * "margen 100%" falso — ese criterio se aplica en `restaurant/usecases/food-cost.ts`, no acá).
+ */
+export async function recipeCost(deps: RecipeDeps, menuItemId: string, user: CurrentUser): Promise<{ cost: number; hasRecipe: boolean }> {
+  const hotelId = hotelOf(user)
+  const recipes = (await deps.recipes.findMany({ hotelId, menuItemId })) as MenuItemRecipeDTO[]
+  if (recipes.length === 0) return { cost: 0, hasRecipe: false }
+  let cost = 0
+  for (const r of recipes) {
+    const invItem = await deps.items.findById(r.inventoryItemId)
+    const avgCost = Number(invItem?.avgCost) || 0
+    cost += Number(r.quantity) * avgCost
+  }
+  return { cost: round2(cost), hasRecipe: true }
 }
 
 /** Define/actualiza (upsert) el consumo de un insumo para un ítem de menú. quantity 0 elimina la línea. */

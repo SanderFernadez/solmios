@@ -16,6 +16,8 @@ interface InventarioModule {
   consumeForSaleWithModifiers: (input: { hotelId: string; line: any }, user: any) => Promise<void>
   revertPosSale: (input: { hotelId: string; lineIds: string[] }, user: any) => Promise<void>
   menuItemsWithRecipe: (user: any) => Promise<string[]>
+  // F3 (carta-experiencia-avanzada): costo de receta de un ítem, para el puerto getRecipeCost.
+  recipeCost: (menuItemId: string, user: any) => Promise<{ cost: number; hasRecipe: boolean }>
 }
 
 /** Descuenta stock por cada línea no cancelada con menuItemId. Best-effort: no rompe la liquidación. */
@@ -51,6 +53,7 @@ export function restauranteInventarioConnector(ctx: ConnectorContext): void {
 
   restaurant.setRecipePorts?.({
     menuItemsWithRecipe: (user: any) => inventario().menuItemsWithRecipe(user),
+    getRecipeCost: (menuItemId: string, user: any) => inventario().recipeCost(menuItemId, user),
   })
 
   restaurant.setSockets({

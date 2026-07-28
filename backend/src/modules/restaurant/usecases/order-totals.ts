@@ -6,6 +6,32 @@ import type { OrderDTO, OrderItemDTO, MenuItemDTO, CategoryDTO, StationDTO } fro
 
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
 
+/** "HH:mm" → minutos desde medianoche. */
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
+
+/**
+ * F6 — ¿el ítem está disponible AHORA por franja horaria? `availableFrom`/`availableTo` ambos
+ * null/undefined → sin restricción, siempre `true` (compat retro total). Compara la hora del
+ * SERVIDOR (`now`, sin conversión a `hotel.timezone` — deuda ya documentada y compartida con
+ * `attendance`, D10, NO se resuelve acá). Franja que cruza medianoche (`availableFrom > availableTo`,
+ * ej. 22:00-02:00) se evalúa como `hora >= availableFrom OR hora <= availableTo`.
+ * Ver specs/menu-featured-availability/spec.md.
+ */
+export function isWithinAvailabilityWindow(
+  item: Pick<MenuItemDTO, 'availableFrom' | 'availableTo'>,
+  now: Date,
+): boolean {
+  if (!item.availableFrom || !item.availableTo) return true
+  const from = toMinutes(item.availableFrom)
+  const to = toMinutes(item.availableTo)
+  const current = now.getHours() * 60 + now.getMinutes()
+  if (from <= to) return current >= from && current <= to
+  return current >= from || current <= to   // cruza medianoche
+}
+
 /**
  * Resuelve la estación (pantalla KDS) de una línea: override del ítem → estación de la categoría →
  * primera estación activa del hotel → ninguna. Devuelve id + nombre para snapshotear en la línea.

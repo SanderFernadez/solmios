@@ -39,10 +39,14 @@ export interface KdsTicket { order: Pick<OrderDTO, 'id' | 'number' | 'type' | 't
  * Cola del KDS: líneas activas (new/preparing/ready) del hotel, opcionalmente filtradas por estación,
  * agrupadas por comanda y ordenadas FIFO (por apertura de la comanda). `station` vacío = todas las
  * estaciones (para el hotel de una sola pantalla); `station='__none__'` = líneas sin estación asignada.
+ * F2: excluye SIEMPRE las filas `kind='combo_header'` — no representan un plato a preparar (RES-4).
+ * Hoy se auto-excluyen por no tener `stationId`, pero se refuerza explícito por claridad, no como efecto
+ * colateral (spec `menu-combos`).
  */
 export async function kdsQueue(deps: KdsDeps, station: string | undefined, user: CurrentUser): Promise<{ data: KdsTicket[]; total: number }> {
   const hotelId = hotelFor(user)
-  let lines = ((await deps.lines.findMany({ hotelId })) as OrderItemDTO[]).filter((l) => ACTIVE.includes(l.status))
+  let lines = ((await deps.lines.findMany({ hotelId })) as OrderItemDTO[])
+    .filter((l) => ACTIVE.includes(l.status) && l.kind !== 'combo_header')
   if (station === '__none__') lines = lines.filter((l) => !l.stationId)
   else if (station) lines = lines.filter((l) => l.stationId === station)
 
@@ -69,11 +73,17 @@ export async function kdsQueue(deps: KdsDeps, station: string | undefined, user:
   return { data: tickets, total: tickets.length }
 }
 
-/** Deriva el estado agregado de la orden a partir de sus líneas no canceladas y lo persiste si cambió. */
+/**
+ * Deriva el estado agregado de la orden a partir de sus líneas no canceladas y lo persiste si cambió.
+ * F2: excluye también las filas `kind='combo_header'` (mismo criterio que `kdsQueue`) — el header nunca
+ * es tocado por cocina (queda fuera de la cola), así que si no se excluye acá queda `status:'new'` para
+ * siempre y `active.every(...)` nunca se cumple: la orden queda encallada en `'preparing'` aunque los
+ * componentes reales ya estén `served` (cambio real señalado por design.md R1, no cosmético).
+ */
 async function recomputeOrderStatus(deps: KdsDeps, order: OrderDTO): Promise<void> {
   if (!KITCHEN_ORDER_STATES.includes(order.status)) return
   const all = (await deps.lines.findMany({ orderId: order.id })) as OrderItemDTO[]
-  const active = all.filter((l) => l.status !== 'cancelled')
+  const active = all.filter((l) => l.status !== 'cancelled' && l.kind !== 'combo_header')
   if (!active.length) return
   let next: OrderDTO['status']
   if (active.every((l) => l.status === 'served')) next = 'served'

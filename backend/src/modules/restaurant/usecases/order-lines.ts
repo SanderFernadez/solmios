@@ -3,8 +3,9 @@
 // carta después). Los totales se recalculan en el server tras cada cambio. hotelId SIEMPRE del JWT.
 import type { RepositoryAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError, ConflictError } from 'arckode-framework'
-import type { OrderDTO, OrderItemDTO, MenuItemDTO, CategoryDTO, StationDTO, CurrentUser, ModifierGroupDTO, ModifierDTO, OrderItemModifierSnapshot } from '../types'
-import { resolveStation, recomputeTotals, round2 } from './order-totals'
+import type { OrderDTO, OrderItemDTO, MenuItemDTO, CategoryDTO, StationDTO, CurrentUser, ModifierGroupDTO, ModifierDTO, OrderItemModifierSnapshot, ComboDTO, ComboItemDTO } from '../types'
+import { resolveStation, recomputeTotals, round2, isWithinAvailabilityWindow } from './order-totals'
+import { getCombo } from './combos-crud'
 
 export interface OrderLinesDeps {
   orders: RepositoryAdapter<OrderDTO>
@@ -19,12 +20,22 @@ export interface OrderLinesDeps {
   // F1: grupos/opciones de modificadores (opcionales para no romper callers que aún no los configuran).
   modifierGroups?: RepositoryAdapter<ModifierGroupDTO>
   modifiers?: RepositoryAdapter<ModifierDTO>
+  // F2: catálogo de combos (opcional por el mismo motivo que modifierGroups/modifiers). Wireado en
+  // service.ts (comboDeps/orderLinesDeps, tarea 2.6).
+  combos?: RepositoryAdapter<ComboDTO>
+  comboItems?: RepositoryAdapter<ComboItemDTO>
 }
 
 // Una vez liquidada o cancelada, la comanda no acepta cambios de líneas.
 const LINES_LOCKED: OrderDTO['status'][] = ['charged', 'paid', 'cancelled']
 
-export interface AddLineInput { menuItemId: string; quantity?: number; notes?: string; modifiers?: Array<{ modifierId: string }> }
+export interface AddLineInput {
+  menuItemId?: string
+  comboId?: string
+  quantity?: number
+  notes?: string
+  modifiers?: Array<{ modifierId: string }>
+}
 export interface UpdateLineInput { quantity?: number; notes?: string }
 
 /**
@@ -117,11 +128,96 @@ function assertQuantity(q: number | undefined): number {
   return n
 }
 
+/**
+ * F2 — resuelve combo + componentes vía `combos-crud.getCombo` (reuso, no reimplementa la búsqueda +
+ * ownership) y explota la venta en 1 fila `combo_header` + N filas `combo_component` reales. El precio
+ * completo vive SOLO en el header (componentes en 0) para que `recomputeTotals`/`order-totals.ts` sigan
+ * sin cambios: ya suman `lineTotal` de todas las filas sin importar `kind`.
+ */
+async function addComboLine(
+  deps: OrderLinesDeps,
+  order: OrderDTO,
+  comboId: string,
+  quantity: number,
+  notes: string | undefined,
+  user: CurrentUser,
+): Promise<OrderItemDTO> {
+  if (!deps.combos || !deps.comboItems) throw new ValidationError('Los combos no están configurados en este módulo')
+  const combo = await getCombo(
+    { combos: deps.combos, comboItems: deps.comboItems, items: deps.items, userRepo: deps.userRepo, auth: deps.auth },
+    comboId,
+    user,
+  )
+
+  const unitPrice = Number(combo.price || 0)
+  const taxRate = combo.taxRate ?? await hotelTaxRate(deps.config, deps.hotels, order.hotelId)
+  const headerData = {
+    hotelId: order.hotelId,
+    orderId: order.id,
+    kind: 'combo_header',
+    comboId: combo.id,
+    menuItemId: undefined,
+    name: combo.name,               // snapshot
+    unitPrice,                      // snapshot del precio propio del combo
+    quantity,
+    notes,
+    taxRate,
+    stationId: undefined,           // el header no rutea a ningún KDS
+    stationName: undefined,
+    status: 'new',
+    lineTotal: round2(unitPrice * quantity),
+    modifiers: null,                // F1: los combos NUNCA aceptan modificadores
+  } as Omit<OrderItemDTO, 'id'>
+  const header = (await deps.lines.create(headerData)) as OrderItemDTO
+
+  for (const component of combo.items ?? []) {
+    const item = await deps.items.findOne({ id: component.menuItemId })
+    if (!item || item.hotelId !== order.hotelId) throw new ValidationError('El ítem no existe o es de otro hotel')
+    const station = await resolveStation(deps, item, order.hotelId)
+    const componentData = {
+      hotelId: order.hotelId,
+      orderId: order.id,
+      kind: 'combo_component',
+      parentLineId: header.id,
+      menuItemId: item.id,          // snapshot, IGUAL que una línea normal
+      name: item.name,
+      unitPrice: 0,                 // el precio vive en el header, el componente no duplica el monto
+      quantity: Number(component.quantity) * quantity,
+      taxRate: 0,
+      stationId: station.stationId, // MISMO resolveStation() que una línea normal
+      stationName: station.stationName,
+      status: 'new',
+      lineTotal: 0,
+      modifiers: null,
+    } as Omit<OrderItemDTO, 'id'>
+    await deps.lines.create(componentData)
+  }
+
+  await recomputeTotals(deps, order)
+  return header
+}
+
 export async function addLine(deps: OrderLinesDeps, orderId: string, dto: AddLineInput, user: CurrentUser): Promise<OrderItemDTO> {
   const order = await loadOrderForEdit(deps, orderId, user)
+
+  if (!!dto.menuItemId === !!dto.comboId) {
+    throw new ValidationError('Debe especificar exactamente uno de menuItemId o comboId')
+  }
+
+  if (dto.comboId) {
+    if (dto.modifiers && dto.modifiers.length) {
+      throw new ValidationError('Los modificadores no están permitidos dentro de un combo')
+    }
+    return addComboLine(deps, order, dto.comboId, assertQuantity(dto.quantity), dto.notes, user)
+  }
+
   const item = await deps.items.findOne({ id: dto.menuItemId })
   if (!item || item.hotelId !== order.hotelId) throw new ValidationError('El ítem no existe o es de otro hotel')
   if ((item.available ?? 1) === 0) throw new ValidationError(`"${item.name}" no está disponible`)
+  // F6 — franja horaria, chequeo SEPARADO del `available` manual de arriba (ambas condiciones son
+  // independientes y se combinan con AND). Solo bloquea AGREGAR líneas nuevas; una línea ya creada
+  // conserva su snapshot sin importar que el ítem salga de franja después (no se re-evalúa en updateLine).
+  if (!isWithinAvailabilityWindow(item, new Date())) throw new ValidationError(`"${item.name}" no está disponible en este horario`)
   const quantity = assertQuantity(dto.quantity)
   const { priceDelta, snapshot } = await resolveModifiers(deps, item.id, order.hotelId, dto.modifiers)
   const unitPrice = Number(item.price || 0)
@@ -146,11 +242,31 @@ export async function addLine(deps: OrderLinesDeps, orderId: string, dto: AddLin
   return line
 }
 
+/**
+ * F2 — propaga la cantidad del header a TODOS sus componentes (mismo `parentLineId`), multiplicando la
+ * qty BASE de cada uno (`menu_combo_items.quantity`) por la nueva cantidad del combo vendido.
+ */
+async function recalcComboComponents(deps: OrderLinesDeps, header: OrderItemDTO, newQuantity: number): Promise<void> {
+  if (!deps.comboItems || !header.comboId) return
+  const comboItems = (await deps.comboItems.findMany({ hotelId: header.hotelId, comboId: header.comboId })) as ComboItemDTO[]
+  const components = ((await deps.lines.findMany({ orderId: header.orderId })) as OrderItemDTO[])
+    .filter((l) => l.parentLineId === header.id)
+  for (const comp of components) {
+    const def = comboItems.find((ci) => ci.menuItemId === comp.menuItemId)
+    if (!def) continue
+    const quantity = Number(def.quantity) * newQuantity
+    await deps.lines.update(comp.id, { quantity } as Partial<Omit<OrderItemDTO, 'id'>>)
+  }
+}
+
 export async function updateLine(deps: OrderLinesDeps, orderId: string, lineId: string, dto: UpdateLineInput, user: CurrentUser): Promise<OrderItemDTO> {
   const order = await loadOrderForEdit(deps, orderId, user)
   // findOne (no findById): la línea se valida por orderId+hotelId; el ownership ya lo hizo loadOrderForEdit.
-  const line = await deps.lines.findOne({ id: lineId })
+  const line = (await deps.lines.findOne({ id: lineId })) as OrderItemDTO | null
   if (!line || line.orderId !== orderId || line.hotelId !== order.hotelId) throw new NotFoundError('Línea no encontrada')
+  if (line.kind === 'combo_component') {
+    throw new ValidationError('Esta línea pertenece a un combo; editá el combo completo')
+  }
   const patch: Record<string, unknown> = {}
   if (dto.notes !== undefined) patch.notes = dto.notes
   if (dto.quantity !== undefined) {
@@ -159,14 +275,25 @@ export async function updateLine(deps: OrderLinesDeps, orderId: string, lineId: 
     patch.lineTotal = round2(Number(line.unitPrice || 0) * quantity)
   }
   const updated = (await deps.lines.update(lineId, patch as Partial<Omit<OrderItemDTO, 'id'>>)) as OrderItemDTO
+  if (line.kind === 'combo_header' && dto.quantity !== undefined) {
+    await recalcComboComponents(deps, updated, updated.quantity)
+  }
   await recomputeTotals(deps, order)
   return updated
 }
 
 export async function removeLine(deps: OrderLinesDeps, orderId: string, lineId: string, user: CurrentUser): Promise<void> {
   const order = await loadOrderForEdit(deps, orderId, user)
-  const line = await deps.lines.findOne({ id: lineId })
+  const line = (await deps.lines.findOne({ id: lineId })) as OrderItemDTO | null
   if (!line || line.orderId !== orderId || line.hotelId !== order.hotelId) throw new NotFoundError('Línea no encontrada')
+  if (line.kind === 'combo_component') {
+    throw new ValidationError('Esta línea pertenece a un combo; editá el combo completo')
+  }
+  if (line.kind === 'combo_header') {
+    const components = ((await deps.lines.findMany({ orderId })) as OrderItemDTO[])
+      .filter((l) => l.parentLineId === line.id)
+    for (const c of components) await deps.lines.delete(c.id)
+  }
   await deps.lines.delete(lineId)
   await recomputeTotals(deps, order)
 }

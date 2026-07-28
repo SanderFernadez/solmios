@@ -3,7 +3,10 @@
 // price ≥ 0 (rechaza negativos/NaN); taxRate opcional (si null, se resuelve al facturar desde config, NO acá).
 import type { RepositoryAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
-import type { MenuItemDTO, CategoryDTO, StationDTO, CurrentUser } from '../types'
+import type { MenuItemDTO, CategoryDTO, StationDTO, ItemTranslation, CurrentUser, AllergenTag } from '../types'
+import { ALLERGEN_TAGS } from '../types'
+import { assertNoBaseLangKey, resolveForLang } from '../../../shared/i18n'
+import { isWithinAvailabilityWindow } from './order-totals'
 
 export interface ItemsCrudDeps {
   items: RepositoryAdapter<MenuItemDTO>
@@ -12,6 +15,9 @@ export interface ItemsCrudDeps {
   userRepo: RepositoryAdapter<any>
   auth: Auth
 }
+
+// F4 — campos traducibles de un ítem: nombre + descripción.
+const ITEM_TRANSLATABLE_FIELDS = ['name', 'description'] as const
 
 export interface CreateItemInput {
   categoryId: string
@@ -23,6 +29,13 @@ export interface CreateItemInput {
   available?: number
   imageUrl?: string
   sortOrder?: number
+  translations?: Record<string, ItemTranslation> | null
+  allergens?: AllergenTag[] | null
+  // F6 — "plato del día"/recomendado (sin regla de negocio) + franja horaria "HH:mm" (todo-o-nada,
+  // ver assertTimeWindow). '' se trata como "sin valor" (mismo criterio que stationId).
+  featured?: number
+  availableFrom?: string | null
+  availableTo?: string | null
 }
 export interface UpdateItemInput extends Partial<CreateItemInput> {}
 
@@ -59,20 +72,54 @@ async function assertStation(deps: ItemsCrudDeps, stationId: string | null | und
   if (!st || st.hotelId !== hotelId) throw new ValidationError('La estación no existe o es de otro hotel')
 }
 
-export async function listItems(deps: ItemsCrudDeps, categoryId: string | undefined, user: CurrentUser): Promise<{ data: MenuItemDTO[]; total: number }> {
+/** F5 — cada tag (si vienen) debe pertenecer al catálogo fijo ALLERGEN_TAGS. `undefined`/`null` = sin
+ * tags declarados. Nunca bloquea addLine (informativo, no una regla de negocio, ver order-lines.ts). */
+function assertAllergens(allergens: AllergenTag[] | null | undefined): void {
+  if (allergens === null || allergens === undefined) return
+  if (!Array.isArray(allergens)) throw new ValidationError('Los alérgenos deben ser un array')
+  for (const tag of allergens) {
+    if (!(ALLERGEN_TAGS as readonly string[]).includes(tag)) {
+      throw new ValidationError(`"${tag}" no es un alérgeno/tag válido`)
+    }
+  }
+}
+
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/
+
+/** F6 — franja horaria "HH:mm", todo-o-nada: ninguno de los dos (sin restricción) o AMBOS con
+ * formato válido. `''`/`null`/`undefined` cuentan como "sin valor" (mismo criterio que stationId). */
+function assertTimeWindow(from: string | null | undefined, to: string | null | undefined): void {
+  const hasFrom = !!from
+  const hasTo = !!to
+  if (!hasFrom && !hasTo) return
+  if (hasFrom !== hasTo) throw new ValidationError('availableFrom y availableTo deben venir juntos (franja horaria todo-o-nada)')
+  if (!TIME_RE.test(from as string) || !TIME_RE.test(to as string)) {
+    throw new ValidationError('El horario debe tener formato HH:mm')
+  }
+}
+
+// F6 — `availableNow` es DERIVADO (`available=1 AND dentro de franja`), nunca se persiste. El
+// frontend SOLO lee este booleano — la lógica de franja vive en un solo lugar (order-totals.ts).
+function withAvailableNow(item: MenuItemDTO, now: Date): MenuItemDTO {
+  return { ...item, availableNow: (item.available ?? 1) === 1 && isWithinAvailabilityWindow(item, now) }
+}
+
+export async function listItems(deps: ItemsCrudDeps, categoryId: string | undefined, user: CurrentUser, lang?: string): Promise<{ data: MenuItemDTO[]; total: number }> {
   const filters: Record<string, unknown> = { hotelId: hotelFor(user) }
   if (categoryId) filters.categoryId = categoryId
   const data = await deps.items.findMany(filters)
   data.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-  return { data, total: data.length }
+  const now = new Date()
+  const resolved = data.map((i) => withAvailableNow(resolveForLang(i, lang, ITEM_TRANSLATABLE_FIELDS), now))
+  return { data: resolved, total: resolved.length }
 }
 
-export async function getItem(deps: ItemsCrudDeps, id: string, user: CurrentUser): Promise<MenuItemDTO> {
+export async function getItem(deps: ItemsCrudDeps, id: string, user: CurrentUser, lang?: string): Promise<MenuItemDTO> {
   const item = await deps.items.findById(id)
   if (!item) throw new NotFoundError('Ítem no encontrado')
   const me = await deps.userRepo.findById(user.id)
   deps.auth.assertOwnership(item.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
-  return item
+  return withAvailableNow(resolveForLang(item, lang, ITEM_TRANSLATABLE_FIELDS), new Date())
 }
 
 export async function createItem(deps: ItemsCrudDeps, dto: CreateItemInput, user: CurrentUser): Promise<MenuItemDTO> {
@@ -82,6 +129,9 @@ export async function createItem(deps: ItemsCrudDeps, dto: CreateItemInput, user
   assertTaxRate(dto.taxRate)
   await assertCategory(deps, dto.categoryId, hotelId)
   await assertStation(deps, dto.stationId, hotelId)
+  assertNoBaseLangKey(dto.translations, 'name/description')
+  assertAllergens(dto.allergens)
+  assertTimeWindow(dto.availableFrom, dto.availableTo)
   return deps.items.create({
     hotelId,
     categoryId: dto.categoryId,
@@ -93,6 +143,11 @@ export async function createItem(deps: ItemsCrudDeps, dto: CreateItemInput, user
     available: dto.available ?? 1,
     imageUrl: dto.imageUrl,
     sortOrder: dto.sortOrder ?? 0,
+    translations: dto.translations ?? undefined,
+    allergens: dto.allergens ?? undefined,
+    featured: dto.featured ?? 0,
+    availableFrom: dto.availableFrom || undefined,   // '' → undefined (sin restricción, compat retro)
+    availableTo: dto.availableTo || undefined,
   } as Omit<MenuItemDTO, 'id'>)
 }
 
@@ -101,6 +156,8 @@ export async function updateItem(deps: ItemsCrudDeps, id: string, dto: UpdateIte
   if (!existing) throw new NotFoundError('Ítem no encontrado')
   const me = await deps.userRepo.findById(user.id)
   deps.auth.assertOwnership(existing.hotelId, (me as any)?.hotelId ?? '', user.role, 'super_admin')
+  if (dto.translations !== undefined) assertNoBaseLangKey(dto.translations, 'name/description')
+  if (dto.allergens !== undefined) assertAllergens(dto.allergens)
   const patch: Record<string, unknown> = { ...dto }
   if (dto.price !== undefined) patch.price = assertPrice(dto.price)
   if (dto.taxRate !== undefined) assertTaxRate(dto.taxRate)
@@ -110,6 +167,13 @@ export async function updateItem(deps: ItemsCrudDeps, id: string, dto: UpdateIte
     const sid = dto.stationId || null
     if (sid) await assertStation(deps, sid, existing.hotelId)
     patch.stationId = sid
+  }
+  // F6 — franja horaria: solo se valida/toca si el body trajo AL MENOS uno de los dos campos.
+  // '' del front = "sin restricción" (Sin restricción) → guardamos null; ambos con formato → se persisten.
+  if (dto.availableFrom !== undefined || dto.availableTo !== undefined) {
+    assertTimeWindow(dto.availableFrom, dto.availableTo)
+    patch.availableFrom = dto.availableFrom || null
+    patch.availableTo = dto.availableTo || null
   }
   const item = await deps.items.update(id, patch as Partial<Omit<MenuItemDTO, 'id'>>)
   if (!item) throw new NotFoundError('Ítem no encontrado')

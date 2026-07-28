@@ -4,7 +4,7 @@
 // (usecases). Sprints siguientes agregan comandas, KDS y cobro. Ver openspec/changes/restaurante-pos.
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
-import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO, CurrentUser, ModifierGroupDTO, ModifierDTO } from './types'
+import type { StationDTO, CategoryDTO, MenuItemDTO, TableDTO, OrderDTO, OrderItemDTO, CurrentUser, ModifierGroupDTO, ModifierDTO, ComboDTO, ComboItemDTO } from './types'
 import type { RestaurantSockets } from './sockets'
 import * as categoriesCrud from './usecases/categories-crud'
 import * as itemsCrud from './usecases/items-crud'
@@ -15,15 +15,18 @@ import * as settlement from './usecases/settlement'
 import * as kds from './usecases/kds'
 import * as modifiersCrud from './usecases/modifiers-crud'
 import * as stationsCrud from './usecases/stations-crud'
+import * as combosCrud from './usecases/combos-crud'
+import * as foodCost from './usecases/food-cost'
+import * as publicMenuUsecase from './usecases/public-menu'
 import type { LineStatus } from './types'
 
 export class RestaurantService {
   private sockets: RestaurantSockets = {}
   // Puertos de liquidación (folios/payments) que inyecta un conector. RES-5.
   private settlementPorts: settlement.SettlementPorts = {}
-  // Puerto de recetas (inventario) inyectado por el conector restaurante-inventario.
-  // Nivel 2 stock fantasma: permite marcar platos sin receta en la carta.
-  private recipePorts: { menuItemsWithRecipe?: (user: CurrentUser) => Promise<string[]> } = {}
+  // Puerto de recetas (inventario, conector restaurante-inventario.ts): hasRecipe (badge "Sin receta") +
+  // F3 getRecipeCost (margen). `undefined` = inventario no montado → food-cost.ts degrada, nunca 500.
+  private recipePorts: foodCost.RecipePorts = {}
 
   constructor(
     private readonly stations: RepositoryAdapter<StationDTO>,
@@ -41,6 +44,10 @@ export class RestaurantService {
     // F1: modificadores/variantes. Opcionales al final (retrocompat con callers/tests existentes).
     private readonly modifierGroups?: RepositoryAdapter<ModifierGroupDTO>,
     private readonly modifiers?: RepositoryAdapter<ModifierDTO>,
+    // F2: catálogo de combos. Opcionales al final (retrocompat con callers/tests existentes).
+    private readonly combos?: RepositoryAdapter<ComboDTO>,
+    private readonly comboItems?: RepositoryAdapter<ComboItemDTO>,
+    private readonly plans?: RepositoryAdapter<any>, // F7: resuelve módulo habilitado (getModuleStateForPlan)
   ) {}
 
   // Acumula handlers, nunca pisa el anterior (composición de sockets).
@@ -61,7 +68,7 @@ export class RestaurantService {
   }
 
   /** Puerto de recetas (inventario) inyectado por conector. Acumula (no pisa). Best-effort + graceful. */
-  setRecipePorts(p: { menuItemsWithRecipe?: (user: CurrentUser) => Promise<string[]> }): void {
+  setRecipePorts(p: Partial<foodCost.RecipePorts>): void {
     this.recipePorts = { ...this.recipePorts, ...p }
   }
 
@@ -83,15 +90,18 @@ export class RestaurantService {
   }
   private orderLinesDeps(): orderLines.OrderLinesDeps {
     if (!this.orders || !this.lines || !this.config || !this.hotels) throw new ValidationError('Comandas no configuradas')
-    return {
-      orders: this.orders, lines: this.lines, items: this.items, categories: this.categories, stations: this.stations,
-      config: this.config, hotels: this.hotels, userRepo: this.userRepo, auth: this.auth,
-      modifierGroups: this.modifierGroups, modifiers: this.modifiers,
-    }
+    return { orders: this.orders, lines: this.lines, items: this.items, categories: this.categories, stations: this.stations, config: this.config, hotels: this.hotels, userRepo: this.userRepo, auth: this.auth, modifierGroups: this.modifierGroups, modifiers: this.modifiers, combos: this.combos, comboItems: this.comboItems }
   }
   private modifierDeps(): modifiersCrud.ModifiersCrudDeps {
     if (!this.modifierGroups || !this.modifiers) throw new ValidationError('Modificadores no configurados')
     return { modifierGroups: this.modifierGroups, modifiers: this.modifiers, items: this.items, userRepo: this.userRepo, auth: this.auth }
+  }
+  private comboDeps(): combosCrud.CombosCrudDeps {
+    if (!this.combos || !this.comboItems) throw new ValidationError('Combos no configurados')
+    return { combos: this.combos, comboItems: this.comboItems, items: this.items, userRepo: this.userRepo, auth: this.auth }
+  }
+  private foodCostDeps(): foodCost.FoodCostDeps {
+    return { items: this.items, combos: this.combos, comboItems: this.comboItems, recipePorts: this.recipePorts }
   }
   private settlementDeps(): settlement.SettlementDeps {
     if (!this.orders || !this.lines || !this.hotels) throw new ValidationError('Comandas no configuradas')
@@ -110,15 +120,15 @@ export class RestaurantService {
   deleteStation(id: string, user: CurrentUser) { return stationsCrud.deleteStation(this.stationDeps(), id, user) }
 
   // ─── Carta: categorías (RES-1) — delegan a usecases/categories-crud ───
-  listCategories(user: CurrentUser) { return categoriesCrud.listCategories(this.catDeps(), user) }
-  getCategory(id: string, user: CurrentUser) { return categoriesCrud.getCategory(this.catDeps(), id, user) }
+  listCategories(user: CurrentUser, lang?: string) { return categoriesCrud.listCategories(this.catDeps(), user, lang) }
+  getCategory(id: string, user: CurrentUser, lang?: string) { return categoriesCrud.getCategory(this.catDeps(), id, user, lang) }
   createCategory(dto: categoriesCrud.CreateCategoryInput, user: CurrentUser) { return categoriesCrud.createCategory(this.catDeps(), dto, user) }
   updateCategory(id: string, dto: categoriesCrud.UpdateCategoryInput, user: CurrentUser) { return categoriesCrud.updateCategory(this.catDeps(), id, dto, user) }
   deleteCategory(id: string, user: CurrentUser) { return categoriesCrud.deleteCategory(this.catDeps(), id, user) }
 
   // ─── Carta: ítems (RES-1) — delegan a usecases/items-crud ───
-  async listItems(categoryId: string | undefined, user: CurrentUser) {
-    const res = await itemsCrud.listItems(this.itemDeps(), categoryId, user)
+  async listItems(categoryId: string | undefined, user: CurrentUser, lang?: string) {
+    const res = await itemsCrud.listItems(this.itemDeps(), categoryId, user, lang)
     // Nivel 2 stock fantasma: enriquece cada plato con `hasRecipe` si el port de inventario está
     // inyectado, para que la UI pinte "Sin receta" y el admin sepa qué recetar. Best-effort + graceful:
     // sin inventario, hasRecipe queda undefined y el badge no se renderiza (la carta no depende del catálogo).
@@ -130,7 +140,7 @@ export class RestaurantService {
     }
     return res
   }
-  getItem(id: string, user: CurrentUser) { return itemsCrud.getItem(this.itemDeps(), id, user) }
+  getItem(id: string, user: CurrentUser, lang?: string) { return itemsCrud.getItem(this.itemDeps(), id, user, lang) }
   createItem(dto: itemsCrud.CreateItemInput, user: CurrentUser) { return itemsCrud.createItem(this.itemDeps(), dto, user) }
   updateItem(id: string, dto: itemsCrud.UpdateItemInput, user: CurrentUser) { return itemsCrud.updateItem(this.itemDeps(), id, dto, user) }
   setItemAvailability(id: string, available: number | undefined, user: CurrentUser) { return itemsCrud.setAvailability(this.itemDeps(), id, available, user) }
@@ -171,4 +181,19 @@ export class RestaurantService {
   createModifier(groupId: string, dto: modifiersCrud.CreateModifierInput, user: CurrentUser) { return modifiersCrud.createModifier(this.modifierDeps(), groupId, dto, user) }
   updateModifier(id: string, dto: modifiersCrud.UpdateModifierInput, user: CurrentUser) { return modifiersCrud.updateModifier(this.modifierDeps(), id, dto, user) }
   deleteModifier(id: string, user: CurrentUser) { return modifiersCrud.deleteModifier(this.modifierDeps(), id, user) }
+
+  // ─── Combos/paquetes (F2) — delegan a usecases/combos-crud ───
+  listCombos(user: CurrentUser, lang?: string) { return combosCrud.listCombos(this.comboDeps(), user, lang) }
+  getCombo(id: string, user: CurrentUser, lang?: string) { return combosCrud.getCombo(this.comboDeps(), id, user, lang) }
+  createCombo(dto: combosCrud.CreateComboInput, user: CurrentUser) { return combosCrud.createCombo(this.comboDeps(), dto, user) }
+  updateCombo(id: string, dto: combosCrud.UpdateComboInput, user: CurrentUser) { return combosCrud.updateCombo(this.comboDeps(), id, dto, user) }
+  deleteCombo(id: string, user: CurrentUser) { return combosCrud.deleteCombo(this.comboDeps(), id, user) }
+
+  // ─── Food cost (F3) — delegan a usecases/food-cost ───
+  itemFoodCost(menuItemId: string, user: CurrentUser) { return foodCost.itemFoodCost(this.foodCostDeps(), menuItemId, user) }
+  comboFoodCost(comboId: string, user: CurrentUser) { return foodCost.comboFoodCost(this.foodCostDeps(), comboId, user) }
+  foodCostReport(user: CurrentUser) { return foodCost.foodCostReport(this.foodCostDeps(), user) }
+
+  // ─── Carta pública sin sesión (F7): hotelId del PATH, sin req.user ni createModuleGuard ───
+  publicMenu(hotelId: string, lang: string | undefined) { return publicMenuUsecase.publicMenu({ categories: this.categories, items: this.items, stations: this.stations, combos: this.combos!, comboItems: this.comboItems!, userRepo: this.userRepo, hotels: this.hotels!, config: this.config!, plans: this.plans! }, hotelId, lang) }
 }
