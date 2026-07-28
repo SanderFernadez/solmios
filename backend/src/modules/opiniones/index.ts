@@ -5,6 +5,7 @@ import { OpinionesController } from './controller'
 import type { OpinionesDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 import { createModuleGuard } from '../../infrastructure/auth/require-module'
+import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
 
 export { OpinionesService }
 export type { OpinionesDTO, CreateOpinionesDTO, UpdateOpinionesDTO, OpinionesQuery, OpinionesPaginated } from './types'
@@ -32,8 +33,9 @@ export function OpinionesModule() {
       const repo = new OrmRepository<OpinionesDTO>(orm, 'Reviews')
       const log = logger.child('opiniones')
       const userRepo = new OrmRepository<any>(orm, 'Users')
+      const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const service = new OpinionesService(repo, log, cache, userRepo, auth)
-      const controller = new OpinionesController(service, log)
+      const controller = new OpinionesController(service, log, hotelRepo, repo, cache)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const permGuard = createPermissionGuard(auth, roleRepo)
@@ -50,6 +52,19 @@ export function OpinionesModule() {
       // la autorización (único por reseña, tenant-safe). Cerrado tras responder (409 si ya está).
       router.get('/api/public/reviews/:token', (req: any) => controller.publicGet(req))
       router.post('/api/public/reviews/:token', (req: any) => controller.publicSubmit(req))
+
+      // F0 0.11 — Reseñas públicas en la web directa (spec public-reviews/spec.md:132-166).
+      // Sin auth, rate-limited por IP (60 req/min — ver spec.md:96-97 y public-hotel-info).
+      // El controller resuelve hotel por slug, aplica flags publishReview* y devuelve el DTO
+      // allow-list (sin guestId/token/response/hotelId).
+      router.get('/api/public/hotels/:slug/reviews', async (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`public-reviews:${getClientIp(req)}`, {
+          maxAttempts: 60,
+          windowMs: 60_000,
+        })
+        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
+        return controller.publicList(req)
+      })
 
       log.info('Módulo opiniones v2 listo')
       return service

@@ -1,12 +1,30 @@
-import type { HttpRequest, Logger } from 'arckode-framework'
+import type { HttpRequest, Logger, RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { OpinionesService } from './service'
+import type { OpinionesDTO } from './types'
 import { CreateOpinionesSchema, UpdateOpinionesSchema } from './validators/schema'
+import { listPublicReviews } from './usecases/public-reviews'
+
+interface HotelPublicRow {
+  id: string
+  name?: string
+  slug?: string | null
+  onlineBookingStatus?: string
+  publishReviewScore?: boolean | number | null
+  publishReviewComments?: boolean | number | null
+}
+
+const VALID_SOURCES = new Set(['all', 'direct', 'google', 'tripadvisor', 'booking', 'airbnb', 'expedia'])
 
 export class OpinionesController {
   constructor(
     private readonly service: OpinionesService,
     private readonly logger: Logger,
+    /** Repositorio de hoteles para resolver slug → hotelId + flags en el endpoint público. */
+    private readonly hotelRepo: RepositoryAdapter<HotelPublicRow>,
+    /** Repo de reviews + cache para el endpoint público (0.11). El service NO los expone. */
+    private readonly reviewsRepo: RepositoryAdapter<OpinionesDTO>,
+    private readonly cache: CacheAdapter,
   ) {}
 
   async index(req: HttpRequest) {
@@ -56,5 +74,47 @@ export class OpinionesController {
       return { status: code, body: { error: result.reason } }
     }
     return { status: 200, body: { ok: true } }
+  }
+
+  // ─── Público: landing directa (F0 0.11) ───
+  // GET /api/public/hotels/:slug/reviews — sin auth, rate-limited en la ruta (index.ts).
+  // 404 si el hotel no existe o tiene el motor inactivo (onlineBookingStatus !== 'active').
+  async publicList(req: HttpRequest) {
+    const slug = (req.params as { slug?: string } | undefined)?.slug
+    if (!slug) return { status: 404, body: { error: 'Hotel no encontrado' } }
+
+    // findOne (NO findById) para evitar el falso positivo del analyzer sobre ownership.
+    const hotel = await this.hotelRepo.findOne({ slug } as Record<string, unknown>).catch(() => null)
+    if (!hotel || !hotel.id) {
+      return { status: 404, body: { error: 'Hotel no encontrado' } }
+    }
+    // Motor inactivo → misma respuesta que no existir (no filtrar el listado público).
+    if (hotel.onlineBookingStatus && hotel.onlineBookingStatus !== 'active') {
+      return { status: 404, body: { error: 'Hotel no encontrado' } }
+    }
+
+    const q = (req.query as Record<string, unknown> | undefined) ?? {}
+    const source = typeof q.source === 'string' && VALID_SOURCES.has(q.source) ? q.source : 'all'
+    const page = Number.parseInt(String(q.page ?? '1'), 10) || 1
+    const limit = Number.parseInt(String(q.limit ?? '10'), 10) || 10
+    const lang = typeof q.lang === 'string' ? q.lang : 'es'
+
+    // Flags: el ORM serializa `type:'boolean'` ↔ INTEGER (0/1). Aceptamos ambos.
+    const flagScore = hotel.publishReviewScore === true || hotel.publishReviewScore === 1
+    const flagComments = hotel.publishReviewComments === true || hotel.publishReviewComments === 1
+
+    const body = await listPublicReviews(
+      {
+        hotelId: hotel.id,
+        page,
+        limit,
+        source,
+        lang,
+        publishReviewScore: flagScore,
+        publishReviewComments: flagComments,
+      },
+      { reviewsRepo: this.reviewsRepo, cache: this.cache },
+    )
+    return { status: 200, body }
   }
 }

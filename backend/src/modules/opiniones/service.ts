@@ -5,6 +5,7 @@ import type { OpinionesSockets } from './sockets'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 import type { EmailSender } from '../../services/email-sender'
 import { sendReviewInviteEmail, type ReviewInviteEmailDeps } from './usecases/review-invite-email'
+import { stampRespondedAt } from './usecases/respond'
 
 const CACHE_TTL = 300
 
@@ -168,7 +169,8 @@ export class OpinionesService {
     if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) {
       throw new AuthError('No autorizado')
     }
-    const item = await this.repo.update(id, dto as any)
+    // F0 0.9: stamp respondedAt when `response` is set; null when cleared. See usecases/respond.ts.
+    const item = await this.repo.update(id, stampRespondedAt({ ...dto }) as any)
     if (!item) throw new NotFoundError('Opinión no encontrada')
     await this.sockets.onOpinionesUpdated?.(item)
     await this.cache.delete(`opiniones:list:${existing.hotelId}`)
