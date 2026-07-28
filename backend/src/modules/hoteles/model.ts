@@ -74,6 +74,22 @@ export const HotelesModel: ModelDefinition = {
     wifiPassword: { type: 'string' },
     // Branding
     logo: { type: 'string' },
+    // F0 — Direct booking / Página pública (openspec/changes/solmi-direct-booking).
+    // Anti-patrón ORM (D5): las 3 columnas MUST estar declaradas acá, case-sensitive —
+    // sin declaración, el ORM las descarta silenciosamente al persistir (mem 1805).
+    // slug: estable, NO computado del name en runtime. Nullable: se puebla con seeder
+    // idempotente (scripts/seed-hotel-slugs.ts). Unique global (namespace público,
+    // GET /api/public/hotels/:slug). Editar `name` NUNCA cambia `slug` automáticamente.
+    slug: { type: 'string' },
+    // Amenities DEL HOTEL (pool/gym/spa/parking/wifi/restaurant/bar/...) — DISTINTO de
+    // RoomAmenities (nivel habitaciones). Array de strings del catálogo fijo en código
+    // (mismo patrón que ALLERGEN_TAGS del módulo restaurant).
+    amenities: { type: 'json' },
+    // Multilingüe de la descripción pública: { [lang]: { title, description } }. NUNCA
+    // incluye 'es' (el español base vive en `descriptionJson` arriba — D7, dos fuentes
+    // de verdad). Mismo formato que menu_items.translations (restaurant/model.ts:57).
+    // type:'json' nativo del ORM serializa/deserializa solo; nullable, sin default.
+    descriptionTranslations: { type: 'json' },
   },
   timestamps: true,
 }
