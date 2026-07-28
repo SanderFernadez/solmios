@@ -57,15 +57,34 @@
 - [x] 9.3 `restaurant/tests`: `unsettleOrder` solo aplica a `processing_payment` (no a `paid`/`billed`).
 - [x] 9.4 `payments/tests`: webhook `expired` marca payment `cancelled` y dispara `onExpired` (`webhook-expiry.test.ts`).
 - [x] 9.5 `connectors/tests`: tras `onPaymentCompleted` con `metadata.source='restaurant'`, se llama `settlePaidOrder`; con otro source, NO (`restaurante-payments-webhook.test.ts`).
-- [ ] 9.6 E2E manual en dev: cobro tarjeta (test card 4242) → redirect Checkout → volver → orden `paid` → botón Reembolsar → refund OK en Stripe (no 409). **Pendiente** — requiere sesión de browser en vivo contra Stripe test mode, fuera de esta pasada.
+- [x] 9.6 E2E REAL en prod contra Stripe test mode (2026-07-28, Playwright, Hotel Boutique Palma —
+      único hotel con `payment_gateways.mode='test'`): comanda "Para llevar" → 1 ítem ($1.18) →
+      Cobrar → Tarjeta → **confirmado**: crea Checkout Session real (`cs_test_...`), redirige a
+      Stripe, tarjeta 4242 4242 4242 4242 aceptada, Stripe confirma el pago y redirige a
+      `successUrl` (`?paid=pending`). **HALLAZGO REAL (no eran solo suposiciones)**: el webhook de
+      Stripe **NUNCA llegó al backend** — `payment_events` para este hotel tiene 0 filas, la orden
+      quedó indefinidamente en `processing_payment` y el payment en `processing` con
+      `stripePaymentId` vacío. No se pudo probar el botón Reembolsar (nunca se alcanza `paid`).
+      **Causa: el webhook endpoint del hotel no está suscripto a `checkout.session.completed` en el
+      Dashboard de Stripe** (config externa, no bug de código — mismo gap que ya se había anotado
+      para `checkout.session.expired`). Se limpió el order/payment de prueba (cancelados a mano) y
+      la carta de prueba (estación/categoría/ítem QA borrados) — Hotel Boutique Palma queda como
+      estaba antes del test.
 
 ## 10. Deploy + Gate
 - [x] 10.1 `arckode analyze` 0 violaciones (backend). ✅ VÁLIDO.
 - [x] 10.2 `bun run typecheck` (backend) + `bun run typecheck` (frontend, con `-b`). Ambos limpios.
 - [x] 10.3 `bun test` (restaurant + payments + connectors). 327/327 verdes (2262/2262 en la suite completa).
 - [x] 10.4 Deploy: sin migration de DB nueva (estados en enum TS, no en schema). Validado `OrderStatus` en los enumeradores que existían: `order-lines.ts:LINES_LOCKED`, `orders.ts:cancelOrder` (backend) y `salon.vue:LIVE`/`comanda.vue:LOCKED` (frontend) — todos actualizados para incluir `processing_payment` donde correspondía.
-- [ ] 10.5 En prod: probar con Stripe test mode primero (hotel con clave test), luego pasar a live. **Pendiente** — requiere deploy real.
-- [ ] 10.6 Una vez confirmado end-to-end en prod: evaluar retirar el mensaje de workaround del guard `refund.ts` (mantener el guard, solo ajustar copy). **Pendiente** — depende de 10.5.
+- [x] 10.5 Probado en prod con Stripe test mode (Hotel Boutique Palma) — ver 9.6. **El código funciona
+      hasta donde el webhook lo permite**; el flujo end-to-end NO cierra hoy porque falta la
+      suscripción del webhook en el Dashboard de Stripe de ese hotel. **Bloqueado para pasar a
+      "confirmado end-to-end"** hasta que se suscriba `checkout.session.completed` (y
+      `checkout.session.expired`) en el hotel de prueba y se repita el E2E.
+- [ ] 10.6 NO retirar el mensaje de workaround del guard `refund.ts` — el punto 10.5 mostró que el
+      flujo real puede quedar atascado en `processing`/`processing_payment` en producción (no solo
+      en teoría), así que el guard sigue siendo necesario. Reevaluar cuando 10.5 esté realmente
+      cerrado.
 
 ## Riesgos a vigilar
 - **Doble descuento de inventario**: hoy `recordPayment` (cash/folio) descuenta al cobrar; el nuevo flujo async debe hacerlo en `onOrderPaid` (webhook), NO antes. Si queda el descuento síncrono, el webhook lo duplica.
