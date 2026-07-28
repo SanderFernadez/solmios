@@ -151,7 +151,7 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
       **Acceptance**: `POST /api/public/booking` ahora devuelve 201 con `checkoutUrl`; el
       frontend puede redirect.
 
-- [ ] 0.17 Job de migración `backend/scripts/migrate-public-bookings.ts`: lee `public_bookings`
+- [x] 0.17 Job de migración `backend/scripts/migrate-public-bookings.ts`: lee `public_bookings`
       y para cada fila crea una fila en `Reservations` con `source:'direct'`,
       `paymentStatus:'paid'` (si la public_booking tenía pago confirmado),
       `accessToken: crypto.randomUUID()`. Idempotente por `public_bookings.id` (trackea en
@@ -159,7 +159,7 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
       **Acceptance**: correr 2× no duplica reservas; los bookings migrados aparecen en el listado
       operacional del panel.
 
-- [ ] 0.18 `bookingengine/index.ts:69-80`: marcar como deprecated (log warning en el handler
+- [x] 0.18 `bookingengine/index.ts:69-80`: marcar como deprecated (log warning en el handler
       del plural) y agregar el nuevo endpoint `/api/public/reservations/:id`. El webhook
       `POST /api/public/webhook/stripe/:hotelId` NO cambia path (compat con Stripe dashboard).
       **Acceptance**: log de deprecation aparece en prod; el nuevo endpoint responde 200/404.
