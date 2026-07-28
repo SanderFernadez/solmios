@@ -77,6 +77,14 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      // Carta pública de solo lectura (F7) — huésped escaneando el QR de su mesa, SIN sesión.
+      // Sin meta requiresXxx: el guard de abajo no toca esta ruta (no empieza con /panel/).
+      path: '/menu/:hotelId',
+      name: 'public-menu',
+      component: () => import('@/pages/public/menu.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/legal/terminos',
       name: 'legal-terminos',
       component: () => import('@/pages/legal/terminos.vue'),
@@ -310,6 +318,7 @@ const router = createRouter({
         { path: 'tesoreria/cuentas', name: 'treasury-accounts', component: () => import('@/pages/tesoreria/cuentas.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'tesoreria/presupuesto', name: 'treasury-budget', component: () => import('@/pages/tesoreria/presupuesto.vue'), meta: { requiresHotelAdmin: true } },
         { path: 'tesoreria/proveedores', name: 'treasury-suppliers', component: () => import('@/pages/tesoreria/proveedores.vue'), meta: { requiresHotelAdmin: true } },
+        { path: 'tesoreria/caja-chica', name: 'treasury-petty-cash', component: () => import('@/pages/tesoreria/caja-chica.vue'), meta: { requiresHotelAdmin: true } },
         // Restaurante / POS (RES-7) — operacional (meseros/recepción); gateado por module-map (restaurant).
         // QA-ALTO: defensa en profundidad — el backend ya rechaza mutaciones de carta sin
         // restaurant-catalog:*, pero sin esta meta un mesero/cocina podía navegar acá por URL

@@ -317,6 +317,7 @@ const nonavItems = [
       { label: 'Por Cobrar / Pagar', path: '/panel/tesoreria/cuentas', roles: ['hotel_admin'] },
       { label: 'Presupuesto', path: '/panel/tesoreria/presupuesto', roles: ['hotel_admin'] },
       { label: 'Proveedores', path: '/panel/tesoreria/proveedores', roles: ['hotel_admin'] },
+      { label: 'Caja chica', path: '/panel/tesoreria/caja-chica', roles: ['hotel_admin'] },
     ]
   },
   {
