@@ -40,6 +40,9 @@ export const MODULES = {
   inventory: 'Inventario',
   /** Compras: requisiciones, órdenes de compra, recepción de mercancía. */
   purchasing: 'Compras',
+  /** Landing pública del hotel por bloques (F1 solmi-direct-booking). Solo view/edit:
+   *  configurar los bloques (textos, fotos, FAQ, orden) no es CRUD de filas múltiples. */
+  landing: 'Landing pública',
 } as const
 
 // Available actions per module
@@ -87,6 +90,9 @@ export const MODULE_ACTIONS: Record<string, (keyof typeof ACTIONS)[]> = {
   restaurant: ['view', 'create', 'edit', 'delete'],
   inventory: ['view', 'create', 'edit', 'delete'],
   purchasing: ['view', 'create', 'edit', 'delete'],
+  // Landing pública: solo view/edit (toggle, reorder, editar config). Sin create/delete
+  // (los 9 bloques existen por seeder; el admin no crea/borra tipos).
+  landing: ['view', 'edit'],
 }
 
 /** Acciones válidas para un módulo. Fallback a ['view'] si el módulo no está mapeado (fail-cerrado). */
@@ -137,6 +143,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Inventario y compras: el dueño gestiona insumos, stock, requisiciones y órdenes de compra.
     'inventory:view', 'inventory:create', 'inventory:edit', 'inventory:delete',
     'purchasing:view', 'purchasing:create', 'purchasing:edit', 'purchasing:delete',
+    // Landing pública (F1): el dueño configura los bloques, el orden y los textos.
+    'landing:view', 'landing:edit',
   ],
 
   // Receptionist — la operación del mostrador. Los permisos siguen a lo que el menú del panel le
@@ -165,6 +173,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Toma comandas, las envía a cocina y las cobra desde el mostrador (create+edit); la config
     // (estaciones/carta = `restaurant-catalog`) y el borrado/cancelación (delete) son del hotel_admin.
     'restaurant:view', 'restaurant:create', 'restaurant:edit',
+    // Landing pública (F1): recepción puede previsualizarla (view) pero no editar la config.
+    'landing:view',
   ],
 
   // Housekeeper - cleaning tasks only

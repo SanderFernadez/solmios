@@ -154,6 +154,9 @@ import { PlatformEmailsModule } from './modules/platform-emails'
 // F0 (solmi-direct-booking): media del hotel (hero/gallery/room) para la landing pública.
 // Modelo + service + usecases (tasks 0.6 + 0.7). Rutas (0.8) se agregan en pieza paralela.
 import { HotelMediaModule } from './modules/hotel-media'
+// F1 (solmi-direct-booking): landing pública por bloques. Tasks 1.1–1.4 (modelo +
+// seeder + service + rutas admin/pública). El admin la edita desde /settings/landing.
+import { LandingModule } from './modules/landing'
 import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
@@ -215,6 +218,11 @@ const mods = [
   // Tasks 0.6 + 0.7: solo modelo + service + usecases. Rutas admin + pública van en task 0.8.
   // Reusa el StorageService global (mismo adapter S3/local que hotel-logos, dir 'hotel-media').
   HotelMediaModule({ storage }),
+  // F1 (solmi-direct-booking) — Landing pública del hotel por bloques (hero/gallery/amenities/...).
+  // Tasks 1.1–1.4: modelo + seeder lazy (9 defaults) + blocks-crud (upsert atómico + toggle) +
+  // rutas admin (`/api/landing` GET/PUT + `/api/landing/:id/toggle` PATCH) + ruta pública
+  // (`/api/public/hotels/:slug/landing` rate-limited). Permisos: `landing:view|edit`.
+  LandingModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
