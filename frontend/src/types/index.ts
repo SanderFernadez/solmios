@@ -552,3 +552,9 @@ export interface RegisterPushTokenPayload {
   token: string
   platform?: string
 }
+
+// F0 0.19/0.20 (solmi-direct-booking) — Tipos del dominio público y booking.
+// viven en archivos propios (namespace separado: sin hotelId, sin datos del hotelero) y se
+// re-exportan acá para mantener el `import from '@/types'` único del resto del frontend.
+export * from './public-hotel'
+export * from './booking'
