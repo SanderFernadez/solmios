@@ -76,3 +76,17 @@ export const CreateCheckoutSessionSchema: Record<string, ValidationRule> = {
   successUrl: { type: 'string' as const, required: true },
   cancelUrl: { type: 'string' as const, required: true },
 }
+
+/**
+ * F0 0.16 — Extensión del schema `POST /api/public/booking` para aceptar `successUrl`/
+ * `cancelUrl` (opcional, para que el widget F2 pueda pasar las URLs de vuelta). `promoCode`
+ * ya está en el schema base; `upsells` no se agrega porque el framework no soporta `type:'json'`
+ * en validators (ValidationType = string|number|boolean|email|url|date). El usecase lee
+ * `upsells` directo del body como HOOK para F2 task 2.5; cuando F2 lo materialice como modelo
+ * Upsell propio, este schema se amplía con el tipo correcto.
+ */
+export const ExtendedPublicBookingSchema: Record<string, ValidationRule> = {
+  ...CreatePublicBookingSchema,
+  successUrl: { type: 'string' as const },
+  cancelUrl: { type: 'string' as const },
+}

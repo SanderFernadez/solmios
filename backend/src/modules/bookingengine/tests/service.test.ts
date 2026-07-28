@@ -71,12 +71,27 @@ function makeEventsRepo(overrides: Partial<RepositoryAdapter<ConversionEventDTO>
   }
 }
 
+function makeReservationsRepo(overrides: Partial<RepositoryAdapter<any>> = {}): RepositoryAdapter<any> {
+  return {
+    findMany: async () => [],
+    findById: async () => null,
+    findOne: async () => null,
+    create: async (data) => ({ id: 'res-1', ...data }),
+    update: async (id, data) => ({ id, ...data }),
+    delete: async () => true,
+    count: async () => 0,
+    paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
+    ...overrides,
+  }
+}
+
 function makeService(overrides = {}) {
   return new BookingengineService(
     makeConfigRepo(),
     makeAvailabilityRepo(),
     undefined, // roomsRepo: estos tests no ejercitan la disponibilidad real
-    undefined, // reservationsRepo
+    // F0 0.15 — StripeUseCase ahora opera sobre Reservations; el service requiere el repo.
+    makeReservationsRepo(),
     undefined, // hotelsRepo
     makeBookingRepo(),
     makeEventsRepo(),

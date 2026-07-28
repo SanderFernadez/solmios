@@ -2,6 +2,7 @@
 // Orquestador delgado que delega a usecases/
 
 import type { RepositoryAdapter, Logger, CacheAdapter } from 'arckode-framework'
+import { ValidationError } from 'arckode-framework'
 import type {
   BookingConfigDTO, UpdateBookingConfigDTO,
   AvailabilityQuery, AvailabilityResult,
@@ -25,6 +26,10 @@ export class BookingengineService {
   private booking: BookingUseCase
   private analytics: AnalyticsUseCase
   private stripe: StripeUseCase
+  // F0 0.15 — El método legacy `createCheckoutSession(bookingId, ...)` necesita acceso al
+  // registry para hablar con el gateway directo (sin pasar por el usecase nuevo, que solo
+  // sabe de Reservations). Se elimina en F4 junto con el flujo plural.
+  private readonly registry: PaymentGatewayRegistry
 
   constructor(
     configRepo: RepositoryAdapter<BookingConfigDTO>,
@@ -34,7 +39,7 @@ export class BookingengineService {
     roomsRepo: RepositoryAdapter<any> | undefined,
     reservationsRepo: RepositoryAdapter<any> | undefined,
     hotelsRepo: RepositoryAdapter<any> | undefined,
-    bookingRepo: RepositoryAdapter<PublicBookingDTO>,
+    private readonly bookingRepo: RepositoryAdapter<PublicBookingDTO>,
     eventsRepo: RepositoryAdapter<ConversionEventDTO>,
     private readonly logger: Logger,
     cache: CacheAdapter,
@@ -42,11 +47,16 @@ export class BookingengineService {
     events?: PaymentEventStore,
   ) {
     if (!registry) throw new Error('bookingengine: PaymentGatewayRegistry es requerido (pasarela por hotel)')
+    if (!reservationsRepo) throw new Error('bookingengine: reservationsRepo es requerido (F0 0.15 — Stripe opera sobre Reservations)')
+    this.registry = registry
     this.config = new ConfigUseCase(configRepo, cache)
     this.availability = new AvailabilityUseCase(availabilityRepo, cache, roomsRepo, reservationsRepo, hotelsRepo)
     this.booking = new BookingUseCase(bookingRepo, this.availability)
     this.analytics = new AnalyticsUseCase(eventsRepo)
-    this.stripe = new StripeUseCase(bookingRepo, logger, registry, events)
+    // F0 0.15 — Stripe opera sobre Reservations (tabla operacional). Antes usaba `bookingRepo`
+    // (tabla huérfana `public_bookings`), que nunca recibía filas del widget — el cobro quedaba
+    // colgado de una reserva inexistente. Spec booking-unification D2/D3.
+    this.stripe = new StripeUseCase(reservationsRepo, logger, registry, events)
   }
 
   setSockets(s: Partial<BookingengineSockets>): void {
@@ -82,22 +92,70 @@ export class BookingengineService {
     return booking
   }
 
+  /**
+   * F0 0.15 — Checkout sobre `Reservations`. Antes este método recibía un `bookingId` y leía
+   * de `public_bookings`. Ahora recibe `reservationId`, y el monto lo pasa el caller explícito
+   * (evita race condition: el precio del cuarto podría cambiar entre leer y cobrar).
+   */
+  async createReservationCheckout(
+    reservationId: string,
+    amount: number,
+    successUrl: string,
+    cancelUrl: string,
+  ) {
+    return this.stripe.createCheckoutSession(reservationId, amount, successUrl, cancelUrl)
+  }
+
+  /**
+   * Cobro del widget (flujo plural viejo sobre `public_bookings`). Se mantiene para no romper
+   * el endpoint `POST /api/public/bookings/:id/checkout` detrás del flag
+   * `BOOKING_USE_UNIFIED_FLOW=false` (rollback path). Cuando el flag está true el controller
+   * responde 410 antes de llegar acá. En F4 se elimina junto con el flujo plural.
+   *
+   * F0 0.15 — Antes delegaba en `StripeUseCase.createCheckoutSession(booking, ...)`. Ese
+   * usecase ahora opera sobre `Reservations` y la firma cambió. Para no duplicar la lógica de
+   * reescritura en un usecase paralelo (que se borraría en F4), hablamos con el gateway directo
+   * desde acá. Solo para rollback; el flujo principal pasa por `createReservationCheckout`.
+   */
   async createCheckoutSession(bookingId: string, successUrl: string, cancelUrl: string) {
     const booking = await this.booking.getById(bookingId)
-    return this.stripe.createCheckoutSession(booking, successUrl, cancelUrl)
+    const gw = await this.registry.resolve(booking.hotelId)
+    if (!gw) {
+      throw new ValidationError('El hotel no tiene una pasarela de pago configurada')
+    }
+    const result = await gw.createCharge({
+      hotelId: booking.hotelId,
+      amountMinor: Math.round(booking.totalAmount * 100),
+      currency: booking.currency,
+      description: `Reserva - ${booking.roomType} | Check-in: ${booking.checkIn} | Check-out: ${booking.checkOut}`,
+      reference: booking.id,
+      successUrl,
+      cancelUrl,
+      metadata: { bookingId: booking.id, hotelId: booking.hotelId },
+    })
+    if (result.status === 'redirect') {
+      return { id: result.providerRef, url: result.redirectUrl, payment_status: 'unpaid' }
+    }
+    if (result.status === 'succeeded') {
+      return { id: result.providerRef, url: '', payment_status: 'paid' }
+    }
+    throw new ValidationError(result.status === 'failed' ? result.reason : 'Pasarela no soportada')
   }
 
   /**
    * El cobro del widget es plata real que entra por Stripe. Sin emitir el evento, quedaba solo en la
    * fila de `bookings`: fuera de `payments`, de la conciliación bancaria y del balance.
+   *
+   * El hotel viene en la RUTA: su secreto de firma es lo que autentica el webhook.
    */
-  /** El hotel viene en la RUTA: su secreto de firma es lo que autentica el webhook. */
   async handleStripeWebhook(hotelId: string, payload: Buffer | string, signature: string) {
     const result = await this.stripe.handleWebhook(hotelId, payload, signature)
     if (!result) return null // firma inválida → el controller responde 400
-    if (result.type === 'booking_confirmed' && result.bookingId) {
-      const booking = await this.booking.getById(result.bookingId)
-      await this.sockets.onBookingPaid?.(booking)
+    // F0 0.15 — El type del resultado cambió a 'reservation_confirmed' (era 'booking_confirmed').
+    // El socket del widget espera la reserva pagada para refrescar la UI. Pasamos el id que sea
+    // (reservationId en el flujo unificado) — el socket decide qué hacer con el payload.
+    if (result.type === 'reservation_confirmed' && result.reservationId) {
+      await this.sockets.onBookingPaid?.({ id: result.reservationId } as any)
     }
     return result
   }

@@ -134,7 +134,7 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
       **Acceptance**: sin token o con token incorrecto → 404; con token válido → 200 con
       `reservation` + `guest` + `paymentStatus`.
 
-- [ ] 0.15 Reescribir `StripeUseCase` (`usecases/stripe.ts`) para operar sobre `Reservations`:
+- [x] 0.15 Reescribir `StripeUseCase` (`usecases/stripe.ts`) para operar sobre `Reservations`:
       - `createCheckoutSession(reservationId, amount)` → lee `repo('Reservations').findOne({id: reservationId})`,
         NO `repo('BookingEngine').findById(bookingId)` (D2/D3).
       - `gw.createCharge({ amount, currency, reference: reservationId, idempotency_key: reservationId })`
@@ -144,7 +144,7 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
       **Acceptance**: `bun test` cubre el flujo createSession → webhook → reservation confirmed.
       El test mockea `gw` (gateway Stripe) con un evento firmado válido.
 
-- [ ] 0.16 Modificar `createPublicBookingDirect` (`usecases/public-booking.ts`) para aceptar
+- [x] 0.16 Modificar `createPublicBookingDirect` (`usecases/public-booking.ts`) para aceptar
       `promoCode`, `upsells` (F2 los agregará como schemas; F0 solo deja el hook), y devolver
       `{reservationId, accessToken, checkoutUrl}` llamando a `stripeUseCase.createCheckoutSession`
       después de crear la reserva pending. La respuesta al frontend incluye `checkoutUrl`.

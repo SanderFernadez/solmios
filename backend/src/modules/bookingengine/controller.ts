@@ -154,6 +154,55 @@ export class BookingengineController {
   }
 
   async createPublicBookingDirect(req: HttpRequest) {
-    return createPublicBookingDirect(this.orm, req.body, this.pushAvailability, this.auth)
+    // F0 0.16 — Pasamos el service (con `createReservationCheckout`) y el logger al usecase
+    // para que pueda crear la Checkout Session tras crear la reserva pending. Si Stripe falla,
+    // el usecase devuelve `checkoutUrl: null` + `paymentError` (reserva NO se pierde).
+    //
+    // successUrl/cancelUrl: el widget (F2) las va a mandar en el body. Si no llegan, derivamos
+    // de `PUBLIC_BASE_URL` (env) para que el flujo no rompa en prod. El pattern de la URL de
+    // vuelta es `/h/:slug?booking=:id&token=:token` (spec booking-unification R2) — lo arma el
+    // frontend; el backend solo se asegura de tener URLs válidas para mandarle a Stripe.
+    const body = (req.body || {}) as { successUrl?: string; cancelUrl?: string }
+    const baseUrl = process.env.PUBLIC_BASE_URL || publicBaseFromRequest(req)
+    const successUrl = body.successUrl || (baseUrl ? `${baseUrl}/booking/success` : '')
+    const cancelUrl = body.cancelUrl || (baseUrl ? `${baseUrl}/booking/cancel` : '')
+    const stripeUrls = successUrl && cancelUrl ? { successUrl, cancelUrl } : undefined
+    return createPublicBookingDirect(
+      this.orm, req.body,
+      this.pushAvailability, this.auth,
+      this.service, this.logger,
+      stripeUrls,
+    )
   }
+}
+
+/**
+ * F0 0.16 — Deriva la base pública del widget desde el request cuando `PUBLIC_BASE_URL` no
+ * está seteada. Lee el `Origin`/`Referer` del request (headers que manda el navegador) y
+ * construye `https://host`. Si no puede derivarla, devuelve '' (string vacío) — el usecase
+ * omite el cobro y devuelve `checkoutUrl:null`, sin romper la creación de la reserva.
+ *
+ * El slug del hotel NO se incluye acá: el widget construye la URL final `/h/:slug?booking=...`
+ * del lado del frontend (F2/0.20). Acá solo aseguramos una base válida para que Stripe sepa
+ * a qué dominio volver.
+ */
+function publicBaseFromRequest(req: HttpRequest): string {
+  const headers = (req as any).headers || {}
+  const origin = headers['origin'] || headers['Origin']
+  if (origin && typeof origin === 'string') return origin.replace(/\/$/, '')
+  const referer = headers['referer'] || headers['Referer']
+  if (referer && typeof referer === 'string') {
+    try {
+      const u = new URL(referer as string)
+      return `${u.protocol}//${u.host}`
+    } catch { /* referer malformado → caemos al host header */ }
+  }
+  const host = headers['host'] || headers['Host']
+  if (host && typeof host === 'string') {
+    // El widget se sirve por HTTPS en prod (siempre). En dev (HTTP localhost) el schema lo
+    // infiere `x-forwarded-proto` si está (Cloudflare/nginx), si no asume https.
+    const proto = headers['x-forwarded-proto'] || 'https'
+    return `${proto}://${host}`
+  }
+  return ''
 }

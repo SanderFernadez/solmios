@@ -48,6 +48,14 @@ export interface ChargeRequest {
   successUrl: string
   cancelUrl: string
   metadata?: Record<string, string>
+  /**
+   * Clave de idempotencia del lado del proveedor (Stripe la manda como header `Idempotency-Key`).
+   * Reintentos del webhook o clicks dobles del huesped con el MISMO key no generan un segundo
+   * cobro: Stripe devuelve la sesión original. Hoy solo la usa `bookingengine` con `reservationId`
+   * (spec booking-unification §7 — verificación "el `idempotency_key` es NUEVO"). Otros flujos
+   * que no la pasen siguen funcionando (la pasarela simplemente no garantiza idempotencia).
+   */
+  idempotencyKey?: string
 }
 
 /**

@@ -44,6 +44,11 @@ export class StripeGateway implements RefundableGateway {
 
   async createCharge(req: ChargeRequest): Promise<ChargeResult> {
     try {
+      // F0 0.15 — Idempotencia a nivel proveedor. Sin esto, un doble submit del huesped o un
+      // reintento del webhook abre DOS Checkout Sessions y cobra dos veces. La clave es el
+      // `reservationId` (única por reserva) — ver spec booking-unification §7. Stripe reusa la
+      // sesión existente si la misma key llega de nuevo dentro de las 24h.
+      const options = req.idempotencyKey ? { idempotencyKey: req.idempotencyKey } : undefined
       const session = await this.stripe.checkout.sessions.create({
         mode: 'payment',
         payment_method_types: ['card'],
@@ -61,7 +66,7 @@ export class StripeGateway implements RefundableGateway {
         customer_email: req.customerEmail,
         client_reference_id: req.reference,
         metadata: { reference: req.reference, hotelId: req.hotelId, ...(req.metadata || {}) },
-      })
+      }, options as any)
       if (!session.url) return { status: 'failed', reason: 'Stripe no devolvió URL de checkout' }
       return { status: 'redirect', redirectUrl: session.url, providerRef: session.id }
     } catch (e: any) {
