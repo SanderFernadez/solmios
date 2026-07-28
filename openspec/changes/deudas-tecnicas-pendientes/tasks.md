@@ -1,40 +1,29 @@
 # Tasks — Deudas técnicas pendientes
 
-Dos deudas reales verificadas contra código (2026-07-24) + una bloqueada documentada. Cada sprint:
-implementar → gates (`arckode analyze` 0 violaciones · `bun test` · typecheck) → QA adversarial →
-commit quirúrgico.
+Estado final (2026-07-28): DT-08 y DT-10 cerradas · DT-07 y DT-11 bloqueadas de framework (investigado,
+requeriría SQL crudo prohibido o una feature nueva del framework) · DT-09 bloqueada por decisión de
+negocio. Cada sprint ejecutado: implementar → gates (`arckode analyze` 0 violaciones · `bun test` ·
+typecheck) → QA adversarial → commit quirúrgico.
 
-## DT-07 — Search de facturas: mover filtro a WHERE del repo
+## DT-07 — Search de facturas: mover filtro a WHERE del repo — ⛔ BLOQUEADA DE FRAMEWORK (investigado 2026-07-28)
 
 ### DT-07.1 — Diagnóstico + diseño
-- [ ] 1.1 Confirmar qué adapters soportan filtro parcial (`LIKE`/`ILIKE`) sin SQL crudo en el módulo:
-      `RepositoryAdapter<T>` de arckode-framework — ¿expone algún operador `contains`/`like` en
-      `findMany`/`paginate`, o hay que pedirlo al framework? Si el framework NO lo soporta hoy,
-      documentar como bloqueado-de-framework en vez de forzar SQL crudo (regla dura: nunca SQL
-      crudo en services/usecases).
-- [ ] 1.2 Si el adapter soporta filtro parcial: diseñar el cambio en `list-invoices.ts` — el filtro
-      de `search` (invoiceNumber/guest/notes) debe ir al `filters` que recibe `repo.paginate()`, no
-      aplicarse post-fetch. Ojo: `guest` no es columna de `facturas` (viene de `enrichInvoicesBatch`
-      cruzando con `guests`/`reservas`) — ese cruce no se puede resolver con un WHERE simple sobre
-      `invoices`. Definir qué campos SÍ se pueden mover a WHERE (invoiceNumber, notes) y cuáles
-      quedan en memoria pero acotados (ej: solo sobre la página ya paginada + un fallback).
+- [x] 1.1 Confirmado contra `node_modules/arckode-framework/kernel/db/types.ts:52-64`:
+      `RepositoryAdapter<T>.findMany/paginate/count` solo acepta `filters?: Record<string, unknown>`
+      — **igualdad exacta**, sin ningún operador `contains`/`like`/`ilike`. `list-invoices.ts:56-59`
+      ya documenta esto en comentario explícito. **No hay diff que aplicar** sin violar la regla
+      dura "nunca SQL crudo en services/usecases" o sin parchear el framework (mismo criterio que
+      el patch de Postgres del proyecto, fuera de alcance de este change). Es una limitación real
+      del framework, no un bug de implementación — el código actual, acotado por `hotelId` antes de
+      escanear, es la única implementación válida disponible hoy.
+- [x] 1.2 No aplica (bloqueado antes de llegar a esta decisión de UX).
 
 ### DT-07.2 — Implementación
-- [ ] 2.1 Mover a `WHERE` los campos resolubles en la tabla `invoices` directamente.
-- [ ] 2.2 Si `guest` no es resoluble sin cruce, decidir con evidencia: ¿vale la pena mantener el
-      O(n) actual SOLO para ese campo (ya está acotado por hotel, no es global), o sacar `guest` del
-      search y que el usuario busque por número/nota? **No implementar sin confirmar con el usuario
-      cuál preferencia UX** — este es un trade-off de producto, no solo técnico.
-- [ ] 2.3 Mantener el contrato de respuesta (`data/total/pages/hasNext/hasPrev`) idéntico — no romper
-      el frontend que consume `FacturasService.list({search})`.
-- [ ] 2.4 Tests: search por invoiceNumber/notes vía WHERE (verificar que no trae toda la tabla —
-      se puede instrumentar contando llamadas a `findMany` sin filtro vs con filtro en el mock del
-      repo). Regresión: paginación de resultados de búsqueda sigue funcionando.
+No ejecutable. Ver 1.1.
 
 ### DT-07.3 — QA + gate
-- [ ] 3.1 QA adversarial: ¿el WHERE es case-insensitive como el `.toLowerCase()` actual? ¿maneja
-      substrings igual? ¿el operador del adapter es portable SQLite↔Postgres?
-- [ ] 3.2 Gate: `arckode analyze` 0 violaciones · `bun test` · typecheck.
+No aplica — nada que verificar sobre un cambio que no se hizo. Si en el futuro el framework agrega
+un operador `contains`/`like`, reabrir esta tarea desde 1.2.
 
 ## DT-08 — Depósitos: conectar el ledger real ✅ CERRADA (2026-07-28, opción A mínima viable)
 
@@ -99,20 +88,29 @@ errores nuevos (9 baseline preexistentes ajenos en `scripts/e2e/`).
       por este cambio — fuera del alcance "mínimo viable").
 - [x] 3.2 Gate: `arckode analyze` 0 violaciones · `bun test` 2116/2116 · typecheck sin errores nuevos.
 
-## DT-11 — `DepositsUseCase.refund()` sin lock de concurrencia (hallada en QA de DT-08)
+## DT-11 — `DepositsUseCase.refund()` sin lock de concurrencia — ⛔ BLOQUEADA DE FRAMEWORK (investigado 2026-07-28)
 
 Read-then-write sin protección: dos `refund()` concurrentes sobre el mismo depósito leen el mismo
 `refundAmount` antes de que cualquiera escriba, así que ambos pasan la validación de "no exceder lo
 disponible" con su propia cuenta. Confirmado con test (`deposits.test.ts`, caso "race").
 
-- [ ] 11.1 Diseñar el lock: version field (optimistic locking, `update` condicional por
-      `WHERE id=? AND version=?`) o releer+comparar dentro de una transacción si el
-      `RepositoryAdapter<T>` del framework soporta transacciones — confirmar primero qué expone el
-      framework antes de diseñar (puede requerir pedirlo como feature si no existe).
-- [ ] 11.2 Aplicar el mismo criterio a `release()` (mismo patrón read-then-write).
-- [ ] 11.3 Test: el caso "race" de `deposits.test.ts` debe pasar a exigir `rejected.length >= 1`
-      como invariante (hoy documenta `=== 0` como hallazgo).
-- [ ] 11.4 Gate: `arckode analyze` 0 violaciones · `bun test` · typecheck.
+- [x] 11.1 Confirmado contra el framework: `RepositoryAdapter<T>.update(id, data)` NO acepta
+      condición/WHERE adicional — sin CAS posible por esta interfaz. `orm.transaction()` SÍ existe
+      y se usa en el proyecto (`accounting/journal-entry.ts`, `habitaciones/batch-create.ts`,
+      `reservas/checkin.ts`), pero `adapters/postgres.ts:64-81` hace `BEGIN` liso, sin
+      `SELECT...FOR UPDATE` ni isolation level configurable — bajo READ COMMITTED (default),
+      envolver `refund()` en una transacción NO cierra la carrera (dos transacciones concurrentes
+      igual leen `refundAmount=0` antes de que ninguna haga commit). Sería una falsa sensación de
+      fix, no un fix real. Un campo `version` tampoco sirve sin que `update()` soporte
+      `WHERE id=? AND version=?` — la interfaz no lo permite.
+- [ ] 11.2 No ejecutable sin una de estas dos cosas: (a) feature nueva en `arckode-framework`
+      (`update(id, data, {expect: Partial<T>})` → `WHERE id=? AND expect.k=v...`, `null` si 0 filas
+      afectadas) — pedir como feature request al framework; o (b) SQL crudo puntual para ese único
+      UPDATE condicional — prohibido por regla dura del proyecto. Ninguna disponible hoy.
+- [x] 11.3 El test "race" de `deposits.test.ts` SIGUE documentando `rejected.length === 0` como
+      hallazgo real (no se cambió a `>= 1` — hacerlo sin haber arreglado nada falsificaría el gate).
+- [ ] 11.4 No aplica — nada que verificar sobre un cambio que no se hizo. Reabrir cuando el framework
+      exponga (a) o el proyecto decida asumir el riesgo con (b).
 
 ## DT-09 — Facturación electrónica real (BLOQUEADA, no ejecutar sin decisión)
 - [ ] 9.1 Requiere: elegir país/autoridad a integrar primero (DGII República Dominicana es el mercado
@@ -122,37 +120,36 @@ disponible" con su propia cuenta. Confirmado con test (`deposits.test.ts`, caso 
 - [ ] 9.2 Cuando haya credenciales: implementar `FiscalAdapter.issue()` real reemplazando
       `stubFiscalAdapter`, sin tocar `nextNcf()`/`buildNcf()` (ya correctos).
 
-## DT-10 — Combo POS no valida disponibilidad de sus componentes
+## DT-10 — Combo POS no valida disponibilidad de sus componentes ✅ CERRADA (2026-07-28)
 
 Origen: `openspec/changes/carta-experiencia-avanzada/design.md` (riesgo R2), aceptada explícitamente
-como deuda de alcance de esa v1, no arreglada a medias ni bloqueada por nada externo — se puede
-implementar en cualquier momento que se decida priorizarla.
+como deuda de alcance de esa v1.
 
 ### DT-10.1 — Diagnóstico + diseño
-- [ ] 10.1 Confirmar el estado actual: `backend/src/modules/restaurant/usecases/order-lines.ts`
-      (`addComboLine`) NO llama `isWithinAvailabilityWindow` ni chequea `item.available` sobre
-      ningún componente del combo al explotarlo en `combo_header`+`combo_component` — solo el
-      camino de ítem suelto (`addLine` con `menuItemId`) tiene ese chequeo (línea ~220).
-- [ ] 10.2 Diseñar el chequeo: por cada componente resuelto del combo, aplicar el MISMO criterio que
-      ya usa el ítem suelto (`item.available !== 0` Y `isWithinAvailabilityWindow(item, new Date())`)
-      ANTES de crear ninguna fila — si un componente falla, rechazar el combo completo con
-      `ValidationError` 400 (no vender un combo "a medias" con un componente inventado).
-- [ ] 10.3 Definir el mensaje de error: debe identificar QUÉ componente está agotado/fuera de horario
-      (ej. `"{componentName}" no está disponible ahora mismo` — no un genérico "combo no disponible"
-      que oculte cuál de los N componentes falló).
+- [x] 10.1 Confirmado: `addComboLine` no chequeaba disponibilidad de componentes (solo `addLine`
+      con `menuItemId` suelto lo hacía).
+- [x] 10.2 Chequeo aplicado: por cada componente resuelto, `item.available !== 0` Y
+      `isWithinAvailabilityWindow(item, new Date())` ANTES de crear cualquier fila (header incluido)
+      — se resuelven y validan TODOS los componentes primero (`resolvedComponents`), recién después
+      se crea el header y las filas de componente reusando el `item` ya fetcheado (sin refetch).
+- [x] 10.3 Mensaje de error identifica el componente: `"${item.name}" no está disponible ahora
+      mismo` / `"${item.name}" no está disponible en este horario`.
 
 ### DT-10.2 — Implementación
-- [ ] 20.1 Agregar el chequeo en `addComboLine` (`order-lines.ts`), reusando
-      `isWithinAvailabilityWindow` de `order-totals.ts` (sin duplicar la lógica).
-- [ ] 20.2 Frontend: `comanda.vue` (`availableCombos`) debe filtrar también por disponibilidad de
-      TODOS sus componentes, no solo por `combo.available !== 0` (hoy solo chequea eso) — para no
-      mostrar en la lista un combo que el backend va a rechazar al agregarlo.
-- [ ] 20.3 Tests: combo con un componente 86'd → 400, combo no se crea; combo con un componente
-      fuera de franja horaria → 400; combo con todos los componentes disponibles → sigue
-      funcionando igual que hoy (regresión cero).
+- [x] 20.1 `backend/src/modules/restaurant/usecases/order-lines.ts` (`addComboLine`): loop de
+      resolución+validación separado del loop de creación, reusa `isWithinAvailabilityWindow` de
+      `order-totals.ts` sin duplicar lógica.
+- [x] 20.2 `frontend/src/pages/restaurante/comanda.vue` (`availableCombos`): ahora cruza
+      `combo.items` contra `items.value` (Map por id) y exige `available !== 0 && availableNow !==
+      false` en TODOS los componentes, además de `combo.available !== 0`.
+- [x] 20.3 Tests nuevos en `order-lines-combos.test.ts` (+3, reloj fijo para el caso de franja
+      horaria): componente 86'd → 400 sin crear filas; componente fuera de franja → 400 sin crear
+      filas; todos disponibles → regresión cero (16/16 tests del archivo pasan).
 
 ### DT-10.3 — QA + gate
-- [ ] 30.1 QA adversarial: componente que sale de disponibilidad ENTRE la carga de la lista y el
-      click de agregar (race de UI) — el backend debe seguir siendo la fuente de verdad, el rechazo
-      del servidor no debe romper la UI (mostrar el error, no crashear).
-- [ ] 30.2 Gate: `arckode analyze` 0 violaciones · `bun test` · typecheck.
+- [x] 30.1 QA adversarial: el rechazo es responsabilidad EXCLUSIVA del backend (fuente de verdad);
+      el frontend solo evita ofrecer combos que el backend rechazaría, pero si la disponibilidad
+      cambia entre el fetch de la lista y el click, el backend igual rechaza con `ValidationError`
+      (400 limpio, no crashea la UI — mismo mecanismo que ya usan los errores de `addLine`).
+- [x] 30.2 Gate: `arckode analyze` ✅ VÁLIDO (0 violaciones) · `bun test src/modules/restaurant/`
+      186/186 · `bun run tsc --noEmit` sin errores en restaurant · `vue-tsc -b` frontend limpio.

@@ -57,7 +57,18 @@ const availableItems = computed(() => {
   return activeCategoryId.value === 'all' ? list : list.filter((i) => i.categoryId === activeCategoryId.value)
 })
 // Los combos no tienen categoryId propio — aparecen siempre, sin importar el filtro de categoría activo.
-const availableCombos = computed(() => combos.value.filter((c) => c.available !== 0))
+// DT-10 — un combo con algún componente 86'd o fuera de franja horaria no se ofrece: el backend lo
+// rechazaría igual al agregarlo (order-lines.ts), mostrarlo invita al click fallido.
+const availableCombos = computed(() => {
+  const itemsById = new Map(items.value.map((i) => [i.id, i]))
+  return combos.value.filter((c) => {
+    if (c.available === 0) return false
+    return (c.items ?? []).every((ci) => {
+      const it = itemsById.get(ci.menuItemId)
+      return !!it && it.available !== 0 && it.availableNow !== false
+    })
+  })
+})
 
 async function reloadOrder() {
   order.value = await RestaurantService.getOrder(orderId.value)

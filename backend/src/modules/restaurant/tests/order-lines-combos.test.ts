@@ -7,6 +7,28 @@ import type { RepositoryAdapter, Auth } from 'arckode-framework'
 import { addLine, updateLine, removeLine, type OrderLinesDeps } from '../usecases/order-lines'
 import type { OrderDTO, OrderItemDTO, MenuItemDTO, CategoryDTO, StationDTO, ComboDTO, ComboItemDTO, CurrentUser } from '../types'
 
+// Reloj fijo para DT-10 (mismo patrón que availability.test.ts) — isWithinAvailabilityWindow usa
+// `new Date()` internamente, se sobreescribe SOLO durante el test y se restaura siempre.
+let restoreClock: (() => void) | null = null
+function mockClock(hour: number, minute: number): void {
+  const RealDate = Date
+  class FixedDate extends RealDate {
+    constructor(...args: any[]) {
+      if (args.length === 0) { super(); this.setHours(hour, minute, 0, 0) }
+      // @ts-expect-error - passthrough variádico al constructor real de Date
+      else super(...args)
+    }
+    static now(): number {
+      const d = new RealDate()
+      d.setHours(hour, minute, 0, 0)
+      return d.getTime()
+    }
+  }
+  // @ts-expect-error - override deliberado, test-only
+  globalThis.Date = FixedDate
+  restoreClock = () => { globalThis.Date = RealDate }
+}
+
 const strictAuth: Auth = {
   assertOwnership: (resourceHotel: string, userHotel: string, role?: string, sa?: string) => {
     if (role === sa) return
@@ -155,6 +177,40 @@ describe('addLine — combos (F2)', () => {
   it('combo inexistente o de otro hotel se rechaza', async () => {
     const { deps } = setup()
     await expect(addLine(deps, 'o1', { comboId: 'no-existe', quantity: 1 }, user)).rejects.toThrow()
+  })
+})
+
+// DT-10 — un componente 86'd o fuera de franja horaria rechaza el combo COMPLETO, sin crear
+// ninguna fila (ni header ni componentes) — mismo criterio que un ítem suelto vía addLine.
+describe('addLine — combos: DT-10 disponibilidad de componentes', () => {
+  it('componente con available:0 → 400, no crea ninguna fila (ni header)', async () => {
+    const { deps, linesStore } = setup()
+    const item = await deps.items.findOne({ id: 'B' })
+    await deps.items.update('B', { ...item, available: 0 })
+    await expect(addLine(deps, 'o1', { comboId: 'combo1', quantity: 1 }, user))
+      .rejects.toThrow('"Papas" no está disponible ahora mismo')
+    expect(linesStore).toHaveLength(0)
+  })
+
+  it('componente fuera de franja horaria → 400, no crea ninguna fila', async () => {
+    const { deps, linesStore } = setup()
+    const item = await deps.items.findOne({ id: 'C' })
+    await deps.items.update('C', { ...item, availableFrom: '18:00', availableTo: '23:00' })
+    mockClock(10, 0) // 10:00am — fuera de la franja 18:00-23:00 de Refresco
+    try {
+      await expect(addLine(deps, 'o1', { comboId: 'combo1', quantity: 1 }, user))
+        .rejects.toThrow('"Refresco" no está disponible en este horario')
+      expect(linesStore).toHaveLength(0)
+    } finally {
+      restoreClock?.()
+    }
+  })
+
+  it('todos los componentes disponibles → sigue funcionando igual (regresión cero)', async () => {
+    const { deps, linesStore } = setup()
+    const header = await addLine(deps, 'o1', { comboId: 'combo1', quantity: 1 }, user)
+    expect(header.name).toBe('Combo Familiar')
+    expect(linesStore).toHaveLength(4)
   })
 })
 

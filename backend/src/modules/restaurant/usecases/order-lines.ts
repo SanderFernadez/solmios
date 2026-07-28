@@ -149,6 +149,18 @@ async function addComboLine(
     user,
   )
 
+  // DT-10 — resolver y validar disponibilidad de TODOS los componentes ANTES de crear ninguna fila
+  // (mismo criterio que addLine: available + franja horaria). Si un componente falla, se rechaza
+  // el combo COMPLETO — no se vende "a medias" con un componente inventado o agotado.
+  const resolvedComponents: { component: NonNullable<typeof combo.items>[number]; item: NonNullable<Awaited<ReturnType<typeof deps.items.findOne>>> }[] = []
+  for (const component of combo.items ?? []) {
+    const item = await deps.items.findOne({ id: component.menuItemId })
+    if (!item || item.hotelId !== order.hotelId) throw new ValidationError('El ítem no existe o es de otro hotel')
+    if ((item.available ?? 1) === 0) throw new ValidationError(`"${item.name}" no está disponible ahora mismo`)
+    if (!isWithinAvailabilityWindow(item, new Date())) throw new ValidationError(`"${item.name}" no está disponible en este horario`)
+    resolvedComponents.push({ component, item })
+  }
+
   const unitPrice = Number(combo.price || 0)
   const taxRate = combo.taxRate ?? await hotelTaxRate(deps.config, deps.hotels, order.hotelId)
   const headerData = {
@@ -170,9 +182,7 @@ async function addComboLine(
   } as Omit<OrderItemDTO, 'id'>
   const header = (await deps.lines.create(headerData)) as OrderItemDTO
 
-  for (const component of combo.items ?? []) {
-    const item = await deps.items.findOne({ id: component.menuItemId })
-    if (!item || item.hotelId !== order.hotelId) throw new ValidationError('El ítem no existe o es de otro hotel')
+  for (const { component, item } of resolvedComponents) {
     const station = await resolveStation(deps, item, order.hotelId)
     const componentData = {
       hotelId: order.hotelId,

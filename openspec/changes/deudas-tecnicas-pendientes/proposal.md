@@ -5,7 +5,9 @@
 Trackear formalmente las deudas técnicas que quedaban sueltas en la tabla "Deudas técnicas" del
 `CLAUDE.md` del proyecto, y que **siguen reales tras verificar contra el código actual** (2026-07-24).
 Dos de las cuatro filas candidatas resultaron ya resueltas en sesiones previas (el `CLAUDE.md` estaba
-desactualizado, corregido en este mismo cambio) — quedan **2 deudas de ejecución + 1 bloqueada**.
+desactualizado, corregido en este mismo cambio). Estado final (2026-07-28): **DT-08 y DT-10 cerradas
+· DT-07 y DT-11 bloqueadas de framework (investigado, no accionable sin SQL crudo o feature nueva del
+framework) · DT-09 bloqueada por decisión de negocio**.
 
 ## Motivation
 
@@ -18,27 +20,29 @@ Antes de crear tareas para algo que YA no es cierto, se verificó cada fila cand
 |---|---|---|
 | `electronic_invoicing.enabled` inalcanzable | **Ya resuelto.** `settings/index.vue` (tab Facturación electrónica) ya persiste el config como objeto `{enabled,...}`, no como array. No queda ningún seed/escritura vieja. | Corregido en `CLAUDE.md` (marcado ✅ RESUELTO), sin tarea. |
 | PC-4 Service Worker desactivado | **Ya resuelto.** Commit `5857848` (#369 #370 #222) reactivó el SW con network-first + bypass `/api/*`. Código verificado en `frontend/public/sw.js` + `main.ts`. | Corregido en `CLAUDE.md` (marcado ✅ RESUELTO), sin tarea. |
-| Search de facturas O(n) | **Sigue real.** `list-invoices.ts` (marcador `DT-07` ya en el código) trae toda la tabla del hotel y filtra en JS cuando hay `?search=`. | **DT-07** en este change. |
+| Search de facturas O(n) | **BLOQUEADA de framework (confirmado 2026-07-28).** `RepositoryAdapter<T>.findMany/paginate/count` de `arckode-framework` solo acepta `filters: Record<string, unknown>` — igualdad exacta, sin operador `contains`/`LIKE`/`ILIKE`. El propio `list-invoices.ts` ya documenta esto en comentario. Mover el filtro a WHERE sin esa capacidad exige SQL crudo (prohibido) o un parche al framework (mismo criterio que el patch de Postgres, fuera de alcance). El código actual es la única implementación válida hoy, acotada por `hotelId` antes de escanear. | **DT-07** en este change, marcada `blocked`. |
 | Depósitos = ledger desconectado | **RESUELTO (2026-07-28, opción mínima viable).** `PaymentsService.createDeposit/refundDeposit/releaseDeposit` emiten `onDepositCreated/onDepositRefunded/onDepositReleased`; `connectors/payments-accounting.ts` los asienta como pasivo real (DR Bancos/CR Depósitos de Huéspedes) vía `recordDeposit`/`recordDepositRelease` — funciones que YA existían sin cablear. De paso se corrigió un bug preexistente en `recordDepositRelease` (`refundAmount ?? amount` nunca caía al fallback porque `refundAmount` tiene default 0, no `undefined`). Stripe real (hold con `capture_method:manual`) queda fuera, tal como se decidió. | **DT-08 cerrada** en este change. |
 | Facturación electrónica (stub) | **Sigue real, pero bloqueada.** `fiscal.ts` tiene la estructura (`FiscalAdapter`) lista, pero el `stubFiscalAdapter` solo simula — implementarlo de verdad requiere credenciales/certificados de la autoridad fiscal del país (DGII para RD), igual que WhatsApp requiere creds Meta. No es trabajo de código puro. | **DT-09** en este change, marcada `blocked` (decisión de negocio: ¿qué país/autoridad priorizar?). |
-| Combo POS no valida disponibilidad de sus componentes | **Nueva, aceptada 2026-07-27 en `carta-experiencia-avanzada`.** `order-lines.ts` (`addComboLine`) explota un combo en header+componentes sin chequear `item.available` ni la franja horaria (F6) de cada componente — un combo con un componente 86'd o fuera de horario se sigue vendiendo igual. Documentada como decisión de alcance (v1 simple), no un bug no detectado. | **DT-10** en este change. |
-| `DepositsUseCase.refund()` sin lock de concurrencia | **Nueva, hallada por QA adversarial de DT-08 (2026-07-28).** Read-then-write sin lock optimista: dos refunds concurrentes sobre el mismo depósito leen el mismo `refundAmount` antes de que ninguno escriba, así que AMBOS pasan la validación de "no exceder el disponible" con su propia cuenta — test `deposits.test.ts` ("race", hallazgo NO resuelto) lo confirma con `rejected.length === 0`. Preexistente, no introducido por DT-08. | **DT-11** en este change. |
+| Combo POS no valida disponibilidad de sus componentes | **CERRADA (2026-07-28).** `addComboLine` (`order-lines.ts`) ahora resuelve y valida TODOS los componentes (`available` + `isWithinAvailabilityWindow`) ANTES de crear ninguna fila — si uno falla, rechaza el combo completo con `ValidationError` identificando el componente por nombre. `comanda.vue` (`availableCombos`) ya no ofrece un combo cuyo backend lo rechazaría. 3 tests nuevos (86'd, fuera de franja, regresión cero). | **DT-10** en este change, cerrada. |
+| `DepositsUseCase.refund()` sin lock de concurrencia | **BLOQUEADA de framework (confirmado 2026-07-28).** `RepositoryAdapter<T>.update()` no acepta condición/WHERE adicional (sin CAS posible). `orm.transaction()` existe pero el adapter de Postgres hace `BEGIN` liso sin `SELECT...FOR UPDATE` ni isolation level — envolver `refund()` en una transacción NO cierra la carrera bajo READ COMMITTED, sería una falsa sensación de fix. Un campo `version` tampoco sirve sin que `update()` soporte `WHERE id=? AND version=?`. Fix real requiere una feature nueva en el framework (`update(id, data, {expect: Partial<T>})`) o SQL crudo puntual (prohibido). El test "race" sigue documentando `rejected.length === 0` como hallazgo real — no se falseó el gate. | **DT-11** en este change, marcada `blocked`. |
 
 ## Scope
 
-### In Scope
-- **DT-07**: mover el filtro `search` de facturas de JS a `WHERE` del repositorio (o a un índice/full-text si el adapter lo permite), preservando el contrato actual (`data/total/pages` sobre el conjunto filtrado completo, no solo la página cruda).
+### Cerradas
 - ~~**DT-08**~~ **CERRADA** (2026-07-28) — ver tabla arriba.
+- ~~**DT-10**~~ **CERRADA** (2026-07-28) — ver tabla arriba.
 
-### Out of Scope (bloqueado, no ejecutable ahora)
+### Bloqueadas de framework (investigado 2026-07-28, no ejecutable sin tocar `arckode-framework`)
+- **DT-07** Search de facturas O(n) — `RepositoryAdapter<T>` no expone `LIKE`/`ILIKE`, solo igualdad exacta. Forzarlo exigiría SQL crudo (regla dura prohibida) o un parche al framework. Propuesta mínima si se decide encarar: pedir al framework un operador `contains` en `filters` (feature request), no un workaround local.
+- **DT-11** `DepositsUseCase.refund()` sin lock de concurrencia — `RepositoryAdapter<T>.update()` no soporta condición/WHERE adicional (sin CAS); el `orm.transaction()` del adapter Postgres no aísla con `SELECT...FOR UPDATE`, envolver en transacción no cierra la carrera. Propuesta mínima si se decide encarar: pedir al framework `update(id, data, {expect: Partial<T>})` que devuelva `null` si 0 filas afectadas.
+
+### Out of Scope (bloqueado por decisión de negocio, no por código)
 - **DT-09** Facturación electrónica real (DGII/DIAN/SAT) — requiere credenciales/certificados del país, decisión de negocio previa. Queda documentada, no implementada.
-- **DT-10** Combo no valida disponibilidad de componentes — aceptada como deuda de alcance (`carta-experiencia-avanzada`, R2 de `design.md`), no bloqueada por nada externo; se implementa cuando el usuario decida priorizarla (agregar `assertAvailability` por componente en `addComboLine`, mismo criterio que ya usa el camino de ítem suelto).
-- **DT-11** `DepositsUseCase.refund()` sin lock de concurrencia — arreglarla de verdad exige lock optimista (version field + compare-and-swap) o transacción atómica en el repo; no bloqueada por nada externo, es trabajo de diseño+código cuando se priorice.
 - WhatsApp Business API — ya trackeado en `match-misterplan`, bloqueado por creds Meta. No se duplica acá.
 
 ## Rollback plan
-DT-07 es un cambio acotado a un usecase, sin migración de schema destructiva. Revertir = `git revert`
-del commit del sprint. DT-08 (cerrada): revertir = `git revert` de los 3 archivos tocados
-(`payments/sockets.ts`, `payments/service.ts`, `connectors/payments-accounting.ts`) + el fix de
-`recordDepositRelease` en `accounting/usecases/auto-from-events.ts` — no requiere migración de datos
-(no se crearon columnas ni tablas nuevas, solo se cablearon eventos ya declarados).
+DT-08 (cerrada): revertir = `git revert` de los 3 archivos tocados (`payments/sockets.ts`,
+`payments/service.ts`, `connectors/payments-accounting.ts`) + el fix de `recordDepositRelease` en
+`accounting/usecases/auto-from-events.ts` — no requiere migración de datos (no se crearon columnas
+ni tablas nuevas, solo se cablearon eventos ya declarados). DT-10 (cerrada): revertir = `git revert`
+del commit — cambio acotado a `order-lines.ts` + `comanda.vue`, sin schema ni migración.
