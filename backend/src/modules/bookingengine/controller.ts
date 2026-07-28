@@ -15,6 +15,7 @@ import {
 import { getPublicBookingBySlug, createPublicBookingDirect } from './usecases/public-booking'
 import { getPublicHotelInfo } from './usecases/public-hotel-info'
 import { getPublicReservation } from './usecases/public-reservation'
+import { listActiveHotelSlugs, buildSitemapXml, resolveBaseUrl } from './usecases/sitemap'
 
 export class BookingengineController {
   constructor(
@@ -174,7 +175,30 @@ export class BookingengineController {
       stripeUrls,
     )
   }
+
+  /**
+   * F1 1.11 — Sitemap dinámico (`GET /sitemap.xml`). Lista `/h/:slug` por cada hotel con
+   * `onlineBookingStatus='active'`. Público (sin auth), cache-friendly. Devuelve XML crudo
+   * con su Content-Type (mismo patrón que `facturas/print` y `capacitacion` para HTML/PDF).
+   */
+  async getSitemap(req: HttpRequest) {
+    this.logger.info('GET /sitemap.xml')
+    const urls = await listActiveHotelSlugs({ hotels: this.hotelsRepo! })
+    const baseUrl = resolveBaseUrl(req)
+    const xml = buildSitemapXml(baseUrl, urls)
+    return {
+      status: 200,
+      headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': SITEMAP_CACHE_CONTROL },
+      body: xml,
+    }
+  }
 }
+
+/**
+ * Cache-Control del sitemap: 1h (3600s). Es el TTL que recomendamos para crawlers — el listado
+ * de hoteles activos cambia poco (alta/baja de motor público) y un refresco horario alcanza.
+ */
+const SITEMAP_CACHE_CONTROL = 'public, max-age=3600'
 
 /**
  * F0 0.16 — Deriva la base pública del widget desde el request cuando `PUBLIC_BASE_URL` no

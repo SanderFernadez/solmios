@@ -82,6 +82,13 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getHotelPublicInfo(req)
       })
+      // F1 1.11 — Sitemap dinámico. Público (sin auth), cache-control 1h. Rate-limit suave:
+      // bots buenos respetan crawl-delay, pero un bot malicioso podría meter ruido. 60/min sobra.
+      router.get('/sitemap.xml', async (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`sitemap:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
+        return controller.getSitemap(req)
+      })
       router.get('/api/public/booking/:slug', async (req: any) => {
         const { allowed, retryAfter } = rateLimit(`public-booking-info:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
