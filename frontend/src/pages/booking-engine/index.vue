@@ -176,6 +176,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { BookingEngineService, type BookingConfig, type BookingAnalytics } from '@/services/BookingEngine.service'
+import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 
@@ -187,6 +188,11 @@ const config = ref<BookingConfig | null>(null)
 const analytics = ref<BookingAnalytics | null>(null)
 const saving = ref(false)
 const copied = ref(false)
+// F2 2.11-2.13 (solmi-direct-booking): el snippet embebible y la URL del widget ahora usan
+// el SLUG público del hotel, no el hotelId. El slug se resuelve desde GET /api/hoteles/:id
+// (endpoint ya existente; el modelo Hotels incluye `slug` desde F0 0.1). Si el hotel no tiene
+// slug todavía (alta pre-seeder), el snippet muestra un placeholder y el preview se deshabilita.
+const hotelSlug = ref<string>('')
 
 const themes = [
   { id: 'navy', name: 'Navy', color: 'bg-navy' },
@@ -198,8 +204,7 @@ const themes = [
 
 const embedCode = computed(() =>
   `<script src="${window.location.origin}/widget/loader.js"\n` +
-  `  data-hotel="${hotelId.value || 'HOTEL_ID'}"\n` +
-  `  data-api="${window.location.origin}">\n` +
+  `  data-hotel="${hotelSlug.value || 'SLUG-DEL-HOTEL'}">\n` +
   `<\/script>`
 )
 
@@ -217,11 +222,12 @@ async function saveConfig() {
 }
 
 function verWidget() {
-  if (hotelId.value) {
-    window.open(`/widget/index.html?hotel=${hotelId.value}`, '_blank')
-  } else {
-    toast.error('Hotel no identificado')
+  if (!hotelSlug.value) {
+    toast.error('Definí el slug del hotel en Configuración → Página pública')
+    return
   }
+  // F2 2.13: abrimos el widget en modo embed (mismo layout que tendría embebido en sitio externo).
+  window.open(`/book/${encodeURIComponent(hotelSlug.value)}?embed=1`, '_blank')
 }
 
 function copyCode() {
@@ -232,12 +238,20 @@ function copyCode() {
 
 onMounted(async () => {
   try {
-    const [cfg, stats] = await Promise.all([
+    const tasks: Promise<unknown>[] = [
       BookingEngineService.getConfig(),
       BookingEngineService.getAnalytics(),
-    ])
+    ]
+    // Resolver el slug del propio hotel para el snippet embebible y el preview (F2 2.13).
+    if (hotelId.value) {
+      tasks.push(http.get<{ slug?: string }>(`/hoteles/${hotelId.value}`))
+    }
+    const [cfg, stats, hotel] = await Promise.all(tasks) as [BookingConfig, BookingAnalytics, { slug?: string } | undefined]
     config.value = cfg
     analytics.value = stats
+    if (hotel && typeof hotel.slug === 'string' && hotel.slug.trim() !== '') {
+      hotelSlug.value = hotel.slug.trim()
+    }
   } catch {
     toast.error('Error al cargar configuración')
   }

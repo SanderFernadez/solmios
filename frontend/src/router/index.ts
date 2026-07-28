@@ -20,9 +20,14 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      // F2 2.11 (solmi-direct-booking) — reemplazo del widget SPA viejo. La ruta /book/:slug
+      // punta ahora al NUEVO widget multi-step (pages/public/booking-widget.vue), que reusa
+      // useBooking + 6 step components. El archivo pages/booking-widget/index.vue fue borrado.
+      // Sin auth guard: el backend rate-limita por IP y los endpoints públicos no requieren sesión.
+      // Embebible en sitios externos via /widget/loader.js (shim iframe con ?embed=1, F2 2.13).
       path: '/book/:slug',
       name: 'booking-widget',
-      component: () => import('@/pages/booking-widget/index.vue'),
+      component: () => import('@/pages/public/booking-widget.vue'),
       meta: { layout: 'none' },
     },
     {

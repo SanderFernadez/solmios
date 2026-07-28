@@ -19,8 +19,11 @@
       - `/h/:slug?booking=:id&token=:token` (post-redirect Stripe, F3 3.17 confirma)
   -->
   <div class="min-h-screen bg-surface">
-    <!-- Header mobile-first: nombre del hotel + stepper. -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
+    <!-- Header mobile-first: nombre del hotel + stepper.
+         F2 2.13: cuando ?embed=1 (iframe en sitio externo), no se renderiza. El sitio host
+         ya aporta branding propio; mostrar el header acá sería redundante y robaría espacio
+         vertical dentro del iframe. El stepper pasa al main para no perder el contexto. -->
+    <header v-if="!embed" class="bg-white border-b border-slate-200 sticky top-0 z-10">
       <div class="max-w-md mx-auto px-4 py-3">
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
@@ -56,8 +59,37 @@
       </div>
     </header>
 
-    <!-- Cuerpo: el step actual. -->
-    <main class="max-w-md mx-auto px-4 py-6">
+    <!-- Cuerpo: el step actual.
+         F2 2.13: en embed mode el main ocupa todo el iframe (sin max-w-md centrado) y monta
+         el stepper compacto arriba — el sitio host aporta branding, pero el usuario del widget
+         embebido sigue necesitando saber en qué paso está. -->
+    <main :class="embed ? 'max-w-full px-3 py-4' : 'max-w-md mx-auto px-4 py-6'">
+      <div
+        v-if="embed && (store.currentStep > 0 || store.status === 'searching')"
+        class="flex items-center gap-1.5 mb-3"
+      >
+        <button
+          v-for="(label, idx) in stepLabels"
+          :key="label"
+          type="button"
+          class="flex items-center gap-1.5"
+          :disabled="idx > store.currentStep"
+          @click="store.goToStep(idx)"
+        >
+          <span
+            :class="[
+              'h-2 rounded-full transition-all',
+              idx === store.currentStep ? 'w-6 bg-cyan'
+              : idx < store.currentStep ? 'w-2 bg-cyan'
+              : 'w-2 bg-slate-300',
+            ]"
+          />
+        </button>
+        <span class="ml-auto text-[11px] font-bold text-text-muted uppercase tracking-wide">
+          Paso {{ store.currentStep + 1 }} / 6
+        </span>
+      </div>
+
       <component :is="currentComponent" />
 
       <!-- Nav back (común a todos los steps salvo Search y Confirm). -->
@@ -95,6 +127,12 @@ const store = useBookingStore()
 
 const hotelName = ref('')
 const hotelLoading = ref(true)
+
+// F2 2.13 — `?embed=1` indica que el widget se renderiza dentro de un <iframe> embebido en
+// un sitio externo (cargado por /widget/loader.js). En ese modo se oculta el header ( branding
+// redundante con el host) y el main ocupa todo el iframe. El stepper se mantiene arriba del
+// contenido para no perder el contexto del paso actual.
+const embed = computed(() => route.query.embed === '1')
 
 // Labels del stepper (para el tooltip / aria-label; visible solo como puntos).
 const stepLabels = ['Fechas', 'Habitación', 'Extras', 'Datos', 'Pago', 'Confirmación']
