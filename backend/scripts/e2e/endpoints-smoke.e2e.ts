@@ -1,3 +1,4 @@
+export {}
 // scripts/e2e/endpoints-smoke.e2e.ts — Smoke test de outputs de TODOS los módulos.
 //
 // Pega a los endpoints GET de lectura de cada módulo y clasifica la respuesta.

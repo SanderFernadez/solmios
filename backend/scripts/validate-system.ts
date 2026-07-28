@@ -1,3 +1,4 @@
+export {}
 /**
  * validate-system.ts — Suite de validación E2E de Manager Hotel (SOLMI OS)
  *
