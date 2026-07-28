@@ -18,15 +18,18 @@ const loaded = ref(false)
 export async function loadCurrencyConfig(hotelId?: string): Promise<CurrencyConfig> {
   if (loaded.value) return currencyConfig.value
   try {
+    // `/settings/currency` nunca existió en el backend (404 silencioso). El endpoint genérico de
+    // config por key es `/configuracion/:key` (devuelve `{valor}`, no `{value}` — inconsistencia
+    // de nombres con otros endpoints, no se toca acá, solo se lee correctamente).
     const params = hotelId ? `?hotelId=${hotelId}` : ''
-    const config = await http.get<{ value: CurrencyConfig }>(`/settings/currency${params}`)
-    if (config?.value) {
+    const config = await http.get<{ valor: CurrencyConfig | null }>(`/configuracion/currency${params}`)
+    if (config?.valor) {
       currencyConfig.value = {
-        secondaryCurrency: config.value.secondaryCurrency || '',
-        exchangeRate: Number(config.value.exchangeRate) || 0,
+        secondaryCurrency: config.valor.secondaryCurrency || '',
+        exchangeRate: Number(config.valor.exchangeRate) || 0,
       }
     }
-  } catch { /* silent */ }
+  } catch { /* silent: sin config de moneda secundaria configurada, se usa el default vacío */ }
   loaded.value = true
   return currencyConfig.value
 }
