@@ -285,14 +285,14 @@ Specs: `specs/booking-widget/spec.md`.
 
 ### Backend — Promo codes + upsells
 
-- [ ] 2.1 Crear módulo `backend/src/modules/promo-codes/` con `make:module PromoCodes`.
+- [x] 2.1 Crear módulo `backend/src/modules/promo-codes/` con `make:module PromoCodes`.
       Modelo `PromoCodeModel` (tabla `promo_codes`):
       `id, hotelId, code, kind ('percent'|'fixed'), value, minAmount (nullable), maxUses (nullable), uses (default 0), validFrom (nullable), validTo (nullable), active (default 1) + timestamps`.
       Unique index `(hotelId, code)`.
       **Acceptance**: `RUN_MIGRATE` crea tabla + unique index; insertar 2 codes iguales para
       el mismo hotel → error de constraint.
 
-- [ ] 2.2 Service `PromoCodesService` + usecases `promo-crud.ts` (admin CRUD) +
+- [x] 2.2 Service `PromoCodesService` + usecases `promo-crud.ts` (admin CRUD) +
       `promo-validate.ts` (público): `validate(hotelId, code, subtotal)` devuelve
       `{valid: bool, discount: number, reason?: string}`. Razones: not_found, expired,
       max_uses_reached, min_amount_not_met, inactive. NO incrementa `uses` todavía (solo al
@@ -300,20 +300,20 @@ Specs: `specs/booking-widget/spec.md`.
       **Acceptance**: código vencido → `{valid:false, reason:'expired'}`; código válido con
       subtotal suficiente → `{valid:true, discount: calculatedValue}`.
 
-- [ ] 2.3 Modelo `UpsellModel` en módulo booking-engine (tabla `upsells`):
+- [x] 2.3 Modelo `UpsellModel` en módulo booking-engine (tabla `upsells`):
       `id, hotelId, name (ej. 'Desayuno'), description, price, kind ('per_room'|'per_person'|'per_stay'), active (default 1), sortOrder + timestamps`.
       No requiere módulo nuevo — vive en booking-engine como sub-dominio.
       **Acceptance**: `RUN_MIGRATE` crea tabla; admin puede CRUD upsells.
 
 ### Backend — Widget endpoints
 
-- [ ] 2.4 `GET /api/public/hotels/:slug/rates?checkIn=&checkOut=&rooms=&guests=`:
+- [x] 2.4 `GET /api/public/hotels/:slug/rates?checkIn=&checkOut=&rooms=&guests=`:
       usa `availabilityUseCase.check()` para devolver room types disponibles con tarifa
       derivada (RoomRates/Seasons existentes) + impuestos desglosados (ITBIS) + "From $X"
       para la landing. Incluye `availableCount` por room type para urgencia (D11).
       **Acceptance**: respuesta incluye `{roomTypes: [{id, name, fromPrice, availableCount, taxBreakdown}], currency, taxes}`;
 
-- [ ] 2.5 `POST /api/public/booking` ampliado (de F0 0.16): schema acepta `promoCode`,
+- [x] 2.5 `POST /api/public/booking` ampliado (de F0 0.16): schema acepta `promoCode`,
       `upsells: [{id, quantity}]`. El usecase valida promo (`promo-validate.ts`), aplica
       descuento, suma upsells, calcula total final, atómicamente incrementa `promoCode.uses`
       SOLO si la creación de la reserva succeede. Devuelve `{reservationId, accessToken,
@@ -321,42 +321,42 @@ Specs: `specs/booking-widget/spec.md`.
       **Acceptance**: usar el mismo promo 2 veces cuando `maxUses=1` → segunda falla con
       `max_uses_reached`; reservar con promo exitoso → `uses` pasa de 0 a 1.
 
-- [ ] 2.6 `GET /api/public/hotels/:slug/upsells` (rate-limited): lista upsells activos para
+- [x] 2.6 `GET /api/public/hotels/:slug/upsells` (rate-limited): lista upsells activos para
       mostrar en el step de upsells del widget. Opcionalmente filtra por `kind`.
       **Acceptance**: devuelve array de upsells ordenado por `sortOrder`.
 
-- [ ] 2.7 Cron nightly `currency-rates-cron.ts`: fetcha open exchange rates (free tier)
+- [x] 2.7 Cron nightly `currency-rates-cron.ts`: fetcha open exchange rates (free tier)
       y guarda en `configuration(key='currency_rates')`. D10 multi-moneda.
       **Acceptance**: tras correr el cron, `GET /api/public/hotels/:slug/rates?currency=USD`
       con hotel en EUR convierte correctamente usando rates guardados.
 
 ### Frontend — Widget SPA-first
 
-- [ ] 2.8 `frontend/src/composables/useBooking.ts` (NEW): state machine con estados
+- [x] 2.8 `frontend/src/composables/useBooking.ts` (NEW): state machine con estados
       `idle → searching → selecting → upselling → checkingout → paying → confirmed | failed`.
       Pinia store setup-syntax. Maneja el multi-step, validación por step, y la
       idempotencia del botón pagar.
       **Acceptance**: navegar back/forward entre steps restaura el estado correcto.
 
-- [ ] 2.9 Componentes Vue por step en `frontend/src/components/booking/`:
+- [x] 2.9 Componentes Vue por step en `frontend/src/components/booking/`:
       `SearchStep.vue`, `RoomsStep.vue`, `UpsellsStep.vue`, `GuestCheckoutStep.vue`,
       `PayStep.vue`, `ConfirmStep.vue`. Cada uno emite eventos al composable.
       **Acceptance**: cada step valida inputs antes de avanzar (SearchStep requiere fechas
       válidas; GuestCheckoutStep valida email regex).
 
-- [ ] 2.10 `frontend/src/pages/public/booking-widget.vue` (NEW): wrapper que usa
+- [x] 2.10 `frontend/src/pages/public/booking-widget.vue` (NEW): wrapper que usa
       `useBooking` + los 6 step components. Layout responsive mobile-first. CTA "Ver
       disponibilidad" (NO "Reservar") en la landing redirige aquí.
       **Acceptance**: sub-2s mobile 4G en Lighthouse audit (Performance ≥ 90).
 
-- [ ] 2.11 Reemplazar `frontend/src/pages/booking-widget/index.vue` (viejo, botón
+- [x] 2.11 Reemplazar `frontend/src/pages/booking-widget/index.vue` (viejo, botón
       "Confirmar Reserva" sin pago): borrar el archivo. Migrar la ruta `/book/:slug`
       al NUEVO widget (mismo path, mismo componente). D-15: este es el widget Vue,
       uno de los DOS widgets duplicados existentes (el otro es el estático, task 2.12).
       **Acceptance**: grep confirma que `pages/booking-widget/index.vue` no existe;
       `/book/:slug` carga el nuevo widget.
 
-- [ ] 2.12 Reemplazar el widget estático `frontend/public/widget/` (D-15): borrar los
+- [x] 2.12 Reemplazar el widget estático `frontend/public/widget/` (D-15): borrar los
       6 archivos (`index.html`, `booking.js`, `loader.js`, `ga4.js`, `api.js`,
       `styles.css`). Su lógica de booking (búsqueda + selección + submit) queda
       cubierta por el nuevo SPA `pages/public/booking-widget.vue` + el composable
@@ -366,7 +366,7 @@ Specs: `specs/booking-widget/spec.md`.
       'public/widget' frontend/` devuelve 0 hits (salvo el nuevo `loader.js` shim
       si se elige opción A en 2.13).
 
-- [ ] 2.13 Loader embebible unificado para sitios externos: el nuevo loader sale del
+- [x] 2.13 Loader embebible unificado para sitios externos: el nuevo loader sale del
       MISMO bundle SPA que la landing `/h/:slug` y el widget `/book/:slug` (router
       decide layout). Decision required (documentar en `specs/booking-widget/spec.md`):
       - **Opción A (preservar retrocompat)**: servir un `loader.js` shim en la URL
@@ -381,23 +381,23 @@ Specs: `specs/booking-widget/spec.md`.
       data-hotel="<slug>"></script>` renderiza el nuevo widget sin cambios en el sitio
       externo. Con Opción B, changelog lo documenta y el nuevo snippet funciona.
 
-- [ ] 2.14 i18n widget: `frontend/src/composables/useBookingI18n.ts` con messages ES/EN/PT.
+- [x] 2.14 i18n widget: `frontend/src/composables/useBookingI18n.ts` con messages ES/EN/PT.
       Idioma default = navegador (`navigator.language`), fallback ES. Switcher de idioma
       en el header del widget.
       **Acceptance**: navegar el widget con `navigator.language='en-US'` muestra textos EN;
       traducción faltante → fallback ES.
 
-- [ ] 2.15 Multi-moneda display: composable `useCurrency(sourceCurrency, targetCurrency)`
+- [x] 2.15 Multi-moneda display: composable `useCurrency(sourceCurrency, targetCurrency)`
       aplica rates de `configuration('currency_rates')`. Switcher de moneda actualiza
       todos los precios del widget. Default = geo-IP via `CF-IPCountry` header.
       **Acceptance**: cambiar moneda de EUR a USD convierte tarifas sin recargar la página.
 
-- [ ] 2.16 Urgencia real D11: en `RoomsStep.vue`, si `roomType.availableCount <= 3` →
+- [x] 2.16 Urgencia real D11: en `RoomsStep.vue`, si `roomType.availableCount <= 3` →
       badge "Pocas habitaciones a este precio"; si `<=1` → "Última disponible". Si `>3` →
       sin badge (no falsificar).
       **Acceptance**: con `availableCount=5`, no aparece badge.
 
-- [ ] 2.17 Calendar view estilo Airbnb: componente `CalendarView.vue` con selección
+- [x] 2.17 Calendar view estilo Airbnb: componente `CalendarView.vue` con selección
       inclusiva de noches (D-respect a mem `planning-calc-inclusive-selection-static-refs`).
       Drag de N celdas = N noches (checkout=última+1). Totales computed, no ref fijo.
       **Acceptance**: seleccionar 3 noches muestra total = 3 × nightlyRate; checkout date
@@ -405,7 +405,7 @@ Specs: `specs/booking-widget/spec.md`.
 
 ### Gate F2
 
-- [ ] 2.18 typecheck + analyze + test + build verde (mismo gate que F0/F1).
+- [x] 2.18 typecheck + analyze + test + build verde (mismo gate que F0/F1).
       **Acceptance**: Lighthouse mobile Performance ≥ 90 en `/h/:slug` y `/book/:slug`.
       `frontend/public/widget/` eliminado; nuevo loader embebible (Opción A o B de 2.13)
       verificado en sitio externo de test.
