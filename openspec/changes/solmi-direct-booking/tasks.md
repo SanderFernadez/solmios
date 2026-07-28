@@ -198,27 +198,27 @@ Specs: `specs/landing-builder/spec.md`.
 
 ### Backend — Landing blocks
 
-- [ ] 1.1 Crear módulo `backend/src/modules/landing/` con `make:module Landing`.
+- [x] 1.1 Crear módulo `backend/src/modules/landing/` con `make:module Landing`.
       Modelo `LandingBlockModel` (tabla `landing_blocks`):
       `id, hotelId, type ('hero'|'gallery'|'amenities'|'location'|'reviews'|'rooms'|'faq'|'cta'|'footer'), config (json), sortOrder (default 0), active (default 1) + timestamps`.
       Registrado en composition-root.
       **Acceptance**: `RUN_MIGRATE` crea la tabla; `arckode analyze` pasa.
 
-- [ ] 1.2 Seeder default de bloques para hoteles existentes: al primer GET si el hotel no
+- [x] 1.2 Seeder default de bloques para hoteles existentes: al primer GET si el hotel no
       tiene bloques, inserta 9 bloques default (uno por type) con `active=1` y `sortOrder`
       estándar (hero=0, gallery=1, amenities=2, rooms=3, reviews=4, location=5, faq=6,
       cta=7, footer=8). Idempotente.
       **Acceptance**: hotel nuevo sin bloques → GET devuelve 9 bloques default; la 2° llamada
       los devuelve sin duplicar.
 
-- [ ] 1.3 Service `LandingService` + usecases `blocks-crud.ts`: `listByHotel(hotelId)`
+- [x] 1.3 Service `LandingService` + usecases `blocks-crud.ts`: `listByHotel(hotelId)`
       (ordenado por sortOrder), `upsert(hotelId, blocks[], user)` (reemplaza config + orden
       atómico), `toggle(hotelId, blockId, active, user)`. Ownership: `findOne({id})` +
       `auth.assertOwnership(...)`.
       **Acceptance**: reorderar atómico (POST array completo) no deja la tabla en estado
       intermedio si falla a la mitad.
 
-- [ ] 1.4 Controller + rutas admin (con auth + permiso `landing:edit`): `GET /api/landing`,
+- [x] 1.4 Controller + rutas admin (con auth + permiso `landing:edit`): `GET /api/landing`,
       `PUT /api/landing` (bulk upsert), `PATCH /api/landing/:id/toggle`. Ruta pública
       `GET /api/public/hotels/:slug/landing` (sin auth, rate-limited) devuelve bloques
       activos ordenados.
@@ -226,11 +226,11 @@ Specs: `specs/landing-builder/spec.md`.
 
 ### Frontend — Landing pública
 
-- [ ] 1.5 `frontend/src/router/index.ts`: agregar ruta `/h/:slug` con `meta: { layout: 'none' }`
+- [x] 1.5 `frontend/src/router/index.ts`: agregar ruta `/h/:slug` con `meta: { layout: 'none' }`
       (sin auth guard, igual que `/book/:slug`). Apunta a `pages/public/hotel-landing.vue`.
       **Acceptance**: navegar `/h/<slug-existente>` carga la landing sin auth.
 
-- [ ] 1.6 `frontend/src/pages/public/hotel-landing.vue` (NEW): componente orquestador que
+- [x] 1.6 `frontend/src/pages/public/hotel-landing.vue` (NEW): componente orquestador que
       1. `PublicHotel.service.getBySlug()` → datos del hotel.
       2. `Landing.service.get(slug)` → bloques activos ordenados.
       3. Renderiza cada bloque en orden según `type`, lazy-loading los pesados (mapa, reviews).
@@ -239,7 +239,7 @@ Specs: `specs/landing-builder/spec.md`.
       **Acceptance**: ver HTML generado contiene `<script type="application/ld+json">` con
       `@type: Hotel` y los campos del hotel.
 
-- [ ] 1.7 Componentes Vue por bloque en `frontend/src/components/landing/`:
+- [x] 1.7 Componentes Vue por bloque en `frontend/src/components/landing/`:
       `HeroBlock.vue`, `GalleryBlock.vue`, `AmenitiesBlock.vue`, `MapBlock.vue`,
       `ReviewsBlock.vue`, `RoomsBlock.vue`, `FaqBlock.vue`, `CtaBlock.vue`, `FooterBlock.vue`.
       Cada uno lee su `config` JSON del block. MapBlock usa Leaflet (lazy-load via dynamic
@@ -247,12 +247,12 @@ Specs: `specs/landing-builder/spec.md`.
       **Acceptance**: lazy-load del mapa verificado en Network tab (no carga Leaflet hasta
       hacer scroll al bloque).
 
-- [ ] 1.8 `frontend/src/components/landing/MapBlock.vue`: Leaflet con `<LMap :zoom=15>` +
+- [x] 1.8 `frontend/src/components/landing/MapBlock.vue`: Leaflet con `<LMap :zoom=15>` +
       `<LMarker :latLng="[hotel.latitude, hotel.longitude]">`. Tile layer OSM (gratis).
       **Acceptance**: renderiza mapa con marker en lat/lng del hotel; `hotel.latitude=0` →
       el bloque no se renderiza (falta config).
 
-- [ ] 1.9 Builder admin en `frontend/src/pages/settings/landing.vue` (NEW pestaña): lista
+- [x] 1.9 Builder admin en `frontend/src/pages/settings/landing.vue` (NEW pestaña): lista
       los 9 bloques con toggle active, drag-and-drop para reorderar (Vuedraggable o similar),
       editor de `config` por bloque (form específico por type). Botón "Guardar" → `PUT /api/landing`.
       **Acceptance**: reorderar persiste; toggle active oculta/muestra en la landing pública
@@ -260,20 +260,20 @@ Specs: `specs/landing-builder/spec.md`.
 
 ### SEO
 
-- [ ] 1.10 `frontend/src/composables/useHotelJsonLd.ts` (NEW): genera JSON-LD
+- [x] 1.10 `frontend/src/composables/useHotelJsonLd.ts` (NEW): genera JSON-LD
       `{@context, @type: 'Hotel', name, description, image: media.hero.url, address,
       geo: {latitude, longitude}, starRating: {ratingValue}, amenityFeature: amenities,
       aggregateRating: {ratingValue, reviewCount}, makesOffer: {priceCurrency, price: fromPrice}}`.
       Si hay FAQ block, también emite `FAQPage`. Si hay reviews, `aggregateRating`.
       **Acceptance**: validar JSON-LD con Google Rich Results Test (la url se testeable post-deploy).
 
-- [ ] 1.11 Sitemap dinámico `frontend/src/pages/sitemap.xml.ts` o server route:
+- [x] 1.11 Sitemap dinámico `frontend/src/pages/sitemap.xml.ts` o server route:
       lista `/h/:slug` por cada hotel con `onlineBookingStatus='active'`. Refresca on-demand.
       **Acceptance**: `GET /sitemap.xml` devuelve XML válido con todas las landing URLs.
 
 ### Gate F1
 
-- [ ] 1.12 `cd backend && bun run typecheck` + `arckode analyze` (0 viol) + `bun test` +
+- [x] 1.12 `cd backend && bun run typecheck` + `arckode analyze` (0 viol) + `bun test` +
       `cd frontend && bun run typecheck` + `bun run build`.
       **Acceptance**: verde antes de F2.
 
