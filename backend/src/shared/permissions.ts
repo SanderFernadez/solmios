@@ -43,6 +43,9 @@ export const MODULES = {
   /** Landing pública del hotel por bloques (F1 solmi-direct-booking). Solo view/edit:
    *  configurar los bloques (textos, fotos, FAQ, orden) no es CRUD de filas múltiples. */
   landing: 'Landing pública',
+  /** Media del hotel (hero/gallery/room) para la landing pública (F0 solmi-direct-booking).
+   *  CRUD de fotos + reorder + alt text. Solo hotel_admin lo gestiona. */
+  media: 'Media del hotel',
 } as const
 
 // Available actions per module
@@ -93,6 +96,8 @@ export const MODULE_ACTIONS: Record<string, (keyof typeof ACTIONS)[]> = {
   // Landing pública: solo view/edit (toggle, reorder, editar config). Sin create/delete
   // (los 9 bloques existen por seeder; el admin no crea/borra tipos).
   landing: ['view', 'edit'],
+  // Media del hotel (F0): CRUD completo (subir/mover/borrar fotos) + reorder drag-and-drop.
+  media: ['view', 'create', 'edit', 'delete'],
 }
 
 /** Acciones válidas para un módulo. Fallback a ['view'] si el módulo no está mapeado (fail-cerrado). */
@@ -145,6 +150,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'purchasing:view', 'purchasing:create', 'purchasing:edit', 'purchasing:delete',
     // Landing pública (F1): el dueño configura los bloques, el orden y los textos.
     'landing:view', 'landing:edit',
+    // Media del hotel (F0): el dueño sube/edita/reordena las fotos de la landing.
+    'media:view', 'media:create', 'media:edit', 'media:delete',
   ],
 
   // Receptionist — la operación del mostrador. Los permisos siguen a lo que el menú del panel le

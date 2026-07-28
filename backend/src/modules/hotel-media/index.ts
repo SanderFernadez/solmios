@@ -1,18 +1,25 @@
 // hotelmedia/index.ts — PUERTA PÚBLICA del módulo hotel_media.
 // ⚠ REGLA: Append-only. No sacar ni modificar exports existentes.
 //
-// Scope F0 (tasks 0.6 + 0.7): modelo ORM + service + usecases. Las RUTAS admin
-// (`/api/hotel-media` GET/POST/PUT/DELETE/reorder) y la ruta pública
-// `/api/public/hotels/:slug/media` se agregan en la task 0.8 (otra pieza). Acá solo
-// wiring: registra el modelo, construye repos + service, y los deja listos para que
-// la task 0.8 cuelgue el controller + router.
+// Wiring: registra el modelo `HotelMedia`, construye repos + service + controller, y
+// expone 6 rutas (F0 task 0.8):
+//   GET    /api/hotel-media                          admin (auth + media:view)
+//   POST   /api/hotel-media                          admin (auth + media:create)
+//   PUT    /api/hotel-media/:id                      admin (auth + media:edit)
+//   DELETE /api/hotel-media/:id                      admin (auth + media:delete)
+//   POST   /api/hotel-media/reorder                  admin (auth + media:edit)
+//   GET    /api/public/hotels/:slug/media            pública (sin auth, rate-limited 60/min/IP)
 import { createModule, OrmRepository } from 'arckode-framework'
 import type { StorageService } from 'arckode-framework/modules/storage'
 import { registerHotelMediaModels } from './model'
 import { HotelMediaService } from './service'
+import { HotelMediaController } from './controller'
 import type { HotelMediaDTO } from './types'
+import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
+import { requireUserType } from '../../infrastructure/auth/require-user-type'
+import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
 
-export { HotelMediaService }
+export { HotelMediaService, HotelMediaController }
 export type {
   HotelMediaDTO, CreateHotelMediaDTO, UpdateHotelMediaDTO, ReorderHotelMediaDTO,
   MediaType, CurrentUser,
@@ -50,25 +57,47 @@ export function HotelMediaModule(opts: { storage?: StorageService } = {}) {
       ],
     },
 
-    create({ logger, orm, auth }) {
+    create({ logger, orm, router, auth }) {
       if (!auth) throw new Error('hotel-media: auth dependency required')
       registerHotelMediaModels(orm)
 
       const media = new OrmRepository<HotelMediaDTO>(orm, 'HotelMedia')
       const rooms = new OrmRepository<any>(orm, 'Rooms')
+      const hotels = new OrmRepository<any>(orm, 'Hotels')
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('hotel-media')
       const service = new HotelMediaService(media, rooms, userRepo, log, auth, opts.storage)
+      const controller = new HotelMediaController(service, log, media, rooms, hotels)
 
-      // Task 0.8 (paralela) registra acá las rutas:
-      //   GET    /api/hotel-media           — lista con ?type=
-      //   POST   /api/hotel-media           — crear/upload
-      //   PUT    /api/hotel-media/:id       — update
-      //   DELETE /api/hotel-media/:id       — remove
-      //   POST   /api/hotel-media/reorder   — reordenar
-      //   GET    /api/public/hotels/:slug/media — pública agrupada
+      // Guard admin: userType merchant + permiso media:action. Mismo patrón que
+      // landing/index.ts (createPermissionGuard + capa extra de userType).
+      const roleRepo = new OrmRepository<any>(orm, 'Roles')
+      const permGuard = createPermissionGuard(auth, roleRepo)
+      const adminGuard = (action: 'view' | 'create' | 'edit' | 'delete') => [
+        ...permGuard('media', action),
+        requireUserType('merchant'),
+      ]
 
-      log.info('Módulo hotel-media listo (sin rutas — task 0.8 pendiente)')
+      // ─── Rutas admin ──────────────────────────────────────────────────────
+      router.get('/api/hotel-media', adminGuard('view'), (req) => controller.index(req))
+      router.post('/api/hotel-media', adminGuard('create'), (req) => controller.store(req))
+      router.put('/api/hotel-media/:id', adminGuard('edit'), (req) => controller.update(req))
+      router.delete('/api/hotel-media/:id', adminGuard('delete'), (req) => controller.destroy(req))
+      router.post('/api/hotel-media/reorder', adminGuard('edit'), (req) => controller.reorder(req))
+
+      // ─── Ruta pública ─────────────────────────────────────────────────────
+      // Sin auth, rate-limited por IP (spec hotel-media: 60 req/min/IP). El rate-limit va
+      // ANTES del controller (mismo patrón que opiniones/index.ts:60-67 con public-reviews).
+      router.get('/api/public/hotels/:slug/media', async (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`public-hotel-media:${getClientIp(req)}`, {
+          maxAttempts: 60,
+          windowMs: 60_000,
+        })
+        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
+        return controller.publicMedia(req)
+      })
+
+      log.info('Módulo hotel-media listo (rutas admin + pública cableadas)')
       return service
     },
   })
