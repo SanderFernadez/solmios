@@ -28,6 +28,11 @@ export function restauranteFoliosConnector(ctx: ConnectorContext): void {
       await f.postCharge(folio.id, {
         description: input.description, amount: input.amount, quantity: input.quantity,
         category: 'restaurant', source: 'pos',
+        // Idempotency key (idempotencia-settlement-pos): `folio-entries.postCharge` reclama esta
+        // reference atómico contra un UNIQUE index parcial (hotelId,reference) WHERE source='pos'.
+        // Un reintento con la MISMA orden pide el MISMO reference → devuelve el cargo ya creado en
+        // vez de duplicarlo en el folio del huésped.
+        reference: 'pos:' + input.orderId,
       }, user)
       return { folioId: folio.id }
     },

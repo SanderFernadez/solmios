@@ -15,6 +15,9 @@ export const PostChargeSchema: Record<string, ValidationRule> = {
   category: { type: 'string' as const },
   quantity: { type: 'number' as const },
   source: { type: 'string' as const },
+  // Idempotency key externa ('pos:' + orderId, idempotencia-settlement-pos). Sin declararla acá,
+  // validateSchema (allow-list) la descarta en silencio para cualquier caller HTTP directo.
+  reference: { type: 'string' as const },
 }
 
 export const ApplyPaymentSchema: Record<string, ValidationRule> = {

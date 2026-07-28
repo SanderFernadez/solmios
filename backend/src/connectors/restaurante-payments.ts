@@ -26,9 +26,14 @@ export function restaurantePaymentsConnector(ctx: ConnectorContext): void {
         currency: input.currency,   // moneda del hotel (M3); si undefined, payments defaultea
         description: input.description,
         folioId: input.folioId,
+        // Idempotency key (idempotencia-settlement-pos): `payment-crud.create` reclama esta
+        // reference atómico contra un UNIQUE index parcial (hotelId,reference) WHERE reference LIKE
+        // 'pos:%'. Un doble-click o un reintento tras crash con la MISMA orden pide el MISMO
+        // reference → devuelve el payment ya creado en vez de duplicar el cobro.
+        reference: 'pos:' + input.orderId,
         // Tag de origen: payments-caja lo lee para asentar el efectivo en el cajón del
         // restaurante, NO en el de recepción (antes se mezclaban en un único turno del hotel).
-        metadata: { source: 'restaurant' },
+        metadata: { source: 'restaurant', orderId: input.orderId },
       })
       return { paymentId: payment.id }
     },

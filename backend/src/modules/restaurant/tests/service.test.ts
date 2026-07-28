@@ -421,6 +421,8 @@ describe('RestaurantService — cuenta + cobro (RES-5)', () => {
     const o = await build({ chargeToFolio: async (i: any) => { charged = i; return { folioId: 'f1' } } }).chargeToRoom('o1', {}, user)
     expect(charged.amount).toBe(20)          // NETO (el folio le aplica su impuesto)
     expect(charged.reservationId).toBe('r1')
+    // idempotencia-settlement-pos: orderId viaja al conector para armar 'pos:' + orderId.
+    expect(charged.orderId).toBe('o1')
     expect(o.status).toBe('charged')
     expect(o.settlement).toBe('folio')
     expect(o.folioId).toBe('f1')
@@ -444,6 +446,8 @@ describe('RestaurantService — cuenta + cobro (RES-5)', () => {
     s.setSockets({ onOrderPaid: async () => { evt = true } })
     const o = await s.payOrder('o1', { method: 'cash' }, user)
     expect(paid.amount).toBe(23.6)           // BRUTO (subtotal + tax + tip)
+    // idempotencia-settlement-pos: orderId viaja al conector para armar 'pos:' + orderId.
+    expect(paid.orderId).toBe('o1')
     expect(o.status).toBe('paid')
     expect(o.settlement).toBe('payment')
     expect(o.paymentId).toBe('p1')

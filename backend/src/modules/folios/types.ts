@@ -18,6 +18,7 @@ export interface FolioChargeDTO {
   taxes: number
   total: number        // amount + taxes (cargos positivo; pagos negativo)
   source: string
+  reference: string | null   // idempotency key externa ('pos:' + orderId) — ver idempotencia-settlement-pos
   postedAt: string | null
   createdAt: string
   updatedAt: string
@@ -61,6 +62,8 @@ export interface PostChargeDTO {
   amount: number          // base (se le calcula impuesto según config del hotel)
   quantity?: number
   source?: string
+  /** Idempotency key externa ('pos:' + orderId). Ver idempotencia-settlement-pos. */
+  reference?: string
 }
 
 export type PaymentMethod = 'card' | 'cash' | 'transfer' | 'link' | 'deposit' | 'other'

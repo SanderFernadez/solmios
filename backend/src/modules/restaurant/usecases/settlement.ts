@@ -9,8 +9,12 @@ import type { RestaurantSockets } from '../sockets'
 import { recomputeTotals, round2 } from './order-totals'
 
 // Puertos que provee el conector (folios/payments). El módulo NO importa esos módulos.
-export interface ChargeToFolioInput { hotelId: string; reservationId: string; guestId?: string; roomId?: string; description: string; amount: number; quantity: number }
-export interface RecordPaymentInput { hotelId: string; method: string; amount: number; description: string; folioId?: string; currency?: string }
+// `orderId` viaja SIEMPRE: el conector lo usa para construir `reference: 'pos:' + orderId`, la
+// idempotency key que el módulo destino (payments/folios) usa para el claim-first atómico contra
+// el UNIQUE index parcial (ver idempotencia-settlement-pos). Sin orderId acá, el conector no tiene
+// forma de armar esa referencia.
+export interface ChargeToFolioInput { hotelId: string; reservationId: string; guestId?: string; roomId?: string; description: string; amount: number; quantity: number; orderId: string }
+export interface RecordPaymentInput { hotelId: string; method: string; amount: number; description: string; folioId?: string; currency?: string; orderId: string }
 export interface SettlementPorts {
   chargeToFolio?: (input: ChargeToFolioInput, user: CurrentUser) => Promise<{ folioId: string }>
   recordPayment?: (input: RecordPaymentInput, user: CurrentUser) => Promise<{ paymentId: string }>
@@ -80,13 +84,15 @@ export async function chargeToRoom(deps: SettlementDeps, id: string, dto: { rese
   const amount = round2(Number(fresh.subtotal || 0))   // neto; el folio le aplica el impuesto
   if (amount <= 0) throw new ValidationError('La comanda no tiene consumos para cargar')
 
-  // M1 (QA, deuda documentada): el cargo al folio ocurre ANTES del update de la comanda (misma
-  // convención que folios/applyPayment: "el dinero primero"). Si el update fallara tras un postCharge
-  // exitoso, un reintento duplicaría el cargo. Aceptado para RES-5; un fix robusto requiere idempotency
-  // key en postCharge. Ver deudas técnicas.
+  // M1 (QA, RESUELTO — idempotencia-settlement-pos): el cargo al folio sigue ocurriendo ANTES del
+  // update de la comanda ("el dinero primero"), pero ya no puede duplicarse: `orderId` viaja hasta
+  // el conector, que arma `reference: 'pos:' + orderId` y el módulo folios lo reclama atómico contra
+  // un UNIQUE index parcial (claim-first). Si el update de la comanda fallara tras un postCharge
+  // exitoso, el reintento vuelve a pedir el MISMO postCharge y folios devuelve el cargo ya existente
+  // en vez de duplicarlo.
   const res = await deps.ports.chargeToFolio({
     hotelId: order.hotelId, reservationId, guestId: order.guestId, roomId: order.roomId,
-    description: `Restaurante · comanda ${order.number ?? id}`, amount, quantity: 1,
+    description: `Restaurante · comanda ${order.number ?? id}`, amount, quantity: 1, orderId: id,
   }, user)
 
   const updated = (await deps.orders.update(id, {
@@ -118,12 +124,14 @@ export async function payOrder(deps: SettlementDeps, id: string, dto: { method: 
   const hotel = await deps.hotels.findOne({ id: order.hotelId })
   const currency = (hotel as any)?.currency || undefined
 
-  // M1 (QA, deuda documentada): el payment se crea ANTES del update de la comanda ("el dinero primero",
-  // misma convención del sistema). Si el update fallara tras un payment completed, un reintento duplicaría
-  // el cobro. Aceptado para RES-5; fix robusto = idempotency key en createPayment.
+  // M1 (QA, RESUELTO — idempotencia-settlement-pos): el payment se sigue creando ANTES del update de
+  // la comanda ("el dinero primero"), pero ya no puede duplicarse: `orderId` viaja hasta el conector,
+  // que arma `reference: 'pos:' + orderId` y el módulo payments lo reclama atómico contra un UNIQUE
+  // index parcial (claim-first). Un reintento tras un payment completed pero update fallido devuelve
+  // el MISMO payment en vez de crear uno nuevo.
   const res = await deps.ports.recordPayment({
     hotelId: order.hotelId, method: dto.method, amount, currency,
-    description: `Restaurante · comanda ${order.number ?? id}`,
+    description: `Restaurante · comanda ${order.number ?? id}`, orderId: id,
   }, user)
 
   const updated = (await deps.orders.update(id, {

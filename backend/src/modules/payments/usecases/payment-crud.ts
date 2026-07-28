@@ -4,6 +4,20 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type { PaymentDTO, CreatePaymentDTO, PaymentsQuery, PaymentsPaginated } from '../types'
 
+/**
+ * Detecta la violación de UNIQUE/PK en SQLite y Postgres (el mensaje difiere por motor). Mismo
+ * criterio que `PaymentEventStore.isDuplicateError` (services/payment-gateway/payment-events.ts) —
+ * replicado acá (no importado) porque ese store es de webhooks de pasarela, un scope distinto.
+ */
+function isDuplicateError(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e).toLowerCase()
+  return (
+    msg.includes('unique constraint') ||   // SQLite: "UNIQUE constraint failed"
+    msg.includes('duplicate key') ||        // Postgres: "duplicate key value violates unique constraint"
+    msg.includes('constraint failed')
+  )
+}
+
 export class PaymentCrudUseCase {
   constructor(
     private readonly paymentRepo: RepositoryAdapter<PaymentDTO>,
@@ -25,7 +39,7 @@ export class PaymentCrudUseCase {
     // explícito gana: un cobro manual ya recibido (transferencia, POS) entra `completed`.
     const status = dto.status ?? (dto.method === 'cash' ? 'completed' : 'pending')
 
-    const payment = await this.paymentRepo.create({
+    const payload = {
       hotelId: dto.hotelId,
       folioId: dto.folioId ?? null,
       invoiceId: dto.invoiceId ?? null,
@@ -41,9 +55,36 @@ export class PaymentCrudUseCase {
       stripeSessionId: dto.stripeSessionId ?? '',
       metadata: dto.metadata ?? {},
       processedAt: status === 'completed' ? new Date().toISOString() : undefined,
-    } as any)
+    }
 
-    return payment
+    return await this.createIdempotent(payload)
+  }
+
+  /**
+   * Claim-first (idempotencia-settlement-pos): si `reference` es una idempotency key del POS
+   * (`'pos:' + orderId`), un UNIQUE index parcial (hotelId,reference) WHERE reference LIKE 'pos:%'
+   * es la barrera atómica. Se intenta crear; si el insert choca contra el índice (doble click,
+   * reintento tras crash), se busca y devuelve el payment YA creado en vez de duplicar el cobro.
+   * Sin `reference` (o sin prefijo `pos:`), el comportamiento es el de siempre: create liso.
+   */
+  private async createIdempotent(payload: Record<string, unknown> & { hotelId: string; reference: string }): Promise<PaymentDTO> {
+    const reference = payload.reference
+    if (!reference || !reference.startsWith('pos:')) {
+      return (await this.paymentRepo.create(payload as any)) as PaymentDTO
+    }
+    try {
+      return (await this.paymentRepo.create(payload as any)) as PaymentDTO
+    } catch (e) {
+      if (!isDuplicateError(e)) throw e
+      const existing = await this.paymentRepo.findMany({ hotelId: payload.hotelId, reference } as any)
+      if (existing[0]) {
+        this.logger.info('Payment POS duplicado detectado — devolviendo el existente', {
+          hotelId: payload.hotelId, reference,
+        })
+        return existing[0] as PaymentDTO
+      }
+      throw e // constraint disparó pero no encontramos la fila: error real, no silenciar
+    }
   }
 
   /**

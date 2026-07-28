@@ -32,6 +32,10 @@ export const FolioChargesModel: ModelDefinition = {
     taxes: { type: 'number', default: 0 },
     total: { type: 'number', required: true },
     source: { type: 'string', default: 'manual' },
+    // Idempotency key externa (idempotencia-settlement-pos): 'pos:' + orderId para cargos del POS
+    // de restaurante. Un UNIQUE index parcial (hotelId,reference) WHERE source='pos' (migrate-db.ts)
+    // es la barrera atómica; `folio-entries.postCharge` reclama contra ella (claim-first).
+    reference: { type: 'string' },
     postedAt: { type: 'string' },
   },
   timestamps: true,

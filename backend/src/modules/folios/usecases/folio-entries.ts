@@ -15,6 +15,50 @@ const BALANCE_EPSILON = 0.01
 
 const now = () => new Date().toISOString()
 
+/**
+ * Detecta la violación de UNIQUE/PK en SQLite y Postgres (el mensaje difiere por motor). Mismo
+ * criterio que `PaymentEventStore.isDuplicateError` (services/payment-gateway/payment-events.ts) —
+ * replicado acá (no importado) porque ese store es de webhooks de pasarela, un scope distinto.
+ */
+function isDuplicateError(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e).toLowerCase()
+  return (
+    msg.includes('unique constraint') ||   // SQLite: "UNIQUE constraint failed"
+    msg.includes('duplicate key') ||        // Postgres: "duplicate key value violates unique constraint"
+    msg.includes('constraint failed')
+  )
+}
+
+/**
+ * Claim-first (idempotencia-settlement-pos): si `reference` es una idempotency key del POS
+ * (`'pos:' + orderId`), un UNIQUE index parcial (hotelId,reference) WHERE source='pos' es la
+ * barrera atómica. Se intenta crear; si el insert choca contra el índice (reintento/concurrencia),
+ * se busca y devuelve el cargo YA creado en vez de duplicarlo. Sin `reference` (o sin prefijo
+ * `pos:`), el comportamiento es el de siempre: create liso.
+ */
+async function createChargeIdempotent(
+  deps: FolioEntriesDeps,
+  payload: Record<string, unknown> & { hotelId: string },
+  reference?: string,
+): Promise<FolioChargeDTO> {
+  if (!reference || !reference.startsWith('pos:')) {
+    return (await deps.chargeRepo.create(payload as any)) as FolioChargeDTO
+  }
+  try {
+    return (await deps.chargeRepo.create(payload as any)) as FolioChargeDTO
+  } catch (e) {
+    if (!isDuplicateError(e)) throw e
+    const existing = await deps.chargeRepo.findMany({ hotelId: payload.hotelId, reference } as any)
+    if (existing[0]) {
+      deps.logger.info('Cargo POS duplicado detectado — devolviendo el existente', {
+        hotelId: payload.hotelId, reference,
+      })
+      return existing[0] as FolioChargeDTO
+    }
+    throw e // constraint disparó pero no encontramos la fila: error real, no silenciar
+  }
+}
+
 export interface FolioEntriesDeps {
   folioRepo: RepositoryAdapter<FolioDTO>
   chargeRepo: RepositoryAdapter<FolioChargeDTO>
@@ -51,16 +95,17 @@ export async function postCharge(
 
   const rate = await taxRateFor(deps.configRepo, folio.hotelId, deps.hotelsRepo)
   const { tax, total } = applyTax(base, rate)
-  const charge = await deps.chargeRepo.create({
+  const charge = await createChargeIdempotent(deps, {
     folioId, hotelId: folio.hotelId, description: dto.description,
     category: dto.category ?? 'other', kind: 'charge', quantity: qty,
-    amount: base, taxes: tax, total, source: dto.source ?? 'manual', postedAt: now(),
-  } as any)
+    amount: base, taxes: tax, total, source: dto.source ?? 'manual', reference: dto.reference,
+    postedAt: now(),
+  }, dto.reference)
 
   deps.logger.info('Cargo agregado al folio', {
     folioId, chargeId: charge.id, description: dto.description, base, tax, total,
   })
-  return { folio, charge: charge as FolioChargeDTO }
+  return { folio, charge }
 }
 
 export async function applyPayment(

@@ -710,6 +710,49 @@ async function seedDemoTalentoFinanzas(): Promise<void> {
   console.log("demo talento/finanzas: seed completo (idempotente)")
 }
 
+// ─── idempotencia-settlement-pos: UNIQUE index parcial anti-doble-cobro/cargo POS ──────────────
+// El settlement del restaurante (RES-5, `restaurant/usecases/settlement.ts`) usa 'pos:' + orderId
+// como idempotency key — mismo patrón que `PaymentEventStore.settleOnce` para webhooks de pasarela
+// (services/payment-gateway/payment-events.ts). El UNIQUE index parcial es la ÚNICA barrera
+// atómica real contra concurrencia (doble-click, crash entre el pago/cargo y el update de la
+// orden); el claim-first en `payment-crud.create`/`folio-entries.postCharge` captura la violación
+// y devuelve el registro existente en vez de duplicarlo. Partial index soportado en SQLite ≥3.8 y
+// Postgres — portable. Columnas SIN comillas (mismo criterio que el resto del archivo: Postgres
+// pliega identificadores no-entrecomillados a minúsculas, igual que las crea el ORM).
+//
+// Pre-check de duplicados legacy (tasks.md 8.5): si ya hay filas repetidas con la misma referencia
+// (dato sucio previo a este cambio), el CREATE UNIQUE INDEX fallaría — se loggea para reconciliar a
+// mano y NO se crea el índice esta corrida (se reintenta en la próxima `bun run migrate`, no rompe
+// el script). `payments` la crea `createTablesBlock2` (arriba, ya corrida); `folio_charges` la crea
+// el ORM (RUN_MIGRATE) — si esa tabla no existe aún, se ignora.
+async function createPosIdempotencyIndexes(): Promise<void> {
+  try {
+    const dupes = (await db.query(
+      `SELECT reference, hotelId, COUNT(*) c FROM payments WHERE reference LIKE 'pos:%' GROUP BY reference, hotelId HAVING COUNT(*) > 1`,
+    )) as Array<{ reference: string; hotelId: string; c: number }>
+    if (dupes.length > 0) {
+      console.warn(`⚠ payments: ${dupes.length} referencia(s) 'pos:*' duplicadas — payments_pos_ref NO se crea hasta reconciliar.`, dupes)
+    } else {
+      await exec(`CREATE UNIQUE INDEX IF NOT EXISTS payments_pos_ref ON payments(hotelId, reference) WHERE reference LIKE 'pos:%'`)
+    }
+  } catch (e: unknown) {
+    console.log("payments_pos_ref: no se pudo verificar/crear —", e instanceof Error ? e.message.slice(0, 90) : String(e))
+  }
+
+  try {
+    const dupes = (await db.query(
+      `SELECT reference, hotelId, COUNT(*) c FROM folio_charges WHERE source='pos' GROUP BY reference, hotelId HAVING COUNT(*) > 1`,
+    )) as Array<{ reference: string; hotelId: string; c: number }>
+    if (dupes.length > 0) {
+      console.warn(`⚠ folio_charges: ${dupes.length} referencia(s) 'pos' duplicadas — folio_charges_pos_ref NO se crea hasta reconciliar.`, dupes)
+    } else {
+      await exec(`CREATE UNIQUE INDEX IF NOT EXISTS folio_charges_pos_ref ON folio_charges(hotelId, reference) WHERE source='pos'`)
+    }
+  } catch (e: unknown) {
+    console.log("folio_charges_pos_ref: tabla folio_charges aún no migrada (correr RUN_MIGRATE) —", e instanceof Error ? e.message.slice(0, 90) : String(e))
+  }
+}
+
 // ─── CRM / Marketing / Mensajería DDL + ALTERs portables ──────────────────
 async function createTablesBlock3(): Promise<void> {
   await exec(`CREATE TABLE IF NOT EXISTS loyalty_transactions (
@@ -973,6 +1016,9 @@ async function main(): Promise<void> {
 
   // DDL block 3 (CRM/Marketing/Mensajería) + ALTERs portables
   await createTablesBlock3()
+
+  // idempotencia-settlement-pos: UNIQUE index parcial anti-doble-cobro/cargo POS (idempotente)
+  await createPosIdempotencyIndexes()
 
   // currency_config para todos los hoteles (idempotente)
   await seedCurrencyConfig()
