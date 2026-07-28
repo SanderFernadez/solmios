@@ -1,14 +1,17 @@
-// services/Booking.service.ts — Cliente API del flujo de RESERVA pública (F0 0.20,
-// solmi-direct-booking / Pieza 6a).
+// services/Booking.service.ts — Cliente API del flujo de RESERVA pública (F0 0.20 +
+// F2 2.8-2.10, solmi-direct-booking).
 //
-// Dos endpoints públicos:
-//   - POST /api/public/booking              → crea reserva pending + redirige a Stripe
-//   - GET  /api/public/reservations/:id      → polling post-redirect (valida token HMAC)
+// Cinco endpoints públicos (sin auth, rate-limited por IP en el backend):
+//   - GET  /api/public/hotels/:slug/rates          → tarifa derivada + availableCount (D11)
+//   - GET  /api/public/hotels/:slug/upsells         → upsells activos
+//   - POST /api/public/hotels/:slug/promo/validate  → {valid, discount, reason?}
+//   - POST /api/public/booking                      → crea reserva pending + redirige a Stripe
+//   - GET  /api/public/reservations/:id             → polling post-redirect (valida token HMAC)
 //
 // El service acepta DTOs "friendly" (slug + guest anidado) y los aplana al shape que
 // requiere el backend (ExtendedPublicBookingSchema). El response crudo del backend
-// (`{reservation, guest, checkoutUrl, paymentError?}`) también se aplana al contract limpio
-// del spec booking-unification R-1: `{reservationId, accessToken, checkoutUrl, paymentError?}`.
+// (`{reservation, guest, checkoutUrl, totalBreakdown, paymentError?}`) se aplana al contract
+// limpio del spec booking-unification R-1: `{reservationId, accessToken, checkoutUrl, totalBreakdown}`.
 //
 // ROBUSTEZ F0 (public-booking.ts:152-171): si Stripe falla (no configurado / gateway caído),
 // la reserva SE CREA igual con status='pending' y el backend devuelve 201 con
@@ -20,8 +23,22 @@ import { PublicHotelService } from './PublicHotel.service'
 import type {
   CreateBookingDTO,
   CreateBookingResponse,
+  PublicRatesQuery,
+  PublicRatesResponse,
   PublicReservationResponse,
+  PromoValidationResult,
+  TotalBreakdown,
+  Upsell,
 } from '@/types/booking'
+
+function build(qs: Record<string, string | number | undefined>): string {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(qs)) {
+    if (v !== undefined && v !== null && v !== '') params.set(k, String(v))
+  }
+  const s = params.toString()
+  return s ? `?${s}` : ''
+}
 
 /**
  * Respuesta cruda del backend (espejo de public-booking.ts return body). El service la
@@ -31,6 +48,7 @@ interface RawCreateBookingResponse {
   reservation: { id: string; accessToken: string; [k: string]: unknown }
   guest: unknown
   checkoutUrl: string | null
+  totalBreakdown: TotalBreakdown
   paymentError?: string
 }
 
@@ -41,9 +59,11 @@ export const BookingService = {
    * Pasos:
    *   1. Resuelve `dto.slug` → `hotelId` vía `PublicHotelService.getBySlug` (una request
    *      extra; deja el DTO del widget limpio: el widget sabe el slug, no el id interno).
-   *   2. Mapea `guest:{name,email,phone}` → `guestName/guestEmail/guestPhone` (schema backend).
-   *   3. POST /api/public/booking con el body plano + upsells/promoCode/successUrl/cancelUrl.
-   *   4. Aplana la respuesta a `{reservationId, accessToken, checkoutUrl, paymentError?}`.
+   *   2. Mapea `guest:{name,email,phone,notes}` → `guestName/guestEmail/guestPhone/notes`
+   *      (schema backend).
+   *   3. POST /api/public/booking con el body plano + upsells/promoCode/successUrl/cancelUrl
+   *      + idempotencyKey client-side.
+   *   4. Aplana la respuesta a `{reservationId, accessToken, checkoutUrl, totalBreakdown, paymentError?}`.
    *
    * El `accessToken` se devuelve al frontend para que arme la URL de vuelta
    * `/h/:slug?booking=:id&token=:token` (spec R2) — Stripe vuelve a esa URL tras el pago.
@@ -62,16 +82,19 @@ export const BookingService = {
       adults: dto.adults,
     }
     if (dto.children !== undefined) body.children = dto.children
+    if (dto.guest.notes) body.notes = dto.guest.notes
     if (dto.promoCode) body.promoCode = dto.promoCode
     if (dto.upsells && dto.upsells.length > 0) body.upsells = dto.upsells
     if (dto.successUrl) body.successUrl = dto.successUrl
     if (dto.cancelUrl) body.cancelUrl = dto.cancelUrl
+    if (dto.idempotencyKey) body.idempotencyKey = dto.idempotencyKey
 
     const raw = await http.post<RawCreateBookingResponse>('/public/booking', body)
     const response: CreateBookingResponse = {
       reservationId: raw.reservation.id,
       accessToken: raw.reservation.accessToken,
       checkoutUrl: raw.checkoutUrl,
+      totalBreakdown: raw.totalBreakdown,
     }
     if (raw.paymentError) response.paymentError = raw.paymentError
     return response
@@ -88,5 +111,50 @@ export const BookingService = {
     const qs = new URLSearchParams({ token })
     const path = `/public/reservations/${encodeURIComponent(id)}?${qs.toString()}`
     return http.get<PublicReservationResponse>(path)
+  },
+
+  /**
+   * Tarifas derivadas + disponibles (F2 2.4). Devuelve room types con `fromPrice` TOTAL de
+   * la estadía (no por noche) + `availableCount` para urgencia D11 + impuestos desglosados.
+   *
+   * Multi-moneda (D10): si `query.currency` difiere de `hotels.currency`, el backend convierte
+   * usando `configuration('currency_rates')`. `response.currency` es la moneda display,
+   * `response.chargeCurrency` es la del cobro (siempre `hotels.currency`). Si no hay rates,
+   * el backend degrada a la currency base — el widget muestra lo que recibe.
+   *
+   * Anti-enumeración: hotel inexistente o no-activo → MISMO 404 (no revelar paused hotels).
+   */
+  getRates(slug: string, query: PublicRatesQuery): Promise<PublicRatesResponse> {
+    const path = `/public/hotels/${encodeURIComponent(slug)}/rates${build({
+      checkIn: query.checkIn,
+      checkOut: query.checkOut,
+      rooms: query.rooms,
+      guests: query.guests,
+      currency: query.currency,
+    })}`
+    return http.get<PublicRatesResponse>(path)
+  },
+
+  /**
+   * Upsells activos del hotel (F2 2.6). Públicos, sin auth. Orden: `sortOrder` ASC.
+   * Filtrado opcional por `kind` ('per_room' | 'per_person' | 'per_stay').
+   */
+  getUpsells(slug: string, kind?: string): Promise<Upsell[]> {
+    const path = `/public/hotels/${encodeURIComponent(slug)}/upsells${build({ kind })}`
+    return http.get<Upsell[]>(path)
+  },
+
+  /**
+   * Valida un promo code público (F2 2.2). NO incrementa `uses` — solo calcula descuento.
+   * El incremento ocurre en el POST /public/booking atómicamente al crear la reserva.
+   *
+   * `subtotal` debe ser el subtotal pre-descuento sobre el que se aplica el % o el monto
+   * fijo. El widget lo calcula como `room.fromPrice + upsellsTotal` (antes de impuestos).
+   */
+  validatePromo(slug: string, code: string, subtotal: number): Promise<PromoValidationResult> {
+    return http.post<PromoValidationResult>(
+      `/public/hotels/${encodeURIComponent(slug)}/promo/validate`,
+      { code, subtotal },
+    )
   },
 }

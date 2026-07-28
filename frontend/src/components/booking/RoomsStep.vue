@@ -1,0 +1,127 @@
+<template>
+  <!--
+    RoomsStep.vue — Step 1 del widget (F2 2.9 + D11 urgencia real, solmi-direct-booking).
+    Renderiza los room types disponibles de `ratesResponse.roomTypes`. Cada tarjeta muestra:
+      - nombre + "From $X total" (fromPrice = TOTAL de la estadía, no por noche)
+      - desglose de noches + ITBIS
+      - badge de urgencia REAL según availableCount (D11):
+          ≤1 → "Última disponible" (rojo)
+          ≤3 → "Pocas habitaciones a este precio" (ámbar)
+          >3 → sin badge (NEVER falsificar urgencia — destruye confianza)
+    Click en una tarjeta la selecciona y avanza al step Upsells (store.selectRoom + store.next).
+
+    El desglose de impuestos viene pre-computado por el backend (roomType.taxBreakdown). Para
+    promo, el recálculo lo hace el backend al crear la reserva — acá solo mostramos el base.
+  -->
+  <section class="space-y-4">
+    <header class="space-y-1">
+      <h2 class="text-xl font-black text-navy">Habitaciones disponibles</h2>
+      <p class="text-sm text-text-muted">
+        {{ store.nights }} {{ store.nights === 1 ? 'noche' : 'noches' }}
+        <span v-if="store.displayCurrency"> · Precios en {{ store.displayCurrency }}</span>
+      </p>
+    </header>
+
+    <div v-if="availableRooms.length === 0" class="text-center py-10 px-4">
+      <div class="text-4xl mb-2">🗓️</div>
+      <p class="font-bold text-navy">Sin disponibilidad para esas fechas.</p>
+      <p class="text-sm text-text-muted mt-1">Probá con otras fechas o menos huéspedes.</p>
+    </div>
+
+    <ul v-else class="space-y-3">
+      <li v-for="rt in availableRooms" :key="rt.id">
+        <button
+          type="button"
+          :class="[
+            'w-full text-left rounded-2xl border-2 bg-white p-4 shadow-card transition hover:border-cyan',
+            store.selectedRoom?.id === rt.id ? 'border-cyan ring-2 ring-cyan/20' : 'border-slate-200',
+          ]"
+          @click="select(rt)"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <h3 class="font-black text-navy capitalize">{{ prettify(rt.name) }}</h3>
+              <p v-if="rt.availableCount > 0" class="text-xs text-text-muted mt-0.5">
+                {{ rt.availableCount }} {{ rt.availableCount === 1 ? 'disponible' : 'disponibles' }}
+              </p>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="text-xs text-text-muted">Desde</p>
+              <p class="text-lg font-black text-navy">{{ formatPrice(rt.fromPrice, store.displayCurrency) }}</p>
+              <p class="text-[11px] text-text-muted">total · {{ perNight(rt) }}/noche</p>
+            </div>
+          </div>
+
+          <div v-if="rt.taxBreakdown.length > 0" class="mt-2 text-[11px] text-text-muted">
+            Incluye
+            <span v-for="(t, i) in rt.taxBreakdown" :key="t.name">
+              <span v-if="i > 0"> + </span>{{ t.rate }}% {{ t.name }}
+            </span>
+          </div>
+
+          <div v-if="urgency(rt.availableCount)" class="mt-2">
+            <span
+              :class="[
+                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold',
+                rt.availableCount <= 1
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-amber-100 text-amber-700',
+              ]"
+            >
+              ⚡ {{ urgency(rt.availableCount) }}
+            </span>
+          </div>
+        </button>
+      </li>
+    </ul>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useBookingStore } from '@/composables/useBooking'
+import type { RoomTypeRate } from '@/types/booking'
+
+const store = useBookingStore()
+
+// Solo mostramos rooms efectivamente disponibles. El backend podría devolver
+// availableCount=0 para un type sin stock; no los mostramos (mejor UX que una card tachada).
+const availableRooms = computed(() =>
+  (store.ratesResponse?.roomTypes ?? []).filter((rt) => rt.availableCount > 0),
+)
+
+function urgency(count: number): string {
+  if (count <= 0) return ''
+  if (count <= 1) return 'Última disponible'
+  if (count <= 3) return 'Pocas habitaciones a este precio'
+  return '' // >3: sin badge (no falsificar urgencia — D11).
+}
+
+function perNight(rt: RoomTypeRate): string {
+  const n = store.nights > 0 ? store.nights : 1
+  return formatPrice(rt.fromPrice / n, store.displayCurrency)
+}
+
+// Prettify del roomType string: 'double' → 'Double', 'standard' → 'Standard'. El backend
+// usa ambos id/name = room.type (string libre). El widget puede mostrar el valor crudo.
+function prettify(name: string): string {
+  if (!name) return 'Habitación'
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}
+
+async function select(rt: RoomTypeRate) {
+  await store.selectRoom(rt)
+  store.next()
+}
+
+function formatPrice(amount: number, currency: string): string {
+  if (!amount && amount !== 0) return ''
+  try {
+    return new Intl.NumberFormat(typeof navigator !== 'undefined' ? navigator.language : 'es', {
+      style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`
+  }
+}
+</script>
