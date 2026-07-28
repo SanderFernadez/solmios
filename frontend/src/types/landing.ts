@@ -115,3 +115,38 @@ export interface PublicLandingRoom {
   fromPrice?: number | null
 }
 
+// ─── Admin Landing (F1 1.9 — builder admin) ───────────────────────────────────────────────
+// Espejo del backend `landing/types.ts` (Pieza A, commit d16a9e1). El endpoint admin devuelve
+// los 9 bloques del hotel del JWT (seeder lazy la primera vez), con `id` + `hotelId` + `active`
+// + timestamps — a diferencia del endpoint público que solo expone `{id, type, config, sortOrder}`.
+//
+// El upsert del backend (`PUT /api/landing`) regenera IDs (delete-all + create-many): después
+// de un save hay que re-fetchear para que un `toggle` posterior no use un id ya inexistente.
+// El builder por eso usa bulk-save (PUT) para TODO cambio y refresca el state local tras el 200.
+export interface AdminLandingBlock {
+  id: string
+  hotelId: string
+  type: LandingBlockType
+  config: Record<string, unknown> | null
+  sortOrder: number
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** Item del body de `PUT /api/landing` (bulk upsert atómico). `id` opcional — el backend
+ *  lo acepta pero lo ignora (genera nuevos UUIDs en cada upsert). */
+export interface UpsertLandingBlockInput {
+  id?: string
+  type: LandingBlockType
+  config?: Record<string, unknown> | null
+  sortOrder?: number
+  active?: boolean
+}
+
+/** Result de `GET /api/landing` y `PUT /api/landing` — envelope `{data, total}`. */
+export interface AdminLandingListResult {
+  data: AdminLandingBlock[]
+  total: number
+}
+

@@ -40,15 +40,20 @@
         <h2 class="text-xl font-black text-navy">Configuración</h2>
         <p class="text-sm text-text-muted mt-0.5">Datos del hotel, amenities, tarifas e integraciones</p>
       </div>
-      <span v-if="hasErrors" class="mr-3 text-[11px] font-bold text-danger">
-        {{ Object.keys(fieldErrors).length }} campo(s) con errores
-      </span>
-      <span v-else-if="isDirty" class="mr-3 text-[11px] font-bold text-text-muted">Cambios sin guardar</span>
-      <button @click="saveAll" :disabled="saving || hasErrors"
-        :title="hasErrors ? 'Corregí los campos marcados en rojo para poder guardar' : ''"
-        class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-        {{ saving ? 'Guardando...' : 'Guardar' }}
-      </button>
+      <!-- El builder de la landing (tab 'landing') tiene su propio "Guardar" que persiste
+           sobre /api/landing — el botón general acá aplica a `saveAll` (form del hotel) y
+           no tendría efecto en esa pestaña. Lo ocultamos junto con el badge de dirty. -->
+      <template v-if="(activeTab as string) !== 'landing'">
+        <span v-if="hasErrors" class="mr-3 text-[11px] font-bold text-danger">
+          {{ Object.keys(fieldErrors).length }} campo(s) con errores
+        </span>
+        <span v-else-if="isDirty" class="mr-3 text-[11px] font-bold text-text-muted">Cambios sin guardar</span>
+        <button @click="saveAll" :disabled="saving || hasErrors"
+          :title="hasErrors ? 'Corregí los campos marcados en rojo para poder guardar' : ''"
+          class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ saving ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </template>
     </div>
 
     <!-- Tabs agrupados: administrativo vs. configuraciones e integraciones -->
@@ -861,6 +866,14 @@
         </div>
       </SectionCard>
     </div>
+
+    <!-- ========== LANDING (F1 1.9 — builder admin, solmi-direct-booking / Pieza C) ==========
+         Builder de la landing pública /h/:slug: lista los 9 bloques con drag-and-drop, toggle
+         active por bloque y editor de config por type. Persiste con PUT /api/landing (atómico).
+         El slug lo pasa como prop (slugDraft — ya cargado desde SettingsService). El builder
+         tiene su propio "Guardar" + dirty tracking; el botón general del header queda oculto
+         cuando esta pestaña está activa. -->
+    <LandingBuilder v-if="(activeTab as string) === 'landing'" :slug="slugDraft" />
     </div>
   </div>
 </template>
@@ -871,6 +884,7 @@ import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
+import LandingBuilder from './landing.vue'
 import { COUNTRIES, countryName } from '@/data/locales'
 import { TIMEZONES, CURRENCIES } from '@/data/intl-catalogs'
 import { parseLatLng } from '@/composables/useLatLngParse'
@@ -1127,6 +1141,7 @@ const tabGroups: SettingsTabGroup[] = [
     tabs: [
       { value: 'amenities', label: 'Amenities' },
       { value: 'public', label: 'Página pública' },
+      { value: 'landing', label: 'Landing' },
       { value: 'integrations', label: 'Integraciones' },
     ],
   },
