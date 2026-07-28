@@ -2,8 +2,9 @@
 
 change_name: billing-money-consolidation
 created: 2026-07-08
-status: in_progress  # BM-1 y BM-2 aplicados; BM-3 (migración) y BM-4 (limpieza) pendientes
-current_phase: apply
+status: done
+current_phase: archived
+closed: 2026-07-28
 parent_changes: []
 
 motivation: |
@@ -28,21 +29,21 @@ sprints:
 
   bm-3-migration:
     title: Migrar `invoices.type='payment'` → `payments`
-    status: pending
+    status: done
     tasks_total: 6
-    tasks_done: 0
+    tasks_done: 6
     priority: critical
     risk: high
 
   bm-4-cleanup:
     title: Limpieza de tipos muertos y UI
-    status: pending
+    status: done
     tasks_total: 5
-    tasks_done: 0
+    tasks_done: 5
     priority: medium
 
 total_tasks: 21
-tasks_done: 10
+tasks_done: 21
 
 execution_order:
   - bm-1-invoice-payments
@@ -62,11 +63,11 @@ rollback: |
   Los datos originales en `invoices` no se borran en esta fase.
 
 gate:
-  arckode_analyze: "✅ VÁLIDO — sin violaciones"
+  arckode_analyze: "✅ VÁLIDO — sin violaciones (reverificado 2026-07-28)"
   backend_typecheck: "✅ 0 errores"
-  backend_tests: "475 pass / 0 fail"
-  frontend_typecheck: "✅ 0 errores"
-  frontend_build: "✅"
+  backend_tests: "2277 pass / 0 fail (suite completa, reverificado 2026-07-28 tras BM-4 cleanup)"
+  frontend_typecheck: "✅ 0 errores (vue-tsc -b)"
+  frontend_build: "✅ built"
   e2e_cash: "✅ cobro en efectivo desde /panel/billing → cash_movements +1, payments +1 (antes: 0 y 0)"
   e2e_folio: "✅ pago al folio → caja +1; al facturar, cash y payments NO se mueven (sin duplicar)"
   e2e_invoice_inherit: "✅ factura del folio: amount=120, amountPaid=50, status=pending, folio.invoiceId vinculado"

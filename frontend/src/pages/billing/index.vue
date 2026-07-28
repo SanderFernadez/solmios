@@ -975,7 +975,9 @@ function invoiceStatusLabel(status: string) {
 }
 
 function typeLabel(type: string) {
-  const labels: Record<string, string> = { invoice: 'Factura', payment: 'Pago', folio: 'Cargo', receipt: 'Recibo', credit_note: 'Nota de Crédito' }
+  // BM-4.2: payment/folio/receipt eran tipos muertos — mapInvoice() ya los reduce a 'invoice'
+  // antes de llegar acá, así que nunca alcanzan estas labels.
+  const labels: Record<string, string> = { invoice: 'Factura', credit_note: 'Nota de Crédito' }
   return labels[type] ?? type
 }
 

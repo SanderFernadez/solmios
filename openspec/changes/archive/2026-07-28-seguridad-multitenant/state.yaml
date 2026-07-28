@@ -2,8 +2,9 @@
 
 change_name: seguridad-multitenant
 created: 2026-07-13
-status: proposed
-current_phase: proposal
+status: done
+current_phase: archived
+closed: 2026-07-28
 parent_changes: []
 trigger: >
   Auditoría de código (2026-07-13) sobre la tarea SC-06 "Revisar OWASP Top 10", que
@@ -15,9 +16,9 @@ sprints:
   sec-1-hotelof:
     title: Fix patrón hotelOf (IDOR lectura/escritura)
     vulns: [V1, V3, V5]
-    status: proposed
+    status: done
     tasks_total: 4
-    tasks_done: 0
+    tasks_done: 4
     priority: high
     manual_h: 9
     ia_h: 6
@@ -25,9 +26,9 @@ sprints:
   sec-2-ownership:
     title: Ownership real por ID (IDOR crítico)
     vulns: [V2, V4]
-    status: proposed
+    status: done
     tasks_total: 2
-    tasks_done: 0
+    tasks_done: 2
     priority: critical
     manual_h: 7
     ia_h: 5
@@ -36,9 +37,9 @@ sprints:
   sec-3-public-users:
     title: Endpoint público de usuarios
     vulns: [V6]
-    status: proposed
+    status: done
     tasks_total: 1
-    tasks_done: 0
+    tasks_done: 1
     priority: medium
     manual_h: 2
     ia_h: 1.5
@@ -46,18 +47,18 @@ sprints:
   sec-4-ratelimit:
     title: Rate limit hardening
     vulns: [V7, V8]
-    status: proposed
+    status: done
     tasks_total: 2
-    tasks_done: 0
+    tasks_done: 2
     priority: medium
     manual_h: 6
     ia_h: 4
 
   sec-5-tests:
     title: Tests de tenancy
-    status: proposed
+    status: done
     tasks_total: 3
-    tasks_done: 0
+    tasks_done: 3
     priority: high
     manual_h: 12
     ia_h: 7
@@ -65,7 +66,7 @@ sprints:
 total_manual_h: 36
 total_ia_h: 24
 total_tasks: 12
-tasks_done: 0
+tasks_done: 12
 
 vulnerabilidades:
   V1: { sev: alta,    file: "ttlock/controller.ts:14",        tipo: IDOR }

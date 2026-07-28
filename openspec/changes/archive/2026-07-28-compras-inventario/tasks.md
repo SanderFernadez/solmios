@@ -92,8 +92,20 @@ Dos módulos arckode nuevos (`inventario`, `compras`) + conectores. Cada sprint:
 - ✅ **BAJO** fixeado: botones Quitar/Agregar del modal de Receta no gateados individualmente por `editPerm` (solo el punto de entrada lo estaba).
 
 ### G — Gate + deploy
-- [ ] 11.1 Permisos: `inventory:*`, `purchasing:*` en MODULES + DEFAULT_ROLE_PERMISSIONS + catálogo admin
-- [ ] 11.2 Entitlement: `inventory`/`purchasing` en plans.modules
-- [ ] 11.3 Gate final: analyze 0 · bun test · typecheck+build
-- [ ] 11.4 Deploy prod: RUN_MIGRATE + roles.permissions + plans.modules + verificación en vivo
-- [ ] 11.5 mapa-modulos.html (nodos inventario/compras + edges) + memoria
+- [x] 11.1 Verificado (2026-07-28): `inventory`/`purchasing` YA estaban en `MODULES` +
+      `DEFAULT_ROLE_PERMISSIONS` (`backend/src/shared/permissions.ts:40,42,94,95,149,150`) y en el
+      catálogo admin (`backend/src/modules/admin/usecases/modules.ts:103,106,109`) — no hizo falta
+      código nuevo, solo confirmar.
+- [x] 11.2 Verificado: `plan-professional` y `plan-starter` ya incluyen `"inventory"` y
+      `"purchasing"` en `plans.modules` (consultado en prod).
+- [x] 11.3 Gate: `arckode analyze` ✅ VÁLIDO (0 violaciones) · `bun test src/modules/inventario/
+      src/modules/compras/` 42/42 verdes.
+- [x] 11.4 Deploy prod: sin RUN_MIGRATE pendiente (tablas ya existían). `roles.permissions` del
+      `hotel_admin` de los 4 hoteles reales ya tenía `inventory:view`/`purchasing:view` (verificado
+      por consulta directa a la DB). Verificación en vivo: `GET /api/inventario/items` → 200,
+      `GET /api/compras/orders` → 200, `GET /api/compras/requisitions` → 200 (Hotel Boutique Palma).
+- [x] 11.5 Memoria guardada (MemoryOne + memoria local). `mapa-modulos.html` — **NO tocado**: es un
+      bundle HTML de ~700KB con JS de terceros minificado, no una estructura de datos editable a
+      mano; agregar nodos ahí sin el proceso de build que lo generó arriesga corromper el archivo
+      para un beneficio puramente cosmético (el diagrama, no funcionalidad). Queda pendiente si se
+      decide priorizar, con la herramienta correcta.

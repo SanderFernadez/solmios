@@ -55,7 +55,9 @@ describe('Billing.service — isDeletable (regla contable)', () => {
   })
 
   it('un documento que no es invoice siempre es borrable', () => {
-    expect(isDeletable(base({ type: 'payment', status: 'paid', amountPaid: 100 }))).toBe(true)
+    // BM-4.1: 'payment' ya no es un InvoiceType válido (tipo muerto eliminado) — simula una fila
+    // legacy de antes de billing-money-consolidation.
+    expect(isDeletable(base({ type: 'payment' as any, status: 'paid', amountPaid: 100 }))).toBe(true)
   })
 
   it('una invoice pagada/vencida/cancelada NO es borrable', () => {

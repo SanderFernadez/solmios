@@ -25,10 +25,13 @@ const repoWith = (rows: FacturasDTO[]): RepositoryAdapter<FacturasDTO> => ({
 
 describe('getFacturasStats', () => {
   it('no cuenta dos veces un cobro: la factura paid y su comprobante payment', async () => {
+    // BM-4.1: 'payment' ya no es un type creable (billing-money-consolidation lo eliminó del
+    // enum — el cobro ahora vive en `payments`). El `as any` simula una fila LEGACY de antes del
+    // cambio; el filtro de stats.ts se mantiene por defensa ante datos históricos (ver stats.ts).
     const rows = [
       invoice({ id: 'i1', status: 'paid', amount: 100, amountPaid: 100 }),
-      // comprobante que deja `pay()` — mismo monto, mismo día
-      invoice({ id: 'p1', type: 'payment', invoiceNumber: 'PAY-1', status: 'paid', amount: 100 }),
+      // comprobante que dejaba `pay()` ANTES de BM-1 — mismo monto, mismo día
+      invoice({ id: 'p1', type: 'payment' as any, invoiceNumber: 'PAY-1', status: 'paid', amount: 100 }),
     ]
     const stats = await getFacturasStats(repoWith(rows), { hotelId: 'h1' })
 
@@ -62,7 +65,7 @@ describe('getFacturasStats', () => {
   it('ignora los cargos de folio al contar facturas emitidas', async () => {
     const rows = [
       invoice({ id: 'i1' }),
-      invoice({ id: 'f1', type: 'folio', invoiceNumber: 'CHG-1', amount: 40 }),
+      invoice({ id: 'f1', type: 'folio' as any, invoiceNumber: 'CHG-1', amount: 40 }), // legacy, BM-4.1
     ]
     const stats = await getFacturasStats(repoWith(rows), { hotelId: 'h1' })
 

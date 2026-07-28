@@ -40,7 +40,11 @@ describe('assertDeletable', () => {
   })
 
   it('deja borrar comprobantes de pago y cargos de folio: no son documentos fiscales', () => {
-    expect(() => assertDeletable(invoice({ type: 'payment', status: 'paid' }), true)).not.toThrow()
-    expect(() => assertDeletable(invoice({ type: 'folio' }), true)).not.toThrow()
+    // BM-4.1: 'payment'/'folio' ya no son type creables (billing-money-consolidation los eliminó
+    // del enum) — el `as any` simula una fila LEGACY que pudiera seguir existiendo en una DB vieja.
+    // `assertDeletable` sigue siendo correcto para ese dato histórico: cualquier type !== 'invoice'
+    // no es un documento fiscal.
+    expect(() => assertDeletable(invoice({ type: 'payment' as any, status: 'paid' }), true)).not.toThrow()
+    expect(() => assertDeletable(invoice({ type: 'folio' as any }), true)).not.toThrow()
   })
 })

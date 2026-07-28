@@ -73,7 +73,8 @@ export function buildInvoiceRecord(args: {
     amount,
     taxes,
     currency: dto.currency ?? 'USD',
-    status: dto.status ?? (type === 'invoice' ? 'pending' : type === 'payment' ? 'paid' : 'pending'),
+    // BM-4.1: 'payment' ya no es un type posible (el validator lo rechaza) — la única rama viva es 'invoice'.
+    status: dto.status ?? 'pending',
     issueDate: dto.issueDate ?? new Date().toISOString().split('T')[0],
     dueDate: dto.dueDate ?? null,
     ncf,

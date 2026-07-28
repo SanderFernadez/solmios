@@ -1,5 +1,12 @@
 # idempotencia-settlement-pos
 
+## Estado: ✅ CERRADO (2026-07-28)
+
+Implementado (commit `1fee1f8`): unique index parcial `payments_pos_ref` / `folio_charges_pos_ref`
++ dedup atómico (claim-first) en `payment-crud.create`/`folio-entries.postCharge`. Verificado en
+esta sesión: 10/10 tests propios pasan, y los 2 índices únicos existen realmente en la DB de
+producción (`pg_indexes`, consultado directo). Desplegado.
+
 ## Intent
 
 Que el **settlement del POS sea idempotente**: un reintento (doble click concurrente, crash entre `createPayment` y el update de la orden, reintento de red) **NO duplique el cobro ni el cargo a folio**. Hoy el guard por estado (`assertSettleable`) solo cubre el reintento *secuencial con update exitoso previo* — deja abiertos 3 escenarios reales de duplicación.

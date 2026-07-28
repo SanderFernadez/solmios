@@ -8,10 +8,13 @@
 // pendientes/vencidas — la tarjeta "Pendiente" del billing muestra lo que falta cobrar,
 // no el total facturado. Una factura de $100 con $80 cobrados debe pesar $20, no $100.
 //
-// Solo se consideran documentos `type: 'invoice'`. La tabla `invoices` guarda tres tipos
-// (invoice / payment / folio); `pay()` marca la factura como `paid` Y crea un comprobante
-// `type: 'payment'` con el mismo monto. Sumar ambos duplicaba cada cobro en monthlyRevenue
-// y todayRevenue, e inflaba los counts con documentos que no son facturas.
+// Solo se consideran documentos `type: 'invoice'`. Históricamente `pay()` marcaba la factura
+// como `paid` Y creaba un comprobante `type: 'payment'` con el mismo monto en esta misma tabla —
+// sumar ambos duplicaba cada cobro en monthlyRevenue/todayRevenue e inflaba los counts.
+// BM-4 (billing-money-consolidation) eliminó ese camino: el cobro ahora se asienta en `payments`,
+// no en `invoices`, así que ya no se generan filas `type:'payment'`/`'folio'` nuevas. El filtro
+// se MANTIENE de todos modos como defensa ante datos históricos que pudieran seguir existiendo en
+// una DB de antes del cambio (prod verificado en 0 filas, pero no es una garantía universal).
 
 import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import type { FacturasDTO, FacturasStats, CurrentUser } from '../types'

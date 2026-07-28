@@ -325,17 +325,20 @@ POST /api/reservas/:id/checkout → body: { settle?: { method, amount, reference
 - NCF auto-generado (hoy SIEMPRE — ver deudas técnicas)
 - Invoice number: counter atómico en `configuration(key='invoice_counter_{hotelId}_{year}')`
 
-### ⚠️ `invoices` guarda TRES tipos de documento
-La tabla `invoices` mezcla `type: 'invoice' | 'payment' | 'folio'`. `pay()` marca la factura como
-`paid` **y** crea un comprobante `type:'payment'` con el mismo monto (`usecases/payment-record.ts`).
-
-**Un `payment` es el rastro del cobro, NO un ingreso adicional.** Todo agregado de dinero debe
-filtrar por `type: 'invoice'`, o cuenta cada cobro dos veces. `usecases/stats.ts` lo hace; si escribís
-un reporte nuevo sobre esta tabla, hacé lo mismo. (Bug histórico: "Ingresos del Mes" mostraba 2×.)
+### ✅ `payments` es la ÚNICA fuente de verdad del dinero (billing-money-consolidation, RESUELTO 2026-07-28)
+`InvoiceType` es ahora solo `'invoice' | 'credit_note'` — `facturas.pay()` y `folios.applyPayment()`
+asientan el cobro en `payments` (vía `payment-port.ts` + connectors `facturas-payments`/`folios-payments`),
+NO como una fila `type:'payment'` duplicada dentro de `invoices`. Esto alimenta el arqueo de caja y la
+conciliación bancaria automáticamente (antes un cobro en efectivo desde `/panel/billing` no entraba a
+ninguno de los dos). `usecases/stats.ts` sigue filtrando `type:'invoice'` por defensa ante datos
+legacy, pero ya no hay código que genere filas nuevas `type:'payment'`/`'folio'`/`'receipt'` (prod
+verificado en 0 filas de ese tipo, migración `scripts/migrate-payments-out-of-invoices.ts` disponible
+si aparecieran en otro entorno).
 
 Corolarios:
 - `pendingAmount`/`overdueAmount` acumulan **saldo** (`amount - amountPaid`), no el total facturado.
-- El frontend pide `?type=invoice` y `?type=payment` por separado; paginar la mezcla contaba pagos como facturas.
+- Refund de una factura ahora es posible vía el flujo normal de `payments.refundPayment()` — antes
+  un cobro registrado dentro de `invoices` no tenía forma de devolverse.
 
 ### Anular ≠ borrar
 Una factura con efectos contables (cobrada, vencida, anulada, con pagos parciales, o de un hotel con

@@ -2,7 +2,7 @@
 
 import type { BodyRule as ValidationRule } from '../../../shared/validators/validate-body'
 
-const TYPE_ENUM = ['invoice', 'payment', 'folio', 'receipt', 'credit_note']
+const TYPE_ENUM = ['invoice', 'credit_note'] // BM-4.1 — payment/folio/receipt eran tipos muertos
 const STATUS_ENUM = ['pending', 'paid', 'overdue', 'cancelled', 'draft']
 const MAX_NOTES_LENGTH = 2000
 

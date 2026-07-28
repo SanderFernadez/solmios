@@ -2,8 +2,9 @@
 
 change_name: restaurante-pos
 created: 2026-07-23
-status: planned   # plan + specs + tasks listos; PENDIENTE aprobación del dueño antes de escribir código
-current_phase: propose
+status: done   # los 9 sprints (res-0..res-8) están done — desplegado en prod (RES-0..RES-8, 2026-07-23)
+current_phase: archived
+closed: 2026-07-28
 parent_changes: []
 
 motivation: |

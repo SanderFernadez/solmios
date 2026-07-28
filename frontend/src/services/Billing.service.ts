@@ -1,6 +1,8 @@
 import { http } from './http'
 
-export type InvoiceType = 'invoice' | 'payment' | 'folio' | 'receipt' | 'credit_note'
+// BM-4.1/4.2 — 'payment'/'folio'/'receipt' eran tipos muertos: billing-money-consolidation movió
+// el dinero a `payments`, ya no se crean filas de ese tipo en `invoices`.
+export type InvoiceType = 'invoice' | 'credit_note'
 export type InvoiceStatus = 'paid' | 'pending' | 'overdue' | 'cancelled' | 'draft'
 
 export interface InvoiceItem {
@@ -35,12 +37,11 @@ export interface Invoice {
   notes?: string | null
 }
 
-// Tolerante a inconsistencias ES/EN que pueda devolver el backend.
+// Tolerante a inconsistencias ES/EN que pueda devolver el backend. Una fila legacy con
+// type:'payment'/'folio'/'receipt' (de antes de billing-money-consolidation) cae al fallback
+// 'invoice' del caller (mapInvoice) — no hay forma útil de distinguirla ya sin ese tipo.
 const TYPE_MAP: Record<string, InvoiceType> = {
   invoice: 'invoice', factura: 'invoice',
-  payment: 'payment', pago: 'payment',
-  folio: 'folio',
-  receipt: 'receipt', recibo: 'receipt',
   credit_note: 'credit_note', nota_credito: 'credit_note',
 }
 

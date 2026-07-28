@@ -3,7 +3,9 @@
 // El schema de DB vive en ./model.ts — son conceptos distintos.
 // Modelo de dinero: `amount` = TOTAL (subtotal + impuestos), `taxes` = monto de impuesto.
 
-export type InvoiceType = 'invoice' | 'payment' | 'folio' | 'receipt' | 'credit_note'
+// BM-4.1 — 'payment'/'folio'/'receipt' eran los tipos muertos que billing-money-consolidation
+// eliminó: el dinero vive en `payments` (ver payment-port.ts), no como fila duplicada acá.
+export type InvoiceType = 'invoice' | 'credit_note'
 export type InvoiceStatus = 'pending' | 'paid' | 'overdue' | 'cancelled' | 'draft'
 
 export interface InvoiceItem {
