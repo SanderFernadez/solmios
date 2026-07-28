@@ -10,22 +10,23 @@
 
     Vacío-friendly: si el hotel no configuró upsells, mostramos empty state y el botón
     "Continuar" pasa directo al siguiente step (no forzar extras).
+    Todos los textos via i18n (es/en/pt, task 2.14).
   -->
   <section class="space-y-4">
     <header class="space-y-1">
-      <h2 class="text-xl font-black text-navy">Sumá extras a tu estadía</h2>
-      <p class="text-sm text-text-muted">Opcional. Mejorá tu experiencia.</p>
+      <h2 class="text-xl font-black text-navy">{{ t('upsells.title') }}</h2>
+      <p class="text-sm text-text-muted">{{ t('upsells.subtitle') }}</p>
     </header>
 
     <div v-if="store.upsellsLoading" class="text-center py-8">
       <div class="h-8 w-8 mx-auto rounded-full border-4 border-cyan/30 border-t-cyan animate-spin" />
-      <p class="text-sm text-text-muted mt-2">Cargando extras…</p>
+      <p class="text-sm text-text-muted mt-2">{{ t('upsells.loading') }}</p>
     </div>
 
     <div v-else-if="store.upsells.length === 0" class="text-center py-8 px-4">
       <div class="text-4xl mb-2">✨</div>
-      <p class="font-bold text-navy">Sin extras disponibles</p>
-      <p class="text-sm text-text-muted mt-1">Podés continuar directamente al pago.</p>
+      <p class="font-bold text-navy">{{ t('upsells.empty') }}</p>
+      <p class="text-sm text-text-muted mt-1">{{ t('upsells.emptyHint') }}</p>
     </div>
 
     <ul v-else class="space-y-3">
@@ -57,7 +58,7 @@
         </div>
 
         <div v-if="isSelected(up.id) && up.kind !== 'per_stay'" class="mt-3 flex items-center gap-3">
-          <span class="text-xs font-bold text-text-muted uppercase tracking-wide">Cantidad</span>
+          <span class="text-xs font-bold text-text-muted uppercase tracking-wide">{{ t('upsells.quantity') }}</span>
           <div class="w-32">
             <Stepper
               :model-value="qtyFor(up.id)"
@@ -72,7 +73,7 @@
 
     <div v-if="store.upsellsTotal > 0" class="rounded-xl bg-slate-50 px-4 py-3 text-sm">
       <div class="flex justify-between">
-        <span class="text-text-muted">Subtotal extras</span>
+        <span class="text-text-muted">{{ t('upsells.subtotal') }}</span>
         <span class="font-bold text-navy">{{ formatPrice(store.upsellsTotal, store.chargeCurrency) }}</span>
       </div>
     </div>
@@ -81,10 +82,12 @@
 
 <script setup lang="ts">
 import { useBookingStore } from '@/composables/useBooking'
+import { useBookingI18nStore } from '@/composables/useBookingI18n'
 import Stepper from './Stepper.vue'
 import type { UpsellKind } from '@/types/booking'
 
 const store = useBookingStore()
+const { t, formatPrice } = useBookingI18nStore()
 
 function isSelected(id: string): boolean {
   return store.selectedUpsells.some((u) => u.id === id)
@@ -114,19 +117,9 @@ function setQty(id: string, v: number) {
 
 function kindLabel(kind: UpsellKind): string {
   switch (kind) {
-    case 'per_room': return 'Por habitación'
-    case 'per_person': return 'Por persona'
-    case 'per_stay': return 'Por estadía'
-  }
-}
-
-function formatPrice(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat(typeof navigator !== 'undefined' ? navigator.language : 'es', {
-      style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
-    }).format(amount)
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`
+    case 'per_room': return t('upsells.kindPerRoom')
+    case 'per_person': return t('upsells.kindPerPerson')
+    case 'per_stay': return t('upsells.kindPerStay')
   }
 }
 </script>

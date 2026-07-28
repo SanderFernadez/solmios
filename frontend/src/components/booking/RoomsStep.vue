@@ -12,20 +12,21 @@
 
     El desglose de impuestos viene pre-computado por el backend (roomType.taxBreakdown). Para
     promo, el recálculo lo hace el backend al crear la reserva — acá solo mostramos el base.
+    Todos los textos via i18n (es/en/pt, task 2.14).
   -->
   <section class="space-y-4">
     <header class="space-y-1">
-      <h2 class="text-xl font-black text-navy">Habitaciones disponibles</h2>
+      <h2 class="text-xl font-black text-navy">{{ t('rooms.title') }}</h2>
       <p class="text-sm text-text-muted">
-        {{ store.nights }} {{ store.nights === 1 ? 'noche' : 'noches' }}
-        <span v-if="store.displayCurrency"> · Precios en {{ store.displayCurrency }}</span>
+        {{ t('rooms.nightsSuffix', { count: store.nights }) }}
+        <span v-if="store.displayCurrency"> · {{ t('rooms.pricesIn', { currency: store.displayCurrency }) }}</span>
       </p>
     </header>
 
     <div v-if="availableRooms.length === 0" class="text-center py-10 px-4">
       <div class="text-4xl mb-2">🗓️</div>
-      <p class="font-bold text-navy">Sin disponibilidad para esas fechas.</p>
-      <p class="text-sm text-text-muted mt-1">Probá con otras fechas o menos huéspedes.</p>
+      <p class="font-bold text-navy">{{ t('rooms.empty') }}</p>
+      <p class="text-sm text-text-muted mt-1">{{ t('rooms.emptyHint') }}</p>
     </div>
 
     <ul v-else class="space-y-3">
@@ -42,20 +43,20 @@
             <div class="min-w-0 flex-1">
               <h3 class="font-black text-navy capitalize">{{ prettify(rt.name) }}</h3>
               <p v-if="rt.availableCount > 0" class="text-xs text-text-muted mt-0.5">
-                {{ rt.availableCount }} {{ rt.availableCount === 1 ? 'disponible' : 'disponibles' }}
+                {{ availableLabel(rt.availableCount) }}
               </p>
             </div>
             <div class="text-right shrink-0">
-              <p class="text-xs text-text-muted">Desde</p>
+              <p class="text-xs text-text-muted">{{ t('rooms.fromLabel') }}</p>
               <p class="text-lg font-black text-navy">{{ formatPrice(rt.fromPrice, store.displayCurrency) }}</p>
-              <p class="text-[11px] text-text-muted">total · {{ perNight(rt) }}/noche</p>
+              <p class="text-[11px] text-text-muted">{{ t('rooms.totalSuffix') }} · {{ perNight(rt) }}/{{ t('rooms.perNight') }}</p>
             </div>
           </div>
 
           <div v-if="rt.taxBreakdown.length > 0" class="mt-2 text-[11px] text-text-muted">
-            Incluye
-            <span v-for="(t, i) in rt.taxBreakdown" :key="t.name">
-              <span v-if="i > 0"> + </span>{{ t.rate }}% {{ t.name }}
+            {{ t('rooms.includes') }}
+            <span v-for="(tax, i) in rt.taxBreakdown" :key="tax.name">
+              <span v-if="i > 0"> + </span>{{ tax.rate }}% {{ tax.name }}
             </span>
           </div>
 
@@ -80,9 +81,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useBookingStore } from '@/composables/useBooking'
+import { useBookingI18nStore } from '@/composables/useBookingI18n'
 import type { RoomTypeRate } from '@/types/booking'
 
 const store = useBookingStore()
+const i18n = useBookingI18nStore()
+const { t, formatPrice } = i18n
 
 // Solo mostramos rooms efectivamente disponibles. El backend podría devolver
 // availableCount=0 para un type sin stock; no los mostramos (mejor UX que una card tachada).
@@ -90,11 +94,18 @@ const availableRooms = computed(() =>
   (store.ratesResponse?.roomTypes ?? []).filter((rt) => rt.availableCount > 0),
 )
 
+/** Urgencia REAL con dato vivo del PMS (D11). Nunca falsificar — si count > 3, sin badge.
+ *  Textos via i18n para es/en/pt. */
 function urgency(count: number): string {
   if (count <= 0) return ''
-  if (count <= 1) return 'Última disponible'
-  if (count <= 3) return 'Pocas habitaciones a este precio'
+  if (count <= 1) return t('rooms.urgency.last')
+  if (count <= 3) return t('rooms.urgency.few')
   return '' // >3: sin badge (no falsificar urgencia — D11).
+}
+
+function availableLabel(count: number): string {
+  if (count === 1) return t('rooms.availableOne')
+  return t('rooms.availableMany', { count })
 }
 
 function perNight(rt: RoomTypeRate): string {
@@ -112,16 +123,5 @@ function prettify(name: string): string {
 async function select(rt: RoomTypeRate) {
   await store.selectRoom(rt)
   store.next()
-}
-
-function formatPrice(amount: number, currency: string): string {
-  if (!amount && amount !== 0) return ''
-  try {
-    return new Intl.NumberFormat(typeof navigator !== 'undefined' ? navigator.language : 'es', {
-      style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
-    }).format(amount)
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`
-  }
 }
 </script>

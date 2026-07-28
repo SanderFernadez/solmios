@@ -18,10 +18,21 @@
 // fallo real se regenera la key (reintento = nuevo intento); tras éxito + redirect, se
 // conserva (la página se descarga al ir a Stripe).
 //
-// MULTI-MONEDA (D10, task 2.15 / Pieza 4): NO se implementa acá. `displayCurrency` se toma
-// de `ratesResponse.currency` (lo que el backend ya convirtió si se pasó ?currency=). El
-// switcher de moneda y la geo-IP son de la Pieza 4 — este store no carga `useCurrency`
-// (que además es del panel admin y lee `secondaryCurrency`, no aplica al widget público).
+// MULTI-MONEDA (D10, task 2.15 / Pieza 4): el store expone `currencyPreference` (lo que el
+// usuario eligió en el switcher) y `availableCurrencies` (lista para el dropdown). `search()`
+// manda `currency` al backend vía `?currency=` → el backend convierte server-side usando
+// `configuration('currency_rates')` (cron nightly) y devuelve `ratesResponse.currency` (display)
+// + `ratesResponse.chargeCurrency` (siempre = hotels.currency; el cobro real en Stripe).
+//
+// NO se reusa `composables/useCurrency.ts` (del panel admin) porque ese lee
+// `/configuracion/currency` con `secondaryCurrency` — un esquema dual pensado para reporting
+// del merchant, no para conversión display del público. El widget publica necesita conversión
+// server-side con rates actualizadas por cron (D10), no una secundaria fija por hotel.
+//
+// Display currency = `currencyPreference` (si el usuario eligió) sino `ratesResponse.currency`
+// (que cuando no se pidió ?currency= coincide con `chargeCurrency`). El switcher setea
+// `currencyPreference` y dispara re-fetch si hay una búsqueda activa → cambiar EUR→USD
+// convierte sin recargar la página (acceptance 2.15).
 
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -165,6 +176,13 @@ export const useBookingStore = defineStore('booking-widget', () => {
   const status = ref<BookingStatus>('idle')
   const error = ref<string | null>(null)
 
+  // ─── Multi-moneda (D10, task 2.15) ────────────────────────────────────────────
+  // `currencyPreference` es lo que el usuario eligió en el switcher ('' = auto/detect).
+  // `availableCurrencies` se populated al recibir la primera ratesResponse: incluye la
+  // chargeCurrency del hotel + un puñado de monedas comunes para el switcher.
+  const currencyPreference = ref('')
+  const availableCurrencies = ref<string[]>([])
+
   // ─── Pago (step 4 → 5) ────────────────────────────────────────────────────────
   const reservation = ref<CreateBookingResponse | null>(null)
   const isSubmitting = ref(false)
@@ -174,8 +192,10 @@ export const useBookingStore = defineStore('booking-widget', () => {
   /** Índice del step actual para el stepper indicator (0-5). */
   const currentStep = computed(() => STEP_INDEX[status.value])
 
-  /** Moneda en la que se muestran los precios (display). D10: el cobro es en chargeCurrency. */
-  const displayCurrency = computed(() => ratesResponse.value?.currency ?? '')
+  /** Moneda en la que se muestran los precios (display). D10: el cobro es en chargeCurrency.
+   *  Si el usuario eligió una moneda en el switcher, esa gana; si no, lo que devolvió el backend
+   *  (que cuando no se pidió ?currency= coincide con chargeCurrency). */
+  const displayCurrency = computed(() => currencyPreference.value || ratesResponse.value?.currency || '')
 
   /** Moneda en la que Stripe cobrará (siempre = hotels.currency). El botón de pago lo etiqueta. */
   const chargeCurrency = computed(() => ratesResponse.value?.chargeCurrency ?? '')
@@ -281,8 +301,10 @@ export const useBookingStore = defineStore('booking-widget', () => {
     error.value = null
   }
 
-  /** Step 0 → 1: dispara GET /rates. Idempotente: si ya hay rates para las mismas fechas,
-   *  no recarga. Setea status a 'selecting' al éxito. */
+  /** Step 0 → 1: dispara GET /rates. Idempotente: si ya hay rates para las mismas fechas
+   *  Y misma currencyPreference, no recarga. Setea status a 'selecting' al éxito.
+   *  Multi-moneda (D10): pasa `currency` al backend si el usuario eligió una distinta de la
+   *  chargeCurrency; el backend convierte server-side con `configuration('currency_rates')`. */
   async function search(): Promise<void> {
     if (!slug.value || !searchValid.value) return
     status.value = 'searching'
@@ -294,8 +316,12 @@ export const useBookingStore = defineStore('booking-widget', () => {
         checkOut: checkOut.value,
         rooms: rooms.value,
         guests: guests.value,
+        ...(currencyPreference.value ? { currency: currencyPreference.value } : {}),
       })
       ratesResponse.value = res
+      // Llenamos el switcher de monedas: la del cobro (base del hotel) + la última display
+      // elegada + un puñado de monedas comunes para turistas. Dedupe + orden estable.
+      availableCurrencies.value = buildCurrencyOptions(res.chargeCurrency, res.currency, currencyPreference.value)
       selectedRoom.value = null
       status.value = 'selecting'
     } catch (e) {
@@ -304,6 +330,44 @@ export const useBookingStore = defineStore('booking-widget', () => {
       status.value = 'idle'
     } finally {
       ratesLoading.value = false
+    }
+  }
+
+  /** Cambia la moneda display. Si hay rates cargados para las fechas actuales, re-fetch
+   *  (el backend convierte). Si no hay rates todavía, solo setea la preferencia — el próximo
+   *  search() la va a mandar. Cumple acceptance 2.15: cambiar EUR→USD convierte sin recargar
+   *  la página. Si code === '' volvemos a "auto" (la chargeCurrency del hotel). */
+  async function setCurrency(code: string): Promise<void> {
+    const normalized = code.trim().toUpperCase()
+    if (normalized === currencyPreference.value) return
+    currencyPreference.value = normalized
+    // Si ya tenemos rates para estas fechas, re-fetch con la nueva currency. Sino, no hay
+    // nada que convertir todavía — el próximo search() mandará la currency.
+    if (ratesResponse.value && searchValid.value && (status.value === 'selecting' || status.value === 'upselling' || status.value === 'checkingout' || status.value === 'paying')) {
+      // Re-fetch preservando selección de room/upsells (solo cambian precios, no disponibilidad).
+      // No movemos status: el usuario sigue donde estaba.
+      const prevStatus = status.value
+      try {
+        const res = await BookingService.getRates(slug.value, {
+          checkIn: checkIn.value,
+          checkOut: checkOut.value,
+          rooms: rooms.value,
+          guests: guests.value,
+          ...(normalized ? { currency: normalized } : {}),
+        })
+        ratesResponse.value = res
+        availableCurrencies.value = buildCurrencyOptions(res.chargeCurrency, res.currency, normalized)
+        // Si había un room seleccionado, actualizamos la referencia con la nueva tarifa (mismo id).
+        if (selectedRoom.value) {
+          const updated = res.roomTypes.find((rt) => rt.id === selectedRoom.value!.id)
+          if (updated) selectedRoom.value = updated
+        }
+        status.value = prevStatus
+      } catch {
+        // Si falla la conversión, no rompemos: dejamos la moneda anterior (el switcher revierte).
+        currencyPreference.value = ratesResponse.value?.currency ?? ''
+        status.value = prevStatus
+      }
     }
   }
 
@@ -537,6 +601,8 @@ export const useBookingStore = defineStore('booking-widget', () => {
     reservation.value = null
     isSubmitting.value = false
     idempotencyKey.value = ''
+    currencyPreference.value = ''
+    availableCurrencies.value = []
   }
 
   return {
@@ -562,6 +628,8 @@ export const useBookingStore = defineStore('booking-widget', () => {
     reservation,
     isSubmitting,
     idempotencyKey,
+    currencyPreference,
+    availableCurrencies,
     // computed
     currentStep,
     displayCurrency,
@@ -593,10 +661,31 @@ export const useBookingStore = defineStore('booking-widget', () => {
     pay,
     pollConfirmation,
     reset,
+    setCurrency,
   }
 })
 
 // ─── helpers (privados del módulo) ──────────────────────────────────────────────
+
+/** Monedas comunes para el switcher del widget (turistas LATAM/caribe). La lista es solo
+ *  para poblar el dropdown — el backend convierte lo que le pidamos si tiene rates; si una
+ *  moneda no está en `currency_rates`, el backend degrada a chargeCurrency (no rompe). */
+const COMMON_DISPLAY_CURRENCIES = ['USD', 'EUR', 'DOP', 'MXN', 'COP', 'ARS', 'CLP', 'BRL']
+
+/** Arma la lista de monedas del switcher: chargeCurrency siempre primero (es la base del
+ *  cobro), después la última display (si difiere), luego las comunes dedupe. Orden estable. */
+function buildCurrencyOptions(chargeCurrency: string, displayCurrency: string, preference: string): string[] {
+  const out: string[] = []
+  const push = (c: string) => {
+    const up = c.trim().toUpperCase()
+    if (up && !out.includes(up)) out.push(up)
+  }
+  push(chargeCurrency)
+  push(displayCurrency)
+  push(preference)
+  for (const c of COMMON_DISPLAY_CURRENCIES) push(c)
+  return out
+}
 
 function round2(n: number): number {
   if (!Number.isFinite(n)) return 0

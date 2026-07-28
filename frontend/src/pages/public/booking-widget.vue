@@ -1,6 +1,6 @@
 <template>
   <!--
-    booking-widget.vue — Wrapper SPA del motor de reserva (F2 2.10, solmi-direct-booking).
+    booking-widget.vue — Wrapper SPA del motor de reserva (F2 2.10 + 2.14-2.17, solmi-direct-booking).
 
     Orquesta los 6 steps (SearchStep → RoomsStep → UpsellsStep → GuestCheckoutStep → PayStep →
     ConfirmStep) usando el Pinia store `useBookingStore` (state machine). Layout mobile-first,
@@ -9,27 +9,69 @@
 
     Performance (D9): los steps se cargan lazy (defineAsyncComponent) salvo SearchStep, que es
     el único en el bundle inicial. Cada step se trae su chunk solo al mostrarse → sub-2s mobile
-    4G (acceptance 2.10). Sin librerías pesadas (calendar Airbnb es task 2.17, mapa no aplica).
+    4G (acceptance 2.10). CalendarView va dentro del bundle de SearchStep (solo se usa ahí).
 
-    Header con nombre del hotel (resuelto por slug al montar) + stepper indicator (1-6 puntos).
-    CTA del primer step es "Ver disponibilidad" (NO "Reservar") — reduce fricción (spec).
+    Header con nombre del hotel (resuelto por slug al montar) + stepper indicator (1-6 puntos)
+    + switchers de idioma (task 2.14) y moneda (task 2.15). CTA del primer step es
+    "Ver disponibilidad" (NO "Reservar") — reduce fricción (spec).
+
+    MULTI-MONEDA (D10, task 2.15): al montar, intenta detectar geo-IP via Cloudflare Trace
+    (`/cdn-cgi/trace`, endpoint público de CF en prod). Si encuentra el país → mapea a moneda
+    y la setea como `currencyPreference`. Si no (dev local, sin CF) → fallback a la moneda del
+    hotel (`chargeCurrency`), y el usuario puede cambiar manualmente en el switcher. El backend
+    sigue siendo source of truth de la conversión (`/rates?currency=X` convierte server-side).
 
     Rutas hacia acá (NO registradas en esta pieza):
       - `/book/:slug` (Pieza 3 reemplaza el widget viejo por este)
       - `/h/:slug?booking=:id&token=:token` (post-redirect Stripe, F3 3.17 confirma)
   -->
   <div class="min-h-screen bg-surface">
-    <!-- Header mobile-first: nombre del hotel + stepper.
+    <!-- Header mobile-first: nombre del hotel + stepper + switchers.
          F2 2.13: cuando ?embed=1 (iframe en sitio externo), no se renderiza. El sitio host
          ya aporta branding propio; mostrar el header acá sería redundante y robaría espacio
          vertical dentro del iframe. El stepper pasa al main para no perder el contexto. -->
     <header v-if="!embed" class="bg-white border-b border-slate-200 sticky top-0 z-10">
       <div class="max-w-md mx-auto px-4 py-3">
         <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0">
-            <p v-if="hotelLoading" class="text-sm text-text-muted">Cargando…</p>
+          <div class="min-w-0 flex-1">
+            <p v-if="hotelLoading" class="text-sm text-text-muted">{{ t('wrapper.loading') }}</p>
             <h1 v-else-if="hotelName" class="font-black text-navy truncate">{{ hotelName }}</h1>
-            <h1 v-else class="font-black text-navy">Reservá tu estadía</h1>
+            <h1 v-else class="font-black text-navy">{{ t('wrapper.titleFallback') }}</h1>
+          </div>
+
+          <!-- Switchers de idioma + moneda (tasks 2.14 + 2.15). Compactos para mobile.
+               Idioma: dropdown de 3 opciones. Moneda: dropdown de las monedas comunes + la
+               base del hotel. El selected se lee del estado reactivo del store. -->
+          <div class="flex items-center gap-2 shrink-0">
+            <label class="relative">
+              <span class="sr-only">{{ t('wrapper.language') }}</span>
+              <select
+                v-model="localeValue"
+                class="appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-2 pr-7 text-xs font-bold text-navy focus:border-cyan focus:ring-2 focus:ring-cyan/30 focus:outline-none"
+                :aria-label="t('wrapper.language')"
+              >
+                <option v-for="opt in locales" :key="opt.code" :value="opt.code">
+                  {{ opt.flag }} {{ opt.code.toUpperCase() }}
+                </option>
+              </select>
+              <span class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-text-muted text-[10px]">▾</span>
+            </label>
+
+            <label class="relative">
+              <span class="sr-only">{{ t('wrapper.currency') }}</span>
+              <select
+                :value="currencySelected"
+                class="appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-2 pr-7 text-xs font-bold text-navy focus:border-cyan focus:ring-2 focus:ring-cyan/30 focus:outline-none"
+                :aria-label="t('wrapper.currency')"
+                @change="onCurrencyChange(($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">
+                  {{ hotelBaseCurrencyLabel }}
+                </option>
+                <option v-for="c in currencyOptionsForSelect" :key="c" :value="c">{{ c }}</option>
+              </select>
+              <span class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-text-muted text-[10px]">▾</span>
+            </label>
           </div>
         </div>
 
@@ -53,7 +95,7 @@
             />
           </button>
           <span class="ml-auto text-[11px] font-bold text-text-muted uppercase tracking-wide">
-            Paso {{ store.currentStep + 1 }} / 6
+            {{ t('wrapper.step', { current: store.currentStep + 1, total: 6 }) }}
           </span>
         </div>
       </div>
@@ -64,6 +106,36 @@
          el stepper compacto arriba — el sitio host aporta branding, pero el usuario del widget
          embebido sigue necesitando saber en qué paso está. -->
     <main :class="embed ? 'max-w-full px-3 py-4' : 'max-w-md mx-auto px-4 py-6'">
+      <!-- En embed mode, igual mostramos switchers arriba (sin branding del hotel). -->
+      <div v-if="embed" class="flex items-center justify-end gap-2 mb-3">
+        <label class="relative">
+          <span class="sr-only">{{ t('wrapper.language') }}</span>
+          <select
+            v-model="localeValue"
+            class="appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-2 pr-7 text-xs font-bold text-navy"
+            :aria-label="t('wrapper.language')"
+          >
+            <option v-for="opt in locales" :key="opt.code" :value="opt.code">
+              {{ opt.flag }} {{ opt.code.toUpperCase() }}
+            </option>
+          </select>
+          <span class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-text-muted text-[10px]">▾</span>
+        </label>
+        <label class="relative">
+          <span class="sr-only">{{ t('wrapper.currency') }}</span>
+          <select
+            :value="currencySelected"
+            class="appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-2 pr-7 text-xs font-bold text-navy"
+            :aria-label="t('wrapper.currency')"
+            @change="onCurrencyChange(($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">{{ hotelBaseCurrencyLabel }}</option>
+            <option v-for="c in currencyOptionsForSelect" :key="c" :value="c">{{ c }}</option>
+          </select>
+          <span class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-text-muted text-[10px]">▾</span>
+        </label>
+      </div>
+
       <div
         v-if="embed && (store.currentStep > 0 || store.status === 'searching')"
         class="flex items-center gap-1.5 mb-3"
@@ -86,7 +158,7 @@
           />
         </button>
         <span class="ml-auto text-[11px] font-bold text-text-muted uppercase tracking-wide">
-          Paso {{ store.currentStep + 1 }} / 6
+          {{ t('wrapper.step', { current: store.currentStep + 1, total: 6 }) }}
         </span>
       </div>
 
@@ -100,7 +172,7 @@
           :disabled="store.isSubmitting"
           @click="store.back()"
         >
-          ← Volver
+          {{ t('wrapper.back') }}
         </button>
       </div>
     </main>
@@ -110,7 +182,9 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useBookingStore } from '@/composables/useBooking'
+import { useBookingI18nStore, type BookingLocale } from '@/composables/useBookingI18n'
 import { PublicHotelService } from '@/services/PublicHotel.service'
 import SearchStep from '@/components/booking/SearchStep.vue'
 
@@ -124,6 +198,12 @@ const ConfirmStep = defineAsyncComponent(() => import('@/components/booking/Conf
 
 const route = useRoute()
 const store = useBookingStore()
+const i18n = useBookingI18nStore()
+// `locale` es una ref reactiva: usamos storeToRefs para que no se unwrap-ee a valor plano
+// (Pinia setup store auto-unwrapea refs al accederlas como `store.prop` en script, perdiendo
+// la reactividad al leer `.value`). El `setLocale` sí lo sacamos directo (acción, no ref).
+const { locale } = storeToRefs(i18n)
+const { t, locales, setLocale } = i18n
 
 const hotelName = ref('')
 const hotelLoading = ref(true)
@@ -134,8 +214,15 @@ const hotelLoading = ref(true)
 // contenido para no perder el contexto del paso actual.
 const embed = computed(() => route.query.embed === '1')
 
-// Labels del stepper (para el tooltip / aria-label; visible solo como puntos).
-const stepLabels = ['Fechas', 'Habitación', 'Extras', 'Datos', 'Pago', 'Confirmación']
+/** Labels de los steps (tooltip/aria). El texto visible en el header es solo "Paso N / 6". */
+const stepLabels = computed(() => [
+  t('step.dates'),
+  t('step.room'),
+  t('step.extras'),
+  t('step.guest'),
+  t('step.pay'),
+  t('step.confirm'),
+])
 
 // Step component según status. El mapeo está en STEP_INDEX del store; acá elegimos la vista.
 const currentComponent = computed(() => {
@@ -187,6 +274,38 @@ function readInitParams() {
   }
 }
 
+// ─── Switcher idioma ──────────────────────────────────────────────────────────
+
+/** v-model del <select> de idioma. Setter delega al store para persistir en sessionStorage. */
+const localeValue = computed<BookingLocale>({
+  get: () => locale.value,
+  set: (v) => setLocale(v),
+})
+
+// ─── Switcher moneda (D10, task 2.15) ──────────────────────────────────────────
+
+/** Opciones del dropdown de moneda. Siempre incluimos el "auto" (value='') primero; el resto
+ *  son las monedas del store.availableCurrencies menos la base (que ya está en el "auto"). */
+const currencyOptionsForSelect = computed(() => {
+  const base = store.chargeCurrency
+  return store.availableCurrencies.filter((c) => c !== base)
+})
+
+/** Valor actual del select de moneda: '' (auto) si no hay preference, sino la preference. */
+const currencySelected = computed(() => store.currencyPreference || '')
+
+/** Label de la opción "auto" (value=''). Si ya sabemos la moneda del hotel, la mostramos
+ *  ("USD · auto"); si no, solo "Auto". Sirve para que el usuario sepa qué pasa si no elige. */
+const hotelBaseCurrencyLabel = computed(() => {
+  const base = store.chargeCurrency
+  if (base) return `${base} · auto`
+  return 'Auto'
+})
+
+function onCurrencyChange(code: string): void {
+  void store.setCurrency(code)
+}
+
 // (Re)init cuando cambia el slug (deep-link nuevo). Limpia el estado previo.
 watch(slug, (s) => {
   if (!s) return
@@ -201,6 +320,12 @@ onMounted(async () => {
     return
   }
   store.init(s, readInitParams())
+  // Geo-IP best-effort: si detecta el país via Cloudflare Trace, setea moneda inicial.
+  // No esperamos esto para no bloquear el render del widget — el probe corre en paralelo
+  // con la carga del hotel y solo aplica si el usuario todavía no tocó el switcher.
+  void probeGeoCurrency().then((cur) => {
+    if (cur && !store.currencyPreference) void store.setCurrency(cur)
+  })
   try {
     const hotel = await PublicHotelService.getBySlug(s)
     hotelName.value = hotel.name
@@ -212,4 +337,40 @@ onMounted(async () => {
     hotelLoading.value = false
   }
 })
+
+/**
+ * Detecta la moneda preferida del usuario via geo-IP. Best-effort, no bloqueante:
+ *   - Cloudflare expone `/cdn-cgi/trace` públicamente en sitios CF (devuelve texto con
+ *     `loc=XX`). Mapeamos country → currency. Funciona en prod, NO en dev (sin CF).
+ *   - Si no hay CF (dev local), o el endpoint responde algo raro, devuelve null → fallback
+ *     a la moneda del hotel (chargeCurrency), y el usuario elige manual.
+ *
+ * Mapping: ISO 3166-1 alpha-2 → ISO 4217. Lista limitada a los países comunes en LATAM/caribe
+ * (target de SOLMI OS); el resto → null (el caller cae a chargeCurrency). */
+async function probeGeoCurrency(): Promise<string | null> {
+  try {
+    const res = await fetch('/cdn-cgi/trace', { cache: 'no-store' })
+    if (!res.ok) return null
+    const text = await res.text()
+    const match = /\nloc=([A-Z]{2})\b/.exec('\n' + text)
+    if (!match) return null
+    return COUNTRY_TO_CURRENCY[match[1]] ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Mapping country code → currency. Para no importar una lib de 200 entradas, limitamos a
+ *  los países con mayor probabilidad de turistas hacia hoteles LATAM/caribe. Cualquier otro
+ *  país → null (fallback a la currency del hotel). */
+const COUNTRY_TO_CURRENCY: Record<string, string> = {
+  US: 'USD', DO: 'DOP',
+  ES: 'EUR', DE: 'EUR', FR: 'EUR', IT: 'EUR', PT: 'EUR', NL: 'EUR', IE: 'EUR', AT: 'EUR', BE: 'EUR', FI: 'EUR', GR: 'EUR',
+  GB: 'GBP', CH: 'CHF',
+  BR: 'BRL', PT_BR: 'BRL',
+  AR: 'ARS', CL: 'CLP', CO: 'COP', PE: 'PEN', UY: 'UYU', PY: 'PYG', BO: 'BOB', VE: 'VES', EC: 'USD', CR: 'CRC', PA: 'USD', GT: 'GTQ', HN: 'HNL', NI: 'NIO', SV: 'USD',
+  CA: 'CAD',
+  MX: 'MXN',
+  JP: 'JPY', CN: 'CNY',
+}
 </script>

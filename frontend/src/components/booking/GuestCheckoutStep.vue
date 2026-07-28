@@ -12,16 +12,17 @@
       - notes: opcional
     `store.guestValid` habilita el botón "Continuar al pago". El store mapea estos campos al
     body del POST /public/booking (guestName/guestEmail/guestPhone/notes).
+    Todos los textos via i18n (es/en/pt, task 2.14).
   -->
   <section class="space-y-4">
     <header class="space-y-1">
-      <h2 class="text-xl font-black text-navy">Tus datos</h2>
-      <p class="text-sm text-text-muted">Sin crear cuenta. Solo necesitamos lo mínimo para tu reserva.</p>
+      <h2 class="text-xl font-black text-navy">{{ t('guest.title') }}</h2>
+      <p class="text-sm text-text-muted">{{ t('guest.subtitle') }}</p>
     </header>
 
     <form class="space-y-3" @submit.prevent="onSubmit">
       <label class="block">
-        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">Nombre completo *</span>
+        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">{{ t('guest.name') }}</span>
         <input
           v-model="store.guest.name"
           type="text"
@@ -35,7 +36,7 @@
       </label>
 
       <label class="block">
-        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">Email *</span>
+        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">{{ t('guest.email') }}</span>
         <input
           v-model="store.guest.email"
           type="email"
@@ -50,7 +51,7 @@
       </label>
 
       <label class="block">
-        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">Teléfono *</span>
+        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">{{ t('guest.phone') }}</span>
         <input
           v-model="store.guest.phone"
           type="tel"
@@ -65,12 +66,12 @@
       </label>
 
       <label class="block">
-        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">Notas (opcional)</span>
+        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">{{ t('guest.notes') }}</span>
         <textarea
           v-model="store.guest.notes"
           rows="2"
           class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-navy focus:border-cyan focus:ring-2 focus:ring-cyan/30 focus:outline-none"
-          placeholder="Pedidos especiales, hora de llegada…"
+          :placeholder="t('guest.notesPlaceholder')"
         />
       </label>
 
@@ -79,7 +80,7 @@
         :disabled="!store.guestValid"
         class="w-full rounded-xl bg-cyan px-6 py-4 text-base font-black text-white shadow-card transition hover:bg-cyan-light disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Continuar al pago
+        {{ t('guest.cta') }}
       </button>
     </form>
   </section>
@@ -88,8 +89,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useBookingStore } from '@/composables/useBooking'
+import { useBookingI18nStore } from '@/composables/useBookingI18n'
 
 const store = useBookingStore()
+const { t } = useBookingI18nStore()
 
 // `touched` se setea al primer blur. Evita gritar "error" antes de que el usuario escriba.
 const touched = ref(false)
@@ -97,13 +100,13 @@ const touched = ref(false)
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const nameError = computed(() =>
-  store.guest.name.trim().length < 2 ? 'Decinos tu nombre completo.' : '',
+  store.guest.name.trim().length < 2 ? t('guest.nameError') : '',
 )
 const emailError = computed(() =>
-  !EMAIL_RE.test(store.guest.email.trim()) ? 'Revisá el email (ej. nombre@hotel.com).' : '',
+  !EMAIL_RE.test(store.guest.email.trim()) ? t('guest.emailError') : '',
 )
 const phoneError = computed(() =>
-  store.guest.phone.trim().length < 5 ? 'Revisá el teléfono.' : '',
+  store.guest.phone.trim().length < 5 ? t('guest.phoneError') : '',
 )
 
 function onSubmit() {
