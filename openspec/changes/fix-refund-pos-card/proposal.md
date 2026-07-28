@@ -24,12 +24,10 @@ Fix **MEDIANO** (~350-500 líneas). NO parchear (feature de dinero + asíncrono 
 
 Mismo criterio de "feature de dinero merece change + QA robusto" que `refund-orden-pos`, `idempotencia-settlement-pos` y `depositos-stripe-holds`.
 
-## Decisiones de diseño PENDIENTES (requieren SDD, NO improvisar)
+## Decisiones de diseño — RESUELTAS (usuario, 2026-07-28)
 
-Estas dos NO se deciden en este proposal — necesitan specs/design con `sdd-spec` y `sdd-design` antes de aplicar:
-
-1. **Estado intermedio de orden `processing_payment`** (bloquea la mesa hasta confirmación de Stripe). Política de **expiración** de la Checkout Session (Stripe default 24h, demasiado para un POS) + **re-cobro** tras timeout (¿misma mesa reabre cobro? ¿se descarta la sesión y se genera otra?). Definir transición `processing_payment → billed` (cancelada por timeout) vs `→ paid` (confirmada), y qué pasa con la mesa si el cajero cierra el navegador.
-2. **UX de checkout en POS**: **Stripe Checkout** (redirige al cajero fuera de la app, vuelve por `successUrl`) vs **Stripe Terminal** (tarjeta presente, SDK hardware aparte, requiere lector). Decisión de **producto**: Checkout es rápido de integrar pero rompe el flujo del cajero; Terminal es el flujo "real" POS pero suma SDK + hardware. Este change asume Checkout por defecto (mismo patrón que folios), pero la decisión cierra en spec.
+1. **Estado intermedio `processing_payment`**: Stripe Checkout Session con **expiración corta** (15 min, override del default de 24h vía `expires_at` al crear la sesión — máximo permitido por Stripe es 24h, mínimo 30min desde `created`; se usa el mínimo práctico). Al expirar (`checkout.session.expired`): el payment se marca `cancelled`, la orden vuelve a `billed` **Y la mesa se libera** (`status: 'free'` en `restaurant_tables`, vía el mismo mecanismo que usa un `cancelOrder` normal) — el cajero puede re-cobrar generando una **nueva** Checkout Session (no se reutiliza la expirada). Si el cajero cierra el navegador sin esperar el timeout, el efecto es el mismo: la orden queda `processing_payment` hasta que el webhook de expiración llega (máx 15 min).
+2. **UX de checkout**: **Stripe Checkout Session** (redirige al cajero, vuelve por `successUrl`), NO Stripe Terminal — mismo patrón que folios, sin sumar hardware/SDK nuevo.
 
 ## Plan técnico (sintetizado)
 
@@ -38,7 +36,7 @@ Estas dos NO se deciden en este proposal — necesitan specs/design con `sdd-spe
 | **Backend — `settlement.payOrder(card)`** | Cuando `method==='card'`, llamar al nuevo port `chargeCardPayment` (en vez de `recordPayment`). La orden queda `processing_payment`; el payment queda `processing` con `stripePaymentId=''` hasta webhook. |
 | **Backend — port `chargeCardPayment`** | Nuevo en `SettlementPorts` (`settlement.ts:14`). Devuelve `{ paymentId, checkoutUrl }`. Reusa `payments.chargeCard` (crear payment → Checkout Session → `processing`). `reference:'pos:'+orderId` (alinea con `idempotencia-settlement-pos`). |
 | **Conector — socket inverso** | `connectors/restaurante-payments.ts` registra `onPaymentCompleted` en payments; payments lo dispara desde `settle-webhook.ts` (`onCompleted` ya existe en `SettleWebhookDeps`). El callback emite `restaurant.settlePaidOrder(orderId, paymentId)` → marca orden `paid`, libera mesa, descuenta inventario (receta). |
-| **Webhook — `checkout.session.expired`** | `settle-webhook.ts` maneja expiración: marca payment `cancelled` y dispara `onPaymentExpired` → `restaurant.unsettleOrder` (vuelve orden a `billed`, mesa sigue tomada). |
+| **Webhook — `checkout.session.expired`** | `settle-webhook.ts` maneja expiración (15 min, `expires_at` al crear la sesión): marca payment `cancelled` y dispara `onPaymentExpired` → `restaurant.unsettleOrder` (vuelve orden a `billed` Y libera la mesa — decisión de producto 2026-07-28 — el cajero re-cobra con una sesión nueva, no se reintenta la expirada). |
 | **Frontend — `cobrar.vue`** | Al elegir tarjeta, llamar `payOrder` → recibir `checkoutUrl` → `window.location.href = checkoutUrl` (o iframe embebido). En retorno (`successUrl`), **poll** `GET /orders/:id` hasta `status==='paid'` (timeout + reintento, como ya hace checkout de folios). |
 | **Tests** | restaurant (`payOrder` card deja `processing_payment`, idempotencia), payments (`chargeCard` reusa, webhook expired dispara callback), connectors (socket inverso cableado, doble emisión no duplica). |
 
@@ -63,5 +61,5 @@ El guard de `refund.ts` (commit `7e9e37f`) ya guía al operador con este mensaje
 
 - **Estado `processing_payment` vs concurrencia**: si llega un doble submit mientras la sesión está abierta, el unique-index de `idempotencia-settlement-pos` (`payments.reference = 'pos:'+orderId`) es la barrera — este change DEBE convivir con aquel (mismo esquema de `reference`).
 - **Webhook de expiración es nuevo**: hoy `settle-webhook.ts` solo actúa en `paid`; sumar `expired` sin romper el path existente requiere cuidar el `outcome.status` enum.
-- **Mesa trabada**: si el cajero abandona el checkout y no vuelve, la mesa queda `processing_payment` hasta expiración. La política del punto 1 (decisión PENDIENTE) es la que evita mesas zombies.
+- **Mesa trabada**: si el cajero abandona el checkout y no vuelve, la mesa queda tomada máximo 15 min (expiración corta decidida) — al expirar, `onPaymentExpired` la libera. Ventana de 15 min es el trade-off aceptado (no hay forma de detectar "abandonó" antes que eso sin polling agresivo del lado cliente).
 - **`stripePaymentId` vacío hasta webhook**: el guard de `refund.ts` debe seguir activo durante el ventana `processing` (un refund en ese momento no tiene PI todavía) — sólo se relaja cuando el webhook confirma.
