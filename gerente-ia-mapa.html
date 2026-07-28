@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerente IA — Plan de Conexión (SOLMI OS)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --navy:#0f1b3d; --navy2:#16264f; --ink:#0a0f1f;
+    --amber:#f59e0b; --sky:#38bdf8; --emerald:#34d399; --rose:#fb7185; --violet:#a78bfa;
+  }
+  *{scroll-behavior:smooth;}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;color:#0f172a;}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+  .navy{background:linear-gradient(135deg,var(--navy),var(--navy2));}
+  .border-ink{border:1px solid #0a0f1f!important;}
+  .layer{transition:.2s;} .layer:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(15,27,61,.18);}
+  .arrow-down{width:2px;height:26px;background:repeating-linear-gradient(to bottom,#334155 0 6px,transparent 6px 12px);margin:0 auto;}
+  .step-num{background:var(--amber);color:var(--ink);font-weight:800;border:2px solid var(--ink);}
+  .pill{border:1px solid #0a0f1f;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:9999px;display:inline-block;}
+  .grid-bg{background-image:linear-gradient(#ffffff10 1px,transparent 1px),linear-gradient(90deg,#ffffff10 1px,transparent 1px);background-size:22px 22px;}
+  .nav-link.active{background:var(--amber);color:var(--ink);}
+  .term{background:#0a0f1f;color:#e2e8f0;border:1px solid #1e293b;border-radius:8px;padding:14px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.55;overflow-x:auto;white-space:pre;}
+  .term .t-dim{color:#64748b;} .term .t-amber{color:#fbbf24;} .term .t-em{color:#34d399;}
+  .term .t-sky{color:#38bdf8;} .term .t-rose{color:#fb7185;} .term .t-violet{color:#a78bfa;}
+  .tag{font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;border:1px solid #0a0f1f;}
+  .tag-auto{background:#bbf7d0;} .tag-appr{background:#bae6fd;} .tag-sug{background:#fde68a;} .tag-read{background:#e5e7eb;}
+</style>
+</head>
+<body class="antialiased">
+
+<!-- NAV LATERAL -->
+<aside class="fixed left-0 top-0 h-screen w-60 navy text-slate-100 border-r-2 border-ink overflow-y-auto z-20">
+  <div class="p-4 border-b border-slate-600">
+    <div class="text-[10px] tracking-widest text-amber-400 font-bold">SOLMI OS</div>
+    <div class="font-extrabold text-lg leading-tight">Gerente IA</div>
+    <div class="text-xs text-slate-400">Plan técnico de conexión</div>
+  </div>
+  <nav class="p-3 space-y-1 text-[13px]">
+    <a href="#intro" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">1 · Qué es</a>
+    <a href="#mapa" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">2 · Mapa de capas</a>
+    <a href="#stack" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">3 · Stack técnico</a>
+    <a href="#loop" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">4 · Loop del agente</a>
+    <a href="#tools" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">5 · Herramientas (tools)</a>
+    <a href="#saber" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">6 · Cómo se entera</a>
+    <a href="#gate" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">7 · El gatekeeper</a>
+    <a href="#hacer" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">8 · Niveles de autonomía</a>
+    <a href="#identidad" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">9 · Identidad y seguridad</a>
+    <a href="#flujo" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">10 · Trace de ejecución</a>
+    <a href="#agentes" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">11 · Agentes por área</a>
+    <a href="#admin" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">12 · Config del admin</a>
+    <a href="#reglas" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">13 · Reglas de oro</a>
+    <a href="#arranque" class="nav-link block px-3 py-2 rounded hover:bg-slate-700">14 · Plan de arranque</a>
+  </nav>
+  <div class="p-4 text-[11px] text-slate-400 border-t border-slate-600">
+    Documento de diseño técnico. No es código de producción.
+  </div>
+</aside>
+
+<main class="ml-60">
+
+<!-- INTRO -->
+<section id="intro" class="navy text-slate-100 px-10 py-12 border-b-2 border-ink grid-bg">
+  <span class="pill bg-amber-400">DISEÑO TÉCNICO · CONCEPTO</span>
+  <h1 class="text-4xl font-extrabold mt-4">El Gerente IA del Hotel</h1>
+  <p class="text-slate-300 mt-3 max-w-3xl text-lg">
+    Un sistema de <b>agentes de IA</b> que opera el hotel llamando a la <b>misma API</b> que un humano.
+    Este documento explica <b>cómo funciona por dentro</b>: el loop del agente, las herramientas que usa,
+    quién decide si ejecuta solo o pide permiso, y un trace real de qué hace paso a paso.
+  </p>
+  <div class="grid md:grid-cols-4 gap-3 mt-8 max-w-4xl">
+    <div class="bg-slate-900/60 border border-slate-600 rounded-lg p-3"><div class="text-amber-400 font-bold text-sm">🔍 Observa</div><div class="text-xs text-slate-300 mt-1">Lee el estado del hotel por la API.</div></div>
+    <div class="bg-slate-900/60 border border-slate-600 rounded-lg p-3"><div class="text-sky-400 font-bold text-sm">🧠 Piensa</div><div class="text-xs text-slate-300 mt-1">LLM con herramientas (function calling).</div></div>
+    <div class="bg-slate-900/60 border border-slate-600 rounded-lg p-3"><div class="text-emerald-400 font-bold text-sm">⚡ Actúa</div><div class="text-xs text-slate-300 mt-1">Ejecuta llamadas HTTP con permisos.</div></div>
+    <div class="bg-slate-900/60 border border-slate-600 rounded-lg p-3"><div class="text-rose-400 font-bold text-sm">🛡️ Verifica</div><div class="text-xs text-slate-300 mt-1">Gatekeeper aprueba cada acción.</div></div>
+  </div>
+  <div class="mt-6 text-amber-300 text-sm max-w-3xl">
+    ⚠️ El Gerente IA <b>no es una terminal/CLI que escribe comandos</b>. Tampoco toca la base de datos.
+    Es un <b>programa (worker)</b> que habla con un <b>LLM</b> (Claude u otro), y el LLM decide qué
+    <b>herramientas</b> ejecutar — y esas herramientas son <b>llamadas HTTP a la API del propio sistema</b>.
+  </div>
+</section>
+
+<!-- MAPA -->
+<section id="mapa" class="px-10 py-12 bg-white border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">2 · El mapa de capas</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">
+    El sistema está hecho de capas. Cada capa habla solo con la de abajo. El Gerente IA <b>nunca salta capas</b>:
+    pasa por permisos, gatekeeper y audit igual que un humano. Eso es lo que lo hace seguro.
+  </p>
+  <div class="mt-10 max-w-4xl mx-auto space-y-0">
+    <div class="layer bg-amber-100 border-2 border-ink rounded-xl p-5 text-center">
+      <div class="text-xs font-bold text-amber-700 tracking-widest">CAPA 1 · ADMIN (humano)</div>
+      <div class="text-xl font-extrabold mt-1">⚙️ Configuración de agentes</div>
+      <div class="text-sm text-slate-600 mt-1">Prender/apagar · autonomía · permisos · reglas de nunca-hacer · avisos</div>
+    </div>
+    <div class="arrow-down"></div>
+    <div class="layer bg-violet-100 border-2 border-ink rounded-xl p-5 text-center">
+      <div class="text-xs font-bold text-violet-700 tracking-widest">CAPA 2 · RUNTIME DE AGENTES (programa)</div>
+      <div class="text-xl font-extrabold mt-1">🤖 Worker + LLM (function calling)</div>
+      <div class="text-sm text-slate-600 mt-1">Worker Bun que consume eventos, habla con el LLM, ejecuta las tools y respeta el gatekeeper</div>
+    </div>
+    <div class="arrow-down"></div>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div class="layer bg-sky-100 border-2 border-ink rounded-lg p-3 text-center text-sm font-bold">🛎️ Front Desk</div>
+      <div class="layer bg-sky-100 border-2 border-ink rounded-lg p-3 text-center text-sm font-bold">🧹 Operaciones</div>
+      <div class="layer bg-sky-100 border-2 border-ink rounded-lg p-3 text-center text-sm font-bold">💰 Finanzas</div>
+      <div class="layer bg-sky-100 border-2 border-ink rounded-lg p-3 text-center text-sm font-bold">📈 Revenue</div>
+      <div class="layer bg-sky-100 border-2 border-ink rounded-lg p-3 text-center text-sm font-bold">💬 Guest Exp.</div>
+      <div class="layer bg-sky-100 border-2 border-ink rounded-lg p-3 text-center text-sm font-bold">👥 Personal</div>
+    </div>
+    <div class="text-center text-xs text-slate-500 mt-1">CAPA 3 · Agentes (1 por área de negocio)</div>
+    <div class="arrow-down"></div>
+    <div class="layer bg-rose-100 border-2 border-ink rounded-xl p-5 text-center">
+      <div class="text-xs font-bold text-rose-700 tracking-widest">CAPA 4 · GATEKEEPER + PERMISOS + AUDIT</div>
+      <div class="text-xl font-extrabold mt-1">🔒 El guardia que aprueba cada llamada</div>
+      <div class="text-sm text-slate-600 mt-1">Antes de ejecutar: ¿tiene permiso? ¿es autónoma? ¿está prohibida? Todo queda en audit_log. hotelId inyectado.</div>
+    </div>
+    <div class="arrow-down"></div>
+    <div class="layer bg-slate-800 text-white border-2 border-ink rounded-xl p-5 text-center">
+      <div class="text-xs font-bold text-slate-300 tracking-widest">CAPA 5 · API DEL PMS (arckode-framework)</div>
+      <div class="text-xl font-extrabold mt-1">🏨 Los ~40 módulos — endpoints REST</div>
+      <div class="text-sm text-slate-300 mt-1 mono text-xs">/api/reservas · /api/facturas · /api/payments · /api/housekeeping · /api/ttlock · /api/reports ...</div>
+    </div>
+    <div class="arrow-down"></div>
+    <div class="layer bg-emerald-100 border-2 border-ink rounded-xl p-5 text-center">
+      <div class="text-xs font-bold text-emerald-700 tracking-widest">CAPA 6 · INTEGRACIONES</div>
+      <div class="text-xl font-extrabold mt-1">🔌 Channex · Stripe · TTLock · Email · WhatsApp</div>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section id="stack" class="px-10 py-12 bg-slate-100 border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">3 · Stack técnico — qué procesos corren</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">
+    Esto NO vive dentro de un módulo del PMS. Es un <b>servicio aparte</b> que se conecta al PMS por su API.
+    El propio sistema ya tiene las tablas <span class="mono text-sm">ai_*</span> y el permiso <span class="mono text-sm">ai:edit</span>: las reusamos.
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-5 mt-8 max-w-5xl">
+    <div class="layer bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold text-lg">🔁 Event Bus</h3>
+      <p class="text-sm text-slate-600 mt-1">El PMS publica eventos cuando algo pasa (reserva creada, factura vencida, limpieza lista). Implementación simple y portable: una tabla <span class="mono">ai_events</span> + un poller. Sin Redis obligatorio.</p>
+    </div>
+    <div class="layer bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold text-lg">🤖 Agent Worker (Bun)</h3>
+      <p class="text-sm text-slate-600 mt-1">El programa principal. Consume eventos del bus, carga el agente que corresponde, corre el loop LLM↔tools, aplica el gatekeeper y escribe el trace en <span class="mono">ai_runs</span>.</p>
+    </div>
+    <div class="layer bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold text-lg">🧠 LLM API</h3>
+      <p class="text-sm text-slate-600 mt-1">El cerebro. Claude (Anthropic) por defecto, con <b>function calling</b>: le pasamos las tools disponibles y decide cuál llamar. Por hotelería se prefiere Claude por razonamiento y baja alucinación.</p>
+    </div>
+    <div class="layer bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold text-lg">🧰 Tool Layer</h3>
+      <p class="text-sm text-slate-600 mt-1">Wrappers que el worker ejecuta. Cada tool = una llamada HTTP a <span class="mono">/api/*</span> con el <b>service token del agente</b>. El PMS valida permisos como a cualquier usuario.</p>
+    </div>
+    <div class="layer bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold text-lg">✋ Approval Queue</h3>
+      <p class="text-sm text-slate-600 mt-1">Tabla <span class="mono">ai_approvals</span>. Cuando una tool es de nivel <b>sugerir/aprobar</b>, no se ejecuta: se encola y se avisa al humano (panel + WhatsApp). El humano aprueba con 1 click.</p>
+    </div>
+    <div class="layer bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold text-lg">📒 Audit + Trace</h3>
+      <p class="text-sm text-slate-600 mt-1">Cada tool ejecuida deja fila en <span class="mono">audit_log</span> con <span class="mono">actor=ai:front-desk</span>. Y cada corrida completa, su traza en <span class="mono">ai_runs</span> (prompt, tools llamadas, respuesta, costo).</p>
+    </div>
+  </div>
+
+  <div class="mt-6 max-w-5xl">
+    <div class="term">┌─────────────┐   evento    ┌──────────────┐
+│  PMS arckode │ ──────────▶ │  ai_events   │
+│  (~40 mods)  │             │  (bus)       │
+└──────┬───────┘             └──────┬───────┘
+       ▲                            │ poll
+       │ HTTP /api/*                ▼
+       │ + service token     ┌──────────────┐      function calling     ┌───────────┐
+       │                     │ Agent Worker │ ◀──────────────────────▶ │  LLM API  │
+       │                     │   (Bun)      │                           │ (Claude)  │
+       │                     └──────┬───────┘                           └───────────┘
+       │                            │
+       │                  ┌─────────┴─────────┐
+       │                  ▼                   ▼
+       │          ┌──────────────┐    ┌──────────────┐
+       └──────────┤  Gatekeeper  │    │ ai_approvals │ ──▶ avisa humano
+                  │  + permisos  │    │   (cola)     │
+                  └──────┬───────┘    └──────────────┘
+                         ▼
+                  ┌──────────────┐
+                  │  audit_log   │
+                  │ + ai_runs    │
+                  └──────────────┘</div>
+  </div>
+</section>
+
+<!-- LOOP -->
+<section id="loop" class="px-10 py-12 bg-white border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">4 · Cómo funciona por dentro: el loop del agente</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">
+    Cada agente corre el mismo patrón: <b>Observar → Pensar → Actuar → Verificar</b>, en bucle,
+    hasta que el LLM decide que terminó (o que necesita al humano). Esto se llama <b>agentic loop con function calling</b>.
+  </p>
+
+  <div class="grid md:grid-cols-4 gap-4 mt-8 max-w-5xl">
+    <div class="border-2 border-ink rounded-xl p-4 bg-amber-50">
+      <div class="step-num w-8 h-8 rounded-full flex items-center justify-center text-sm">1</div>
+      <b class="block mt-2">👁️ OBSERVAR</b>
+      <p class="text-sm text-slate-600 mt-1">Llega un evento (o un cron). El worker carga el <b>contexto</b>: la reserva, el hotel, la ocupación, historial. Todo por la API.</p>
+    </div>
+    <div class="border-2 border-ink rounded-xl p-4 bg-sky-50">
+      <div class="step-num w-8 h-8 rounded-full flex items-center justify-center text-sm">2</div>
+      <b class="block mt-2">🧠 PENSAR</b>
+      <p class="text-sm text-slate-600 mt-1">Se manda todo al LLM junto con el <b>catálogo de tools</b> disponibles. El LLM responde qué tool quiere usar y con qué parámetros.</p>
+    </div>
+    <div class="border-2 border-ink rounded-xl p-4 bg-emerald-50">
+      <div class="step-num w-8 h-8 rounded-full flex items-center justify-center text-sm">3</div>
+      <b class="block mt-2">⚡ ACTUAR</b>
+      <p class="text-sm text-slate-600 mt-1">Antes de ejecutar, pasa el <b>gatekeeper</b>. Si pasa, el worker hace la llamada HTTP a la API. Si no, la bloquea o la encola.</p>
+    </div>
+    <div class="border-2 border-ink rounded-xl p-4 bg-violet-50">
+      <div class="step-num w-8 h-8 rounded-full flex items-center justify-center text-sm">4</div>
+      <b class="block mt-2">✅ VERIFICAR</b>
+      <p class="text-sm text-slate-600 mt-1">El resultado vuelve al LLM. Decide el próximo paso (volver a 2) o terminar. El loop sigue hasta <span class="mono">end_turn</span>.</p>
+    </div>
+  </div>
+
+  <div class="mt-8 max-w-5xl bg-slate-50 border-l-4 border-sky-500 p-4 rounded">
+    <b>📌 Por qué importa el bucle:</b> el agente <b>no decide todo de una</b>. Da un paso, ve qué pasó,
+    y recalcula. Si asignar la habitación falla (sin stock), lo ve y prueba otra cosa.
+    Eso es lo que lo hace robusto, no un script rígido.
+  </div>
+</section>
+
+<!-- TOOLS -->
+<section id="tools" class="px-10 py-12 bg-slate-100 border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">5 · Las herramientas de la IA — qué llama en concreto</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">
+    Esto es lo central. Las "herramientas" del Gerente IA <b>son los endpoints de tu propio sistema</b>,
+    envueltos como <b>function-calling</b> del LLM. Cada tool = una llamada HTTP con método, ruta, permiso y nivel de autonomía.
+  </p>
+
+  <div class="mt-6 max-w-5xl bg-white border-2 border-ink rounded-xl p-5">
+    <b>Una tool se declara así (JSON Schema que el LLM entiende):</b>
+<div class="term mt-2">{
+  <span class="t-violet">"name"</span>: <span class="t-em">"assignRoom"</span>,
+  <span class="t-violet">"description"</span>: <span class="t-em">"Asignar una habitación disponible a una reserva"</span>,
+  <span class="t-violet">"input_schema"</span>: {
+    <span class="t-sky">"type"</span>: <span class="t-em">"object"</span>,
+    <span class="t-sky">"properties"</span>: {
+      <span class="t-amber">"reservationId"</span>: { <span class="t-sky">"type"</span>: <span class="t-em">"string"</span> },
+      <span class="t-amber">"roomId"</span>:      { <span class="t-sky">"type"</span>: <span class="t-em">"string"</span> }
+    },
+    <span class="t-sky">"required"</span>: [<span class="t-em">"reservationId"</span>, <span class="t-amber">"roomId"</span>]
+  },
+  <span class="t-violet">"x-backend"</span>: { <span class="t-sky">"method"</span>: <span class="t-em">"POST"</span>, <span class="t-sky">"path"</span>: <span class="t-em">"/api/reservas/{reservationId}/assign"</span> }
+}</div>
+    <p class="text-sm text-slate-600 mt-2">El LLM solo ve <span class="mono">name</span>, <span class="mono">description</span> e <span class="mono">input_schema</span>. El <span class="mono">x-backend</span> lo usa el worker para saber qué HTTP hacer. <b>El LLM nunca arma la URL ni toca la DB.</b></p>
+  </div>
+
+  <p class="mt-8 mb-3 font-extrabold">Catálogo de tools por agente <span class="text-xs text-slate-500 font-normal">(niveles: <span class="tag tag-read">read</span> lectura · <span class="tag tag-auto">auto</span> ejecuta solo · <span class="tag tag-appr">aprobar</span> prepara y confirma · <span class="tag tag-sug">sugerir</span> solo propone)</span></p>
+
+  <div class="overflow-x-auto">
+  <table class="w-full border-2 border-ink text-[13px]">
+    <thead class="navy text-white"><tr>
+      <th class="text-left p-2">Agente</th><th class="text-left p-2">Tool (qué hace)</th>
+      <th class="text-left p-2">Método + ruta</th><th class="text-left p-2">Permiso</th><th class="text-left p-2">Nivel</th>
+    </tr></thead>
+    <tbody>
+      <tr class="bg-white border-t border-slate-300"><td rowspan="7" class="p-2 font-bold align-top">🛎️ Front Desk</td>
+        <td class="p-2">Ver reserva</td><td class="p-2 mono">GET /api/reservas/:id</td><td class="p-2 mono">reservations:view</td><td class="p-2"><span class="tag tag-read">read</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Disponibilidad de cuartos</td><td class="p-2 mono">GET /api/rooms?available</td><td class="p-2 mono">rooms:view</td><td class="p-2"><span class="tag tag-read">read</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Asignar habitación</td><td class="p-2 mono">POST /api/reservas/:id/assign</td><td class="p-2 mono">reservations:edit</td><td class="p-2"><span class="tag tag-auto">auto</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Generar código cerradura</td><td class="p-2 mono">POST /api/ttlock/codes</td><td class="p-2 mono">ttlock:edit</td><td class="p-2"><span class="tag tag-auto">auto</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Check-in</td><td class="p-2 mono">POST /api/reservas/:id/checkin</td><td class="p-2 mono">reservations:checkin</td><td class="p-2"><span class="tag tag-appr">aprobar</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Crear link de pago</td><td class="p-2 mono">POST /api/payment-links</td><td class="p-2 mono">billing:create</td><td class="p-2"><span class="tag tag-appr">aprobar</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Crear seña</td><td class="p-2 mono">POST /api/deposits</td><td class="p-2 mono">billing:create</td><td class="p-2"><span class="tag tag-sug">sugerir</span></td></tr>
+
+      <tr class="bg-slate-50 border-t-2 border-slate-400"><td rowspan="4" class="p-2 font-bold align-top">🧹 Operaciones</td>
+        <td class="p-2">Ver tareas de limpieza</td><td class="p-2 mono">GET /api/housekeeping</td><td class="p-2 mono">housekeeping:view</td><td class="p-2"><span class="tag tag-read">read</span></td></tr>
+      <tr class="bg-slate-50 border-t border-slate-300"><td class="p-2">Asignar camarera</td><td class="p-2 mono">POST /api/housekeeping/:id/assign</td><td class="p-2 mono">housekeeping:create</td><td class="p-2"><span class="tag tag-auto">auto</span></td></tr>
+      <tr class="bg-slate-50 border-t border-slate-300"><td class="p-2">Aprobar limpieza</td><td class="p-2 mono">POST /api/housekeeping/:id/approve</td><td class="p-2 mono">housekeeping:edit</td><td class="p-2"><span class="tag tag-appr">aprobar</span></td></tr>
+      <tr class="bg-slate-50 border-t border-slate-300"><td class="p-2">Asignar ticket de mant.</td><td class="p-2 mono">POST /api/mantenimiento/:id/assign</td><td class="p-2 mono">maintenance:edit</td><td class="p-2"><span class="tag tag-auto">auto</span></td></tr>
+
+      <tr class="bg-white border-t-2 border-slate-400"><td rowspan="5" class="p-2 font-bold align-top">💰 Finanzas</td>
+        <td class="p-2">Reporte avanzado</td><td class="p-2 mono">GET /api/reports/advanced</td><td class="p-2 mono">reports:view</td><td class="p-2"><span class="tag tag-read">read</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Facturar folio</td><td class="p-2 mono">POST /api/folios/:id/invoice</td><td class="p-2 mono">billing:create</td><td class="p-2"><span class="tag tag-sug">sugerir</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Registrar pago</td><td class="p-2 mono">POST /api/facturas/:id/pay</td><td class="p-2 mono">billing:create</td><td class="p-2"><span class="tag tag-sug">sugerir</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Devolver dinero</td><td class="p-2 mono">POST /api/payments/:id/refund</td><td class="p-2 mono">billing:create</td><td class="p-2"><span class="tag tag-sug">sugerir</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Anular factura</td><td class="p-2 mono">POST /api/facturas/:id/credit-note</td><td class="p-2 mono">billing:delete</td><td class="p-2"><span class="tag tag-sug">sugerir</span></td></tr>
+
+      <tr class="bg-slate-50 border-t-2 border-slate-400"><td rowspan="3" class="p-2 font-bold align-top">📈 Revenue</td>
+        <td class="p-2">Ver tarifas</td><td class="p-2 mono">GET /api/rates</td><td class="p-2 mono">channel-manager:view</td><td class="p-2"><span class="tag tag-read">read</span></td></tr>
+      <tr class="bg-slate-50 border-t border-slate-300"><td class="p-2">Ajustar tarifa</td><td class="p-2 mono">PATCH /api/rates</td><td class="p-2 mono">channel-manager:edit</td><td class="p-2"><span class="tag tag-appr">aprobar</span></td></tr>
+      <tr class="bg-slate-50 border-t border-slate-300"><td class="p-2">Push a Channex</td><td class="p-2 mono">POST /api/channels/sync</td><td class="p-2 mono">channel-manager:edit</td><td class="p-2"><span class="tag tag-appr">aprobar</span></td></tr>
+
+      <tr class="bg-white border-t-2 border-slate-400"><td rowspan="2" class="p-2 font-bold align-top">💬 Guest Exp.</td>
+        <td class="p-2">Enviar mensaje</td><td class="p-2 mono">POST /api/messages</td><td class="p-2 mono">feedback:view</td><td class="p-2"><span class="tag tag-appr">aprobar</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-2">Responder opinión</td><td class="p-2 mono">POST /api/opiniones/:id/reply</td><td class="p-2 mono">feedback:view</td><td class="p-2"><span class="tag tag-appr">aprobar</span></td></tr>
+
+      <tr class="bg-slate-50 border-t-2 border-slate-400"><td rowspan="2" class="p-2 font-bold align-top">👥 Personal</td>
+        <td class="p-2">Ver equipo</td><td class="p-2 mono">GET /api/usuarios</td><td class="p-2 mono">users:view</td><td class="p-2"><span class="tag tag-read">read</span></td></tr>
+      <tr class="bg-slate-50 border-t border-slate-300"><td class="p-2">Registrar asistencia</td><td class="p-2 mono">POST /api/attendance</td><td class="p-2 mono">users:create</td><td class="p-2"><span class="tag tag-read">read</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="text-xs text-slate-500 mt-3">Rutas ilustrativas basadas en los endpoints reales del sistema. El detalle exacto se define en el spec del piloto.</p>
+</section>
+
+<!-- SABER -->
+<section id="saber" class="px-10 py-12 bg-white border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">6 · Cómo se ENTERA de las tareas</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">Tres fuentes, una arquitectura. Todo pasa por el <b>Event Router</b>, que decide qué agente despierta.</p>
+
+  <div class="grid md:grid-cols-3 gap-5 mt-8 max-w-5xl">
+    <div class="layer bg-white border-2 border-ink rounded-xl p-5">
+      <div class="text-4xl">🚨</div>
+      <h3 class="font-extrabold text-lg mt-2">Eventos del PMS</h3>
+      <p class="text-sm text-slate-600 mt-1">El principal. Cuando el PMS hace algo importante, publica una fila en <span class="mono">ai_events</span>.</p>
+      <div class="mt-3 term text-[11px]">{ type: <span class="t-em">"reservation.created"</span>,
+  hotelId, reservationId, at }</div>
+    </div>
+    <div class="layer bg-white border-2 border-ink rounded-xl p-5">
+      <div class="text-4xl">⏰</div>
+      <h3 class="font-extrabold text-lg mt-2">Cron / rutinas</h3>
+      <p class="text-sm text-slate-600 mt-1">El worker programa chequeos periódicos: no-shows nocturnos, cobros vencidos del día, cierre de caja.</p>
+      <div class="mt-3 term text-[11px]">nightly 03:00 → <span class="t-amber">checkNoShows</span>
+daily  22:00 → <span class="t-amber">checkOverduePayments</span></div>
+    </div>
+    <div class="layer bg-white border-2 border-ink rounded-xl p-5">
+      <div class="text-4xl">📸</div>
+      <h3 class="font-extrabold text-lg mt-2">Snapshot (contexto)</h3>
+      <p class="text-sm text-slate-600 mt-1">No es una tarea, es el "foto del hotel" que el agente carga al arrancar para tener contexto fresco.</p>
+      <div class="mt-3 term text-[11px]">GET /api/dashboard → ocupación,
+ingresos, pendientes, alertas</div>
+    </div>
+  </div>
+
+  <div class="mt-6 max-w-5xl">
+    <b>El Event Router — qué evento despierta a qué agente:</b>
+    <div class="overflow-x-auto mt-2">
+    <table class="w-full border-2 border-ink text-sm">
+      <thead class="navy text-white"><tr><th class="text-left p-2">Evento del PMS</th><th class="text-left p-2">Agente que despierta</th><th class="text-left p-2">Motivo</th></tr></thead>
+      <tbody class="bg-slate-50">
+        <tr class="border-t border-slate-300"><td class="p-2 mono">reservation.created</td><td class="p-2">🛎️ Front Desk</td><td class="p-2 text-slate-600">Asignar cuarto + cerradura</td></tr>
+        <tr class="border-t border-slate-300 bg-white"><td class="p-2 mono">invoice.overdue</td><td class="p-2">💰 Finanzas</td><td class="p-2 text-slate-600">Avisar / sugerir cobro</td></tr>
+        <tr class="border-t border-slate-300"><td class="p-2 mono">housekeeping.completed</td><td class="p-2">🧹 Operaciones</td><td class="p-2 text-slate-600">Marcar lista para revisión</td></tr>
+        <tr class="border-t border-slate-300 bg-white"><td class="p-2 mono">message.received</td><td class="p-2">💬 Guest Experience</td><td class="p-2 text-slate-600">Responder o escalar</td></tr>
+        <tr class="border-t border-slate-300"><td class="p-2 mono">maintenance.ticket.created</td><td class="p-2">🧹 Operaciones</td><td class="p-2 text-slate-600">Asignar técnico</td></tr>
+        <tr class="border-t border-slate-300 bg-white"><td class="p-2 mono">rate.demand_spike</td><td class="p-2">📈 Revenue</td><td class="p-2 text-slate-600">Sugerir ajuste de tarifa</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- GATEKEEPER -->
+<section id="gate" class="px-10 py-12 bg-slate-100 border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">7 · El gatekeeper — quién deja ejecutar cada acción</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">
+    El LLM propone una tool. <b>Antes de ejecutarla</b>, el worker pasa por el gatekeeper.
+    Es código determinista (no IA) que aplica reglas. <b>La IA nunca se saltea el gatekeeper.</b>
+  </p>
+
+  <div class="max-w-3xl mt-8 space-y-3">
+    <div class="flex gap-3 bg-white border-2 border-ink rounded-xl p-4"><span class="text-2xl">①</span><div><b>¿La tool está en el scope del agente?</b><div class="text-sm text-slate-600">Si el agente Front Desk propone un refund → fuera de scope → <b class="text-rose-600">BLOQUEAR + alertar</b>.</div></div></div>
+    <div class="flex gap-3 bg-white border-2 border-ink rounded-xl p-4"><span class="text-2xl">②</span><div><b>¿Está en la lista negra (guardrails)?</b><div class="text-sm text-slate-600">Ej: "nunca anular factura". Configurada por el admin. → <b class="text-rose-600">BLOQUEAR</b>.</div></div></div>
+    <div class="flex gap-3 bg-white border-2 border-ink rounded-xl p-4"><span class="text-2xl">③</span><div><b>¿Qué nivel tiene la tool?</b><div class="text-sm text-slate-600"><span class="tag tag-read">read</span> ejecuta · <span class="tag tag-auto">auto</span> ejecuta · <span class="tag tag-appr">aprobar</span> encola · <span class="tag tag-sug">sugerir</span> solo propone.</div></div></div>
+    <div class="flex gap-3 bg-white border-2 border-ink rounded-xl p-4"><span class="text-2xl">④</span><div><b>¿Tope diario / costo?</b><div class="text-sm text-slate-600">Si el agente supera su cupo de acciones del día → <b class="text-rose-600">pausar + avisar</b>.</div></div></div>
+    <div class="flex gap-3 bg-white border-2 border-ink rounded-xl p-4"><span class="text-2xl">⑤</span><div><b>Registrar en audit</b><div class="text-sm text-slate-600">Pase o no pase, la decisión queda en <span class="mono">audit_log</span> con el porqué.</div></div></div>
+  </div>
+
+  <div class="mt-6 max-w-3xl">
+    <div class="term"><span class="t-dim">// pseudocódigo del gatekeeper — determinístico, no LLM</span>
+<span class="t-sky">function</span> <span class="t-em">gate</span>(agent, tool, input):
+  <span class="t-sky">if</span> tool <span class="t-sky">not in</span> agent.scope:        <span class="t-sky">return</span> <span class="t-rose">DENY</span>(<span class="t-em">"fuera de scope"</span>)
+  <span class="t-sky">if</span> tool <span class="t-sky">in</span> agent.guardrails:       <span class="t-sky">return</span> <span class="t-rose">DENY</span>(<span class="t-em">"prohibida por config"</span>)
+  <span class="t-sky">if</span> agent.dailyQuotaSpent():       <span class="t-sky">return</span> <span class="t-amber">PAUSE</span>(<span class="t-em">"tope diario"</span>)
+
+  level = tool.level
+  <span class="t-sky">if</span> level == <span class="t-em">"read"</span> <span class="t-sky">or</span> level == <span class="t-em">"auto"</span>: <span class="t-sky">return</span> <span class="t-em">EXECUTE</span>(...)
+  <span class="t-sky">if</span> level == <span class="t-em">"aprobar"</span>:            <span class="t-sky">return</span> <span class="t-amber">ENQUEUE</span>(approval)
+  <span class="t-sky">if</span> level == <span class="t-em">"sugerir"</span>:            <span class="t-sky">return</span> <span class="t-amber">SUGGEST</span>(approval)</div>
+  </div>
+</section>
+
+<!-- HACER -->
+<section id="hacer" class="px-10 py-12 bg-white border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">8 · Los niveles de autonomía</h2>
+  <div class="grid md:grid-cols-3 gap-5 mt-8 max-w-5xl">
+    <div class="layer border-2 border-ink rounded-xl p-5 bg-amber-50">
+      <div class="flex items-center justify-between"><h3 class="font-extrabold text-lg">💡 SUGERIR</h3><span class="pill bg-amber-200">riesgo alto</span></div>
+      <p class="text-sm text-slate-700 mt-2">El IA propone. El humano decide.</p>
+      <div class="text-sm font-bold text-slate-600 mt-2">→ anular factura · devolver dinero · cancelar reserva pagada</div>
+    </div>
+    <div class="layer border-2 border-ink rounded-xl p-5 bg-sky-50">
+      <div class="flex items-center justify-between"><h3 class="font-extrabold text-lg">✅ APROBAR</h3><span class="pill bg-sky-200">riesgo medio</span></div>
+      <p class="text-sm text-slate-700 mt-2">Prepara todo. El humano confirma con 1 click.</p>
+      <div class="text-sm font-bold text-slate-600 mt-2">→ check-in · enviar mensaje · ajustar tarifa</div>
+    </div>
+    <div class="layer border-2 border-ink rounded-xl p-5 bg-emerald-50">
+      <div class="flex items-center justify-between"><h3 class="font-extrabold text-lg">🚀 AUTOMÁTICO</h3><span class="pill bg-emerald-200">riesgo bajo</span></div>
+      <p class="text-sm text-slate-700 mt-2">Hace solo, sin preguntar. Y registra.</p>
+      <div class="text-sm font-bold text-slate-600 mt-2">→ asignar cuarto · generar código · leer estado</div>
+    </div>
+  </div>
+  <div class="mt-6 max-w-4xl bg-slate-50 border-l-4 border-amber-500 p-4 rounded">
+    <b>📈 Subís de nivel por confianza, no por fecha:</b> semanas sin errores pasan de sugerir→aprobar; meses impecables, a auto. <b>Finanzas se queda en sugerir mucho tiempo</b>, y eso está bien.
+  </div>
+</section>
+
+<!-- IDENTIDAD -->
+<section id="identidad" class="px-10 py-12 bg-slate-100 border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">9 · Identidad y seguridad técnica</h2>
+  <div class="grid md:grid-cols-2 gap-5 mt-8 max-w-5xl">
+    <div class="bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold">🔑 Service token por agente</h3>
+      <p class="text-sm text-slate-600 mt-1">Cada agente es un "usuario" del PMS con su rol (ej. <span class="mono">ai_front_desk</span>) y permisos limitados. Cada llamada HTTP lleva:</p>
+      <div class="term mt-2 text-[11px]">Authorization: Bearer <span class="t-amber">&lt;service-token-front-desk&gt;</span>
+x-hotel-id: <span class="t-amber">h_1</span>
+x-actor: <span class="t-amber">ai:front-desk</span></div>
+    </div>
+    <div class="bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold">🔒 El PMS valida igual que a un humano</h3>
+      <p class="text-sm text-slate-600 mt-1">Cada ruta ya tiene <span class="mono">requirePermission()</span>, ownership check y filtro por <span class="mono">hotelId</span>. El agente <b>pasa por las mismas validaciones</b>. No hay backdoor.</p>
+    </div>
+    <div class="bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold">🏨 Multi-tenancy hard bound</h3>
+      <p class="text-sm text-slate-600 mt-1">El <span class="mono">hotelId</span> se inyecta en cada llamada. El agente del Hotel A <b>jamás</b> ve datos del Hotel B. Sin excepciones.</p>
+    </div>
+    <div class="bg-white border-2 border-ink rounded-xl p-5">
+      <h3 class="font-extrabold">📒 Trazabilidad completa</h3>
+      <p class="text-sm text-slate-600 mt-1">Cada tool ejecuida → fila en <span class="mono">audit_log</span> con <span class="mono">actor=ai:*</span>. Cada corrida → <span class="mono">ai_runs</span> con prompt, tools, respuesta y costo en tokens. Si un huésped reclama, hay evidencia.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FLUJO -->
+<section id="flujo" class="px-10 py-12 bg-white border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">10 · Trace de ejecución real</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">
+    Reserva nueva por Booking a las <b>3:14 AM</b>. Nadie trabaja. Así se ve la corrida del agente Front Desk, línea por línea —
+    <b>qué evento llega, qué piensa el LLM, qué tool ejecuta, qué devuelve, y dónde frena.</b>
+  </p>
+
+  <div class="mt-6 max-w-4xl">
+    <div class="term">[03:14:02] <span class="t-violet">EVENT</span>  reservation.created   hotel=h_1  reservation=r_123
+[03:14:02] <span class="t-violet">ROUTER</span> → agent=<span class="t-amber">front-desk</span>
+[03:14:03] <span class="t-dim">OBSERVAR — cargar contexto</span>
+           GET /api/reservas/r_123          → <span class="t-em">200 {Carlos Pérez, 2 noches, doble, seña NO}</span>
+           GET /api/rooms?available&from&to  → <span class="t-em">200 [204, 305, 110]</span>
+[03:14:04] <span class="t-dim">PENSAR — LLM recibe tools + contexto</span>
+           ← tool_use: <span class="t-sky">listRoomAvailability</span>{from,to,type:doble}  <span class="t-dim">(ya tengo datos)</span>
+[03:14:04] <span class="t-dim">ACTUAR + GATE — assignRoom (level=auto, scope OK)</span>
+           POST /api/reservas/r_123/assign {roomId:"204"}  → <span class="t-em">200</span>
+           audit: actor=<span class="t-amber">ai:front-desk</span>  action=assignRoom
+[03:14:05] ← tool_use: <span class="t-sky">generateLockCode</span>{roomId:"204", from, to}
+[03:14:06] <span class="t-dim">ACTUAR + GATE — generateLockCode (level=auto)</span>
+           POST /api/ttlock/codes {roomId,from,to}        → <span class="t-em">200 {code:"8421"}</span>
+           audit: actor=<span class="t-amber">ai:front-desk</span>  action=generateLockCode
+[03:14:07] ← tool_use: <span class="t-sky">requestPaymentLink</span>{reservationId, amount:150}
+[03:14:07] <span class="t-dim">GATE — requestPaymentLink (level=</span><span class="t-amber">aprobar</span><span class="t-dim">) → NO ejecuta</span>
+           ENQUEUE approval #ap_88 → <span class="t-rose">avisa gerente (panel + WhatsApp)</span>
+[03:14:07] ← end_turn  <span class="t-dim">("listo; espero aprobación de seña")</span>
+[03:14:07] <span class="t-violet">RUN end</span>  tools=3  approvals=1  tokens=4,820  cost=$0.06
+           ai_runs: trace completa guardada.</div>
+  </div>
+
+  <div class="mt-6 max-w-4xl bg-emerald-50 border-2 border-emerald-700 rounded-xl p-4">
+    <b>✅ Resultado a las 3 AM:</b> el huésped ya tiene cuarto 204 y código 8421 sin que nadie se despierte.
+    El <b>dinero no se tocó</b>: el link de seña espera al gerente. Y hay 4 filas de audit + 1 trace completo.
+  </div>
+
+  <div class="mt-6 max-w-4xl bg-rose-50 border-2 border-rose-700 rounded-xl p-4">
+    <b>🛑 Y si el LLM se equivoca?</b> El gatekeeper lo frena antes de causar daño. Ejemplo: si propusiera
+    <span class="mono">refundPayment</span> (fuera de scope de Front Desk) → <b>DENY</b>, alerta al admin, y queda en audit. La IA propone; el código decide.
+  </div>
+</section>
+
+<!-- AGENTES -->
+<section id="agentes" class="px-10 py-12 bg-slate-100 border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">11 · Los agentes por área</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">Un agente por <b>área de negocio</b>, no por módulo técnico. <b>6 + 1 orquestador</b>, no 40. Contexto chico = menos error y menos costo.</p>
+  <div class="overflow-x-auto mt-8">
+  <table class="w-full border-2 border-ink text-sm">
+    <thead class="navy text-white"><tr><th class="text-left p-3">Agente</th><th class="text-left p-3">Qué maneja</th><th class="text-left p-3">Autonomía inicial</th></tr></thead>
+    <tbody class="bg-slate-50">
+      <tr class="border-t border-slate-300"><td class="p-3 font-bold">🧠 Orquestador</td><td class="p-3">Reparte trabajo, sintetiza, escala al humano</td><td class="p-3"><span class="pill bg-amber-200">sugiere</span></td></tr>
+      <tr class="border-t border-slate-300 bg-white"><td class="p-3 font-bold">🛎️ Front Desk</td><td class="p-3">Reservas, check-in/out, cuartos, cerraduras, señas</td><td class="p-3"><span class="pill bg-emerald-200">alta</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-3 font-bold">🧹 Operaciones</td><td class="p-3">Limpieza, mantenimiento, dispositivos</td><td class="p-3"><span class="pill bg-sky-200">media</span></td></tr>
+      <tr class="border-t border-slate-300 bg-white"><td class="p-3 font-bold">💰 Finanzas</td><td class="p-3">Facturas, cobros, caja, reportes</td><td class="p-3"><span class="pill bg-amber-200">baja</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-3 font-bold">📈 Revenue</td><td class="p-3">Tarifas, OTAs, Channex</td><td class="p-3"><span class="pill bg-sky-200">media</span></td></tr>
+      <tr class="border-t border-slate-300 bg-white"><td class="p-3 font-bold">💬 Guest Experience</td><td class="p-3">Mensajería, opiniones, email, WhatsApp</td><td class="p-3"><span class="pill bg-emerald-200">alta</span></td></tr>
+      <tr class="border-t border-slate-300"><td class="p-3 font-bold">👥 Personal</td><td class="p-3">RRHH, asistencia, nómina</td><td class="p-3"><span class="pill bg-amber-200">baja</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ADMIN -->
+<section id="admin" class="px-10 py-12 bg-white border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">12 · Configuración desde el admin</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">Cada agente se configura desde <span class="mono">/admin/ai-agents</span>. Reusa la tabla <span class="mono">configuration</span> (KV por hotel) y el permiso <span class="mono">ai:edit</span>.</p>
+  <div class="mt-8 max-w-2xl bg-white border-2 border-ink rounded-xl overflow-hidden shadow-lg">
+    <div class="navy text-white px-5 py-3 flex items-center justify-between"><b>🛎️ Agente Front Desk</b>
+      <span class="text-xs">Activo <span class="w-9 h-5 bg-emerald-500 rounded-full inline-block relative align-middle"><span class="absolute right-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></span></span></span>
+    </div>
+    <div class="p-5 space-y-4 text-sm">
+      <div><div class="font-bold mb-1">Autonomía</div>
+        <span class="tag tag-auto">● Automático</span> <span class="tag tag-appr text-slate-500">Aprobar</span> <span class="tag tag-sug text-slate-500">Sugerir</span></div>
+      <div><div class="font-bold mb-1">Permisos (scope)</div>
+        <span class="pill bg-slate-200">reservations:checkin</span> <span class="pill bg-slate-200">reservations:view</span>
+        <span class="pill bg-slate-200">rooms:view</span> <span class="pill bg-slate-200">ttlock:edit</span></div>
+      <div><div class="font-bold mb-1">🚫 Guardrails (nunca solo)</div>
+        <ul class="list-disc pl-5 text-slate-700"><li>Nunca cancelar reserva pagada sin firma</li><li>Nunca emitir/anular factura</li></ul></div>
+      <div><div class="font-bold mb-1">📣 Avisar al humano cuando…</div><div class="text-slate-700">Falta seña · huésped con queja · overbooking</div></div>
+    </div>
+  </div>
+  <p class="text-xs text-slate-500 mt-3">Mockup ilustrativo.</p>
+</section>
+
+<!-- REGLAS -->
+<section id="reglas" class="px-10 py-12 bg-slate-100 border-b-2 border-ink">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">13 · Reglas de oro</h2>
+  <div class="grid md:grid-cols-2 gap-4 mt-8 max-w-5xl">
+    <div class="border-2 border-ink rounded-xl p-5 bg-white"><b>1 · Permisos = contrato</b><p class="text-sm text-slate-600 mt-1">El agente hereda un rol. No puede lo que ese rol no permite. El PMS valida igual que a un humano.</p></div>
+    <div class="border-2 border-ink rounded-xl p-5 bg-white"><b>2 · Gatekeeper antes de cada tool</b><p class="text-sm text-slate-600 mt-1">Código determinístico. La IA propone; el gatekeeper decide si ejecuta, encola o bloquea.</p></div>
+    <div class="border-2 border-ink rounded-xl p-5 bg-white"><b>3 · Humano aprueba lo irreversible</b><p class="text-sm text-slate-600 mt-1">Anular, devolver, cancelar pagado, fiscal → siempre nivel sugerir.</p></div>
+    <div class="border-2 border-ink rounded-xl p-5 bg-white"><b>4 · Audit + trace siempre</b><p class="text-sm text-slate-600 mt-1"><span class="mono">audit_log</span> por acción + <span class="mono">ai_runs</span> por corrida. Trazabilidad total.</p></div>
+    <div class="border-2 border-ink rounded-xl p-5 bg-white"><b>5 · Event-driven, no polling</b><p class="text-sm text-slate-600 mt-1">El sistema lo despierta. No revisa todo cada minuto.</p></div>
+    <div class="border-2 border-ink rounded-xl p-5 bg-white"><b>6 · Multi-tenant hard bound + tope de costo</b><p class="text-sm text-slate-600 mt-1"><span class="mono">hotelId</span> en cada llamada. Tope de acciones y tokens por agente/día.</p></div>
+  </div>
+</section>
+
+<!-- ARRANQUE -->
+<section id="arranque" class="px-10 py-12 bg-slate-100">
+  <h2 class="text-3xl font-extrabold navy text-white px-4 py-2 rounded inline-block border-ink">14 · Plan de arranque</h2>
+  <p class="mt-4 text-slate-700 max-w-4xl">1 solo agente, modo <b>sugerir/aprobar</b>, 2–3 semanas. <b>Front Desk</b> primero: mucho volumen, bajo riesgo, aprendés rápido y barato.</p>
+  <div class="mt-8 max-w-4xl">
+    <div class="grid grid-cols-4 gap-2 text-center text-sm font-bold text-white">
+      <div class="navy border-2 border-ink p-3 rounded-t">Fase 1<br><span class="text-amber-400 text-xs">Sem 1-3</span></div>
+      <div class="navy border-2 border-ink p-3 rounded-t">Fase 2<br><span class="text-amber-400 text-xs">Mes 2</span></div>
+      <div class="navy border-2 border-ink p-3 rounded-t">Fase 3<br><span class="text-amber-400 text-xs">Mes 3-4</span></div>
+      <div class="navy border-2 border-ink p-3 rounded-t">Fase 4<br><span class="text-amber-400 text-xs">Mes 5+</span></div>
+    </div>
+    <div class="grid grid-cols-4 gap-2 text-center text-xs text-slate-700">
+      <div class="bg-white border-2 border-ink border-t-0 p-3 rounded-b">Front Desk en <b>sugerir</b>. Medir error y costo.</div>
+      <div class="bg-white border-2 border-ink border-t-0 p-3 rounded-b">+ Guest Experience. Front Desk a <b>aprobar</b>.</div>
+      <div class="bg-white border-2 border-ink border-t-0 p-3 rounded-b">+ Operaciones y Revenue. Front Desk rutinas en <b>auto</b>.</div>
+      <div class="bg-white border-2 border-ink border-t-0 p-3 rounded-b">+ Finanzas y Personal (siempre <b>sugerir</b>).</div>
+    </div>
+  </div>
+  <div class="mt-10 bg-amber-100 border-2 border-ink rounded-xl p-5 max-w-4xl">
+    <b>🎯 Próximo paso:</b> bajar el piloto de <b>Front Desk</b> a spec técnico — tabla <span class="mono">ai_events</span>,
+    lista exacta de tools con sus rutas reales, prompts del sistema, y el gatekeeper del agente.
+    ¿Lo armo, o primero charlamos qué área arranca?
+  </div>
+  <p class="text-center text-xs text-slate-400 mt-10">Gerente IA — Plan técnico de conexión · SOLMI OS · Documento de diseño</p>
+</section>
+
+</main>
+
+<script>
+  const links=[...document.querySelectorAll('.nav-link')];
+  const secs=[...document.querySelectorAll('section[id]')];
+  const onScroll=()=>{let y=window.scrollY+120,current=secs[0];secs.forEach(s=>{if(s.offsetTop<=y)current=s;});links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+current.id));};
+  window.addEventListener('scroll',onScroll);onScroll();
+</script>
+</body>
+</html>
