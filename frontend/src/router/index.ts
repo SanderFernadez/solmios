@@ -26,6 +26,15 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      // F1 1.5 (solmi-direct-booking) — Landing pública del hotel por slug. Sin auth guard
+      // (igual que /book/:slug): el backend rate-limita por IP y el endpoint público de
+      // bloques solo devuelve active=1. El componente orquesta PublicHotel + Landing services.
+      path: '/h/:slug',
+      name: 'hotel-landing',
+      component: () => import('@/pages/public/hotel-landing.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/pages/auth/login.vue'),

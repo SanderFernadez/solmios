@@ -558,3 +558,7 @@ export interface RegisterPushTokenPayload {
 // re-exportan acá para mantener el `import from '@/types'` único del resto del frontend.
 export * from './public-hotel'
 export * from './booking'
+
+// F1 1.7 (solmi-direct-booking) — Tipos de la landing pública por bloques.
+// `LandingBlock` espeja el endpoint público `/api/public/hotels/:slug/landing`.
+export * from './landing'
