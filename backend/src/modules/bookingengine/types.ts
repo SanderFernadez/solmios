@@ -149,12 +149,40 @@ export interface BookingAnalytics {
 }
 
 // ─── Hotel Info (público) ──────────────────────────────
-export interface HotelPublicInfo {
+/** DTO público de hotel — allow-list estricta (F0 0.4 spec public-hotel-info).
+ *  NUNCA debe contener campos privados del hotelero (taxId, ownerName, ownerTaxId,
+ *  deviceEmail, wifiNetwork, wifiPassword, internalNotes, bookingEngineUrl,
+ *  motorVersion, warningPhone, registrationNumber). */
+export interface PublicHotelInfoDTO {
   id: string
-  name: string
   slug: string
-  currency: string
+  name: string
+  title: string | null
+  description: string | null
+  descriptionTranslations: Record<string, { title?: string; description?: string }> | null
+  accommodationType: string
+  starRating: string | null
+  latitude: number
+  longitude: number
+  address: string | null
+  province: string | null
+  municipality: string | null
+  locality: string | null
+  postalCode: string | null
+  phone: string | null
+  email: string | null
+  website: string | null
   checkIn: string
   checkOut: string
-  roomTypes: { type: string; price: number; capacity: number }[]
+  currency: string
+  taxName: string
+  taxRate: number
+  cancellationType: string
+  freeCancellation: boolean
+  depositRequired: boolean
+  depositPercent: number
+  releaseHours: number
+  logo: string | null
+  amenities: string[] | null
+  onlineBookingStatus: string
 }

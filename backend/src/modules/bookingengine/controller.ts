@@ -1,7 +1,7 @@
 // bookingengine/controller.ts — Adaptador HTTP del módulo
 // Endpoints protegidos (admin) + endpoints públicos (sin auth) + Stripe webhook
 
-import type { HttpRequest, Logger } from 'arckode-framework'
+import type { HttpRequest, Logger, RepositoryAdapter } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { BookingengineService } from './service'
 import type { AvailabilityQuery, CreatePublicBookingDTO, CreateConversionEventDTO, UpdateBookingConfigDTO } from './types'
@@ -13,6 +13,7 @@ import {
   CreateCheckoutSessionSchema,
 } from './validators/schema'
 import { getPublicBookingBySlug, createPublicBookingDirect } from './usecases/public-booking'
+import { getPublicHotelInfo } from './usecases/public-hotel-info'
 
 export class BookingengineController {
   constructor(
@@ -21,6 +22,10 @@ export class BookingengineController {
     private readonly orm?: any,
     private readonly auth?: any,
     private readonly pushAvailability?: (hotelId: string, roomId: string) => void,
+    // Repositorio de hoteles para la ruta pública GET /api/public/hotel/:slug (F0 0.4).
+    // Se pasa desde index.ts (donde ya existe hotelsRepo) en vez de instanciarlo acá:
+    // el controller no debe saber del orm.define ni de nombres de modelo.
+    private readonly hotelsRepo?: RepositoryAdapter<any>,
   ) {}
 
   // ─── Admin (protegido con auth) ──────────────────────
@@ -59,28 +64,22 @@ export class BookingengineController {
 
   async getHotelPublicInfo(req: HttpRequest) {
     this.logger.info('GET /api/public/hotel/:slug', { slug: req.params.slug })
-    const config = await this.service.getConfig(req.params.slug)
-    const hotelId = req.params.slug
-    const availability = await this.service.checkAvailability({
-      hotelId,
-      checkIn: new Date().toISOString().split('T')[0],
-      checkOut: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-    })
-    return {
-      status: 200,
-      body: {
-        id: hotelId,
-        name: hotelId,
-        slug: hotelId,
-        currency: config.currency,
-        checkIn: '14:00',
-        checkOut: '11:00',
-        roomTypes: availability.roomTypes.map(r => ({
-          type: r.roomType,
-          price: r.price,
-          capacity: r.capacity,
-        })),
-      },
+    // lang default 'es' (D7 — fallback final español). Query opcional `?lang=en`.
+    const lang = (req.query?.lang as string | undefined) || 'es'
+    try {
+      // Allow-list estricta en el usecase: el DTO devuelto SOLO contiene campos públicos
+      // (ver spec public-hotel-info). Nunca spread del hotel.
+      const dto = await getPublicHotelInfo(
+        { hotels: this.hotelsRepo! },
+        String(req.params?.slug || ''),
+        lang,
+      )
+      return { status: 200, body: dto }
+    } catch (e: any) {
+      // NotFoundError → 404 plano. Anti-enumeración: el usecase tira el MISMO mensaje para
+      // "no existe" y "no activo" (no filtrar hoteles pausados).
+      if (e?.httpStatus === 404) return { status: 404, body: { error: e.message } }
+      throw e
     }
   }
 
