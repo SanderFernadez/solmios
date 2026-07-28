@@ -166,11 +166,11 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
 
 ### Frontend — F0 wiring
 
-- [ ] 0.19 `frontend/src/services/PublicHotel.service.ts` (NEW): `getBySlug(slug)`,
+- [x] 0.19 `frontend/src/services/PublicHotel.service.ts` (NEW): `getBySlug(slug)`,
       `getMedia(slug)`, `getReviews(slug, params)`. Tipos en `frontend/src/types/public-hotel.ts`.
       **Acceptance**: typecheck pasa; mock en tests cubre los 3 métodos.
 
-- [ ] 0.20 `frontend/src/services/Booking.service.ts` (NEW): `createBooking(dto)` devuelve
+- [x] 0.20 `frontend/src/services/Booking.service.ts` (NEW): `createBooking(dto)` devuelve
       `{reservationId, accessToken, checkoutUrl}`, `getReservation(id, token)` para el
       polling post-redirect.
       **Acceptance**: typecheck pasa.
