@@ -56,3 +56,7 @@ openspec/.gitlab-sync.json
 
 # App móvil Flutter — vive en su propio repo: underworf1/solmios-mobile
 /mobile/
+
+# Claude Code — loop runtime state y worktrees (por dev, no commitear)
+.claude/state/
+.claude/worktrees/
