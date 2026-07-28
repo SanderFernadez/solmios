@@ -28,6 +28,10 @@ describe('restaurantePaymentsConnector — reference pos:orderId (idempotencia-s
     const paymentsStub = {
       createPayment: async (dto: any) => { captured = dto; return { id: 'pay1' } },
       refundPayment: async () => ({ id: 'ref1' }),
+      // fix-refund-pos-card: el conector ahora también resuelve chargeCard + registra el socket
+      // inverso (onPaymentCompleted/onPaymentExpired) al wirearse — el stub necesita ambos métodos.
+      chargeCard: async () => ({ payment: { id: 'pay_card' }, checkoutUrl: '' }),
+      setSockets: () => {},
     }
     const ctx = makeCtx({ restaurant: restaurantStub, payments: paymentsStub })
     restaurantePaymentsConnector(ctx)
