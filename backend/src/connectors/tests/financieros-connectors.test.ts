@@ -15,6 +15,7 @@ import { facturasReservasConnector } from '../facturas-reservas'
 import { foliosFacturasConnector } from '../folios-facturas'
 import { foliosPaymentsConnector } from '../folios-payments'
 import { paymentsCajaConnector } from '../payments-caja'
+import { paymentsAccountingConnector } from '../payments-accounting'
 import { reembolsosGastosConnector } from '../reembolsos-gastos'
 
 /** ctx mock: `hosts` son los módulos que reciben la inyección; el resto son satélites. */
@@ -156,6 +157,78 @@ describe('paymentsCajaConnector', () => {
     paymentsCajaConnector(ctx)
     await expect(
       captured.sockets.onPaymentCompleted({ id: 'p1', hotelId: 'h1', method: 'cash', amount: 100 }),
+    ).resolves.toBeUndefined()
+  })
+})
+
+describe('paymentsAccountingConnector — depósitos (DT-08)', () => {
+  it('onDepositCreated asienta DR Bancos / CR Depósitos de Huéspedes', async () => {
+    const entries: any[] = []
+    const { ctx, captured } = makeCtx(['payments'], {
+      accounting: { recordAuto: async (hotelId: string, input: any) => { entries.push({ hotelId, input }); return { id: 'e1' } } },
+    })
+    paymentsAccountingConnector(ctx)
+    await captured.sockets.onDepositCreated({ id: 'd1', hotelId: 'h1', amount: 200, createdAt: '2026-07-28T10:00:00Z' })
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0].hotelId).toBe('h1')
+    expect(entries[0].input.referenceType).toBe('deposit')
+    expect(entries[0].input.reference).toBe('d1')
+    expect(entries[0].input.lines).toHaveLength(2)
+    expect(entries[0].input.lines[0].debit).toBe(200)
+    expect(entries[0].input.lines[1].credit).toBe(200)
+  })
+
+  it('onDepositReleased asienta la reversa (DR Depósitos de Huéspedes / CR Bancos) por el monto completo', async () => {
+    const entries: any[] = []
+    const { ctx, captured } = makeCtx(['payments'], {
+      accounting: { recordAuto: async (hotelId: string, input: any) => { entries.push({ hotelId, input }); return { id: 'e1' } } },
+    })
+    paymentsAccountingConnector(ctx)
+    await captured.sockets.onDepositReleased({ id: 'd1', hotelId: 'h1', amount: 200, refundAmount: 0, releasedAt: '2026-07-29T10:00:00Z' })
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0].input.referenceType).toBe('deposit_release')
+    expect(entries[0].input.reference).toBe('d1-rel')
+    expect(entries[0].input.lines[0].debit).toBe(200)
+    expect(entries[0].input.lines[1].credit).toBe(200)
+  })
+
+  it('onDepositReleased tras un refund parcial asienta solo el REMANENTE, no el monto original (bug fixeado: refundAmount=0 ?? amount nunca caía al fallback)', async () => {
+    const entries: any[] = []
+    const { ctx, captured } = makeCtx(['payments'], {
+      accounting: { recordAuto: async (hotelId: string, input: any) => { entries.push({ hotelId, input }); return { id: 'e1' } } },
+    })
+    paymentsAccountingConnector(ctx)
+    // Se reembolsaron 50 antes (ya asentados por su propio onDepositRefunded) — al liberar, solo
+    // quedan 150 en custodia. Si esto diera 0 o 50, sería el bug viejo re-apareciendo.
+    await captured.sockets.onDepositReleased({ id: 'd1', hotelId: 'h1', amount: 200, refundAmount: 50, releasedAt: '2026-07-29T10:00:00Z' })
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0].input.lines[0].debit).toBe(150)
+    expect(entries[0].input.lines[1].credit).toBe(150)
+  })
+
+  it('onDepositRefunded asienta el delta de la operación (PaymentsService lo sintetiza como {amount:delta, refundAmount:0})', async () => {
+    const entries: any[] = []
+    const { ctx, captured } = makeCtx(['payments'], {
+      accounting: { recordAuto: async (hotelId: string, input: any) => { entries.push({ hotelId, input }); return { id: 'e1' } } },
+    })
+    paymentsAccountingConnector(ctx)
+    await captured.sockets.onDepositRefunded({ id: 'd1', hotelId: 'h1', amount: 50, refundAmount: 0 })
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0].input.lines[0].debit).toBe(50)
+    expect(entries[0].input.lines[1].credit).toBe(50)
+  })
+
+  it('si accounting está caído, el evento del depósito NO rompe (best-effort)', async () => {
+    const { ctx, captured } = makeCtx(['payments'], {
+      accounting: { recordAuto: async () => { throw new Error('accounting caído') } },
+    })
+    paymentsAccountingConnector(ctx)
+    await expect(
+      captured.sockets.onDepositCreated({ id: 'd1', hotelId: 'h1', amount: 200 }),
     ).resolves.toBeUndefined()
   })
 })

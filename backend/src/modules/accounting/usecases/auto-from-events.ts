@@ -50,9 +50,16 @@ export async function recordDeposit(port: AccountingPort, d: any): Promise<void>
   })
 }
 
-/** Liberación/devolución del depósito: DR Depósitos de Huéspedes / CR Bancos. */
+/**
+ * Liberación/devolución del depósito: DR Depósitos de Huéspedes / CR Bancos. Asienta lo que
+ * TODAVÍA queda en custodia (`amount - refundAmount`), no `refundAmount` a secas — `refundAmount`
+ * tiene default 0 en el modelo (nunca `null`/`undefined`), así que un `?? d.amount` nunca cae al
+ * fallback y el caso más común (liberar sin refund previo) quedaba sin asentar. El caller que
+ * quiera asentar el DELTA de un refund puntual (no el remanente) debe sintetizar el input como
+ * `{ amount: delta, refundAmount: 0 }` — ver `PaymentsService.refundDeposit`.
+ */
 export async function recordDepositRelease(port: AccountingPort, d: any): Promise<void> {
-  const a = amt(d?.refundAmount ?? d?.amount); if (!a) return
+  const a = amt(Number(d?.amount || 0) - Number(d?.refundAmount || 0)); if (!a) return
   await emit(port, d.hotelId, {
     entryDate: day(d.releasedAt), reference: `${d.id}-rel`, referenceType: 'deposit_release',
     description: 'Liberación de depósito',

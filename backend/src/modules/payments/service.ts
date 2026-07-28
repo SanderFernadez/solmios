@@ -1,12 +1,9 @@
-// payments/service.ts — Facade pública del módulo Payments
-// Orquestador delgado que delega a usecases/
+// payments/service.ts — Facade pública del módulo Payments. Orquestador delgado que delega a usecases/
 
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import type {
-  PaymentDTO, CreatePaymentDTO, ChargeCardDTO,
-  PaymentLinkDTO, CreatePaymentLinkDTO,
-  DepositDTO, CreateDepositDTO, RefundDepositDTO,
-  PaymentsQuery, PaymentsPaginated,
+  PaymentDTO, CreatePaymentDTO, ChargeCardDTO, PaymentLinkDTO, CreatePaymentLinkDTO,
+  DepositDTO, CreateDepositDTO, RefundDepositDTO, PaymentsQuery, PaymentsPaginated,
   ReconciliationEntry, ReconciliationResult,
 } from './types'
 import type { PaymentsSockets } from './sockets'
@@ -21,8 +18,7 @@ import { refundPayment } from './usecases/refund'
 import { chargeCard } from './usecases/charge-card'
 import { settleStripeWebhook } from './usecases/settle-webhook'
 import {
-  auditSafely, chargeEntry, refundEntry,
-  depositRefundEntry, depositReleaseEntry,
+  auditSafely, chargeEntry, refundEntry, depositRefundEntry, depositReleaseEntry,
   type AuditEntry, type AuditPort, type Actor,
 } from './usecases/audit'
 
@@ -155,26 +151,36 @@ export class PaymentsService {
 
   // ─── Deposits ────────────────────────────────────────
 
+  // DT-08: emiten eventos que payments-accounting.ts asienta como pasivo, no ingreso. refundDeposit
+  // pasa el DELTA {amount:delta, refundAmount:0} — ver recordDepositRelease en accounting/usecases.
   async createDeposit(dto: CreateDepositDTO): Promise<DepositDTO> {
-    return this.deposits.create(dto)
+    const deposit = await this.deposits.create(dto)
+    await this.sockets.onDepositCreated?.(deposit)
+    return deposit
   }
 
   async refundDeposit(id: string, dto: RefundDepositDTO, user?: { id?: string; role?: string }): Promise<DepositDTO> {
+    const before = await this.deposits.getById(id, user?.id, user?.role)
     const deposit = await this.deposits.refund(id, dto, user?.id, user?.role)
     await this.audit(depositRefundEntry(deposit, user))
+    const delta = deposit.refundAmount - before.refundAmount
+    await this.sockets.onDepositRefunded?.({ ...deposit, amount: delta, refundAmount: 0 })
     return deposit
   }
 
   async releaseDeposit(id: string, user?: { id?: string; role?: string }): Promise<DepositDTO> {
     const deposit = await this.deposits.release(id, user?.id, user?.role)
     await this.audit(depositReleaseEntry(deposit, user))
+    await this.sockets.onDepositReleased?.(deposit)
     return deposit
   }
 
-  /** Libera los depósitos 'held' de una reserva al checkout (connector `reservas-deposits`).
-   *  La lógica vive en `DepositsUseCase.releaseHeldByReservation`; acá solo auditamos cada release. */
+  /** Libera los 'held' de una reserva al checkout (connector `reservas-deposits`); audita + emite por c/u. */
   async releaseHeldDepositsByReservation(reservationId: string, user?: { id?: string; role?: string }): Promise<DepositDTO[]> {
-    return this.deposits.releaseHeldByReservation(reservationId, (d) => this.audit(depositReleaseEntry(d, user)))
+    return this.deposits.releaseHeldByReservation(reservationId, async (d) => {
+      await this.audit(depositReleaseEntry(d, user))
+      await this.sockets.onDepositReleased?.(d)
+    })
   }
 
   async listDeposits(hotelId: string, status?: string): Promise<DepositDTO[]> {

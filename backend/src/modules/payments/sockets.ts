@@ -8,6 +8,8 @@ export interface PaymentsSockets {
   onPaymentFailed?: (data: PaymentDTO) => Promise<void>
   onRefundProcessed?: (data: PaymentDTO) => Promise<void>
   onDepositCreated?: (data: DepositDTO) => Promise<void>
+  /** Reembolso parcial/total del depósito (ver `DepositsUseCase.refund`) — distinto de `onDepositReleased`. */
+  onDepositRefunded?: (data: DepositDTO) => Promise<void>
   onDepositReleased?: (data: DepositDTO) => Promise<void>
   onLinkUsed?: (data: PaymentLinkDTO) => Promise<void>
 }

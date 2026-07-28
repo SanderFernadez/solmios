@@ -137,5 +137,74 @@ describe('PaymentsService', () => {
       const released = await service.releaseHeldDepositsByReservation('r1')
       expect(released).toEqual([])
     })
+
+    it('emite onDepositReleased por cada depósito liberado (así el asiento contable NO queda huérfano)', async () => {
+      const depositRepo = depositRepoFor([dep({ id: 'd1', status: 'held' }), dep({ id: 'd2', status: 'held' })])
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
+      const emitted: string[] = []
+      service.setSockets({ onDepositReleased: async (d: any) => { emitted.push(d.id) } })
+      await service.releaseHeldDepositsByReservation('r1')
+      expect(emitted.sort()).toEqual(['d1', 'd2'])
+    })
+  })
+
+  // DT-08 (mínimo viable): el depósito queda con rastro real en el ledger contable — el service
+  // emite los sockets que `connectors/payments-accounting.ts` cablea a recordDeposit/recordDepositRelease.
+  describe('DT-08 — eventos de depósito', () => {
+    it('createDeposit emite onDepositCreated con el depósito recién creado', async () => {
+      const service = new PaymentsService(makeRepo(), makeRepo(), makeRepo(), log, silentCache, undefined, undefined, testRegistry)
+      let emitted: any = null
+      service.setSockets({ onDepositCreated: async (d: any) => { emitted = d } })
+      await service.createDeposit({ hotelId: 'h1', amount: 500, paymentMethod: 'card' })
+      expect(emitted?.amount).toBe(500)
+      expect(emitted?.status).toBe('held')
+    })
+
+    it('refundDeposit emite onDepositRefunded con el DELTA de esta operación (no el acumulado)', async () => {
+      const item = { id: 'd1', hotelId: 'h1', amount: 500, currency: 'USD', status: 'held', paymentMethod: 'card', stripePaymentId: '', refundAmount: 0, releasedAt: undefined, notes: '', createdAt: 'x', updatedAt: 'x' } as DepositDTO
+      const depositRepo = makeRepo({ findById: async () => item, update: async (id, data) => ({ ...item, ...data, id }) })
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
+      const refundedEvents: any[] = []
+      const releasedEvents: any[] = []
+      service.setSockets({
+        onDepositRefunded: async (d: any) => { refundedEvents.push(d) },
+        onDepositReleased: async (d: any) => { releasedEvents.push(d) },
+      })
+      await service.refundDeposit('d1', { amount: 200, reason: 'daño menor' })
+      expect(refundedEvents).toHaveLength(1)
+      // Delta sintetizado como {amount: delta, refundAmount: 0} — ver PaymentsService.refundDeposit.
+      expect(refundedEvents[0].amount).toBe(200)
+      expect(refundedEvents[0].refundAmount).toBe(0)
+      expect(releasedEvents).toHaveLength(0)
+    })
+
+    it('un segundo refund parcial emite solo su propio delta, no el acumulado', async () => {
+      let stored = { id: 'd1', hotelId: 'h1', amount: 500, currency: 'USD', status: 'partially_refunded', paymentMethod: 'card', stripePaymentId: '', refundAmount: 200, releasedAt: undefined, notes: '', createdAt: 'x', updatedAt: 'x' } as DepositDTO
+      const depositRepo = makeRepo({
+        findById: async () => stored,
+        update: async (id, data) => { stored = { ...stored, ...data, id } as DepositDTO; return stored },
+      })
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
+      const refundedEvents: any[] = []
+      service.setSockets({ onDepositRefunded: async (d: any) => { refundedEvents.push(d) } })
+      await service.refundDeposit('d1', { amount: 100, reason: 'segundo daño' })
+      expect(refundedEvents[0].amount).toBe(100) // solo el delta de ESTA operación, no 300 (acumulado)
+    })
+
+    it('releaseDeposit emite onDepositReleased (no onDepositRefunded)', async () => {
+      const item = { id: 'd1', hotelId: 'h1', amount: 500, currency: 'USD', status: 'held', paymentMethod: 'card', stripePaymentId: '', refundAmount: 0, releasedAt: undefined, notes: '', createdAt: 'x', updatedAt: 'x' } as DepositDTO
+      const depositRepo = makeRepo({ findById: async () => item, update: async (id, data) => ({ ...item, ...data, id }) })
+      const service = new PaymentsService(makeRepo(), makeRepo(), depositRepo, log, silentCache, undefined, undefined, testRegistry)
+      const refundedEvents: any[] = []
+      const releasedEvents: any[] = []
+      service.setSockets({
+        onDepositRefunded: async (d: any) => { refundedEvents.push(d) },
+        onDepositReleased: async (d: any) => { releasedEvents.push(d) },
+      })
+      await service.releaseDeposit('d1')
+      expect(releasedEvents).toHaveLength(1)
+      expect(releasedEvents[0].status).toBe('released')
+      expect(refundedEvents).toHaveLength(0)
+    })
   })
 })
