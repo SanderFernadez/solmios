@@ -1,18 +1,22 @@
 # fix-refund-pos-card — Tasks
 
-> Previo: cerrar las 2 decisiones PENDIENTES del `proposal.md` (estado `processing_payment` + UX Checkout vs Terminal) vía `sdd-spec` / `sdd-design`. Las tasks asumen **Stripe Checkout** (decisión por defecto del proposal).
+> Decisiones ya resueltas (usuario, 2026-07-28, ver `proposal.md`): Stripe Checkout Session (NO Terminal),
+> expiración corta (15 min) y la mesa se LIBERA al expirar (no queda tomada esperando re-cobro sobre la
+> misma sesión — el cajero genera una Checkout Session nueva).
 
-## 1. Spec / Design (SDD — bloqueante para Apply)
-- [ ] 1.1 `sdd-spec`: delta spec con escenarios Given/When/Then (payOrder card → processing_payment; webhook completed → paid; webhook expired → billed; refund de orden paid con stripePaymentId → OK).
-- [ ] 1.2 `sdd-design`: secuencia del flujo async (POS → Checkout Session → webhook → socket inverso → orden paid), política de expiración, diagrama de estados de la orden.
-- [ ] 1.3 Decisión cerrada: timeout de Checkout Session (¿1h?), comportamiento de mesa en timeout, re-cobro vs descarte.
+## 1. Spec / Design (SDD)
+- [x] 1.1 Escenarios resueltos en `proposal.md`: payOrder card → processing_payment; webhook completed →
+      paid; webhook expired (15min) → billed + mesa liberada; refund de orden paid con stripePaymentId → OK.
+- [x] 1.2 Secuencia del flujo async documentada en `proposal.md` (tabla "Plan técnico").
+- [x] 1.3 Timeout: 15 min (`expires_at` al crear la Checkout Session). Mesa: se libera al expirar. Re-cobro:
+      sesión nueva, NO se reintenta la expirada.
 
 ## 2. Contrato del módulo restaurant (`restaurant/usecases/settlement.ts`)
 - [ ] 2.1 Agregar `'processing_payment'` a `OrderStatus` (`restaurant/types.ts`).
 - [ ] 2.2 Nuevo port `chargeCardPayment?: (input: { orderId, hotelId, amount, currency, description, successUrl, cancelUrl }, user) => Promise<{ paymentId, checkoutUrl }>` en `SettlementPorts` (`settlement.ts:14`).
 - [ ] 2.3 `payOrder` (`settlement.ts:106`): si `method==='card'`, llamar `ports.chargeCardPayment` (NO `recordPayment`); orden → `processing_payment`; guardar `paymentId`. Si `method!=='card'`, flujo actual.
 - [ ] 2.4 Nuevo `settlePaidOrder(deps, orderId, paymentId, user)`: validar ownership + estado `processing_payment` → update `paid`, `closedAt`, liberar mesa, emitir `sockets.onOrderPaid?.(order)`. Idempotente por estado.
-- [ ] 2.5 Nuevo `unsettleOrder(deps, orderId, user)`: validar estado `processing_payment` → volver a `billed` (mesa sigue tomada). Idempotente.
+- [ ] 2.5 Nuevo `unsettleOrder(deps, orderId, user)`: validar estado `processing_payment` → volver a `billed` Y **liberar la mesa** (`status:'free'` en `restaurant_tables`, mismo mecanismo que `cancelOrder`). Idempotente.
 
 ## 3. Sockets / events
 - [ ] 3.1 Registrar `'onOrderPaid'` en `events: [...]` del `restaurant/index.ts` (si no existe ya; RES-5 pudo dejarlo).
@@ -63,6 +67,6 @@
 ## Riesgos a vigilar
 - **Doble descuento de inventario**: hoy `recordPayment` (cash/folio) descuenta al cobrar; el nuevo flujo async debe hacerlo en `onOrderPaid` (webhook), NO antes. Si queda el descuento síncrono, el webhook lo duplica.
 - **`reference` compartido**: debe convivir con `idempotencia-settlement-pos` (`'pos:'+orderId`) — usar el mismo esquema para no romper el unique index de aquel.
-- **Mesa zombie**: sin política de expiración clara (task 1.3), una sesión abandonada deja la mesa tomada hasta las 24h default de Stripe.
+- **Mesa zombie**: resuelto — expiración de 15 min (`expires_at` en la Checkout Session) + `unsettleOrder` libera la mesa al expirar. Ventana máxima de exposición: 15 min.
 - **Stripe no configurado**: `chargeCardPayment` debe fallar explícito (`ValidationError`) si el hotel no tiene pasarela — hoy `recordPayment` no valida eso porque no toca Stripe.
 - **Cobro directo `cash`/`folio`**: no se tocan — solo `method==='card'` cambia de path.
