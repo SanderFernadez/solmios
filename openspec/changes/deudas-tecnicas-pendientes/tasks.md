@@ -62,7 +62,7 @@ leer el log. Un `hotel_admin` no tiene forma de ver quién borró qué en su pro
       + endpoint que filtre por `hotelId` del JWT (nunca cross-tenant).
 - [ ] 17.3 Gate: `arckode analyze` + `bun test` + typecheck.
 
-## DT-16 — Tesorería: `bank_accounts.currentBalance` nunca se recalcula post-creación
+## DT-16 — Tesorería: `bank_accounts.currentBalance` nunca se recalcula post-creación — ✅ CERRADA (2026-07-29)
 
 Hallada al re-auditar el nodo `tesoreria` (2026-07-29). Confirmado en
 `treasury/usecases/bank.ts:42`: `currentBalance` se setea UNA vez al crear la cuenta
@@ -73,12 +73,13 @@ pantalla es correcto, pero la COLUMNA `currentBalance` de la cuenta bancaria que
 permanentemente desactualizada si alguien la consulta directo (ej. un reporte futuro, un export,
 una integración externa).
 
-- [ ] 16.1 Decidir: ¿vale la pena recalcular `currentBalance` (ej. tras cada conciliación
-      bancaria), o se documenta como "campo vestigial, la fuente de verdad es el cash flow
-      computado" y se lo saca del modelo para no confundir?
-- [ ] 16.2 Si se decide recalcular: hook en el usecase de conciliación (`bank.ts`) que sume/reste
-      el neto de movimientos conciliados desde la última actualización.
-- [ ] 16.3 Gate: `arckode analyze` + `bun test` + typecheck.
+- [x] 16.1 Decidido: SÍ recalcular (no sacar el campo — se usa en el listado de cuentas del
+      panel). `currentBalance = openingBalance + suma firmada de todos los movimientos
+      importados` (ya vienen firmados: +entrada/−salida).
+- [x] 16.2 `recalcBalance()` en `bank.ts`, disparado al importar movimientos (solo si entró
+      alguno nuevo) y al editar `openingBalance` de la cuenta.
+- [x] 16.3 Gate: `arckode analyze` ✅ VÁLIDO · `bun test` 2536/2536 (3 tests nuevos) · typecheck
+      backend limpio. Sin migración (columna ya existía). Commit `d7d4e83`, pusheado a `main`.
 
 ## DT-15 — Cash: diferencia de arqueo del turno no genera asiento contable — ✅ CERRADA (2026-07-29)
 

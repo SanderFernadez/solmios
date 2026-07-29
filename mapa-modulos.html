@@ -469,7 +469,7 @@ const N = [
     que:'Gestión de liquidez: FLUJO DE CAJA, cuentas por cobrar (AR) y por pagar (AP) con AGING, cuentas bancarias + CONCILIACIÓN, presupuesto vs real, proveedores. Backend + frontend, DESPLEGADO y verificado en prod ✅ (cash-flow lee gastos reales).',
     porque:'La liquidez del hotel. Lee payments/expenses/invoices READ-ONLY (patrón del módulo reports, no duplica datos): cobrado NETO = charge − refund; NUNCA cuenta depósitos (garantía, no ingreso). Conciliación matchea bancos↔payments por monto firmado + fecha, sin doble-match.',
     conectado:['payments (cash flow: cobros netos)','gastos (cash flow: pagos + AP con aging)','facturas/invoices (AR: saldo pendiente por huésped)','bancos↔payments (conciliación bancaria)','ACTIVABLE/QUITABLE desde admin de plataforma (toggle verificado VIVO) ✅','permisos treasury:view/create/edit/delete en la matriz de roles ✅'],
-    falta:['Diferido (deuda documentada): currentBalance del banco no se recalcula (la liquidez lee payments/expenses, no ese campo). Los depósitos siguen desconectados del ledger real (no son plata capturada).']
+    falta:['✅ RESUELTO (DT-16, 2026-07-29): currentBalance del banco ahora se recalcula (openingBalance + suma firmada de movimientos importados) al importar y al editar el saldo de apertura. Sigue pendiente: los depósitos siguen desconectados del ledger real (no son plata capturada) — ver depositos-stripe-holds.']
   }},
 
   // ─── CAJA CHICA (agregado 2026-07-29) ───
