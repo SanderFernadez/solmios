@@ -34,8 +34,15 @@
 // que los devuelva (`configuration(meta_pixel_id)` solo lo ve admin). Cuando exista, el caller
 // lo consume y pasa los IDs al init. Mientras tanto, los callers pueden pasar IDs por env vars
 // (VITE_META_PIXEL_ID, VITE_GA4_MEASUREMENT_ID) como fallback global para property unica.
+//
+// F4 4.1 (D13) — SERVER-SIDE PERSISTENCE: además de disparar gtag/fbq, track() POSTea el evento
+// a `/api/public/events` para que el backend lo persista en `tracking_events` con
+// `target='internal'`. Esto alimenta el funnel de conversión del panel admin (que antes era
+// todo ceros porque ningún step se persistía). Fire-and-forget: si el POST falla, NO rompe la
+// UX del huésped (el funnel es best-effort, lo importante es el pixel fire).
 
 import { ref } from 'vue'
+import { http } from '@/services/http'
 
 export type TrackingEventName =
   | 'view'
@@ -60,6 +67,8 @@ export interface TrackParams {
   roomId?: string
   /** Consentimiento explícito del huésped. Sin él, no disparamos Enhanced data. */
   optIn?: boolean
+  /** F4 4.1 — Hotel (id o slug) para persistir el evento server-side (funnel analytics). */
+  hotelId?: string
   /** Cualquier otra prop libre (lang, nación, etc.). */
   [k: string]: unknown
 }
@@ -161,7 +170,61 @@ export function track(event: TrackingEventName, params: TrackParams = {}): strin
   if (config.value.metaPixelId && params.optIn !== false) {
     fireFbq(event, eventId, params)
   }
+
+  // F4 4.1 (D13) — Persistir server-side para el funnel. fire-and-forget: el huésped no
+  // espera este POST, y si falla (red, backend down), no hay que romper la UX. El
+  // sessionId es el anonymousId del navegador (dedup client/server), y el hotelId lo
+  // resuelve el backend desde el slug de la ruta pública si no se pasa.
+  void persistFunnelEvent(event, params, eventId).catch(() => { /* best-effort */ })
+
   return eventId
+}
+
+/**
+ * F4 4.1 — POST best-effort a /api/public/events para que el backend persista el evento
+ * del funnel en tracking_events (target='internal'). Sin auth (ruta pública rate-limited).
+ *
+ * El endpoint sigue el schema `TrackEventSchema`: requiere hotelId + sessionId + event.
+ * Si faltan, NO se postea (no tiene caso persistir un evento sin hotel).
+ *
+ * Mapeo: 'purchase' client-side → 'confirm' server-side (el step final del funnel). El
+ * resto de events van con el mismo nombre (spec design.md D13).
+ */
+async function persistFunnelEvent(
+  event: TrackingEventName,
+  params: TrackParams,
+  eventId: string,
+): Promise<void> {
+  if (typeof window === 'undefined') return
+  const hotelId = resolveHotelId(params)
+  if (!hotelId) return
+  const funnelEvent = event === 'purchase' ? 'confirm' : event
+  await http.post('/api/public/events', {
+    hotelId,
+    sessionId: eventId,
+    event: funnelEvent,
+    roomType: params.roomId,
+    amount: typeof params.value === 'number' ? params.value : undefined,
+  })
+}
+
+/**
+ * Resuelve el hotelId para el evento server-side.Orden de preferencia:
+ *  1. `params.hotelId` explícito (caller sabe el hotel).
+ *  2. Atributo `data-hotel` del widget embebido (cuando está en sitio externo).
+ *  3. Path param de la URL (`/h/:slug` o `/book/:slug`) — requiere resolver slug→id,
+ *     pero el backend lo hace desde el slug si pasamos solo el slug. Hoy dejamos que
+ *     el caller pase hotelId; si no, no persistimos (no queremos inventar IDs).
+ */
+function resolveHotelId(params: TrackParams): string | null {
+  const explicit = params.hotelId
+  if (typeof explicit === 'string' && explicit.trim() !== '') return explicit.trim()
+  // Widget embebido: el loader setea `data-hotel="<slug>"` en <script>.
+  try {
+    const slug = document?.currentScript?.getAttribute('data-hotel')
+    if (slug && slug.trim() !== '') return slug.trim()
+  } catch { /* SSR o sin document */ }
+  return null
 }
 
 // ─── Inyecta scripts GA4 + Meta Pixel (una sola vez por page load) ─────────────

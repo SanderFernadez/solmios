@@ -138,14 +138,39 @@ export interface CreateConversionEventDTO {
 }
 
 // ─── Analytics ─────────────────────────────────────────
+
+/**
+ * Step del funnel de conversión (F4 4.1 / D13). Orden fijo:
+ *   view → search → select → upsell → form → pay → confirm.
+ *
+ * `count` = número de tracking_events con ese `event` para el hotel en el rango.
+ * `dropOff` = % que avanzó al siguiente step respecto del actual (0–100). Para el último
+ * step (`confirm`) dropOff queda null (no hay step siguiente).
+ *
+ * Los eventos se persisten en `tracking_events` con `target='internal'` ( eventos del
+ * funnel que NO se disparan a Meta/GA4 externos — esos fires llevan `target='meta'|'ga4'`).
+ * El funnel cuenta TODOS los targets (un evento puede haberse disparado a Meta Y persistirse
+ * como internal — para el funnel solo nos importa el hecho del step, no el disparo externo).
+ */
+export interface FunnelStep {
+  /** Nombre del step (view|search|select|upsell|form|pay|confirm). */
+  step: string
+  /** Etiqueta legible para el panel ( Matches TrackingEventType del server-tracking). */
+  label: string
+  /** Número de eventos de este step en el rango. */
+  count: number
+  /** % de conversión al step siguiente (count_siguiente / count_actual * 100). null en el último. */
+  dropOff: number | null
+}
+
 export interface BookingAnalytics {
   totalSearches: number
   totalBookings: number
   conversionRate: number
   totalRevenue: number
   averageBookingValue: number
-  topRoomTypes: { roomType: string; bookings: number; revenue: number }[]
-  dailyTrend: { date: string; searches: number; bookings: number }[]
+  /** F4 4.1 (D13) — Funnel real desde tracking_events. Reemplaza `topRoomTypes:[]` vacío. */
+  funnel: FunnelStep[]
 }
 
 // ─── Hotel Info (público) ──────────────────────────────

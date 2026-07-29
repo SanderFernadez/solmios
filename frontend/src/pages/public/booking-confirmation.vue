@@ -180,6 +180,9 @@ const reservation = ref<PublicReservationResponse | null>(null)
 const errorMessage = ref(t('confirm.errorDefault'))
 const hotelName = ref('')
 const slug = ref('')
+// F4 4.1 — hotelId resuelto desde el slug. Lo lee firePurchaseTracking para persistir el
+// evento 'purchase' (mapeado a 'confirm' server-side) con el hotel correcto en tracking_events.
+const hotelIdForTracking = ref('')
 
 const MAX_ATTEMPTS = 10
 const POLL_INTERVAL_MS = 3000
@@ -297,6 +300,7 @@ function firePurchaseTracking(reservationId: string, amount?: number): void {
       value: typeof amount === 'number' ? amount : undefined,
       currency: 'USD', // fallback; el backend tiene el currency real en la factura
       optIn: true,
+      hotelId: hotelIdForTracking.value,
     })
   } catch {
     // Tracking NUNCA debe romper la página de confirmación. Silencioso.
@@ -314,21 +318,24 @@ onMounted(async () => {
     metaPixelId: import.meta.env.VITE_META_PIXEL_ID ?? null,
     ga4MeasurementId: import.meta.env.VITE_GA4_MEASUREMENT_ID ?? null,
   })
-  // 'view' al montar (complementa page_view GA4 nativo).
-  try {
-    useTracking().track('view', {})
-  } catch { /* noop */ }
-
   // Cargar el hotel (para header + nombre en success message). Best-effort: si falla, no
   // rompemos la confirmación (lo principal es mostrar el estado del pago).
+  // F4 4.1 — Resolvemos el hotel ANTES de disparar 'view' para que el POST server-side del
+  // funnel lleve el hotelId correcto (mismo cambio que en booking-widget.vue).
   if (slug.value) {
     try {
       const hotel = await PublicHotelService.getBySlug(slug.value)
       hotelName.value = hotel.name
+      hotelIdForTracking.value = hotel.id
     } catch {
       hotelName.value = ''
     }
   }
+
+  // 'view' al montar (complementa page_view GA4 nativo).
+  try {
+    useTracking().track('view', { hotelId: hotelIdForTracking.value })
+  } catch { /* noop */ }
 
   startPolling()
 })

@@ -208,6 +208,11 @@ const { t, locales, setLocale } = i18n
 
 const hotelName = ref('')
 const hotelLoading = ref(true)
+// F4 4.1 (D13) — hotelId (UUID) resuelto desde el slug al montar. Se pasa a track() para
+// que el backend persista el evento del funnel en tracking_events con target='internal'.
+// Vacío hasta que cargue el hotel (los track()早期的 devuelven sin persistir — acceptable,
+// los step view早期 pueden perderse si el fetch del hotel es lento).
+const hotelIdForTracking = ref('')
 
 // F2 2.13 — `?embed=1` indica que el widget se renderiza dentro de un <iframe> embebido en
 // un sitio externo (cargado por /widget/loader.js). En ese modo se oculta el header ( branding
@@ -330,19 +335,20 @@ watch(() => store.status, (next) => {
   try {
     if (next === 'searching' && !trackedSearch) {
       trackedSearch = true
-      tracking.track('search', {})
+      tracking.track('search', { hotelId: hotelIdForTracking.value })
     }
     if (next === 'upselling' && !trackedSelect) {
       // Pasar a 'upselling' significa que seleccionó room (store.selectRoom avanza a ese step).
       trackedSelect = true
       tracking.track('select', {
+        hotelId: hotelIdForTracking.value,
         roomId: store.selectedRoom?.id,
         value: store.selectedRoom?.fromPrice,
         currency: store.displayCurrency || undefined,
       })
     }
     if (next === 'paying') {
-      tracking.track('form', {})
+      tracking.track('form', { hotelId: hotelIdForTracking.value })
     }
   } catch { /* tracking failure NUNCA rompe el flujo */ }
 })
@@ -353,6 +359,7 @@ watch(() => store.reservation, (res) => {
   if (!trackingInitDone || !res) return
   try {
     tracking.track('pay', {
+      hotelId: hotelIdForTracking.value,
       eventId: res.reservationId,
       reservationId: res.reservationId,
       value: res.totalBreakdown.total,
@@ -377,9 +384,6 @@ onMounted(async () => {
     ga4MeasurementId: import.meta.env.VITE_GA4_MEASUREMENT_ID ?? null,
   })
   trackingInitDone = true
-  try {
-    tracking.track('view', {})
-  } catch { /* noop */ }
 
   // Geo-IP best-effort: si detecta el país via Cloudflare Trace, setea moneda inicial.
   // No esperamos esto para no bloquear el render del widget — el probe corre en paralelo
@@ -390,6 +394,12 @@ onMounted(async () => {
   try {
     const hotel = await PublicHotelService.getBySlug(s)
     hotelName.value = hotel.name
+    hotelIdForTracking.value = hotel.id
+    // F4 4.1 — Disparamos 'view' DESPUÉS de resolver el hotel para que el POST server-side
+    // lleve el hotelId correcto (sin eso, el primer step del funnel no se persistiría).
+    try {
+      tracking.track('view', { hotelId: hotel.id })
+    } catch { /* noop */ }
   } catch {
     // Si el hotel no carga, no bloqueamos el widget — el usuario igual puede buscar. El
     // header queda con el fallback "Reservá tu estadía".

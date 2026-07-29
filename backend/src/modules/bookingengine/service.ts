@@ -33,7 +33,6 @@ export class BookingengineService {
 
   constructor(
     configRepo: RepositoryAdapter<BookingConfigDTO>,
-    availabilityRepo: RepositoryAdapter<any>,
     // La disponibilidad sale de las habitaciones y las reservas reales del
     // hotel, no de la tabla de stock (que nadie llena).
     roomsRepo: RepositoryAdapter<any> | undefined,
@@ -45,14 +44,19 @@ export class BookingengineService {
     cache: CacheAdapter,
     registry?: PaymentGatewayRegistry,
     events?: PaymentEventStore,
+    /**
+     * F4 4.1 — Repo sobre `TrackingEvent` para el funnel de conversión. Opcional para no
+     * romper tests viejos: si no se pasa, el funnel devuelve 0 en todos los steps.
+     */
+    trackingRepo?: RepositoryAdapter<any>,
   ) {
     if (!registry) throw new Error('bookingengine: PaymentGatewayRegistry es requerido (pasarela por hotel)')
     if (!reservationsRepo) throw new Error('bookingengine: reservationsRepo es requerido (F0 0.15 — Stripe opera sobre Reservations)')
     this.registry = registry
     this.config = new ConfigUseCase(configRepo, cache)
-    this.availability = new AvailabilityUseCase(availabilityRepo, cache, roomsRepo, reservationsRepo, hotelsRepo)
+    this.availability = new AvailabilityUseCase(cache, roomsRepo, reservationsRepo, hotelsRepo)
     this.booking = new BookingUseCase(bookingRepo, this.availability)
-    this.analytics = new AnalyticsUseCase(eventsRepo)
+    this.analytics = new AnalyticsUseCase(eventsRepo, trackingRepo)
     // F0 0.15 — Stripe opera sobre Reservations (tabla operacional). Antes usaba `bookingRepo`
     // (tabla huérfana `public_bookings`), que nunca recibía filas del widget — el cobro quedaba
     // colgado de una reserva inexistente. Spec booking-unification D2/D3.

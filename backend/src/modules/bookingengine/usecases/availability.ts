@@ -3,15 +3,15 @@
 // La disponibilidad se calcula con las habitaciones REALES del hotel menos las
 // que ya están reservadas en esas fechas.
 //
-// Antes se leía de `AvailabilityCache`, una tabla de stock diario que ningún
-// proceso llenaba: tenía 0 filas en toda la base. Como estaba vacía, el motor
-// respondía "no hay habitaciones" SIEMPRE — un hotel con 54 habitaciones libres
-// rechazaba a todos los clientes que intentaban reservar por la web, y nadie se
-// enteraba porque el endpoint devolvía 200.
+// Antes se leía de un modelo legacy de stock diario que ningún proceso llenaba:
+// tenía 0 filas en toda la base. Como estaba vacía, el motor respondía "no hay
+// habitaciones" SIEMPRE — un hotel con 54 habitaciones libres rechazaba a todos
+// los clientes que intentaban reservar por la web, y nadie se enteraba porque
+// el endpoint devolvía 200.
 //
-// Si algún día el inventario lo maneja el channel manager, esa tabla puede
-// volver como fuente; mientras tanto la verdad son las habitaciones y las
-// reservas, que es lo que el hotel ya carga.
+// F4 4.2 — Modelo legacy BORRADO: ni el repo ni el modelo se referencian acá.
+// Si algún día el inventario lo maneja el channel manager, se reintroduce como
+// fuente; mientras tanto la verdad son las habitaciones y las reservas.
 import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type { AvailabilityQuery, AvailabilityResult, RoomTypeAvailability } from '../types'
@@ -27,7 +27,6 @@ const BLOCKING_RESERVATION_STATUS = new Set(['confirmed', 'checked_in', 'pending
 
 export class AvailabilityUseCase {
   constructor(
-    private readonly availabilityRepo: RepositoryAdapter<any>,
     private readonly cache: CacheAdapter,
     private readonly roomsRepo?: RepositoryAdapter<any>,
     private readonly reservationsRepo?: RepositoryAdapter<any>,

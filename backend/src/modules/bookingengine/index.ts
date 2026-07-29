@@ -14,7 +14,7 @@ import { PaymentEventStore } from '../../services/payment-gateway/payment-events
 import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
 import { useUnifiedBookingFlow } from './usecases/unified-flow'
 
-export { registerBookingengineModels, UpsellModel, BookingConfigModel, AvailabilityCacheModel, ConversionEventsModel, PublicBookingModel } from './model'
+export { registerBookingengineModels, UpsellModel, BookingConfigModel, ConversionEventsModel, PublicBookingModel } from './model'
 export { BookingengineService } from './service'
 export type { BookingConfigDTO, UpdateBookingConfigDTO, AvailabilityQuery, AvailabilityResult, PublicBookingDTO, CreatePublicBookingDTO, ConversionEventDTO, CreateConversionEventDTO, BookingAnalytics, UpsellDTO, CreateUpsellDTO, UpdateUpsellDTO, UpsellKind } from './types'
 export type { BookingengineSockets } from './sockets'
@@ -32,7 +32,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       description: 'Booking engine: widget config, public availability, reservations, analytics',
       actions: ['getConfig', 'updateConfig', 'checkAvailability', 'createBooking', 'getBooking', 'trackEvent', 'getAnalytics', 'getPublicBookingBySlug', 'createPublicBookingDirect'],
       events: ['onBookingCreated', 'onBookingCancelled', 'onConversionEvent'],
-      tables: ['booking_config', 'availability_cache', 'conversion_events'],
+      tables: ['booking_config', 'conversion_events'],
       dependencies: ['canales', 'hoteles', 'habitaciones'],
       rules: ['No importar de otros módulos directamente'],
     },
@@ -41,12 +41,15 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       registerBookingengineModels(orm)
 
       const configRepo = new OrmRepository<BookingConfigDTO>(orm, 'BookingConfig')
-      const availabilityRepo = new OrmRepository<any>(orm, 'AvailabilityCache')
       const roomsRepo = new OrmRepository<any>(orm, 'Rooms')
       const reservationsRepo = new OrmRepository<any>(orm, 'Reservations')
       const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
       const bookingRepo = new OrmRepository<PublicBookingDTO>(orm, 'BookingEngine')
       const eventsRepo = new OrmRepository<ConversionEventDTO>(orm, 'ConversionEvents')
+      // F4 4.1 (D13) — Repo sobre `TrackingEvent` (modelo definido por el módulo server-tracking
+      // en composition-root). Se usa SOLO para leer el funnel de conversión. Sin cross-module
+      // import: accedemos al modelo global registrado en el ORM, mismo patrón que Rooms/Hotels.
+      const trackingRepo = new OrmRepository<any>(orm, 'TrackingEvent')
 
       const log = logger.child('bookingengine')
       // La pasarela se resuelve POR HOTEL: el huésped que reserva en el widget del Hotel A le
@@ -68,8 +71,8 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       const promoCodesRepo = new OrmRepository<any>(orm, 'PromoCodes')
 
       const service = new BookingengineService(
-        configRepo, availabilityRepo, roomsRepo, reservationsRepo, hotelsRepo,
-        bookingRepo, eventsRepo, log, cache, registry, eventStore,
+        configRepo, roomsRepo, reservationsRepo, hotelsRepo,
+        bookingRepo, eventsRepo, log, cache, registry, eventStore, trackingRepo,
       )
       const controller = new BookingengineController(
         service, log, orm, auth, opts?.pushAvailability, hotelsRepo,

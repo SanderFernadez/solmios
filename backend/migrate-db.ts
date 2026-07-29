@@ -1084,6 +1084,13 @@ async function main(): Promise<void> {
   await db.connect()
   await seedBase()
 
+  // F4 4.2 (solmi-direct-booking) — DROP tabla legacy `availability_cache`. Idempotente:
+  // IF EXISTS → no rompe si la tabla ya no existe (fresh installs, DB nueva). Portable
+  // SQLite + PostgreSQL (sintaxis `DROP TABLE IF EXISTS` es estándar SQL). El modelo ORM
+  // ya no se registra (F4 4.2 borró `AvailabilityCacheModel`) → si la tabla física queda,
+  // es basura inerte; la borramos para mantener el schema limpio.
+  await exec('DROP TABLE IF EXISTS availability_cache')
+
   // Lookups (async ahora)
   const hotelRows = (await db.query("SELECT id FROM hotels LIMIT 1")) as Array<{ id: string }>
   HID = hotelRows[0]?.id

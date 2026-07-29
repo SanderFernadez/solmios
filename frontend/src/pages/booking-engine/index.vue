@@ -49,6 +49,45 @@
         </div>
       </div>
 
+      <!-- F4 4.1 (D13) — Funnel de conversión real desde tracking_events. Muestra count por
+           step + dropOff entre consecutivos. Vacío (todos 0) → EmptyState guía al admin. -->
+      <SectionCard
+        title="Funnel de Conversión"
+        subtitle="Vista → Búsqueda → Selección → Upsell → Form → Pago → Confirmación"
+        body-class="p-0"
+        class="mb-6"
+      >
+        <div v-if="funnelHasData" class="p-5 space-y-3">
+          <div v-for="(step, idx) in funnelRows" :key="step.step">
+            <div class="flex items-center gap-3 mb-1.5">
+              <div class="w-6 h-6 rounded-full bg-navy text-white text-[10px] font-black grid place-items-center flex-shrink-0">{{ idx + 1 }}</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs font-bold text-navy truncate">{{ step.label }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm font-black text-navy tabular-nums">{{ step.count.toLocaleString() }}</div>
+                <div v-if="step.dropOff !== null" class="text-[10px] font-bold tabular-nums"
+                  :class="dropOffColor(step.dropOff)">
+                  {{ step.dropOff }}% avanza
+                </div>
+                <div v-else class="text-[10px] font-bold text-text-muted">step final</div>
+              </div>
+            </div>
+            <div class="ml-9 h-2 bg-surface rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500"
+                :class="funnelBarColor(idx)"
+                :style="{ width: `${funnelBarWidth(step.count)}%` }"></div>
+            </div>
+          </div>
+        </div>
+        <EmptyState
+          v-else
+          icon="📊"
+          title="Sin datos de funnel todavía"
+          message="Los eventos del widget (vista, búsqueda, selección, pago) se acumulan acá a medida que los huéspedes navegan el motor de reservas. Hacé una reserva de prueba para ver el funnel poblarse."
+        />
+      </SectionCard>
+
       <div class="grid lg:grid-cols-3 gap-6">
         <!-- Widget Config -->
         <div class="lg:col-span-2 space-y-6">
@@ -175,10 +214,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { BookingEngineService, type BookingConfig, type BookingAnalytics } from '@/services/BookingEngine.service'
+import { BookingEngineService, type BookingConfig, type BookingAnalytics, type FunnelStep } from '@/services/BookingEngine.service'
 import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -193,6 +234,26 @@ const copied = ref(false)
 // (endpoint ya existente; el modelo Hotels incluye `slug` desde F0 0.1). Si el hotel no tiene
 // slug todavía (alta pre-seeder), el snippet muestra un placeholder y el preview se deshabilita.
 const hotelSlug = ref<string>('')
+
+// F4 4.1 (D13) — Funnel de conversión desde tracking_events. Si `analytics.funnel` viene
+// vacío o todos los counts son 0, mostramos EmptyState (sin tráfico todavía).
+const funnelRows = computed<FunnelStep[]>(() => analytics.value?.funnel ?? [])
+const funnelHasData = computed(() => funnelRows.value.some((s) => s.count > 0))
+const funnelMax = computed(() => Math.max(1, ...funnelRows.value.map((s) => s.count)))
+function funnelBarWidth(count: number): number {
+  return Math.max(2, Math.round((count / funnelMax.value) * 100))
+}
+function funnelBarColor(idx: number): string {
+  // Degradado navy → cyan → teal a lo largo del funnel (visual "más cerca de convertir").
+  const colors = ['bg-navy', 'bg-navy', 'bg-cyan', 'bg-cyan', 'bg-teal', 'bg-teal', 'bg-teal']
+  return colors[idx] ?? 'bg-navy'
+}
+function dropOffColor(pct: number): string {
+  // Drop-off alto (>=70%) → teal (buen avance). Medio (40-69%) → gold. Bajo (<40%) → rojo suave.
+  if (pct >= 70) return 'text-teal'
+  if (pct >= 40) return 'text-gold'
+  return 'text-rose'
+}
 
 const themes = [
   { id: 'navy', name: 'Navy', color: 'bg-navy' },

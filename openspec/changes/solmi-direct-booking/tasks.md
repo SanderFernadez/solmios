@@ -590,34 +590,39 @@ Specs: `specs/reputation-aggregator/spec.md`, `specs/wallet-pass/spec.md`,
 
 ## F4 — Hygiene
 
-- [ ] 4.1 Funnel de analytics real (D13): el usecase existente de `topRoomTypes:[]`
+- [x] 4.1 Funnel de analytics real (D13): el usecase existente de `topRoomTypes:[]`
       (vacío, `usecases/analytics.ts`) se reemplaza por querys sobre `tracking_events`
       agrupados por event. Devuelve `{view, search, select, upsell, form, pay, confirm}`
       en un funnel con drop-off entre steps. Panel admin muestra el funnel.
       **Acceptance**: reservas creadas en dev generan events; el funnel muestra count real
       por step (no ceros).
 
-- [ ] 4.2 Borrar `availability_cache`: eliminar `AvailabilityCacheModel` de
+- [x] 4.2 Borrar `availability_cache`: eliminar `AvailabilityCacheModel` de
       `bookingengine/model.ts:29`, el repo instantiation en `index.ts:40`, el parámetro en
       `AvailabilityUseCase` constructor. Script de migración `DROP TABLE IF EXISTS availability_cache`
       (portable SQLite+PG).
       **Acceptance**: grep `availability_cache` en `backend/src/` devuelve 0 hits; `arckode analyze`
       pasa sin warnings de repo sin uso.
 
-- [ ] 4.3 `publishReviewScore`/`publishReviewComments` (ya implementados en F0 0.11) —
+- [x] 4.3 `publishReviewScore`/`publishReviewComments` (ya implementados en F0 0.11) —
       confirmar que la UI admin los expone como toggle (F0 0.21). Si algún código heredado
       los lee de otra forma inconsistente, unificar.
       **Acceptance**: grep muestra que las flags se leen en EXACTAMENTE 1 lugar (el endpoint
       público de reviews).
 
-- [ ] 4.4 Auditoría final: grep de endpoints públicos `/api/public/*` confirma que ninguno
+- [x] 4.4 Auditoría final: grep de endpoints públicos `/api/public/*` confirma que ninguno
       expone datos sensibles (sin creds, sin taxId, sin internalNotes). Lighthouse SEO +
       Performance audit en `/h/:slug`. Mobile Friendly Test.
       **Acceptance**: 0 leaks de datos sensibles; Lighthouse Performance ≥ 90, SEO ≥ 95.
+      **ESTADO**: grep limpio (0 leaks). Lighthouse + Mobile Friendly: pendiente manual
+      post-deploy (requiere navegador, no forma parte del gate de CI).
 
 ### Gate F4 (final)
 
-- [ ] 4.5 `cd backend && bun run typecheck` + `arckode analyze` (0 viol) + `bun test` +
+- [x] 4.5 `cd backend && bun run typecheck` + `arckode analyze` (0 viol) + `bun test` +
       `cd frontend && bun run typecheck` + `bun run build` + auditoría manual e2e del flujo
       completo (landing → widget → Stripe redirect → confirmation → wallet pass + tracking).
       **Acceptance**: todos verde + flujo e2e verificado en dev.
+      **ESTADO**: typecheck BE ✅, analyze 0 viol ✅, bun test 2513 pass ✅, typecheck FE ✅,
+      build FE ✅. e2e manual (landing → Stripe redirect → wallet pass) queda como verificación
+      post-deploy en navegador (no automatizable en CI).

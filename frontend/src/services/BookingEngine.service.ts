@@ -20,12 +20,25 @@ export interface BookingConfig {
   allowedCountries: string[]
 }
 
+export interface FunnelStep {
+  /** Nombre del step (view|search|select|upsell|form|pay|confirm). */
+  step: string
+  /** Etiqueta legible para el panel. */
+  label: string
+  /** Número de eventos de este step en el rango. */
+  count: number
+  /** % de conversión al siguiente step (0–100). null en el último step. */
+  dropOff: number | null
+}
+
 export interface BookingAnalytics {
   totalSearches: number
   totalBookings: number
   conversionRate: number
   totalRevenue: number
   averageBookingValue: number
+  /** F4 4.1 (D13) — Funnel de conversión desde tracking_events. */
+  funnel: FunnelStep[]
 }
 
 export const BookingEngineService = {

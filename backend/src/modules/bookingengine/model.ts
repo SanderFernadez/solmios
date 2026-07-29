@@ -1,5 +1,7 @@
 // bookingengine/model.ts — Schema de base de datos
-// 3 tablas: BookingConfig (config widget), AvailabilityCache (stock diario), ConversionEvents (analytics)
+// F4 4.2 — Modelo legacy de stock diario BORRADO (tabla + repo + constructor param).
+// La disponibilidad se calcula live desde Rooms + Reservations (ver usecases/availability.ts).
+// 2 tablas restantes: BookingConfig (config widget) + ConversionEvents (analytics legacy).
 
 import type { ModelDefinition, ORM } from 'arckode-framework'
 
@@ -23,23 +25,6 @@ export const BookingConfigModel: ModelDefinition = {
     instantConfirmation: { type: 'boolean', default: true },
     stripeAccountId: { type: 'string', default: '' },
     allowedCountries: { type: 'json', default: [] },
-  },
-}
-
-export const AvailabilityCacheModel: ModelDefinition = {
-  table: 'availability_cache',
-  timestamps: true,
-  fields: {
-    id: { type: 'string', required: true },
-    hotelId: { type: 'string', required: true, indexed: true },
-    roomType: { type: 'string', required: true },
-    date: { type: 'string', required: true },
-    totalRooms: { type: 'number', default: 0 },
-    occupied: { type: 'number', default: 0 },
-    blocked: { type: 'number', default: 0 },
-    available: { type: 'number', default: 0 },
-    price: { type: 'number', default: 0 },
-    currency: { type: 'string', default: 'USD' },
   },
 }
 
@@ -121,7 +106,6 @@ export const UpsellModel: ModelDefinition = {
 
 export function registerBookingengineModels(orm: ORM): void {
   orm.define('BookingConfig', BookingConfigModel)
-  orm.define('AvailabilityCache', AvailabilityCacheModel)
   orm.define('ConversionEvents', ConversionEventsModel)
   orm.define('BookingEngine', PublicBookingModel)
   // F2 2.3 (spec booking-widget) — Upsells: extras del widget público (desayuno, transfer,

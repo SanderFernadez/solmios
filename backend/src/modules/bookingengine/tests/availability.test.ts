@@ -19,7 +19,7 @@ function setup(reservations: any[] = [], rooms = ROOMS) {
     findMany: async () => rows,
     findOne: async () => ({ id: 'h1', name: 'Hotel Prueba' }),
   } as unknown as RepositoryAdapter<any>)
-  return new AvailabilityUseCase(repo([]), noCache, repo(rooms), repo(reservations), repo([]))
+  return new AvailabilityUseCase(noCache, repo(rooms), repo(reservations), repo([]))
 }
 
 const totalOf = (r: any) => r.roomTypes.reduce((s: number, t: any) => s + t.available, 0)
