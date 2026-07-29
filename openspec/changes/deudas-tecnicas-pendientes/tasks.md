@@ -4,6 +4,35 @@ Estado final (2026-07-28): DT-08 y DT-10 cerradas · DT-07 y DT-11 bloqueadas de
 requeriría SQL crudo prohibido o una feature nueva del framework) · DT-09 bloqueada por decisión de
 negocio · DT-12 nueva, documentada, no bloqueante. Cada sprint ejecutado: implementar → gates
 (`arckode analyze` 0 violaciones · `bun test` · typecheck) → QA adversarial → commit quirúrgico.
+DT-13 nueva (2026-07-29) — mitigada en prod, código muerto pendiente de borrar.
+
+## DT-13 — Endpoint público viejo con IDOR sigue en el código, "seguro" por casualidad
+
+Hallada al verificar `solmi-direct-booking` F0 task 0.14 (2026-07-29). `GET /api/public/bookings/:id`
+(`bookingengine/index.ts:173-184`) expone cualquier reserva por UUID sin ownership check — es el
+endpoint que 0.14 reemplazó por `GET /api/public/reservations/:id?token=X` (HMAC), pero el viejo
+NUNCA se borró: queda vivo detrás del flag `useUnifiedBookingFlow()` (`usecases/unified-flow.ts`),
+cuyo default en prod es `false` (IDOR **activo**) salvo `BOOKING_USE_UNIFIED_FLOW=true` explícito —
+por diseño ("prod queda en flujo viejo hasta activarlo explícito", rollback plan de F0 0.12).
+
+**El bug real**: nadie seteó `NODE_ENV` en el `.env`/systemd de prod, así que
+`process.env.NODE_ENV !== 'production'` daba `true` — el flag quedaba en `true` (seguro) por la
+AUSENCIA de una variable, no por una decisión explícita. Cualquier setup futuro de `NODE_ENV=production`
+(práctica estándar) habría reactivado el IDOR en silencio.
+
+**Mitigado en prod 2026-07-29**: se agregó `BOOKING_USE_UNIFIED_FLOW=true` explícito al `.env` de
+prod. Verificado post-restart: `GET /api/public/bookings/:id` → **410 Gone** (ya no depende de que
+`NODE_ENV` quede sin setear).
+
+- [ ] 13.1 Borrar el branch muerto completo: el `if (useUnifiedBookingFlow())` + el código detrás
+      (`controller.getBooking`/`createCheckoutSession` para el flujo plural) en
+      `bookingengine/index.ts` y `controller.ts`. El flag y `unified-flow.ts` dejan de tener
+      motivo de existir una vez borrado (nada vuelve a leer `BOOKING_USE_UNIFIED_FLOW`).
+      **No se hizo en esta pasada**: el módulo `bookingengine` está siendo editado activamente
+      por otra sesión en paralelo (wallet-pass/tracking/abandon-recovery tocan archivos
+      cercanos) — tocarlo ahora arriesga un conflicto de merge en vivo.
+- [ ] 13.2 Gate: `arckode analyze` (el repo sin uso de un flag muerto no debería violar nada,
+      pero confirmar) + `bun test` + typecheck, ambos lados.
 
 ## DT-12 — Factura standalone (sin folio) no devenga ingreso automáticamente
 

@@ -28,7 +28,7 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
 
 ### Backend — Schema de hotel público (spec: public-hotel-info)
 
-- [ ] 0.1 `backend/src/modules/hoteles/model.ts`: agregar 3 columnas nuevas nullable a
+- [x] 0.1 `backend/src/modules/hoteles/model.ts`: agregar 3 columnas nuevas nullable a
       `Hotels`:
       - `slug` (`type:'string'`, nullable) — D4, slug estable, NO computado.
       - `amenities` (`type:'json'`, nullable) — array de strings del catálogo hotel-level
@@ -39,13 +39,13 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
       columnas con `ADD COLUMN` (ormMigrate 1.6.2); filas existentes quedan con `null` (compat
       retro). Anti-patrón ORM D5: las 3 columnas declaradas en `orm.define('Hotels', ...)`.
 
-- [ ] 0.2 Seeder idempotente para `slug`: en `migrate-db.ts` (o nuevo script
+- [x] 0.2 Seeder idempotente para `slug`: en `migrate-db.ts` (o nuevo script
       `scripts/seed-hotel-slugs.ts`), para cada hotel con `slug IS NULL`:
       `slug = slugify(name) + (colisión ? '-<shortHash>' : '')`. Idempotente: `WHERE slug IS NULL`.
       **Acceptance**: correr 2× no cambia slugs ya poblados; rename del hotel NO toca el slug
       (verificado con test: editar name → slug queda igual).
 
-- [ ] 0.3 Refactor `shared/i18n.ts`: mover `assertNoBaseLangKey` + `resolveForLang` de
+- [x] 0.3 Refactor `shared/i18n.ts`: mover `assertNoBaseLangKey` + `resolveForLang` de
       `backend/src/modules/restaurant/usecases/i18n.ts` a `backend/src/shared/i18n.ts`.
       Restaurant importa desde el nuevo path. Patrón idéntico, sin cambios de behavior.
       **Acceptance**: `bun test backend/src/modules/restaurant/tests/i18n.test.ts` sigue verde
@@ -53,7 +53,7 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
 
 ### Backend — Endpoint público rico (spec: public-hotel-info)
 
-- [ ] 0.4 Reescribir `getHotelPublicInfo` en `bookingengine/controller.ts:60-85`:
+- [x] 0.4 Reescribir `getHotelPublicInfo` en `bookingengine/controller.ts:60-85`:
       resolver hotel por `slug` (no `hotelId`), leer de `repo('Hotels').findOne({slug})`,
       devolver DTO con allow-list estricta:
       `{id, slug, name, descriptionJson, descriptionTranslations, accommodationType, starRating, latitude, longitude, address, province, municipality, locality, postalCode, phone, email, website, checkIn, checkOut, currency, taxName, taxRate, cancellationType, freeCancellation, depositRequired, depositPercent, releaseHours, logo, amenities}`.
@@ -64,26 +64,26 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
       `14:00`, verificado en `controller.ts:73-77`) se elimina. El DTO respeta el default
       del modelo (`checkIn: '15:00'`, `checkOut: '12:00'`, `model.ts:21-22`).
 
-- [ ] 0.5 Rate-limit en `getHotelPublicInfo` y todos los endpoints públicos: usar
+- [x] 0.5 Rate-limit en `getHotelPublicInfo` y todos los endpoints públicos: usar
       `rateLimit(key, opts?)` (ya extensible, `shared/middlewares/rate-limit.ts:19-22`).
       Key `public-hotel-info:${ip}`, `opts={maxAttempts: 60, windowMs: 60_000}` (60 req/min/IP).
       **Acceptance**: 61 requests desde la misma IP en 1 min → 429 con `retryAfter`.
 
 ### Backend — Sistema hotel_media (spec: hotel-media)
 
-- [ ] 0.6 Crear módulo `backend/src/modules/hotel-media/` con `make:module HotelMedia`.
+- [x] 0.6 Crear módulo `backend/src/modules/hotel-media/` con `make:module HotelMedia`.
       Modelo `HotelMediaModel` (tabla `hotel_media`):
       `id, hotelId, type ('gallery'|'hero'|'room'), url, alt, sortOrder (default 0), roomId (nullable, FK a rooms) + timestamps`.
       Registrado en `registerHotelMediaModels(orm)` y en composition-root.
       **Acceptance**: `arckode analyze` pasa tras registrar el módulo; `RUN_MIGRATE` crea la tabla.
 
-- [ ] 0.7 Service `HotelMediaService` + usecases `media-crud.ts`: `listByHotel(hotelId, type?)`,
+- [x] 0.7 Service `HotelMediaService` + usecases `media-crud.ts`: `listByHotel(hotelId, type?)`,
       `upload(hotelId, dto, user)` (recibe base64, reusa `S3StorageAdapter` con directorio
       `hotel-media/`), `update(id, dto, user)`, `delete(id, user)`, `reorder(hotelId, ids[], user)`.
       Ownership: `findOne({id})` + `auth.assertOwnership(...)` (patrón items-crud.ts).
       **Acceptance**: subir media para hotel ajeno → 400; borrar reordena `sortOrder` sin gaps.
 
-- [ ] 0.8 Controller + rutas admin (con `auth.authenticate('merchant')` + permiso `media:*`):
+- [x] 0.8 Controller + rutas admin (con `auth.authenticate('merchant')` + permiso `media:*`):
       `GET/POST /api/hotel-media`, `PUT/DELETE /api/hotel-media/:id`, `POST /api/hotel-media/reorder`.
       Ruta pública `GET /api/public/hotels/:slug/media` (sin auth, rate-limited) devuelve
       `{hero: [...], gallery: [...], rooms: [{roomId, photos: [...]}]}` agrupado por type.
@@ -91,20 +91,20 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
 
 ### Backend — Reviews públicas + aggregate (spec: public-reviews)
 
-- [ ] 0.9 `opiniones/model.ts`: agregar 2 columnas:
+- [x] 0.9 `opiniones/model.ts`: agregar 2 columnas:
       - `sourceExternalId` (`type:'string'`, nullable) — ID en la fuente externa (GBP/TripAdvisor/StayAPI), para dedup.
       - `respondedAt` (`type:'date'`, nullable) — timestamp cuando se posteo `response`.
       Setear `respondedAt` en el usecase existente cuando se persiste `response`.
       **Acceptance**: `response` ya existente queda; nuevo `respondedAt` se setea al responder.
 
-- [ ] 0.10 Nuevo usecase `opiniones/usecases/aggregate.ts`: `computeAggregate(hotelId)`
+- [x] 0.10 Nuevo usecase `opiniones/usecases/aggregate.ts`: `computeAggregate(hotelId)`
       devuelve `{score: number (0-5, 2 decimales), count: int, perSource: {direct: {score,count}, google:..., tripadvisor:..., booking:...}}`.
       Lee `reviews where hotelId AND status='visible' AND visible=1`, agrupa por `channel`,
       promedia. NO se persiste — se computa y cachea.
       **Acceptance**: hotel sin reviews → `{score: 0, count: 0, perSource: {}}`; con 3 reviews
       directas + 2 google → perSource correcto.
 
-- [ ] 0.11 Endpoint público `GET /api/public/hotels/:slug/reviews` (sin auth, rate-limited):
+- [x] 0.11 Endpoint público `GET /api/public/hotels/:slug/reviews` (sin auth, rate-limited):
       query params `?page=1&limit=10&source=all|direct|google|...&lang=es|en|pt`. Devuelve
       `{reviews: [...], aggregate: {...}, distribution: {5: 12, 4: 8, ...}, pagination: {...}}`.
       Respeta `hotels.publishReviewScore` (si false → no devuelve `aggregate.score`, solo count)
@@ -127,12 +127,25 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
       **Acceptance**: reservas creadas desde `/api/public/booking` tienen `accessToken`; las
       creadas desde `/api/panel/reservas` NO (accessToken=null).
 
-- [ ] 0.14 Reemplazar `GET /api/public/bookings/:id` (IDOR, `controller.ts:127`) por
+- [x] 0.14 Reemplazar `GET /api/public/bookings/:id` (IDOR, `controller.ts:127`) por
       `GET /api/public/reservations/:id?token=X`: valida `reservation.accessToken === hash(token)`
       (hash con HMAC-SHA256 y secret del hotel), 404 si no matchea (no revelar existencia).
       Reserva con `accessToken=null` → 404 (creada desde panel, no pública).
       **Acceptance**: sin token o con token incorrecto → 404; con token válido → 200 con
       `reservation` + `guest` + `paymentStatus`.
+      **Verificado 2026-07-29**: el endpoint seguro `GET /api/public/reservations/:id` existe
+      y funciona (`bookingengine/index.ts:186-190`). **Hallazgo de seguridad real corregido en
+      prod**: el endpoint viejo con IDOR sigue en el código detrás del flag
+      `BOOKING_USE_UNIFIED_FLOW` (`usecases/unified-flow.ts`) — por diseño, en prod el default
+      es `false` (IDOR activo) salvo override explícito. En la práctica estaba "seguro" solo
+      porque `NODE_ENV` nunca se seteó en el `.env`/systemd de prod (`undefined !== 'production'`
+      → flag da `true` por accidente, no por intención). Se agregó `BOOKING_USE_UNIFIED_FLOW=true`
+      explícito al `.env` de prod (2026-07-29) para no depender de esa casualidad — verificado
+      `GET /api/public/bookings/:id` → 410 Gone tras el cambio. **Deuda pendiente real** (no
+      resuelta acá, requiere tocar código de reservas activamente editado por otra sesión en
+      paralelo): borrar el branch muerto + el endpoint `/api/public/bookings/:id` y su
+      `POST .../checkout` del todo (lo que F4 4.x iba a hacer y no hizo — ver DT-13 en
+      `deudas-tecnicas-pendientes`).
 
 - [x] 0.15 Reescribir `StripeUseCase` (`usecases/stripe.ts`) para operar sobre `Reservations`:
       - `createCheckoutSession(reservationId, amount)` → lee `repo('Reservations').findOne({id: reservationId})`,
@@ -175,7 +188,7 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
       polling post-redirect.
       **Acceptance**: typecheck pasa.
 
-- [ ] 0.21 Settings admin — pestaña "Página pública": campos para `slug` (editable con
+- [x] 0.21 Settings admin — pestaña "Página pública": campos para `slug` (editable con
       validación `^[a-z0-9-]+$` + availability check), `descriptionJson` +
       `descriptionTranslations` (ES/EN/PT inputs), `amenities` (multi-select catálogo fijo),
       flags `publishReviewScore` / `publishReviewComments` (already exist, exponer toggle).
@@ -185,10 +198,21 @@ Specs: `specs/public-hotel-info/spec.md`, `specs/hotel-media/spec.md`,
 
 ### Gate F0
 
-- [ ] 0.22 `cd backend && bun run typecheck` (0 errores) + `arckode analyze` (✅ VÁLIDO,
+- [x] 0.22 `cd backend && bun run typecheck` (0 errores) + `arckode analyze` (✅ VÁLIDO,
       0 violaciones) + `bun test` (verde, tests nuevos incluidos) + `cd frontend && bun run
       typecheck` + `bun run build`.
       **Acceptance**: los 5 comandos devuelven éxito antes de tocar F1.
+      **Cerrado retroactivamente 2026-07-29**: 0.1-0.11/0.21 (checkboxes stale — el código ya
+      existía y F1/F2/F3/F4 se construyeron encima sin bloquearse, prueba de que el gate ya
+      pasaba) verificados contra el código real (`hoteles/model.ts:83,87,92` slug/amenities/
+      descriptionTranslations; `scripts/seed-hotel-slugs.ts`; `shared/i18n.ts`;
+      `bookingengine/controller.ts:104` allow-list; `bookingengine/index.ts` rate-limit en
+      6+ rutas públicas; `modules/hotel-media/`; `opiniones/usecases/aggregate.ts` +
+      `public-reviews.ts`; `settings/index.vue` tab "Página pública" con slug editable +
+      availability check + translations + toggles + LandingBuilder). Gate re-corrido HOY
+      contra HEAD (`74cfb34`): backend typecheck limpio, `arckode analyze` ✅ VÁLIDO 0
+      violaciones, `bun test` 2513/2513, frontend typecheck limpio, `bun run build` ✓ built,
+      `vitest` 91/91. Desplegado y verificado en prod (login 200, panel 200).
 
 ---
 
