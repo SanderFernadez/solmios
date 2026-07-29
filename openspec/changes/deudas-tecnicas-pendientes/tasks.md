@@ -31,21 +31,28 @@ sube ni baja el score de nadie, solo queda como registro histórico.
 - [x] 19.3 Gate: `arckode analyze` ✅ VÁLIDO · `bun test` 2533/2533 (5 tests nuevos) · typecheck
       backend limpio. Sin migración de DB. Commit `9c08650`, pusheado a `main`.
 
-## DT-18 — Marketing: cron de auto-messages no es event-driven
+## DT-18 — Marketing: 3 de 5 triggerEvent de auto-messages nunca disparaban nada — ✅ CERRADA (2026-07-29)
 
-Hallada al re-auditar el nodo `marketing` (2026-07-29). Confirmado en
-`composition-root.ts:630-631` + `marketing/service.ts:148`: el cron corre cada 1h
-(`AUTO_MESSAGES_TICK_MS`) y evalúa la condición completa (`checkIn=today AND status=confirmed`,
-etc.) sobre TODAS las reservas — no se dispara puntualmente por el evento real
-(checkin/checkout/booking confirmado). Riesgo: un auto-mensaje puede salir hasta 1h después del
-evento que lo motiva, o evaluar de más en cada corrida.
+Hallada al re-auditar el nodo `marketing` (2026-07-29) y RESULTÓ MÁS GRAVE de lo que decía el
+hallazgo original ("cron no event-driven"): el enum `triggerEvent` (`validators/schema.ts`)
+ofrece `on_reservation|pre_checkin|checkin_day|checkout_day|post_checkout`, pero
+`auto-messages-cron.ts` (el único disparador que existía) SOLO cubría `checkin_day`/`checkout_day`.
+Un hotel podía configurar un auto-message `on_reservation` o `post_checkout` y JAMÁS se enviaba
+nada — 0% funcional, no "hasta 1h de demora".
 
-- [ ] 18.1 Decidir alcance: ¿mover los triggers de `auto_messages` con `triggerType='event'` a
-      connectors reales (ej. `reservas-marketing.ts` escuchando `onReservationConfirmed`), dejando
-      el cron solo para los de `triggerType='cron'` (recordatorios por fecha, no por evento)?
-- [ ] 18.2 Si se decide: nuevo connector + filtrar el cron para que NO reprocese los que ya
-      pasaron a ser event-driven (evitar doble envío).
-- [ ] 18.3 Gate: `arckode analyze` + `bun test` + typecheck.
+- [x] 18.1 Decidido: `on_reservation` y `post_checkout` son eventos instantáneos → connectors
+      reales (reusan sockets `onReservasCreated`/`onReservationCheckedOut` que YA existían).
+      `pre_checkin` es de fecha con offset variable → se queda en el cron (no es un evento
+      puntual, es "N días antes").
+- [x] 18.2 `connectors/reservas-marketing.ts` (nuevo): `on_reservation` (solo si
+      `status==='confirmed'`) + `post_checkout` (mismo socket que reservas-opiniones/
+      reservas-deposits, compone sin pisar). `pre_checkin` agregado al cron existente,
+      agrupado por `triggerOffset` distinto (cada auto-message puede tener un offset propio).
+      `triggerAutoMessages` ya era genérico/agnóstico del caller — no hizo falta tocarlo, y su
+      dedup diario existente cubre reintentos del cron sin duplicar envíos.
+- [x] 18.3 Gate: `arckode analyze` ✅ VÁLIDO · `bun test` 2543/2543 (7 tests nuevos) · typecheck
+      backend limpio. Sin migración (enum y columnas ya existían). Commit `5b20f15`, pusheado
+      a `main`.
 
 ## DT-17 — Auditlog sin vista de lectura desde el panel del hotel
 

@@ -384,10 +384,10 @@ const N = [
     falta:[]
   }},
   {id:'marketing',label:'📣 Marketing',group:'crm',panel:'hotel',info:{
-    que:'Auto-mensajes (campañas por evento). Cron cada 1h los dispara.',
-    porque:'Comunicación proactiva al huésped. Auto-messages-cron.',
-    conectado:['email-queue','notificaciones','auditlog'],
-    falta:['El cron de auto-messages corre periódicamente leyendo todo; NO se disparan por eventos puntuales de reserva (checkin/checkout/booking) — posible spa m de mensajes irrelevantes']
+    que:'Auto-mensajes por evento: on_reservation/pre_checkin/checkin_day/checkout_day/post_checkout. Los 3 instantáneos (reserva confirmada, pre-checkin es de fecha, checkout) disparan en tiempo real ✅ DT-18; checkin_day/checkout_day/pre_checkin siguen en el cron (son de fecha, no de evento puntual).',
+    porque:'Comunicación proactiva al huésped. triggerAutoMessages es agnóstico del caller (cron o connector).',
+    conectado:['reservas (on_reservation + post_checkout en tiempo real ✅ DT-18, 2026-07-29)','email-queue','notificaciones','auditlog'],
+    falta:[]
   }},
   {id:'opiniones',label:'⭐ Opiniones',group:'crm',panel:'hotel',info:{
     que:'Reseñas post-estadía con FLUJO PÚBLICO completo: el checkout crea un invite (status=pending, token único, visible=0), se emaila al huésped (evento review_request es/en/pt) y este responde SIN login en /resena/:token → status=visible, visible=1.',
@@ -612,6 +612,7 @@ const E = [
   {f:'payment-requests',t:'payments',y:'hook',l:'link cobrado'},
   {f:'payment-requests',t:'ttlock',y:'hook',l:'PIN traba'},
   {f:'reservas',t:'crm',y:'hook',l:'checkout→credita CRM'},
+  {f:'reservas',t:'marketing',y:'hook',l:'reserva confirmada + checkout → auto-messages ✅ DT-18'},
   {f:'messages',t:'usuarios',y:'hook',l:'nombres'},
   {f:'messages',t:'pushtokens',y:'hook',l:'push'},
   {f:'pushtokens',t:'usuarios',y:'hook',l:'autor'},
