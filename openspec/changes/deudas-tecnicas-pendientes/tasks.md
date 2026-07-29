@@ -10,7 +10,7 @@ conexión contra el código real (no contra la prosa del mapa, que en 2 casos es
 fixes de `usuarios`/`capacitacion` en el mismo commit). Todas verificadas con grep antes de
 crearlas, ninguna es una suposición.
 
-## DT-19 — Capacitación completada no pesa en el score de desempeño (#321)
+## DT-19 — Capacitación completada no pesa en el score de desempeño (#321) — ✅ CERRADA (2026-07-29)
 
 Hallada al re-auditar el nodo `capacitacion` del mapa (2026-07-29). El connector
 `capacitacion-empleados` (`onEnrollmentCompleted`) deja un documento `training` en el expediente
@@ -20,13 +20,16 @@ mantenimiento, renormalizada si falta data) **no referencia capacitación/traini
 lado** (`grep -rn "training\|capacitacion" auto-evaluation.ts` → 0 hits). Un curso completado no
 sube ni baja el score de nadie, solo queda como registro histórico.
 
-- [ ] 19.1 Decidir: ¿capacitación debería ser un criterio más de la fórmula (con su propio peso,
-      renormalizable como los demás), o es intencional que sea solo un registro sin impacto en
-      el score? Requiere decisión de producto (qué cursos "cuentan" y cuánto pesan).
-- [ ] 19.2 Si se decide sumarlo: nuevo criterio en `auto-evaluation.ts` (mismo patrón que
-      `maintenanceCriterion` — peso default + `hasData` para renormalizar si el empleado no
-      tiene cursos asignados).
-- [ ] 19.3 Gate: `arckode analyze` + `bun test` + typecheck.
+- [x] 19.1 Decidido: capacitación pasa a ser un criterio más de la fórmula (peso 15, menor que
+      maintenance/30 por ser señal de desarrollo, no productividad operativa dura). Un empleado
+      sin cursos en el período no se ve afectado (renormalización).
+- [x] 19.2 Nuevo criterio `training` en `auto-evaluation.ts` (mismo patrón que `maintenanceScore`):
+      score = promedio de la nota (0-100) de los cursos completados en el período; sin
+      completados o sin nota cargada → `hasData:false`. Nuevo `capacitacion/usecases/stats.ts`
+      (`getStaffStats`) + connector `empleados-capacitacion.ts` (join por `profile.id`, NO
+      `profile.userId` — `capacitacion.employeeId` ya es `EmployeeProfile.id`).
+- [x] 19.3 Gate: `arckode analyze` ✅ VÁLIDO · `bun test` 2533/2533 (5 tests nuevos) · typecheck
+      backend limpio. Sin migración de DB. Commit `9c08650`, pusheado a `main`.
 
 ## DT-18 — Marketing: cron de auto-messages no es event-driven
 

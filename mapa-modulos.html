@@ -366,8 +366,8 @@ const N = [
   {id:'capacitacion',label:'🎓 Capacitación',group:'rrhh',panel:'hotel',info:{
     que:'Cursos y capacitación del staff.',
     porque:'Desarrollo. Borrado sensible (historial).',
-    conectado:['auditlog','empleados (curso completado→documento ✅)'],
-    falta:['CORRECCIÓN (2026-07-29): el curso completado deja un documento en el expediente (connector capacitacion-empleados), pero la nota vieja de que "no hay fórmula definida" era imprecisa — SÍ existe una fórmula de scoring #321 real y ponderada (`empleados/usecases/auto-evaluation.ts`: productividad + calidad + puntualidad + asistencia + mantenimiento, renormalizada si falta data). Lo que genuinamente falta es más angosto: capacitación NO es uno de los criterios de esa fórmula — un curso completado no sube ni baja el score, solo queda como documento. Ver DT-19.']
+    conectado:['auditlog','empleados (curso completado→documento ✅)','empleados (curso completado→criterio training del scoring #321 ✅ DT-19, 2026-07-29)'],
+    falta:[]
   }},
   {id:'activos',label:'📦 Activos',group:'rrhh',panel:'hotel',info:{
     que:'Inventario de bienes asignados al staff (equipos, uniforms).',
@@ -676,6 +676,7 @@ const E = [
   {f:'amenities',t:'habitaciones',y:'hook',l:'sync CSV Rooms.amenities ✅'},
   {f:'reclutamiento',t:'empleados',y:'hook',l:'contratado→expediente ✅'},
   {f:'capacitacion',t:'empleados',y:'hook',l:'curso→documento ✅'},
+  {f:'capacitacion',t:'empleados',y:'hook',l:'curso→criterio training del score #321 ✅ DT-19'},
 
   // ===== GAPS: BUGS en conexión existente (rojo sólido) =====
   {f:'facturas',t:'hoteles',y:'bug',l:'NCF local, no transmitido (stub fiscal)'},
