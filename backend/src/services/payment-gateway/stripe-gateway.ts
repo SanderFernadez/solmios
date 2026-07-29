@@ -74,6 +74,11 @@ export class StripeGateway implements RefundableGateway {
         customer_email: req.customerEmail,
         client_reference_id: req.reference,
         metadata: { reference: req.reference, hotelId: req.hotelId, ...(req.metadata || {}) },
+        // Sin esto, el PaymentIntent subyacente NO hereda el metadata de la Session. El webhook
+        // payment_intent.payment_failed llega con el PaymentIntent como payload — sin este
+        // metadata, mapStatus mapea status:'failed' pero reference queda '' (client_reference_id
+        // no existe en PaymentIntent) y settle-webhook no sabe qué payment actualizar.
+        payment_intent_data: { metadata: { reference: req.reference, hotelId: req.hotelId } },
       }
       // fix-refund-pos-card: clampeado al rango real de Stripe (30min–24h) — un valor pedido fuera
       // de rango (ej. los 15min que pidió el producto) se ajusta en vez de dejar que Stripe rechace
