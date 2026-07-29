@@ -159,7 +159,7 @@ const N = [
     que:'Cuentas del hotel (merchant) y de plataforma (admin). Email O teléfono, roles por hotel, ownership.',
     porque:'Es el sujeto de auth y de toda operación con ownership. userId es la FK más referenciada del sistema.',
     conectado:['roles', 'hoteles', 'subscriptions (login gate)', 'auditlog', 'staff-auth (app móvil)'],
-    falta:['Verificación de email pendiente: el alta valida formato pero no comprueba que el correo exista → cuenta sin recuperación (GitLab #421)']
+    falta:['✅ RESUELTO (nota vieja, corregida 2026-07-29): la verificación de email SÍ está implementada end-to-end (`usuarios/usecases/email-verification.ts` + test dedicado) — token con TTL 24h, confirmación pública, reenvío. El alta no se bloquea si no está verificado (solo avisa), por diseño (GitLab #421 cerrado).']
   }},
   {id:'roles',label:'🔑 Roles',group:'sistema',panel:'ambos',info:{
     que:'Roles por hotel con permisos granulares (hotel_admin, receptionist, housekeeper, maintenance).',
@@ -367,7 +367,7 @@ const N = [
     que:'Cursos y capacitación del staff.',
     porque:'Desarrollo. Borrado sensible (historial).',
     conectado:['auditlog','empleados (curso completado→documento ✅)'],
-    falta:['El curso completado ahora deja un documento en el expediente (connector capacitacion-empleados). El SCORING de desempeño (#321) sigue pendiente: no hay fórmula definida, solo se registra el rastro.']
+    falta:['CORRECCIÓN (2026-07-29): el curso completado deja un documento en el expediente (connector capacitacion-empleados), pero la nota vieja de que "no hay fórmula definida" era imprecisa — SÍ existe una fórmula de scoring #321 real y ponderada (`empleados/usecases/auto-evaluation.ts`: productividad + calidad + puntualidad + asistencia + mantenimiento, renormalizada si falta data). Lo que genuinamente falta es más angosto: capacitación NO es uno de los criterios de esa fórmula — un curso completado no sube ni baja el score, solo queda como documento. Ver DT-19.']
   }},
   {id:'activos',label:'📦 Activos',group:'rrhh',panel:'hotel',info:{
     que:'Inventario de bienes asignados al staff (equipos, uniforms).',

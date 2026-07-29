@@ -5,6 +5,109 @@ requeriría SQL crudo prohibido o una feature nueva del framework) · DT-09 bloq
 negocio · DT-12 nueva, documentada, no bloqueante. Cada sprint ejecutado: implementar → gates
 (`arckode analyze` 0 violaciones · `bun test` · typecheck) → QA adversarial → commit quirúrgico.
 DT-13 nueva (2026-07-29) — mitigada en prod, código muerto pendiente de borrar.
+DT-14 a DT-19 nuevas (2026-07-29) — halladas al re-auditar `mapa-modulos.html` conexión por
+conexión contra el código real (no contra la prosa del mapa, que en 2 casos estaba stale — ver
+fixes de `usuarios`/`capacitacion` en el mismo commit). Todas verificadas con grep antes de
+crearlas, ninguna es una suposición.
+
+## DT-19 — Capacitación completada no pesa en el score de desempeño (#321)
+
+Hallada al re-auditar el nodo `capacitacion` del mapa (2026-07-29). El connector
+`capacitacion-empleados` (`onEnrollmentCompleted`) deja un documento `training` en el expediente
+del empleado — pero `empleados/usecases/auto-evaluation.ts` (el motor de scoring #321, que SÍ
+tiene una fórmula real y ponderada: productividad + calidad + puntualidad + asistencia +
+mantenimiento, renormalizada si falta data) **no referencia capacitación/training en ningún
+lado** (`grep -rn "training\|capacitacion" auto-evaluation.ts` → 0 hits). Un curso completado no
+sube ni baja el score de nadie, solo queda como registro histórico.
+
+- [ ] 19.1 Decidir: ¿capacitación debería ser un criterio más de la fórmula (con su propio peso,
+      renormalizable como los demás), o es intencional que sea solo un registro sin impacto en
+      el score? Requiere decisión de producto (qué cursos "cuentan" y cuánto pesan).
+- [ ] 19.2 Si se decide sumarlo: nuevo criterio en `auto-evaluation.ts` (mismo patrón que
+      `maintenanceCriterion` — peso default + `hasData` para renormalizar si el empleado no
+      tiene cursos asignados).
+- [ ] 19.3 Gate: `arckode analyze` + `bun test` + typecheck.
+
+## DT-18 — Marketing: cron de auto-messages no es event-driven
+
+Hallada al re-auditar el nodo `marketing` (2026-07-29). Confirmado en
+`composition-root.ts:630-631` + `marketing/service.ts:148`: el cron corre cada 1h
+(`AUTO_MESSAGES_TICK_MS`) y evalúa la condición completa (`checkIn=today AND status=confirmed`,
+etc.) sobre TODAS las reservas — no se dispara puntualmente por el evento real
+(checkin/checkout/booking confirmado). Riesgo: un auto-mensaje puede salir hasta 1h después del
+evento que lo motiva, o evaluar de más en cada corrida.
+
+- [ ] 18.1 Decidir alcance: ¿mover los triggers de `auto_messages` con `triggerType='event'` a
+      connectors reales (ej. `reservas-marketing.ts` escuchando `onReservationConfirmed`), dejando
+      el cron solo para los de `triggerType='cron'` (recordatorios por fecha, no por evento)?
+- [ ] 18.2 Si se decide: nuevo connector + filtrar el cron para que NO reprocese los que ya
+      pasaron a ser event-driven (evitar doble envío).
+- [ ] 18.3 Gate: `arckode analyze` + `bun test` + typecheck.
+
+## DT-17 — Auditlog sin vista de lectura desde el panel del hotel
+
+Hallada al re-auditar el nodo `auditlog` (2026-07-29). Confirmado: `frontend/src/router/index.ts`
+no tiene ninguna ruta `auditoria`/`audit-log` bajo `/panel/*` — solo `/admin/*` (plataforma) puede
+leer el log. Un `hotel_admin` no tiene forma de ver quién borró qué en su propio hotel.
+
+- [ ] 17.1 Decidir: ¿el hotel_admin debería ver su propio audit log (filtrado por su hotelId), o
+      es intencional que solo la plataforma lo audite (para que un hotel_admin comprometido no
+      pueda "limpiar" el rastro de sus propias acciones sensibles)? Esto es una decisión de
+      seguridad, no solo de producto — dar visibilidad podría ir en contra del propósito original
+      del audit log (trazabilidad ANTE el hotel, no solo para el hotel).
+- [ ] 17.2 Si se decide exponerlo: página `frontend/src/pages/auditoria/index.vue` (solo-lectura)
+      + endpoint que filtre por `hotelId` del JWT (nunca cross-tenant).
+- [ ] 17.3 Gate: `arckode analyze` + `bun test` + typecheck.
+
+## DT-16 — Tesorería: `bank_accounts.currentBalance` nunca se recalcula post-creación
+
+Hallada al re-auditar el nodo `tesoreria` (2026-07-29). Confirmado en
+`treasury/usecases/bank.ts:42`: `currentBalance` se setea UNA vez al crear la cuenta
+(`currentBalance: opening`) y ningún otro código del módulo lo vuelve a tocar. La liquidez real
+que ve el hotelero (cash flow, AR/AP) se computa aparte leyendo `payments`/`expenses`
+directamente (mismo patrón que `reports`, sin duplicar datos) — así que el dato mostrado en
+pantalla es correcto, pero la COLUMNA `currentBalance` de la cuenta bancaria queda
+permanentemente desactualizada si alguien la consulta directo (ej. un reporte futuro, un export,
+una integración externa).
+
+- [ ] 16.1 Decidir: ¿vale la pena recalcular `currentBalance` (ej. tras cada conciliación
+      bancaria), o se documenta como "campo vestigial, la fuente de verdad es el cash flow
+      computado" y se lo saca del modelo para no confundir?
+- [ ] 16.2 Si se decide recalcular: hook en el usecase de conciliación (`bank.ts`) que sume/reste
+      el neto de movimientos conciliados desde la última actualización.
+- [ ] 16.3 Gate: `arckode analyze` + `bun test` + typecheck.
+
+## DT-15 — Cash: diferencia de arqueo del turno no genera asiento contable
+
+Hallada al re-auditar el nodo `contabilidad` (2026-07-29). Confirmado: no existe ningún connector
+`cash-accounting` (`grep -rn "cash-accounting\|cashAccounting"` en composition-root.ts +
+connectors/ → 0 hits). Cuando `cash/usecases/reconcile.ts` detecta un sobrante o faltante al
+cerrar un turno de caja, esa diferencia queda registrada en `cash_shifts`/`cash_movements` pero
+**nunca genera un asiento en la contabilidad de doble entrada** — el libro mayor no refleja el
+descuadre real de caja.
+
+- [ ] 15.1 Diseñar el asiento: un faltante es un gasto/pérdida (DR Gasto por descuadre / CR Caja);
+      un sobrante es un ingreso no operativo (DR Caja / CR Ingreso por descuadre). Definir cuentas
+      del plan de 36 cuentas base a usar.
+- [ ] 15.2 Nuevo connector `cash-accounting.ts` (mismo molde que `payments-accounting.ts`):
+      escucha el evento de cierre/conciliación de turno, asienta solo si `difference !== 0`.
+- [ ] 15.3 Test: arqueo con sobrante → asiento correcto; arqueo cuadrado → sin asiento.
+- [ ] 15.4 Gate: `arckode analyze` + `bun test` + typecheck.
+
+## DT-14 — Admin (plataforma) sin vista de P&L consolidado cross-hotel
+
+Hallada al re-auditar el nodo `admin` (2026-07-29). Confirmado: `super-admin/consolidated.vue`
+(PC-2.2) da KPIs operacionales por hotel (MRR, ocupación, ADR, reservas del mes) pero NINGUNA
+vista agrega ingresos−gastos−neto (P&L real) across todos los hoteles de la plataforma — solo
+existe P&L POR hotel (dentro de `contabilidad`, aislado por `hotelId`). Un super_admin no tiene
+forma de ver la rentabilidad consolidada de la plataforma completa desde un solo lugar.
+
+- [ ] 14.1 Decidir alcance: ¿el P&L consolidado suma los P&L de contabilidad de cada hotel (solo
+      para hoteles con el módulo `accounting` activo), o es un cálculo aparte más simple
+      (revenue−gastos desde `reports`, sin depender de que el hotel tenga contabilidad activada)?
+- [ ] 14.2 Si se decide: nuevo usecase en `admin/usecases/` que agregue por hotel y sume, página
+      `super-admin/pnl-consolidado.vue` (o extender `consolidated.vue`).
+- [ ] 14.3 Gate: `arckode analyze` + `bun test` + typecheck.
 
 ## DT-13 — Endpoint público viejo con IDOR sigue en el código, "seguro" por casualidad
 

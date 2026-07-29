@@ -10,6 +10,14 @@ desactualizado, corregido en este mismo cambio). Estado final (2026-07-28): **DT
 framework) · DT-09 bloqueada por decisión de negocio · DT-12 nueva (hallada al verificar
 contabilidad-tesoreria), documentada, sin impacto en prod hoy (0 facturas standalone existen)**.
 
+**2026-07-29**: DT-13 (endpoint IDOR muerto, mitigado en prod). DT-14 a DT-19 nuevas — halladas al
+re-auditar `mapa-modulos.html` conexión por conexión contra el código real: admin sin P&L
+consolidado cross-hotel (DT-14), arqueo de caja sin asiento contable (DT-15), bank
+`currentBalance` nunca se recalcula (DT-16), auditlog sin lectura desde el panel del hotel
+(DT-17), cron de marketing no event-driven (DT-18), capacitación no pesa en el score de
+desempeño #321 (DT-19). Todas requieren una decisión de producto antes de implementar (ninguna
+es un bug urgente ni bloqueante) — quedan documentadas, no implementadas en esta pasada.
+
 ## Motivation
 
 El usuario pidió "crear las tareas de las deudas técnicas" para dejar de tenerlas como una nota en un
