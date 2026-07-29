@@ -5,7 +5,7 @@ import { silentLogger } from 'arckode-framework/testing'
 import { TreasuryService } from '../service'
 import type { SupplierDTO, CurrentUser } from '../types'
 import { cashFlow, receivables, payables } from '../usecases/liquidity'
-import { reconcile, importMovements } from '../usecases/bank'
+import { reconcile, importMovements, updateBankAccount } from '../usecases/bank'
 import { budgetVsActual } from '../usecases/budget'
 
 const log = silentLogger()
@@ -123,6 +123,52 @@ describe('treasury — conciliación bancaria (TES-1)', () => {
     const res = await reconcile(deps as any, 'b1', user)
     expect(res.matched).toBe(1)          // solo un movimiento matchea el único pago
     expect(res.unmatchedCount).toBe(1)
+  })
+
+  // DT-19 → DT-16: currentBalance ya no queda clavado en openingBalance para siempre.
+  it('DT-16: importar movimientos recalcula currentBalance = opening + suma firmada', async () => {
+    const acc = { id: 'b1', hotelId: 'h1', openingBalance: 1000, currentBalance: 1000 }
+    const accRepo = repoOf([acc]) as any
+    accRepo.update = async (id: string, d: any) => { Object.assign(acc, d); return acc }
+    const mov = repoOf([]) as any
+    const created: any[] = []
+    mov.create = async (d: any) => { const row = { id: `m${created.length + 1}`, ...d }; created.push(row); return row }
+    mov.findMany = async () => created   // recalcBalance lee lo recién creado
+    const deps = { bankAccounts: accRepo, bankMovements: mov, payments: repoOf(), userRepo, auth: passAuth }
+
+    await importMovements(deps as any, 'b1', [
+      { date: '2026-07-10', amount: 200, reference: 'R1' },   // entrada
+      { date: '2026-07-11', amount: -50, reference: 'R2' },   // salida
+    ], user)
+
+    expect(acc.currentBalance).toBe(1150)   // 1000 + 200 - 50
+  })
+
+  it('DT-16: re-importar el mismo CSV (0 nuevos) NO dispara un recálculo de más', async () => {
+    const acc = { id: 'b1', hotelId: 'h1', openingBalance: 1000, currentBalance: 1000 }
+    const accRepo = repoOf([acc]) as any
+    let updateCalls = 0
+    accRepo.update = async (id: string, d: any) => { updateCalls++; Object.assign(acc, d); return acc }
+    const existing = [{ id: 'm0', bankAccountId: 'b1', date: '2026-07-10', amount: 100, reference: 'REF1' }]
+    const mov = repoOf(existing) as any
+    const deps = { bankAccounts: accRepo, bankMovements: mov, payments: repoOf(), userRepo, auth: passAuth }
+
+    await importMovements(deps as any, 'b1', [{ date: '2026-07-10', amount: 100, reference: 'REF1' }], user) // duplicado
+
+    expect(updateCalls).toBe(0)
+    expect(acc.currentBalance).toBe(1000)   // sin tocar
+  })
+
+  it('DT-16: cambiar openingBalance recalcula currentBalance con el nuevo delta', async () => {
+    const acc = { id: 'b1', hotelId: 'h1', openingBalance: 1000, currentBalance: 1200 } // ya tenía +200 de movimientos
+    const accRepo = repoOf([acc]) as any
+    accRepo.update = async (id: string, d: any) => { Object.assign(acc, d); return acc }
+    const mov = repoOf([{ id: 'm1', bankAccountId: 'b1', date: '2026-07-10', amount: 200 }]) as any
+    const deps = { bankAccounts: accRepo, bankMovements: mov, payments: repoOf(), userRepo, auth: passAuth }
+
+    await updateBankAccount(deps as any, 'b1', { openingBalance: 500 }, user)
+
+    expect(acc.currentBalance).toBe(700)   // 500 (nuevo opening) + 200 (movimientos)
   })
 })
 

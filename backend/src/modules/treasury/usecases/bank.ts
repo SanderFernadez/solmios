@@ -48,6 +48,29 @@ export async function updateBankAccount(deps: BankDeps, id: string, dto: any, us
   await assertOwn(deps, existing.hotelId, user)
   const item = await deps.bankAccounts.update(id, dto)
   if (!item) throw new NotFoundError('Cuenta bancaria no encontrada')
+  // DT-16: si cambió el saldo de apertura, currentBalance debe correrse el mismo delta —
+  // sin esto quedaría calculado sobre un openingBalance viejo.
+  if (dto.openingBalance !== undefined) return recalcBalance(deps, id)
+  return item
+}
+
+/**
+ * DT-16 — Recalcula `currentBalance` desde `openingBalance` + la suma de TODOS los movimientos
+ * importados (ya vienen firmados: + entrada / − salida, ver `reconcile()`). Antes `currentBalance`
+ * se seteaba UNA vez al crear la cuenta y nunca se volvía a tocar — quedaba permanentemente
+ * desactualizado apenas se importaba el primer movimiento. La liquidez que ve el hotelero (cash
+ * flow, AR/AP) NO depende de este campo — se computa aparte leyendo payments/expenses — así que
+ * esto no cambia ningún número visible hoy; solo deja de mentir el campo `currentBalance` en sí
+ * (relevante para exports/integraciones futuras que lo consulten directo).
+ */
+async function recalcBalance(deps: BankDeps, bankAccountId: string) {
+  const acc = await deps.bankAccounts.findById(bankAccountId)
+  if (!acc) throw new NotFoundError('Cuenta bancaria no encontrada')
+  const movements = (await deps.bankMovements.findMany({ bankAccountId })) as any[]
+  const sum = movements.reduce((s, m) => s + Number(m.amount || 0), 0)
+  const currentBalance = Math.round((Number(acc.openingBalance || 0) + sum + Number.EPSILON) * 100) / 100
+  const item = await deps.bankAccounts.update(bankAccountId, { currentBalance })
+  if (!item) throw new NotFoundError('Cuenta bancaria no encontrada')
   return item
 }
 
@@ -73,6 +96,9 @@ export async function importMovements(deps: BankDeps, bankAccountId: string, row
     })
     created++
   }
+  // DT-16: recalcular currentBalance solo si entró algo nuevo (evita un update de más en un
+  // re-import que dedup todo).
+  if (created > 0) await recalcBalance(deps, bankAccountId)
   return { created, total: (rows || []).length }
 }
 
