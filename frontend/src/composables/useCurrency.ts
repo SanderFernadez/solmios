@@ -3,6 +3,7 @@
 
 import { ref, computed } from 'vue'
 import { http } from '@/services/http'
+import { CurrencyCode } from '@/types/currency'
 
 export interface CurrencyConfig {
   secondaryCurrency: string
@@ -70,7 +71,7 @@ export function formatCurrency(amount: number, currency: string): string {
 /**
  * Composable para usar en componentes.
  */
-export function useCurrency(hotelCurrency: string = 'USD') {
+export function useCurrency(hotelCurrency: string = CurrencyCode.USD) {
   const config = currencyConfig
 
   const secondaryCurrency = computed(() => config.value.secondaryCurrency)

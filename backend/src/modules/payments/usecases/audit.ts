@@ -10,11 +10,12 @@
 
 import type { AuditEntry, AuditPort } from '../../../shared/usecases/audit'
 import type { PaymentDTO, DepositDTO } from '../types'
+import { CurrencyCode } from '../../../shared/currency'
 
 export type { AuditEntry, AuditPort }
 export { auditSafely } from '../../../shared/usecases/audit'
 
-const money = (amount: number, currency?: string): string => `${amount} ${currency ?? 'USD'}`
+const money = (amount: number, currency?: string): string => `${amount} ${currency ?? CurrencyCode.USD}`
 
 /** Actor de la operación. El webhook de Stripe no tiene usuario: lo ejecuta el proveedor. */
 export type Actor = { id?: string; role?: string } | undefined

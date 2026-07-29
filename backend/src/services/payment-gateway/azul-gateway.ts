@@ -21,6 +21,8 @@ import type {
   ChargeRequest, ChargeResult, ConfirmContext, GatewayCapabilities, GatewayMode,
   PaymentGateway, PaymentOutcome, PaymentProvider,
 } from './types'
+// Refactor cross-cutting: currency desde el enum global (shared/currency.ts — source of truth).
+import { CurrencyCode } from '../../shared/currency'
 
 export interface AzulCredentials {
   /** MerchantId asignado por Azul al afiliar el comercio. */
@@ -155,7 +157,7 @@ export class AzulGateway implements PaymentGateway {
         MerchantId: this.creds.merchantId,
         MerchantName: 'SolmiOS',
         MerchantType: 'ECommerce',
-        CurrencyCode: (req.currency || this.creds.currency || 'USD').toUpperCase(),
+        CurrencyCode: (req.currency || this.creds.currency || CurrencyCode.USD).toUpperCase(),
         OrderNumber: req.reference,
         Amount: String(req.amountMinor),
         ITBIS: '0',

@@ -11,6 +11,7 @@ import {
 import { SettingsService } from '@/services/Settings.service'
 import { InventarioService, type InventoryItem, type MenuItemRecipe } from '@/services/Inventario.service'
 import { currencySymbol } from '@/composables/useCurrency'
+import { CurrencyCode } from '@/types/currency'
 import { supportedLangs } from '@/composables/useSupportedLangs'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
@@ -40,7 +41,7 @@ const inventory = ref<InventoryItem[]>([])
 const foodCostRows = ref<FoodCostReportRow[]>([])
 const foodCostSearch = ref('')
 const foodCostCategoryFilter = ref<string>('all')
-const currency = ref('USD')
+const currency = ref<string>(CurrencyCode.USD)
 const activeCategoryId = ref<string>('all')
 const defaultTaxName = ref('')
 const defaultTaxRate = ref(0)

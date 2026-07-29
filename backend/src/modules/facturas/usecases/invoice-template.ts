@@ -2,6 +2,7 @@
 // Genera HTML válido A4 (210mm x 297mm) que el navegador puede imprimir a PDF.
 
 import type { FacturasDTO } from '../types'
+import { CurrencyCode } from '../../../shared/currency'
 
 export interface InvoiceTemplateData {
   invoice: FacturasDTO
@@ -197,7 +198,7 @@ ${inv.ncf ? `
   </div>
   <div class="party-box">
     <div class="party-label">Detalles del Documento</div>
-    <div class="party-detail">Moneda: <strong>${escapeHtml(inv.currency || 'USD')}</strong></div>
+    <div class="party-detail">Moneda: <strong>${escapeHtml(inv.currency || CurrencyCode.USD)}</strong></div>
     <div class="party-detail">Tipo: <strong>${TYPE_LABELS[inv.type] || inv.type}</strong></div>
     ${inv.paymentMethod ? `<div class="party-detail">Método: <strong>${escapeHtml(inv.paymentMethod)}</strong></div>` : ''}
   </div>
@@ -209,7 +210,7 @@ ${inv.ncf ? `
     <tr>
       <th>#</th>
       <th>Descripción</th>
-      <th style="text-align:right;">Monto (${escapeHtml(inv.currency || 'USD')})</th>
+      <th style="text-align:right;">Monto (${escapeHtml(inv.currency || CurrencyCode.USD)})</th>
     </tr>
   </thead>
   <tbody>
@@ -295,7 +296,7 @@ function formatDate(dateStr?: string | null): string {
   } catch { return String(dateStr) }
 }
 
-function formatMoney(amount?: number | null, currency = 'USD'): string {
+function formatMoney(amount?: number | null, currency: string = CurrencyCode.USD): string {
   const n = Number(amount) || 0
   return `${currency} ${n.toFixed(2)}`
 }

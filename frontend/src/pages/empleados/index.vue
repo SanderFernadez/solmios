@@ -485,6 +485,8 @@ import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
+// Refactor cross-cutting: monedas desde el enum global (types/currency.ts, source of truth único).
+import { CURRENCIES as CURRENCY_OPTIONS, type CurrencyCode } from '@/data/intl-catalogs'
 
 const ICON_BUILDING = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>'
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
@@ -847,15 +849,15 @@ function contractTypeName(code?: string): string {
   if (!code) return '—'
   return contractTypes.value.find((t) => t.code === code)?.name ?? CONTRACT_TYPE_ES[code.toLowerCase()] ?? code
 }
-/** Monedas para elegir en un contrato. DOP primero (salario local). */
-const CURRENCIES = [
-  { value: 'DOP', label: 'DOP — Peso Dominicano' },
-  { value: 'USD', label: 'USD — Dólar' },
-  { value: 'EUR', label: 'EUR — Euro' },
-  { value: 'CAD', label: 'CAD — Dólar Canadiense' },
-  { value: 'GBP', label: 'GBP — Libra' },
-  { value: 'MXN', label: 'MXN — Peso Mexicano' },
-]
+/**
+ * Monedas para elegir en un contrato. Reordenamos el enum global: DOP primero (salario local
+ * del proyecto, mercado principal DR), luego el resto en el orden canónico. El shape {value,label}
+ * es el que espera FormModal para los selects.
+ */
+const CURRENCIES: { value: CurrencyCode; label: string }[] = [
+  CURRENCY_OPTIONS.find((c) => c.value === 'DOP')!,
+  ...CURRENCY_OPTIONS.filter((c) => c.value !== 'DOP'),
+].map((c) => ({ value: c.value as CurrencyCode, label: c.label }))
 
 function openNewContract() {
   formModal.value = {

@@ -410,6 +410,7 @@ import BarChart from '@/components/features/core-pms/BarChart.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import { CurrencyCode } from '@/types/currency'
 
 const ICON_WALLET = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5M21 12h-4a1.5 1.5 0 0 0 0 3h4v-3Z"/></svg>'
 const ICON_CHART = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg>'
@@ -511,7 +512,7 @@ async function exportCsv() {
 }
 
 function formatMoney(n: number): string {
-  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n || 0)
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: CurrencyCode.USD, minimumFractionDigits: 0 }).format(n || 0)
 }
 
 // PC-1.2.5 — evolución mensual cuando el rango es largo (>90 días), diario en el resto.

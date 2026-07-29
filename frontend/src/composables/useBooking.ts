@@ -48,6 +48,8 @@ import type {
   TotalBreakdown,
   Upsell,
 } from '@/types/booking'
+// Refactor cross-cutting: monedas del enum global (types/currency.ts — source of truth único).
+import { CURRENCY_CODES, type CurrencyCode } from '@/types/currency'
 
 export type BookingStatus =
   | 'idle' // step 0 (SearchStep): aún no busca
@@ -671,10 +673,13 @@ export const useBookingStore = defineStore('booking-widget', () => {
 
 // ─── helpers (privados del módulo) ──────────────────────────────────────────────
 
-/** Monedas comunes para el switcher del widget (turistas LATAM/caribe). La lista es solo
- *  para poblar el dropdown — el backend convierte lo que le pidamos si tiene rates; si una
- *  moneda no está en `currency_rates`, el backend degrada a chargeCurrency (no rompe). */
-const COMMON_DISPLAY_CURRENCIES = ['USD', 'EUR', 'DOP', 'MXN', 'COP', 'ARS', 'CLP', 'BRL']
+/**
+ * Monedas comunes para el switcher del widget (turistas LATAM/caribe). Antes era una lista
+ * suelta de 8 strings; ahora se derivan del enum global `CURRENCY_CODES` (source of truth en
+ * types/currency.ts). El backend convierte lo que le pidamos si tiene rates; si una moneda no
+ * está en `currency_rates`, degrada a chargeCurrency (no rompe).
+ */
+const COMMON_DISPLAY_CURRENCIES: readonly CurrencyCode[] = CURRENCY_CODES
 
 /** Arma la lista de monedas del switcher: chargeCurrency siempre primero (es la base del
  *  cobro), después la última display (si difiere), luego las comunes dedupe. Orden estable. */

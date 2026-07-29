@@ -164,6 +164,7 @@ import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import { CurrencyCode } from '@/types/currency'
 
 type FormValues = Record<string, string | number>
 
@@ -196,7 +197,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 }
 function statusLabel(s: string) { return STATUS[s]?.label ?? s }
 function statusClass(s: string) { return STATUS[s]?.cls ?? '' }
-function money(n: number, currency = 'DOP') { return `${currency} ${(Number(n) || 0).toLocaleString('es-DO', { minimumFractionDigits: 2 })}` }
+function money(n: number, currency: string = CurrencyCode.DOP) { return `${currency} ${(Number(n) || 0).toLocaleString('es-DO', { minimumFractionDigits: 2 })}` }
 function nameOf(employeeId: string) {
   const p = profiles.value.find((x) => x.id === employeeId)
   return p?.userName || p?.position || employeeId.slice(0, 8)

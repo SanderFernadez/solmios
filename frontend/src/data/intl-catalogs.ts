@@ -7,7 +7,43 @@
 // con el navegador.
 //
 // El fallback cubre navegadores sin `supportedValuesOf` (Chrome <99 / Safari <15.4): se degrada a
-// la zona del propio equipo y a un puñado de monedas, en vez de dejar el selector vacío.
+// la zona del propio equipo y al enum global de monedas (`CURRENCY_CODES` del source of truth en
+// `types/currency.ts`), en vez de dejar el selector vacío.
+//
+// Nota sobre el enum: este archivo re-exporta `CurrencyCode`, los helpers (`isValidCurrency`,
+// `getCurrencyMeta`, `formatCurrency`) y la metadata (`CURRENCIES` del enum) desde `types/currency`.
+// Cuando un componente necesita la lista COMPLETA del motor (select de configuración del hotel),
+// usa `CURRENCIES` de acá (runtime list, {value,label}). Cuando necesita la metadata canonica
+// (símbolo, decimales) o un type guard, usa `CURRENCIES_META` / los helpers del enum.
+
+import {
+  CURRENCY_CODES,
+  CurrencyCode,
+  type CurrencyMeta,
+  getCurrencyMeta,
+  isValidCurrency,
+  formatCurrency,
+} from '@/types/currency'
+
+// Re-export del enum global (source of truth único).
+// `CurrencyCode` es BOTH un valor (objeto enum-like) Y un tipo (unión de sus keys), por eso
+// se exporta SIN `type` — si lo declarás type-only, los consumers no pueden hacer `CurrencyCode.USD`
+// como valor (TS1362). Para `CurrencyMeta` sí es type-only.
+export {
+  CURRENCY_CODES,
+  CurrencyCode,
+  type CurrencyMeta,
+  getCurrencyMeta,
+  isValidCurrency,
+  formatCurrency,
+}
+
+// Alias explícito para distinguir la metadata del enum de la lista runtime ({value,label}).
+export const CURRENCIES_META: readonly CurrencyMeta[] = (
+  // re-import silencioso: CURRENCY_CODES ya está arriba, pero el enum también expone CURRENCIES
+  // (metadata). Para evitar doble import, lo derivamos a partir de los codes.
+  CURRENCY_CODES.map((c) => getCurrencyMeta(c))
+)
 
 /** Etiqueta legible de un huso: 'Europe/Madrid' → 'Europe / Madrid (GMT+2)'. */
 function timeZoneLabel(tz: string): string {
@@ -57,8 +93,13 @@ function currencyLabel(code: string): string {
   }
 }
 
+/**
+ * Lista de monedas para selects: runtime (`Intl.supportedValuesOf`) si el motor la provee
+ * (162 monedas ISO), si no cae al enum global `CURRENCY_CODES` (las 12 del proyecto).
+ * Shape `{value,label}` para `<select>` / `<SearchSelect>`.
+ */
 export const CURRENCIES: { value: string; label: string }[] = (() => {
   const codes = supported('currency')
-  const list = codes.length ? codes : ['DOP', 'USD', 'EUR', 'COP', 'MXN', 'PEN', 'CLP', 'ARS']
+  const list = codes.length ? codes : (CURRENCY_CODES as readonly string[]).slice()
   return list.map((c) => ({ value: c, label: currencyLabel(c) }))
 })()

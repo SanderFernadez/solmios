@@ -128,6 +128,7 @@ import { ModulesService, type ModuleMeta, type SubModuleMeta } from '@/services/
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import { CurrencyCode } from '@/types/currency'
 const toast = useToast()
 const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
   onDone: () => toast.success('Plan eliminado'),
@@ -141,7 +142,7 @@ const editing = ref<any>(null)
 const saving = ref(false)
 const moduleCatalog = ref<ModuleMeta[]>([])
 
-const emptyForm = () => ({ name: '', price: 0, currency: 'USD', description: '', features: [] as string[], modules: [] as string[], limits: { rooms: 30, users: 2, properties: 1 } })
+const emptyForm = () => ({ name: '', price: 0, currency: CurrencyCode.USD, description: '', features: [] as string[], modules: [] as string[], limits: { rooms: 30, users: 2, properties: 1 } })
 const form = ref(emptyForm())
 const featuresText = ref('')
 

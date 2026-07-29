@@ -562,3 +562,9 @@ export * from './booking'
 // F1 1.7 (solmi-direct-booking) — Tipos de la landing pública por bloques.
 // `LandingBlock` espeja el endpoint público `/api/public/hotels/:slug/landing`.
 export * from './landing'
+
+// Enum global de monedas (refactor cross-cutting). Source of truth backend en
+// `backend/src/shared/currency.ts`; este archivo es el espejo frontend. Todos los componentes
+// que necesiten la lista de monedas o un CurrencyCode deben importar de acá o de
+// `@/data/intl-catalogs` (que re-exporta la lista runtime-derived).
+export * from './currency'

@@ -12,6 +12,7 @@ import { ComprasService } from '@/services/Compras.service'
 import { SettingsService } from '@/services/Settings.service'
 import { useRouter } from 'vue-router'
 import { currencySymbol } from '@/composables/useCurrency'
+import { CurrencyCode } from '@/types/currency'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -32,7 +33,7 @@ const { confirmModal, confirmBusy, askConfirm, runConfirm } = useConfirm({
 const loading = ref(true)
 const saving = ref(false)
 const items = ref<InventoryItem[]>([])
-const currency = ref('USD')
+const currency = ref<string>(CurrencyCode.USD)
 const activeCategory = ref<string>('all')
 const onlyBelowMin = ref(false)
 

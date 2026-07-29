@@ -198,6 +198,7 @@ import { ref, onMounted } from 'vue'
 import { ConfigService } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
 import ChannexPlatformConfig from '@/components/features/ChannexPlatformConfig.vue'
+import { CurrencyCode } from '@/types/currency'
 
 const toast = useToast()
 
@@ -222,7 +223,7 @@ const brandColors = [
 ]
 
 const settings = ref<any>({
-  platformName: '', supportEmail: '', supportPhone: '', currency: 'USD',
+  platformName: '', supportEmail: '', supportPhone: '', currency: CurrencyCode.USD,
   timezone: 'America/Santo_Domingo', brandColor: '#0D2B4E', customDomain: '',
   smtpServer: '', smtpPort: '587', smtpUser: '', smtpPassword: '', fromEmail: '', fromName: '',
   minPasswordLength: 8, requireUppercase: true, requireNumbers: true, requireSpecial: false, passwordExpiry: 90,

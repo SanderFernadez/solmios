@@ -170,6 +170,7 @@ import { readStoredReservation, clearStoredReservation } from '@/composables/use
 import { useBookingI18nStore } from '@/composables/useBookingI18n'
 import { useTracking, initTracking } from '@/composables/useTracking'
 import type { PublicReservationResponse } from '@/types/booking'
+import { CurrencyCode } from '@/types/currency'
 
 const route = useRoute()
 const { t } = useBookingI18nStore()
@@ -184,7 +185,7 @@ const slug = ref('')
 // evento 'purchase' (mapeado a 'confirm' server-side) con el hotel correcto en tracking_events.
 const hotelIdForTracking = ref('')
 // Currency real del hotel (para tracker). Default 'USD' si no carga (mismo fallback que antes).
-const hotelCurrency = ref('USD')
+const hotelCurrency = ref<string>(CurrencyCode.USD)
 
 const MAX_ATTEMPTS = 10
 const POLL_INTERVAL_MS = 3000

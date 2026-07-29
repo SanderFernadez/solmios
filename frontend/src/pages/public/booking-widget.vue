@@ -188,6 +188,7 @@ import { useBookingI18nStore, type BookingLocale } from '@/composables/useBookin
 import { useTracking, initTracking } from '@/composables/useTracking'
 import { PublicHotelService } from '@/services/PublicHotel.service'
 import SearchStep from '@/components/booking/SearchStep.vue'
+import { CurrencyCode } from '@/types/currency'
 
 // Lazy-load de los steps > 0 para mantener el bundle inicial mínimo (D9 performance).
 // Cada step se trae su chunk solo al llegar — SearchStep va en el bundle base.
@@ -435,13 +436,13 @@ async function probeGeoCurrency(): Promise<string | null> {
  *  los países con mayor probabilidad de turistas hacia hoteles LATAM/caribe. Cualquier otro
  *  país → null (fallback a la currency del hotel). */
 const COUNTRY_TO_CURRENCY: Record<string, string> = {
-  US: 'USD', DO: 'DOP',
-  ES: 'EUR', DE: 'EUR', FR: 'EUR', IT: 'EUR', PT: 'EUR', NL: 'EUR', IE: 'EUR', AT: 'EUR', BE: 'EUR', FI: 'EUR', GR: 'EUR',
-  GB: 'GBP', CH: 'CHF',
-  BR: 'BRL',
-  AR: 'ARS', CL: 'CLP', CO: 'COP', PE: 'PEN', UY: 'UYU', PY: 'PYG', BO: 'BOB', VE: 'VES', EC: 'USD', CR: 'CRC', PA: 'USD', GT: 'GTQ', HN: 'HNL', NI: 'NIO', SV: 'USD',
-  CA: 'CAD',
-  MX: 'MXN',
+  US: CurrencyCode.USD, DO: CurrencyCode.DOP,
+  ES: CurrencyCode.EUR, DE: CurrencyCode.EUR, FR: CurrencyCode.EUR, IT: CurrencyCode.EUR, PT: CurrencyCode.EUR, NL: CurrencyCode.EUR, IE: CurrencyCode.EUR, AT: CurrencyCode.EUR, BE: CurrencyCode.EUR, FI: CurrencyCode.EUR, GR: CurrencyCode.EUR,
+  GB: CurrencyCode.GBP, CH: CurrencyCode.CHF,
+  BR: CurrencyCode.BRL,
+  AR: CurrencyCode.ARS, CL: CurrencyCode.CLP, CO: CurrencyCode.COP, PE: CurrencyCode.PEN, UY: 'UYU', PY: 'PYG', BO: 'BOB', VE: 'VES', EC: CurrencyCode.USD, CR: 'CRC', PA: CurrencyCode.USD, GT: 'GTQ', HN: 'HNL', NI: 'NIO', SV: CurrencyCode.USD,
+  CA: CurrencyCode.CAD,
+  MX: CurrencyCode.MXN,
   JP: 'JPY', CN: 'CNY',
 }
 </script>

@@ -13,6 +13,7 @@ import { TreasuryService, type Supplier } from '@/services/Treasury.service'
 import { InventarioService, type InventoryItem } from '@/services/Inventario.service'
 import { SettingsService } from '@/services/Settings.service'
 import { currencySymbol } from '@/composables/useCurrency'
+import { CurrencyCode } from '@/types/currency'
 import AppModal from '@/components/ui/AppModal.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -37,7 +38,7 @@ const orders = ref<PurchaseOrder[]>([])
 const suppliers = ref<Supplier[]>([])
 const inventory = ref<InventoryItem[]>([])
 const approvedReqs = ref<Requisition[]>([])
-const currency = ref('USD')
+const currency = ref<string>(CurrencyCode.USD)
 const defaultTax = ref(0)
 const statusFilter = ref<string>('all')
 

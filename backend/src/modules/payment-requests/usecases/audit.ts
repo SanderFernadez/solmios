@@ -9,6 +9,7 @@
 
 import type { AuditEntry, AuditPort } from '../../../shared/usecases/audit'
 import type { PaymentRequestDTO } from '../types'
+import { CurrencyCode } from '../../../shared/currency'
 
 export type { AuditEntry, AuditPort }
 export { auditSafely } from '../../../shared/usecases/audit'
@@ -22,7 +23,7 @@ export function isSensitiveStatus(status?: string): boolean {
   return !!status && SENSITIVE_STATUS.has(status)
 }
 
-const money = (pr: PaymentRequestDTO): string => `${Number(pr.amount || 0).toFixed(2)} ${pr.currency || 'USD'}`
+const money = (pr: PaymentRequestDTO): string => `${Number(pr.amount || 0).toFixed(2)} ${pr.currency || CurrencyCode.USD}`
 
 export function deleteEntry(pr: PaymentRequestDTO, actor: Actor): AuditEntry {
   return {
@@ -55,7 +56,7 @@ export function webhookPaidEntry(pr: PaymentRequestDTO, amountPaid: number): Aud
     action: 'payment_request.paid',
     entity: 'payment_request',
     entityId: pr.id,
-    detail: `Solicitud de pago confirmada por Stripe (webhook) · ${amountPaid.toFixed(2)} ${pr.currency || 'USD'}`,
+    detail: `Solicitud de pago confirmada por Stripe (webhook) · ${amountPaid.toFixed(2)} ${pr.currency || CurrencyCode.USD}`,
   }
 }
 

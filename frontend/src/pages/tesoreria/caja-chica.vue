@@ -8,6 +8,7 @@ import {
 } from '@/services/CajaChica.service'
 import { TeamService, type TeamMember } from '@/services/Team.service'
 import { currencySymbol } from '@/composables/useCurrency'
+import { CurrencyCode } from '@/types/currency'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -62,11 +63,11 @@ onMounted(load)
 // ─── Alta/edición de fondo ───
 const fundModal = ref<{ mode: 'create' | 'edit'; fund: PettyCashFund | null } | null>(null)
 const fundForm = ref<{ name: string; custodianId: string; targetAmount: number | string; currency: string; notes: string }>(
-  { name: '', custodianId: '', targetAmount: '', currency: 'USD', notes: '' },
+  { name: '', custodianId: '', targetAmount: '', currency: CurrencyCode.USD, notes: '' },
 )
 
 function newFund() {
-  fundForm.value = { name: '', custodianId: '', targetAmount: '', currency: 'USD', notes: '' }
+  fundForm.value = { name: '', custodianId: '', targetAmount: '', currency: CurrencyCode.USD, notes: '' }
   fundModal.value = { mode: 'create', fund: null }
 }
 function editFund(f: PettyCashFund) {

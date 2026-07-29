@@ -118,8 +118,9 @@ import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.ser
 import { useToast } from '@/composables/useToast'
 import FormModal, { type FormField } from '@/components/features/FormModal.vue'
 import { formatCurrency } from '@/composables/useCurrency'
+import { CurrencyCode } from '@/types/currency'
 
-const props = withDefaults(defineProps<{ run: PayrollRun; currency?: string }>(), { currency: 'DOP' })
+const props = withDefaults(defineProps<{ run: PayrollRun; currency?: string }>(), { currency: CurrencyCode.DOP })
 defineEmits<{ close: [] }>()
 const toast = useToast()
 const busy = ref<string | null>(null)

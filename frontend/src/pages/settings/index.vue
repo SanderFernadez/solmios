@@ -906,6 +906,7 @@ import ReputationSettings from './reputation.vue'
 import TrackingSettings from './tracking.vue'
 import { COUNTRIES, countryName } from '@/data/locales'
 import { TIMEZONES, CURRENCIES } from '@/data/intl-catalogs'
+import { CurrencyCode } from '@/types/currency'
 import { parseLatLng } from '@/composables/useLatLngParse'
 import { loadGoogleMaps } from '@/composables/useGoogleMaps'
 import { validateField, validateAll, warnOnUnsavedChanges, HOTEL_RULES } from '@/composables/useFieldValidation'
@@ -937,7 +938,7 @@ const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'pla
 // navegador: el endpoint genérico de configuración devuelve el JSON entero, secretos incluidos.
 
 // Conversión de moneda secundaria (F3 match-misterplan — totales convertidos en el detalle de reserva)
-const currencyConfig = reactive({ secondaryCurrency: 'DOP', exchangeRate: 60 })
+const currencyConfig = reactive<{ secondaryCurrency: string; exchangeRate: number }>({ secondaryCurrency: CurrencyCode.DOP, exchangeRate: 60 })
 const currencySaving = ref(false)
 async function loadCurrency() {
   try {
@@ -1454,7 +1455,7 @@ type HotelForm = Partial<HotelFull> & { cancellationType?: string; freeCancellat
 
 const form = ref<HotelForm>({
   name: '', country: '', address: '', phone: '', email: '',
-  timezone: 'America/Santo_Domingo', currency: 'USD',
+  timezone: 'America/Santo_Domingo', currency: CurrencyCode.USD,
   checkIn: '15:00', checkOut: '12:00', plan: 'Professional',
   freeCancellation: true, depositRequired: true, depositPercent: 30,
   weekendSurcharge: 0, accommodationType: '', starRating: '',

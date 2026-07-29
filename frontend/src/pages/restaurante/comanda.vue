@@ -12,6 +12,7 @@ import {
 } from '@/services/Restaurant.service'
 import { SettingsService } from '@/services/Settings.service'
 import { currencySymbol } from '@/composables/useCurrency'
+import { CurrencyCode } from '@/types/currency'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -36,7 +37,7 @@ const order = ref<OrderWithLines | null>(null)
 const categories = ref<MenuCategory[]>([])
 const items = ref<MenuItem[]>([])
 const combos = ref<Combo[]>([])
-const currency = ref('USD')
+const currency = ref<string>(CurrencyCode.USD)
 const activeCategoryId = ref<string>('all')
 
 const editPerm = computed(() => can('restaurant', 'edit'))

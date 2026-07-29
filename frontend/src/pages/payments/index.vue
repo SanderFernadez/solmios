@@ -239,6 +239,7 @@ import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import AppModal from '@/components/ui/AppModal.vue'
+import { CurrencyCode } from '@/types/currency'
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>'
 const ICON_SEARCH = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z"/></svg>'
@@ -509,7 +510,7 @@ function resend(p: PaymentRequest, channel: 'email' | 'whatsapp') {
 }
 
 function formatMoney(n: number): string {
-  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n || 0)
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: CurrencyCode.USD, minimumFractionDigits: 2 }).format(n || 0)
 }
 function formatDate(d?: string): string {
   if (!d) return '—'

@@ -11,6 +11,7 @@ import {
 } from '@/services/Restaurant.service'
 import { SettingsService } from '@/services/Settings.service'
 import { currencySymbol } from '@/composables/useCurrency'
+import { CurrencyCode } from '@/types/currency'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -35,7 +36,7 @@ const busy = ref(false)
 // pudo haber registrado el pago. El usuario recarga para ver el estado real. Evita re-cobrar a ciegas.
 const unknownState = ref(false)
 const order = ref<OrderWithLines | null>(null)
-const currency = ref('USD')
+const currency = ref<string>(CurrencyCode.USD)
 const tip = ref(0)
 const method = ref('cash')
 const reservationId = ref('')
