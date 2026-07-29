@@ -287,6 +287,9 @@
             Emitida {{ viewInvoice.date }}<template v-if="viewInvoice.dueDate"> · Vence {{ viewInvoice.dueDate }}</template>
             <template v-if="viewInvoice.ncf"> · NCF {{ viewInvoice.ncf }}</template>
           </p>
+          <p v-if="viewInvoice.ncf && !viewInvoice.fiscalSent" class="mt-1 text-[10px] font-bold text-gold">
+            ⚠ Pendiente de envío a la autoridad fiscal
+          </p>
         </div>
       </template>
 
@@ -815,6 +818,8 @@ function toRow(d: Invoice) {
     balance: d.balance ?? d.total,
     currency: d.currency || 'USD',
     ncf: d.ncf,
+    fiscalSent: d.fiscalSent ?? false,
+    fiscalMessage: d.fiscalMessage || '',
     items: (Array.isArray(d.items) && d.items.length) ? d.items : [{ description: conceptFor(d), amount: d.total }],
     method: d.paymentMethod || '',
     notes: d.notes || '',

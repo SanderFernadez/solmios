@@ -21,6 +21,8 @@ export const FacturasModel: ModelDefinition = {
     paymentMethod: { type: 'string' },
     amountPaid: { type: 'number', default: 0 },
     fileUrl: { type: 'string' },
+    fiscalSent: { type: 'boolean', default: false },
+    fiscalMessage: { type: 'string' },
   },
   timestamps: true,
 }

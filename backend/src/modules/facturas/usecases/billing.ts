@@ -61,9 +61,11 @@ export function buildInvoiceRecord(args: {
   amount: number
   invoiceNumber: string
   ncf: string | null
+  fiscalSent?: boolean
+  fiscalMessage?: string | null
   dto: any
 }): Omit<FacturasDTO, 'id'> {
-  const { hotelId, type, taxes, amount, invoiceNumber, ncf, dto } = args
+  const { hotelId, type, taxes, amount, invoiceNumber, ncf, fiscalSent, fiscalMessage, dto } = args
   return {
     hotelId,
     guestId: dto.guestId ?? null,
@@ -78,6 +80,8 @@ export function buildInvoiceRecord(args: {
     issueDate: dto.issueDate ?? new Date().toISOString().split('T')[0],
     dueDate: dto.dueDate ?? null,
     ncf,
+    fiscalSent: fiscalSent ?? false,
+    fiscalMessage: fiscalMessage ?? null,
     paymentMethod: dto.paymentMethod ?? null,
     notes: dto.notes ?? null,
     createdAt: new Date().toISOString(),

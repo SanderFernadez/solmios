@@ -30,6 +30,8 @@ export interface Invoice {
   guest: string
   room: string
   ncf?: string | null
+  fiscalSent?: boolean
+  fiscalMessage?: string | null
   paymentMethod?: string | null
   items: InvoiceItem[]
   issueDate: string
@@ -78,6 +80,8 @@ export function mapInvoice(r: any): Invoice {
     guest: r.guest ?? '',
     room: r.room ?? '',
     ncf: r.ncf ?? null,
+    fiscalSent: Boolean(r.fiscalSent),
+    fiscalMessage: r.fiscalMessage ?? null,
     paymentMethod: r.paymentMethod ?? null,
     items: Array.isArray(r.items) && r.items.length ? r.items : (r.type ? [{ description: r.type, amount: total }] : []),
     issueDate: r.issueDate ?? r.date ?? '',

@@ -30,6 +30,8 @@ export interface FacturasDTO {
   issueDate: string
   dueDate?: string | null
   ncf?: string | null
+  fiscalSent?: boolean        // ¿se transmitió el comprobante a la autoridad fiscal (DGII/DIAN/SAT)?
+  fiscalMessage?: string | null
   paymentMethod?: string | null
   amountPaid?: number
   notes?: string | null

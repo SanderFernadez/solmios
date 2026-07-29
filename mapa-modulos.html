@@ -267,7 +267,7 @@ const N = [
     que:'Facturación: NCF, items, impuestos (de config), A4. Anular ≠ borrar.',
     porque:'Libro de ventas. type solo puede ser invoice|credit_note (billing-money-consolidation ✅ 2026-07-28) — payments es la ÚNICA fuente del dinero, ya no hay filas type=payment/folio duplicando el cobro.',
     conectado:['folios (folio→factura en 1 op)','payments','reservas','auditlog'],
-    falta:['NCF se GENERA localmente (fiscal.ts::nextNcf, solo si electronic_invoicing.enabled — DT-03) pero la TRANSMISIÓN a DGII/DIAN/SAT NUNCA SE INTENTA: fiscal.ts define FiscalAdapter/stubFiscalAdapter pero create-invoice.ts no lo llama — no está wireado a ningún flujo real (grep confirma: ni siquiera hay un test que lo invoque). No es "stub que responde sent:false", es código huérfano — el número se genera y ahí termina.']
+    falta:['NCF se GENERA localmente e INTENTA transmitirse (fiscal.ts::issueNcf, mejora 2026-07-29): antes stubFiscalAdapter era código huérfano, ahora create-invoice.ts lo llama y persiste fiscalSent/fiscalMessage en la factura (verificado en navegador: badge "⚠ Pendiente de envío a la autoridad fiscal"). Sigue faltando lo único que realmente requiere trabajo externo: credenciales/certificado del país para un FiscalAdapter real — hoy sigue siendo el stub (sent:false siempre).']
   }},
   {id:'restaurant',label:'🍽️ Restaurante',group:'operacion',panel:'hotel',info:{
     que:'POS de restaurante: estaciones/KDS configurables, carta, mesas, comandas, cuenta. Cobro directo XOR cargo a habitación.',

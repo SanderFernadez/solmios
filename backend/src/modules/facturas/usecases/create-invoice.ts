@@ -8,7 +8,7 @@ import type { RepositoryAdapter, Logger } from 'arckode-framework'
 import type { FacturasDTO, CreateFacturasDTO } from '../types'
 import { taxRateFor, applyTax, buildInvoiceRecord } from './billing'
 import { nextInvoiceNumber } from './invoice-number'
-import { nextNcf } from './fiscal'
+import { issueNcf } from './fiscal'
 import { persistItems, assertItemsSum } from './invoice-items'
 
 const PREFIX_BY_TYPE: Record<string, string> = { payment: 'PAY', folio: 'CHG' }
@@ -43,6 +43,8 @@ export async function createInvoice(
   let amount = base
   let invoiceNumber = dto.invoiceNumber
   let ncf = dto.ncf
+  let fiscalSent = false
+  let fiscalMessage: string | null = null
 
   if (type === 'invoice') {
     const rate = await taxRateFor(configRepo, hotelId, hotelsRepo)
@@ -51,13 +53,21 @@ export async function createInvoice(
     amount = t.total
     if (!invoiceNumber) invoiceNumber = await nextInvoiceNumber(repo, configRepo, hotelId, 'INV')
     // DT-03: NCF solo si el hotel tiene facturación electrónica activa (config). Si no, queda null.
-    if (!ncf) ncf = (await nextNcf(configRepo, hotelId)) ?? undefined
+    // issueNcf además intenta transmitir el comprobante (stub por defecto sin credenciales reales).
+    if (!ncf) {
+      const fiscal = await issueNcf(configRepo, hotelId, {
+        hotelId, invoiceNumber, amount, taxes, currency: dto.currency ?? 'USD', guestId: dto.guestId,
+      })
+      ncf = fiscal.ncf ?? undefined
+      fiscalSent = fiscal.fiscalSent
+      fiscalMessage = fiscal.fiscalMessage
+    }
   } else if (!invoiceNumber) {
     invoiceNumber = `${PREFIX_BY_TYPE[type] ?? 'DOC'}-${Date.now()}`
   }
 
   if (dto.items?.length) assertItemsSum(dto.items, base)
-  const record = buildInvoiceRecord({ hotelId, type, taxes, amount, invoiceNumber, ncf: ncf ?? null, dto })
+  const record = buildInvoiceRecord({ hotelId, type, taxes, amount, invoiceNumber, ncf: ncf ?? null, fiscalSent, fiscalMessage, dto })
 
   // Una factura que nace con pagos heredados del folio ya puede estar saldada.
   const amountPaid = Number(dto.amountPaid) || 0
