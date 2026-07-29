@@ -3,6 +3,8 @@ import { registerOpinionesModels } from './model'
 import { OpinionesService } from './service'
 import { OpinionesController } from './controller'
 import type { OpinionesDTO } from './types'
+import type { ExternalReviewDTO } from '../external-reviews/types'
+import { registerExternalReviewsModels } from '../external-reviews/model'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 import { createModuleGuard } from '../../infrastructure/auth/require-module'
 import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
@@ -30,12 +32,18 @@ export function OpinionesModule() {
     create({ logger, orm, cache, router, auth }) {
       if (!auth) throw new Error('opiniones: auth dependency required')
       registerOpinionesModels(orm)
+      // F3 3.4 — registra también el modelo ExternalReviews acá para que el repo que
+      // inyectamos en el controller (lectura en el endpoint público) funcione aunque el
+      // módulo external-reviews no esté cargado en esta instancia. Idempotente (orm.define
+      // usa Map.set) — si external-reviews ya lo registró, este es no-op.
+      registerExternalReviewsModels(orm)
       const repo = new OrmRepository<OpinionesDTO>(orm, 'Reviews')
+      const externalReviewsRepo = new OrmRepository<ExternalReviewDTO>(orm, 'ExternalReviews')
       const log = logger.child('opiniones')
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const hotelRepo = new OrmRepository<any>(orm, 'Hotels')
       const service = new OpinionesService(repo, log, cache, userRepo, auth)
-      const controller = new OpinionesController(service, log, hotelRepo, repo, cache)
+      const controller = new OpinionesController(service, log, hotelRepo, repo, cache, externalReviewsRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
       const permGuard = createPermissionGuard(auth, roleRepo)

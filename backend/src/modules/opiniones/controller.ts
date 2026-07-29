@@ -2,6 +2,7 @@ import type { HttpRequest, Logger, RepositoryAdapter, CacheAdapter } from 'arcko
 import { validateSchema } from 'arckode-framework'
 import type { OpinionesService } from './service'
 import type { OpinionesDTO } from './types'
+import type { ExternalReviewDTO } from '../external-reviews/types'
 import { CreateOpinionesSchema, UpdateOpinionesSchema } from './validators/schema'
 import { listPublicReviews } from './usecases/public-reviews'
 
@@ -25,6 +26,9 @@ export class OpinionesController {
     /** Repo de reviews + cache para el endpoint público (0.11). El service NO los expone. */
     private readonly reviewsRepo: RepositoryAdapter<OpinionesDTO>,
     private readonly cache: CacheAdapter,
+    /** F3 3.4 — Repo de external_reviews para mezclar en el listado y aggregate públicos.
+     *  Opcional: si no se pasa (tests viejos), el endpoint sirve solo direct reviews. */
+    private readonly externalReviewsRepo?: RepositoryAdapter<ExternalReviewDTO>,
   ) {}
 
   async index(req: HttpRequest) {
@@ -113,7 +117,11 @@ export class OpinionesController {
         publishReviewScore: flagScore,
         publishReviewComments: flagComments,
       },
-      { reviewsRepo: this.reviewsRepo, cache: this.cache },
+      {
+        reviewsRepo: this.reviewsRepo,
+        externalReviewsRepo: this.externalReviewsRepo,
+        cache: this.cache,
+      },
     )
     return { status: 200, body }
   }

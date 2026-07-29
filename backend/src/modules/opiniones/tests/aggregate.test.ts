@@ -1,6 +1,7 @@
-// opiniones/tests/aggregate.test.ts — F0 0.10
+// opiniones/tests/aggregate.test.ts — F0 0.10 + F3 3.4
 // Cubre computeAggregate + helpers puros (computeAggregateFromReviews, computeDistribution).
 // Verifica contrato {score, count, perSource} + extensión distribution.
+// F3 3.4: cubre mezcla direct + external_reviews (spec.md:152-166 ampliado).
 import { describe, it, expect } from 'bun:test'
 import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import {
@@ -10,6 +11,7 @@ import {
   aggregateCacheKey,
 } from '../usecases/aggregate'
 import type { OpinionesDTO } from '../types'
+import type { ExternalReviewDTO } from '../../external-reviews/types'
 
 const silentCache: CacheAdapter = {
   get: async () => null,
@@ -160,5 +162,93 @@ describe('F0 0.10 — computeAggregate (cached, con deps)', () => {
     expect(calls).toBe(2) // 1 fetch por hotel (cacheKeys distintas)
     expect(cacheStore.has(aggregateCacheKey('h-A'))).toBe(true)
     expect(cacheStore.has(aggregateCacheKey('h-B'))).toBe(true)
+  })
+})
+
+// ─── F3 3.4 — Mezcla direct + external_reviews (spec reputation-aggregator) ───────
+function makeExternalRepo(seeds: ExternalReviewDTO[] = []): RepositoryAdapter<ExternalReviewDTO> {
+  return {
+    findMany: async () => seeds,
+    findById: async () => null,
+    findOne: async () => null,
+    create: async (d) => ({ id: 'ext-1', ...d } as ExternalReviewDTO),
+    update: async (id, d) => ({ id, ...d } as ExternalReviewDTO),
+    delete: async () => true,
+    count: async () => seeds.length,
+    paginate: async () => ({ data: seeds, total: seeds.length, limit: 20, offset: 0, pages: 1 }),
+  }
+}
+
+function extReview(source: string, rating: number): ExternalReviewDTO {
+  return {
+    id: `ext-${source}-${rating}-${Math.random()}`, hotelId: 'h1', source,
+    sourceExternalId: `ext-${source}-${Math.random()}`, rating,
+    submittedAt: '2026-07-01', createdAt: '2026-07-01', updatedAt: '2026-07-01',
+  } as ExternalReviewDTO
+}
+
+describe('F3 3.4 — computeAggregate (mezcla direct + external)', () => {
+  it('acceptance: 3 direct (5,4,3) + 5 google (5,5,4,4,4) → aggregate.count=8, perSource.google.count=5', async () => {
+    const direct = [review('direct', 5), review('direct', 4), review('direct', 3)]
+    const external = [extReview('google', 5), extReview('google', 5), extReview('google', 4), extReview('google', 4), extReview('google', 4)]
+    const r = await computeAggregate('h1', {
+      reviewsRepo: makeRepo(direct),
+      externalReviewsRepo: makeExternalRepo(external),
+      cache: silentCache,
+    })
+    expect(r.count).toBe(8)
+    expect(r.perSource.direct).toEqual({ score: 4, count: 3 })
+    expect(r.perSource.google).toEqual({ score: 4.4, count: 5 })
+    // overall: (5+4+3 + 5+5+4+4+4)/8 = 34/8 = 4.25
+    expect(r.score).toBe(4.25)
+  })
+
+  it('todas las fuentes externas representadas (google/tripadvisor/booking/airbnb/expedia)', async () => {
+    const external = [
+      extReview('google', 5), extReview('tripadvisor', 4), extReview('booking', 3),
+      extReview('airbnb', 5), extReview('expedia', 4),
+    ]
+    const r = await computeAggregate('h-mix', {
+      reviewsRepo: makeRepo([]),
+      externalReviewsRepo: makeExternalRepo(external),
+      cache: silentCache,
+    })
+    expect(r.count).toBe(5)
+    expect(Object.keys(r.perSource).sort()).toEqual(['airbnb', 'booking', 'expedia', 'google', 'tripadvisor'])
+  })
+
+  it('sin repo externo → degrada a solo direct (compat retro)', async () => {
+    const r = await computeAggregate('h-direct-only', {
+      reviewsRepo: makeRepo([review('direct', 5)]),
+      cache: silentCache,
+    })
+    expect(r.count).toBe(1)
+    expect(r.perSource.direct).toEqual({ score: 5, count: 1 })
+    expect(r.perSource.google).toBeUndefined()
+  })
+
+  it('repo externo falla → degrada a solo direct (no rompe el endpoint público)', async () => {
+    const brokenExternal: RepositoryAdapter<ExternalReviewDTO> = {
+      ...makeExternalRepo([]),
+      findMany: async () => { throw new Error('table missing') },
+    }
+    const r = await computeAggregate('h-fail', {
+      reviewsRepo: makeRepo([review('direct', 5)]),
+      externalReviewsRepo: brokenExternal,
+      cache: silentCache,
+    })
+    expect(r.count).toBe(1)
+    expect(r.perSource.direct).toEqual({ score: 5, count: 1 })
+  })
+
+  it('distribution combina estrellas de ambas fuentes', async () => {
+    const direct = [review('direct', 5), review('direct', 4)]
+    const external = [extReview('google', 5), extReview('google', 1)]
+    const r = await computeAggregate('h-dist', {
+      reviewsRepo: makeRepo(direct),
+      externalReviewsRepo: makeExternalRepo(external),
+      cache: silentCache,
+    })
+    expect(r.distribution).toEqual({ '1': 1, '2': 0, '3': 0, '4': 1, '5': 2 })
   })
 })

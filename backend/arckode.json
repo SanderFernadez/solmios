@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-28T20:30:44.652Z",
+  "_generated": "2026-07-29T04:04:27.552Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -750,6 +750,19 @@
       "complete": true
     },
     {
+      "name": "external-reviews",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
       "name": "payment-gateways",
       "structure": {
         "index": true,
@@ -846,6 +859,7 @@
     "publicapi-reservas.ts",
     "activos-auditlog.ts",
     "gastos-caja.ts",
+    "gbp-reviews.ts",
     "compras-gastos.ts",
     "ai-recepcionista-auditlog.ts",
     "huespedes-auditlog.ts",
@@ -874,6 +888,7 @@
     "restaurante-payments.ts",
     "reclutamiento-auditlog.ts",
     "messages-usuarios.ts",
+    "stayapi-reviews.ts",
     "payment-requests-ttlock.ts",
     "reservas-deposits.ts",
     "mantenimiento-notificaciones.ts",
@@ -882,6 +897,7 @@
     "housekeeping-auditlog.ts",
     "opiniones-auditlog.ts",
     "housekeeping-habitaciones.ts",
+    "tripadvisor-reviews.ts",
     "empleados-mantenimiento.ts",
     "mantenimiento-habitaciones.ts",
     "housekeeping-mantenimiento.ts",

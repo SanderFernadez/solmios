@@ -40,10 +40,11 @@
         <h2 class="text-xl font-black text-navy">Configuración</h2>
         <p class="text-sm text-text-muted mt-0.5">Datos del hotel, amenities, tarifas e integraciones</p>
       </div>
-      <!-- El builder de la landing (tab 'landing') tiene su propio "Guardar" que persiste
-           sobre /api/landing — el botón general acá aplica a `saveAll` (form del hotel) y
-           no tendría efecto en esa pestaña. Lo ocultamos junto con el badge de dirty. -->
-      <template v-if="(activeTab as string) !== 'landing'">
+      <!-- El builder de la landing (tab 'landing') y la pestaña Reputación externa tienen
+           su propio "Guardar" que persiste sobre endpoints dedicados (/api/landing,
+           /api/configuracion) — el botón general acá aplica a `saveAll` (form del hotel)
+           y no tendría efecto en esas pestañas. Lo ocultamos junto con el badge de dirty. -->
+      <template v-if="(activeTab as string) !== 'landing' && (activeTab as string) !== 'reputation'">
         <span v-if="hasErrors" class="mr-3 text-[11px] font-bold text-danger">
           {{ Object.keys(fieldErrors).length }} campo(s) con errores
         </span>
@@ -874,6 +875,13 @@
          tiene su propio "Guardar" + dirty tracking; el botón general del header queda oculto
          cuando esta pestaña está activa. -->
     <LandingBuilder v-if="(activeTab as string) === 'landing'" :slug="slugDraft" />
+
+    <!-- ========== REPUTACIÓN EXTERNA (F3 3.5 — solmi-direct-booking / reputation-aggregator) ==========
+         Config de creds de Google Business Profile / TripAdvisor / StayAPI + botón "Sync now".
+         Las creds persisten en `configuration` (NO en el hotel) vía ConfigService. Los secrets
+         se tratan password-like (no se renderiza el valor crudo). El botón general del header
+         queda oculto cuando esta pestaña está activa (la pestaña tiene su propio flujo de guardado). -->
+    <ReputationSettings v-if="(activeTab as string) === 'reputation'" />
     </div>
   </div>
 </template>
@@ -885,6 +893,7 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
 import LandingBuilder from './landing.vue'
+import ReputationSettings from './reputation.vue'
 import { COUNTRIES, countryName } from '@/data/locales'
 import { TIMEZONES, CURRENCIES } from '@/data/intl-catalogs'
 import { parseLatLng } from '@/composables/useLatLngParse'
@@ -1142,6 +1151,7 @@ const tabGroups: SettingsTabGroup[] = [
       { value: 'amenities', label: 'Amenities' },
       { value: 'public', label: 'Página pública' },
       { value: 'landing', label: 'Landing' },
+      { value: 'reputation', label: 'Reputación externa' },
       { value: 'integrations', label: 'Integraciones' },
     ],
   },

@@ -10,6 +10,7 @@ import { sanitizePublicReview } from '../usecases/public-list'
 import { aggregateCacheKey } from '../usecases/aggregate'
 import { resetAttempts } from '../../../shared/middlewares/rate-limit'
 import type { OpinionesDTO } from '../types'
+import type { ExternalReviewDTO } from '../../external-reviews/types'
 
 const log = silentLogger()
 const silentCache: CacheAdapter = {
@@ -58,19 +59,37 @@ function makeHotelRepo(hotel: any): RepositoryAdapter<any> {
   } as RepositoryAdapter<any>
 }
 
+function makeExternalRepo(seeds: ExternalReviewDTO[] = []): RepositoryAdapter<ExternalReviewDTO> {
+  return {
+    findMany: async (f?: Record<string, unknown>) => {
+      if (f && 'hotelId' in f) return seeds.filter((r) => r.hotelId === f.hotelId)
+      return seeds
+    },
+    findById: async () => null,
+    findOne: async () => null,
+    create: async (d) => ({ id: 'ext-1', ...d } as ExternalReviewDTO),
+    update: async (id, d) => ({ id, ...d } as ExternalReviewDTO),
+    delete: async () => true,
+    count: async () => seeds.length,
+    paginate: async () => ({ data: seeds, total: seeds.length, limit: 20, offset: 0, pages: 1 }),
+  }
+}
+
 const userRepo = { findById: async () => ({ id: 'u', hotelId: 'h' }) } as unknown as RepositoryAdapter<any>
 const fakeAuth = { assertOwnership: () => {} } as unknown as Auth
 
 function mkController(opts: {
   hotel?: any
   seeds?: OpinionesDTO[]
+  externalSeeds?: ExternalReviewDTO[]
   cache?: CacheAdapter
 }): { controller: OpinionesController; service: OpinionesService } {
   const repo = makeReviewsRepo(opts.seeds ?? [])
+  const externalRepo = makeExternalRepo(opts.externalSeeds ?? [])
   const cache = opts.cache ?? silentCache
   const hotelRepo = makeHotelRepo(opts.hotel)
   const service = new OpinionesService(repo, log, cache, userRepo, fakeAuth)
-  const controller = new OpinionesController(service, log, hotelRepo, repo, cache)
+  const controller = new OpinionesController(service, log, hotelRepo, repo, cache, externalRepo)
   return { controller, service }
 }
 
@@ -239,6 +258,75 @@ describe('F0 0.11 — sanitizePublicReview (allow-list)', () => {
     expect(out.comment).toBeNull()
     expect(out.rating).toBe(5)
     expect(out.title).toBe('Estadía genial')
+  })
+})
+
+// ─── F3 3.4 — Mezcla direct + external_reviews en el endpoint público ────────────
+const externalSeeds: ExternalReviewDTO[] = [
+  { id: 'e1', hotelId: 'h1', source: 'google', sourceExternalId: 'g-1', rating: 5, comment: 'Great place', title: 'Top', authorName: 'Ana', submittedAt: '2026-07-10', createdAt: '2026-07-10', updatedAt: '2026-07-10' } as ExternalReviewDTO,
+  { id: 'e2', hotelId: 'h1', source: 'google', sourceExternalId: 'g-2', rating: 4, comment: 'Good', title: null, authorName: 'Bob', submittedAt: '2026-07-08', createdAt: '2026-07-08', updatedAt: '2026-07-08' } as ExternalReviewDTO,
+  { id: 'e3', hotelId: 'h1', source: 'tripadvisor', sourceExternalId: 't-1', rating: 5, comment: 'Excellent', title: null, authorName: 'Carl', submittedAt: '2026-07-06', createdAt: '2026-07-06', updatedAt: '2026-07-06' } as ExternalReviewDTO,
+]
+
+describe('F3 3.4 — OpinionesController.publicList (mezcla direct + external)', () => {
+  it('acceptance: 3 direct + 3 external → reviews=6, aggregate.count=6, perSource con google+tripadvisor', async () => {
+    // 3 direct visibles (sacamos las 2 google-channel de seeds5 para tener 3 direct "puras")
+    const directOnly = seeds5.filter((s) => s.channel !== 'google').slice(0, 3)
+    const { controller } = mkController({ hotel: baseHotel, seeds: directOnly, externalSeeds })
+    const res = await controller.publicList({ params: { slug: 'hotel-test' }, query: {} } as any)
+    expect(res.status).toBe(200)
+    const body = res.body as any
+    // 3 direct + 3 external = 6
+    expect(body.reviews).toHaveLength(6)
+    expect(body.aggregate.count).toBe(6)
+    // perSource: direct (3) + google (2) + tripadvisor (1)
+    expect(body.aggregate.perSource.direct.count).toBe(3)
+    expect(body.aggregate.perSource.google.count).toBe(2)
+    expect(body.aggregate.perSource.tripadvisor.count).toBe(1)
+  })
+
+  it('source=google → trae externas google (no las direct con otro channel)', async () => {
+    const directOnly = seeds5.filter((s) => s.channel !== 'google').slice(0, 3)
+    const { controller } = mkController({ hotel: baseHotel, seeds: directOnly, externalSeeds })
+    const res = await controller.publicList({ params: { slug: 'hotel-test' }, query: { source: 'google' } } as any)
+    expect(res.status).toBe(200)
+    const body = res.body as any
+    expect(body.reviews).toHaveLength(2) // 2 google externas
+    for (const r of body.reviews) expect(r.channel).toBe('google')
+    // aggregate GLOBAL: no filtra por source
+    expect(body.aggregate.count).toBe(6)
+  })
+
+  it('external con authorName → lo expone; direct → null (no filtra guestId)', async () => {
+    const directOnly = seeds5.filter((s) => s.channel !== 'google').slice(0, 1)
+    const { controller } = mkController({ hotel: baseHotel, seeds: directOnly, externalSeeds: [externalSeeds[0]] })
+    const res = await controller.publicList({ params: { slug: 'hotel-test' }, query: {} } as any)
+    const reviews = (res.body as any).reviews
+    const external = reviews.find((r: any) => r.channel === 'google')
+    const direct = reviews.find((r: any) => r.channel === 'direct')
+    expect(external.authorName).toBe('Ana')
+    expect(direct.authorName).toBeNull()
+  })
+
+  it('publishReviewComments=false → nullifica comment de direct Y external', async () => {
+    const directOnly = seeds5.filter((s) => s.channel !== 'google').slice(0, 1)
+    const hotel = { ...baseHotel, publishReviewComments: 0 }
+    const { controller } = mkController({ hotel, seeds: directOnly, externalSeeds: [externalSeeds[0]] })
+    const res = await controller.publicList({ params: { slug: 'hotel-test' }, query: {} } as any)
+    const reviews = (res.body as any).reviews
+    for (const r of reviews) expect(r.comment).toBeNull()
+  })
+
+  it('merge respeta orden por fecha desc (sin importar la tabla de origen)', async () => {
+    // direct con date 2026-07-01; externas con fechas más recientes.
+    const directOnly: OpinionesDTO[] = [
+      { id: 'd-old', hotelId: 'h1', rating: 5, comment: 'old direct', channel: 'direct', status: 'visible', visible: 1, date: '2026-07-01', createdAt: '2026-07-01T00:00:00Z' } as OpinionesDTO,
+    ]
+    const { controller } = mkController({ hotel: baseHotel, seeds: directOnly, externalSeeds })
+    const res = await controller.publicList({ params: { slug: 'hotel-test' }, query: { limit: 10 } } as any)
+    const dates = (res.body as any).reviews.map((r: any) => r.date)
+    // desc: '2026-07-10' (e1) → '2026-07-08' (e2) → '2026-07-06' (e3) → '2026-07-01' (direct)
+    expect(dates).toEqual(['2026-07-10', '2026-07-08', '2026-07-06', '2026-07-01'])
   })
 })
 

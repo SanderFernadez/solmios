@@ -167,7 +167,22 @@ import { PromoCodesModule } from './modules/promo-codes'
 // (dedup por source+sourceExternalId) + cron nightly. Connectors en src/connectors/ +
 // OAuth helper en services/gbp-oauth-client.ts. Rutas admin (reviews/*) + cron wiring abajo.
 import { ExternalReviewsModule } from './modules/external-reviews'
+// F3 3.5 (solmi-direct-booking): los fetchers se declaran acá (antes de modules[]) para que
+// tanto el módulo (ruta admin /api/external-reviews/sync-now) como el cron nightly compartan
+// la MISMA configuración de clients HTTP externos. Los connectors viven en src/connectors/.
+import { fetchGbpReviews, defaultGbpFetcher } from './connectors/gbp-reviews'
+import { fetchTripadvisorReviews, defaultTripadvisorFetcher } from './connectors/tripadvisor-reviews'
+import { fetchStayApiReviews, defaultStayApiFetcher } from './connectors/stayapi-reviews'
+import type { ExternalReviewsFetchers } from './shared/usecases/external-reviews-cron'
 import { FcmClient } from './services/fcm-client'
+
+// F3 3.5 — Fetchers de las 3 APIs externas. Compartido por módulo (sync endpoint) + cron.
+// Declarado antes de modules[] para que el closure del módulo capture la referencia estable.
+const externalReviewsFetchers: ExternalReviewsFetchers = {
+  gbp: (c, _f, log) => fetchGbpReviews(c, defaultGbpFetcher, log as any),
+  tripadvisor: (c, _f, log) => fetchTripadvisorReviews(c, defaultTripadvisorFetcher, log as any),
+  stayapi: (c, _f, log) => fetchStayApiReviews(c, defaultStayApiFetcher, log as any),
+}
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
 
@@ -242,8 +257,8 @@ const mods = [
   // F3 3.1 (solmi-direct-booking) — Reseñas externas (Google/TripAdvisor/StayAPI). Modelo
   // external_reviews (UNIQUE (source, sourceExternalId) en migrate-db.ts) + CRUD admin
   // (`/api/external-reviews` auth + permiso `reports:*` + module guard `sales.reviews`).
-  // El cron llama directo a service.upsertBatch vía resolveModule (no pasa por HTTP).
-  ExternalReviewsModule(),
+  // F3 3.5 — recibe los fetchers para cablear el endpoint "Sync now" (POST /sync-now).
+  ExternalReviewsModule({ fetchers: externalReviewsFetchers }),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -338,14 +353,11 @@ import { reservasWebhooksConnector } from './connectors/reservas-webhooks'
 import { paymentsWebhooksConnector } from './connectors/payments-webhooks'
 import { subscriptionsReferralsConnector } from './connectors/subscriptions-referrals'
 // F3 3.2 (solmi-direct-booking) — Adaptadores HTTP externos de reviews. NO son conectores
-// inter-módulo (los que wirean sockets): son clientes de APIs externas. Se importan acá
-// (cumple la regla UNREGISTERED_CONNECTOR del analyzer — todo archivo en connectors/ debe
-// importarse en composition-root) y se pasan al cron como dependencias inyectables para
-// que los tests puedan mockearlos.
-import { fetchGbpReviews, defaultGbpFetcher } from './connectors/gbp-reviews'
-import { fetchTripadvisorReviews, defaultTripadvisorFetcher } from './connectors/tripadvisor-reviews'
-import { fetchStayApiReviews, defaultStayApiFetcher } from './connectors/stayapi-reviews'
-import { createExternalReviewsCron, type ExternalReviewsFetchers } from './shared/usecases/external-reviews-cron'
+// inter-módulo (los que wirean sockets): son clientes de APIs externas. Imports y factory
+// `externalReviewsFetchers` viven arriba (cerca de ExternalReviewsModule) para que el módulo
+// (ruta admin /sync-now) y el cron compartan la misma config de clients HTTP. La regla
+// UNREGISTERED_CONNECTOR del analyzer los ve igual (están importados en composition-root).
+import { createExternalReviewsCron } from './shared/usecases/external-reviews-cron'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -635,11 +647,7 @@ logger.info('Currency-rates cron listo', { tickMs: CURRENCY_RATES_TICK_MS })
 // duplica); si una fuente cae, procesa las demás. Mismo molde que currency-rates (factory +
 // corrida inicial 10s + setInterval 24h + skip silencioso si no hay creds).
 const EXTERNAL_REVIEWS_TICK_MS = ONE_DAY_MS
-const externalReviewsFetchers: ExternalReviewsFetchers = {
-  gbp: (c, _f, log) => fetchGbpReviews(c, defaultGbpFetcher, log as any),
-  tripadvisor: (c, _f, log) => fetchTripadvisorReviews(c, defaultTripadvisorFetcher, log as any),
-  stayapi: (c, _f, log) => fetchStayApiReviews(c, defaultStayApiFetcher, log as any),
-}
+// (Fetchers declarados arriba, junto con ExternalReviewsModule — compartidos con /sync-now.)
 const externalReviewsCron = createExternalReviewsCron(
   orm, (name) => system.resolveModule(name), logger, externalReviewsFetchers, cache,
 )

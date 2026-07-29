@@ -166,6 +166,85 @@ async function pullAllSources(
   return { reviews: deduped, skippedSources }
 }
 
+/** Resultado de sincronizar un hotel — subset de `ExternalReviewsCronResult` para un solo hotel.
+ *  Lo usa el endpoint admin "Sync now" (F3 3.5) para reportar cuántas reviews nuevas entraron. */
+export interface SyncHotelResult {
+  /** Reviews recién insertadas (no existían antes). */
+  inserted: number
+  /** Reviews existentes que se actualizaron con datos mutables. */
+  updated: number
+  /** Sources skipeadas (creds faltantes o API caída). */
+  skippedSources: number
+  /** Mensajes de error específicos del hotel (vacío si OK). */
+  errors: string[]
+  /** True si el hotel no tenía ninguna creds configurada (no había nada que sincronizar). */
+  noCreds: boolean
+}
+
+/**
+ * F3 3.5 — Ejecuta el ciclo del cron para UN hotel específico. Reutilizado por el endpoint
+ * admin `POST /api/external-reviews/sync-now` (dispara el pull manualmente tras guardar creds).
+ *
+ * Mismo flujo que el cron nightly (read creds → pullAllSources → upsertBatch → invalidate
+ * cache), pero acotado a un hotelId. NO itera todos los hoteles.
+ *
+ * Idempotente (spec.md:64-71): si las reviews ya están, devuelve inserted=0, updated=0.
+ */
+export async function syncHotelReviews(
+  hotelId: string,
+  orm: any,
+  resolveModule: (name: string) => any,
+  logger: LoggerLike,
+  fetchers: ExternalReviewsFetchers,
+  cache: { delete: (key: string) => Promise<unknown> },
+): Promise<SyncHotelResult> {
+  const result: SyncHotelResult = { inserted: 0, updated: 0, skippedSources: 0, errors: [], noCreds: false }
+  try {
+    const config = await readHotelExternalConfig(orm, hotelId)
+    const hasAnyCreds = config.gbp.placeId || config.gbp.serviceAccount
+      || config.tripadvisor.apiKey || config.tripadvisor.locationId
+      || config.stayapi.apiKey || config.stayapi.hotelIds
+    if (!hasAnyCreds) {
+      result.noCreds = true
+      logger.info(`external-reviews-sync: hotel ${hotelId} sin creds configuradas — nothing to sync`)
+      return result
+    }
+
+    const { reviews, skippedSources } = await pullAllSources(hotelId, config, fetchers, logger)
+    result.skippedSources = skippedSources
+
+    if (reviews.length === 0) {
+      logger.info(`external-reviews-sync: hotel ${hotelId} — 0 reviews para ingestar`)
+      return result
+    }
+
+    const service = resolveModule('external-reviews') as
+      | { upsertBatch: (h: string, r: NormalizedExternalReview[]) => Promise<{ inserted: number; updated: number }> }
+      | null
+    if (!service?.upsertBatch) {
+      const msg = `hotel ${hotelId}: módulo external-reviews no disponible`
+      result.errors.push(msg)
+      logger.warn(`external-reviews-sync: ${msg}`)
+      return result
+    }
+
+    const upsert = await service.upsertBatch(hotelId, reviews)
+    result.inserted = upsert.inserted
+    result.updated = upsert.updated
+
+    // Invalida el cache del aggregate de opiniones → próximo GET /reviews recomputea.
+    await cache.delete(aggregateCacheKey(hotelId)).catch(() => { /* best-effort */ })
+
+    logger.info(`external-reviews-sync: hotel ${hotelId} sincronizado`, upsert)
+  } catch (e: unknown) {
+    const raw = (e as Error)?.message ?? String(e)
+    const msg = `hotel ${hotelId}: ${raw}`
+    result.errors.push(msg)
+    logger.warn(`external-reviews-sync: falló hotel ${hotelId}`, { error: raw })
+  }
+  return result
+}
+
 /**
  * Factory del cron. Devuelve la función que composition-root engancha a setInterval.
  *
@@ -189,47 +268,17 @@ export function createExternalReviewsCron(
     try {
       const hotels = (await orm.findMany('Hotels', {})) as any[]
       for (const hotel of hotels) {
-        try {
-          const config = await readHotelExternalConfig(orm, hotel.id)
-          // Skip hotel si no tiene NINGUNA creds configurada — no tiene sentido pullear.
-          const hasAnyCreds = config.gbp.placeId || config.gbp.serviceAccount
-            || config.tripadvisor.apiKey || config.tripadvisor.locationId
-            || config.stayapi.apiKey || config.stayapi.hotelIds
-          if (!hasAnyCreds) continue
-
-          const { reviews, skippedSources } = await pullAllSources(hotel.id, config, fetchers, logger)
-          result.skippedSources += skippedSources
-
-          if (reviews.length === 0) {
-            logger.info(`external-reviews-cron: hotel ${hotel.id} — 0 reviews para ingestar`)
-            result.hotelsProcessed++
-            continue
-          }
-
-          const service = resolveModule('external-reviews') as
-            | { upsertBatch: (h: string, r: NormalizedExternalReview[]) => Promise<{ inserted: number; updated: number }> }
-            | null
-          if (!service?.upsertBatch) {
-            logger.warn(`external-reviews-cron: módulo external-reviews no disponible — skip hotel ${hotel.id}`)
-            result.errors.push(`hotel ${hotel.id}: módulo no disponible`)
-            continue
-          }
-
-          const upsert = await service.upsertBatch(hotel.id, reviews)
-          result.totalInserted += upsert.inserted
-          result.totalUpdated += upsert.updated
-          result.hotelsProcessed++
-
-          // Invalida el cache del aggregate de opiniones → próximo GET /reviews recomputea.
-          await cache.delete(aggregateCacheKey(hotel.id)).catch(() => { /* best-effort */ })
-
-          logger.info(`external-reviews-cron: hotel ${hotel.id} procesado`, upsert)
-        } catch (e: unknown) {
-          // Error a nivel hotel: log + continua con el siguiente (no rompe el cron).
-          const msg = `hotel ${hotel.id}: ${(e as Error)?.message ?? String(e)}`
-          result.errors.push(msg)
-          logger.warn(`external-reviews-cron: falló procesar hotel`, { error: msg })
-        }
+        const r = await syncHotelReviews(hotel.id, orm, resolveModule, logger, fetchers, cache)
+        // El cron cuenta como "procesado" un hotel que tenía creds Y no falló (regresión
+        // F3 3.5: antes de extraer syncHotelReviews, un hotel que reventaba leyendo su
+        // Configuration NO se contaba — el refactor lo contaba igual que uno exitoso porque
+        // `noCreds` solo cubre "sin creds", no "error". Test: external-reviews-cron.test.ts
+        // "error en un hotel → continua con el siguiente").
+        if (!r.noCreds && r.errors.length === 0) result.hotelsProcessed++
+        result.totalInserted += r.inserted
+        result.totalUpdated += r.updated
+        result.skippedSources += r.skippedSources
+        result.errors.push(...r.errors)
       }
       logger.info('external-reviews-cron completado', { ...result })
     } catch (e: unknown) {
