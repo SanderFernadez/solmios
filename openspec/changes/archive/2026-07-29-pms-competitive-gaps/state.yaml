@@ -3,7 +3,8 @@
 change_name: pms-competitive-gaps
 created: 2026-06-21
 status: done
-current_phase: completed
+current_phase: archived
+closed: 2026-07-29
 parent_changes: [match-misterplan, frontend-coverage-gaps]
 
 sprints:

@@ -151,9 +151,24 @@ cd frontend && npx vite build  # manifest + sw copiados a dist/
 - [x] backend tests 130+ pass
 - [x] frontend `vue-tsc -b` 0 errores
 - [x] frontend `vite build` success
-- [ ] Manual: los 6 reports cargan con datos
-- [ ] Manual: super-admin puede cambiar de hotel
-- [ ] Manual: PWA instalable en Chrome
+- [x] Manual: los 6 reports cargan con datos
+      **Verificado 2026-07-29** (Playwright, prod, Hotel Boutique Palma, Hotel Admin): tab
+      "Ocupación" con filtro "Este año" — 8 hab. totales, distribución por tipo
+      (suite:3/single:1/double:3/triple:1), % ocupación mensual real (jun 2%, jul 12%),
+      tabla diaria de 365 filas. Tab "Facturación" con "Este año" → Total bruto $440 (real,
+      no $0). Los 7 tabs (Balance/Facturación/Ocupación/Pernoctaciones/Rendimiento/
+      Procedencia/Reservas) renderizan sin error de consola.
+- [x] Manual: super-admin puede cambiar de hotel
+      **Verificado 2026-07-29** (Playwright, prod): login super_admin → `GET /api/auth/hotels`
+      devuelve 5 hoteles → switcher (🏨) abre dropdown con los 5 → click "Hotel Boutique
+      Palma" → `POST /api/auth/switch-hotel/:id` cambia el token/contexto, el botón del
+      switcher pasa de "SolmiOS Corp" a "Hotel Boutique Palma".
+- [x] Manual: PWA instalable en Chrome
+      **Verificado 2026-07-29** (Playwright/Chrome, prod): `<link rel="manifest">` presente,
+      `manifest.webmanifest` válido (name/short_name/start_url/display:standalone/icons
+      192+512 "any maskable"), `navigator.serviceWorker.getRegistrations()` → 1 SW registrado
+      con `controller:true` (activo y controlando la página). Ver debt PC-4.1.5 abajo
+      (SVG vs PNG) — no bloquea la instalación real, solo es una preferencia de Lighthouse.
 
 ---
 
