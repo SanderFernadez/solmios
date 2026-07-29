@@ -498,14 +498,14 @@ const N = [
   {id:'hotel-media',label:'🖼️ Hotel Media',group:'maestros',panel:'hotel',info:{
     que:'Media del hotel (hero/gallery/room) para la landing pública: upload a S3, reorder, listado agrupado por tipo.',
     porque:'Sin fotos reales, la landing pública (/h/:slug) y el booking widget muestran solo placeholders.',
-    conectado:['landing (los bloques Hero/Gallery/Rooms leen esta media)','bookingengine (widget)'],
+    conectado:['Sin connector de backend hacia landing/bookingengine — el frontend público (hotel-landing.vue) hace GET /api/public/hotels/:slug/media por su cuenta y lo compone client-side junto al resto'],
     falta:[]
   }},
   {id:'landing',label:'🏝️ Landing Pública',group:'operacion',panel:'hotel',info:{
     que:'Landing pública configurable por bloques (hero/gallery/amenities/reviews/faq/map/footer/cta/rooms). Admin: builder drag-and-drop con toggle por bloque (Settings → Landing). Pública: GET rate-limited (30/min/IP).',
     porque:'Página de venta directa del hotel — reemplaza una landing estática por una armable sin tocar código.',
-    conectado:['hotel-media (bloques leen fotos)','opiniones + external-reviews (bloque ReviewsBlock mezcla direct + externas)','bookingengine (CTA → widget)'],
-    falta:[]
+    conectado:['bookingengine (CTA → widget)'],
+    falta:['NO hay connector de backend con hotel-media ni opiniones/external-reviews: cada bloque público (ReviewsBlock, GalleryBlock, RoomsBlock) recibe sus datos porque el frontend (hotel-landing.vue) ya hizo el fetch de cada endpoint público por separado y se los pasa como props — landing solo sirve la CONFIGURACIÓN de qué bloques mostrar, no el contenido de cada uno.']
   }},
   {id:'promo-codes',label:'🎟️ Promo Codes',group:'operacion',panel:'hotel',info:{
     que:'Códigos promocionales (% o monto fijo) del widget público. Validación pública rate-limited + aplicación real dentro de la misma transacción de creación de la reserva.',
@@ -687,21 +687,31 @@ const E = [
   {f:'compras',t:'tesoreria',y:'datos',l:'valida proveedor del catálogo'},
   {f:'compras',t:'gastos',y:'hook',l:'factura OC → 1 gasto'},
 
-  // --- solmi-direct-booking F0-F4 (agregado 2026-07-29) ---
-  {f:'hotel-media',t:'landing',y:'datos',l:'bloques leen fotos'},
+  // --- solmi-direct-booking F0-F4 (agregado 2026-07-29, corregido 2026-07-29) ---
+  // NOTA: hotel-media→landing y landing→opiniones se BORRARON (2026-07-29) — no hay connector
+  // ni import de backend entre esos módulos, solo el frontend público (hotel-landing.vue)
+  // haciendo 2 fetches independientes (PublicHotelService.getMedia + el endpoint de landing) y
+  // componiéndolos client-side. Dibujar una arista 'datos' ahí afirmaba una relación de backend
+  // que no existe — grep de 'hotel-media'/'HotelMedia' y 'opiniones'/'Opiniones' en
+  // backend/src/modules/landing/ solo da comentarios de "mismo patrón que", no imports reales.
   {f:'landing',t:'bookingengine',y:'nav',l:'CTA → widget'},
-  {f:'landing',t:'opiniones',y:'datos',l:'bloque ReviewsBlock'},
   {f:'bookingengine',t:'promo-codes',y:'datos',l:'valida + aplica código al crear reserva'},
   {f:'opiniones',t:'external-reviews',y:'datos',l:'aggregate + listado público mezclan ambas fuentes ✅'},
   {f:'bookingengine',t:'wallet-pass',y:'hook',l:'onBookingPaid → genera pase'},
-  {f:'wallet-pass',t:'ttlock',y:'datos',l:'código embebido en el pase'},
+  {f:'wallet-pass',t:'ttlock',y:'datos',l:'código embebido en el pase (ttlock.generateCode)'},
   {f:'bookingengine',t:'server-tracking',y:'hook',l:'onBookingPaid → fire Meta CAPI + GA4'},
-  {f:'reservas',t:'abandon-recovery',y:'datos',l:'abandonEmailSent'},
+  // Dirección corregida 2026-07-29: abandonEmailSent está declarado en ReservasModel (D5) y
+  // abandon-recovery (sin tabla propia) lo LEE/actualiza — mismo criterio que folios→reservas
+  // (el dependiente apunta al dueño del dato, no al revés).
+  {f:'abandon-recovery',t:'reservas',y:'datos',l:'lee/marca abandonEmailSent'},
   {f:'abandon-recovery',t:'bookingengine',y:'nav',l:'link de vuelta al widget'},
 
   // --- Plataforma / Infra (agregado 2026-07-29) ---
   {f:'subscriptions',t:'referrals',y:'hook',l:'alta con referralCode → linkSignup'},
-  {f:'reservas',t:'publicapi',y:'hook',l:'expone a integraciones externas (API key)'},
+  // Tipo corregido 2026-07-29: publicapi-reservas.ts usa setDeps() (inyección de dependencias al
+  // boot), NO setSockets() — no es un hook por evento, es un puerto de datos (mismo criterio que
+  // payment-gateways→payments 'datos').
+  {f:'reservas',t:'publicapi',y:'datos',l:'expone rooms/reservations a integraciones externas (API key)'},
   {f:'reservas',t:'webhooks',y:'hook',l:'eventos de reserva'},
   {f:'payments',t:'webhooks',y:'hook',l:'eventos de cobro'},
   {f:'subscriptions',t:'platform-emails',y:'hook',l:'ciclo de vida de la suscripción'},
