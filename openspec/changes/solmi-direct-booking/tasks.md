@@ -488,13 +488,13 @@ Specs: `specs/reputation-aggregator/spec.md`, `specs/wallet-pass/spec.md`,
 
 ### Backend — Wallet pass (spec: wallet-pass)
 
-- [ ] 3.6 Crear módulo `backend/src/modules/wallet-pass/` con `make:module WalletPass`.
+- [x] 3.6 Crear módulo `backend/src/modules/wallet-pass/` con `make:module WalletPass`.
       Modelo `WalletPassModel` (tabla `wallet_passes`):
       `id, hotelId, reservationId, appleUrl (nullable), googleUrl (nullable), lockCode, generatedAt + timestamps`.
       Unique index `(reservationId)` (1 pass por reserva).
       **Acceptance**: `RUN_MIGRATE` crea tabla + unique index.
 
-- [ ] 3.7 Use case `wallet-pass/usecases/generate-pass.ts`: recibe `reservationId`, llama
+- [x] 3.7 Use case `wallet-pass/usecases/generate-pass.ts`: recibe `reservationId`, llama
       al connector `reservas-ttlock.ts` para obtener `lockCode`, genera `.pkpass` (Apple,
       via `passkit-generator` + cert del hotel en configuration `apple_pass_cert`) y Google
       pass object (service account JWT). Persiste URLs en `wallet_passes`. Si Apple cert
@@ -502,23 +502,23 @@ Specs: `specs/reputation-aggregator/spec.md`, `specs/wallet-pass/spec.md`,
       **Acceptance**: mock cert Apple → genera `appleUrl`; sin cert → `appleUrl=null` pero
       `googleUrl` presente.
 
-- [ ] 3.8 Connector `reservas-wallet.ts`: subscribe a `onReservationConfirmed` (mismo
+- [x] 3.8 Connector `reservas-wallet.ts`: subscribe a `onReservationConfirmed` (mismo
       patrón que `reservas-opiniones.ts`) → dispara `generatePass(reservationId)`.
       Best-effort: try/catch no rompe el webhook de confirmación si el pass falla.
       **Acceptance**: reservar e2e → `wallet_passes` tiene una fila con ambos URLs.
 
-- [ ] 3.9 Email "Tu pase de reserva + código de acceso" via `email-bootstrap.ts`:
+- [x] 3.9 Email "Tu pase de reserva + código de acceso" via `email-bootstrap.ts`:
       template HTML con ambos links (Apple+Google) + el `lockCode` visible.
       **Acceptance**: tras confirmar reserva, el email se encola y se envía.
 
 ### Backend — Server-side tracking (spec: server-tracking)
 
-- [ ] 3.10 Crear módulo `backend/src/modules/server-tracking/` con `make:module ServerTracking`.
+- [x] 3.10 Crear módulo `backend/src/modules/server-tracking/` con `make:module ServerTracking`.
       Modelo `TrackingEventModel` (tabla `tracking_events`):
       `id, hotelId, event ('view'|'search'|'select'|'upsell'|'form'|'pay'|'confirm'|'abandon'), meta (json), anonymousId, reservationId (nullable), timestamp + timestamps`.
       **Acceptance**: schema valida tipos de event contra enum; meta es JSON libre.
 
-- [ ] 3.11 Use cases `server-tracking/usecases/`:
+- [x] 3.11 Use cases `server-tracking/usecases/`:
       - `meta-capi.ts`: `fireConversion(reservationId)` → POST a Meta Graph API
         `/{pixel_id}/events` con `event_name: 'Purchase'`, `value`, `currency`,
         `event_id` (= reservationId para dedup), `action_source: 'system'`, hashed email/phone
@@ -531,12 +531,12 @@ Specs: `specs/reputation-aggregator/spec.md`, `specs/wallet-pass/spec.md`,
       **Acceptance**: mockear Meta + GA4 HTTP → los 2 usecases disparan; hash de email
       verificado (SHA256 lowercase sin espacios).
 
-- [ ] 3.12 Trigger en webhook confirm (`stripe.ts handleWebhook` post-confirm): llama
+- [x] 3.12 Trigger en webhook confirm (`stripe.ts handleWebhook` post-confirm): llama
       `metaCapi.fireConversion(reservationId)` + `ga4ss.fireConversion(reservationId)`.
       Si Meta pixel_id/capi_key no configurados → skip silencioso. Mismo para GA4.
       **Acceptance**: confirmar reserva con creds configuradas → 2 events fire + persisten.
 
-- [ ] 3.13 Config admin Settings → "Tracking": `meta_pixel_id`, `meta_capi_token`,
+- [x] 3.13 Config admin Settings → "Tracking": `meta_pixel_id`, `meta_capi_token`,
       `ga4_measurement_id`, `ga4_api_secret`, `meta_test_event_code` (dev). Botón "Send
       test event" para validar la config.
       **Acceptance**: guardar creds + "Send test event" → evento llega a Meta Events Manager
@@ -544,14 +544,14 @@ Specs: `specs/reputation-aggregator/spec.md`, `specs/wallet-pass/spec.md`,
 
 ### Backend — Abandon recovery + OTA comparison
 
-- [ ] 3.14 Crear módulo `backend/src/modules/abandon-recovery/` con `make:module AbandonRecovery`.
+- [x] 3.14 Crear módulo `backend/src/modules/abandon-recovery/` con `make:module AbandonRecovery`.
       Cron cada 30 min: busca reservas con status='pending' y `createdAt < now-1h` AND
       `createdAt > now-4h` AND `abandonEmailSent=false`. Para cada una: enqueue email
       "Completá tu reserva" con link al widget que restaura el state via
       `?reservation=:id&token=:accessToken`. Marca `abandonEmailSent=true`.
       **Acceptance**: cron idempotente; reservas confirmadas no reciben el email.
 
-- [ ] 3.15 OTA Price Comparison condicional (D11+ — solo si paridad ganada): endpoint
+- [x] 3.15 OTA Price Comparison condicional (D11+ — solo si paridad ganada): endpoint
       `GET /api/public/hotels/:slug/ota-prices?checkIn=&checkOut=` consulta StayAPI para
       Booking/Airbnb y compara con la tarifa directa. Si directo es más barato → badge
       "Mejor precio garantizado: ahorrás $X reservando directo". Si no es más barato →
@@ -561,20 +561,20 @@ Specs: `specs/reputation-aggregator/spec.md`, `specs/wallet-pass/spec.md`,
 
 ### Frontend — F3 inyecta en widget
 
-- [ ] 3.16 `frontend/src/components/reviews/MultiChannelBadges.vue` + `AggregateScore.vue`:
+- [x] 3.16 `frontend/src/components/reviews/MultiChannelBadges.vue` + `AggregateScore.vue`:
       badges Google/TripAdvisor/Booking con icono + score por fuente. Score agregado
       destacado. Se inyecta en `RoomsStep.vue` y en el `ReviewsBlock` de la landing.
       **Acceptance**: badges renderizan solo si la fuente tiene reviews (no muestra badge
       vacío).
 
-- [ ] 3.17 `frontend/src/pages/public/booking-confirmation.vue` (NEW, ruta
+- [x] 3.17 `frontend/src/pages/public/booking-confirmation.vue` (NEW, ruta
       `/h/:slug?booking=:id&token=:token` post-redirect): muestra estado confirmed/pending/
       failed + botones "Agregar a Apple Wallet" / "Agregar a Google Wallet" (links del
       wallet_pass) + el código TTLock visible.
       **Acceptance**: tras redirect exitoso, los 2 botones están presentes y linkean a URLs
       válidas.
 
-- [ ] 3.18 Server-tracking client-side complement: `frontend/src/composables/useTracking.ts`
+- [x] 3.18 Server-tracking client-side complement: `frontend/src/composables/useTracking.ts`
       dispara eventos GA4 client-side con el MISMO `client_id` y `event_id` que el server
       (para dedup en GA4). Meta Pixel (opcional) también client-side con dedup via
       `event_id` = reservationId.
@@ -582,7 +582,7 @@ Specs: `specs/reputation-aggregator/spec.md`, `specs/wallet-pass/spec.md`,
 
 ### Gate F3
 
-- [ ] 3.19 typecheck + analyze + test + build verde.
+- [x] 3.19 typecheck + analyze + test + build verde.
       **Acceptance**: cron jobs mockeados pasan; e2e test (crear reserva → confirmar →
       wallet pass + tracking fire) cubre el flujo completo.
 
