@@ -24,6 +24,11 @@ const MS_PER_HOUR = 3_600_000
 // es un peso adicional que la renormalización del score pondera solo para quien tiene data de mant.
 const DEFAULT_MAINTENANCE_WEIGHT = 30
 const DEFAULT_STANDARD_RESOLUTION_HOURS = 24
+// DT-19: peso del criterio training, mismo mecanismo que maintenance (adicional, renormalizado,
+// no migra EvalWeights). Menor que maintenance (30) porque es una señal de desarrollo/soft-skill,
+// no de productividad operativa dura — un empleado sin cursos en el período no debería verse
+// penalizado, por eso pesa menos cuando SÍ tiene data.
+const DEFAULT_TRAINING_WEIGHT = 15
 
 /** Métricas de limpieza por camarera (staffId = users.id). Lo provee el connector empleados-housekeeping. */
 export interface HkStaffStat {
@@ -57,6 +62,17 @@ export interface MaintenanceStatsPort {
   getStaffStats(hotelId: string, from: string, to: string): Promise<MaintStaffStat[]>
 }
 
+/** DT-19: cursos completados por empleado (employeeId = EmployeeProfile.id, misma clave que
+ *  attendance). Connector empleados-capacitacion. */
+export interface TrainStaffStat {
+  employeeId: string
+  completed: number
+  avgScore: number | null
+}
+export interface TrainingStatsPort {
+  getStaffStats(hotelId: string, from: string, to: string): Promise<TrainStaffStat[]>
+}
+
 /** Score acotado a [0,100]. */
 function clamp100(n: number): number {
   if (!Number.isFinite(n)) return 0
@@ -67,6 +83,7 @@ export class AutoEvaluationUseCase {
   private hkPort?: HkStatsPort
   private attPort?: AttendanceStatsPort
   private maintPort?: MaintenanceStatsPort
+  private trainPort?: TrainingStatsPort
 
   constructor(
     private readonly config: EvalConfigUseCase,
@@ -79,6 +96,7 @@ export class AutoEvaluationUseCase {
   setHousekeepingPort(port: HkStatsPort): void { this.hkPort = port }
   setAttendancePort(port: AttendanceStatsPort): void { this.attPort = port }
   setMaintenancePort(port: MaintenanceStatsPort): void { this.maintPort = port }
+  setTrainingPort(port: TrainingStatsPort): void { this.trainPort = port }
 
   /** Corre la evaluación del período (actual por defecto) para TODOS los empleados activos del hotel. */
   async run(hotelId: string, periodType?: EvalPeriodType): Promise<AutoEvalSummary> {
@@ -86,17 +104,20 @@ export class AutoEvaluationUseCase {
     const type = periodType ?? cfg.period
     const { label, fromIso, toIso, fromDate, toDate } = periodBounds(type)
 
-    const [profiles, hkStats, attStats, maintStats] = await Promise.all([
+    const [profiles, hkStats, attStats, maintStats, trainStats] = await Promise.all([
       this.profileRepo.findMany({ hotelId, active: 1 } as any),
       this.hkPort ? this.hkPort.getStaffStats(hotelId, fromIso, toIso) : Promise.resolve([] as HkStaffStat[]),
       this.attPort ? this.attPort.getStaffAttendance(hotelId, fromDate, toDate) : Promise.resolve([] as AttStaffStat[]),
       // Mantenimiento se agrega por técnico (assignedTo = users.id), como housekeeping → join por profile.userId.
       this.maintPort ? this.maintPort.getStaffStats(hotelId, fromIso, toIso) : Promise.resolve([] as MaintStaffStat[]),
+      // DT-19: capacitación.employeeId YA es EmployeeProfile.id (como attendance) → join por profile.id.
+      this.trainPort ? this.trainPort.getStaffStats(hotelId, fromDate, toDate) : Promise.resolve([] as TrainStaffStat[]),
     ])
 
     const hkByStaff = new Map(hkStats.map((s) => [s.staffId, s]))
     const attByEmployee = new Map(attStats.map((s) => [s.employeeId, s]))
     const maintByStaff = new Map(maintStats.map((s) => [s.staffId, s]))
+    const trainByEmployee = new Map(trainStats.map((s) => [s.employeeId, s]))
 
     const results: AutoEvalResult[] = []
     let skipped = 0
@@ -104,7 +125,8 @@ export class AutoEvaluationUseCase {
       const hk = hkByStaff.get(profile.userId)
       const att = attByEmployee.get(profile.id)
       const maint = maintByStaff.get(profile.userId)
-      const scored = scoreEmployee(cfg, hk, att, maint)
+      const train = trainByEmployee.get(profile.id)
+      const scored = scoreEmployee(cfg, hk, att, maint, train)
       if (!scored) { skipped++; continue } // sin data en ningún criterio → no se inventa un score
       const review = await this.persist(hotelId, profile.id, label, scored)
       results.push({ employeeId: profile.id, reviewId: review.id, score: scored.score, band: scored.band, breakdown: scored.breakdown })
@@ -134,6 +156,7 @@ export class AutoEvaluationUseCase {
       punctuality: scored.breakdown.punctuality.score,
       attendance: scored.breakdown.attendance.score,
       maintenance: scored.breakdown.maintenance?.hasData ? scored.breakdown.maintenance.score : undefined,
+      training: scored.breakdown.training?.hasData ? scored.breakdown.training.score : undefined,
       band: scored.band,
       breakdown: scored.breakdown,
     })
@@ -166,7 +189,7 @@ interface ScoredEmployee {
  * Score ponderado renormalizado sobre los criterios CON data. Si un criterio no tiene data,
  * su peso sale del denominador (no se asume 0 ni 100). Sin ningún criterio con data → null (se omite).
  */
-function scoreEmployee(cfg: PerformanceEvalConfigDTO, hk?: HkStaffStat, att?: AttStaffStat, maint?: MaintStaffStat): ScoredEmployee | null {
+function scoreEmployee(cfg: PerformanceEvalConfigDTO, hk?: HkStaffStat, att?: AttStaffStat, maint?: MaintStaffStat, train?: TrainStaffStat): ScoredEmployee | null {
   const w = cfg.weights
   const breakdown: EvalBreakdown = {
     productivity: productivityScore(hk, cfg.standardTaskMinutes, w),
@@ -174,6 +197,7 @@ function scoreEmployee(cfg: PerformanceEvalConfigDTO, hk?: HkStaffStat, att?: At
     punctuality: punctualityScore(att, w),
     attendance: attendanceScore(att, w),
     maintenance: maintenanceScore(maint, cfg.standardResolutionHours ?? DEFAULT_STANDARD_RESOLUTION_HOURS),
+    training: trainingScore(train),
   }
 
   let weighted = 0
@@ -227,6 +251,16 @@ function maintenanceScore(maint: MaintStaffStat | undefined, standardResolutionH
   return { score: Math.round(score), weight: DEFAULT_MAINTENANCE_WEIGHT, hasData: true }
 }
 
+/** DT-19: promedio de la nota (0-100) de los cursos completados en el período CON nota cargada.
+ *  Sin cursos completados, o completados pero ninguno con nota → sin data (se renormaliza, no
+ *  penaliza ni beneficia). Cerrar DT-19: antes un curso completado NO pesaba nada en el score. */
+function trainingScore(train: TrainStaffStat | undefined): EvalCriterionResult {
+  if (!train || train.completed <= 0 || train.avgScore == null) {
+    return { score: 0, weight: DEFAULT_TRAINING_WEIGHT, hasData: false }
+  }
+  return { score: Math.round(clamp100(train.avgScore)), weight: DEFAULT_TRAINING_WEIGHT, hasData: true }
+}
+
 function bandOf(score: number, t: EvalThresholds): EvalBand {
   if (score >= t.excellent) return 'excellent'
   if (score >= t.good) return 'good'
@@ -235,14 +269,18 @@ function bandOf(score: number, t: EvalThresholds): EvalBand {
 }
 
 function buildNotes(b: EvalBreakdown, score: number): string {
-  const part = (label: string, c: EvalCriterionResult) => c.hasData ? `${label}: ${c.score}/100 (peso ${c.weight})` : `${label}: sin datos`
+  const part = (label: string, c?: EvalCriterionResult) => c?.hasData ? `${label}: ${c.score}/100 (peso ${c.weight})` : null
+  // Maintenance/training solo aparecen si tienen data (criterios adicionales, no todos los
+  // empleados los tienen) — a diferencia de los 4 core que siempre se listan, tengan data o no.
   return [
     `Evaluación automática — score ${score}/100.`,
-    part('Productividad', b.productivity),
-    part('Calidad', b.quality),
-    part('Puntualidad', b.punctuality),
-    part('Asistencia', b.attendance),
-  ].join(' · ')
+    `Productividad: ${b.productivity.hasData ? `${b.productivity.score}/100` : 'sin datos'} (peso ${b.productivity.weight})`,
+    `Calidad: ${b.quality.hasData ? `${b.quality.score}/100` : 'sin datos'} (peso ${b.quality.weight})`,
+    `Puntualidad: ${b.punctuality.hasData ? `${b.punctuality.score}/100` : 'sin datos'} (peso ${b.punctuality.weight})`,
+    `Asistencia: ${b.attendance.hasData ? `${b.attendance.score}/100` : 'sin datos'} (peso ${b.attendance.weight})`,
+    part('Mantenimiento', b.maintenance),
+    part('Capacitación', b.training),
+  ].filter(Boolean).join(' · ')
 }
 
 /** Ventana del período. Housekeeping compara endTime ISO; attendance compara date 'YYYY-MM-DD'. */

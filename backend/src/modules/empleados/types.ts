@@ -435,6 +435,8 @@ export interface EvalBreakdown {
   attendance: EvalCriterionResult
   /** Productividad de mantenimiento (técnicos). Opcional: solo presente si el criterio corrió. */
   maintenance?: EvalCriterionResult
+  /** DT-19: cursos completados en el período (score = promedio de la nota 0-100). Opcional. */
+  training?: EvalCriterionResult
 }
 
 export interface AutoEvalResult {

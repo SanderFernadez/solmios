@@ -5,7 +5,7 @@ import { describe, it, expect } from 'bun:test'
 import type { RepositoryAdapter } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { AutoEvaluationUseCase } from '../usecases/auto-evaluation'
-import type { HkStaffStat, AttStaffStat, MaintStaffStat } from '../usecases/auto-evaluation'
+import type { HkStaffStat, AttStaffStat, MaintStaffStat, TrainStaffStat } from '../usecases/auto-evaluation'
 import type { PerformanceEvalConfigDTO } from '../types'
 
 const log = silentLogger()
@@ -43,6 +43,9 @@ function attPort(stats: AttStaffStat[]) {
 }
 const HOUR = 3_600_000
 function maintPort(stats: MaintStaffStat[]) {
+  return { getStaffStats: async () => stats }
+}
+function trainPort(stats: TrainStaffStat[]) {
   return { getStaffStats: async () => stats }
 }
 
@@ -95,6 +98,46 @@ describe('AutoEvaluationUseCase', () => {
     const r = (await uc.run('h1')).results[0]!
     expect(r.breakdown.maintenance?.hasData).toBe(false)
     expect(r.score).toBe(71)                                 // idéntico al test de 4 criterios (maintenance no altera)
+  })
+
+  // DT-19: un curso completado ahora pesa en el score (antes solo dejaba un documento en el expediente).
+  it('pondera capacitación completada (criterio training, nota 0-100 del curso)', async () => {
+    const profiles = [{ id: 'p3', userId: 'u3', active: 1 }]
+    const uc = new AutoEvaluationUseCase(fakeConfig(), makeRepo(), makeRepo({ findMany: async () => profiles }), log)
+    uc.setHousekeepingPort(hkPort([{ staffId: 'u3', completed: 5, avgDurationMs: 60 * MIN, avgRating: 8 }])) // prod 50, quality 80
+    uc.setAttendancePort(attPort([{ employeeId: 'p3', present: 8, absent: 2, late: 2 }])) // punc 80, att 80
+    // training: employeeId = profile.id (p3), como attendance — no profile.userId.
+    uc.setTrainingPort(trainPort([{ employeeId: 'p3', completed: 2, avgScore: 90 }]))
+
+    const r = (await uc.run('h1')).results[0]!
+
+    expect(r.breakdown.training).toEqual({ score: 90, weight: 15, hasData: true })
+    // weighted = 50*30 + 80*35 + 80*20 + 80*15 + 90*15 = 8450 ; totalWeight = 115 → round(73.47) = 73
+    expect(r.score).toBe(73)
+  })
+
+  it('un empleado sin cursos completados no se ve afectado por el criterio training', async () => {
+    const profiles = [{ id: 'p1', userId: 'u1', active: 1 }]
+    const uc = new AutoEvaluationUseCase(fakeConfig(), makeRepo(), makeRepo({ findMany: async () => profiles }), log)
+    uc.setHousekeepingPort(hkPort([{ staffId: 'u1', completed: 5, avgDurationMs: 60 * MIN, avgRating: 8 }]))
+    uc.setAttendancePort(attPort([{ employeeId: 'p1', present: 8, absent: 2, late: 2 }]))
+    uc.setTrainingPort(trainPort([]))                        // sin cursos → criterio excluido por renormalización
+
+    const r = (await uc.run('h1')).results[0]!
+    expect(r.breakdown.training?.hasData).toBe(false)
+    expect(r.score).toBe(71)                                 // idéntico al test de 4 criterios (training no altera)
+  })
+
+  it('curso completado sin nota cargada NO cuenta como data (nota es opcional al completar)', async () => {
+    const profiles = [{ id: 'p1', userId: 'u1', active: 1 }]
+    const uc = new AutoEvaluationUseCase(fakeConfig(), makeRepo(), makeRepo({ findMany: async () => profiles }), log)
+    uc.setHousekeepingPort(hkPort([{ staffId: 'u1', completed: 5, avgDurationMs: 60 * MIN, avgRating: 8 }]))
+    uc.setAttendancePort(attPort([{ employeeId: 'p1', present: 8, absent: 2, late: 2 }]))
+    uc.setTrainingPort(trainPort([{ employeeId: 'p1', completed: 3, avgScore: null }]))
+
+    const r = (await uc.run('h1')).results[0]!
+    expect(r.breakdown.training?.hasData).toBe(false)
+    expect(r.score).toBe(71)
   })
 
   it('renormaliza los pesos cuando un criterio no tiene data', async () => {

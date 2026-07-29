@@ -42,7 +42,7 @@ export type {
   PerformanceEvalConfigDTO, UpdatePerformanceEvalConfigDTO, AutoEvalSummary, AutoEvalResult,
 } from './types'
 export type { EmpleadosSockets } from './sockets'
-export type { HkStatsPort, AttendanceStatsPort, MaintenanceStatsPort } from './usecases/auto-evaluation'
+export type { HkStatsPort, AttendanceStatsPort, MaintenanceStatsPort, TrainingStatsPort } from './usecases/auto-evaluation'
 
 export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
   return createModule({

@@ -8,9 +8,11 @@ import type {
   CourseDTO, CreateCourseDTO, EnrollmentDTO, CreateEnrollmentDTO,
 } from './types'
 import { buildEnrollmentEmail } from './usecases/emails'
+import { StatsUseCase } from './usecases/stats'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 import { composeSockets } from '../../shared/usecases/compose-sockets'
 import type { CapacitacionSockets } from './sockets'
+export type { TrainingStaffStat } from './usecases/stats'
 
 /** Puerto de email (lo cablea email-bootstrap con setEmailDeps). */
 export interface EmailPort {
@@ -23,6 +25,7 @@ export class CapacitacionService {
   private publicUrl?: string
   private auditPort: AuditPort | null = null
   private sockets: CapacitacionSockets = {}
+  private statsUc: StatsUseCase
 
   /** Conecta el audit log. Lo inyecta el connector `capacitacion-auditlog`. */
   setAuditDeps(port: AuditPort): void { this.auditPort = port }
@@ -36,7 +39,14 @@ export class CapacitacionService {
     private readonly logger: Logger,
     private readonly cache: CacheAdapter,
     private readonly profileRepo?: RepositoryAdapter<{ id: string; hotelId: string; userId?: string }>,
-  ) {}
+  ) {
+    this.statsUc = new StatsUseCase(enrollRepo)
+  }
+
+  /** Cursos completados por empleado en el período — motor de evaluación #321 (connector empleados-capacitacion). */
+  async getStaffStats(hotelId: string, from: string, to: string) {
+    return this.statsUc.getStaffStats(hotelId, from, to)
+  }
 
   /** email-bootstrap cablea el envío de correo + cómo resolver el email del empleado. */
   setEmailDeps(emailSender: EmailPort, userRepo: RepositoryAdapter<any>, publicUrl?: string): void {

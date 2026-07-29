@@ -23,7 +23,7 @@ import { LeaveConfigUseCase } from './usecases/leave-config'
 import { ReviewUseCase } from './usecases/reviews'
 import { OrgChartUseCase } from './usecases/org-chart'
 import type { DashboardUseCase, AttendanceSummaryPort } from './usecases/dashboard'
-import type { AutoEvaluationUseCase, HkStatsPort, AttendanceStatsPort, MaintenanceStatsPort } from './usecases/auto-evaluation'
+import type { AutoEvaluationUseCase, HkStatsPort, AttendanceStatsPort, MaintenanceStatsPort, TrainingStatsPort } from './usecases/auto-evaluation'
 import type { SimpleUser } from './usecases/ownership'
 import type { AuditPort } from '../../shared/usecases/audit'
 
@@ -77,7 +77,7 @@ export class EmpleadosService {
   setHousekeepingStatsPort(port: HkStatsPort): void { this.autoEval?.setHousekeepingPort(port) }
   setAttendanceStatsPort(port: AttendanceStatsPort): void { this.autoEval?.setAttendancePort(port) }
   setMaintenanceStatsPort(port: MaintenanceStatsPort): void { this.autoEval?.setMaintenancePort(port) }
-
+  setTrainingStatsPort(port: TrainingStatsPort): void { this.autoEval?.setTrainingPort(port) }
   // ─── Departments ──────────────────────────────────────
 
   async createDepartment(dto: CreateDepartmentDTO): Promise<DepartmentDTO> {
