@@ -100,7 +100,7 @@ function Dd(){return Dd=Object.assign||function(g){for(var A=1;A<arguments.lengt
 <body>
 <header>
   <div>
-    <h1>🧭 SOLMI OS — Mapa de Conexiones entre Módulos <span class="badge">49 módulos</span></h1>
+    <h1>🧭 SOLMI OS — Mapa de Conexiones entre Módulos <span class="badge" id="badgeCount">49 módulos</span></h1>
     <div class="sub">Panel del hotel (merchant) vs. plataforma (super_admin) · qué está conectado con qué · qué falta o está mal cableado. Clic en un nodo = detalle.</div>
   </div>
   <div class="toolbar" id="toolbar"></div>
@@ -256,16 +256,16 @@ const N = [
     falta:[]
   }},
   {id:'bookingengine',label:'🌐 Booking Engine',group:'operacion',panel:'hotel',info:{
-    que:'Widget público de reservas (/book/:slug). Cobra con Stripe, crea reserva, genera código TTLock.',
+    que:'Widget público de reservas (/book/:slug) + landing pública (/h/:slug). Cobra con Stripe, crea reserva, genera código TTLock, valida/aplica promo codes, y post-pago dispara wallet pass + tracking server-side. Núcleo de solmi-direct-booking (F0 fundación pública → F1 landing → F2 widget unificado → F3 diferenciadores → F4 hygiene), COMPLETO y desplegado 2026-07-29.',
     porque:'Canal de venta directa (sin OTA). El dinero cobrado vivía solo en bookings hasta bookingengine-payments.',
-    conectado:['reservas','payments','ttlock','canales (push Channex)'],
-    falta:[]
+    conectado:['reservas','payments','ttlock','canales (push Channex)','promo-codes (valida+aplica código al crear reserva ✅)','wallet-pass (onBookingPaid ✅)','server-tracking (onBookingPaid ✅)','landing (CTA → widget)','hotel-media (fotos)','publicapi (expone reservas a integraciones externas)'],
+    falta:['DT-13: el endpoint viejo GET /api/public/bookings/:id (IDOR — expone cualquier reserva por UUID) sigue en el código detrás del flag BOOKING_USE_UNIFIED_FLOW. Mitigado en prod 2026-07-29 (flag forzado BOOKING_USE_UNIFIED_FLOW=true en .env), pero el código muerto + el flag mismo no se borraron todavía (riesgo si algún día se toca ese .env sin saberlo).']
   }},
 
   // ─── FINANZAS ───
   {id:'facturas',label:'🧾 Facturas',group:'finanzas',panel:'hotel',info:{
-    que:'Facturación: NCF, items, impuestos (de config), A4, multi-tipo (invoice/payment/folio). Anular ≠ borrar.',
-    porque:'Libro de ventas. Mezcla 3 tipos de doc: filtrar por type=invoice o se cuenta doble (bug histórico).',
+    que:'Facturación: NCF, items, impuestos (de config), A4. Anular ≠ borrar.',
+    porque:'Libro de ventas. type solo puede ser invoice|credit_note (billing-money-consolidation ✅ 2026-07-28) — payments es la ÚNICA fuente del dinero, ya no hay filas type=payment/folio duplicando el cobro.',
     conectado:['folios (folio→factura en 1 op)','payments','reservas','auditlog'],
     falta:['NCF se GENERA localmente (fiscal.ts nextNcf, secuencia en config) pero la TRANSMISIÓN a DGII/DIAN/SAT es STUB (stubFiscalAdapter devuelve sent:false). El número existe, no se envía electrónicamente a la autoridad fiscal.']
   }},
@@ -471,6 +471,98 @@ const N = [
     conectado:['payments (cash flow: cobros netos)','gastos (cash flow: pagos + AP con aging)','facturas/invoices (AR: saldo pendiente por huésped)','bancos↔payments (conciliación bancaria)','ACTIVABLE/QUITABLE desde admin de plataforma (toggle verificado VIVO) ✅','permisos treasury:view/create/edit/delete en la matriz de roles ✅'],
     falta:['Diferido (deuda documentada): currentBalance del banco no se recalcula (la liquidez lee payments/expenses, no ese campo). Los depósitos siguen desconectados del ledger real (no son plata capturada).']
   }},
+
+  // ─── CAJA CHICA (agregado 2026-07-29) ───
+  {id:'caja-chica',label:'🪙 Caja Chica',group:'finanzas',panel:'hotel',info:{
+    que:'Fondo fijo con custodio (users.id) y tope, para gastos menores/imprevistos (mandados, taxi, medicinas urgentes). Saldo persistido, reposición v1 simplificada (se completa a mano).',
+    porque:'Un gasto de caja chica vive en `expenses` (no se fuga del AP ni de la contabilidad) marcado con `pettyCashFundId` — el conector descuenta/revierte el saldo del fondo automáticamente al crear/editar/borrar el gasto.',
+    conectado:['gastos (descuenta/revierte saldo del fondo ✅)'],
+    falta:['v1 no mueve dinero real: la reposición se completa a mano, sin tocar banco ni asiento contable (v2, out of scope documentado). NO desplegado a ningún hotel todavía: backend+frontend completos y probados en local, falta activarlo en plan.modules + permisos treasury.petty-cash de un hotel real.']
+  }},
+
+  // ─── COMPRAS / INVENTARIO (agregado 2026-07-29) ───
+  {id:'inventario',label:'📦 Inventario',group:'operacion',panel:'hotel',info:{
+    que:'Inventario de insumos (comida/bebida/bar/suministro): stock, costo promedio ponderado, movimientos (in/out/adjust) con ledger idempotente por (source, sourceId).',
+    porque:'Fuente única de stock: la venta del POS de restaurante lo consume, la recepción de compras lo repone. Sin ledger idempotente, un reintento de red duplicaría el movimiento.',
+    conectado:['restaurant (venta consume stock vía recipes ✅)','compras (recepción de mercancía suma stock ✅)'],
+    falta:[]
+  }},
+  {id:'compras',label:'🛒 Compras',group:'operacion',panel:'hotel',info:{
+    que:'Procurement: requisición → orden de compra → recepción de mercancía. Al facturar una OC genera UN gasto (dedup por source+sourceId, no duplica si ya tiene expenseId).',
+    porque:'Cierra el ciclo de abastecimiento: pide, ordena, recibe (suma inventario), factura (ese gasto ya pega en caja y contabilidad por los conectores existentes de gastos — compras no los reimplementa).',
+    conectado:['inventario (recepción suma stock ✅)','tesoreria (valida que el proveedor exista en el catálogo ✅)','gastos (factura OC → 1 gasto ✅)'],
+    falta:[]
+  }},
+
+  // ─── SOLMI DIRECT BOOKING F0-F4 (agregado 2026-07-29, desplegado en prod) ───
+  {id:'hotel-media',label:'🖼️ Hotel Media',group:'maestros',panel:'hotel',info:{
+    que:'Media del hotel (hero/gallery/room) para la landing pública: upload a S3, reorder, listado agrupado por tipo.',
+    porque:'Sin fotos reales, la landing pública (/h/:slug) y el booking widget muestran solo placeholders.',
+    conectado:['landing (los bloques Hero/Gallery/Rooms leen esta media)','bookingengine (widget)'],
+    falta:[]
+  }},
+  {id:'landing',label:'🏝️ Landing Pública',group:'operacion',panel:'hotel',info:{
+    que:'Landing pública configurable por bloques (hero/gallery/amenities/reviews/faq/map/footer/cta/rooms). Admin: builder drag-and-drop con toggle por bloque (Settings → Landing). Pública: GET rate-limited (30/min/IP).',
+    porque:'Página de venta directa del hotel — reemplaza una landing estática por una armable sin tocar código.',
+    conectado:['hotel-media (bloques leen fotos)','opiniones + external-reviews (bloque ReviewsBlock mezcla direct + externas)','bookingengine (CTA → widget)'],
+    falta:[]
+  }},
+  {id:'promo-codes',label:'🎟️ Promo Codes',group:'operacion',panel:'hotel',info:{
+    que:'Códigos promocionales (% o monto fijo) del widget público. Validación pública rate-limited + aplicación real dentro de la misma transacción de creación de la reserva.',
+    porque:'Descuentos de venta directa sin depender de un canal externo. El `uses` se incrementa optimista (CAS por versión/filter) para que dos canjes simultáneos no exploten el límite de usos.',
+    conectado:['bookingengine (valida + aplica el código al crear la reserva, lee la tabla PromoCodes directo — no vía connector ✅)'],
+    falta:[]
+  }},
+  {id:'external-reviews',label:'🌍 Reseñas Externas',group:'crm',panel:'hotel',info:{
+    que:'Agregador de reseñas externas: Google Business Profile + TripAdvisor + StayAPI (Booking/Airbnb/Expedia). Cron nightly (00:00 UTC) + botón "Sync now" manual en Settings → Reputación externa.',
+    porque:'`opiniones` (reseñas directas) mezcla estas con las externas en el aggregate y el listado público — un huésped en la landing ve TODAS las reseñas del hotel, no solo las que dejó vía SOLMI.',
+    conectado:['opiniones (aggregate + listado público mezclan ambas fuentes ✅)'],
+    falta:['Backlink obligatorio de TripAdvisor (spec: sin él, TripAdvisor puede suspender la API key) — RESUELTO 2026-07-29: campo público sourceUrl + footer "Reviews by TripAdvisor" en ReviewsBlock. "Test connection" (validar creds sin persistir, mencionado en la spec) no se construyó — no bloqueante para el acceptance de la tarea.']
+  }},
+  {id:'wallet-pass',label:'📲 Wallet Pass',group:'operacion',panel:'hotel',info:{
+    que:'Pase de Apple Wallet (.pkpass) + Google Wallet al confirmar una reserva, con el código TTLock embebido. Se manda por email junto a la confirmación.',
+    porque:'El huésped lleva su llave digital + confirmación en un pase nativo del teléfono, sin instalar nada ni abrir una app.',
+    conectado:['bookingengine (dispara al confirmar el pago, mismo socket onBookingPaid que server-tracking ✅)','ttlock (código embebido en el pase)'],
+    falta:['Sin certificado Apple real (passkit-generator + cert del hotel en configuration), appleUrl queda null y solo se genera googleUrl — degradación intencional documentada, no un error.']
+  }},
+  {id:'server-tracking',label:'📡 Server Tracking',group:'analitica',panel:'hotel',info:{
+    que:'Tracking server-side de conversiones: Meta Conversions API + GA4 Measurement Protocol + Enhanced Conversions (PII hasheada SHA256). Historial de fires auditable (sent/failed/skipped).',
+    porque:'El pixel client-side se pierde con ad-blockers e ITP/Safari. El fire server-side post-webhook Stripe es más confiable para atribuir la venta a la campaña que la originó.',
+    conectado:['bookingengine (dispara al confirmar el pago, mismo socket onBookingPaid que wallet-pass ✅)'],
+    falta:['Depende de creds por hotel (meta_pixel_id, ga4_measurement_id, etc.) en `configuration` — sin configurar, no dispara nada (degradación silenciosa por diseño, no error).']
+  }},
+  {id:'abandon-recovery',label:'📮 Abandon Recovery',group:'crm',panel:'hotel',info:{
+    que:'Cron-only (sin tabla propia, sin rutas HTTP): cada 30 min busca reservas iniciadas-no-confirmadas y les manda un email con link de vuelta al widget.',
+    porque:'Recupera ventas que se cayeron a mitad del checkout — mismo concepto que un "carrito abandonado" de e-commerce.',
+    conectado:['reservas (lee abandonEmailSent, columna del modelo compartido)','bookingengine (link de vuelta al widget)'],
+    falta:[]
+  }},
+
+  // ─── PLATAFORMA / INFRA (agregado 2026-07-29) ───
+  {id:'referrals',label:'🤝 Referidos',group:'plataforma',panel:'ambos',info:{
+    que:'Programa de referidos B2B: un hotel recomienda SOLMI OS a otro y gana meses gratis (créditos). El referido recibe descuento de bienvenida (1er mes gratis).',
+    porque:'Growth loop de la plataforma SaaS. El connector subscriptions-referrals liga el alta pública (referralCode) sin que ninguno de los dos módulos importe al otro.',
+    conectado:['subscriptions (alta con referralCode → linkSignup ✅)'],
+    falta:[]
+  }},
+  {id:'publicapi',label:'🔌 API Pública', group:'sistema',panel:'hotel',info:{
+    que:'API pública v1 (rooms/reservations) para integraciones externas. Auth EXCLUSIVA por x-api-key (nunca JWT) — la única superficie del sistema sin sesión de usuario.',
+    porque:'Permite a un tercero (channel manager propio, app del hotel) consultar disponibilidad y crear reservas sin ser un usuario del panel.',
+    conectado:['reservas + habitaciones + huespedes (vía connector publicapi-reservas con setDeps — publicapi nunca los importa directo ✅)'],
+    falta:[]
+  }},
+  {id:'webhooks',label:'🪝 Webhooks Salientes',group:'sistema',panel:'hotel',info:{
+    que:'El hotel configura una URL + eventos, y el sistema le avisa (firma HMAC-SHA256) cuando pasan cosas (reserva creada, pago completado). Historial de entregas.',
+    porque:'Integraciones del hotel con sus propias herramientas (ej. un CRM externo) sin que tengan que hacer polling.',
+    conectado:['reservas (eventos de reserva ✅)','payments (eventos de cobro ✅)'],
+    falta:[]
+  }},
+  {id:'platform-emails',label:'👑 Emails de Plataforma',group:'plataforma',panel:'plataforma',info:{
+    que:'Plantillas editables de los 6 correos del ciclo de vida de la suscripción SaaS (welcome, trial_ending, trial_expired, payment_succeeded, payment_failed, subscription_canceled). Solo super_admin las administra.',
+    porque:'Sin esto, cualquier cambio de copy en un email de plataforma requeriría un deploy.',
+    conectado:['subscriptions (sendEvent en el webhook Stripe + signup + cron de trial)'],
+    falta:[]
+  }},
 ];
 
 // ============ ARISTAS ============
@@ -587,6 +679,32 @@ const E = [
   // ===== GAPS: BUGS en conexión existente (rojo sólido) =====
   {f:'facturas',t:'hoteles',y:'bug',l:'NCF local, no transmitido (stub fiscal)'},
   {f:'payments',t:'cash',y:'bug',l:'tarjeta no mueve caja (intencional)'},
+
+  // --- Caja chica / Compras / Inventario (agregado 2026-07-29) ---
+  {f:'gastos',t:'caja-chica',y:'hook',l:'descuenta/revierte saldo del fondo'},
+  {f:'restaurant',t:'inventario',y:'hook',l:'venta consume stock'},
+  {f:'compras',t:'inventario',y:'hook',l:'recepción suma stock'},
+  {f:'compras',t:'tesoreria',y:'datos',l:'valida proveedor del catálogo'},
+  {f:'compras',t:'gastos',y:'hook',l:'factura OC → 1 gasto'},
+
+  // --- solmi-direct-booking F0-F4 (agregado 2026-07-29) ---
+  {f:'hotel-media',t:'landing',y:'datos',l:'bloques leen fotos'},
+  {f:'landing',t:'bookingengine',y:'nav',l:'CTA → widget'},
+  {f:'landing',t:'opiniones',y:'datos',l:'bloque ReviewsBlock'},
+  {f:'bookingengine',t:'promo-codes',y:'datos',l:'valida + aplica código al crear reserva'},
+  {f:'opiniones',t:'external-reviews',y:'datos',l:'aggregate + listado público mezclan ambas fuentes ✅'},
+  {f:'bookingengine',t:'wallet-pass',y:'hook',l:'onBookingPaid → genera pase'},
+  {f:'wallet-pass',t:'ttlock',y:'datos',l:'código embebido en el pase'},
+  {f:'bookingengine',t:'server-tracking',y:'hook',l:'onBookingPaid → fire Meta CAPI + GA4'},
+  {f:'reservas',t:'abandon-recovery',y:'datos',l:'abandonEmailSent'},
+  {f:'abandon-recovery',t:'bookingengine',y:'nav',l:'link de vuelta al widget'},
+
+  // --- Plataforma / Infra (agregado 2026-07-29) ---
+  {f:'subscriptions',t:'referrals',y:'hook',l:'alta con referralCode → linkSignup'},
+  {f:'reservas',t:'publicapi',y:'hook',l:'expone a integraciones externas (API key)'},
+  {f:'reservas',t:'webhooks',y:'hook',l:'eventos de reserva'},
+  {f:'payments',t:'webhooks',y:'hook',l:'eventos de cobro'},
+  {f:'subscriptions',t:'platform-emails',y:'hook',l:'ciclo de vida de la suscripción'},
 ];
 
 // ============ GAPS PRIORIZADOS (HTML estático para panel) ============
@@ -623,7 +741,7 @@ const GAPS_HTML = `
   </details>
 
   <details><summary>🐛 Integridad de datos / anti-patrones ORM</summary>
-    <div class="gap-card"><div class="gtitle">invoices mezcla 3 tipos de documento</div><div class="gwhy"><code>type: 'invoice' | 'payment' | 'folio'</code>. pay() crea un comprobante 'payment' con el mismo monto. Todo agregado de dinero debe filtrar <code>type='invoice'</code> o cuenta doble (bug histórico "Ingresos 2×").</div></div>
+    <div class="gap-card info"><div class="gtitle">invoices mezclaba 3 tipos de documento <span class="tag conf">✅ RESUELTO</span></div><div class="gwhy">Ya NO es así: <code>InvoiceType</code> quedó reducido a <code>'invoice' | 'credit_note'</code> (billing-money-consolidation, cerrado 2026-07-28). <code>facturas.pay()</code>/<code>folios.applyPayment()</code> asientan el cobro en <code>payments</code> (vía <code>payment-port.ts</code> + connectors <code>facturas-payments</code>/<code>folios-payments</code>), no como fila duplicada en <code>invoices</code>. <code>usecases/stats.ts</code> sigue filtrando <code>type='invoice'</code> como defensa ante datos legacy, no porque hoy se generen filas nuevas de otro tipo.</div></div>
     <div class="gap-card"><div class="gtitle">folio_charges.reservationId inexistente</div><div class="gwhy">El modelo lo declara pero la tabla no lo trae. Vincular cargo↔reserva por <code>folio.reservationId</code>, NUNCA por charge.reservationId.</div></div>
     <div class="gap-card"><div class="gtitle">Descarte silencioso de campos ORM</div><div class="gwhy">El ORM descarta campos no declarados en <code>orm.define()</code> sin warning. 6 casos históricos. Síntoma: "se guarda pero al recargar vuelve al default". Vigilar al tocar modelos.</div></div>
     <div class="gap-card"><div class="gtitle">Caché de listados: versionada, no por prefijo</div><div class="gwhy">CacheAdapter no soporta glob. <code>cache.delete('x:*')</code> no borra nada. Se invalida bumpeando token de versión.</div></div>
@@ -655,6 +773,10 @@ const edges = new vis.DataSet(E.map((e,i)=>({
   smooth:{enabled:true,type:'dynamic',roundness:.5},
   arrows:{to:{enabled:true,typeFactor:.4}},
 })));
+
+// Badge del header: derivado de N.length (evita que vuelva a quedar hardcodeado/desactualizado
+// cada vez que se agregan módulos, como pasó hasta 2026-07-29).
+document.getElementById('badgeCount').textContent = N.length + ' módulos';
 
 const container=document.getElementById('grafo');
 const data={nodes,edges};
