@@ -113,7 +113,8 @@ export class PaymentsService {
     return settleStripeWebhook(
       { stripe: this.stripe, crud: this.crud, events: this.events, audit: (e) => this.audit(e),
         onCompleted: (p) => this.sockets.onPaymentCompleted?.(p) ?? Promise.resolve(),
-        onExpired: (p) => this.sockets.onPaymentExpired?.(p) ?? Promise.resolve() },
+        onExpired: (p) => this.sockets.onPaymentExpired?.(p) ?? Promise.resolve(),
+        onFailed: (p) => this.sockets.onPaymentFailed?.(p) ?? Promise.resolve() },
       hotelId, payload, signature,
     )
   }

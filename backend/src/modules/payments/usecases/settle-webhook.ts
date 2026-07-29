@@ -18,6 +18,10 @@ export interface SettleWebhookDeps {
   // fix-refund-pos-card: checkout.session.expired — la sesión se agotó sin cobrar. Simétrico a
   // onCompleted, pero para el payment que quedó `cancelled` en vez de `completed`.
   onExpired?: (payment: PaymentDTO) => Promise<void>
+  // payment_intent.payment_failed (tarjeta rechazada) — el proveedor SÍ intentó cobrar y falló.
+  // Antes: outcome.status==='failed' caía al `return` genérico sin tocar el payment ni avisar a
+  // nadie (onPaymentFailed estaba declarado en sockets.ts/contract.events pero nunca se invocaba).
+  onFailed?: (payment: PaymentDTO) => Promise<void>
 }
 
 export type SettleWebhookResult = { type: string; paymentId?: string } | null
@@ -72,6 +76,23 @@ export async function settleStripeWebhook(
     )
     if (result.outcome === 'duplicate') return { type: 'already_processed', paymentId }
     return { type: 'payment_expired', paymentId }
+  }
+
+  if (outcome.status === 'failed' && outcome.reference) {
+    const paymentId = outcome.reference
+
+    const result = await deps.events.settleOnce(
+      hotelId, 'stripe', outcome.eventId,
+      { providerRef: outcome.providerRef, reference: paymentId, status: 'failed',
+        amountMinor: outcome.amountMinor, currency: outcome.currency },
+      async () => {
+        await deps.crud.updateStatus(paymentId, 'failed', outcome.providerRef || '')
+        const payment = await deps.crud.getById(paymentId)
+        await deps.onFailed?.(payment)
+      },
+    )
+    if (result.outcome === 'duplicate') return { type: 'already_processed', paymentId }
+    return { type: 'payment_failed', paymentId }
   }
 
   return { type: outcome.status }
