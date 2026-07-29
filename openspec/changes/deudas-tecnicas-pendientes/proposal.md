@@ -15,8 +15,9 @@ re-auditar `mapa-modulos.html` conexión por conexión contra el código real: a
 consolidado cross-hotel (DT-14), arqueo de caja sin asiento contable (DT-15), bank
 `currentBalance` nunca se recalcula (DT-16), auditlog sin lectura desde el panel del hotel
 (DT-17), cron de marketing no event-driven (DT-18), capacitación no pesa en el score de
-desempeño #321 (DT-19). Todas requieren una decisión de producto antes de implementar (ninguna
-es un bug urgente ni bloqueante) — quedan documentadas, no implementadas en esta pasada.
+desempeño #321 (DT-19). **DT-14 a DT-19 CERRADAS (2026-07-29)** — implementadas, verificadas
+(gates + navegador donde aplica) y desplegadas a `main`; ver cada sección en `tasks.md` para el
+detalle y los commits.
 
 ## Motivation
 
