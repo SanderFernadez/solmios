@@ -54,20 +54,26 @@ nada — 0% funcional, no "hasta 1h de demora".
       backend limpio. Sin migración (enum y columnas ya existían). Commit `5b20f15`, pusheado
       a `main`.
 
-## DT-17 — Auditlog sin vista de lectura desde el panel del hotel
+## DT-17 — Auditlog sin vista de lectura desde el panel del hotel — ✅ CERRADA (2026-07-29)
 
 Hallada al re-auditar el nodo `auditlog` (2026-07-29). Confirmado: `frontend/src/router/index.ts`
-no tiene ninguna ruta `auditoria`/`audit-log` bajo `/panel/*` — solo `/admin/*` (plataforma) puede
-leer el log. Un `hotel_admin` no tiene forma de ver quién borró qué en su propio hotel.
+no tenía ninguna ruta `auditoria`/`audit-log` bajo `/panel/*` — solo `/admin/*` (plataforma) podía
+leer el log. Un `hotel_admin` no tenía forma de ver quién borró qué en su propio hotel.
 
-- [ ] 17.1 Decidir: ¿el hotel_admin debería ver su propio audit log (filtrado por su hotelId), o
-      es intencional que solo la plataforma lo audite (para que un hotel_admin comprometido no
-      pueda "limpiar" el rastro de sus propias acciones sensibles)? Esto es una decisión de
-      seguridad, no solo de producto — dar visibilidad podría ir en contra del propósito original
-      del audit log (trazabilidad ANTE el hotel, no solo para el hotel).
-- [ ] 17.2 Si se decide exponerlo: página `frontend/src/pages/auditoria/index.vue` (solo-lectura)
-      + endpoint que filtre por `hotelId` del JWT (nunca cross-tenant).
-- [ ] 17.3 Gate: `arckode analyze` + `bun test` + typecheck.
+- [x] 17.1 Decidido: SÍ exponerlo — de lectura únicamente (sin update/delete expuestos, el
+      módulo ya es append-only por diseño), así que no hay riesgo de que un hotel_admin
+      "limpie" su rastro, solo de que lo VEA. Al investigar se confirmó que el backend YA
+      estaba correctamente aislado por tenant (`resolveTenant` fuerza al hotelId del token
+      para cualquier rol que no sea super_admin) y `hotel_admin` ya tenía `reports:view` por
+      defecto — no hacía falta ninguna decisión de seguridad adicional ni cambio de backend.
+- [x] 17.2 Página `frontend/src/pages/auditoria/index.vue` (solo-lectura, paginación real
+      server-side) + ruta `/panel/config/auditoria` (rol `hotel_admin` únicamente, no
+      receptionist/housekeeper) + nav item en `AdminLayout.vue`. Sin buscador (el backend no
+      soporta filtro de texto — mismo límite de `RepositoryAdapter` que DT-07 — no se expuso un
+      control no funcional). Endpoint reusado sin cambios (`AuditLogService.ts` ya existía).
+- [x] 17.3 Gate: `arckode analyze` ✅ VÁLIDO · typecheck + build + vitest (91/91) limpios.
+      Verificado en navegador con Playwright (login real, 164 eventos reales del hotel,
+      paginación funcional, 0 errores de consola). Commit `ddea2e2`, pusheado a `main`.
 
 ## DT-16 — Tesorería: `bank_accounts.currentBalance` nunca se recalcula post-creación — ✅ CERRADA (2026-07-29)
 

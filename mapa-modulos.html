@@ -182,8 +182,8 @@ const N = [
   {id:'auditlog',label:'📜 Audit Log',group:'sistema',panel:'ambos',info:{
     que:'Bitácora de borrados/acciones sensibles (SC-05). Actor + detalle + hotelId. ~30 módulos escriben acá.',
     porque:'Trazabilidad: cada borrado sensible (plata, credenciales, tenant, RRHH) deja rastro para el admin.',
-    conectado:['Lo alimentan TODOS los módulos con connector X-auditlog', 'admin (lectura global)'],
-    falta:['No hay lectura desde el panel del hotel (solo admin ve el log)']
+    conectado:['Lo alimentan TODOS los módulos con connector X-auditlog', 'admin (lectura global)', 'panel del hotel (lectura filtrada por hotelId ✅ DT-17, 2026-07-29)'],
+    falta:[]
   }},
   {id:'apikeys',label:'🗝️ API Keys',group:'sistema',panel:'hotel',info:{
     que:'Credenciales de integración por hotel (Channex, TTLock, Stripe, SMTP). Encriptadas.',
