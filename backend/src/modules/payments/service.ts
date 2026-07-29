@@ -105,9 +105,7 @@ export class PaymentsService {
 
   /** Asienta un cobro confirmado por webhook, una sola vez (idempotencia en el usecase). */
   async handleStripeWebhook(
-    hotelId: string,
-    payload: Buffer | string,
-    signature: string,
+    hotelId: string, payload: Buffer | string, signature: string,
   ): Promise<{ type: string; paymentId?: string } | null> {
     if (!this.events) throw new Error('payments: PaymentEventStore es requerido para procesar webhooks')
     return settleStripeWebhook(
