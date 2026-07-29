@@ -95,8 +95,13 @@
 
       <!-- PC-2.2: Consolidado por hotel (ocupación/ADR/revenue cross-hotel) -->
       <div v-if="(analytics as any)?.hotelsBreakdown?.length" class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
-        <div class="px-5 py-4 bg-navy">
+        <div class="px-5 py-4 bg-navy flex items-center justify-between gap-4 flex-wrap">
           <h3 class="text-sm font-black text-white">Consolidado por hotel</h3>
+          <div v-if="(analytics as any)?.pnlConsolidado" class="flex items-center gap-4 text-[11px] font-bold text-white/90">
+            <span>Revenue <span class="text-teal">${{ ((analytics as any).pnlConsolidado.revenue ?? 0).toLocaleString() }}</span></span>
+            <span>Gastos <span class="text-coral">${{ ((analytics as any).pnlConsolidado.gastos ?? 0).toLocaleString() }}</span></span>
+            <span>Neto <span :class="(analytics as any).pnlConsolidado.neto >= 0 ? 'text-teal' : 'text-coral'">${{ ((analytics as any).pnlConsolidado.neto ?? 0).toLocaleString() }}</span></span>
+          </div>
         </div>
         <div class="p-4 overflow-x-auto">
           <table class="w-full text-xs tbl-head">
@@ -108,6 +113,8 @@
               <th class="text-right p-2">Ocup. %</th>
               <th class="text-right p-2">ADR</th>
               <th class="text-right p-2">Revenue</th>
+              <th class="text-right p-2">Gastos</th>
+              <th class="text-right p-2">Neto</th>
               <th class="text-right p-2">MRR</th>
               <th class="text-center p-2">Estado</th>
             </tr></thead>
@@ -120,6 +127,8 @@
                 <td class="p-2 text-right font-bold" :class="h.occupancy > 80 ? 'text-coral' : h.occupancy > 50 ? 'text-gold' : 'text-teal'">{{ h.occupancy }}%</td>
                 <td class="p-2 text-right text-cyan font-bold">${{ (h.adr ?? 0).toLocaleString() }}</td>
                 <td class="p-2 text-right">${{ (h.revenue ?? 0).toLocaleString() }}</td>
+                <td class="p-2 text-right text-coral">${{ (h.gastos ?? 0).toLocaleString() }}</td>
+                <td class="p-2 text-right font-bold" :class="(h.neto ?? 0) >= 0 ? 'text-teal' : 'text-coral'">${{ (h.neto ?? 0).toLocaleString() }}</td>
                 <td class="p-2 text-right text-teal">${{ (h.mrr ?? 0).toLocaleString() }}</td>
                 <td class="p-2 text-center"><span class="px-2 py-0.5 rounded-full text-[9px] font-bold" :class="h.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-text-muted/10 text-text-muted'">{{ h.status }}</span></td>
               </tr>
