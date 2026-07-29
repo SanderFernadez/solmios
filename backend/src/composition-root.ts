@@ -162,6 +162,11 @@ import { LandingModule } from './modules/landing'
 // Modelo promo_codes (con UNIQUE index creado en migrate-db.ts) + CRUD admin + validación
 // pública (sin auth, rate-limited). Upsells NO va acá: es sub-dominio de bookingengine.
 import { PromoCodesModule } from './modules/promo-codes'
+// F3 3.1–3.3 (solmi-direct-booking): agregador de reseñas externas (GBP + TripAdvisor + StayAPI).
+// Modelo external_reviews (con UNIQUE index creado en migrate-db.ts) + service.upsertBatch
+// (dedup por source+sourceExternalId) + cron nightly. Connectors en src/connectors/ +
+// OAuth helper en services/gbp-oauth-client.ts. Rutas admin (reviews/*) + cron wiring abajo.
+import { ExternalReviewsModule } from './modules/external-reviews'
 import { FcmClient } from './services/fcm-client'
 
 const pushAvailability = createPushAvailability((name) => system.resolveModule(name), logger)
@@ -234,6 +239,11 @@ const mods = [
   // (`POST /api/public/hotels/:slug/promo/validate` rate-limited 30/min/IP). Permisos `promo:*`
   // agregados a hotel_admin en shared/permissions.ts.
   PromoCodesModule(),
+  // F3 3.1 (solmi-direct-booking) — Reseñas externas (Google/TripAdvisor/StayAPI). Modelo
+  // external_reviews (UNIQUE (source, sourceExternalId) en migrate-db.ts) + CRUD admin
+  // (`/api/external-reviews` auth + permiso `reports:*` + module guard `sales.reviews`).
+  // El cron llama directo a service.upsertBatch vía resolveModule (no pasa por HTTP).
+  ExternalReviewsModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -327,6 +337,15 @@ import { publicapiReservasConnector } from './connectors/publicapi-reservas'
 import { reservasWebhooksConnector } from './connectors/reservas-webhooks'
 import { paymentsWebhooksConnector } from './connectors/payments-webhooks'
 import { subscriptionsReferralsConnector } from './connectors/subscriptions-referrals'
+// F3 3.2 (solmi-direct-booking) — Adaptadores HTTP externos de reviews. NO son conectores
+// inter-módulo (los que wirean sockets): son clientes de APIs externas. Se importan acá
+// (cumple la regla UNREGISTERED_CONNECTOR del analyzer — todo archivo en connectors/ debe
+// importarse en composition-root) y se pasan al cron como dependencias inyectables para
+// que los tests puedan mockearlos.
+import { fetchGbpReviews, defaultGbpFetcher } from './connectors/gbp-reviews'
+import { fetchTripadvisorReviews, defaultTripadvisorFetcher } from './connectors/tripadvisor-reviews'
+import { fetchStayApiReviews, defaultStayApiFetcher } from './connectors/stayapi-reviews'
+import { createExternalReviewsCron, type ExternalReviewsFetchers } from './shared/usecases/external-reviews-cron'
 
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
@@ -608,6 +627,29 @@ setInterval(() => {
   currencyRatesCron().catch((e) => logger.warn('currency-rates cron failed', { error: (e as Error).message }))
 }, CURRENCY_RATES_TICK_MS)
 logger.info('Currency-rates cron listo', { tickMs: CURRENCY_RATES_TICK_MS })
+
+// F3 3.3 (solmi-direct-booking) — Cron nightly del agregador de reseñas externas. Para cada
+// hotel con creds configuradas (gbp_place_id / tripadvisor_location_id / stayapi_hotel_ids),
+// pull las 3 fuentes en paralelo, dedupea por (source, sourceExternalId), upsert batch en
+// external_reviews, e invalida el cache del aggregate de opiniones. Idempotente (correr 2× no
+// duplica); si una fuente cae, procesa las demás. Mismo molde que currency-rates (factory +
+// corrida inicial 10s + setInterval 24h + skip silencioso si no hay creds).
+const EXTERNAL_REVIEWS_TICK_MS = ONE_DAY_MS
+const externalReviewsFetchers: ExternalReviewsFetchers = {
+  gbp: (c, _f, log) => fetchGbpReviews(c, defaultGbpFetcher, log as any),
+  tripadvisor: (c, _f, log) => fetchTripadvisorReviews(c, defaultTripadvisorFetcher, log as any),
+  stayapi: (c, _f, log) => fetchStayApiReviews(c, defaultStayApiFetcher, log as any),
+}
+const externalReviewsCron = createExternalReviewsCron(
+  orm, (name) => system.resolveModule(name), logger, externalReviewsFetchers, cache,
+)
+setTimeout(() => {
+  externalReviewsCron().catch((e) => logger.warn('external-reviews initial run failed', { error: (e as Error).message }))
+}, 10_000)
+setInterval(() => {
+  externalReviewsCron().catch((e) => logger.warn('external-reviews cron failed', { error: (e as Error).message }))
+}, EXTERNAL_REVIEWS_TICK_MS)
+logger.info('External-reviews cron listo', { tickMs: EXTERNAL_REVIEWS_TICK_MS })
 
 // ─── Shutdown ──────────────────────────────────────────────────────────────
 process.on('SIGINT', async () => { await system.stop(); process.exit(0) })

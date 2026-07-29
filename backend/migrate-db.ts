@@ -781,6 +781,42 @@ async function createPromoCodesUniqueIndex(): Promise<void> {
   }
 }
 
+// ─── F3 3.1 (solmi-direct-booking) — UNIQUE + index compuesto para external_reviews ──
+// El ORM no crea UNIQUE compuesto ni índices compuestos: hay que hacerlo a mano con
+// `CREATE UNIQUE INDEX` / `CREATE INDEX`. Portable SQLite + Postgres: identificadores SIN
+// comillas (PG los pliega a lowercase, SQLite los respeta — mismo criterio que promo_codes).
+//
+// Dos índices:
+//  1. `external_reviews_source_extid` UNIQUE (source, sourceExternalId) — garantiza dedup a
+//     nivel DB (spec.md:53-55). El cron hace pre-fetch + create/update application-layer,
+//     pero si dos runs chocan (race) o llegan dos requests simultáneos de "Sync now", el
+//     UNIQUE index es la red de seguridad definitiva. El service captura el duplicate error
+//     y lo traduce a ConflictError / retry como update.
+//  2. `external_reviews_hotel_source_submitted` INDEX (hotelId, source, submittedAt) — para
+//     queries de listado por hotel ordenadas por fecha descendente (spec.md:138). Sin este
+//     índice, los GET /api/external-reviews y el aggregate escanean toda la tabla del hotel.
+//
+// La tabla la crea el ORM (RUN_MIGRATE) — si no existe aún, se ignora con try/catch
+// (mismo molde que createPromoCodesUniqueIndex). Pre-check de dupes legacy: si la tabla ya
+// tiene filas con el mismo (source, sourceExternalId) — data sucia previa al UNIQUE — el
+// CREATE fallaría. Lo loggeamos para reconciliar a mano y NO se crea el índice esta corrida.
+async function createExternalReviewsIndexes(): Promise<void> {
+  try {
+    const dupes = (await db.query(
+      `SELECT source, sourceExternalId, COUNT(*) c FROM external_reviews GROUP BY source, sourceExternalId HAVING COUNT(*) > 1`,
+    )) as Array<{ source: string; sourceExternalId: string; c: number }>
+    if (dupes.length > 0) {
+      console.warn(`⚠ external_reviews: ${dupes.length} duplicadas — external_reviews_source_extid NO se crea hasta reconciliar.`, dupes)
+    } else {
+      await exec(`CREATE UNIQUE INDEX IF NOT EXISTS external_reviews_source_extid ON external_reviews(source, sourceExternalId)`)
+    }
+    // Index secundario para queries por hotel + source ordenadas por fecha (spec.md:138).
+    await exec(`CREATE INDEX IF NOT EXISTS external_reviews_hotel_source_submitted ON external_reviews(hotelId, source, submittedAt)`)
+  } catch (e: unknown) {
+    console.log("external_reviews indexes: tabla external_reviews aún no migrada (correr RUN_MIGRATE) —", e instanceof Error ? e.message.slice(0, 90) : String(e))
+  }
+}
+
 // ─── CRM / Marketing / Mensajería DDL + ALTERs portables ──────────────────
 async function createTablesBlock3(): Promise<void> {
   await exec(`CREATE TABLE IF NOT EXISTS loyalty_transactions (
@@ -1051,6 +1087,10 @@ async function main(): Promise<void> {
   // F2 2.1 (solmi-direct-booking): UNIQUE (hotelId, code) para promo_codes (idempotente).
   // El service captura la violación de este index y la traduce a ValidationError.
   await createPromoCodesUniqueIndex()
+
+  // F3 3.1 (solmi-direct-booking): UNIQUE (source, sourceExternalId) + INDEX (hotelId, source,
+  // submittedAt) para external_reviews (idempotente). Tabla creada por el ORM via RUN_MIGRATE.
+  await createExternalReviewsIndexes()
 
   // currency_config para todos los hoteles (idempotente)
   await seedCurrencyConfig()
