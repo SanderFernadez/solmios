@@ -87,6 +87,14 @@ export function bootstrapEmail(orm: any, logger: Logger, resolveModule: <T>(name
     })
   }
 
+  // F3 3.9 (solmi-direct-booking) — Wallet pass: el módulo encola el email "Tu pase + código
+  // de acceso" tras generar Apple+Google. Sin esto, el pass se persiste pero el huésped no
+  // recibe el link — tiene que volver a la página de confirmación para verlo. Best-effort.
+  const walletPassForEmail = resolveModule<{ setEmailDeps(es: EmailSender): void }>('wallet-pass')
+  if (walletPassForEmail && typeof walletPassForEmail.setEmailDeps === 'function') {
+    walletPassForEmail.setEmailDeps(emailService)
+  }
+
   const EMAIL_WORKER_TICK_MS = 30_000
   const startWorker = () => {
     emailService.reclaimStale().catch(() => {})

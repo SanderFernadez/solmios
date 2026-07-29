@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-29T04:12:42.308Z",
+  "_generated": "2026-07-29T04:25:11.982Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -335,6 +335,19 @@
     },
     {
       "name": "email-queue",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "wallet-pass",
       "structure": {
         "index": true,
         "types": true,
@@ -900,6 +913,7 @@
     "tripadvisor-reviews.ts",
     "empleados-mantenimiento.ts",
     "mantenimiento-habitaciones.ts",
+    "reservas-wallet.ts",
     "housekeeping-mantenimiento.ts",
     "payments-caja.ts",
     "reembolsos-gastos.ts",

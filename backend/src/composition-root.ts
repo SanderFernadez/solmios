@@ -167,6 +167,14 @@ import { PromoCodesModule } from './modules/promo-codes'
 // (dedup por source+sourceExternalId) + cron nightly. Connectors en src/connectors/ +
 // OAuth helper en services/gbp-oauth-client.ts. Rutas admin (reviews/*) + cron wiring abajo.
 import { ExternalReviewsModule } from './modules/external-reviews'
+// F3 3.6 (solmi-direct-booking): wallet pass al confirmar la reserva. Modelo wallet_passes
+// (UNIQUE (reservationId) creado en migrate-db.ts) + service.generatePass que orquesta
+// TTLock + Apple .pkpass + Google save URL + email "Tu pase + código de acceso".
+// Rutas admin (`/api/wallet-pass` GET + `/api/wallet-pass/reservation/:id` GET, permiso
+// `settings:view`). El trigger de generación NO va por HTTP: el connector `reservas-wallet`
+// subscribe a `bookingengine.onBookingPaid` y dispara generatePass (F3 3.8). El email se
+// inyecta desde `email-bootstrap` (F3 3.9) igual que reservas/payroll/opiniones.
+import { WalletPassModule } from './modules/wallet-pass'
 // F3 3.5 (solmi-direct-booking): los fetchers se declaran acá (antes de modules[]) para que
 // tanto el módulo (ruta admin /api/external-reviews/sync-now) como el cron nightly compartan
 // la MISMA configuración de clients HTTP externos. Los connectors viven en src/connectors/.
@@ -259,6 +267,11 @@ const mods = [
   // (`/api/external-reviews` auth + permiso `reports:*` + module guard `sales.reviews`).
   // F3 3.5 — recibe los fetchers para cablear el endpoint "Sync now" (POST /sync-now).
   ExternalReviewsModule({ fetchers: externalReviewsFetchers }),
+  // F3 3.6 (solmi-direct-booking) — Wallet pass (Apple .pkpass + Google save URL). Reusa el
+  // StorageService global (mismo adapter S3/local que hotel-media, dir 'wallet-passes').
+  // TTLock + EmailService se inyectan post-init (setTtlockPort + setEmailDeps abajo) para
+  // evitar orden-de-carga entre módulos. Permisos: settings:view + module guard settings.locks.
+  WalletPassModule({ storage }),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -273,6 +286,10 @@ import { bookingChannexConnector } from './connectors/booking-channex'
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 import { reservasOpinionesConnector } from './connectors/reservas-opiniones'
 import { reservasDepositsConnector } from './connectors/reservas-deposits'
+// F3 3.8 (solmi-direct-booking) — Wallet pass al confirmar: bookingengine emite onBookingPaid
+// (mismo socket que ya cablea `bookingengine-payments`) → wallet-pass.generatePass orquesta
+// TTLock + Apple/Google + email. Best-effort: si el pass falla, el webhook igual queda OK.
+import { reservasWalletConnector } from './connectors/reservas-wallet'
 import { pricingCanalesConnector } from './connectors/pricing-canales'
 import { reclutamientoEmpleadosConnector } from './connectors/reclutamiento-empleados'
 import { capacitacionEmpleadosConnector } from './connectors/capacitacion-empleados'
@@ -375,6 +392,10 @@ system.addConnector('reservas-opiniones', reservasOpinionesConnector)
 // libera los holds 'held' de la reserva. Cierra el bug CONFIRMADO "el hold queda colgando" (el
 // checkout no tocaba deposits). Best-effort, no pisa a reservas-opiniones (sockets se componen).
 system.addConnector('reservas-deposits', reservasDepositsConnector)
+// F3 3.8 (solmi-direct-booking) — Wallet pass al confirmar la reserva. bookingengine emite
+// onBookingPaid ({ id: reservationId }) tras webhook Stripe → wallet-pass.generatePass.
+// Idempotente por UNIQUE(reservationId) en `wallet_passes`. Best-effort, no bloquea el webhook.
+system.addConnector('reservas-wallet', reservasWalletConnector)
 // Auto-push de tarifas a OTAs: pricing emite onRatesUpdated al cambiar tarifas → canales las empuja
 // a Channex. Cierra el gap "push manual": editar tarifas ya no requiere apretar el botón. Fire-and-forget.
 system.addConnector('pricing-canales', pricingCanalesConnector)
@@ -535,6 +556,15 @@ const { emailService, startWorker } = bootstrapEmail(orm, logger, (name) => syst
 // Post-init: ai-recepcionista usa pushAvailability (reservas IA bypassan el módulo reservas).
 const aiRecepcionista = system.resolveModule<{ channexPusher: ((hotelId: string, roomId: string) => void) | null }>('ai-recepcionista')
 if (aiRecepcionista) aiRecepcionista.channexPusher = pushAvailability
+
+// F3 3.6/3.7 post-init — Wallet pass: el módulo necesita el puerto TTLock para generar el
+// lockCode de reservas que no tienen uno previo. Se inyecta acá (post system.start) porque
+// ttlock se registra en `mods[]` y solo está disponible tras resolver el container.
+// Best-effort: si ttlock no está registrado (módulo desactivado), el puerto queda null — el
+// usecase solo reusa lockCodes existentes, no genera nuevos.
+const ttlockForWallet = system.resolveModule<{ generateCode(hotelId: string, reservationId: string): Promise<{ code?: string | null } | null> }>('ttlock')
+const walletPass = system.resolveModule<{ setTtlockPort(t: any): void }>('wallet-pass')
+if (walletPass && ttlockForWallet) walletPass.setTtlockPort(ttlockForWallet)
 
 // Post-init: los avisos al teléfono. Sin credenciales de Firebase `fromEnv`
 // devuelve null y el módulo se queda solo guardando tokens: la app sigue

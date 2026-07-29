@@ -817,6 +817,32 @@ async function createExternalReviewsIndexes(): Promise<void> {
   }
 }
 
+// ─── F3 3.6 (solmi-direct-booking) — UNIQUE index (reservationId) para wallet_passes ──
+// Garantiza 1 pass vigente por reserva (spec.md:122,135). El service lo captura como duplicate
+// y devuelve idempotente en vez de romper. Portable SQLite + Postgres: identificadores SIN
+// comillas (PG los pliega a lowercase, SQLite los respeta — mismo criterio que promo_codes).
+//
+// Nombre físico `wallet_passes_reservation` (tabla + columna — patrón de payments_pos_ref).
+// Se referencia textualmente en `usecases/duplicate-detector.ts.isDuplicateError`.
+//
+// Pre-check de dupes legacy (mismo molde que promo_codes/external-reviews): si la tabla ya
+// tiene filas con el mismo reservationId — data sucia previa al UNIQUE — el CREATE fallaría.
+// Lo loggeamos para reconciliar a mano y NO se crea el índice esta corrida (idempotente).
+async function createWalletPassUniqueIndex(): Promise<void> {
+  try {
+    const dupes = (await db.query(
+      `SELECT reservationId, COUNT(*) c FROM wallet_passes GROUP BY reservationId HAVING COUNT(*) > 1`,
+    )) as Array<{ reservationId: string; c: number }>
+    if (dupes.length > 0) {
+      console.warn(`⚠ wallet_passes: ${dupes.length} duplicados — wallet_passes_reservation NO se crea hasta reconciliar.`, dupes)
+    } else {
+      await exec(`CREATE UNIQUE INDEX IF NOT EXISTS wallet_passes_reservation ON wallet_passes(reservationId)`)
+    }
+  } catch (e: unknown) {
+    console.log("wallet_passes_reservation: tabla wallet_passes aún no migrada (correr RUN_MIGRATE) —", e instanceof Error ? e.message.slice(0, 90) : String(e))
+  }
+}
+
 // ─── CRM / Marketing / Mensajería DDL + ALTERs portables ──────────────────
 async function createTablesBlock3(): Promise<void> {
   await exec(`CREATE TABLE IF NOT EXISTS loyalty_transactions (
@@ -1091,6 +1117,10 @@ async function main(): Promise<void> {
   // F3 3.1 (solmi-direct-booking): UNIQUE (source, sourceExternalId) + INDEX (hotelId, source,
   // submittedAt) para external_reviews (idempotente). Tabla creada por el ORM via RUN_MIGRATE.
   await createExternalReviewsIndexes()
+
+  // F3 3.6 (solmi-direct-booking): UNIQUE (reservationId) para wallet_passes — 1 pass vigente
+  // por reserva. El service captura el duplicate error y lo traduce a idempotente return.
+  await createWalletPassUniqueIndex()
 
   // currency_config para todos los hoteles (idempotente)
   await seedCurrencyConfig()
