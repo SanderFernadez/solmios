@@ -116,6 +116,31 @@ export async function recordRestaurantSale(port: AccountingPort, order: any): Pr
   })
 }
 
+/**
+ * DT-15 — Diferencia de arqueo de turno (shift.difference = counted - expected, calculado y
+ * persistido en `cash/usecases/shifts.ts:closeShift` ANTES de emitir onShiftClosed).
+ * - Faltante (difference < 0): el cajón tiene MENOS de lo esperado → salió plata sin registrar.
+ *   DR Gasto administrativo (GASTO_ADMIN) / CR Caja — reduce el saldo de Caja para que cuadre
+ *   con lo contado.
+ * - Sobrante (difference > 0): el cajón tiene MÁS de lo esperado → entró plata sin registrar.
+ *   DR Caja / CR Otros Ingresos — sube Caja al monto realmente contado.
+ * - difference === 0: no-op (arqueo perfecto, nada que asentar).
+ * Ninguno de los dos casos es un ingreso/gasto operativo real — son ajustes de caja física.
+ */
+export async function recordCashDifference(port: AccountingPort, shift: any): Promise<void> {
+  const diff = round2(Number(shift?.difference || 0))
+  if (diff === 0) return
+  const a = amt(diff)
+  const lines: RecordAutoInput['lines'] = diff < 0
+    ? [{ code: ACC.GASTO_ADMIN, debit: a }, { code: ACC.CAJA, credit: a }]
+    : [{ code: ACC.CAJA, debit: a }, { code: ACC.OTROS_INGRESOS, credit: a }]
+  await emit(port, shift.hotelId, {
+    entryDate: day(shift.closedAt), reference: shift.id, referenceType: 'cash_reconciliation',
+    description: diff < 0 ? `Faltante de caja (turno ${shift.id})` : `Sobrante de caja (turno ${shift.id})`,
+    lines,
+  })
+}
+
 /** Gasto: DR Gasto (por origen) / CR Caja|Bancos (pagado) o Cuentas por Pagar (a crédito). */
 export async function recordExpense(port: AccountingPort, e: any): Promise<void> {
   const a = Number(e?.amount || 0); if (a <= 0) return

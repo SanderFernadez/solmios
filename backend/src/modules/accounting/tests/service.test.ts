@@ -5,7 +5,7 @@ import type { RepositoryAdapter, CacheAdapter, Auth } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { AccountingService } from '../service'
 import type { AccountDTO, CurrentUser } from '../types'
-import { recordPaymentCompleted, recordRefund, recordFolioCharge, recordExpense, recordRestaurantSale } from '../usecases/auto-from-events'
+import { recordPaymentCompleted, recordRefund, recordFolioCharge, recordExpense, recordRestaurantSale, recordCashDifference } from '../usecases/auto-from-events'
 
 const log = silentLogger()
 const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
@@ -542,5 +542,27 @@ describe('auto-from-events — mapeo evento → asiento (CTB-4)', () => {
     const { calls, port } = fakePort()
     await recordExpense(port, { id: 'g1', hotelId: 'h1', amount: 500, paid: 1, paymentMethod: 'transfer', source: 'payroll' })
     expect(calls[0].input.lines[0].code).toBe('5.2.01')
+  })
+
+  // DT-15: diferencia de arqueo de caja (cash-accounting.ts, hallada al auditar mapa-modulos.html).
+  it('faltante de caja (difference < 0): DR Gasto Administrativo / CR Caja', async () => {
+    const { calls, port } = fakePort()
+    await recordCashDifference(port, { id: 's1', hotelId: 'h1', difference: -15, closedAt: '2026-07-29' })
+    expect(calls[0].input.lines).toEqual([{ code: '5.3.01', debit: 15 }, { code: '1.1.01', credit: 15 }])
+    expect(calls[0].input.referenceType).toBe('cash_reconciliation')
+    expect(calls[0].input.description).toContain('Faltante')
+  })
+
+  it('sobrante de caja (difference > 0): DR Caja / CR Otros Ingresos', async () => {
+    const { calls, port } = fakePort()
+    await recordCashDifference(port, { id: 's2', hotelId: 'h1', difference: 8.5, closedAt: '2026-07-29' })
+    expect(calls[0].input.lines).toEqual([{ code: '1.1.01', debit: 8.5 }, { code: '4.3.01', credit: 8.5 }])
+    expect(calls[0].input.description).toContain('Sobrante')
+  })
+
+  it('arqueo cuadrado (difference === 0): no genera asiento', async () => {
+    const { calls, port } = fakePort()
+    await recordCashDifference(port, { id: 's3', hotelId: 'h1', difference: 0, closedAt: '2026-07-29' })
+    expect(calls).toHaveLength(0)
   })
 })

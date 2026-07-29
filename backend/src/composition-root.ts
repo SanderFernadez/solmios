@@ -330,6 +330,7 @@ import { paymentsCajaConnector } from './connectors/payments-caja'
 import { paymentsAccountingConnector } from './connectors/payments-accounting'
 import { foliosAccountingConnector } from './connectors/folios-accounting'
 import { gastosAccountingConnector } from './connectors/gastos-accounting'
+import { cashAccountingConnector } from './connectors/cash-accounting'
 import { restauranteFoliosConnector } from './connectors/restaurante-folios'
 import { restaurantePaymentsConnector } from './connectors/restaurante-payments'
 import { restauranteAccountingConnector } from './connectors/restaurante-accounting'
@@ -453,6 +454,7 @@ system.addConnector('caja-chica-gastos', cajaChicaGastosConnector)
 system.addConnector('payments-accounting', paymentsAccountingConnector)
 system.addConnector('folios-accounting', foliosAccountingConnector)
 system.addConnector('gastos-accounting', gastosAccountingConnector)
+system.addConnector('cash-accounting', cashAccountingConnector)
 // POS de restaurante: cargo a habitación (folios) y cobro directo (payments). RES-5.
 system.addConnector('restaurante-folios', restauranteFoliosConnector)
 system.addConnector('restaurante-payments', restaurantePaymentsConnector)

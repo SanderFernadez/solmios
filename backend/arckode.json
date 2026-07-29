@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-29T16:26:14.168Z",
+  "_generated": "2026-07-29T16:52:51.437Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -956,6 +956,7 @@
     "empleados-attendance.ts",
     "payments-auditlog.ts",
     "housekeeping-notificaciones.ts",
+    "cash-accounting.ts",
     "grupos-auditlog.ts",
     "usuarios-auditlog.ts",
     "payroll-auditlog.ts",

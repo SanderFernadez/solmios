@@ -13,6 +13,11 @@ export const ACC = {
   ING_RESTAURANTE: '4.2.02',      // ventas del restaurante (POS) — RES-6
   GASTO_NOMINA: '5.2.01',
   GASTO_ADMIN: '5.3.01',
+  // DT-15: diferencia de arqueo de caja. Reusa cuentas YA seedeadas (seed-chart-of-accounts.ts)
+  // — no hace falta agregar cuentas nuevas al plan de 36. Sobrante = ingreso no operativo
+  // (4.3.01 Otros Ingresos, ya existía sin uso); faltante = mismo bucket que cualquier otro
+  // gasto administrativo sin categoría propia (GASTO_ADMIN, 5.3.01).
+  OTROS_INGRESOS: '4.3.01',
 } as const
 
 /** Efectivo → Caja; todo lo demás (tarjeta/transfer/link) ya está bancarizado → Bancos. */
