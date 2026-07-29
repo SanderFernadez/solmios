@@ -1,5 +1,12 @@
 # Change Proposal: ttlock-manage-from-planning
 
+## Estado: ✅ CERRADO (verificado 2026-07-28)
+
+Implementado y commiteado. Verificado: `unlockLock` (`ttlock/service.ts:91`, `controller.ts:132`,
+ruta wireada) + borrado de PIN del hardware, ambos con tests reales (`ttlock/tests/service.test.ts`
+"unlockLock / deletePasscode"). `bun test src/modules/ttlock/` → 67/67 pass. El tasks.md nunca se
+creó/actualizó, se cierra desde acá.
+
 ## Summary
 
 Convertir el modal de cerradura del Planning en un **centro de gestión**, no solo de consulta:

@@ -2,8 +2,9 @@
 
 change_name: contabilidad-tesoreria
 created: 2026-07-23
-status: implemented   # CTB-0..7 + TES-0..6 completos (backend + frontend). Falta desplegar + habilitar por plan.
-current_phase: verify
+status: done   # CTB-0..7 + TES-0..6 completos, desplegado en prod y habilitado por plan/permisos (verificado 2026-07-28)
+current_phase: archived
+closed: 2026-07-28
 parent_changes: []
 
 motivation: |

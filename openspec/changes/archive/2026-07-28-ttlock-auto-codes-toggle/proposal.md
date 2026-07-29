@@ -1,5 +1,12 @@
 # Change Proposal: ttlock-auto-codes-toggle
 
+## Estado: ✅ CERRADO (verificado 2026-07-28)
+
+Implementado y commiteado (`a730cee` y relacionados). Verificado contra el código real: columna
+`autoCodesEnabled` en `ttlock/model.ts:16` (default `true`, filas viejas en NULL se tratan como
+habilitado), lógica de skip en `service.ts:131`, toggle expuesto en `RoomLockModal.vue:253,349-350`.
+`bun test src/modules/ttlock/` → 67/67 pass. El tasks.md nunca se creó/actualizó, se cierra desde acá.
+
 ## Summary
 
 Toggle **por cerradura** para prender/apagar la generación automática del código al pagarse la seña.

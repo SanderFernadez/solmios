@@ -2,8 +2,32 @@
 
 Estado final (2026-07-28): DT-08 y DT-10 cerradas · DT-07 y DT-11 bloqueadas de framework (investigado,
 requeriría SQL crudo prohibido o una feature nueva del framework) · DT-09 bloqueada por decisión de
-negocio. Cada sprint ejecutado: implementar → gates (`arckode analyze` 0 violaciones · `bun test` ·
-typecheck) → QA adversarial → commit quirúrgico.
+negocio · DT-12 nueva, documentada, no bloqueante. Cada sprint ejecutado: implementar → gates
+(`arckode analyze` 0 violaciones · `bun test` · typecheck) → QA adversarial → commit quirúrgico.
+
+## DT-12 — Factura standalone (sin folio) no devenga ingreso automáticamente
+
+Hallada en verificación de `contabilidad-tesoreria` (2026-07-28). `recordFolioCharge`
+(`accounting/usecases/auto-from-events.ts:71-87`) asienta el devengo (DR Clientes / CR Ingresos +
+ITBIS) al postear un cargo de FOLIO — pero una factura creada vía `POST /api/facturas` sin folio
+(standalone) no tiene conector `facturas-accounting.ts` equivalente: solo se asienta el COBRO
+(DR Caja/CR Clientes) al pagarla, nunca el devengo. Eso dejaría un crédito fantasma en la cuenta
+Clientes si existiera una factura así.
+
+**Verificado sin impacto actual**: `SELECT count(*) FROM invoices WHERE reservationid IS NULL AND
+type='invoice'` → **0** en prod. El único flujo real usado es folio→factura
+(`close-and-create-invoice.ts`), que ya devenga correctamente vía el folio antes de facturarse.
+
+- [ ] 12.1 Decidir: ¿una factura standalone debe devengar al CREARSE (`POST /api/facturas`) o al
+      EMITIRSE/confirmarse? Depende de si el producto permite facturas standalone en estado
+      `draft` (sin devengar) — chequear `facturas/usecases/create-invoice.ts` y el flujo real de UI.
+- [ ] 12.2 Si se decide devengar al crear: nuevo conector `connectors/facturas-accounting.ts` +
+      función `recordInvoiceIssued` en `auto-from-events.ts` (mismo patrón que `recordFolioCharge`:
+      DR Clientes / CR Ingresos (neto) / CR ITBIS por pagar, derivando el neto del total para que
+      SIEMPRE cuadre).
+- [ ] 12.3 Test: crear factura standalone → asiento de devengo; pagarla → asiento de cobro; Clientes
+      neteado a 0 (sin doble conteo con `recordPaymentCompleted`).
+- [ ] 12.4 Gate: `arckode analyze` 0 violaciones · `bun test` · typecheck.
 
 ## DT-07 — Search de facturas: mover filtro a WHERE del repo — ⛔ BLOQUEADA DE FRAMEWORK (investigado 2026-07-28)
 

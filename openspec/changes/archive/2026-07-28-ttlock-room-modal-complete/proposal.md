@@ -1,5 +1,14 @@
 # Change Proposal: ttlock-room-modal-complete
 
+## Estado: ✅ CERRADO (verificado 2026-07-28)
+
+Implementado y commiteado. Verificado en `RoomLockModal.vue`: las 5 pestañas existen exactamente
+como se pidió — Cerradura (`tab==='device'`), Códigos (`'codes'`), Fijos (`'fijos'`), Activos
+(`'active'`), Errores (`'errors'`, reenfocada desde "Registros" como se pidió). Backend: código fijo
+(`createPermanentCode`, `keyboardPwdType=1`) en `ttlock/usecases/ttlock-hardware.ts:92` + ruta
+`POST /api/ttlock/locks/:id/permanent-codes`. `bun test src/modules/ttlock/` → 67/67 pass. El
+tasks.md nunca se creó/actualizó, se cierra desde acá.
+
 ## Summary
 
 Completar el modal de cerradura por habitación (Planning) al nivel del de MisterPlan: 5 tabs con

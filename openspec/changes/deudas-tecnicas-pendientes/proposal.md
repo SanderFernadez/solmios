@@ -7,7 +7,8 @@ Trackear formalmente las deudas técnicas que quedaban sueltas en la tabla "Deud
 Dos de las cuatro filas candidatas resultaron ya resueltas en sesiones previas (el `CLAUDE.md` estaba
 desactualizado, corregido en este mismo cambio). Estado final (2026-07-28): **DT-08 y DT-10 cerradas
 · DT-07 y DT-11 bloqueadas de framework (investigado, no accionable sin SQL crudo o feature nueva del
-framework) · DT-09 bloqueada por decisión de negocio**.
+framework) · DT-09 bloqueada por decisión de negocio · DT-12 nueva (hallada al verificar
+contabilidad-tesoreria), documentada, sin impacto en prod hoy (0 facturas standalone existen)**.
 
 ## Motivation
 
