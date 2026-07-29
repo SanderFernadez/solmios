@@ -313,6 +313,7 @@ import { mantenimientoHabitacionesConnector } from './connectors/mantenimiento-h
 import { bookingChannexConnector } from './connectors/booking-channex'
 import { reservasHuespedesConnector } from './connectors/reservas-huespedes'
 import { reservasOpinionesConnector } from './connectors/reservas-opiniones'
+import { reservasMarketingConnector } from './connectors/reservas-marketing'
 import { reservasDepositsConnector } from './connectors/reservas-deposits'
 // F3 3.8 (solmi-direct-booking) — Wallet pass al confirmar: bookingengine emite onBookingPaid
 // (mismo socket que ya cablea `bookingengine-payments`) → wallet-pass.generatePass orquesta
@@ -422,6 +423,9 @@ system.addConnector('reservas-huespedes', reservasHuespedesConnector(logger))
 // review 'pending'. Cierra el gap "opiniones sin disparador post-checkout". Seguro: reservas
 // compone sockets, no pisa a reservas-huespedes (CRM). Best-effort.
 system.addConnector('reservas-opiniones', reservasOpinionesConnector)
+// DT-18: on_reservation (reserva confirmada) + post_checkout, en tiempo real — antes de este
+// connector NINGÚN código disparaba estos 2 de los 5 triggerEvent del enum de auto-messages.
+system.addConnector('reservas-marketing', reservasMarketingConnector)
 // Libera el depósito/garantía en el checkout: reservas emite onReservationCheckedOut → payments
 // libera los holds 'held' de la reserva. Cierra el bug CONFIRMADO "el hold queda colgando" (el
 // checkout no tocaba deposits). Best-effort, no pisa a reservas-opiniones (sockets se componen).
