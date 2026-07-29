@@ -144,8 +144,8 @@ const N = [
   {id:'admin',label:'👑 Admin',group:'plataforma',panel:'plataforma',info:{
     que:'Panel del super_admin: gestiona TODOS los hoteles, usuarios globales, analytics, plans (SaaS), monitoreo, anuncios globales, audit cross-tenant, catálogo de amenities.',
     porque:'Es la capa multi-tenant: sin esto no hay gestión de la plataforma ni de los planes de suscripción.',
-    conectado:['Lee: hoteles, usuarios, subscriptions, plans, auditlog, amenities(catálogo), notificaciones(anuncios)'],
-    falta:['reports no tiene vista agregada cross-hotel propia en admin (analytics es contador de hoteles, no P&L consolidado)']
+    conectado:['Lee: hoteles, usuarios, subscriptions, plans, auditlog, amenities(catálogo), notificaciones(anuncios)', 'P&L consolidado cross-hotel: revenue/gastos/neto por hotel + totales de plataforma (✅ DT-14, lee reservations+expenses directo, no depende de que el hotel tenga accounting activado)'],
+    falta:[]
   }},
   {id:'subscriptions',label:'👑 Suscripciones',group:'plataforma',panel:'plataforma',info:{
     que:'Plan SaaS del hotel (trial/activo/vencido), signup público (/api/public/signup), onboarding y estado del plan.',

@@ -117,20 +117,30 @@ descuadre real de caja.
       backend limpio. Sin migración de DB (reusa tablas y cuentas ya seedeadas). Commit `8c96a62`,
       pusheado a `main`.
 
-## DT-14 — Admin (plataforma) sin vista de P&L consolidado cross-hotel
+## DT-14 — Admin (plataforma) sin vista de P&L consolidado cross-hotel ✅ CERRADA (2026-07-29)
 
-Hallada al re-auditar el nodo `admin` (2026-07-29). Confirmado: `super-admin/consolidated.vue`
-(PC-2.2) da KPIs operacionales por hotel (MRR, ocupación, ADR, reservas del mes) pero NINGUNA
-vista agrega ingresos−gastos−neto (P&L real) across todos los hoteles de la plataforma — solo
-existe P&L POR hotel (dentro de `contabilidad`, aislado por `hotelId`). Un super_admin no tiene
+Hallada al re-auditar el nodo `admin` (2026-07-29). Confirmado: la tabla "Consolidado por hotel"
+(PC-2.2, vive en `super-admin/index.vue` — NO en un archivo separado `consolidated.vue`, que no
+existe) daba KPIs operacionales por hotel (MRR, ocupación, ADR, reservas del mes) pero NINGUNA
+vista agregaba ingresos−gastos−neto (P&L real) across todos los hoteles de la plataforma — solo
+existía P&L POR hotel (dentro de `contabilidad`, aislado por `hotelId`). Un super_admin no tenía
 forma de ver la rentabilidad consolidada de la plataforma completa desde un solo lugar.
 
-- [ ] 14.1 Decidir alcance: ¿el P&L consolidado suma los P&L de contabilidad de cada hotel (solo
-      para hoteles con el módulo `accounting` activo), o es un cálculo aparte más simple
-      (revenue−gastos desde `reports`, sin depender de que el hotel tenga contabilidad activada)?
-- [ ] 14.2 Si se decide: nuevo usecase en `admin/usecases/` que agregue por hotel y sume, página
-      `super-admin/pnl-consolidado.vue` (o extender `consolidated.vue`).
-- [ ] 14.3 Gate: `arckode analyze` + `bun test` + typecheck.
+- [x] 14.1 Decidido: cálculo aparte simple (revenue−gastos desde `Reservations`/`Expenses` vía ORM
+      directo en `getAnalytics()`), NO depende de que el hotel tenga `accounting` activado — ese
+      módulo es opt-in por hotel, esto tiene que andar para TODOS. Verificado 2026-07-29.
+- [x] 14.2 `admin/usecases/dashboard-queries.ts::getAnalytics()`: cada entrada de `hotelsBreakdown`
+      suma `gastos` (Expenses del hotel) y `neto` (revenue−gastos, redondeado); nuevo objeto
+      `pnlConsolidado: {revenue, gastos, neto}` sumando los valores ya correctos de
+      `hotelsBreakdown` (deliberadamente NO reutiliza `totalRevenue`, que filtra reservas distinto
+      y quedaría inconsistente). `super-admin/index.vue`: columnas Gastos/Neto por hotel + resumen
+      Revenue/Gastos/Neto en el header de la card. Verificado 2026-07-29.
+- [x] 14.3 Gate: `arckode analyze` ✅ VÁLIDO (0 violaciones) · `bun test` 2544/2544 (incluye test
+      nuevo `DT-14: pnlConsolidado suma revenue/gastos/neto...`) · typecheck backend + frontend
+      (`vue-tsc -b`) limpios · `bun run build` frontend ✓. Verificado en navegador (Playwright,
+      login local `admin@solmios.com`/`demo123` super_admin): tabla muestra Gastos/Neto por fila y
+      totales agregados en el header, colores correctos (coral negativo/teal positivo), 0 errores
+      de consola. Commits `bf2fce3` (backend) + `95cbcf3` (frontend), pusheados a `main`.
 
 ## DT-13 — Endpoint público viejo con IDOR sigue en el código, "seguro" por casualidad
 
