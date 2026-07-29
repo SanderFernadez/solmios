@@ -290,7 +290,7 @@ const N = [
   {id:'cash',label:'💵 Caja',group:'finanzas',panel:'hotel',info:{
     que:'Turnos de caja (abrir/cerrar), movimientos, arqueo (sobrante/faltante), reconciliación.',
     porque:'Control del efectivo físico. gastos-caja y payments-caja lo alimentan.',
-    conectado:['payments','gastos','payroll (efectivo)','reembolsos (efectivo)','auditlog'],
+    conectado:['payments','gastos','payroll (efectivo)','reembolsos (efectivo)','auditlog','contabilidad (diferencia de arqueo → asiento ✅ DT-15)'],
     falta:[]
   }},
   {id:'payment-requests',label:'🔗 Payment Requests',group:'finanzas',panel:'hotel',info:{
@@ -461,9 +461,9 @@ const N = [
   }},
   {id:'contabilidad',label:'📗 Contabilidad',group:'finanzas',panel:'hotel',info:{
     que:'Contabilidad de DOBLE ENTRADA (in-house): plan de cuentas (36 base), asientos, períodos (open/close/lock), libro mayor, balance de comprobación, estado de resultados (P&L) y balance general. Backend + frontend, DESPLEGADO y verificado en prod ✅ (comprobación y balance cuadran).',
-    porque:'El libro contable formal del hotel. Los asientos se generan SOLOS al operar vía 3 conectores automáticos; el INGRESO se devenga desde folio charges (NO facturas) para NO doble-contar. Módulo aislado, gateado por entitlement de plan + permiso.',
-    conectado:['payments (cobro→asiento DR Caja/CR Clientes ✅)','folios (cargo→ingreso DR Clientes/CR Ingresos+ITBIS ✅)','gastos (egreso→asiento DR Gasto/CR Caja|AP ✅)','ACTIVABLE/QUITABLE desde admin de plataforma (catálogo de módulos, toggle verificado VIVO) ✅','permisos accounting:view/create/edit/delete en la matriz de roles ✅'],
-    falta:['Diferido y documentado (NO bug): facturas-accounting (asiento de nota de crédito), cash-accounting (diferencia de arqueo del turno), P&L base caja. El ingreso ya se devenga por folio charges — evita el doble conteo.']
+    porque:'El libro contable formal del hotel. Los asientos se generan SOLOS al operar vía 4 conectores automáticos; el INGRESO se devenga desde folio charges (NO facturas) para NO doble-contar. Módulo aislado, gateado por entitlement de plan + permiso.',
+    conectado:['payments (cobro→asiento DR Caja/CR Clientes ✅)','folios (cargo→ingreso DR Clientes/CR Ingresos+ITBIS ✅)','gastos (egreso→asiento DR Gasto/CR Caja|AP ✅)','cash (diferencia de arqueo→asiento ✅ DT-15, 2026-07-29)','ACTIVABLE/QUITABLE desde admin de plataforma (catálogo de módulos, toggle verificado VIVO) ✅','permisos accounting:view/create/edit/delete en la matriz de roles ✅'],
+    falta:['Diferido y documentado (NO bug): facturas-accounting (asiento de nota de crédito, ver DT-12), P&L base caja. El ingreso ya se devenga por folio charges — evita el doble conteo. cash-accounting (diferencia de arqueo) YA NO es un gap — cerrado como DT-15.']
   }},
   {id:'tesoreria',label:'🏦 Tesorería',group:'finanzas',panel:'hotel',info:{
     que:'Gestión de liquidez: FLUJO DE CAJA, cuentas por cobrar (AR) y por pagar (AP) con AGING, cuentas bancarias + CONCILIACIÓN, presupuesto vs real, proveedores. Backend + frontend, DESPLEGADO y verificado en prod ✅ (cash-flow lee gastos reales).',
@@ -598,6 +598,7 @@ const E = [
   {f:'payments',t:'contabilidad',y:'hook',l:'cobro→asiento ✅'},
   {f:'folios',t:'contabilidad',y:'hook',l:'cargo→ingreso ✅'},
   {f:'gastos',t:'contabilidad',y:'hook',l:'egreso→asiento ✅'},
+  {f:'cash',t:'contabilidad',y:'hook',l:'diferencia de arqueo→asiento ✅ DT-15'},
   // --- Tesorería (TES): lee las tablas del dinero READ-ONLY (no duplica) ---
   {f:'payments',t:'tesoreria',y:'datos',l:'cash flow / conciliación'},
   {f:'gastos',t:'tesoreria',y:'datos',l:'AP + salidas'},

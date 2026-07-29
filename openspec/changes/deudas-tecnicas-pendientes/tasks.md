@@ -77,22 +77,28 @@ una integración externa).
       el neto de movimientos conciliados desde la última actualización.
 - [ ] 16.3 Gate: `arckode analyze` + `bun test` + typecheck.
 
-## DT-15 — Cash: diferencia de arqueo del turno no genera asiento contable
+## DT-15 — Cash: diferencia de arqueo del turno no genera asiento contable — ✅ CERRADA (2026-07-29)
 
-Hallada al re-auditar el nodo `contabilidad` (2026-07-29). Confirmado: no existe ningún connector
-`cash-accounting` (`grep -rn "cash-accounting\|cashAccounting"` en composition-root.ts +
-connectors/ → 0 hits). Cuando `cash/usecases/reconcile.ts` detecta un sobrante o faltante al
-cerrar un turno de caja, esa diferencia queda registrada en `cash_shifts`/`cash_movements` pero
-**nunca genera un asiento en la contabilidad de doble entrada** — el libro mayor no refleja el
+Hallada al re-auditar el nodo `contabilidad` (2026-07-29). Confirmado: no existía ningún connector
+`cash-accounting`. Cuando `cash/usecases/reconcile.ts` detectaba un sobrante o faltante al
+cerrar un turno de caja, esa diferencia quedaba registrada en `cash_shifts`/`cash_movements` pero
+**nunca generaba un asiento en la contabilidad de doble entrada** — el libro mayor no reflejaba el
 descuadre real de caja.
 
-- [ ] 15.1 Diseñar el asiento: un faltante es un gasto/pérdida (DR Gasto por descuadre / CR Caja);
-      un sobrante es un ingreso no operativo (DR Caja / CR Ingreso por descuadre). Definir cuentas
-      del plan de 36 cuentas base a usar.
-- [ ] 15.2 Nuevo connector `cash-accounting.ts` (mismo molde que `payments-accounting.ts`):
-      escucha el evento de cierre/conciliación de turno, asienta solo si `difference !== 0`.
-- [ ] 15.3 Test: arqueo con sobrante → asiento correcto; arqueo cuadrado → sin asiento.
-- [ ] 15.4 Gate: `arckode analyze` + `bun test` + typecheck.
+- [x] 15.1 Diseñado sin crear cuentas nuevas: el plan de 36 ya tenía `4.3.01 Otros Ingresos`
+      (sin uso hasta ahora, perfecto para el sobrante) y `5.3.01 Gastos Administrativos`
+      (`ACC.GASTO_ADMIN`, ya usado por gastos sin categoría propia, reusado para el faltante).
+      Faltante: DR Gasto Administrativo / CR Caja. Sobrante: DR Caja / CR Otros Ingresos.
+- [x] 15.2 Connector `cash-accounting.ts` (mismo molde que `payments-accounting.ts`): escucha
+      `caja.onShiftClosed` — el shift ya trae `difference` calculado y persistido por
+      `closeShift` ANTES de emitir el socket, no hizo falta tocar el módulo `cash`.
+      `recordCashDifference` en `accounting/usecases/auto-from-events.ts` hace no-op si
+      `difference === 0`.
+- [x] 15.3 Test (`accounting/tests/service.test.ts`): faltante → asiento correcto, sobrante →
+      asiento correcto, arqueo cuadrado (difference=0) → sin asiento. 3/3 verdes.
+- [x] 15.4 Gate: `arckode analyze` ✅ VÁLIDO (0 violaciones) · `bun test` 2528/2528 · typecheck
+      backend limpio. Sin migración de DB (reusa tablas y cuentas ya seedeadas). Commit `8c96a62`,
+      pusheado a `main`.
 
 ## DT-14 — Admin (plataforma) sin vista de P&L consolidado cross-hotel
 
