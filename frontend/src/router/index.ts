@@ -40,6 +40,16 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      // F3 3.17 (solmi-direct-booking) — Página pública STANDALONE post-redirect Stripe.
+      // Llega con query `?booking=:id&token=:token` (placeholders literales por deuda del
+      // backend stripe.ts que no reemplaza — F2 dejó sessionStorage backup). Sin auth guard.
+      // Sub-ruta de /h/:slug para distinguirla de la landing sin pisar ese path.
+      path: '/h/:slug/confirm',
+      name: 'booking-confirmation',
+      component: () => import('@/pages/public/booking-confirmation.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/pages/auth/login.vue'),

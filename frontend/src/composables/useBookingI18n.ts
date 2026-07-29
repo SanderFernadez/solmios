@@ -180,6 +180,9 @@ const messages = {
     'confirm.errorToken': 'El enlace no es válido o expiró.',
     'confirm.errorPayment': 'El pago fue rechazado o cancelado. Probá de nuevo.',
     'confirm.retryCta': 'Volver a intentar',
+    // F3 3.17 — booking-confirmation standalone (página pública post-redirect Stripe).
+    'confirm.accessCode': 'Código de acceso',
+    'confirm.backHome': 'Volver al hotel',
 
     // Currency switcher
     'currency.detectLabel': 'Moneda del hotel',
@@ -318,6 +321,9 @@ const messages = {
     'confirm.errorToken': 'The link is invalid or expired.',
     'confirm.errorPayment': 'The payment was declined or cancelled. Please try again.',
     'confirm.retryCta': 'Try again',
+    // F3 3.17 — booking-confirmation standalone (página pública post-redirect Stripe).
+    'confirm.accessCode': 'Access code',
+    'confirm.backHome': 'Back to hotel',
 
     'currency.detectLabel': 'Hotel currency',
   },
@@ -455,6 +461,9 @@ const messages = {
     'confirm.errorToken': 'O link é inválido ou expirou.',
     'confirm.errorPayment': 'O pagamento foi recusado ou cancelado. Tente novamente.',
     'confirm.retryCta': 'Tentar novamente',
+    // F3 3.17 — booking-confirmation standalone (página pública post-redirect Stripe).
+    'confirm.accessCode': 'Código de acesso',
+    'confirm.backHome': 'Voltar ao hotel',
 
     'currency.detectLabel': 'Moeda do hotel',
   },

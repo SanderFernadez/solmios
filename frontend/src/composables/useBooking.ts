@@ -519,7 +519,11 @@ export const useBookingStore = defineStore('booking-widget', () => {
     if (!idempotencyKey.value) idempotencyKey.value = genIdempotencyKey()
     try {
       const base = window.location.origin
-      const successUrl = `${base}/h/${slug.value}?booking=:id&token=:token`
+      // F3 3.17 — successUrl a `/h/:slug/confirm` (sub-ruta distinguible de la landing `/h/:slug`).
+      // Los placeholders `:id`/`:token` son LITERALES — el backend stripe.ts no los reemplaza
+      // (deuda conocida). La página /h/:slug/confirm reconstruye (id,token) desde sessionStorage
+      // (backup que dejamos abajo en `storeReservation` ANTES del redirect off-site a Stripe).
+      const successUrl = `${base}/h/${slug.value}/confirm?booking=:id&token=:token`
       const cancelUrl = `${base}/book/${slug.value}`
       const res = await BookingService.createBooking({
         slug: slug.value,

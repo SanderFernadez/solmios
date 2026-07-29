@@ -185,6 +185,7 @@ import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useBookingStore } from '@/composables/useBooking'
 import { useBookingI18nStore, type BookingLocale } from '@/composables/useBookingI18n'
+import { useTracking, initTracking } from '@/composables/useTracking'
 import { PublicHotelService } from '@/services/PublicHotel.service'
 import SearchStep from '@/components/booking/SearchStep.vue'
 
@@ -313,6 +314,54 @@ watch(slug, (s) => {
   store.init(s, readInitParams())
 }, { immediate: false })
 
+// ─── Tracking client-side (F3 3.18, spec server-tracking) ─────────────────────────
+// Complemento client-side del server-tracking. Dispara los mismos eventos que el backend
+// (event_id = reservationId para dedup Meta/GA4). Los IDs del hotel se obtienen vía env vars
+// (VITE_META_PIXEL_ID / VITE_GA4_MEASUREMENT_ID). Cuando exista endpoint público, cargarlos
+// acá. Sin IDs → no-op silencioso (no rompe el widget).
+const tracking = useTracking()
+let trackingInitDone = false
+let trackedSearch = false
+let trackedSelect = false
+
+// Watchers defensivos: cualquier error del tracking se traga (NO debe romper la reserva).
+watch(() => store.status, (next) => {
+  if (!trackingInitDone) return
+  try {
+    if (next === 'searching' && !trackedSearch) {
+      trackedSearch = true
+      tracking.track('search', {})
+    }
+    if (next === 'upselling' && !trackedSelect) {
+      // Pasar a 'upselling' significa que seleccionó room (store.selectRoom avanza a ese step).
+      trackedSelect = true
+      tracking.track('select', {
+        roomId: store.selectedRoom?.id,
+        value: store.selectedRoom?.fromPrice,
+        currency: store.displayCurrency || undefined,
+      })
+    }
+    if (next === 'paying') {
+      tracking.track('form', {})
+    }
+  } catch { /* tracking failure NUNCA rompe el flujo */ }
+})
+
+// 'pay' se dispara cuando el store.reservation pasa a no-null (createBooking exitoso, justo
+// antes del redirect off-site a Stripe). Esto captura el funnel step "intentó pagar".
+watch(() => store.reservation, (res) => {
+  if (!trackingInitDone || !res) return
+  try {
+    tracking.track('pay', {
+      eventId: res.reservationId,
+      reservationId: res.reservationId,
+      value: res.totalBreakdown.total,
+      currency: store.chargeCurrency || undefined,
+      optIn: true,
+    })
+  } catch { /* noop */ }
+})
+
 onMounted(async () => {
   const s = slug.value
   if (!s) {
@@ -320,6 +369,18 @@ onMounted(async () => {
     return
   }
   store.init(s, readInitParams())
+
+  // Inicializar tracking al montar. IDs desde env vars globales (cuando exista endpoint público
+  // /api/public/hotels/:slug/tracking-config, cargar acá y pasar a initTracking).
+  initTracking({
+    metaPixelId: import.meta.env.VITE_META_PIXEL_ID ?? null,
+    ga4MeasurementId: import.meta.env.VITE_GA4_MEASUREMENT_ID ?? null,
+  })
+  trackingInitDone = true
+  try {
+    tracking.track('view', {})
+  } catch { /* noop */ }
+
   // Geo-IP best-effort: si detecta el país via Cloudflare Trace, setea moneda inicial.
   // No esperamos esto para no bloquear el render del widget — el probe corre en paralelo
   // con la carga del hotel y solo aplica si el usuario todavía no tocó el switcher.

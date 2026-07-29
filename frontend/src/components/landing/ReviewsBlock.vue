@@ -11,18 +11,24 @@
         <div>
           <p class="text-[11px] uppercase tracking-[0.18em] font-bold text-cyan mb-2">Opiniones</p>
           <h2 class="text-3xl sm:text-4xl font-black text-navy tracking-tight">{{ title }}</h2>
+          <!-- F3 3.16 — Badges multi-canal (Google/TripAdvisor/Booking/Airbnb/Expedia). Solo se
+               renderizan si hay reviews de esas fuentes (count > 0). Componente defensivo. -->
+          <MultiChannelBadges
+            v-if="hasExternalSources"
+            :aggregate="aggregate"
+            variant="landing"
+            class="mt-3"
+          />
         </div>
 
-        <!-- Aggregate badge -->
-        <div v-if="aggregate.score !== null" class="flex items-center gap-4 bg-white rounded-2xl border border-border px-5 py-3 shadow-card">
-          <div class="text-center">
-            <div class="text-3xl font-black text-navy leading-none">{{ aggregate.score.toFixed(1) }}</div>
-            <div class="text-[10px] uppercase tracking-wide text-text-muted mt-1">{{ aggregate.count }} reseñas</div>
-          </div>
-          <div class="text-gold-light text-sm leading-none">
-            {{ '★'.repeat(Math.round(aggregate.score)) }}<span class="text-border">{{ '★'.repeat(5 - Math.round(aggregate.score)) }}</span>
-          </div>
-        </div>
+        <!-- F3 3.16 — Aggregate score destacado (promedio global de TODAS las fuentes).
+             Reemplaza el inline viejo (commit 5a4e5ea) por el componente reutilizable.
+             Se muestra solo si count > 0 (score null si publishReviewScore=false). -->
+        <AggregateScore
+          v-if="aggregate.count > 0"
+          :aggregate="aggregate"
+          variant="hero"
+        />
       </header>
 
       <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -70,6 +76,8 @@ import type {
   PublicReview,
   PublicReviewsResponse,
 } from '@/types'
+import MultiChannelBadges from '@/components/reviews/MultiChannelBadges.vue'
+import AggregateScore from '@/components/reviews/AggregateScore.vue'
 
 const props = defineProps<{
   block: LandingBlock
@@ -95,6 +103,19 @@ const aggregate = computed(() => props.reviews?.aggregate ?? { score: null, coun
 const visibleReviews = computed<PublicReview[]>(() =>
   (props.reviews?.reviews ?? []).slice(0, maxItems.value),
 )
+
+/** Hay AL MENOS una fuente externa con reviews (Google/TripAdvisor/Booking/Airbnb/Expedia)?
+ *  `direct` no cuenta — las externas son las que aportan credibilidad cross-channel. */
+const EXTERNAL_SOURCE_CHANNELS = new Set(['google', 'tripadvisor', 'booking', 'airbnb', 'expedia'])
+const hasExternalSources = computed(() => {
+  const per = aggregate.value.perSource
+  if (!per) return false
+  for (const ch of EXTERNAL_SOURCE_CHANNELS) {
+    const stat = per[ch]
+    if (stat && Number(stat.count) > 0) return true
+  }
+  return false
+})
 
 /** Backlink obligatorio (spec.md:111-115): URL de la primera review de TripAdvisor con
  *  `sourceUrl` entre TODAS las traídas (no solo las visibles/recortadas por maxItems) —

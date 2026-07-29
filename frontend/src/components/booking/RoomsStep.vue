@@ -21,6 +21,23 @@
         {{ t('rooms.nightsSuffix', { count: store.nights }) }}
         <span v-if="store.displayCurrency"> · {{ t('rooms.pricesIn', { currency: store.displayCurrency }) }}</span>
       </p>
+      <!-- F3 3.16 — Aggregate score compacto del widget. Solo se muestra si el hotel tiene
+           reviews publicadas y el bloque ReviewsBlock de la landing le pasó el aggregate.
+           El widget recibe `reviews` por props desde el wrapper (booking-widget.vue pasa el
+           fetch del ReviewsBlock de la landing al widget cuando ambos viven en /book/:slug).
+           Si no hay reviews (count=0), AggregateScore se omite. -->
+      <div v-if="showAggregateCompact" class="pt-1">
+        <AggregateScore
+          :aggregate="reviewsAggregate"
+          variant="inline"
+        />
+        <MultiChannelBadges
+          v-if="hasExternalSources"
+          :aggregate="reviewsAggregate"
+          variant="compact"
+          class="mt-1.5"
+        />
+      </div>
     </header>
 
     <div v-if="availableRooms.length === 0" class="text-center py-10 px-4">
@@ -83,10 +100,42 @@ import { computed } from 'vue'
 import { useBookingStore } from '@/composables/useBooking'
 import { useBookingI18nStore } from '@/composables/useBookingI18n'
 import type { RoomTypeRate } from '@/types/booking'
+import type { PublicReviewAggregate, PublicReviewsResponse } from '@/types'
+import MultiChannelBadges from '@/components/reviews/MultiChannelBadges.vue'
+import AggregateScore from '@/components/reviews/AggregateScore.vue'
 
 const store = useBookingStore()
 const i18n = useBookingI18nStore()
 const { t, formatPrice } = i18n
+
+/**
+ * F3 3.16 — El widget puede recibir `reviews` por props (desde el wrapper que comparte el
+ * fetch con el bloque reviews de la landing). Es opcional: si el wrapper no pasa nada, no
+ * se muestran badges (comportamiento pre-F3). En /book/:slug standalone, hoy el wrapper no
+ * hace fetch de reviews → quedamos en estado pre-F3 sin romper.
+ */
+const props = withDefaults(defineProps<{
+  reviews?: PublicReviewsResponse | null
+}>(), {
+  reviews: null,
+})
+
+const reviewsAggregate = computed<PublicReviewAggregate>(() =>
+  props.reviews?.aggregate ?? { score: null, count: 0, perSource: {} },
+)
+
+const showAggregateCompact = computed(() => reviewsAggregate.value.count > 0)
+
+const EXTERNAL_SOURCE_CHANNELS = new Set(['google', 'tripadvisor', 'booking', 'airbnb', 'expedia'])
+const hasExternalSources = computed(() => {
+  const per = reviewsAggregate.value.perSource
+  if (!per) return false
+  for (const ch of EXTERNAL_SOURCE_CHANNELS) {
+    const stat = per[ch]
+    if (stat && Number(stat.count) > 0) return true
+  }
+  return false
+})
 
 // Solo mostramos rooms efectivamente disponibles. El backend podría devolver
 // availableCount=0 para un type sin stock; no los mostramos (mejor UX que una card tachada).
