@@ -31,6 +31,8 @@ import { listActiveHotelSlugs, buildSitemapXml, resolveBaseUrl } from './usecase
 // conversion; upsells lista los activos del hotel para el step de extras del widget).
 import { getPublicRates } from './usecases/public-rates'
 import { getPublicUpsells } from './usecases/public-upsells'
+// F3 3.15 — Handler público para /ota-prices (comparativo directo vs Booking/Airbnb).
+import { getPublicOtaPrices } from './usecases/public-ota-prices'
 
 export class BookingengineController {
   constructor(
@@ -253,6 +255,29 @@ export class BookingengineController {
       { hotels: this.hotelsRepo, upsells: this.upsellRepo },
       String(req.params?.slug || ''),
       kind,
+    )
+  }
+
+  /**
+   * F3 3.15 — GET /api/public/hotels/:slug/ota-prices
+   * Compara tarifa directa vs Booking/Airbnb (StayAPI). Devuelve `{showComparison:true, savings}`
+   * SOLO si directo es más barato; si no, `{showComparison:false}` (no promover OTAs).
+   * Rate-limited en la ruta (index.ts). Sin auth.
+   */
+  async getPublicOtaPrices(req: HttpRequest) {
+    this.logger.info('GET /api/public/hotels/:slug/ota-prices', { slug: req.params.slug })
+    if (!this.hotelsRepo || !this.configRepo) {
+      return { status: 500, body: { error: 'ota-prices deps no cableados' } }
+    }
+    const query = (req.query || {}) as { checkIn?: string; checkOut?: string; guests?: string }
+    return getPublicOtaPrices(
+      { hotels: this.hotelsRepo, availability: this.service, config: this.configRepo },
+      String(req.params?.slug || ''),
+      {
+        checkIn: String(query.checkIn || ''),
+        checkOut: String(query.checkOut || ''),
+        guests: query.guests ? Number(query.guests) : undefined,
+      },
     )
   }
 

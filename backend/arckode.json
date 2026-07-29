@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-07-29T04:42:23.843Z",
+  "_generated": "2026-07-29T04:57:54.210Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": true,
@@ -423,6 +423,19 @@
         "tests": true
       },
       "complete": true
+    },
+    {
+      "name": "abandon-recovery",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": false,
+        "validators": true,
+        "tests": true
+      },
+      "complete": false
     },
     {
       "name": "messages",
@@ -901,6 +914,7 @@
     "attendance-dashboard.ts",
     "caja-chica-gastos.ts",
     "folios-accounting.ts",
+    "stayapi-ota-prices.ts",
     "roles-auditlog.ts",
     "admin-auditlog.ts",
     "habitaciones-auditlog.ts",

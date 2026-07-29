@@ -922,6 +922,11 @@ async function createTablesBlock3(): Promise<void> {
   await addColumnIfMissing("reservations", "cardLast4", "TEXT")
   await addColumnIfMissing("reservations", "cardExpMonth", "TEXT")
   await addColumnIfMissing("reservations", "cardExpYear", "TEXT")
+  // F3 3.14 — Abandon recovery flag: marca que el cron ya encoló el email de recuperación
+  // para esta reserva pending. Default 0 (false). Lo写的 el módulo abandon-recovery cada 30 min.
+  await addColumnIfMissing("reservations", "abandonEmailSent", "INTEGER DEFAULT 0")
+  // F0 0.13 — AccessToken público anti-IDOR (reserva creada por flujo público).
+  await addColumnIfMissing("reservations", "accessToken", "TEXT")
 
   // CREATE: reservation_addons (F3 match-misterplan — otros servicios y descuentos por reserva).
   await exec(`CREATE TABLE IF NOT EXISTS reservation_addons (

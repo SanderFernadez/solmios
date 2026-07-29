@@ -130,6 +130,15 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getPublicUpsells(req)
       })
+      // F3 3.15 — Comparativo de tarifas directo vs OTA (StayAPI). Devuelve el badge "ahorrás
+      // $X reservando directo" SOLO si directo es más barato. Si no, `{showComparison:false}`
+      // (no promociona OTAs más baratas). Rate-limit 30/60s (read-only pero llama API externa
+      // paga — más estricto que /rates para no quemar quota de StayAPI). Sin auth.
+      router.get('/api/public/hotels/:slug/ota-prices', async (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`public-ota-prices:${getClientIp(req)}`, { maxAttempts: 30, windowMs: 60_000 })
+        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
+        return controller.getPublicOtaPrices(req)
+      })
       // F1 1.11 — Sitemap dinámico. Público (sin auth), cache-control 1h. Rate-limit suave:
       // bots buenos respetan crawl-delay, pero un bot malicioso podría meter ruido. 60/min sobra.
       router.get('/sitemap.xml', async (req: any) => {

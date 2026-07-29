@@ -184,13 +184,24 @@ import { WalletPassModule } from './modules/wallet-pass'
 // libres en configuration (meta_pixel_id, meta_capi_token, ga4_measurement_id, ga4_api_secret,
 // meta_test_event_code) — el frontend las persiste con ConfigService.set.
 import { ServerTrackingModule } from './modules/server-tracking'
+// F3 3.14 (solmi-direct-booking) — Cron de recuperación de reservas abandonadas. Módulo
+// cron-only (sin rutas HTTP ni tabla propia): registra el service.runSweep que el cron
+// factory invoca cada 30 min. El email se pasa post-init desde email-bootstrap.
+import { AbandonRecoveryModule } from './modules/abandon-recovery'
 // F3 3.5 (solmi-direct-booking): los fetchers se declaran acá (antes de modules[]) para que
 // tanto el módulo (ruta admin /api/external-reviews/sync-now) como el cron nightly compartan
 // la MISMA configuración de clients HTTP externos. Los connectors viven en src/connectors/.
 import { fetchGbpReviews, defaultGbpFetcher } from './connectors/gbp-reviews'
 import { fetchTripadvisorReviews, defaultTripadvisorFetcher } from './connectors/tripadvisor-reviews'
 import { fetchStayApiReviews, defaultStayApiFetcher } from './connectors/stayapi-reviews'
+// F3 3.15 (solmi-direct-booking): fetcher StayAPI de precios OTA (comparativo directo vs OTA).
+// Es un adaptador HTTP externo (no conector inter-módulo — mismo caso que stayapi-reviews.ts).
+// El import acá es para que el analyzer lo registre como "no dead code"; el consumo real lo
+// hace bookingengine/usecases/public-ota-prices.ts.
+import { defaultStayApiPricesFetcher } from './connectors/stayapi-ota-prices'
 import type { ExternalReviewsFetchers } from './shared/usecases/external-reviews-cron'
+// F3 3.14 (solmi-direct-booking) — Cron de recuperación de reservas abandonadas.
+import { createAbandonRecoveryCron, ABANDON_RECOVERY_TICK_MS } from './shared/usecases/abandon-recovery-cron'
 import { FcmClient } from './services/fcm-client'
 
 // F3 3.5 — Fetchers de las 3 APIs externas. Compartido por módulo (sync endpoint) + cron.
@@ -285,6 +296,10 @@ const mods = [
   // Modelo tracking_events + service.fireAll. Sin deps de construction: el connector
   // `bookingengine-tracking` (registrado abajo) subscribe al socket onBookingPaid.
   ServerTrackingModule(),
+  // F3 3.14 (solmi-direct-booking): cron de recuperación de reservas abandonadas. Módulo
+  // cron-only (sin tabla propia ni rutas HTTP). El cron factory abajo usa el service que
+  // acá se construye. Se le inyecta el EmailService en el mismo factory (resuelto post-init).
+  AbandonRecoveryModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -708,6 +723,28 @@ setInterval(() => {
   externalReviewsCron().catch((e) => logger.warn('external-reviews cron failed', { error: (e as Error).message }))
 }, EXTERNAL_REVIEWS_TICK_MS)
 logger.info('External-reviews cron listo', { tickMs: EXTERNAL_REVIEWS_TICK_MS })
+
+// F3 3.14 (solmi-direct-booking) — Cron de recuperación de reservas abandonadas. Cada 30 min
+// busca reservas `pending` con createdAt entre 1h y 4h atrás y `abandonEmailSent=false`, les
+// manda un email con link al widget que restaura el state (`?reservation=:id&token=:accessToken`),
+// y marca el flag. Idempotente por diseño (el flag evita re-envíos); reservas confirmadas o
+// sin accessToken (creadas desde panel) se skipan. Mismo molde que currency-rates/external-reviews:
+// factory + corrida inicial 10s (anti-restart) + setInterval con catch que no rompe el arranque.
+const abandonRecoveryService = system.resolveModule<{ runSweep(): Promise<unknown> }>('abandon-recovery')
+if (abandonRecoveryService && typeof abandonRecoveryService.runSweep === 'function') {
+  const abandonRecoveryCron = createAbandonRecoveryCron(
+    abandonRecoveryService as any, logger,
+  )
+  setTimeout(() => {
+    abandonRecoveryCron().catch((e) => logger.warn('abandon-recovery initial run failed', { error: (e as Error).message }))
+  }, 10_000)
+  setInterval(() => {
+    abandonRecoveryCron().catch((e) => logger.warn('abandon-recovery cron failed', { error: (e as Error).message }))
+  }, ABANDON_RECOVERY_TICK_MS)
+  logger.info('Abandon-recovery cron listo', { tickMs: ABANDON_RECOVERY_TICK_MS })
+} else {
+  logger.warn('Abandon-recovery: módulo no disponible — cron desactivado')
+}
 
 // ─── Shutdown ──────────────────────────────────────────────────────────────
 process.on('SIGINT', async () => { await system.stop(); process.exit(0) })

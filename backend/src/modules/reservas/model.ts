@@ -60,6 +60,11 @@ export const ReservasModel: ModelDefinition = {
     // Las reservas creadas desde el panel NO lo setean → queda null → 404 en el endpoint público
     // (anti-IDOR: no revela existencia). Anti-patrón ORM D5: declarado acá, case-sensitive.
     accessToken: { type: 'string' },
+    // F3 3.14 — Abandon recovery: marca que ya se envió el email de recuperación a esta
+    // reserva. Lo setea el cron `abandon-recovery-cron` (cada 30 min) cuando encuentra una
+    // reserva `pending` con `createdAt` entre 1h y 4h atrás. Idempotente por diseño: el flag
+    // evita re-enviar el email en el próximo tick. Default false (0 en BD INTEGER). Case-sensitive.
+    abandonEmailSent: { type: 'boolean', default: false },
   },
   timestamps: true,
 }

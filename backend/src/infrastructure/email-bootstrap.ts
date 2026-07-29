@@ -95,6 +95,15 @@ export function bootstrapEmail(orm: any, logger: Logger, resolveModule: <T>(name
     walletPassForEmail.setEmailDeps(emailService)
   }
 
+  // F3 3.14 (solmi-direct-booking) — Abandon recovery: el cron encola el email "Completá tu
+  // reserva" para reservas pending entre 1h y 4h tras su creación. Sin esto, el cron detecta
+  // los candidatos pero no tiene cómo mandar el email (degrada a log + retry indefinido,
+  // porque el flag abandonEmailSent no se marca sin encolado exitoso).
+  const abandonRecoveryForEmail = resolveModule<{ setEmail(es: EmailSender): void }>('abandon-recovery')
+  if (abandonRecoveryForEmail && typeof abandonRecoveryForEmail.setEmail === 'function') {
+    abandonRecoveryForEmail.setEmail(emailService)
+  }
+
   const EMAIL_WORKER_TICK_MS = 30_000
   const startWorker = () => {
     emailService.reclaimStale().catch(() => {})
