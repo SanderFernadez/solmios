@@ -49,6 +49,10 @@ function externalToPublic(
     date: e.submittedAt ?? null,
     // authorName visible: las reviews externas sí exponen autor (GBP/TripAdvisor lo dan).
     authorName: e.authorName ?? null,
+    // Backlink obligatorio para TripAdvisor (spec.md:111-115) — la landing lo usa para el
+    // footer "Reviews by TripAdvisor". Público por diseño: es la URL de la review en el
+    // sitio de la fuente, no un dato sensible.
+    sourceUrl: e.url ?? null,
   }
 }
 

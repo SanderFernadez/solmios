@@ -54,7 +54,7 @@ const MEDIA: PublicHotelMedia = {
 
 const REVIEWS: PublicReviewsResponse = {
   reviews: [
-    { rating: 5, title: 'Excelente', comment: 'Muy bueno', channel: 'direct', date: '2026-07-01', authorName: 'Ana' },
+    { rating: 5, title: 'Excelente', comment: 'Muy bueno', channel: 'direct', date: '2026-07-01', authorName: 'Ana', sourceUrl: null },
   ],
   aggregate: { score: 4.5, count: 10, perSource: { direct: { score: 4.5, count: 10 } } },
   distribution: { '1': 0, '2': 1, '3': 0, '4': 3, '5': 6 },

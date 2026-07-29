@@ -22,6 +22,11 @@ export interface PublicReviewDTO {
   channel: string
   date: string | null
   authorName: string | null
+  /** F3 3.4+ — link a la review original en la fuente externa (TripAdvisor/Google/OTA).
+   *  `null` para direct reviews (no aplica) o cuando la fuente externa no trae url.
+   *  Requerido por reputation-aggregator/spec.md:111-115: TripAdvisor exige backlink
+   *  visible en la landing o puede suspender la API key. */
+  sourceUrl: string | null
 }
 
 export interface SanitizeOptions {
@@ -43,6 +48,7 @@ export function sanitizePublicReview(
     channel,
     date,
     authorName: null,
+    sourceUrl: null,
   }
 }
 

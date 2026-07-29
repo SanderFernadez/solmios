@@ -93,6 +93,8 @@ export interface PublicReview {
   channel: string
   date: string | null
   authorName: string | null
+  /** Link a la review original en la fuente externa. `null` para reservas directas. */
+  sourceUrl: string | null
 }
 
 export interface PublicReviewSourceStat {

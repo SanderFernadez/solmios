@@ -208,8 +208,8 @@ describe('F0 0.11 — OpinionesController.publicList', () => {
     expect(json).not.toContain('r-secret')
     expect(json).not.toContain('ext-1')
     expect(json).not.toContain('res-999')
-    // keys públicas permitidas
-    expect(Object.keys(rev).sort()).toEqual(['authorName', 'channel', 'comment', 'date', 'rating', 'title'])
+    // keys públicas permitidas (sourceUrl agregado F3 — backlink TripAdvisor obligatorio)
+    expect(Object.keys(rev).sort()).toEqual(['authorName', 'channel', 'comment', 'date', 'rating', 'sourceUrl', 'title'])
   })
 
   it('pending o visible=0 NUNCA aparecen', async () => {

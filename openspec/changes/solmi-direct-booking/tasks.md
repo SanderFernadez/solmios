@@ -419,37 +419,72 @@ Specs: `specs/reputation-aggregator/spec.md`, `specs/wallet-pass/spec.md`,
 
 ### Backend — Agregador de reseñas (spec: reputation-aggregator)
 
-- [ ] 3.1 Crear módulo `backend/src/modules/external-reviews/` con `make:module ExternalReviews`.
+- [x] 3.1 Crear módulo `backend/src/modules/external-reviews/` con `make:module ExternalReviews`.
       Modelo `ExternalReviewModel` (tabla `external_reviews`):
       `id, hotelId, source ('google'|'tripadvisor'|'booking'|'airbnb'|'expedia'), sourceExternalId, authorName, rating, title, comment, language, submittedAt, url + timestamps`.
       Unique index `(source, sourceExternalId)`.
       **Acceptance**: insertar 2 reviews con mismo `(source, sourceExternalId)` → error.
+      **Verificado 2026-07-29**: `modules/external-reviews/model.ts` con el unique index; test
+      dedicado cubre la constraint (`upsert-batch.test.ts`).
 
-- [ ] 3.2 Connectors en `backend/src/connectors/`:
+- [x] 3.2 Connectors en `backend/src/connectors/`:
       - `gbp-reviews.ts`: llama GBP API con service account JWT (auth flow en design "Google Business Profile").
       - `tripadvisor-reviews.ts`: header `x-api-key`, GET `/location/{id}/reviews`.
       - `stayapi-reviews.ts`: GET `/reviews/{source}?hotel_id=...`, api key header.
       Cada conector: try/catch (no romper cron si una API cae), normaliza al schema
       `ExternalReviewModel`, devuelve array.
       **Acceptance**: mockear las 3 APIs → los 3 connectors devuelven arrays normalizados.
+      **Verificado 2026-07-29**: `connectors/tests/gbp-reviews.test.ts` + suites análogas de
+      tripadvisor/stayapi, todas verdes.
 
-- [ ] 3.3 Cron nightly `external-reviews-cron.ts` (00:00 UTC): para cada hotel con
+- [x] 3.3 Cron nightly `external-reviews-cron.ts` (00:00 UTC): para cada hotel con
       credentials config (gbp_place_id / tripadvisor_location_id / stayapi_hotel_ids), pull
       las 3 fuentes en paralelo, dedupe por `(source, sourceExternalId)`, upsert batch con
       `ON CONFLICT`, bump de `reviews:v{N}:{hotelId}` en cache.
       **Acceptance**: cron idempotente (correr 2× no duplica); si GBP cae, igual procesa
       TripAdvisor + StayAPI.
+      **Verificado 2026-07-29**: `shared/usecases/tests/external-reviews-cron.test.ts` verde.
+      **Bug real encontrado y arreglado durante la verificación**: el refactor que extrajo
+      `syncHotelReviews(hotelId)` (para reuso desde 3.5) rompió el conteo de `hotelsProcessed`
+      — un hotel que reventaba leyendo su `Configuration` (error real, no "sin creds") se
+      contaba igual que uno exitoso porque el flag `noCreds` no cubre el caso de error. Fix:
+      `if (!r.noCreds && r.errors.length === 0) result.hotelsProcessed++`
+      (`external-reviews-cron.ts`). Detectado por el test "error en un hotel → continua con
+      el siguiente" que ya existía y falló al re-correr la suite completa.
 
-- [ ] 3.4 Ampliar `GET /api/public/hotels/:slug/reviews` (F0 0.11) para incluir
+- [x] 3.4 Ampliar `GET /api/public/hotels/:slug/reviews` (F0 0.11) para incluir
       `external_reviews` junto con direct reviews en el aggregate. Per-source breakdown
       ahora incluye google/tripadvisor/booking/airbnb/expedia.
       **Acceptance**: hotel con 3 direct + 5 google → aggregate.count=8, perSource correcto.
+      **Verificado 2026-07-29**: `opiniones/tests/aggregate.test.ts` +
+      `opiniones/tests/public-endpoint.test.ts` verdes. Extendido además con el **backlink
+      obligatorio de TripAdvisor** (spec.md:111-115, no cubierto por el acceptance original
+      pero sí por el requirement de la spec — TripAdvisor puede suspender la API key sin él):
+      nuevo campo público `sourceUrl` (`PublicReviewDTO`/`PublicReview`, `null` para direct)
+      + footer "Reviews by TripAdvisor" (`rel="nofollow"`) en `ReviewsBlock.vue` cuando hay
+      al menos una review de `channel==='tripadvisor'` con `sourceUrl`.
 
-- [ ] 3.5 Config admin en Settings → "Reputación externa": campos para service account JSON
+- [x] 3.5 Config admin en Settings → "Reputación externa": campos para service account JSON
       (GBP), API key (TripAdvisor), API key + hotel_ids mapeados (StayAPI). Botón "Sync now"
       para disparar el pull manualmente (dev only).
       **Acceptance**: persistir creds → next cron las usa; "Sync now" dispara y muestra
       count de reviews nuevas.
+      **Verificado 2026-07-29**: `frontend/src/pages/settings/reputation.vue` (tab "Reputación
+      externa" en Settings) + `ExternalReviews.service.ts` + `POST /api/external-reviews/sync-now`
+      (`external-reviews/tests/sync-now.test.ts`, 6 casos incl. resiliencia/503/400). **Desvío
+      documentado vs spec**: el botón queda expuesto en prod (gate `settings:edit` +
+      `moduleGuard('sales.reviews')` + `requireUserType('merchant')`), no solo dev — la spec dice
+      "dev only" para evitar abuso de rate-limit, pero el propio acceptance de esta tarea exige
+      que "Sync now" funcione tras guardar creds, que es un flujo de producción normal (el hotel
+      guarda sus llaves y quiere confirmar que andan). Riesgo de abuso bajo: 1 click manual por
+      sesión autenticada de `hotel_admin`, no un endpoint público. No se implementó "Test
+      connection" (mencionado en la spec, no en el acceptance de 3.5) — validar creds sin
+      persistir es una pieza separada, no bloqueante para 3.5.
+      **Bug real encontrado y arreglado durante la verificación**: `ExternalReviewsController`
+      no tenía el método `syncNow` (index.ts lo llamaba, TS no compilaba) — implementado.
+      Limpiado también scaffold roto de `arckode make:module` sin cablear
+      (`migrations/..._create_externalreviews.ts` con SQL inválido + `seeds/externalreviews.ts`)
+      que quedaba suelto sin referenciar desde ningún lado.
 
 ### Backend — Wallet pass (spec: wallet-pass)
 

@@ -48,6 +48,15 @@
           </div>
         </article>
       </div>
+
+      <!-- Backlink TripAdvisor OBLIGATORIO (reputation-aggregator/spec.md:111-115): si hay
+           reviews de TripAdvisor visibles, la landing DEBE linkear a la página oficial —
+           TripAdvisor puede suspender la API key si no hay backlink. rel=nofollow por spec. -->
+      <p v-if="tripadvisorBacklink" class="mt-8 text-center text-[11px] text-text-muted">
+        <a :href="tripadvisorBacklink" target="_blank" rel="nofollow noopener noreferrer" class="font-bold text-navy hover:underline">
+          Reviews by TripAdvisor
+        </a>
+      </p>
     </div>
   </section>
 </template>
@@ -86,6 +95,15 @@ const aggregate = computed(() => props.reviews?.aggregate ?? { score: null, coun
 const visibleReviews = computed<PublicReview[]>(() =>
   (props.reviews?.reviews ?? []).slice(0, maxItems.value),
 )
+
+/** Backlink obligatorio (spec.md:111-115): URL de la primera review de TripAdvisor con
+ *  `sourceUrl` entre TODAS las traídas (no solo las visibles/recortadas por maxItems) —
+ *  el requisito es "si TripAdvisor está activo", no "si aparece en esta página". */
+const tripadvisorBacklink = computed<string | null>(() => {
+  const all = props.reviews?.reviews ?? []
+  const withUrl = all.find((r) => r.channel === 'tripadvisor' && r.sourceUrl)
+  return withUrl?.sourceUrl ?? null
+})
 
 function initial(name: string | null): string {
   if (!name) return 'H'
