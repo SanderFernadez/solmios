@@ -448,7 +448,7 @@ const N = [
 
   // ─── ANALÍTICA ───
   {id:'reports',label:'📈 Reports',group:'analitica',panel:'hotel',info:{
-    que:'Reportes financieros y operacionales (advanced, export). Fuente REAL (verificado en código): reservas (primaria) + folio_charges = "facturado" (devengado); payments = "ingresado"; gastos. NO lee las tablas invoices ni cash.',
+    que:'7 reportes por tabs (strategy pattern: balance, facturación, ocupación, pernoctaciones, rendimiento, procedencia, reservas), con export CSV. Fuente REAL (re-verificado 2026-07-29 contra report-queries.ts): reservas (primaria) + folio_charges = "facturado" (devengado); payments = "ingresado"; gastos. NO lee las tablas invoices ni cash — sigue así incluso con contabilidad/tesorería (accounting) ya desplegado: ReportContext no tiene ningún campo de asientos contables.',
     porque:'Visibilidad para el hotelero. El reporte fiscal/tax real vive aparte en facturas (/api/facturas/tax-report).',
     conectado:['reservas (primaria)','payments (ingresado)','folios/folio_charges','gastos'],
     falta:['CORRECCIÓN DE MAPA: el mapa dibujaba reports→facturas y reports→caja, pero reports NO lee esas tablas (0 reads, verificado). "facturado" = devengado (reservas + folio_charges); "ingresado" = payments (fuente de verdad del dinero; caja es solo efectivo físico, subconjunto). Correcto por diseño y anda con tablas financieras vacías (prod nuevo). GAP OPCIONAL (decisión de producto, NO bug): reconciliar "facturado" contra el libro real de facturas (NCF/notas de crédito/anulaciones) — cambiaría los números y rompería hoteles nuevos (invoices=0).']
