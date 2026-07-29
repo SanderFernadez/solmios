@@ -40,11 +40,12 @@
         <h2 class="text-xl font-black text-navy">Configuración</h2>
         <p class="text-sm text-text-muted mt-0.5">Datos del hotel, amenities, tarifas e integraciones</p>
       </div>
-      <!-- El builder de la landing (tab 'landing') y la pestaña Reputación externa tienen
-           su propio "Guardar" que persiste sobre endpoints dedicados (/api/landing,
-           /api/configuracion) — el botón general acá aplica a `saveAll` (form del hotel)
-           y no tendría efecto en esas pestañas. Lo ocultamos junto con el badge de dirty. -->
-      <template v-if="(activeTab as string) !== 'landing' && (activeTab as string) !== 'reputation'">
+      <!-- El builder de la landing (tab 'landing'), la pestaña Reputación externa y la de
+           Tracking tienen su propio "Guardar" que persiste sobre endpoints dedicados
+           (/api/landing, /api/configuracion, /api/server-tracking/test) — el botón general
+           acá aplica a `saveAll` (form del hotel) y no tendría efecto en esas pestañas.
+           Lo ocultamos junto con el badge de dirty. -->
+      <template v-if="(activeTab as string) !== 'landing' && (activeTab as string) !== 'reputation' && (activeTab as string) !== 'tracking'">
         <span v-if="hasErrors" class="mr-3 text-[11px] font-bold text-danger">
           {{ Object.keys(fieldErrors).length }} campo(s) con errores
         </span>
@@ -882,6 +883,14 @@
          se tratan password-like (no se renderiza el valor crudo). El botón general del header
          queda oculto cuando esta pestaña está activa (la pestaña tiene su propio flujo de guardado). -->
     <ReputationSettings v-if="(activeTab as string) === 'reputation'" />
+
+    <!-- ========== TRACKING Y CONVERSIÓN (F3 3.13 — solmi-direct-booking / server-tracking) ==========
+         Config de creds de Meta CAPI (Pixel + Token + Test Code) y GA4 MP v2 (Measurement ID +
+         API Secret) + botón "Send test event". Server-side tracking: recupera data perdida por
+         ITP/ad-blockers. Enhanced Conversions con SHA256 de PII. Las creds viajan como keys libres
+         en configuration (no se renderizan secrets). Botón general del header oculto (pestaña con
+         su propio flujo de guardado, igual que reputation). -->
+    <TrackingSettings v-if="(activeTab as string) === 'tracking'" />
     </div>
   </div>
 </template>
@@ -894,6 +903,7 @@ import SearchSelect from '@/components/ui/SearchSelect.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
 import LandingBuilder from './landing.vue'
 import ReputationSettings from './reputation.vue'
+import TrackingSettings from './tracking.vue'
 import { COUNTRIES, countryName } from '@/data/locales'
 import { TIMEZONES, CURRENCIES } from '@/data/intl-catalogs'
 import { parseLatLng } from '@/composables/useLatLngParse'
@@ -1152,6 +1162,7 @@ const tabGroups: SettingsTabGroup[] = [
       { value: 'public', label: 'Página pública' },
       { value: 'landing', label: 'Landing' },
       { value: 'reputation', label: 'Reputación externa' },
+      { value: 'tracking', label: 'Tracking' },
       { value: 'integrations', label: 'Integraciones' },
     ],
   },

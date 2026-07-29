@@ -175,6 +175,15 @@ import { ExternalReviewsModule } from './modules/external-reviews'
 // subscribe a `bookingengine.onBookingPaid` y dispara generatePass (F3 3.8). El email se
 // inyecta desde `email-bootstrap` (F3 3.9) igual que reservas/payroll/opiniones.
 import { WalletPassModule } from './modules/wallet-pass'
+// F3 3.10–3.13 (solmi-direct-booking): server-side tracking. Modelo tracking_events +
+// service.fireAll (Meta CAPI + GA4 MP v2 + Enhanced Conversions con SHA256 de PII).
+// Trigger: connector `bookingengine-tracking` subscribe a `bookingengine.onBookingPaid`
+// (mismo socket que `reservas-wallet`) y dispara fireAll(reservationId). Skip silencioso si
+// faltan creds (status=skipped en tracking_events). Rutas admin (`POST /api/server-tracking/test`
+// y `GET /api/server-tracking/events`, permiso settings:edit). Las CREDS viajan como keys
+// libres en configuration (meta_pixel_id, meta_capi_token, ga4_measurement_id, ga4_api_secret,
+// meta_test_event_code) — el frontend las persiste con ConfigService.set.
+import { ServerTrackingModule } from './modules/server-tracking'
 // F3 3.5 (solmi-direct-booking): los fetchers se declaran acá (antes de modules[]) para que
 // tanto el módulo (ruta admin /api/external-reviews/sync-now) como el cron nightly compartan
 // la MISMA configuración de clients HTTP externos. Los connectors viven en src/connectors/.
@@ -272,6 +281,10 @@ const mods = [
   // TTLock + EmailService se inyectan post-init (setTtlockPort + setEmailDeps abajo) para
   // evitar orden-de-carga entre módulos. Permisos: settings:view + module guard settings.locks.
   WalletPassModule({ storage }),
+  // F3 3.10–3.13 (solmi-direct-booking): server-side tracking (Meta CAPI + GA4 MP v2).
+  // Modelo tracking_events + service.fireAll. Sin deps de construction: el connector
+  // `bookingengine-tracking` (registrado abajo) subscribe al socket onBookingPaid.
+  ServerTrackingModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -290,6 +303,10 @@ import { reservasDepositsConnector } from './connectors/reservas-deposits'
 // (mismo socket que ya cablea `bookingengine-payments`) → wallet-pass.generatePass orquesta
 // TTLock + Apple/Google + email. Best-effort: si el pass falla, el webhook igual queda OK.
 import { reservasWalletConnector } from './connectors/reservas-wallet'
+// F3 3.12 (solmi-direct-booking) — Server-tracking fire al confirmar: bookingengine emite
+// onBookingPaid → bookingengine-tracking.fireAll(reservationId) → Meta CAPI + GA4 MP.
+// Best-effort + fire-and-forget: no bloquea el webhook. Skip silencioso si faltan creds.
+import { bookingengineTrackingConnector } from './connectors/bookingengine-tracking'
 import { pricingCanalesConnector } from './connectors/pricing-canales'
 import { reclutamientoEmpleadosConnector } from './connectors/reclutamiento-empleados'
 import { capacitacionEmpleadosConnector } from './connectors/capacitacion-empleados'
@@ -396,6 +413,9 @@ system.addConnector('reservas-deposits', reservasDepositsConnector)
 // onBookingPaid ({ id: reservationId }) tras webhook Stripe → wallet-pass.generatePass.
 // Idempotente por UNIQUE(reservationId) en `wallet_passes`. Best-effort, no bloquea el webhook.
 system.addConnector('reservas-wallet', reservasWalletConnector)
+// F3 3.12 (solmi-direct-booking) — Server-tracking fire al confirmar. Mismo socket que
+// reservas-wallet (onBookingPaid) — setSockets compone, no pisa. Fire-and-forget async.
+system.addConnector('bookingengine-tracking', bookingengineTrackingConnector)
 // Auto-push de tarifas a OTAs: pricing emite onRatesUpdated al cambiar tarifas → canales las empuja
 // a Channex. Cierra el gap "push manual": editar tarifas ya no requiere apretar el botón. Fire-and-forget.
 system.addConnector('pricing-canales', pricingCanalesConnector)
