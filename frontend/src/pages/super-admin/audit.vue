@@ -156,11 +156,14 @@ onMounted(async () => {
         initials: (l.userName ?? 'S').split(' ').map((p: string) => p[0]).slice(0, 2).join(''),
         role: '', roleColor: 'bg-cyan/20 text-cyan',
         hotel: '',
-        action: ACTION_LABEL[l.accion] ?? l.accion,
+        // Bug corregido (2026-07-29): leía l.accion/l.entidad/l.detalle (español) — el DTO real
+        // (AuditlogDTO) usa action/entity/detail (inglés). Las columnas Acción/Categoría/Detalle
+        // quedaban en blanco/undefined en silencio.
+        action: ACTION_LABEL[l.action] ?? l.action,
         actionClass: 'bg-teal/10 text-teal',
-        category: l.entidad ? (l.entidad.charAt(0).toUpperCase() + l.entidad.slice(1)) : 'Sistema',
+        category: l.entity ? (l.entity.charAt(0).toUpperCase() + l.entity.slice(1)) : 'Sistema',
         categoryClass: 'bg-navy/5 text-navy',
-        detail: l.detalle ?? '',
+        detail: l.detail ?? '',
         ip: l.ip ?? '',
       }
     })

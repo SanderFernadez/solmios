@@ -373,6 +373,8 @@ const nonavItems = [
       { label: 'Pasarelas de Pago', path: '/panel/config/pasarelas', roles: ['hotel_admin'] },
       { label: 'Cerraduras', path: '/panel/config/cerraduras', roles: ['hotel_admin'] },
       { label: 'Dispositivos', path: '/panel/config/dispositivos', roles: ['hotel_admin'] },
+      // DT-17: solo hotel_admin (no receptionist/housekeeper) — es el log de acciones sensibles.
+      { label: 'Auditoría', path: '/panel/config/auditoria', roles: ['hotel_admin'] },
     ]
   },
   {

@@ -551,6 +551,15 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          // DT-17: antes solo /admin/* (plataforma) podía leer el audit log. El backend YA
+          // aislaba correctamente por hotelId (resolveTenant fuerza al hotel del token para
+          // cualquier rol que no sea super_admin) — solo faltaba la página.
+          path: 'config/auditoria',
+          name: 'auditoria',
+          component: () => import('@/pages/auditoria/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'auto-messages',
           name: 'auto-messages',
           redirect: (to) => ({ path: '/panel/config/mensajeria', query: { ...to.query, tab: 'auto-messages' } }),
