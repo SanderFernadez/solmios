@@ -236,6 +236,7 @@ const ICONS = {
   star: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.5a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>',
   box: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>',
   cart: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>',
+  globe: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3 12h18M12 3a14.5 14.5 0 0 1 0 18M12 3a14.5 14.5 0 0 0 0 18"/></svg>',
 }
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.22 4.22l1.77 1.77M18 18l1.78 1.78M2.5 12H5M19 12h2.5M4.22 19.78 6 18M18 6l1.78-1.78"/></svg>'
@@ -250,6 +251,18 @@ const nonavItems = [
   },
   {
     label: 'Channel', icon: ICONS.link, path: '/panel/channel-manager', roles: ['hotel_admin'],
+  },
+  {
+    // Página pública + Motor de reservas: antes pestañas dentro de Configuración.
+    // UX: sección propia del menú (landing, widget, reputación, tracking).
+    label: 'Página pública', icon: ICONS.globe, roles: ['hotel_admin'],
+    children: [
+      { label: 'General', path: '/panel/pagina-publica', roles: ['hotel_admin'] },
+      { label: 'Landing', path: '/panel/pagina-publica/landing', roles: ['hotel_admin'] },
+      { label: 'Reputación', path: '/panel/pagina-publica/reputacion', roles: ['hotel_admin'] },
+      { label: 'Tracking', path: '/panel/pagina-publica/tracking', roles: ['hotel_admin'] },
+      { label: 'Motor de reservas', path: '/panel/booking-engine', roles: ['hotel_admin'] },
+    ],
   },
   {
     label: 'Reservas', icon: ICONS.calendar, roles: ['hotel_admin', 'receptionist'],

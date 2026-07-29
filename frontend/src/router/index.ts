@@ -411,6 +411,32 @@ const router = createRouter({
           component: () => import('@/pages/settings/index.vue'),
           meta: { requiresHotelAdmin: true },
         },
+        // Página pública + Motor de reservas: antes eran pestañas dentro de Configuración
+        // (settings/index.vue). UX: van en su propia sección del menú lateral.
+        {
+          path: 'pagina-publica',
+          name: 'pagina-publica-general',
+          component: () => import('@/pages/pagina-publica/general.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'pagina-publica/landing',
+          name: 'pagina-publica-landing',
+          component: () => import('@/pages/pagina-publica/landing.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'pagina-publica/reputacion',
+          name: 'pagina-publica-reputacion',
+          component: () => import('@/pages/pagina-publica/reputation.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
+          path: 'pagina-publica/tracking',
+          name: 'pagina-publica-tracking',
+          component: () => import('@/pages/pagina-publica/tracking.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
         {
           path: 'support',
           name: 'support',

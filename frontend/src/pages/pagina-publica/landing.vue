@@ -308,6 +308,7 @@ import AppModal from '@/components/ui/AppModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { useToast } from '@/composables/useToast'
 import { AdminLandingService } from '@/services/AdminLanding.service'
+import { SettingsService } from '@/services/Settings.service'
 import type {
   AdminLandingBlock,
   LandingBlockType,
@@ -316,11 +317,14 @@ import type {
 } from '@/types/landing'
 
 /**
- * Slug del hotel — lo pasa el contenedor (settings/index.vue), que ya lo cargó con
- * `SettingsService.get().hotel.slug`. Si está vacío, pedimos al admin que lo configure
- * primero en la pestaña «Página pública» (no podemos armar preview link sin slug).
+ * Slug del hotel. Antes lo pasaba el contenedor (settings/index.vue); ahora la
+ * landing vive en su propia ruta (/panel/pagina-publica/landing), así que la prop
+ * es opcional y se auto-carga vía SettingsService si el contenedor no la provee.
+ * Si está vacío, pedimos al admin que lo configure primero en «General».
  */
-const props = defineProps<{ slug: string }>()
+const props = defineProps<{ slug?: string }>()
+const selfSlug = ref('')
+const slug = computed(() => props.slug || selfSlug.value)
 
 const toast = useToast()
 
@@ -400,13 +404,20 @@ const saving = ref(false)
 const loadError = ref('')
 const blocks = ref<AdminLandingBlock[]>([])
 
-const publicLandingUrl = computed(() => `/h/${encodeURIComponent(props.slug)}`)
+const publicLandingUrl = computed(() => `/h/${encodeURIComponent(slug.value)}`)
 
 // ─── Carga inicial ───────────────────────────────────────────────────────────────────────
 async function load() {
   loading.value = true
   loadError.value = ''
   try {
+    // Si el contenedor no pasó slug, lo cargamos acá (la landing es una ruta propia).
+    if (!props.slug) {
+      try {
+        const s = await SettingsService.get()
+        selfSlug.value = (s.hotel?.slug as string) || ''
+      } catch { /* sin slug: la UI pide configurarlo primero */ }
+    }
     const result = await AdminLandingService.list()
     blocks.value = (result?.data ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     markClean()

@@ -40,22 +40,18 @@
         <h2 class="text-xl font-black text-navy">Configuración</h2>
         <p class="text-sm text-text-muted mt-0.5">Datos del hotel, amenities, tarifas e integraciones</p>
       </div>
-      <!-- El builder de la landing (tab 'landing'), la pestaña Reputación externa y la de
-           Tracking tienen su propio "Guardar" que persiste sobre endpoints dedicados
-           (/api/landing, /api/configuracion, /api/server-tracking/test) — el botón general
-           acá aplica a `saveAll` (form del hotel) y no tendría efecto en esas pestañas.
-           Lo ocultamos junto con el badge de dirty. -->
-      <template v-if="(activeTab as string) !== 'landing' && (activeTab as string) !== 'reputation' && (activeTab as string) !== 'tracking'">
-        <span v-if="hasErrors" class="mr-3 text-[11px] font-bold text-danger">
-          {{ Object.keys(fieldErrors).length }} campo(s) con errores
-        </span>
-        <span v-else-if="isDirty" class="mr-3 text-[11px] font-bold text-text-muted">Cambios sin guardar</span>
-        <button @click="saveAll" :disabled="saving || hasErrors"
-          :title="hasErrors ? 'Corregí los campos marcados en rojo para poder guardar' : ''"
-          class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-          {{ saving ? 'Guardando...' : 'Guardar' }}
-        </button>
-      </template>
+      <!-- El builder de la landing, reputación externa y tracking se mudaron a su propia
+           sección del menú (Página pública). Las pestañas que quedan acá persisten con
+           saveAll (form del hotel) o tienen su propio "Guardar" en la propia card. -->
+      <span v-if="hasErrors" class="mr-3 text-[11px] font-bold text-danger">
+        {{ Object.keys(fieldErrors).length }} campo(s) con errores
+      </span>
+      <span v-else-if="isDirty" class="mr-3 text-[11px] font-bold text-text-muted">Cambios sin guardar</span>
+      <button @click="saveAll" :disabled="saving || hasErrors"
+        :title="hasErrors ? 'Corregí los campos marcados en rojo para poder guardar' : ''"
+        class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-full hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+        {{ saving ? 'Guardando...' : 'Guardar' }}
+      </button>
     </div>
 
     <!-- Tabs agrupados: administrativo vs. configuraciones e integraciones -->
@@ -516,9 +512,9 @@
               <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal"></div>
             </label>
           </div>
-          <!-- publishReviewScore y publishReviewComments se mudaron a la pestaña "Página pública"
-               (F0 0.21): son flags que controlan qué se muestra en la landing pública, no
-               configuración operativa de reseñas. -->
+          <!-- publishReviewScore y publishReviewComments se mudaron a la sección
+               "Página pública" del menú (General): son flags que controlan qué se muestra
+               en la landing pública, no configuración operativa de reseñas. -->
         </div>
       </div>
     </div>
@@ -715,182 +711,6 @@
       </div>
     </div>
 
-    <!-- ========== PÁGINA PÚBLICA (F0 0.21 — solmi-direct-booking) ==========
-         Configura la landing pública /h/:slug: slug estable, traducciones (title+description)
-         por idioma, amenities del hotel (nivel hotel, distinto de RoomAmenities) y flags de
-         qué se publica de las reseñas. El media uploader/manager queda fuera de este alcance
-         (depende de la task 0.8 — rutas admin de hotel-media — y se cablea aparte). -->
-    <div v-if="(activeTab as string) === 'public'" class="space-y-6">
-      <!-- Slug editable + availability check -->
-      <SectionCard title="URL pública"
-        subtitle="Slug estable que identifica tu hotel en la landing pública /h/:slug">
-        <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
-          <div>
-            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Slug</label>
-            <div class="flex items-center rounded-xl border bg-surface overflow-hidden focus-within:bg-white transition-colors"
-              :class="slugInputBorder">
-              <span class="pl-4 pr-2 text-sm font-bold text-text-muted select-none">/h/</span>
-              <input v-model="slugDraft" type="text" spellcheck="false" autocomplete="off"
-                placeholder="mi-hotel"
-                class="flex-1 bg-transparent border-0 px-0 py-2.5 pr-3 text-sm font-bold text-navy focus:outline-none"
-                :disabled="slugSaving">
-            </div>
-            <p class="mt-2 text-[10px] text-text-muted">
-              URL pública:
-              <span class="font-bold text-navy">/h/{{ slugDraft || 'mi-hotel' }}</span>
-            </p>
-          </div>
-          <span class="px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap self-end mb-1"
-            :class="slugBadgeClass">
-            {{ slugBadgeText }}
-          </span>
-        </div>
-        <div class="mt-4 p-3 rounded-xl bg-surface text-[11px] text-text-muted leading-relaxed">
-          Solo minúsculas, números y guiones. Editar el <strong>nombre</strong> del hotel NO cambia
-          el slug (es estable). La verificación de disponibilidad es en tiempo real contra el
-          endpoint público — si no podés guardar, el slug ya lo tiene otro hotel.
-        </div>
-      </SectionCard>
-
-      <!-- Traducciones públicas (title + description) — ES/EN/PT -->
-      <SectionCard title="Título y descripción por idioma"
-        subtitle="Copy que ven los huéspedes en la landing pública y en el widget de reserva">
-        <div class="flex flex-wrap gap-2 mb-4">
-          <button v-for="lang in publicLangs" :key="lang.code" @click="activePublicLang = lang.code"
-            class="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer"
-            :class="activePublicLang === lang.code ? 'bg-navy text-white' : 'bg-surface text-text-secondary hover:bg-navy/5'">
-            <span>{{ lang.flag }}</span> <span>{{ lang.code.toUpperCase() }}</span>
-            <span v-if="lang.code !== 'es' && hasPublicTranslation(lang.code)" class="ml-1 text-teal">●</span>
-            <span v-if="lang.code === 'es' && (publicDesc.es.description || '').trim()" class="ml-1 text-teal">●</span>
-          </button>
-        </div>
-
-        <!-- ES: la descripción base vive en descriptionJson (la edita también la pestaña
-             "Descripción"). El título ES NO se persiste hoy: el contrato legacy de
-             descriptionJson es Record<lang, string> y no tiene campo title. Se habilitará
-             cuando F0 0.4 reescriba descriptionJson al formato {title, description}. -->
-        <div v-if="activePublicLang === 'es'" class="space-y-4">
-          <div>
-            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              Título (ES) — pendiente
-            </label>
-            <input :value="publicDesc.es.title" disabled
-              class="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-text-muted cursor-not-allowed">
-            <p class="mt-1 text-[10px] text-text-muted">
-              El título en español se habilita cuando el backend migre
-              <code class="px-1 bg-surface rounded">descriptionJson</code>
-              al formato <code class="px-1 bg-surface rounded" v-text="'{title, description}'"></code> (F0 0.4).
-              Hoy solo se publica la descripción base.
-            </p>
-          </div>
-          <div>
-            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              Descripción (ES) — base
-            </label>
-            <textarea v-model="publicDesc.es.description" rows="6"
-              placeholder="Descripción del hotel en español — aparece en la landing pública"
-              class="w-full rounded-xl border border-border px-4 py-3 text-sm focus:outline-none focus:border-navy resize-y"></textarea>
-            <p class="mt-1 text-[10px] text-text-muted">
-              {{ (publicDesc.es.description || '').length }} / 2000 caracteres ·
-              vive en <code class="px-1 bg-surface rounded">descriptionJson</code> (mismo campo que la pestaña Descripción).
-            </p>
-          </div>
-        </div>
-
-        <!-- EN/PT: persisten en descriptionTranslations[lang] = { title, description } -->
-        <div v-else class="space-y-4">
-          <div>
-            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              Título ({{ activePublicLang.toUpperCase() }})
-            </label>
-            <input v-model="publicDesc[activePublicLang].title" type="text"
-              :placeholder="`Hotel title in ${activePublicLang === 'en' ? 'English' : 'Português'}...`"
-              class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:border-navy">
-          </div>
-          <div>
-            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              Descripción ({{ activePublicLang.toUpperCase() }})
-            </label>
-            <textarea v-model="publicDesc[activePublicLang].description" rows="6"
-              :placeholder="`Hotel description in ${activePublicLang === 'en' ? 'English' : 'Português'}...`"
-              class="w-full rounded-xl border border-border px-4 py-3 text-sm focus:outline-none focus:border-navy resize-y"></textarea>
-            <p class="mt-1 text-[10px] text-text-muted">
-              {{ (publicDesc[activePublicLang].description || '').length }} / 2000 caracteres
-            </p>
-          </div>
-        </div>
-      </SectionCard>
-
-      <!-- Amenities del hotel (catálogo fijo, nivel hotel — DISTINTO de RoomAmenities) -->
-      <SectionCard title="Amenities del hotel"
-        subtitle="Servicios e instalaciones del hotel que se muestran en la landing pública">
-        <div class="flex flex-wrap gap-2">
-          <button v-for="a in HOTEL_AMENITY_CATALOG" :key="a.key" type="button"
-            @click="toggleHotelAmenity(a.key)"
-            class="px-3 py-2 rounded-full text-sm font-bold transition-all cursor-pointer border"
-            :class="selectedHotelAmenities.includes(a.key)
-              ? 'bg-navy text-white border-navy'
-              : 'bg-white text-text-secondary border-border hover:border-navy/40'">
-            <span class="mr-1">{{ a.emoji }}</span>{{ a.label }}
-          </button>
-        </div>
-        <p class="mt-3 text-[10px] text-text-muted">
-          {{ selectedHotelAmenities.length }} seleccionado{{ selectedHotelAmenities.length === 1 ? '' : 's' }}.
-          Las amenities a nivel habitación (TV, WiFi en cuarto, etc.) se configuran en la pestaña
-          <strong>Amenities</strong>.
-        </p>
-      </SectionCard>
-
-      <!-- Flags: qué se publica de las reseñas -->
-      <SectionCard title="Reseñas públicas"
-        subtitle="Controlá qué información de reseñas ven los huéspedes en la landing pública">
-        <div class="space-y-3">
-          <div class="flex items-center justify-between p-3 bg-surface rounded-xl">
-            <div>
-              <div class="text-sm font-bold text-navy">Publicar puntuación</div>
-              <div class="text-[10px] text-text-muted">Muestra el score agregado (0-5) en la landing.</div>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input v-model="form.publishReviewScore" type="checkbox" class="sr-only peer">
-              <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal"></div>
-            </label>
-          </div>
-          <div class="flex items-center justify-between p-3 bg-surface rounded-xl">
-            <div>
-              <div class="text-sm font-bold text-navy">Publicar comentarios</div>
-              <div class="text-[10px] text-text-muted">Muestra el texto de las reseñas (no solo el score).</div>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input v-model="form.publishReviewComments" type="checkbox" class="sr-only peer">
-              <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal"></div>
-            </label>
-          </div>
-        </div>
-      </SectionCard>
-    </div>
-
-    <!-- ========== LANDING (F1 1.9 — builder admin, solmi-direct-booking / Pieza C) ==========
-         Builder de la landing pública /h/:slug: lista los 9 bloques con drag-and-drop, toggle
-         active por bloque y editor de config por type. Persiste con PUT /api/landing (atómico).
-         El slug lo pasa como prop (slugDraft — ya cargado desde SettingsService). El builder
-         tiene su propio "Guardar" + dirty tracking; el botón general del header queda oculto
-         cuando esta pestaña está activa. -->
-    <LandingBuilder v-if="(activeTab as string) === 'landing'" :slug="slugDraft" />
-
-    <!-- ========== REPUTACIÓN EXTERNA (F3 3.5 — solmi-direct-booking / reputation-aggregator) ==========
-         Config de creds de Google Business Profile / TripAdvisor / StayAPI + botón "Sync now".
-         Las creds persisten en `configuration` (NO en el hotel) vía ConfigService. Los secrets
-         se tratan password-like (no se renderiza el valor crudo). El botón general del header
-         queda oculto cuando esta pestaña está activa (la pestaña tiene su propio flujo de guardado). -->
-    <ReputationSettings v-if="(activeTab as string) === 'reputation'" />
-
-    <!-- ========== TRACKING Y CONVERSIÓN (F3 3.13 — solmi-direct-booking / server-tracking) ==========
-         Config de creds de Meta CAPI (Pixel + Token + Test Code) y GA4 MP v2 (Measurement ID +
-         API Secret) + botón "Send test event". Server-side tracking: recupera data perdida por
-         ITP/ad-blockers. Enhanced Conversions con SHA256 de PII. Las creds viajan como keys libres
-         en configuration (no se renderizan secrets). Botón general del header oculto (pestaña con
-         su propio flujo de guardado, igual que reputation). -->
-    <TrackingSettings v-if="(activeTab as string) === 'tracking'" />
     </div>
   </div>
 </template>
@@ -901,9 +721,6 @@ import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
-import LandingBuilder from './landing.vue'
-import ReputationSettings from './reputation.vue'
-import TrackingSettings from './tracking.vue'
 import { COUNTRIES, countryName } from '@/data/locales'
 import { TIMEZONES, CURRENCIES } from '@/data/intl-catalogs'
 import { CurrencyCode } from '@/types/currency'
@@ -913,7 +730,6 @@ import { validateField, validateAll, warnOnUnsavedChanges, HOTEL_RULES } from '@
 import { supportedLangs } from '@/composables/useSupportedLangs'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
-import { PublicHotelService } from '@/services/PublicHotel.service'
 import { ConfigService } from '@/services/Platform.service'
 import { GuaranteeService } from '@/services/Guarantee.service'
 import { useAuthStore } from '@/stores/auth.store'
@@ -1159,11 +975,9 @@ const tabGroups: SettingsTabGroup[] = [
   {
     label: 'Configuraciones e integraciones',
     tabs: [
+      // Página pública / Landing / Reputación externa / Tracking se mudaron a su propia
+      // sección del menú lateral (Página pública). Acá queda solo config operativa.
       { value: 'amenities', label: 'Amenities' },
-      { value: 'public', label: 'Página pública' },
-      { value: 'landing', label: 'Landing' },
-      { value: 'reputation', label: 'Reputación externa' },
-      { value: 'tracking', label: 'Tracking' },
       { value: 'integrations', label: 'Integraciones' },
     ],
   },
@@ -1214,191 +1028,6 @@ function fieldClass(field: string): string {
 
 const hasErrors = computed(() => Object.keys(fieldErrors.value).length > 0)
 
-// ════════════════════════════════════════════════════════════════════════════
-// F0 0.21 — Pestaña "Página pública" (solmi-direct-booking)
-// ════════════════════════════════════════════════════════════════════════════
-// Slug estable + availability check debounced + traducciones EN/PT + amenities
-// hotel-level (catálogo FIJO, mismo patrón que ALLERGEN_TAGS del restaurant) +
-// flags de reseñas públicas. Persistencia vía SettingsService.patchHotel → PUT
-// /api/settings/hotel (backend cableado en hoteles/validators/schema.ts y
-// hoteles-queries.ts). El media uploader/manager NO entra en este alcance.
-//
-// Decisiones de diseño (documentadas para el reviewer):
-//  • Availability check del slug: usamos PublicHotelService.getBySlug(slug). HOY el
-//    endpoint /api/public/hotel/:slug es un stub (F0 0.4 sin hacer): siempre
-//    responde 200 con datos falsos (slug=hotelId). Hasta que F0 0.4 se implemente,
-//    el check no es confiable — el código queda listo: cuando el endpoint devuelva
-//    el hotel real, va a comparar id y marcar "tomado" vs "es tuyo" correctamente.
-//    Mientras tanto, el guardado real lo protege el backend (409/400 si el slug ya
-//    existe en otro hotel — pendiente de cablear también en el backend, fuera de
-//    este scope).
-//  • ES (español base): vive en descriptionJson (mismo campo que la pestaña
-//    "Descripción"). NO se guarda en descriptionTranslations porque la regla
-//    assertNoBaseLangKey prohíbe 'es' ahí. El título ES queda DESHABILITADO: el
-//    contrato legacy de descriptionJson es Record<lang, string> y no tiene campo
-//    title; hasta que F0 0.4 reescriba descriptionJson al formato {title,
-//    description}, no hay dónde persistirlo.
-//  • Amenities: catálogo FIJO de 20 items (pool, gym, spa, parking, wifi,
-//    restaurant, bar, ...). Se guarda como string[] en hoteles.amenities (json).
-//    DISTINTO de RoomAmenities (nivel habitación, pestaña "Amenities").
-// ════════════════════════════════════════════════════════════════════════════
-
-/** Catálogo FIJO de amenities del hotel (data de dominio, como ALLERGEN_TAGS). */
-const HOTEL_AMENITY_CATALOG: { key: string; label: string; emoji: string }[] = [
-  { key: 'pool', label: 'Piscina', emoji: '🏊' },
-  { key: 'gym', label: 'Gimnasio', emoji: '🏋️' },
-  { key: 'spa', label: 'Spa', emoji: '💆' },
-  { key: 'parking', label: 'Parking', emoji: '🅿️' },
-  { key: 'wifi', label: 'WiFi', emoji: '📶' },
-  { key: 'restaurant', label: 'Restaurante', emoji: '🍽️' },
-  { key: 'bar', label: 'Bar', emoji: '🍸' },
-  { key: 'breakfast', label: 'Desayuno', emoji: '🥐' },
-  { key: 'ac', label: 'Aire acondicionado', emoji: '❄️' },
-  { key: 'heating', label: 'Calefacción', emoji: '🔥' },
-  { key: 'elevator', label: 'Ascensor', emoji: '🛗' },
-  { key: 'garden', label: 'Jardín', emoji: '🌳' },
-  { key: 'terrace', label: 'Terraza', emoji: '🌅' },
-  { key: 'beach_access', label: 'Acceso a playa', emoji: '🏖️' },
-  { key: 'concierge', label: 'Conserjería 24h', emoji: '🛎️' },
-  { key: 'room_service', label: 'Room service', emoji: '🚪' },
-  { key: 'laundry', label: 'Lavandería', emoji: '🧺' },
-  { key: 'pets_allowed', label: 'Mascotas permitidas', emoji: '🐾' },
-  { key: 'wheelchair', label: 'Acceso silla ruedas', emoji: '♿' },
-  { key: 'airport_shuttle', label: 'Traslado aeropuerto', emoji: '✈️' },
-]
-
-/** Idiomas editables en la pestaña "Página pública". */
-const publicLangs = [
-  { code: 'es', flag: '🇪🇸' },
-  { code: 'en', flag: '🇬🇧' },
-  { code: 'pt', flag: '🇧🇷' },
-] as const
-
-type PublicLangCode = 'es' | 'en' | 'pt'
-type PublicTranslation = { title: string; description: string }
-type PublicTranslations = Record<PublicLangCode, PublicTranslation>
-
-const activePublicLang = ref<PublicLangCode>('es')
-
-/** Draft de traducciones. `es` se sincroniza con `descriptions.value.es` (mismo
- *  campo en descriptionJson); `en`/`pt` se persisten en descriptionTranslations. */
-const publicDesc = ref<PublicTranslations>({
-  es: { title: '', description: '' },
-  en: { title: '', description: '' },
-  pt: { title: '', description: '' },
-})
-
-const selectedHotelAmenities = ref<string[]>([])
-
-const slugDraft = ref('')
-const originalSlug = ref('')
-const slugSaving = ref(false)
-const SLUG_REGEX = /^[a-z0-9-]+$/
-type SlugStatus = 'idle' | 'checking' | 'available' | 'taken' | 'self' | 'invalid' | 'error'
-const slugStatus = ref<SlugStatus>('idle')
-
-function hasPublicTranslation(lang: string): boolean {
-  if (lang === 'es') return false
-  const t = publicDesc.value[lang as PublicLangCode]
-  return !!(t && ((t.title || '').trim() || (t.description || '').trim()))
-}
-
-function toggleHotelAmenity(key: string) {
-  if (selectedHotelAmenities.value.includes(key)) {
-    selectedHotelAmenities.value = selectedHotelAmenities.value.filter(k => k !== key)
-  } else {
-    selectedHotelAmenities.value = [...selectedHotelAmenities.value, key]
-  }
-}
-
-/** Clase del borde del input según estado del check. */
-const slugInputBorder = computed(() => {
-  switch (slugStatus.value) {
-    case 'invalid': return 'border-danger'
-    case 'taken': return 'border-danger'
-    case 'available': return 'border-teal'
-    case 'self': return 'border-teal'
-    case 'checking': return 'border-cyan'
-    default: return 'border-border focus-within:border-navy/40'
-  }
-})
-
-const slugBadgeClass = computed(() => {
-  switch (slugStatus.value) {
-    case 'invalid': return 'bg-danger/10 text-danger'
-    case 'taken': return 'bg-danger/10 text-danger'
-    case 'available': return 'bg-teal/10 text-teal'
-    case 'self': return 'bg-teal/10 text-teal'
-    case 'checking': return 'bg-cyan/10 text-navy'
-    case 'error': return 'bg-warning/10 text-warning'
-    default: return 'bg-surface text-text-muted'
-  }
-})
-
-const slugBadgeText = computed(() => {
-  switch (slugStatus.value) {
-    case 'invalid': return 'Formato inválido'
-    case 'taken': return '✗ No disponible'
-    case 'available': return '✓ Disponible'
-    case 'self': return '✓ Tu slug actual'
-    case 'checking': return 'Verificando…'
-    case 'error': return 'No se pudo verificar'
-    default: return originalSlug.value ? 'Sin cambios' : 'Pendiente'
-  }
-})
-
-/**
- * Availability check del slug contra el endpoint público.
- *
- * DECISIÓN: usamos `PublicHotelService.getBySlug(slug)`. Si responde 200 y el id
- * devuelto es DISTINTO al del hotel actual → "tomado por otro hotel". Si el id
- * coincide → "es tuyo". Si responde 404 → disponible. El debounce es de 500ms
- * para no agotar el rate-limit del endpoint (60 req/min/IP) mientras el usuario
- * tipea.
- *
- * AVISO: hasta que se implemente F0 0.4, el endpoint /api/public/hotel/:slug es un
- * stub que devuelve siempre 200 con datos falsos (slug=hotelId). El check NO es
- * confiable en ese lapso — el código queda correcto para cuando F0 0.4 se haga.
- */
-let slugCheckTimer: ReturnType<typeof setTimeout> | null = null
-async function checkSlugAvailability(slug: string) {
-  const trimmed = slug.trim()
-  if (!trimmed) { slugStatus.value = 'idle'; return }
-  if (!SLUG_REGEX.test(trimmed)) { slugStatus.value = 'invalid'; return }
-  if (trimmed === originalSlug.value) { slugStatus.value = 'self'; return }
-
-  slugStatus.value = 'checking'
-  try {
-    const data = await PublicHotelService.getBySlug(trimmed)
-    slugStatus.value = data?.id && form.value.id && data.id === form.value.id ? 'self' : 'taken'
-  } catch (e) {
-    const err = e as { status?: number }
-    // 404 = no existe → disponible. Cualquier otro error (401/429/500) = no se pudo verificar.
-    slugStatus.value = err?.status === 404 ? 'available' : 'error'
-  }
-}
-
-watch(slugDraft, (val) => {
-  if (slugCheckTimer) clearTimeout(slugCheckTimer)
-  if (!val || !val.trim()) { slugStatus.value = 'idle'; return }
-  // Pequeño debounce: 500ms tras la última tecla. Más corto satura el rate-limit.
-  slugCheckTimer = setTimeout(() => { void checkSlugAvailability(val) }, 500)
-})
-
-/** Sugerencia: slugify del nombre del hotel (botón opcional desde el input). */
-function suggestSlugFromName() {
-  const slugified = (form.value.name || '')
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // quita tildes
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-  slugDraft.value = slugified
-}
-
-
-
 // ─── Cambios sin guardar ─────────────────────────────────────────────────────
 // Se compara contra una foto del formulario tomada al cargar (y renovada al guardar bien).
 // Antes se podía salir de la pantalla y perder todo lo tipeado sin ningún aviso.
@@ -1412,11 +1041,8 @@ function snapshot(): string {
     form: form.value, descriptions: descriptions.value,
     selectedAmenities: selectedAmenities.value, emergencyContacts: emergencyContacts.value,
     currencyConfig, guaranteePinDraft: guaranteePinDraft.value, automation, fiscalConfig,
-    // F0 0.21 — Página pública: el slug y los 3 sub-objetos entran al diff para que
-    // el aviso "Cambios sin guardar" salte también al tocarlos.
-    slugDraft: slugDraft.value, selectedHotelAmenities: selectedHotelAmenities.value,
-    publicDesc: publicDesc.value,
-    publishReviewComments: form.value.publishReviewComments,
+    // Slug, amenities hotel-level, traducciones públicas y flags de reseñas públicas
+    // se gestionan y persisten desde la sección "Página pública" del menú.
   })
 }
 function markClean() {
@@ -1607,28 +1233,6 @@ onMounted(async () => {
       descriptions.value = {}
     }
 
-    // F0 0.21 — Página pública: cargar slug, amenities y traducciones a sus drafts.
-    // El ES vive en descriptionJson (descriptions.value.es) — se sincroniza con
-    // publicDesc.es. EN/PT se cargan desde descriptionTranslations.
-    slugDraft.value = (h.slug as string) || ''
-    originalSlug.value = (h.slug as string) || ''
-    slugStatus.value = (h.slug as string) ? 'self' : 'idle'
-    selectedHotelAmenities.value = Array.isArray(h.amenities) ? [...(h.amenities as string[])] : []
-    const dt = (h.descriptionTranslations && typeof h.descriptionTranslations === 'object')
-      ? h.descriptionTranslations as Record<string, { title?: string; description?: string }>
-      : {}
-    publicDesc.value = {
-      es: { title: '', description: (descriptions.value.es as string) || '' },
-      en: {
-        title: (dt.en?.title as string) || '',
-        description: (dt.en?.description as string) || '',
-      },
-      pt: {
-        title: (dt.pt?.title as string) || '',
-        description: (dt.pt?.description as string) || '',
-      },
-    }
-
     // Amenities catalog + selected
     const [cat, sel] = await Promise.all([
       HotelService.amenitiesCatalog(),
@@ -1689,58 +1293,29 @@ async function saveAll() {
     'province','municipality','locality','postalCode','latitude','longitude',
     'cancellationType','cleaningType',
     'depositType','depositFixed','advanceType','advanceAmount','releaseHours','defaultPaymentMethod',
-    'requestReviews','publishReviewScore','taxName','taxRate',
+    'requestReviews','taxName','taxRate',
     'wifiNetwork','wifiPassword','descriptionJson','logo']
   for (const k of keys) {
     const v = saveField(k, (form.value as Record<string, unknown>)[k])
     // Los booleanos viajan como booleanos. Antes se mandaban como 0/1 y el schema del backend
-    // exige `type: 'boolean'` estricto: como freeCancellation/depositRequired/requestReviews/
-    // publishReviewScore siempre tienen default, TODO "Guardar" devolvía 400 y no se persistía
+    // exige `type: 'boolean'` estricto: como freeCancellation/depositRequired/requestReviews
+    // siempre tienen default, TODO "Guardar" devolvía 400 y no se persistía
     // NINGÚN campo del hotel (validateSchema rechaza el body entero, no hace guardado parcial).
     // Verificado contra prod: {"freeCancellation":0} → 400; {"freeCancellation":false} → 200.
+    // publishReviewScore/publishReviewComments NO van acá: los persiste la sección
+    // "Página pública" (general.vue) — si los incluyéramos, saveAll pisaría el valor que
+    // el admin editó ahí con el cargado al abrir Configuración.
     if (v !== undefined) (patch as Record<string, unknown>)[k] = v
   }
   // Serializar descripciones multilingües como JSON
   patch.descriptionJson = JSON.stringify(descriptions.value)
 
-  // F0 0.21 — Página pública: persistir slug (validado en vivo), amenities y
-  // descriptionTranslations (solo EN/PT — el español base vive en descriptionJson).
-  // El ES de publicDesc ya quedó reflejado en descriptions.value.es abajo.
-  if (slugDraft.value && SLUG_REGEX.test(slugDraft.value)) {
-    patch.slug = slugDraft.value.trim()
-  }
-  patch.amenities = selectedHotelAmenities.value
-  // Sincroniza ES: el input de ES en la tab pública escribe la misma fuente que
-  // la tab "Descripción" (descriptions.value.es). Así un edit desde cualquiera de
-  // las dos vistas se persiste consistente.
-  if (descriptions.value.es !== publicDesc.value.es.description) {
-    descriptions.value = { ...descriptions.value, es: publicDesc.value.es.description }
-    patch.descriptionJson = JSON.stringify(descriptions.value)
-  }
-  // descriptionTranslations: nunca incluye 'es'. Solo EN/PT con data, descarta vacíos.
-  const dtOut: Record<string, { title?: string; description?: string }> = {}
-  for (const code of ['en', 'pt'] as const) {
-    const t = publicDesc.value[code]
-    if ((t.title || '').trim() || (t.description || '').trim()) {
-      dtOut[code] = {
-        title: (t.title || '').trim() || undefined,
-        description: (t.description || '').trim() || undefined,
-      }
-    }
-  }
-  patch.descriptionTranslations = dtOut
+  // El slug, amenities (hotel-level), descriptionTranslations y flags de reseñas
+  // públicas (publishReviewScore/Comments) los persiste la sección "Página pública"
+  // (general.vue) con su propio botón Guardar. Acá ya no se tocan.
 
   try {
-    const updated = await SettingsService.patchHotel(patch)
-    // El slug es estable: tras un guardado exitoso, el originalSlug se actualiza
-    // para que el checker no marque "tomado" sobre el propio slug recién confirmado.
-    if (patch.slug) originalSlug.value = patch.slug
-    // Refresca descriptionTranslations desde el backend (por si descartó keys vacías).
-    if (updated?.descriptionTranslations && typeof updated.descriptionTranslations === 'object') {
-      const dt = updated.descriptionTranslations as Record<string, { title?: string; description?: string }>
-      publicDesc.value.en = { title: dt.en?.title || '', description: dt.en?.description || '' }
-      publicDesc.value.pt = { title: dt.pt?.title || '', description: dt.pt?.description || '' }
-    }
+    await SettingsService.patchHotel(patch)
   } catch { errors.push('hotel') }
 
   try {
