@@ -74,6 +74,40 @@ describe('AdminService', () => {
       expect(result.totalUsuarios).toBe(1)
       expect(result.totalReservas).toBe(1)
     })
+
+    // DT-14: P&L consolidado cross-hotel (revenue − gastos), hallado al re-auditar el mapa.
+    it('DT-14: pnlConsolidado suma revenue/gastos/neto de TODOS los hoteles, no solo el filtrado por status', async () => {
+      const orm = makeOrm({
+        findMany: async (table: string) => {
+          if (table === 'Hotels') return [
+            { id: 'h1', name: 'Hotel 1', plan: 'professional', status: 'active' },
+            { id: 'h2', name: 'Hotel 2', plan: 'essential', status: 'active' },
+          ]
+          if (table === 'Reservations') return [
+            { id: 'r1', hotelId: 'h1', totalAmount: 300, status: 'confirmed' },
+            { id: 'r2', hotelId: 'h1', totalAmount: 999, status: 'cancelled' }, // NO cuenta (no confirmed/checked_in)
+            { id: 'r3', hotelId: 'h2', totalAmount: 100, status: 'checked_in' },
+          ]
+          if (table === 'Expenses') return [
+            { id: 'e1', hotelId: 'h1', amount: 50 },
+            { id: 'e2', hotelId: 'h1', amount: 20 },
+            { id: 'e3', hotelId: 'h2', amount: 30 },
+          ]
+          if (table === 'Rooms') return []
+          if (table === 'Users') return []
+          return []
+        },
+      })
+      const repos = makeRepos()
+      const svc = new AdminService(repos.plansRepo, repos.amenitiesRepo, log, undefined, new DashboardQueries(orm))
+      const result: any = await svc.getAnalytics()
+
+      const h1 = result.hotelsBreakdown.find((h: any) => h.id === 'h1')
+      const h2 = result.hotelsBreakdown.find((h: any) => h.id === 'h2')
+      expect(h1).toMatchObject({ revenue: 300, gastos: 70, neto: 230 })
+      expect(h2).toMatchObject({ revenue: 100, gastos: 30, neto: 70 })
+      expect(result.pnlConsolidado).toEqual({ revenue: 400, gastos: 100, neto: 300 })
+    })
   })
 
   describe('listSubscriptions', () => {

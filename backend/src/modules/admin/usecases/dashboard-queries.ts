@@ -96,6 +96,12 @@ export class DashboardQueries {
     const us = await this.orm.findMany('Users', {})
     const rs = await this.orm.findMany('Reservations', {})
     const rooms = await this.orm.findMany('Rooms', {})
+    // DT-14: P&L consolidado cross-hotel. Mismo criterio que el módulo `reports` (reservas
+    // primaria + gastos, NO depende de que el hotel tenga contabilidad/accounting activado —
+    // ese módulo es opt-in por hotel, esto tiene que andar para TODOS). "Neto" acá es una
+    // aproximación operativa (revenue de reservas − gastos), no un P&L contable formal con
+    // devengo/ITBIS — para eso está `contabilidad` por hotel, que si está activo, ya es exacto.
+    const exps = await this.orm.findMany('Expenses', {})
     const MS_PER_DAY = 86_400_000
     const nights = (a: any, b: any): number => {
       if (!a || !b) return 0
@@ -109,13 +115,16 @@ export class DashboardQueries {
       const hRes = rs.filter((r: any) => r.hotelId === h.id && ['confirmed', 'checked_in'].includes(r.status))
       const revenue = hRes.reduce((s: number, r: any) => s + Number(r.totalAmount || 0), 0)
       const nightsSold = hRes.reduce((s: number, r: any) => s + nights(r.checkIn, r.checkOut), 0)
+      // DT-14: gastos del hotel (todas las fuentes: manual/nómina/compras/etc — misma tabla
+      // que lee `reports`, sin filtrar por `paid` porque el P&L es devengado, no de caja).
+      const gastos = exps.filter((e: any) => e.hotelId === h.id).reduce((s: number, e: any) => s + Number(e.amount || 0), 0)
       return {
         id: h.id, name: h.name, plan: h.plan || 'essential', status: h.status || 'active',
         mrr: PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49,
         rooms: hRooms.length, reservations: hRes.length,
         occupancy: hRooms.length > 0 ? Math.min(100, Math.round((hRes.length / hRooms.length) * 100)) : 0,
         adr: nightsSold > 0 ? Math.round(revenue / nightsSold) : 0,
-        revenue,
+        revenue, gastos, neto: Math.round((revenue - gastos + Number.EPSILON) * 100) / 100,
       }
     })
     const activeBreakdown = hotelsBreakdown.filter((h: any) => h.status === 'active')
@@ -159,13 +168,22 @@ export class DashboardQueries {
       mrr: pct(monthlyRevenue[5].value, monthlyRevenue[4].value),
     }
 
+    // DT-14: totales derivados de hotelsBreakdown (no de `rs`/`totalRevenue` de arriba — ese
+    // suma TODAS las reservas sin filtrar por status, sería inconsistente con el desglose por
+    // hotel de esta misma respuesta, que sí filtra confirmed/checked_in).
+    const pnlConsolidado = {
+      revenue: Math.round(hotelsBreakdown.reduce((s: number, h: any) => s + h.revenue, 0) * 100) / 100,
+      gastos: Math.round(hotelsBreakdown.reduce((s: number, h: any) => s + h.gastos, 0) * 100) / 100,
+      neto: Math.round(hotelsBreakdown.reduce((s: number, h: any) => s + h.neto, 0) * 100) / 100,
+    }
+
     return {
       mrr: hs.reduce((s: number, h: any) => s + (PLAN_PRICE[String(h.plan).toLowerCase()] ?? 49), 0),
       totalHoteles: hs.length, totalUsuarios: us.length, totalReservas: rs.length,
       activeHotels: hs.filter((h: any) => h.status === 'active').length,
       byPlan: hs.reduce((a: any, h: any) => ((a[h.plan] = (a[h.plan] || 0) + 1), a), {}),
       byPlanRevenue,
-      avgOccupancy, avgADR, hotelsBreakdown,
+      avgOccupancy, avgADR, hotelsBreakdown, pnlConsolidado,
       topByRevenue: [...hotelsBreakdown].sort((a: any, b: any) => b.revenue - a.revenue).slice(0, 5),
       topByOccupancy: [...hotelsBreakdown].sort((a: any, b: any) => b.occupancy - a.occupancy).slice(0, 5),
       npsScore: 0, ticketPromedio: 0, monthlyRevenue, trends,
