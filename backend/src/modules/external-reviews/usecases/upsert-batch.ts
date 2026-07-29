@@ -42,20 +42,33 @@ export function isDuplicateError(e: unknown): boolean {
   )
 }
 
-/** Construye el payload de campos mutables para `repo.update`. No incluye source/sourceExternalId. */
+/** Construye el payload de campos mutables para `repo.update`. No incluye source/sourceExternalId.
+ *
+ * M4 corolario — `NormalizedExternalReview.submittedAt` ahora es `string | null`: si el
+ * connector (GBP) no recibió `createTime`, llega null. Acá NO inventamos un timestamp (sería
+ * falsear la fecha real): simplemente no tocamos `submittedAt` en el update (la fila existente
+ * conserva el valor que ya tenía, que sí era válido al insertarse). */
 function mutableUpdateFrom(rev: NormalizedExternalReview): Partial<Omit<ExternalReviewDTO, 'id' | 'source' | 'sourceExternalId' | 'hotelId' | 'createdAt' | 'updatedAt'>> {
-  return {
+  const patch: Partial<Omit<ExternalReviewDTO, 'id' | 'source' | 'sourceExternalId' | 'hotelId' | 'createdAt' | 'updatedAt'>> = {
     rating: rev.rating,
     title: rev.title,
     comment: rev.comment,
     authorName: rev.authorName,
     language: rev.language,
-    submittedAt: rev.submittedAt,
     url: rev.url,
   }
+  if (rev.submittedAt !== null) patch.submittedAt = rev.submittedAt
+  return patch
 }
 
-/** Construye el payload para `repo.create` (campos del modelo, sin id/timestamps que arma el ORM). */
+/** Construye el payload para `repo.create` (campos del modelo, sin id/timestamps que arma el ORM).
+ *
+ * M4 corolario — Si una review llega al upsert sin `submittedAt` (connector GBP no devolvió
+ * `createTime` y el filter del connector la dejó pasar), usamos el timestamp de ingest como
+ * último recurso. Es mejor que descartar la review completa: el cron nightly la persiste con
+ * la fecha en que la vimos por primera vez, y la próxima corrida la actualizará si el
+ * connector trae `createTime` real. Los connectors filtran null en su wrapper (GBP ya lo hace),
+ * así que este fallback casi nunca se ejecuta. */
 function createPayloadFrom(hotelId: string, rev: NormalizedExternalReview): Omit<ExternalReviewDTO, 'id' | 'createdAt' | 'updatedAt'> {
   return {
     hotelId,
@@ -66,7 +79,7 @@ function createPayloadFrom(hotelId: string, rev: NormalizedExternalReview): Omit
     title: rev.title,
     comment: rev.comment,
     language: rev.language,
-    submittedAt: rev.submittedAt,
+    submittedAt: rev.submittedAt ?? new Date().toISOString(),
     url: rev.url,
   }
 }

@@ -219,9 +219,14 @@ async function persistFunnelEvent(
 function resolveHotelId(params: TrackParams): string | null {
   const explicit = params.hotelId
   if (typeof explicit === 'string' && explicit.trim() !== '') return explicit.trim()
-  // Widget embebido: el loader setea `data-hotel="<slug>"` en <script>.
+  // Widget embebido: el loader setea `data-hotel="<slug>"` en el <script> que cargó el bundle.
+  // `document.currentScript` es DEAD dentro de un bundle ES module (Vue/Vite): solo vive
+  // mientras el <script> se está ejecutando line-by-line, y para el momento en que el composable
+  // corre, `currentScript` ya es null. Buscamos el tag explícitamente por selector.
   try {
-    const slug = document?.currentScript?.getAttribute('data-hotel')
+    if (typeof document === 'undefined') return null
+    const tag = document.querySelector('script[data-hotel]') as HTMLScriptElement | null
+    const slug = tag?.getAttribute('data-hotel')
     if (slug && slug.trim() !== '') return slug.trim()
   } catch { /* SSR o sin document */ }
   return null

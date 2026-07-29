@@ -93,13 +93,15 @@ describe('F3 3.11 — Meta CAPI usecase', () => {
   })
 
   describe('buildMetaPayload', () => {
-    it('arma event Purchase con event_id, action_source=system, custom_data', () => {
+    it('arma event Purchase con event_id, action_source=website, custom_data', () => {
       const body = buildMetaPayload(data, { em: 'abc', ph: 'def' })
       expect(body).toHaveProperty('data')
       const event = (body as any).data[0]
       expect(event.event_name).toBe('Purchase')
       expect(event.event_id).toBe('rsv-123') // dedup
-      expect(event.action_source).toBe('system')
+      // B4 fix — action_source debe ser 'website' (valor válido para Meta CAPI).
+      // 'system' fue rechazado por Meta con error 100.
+      expect(event.action_source).toBe('website')
       expect(event.custom_data).toMatchObject({
         value: 150.5, currency: 'USD', content_type: 'hotel', content_ids: ['room-9'],
       })

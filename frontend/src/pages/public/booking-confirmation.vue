@@ -121,13 +121,13 @@
         </p>
 
         <!-- Volver al inicio. -->
-        <a
+        <router-link
           v-if="slug"
-          :href="`/h/${slug}`"
+          :to="`/h/${slug}`"
           class="inline-block mt-5 text-sm font-extrabold text-cyan hover:text-cyan-light"
         >
           ← {{ t('confirm.backHome') }}
-        </a>
+        </router-link>
       </section>
 
       <!-- PENDING -->
@@ -149,13 +149,13 @@
         <div class="text-5xl mb-3">⚠️</div>
         <h2 class="text-xl font-black text-navy">{{ t('confirm.errorTitle') }}</h2>
         <p class="text-sm text-text-muted mt-2">{{ errorMessage }}</p>
-        <a
+        <router-link
           v-if="slug"
-          :href="`/book/${slug}`"
+          :to="`/book/${slug}`"
           class="inline-block mt-5 rounded-xl bg-cyan px-6 py-3 text-sm font-bold text-white hover:bg-cyan-light"
         >
           {{ t('confirm.retryCta') }}
-        </a>
+        </router-link>
       </section>
     </main>
   </div>
@@ -183,6 +183,8 @@ const slug = ref('')
 // F4 4.1 — hotelId resuelto desde el slug. Lo lee firePurchaseTracking para persistir el
 // evento 'purchase' (mapeado a 'confirm' server-side) con el hotel correcto en tracking_events.
 const hotelIdForTracking = ref('')
+// Currency real del hotel (para tracker). Default 'USD' si no carga (mismo fallback que antes).
+const hotelCurrency = ref('USD')
 
 const MAX_ATTEMPTS = 10
 const POLL_INTERVAL_MS = 3000
@@ -298,7 +300,7 @@ function firePurchaseTracking(reservationId: string, amount?: number): void {
       eventId: reservationId,
       reservationId,
       value: typeof amount === 'number' ? amount : undefined,
-      currency: 'USD', // fallback; el backend tiene el currency real en la factura
+      currency: hotelCurrency.value,
       optIn: true,
       hotelId: hotelIdForTracking.value,
     })
@@ -327,6 +329,8 @@ onMounted(async () => {
       const hotel = await PublicHotelService.getBySlug(slug.value)
       hotelName.value = hotel.name
       hotelIdForTracking.value = hotel.id
+      // FE fix (audit) — Currency real del hotel (antes era hardcoded 'USD' en el tracker).
+      if (hotel.currency) hotelCurrency.value = hotel.currency
     } catch {
       hotelName.value = ''
     }

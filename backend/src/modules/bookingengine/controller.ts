@@ -13,6 +13,7 @@ import {
   UpdateBookingConfigSchema,
   CheckAvailabilitySchema,
   CreatePublicBookingSchema,
+  ExtendedPublicBookingSchema,
   TrackEventSchema,
   CreateCheckoutSessionSchema,
   CreateUpsellSchema,
@@ -196,11 +197,25 @@ export class BookingengineController {
     // para que pueda crear la Checkout Session tras crear la reserva pending. Si Stripe falla,
     // el usecase devuelve `checkoutUrl: null` + `paymentError` (reserva NO se pierde).
     //
+    // B5 fix (audit solmi-direct-booking) — Validación del body ANTES de pasar al usecase.
+    // Antes `req.body` iba crudo al usecase, que validaba a mano solo los required; campos
+    // malformados (ej. `adults: "abc"`) llegaban al ORM y generaban 500 o datos corruptos.
+    // Ahora `validateSchema(ExtendedPublicBookingSchema, ...)` valida tipos + required (incl.
+    // `roomId` nuevo en el schema). `upsells` (array) y `idempotencyKey` se leen crudo del
+    // body porque el framework no soporta `type:'json'` en validators (documentado en schema).
+    const rawBody = (req.body || {}) as Record<string, unknown>
+    const validated = validateSchema(ExtendedPublicBookingSchema, rawBody) as Record<string, unknown>
+    // Reincorporar `upsells`/`idempotencyKey` crudos si vienen (no validados por el schema).
+    const body = {
+      ...validated,
+      ...(Array.isArray(rawBody.upsells) ? { upsells: rawBody.upsells } : {}),
+      ...(typeof rawBody.idempotencyKey === 'string' ? { idempotencyKey: rawBody.idempotencyKey } : {}),
+    } as { successUrl?: string; cancelUrl?: string; [k: string]: unknown }
+
     // successUrl/cancelUrl: el widget (F2) las va a mandar en el body. Si no llegan, derivamos
     // de `PUBLIC_BASE_URL` (env) para que el flujo no rompa en prod. El pattern de la URL de
     // vuelta es `/h/:slug?booking=:id&token=:token` (spec booking-unification R2) — lo arma el
     // frontend; el backend solo se asegura de tener URLs válidas para mandarle a Stripe.
-    const body = (req.body || {}) as { successUrl?: string; cancelUrl?: string }
     const baseUrl = process.env.PUBLIC_BASE_URL || publicBaseFromRequest(req)
     const successUrl = body.successUrl || (baseUrl ? `${baseUrl}/booking/success` : '')
     const cancelUrl = body.cancelUrl || (baseUrl ? `${baseUrl}/booking/cancel` : '')
@@ -212,7 +227,7 @@ export class BookingengineController {
       ? { config: this.configRepo, promoCodes: this.promoCodesRepo, upsells: this.upsellRepo }
       : undefined
     return createPublicBookingDirect(
-      this.orm, req.body,
+      this.orm, body,
       this.pushAvailability, this.auth,
       this.service, this.logger,
       stripeUrls,

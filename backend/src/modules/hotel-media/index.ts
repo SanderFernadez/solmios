@@ -66,7 +66,11 @@ export function HotelMediaModule(opts: { storage?: StorageService } = {}) {
       const hotels = new OrmRepository<any>(orm, 'Hotels')
       const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('hotel-media')
-      const service = new HotelMediaService(media, rooms, userRepo, log, auth, opts.storage)
+      // M2 fix (audit) — Transactor para reorder atómico. Envuelve `orm.transaction` en la
+      // interface `MediaTransactor` para que el service no dependa del ORM concreto (regla
+      // "service no inyecta ORM directo" del analyzer). Mismo patrón que landing/index.ts.
+      const transactor = { transaction: <T>(fn: (tx: any) => Promise<T>): Promise<T> => orm.transaction(fn) }
+      const service = new HotelMediaService(media, rooms, userRepo, log, auth, opts.storage, transactor)
       const controller = new HotelMediaController(service, log, media, rooms, hotels)
 
       // Guard admin: userType merchant + permiso media:action. Mismo patrón que

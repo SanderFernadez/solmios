@@ -160,9 +160,15 @@ export async function upsert(
   // `tx.createMany('ModelName', records)` / `tx.deleteMany('ModelName', filters)`
   // directamente sobre el `tx` (mismo kernel/orm.ts usado por accounting/journal-entry.ts
   // y reservas/checkin.ts). El callback recibe un ORM completo atado a la transacción.
+  //
+  // M3 fix (audit solmi-direct-booking) — Respetar `input.id` si vino en el payload (toggle
+  // sobre id viejo). Antes se pisaba siempre con `crypto.randomUUID()` → el frontend que
+  // hacía toggle sobre un id existente recibía 404 al hacer `PUT /:id` después del upsert.
+  // Si no trae id, generamos uno nuevo (alta). `hotelId` SIEMPRE se setea desde el hotel del
+  // JWT (assertOwnershipOf validó al inicio) → no hay forma de inyectar bloque de otro hotel.
   const now = new Date().toISOString()
   const records = normalized.map((n) => ({
-    id: crypto.randomUUID(),
+    id: n.id ?? crypto.randomUUID(),
     hotelId,
     type: n.type,
     config: n.config,

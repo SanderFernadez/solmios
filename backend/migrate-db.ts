@@ -7,6 +7,7 @@
 // DDL (SQLite-only) y los PRAGMA*. Las columnas createdAt/updatedAt quedan como
 // TEXT sin default; los INSERT del seed no siempre las setean → quedarán NULL en
 // datos demo (aceptable). El app real setea timestamps desde sus servicios.
+import { createHash } from 'node:crypto'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { PostgresAdapter } from 'arckode-framework/adapters/postgres'
 import type { DbAdapter } from 'arckode-framework'
@@ -1152,7 +1153,74 @@ async function main(): Promise<void> {
     console.log("demo talento/finanzas: parcial —", msg.slice(0, 90))
   }
 
+  // M5 fix (audit solmi-direct-booking) — Poblar `hotels.slug` para los hoteles sin slug.
+  // El seeder `seed-hotel-slugs.ts` era standalone (había que correrlo aparte) → `bun run
+  // migrate` dejaba los slugs vacíos y `getPublicBookingBySlug` / `/api/public/hotels/:slug`
+  // devolvían 404. Ahora se invoca acá, después de seedBase + DDL (la columna `slug` viene
+  // del modelo ORM, que se crea vía RUN_MIGRATE aparte — pre-requisito documentado en el
+  // seeder). Idempotente (`WHERE slug IS NULL OR slug = ''`) → safe correr N veces.
+  try {
+    await seedHotelSlugs()
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.log("seed-hotel-slugs: parcial —", msg.slice(0, 120))
+  }
+
   console.log("\n✅ Migración completa")
+}
+
+/**
+ * M5 — Wrapper local de `scripts/seed-hotel-slugs.ts` adaptado al `db` ya conectado de
+ * `migrate-db.ts`. Idempotente. No abre/cierra conexión (la maneja `main()`).
+ *
+ * Mantengo la lógica duplicada en vez de importar el script porque aquel maneja su propio
+ * ciclo de vida (connect/close) y haría collisionar adapters. El fuente canónico está en
+ * `scripts/seed-hotel-slugs.ts`; si cambia la lógica del slugify, actualizar ambos.
+ */
+async function seedHotelSlugs(): Promise<void> {
+  interface HotelRow { id: string; name: string | null }
+  interface CountRow { c: number }
+
+  const hotels = (await db.query(
+    `SELECT id, name FROM hotels WHERE slug IS NULL OR slug = ''`
+  )) as HotelRow[]
+  if (hotels.length === 0) {
+    console.log('✅ Todos los hoteles ya tienen slug — nada que hacer.')
+    return
+  }
+  console.log(`[seed-hotel-slugs] Found ${hotels.length} hotel(es) sin slug.`)
+
+  const slugify = (input: string): string =>
+    (input || '').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-')
+  const shortHash = (s: string): string =>
+    createHash('sha256').update(s).digest('hex').slice(0, 6)
+
+  let populated = 0
+  let collisions = 0
+  for (const hotel of hotels) {
+    const base = slugify(hotel.name ?? '')
+    if (!base) {
+      const fallback = `hotel-${shortHash(hotel.id)}`
+      await run(`UPDATE hotels SET slug = ? WHERE id = ?`, [fallback, hotel.id])
+      populated++
+      continue
+    }
+    const countRows = (await db.query(
+      `SELECT COUNT(*) as c FROM hotels WHERE slug = ?`, [base]
+    )) as CountRow[]
+    const exists = countRows[0]?.c ?? 0
+    const finalSlug = exists > 0 ? `${base}-${shortHash(hotel.id)}` : base
+    if (exists > 0) collisions++
+    await run(`UPDATE hotels SET slug = ? WHERE id = ?`, [finalSlug, hotel.id])
+    populated++
+  }
+  console.log(
+    `[seed-hotel-slugs] ✅ ${populated} slug(s) poblados, ${collisions} colisión(es) resuelta(s).`
+  )
 }
 
 // ─── Tablas para app móvil housekeeping ───────────────────────────────────

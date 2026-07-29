@@ -32,7 +32,9 @@ export interface GbpConfig {
 /** Shape crudo de la API GBP que nos interesa (subset). */
 export interface GbpRawReview {
   reviewId?: string
-  starRating?: number  // GBP usa 1-5
+  /** GBP devuelve `starRating` como ENUM STRING (`STAR_RATING_FIVE`), NO como número.
+   *  El campo numérico existe en algunas respuestas legacy, pero el contract oficial es enum. */
+  starRating?: number | string
   comment?: string
   reviewer?: { displayName?: string }
   createTime?: string
@@ -58,19 +60,58 @@ export const defaultGbpFetcher: GbpFetcher = async (placeId, accessToken) => {
   return await res.json() as GbpRawResponse
 }
 
+/**
+ * B3 fix (audit solmi-direct-booking) — Mapa del enum `starRating` de GBP a dígito 1-5.
+ * La API v4 devuelve `'STAR_RATING_ONE'` .. `'STAR_RATING_FIVE'` (NO números); el código
+ * viejo hacía `Number('STAR_RATING_FIVE')` → NaN → rating=0 → la wrapper descartaba el 100%
+ * de las reviews GBP. Este mapa cubre el contract oficial; el regex del fallback extrae el
+ * dígito si GBP agrega nuevos tokens (ej. `STAR_RATING_SIX` hipotético).
+ */
+const GBP_STAR_RATING_ENUM: Record<string, number> = {
+  STAR_RATING_ONE: 1,
+  STAR_RATING_TWO: 2,
+  STAR_RATING_THREE: 3,
+  STAR_RATING_FOUR: 4,
+  STAR_RATING_FIVE: 5,
+}
+
+/**
+ * Normaliza el `starRating` crudo de GBP a un dígito 1-5, o `null` si no es válido.
+ * Acepta: número 1-5 (legacy), enum string (`STAR_RATING_FOUR`), o string numérico (`"4"`).
+ * Devuelve null para cualquier otro formato → la wrapper descarta la review por rating inválido.
+ */
+export function parseGbpStarRating(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return raw >= 1 && raw <= 5 ? Math.floor(raw) : null
+  }
+  if (typeof raw === 'string' && raw.length > 0) {
+    if (GBP_STAR_RATING_ENUM[raw]) return GBP_STAR_RATING_ENUM[raw]
+    const match = raw.match(/(\d)/)
+    if (match) {
+      const n = Number(match[1])
+      if (n >= 1 && n <= 5) return n
+    }
+  }
+  return null
+}
+
 /** Mapea review cruda GBP al schema normalizado. Puro, sin IO. */
 export function normalizeGbpReview(raw: GbpRawReview): NormalizedExternalReview {
-  const rating = Number(raw.starRating)
+  // B3 fix — Rating vía enum map; null si el formato no matchea (descartado por la wrapper).
+  const rating = parseGbpStarRating(raw.starRating)
   return {
     source: 'google',
     sourceExternalId: String(raw.reviewId ?? ''),
     authorName: raw.reviewer?.displayName ?? null,
-    // Rating <1 o NaN → 0 → filtrado por el wrapper (no queremos reviews sin rating válido).
-    rating: Number.isFinite(rating) && rating >= 1 ? Math.min(5, rating) : 0,
+    // Rating null/NaN → 0 → filtrado por el wrapper (no queremos reviews sin rating válido).
+    rating: rating ?? 0,
     title: null, // GBP no tiene título separado del comment
     comment: raw.comment ?? null,
     language: null, // GBP no expone language en el review object
-    submittedAt: raw.createTime ?? new Date().toISOString(),
+    // M4 fix — Sin `createTime`, devolvemos null (NO `now()`): el cron decide descartar la
+    // review o asignarle fallback de ingest. Inventar `now()` falsea la fecha real de la
+    // review y rompe el orden cronológico del aggregate.
+    submittedAt: raw.createTime ?? null,
     url: null, // GBP no devuelve URL directa de la review
   }
 }
@@ -101,7 +142,10 @@ export async function fetchGbpReviews(
     const accessToken = await tokenFetcher(config.serviceAccount)
     const raw = await fetcher(config.placeId, accessToken)
     const reviews = raw.reviews ?? []
-    return reviews.map(normalizeGbpReview).filter((r) => r.sourceExternalId && r.rating > 0)
+    // M4 corolario — también descarta reviews sin submittedAt (sin fecha no aporta al aggregate).
+    return reviews
+      .map(normalizeGbpReview)
+      .filter((r) => r.sourceExternalId && r.rating > 0 && r.submittedAt)
   } catch (e: unknown) {
     log?.warn('gbp-reviews: fetch falló — devuelve []', { error: (e as Error)?.message })
     return []

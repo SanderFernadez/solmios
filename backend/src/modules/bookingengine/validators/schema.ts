@@ -88,9 +88,17 @@ export const CreateCheckoutSessionSchema: Record<string, ValidationRule> = {
  * en validators (ValidationType = string|number|boolean|email|url|date). El usecase lee
  * `upsells` directo del body como HOOK para F2 task 2.5; cuando F2 lo materialice como modelo
  * Upsell propio, este schema se amplía con el tipo correcto.
+ *
+ * B5 fix (audit solmi-direct-booking) — Agregado `roomId` como string required: el widget
+ * unificado (F2) manda `roomId` (la habitación específica), NO solo `roomType`. Antes el
+ * schema no lo declaraba → el controller NO validaba el body y pasaba `req.body` crudo al
+ * usecase. Ahora `ExtendedPublicBookingSchema` aplica con `validateSchema()` en el controller
+ * (ver `createPublicBookingDirect`), cubriendo `roomId` + campos escalares. `upsells` sigue
+ * fuera (array de objetos) y se lee crudo del body; `idempotencyKey` es opcional igual.
  */
 export const ExtendedPublicBookingSchema: Record<string, ValidationRule> = {
   ...CreatePublicBookingSchema,
+  roomId: { type: 'string' as const, required: true },
   successUrl: { type: 'string' as const },
   cancelUrl: { type: 'string' as const },
 }

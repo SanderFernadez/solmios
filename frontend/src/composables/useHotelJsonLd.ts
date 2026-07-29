@@ -76,8 +76,12 @@ export function useHotelJsonLd(input: UseHotelJsonLdInput): UseHotelJsonLdResult
       'url': typeof window !== 'undefined' ? window.location.href : `/h/${h.slug}`,
     }
     if (h.title || h.description) node['description'] = h.description || h.title
+    // FE fix (audit) — Evitar `@type: ['Hotel', 'Hotel']` cuando accommodationType==='hotel':
+    // schema.org no acepta tipos duplicados y Google Markup Validator warna. Si el mapped
+    // type ya es 'Hotel', dejamos string; si es distinto, array (Hotel + específico).
     if (h.accommodationType) {
-      node['@type'] = ['Hotel', ACCOMMODATION_MAP[h.accommodationType] ?? 'LodgingBusiness']
+      const mapped = ACCOMMODATION_MAP[h.accommodationType] ?? 'LodgingBusiness'
+      node['@type'] = mapped === 'Hotel' ? 'Hotel' : ['Hotel', mapped]
     }
     if (h.starRating) {
       const stars = Number(h.starRating)

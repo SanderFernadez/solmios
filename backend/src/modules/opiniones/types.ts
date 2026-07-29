@@ -95,6 +95,10 @@ export interface PublicReviewsResponse {
     channel: string
     date: string | null
     authorName: string | null
+    /** M6 fix (audit solmi-direct-booking) — Link a la review original (TripAdvisor/GBP/OTA).
+     *  `null` para reservas directas. El usecase ya lo devuelve; falta declararlo acá para
+     *  que el contrato TypeScript coincida con el runtime (sino TS lo infiere opcional). */
+    sourceUrl: string | null
   }>
   aggregate: {
     score: number | null

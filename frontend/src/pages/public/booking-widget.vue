@@ -438,7 +438,7 @@ const COUNTRY_TO_CURRENCY: Record<string, string> = {
   US: 'USD', DO: 'DOP',
   ES: 'EUR', DE: 'EUR', FR: 'EUR', IT: 'EUR', PT: 'EUR', NL: 'EUR', IE: 'EUR', AT: 'EUR', BE: 'EUR', FI: 'EUR', GR: 'EUR',
   GB: 'GBP', CH: 'CHF',
-  BR: 'BRL', PT_BR: 'BRL',
+  BR: 'BRL',
   AR: 'ARS', CL: 'CLP', CO: 'COP', PE: 'PEN', UY: 'UYU', PY: 'PYG', BO: 'BOB', VE: 'VES', EC: 'USD', CR: 'CRC', PA: 'USD', GT: 'GTQ', HN: 'HNL', NI: 'NIO', SV: 'USD',
   CA: 'CAD',
   MX: 'MXN',

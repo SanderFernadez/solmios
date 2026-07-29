@@ -83,6 +83,10 @@ export interface UpsertBatchResult {
  * Shape que devuelve cada connector (gbp/tripadvisor/stayapi) al cron.
  * NO incluye `hotelId` (lo agrega el cron antes del upsert — los connectors son por hotel).
  * Es el "schema normalizado" del spec.md:42-49.
+ *
+ * `submittedAt` es `string | null` (M4 fix audit solmi-direct-booking): algunos connectors
+ * (GBP) pueden no recibir `createTime` de la API externa → null → el cron descarta la review
+ * o aplica fallback de ingest. Antes era `string` y se rellenaba con `now()`, falseando fecha.
  */
 export interface NormalizedExternalReview {
   source: ExternalReviewSource
@@ -92,7 +96,7 @@ export interface NormalizedExternalReview {
   title?: string | null
   comment?: string | null
   language?: string | null
-  submittedAt: string
+  submittedAt: string | null
   url?: string | null
 }
 

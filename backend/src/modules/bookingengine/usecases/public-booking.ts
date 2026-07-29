@@ -94,9 +94,14 @@ export interface PublicBookingLogger {
 }
 
 export async function getPublicBookingBySlug(orm: any, slug: string, query: any): Promise<any> {
-  const hotels = await orm.findMany('Hotels', {}) as any[]
-  const hotel = hotels.find((h: any) => h.name?.toLowerCase().replace(/\s+/g, '-') === slug || h.id === slug)
+  // M1 fix (audit solmi-direct-booking) — Resuelve por la columna física `slug` (semilla F0),
+  // NO por slugify(hotel.name) on-the-fly: dos hoteles con el mismo nombre reciben sufijos
+  // anti-colisión (`name-<hash>`) que el slugify runtime no reproducía → 404 espurios.
+  // Fallback a `id === slug` solo si llega un id (compat con callers viejos que usaban id).
+  const hotel = await orm.findOne('Hotels', { slug }) as any
+    ?? (slug && /^[0-9a-f-]{36}$/i.test(slug) ? await orm.findById('Hotels', slug) as any : null)
   if (!hotel) return { status: 404, body: { error: 'Hotel no encontrado' } }
+  const effectiveSlug: string = hotel.slug || String(slug)
 
   const rooms = await orm.findMany('Rooms', { hotelId: hotel.id }) as any[]
   let available = rooms.filter((r: any) => r.status === 'disponible' || r.status === 'available')
@@ -127,7 +132,7 @@ export async function getPublicBookingBySlug(orm: any, slug: string, query: any)
     type, count: items.length, price: items[0].basePrice, rooms: items,
     amenities: amsByRoom.get(items[0].id) || [],
   }))
-  return { status: 200, body: { hotel: { id: hotel.id, name: hotel.name, slug: hotel.name?.toLowerCase().replace(/\s+/g, '-') }, roomTypes } }
+  return { status: 200, body: { hotel: { id: hotel.id, name: hotel.name, slug: effectiveSlug }, roomTypes } }
 }
 
 /**
@@ -297,6 +302,16 @@ export async function createPublicBookingDirect(
       // F2 2.5 — Incremento atómico de promo.uses DENTRO de la tx. Re-lectura para detectar
       // races concurrentes. Si se agotó entre validate y commit, aborta (rollback de guest +
       // reservation, no se incrementa). El caller atrapa el centinela y devuelve 409.
+      //
+      // B2 fix (audit solmi-direct-booking) — Optimistic locking: el UPDATE condicional filtra
+      // por `id AND uses=freshUses`. Si otra tx concurrente ya incrementó `uses` entre nuestra
+      // re-lectura (findOne arriba) y este UPDATE, el filter no matchea → affected=0 → aborta
+      // con el centinela (rollback total). En SQLite las tx son seriales (WAL), pero en
+      // Postgres READ COMMITTED este filter es lo que previene la race TOCTOU real: 2 tx que
+      // leyeron uses=0, solo 1 logra `UPDATE WHERE uses=0`; la otra ve affected=0 y aborta.
+      // `tx.updateMany` devuelve `result.changes` (filas afectadas); fallback a `update` para
+      // mocks/ORMs viejos sin updateMany (en ese caso no se detecta la race, equivalente al
+      // comportamiento pre-fix en tests que usan mocks simples).
       if (promoRecord) {
         const fresh = await tx.findOne?.('PromoCodes', { id: promoRecord.id }).catch(() => null) ?? promoRecord
         const freshUses = Number(fresh?.uses ?? promoRecord.uses ?? 0)
@@ -304,7 +319,12 @@ export async function createPublicBookingDirect(
         if (typeof maxUses === 'number' && Number.isFinite(maxUses) && freshUses >= maxUses) {
           throw new PromoUsesExhaustedError()
         }
-        await tx.update('PromoCodes', promoRecord.id, { uses: freshUses + 1 })
+        const newUses = freshUses + 1
+        const optimisticFilter: Record<string, unknown> = { id: promoRecord.id, uses: freshUses }
+        const affected = typeof tx.updateMany === 'function'
+          ? await tx.updateMany('PromoCodes', optimisticFilter, { uses: newUses })
+          : (await tx.update('PromoCodes', promoRecord.id, { uses: newUses }) ? 1 : 0)
+        if (affected === 0) throw new PromoUsesExhaustedError()
       }
     })
   } catch (e: any) {

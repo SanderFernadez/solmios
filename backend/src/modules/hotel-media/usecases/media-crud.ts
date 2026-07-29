@@ -17,6 +17,19 @@ import type { StorageService } from 'arckode-framework/modules/storage'
 import type { HotelMediaDTO, CreateHotelMediaDTO, UpdateHotelMediaDTO, MediaType, CurrentUser } from '../types'
 import { parseDataUrl, isImage } from '../../../shared/utils/data-url'
 
+/**
+ * Abstracción mínima del ORM para atomicidad: solo expone `transaction`. La define el módulo
+ * (NO es el tipo `ORM` del framework) para que el service dependa de esta interface y no del
+ * ORM concreto — el analyzer lo exige (regla "service no inyecta ORM directo"). El index.ts
+ * construye el adapter desde el `orm` real del sistema.
+ *
+ * M2 fix (audit solmi-direct-booking) — `reorder` ahora envuelve su loop de updates en una
+ * tx (patrón de `landing/usecases/blocks-crud.ts`). Si un update falla a mitad, rollback.
+ */
+export interface MediaTransactor {
+  transaction<T>(fn: (tx: any) => Promise<T>): Promise<T>
+}
+
 export interface MediaCrudDeps {
   media: RepositoryAdapter<HotelMediaDTO>
   /** Repo ORM `Rooms` para validar que `roomId` pertenece al hotel (FK lógica). */
@@ -26,6 +39,10 @@ export interface MediaCrudDeps {
   /** Storage para subir binarios cuando `url` viene como data-URL base64. Opcional:
    *  si no se inyecta, el `upload` con data-URL falla con ValidationError claro. */
   storage?: StorageService
+  /** M2 — Transactor para `transaction(fn)` en reorder atómico. Opcional para no romper
+   *  tests legacy que no lo pasan: si falta, `reorder` cae al loop sin tx (comportamiento
+   *  pre-fix, no atómico pero funcional para DBs pequeñas). */
+  transactor?: MediaTransactor
 }
 
 const MEDIA_TYPES: MediaType[] = ['gallery', 'hero', 'room']
@@ -174,7 +191,15 @@ export async function remove(deps: MediaCrudDeps, id: string, user: CurrentUser)
 }
 
 // ─── reorder ───────────────────────────────────────────────────────────────
-/** Reescribe `sortOrder` 0..N-1 sin gaps. Antes de tocar, valida que cada id sea del hotel. */
+/**
+ * Reescribe `sortOrder` 0..N-1 sin gaps. Antes de tocar, valida que cada id sea del hotel.
+ *
+ * M2 fix (audit solmi-direct-booking) — El loop de updates va dentro de `transactor.transaction`:
+ * si un update falla a mitad del loop, rollback total (no quedan sortOrders parcialmente
+ * reescritos). Patrón de `landing/usecases/blocks-crud.ts:177-180`. Validación de ownership
+ * e ids va ANTES de abrir la tx (no toca la tabla si algo ya está mal).
+ * Si `transactor` no está cableado (tests legacy / callers viejos), cae al loop sin tx.
+ */
 export async function reorder(
   deps: MediaCrudDeps,
   hotelId: string,
@@ -185,11 +210,32 @@ export async function reorder(
   if (!Array.isArray(ids) || ids.length === 0) {
     throw new ValidationError('ids debe ser un array no vacío')
   }
-  for (let i = 0; i < ids.length; i++) {
-    const row = await deps.media.findOne({ id: ids[i] })
+  // Validar todos los ids ANTES de abrir la tx (fail-fast, sin tocar la tabla).
+  for (const id of ids) {
+    const row = await deps.media.findOne({ id })
     if (!row || row.hotelId !== hotelId) {
-      throw new ValidationError(`La media ${ids[i]} no existe o es de otro hotel`)
+      throw new ValidationError(`La media ${id} no existe o es de otro hotel`)
     }
-    await deps.media.update(ids[i], { sortOrder: i } as Partial<Omit<HotelMediaDTO, 'id'>>)
+  }
+
+  const runUpdates = async (txOrMedia: RepositoryAdapter<HotelMediaDTO>) => {
+    for (let i = 0; i < ids.length; i++) {
+      await txOrMedia.update(ids[i], { sortOrder: i } as Partial<Omit<HotelMediaDTO, 'id'>>)
+    }
+  }
+
+  // Con transactor: atómico. Sin transactor: loop simple (compat retro).
+  if (deps.transactor) {
+    await deps.transactor.transaction(async (tx: any) => {
+      // El tx expone los mismos métodos que el repo (mock simple en tests, ORM real en prod).
+      // `tx.for('HotelMedia')` si es OrmTransactor del framework, o tx directo si es el orm.
+      const txMedia: RepositoryAdapter<HotelMediaDTO> =
+        typeof tx.for === 'function'
+          ? { update: async (id, patch) => { await tx.update('HotelMedia', id, patch as any); return null as any } }
+          : tx
+      await runUpdates(txMedia)
+    })
+  } else {
+    await runUpdates(deps.media)
   }
 }

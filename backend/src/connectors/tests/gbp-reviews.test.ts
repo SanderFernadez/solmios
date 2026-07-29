@@ -70,4 +70,32 @@ describe('fetchGbpReviews', () => {
     expect(out.authorName).toBe('Zoe')
     expect(out.title).toBeNull()
   })
+
+  it('B3 fix — starRating como ENUM STRING (STAR_RATING_FOUR) → rating=4 (no NaN)', () => {
+    // GBP API v4 devuelve `starRating` como enum string (`STAR_RATING_FOUR`), no como número.
+    // Antes `Number('STAR_RATING_FOUR')` → NaN → rating=0 → review descartada. Ahora mapea a 4.
+    expect(normalizeGbpReview({ reviewId: 'enum5', starRating: 'STAR_RATING_FIVE' }).rating).toBe(5)
+    expect(normalizeGbpReview({ reviewId: 'enum4', starRating: 'STAR_RATING_FOUR' }).rating).toBe(4)
+    expect(normalizeGbpReview({ reviewId: 'enum3', starRating: 'STAR_RATING_THREE' }).rating).toBe(3)
+    expect(normalizeGbpReview({ reviewId: 'enum2', starRating: 'STAR_RATING_TWO' }).rating).toBe(2)
+    expect(normalizeGbpReview({ reviewId: 'enum1', starRating: 'STAR_RATING_ONE' }).rating).toBe(1)
+    // Legacy numérico sigue funcionando.
+    expect(normalizeGbpReview({ reviewId: 'legacy', starRating: 5 }).rating).toBe(5)
+    // Formato desconocido → rating=0 → descartada por la wrapper.
+    expect(normalizeGbpReview({ reviewId: 'weird', starRating: 'BOGUS' }).rating).toBe(0)
+  })
+
+  it('M4 fix — sin createTime → submittedAt=null (NO now())', async () => {
+    const out = normalizeGbpReview({ reviewId: 'no-time', starRating: 5, comment: 'ok' })
+    expect(out.submittedAt).toBeNull()
+    // La wrapper descarta reviews sin submittedAt (sin fecha no aporta al aggregate).
+    const filtered = await fetchGbpReviews(
+      validConfig,
+      async () => ({ reviews: [{ reviewId: 'with', starRating: 5, createTime: '2026-01-01' }, { reviewId: 'without', starRating: 5 }] }),
+      noopLog,
+      mockTokenFetcher,
+    )
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0].sourceExternalId).toBe('with')
+  })
 })

@@ -2,7 +2,7 @@
 //
 // Spec: server-tracking/spec.md "Meta CAPI fire al confirmar" + "Enhanced Conversions".
 // POST https://graph.facebook.com/v18.0/{pixel_id}/events?access_token={token}
-// con event_name:'Purchase', event_id=reservationId (dedup), action_source:'system',
+// con event_name:'Purchase', event_id=reservationId (dedup), action_source:'website',
 // user_data con email/phone hasheados SHA256 (Enhanced Conversions).
 //
 // Si `meta_pixel_id` o `meta_capi_token` no configurados → skip silencioso (spec.md scenario
@@ -80,7 +80,12 @@ export function buildMetaPayload(
     event_name: 'Purchase',
     event_id: data.reservationId, // dedup con client-side Pixel (spec.md "Deduplication event_id")
     event_time: eventTime,
-    action_source: 'system', // server-side, NO 'website' (spec.md)
+    // B4 fix (audit solmi-direct-booking) — Meta CAPI rechaza `action_source:'system'`
+    // (error 100, valor inválido). Valores válidos: app|website|system_generated|offline|...
+    // Este fire es server-side de una conversión web (checkout confirmado en el widget), así
+    // que `'website'` es el valor correcto y seguro. NO usar `'system_generated'` salvo que
+    // el evento sea generado por automatización sin interacción del usuario.
+    action_source: 'website',
     user_data: userData,
     custom_data: {
       value: data.totalAmount,

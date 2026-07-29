@@ -72,12 +72,12 @@
       <div class="text-5xl mb-3">⚠️</div>
       <h2 class="text-xl font-black text-navy">{{ t('confirm.errorTitle') }}</h2>
       <p class="text-sm text-text-muted mt-2">{{ errorMessage }}</p>
-      <a
-        :href="`/book/${store.slug}`"
+      <router-link
+        :to="`/book/${store.slug}`"
         class="inline-block mt-5 rounded-xl bg-cyan px-6 py-3 text-sm font-bold text-white hover:bg-cyan-light"
       >
         {{ t('confirm.retryCta') }}
-      </a>
+      </router-link>
     </div>
   </section>
 </template>

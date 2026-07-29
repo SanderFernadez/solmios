@@ -8,6 +8,7 @@ import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import type { StorageService } from 'arckode-framework/modules/storage'
 import type { HotelMediaDTO, CreateHotelMediaDTO, UpdateHotelMediaDTO, MediaType, CurrentUser } from './types'
 import * as mediaCrud from './usecases/media-crud'
+import type { MediaTransactor } from './usecases/media-crud'
 
 export class HotelMediaService {
   constructor(
@@ -18,6 +19,9 @@ export class HotelMediaService {
     private readonly auth: Auth,
     /** Opcional: si no se inyecta, `upload` con data-URL fallará con ValidationError claro. */
     private readonly storage?: StorageService,
+    /** M2 fix (audit) — Transactor para reorder atómico. Si no se pasa, reorder cae al loop
+     *  sin tx (compat retro). El index.ts lo cablea desde el `orm` real del sistema. */
+    private readonly transactor?: MediaTransactor,
   ) {}
 
   private deps(): mediaCrud.MediaCrudDeps {
@@ -27,6 +31,7 @@ export class HotelMediaService {
       userRepo: this.userRepo,
       auth: this.auth,
       storage: this.storage,
+      transactor: this.transactor,
     }
   }
 

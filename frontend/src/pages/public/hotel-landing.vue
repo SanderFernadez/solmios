@@ -30,7 +30,7 @@
       <p class="text-sm text-text-muted mt-2">
         Este enlace no corresponde a un hotel con página pública activa.
       </p>
-      <a href="/" class="inline-block mt-6 text-sm font-extrabold text-cyan hover:text-cyan-light">Volver al inicio</a>
+      <router-link to="/" class="inline-block mt-6 text-sm font-extrabold text-cyan hover:text-cyan-light">Volver al inicio</router-link>
     </div>
   </div>
 

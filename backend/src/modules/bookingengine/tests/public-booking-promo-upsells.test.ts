@@ -44,9 +44,12 @@ function makeOrm(state: {
   upsells?: any[]
   taxesConfig?: any[]
   transactionThrowOnPromo?: boolean
+  /** Simula race concurrente: el `updateMany` del promo devuelve 0 (otra tx ganó la fila). */
+  racePromoUpdate?: boolean
 }) {
   const created: any[] = []
   const updated: any[] = []
+  const updateManyCalls: Array<{ model: string; filters: any; changes: any; affected: number }> = []
   const room = state.room ?? { id: 'r1', hotelId: 'h1', basePrice: 100, status: 'available' }
 
   const orm: any = {
@@ -83,13 +86,40 @@ function makeOrm(state: {
       }
       return null
     },
+    // B2 fix — Mock de `updateMany` que simula optimistic locking. Si `racePromoUpdate=true`,
+    // el affected=0 (simula que otra tx concurrente ya cambió `uses` entre nuestro read y el
+    // UPDATE). Si no, aplica el patch al state y devuelve affected=1 (caso normal).
+    updateMany: async (model: string, filters: any, changes: any) => {
+      if (state.transactionThrowOnPromo && model === 'PromoCodes') {
+        throw new Error('simulated promo update failure')
+      }
+      if (model === 'PromoCodes') {
+        if (state.racePromoUpdate) {
+          updateManyCalls.push({ model, filters, changes, affected: 0 })
+          return 0
+        }
+        // Solo actualiza si el filter matchea el state actual (optimistic lock real).
+        const matches =
+          (!filters?.id || filters.id === state.promo?.id) &&
+          (!('uses' in (filters ?? {})) || filters.uses === state.promo?.uses)
+        if (matches && state.promo) {
+          Object.assign(state.promo, changes)
+          updateManyCalls.push({ model, filters, changes, affected: 1 })
+          return 1
+        }
+        updateManyCalls.push({ model, filters, changes, affected: 0 })
+        return 0
+      }
+      updateManyCalls.push({ model, filters, changes, affected: 0 })
+      return 0
+    },
     transaction: async (cb: (tx: any) => Promise<any>) => {
       // El tx expone los mismos métodos que orm (mock simple).
       // IMPORTANTE: si el callback lanza, propagate → el usecase lo atrapa.
       return await cb(orm)
     },
   }
-  return { orm, created, updated, state }
+  return { orm, created, updated, updateManyCalls, state }
 }
 
 function makeDeps(state: ReturnType<typeof makeOrm>['state']) {
@@ -138,7 +168,7 @@ describe('createPublicBookingDirect — F2 2.5 promo + upsells + atomic uses', (
       },
       taxesConfig: [{ value: [{ activo: true, tasa: 18, nombre: 'ITBIS' }] }],
     }
-    const { orm, updated } = makeOrm(state)
+    const { orm, updateManyCalls } = makeOrm(state)
     const res = await createPublicBookingDirect(orm, { ...baseBody, promoCode: 'welcome10' },
       undefined, undefined, undefined, undefined, undefined, makeDeps(state))
     expect(res.status).toBe(201)
@@ -146,10 +176,12 @@ describe('createPublicBookingDirect — F2 2.5 promo + upsells + atomic uses', (
     expect(res.body.totalBreakdown).toEqual({
       subtotal: 200, promoDiscount: 20, upsellsTotal: 0, taxes: 32.4, total: 212.4,
     })
-    // uses fue incrementado atómicamente.
-    const promoUpdate = updated.find((u) => u.model === 'PromoCodes')
+    // B2 fix — uses fue incrementado atómicamente vía updateMany (optimistic lock).
+    const promoUpdate = updateManyCalls.find((u) => u.model === 'PromoCodes')
     expect(promoUpdate).toBeDefined()
-    expect(promoUpdate.patch.uses).toBe(1)
+    expect(promoUpdate!.affected).toBe(1)
+    expect(promoUpdate!.changes.uses).toBe(1)
+    expect(promoUpdate!.filters).toMatchObject({ id: 'p1', uses: 0 })
     // El code se persiste en uppercase (normalización).
     const reservation = res.body.reservation
     expect(reservation.promoCode).toBe('WELCOME10')
@@ -164,7 +196,7 @@ describe('createPublicBookingDirect — F2 2.5 promo + upsells + atomic uses', (
       },
       taxesConfig: [{ value: [{ activo: true, tasa: 0, nombre: 'NONE' }] }],
     }
-    const { orm, updated } = makeOrm(state)
+    const { orm, updateManyCalls } = makeOrm(state)
     const res = await createPublicBookingDirect(orm, { ...baseBody, promoCode: 'FIX50' },
       undefined, undefined, undefined, undefined, undefined, makeDeps(state))
     expect(res.status).toBe(201)
@@ -172,7 +204,7 @@ describe('createPublicBookingDirect — F2 2.5 promo + upsells + atomic uses', (
     expect(res.body.totalBreakdown).toEqual({
       subtotal: 200, promoDiscount: 50, upsellsTotal: 0, taxes: 0, total: 150,
     })
-    expect(updated.find((u) => u.model === 'PromoCodes')?.patch.uses).toBe(1)
+    expect(updateManyCalls.find((u) => u.model === 'PromoCodes')?.changes.uses).toBe(1)
   })
 
   it('promo con maxUses alcanzado (upfront) → 400 max_uses_reached, NO crea reserva', async () => {
@@ -204,24 +236,25 @@ describe('createPublicBookingDirect — F2 2.5 promo + upsells + atomic uses', (
     }
     // 1ra reserva — success, uses 0→1.
     {
-      const { orm, updated } = makeOrm(sharedState)
+      const { orm, updateManyCalls } = makeOrm(sharedState)
       const res = await createPublicBookingDirect(orm, { ...baseBody, guestEmail: 'one@example.com', promoCode: 'WELCOME10' },
         undefined, undefined, undefined, undefined, undefined, makeDeps(sharedState))
       expect(res.status).toBe(201)
-      expect(updated.find((u) => u.model === 'PromoCodes')?.patch.uses).toBe(1)
+      expect(updateManyCalls.find((u) => u.model === 'PromoCodes')?.changes.uses).toBe(1)
     }
-    // El state.promo.uses fue actualizado por el mock (Object.assign en update).
+    // El state.promo.uses fue actualizado por el mock (Object.assign en updateMany).
     expect(sharedState.promo.uses).toBe(1)
     // 2da reserva — fails upfront (uses=1 >= maxUses=1).
     {
-      const { orm, created, updated } = makeOrm(sharedState)
+      const { orm, created, updated, updateManyCalls } = makeOrm(sharedState)
       const res = await createPublicBookingDirect(orm, { ...baseBody, guestEmail: 'two@example.com', promoCode: 'WELCOME10' },
         undefined, undefined, undefined, undefined, undefined, makeDeps(sharedState))
       expect(res.status).toBe(400)
       expect(res.body.promoReason).toBe('max_uses_reached')
-      // Nada creado, nada actualizado.
+      // Nada creado, nada actualizado (no llegó a la tx).
       expect(created).toEqual([])
       expect(updated).toEqual([])
+      expect(updateManyCalls).toEqual([])
     }
   })
 
@@ -304,6 +337,37 @@ describe('createPublicBookingDirect — F2 2.5 promo + upsells + atomic uses', (
       await createPublicBookingDirect(orm, { ...baseBody, promoCode: 'WELCOME10' },
         undefined, undefined, undefined, undefined, undefined, makeDeps(state))
     }).toThrow() // El error se propaga fuera de la tx (no se traga silenciosamente).
+  })
+
+  it('B2 race condition: updateMany devuelve 0 → 409 max_uses_reached (optimistic lock detecta la race)', async () => {
+    // Escenario: dos tx concurrentes leyeron promo.uses=0. La primera gana (affected=1, uses→1).
+    // La segunda hace UPDATE WHERE uses=0 → affected=0 (la fila ya tiene uses=1) → aborta.
+    // En SQLite las tx son seriales, así que esto no reproduce la race real; el test valida
+    // la LÓGICA del rowCount: si affected===0, el usecase devuelve 409 con max_uses_reached
+    // y el state.promo.uses NO cambia (la tx abortó antes del updateMany exitoso).
+    // NOTA: el mock de `transaction` no simula rollback de los `create` previos (en DB real,
+    // el rollback borra guest+reservation; acá quedan en el array `created` del mock). Por eso
+    // no asertamos sobre `created` — solo sobre el resultado del usecase y el filter del UPDATE.
+    const state: any = {
+      promo: {
+        id: 'p1', hotelId: 'h1', code: 'RACE10', kind: 'percent', value: 10,
+        minAmount: null, maxUses: 1, uses: 0, validFrom: null, validTo: null, active: true,
+      },
+      taxesConfig: [{ value: [{ activo: true, tasa: 0, nombre: 'NONE' }] }],
+      racePromoUpdate: true, // simula "otra tx ganó la fila"
+    }
+    const { orm, updateManyCalls } = makeOrm(state)
+    const res = await createPublicBookingDirect(orm, { ...baseBody, promoCode: 'RACE10' },
+      undefined, undefined, undefined, undefined, undefined, makeDeps(state))
+    expect(res.status).toBe(409)
+    expect(res.body).toEqual({ error: 'promo_invalid', promoReason: 'max_uses_reached' })
+    // El filter del UPDATE lleva uses=freshUses (optimistic lock): ese filter es la prueba
+    // de que el código está haciendo el UPDATE condicional correcto (no un UPDATE incondicional).
+    expect(updateManyCalls).toHaveLength(1)
+    expect(updateManyCalls[0].affected).toBe(0)
+    expect(updateManyCalls[0].filters).toMatchObject({ id: 'p1', uses: 0 })
+    // El promo no fue mutado en el state compartido (la tx abortó antes del commit lógico).
+    expect(state.promo.uses).toBe(0)
   })
 
   it('sin extraDeps (compat F0 0.16) → no procesa promo, persiste el string sin validar', async () => {
