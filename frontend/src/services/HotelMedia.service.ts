@@ -60,6 +60,11 @@ export const HotelMediaService = {
     return http.post<HotelMediaItem>('/hotel-media', input)
   },
 
+  /** Editar campos de un item (alt, type, sortOrder, roomId). ownership valida el backend. */
+  update(id: string, patch: Partial<Omit<HotelMediaItem, 'id' | 'url'>>): Promise<HotelMediaItem> {
+    return http.put<HotelMediaItem>(`/hotel-media/${encodeURIComponent(id)}`, patch)
+  },
+
   /** Borra una media por id (ownership valida el backend). */
   remove(id: string): Promise<null> {
     return http.delete<null>(`/hotel-media/${encodeURIComponent(id)}`)

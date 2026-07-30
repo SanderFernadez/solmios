@@ -11,10 +11,13 @@
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-xs font-bold px-3 py-1 rounded-full" :class="config?.enabled ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">
-            ● {{ config?.enabled ? 'Activo' : 'Inactivo' }}
+          <span v-if="!configLoaded" class="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500">
+            ● Cargando…
           </span>
-          <button @click="saveConfig" :disabled="saving" class="px-4 py-2 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50">
+          <span v-else class="text-xs font-bold px-3 py-1 rounded-full" :class="form.enabled ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">
+            ● {{ form.enabled ? 'Activo' : 'Inactivo' }}
+          </span>
+          <button @click="saveConfig" :disabled="saving || !configLoaded" class="px-4 py-2 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50">
             {{ saving ? 'Guardando...' : 'Guardar' }}
           </button>
           <button @click="verWidget" class="px-4 py-2 bg-cyan text-navy text-sm font-bold rounded-xl cursor-pointer">
@@ -24,9 +27,64 @@
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto p-6">
-      <!-- KPIs -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="max-w-7xl mx-auto p-6 space-y-6">
+      <!-- ═══ Widget embebible — CTA principal (prominente, arriba) ═══
+           Antes enterrado al final del sidebar. Ahora es lo primero que ve
+           el admin: cómo integrar el motor en su web. -->
+      <SectionCard
+        title="🔗 Integrá el widget en tu sitio web"
+        subtitle="Pegá este código en el HTML de tu web, antes de cerrar </body>"
+        body-class="p-5"
+      >
+        <template #actions>
+          <span
+            class="rounded-full px-3 py-1 text-[11px] font-bold whitespace-nowrap"
+            :class="hotelSlug ? 'bg-teal/10 text-teal' : 'bg-warning/15 text-warning'"
+          >
+            {{ hotelSlug ? `Slug: ${hotelSlug}` : 'Falta configurar el slug' }}
+          </span>
+        </template>
+
+        <!-- Aviso si no hay slug: el snippet no funciona sin él. -->
+        <div v-if="!hotelSlug" class="mb-4 rounded-xl bg-warning/10 border border-warning/30 p-3 text-xs text-navy leading-relaxed">
+          <strong>Antes necesitás tu slug público.</strong>
+          Andá a
+          <router-link to="/panel/pagina-publica" class="font-bold text-cyan hover:underline">Página pública → General</router-link>
+          y configurá la URL de tu hotel. Sin slug, el widget no sabe qué hotel mostrar.
+        </div>
+
+        <div class="grid lg:grid-cols-[1fr_auto] gap-4 items-stretch">
+          <!-- Snippet -->
+          <div class="bg-navy rounded-xl p-4 overflow-x-auto">
+            <code class="text-[11px] text-white/85 whitespace-pre leading-relaxed">{{ embedCode }}</code>
+          </div>
+          <!-- Copy + preview -->
+          <div class="flex lg:flex-col gap-2 lg:w-44">
+            <button
+              @click="copyCode"
+              class="flex-1 lg:flex-none inline-flex items-center justify-center gap-1.5 py-2.5 px-4 bg-cyan text-navy text-xs font-extrabold rounded-xl hover:shadow-lg transition-all cursor-pointer"
+            >
+              {{ copied ? '✓ Copiado' : 'Copiar código' }}
+            </button>
+            <button
+              @click="verWidget"
+              :disabled="!hotelSlug"
+              class="flex-1 lg:flex-none inline-flex items-center justify-center gap-1.5 py-2.5 px-4 bg-surface text-navy text-xs font-bold rounded-xl hover:bg-navy hover:text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Ver demo ↗
+            </button>
+          </div>
+        </div>
+
+        <p class="mt-3 text-[11px] text-text-muted leading-relaxed">
+          El widget carga el motor de reservas de tu hotel (búsqueda → selección → pago) embebido en
+          tu propia web. Funciona en cualquier sitio (HTML, WordPress, Wix, etc.) — solo necesitás
+          acceso para pegar el código.
+        </p>
+      </SectionCard>
+
+      <!-- ═══ KPIs — con empty state cuando el motor está activo pero sin tráfico ═══ -->
+      <div v-if="kpisHaveData" class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white rounded-xl p-4 border border-border">
           <div class="text-[10px] font-bold text-text-muted uppercase">Búsquedas</div>
           <div class="text-2xl font-black text-navy mt-1">{{ analytics?.totalSearches ?? 0 }}</div>
@@ -48,14 +106,23 @@
           <div class="text-[10px] text-teal font-bold mt-1">por reserva</div>
         </div>
       </div>
+      <SectionCard
+        v-else
+        title="Tu motor está activo"
+        body-class="p-0"
+      >
+        <EmptyState
+          icon="✅"
+          title="Tu motor está activo"
+          message="Cuando recibas las primeras búsquedas, acá vas a ver las estadísticas: búsquedas, reservas, ingresos y conversión. Mientras tanto, integrá el widget en tu web (arriba) para empezar a recibir tráfico."
+        />
+      </SectionCard>
 
-      <!-- F4 4.1 (D13) — Funnel de conversión real desde tracking_events. Muestra count por
-           step + dropOff entre consecutivos. Vacío (todos 0) → EmptyState guía al admin. -->
+      <!-- ═══ F4 4.1 (D13) — Funnel de conversión real desde tracking_events. ═══ -->
       <SectionCard
         title="Funnel de Conversión"
         subtitle="Vista → Búsqueda → Selección → Upsell → Form → Pago → Confirmación"
         body-class="p-0"
-        class="mb-6"
       >
         <div v-if="funnelHasData" class="p-5 space-y-3">
           <div v-for="(step, idx) in funnelRows" :key="step.step">
@@ -91,7 +158,11 @@
       <div class="grid lg:grid-cols-3 gap-6">
         <!-- Widget Config -->
         <div class="lg:col-span-2 space-y-6">
-          <div class="bg-white rounded-2xl border border-border p-6">
+          <!-- Loading / error / form.
+               Config puede llegar null si falla la red: antes los bindings `config!.X`
+               crasheaban el panel entero. Ahora el form solo renderiza con datos reales
+               cargados en `form` (reactive, siempre non-null); si cae, EmptyState con retry. -->
+          <div v-if="configLoaded" class="bg-white rounded-2xl border border-border p-6">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-lg font-black text-navy">Configuración del Widget</h2>
             </div>
@@ -100,12 +171,12 @@
               <div>
                 <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Tema del Widget</label>
                 <div class="grid grid-cols-3 gap-2">
-                  <button 
-                    v-for="theme in themes" 
+                  <button
+                    v-for="theme in themes"
                     :key="theme.id"
-                    @click="config!.theme = theme.id"
+                    @click="form.theme = theme.id"
                     class="p-3 rounded-xl border-2 text-center transition-all cursor-pointer"
-                    :class="config?.theme === theme.id ? 'border-cyan bg-cyan/5' : 'border-border hover:border-gray-300'"
+                    :class="form.theme === theme.id ? 'border-cyan bg-cyan/5' : 'border-border hover:border-gray-300'"
                   >
                     <div class="w-6 h-6 rounded-full mx-auto mb-1" :class="theme.color"></div>
                     <div class="text-[10px] font-bold">{{ theme.name }}</div>
@@ -115,7 +186,7 @@
 
               <div>
                 <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Posición en la Web</label>
-                <select v-model="config!.position" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan cursor-pointer">
+                <select v-model="form.position" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan cursor-pointer">
                   <option value="corner">Esquina inferior derecha</option>
                   <option value="center">Centro de pantalla</option>
                   <option value="inline">Integrado en página</option>
@@ -125,7 +196,7 @@
 
               <div>
                 <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Moneda</label>
-                <select v-model="config!.currency" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan cursor-pointer">
+                <select v-model="form.currency" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan cursor-pointer">
                   <option value="USD">USD - Dólar</option>
                   <option value="DOP">DOP - Peso Dominicano</option>
                   <option value="MXN">MXN - Peso Mexicano</option>
@@ -136,7 +207,7 @@
 
               <div>
                 <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Idioma</label>
-                <select v-model="config!.language" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan cursor-pointer">
+                <select v-model="form.language" class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan cursor-pointer">
                   <option value="es">Español</option>
                   <option value="en">English</option>
                   <option value="pt">Português</option>
@@ -149,28 +220,28 @@
               <label class="text-[10px] font-bold text-text-muted uppercase mb-3 block">Opciones de Reserva</label>
               <div class="grid md:grid-cols-2 gap-3">
                 <label class="flex items-center gap-3 p-3 bg-surface rounded-xl cursor-pointer">
-                  <input type="checkbox" v-model="config!.instantConfirmation" class="w-4 h-4 text-cyan rounded" />
+                  <input type="checkbox" v-model="form.instantConfirmation" class="w-4 h-4 text-cyan rounded" />
                   <div>
                     <div class="text-sm font-bold text-navy">Confirmación Instantánea</div>
                     <div class="text-[10px] text-text-muted">Sin intervención manual</div>
                   </div>
                 </label>
                 <label class="flex items-center gap-3 p-3 bg-surface rounded-xl cursor-pointer">
-                  <input type="checkbox" v-model="config!.googleAdsEnabled" class="w-4 h-4 text-cyan rounded" />
+                  <input type="checkbox" v-model="form.googleAdsEnabled" class="w-4 h-4 text-cyan rounded" />
                   <div>
                     <div class="text-sm font-bold text-navy">Google Hotel Ads</div>
                     <div class="text-[10px] text-text-muted">Sincronizar tarifas</div>
                   </div>
                 </label>
                 <label class="flex items-center gap-3 p-3 bg-surface rounded-xl cursor-pointer">
-                  <input type="checkbox" v-model="config!.whatsappConfirmation" class="w-4 h-4 text-cyan rounded" />
+                  <input type="checkbox" v-model="form.whatsappConfirmation" class="w-4 h-4 text-cyan rounded" />
                   <div>
                     <div class="text-sm font-bold text-navy">Confirmación WhatsApp</div>
                     <div class="text-[10px] text-text-muted">Envío automático</div>
                   </div>
                 </label>
                 <label class="flex items-center gap-3 p-3 bg-surface rounded-xl cursor-pointer">
-                  <input type="checkbox" v-model="config!.showComparison" class="w-4 h-4 text-cyan rounded" />
+                  <input type="checkbox" v-model="form.showComparison" class="w-4 h-4 text-cyan rounded" />
                   <div>
                     <div class="text-sm font-bold text-navy">Comparar con OTAs</div>
                     <div class="text-[10px] text-text-muted">Mostrar ahorro vs Booking/Expedia</div>
@@ -179,22 +250,37 @@
               </div>
             </div>
           </div>
+
+          <!-- Error de carga de config: EmptyState con retry (no mostramos form con defaults). -->
+          <SectionCard v-else-if="loadError" title="Configuración del Widget" body-class="p-0">
+            <EmptyState
+              icon="⚠️"
+              title="No pudimos cargar la configuración"
+              :message="loadError"
+            >
+              <template #action>
+                <button
+                  type="button"
+                  @click="loadAll"
+                  class="rounded-full bg-navy px-5 py-2 text-sm font-bold text-white hover:shadow-lg cursor-pointer"
+                >
+                  Reintentar
+                </button>
+              </template>
+            </EmptyState>
+          </SectionCard>
+
+          <!-- Loading skeleton -->
+          <div v-else class="bg-white rounded-2xl border border-border p-6">
+            <div class="h-6 w-48 bg-surface rounded animate-pulse mb-6"></div>
+            <div class="grid md:grid-cols-2 gap-6">
+              <div v-for="i in 4" :key="i" class="h-10 bg-surface rounded-xl animate-pulse"></div>
+            </div>
+          </div>
         </div>
 
         <!-- Sidebar -->
         <div class="space-y-6">
-          <!-- Widget Code -->
-          <div class="bg-white rounded-2xl border border-border p-6">
-            <h3 class="text-sm font-black text-navy mb-3">Código del Widget</h3>
-            <p class="text-[10px] text-text-muted mb-3">Pega este código en tu sitio web antes del cierre de &lt;body&gt;</p>
-            <div class="bg-navy rounded-xl p-4 overflow-x-auto">
-              <code class="text-[11px] text-white/80 whitespace-pre">{{ embedCode }}</code>
-            </div>
-            <button @click="copyCode" class="w-full mt-3 py-2 bg-surface text-navy text-xs font-bold rounded-xl hover:bg-navy hover:text-white transition-all cursor-pointer">
-              {{ copied ? '✓ Copiado' : 'Copiar Código' }}
-            </button>
-          </div>
-
           <!-- Widget Preview -->
           <div class="bg-white rounded-2xl border border-border p-6">
             <h3 class="text-sm font-black text-navy mb-3">Vista Previa</h3>
@@ -213,7 +299,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { BookingEngineService, type BookingConfig, type BookingAnalytics, type FunnelStep } from '@/services/BookingEngine.service'
 import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/auth.store'
@@ -225,18 +311,55 @@ const auth = useAuthStore()
 const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
-const config = ref<BookingConfig | null>(null)
-const analytics = ref<BookingAnalytics | null>(null)
+// ─── Config: form reactivo SIEMPRE non-null (defaults) + bandera de carga ──
+// Antes `config` era `ref<BookingConfig | null>(null)` y los bindings `config!.X`
+// crasheaban si la red fallaba. Ahora el form parte de defaults concretos y se
+// hidrata al cargar; `configLoaded` separa "tengo datos reales" de "estoy mostrando
+// defaults", así el form nunca se renderiza con datos inválidos.
+const configLoaded = ref(false)
+const loadError = ref('')
 const saving = ref(false)
 const copied = ref(false)
-// F2 2.11-2.13 (solmi-direct-booking): el snippet embebible y la URL del widget ahora usan
-// el SLUG público del hotel, no el hotelId. El slug se resuelve desde GET /api/hoteles/:id
-// (endpoint ya existente; el modelo Hotels incluye `slug` desde F0 0.1). Si el hotel no tiene
-// slug todavía (alta pre-seeder), el snippet muestra un placeholder y el preview se deshabilita.
+// F2 2.11-2.13 (solmi-direct-booking): el snippet embebible y la URL del widget usan
+// el SLUG público del hotel, no el hotelId. Si el hotel no tiene slug todavía (alta
+// pre-seeder), el snippet muestra un placeholder y el CTA "Ver demo" se deshabilita.
 const hotelSlug = ref<string>('')
 
-// F4 4.1 (D13) — Funnel de conversión desde tracking_events. Si `analytics.funnel` viene
-// vacío o todos los counts son 0, mostramos EmptyState (sin tráfico todavía).
+function defaultConfig(): BookingConfig {
+  return {
+    id: '',
+    hotelId: '',
+    enabled: false,
+    theme: 'navy',
+    position: 'corner',
+    currency: 'USD',
+    language: 'es',
+    minNights: 1,
+    maxNights: 30,
+    cancellationPolicy: '',
+    showComparison: false,
+    googleAdsEnabled: false,
+    whatsappConfirmation: false,
+    instantConfirmation: false,
+    stripeAccountId: '',
+    allowedCountries: [],
+  }
+}
+
+// Form editable (reactive). Siempre non-null → los v-model del template son seguros.
+const form = reactive<BookingConfig>(defaultConfig())
+
+const analytics = ref<BookingAnalytics | null>(null)
+
+// Tiempo que el botón "Copiar código" muestra el check de confirmación (UX micro-timing).
+const COPY_FEEDBACK_MS = 2000
+
+// ─── KPIs — "motor activo sin tráfico" se ve como EmptyState, no como ceros rotos ─
+const kpisHaveData = computed(() =>
+  (analytics.value?.totalSearches ?? 0) > 0 || (analytics.value?.totalBookings ?? 0) > 0,
+)
+
+// F4 4.1 (D13) — Funnel de conversión desde tracking_events.
 const funnelRows = computed<FunnelStep[]>(() => analytics.value?.funnel ?? [])
 const funnelHasData = computed(() => funnelRows.value.some((s) => s.count > 0))
 const funnelMax = computed(() => Math.max(1, ...funnelRows.value.map((s) => s.count)))
@@ -244,12 +367,10 @@ function funnelBarWidth(count: number): number {
   return Math.max(2, Math.round((count / funnelMax.value) * 100))
 }
 function funnelBarColor(idx: number): string {
-  // Degradado navy → cyan → teal a lo largo del funnel (visual "más cerca de convertir").
   const colors = ['bg-navy', 'bg-navy', 'bg-cyan', 'bg-cyan', 'bg-teal', 'bg-teal', 'bg-teal']
   return colors[idx] ?? 'bg-navy'
 }
 function dropOffColor(pct: number): string {
-  // Drop-off alto (>=70%) → teal (buen avance). Medio (40-69%) → gold. Bajo (<40%) → rojo suave.
   if (pct >= 70) return 'text-teal'
   if (pct >= 40) return 'text-gold'
   return 'text-rose'
@@ -270,10 +391,12 @@ const embedCode = computed(() =>
 )
 
 async function saveConfig() {
-  if (!config.value) return
+  if (!configLoaded.value) return
   saving.value = true
   try {
-    await BookingEngineService.updateConfig(config.value)
+    const updated = await BookingEngineService.updateConfig(form)
+    // El backend puede normalizar/normalizar campos: reflotar el form con la respuesta.
+    Object.assign(form, updated)
     toast.success('Configuración guardada')
   } catch {
     toast.error('Error al guardar')
@@ -284,7 +407,7 @@ async function saveConfig() {
 
 function verWidget() {
   if (!hotelSlug.value) {
-    toast.error('Definí el slug del hotel en Configuración → Página pública')
+    toast.error('Definí el slug del hotel en Página pública → General')
     return
   }
   // F2 2.13: abrimos el widget en modo embed (mismo layout que tendría embebido en sitio externo).
@@ -294,27 +417,33 @@ function verWidget() {
 function copyCode() {
   navigator.clipboard.writeText(embedCode.value)
   copied.value = true
-  setTimeout(() => copied.value = false, 2000)
+  setTimeout(() => (copied.value = false), COPY_FEEDBACK_MS)
 }
 
-onMounted(async () => {
+async function loadAll() {
+  loadError.value = ''
+  configLoaded.value = false
   try {
     const tasks: Promise<unknown>[] = [
       BookingEngineService.getConfig(),
       BookingEngineService.getAnalytics(),
     ]
-    // Resolver el slug del propio hotel para el snippet embebible y el preview (F2 2.13).
     if (hotelId.value) {
       tasks.push(http.get<{ slug?: string }>(`/hoteles/${hotelId.value}`))
     }
     const [cfg, stats, hotel] = await Promise.all(tasks) as [BookingConfig, BookingAnalytics, { slug?: string } | undefined]
-    config.value = cfg
+    // Hidratar el form reactivo (NO pisar la referencia: tablas reactivas se mutan).
+    Object.assign(form, cfg)
     analytics.value = stats
     if (hotel && typeof hotel.slug === 'string' && hotel.slug.trim() !== '') {
       hotelSlug.value = hotel.slug.trim()
     }
-  } catch {
-    toast.error('Error al cargar configuración')
+    configLoaded.value = true
+  } catch (e) {
+    // Sin config: dejamos el form con defaults pero NO marcamos como cargado → EmptyState con retry.
+    loadError.value = (e as Error)?.message || 'No pudimos cargar la configuración del motor.'
   }
-})
+}
+
+onMounted(loadAll)
 </script>

@@ -259,6 +259,7 @@ const nonavItems = [
     children: [
       { label: 'General', path: '/panel/pagina-publica', roles: ['hotel_admin'] },
       { label: 'Landing', path: '/panel/pagina-publica/landing', roles: ['hotel_admin'] },
+      { label: 'Media', path: '/panel/pagina-publica/media', roles: ['hotel_admin'] },
       { label: 'Apariencia', path: '/panel/pagina-publica/apariencia', roles: ['hotel_admin'] },
       { label: 'Reputación', path: '/panel/pagina-publica/reputacion', roles: ['hotel_admin'] },
       { label: 'Tracking', path: '/panel/pagina-publica/tracking', roles: ['hotel_admin'] },

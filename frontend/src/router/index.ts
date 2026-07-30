@@ -426,6 +426,13 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          // Gestor de imágenes del hotel (hero/gallery/room) — panel-pagina-publica-gaps.
+          path: 'pagina-publica/media',
+          name: 'pagina-publica-media',
+          component: () => import('@/pages/pagina-publica/media.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'pagina-publica/apariencia',
           name: 'pagina-publica-apariencia',
           component: () => import('@/pages/pagina-publica/apariencia.vue'),
