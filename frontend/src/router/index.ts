@@ -426,6 +426,12 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          path: 'pagina-publica/apariencia',
+          name: 'pagina-publica-apariencia',
+          component: () => import('@/pages/pagina-publica/apariencia.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'pagina-publica/reputacion',
           name: 'pagina-publica-reputacion',
           component: () => import('@/pages/pagina-publica/reputation.vue'),
