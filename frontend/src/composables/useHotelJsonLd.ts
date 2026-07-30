@@ -152,7 +152,12 @@ export function useHotelJsonLd(input: UseHotelJsonLdInput): UseHotelJsonLdResult
   })
 
   const faqJsonLd = computed<Record<string, unknown> | null>(() => {
-    const faqBlock = blocks.value.find((b) => b.type === 'faq')
+    // DEFENSIVO (bug envelope, solmi-direct-booking): si el caller pasa un `blocks` que no es
+    // array (ej. `{ data: [...] }` sin desenvolver), no crasquemos la landing entera —
+    // devolvemos null y el FAQPage JSON-LD simplemente se omite. Mismo guard defensivo que
+    // hotel-landing.vue; este es el segundo nivel de protección.
+    const list = Array.isArray(blocks.value) ? blocks.value : []
+    const faqBlock = list.find((b) => b.type === 'faq')
     if (!faqBlock) return null
     const items = (faqBlock.config ?? {}).items
     if (!Array.isArray(items) || items.length === 0) return null

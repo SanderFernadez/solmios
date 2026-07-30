@@ -110,7 +110,17 @@ onMounted(async () => {
       PublicHotelService.getMedia(slug),
     ])
 
-    if (blocksRes.status === 'fulfilled') blocks.value = blocksRes.value
+    if (blocksRes.status === 'fulfilled') {
+      // DEFENSIVO (bug envelope, solmi-direct-booking): el backend envuelve la lista en
+      // `{ data: [...] }` (service envelope) sobre el envelope del framework `{ success, data }`
+      // que http.ts:263-270 YA desenvolvió. La signatura de LandingService.get dice
+      // `Promise<LandingBlock[]>` pero el runtime entrega `{ data: LandingBlock[] }`. Si lo
+      // asignamos sin unwrap, `blocks.value.find()` en useHotelJsonLd pega TypeError y tira
+      // abajo toda la landing ("Hotel no encontrado"). Soportamos ambas formas (array plano
+      // y envelope) para que un refactor del backend no vuelva a romper la página.
+      const v = blocksRes.value as LandingBlock[] | { data?: LandingBlock[] }
+      blocks.value = Array.isArray(v) ? v : (v?.data ?? [])
+    }
     // Si blocks falla, dejamos [] — la landing renderiza solo header/etc implícitamente; hoy no
     // hay fallback. El error signará con warning pero no bloquea la página completa.
 

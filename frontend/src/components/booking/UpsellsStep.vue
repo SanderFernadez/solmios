@@ -77,6 +77,18 @@
         <span class="font-bold text-navy">{{ formatPrice(store.upsellsTotal, store.chargeCurrency) }}</span>
       </div>
     </div>
+
+    <!-- Continuar al siguiente step (F2 fix BLOCKER): los upsells son opcionales — el huésped
+         puede avanzar sin seleccionar ninguno. `store.next()` desde 'upselling' pasa a
+         'checkingout' (GuestCheckoutStep). Disabled solo mientras cargan los upsells. -->
+    <button
+      type="button"
+      :disabled="store.upsellsLoading"
+      class="w-full rounded-xl bg-cyan px-6 py-4 text-base font-black text-white shadow-card transition hover:bg-cyan-light disabled:cursor-not-allowed disabled:opacity-50"
+      @click="store.next()"
+    >
+      {{ t('upsells.continue') }}
+    </button>
   </section>
 </template>
 

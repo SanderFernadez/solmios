@@ -119,6 +119,7 @@ const messages = {
     'upsells.kindPerStay': 'Por estadía',
     'upsells.quantity': 'Cantidad',
     'upsells.subtotal': 'Subtotal extras',
+    'upsells.continue': 'Continuar',
 
     // GuestCheckoutStep
     'guest.title': 'Tus datos',
@@ -263,6 +264,7 @@ const messages = {
     'upsells.kindPerStay': 'Per stay',
     'upsells.quantity': 'Quantity',
     'upsells.subtotal': 'Extras subtotal',
+    'upsells.continue': 'Continue',
 
     'guest.title': 'Your details',
     'guest.subtitle': 'No account needed. We just need the basics for your booking.',
@@ -403,6 +405,7 @@ const messages = {
     'upsells.kindPerStay': 'Por estadia',
     'upsells.quantity': 'Quantidade',
     'upsells.subtotal': 'Subtotal extras',
+    'upsells.continue': 'Continuar',
 
     'guest.title': 'Seus dados',
     'guest.subtitle': 'Sem criar conta. Só precisamos do mínimo para sua reserva.',
