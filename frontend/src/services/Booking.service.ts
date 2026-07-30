@@ -72,7 +72,6 @@ export const BookingService = {
     const hotel = await PublicHotelService.getBySlug(dto.slug)
     const body: Record<string, unknown> = {
       hotelId: hotel.id,
-      roomId: dto.roomId,
       roomType: dto.roomType,
       guestName: dto.guest.name,
       guestEmail: dto.guest.email,
@@ -81,6 +80,9 @@ export const BookingService = {
       checkOut: dto.checkOut,
       adults: dto.adults,
     }
+    // `roomId` es opcional (FIX 2026-07-30): el widget público no lo manda, el backend resuelve
+    // la unidad física a partir de `roomType`. Solo se manda si un caller lo pasó explícito.
+    if (dto.roomId) body.roomId = dto.roomId
     if (dto.children !== undefined) body.children = dto.children
     if (dto.guest.notes) body.notes = dto.guest.notes
     if (dto.promoCode) body.promoCode = dto.promoCode

@@ -21,6 +21,25 @@
 //   `checkoutUrl: null` + `paymentError: <mensaje>`. El huésped al menos tiene su reserva; el
 //   panel la muestra como "pendiente de pago". NO tirar 500: rompería la creación de reserva
 //   por un problema de Stripe, que es una dependencia opcional por hotel.
+//
+// FIX 2026-07-30 (bug 404 "Habitación no encontrada" en el 100% de los intentos) — Resolución
+// de habitación por `roomType`:
+//   Root cause: `public-rates.ts` no tiene entidad RoomType propia — el `id` que devuelve por
+//   tipo de habitación ES el string `room.type` ("double"), NO un UUID de `Rooms`. El widget
+//   lo mandaba tal cual como `roomId`, y la búsqueda por id en `Rooms` con ese string nunca
+//   matcheaba → siempre 404.
+//   Decisión de diseño: el guest elige un TIPO, no una unidad física concreta. La asignación
+//   de la habitación física pasa a ser responsabilidad del BACKEND, en el momento de crear la
+//   reserva (no en la cotización), para minimizar la ventana de carrera:
+//     - Si el body trae `roomId` Y resuelve a una fila real de `Rooms` → se usa esa habitación
+//       tal cual (compat con callers/integradores viejos que ya mandan un id real).
+//     - Si no, y trae `roomType` → se buscan las `Rooms` de `hotelId` con ese `type`, status
+//       disponible, sin solape con `Reservations` para el rango pedido, y se elige la de menor
+//       `basePrice` (criterio simple y determinístico — la más barata disponible).
+//     - El check de solape final (antes de crear la reserva) se mantiene como red de seguridad
+//       para el caso borde de que el tipo se agote justo entre la cotización y el submit → 409.
+//     - Tipo inexistente en el hotel → 404. Tipo existente pero sin unidades libres → 409 (no
+//       404: el tipo SÍ existe, solo no hay disponibilidad para esas fechas).
 
 import { safeParse } from '../../../shared/utils/safe-parse'
 import type { RepositoryAdapter } from 'arckode-framework'
@@ -139,7 +158,11 @@ export async function getPublicBookingBySlug(orm: any, slug: string, query: any)
  * Crea la reserva pública y dispara el createCheckoutSession.
  *
  * @param orm            ORM del framework (mockeable en tests).
- * @param body           Body del POST `/api/public/booking`.
+ * @param body           Body del POST `/api/public/booking`. Requiere `hotelId` + `roomId` O
+ *                       `roomType` (al menos uno) + datos del guest + fechas. `roomId` real
+ *                       (fila existente de `Rooms`) tiene prioridad; si no resuelve, se usa
+ *                       `roomType` para que el backend elija la unidad libre más barata (ver
+ *                       cabecera del archivo, FIX 2026-07-30).
  * @param pushAvailability Callback opcional para invalidar cache de disponibilidad.
  * @param auth           Wrapper de auth (solo para assertOwnership del room).
  * @param stripe         (F0 0.16) Servicio que crea la Checkout Session. Si no se pasa, la
@@ -162,25 +185,61 @@ export async function createPublicBookingDirect(
   extraDeps?: PublicBookingExtraDeps,
 ): Promise<any> {
   const {
-    hotelId, roomId, guestName, guestEmail, guestPhone,
+    hotelId, roomId, roomType, guestName, guestEmail, guestPhone,
     checkIn, checkOut, adults, children: kids,
     // F2 2.5 — promoCode + upsells ahora se PROCESAN (F0 0.16 solo los persistía).
     promoCode,
     upsells,
   } = body
 
-  if (!hotelId || !roomId || !guestName || !guestEmail || !checkIn || !checkOut) {
-    return { status: 400, body: { error: 'Campos requeridos: hotelId, roomId, guestName, guestEmail, checkIn, checkOut' } }
+  if (!hotelId || (!roomId && !roomType) || !guestName || !guestEmail || !checkIn || !checkOut) {
+    return { status: 400, body: { error: 'Campos requeridos: hotelId, guestName, guestEmail, checkIn, checkOut, y roomId o roomType' } }
   }
   if (checkIn >= checkOut) return { status: 400, body: { error: 'checkIn debe ser anterior a checkOut' } }
 
-  const room = await orm.findById('Rooms', roomId) as any
-  if (!room) return { status: 404, body: { error: 'Habitación no encontrada' } }
+  // ─── Resolución de la habitación (FIX 2026-07-30, ver cabecera del archivo) ────────
+  // 1) `roomId` real (compat callers viejos): si resuelve a una fila de `Rooms`, se usa tal
+  //    cual — comportamiento intacto.
+  // 2) Si no, `roomType`: el backend elige la unidad concreta acá, no en la cotización.
+  let room: any = roomId ? await orm.findById('Rooms', roomId) as any : null
+  if (!room) {
+    if (!roomType) return { status: 404, body: { error: 'Habitación no encontrada' } }
+
+    const roomsOfType = (await orm.findMany('Rooms', { hotelId, type: roomType })) as any[]
+    if (roomsOfType.length === 0) {
+      // El tipo no existe en absoluto para este hotel — 404 (no es un problema de fechas).
+      return { status: 404, body: { error: 'Tipo de habitación no encontrado' } }
+    }
+
+    const availableOfType = roomsOfType.filter((r: any) => r.status === 'disponible' || r.status === 'available')
+    const hotelReservations = (await orm.findMany('Reservations', { hotelId })) as any[]
+    const busyRoomIds = new Set(
+      hotelReservations
+        .filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show' && r.checkIn < checkOut && r.checkOut > checkIn)
+        .map((r: any) => r.roomId),
+    )
+    // Criterio de selección entre las libres: menor `basePrice` primero (determinístico y
+    // favorece al huésped — misma tarifa que se le cotizó en `public-rates.ts`, que también
+    // usa el precio más bajo del type).
+    const freeOfType = availableOfType
+      .filter((r: any) => !busyRoomIds.has(r.id))
+      .sort((a: any, b: any) => (Number(a.basePrice) || 0) - (Number(b.basePrice) || 0))
+    if (freeOfType.length === 0) {
+      // El tipo existe pero no hay unidades libres para esas fechas — 409, no 404.
+      return { status: 409, body: { error: 'No hay habitaciones de este tipo disponibles para esas fechas' } }
+    }
+    room = freeOfType[0]
+  }
+  const resolvedRoomId: string = room.id
+
   // No hay usuario: el motor es público. La habitación tiene que ser del hotel del formulario.
   // Iba `assertOwnership(room, { hotelId })` — dos objetos, `===` siempre false: toda reserva daba 403.
   if (auth) auth.assertOwnership(room.hotelId, hotelId)
 
-  const overlapping = (await orm.findMany('Reservations', { roomId })) as any[]
+  // Red de seguridad final (ver cabecera): aunque ya filtramos por solape arriba en el path de
+  // `roomType`, repetimos el check acá para (a) el path de `roomId` real (que no lo hizo antes)
+  // y (b) cubrir la ventana de carrera entre la resolución de arriba y este punto.
+  const overlapping = (await orm.findMany('Reservations', { roomId: resolvedRoomId })) as any[]
   const hasOverlap = overlapping.some((r: any) =>
     r.status !== 'cancelled' && r.status !== 'no_show' && r.checkIn < checkOut && r.checkOut > checkIn)
   if (hasOverlap) return { status: 409, body: { error: 'Habitación no disponible en esas fechas' } }
@@ -289,7 +348,7 @@ export async function createPublicBookingDirect(
       // creadas desde `/api/panel/reservas` NO lo reciben → `accessToken=null` → 404 en el
       // endpoint público (anti-enumeración IDOR, spec booking-unification D4).
       reservation = await tx.create('Reservations', {
-        id: crypto.randomUUID(), hotelId, roomId, guestId: guest.id,
+        id: crypto.randomUUID(), hotelId, roomId: resolvedRoomId, guestId: guest.id,
         checkIn, checkOut, status: 'pending', source: 'direct',
         adults: adults || 1, children: kids || 0, totalAmount, deposit: 0,
         notes: notesParts.join(' | '),
@@ -336,7 +395,7 @@ export async function createPublicBookingDirect(
     throw e
   }
 
-  pushAvailability?.(hotelId, roomId)
+  pushAvailability?.(hotelId, resolvedRoomId)
 
   // F0 0.16 — Cableo del checkoutUrl. ROBUSTEZ: si Stripe falla (no configurado, gateway
   // caído), la reserva SE CREÓ igual. Devolvemos 201 con checkoutUrl:null + paymentError.
