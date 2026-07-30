@@ -20,12 +20,14 @@ export { LandingService }
 export type {
   LandingBlockDTO, UpsertLandingBlockInput, ToggleLandingBlockDTO,
   PublicLandingBlock, LandingBlockType, LandingBlockListResult, CurrentUser,
+  LandingTemplateId, ThemeTokens, LandingTheme, PublicLandingTheme,
 } from './types'
+export { BLOCK_TYPES, DEFAULT_SORT_ORDER, LANDING_TEMPLATE_IDS, THEME_COLOR_KEYS } from './types'
 export type { LandingSockets } from './sockets'
-export { LandingValidator, UpsertLandingSchema, ToggleLandingSchema } from './validators/schema'
-export { BLOCK_TYPES, DEFAULT_SORT_ORDER } from './types'
+export { LandingValidator, UpsertLandingSchema, ToggleLandingSchema, ThemeSchema } from './validators/schema'
 export { registerLandingModels } from './model'
 export { defaultConfigFor } from './usecases/defaults'
+export { getTheme as getLandingTheme, setTheme as setLandingTheme, LANDING_THEME_KEY, DEFAULT_THEME as DEFAULT_LANDING_THEME } from './usecases/theme-crud'
 
 export function LandingModule() {
   return createModule({
@@ -37,15 +39,16 @@ export function LandingModule() {
       name: 'landing',
       version: '1.0.0',
       description: 'Bloques configurables de la landing pública del hotel',
-      actions: ['list', 'upsert', 'toggle', 'listPublic'],
-      events: ['onLandingBlockUpserted', 'onLandingBlockToggled'],
-      tables: ['landing_blocks'],
+      actions: ['list', 'upsert', 'toggle', 'listPublic', 'getTheme', 'setTheme'],
+      events: ['onLandingBlockUpserted', 'onLandingBlockToggled', 'onLandingThemeSet'],
+      tables: ['landing_blocks', 'configuration'],
       dependencies: [],
       rules: [
         'Ownership por hotelId (auth.assertOwnership post-find)',
         '1 fila por (hotelId, type) — enforced en el usecase',
         'upsert atómico (orm.transaction: delete-all + insert-all)',
         'Seeder lazy: 9 defaults al primer GET de hotel nuevo',
+        'Theme: KV configuration.landing_theme (default classic), cache landing:public:${hotelId} se invalida en setTheme',
       ],
     },
 
@@ -56,12 +59,15 @@ export function LandingModule() {
       const blocks = new OrmRepository<LandingBlockDTO>(orm, 'LandingBlocks')
       const hotels = new OrmRepository<any>(orm, 'Hotels')
       const userRepo = new OrmRepository<any>(orm, 'Users')
+      // Repo `Configuration` para el theme (KV key='landing_theme'). El modelo
+      // vive en shared/models.ts (multi-tenant por hotelId, NO redefinir acá).
+      const config = new OrmRepository<any>(orm, 'Configuration')
       const log = logger.child('landing')
       // Transactor adapter: envuelve `orm.transaction` sin exponer el ORM al service
       // (regla "service no inyecta ORM directo" — el analyzer lo exige). El service
       // recibe solo la interface `LandingTransactor` de este módulo.
       const transactor = { transaction: <T>(fn: (tx: any) => Promise<T>) => orm.transaction(fn) }
-      const service = new LandingService(blocks, hotels, userRepo, auth, transactor, log, cache)
+      const service = new LandingService(blocks, hotels, userRepo, auth, transactor, log, config, cache)
       const controller = new LandingController(service, log)
 
       // Guard admin: userType merchant + permiso landing:view|edit. Mismo patrón que
@@ -77,6 +83,10 @@ export function LandingModule() {
       router.get('/api/landing', adminGuard('view'), (req) => controller.index(req))
       router.put('/api/landing', adminGuard('edit'), (req) => controller.upsert(req))
       router.patch('/api/landing/:id/toggle', adminGuard('edit'), (req) => controller.toggle(req))
+      // Theme de la landing (solmi-direct-booking): un GET + un PUT, separados del
+      // bulk upsert de bloques (contenido ≠ apariencia).
+      router.get('/api/landing/theme', adminGuard('view'), (req) => controller.getTheme(req))
+      router.put('/api/landing/theme', adminGuard('edit'), (req) => controller.setTheme(req))
 
       // ─── Ruta pública ─────────────────────────────────────────────────────
       // Sin auth, rate-limited por IP (spec: 30 req/min/IP). El rate-limit va ANTES del

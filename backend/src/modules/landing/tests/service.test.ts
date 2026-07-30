@@ -48,6 +48,7 @@ function makeDeps(overrides: Partial<BlocksCrudDeps> & { txMock?: any } = {}): B
     } as any,
     hotels: { findOne: async () => null, findMany: async () => [] } as any,
     userRepo: { findOne: async () => ({ hotelId: 'h1' }) } as any,
+    config: { findMany: async () => [], findOne: async () => null, create: async () => null, update: async () => null } as any,
     auth: { assertOwnership: () => {} } as any,
     transactor,
     ...overrides,

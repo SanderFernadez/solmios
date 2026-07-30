@@ -95,3 +95,61 @@ export interface CurrentUser {
   role?: string
   userType?: string
 }
+
+// ─── Theme (solmi-direct-booking) ───────────────────────────────────────────
+/**
+ * Catálogo FIJO de plantillas visuales de la landing pública. Cada templateId
+ * determina la paleta base + diffs estructurales (hero/gallery) que el frontend
+ * aplica por variantes. El backend NO conoce la paleta: solo persiste el choice.
+ */
+export type LandingTemplateId = 'classic' | 'modern' | 'boutique'
+
+/** Lista canónica de templateIds — fuente de verdad para validación. */
+export const LANDING_TEMPLATE_IDS: LandingTemplateId[] = ['classic', 'modern', 'boutique']
+
+/**
+ * Los 10 tokens de color overrideables por el merchant. Las keys matchean las
+ * CSS vars de `@theme` en `frontend/src/styles/main.css` (`--color-navy` etc.).
+ * El backend no valida contraste ni acceso (MVP: el editor advierte).
+ */
+export interface ThemeTokens {
+  navy: string
+  navyLight: string
+  blue: string
+  cyan: string
+  cyanLight: string
+  teal: string
+  gold: string
+  goldLight: string
+  surface: string
+  surfaceDark: string
+}
+
+/** Allow-list de las 10 keys de ThemeTokens — para sanitización. */
+export const THEME_COLOR_KEYS: (keyof ThemeTokens)[] = [
+  'navy', 'navyLight', 'blue', 'cyan', 'cyanLight',
+  'teal', 'gold', 'goldLight', 'surface', 'surfaceDark',
+]
+
+/**
+ * Theme completo del hotel. `colors`/`fonts` son overrides optativos que pisan
+ * la paleta/preset del templateId. Se persiste en `configuration.value` (json)
+ * bajo la key `'landing_theme'`.
+ */
+export interface LandingTheme {
+  templateId: LandingTemplateId
+  colors?: Partial<ThemeTokens>
+  fonts?: { heading?: string; body?: string }
+}
+
+/**
+ * Allow-list pública: mismo shape que LandingTheme (sin hotelId). El frontend
+ * público lo recibe junto con los bloques en `listPublicBySlug`. Mantener
+ * separado del tipo admin para marcar la intención de no exponer metadata
+ * interna (futuro: audit timestamps, etc.).
+ */
+export interface PublicLandingTheme {
+  templateId: LandingTemplateId
+  colors?: Partial<ThemeTokens>
+  fonts?: { heading?: string; body?: string }
+}

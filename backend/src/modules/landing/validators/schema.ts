@@ -20,7 +20,22 @@ export const ToggleLandingSchema: Record<string, BodyRule> = {
   active: { type: 'boolean' as const, required: true },
 }
 
+/**
+ * PUT /api/landing/theme — body: {templateId, colors?, fonts?}.
+ *
+ * `validateSchema` no soporta enum cerrado para strings: el enum de templateId
+ * ('classic'|'modern'|'boutique') se valida en el usecase (`assertTemplateId`),
+ * igual que `BLOCK_TYPES` en blocks-crud. `colors`/`fonts` son objetos planos
+ * (sanitize de allow-list de keys también en el usecase).
+ */
+export const ThemeSchema: Record<string, BodyRule> = {
+  templateId: { type: 'string' as const, required: true },
+  colors: { type: 'object' as const, required: false },
+  fonts: { type: 'object' as const, required: false },
+}
+
 export const LandingValidator = {
   upsert: UpsertLandingSchema,
   toggle: ToggleLandingSchema,
+  theme: ThemeSchema,
 }

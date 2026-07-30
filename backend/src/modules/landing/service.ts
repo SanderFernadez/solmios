@@ -12,10 +12,12 @@
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import type {
   LandingBlockDTO, UpsertLandingBlockInput,
-  PublicLandingBlock, CurrentUser,
+  PublicLandingBlock, PublicLandingTheme, LandingTheme, CurrentUser,
 } from './types'
 import * as blocksCrud from './usecases/blocks-crud'
 import type { LandingTransactor } from './usecases/blocks-crud'
+import * as themeCrud from './usecases/theme-crud'
+import type { ThemeCrudDeps } from './usecases/theme-crud'
 
 export class LandingService {
   constructor(
@@ -25,6 +27,7 @@ export class LandingService {
     private readonly auth: Auth,
     private readonly transactor: LandingTransactor,
     private readonly logger: Logger,
+    private readonly config: RepositoryAdapter<any>,
     private readonly cache?: CacheAdapter,
   ) {}
 
@@ -33,8 +36,18 @@ export class LandingService {
       blocks: this.blocks,
       hotels: this.hotels,
       userRepo: this.userRepo,
+      config: this.config,
       auth: this.auth,
       transactor: this.transactor,
+    }
+  }
+
+  private themeDeps(): ThemeCrudDeps {
+    return {
+      config: this.config,
+      userRepo: this.userRepo,
+      auth: this.auth,
+      cache: this.cache,
     }
   }
 
@@ -70,9 +83,30 @@ export class LandingService {
 
   /**
    * Ruta pública: bloques `active=1` del hotel resuelto por `slug`, ordenados por
-   * `sortOrder`. SIN auth (rate-limit en el index.ts). Dispara seeder lazy en hotel nuevo.
+   * `sortOrder`, + theme del hotel (solmi-direct-booking). SIN auth (rate-limit en el
+   * index.ts). Dispara seeder lazy en hotel nuevo.
    */
-  async listPublicBySlug(slug: string): Promise<{ data: PublicLandingBlock[] }> {
+  async listPublicBySlug(slug: string): Promise<{ data: PublicLandingBlock[]; theme: PublicLandingTheme }> {
     return blocksCrud.listPublicBySlug(this.deps(), slug)
+  }
+
+  /**
+   * Lee el theme del hotel (default classic si no hay fila). Ruta admin
+   * `GET /api/landing/theme` (solmi-direct-booking).
+   */
+  async getTheme(hotelId: string): Promise<LandingTheme> {
+    return themeCrud.getTheme(this.themeDeps(), hotelId)
+  }
+
+  /**
+   * Persiste el theme del hotel. Ownership IDOR + invalidación de caché pública
+   * (bloqueante — ver theme-crud). Ruta admin `PUT /api/landing/theme`.
+   */
+  async setTheme(
+    hotelId: string,
+    input: Record<string, unknown>,
+    user: CurrentUser,
+  ): Promise<LandingTheme> {
+    return themeCrud.setTheme(this.themeDeps(), hotelId, input, user)
   }
 }

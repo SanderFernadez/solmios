@@ -17,10 +17,11 @@ import type { RepositoryAdapter, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import type {
   LandingBlockDTO, LandingBlockType, UpsertLandingBlockInput,
-  PublicLandingBlock, CurrentUser,
+  PublicLandingBlock, PublicLandingTheme, CurrentUser,
 } from '../types'
 import { BLOCK_TYPES, DEFAULT_SORT_ORDER } from '../types'
 import { defaultConfigFor } from './defaults'
+import { getTheme, toPublicTheme } from './theme-crud'
 
 /**
  * Abstracción mínima del ORM para atomicidad: solo expone `transaction`. Lo define el
@@ -37,6 +38,9 @@ export interface BlocksCrudDeps {
   /** Repo ORM `Hotels` para resolver slug → hotelId en la ruta pública. */
   hotels: RepositoryAdapter<any>
   userRepo: RepositoryAdapter<any>
+  /** Repo ORM `Configuration` (registrado por shared/models.ts — NO redefinir).
+   *  Se usa para leer el theme en `listPublicBySlug` (solmi-direct-booking). */
+  config: RepositoryAdapter<any>
   auth: Auth
   /** Transactor para `transaction(fn)` en el upsert atómico (patrón journal-entry.ts). */
   transactor: LandingTransactor
@@ -209,16 +213,21 @@ export async function toggle(
 // ─── listPublicBySlug ──────────────────────────────────────────────────────
 /**
  * Ruta pública: devuelve solo los bloques `active=1` del hotel resuelto por `slug`,
- * ordenados por `sortOrder`. SIN auth (rate-limit va en el index.ts). Si el hotel no
- * existe o no tiene `onlineBookingStatus='active'` → 404 (no revelar existencia).
+ * ordenados por `sortOrder`, + el theme del hotel (solmi-direct-booking). SIN auth
+ * (rate-limit va en el index.ts). Si el hotel no existe o no tiene
+ * `onlineBookingStatus='active'` → 404 (no revelar existencia).
  *
  * Dispara el seeder lazy si el hotel no tiene bloques (para que la primera visita del
  * huésped a la landing pública no la vea vacía).
+ *
+ * Contract: antes devolvía `{data}`. Ahora `{data, theme}`. **No rompe callers
+ * existentes** que solo leen `data` (desestructuración parcial). Si el theme no
+ * existe → default classic (lazy, sin crear fila).
  */
 export async function listPublicBySlug(
   deps: BlocksCrudDeps,
   slug: string,
-): Promise<{ data: PublicLandingBlock[] }> {
+): Promise<{ data: PublicLandingBlock[]; theme: PublicLandingTheme }> {
   if (!slug) throw new NotFoundError('Hotel no encontrado')
   const hotel = await deps.hotels.findOne({ slug })
   if (!hotel || hotel.onlineBookingStatus !== 'active') {
@@ -245,5 +254,9 @@ export async function listPublicBySlug(
       config: b.config,
       sortOrder: b.sortOrder ?? 0,
     }))
-  return { data }
+
+  // Theme: lectura lazy (default classic si no hay fila). toPublicTheme hace el
+  // allow-list (sin hotelId). Si la fila está corrupta, getTheme cae a default safe.
+  const theme = toPublicTheme(await getTheme(deps, hotelId))
+  return { data, theme }
 }

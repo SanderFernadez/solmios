@@ -7,7 +7,7 @@ import type { HttpRequest, Logger } from 'arckode-framework'
 // entiende string|number|boolean|email|url|date y descarta los demás en silencio.
 import { validateSchema } from '../../shared/validators/validate-body'
 import type { LandingService } from './service'
-import { UpsertLandingSchema, ToggleLandingSchema } from './validators/schema'
+import { UpsertLandingSchema, ToggleLandingSchema, ThemeSchema } from './validators/schema'
 
 export class LandingController {
   constructor(
@@ -51,5 +51,28 @@ export class LandingController {
     const slug = req.params.slug
     const result = await this.service.listPublicBySlug(slug)
     return { status: 200, body: result }
+  }
+
+  /** GET /api/landing/theme — theme del hotel (default classic si no hay fila). */
+  async getTheme(req: HttpRequest) {
+    const user = req.user as any
+    const hotelId = user?.hotelId
+    if (!hotelId) throw new Error('Sin hotel asignado')
+    this.logger.info('GET /api/landing/theme', { hotelId })
+    const theme = await this.service.getTheme(hotelId)
+    return { status: 200, body: theme }
+  }
+
+  /** PUT /api/landing/theme — persiste el theme (validateSchema + ownership + cache flush). */
+  async setTheme(req: HttpRequest) {
+    const user = req.user as any
+    const hotelId = user?.hotelId
+    if (!hotelId) throw new Error('Sin hotel asignado')
+    this.logger.info('PUT /api/landing/theme', { hotelId, templateId: (req.body as any)?.templateId })
+    const data = validateSchema(ThemeSchema, req.body)
+    // `templateId` en enum + allow-list de colors/fonts se valida en el usecase
+    // (mismo patrón que UpsertLandingSchema/`type`).
+    const theme = await this.service.setTheme(hotelId, data, user)
+    return { status: 200, body: theme }
   }
 }
