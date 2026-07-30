@@ -164,7 +164,10 @@ export class BookingengineController {
   }
 
   async getBooking(req: HttpRequest) {
-    this.logger.info('GET /api/public/bookings/:id', { id: req.params.id })
+    // Hardening go-live — handler sin ruta (IDOR `/api/public/bookings/:id` eliminado en
+    // index.ts). Se conserva el método por si hay callers internos residuales, pero la ruta
+    // pública ya no existe. El endpoint seguro es `getPublicReservation` (HMAC token).
+    this.logger.info('getBooking handler (sin ruta pública — IDOR eliminado)')
     const booking = await this.service.getBooking(req.params.id)
     return { status: 200, body: booking }
   }

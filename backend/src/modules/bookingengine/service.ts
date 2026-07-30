@@ -60,7 +60,9 @@ export class BookingengineService {
     // F0 0.15 — Stripe opera sobre Reservations (tabla operacional). Antes usaba `bookingRepo`
     // (tabla huérfana `public_bookings`), que nunca recibía filas del widget — el cobro quedaba
     // colgado de una reserva inexistente. Spec booking-unification D2/D3.
-    this.stripe = new StripeUseCase(reservationsRepo, logger, registry, events)
+    // Hardening go-live — Pasamos hotelsRepo para que StripeUseCase construya el successUrl
+    // real con slug + reservationId + accessToken (antes pasaba placeholders literales a Stripe).
+    this.stripe = new StripeUseCase(reservationsRepo, logger, registry, events, hotelsRepo ?? undefined)
   }
 
   setSockets(s: Partial<BookingengineSockets>): void {

@@ -268,3 +268,122 @@ describe('StripeUseCase — flujo completo createSession → webhook (F0 0.15)',
     expect(updates).toHaveLength(1)
   })
 })
+
+// ─── Hardening go-live — successUrl/cancelUrl REALES (no placeholders) ───────
+// El frontend manda `/h/:slug/confirm?booking=:id&token=:token` (placeholders literales).
+// Antes el backend los pasaba así a Stripe → redirect rompía booking-confirmation.vue si el
+// huésped limpiaba sessionStorage. Ahora el backend construye URLs reales con valores reales.
+describe('StripeUseCase — successUrl/cancelUrl con valores reales (hardening go-live)', () => {
+  it('con PUBLIC_BASE_URL + hotelsRepo → successUrl real con slug + reservationId + accessToken', async () => {
+    const prevBase = process.env.PUBLIC_BASE_URL
+    process.env.PUBLIC_BASE_URL = 'https://book.example.com'
+    try {
+      const { repo: reservationsRepo } = makeReservationsRepo([{ ...PENDING_RESERVATION }])
+      const hotelsRepo: RepositoryAdapter<any> = {
+        findMany: async () => [],
+        findById: async () => null,
+        findOne: async () => ({ id: 'hotel-A', slug: 'caribe-paradise' }),
+        create: async () => null, update: async () => null, delete: async () => true,
+        count: async () => 0, paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
+      }
+      let captured: any = null
+      const gw = makeMockGw()
+      gw.createCharge = async (req: any) => { captured = req; return { status: 'redirect', redirectUrl: 'https://stripe/c/cs', providerRef: 'cs' } }
+      const stripe = new StripeUseCase(reservationsRepo, log, makeMockRegistry(gw), undefined, hotelsRepo)
+
+      // El widget pasa placeholders LITERALES — el backend los descarta y construye reales.
+      await stripe.createCheckoutSession(
+        'res-1', 200,
+        'https://widget.example/h/:slug/confirm?booking=:id&token=:token',
+        'https://widget.example/book/:slug',
+      )
+
+      expect(captured).not.toBeNull()
+      // successUrl REAL: baseUrl del env + slug del hotel + reservationId + accessToken.
+      expect(captured.successUrl).toBe(
+        'https://book.example.com/h/caribe-paradise/confirm?booking=res-1&token=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      )
+      // cancelUrl REAL: baseUrl del env + slug.
+      expect(captured.cancelUrl).toBe('https://book.example.com/book/caribe-paradise?cancelled=1')
+      // CRÍTICO: no quedan placeholders literales en la URL que llega a Stripe.
+      expect(captured.successUrl).not.toMatch(/:id|:token/)
+      expect(captured.cancelUrl).not.toMatch(/:id|:token|:slug/)
+    } finally {
+      if (prevBase === undefined) delete process.env.PUBLIC_BASE_URL
+      else process.env.PUBLIC_BASE_URL = prevBase
+    }
+  })
+
+  it('sin PUBLIC_BASE_URL → usa origin del successUrl del caller (widget pasa window.location.origin)', async () => {
+    const prevBase = process.env.PUBLIC_BASE_URL
+    delete process.env.PUBLIC_BASE_URL
+    try {
+      const { repo: reservationsRepo } = makeReservationsRepo([{ ...PENDING_RESERVATION }])
+      const hotelsRepo: RepositoryAdapter<any> = {
+        findMany: async () => [], findById: async () => null,
+        findOne: async () => ({ id: 'hotel-A', slug: 'caribe-paradise' }),
+        create: async () => null, update: async () => null, delete: async () => true,
+        count: async () => 0, paginate: async () => ({ data: [], total: 0, limit: 20, offset: 0, pages: 0 }),
+      }
+      let captured: any = null
+      const gw = makeMockGw()
+      gw.createCharge = async (req: any) => { captured = req; return { status: 'redirect', redirectUrl: 'https://stripe/c/cs', providerRef: 'cs' } }
+      const stripe = new StripeUseCase(reservationsRepo, log, makeMockRegistry(gw), undefined, hotelsRepo)
+
+      await stripe.createCheckoutSession(
+        'res-1', 200,
+        'https://app.hotel.test/h/caribe-paradise/confirm?booking=:id&token=:token',
+        'https://app.hotel.test/book/caribe-paradise',
+      )
+
+      // El origin del successUrl del caller se usa como baseUrl cuando PUBLIC_BASE_URL no está.
+      expect(captured.successUrl).toBe(
+        'https://app.hotel.test/h/caribe-paradise/confirm?booking=res-1&token=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      )
+      expect(captured.successUrl).not.toMatch(/:id|:token/)
+    } finally {
+      if (prevBase === undefined) delete process.env.PUBLIC_BASE_URL
+      else process.env.PUBLIC_BASE_URL = prevBase
+    }
+  })
+
+  it('sin hotelsRepo → extrae slug de las URLs del caller (/h/:slug/... o /book/:slug)', async () => {
+    const prevBase = process.env.PUBLIC_BASE_URL
+    process.env.PUBLIC_BASE_URL = 'https://book.example.com'
+    try {
+      const { repo: reservationsRepo } = makeReservationsRepo([{ ...PENDING_RESERVATION }])
+      let captured: any = null
+      const gw = makeMockGw()
+      gw.createCharge = async (req: any) => { captured = req; return { status: 'redirect', redirectUrl: 'https://stripe/c/cs', providerRef: 'cs' } }
+      // Sin hotelsRepo (5to param) — tests legacy no lo cablean.
+      const stripe = new StripeUseCase(reservationsRepo, log, makeMockRegistry(gw))
+
+      await stripe.createCheckoutSession(
+        'res-1', 200,
+        'https://widget.example/h/some-slug/confirm?booking=:id&token=:token',
+        'https://widget.example/book/some-slug',
+      )
+
+      // El slug se extrae del path del caller cuando no hay hotelsRepo.
+      expect(captured.successUrl).toBe(
+        'https://book.example.com/h/some-slug/confirm?booking=res-1&token=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      )
+      expect(captured.cancelUrl).toBe('https://book.example.com/book/some-slug?cancelled=1')
+    } finally {
+      if (prevBase === undefined) delete process.env.PUBLIC_BASE_URL
+      else process.env.PUBLIC_BASE_URL = prevBase
+    }
+  })
+
+  it('reserva sin accessToken (creada desde panel) → ValidationError antes de llamar al gw', async () => {
+    const { repo: reservationsRepo } = makeReservationsRepo([{ ...PENDING_RESERVATION, accessToken: null }])
+    const gw = makeMockGw()
+    let called = false
+    gw.createCharge = async () => { called = true; return { status: 'redirect', redirectUrl: '', providerRef: '' } }
+    const stripe = new StripeUseCase(reservationsRepo, log, makeMockRegistry(gw))
+
+    await expect(stripe.createCheckoutSession('res-1', 200, 'https://s', 'https://c'))
+      .rejects.toThrow(/accessToken/)
+    expect(called).toBe(false) // el gw NO se llama si falla el guard
+  })
+})

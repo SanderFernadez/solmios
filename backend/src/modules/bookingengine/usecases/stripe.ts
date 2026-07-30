@@ -53,6 +53,17 @@ interface ReservationRow {
   depositStatus?: string
   paymentMethod?: string
   pendingAmount?: number
+  /**
+   * Hardening go-live — accessToken público (UUID) que el flujo `createPublicBookingDirect`
+   * setea al crear la reserva. El backend lo inyecta en el successUrl para que
+   * `booking-confirmation.vue` pueda leer la reserva sin depender de sessionStorage.
+   */
+  accessToken?: string
+}
+
+interface HotelRow {
+  id: string
+  slug?: string
 }
 
 export class StripeUseCase {
@@ -65,6 +76,13 @@ export class StripeUseCase {
     private readonly logger: Logger,
     private readonly registry: PaymentGatewayRegistry,
     private readonly events?: PaymentEventStore,
+    /**
+     * Hardening go-live (solmi-direct-booking) — Repo de `Hotels` para resolver el `slug`
+     * al construir el `successUrl`/`cancelUrl` reales. Opcional: si no se cablea, el usecase
+     * extrae baseUrl/slug de las URLs del caller como fallback. Los tests legacy (que no
+     * construyen con este arg) siguen funcionando.
+     */
+    private readonly hotelsRepo?: RepositoryAdapter<HotelRow>,
   ) {}
 
   async isConfigured(hotelId: string): Promise<boolean> {
@@ -79,18 +97,23 @@ export class StripeUseCase {
    *               cobrar (seña, total, monto con upsells). Se pasa explícito para evitar el
    *               race condition entre leer la reserva y crear la sesión (precio del cuarto
    *               podría cambiar en el medio).
-   * @param successUrl URL de vuelta tras pago exitoso (configurada por el caller).
-   * @param cancelUrl  URL de vuelta tras cancelación.
+   * @param successUrlTemplate URL de vuelta tras pago exitoso. El widget la manda con
+   *                            placeholders `:id`/`:token` LITERALES — el backend NO los pasa
+   *                            así a Stripe: construye la URL real con reservationId +
+   *                            accessToken ANTES de crear la sesión (hardening go-live).
+   * @param cancelUrlTemplate  URL de vuelta tras cancelación. Misma lógica: si trae
+   *                            placeholders, se reemplazan; si no, se construye desde baseUrl.
    *
-   * Lanza `ValidationError` si la reserva no existe o el hotel no tiene pasarela configurada.
-   * El caller (public-booking.ts) atrapa el error para degradar graceful: reserva sigue
-   * `pending`, `checkoutUrl=null`, `paymentError=msg`. Sin 500.
+   * Lanza `ValidationError` si la reserva no existe, no tiene accessToken (creada desde panel),
+   * o el hotel no tiene pasarela configurada. El caller (public-booking.ts) atrapa el error
+   * para degradar graceful: reserva sigue `pending`, `checkoutUrl=null`, `paymentError=msg`.
+   * Sin 500.
    */
   async createCheckoutSession(
     reservationId: string,
     amount: number,
-    successUrl: string,
-    cancelUrl: string,
+    successUrlTemplate: string,
+    cancelUrlTemplate: string,
   ): Promise<StripeSession> {
     // Lookup por `findOne({id})` (no `findById`) — el analyzer pide `auth.assertOwnership()`
     // para `findById`, y este flujo es previo a auth: la "identidad" del huésped la prueba el
@@ -101,6 +124,18 @@ export class StripeUseCase {
     // El hotel sale de la reserva: el dinero va a la cuenta del hotel que se está reservando.
     const gw = await this.registry.resolve(reservation.hotelId)
     if (!gw) throw new ValidationError('El hotel no tiene una pasarela de pago configurada')
+
+    // Hardening go-live (solmi-direct-booking) — construir successUrl/cancelUrl REALES.
+    // El widget pasa URLs con placeholders `:id`/`:token` que NO se reemplazaban → el redirect
+    // de Stripe volvía con literales y rompía booking-confirmation.vue si el huésped limpiaba
+    // sessionStorage o usaba otro device. Ahora el backend es source-of-truth de la URL.
+    const accessToken = reservation.accessToken
+    if (!accessToken) {
+      throw new ValidationError('La reserva no tiene accessToken (creada desde panel, no por flujo público)')
+    }
+    const { successUrl, cancelUrl } = await this.buildCheckoutUrls(
+      reservationId, accessToken, reservation.hotelId, successUrlTemplate, cancelUrlTemplate,
+    )
 
     const currency = reservation.currency || 'USD'
     const description = `Reserva ${reservationId} | Check-in: ${reservation.checkIn} | Check-out: ${reservation.checkOut}`
@@ -189,5 +224,108 @@ export class StripeUseCase {
     }
 
     return { type: outcome.status }
+  }
+
+  /**
+   * Hardening go-live (solmi-direct-booking) — Construye las URLs reales de success/cancel
+   * con reservationId + accessToken + slug + baseUrl. Antes el backend pasaba literales los
+   * placeholders `:id`/`:token` que mandaba el widget → el redirect de Stripe volvía con
+   * `?booking=:id&token=:token` (literales) y booking-confirmation.vue dependía de sessionStorage.
+   *
+   * Estrategia (defense-in-depth, ningún punto único de falla):
+   *   1. `accessToken`: siempre de `reservation.accessToken` (validado al entrar al usecase).
+   *   2. `baseUrl`: `PUBLIC_BASE_URL` env → origin extraído del caller → '' (dev sin env).
+   *   3. `slug`: lookup del hotel → fallback extraído del caller (`/h/:slug/` o `/book/:slug`).
+   *
+   * Si el caller pasa URLs sin placeholders (caso legacy/otro caller), se respetan pero se
+   * reemplazan `:id`/`:token` por si acaso. Si no tiene placeholders, queda como vino (compat
+   * con tests legacy que pasan URLs arbitrarias).
+   *
+   * Patrón final (spec booking-unification R2):
+   *   successUrl = `${baseUrl}/h/${slug}/confirm?booking=${reservationId}&token=${accessToken}`
+   *   cancelUrl  = `${baseUrl}/book/${slug}?cancelled=1`
+   */
+  private async buildCheckoutUrls(
+    reservationId: string,
+    accessToken: string,
+    hotelId: string,
+    successUrlTemplate: string,
+    cancelUrlTemplate: string,
+  ): Promise<{ successUrl: string; cancelUrl: string }> {
+    const baseUrl = resolveCheckoutBaseUrl(process.env.PUBLIC_BASE_URL, successUrlTemplate, cancelUrlTemplate)
+    const slug = await this.resolveHotelSlug(hotelId, successUrlTemplate, cancelUrlTemplate)
+
+    // Si tenemos baseUrl + slug → construimos desde cero (source-of-truth del backend).
+    if (baseUrl && slug) {
+      return {
+        successUrl: `${baseUrl}/h/${slug}/confirm?booking=${encodeURIComponent(reservationId)}&token=${encodeURIComponent(accessToken)}`,
+        cancelUrl: `${baseUrl}/book/${slug}?cancelled=1`,
+      }
+    }
+
+    // Fallback (dev sin PUBLIC_BASE_URL, o hotel sin slug): reemplazo de placeholders sobre
+    // la URL del caller. Si no hay placeholders, la URL queda como vino (tests legacy).
+    const replaceTokens = (url: string) =>
+      url
+        .replace(/:id\b/g, reservationId)
+        .replace(/:token\b/g, accessToken)
+
+    return {
+      successUrl: replaceTokens(successUrlTemplate),
+      cancelUrl: replaceTokens(cancelUrlTemplate),
+    }
+  }
+
+  /**
+   * Resuelve el slug del hotel: lookup en hotelsRepo (preferido) → fallback extraído de las
+   * URLs del caller (que hoy traen el slug real en `/h/:slug/...` y `/book/:slug`).
+   */
+  private async resolveHotelSlug(
+    hotelId: string,
+    successUrlTemplate: string,
+    cancelUrlTemplate: string,
+  ): Promise<string> {
+    if (this.hotelsRepo) {
+      try {
+        const hotel = await this.hotelsRepo.findOne({ id: hotelId })
+        if (hotel?.slug) return hotel.slug
+      } catch (e) {
+        // No romper el flujo de pago por un lookup de hotel fallido — caemos al fallback.
+        this.logger.warn(`stripe.buildCheckoutUrls: hotelsRepo.findOne falló para ${hotelId}`, { error: (e as Error)?.message })
+      }
+    }
+    return extractSlugFromUrl(successUrlTemplate) || extractSlugFromUrl(cancelUrlTemplate) || ''
+  }
+}
+
+/**
+ * Hardening go-live — Resuelve la base pública de las URLs de checkout.
+ * Prioridad: `PUBLIC_BASE_URL` env > origin extraído del successUrl del caller > cancelUrl.
+ *
+ * El frontend arma las URLs con `window.location.origin` (que en prod es el dominio correcto),
+ * así que cuando el env no está seteado podemos confiar en el origin del caller como fallback.
+ */
+function resolveCheckoutBaseUrl(envBaseUrl: string | undefined, ...callerUrls: string[]): string {
+  if (envBaseUrl && /^https?:\/\//.test(envBaseUrl)) return envBaseUrl.replace(/\/$/, '')
+  for (const url of callerUrls) {
+    try {
+      const parsed = new URL(url)
+      if (parsed.origin && /^https?:$/.test(parsed.protocol)) return parsed.origin
+    } catch { /* no es URL absoluta — seguir */ }
+  }
+  return ''
+}
+
+/**
+ * Extrae el slug de un path tipo `/h/:slug/...` o `/book/:slug`. Retorna '' si no matchea.
+ * Solo aplica a paths relativos o absolutos (ignora query/hash).
+ */
+function extractSlugFromUrl(url: string): string {
+  try {
+    const parsed = new URL(url, 'http://placeholder.local')
+    const m = /\/(?:h|book)\/([^/?#]+)/.exec(parsed.pathname)
+    return m ? decodeURIComponent(m[1]) : ''
+  } catch {
+    return ''
   }
 }

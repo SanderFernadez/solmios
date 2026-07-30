@@ -29,6 +29,18 @@ export const CurrencyCode = {
   GBP: 'GBP', // Libra esterlina
   CAD: 'CAD', // Dólar canadiense
   CHF: 'CHF', // Franco suizo
+  // Hardening go-live (solmi-direct-booking) — 10 monedas extra para el widget de geo-IP
+  // (COUNTRY_TO_CURRENCY ya mapeaba estos países pero caían a fallback USD por no estar acá).
+  UYU: 'UYU', // Peso uruguayo
+  PYG: 'PYG', // Guaraní paraguayo
+  BOB: 'BOB', // Boliviano (Bolivia)
+  VES: 'VES', // Bolívar venezolano
+  CRC: 'CRC', // Colón costarricense
+  GTQ: 'GTQ', // Quetzal guatemalteco
+  HNL: 'HNL', // Lempira hondureño
+  NIO: 'NIO', // Córdoba nicaragüense
+  JPY: 'JPY', // Yen japonés (0 decimales)
+  CNY: 'CNY', // Yuan chino (renminbi)
 } as const
 
 /** Tipo unión de los códigos aceptados. Un string que NO esté acá no es una moneda válida. */
@@ -63,6 +75,17 @@ const META: Record<CurrencyCode, Omit<CurrencyMeta, 'code'>> = {
   GBP: { symbol: '£', decimals: 2, labelEs: 'Libra Esterlina', labelEn: 'British Pound' },
   CAD: { symbol: 'CA$', decimals: 2, labelEs: 'Dólar Canadiense', labelEn: 'Canadian Dollar' },
   CHF: { symbol: 'CHF', decimals: 2, labelEs: 'Franco Suizo', labelEn: 'Swiss Franc' },
+  // Hardening go-live — 10 monedas LATAM/Asia (ISO 4217 decimals).
+  UYU: { symbol: '$U', decimals: 2, labelEs: 'Peso Uruguayo', labelEn: 'Uruguayan Peso' },
+  PYG: { symbol: '₲', decimals: 0, labelEs: 'Guaraní', labelEn: 'Paraguayan Guaraní' },
+  BOB: { symbol: 'Bs', decimals: 2, labelEs: 'Boliviano', labelEn: 'Bolivian Boliviano' },
+  VES: { symbol: 'Bs.S', decimals: 2, labelEs: 'Bolívar Venezolano', labelEn: 'Venezuelan Bolívar' },
+  CRC: { symbol: '₡', decimals: 2, labelEs: 'Colón Costarricense', labelEn: 'Costa Rican Colón' },
+  GTQ: { symbol: 'Q', decimals: 2, labelEs: 'Quetzal', labelEn: 'Guatemalan Quetzal' },
+  HNL: { symbol: 'L', decimals: 2, labelEs: 'Lempira', labelEn: 'Honduran Lempira' },
+  NIO: { symbol: 'C$', decimals: 2, labelEs: 'Córdoba', labelEn: 'Nicaraguan Córdoba' },
+  JPY: { symbol: '¥', decimals: 0, labelEs: 'Yen Japonés', labelEn: 'Japanese Yen' },
+  CNY: { symbol: '¥', decimals: 2, labelEs: 'Yuan Chino', labelEn: 'Chinese Yuan' },
 }
 
 /** Tabla de metadata (mismo orden que CURRENCY_CODES — determinístico para selects). */

@@ -30,7 +30,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       name: 'bookingengine',
       version: '1.0.0',
       description: 'Booking engine: widget config, public availability, reservations, analytics',
-      actions: ['getConfig', 'updateConfig', 'checkAvailability', 'createBooking', 'getBooking', 'trackEvent', 'getAnalytics', 'getPublicBookingBySlug', 'createPublicBookingDirect'],
+      actions: ['getConfig', 'updateConfig', 'checkAvailability', 'createBooking', 'trackEvent', 'getAnalytics', 'getPublicBookingBySlug', 'createPublicBookingDirect'],
       events: ['onBookingCreated', 'onBookingCancelled', 'onConversionEvent'],
       tables: ['booking_config', 'conversion_events'],
       dependencies: ['canales', 'hoteles', 'habitaciones'],
@@ -171,18 +171,13 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         return controller.createBooking(req)
       })
       router.get('/api/public/bookings/:id', async (req: any) => {
-        if (useUnifiedBookingFlow()) {
-          log.warn('GET /api/public/bookings/:id deprecated by BOOKING_USE_UNIFIED_FLOW — use /api/public/reservations/:id')
-          return { status: 410, body: { error: 'Deprecated. Use GET /api/public/reservations/:id' } }
-        }
-        // ⚠️ F0 0.14 — IDOR todavía vivo: el flag está en false (prod rollback mode), el
-        // flujo viejo sigue exponiendo cualquier reserva por UUID. Este log.warn URGENTE
-        // es para que prod migre a `BOOKING_USE_UNIFIED_FLOW=true` (que responde 410 acá)
-        // y se eliminen este branch + el endpoint en F4. Mientras tanto, NO sacar de acá.
-        log.warn('URGENT DEPRECATION — GET /api/public/bookings/:id still exposes IDOR (BOOKING_USE_UNIFIED_FLOW=false). Set flag=true in prod and remove this branch (F4 deletes the endpoint).')
-        const { allowed, retryAfter } = rateLimit(`public-bookings-get:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
-        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
-        return controller.getBooking(req)
+        // Hardening go-live (solmi-direct-booking) — IDOR eliminado. Este endpoint exponía
+        // cualquier reserva por UUID sin token. El endpoint seguro
+        // `GET /api/public/reservations/:id?token=X` (HMAC + timingSafeEqual) lo reemplaza.
+        // Devolvemos 410 SIEMPRE (sin importar el flag) para no romper clients stale que
+        // todavía lo piden, pero sin filtrar datos. El branch IDOR se borró.
+        log.warn('GET /api/public/bookings/:id removed (IDOR) — use GET /api/public/reservations/:id?token=X')
+        return { status: 410, body: { error: 'Deprecated. Use GET /api/public/reservations/:id?token=X' } }
       })
       // F0 0.14 — Endpoint público SEGURO. Token HMAC en ?token=X (anti-IDOR).
       router.get('/api/public/reservations/:id', async (req: any) => {
