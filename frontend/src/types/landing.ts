@@ -27,8 +27,13 @@ export interface HeroBlockConfig {
   title?: string | null
   subtitle?: string | null
   ctaText?: string | null
-  /** Id del media asignado como fondo (el frontend usa `media.hero[]` si no hay). */
+  /** Id del media asignado como fondo (el frontend usa `media.hero[]` si no hay).
+   *  Forma SINGLE (legacy): una sola imagen, sin carrusel. */
   backgroundMediaId?: string | null
+  /** Lista ordenada de ids de media para el fondo. Si tiene items → carrusel (slider)
+   *  en orden. Backward-compat: si está vacío cae a `backgroundMediaId` (single) o a
+   *  `media.hero[]` (primera disponible). */
+  backgroundMediaIds?: string[] | null
 }
 
 export interface GalleryBlockConfig {

@@ -17,13 +17,10 @@
     class="relative isolate overflow-hidden min-h-[78vh] flex items-end"
   >
     <div class="absolute inset-0 -z-10">
-      <img
-        v-if="backgroundImage"
-        :src="backgroundImage"
+      <HeroSlider
+        v-if="backgroundImages.length > 0"
+        :images="backgroundImages"
         :alt="hotel.name"
-        class="w-full h-full object-cover"
-        loading="eager"
-        fetchpriority="high"
       />
       <div v-else class="w-full h-full bg-gradient-to-br from-navy via-navy-light to-blue" />
       <div class="absolute inset-0 bg-gradient-to-t from-navy/90 via-navy/40 to-navy/20" />
@@ -97,16 +94,13 @@
         </div>
       </div>
     </div>
-    <!-- Col imagen (object-cover full-height). Mobile: abajo, desktop: derecha -->
+    <!-- Col imagen (object-cover full-height). Mobile: abajo, desktop: derecha.
+         Wrap absoluto para estirar el slider/img al alto de la columna grid (el right col
+         no tiene alto intrínseco — el grid lo estira al del hermano texto). -->
     <div class="relative min-h-[40vh] md:min-h-full order-2 bg-navy-light">
-      <img
-        v-if="backgroundImage"
-        :src="backgroundImage"
-        :alt="hotel.name"
-        class="absolute inset-0 w-full h-full object-cover"
-        loading="eager"
-        fetchpriority="high"
-      />
+      <div v-if="backgroundImages.length > 0" class="absolute inset-0">
+        <HeroSlider :images="backgroundImages" :alt="hotel.name" />
+      </div>
       <div v-else class="absolute inset-0 bg-gradient-to-br from-navy via-navy-light to-blue" />
     </div>
   </section>
@@ -117,13 +111,10 @@
     class="relative isolate overflow-hidden min-h-[78vh] flex items-center justify-center"
   >
     <div class="absolute inset-0 -z-10">
-      <img
-        v-if="backgroundImage"
-        :src="backgroundImage"
+      <HeroSlider
+        v-if="backgroundImages.length > 0"
+        :images="backgroundImages"
         :alt="hotel.name"
-        class="w-full h-full object-cover"
-        loading="eager"
-        fetchpriority="high"
       />
       <div v-else class="w-full h-full bg-gradient-to-br from-navy via-navy-light to-blue" />
       <!-- Overlay más pesado que classic (legibilidad sobre texto centrado) -->
@@ -164,6 +155,7 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 import type { LandingBlock, LandingTheme, LandingTemplateId, PublicHotelInfo, PublicHotelMedia } from '@/types'
+import HeroSlider from './HeroSlider.vue'
 
 const props = defineProps<{
   block: LandingBlock
@@ -193,12 +185,31 @@ const ctaText = computed(() => {
   return c || 'Reservar ahora'
 })
 
-const backgroundImage = computed(() => {
+/**
+ * backgroundImages — lista ordenada de URLs para el fondo del hero. Resolución:
+ *   1. `cfg.backgroundMediaIds` (array explícito del MediaPicker): resolve cada id contra
+ *      `media.hero`, descarta los que no existan (foto borrada → no rompe).
+ *   2. `cfg.backgroundMediaId` (single, legacy): una sola imagen, sin carrusel.
+ *   3. `media.hero[]` (default): TODAS las hero del hotel → si hay varias, el slider rota
+ *      sin configuración manual (comportamiento nuevo, alineado a la feature de carrusel).
+ * Array vacío → HeroBlock renderiza el fallback gradient (sin <HeroSlider>).
+ */
+const backgroundImages = computed<string[]>(() => {
   const heroList = props.media?.hero ?? []
-  if (heroList.length === 0) return null
-  const wantedId = typeof cfg.value.backgroundMediaId === 'string' ? cfg.value.backgroundMediaId : null
-  const wanted = wantedId ? heroList.find((m) => m.id === wantedId) : null
-  return (wanted ?? heroList[0]).url
+  const byId = new Map(heroList.map((m) => [m.id, m.url]))
+
+  const idsRaw = cfg.value.backgroundMediaIds
+  if (Array.isArray(idsRaw) && idsRaw.length > 0) {
+    const resolved = idsRaw
+      .map((id) => (typeof id === 'string' ? byId.get(id) : undefined))
+      .filter((u): u is string => Boolean(u))
+    if (resolved.length > 0) return resolved
+  }
+
+  const singleId = typeof cfg.value.backgroundMediaId === 'string' ? cfg.value.backgroundMediaId : null
+  if (singleId && byId.has(singleId)) return [byId.get(singleId) as string]
+
+  return heroList.map((m) => m.url)
 })
 
 const bookingLink = computed(() => `/book/${encodeURIComponent(props.hotel.slug)}`)

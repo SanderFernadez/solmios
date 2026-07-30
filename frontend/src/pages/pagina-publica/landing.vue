@@ -248,6 +248,15 @@
             </button>
           </div>
 
+          <!-- Media picker (multi-select + upload + reorder) -->
+          <div v-else-if="field.kind === 'media-picker'">
+            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
+              {{ field.label }}
+            </label>
+            <MediaPicker v-model="mediaIdsDraft" />
+            <p v-if="field.help" class="mt-1.5 text-[10px] text-text-muted leading-relaxed">{{ field.help }}</p>
+          </div>
+
           <!-- Text / textarea / number -->
           <div v-else>
             <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
@@ -306,6 +315,7 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import MediaPicker from '@/components/landing/MediaPicker.vue'
 import { useToast } from '@/composables/useToast'
 import { AdminLandingService } from '@/services/AdminLanding.service'
 import { SettingsService } from '@/services/Settings.service'
@@ -345,7 +355,7 @@ const BLOCK_META: Record<LandingBlockType, { label: string; emoji: string; descr
 // El shape de `config` está fijo en el spec (hero: title/subtitle/ctaText/backgroundMediaId,
 // faq: title/items, …). Acá solo declaramos qué fields editar por type. El backend valida el
 // enum de types pero NO el shape del config (lo persiste tal cual) — el contract es el spec.
-type FieldKind = 'text' | 'textarea' | 'number' | 'faq-items' | 'footer-links'
+type FieldKind = 'text' | 'textarea' | 'number' | 'faq-items' | 'footer-links' | 'media-picker'
 interface FieldDef {
   key: string
   label: string
@@ -359,8 +369,8 @@ const FIELDS_BY_TYPE: Record<LandingBlockType, FieldDef[]> = {
     { key: 'title', label: 'Título', kind: 'text', placeholder: 'Tu próximo destino' },
     { key: 'subtitle', label: 'Subtítulo', kind: 'text', placeholder: 'Reservá directo y aprovechá el mejor precio.' },
     { key: 'ctaText', label: 'Texto del botón', kind: 'text', placeholder: 'Reservar' },
-    { key: 'backgroundMediaId', label: 'ID del media hero', kind: 'text', optional: true,
-      help: 'Pegá el ID de una imagen hero del hotel. Si lo dejás vacío, se usa la primera disponible.' },
+    { key: 'backgroundMediaIds', label: 'Imágenes del fondo', kind: 'media-picker',
+      help: 'Elegí una o varias imágenes hero. Con 2+ se arma un carrusel que rota solo.' },
   ],
   gallery:   [{ key: 'title', label: 'Título', kind: 'text', placeholder: 'Galería' }],
   amenities: [{ key: 'title', label: 'Título', kind: 'text', placeholder: 'Servicios' }],
@@ -489,6 +499,7 @@ const editing = ref<AdminLandingBlock | null>(null)
 const textDraft = reactive<Record<string, string | number | null>>({})
 const faqDraft = ref<FaqItem[]>([])
 const linksDraft = ref<FooterLink[]>([])
+const mediaIdsDraft = ref<string[]>([])
 
 function openEditor(block: AdminLandingBlock) {
   editing.value = block
@@ -497,6 +508,7 @@ function openEditor(block: AdminLandingBlock) {
   for (const k of Object.keys(textDraft)) delete textDraft[k]
   faqDraft.value = []
   linksDraft.value = []
+  mediaIdsDraft.value = []
   // Popular según fields del type
   for (const field of fieldsFor(block.type)) {
     const raw = (cfg as Record<string, unknown>)[field.key]
@@ -516,6 +528,17 @@ function openEditor(block: AdminLandingBlock) {
             typeof (it as FooterLink).url === 'string')
           .map((it) => ({ label: (it as FooterLink).label, url: (it as FooterLink).url }))
         : []
+    } else if (field.kind === 'media-picker') {
+      // backgroundMediaIds (array) → si no, migrar del backgroundMediaId single legacy.
+      if (Array.isArray(raw)) {
+        mediaIdsDraft.value = raw.filter((id): id is string => typeof id === 'string' && id.length > 0)
+      } else if (typeof raw === 'string' && raw.length > 0) {
+        mediaIdsDraft.value = [raw]
+      } else {
+        // Intentar migrar del hermano `backgroundMediaId` (campo que este picker reemplaza).
+        const legacy = (cfg as Record<string, unknown>).backgroundMediaId
+        mediaIdsDraft.value = typeof legacy === 'string' && legacy.length > 0 ? [legacy] : []
+      }
     } else if (field.kind === 'number') {
       const n = Number(raw)
       textDraft[field.key] = Number.isFinite(n) && n > 0 ? n : null
@@ -542,6 +565,14 @@ function applyEditor() {
         .map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
         .filter((l) => l.label || l.url)
       cfg.links = links
+    } else if (field.kind === 'media-picker') {
+      // Array de ids ordenado. Si queda vacío, persistimos null (el hero cae a media.hero).
+      const ids = mediaIdsDraft.value.slice()
+      cfg[field.key] = ids.length > 0 ? ids : null
+      // Limpiar el campo legacy `backgroundMediaId` para que no ressuelva single cuando el
+      // array está vacío intencionalmente. El HeroBlock prioriza el array; el single queda
+      // solo como migración de configs viejas editadas desde acá.
+      cfg.backgroundMediaId = null
     } else if (field.kind === 'number') {
       const n = Number(textDraft[field.key])
       cfg[field.key] = Number.isFinite(n) && n > 0 ? Math.floor(n) : null
