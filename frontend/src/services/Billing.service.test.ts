@@ -45,6 +45,28 @@ describe('Billing.service — mapInvoice', () => {
     const inv = mapInvoice({ id: 'i5', amount: 90, type: 'folio' })
     expect(inv.items).toEqual([{ description: 'folio', amount: 90 }])
   })
+
+  it('mapea ncf/fiscalSent/fiscalMessage tal cual los manda el backend', () => {
+    const inv = mapInvoice({
+      id: 'i6', amount: 118, type: 'invoice',
+      ncf: 'E3100000000001', fiscalSent: false, fiscalMessage: 'Pendiente de envío a DGII',
+    })
+    expect(inv.ncf).toBe('E3100000000001')
+    expect(inv.fiscalSent).toBe(false)
+    expect(inv.fiscalMessage).toBe('Pendiente de envío a DGII')
+  })
+
+  it('sin ncf/fiscal en la respuesta: ncf null, fiscalSent false, fiscalMessage null (factura sin NCF fiscal)', () => {
+    const inv = mapInvoice({ id: 'i7', amount: 100, type: 'invoice' })
+    expect(inv.ncf).toBeNull()
+    expect(inv.fiscalSent).toBe(false)
+    expect(inv.fiscalMessage).toBeNull()
+  })
+
+  it('fiscalSent viene como 1/0 (INTEGER de la DB, no boolean real): se normaliza a boolean', () => {
+    expect(mapInvoice({ id: 'i8', amount: 100, fiscalSent: 1 }).fiscalSent).toBe(true)
+    expect(mapInvoice({ id: 'i9', amount: 100, fiscalSent: 0 }).fiscalSent).toBe(false)
+  })
 })
 
 describe('Billing.service — isDeletable (regla contable)', () => {
