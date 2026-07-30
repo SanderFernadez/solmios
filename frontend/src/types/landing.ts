@@ -150,3 +150,94 @@ export interface AdminLandingListResult {
   total: number
 }
 
+// ─── Themes (Task B — landing pública con templates) ──────────────────────
+// Espejo del backend `landing/types.ts` (Task A, commit 5df115a). El endpoint público
+// GET /api/public/hotels/:slug/landing ahora devuelve `{ data: LandingBlock[], theme: LandingTheme | null }`.
+//
+// `templateId` selecciona una paleta preset (ver PRESET_MAP). `colors` (optional) sobreescribe
+// tokens individuales del preset — el frontend mergea preset + custom en `themeCssVars`.
+// `fonts` (optional) permite heading/body families; hoy solo applies para boutique (Playfair).
+//
+// Convención camelCase en TS → kebab-case en CSS custom properties:
+//   `navyLight` → `--color-navy-light`. Los nombres matchean los tokens `@theme` de main.css.
+export type LandingTemplateId = 'classic' | 'modern' | 'boutique'
+
+/** Tokens de color overrideables. Cada key mapea a `--color-<kebab>` en main.css @theme. */
+export interface ThemeTokens {
+  navy: string
+  navyLight: string
+  blue: string
+  cyan: string
+  cyanLight: string
+  teal: string
+  gold: string
+  goldLight: string
+  surface: string
+  surfaceDark: string
+}
+
+/** Theme completo enviado por el backend (todos los campos opcionales salvo templateId). */
+export interface LandingTheme {
+  templateId: LandingTemplateId
+  colors?: Partial<ThemeTokens>
+  fonts?: {
+    heading?: string
+    body?: string
+  }
+}
+
+/**
+ * PRESET_MAP — paletas por defecto de cada template (look&feel de cada variante).
+ * - classic: el look actual (azul navy + cyan). Sin overrides → usa exactamente estos tokens.
+ * - modern: teal + coral (vibrante, "boutique urbano").
+ * - boutique: bordó + gold (cálido, editorial).
+ *
+ * El orquestador mergea `PRESET_MAP[templateId]` con `theme.colors` (custom overrides del
+ * hoteliero) → gana el override puntual. Si el backend manda `colors` pero no `templateId`,
+ * cae a classic + overrides.
+ */
+export const PRESET_MAP: Record<LandingTemplateId, ThemeTokens> = {
+  classic: {
+    navy: '#0D2B4E',
+    navyLight: '#1A3A5C',
+    blue: '#1D67E3',
+    cyan: '#00B4D8',
+    cyanLight: '#48CAE4',
+    teal: '#117A65',
+    gold: '#B7950B',
+    goldLight: '#D4AC0D',
+    surface: '#F8FAFC',
+    surfaceDark: '#F1F5F9',
+  },
+  modern: {
+    navy: '#0F766E',
+    navyLight: '#115E59',
+    blue: '#0891B2',
+    cyan: '#F97316',
+    cyanLight: '#FB923C',
+    teal: '#0D9488',
+    gold: '#F59E0B',
+    goldLight: '#FBBF24',
+    surface: '#F0FDFA',
+    surfaceDark: '#CCFBF1',
+  },
+  boutique: {
+    navy: '#4A1D1D',
+    navyLight: '#6B2828',
+    blue: '#7C2D12',
+    cyan: '#B7950B',
+    cyanLight: '#D4AC0D',
+    teal: '#92400E',
+    gold: '#92400E',
+    goldLight: '#B45309',
+    surface: '#FAF6F0',
+    surfaceDark: '#F2EBE0',
+  },
+}
+
+/** Shape del response del endpoint público `GET /api/public/hotels/:slug/landing` (post-Task A). */
+export interface PublicLandingResponse {
+  data: LandingBlock[]
+  theme: LandingTheme | null
+}
+

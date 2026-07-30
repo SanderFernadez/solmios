@@ -64,5 +64,5 @@ const bookingLink = computed(() => `/book/${encodeURIComponent(props.hotel.slug)
 </script>
 
 <style scoped>
-.success-light { color: #6EE7B7; }
+.success-light { color: var(--color-success-light); }
 </style>

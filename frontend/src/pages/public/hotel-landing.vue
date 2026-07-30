@@ -34,7 +34,21 @@
     </div>
   </div>
 
-  <main v-else>
+  <main v-else :style="themeCssVars" :data-template="activeTemplate">
+    <!--
+      JSON-LD (F1 1.10): el composable `useHotelJsonLd` (Pieza D) arma el payload Hotel +
+      FAQPage y los inyecta como `<script type="application/ld+json">` en `<head>` (idempotente,
+      los limpia en unmount). El `<component :is="'script'">` de Vue no monta scripts en <head>
+      correctamente — por eso el composable inyecta via DOM.
+    -->
+
+    <!-- Playfair Display solo para boutique (carga condicional, font-display swap, fallback DM Sans) -->
+    <link
+      v-if="activeTemplate === 'boutique'"
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&display=swap"
+    />
+
     <component
       v-for="block in renderedBlocks"
       :key="block.type"
@@ -45,18 +59,11 @@
       :reviews="reviews"
       :rooms="rooms"
     />
-
-    <!--
-      JSON-LD (F1 1.10): el composable `useHotelJsonLd` (Pieza D) arma el payload Hotel +
-      FAQPage y los inyecta como `<script type="application/ld+json">` en `<head>` (idempotente,
-      los limpia en unmount). El `<component :is="'script'">` de Vue no monta scripts en <head>
-      correctamente — por eso el composable inyecta via DOM.
-    -->
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, provide, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { PublicHotelService } from '@/services/PublicHotel.service'
@@ -66,11 +73,14 @@ import { useHotelJsonLd } from '@/composables/useHotelJsonLd'
 import type {
   LandingBlock,
   LandingBlockType,
+  LandingTheme,
+  LandingTemplateId,
   PublicHotelInfo,
   PublicHotelMedia,
   PublicReviewsResponse,
   PublicLandingRoom,
 } from '@/types'
+import { PRESET_MAP } from '@/types/landing'
 
 import HeroBlock from '@/components/landing/HeroBlock.vue'
 import GalleryBlock from '@/components/landing/GalleryBlock.vue'
@@ -92,6 +102,45 @@ const media = ref<PublicHotelMedia | null>(null)
 const reviews = ref<PublicReviewsResponse | null>(null)
 const rooms = ref<PublicLandingRoom[] | null>(null) // F2 no construido → siempre null por ahora.
 
+// ─── Theme (Task B — preset + custom overrides) ───────────────────────────
+// El backend manda `theme: { templateId, colors?, fonts? }` (post-Task A). El orquestador
+// lo provee a los bloques vía inject('landingTheme') (Hero/Gallery renderizan variants
+// estructurales según templateId). El CSS override va en el <main> vía :style="themeCssVars"
+// → CSS custom properties que pisan los tokens `@theme` de main.css para todo el subtree.
+const theme = ref<LandingTheme | null>(null)
+provide('landingTheme', theme)
+
+/** templateId efectivo (default classic si el backend no manda theme). */
+const activeTemplate = computed<LandingTemplateId>(
+  () => theme.value?.templateId ?? 'classic',
+)
+
+/**
+ * themeCssVars — merge PRESET_MAP[templateId] + theme.colors (custom) → objeto de CSS custom
+ * properties `{ '--color-navy': '#...', '--color-navy-light': '#...', ... }`. camelCase → kebab.
+ * Las utilities `bg-navy`/`text-cyan`/etc. de Tailwind v4 compilan a `var(--color-navy)` →
+ * heredan el override del <main> automáticamente. Si el backend manda un color inválido
+ * (string vacío o no-hex), se cae al preset (no lo overridea).
+ *
+ * Nota: `--color-surface-dark` en @theme es el token, pero ThemeTokens usa `surfaceDark`
+ * (camelCase) → el rename va acá para que el override aplique.
+ */
+const themeCssVars = computed<Record<string, string>>(() => {
+  const templateId = activeTemplate.value
+  const preset = PRESET_MAP[templateId] ?? PRESET_MAP.classic
+  const overrides = theme.value?.colors ?? {}
+  // Merge shallow: preset first, overrides ganadores. Solo tokens declarados en ThemeTokens.
+  const merged = { ...preset, ...overrides } as Record<string, string>
+  const vars: Record<string, string> = {}
+  for (const [camelKey, value] of Object.entries(merged)) {
+    if (typeof value !== 'string' || value.trim() === '') continue
+    // camelCase → kebab-case (navyLight → navy-light).
+    const kebab = camelKey.replace(/([A-Z])/g, '-$1').toLowerCase()
+    vars[`--color-${kebab}`] = value
+  }
+  return vars
+})
+
 // ─── Init ─────────────────────────────────────────────────────────────────
 onMounted(async () => {
   const slug = String(route.params.slug || '').trim()
@@ -111,15 +160,21 @@ onMounted(async () => {
     ])
 
     if (blocksRes.status === 'fulfilled') {
-      // DEFENSIVO (bug envelope, solmi-direct-booking): el backend envuelve la lista en
-      // `{ data: [...] }` (service envelope) sobre el envelope del framework `{ success, data }`
-      // que http.ts:263-270 YA desenvolvió. La signatura de LandingService.get dice
-      // `Promise<LandingBlock[]>` pero el runtime entrega `{ data: LandingBlock[] }`. Si lo
-      // asignamos sin unwrap, `blocks.value.find()` en useHotelJsonLd pega TypeError y tira
-      // abajo toda la landing ("Hotel no encontrado"). Soportamos ambas formas (array plano
-      // y envelope) para que un refactor del backend no vuelva a romper la página.
-      const v = blocksRes.value as LandingBlock[] | { data?: LandingBlock[] }
-      blocks.value = Array.isArray(v) ? v : (v?.data ?? [])
+      // DEFENSIVO (bug envelope, solmi-direct-booking): históricamente el backend envolvía la
+      // lista en `{ data: [...] }` sobre el envelope del framework `{ success, data }` que
+      // http.ts:263-270 YA desenvolvió. Tras Task A (commit 5df115a), el contract formal es
+      // `{ data: LandingBlock[], theme: LandingTheme | null }`, pero soportamos ambas formas
+      // (array plano, envelope sin theme, envelope con theme) para que un refactor del backend
+      // no vuelva a romper la página ("Hotel no encontrado" por TypeError en useHotelJsonLd).
+      const v = blocksRes.value as
+        | LandingBlock[]
+        | { data?: LandingBlock[]; theme?: LandingTheme | null }
+      if (Array.isArray(v)) {
+        blocks.value = v
+      } else {
+        blocks.value = v?.data ?? []
+        theme.value = v?.theme ?? null
+      }
     }
     // Si blocks falla, dejamos [] — la landing renderiza solo header/etc implícitamente; hoy no
     // hay fallback. El error signará con warning pero no bloquea la página completa.
@@ -224,3 +279,27 @@ function shouldRender(b: LandingBlock): boolean {
 // score!=null, FAQPage solo con items válidos, makesOffer omitido hasta F2.
 useHotelJsonLd({ hotel, media, reviews, blocks, rooms })
 </script>
+
+<!--
+  Estilos NO scoped (Task B): los selectores por atributo `main[data-template='...']` necesitan
+  perforar scope. Tailwind v4 ya genera utilities; acá solo detalles puntuales (tipografía
+  boutique + cards editoriales).
+-->
+<style>
+/* Boutique: headings en Playfair Display (cargado por <link> condicional en el template),
+   fallback DM Sans (font-sans). Solo aplicado dentro del main con data-template=boutique. Las
+   reglas viven acá (no scoped) para perforar el scope de hotel-landing y llegar a los bloques. */
+main[data-template='boutique'] h1,
+main[data-template='boutique'] h2 {
+  font-family: 'Playfair Display', 'DM Sans', Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+/* Boutique: cards editoriales — radius menor (0.5rem), fondo crema cálido y borde vino sutil.
+   Suma los dos detalles que diferencian .card boutique de la card default (16px, blanca). */
+main[data-template='boutique'] .card {
+  border-radius: 0.5rem;
+  background: #FFFCF7;
+  border-color: rgba(74, 29, 29, 0.12);
+}
+</style>
