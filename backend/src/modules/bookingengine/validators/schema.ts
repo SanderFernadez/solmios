@@ -89,16 +89,23 @@ export const CreateCheckoutSessionSchema: Record<string, ValidationRule> = {
  * `upsells` directo del body como HOOK para F2 task 2.5; cuando F2 lo materialice como modelo
  * Upsell propio, este schema se amplía con el tipo correcto.
  *
- * B5 fix (audit solmi-direct-booking) — Agregado `roomId` como string required: el widget
- * unificado (F2) manda `roomId` (la habitación específica), NO solo `roomType`. Antes el
- * schema no lo declaraba → el controller NO validaba el body y pasaba `req.body` crudo al
- * usecase. Ahora `ExtendedPublicBookingSchema` aplica con `validateSchema()` en el controller
- * (ver `createPublicBookingDirect`), cubriendo `roomId` + campos escalares. `upsells` sigue
- * fuera (array de objetos) y se lee crudo del body; `idempotencyKey` es opcional igual.
+ * B5 fix (audit solmi-direct-booking) — Agregado `roomId` como string: el widget unificado (F2)
+ * podía mandar `roomId` (la habitación específica). Antes el schema no lo declaraba → el
+ * controller NO validaba el body y pasaba `req.body` crudo al usecase.
+ *
+ * FIX 2026-07-30 (bug 404 "Habitación no encontrada") — `roomId` pasa a ser OPCIONAL. Root
+ * cause: `public-rates.ts` no tiene entidad RoomType propia — el `id` que devuelve por room
+ * type ES el string `roomType` ("double"), NO un UUID de `Rooms`. El widget lo mandaba como
+ * `roomId` → `orm.findById('Rooms', 'double')` → 404 en el 100% de los intentos. Decisión de
+ * diseño: el guest elige un TIPO de habitación, no una unidad física — la asignación de la
+ * habitación concreta es responsabilidad del BACKEND al crear la reserva (usecase resuelve por
+ * `roomType` + hotelId + disponibilidad, ver `createPublicBookingDirect`). `roomType` sigue
+ * required (heredado del schema base, ya lo era). `roomId` queda como alternativa opcional
+ * para compat con callers/integradores viejos que ya mandan un id real de `Rooms`.
  */
 export const ExtendedPublicBookingSchema: Record<string, ValidationRule> = {
   ...CreatePublicBookingSchema,
-  roomId: { type: 'string' as const, required: true },
+  roomId: { type: 'string' as const },
   successUrl: { type: 'string' as const },
   cancelUrl: { type: 'string' as const },
 }

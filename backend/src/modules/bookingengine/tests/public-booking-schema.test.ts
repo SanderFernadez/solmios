@@ -1,9 +1,11 @@
 // bookingengine/tests/public-booking-schema.test.ts — B5 fix (audit solmi-direct-booking).
 //
 // Cubre la validación del body del POST /api/public/booking (controller.createPublicBookingDirect):
-//  - Schema `ExtendedPublicBookingSchema` ahora incluye `roomId` (required string).
+//  - Schema `ExtendedPublicBookingSchema` incluye `roomId` (string OPCIONAL) + `roomType`
+//    (string required, heredado del schema base).
 //  - `validateSchema` rechaza payload malformado (adults:"abc" → 400).
-//  - Acepta payload completo válido (hotelId+roomId+guestName+email+checkIn+checkOut).
+//  - Acepta payload completo válido (hotelId+roomId+roomType+guestName+email+checkIn+checkOut).
+//  - Acepta payload SIN `roomId` (solo `roomType`) — FIX 2026-07-30, ver `public-booking.ts`.
 //  - `upsells`/`idempotencyKey` se reincorporan al body crudo (no validados, documentado).
 //
 // El controller ahora aplica `validateSchema(ExtendedPublicBookingSchema, req.body)` antes de
@@ -38,9 +40,16 @@ describe('B5 — ExtendedPublicBookingSchema validate (POST /api/public/booking)
     expect(() => validateSchema(ExtendedPublicBookingSchema, bad)).toThrow()
   })
 
-  it('B5 — rechaza payload sin roomId (required nuevo)', () => {
-    const { roomId: _drop, ...noRoom } = validPayload
-    expect(() => validateSchema(ExtendedPublicBookingSchema, noRoom)).toThrow()
+  it('FIX 2026-07-30 — acepta payload SIN roomId, solo roomType (widget público real)', () => {
+    const { roomId: _drop, ...noRoomId } = validPayload
+    const out = validateSchema(ExtendedPublicBookingSchema, noRoomId) as Record<string, unknown>
+    expect(out.roomId).toBeUndefined()
+    expect(out.roomType).toBe('standard')
+  })
+
+  it('rechaza payload sin roomType (sigue required, heredado del schema base)', () => {
+    const { roomType: _drop, ...noRoomType } = validPayload
+    expect(() => validateSchema(ExtendedPublicBookingSchema, noRoomType)).toThrow()
   })
 
   it('B5 — rechaza sin guestEmail (required)', () => {

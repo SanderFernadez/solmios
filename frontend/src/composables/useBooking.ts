@@ -529,8 +529,14 @@ export const useBookingStore = defineStore('booking-widget', () => {
       const cancelUrl = `${base}/book/${slug.value}`
       const res = await BookingService.createBooking({
         slug: slug.value,
-        roomId: selectedRoom.value.id,
-        roomType: selectedRoom.value.name,
+        // FIX 2026-07-30 (bug 404 "Habitación no encontrada" en el 100% de los intentos):
+        // `selectedRoom.value.id` NUNCA fue un UUID real de `Rooms` — `public-rates.ts` no
+        // tiene entidad RoomType propia y devuelve `id = roomType` (string libre, ej. "double").
+        // Mandarlo como `roomId` hacía que el backend intentara `findById('Rooms', 'double')`
+        // y siempre fallara. Ahora se manda como `roomType`: el backend elige la unidad física
+        // libre al crear la reserva (ver `createPublicBookingDirect`). NO se manda `roomId`
+        // (quedó opcional en el backend para compat con integradores que sí mandan un id real).
+        roomType: selectedRoom.value.id,
         checkIn: checkIn.value,
         checkOut: checkOut.value,
         adults: guests.value,

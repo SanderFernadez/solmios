@@ -30,11 +30,19 @@ export interface CreateBookingUpsell {
 
 /** DTO friendly que recibe `BookingService.createBooking`. El service resuelve slug→hotelId,
  *  mapea `guest` → `guestName/guestEmail/guestPhone`, y postea al backend con el shape del
- *  `ExtendedPublicBookingSchema`. `roomType` es required por el schema del backend (aunque el
- *  usecase solo use `roomId`); el widget lo saca del resultado de disponibilidad. */
+ *  `ExtendedPublicBookingSchema`.
+ *
+ *  FIX 2026-07-30 — `roomType` es el campo que el widget SIEMPRE manda (es el `id` que devuelve
+ *  `public-rates.ts` por tipo de habitación — no hay entidad RoomType propia, `id` = string
+ *  libre tipo "double"). El backend resuelve la unidad física concreta a partir de `roomType`
+ *  al crear la reserva (`createPublicBookingDirect`). `roomId` queda OPCIONAL: solo lo usan
+ *  integradores/callers que ya manejan un UUID real de `Rooms` (compat vieja); el widget del
+ *  huésped no lo manda. */
 export interface CreateBookingDTO {
   slug: string
-  roomId: string
+  /** UUID real de `Rooms`. Opcional — solo para callers que ya conocen la unidad física. El
+   *  widget público no lo manda (ver `roomType`). */
+  roomId?: string
   roomType: string
   checkIn: string
   checkOut: string
