@@ -6,9 +6,19 @@
     Config por CONTENIDO (showSpecs, featuredRoomId/featuredBadgeText) — sin variantes de layout.
   -->
   <section v-if="rooms && rooms.length > 0" class="max-w-6xl mx-auto px-6 py-16">
-    <header class="mb-10 text-center">
-      <p class="text-[11px] uppercase tracking-[0.18em] font-bold text-cyan mb-2">Habitaciones</p>
-      <h2 class="text-3xl sm:text-4xl font-black text-navy tracking-tight">{{ title }}</h2>
+    <header class="mb-10 flex items-end justify-between gap-4">
+      <div>
+        <p class="text-[11px] uppercase tracking-[0.18em] font-bold text-cyan mb-2">Habitaciones</p>
+        <h2 class="text-3xl sm:text-4xl font-black text-navy tracking-tight">{{ title }}</h2>
+        <p class="mt-1.5 text-sm text-text-secondary">Diseñadas para tu confort y descanso.</p>
+      </div>
+      <router-link
+        :to="bookingLink"
+        class="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-navy hover:text-cyan transition-colors shrink-0 cursor-pointer"
+      >
+        Ver todas las habitaciones
+        <span aria-hidden="true">→</span>
+      </router-link>
     </header>
 
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -27,17 +37,21 @@
           />
           <span
             v-if="isFeatured(room)"
-            class="absolute top-3 left-3 bg-cyan text-navy text-[10px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-md"
+            class="absolute top-3 left-3 inline-flex items-center gap-1 bg-gold text-navy text-[10px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-md"
           >
+            <span v-html="ICON_STAR" />
             {{ featuredBadgeText }}
           </span>
         </div>
         <div class="p-5 flex flex-col gap-3 flex-1">
           <h3 class="font-black text-navy text-lg leading-tight">{{ room.name }}</h3>
-          <div v-if="specsLabel(room)" class="text-xs font-bold text-text-muted">
-            {{ specsLabel(room) }}
+          <div v-if="specParts(room).length > 0" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-text-muted">
+            <span v-for="(part, i) in specParts(room)" :key="i" class="inline-flex items-center gap-1">
+              <span v-html="part.icon" />
+              {{ part.label }}
+            </span>
           </div>
-          <div class="mt-auto pt-2 flex items-end justify-between">
+          <div class="mt-auto pt-3 border-t border-border flex items-end justify-between">
             <div v-if="room.fromPrice !== null && room.fromPrice !== undefined">
               <div class="text-[10px] uppercase tracking-wide text-text-muted">Desde</div>
               <div class="text-xl font-black text-navy">
@@ -60,6 +74,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { LandingBlock, PublicHotelInfo, PublicHotelMedia, PublicLandingRoom } from '@/types'
+
+const ICON_USER = '<svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5"/></svg>'
+const ICON_RULER = '<svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="1.5"/><path d="M7 7v3M11 7v3M15 7v3"/></svg>'
+const ICON_STAR = '<svg viewBox="0 0 24 24" class="h-3 w-3" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.3L22 9.3l-5 4.8 1.2 6.9L12 17.8l-6.2 3.2L7 14.1 2 9.3l7.1-1z"/></svg>'
 
 const props = defineProps<{
   block: LandingBlock
@@ -99,16 +117,16 @@ function isFeatured(room: PublicLandingRoom): boolean {
   return featuredRoomId.value !== null && featuredRoomId.value === room.id
 }
 
-function specsLabel(room: PublicLandingRoom): string {
-  if (!showSpecs.value) return ''
-  const parts: string[] = []
+function specParts(room: PublicLandingRoom): { icon: string; label: string }[] {
+  if (!showSpecs.value) return []
+  const parts: { icon: string; label: string }[] = []
   if (typeof room.capacity === 'number' && room.capacity > 0) {
-    parts.push(`${room.capacity} adulto${room.capacity === 1 ? '' : 's'}`)
+    parts.push({ icon: ICON_USER, label: `${room.capacity} adulto${room.capacity === 1 ? '' : 's'}` })
   }
   if (typeof room.surfaceArea === 'number' && room.surfaceArea > 0) {
-    parts.push(`${room.surfaceArea} m²`)
+    parts.push({ icon: ICON_RULER, label: `${room.surfaceArea} m²` })
   }
-  return parts.join(' · ')
+  return parts
 }
 
 const bookingLink = computed(() => `/book/${encodeURIComponent(props.hotel.slug)}`)

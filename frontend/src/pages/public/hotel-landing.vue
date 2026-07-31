@@ -49,8 +49,22 @@
       href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&display=swap"
     />
 
+    <!-- FIX (rediseño visual post-QA usuario) — la landing no tenía NINGÚN navbar, gap grande
+         vs. referencias de hoteles boutique reales. Overlay transparente sobre el hero, anchors
+         condicionales a los bloques que efectivamente van a renderizar. -->
+    <LandingNavbar
+      :hotel-name="hotel.name"
+      :hotel-slug="hotel.slug"
+      :anchors="{
+        rooms: renderedBlocks.some((b) => b.type === 'rooms'),
+        location: renderedBlocks.some((b) => b.type === 'location'),
+        reviews: renderedBlocks.some((b) => b.type === 'reviews'),
+      }"
+    />
+
     <component
       v-for="block in renderedBlocks"
+      :id="ANCHOR_IDS[block.type]"
       :key="block.type"
       :is="blockComponent(block.type)"
       :block="block"
@@ -84,6 +98,7 @@ import type {
 } from '@/types'
 import { PRESET_MAP } from '@/types/landing'
 
+import LandingNavbar from '@/components/landing/LandingNavbar.vue'
 import HeroBlock from '@/components/landing/HeroBlock.vue'
 import TrustBadgesBlock from '@/components/landing/TrustBadgesBlock.vue'
 import GalleryBlock from '@/components/landing/GalleryBlock.vue'
@@ -268,6 +283,16 @@ const BLOCK_COMPONENTS: Record<LandingBlockType, unknown> = {
   faq: FaqBlock,
   cta: CtaBlock,
   footer: FooterBlock,
+}
+
+/** Anchors para los links del navbar (`#hero`/`#rooms`/`#location`/`#reviews`). Los demás
+ *  types no tienen link en el navbar → sin id (evita colisiones de id si el hotel tiene
+ *  varios bloques del mismo type renderizados — no pasa hoy, 1 por type, pero es defensivo). */
+const ANCHOR_IDS: Partial<Record<LandingBlockType, string>> = {
+  hero: 'hero',
+  rooms: 'rooms',
+  location: 'location',
+  reviews: 'reviews',
 }
 
 function blockComponent(type: LandingBlockType) {

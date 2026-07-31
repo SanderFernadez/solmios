@@ -54,13 +54,13 @@
             <span class="text-success-light">✓</span> Cancelación gratis
           </div>
         </div>
-        <HeroSearchBar
-          v-if="searchBarEnabled"
-          :hotel-slug="hotel.slug"
-          :cta-text="searchBarCtaText"
-          class="mt-6 max-w-xl"
-        />
       </div>
+      <HeroSearchBar
+        v-if="searchBarEnabled"
+        :hotel-slug="hotel.slug"
+        :cta-text="searchBarCtaText"
+        class="mt-8 max-w-3xl"
+      />
     </div>
   </section>
 
@@ -98,13 +98,13 @@
             <span class="text-success-light">✓</span> Cancelación gratis
           </div>
         </div>
-        <HeroSearchBar
-          v-if="searchBarEnabled"
-          :hotel-slug="hotel.slug"
-          :cta-text="searchBarCtaText"
-          class="mt-6"
-        />
       </div>
+      <HeroSearchBar
+        v-if="searchBarEnabled"
+        :hotel-slug="hotel.slug"
+        :cta-text="searchBarCtaText"
+        class="mt-8"
+      />
     </div>
     <!-- Col imagen (object-cover full-height). Mobile: abajo, desktop: derecha.
          Wrap absoluto para estirar el slider/img al alto de la columna grid (el right col
@@ -164,7 +164,7 @@
         v-if="searchBarEnabled"
         :hotel-slug="hotel.slug"
         :cta-text="searchBarCtaText"
-        class="mt-8 mx-auto max-w-xl text-left"
+        class="mt-8 mx-auto max-w-3xl text-left"
       />
     </div>
   </section>

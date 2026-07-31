@@ -6,19 +6,21 @@
     que AmenitiesBlock.vue, pero en una barra más angosta/compacta (línea de sellos, no grid de
     amenidades): iconos chicos, sin card con borde pesado.
   -->
-  <section v-if="items.length > 0" class="max-w-6xl mx-auto px-6 py-10">
-    <header v-if="title" class="mb-6 text-center">
-      <h2 class="text-lg font-black text-navy tracking-tight">{{ title }}</h2>
-    </header>
+  <section v-if="items.length > 0" class="border-y border-border bg-surface">
+    <div class="max-w-6xl mx-auto px-6 py-5">
+      <header v-if="title" class="mb-4 text-center">
+        <h2 class="text-lg font-black text-navy tracking-tight">{{ title }}</h2>
+      </header>
 
-    <div class="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 sm:gap-x-10">
-      <div
-        v-for="(item, i) in items"
-        :key="i"
-        class="flex items-center gap-2.5"
-      >
-        <span class="text-base leading-none">{{ iconFor(item.icon) }}</span>
-        <span class="text-xs sm:text-sm font-bold text-navy leading-tight">{{ item.text }}</span>
+      <div class="flex flex-wrap items-center justify-center gap-x-8 gap-y-2.5">
+        <div
+          v-for="(item, i) in items"
+          :key="i"
+          class="flex items-center gap-2"
+        >
+          <span class="text-sm leading-none">{{ iconFor(item.icon) }}</span>
+          <span class="text-xs font-bold text-navy leading-tight">{{ item.text }}</span>
+        </div>
       </div>
     </div>
   </section>
