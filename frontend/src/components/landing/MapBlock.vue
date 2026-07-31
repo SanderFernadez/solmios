@@ -68,6 +68,17 @@ import type { LandingBlock, PublicHotelInfo, PublicHotelMedia } from '@/types'
 // Import TIPO-only (se borra en runtime, no entra al bundle).
 import type * as Leaflet from 'leaflet'
 
+// FIX 2026-07-31 (QA en prod) — bug clásico de Leaflet + bundlers: los íconos default del
+// marker se referencian con una ruta relativa calculada en runtime desde la ubicación del
+// CSS de Leaflet, que Vite no reproduce → 404 (marker-icon.png resolvía a `/h/marker-icon.png`,
+// dentro de la ruta de la landing, no del root). Fix estándar: importar los PNG como assets de
+// Vite (URLs hasheadas correctas) y pisar `L.Icon.Default` con esas URLs. Son 3 imágenes chicas
+// (~5KB total) — importarlas estático no le pega al lazy-load real (Leaflet JS/CSS siguen
+// siendo dynamic import más abajo).
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+
 const props = defineProps<{
   block: LandingBlock
   hotel: PublicHotelInfo
@@ -131,6 +142,15 @@ async function bootstrapMap() {
   leafletModule = L
   // CSS también viene del package (Vite lo inyecta como <style> en runtime, no como <link>).
   await import('leaflet/dist/leaflet.css')
+
+  // FIX — pisa la detección de ruta rota del ícono default (ver import de arriba). `delete`
+  // del getter interno es el workaround documentado oficialmente por Leaflet para bundlers.
+  delete (L.Icon.Default.prototype as any)._getIconUrl
+  L.Icon.Default.mergeOptions({
+    iconUrl: markerIcon,
+    iconRetinaUrl: markerIcon2x,
+    shadowUrl: markerShadow,
+  })
 
   if (!containerRef.value) return // el usuario pudo navegar fuera mientras cargaba
 

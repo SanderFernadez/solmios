@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, provide, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { PublicHotelService } from '@/services/PublicHotel.service'
@@ -278,6 +278,16 @@ function shouldRender(b: LandingBlock): boolean {
 // comportamiento que el inline original (commit 555bf82): aggregateRating solo si count>0 y
 // score!=null, FAQPage solo con items válidos, makesOffer omitido hasta F2.
 useHotelJsonLd({ hotel, media, reviews, blocks, rooms })
+
+// FIX 2026-07-31 (QA en prod) — la pestaña del navegador quedaba con el título genérico del
+// SPA ("SolmiOS — Hospitality OS") en TODAS las landings públicas en vez del nombre del hotel
+// (afecta SEO + UX de pestañas múltiples). Se restaura el default al salir para no filtrar el
+// nombre del hotel a otras páginas del panel que no setean su propio título.
+const DEFAULT_TITLE = 'SolmiOS — Hospitality OS'
+watch(hotel, (h) => {
+  document.title = h?.name ? `${h.name} — Reserva directa` : DEFAULT_TITLE
+}, { immediate: true })
+onBeforeUnmount(() => { document.title = DEFAULT_TITLE })
 </script>
 
 <!--
