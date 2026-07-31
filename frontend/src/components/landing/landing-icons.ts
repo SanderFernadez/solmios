@@ -15,7 +15,7 @@ const AMENITY_ICON_SVGS = {
   gym: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8v8M2 10v4M20 8v8M22 10v4M7 12h10"/><rect x="5" y="9" width="2.5" height="6" rx="0.5"/><rect x="16.5" y="9" width="2.5" height="6" rx="0.5"/></svg>',
   spa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4-1.5-7-5-7-9a7 7 0 0 1 7-7 7 7 0 0 1 7 7c0 4-3 7.5-7 9Z"/><path d="M12 5c0 4-3 5-3 9M12 5c0 4 3 5 3 9"/></svg>',
   restaurant: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2v8a2 2 0 0 0 4 0V2M8 2v20M17 2c-1.7 0-3 2-3 5s1.3 5 3 5v10"/></svg>',
-  bar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16l-7 9v7h3M9 19h6"/><path d="M13 12v7"/></svg>',
+  bar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16L12 13 4 4Z"/><path d="M12 13v7M8 20h8"/></svg>',
   tv: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="13" rx="2"/><path d="M8 21h8M12 18v3"/></svg>',
   'room-service': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 17h20"/><path d="M4 17a8 8 0 0 1 16 0"/><path d="M12 9V5M9.5 5h5"/></svg>',
   pets: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="9" r="2"/><circle cx="18.5" cy="9" r="2"/><circle cx="9" cy="5.5" r="2"/><circle cx="15" cy="5.5" r="2"/><path d="M12 10c-3 0-6 2.5-6 5.5S8.5 20 12 20s6-2 6-4.5S15 10 12 10Z"/></svg>',
@@ -26,6 +26,7 @@ const AMENITY_ICON_SVGS = {
   elevator: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="m10 9 2-2 2 2M10 15l2 2 2-2"/></svg>',
   garden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-8"/><path d="M12 14C7 14 5 10 5 6c4 0 7 2 7 6 0-4 3-6 7-6 0 4-2 8-7 8Z"/></svg>',
   terrace: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>',
+  'airport-shuttle': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16V8a1 1 0 0 1 1-1h10l4 4v5a1 1 0 0 1-1 1H3"/><path d="M14 7v4h6"/><circle cx="7.5" cy="17.5" r="1.6"/><circle cx="16.5" cy="17.5" r="1.6"/></svg>',
   fallback: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6Z"/></svg>',
 }
 
@@ -50,6 +51,7 @@ const AMENITY_ALIASES: Record<string, keyof typeof AMENITY_ICON_SVGS> = {
   ascensor: 'elevator',
   jardin: 'garden',
   terraza: 'terrace',
+  airport_shuttle: 'airport-shuttle', shuttle: 'airport-shuttle', traslado_aeropuerto: 'airport-shuttle',
 }
 
 export const AMENITY_ICONS: Record<string, string> = AMENITY_ICON_SVGS
