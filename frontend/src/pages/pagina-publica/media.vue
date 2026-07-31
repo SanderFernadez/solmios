@@ -172,27 +172,31 @@
             </div>
           </div>
 
-          <!-- Edit alt inline (siempre visible abajo). Autosave al perder foco/Enter (se
-               mantiene por conveniencia) + botón "Guardar" EXPLÍCITO cuando hay cambios sin
-               guardar — antes el único modo de guardar era invisible (blur), sin ningún
-               indicio de si el cambio se aplicó o no. -->
-          <div class="flex items-center gap-1 border-t border-border bg-white p-1.5">
-            <input
-              v-model="altDrafts[item.id]"
-              type="text"
-              spellcheck="false"
-              placeholder="Nombre (opcional): baño, sala..."
-              class="min-w-0 flex-1 bg-transparent border-0 px-1 py-1 text-[11px] text-navy placeholder-text-muted focus:outline-none focus:bg-surface rounded"
-              @blur="commitAlt(item)"
-              @keydown.enter.prevent="commitAlt(item)"
-            />
-            <button
-              v-if="altDrafts[item.id] !== (item.alt ?? '')"
-              type="button"
-              :disabled="savingAlt[item.id]"
-              @mousedown.prevent="commitAlt(item)"
-              class="flex-shrink-0 rounded-md bg-teal px-2 py-1 text-[10px] font-black text-white hover:shadow cursor-pointer disabled:opacity-50"
-            >{{ savingAlt[item.id] ? '...' : 'Guardar' }}</button>
+          <!-- Edit alt inline (siempre visible abajo). Antes: `bg-transparent border-0` se
+               veía IGUAL que texto plano — nada indicaba que era editable (feedback real de
+               usuario: "las personas no van a entender eso"). Ahora: ícono de lápiz + fondo/
+               borde propios de un campo, para que se lea como control, no como texto fijo.
+               Autosave al perder foco/Enter + botón "Guardar" explícito cuando hay cambios. -->
+          <div class="border-t border-border bg-white p-1.5">
+            <div class="flex items-center gap-1 rounded-lg border border-border bg-surface px-1.5 focus-within:border-cyan focus-within:bg-white">
+              <span aria-hidden="true" class="flex-shrink-0 text-xs text-text-muted">✎</span>
+              <input
+                v-model="altDrafts[item.id]"
+                type="text"
+                spellcheck="false"
+                placeholder="Ponele nombre: baño, sala..."
+                class="min-w-0 flex-1 bg-transparent border-0 px-1 py-1.5 text-[11px] text-navy placeholder-text-muted focus:outline-none"
+                @blur="commitAlt(item)"
+                @keydown.enter.prevent="commitAlt(item)"
+              />
+              <button
+                v-if="altDrafts[item.id] !== (item.alt ?? '')"
+                type="button"
+                :disabled="savingAlt[item.id]"
+                @mousedown.prevent="commitAlt(item)"
+                class="flex-shrink-0 rounded-md bg-teal px-2 py-1 text-[10px] font-black text-white hover:shadow cursor-pointer disabled:opacity-50"
+              >{{ savingAlt[item.id] ? '...' : 'Guardar' }}</button>
+            </div>
           </div>
         </div>
 
