@@ -264,6 +264,10 @@ const nonavItems = [
       { label: 'Reputación', path: '/panel/pagina-publica/reputacion', roles: ['hotel_admin'] },
       { label: 'Tracking', path: '/panel/pagina-publica/tracking', roles: ['hotel_admin'] },
       { label: 'Motor de reservas', path: '/panel/booking-engine', roles: ['hotel_admin'] },
+      // FIX 2026-07-31 — el widget público ya tenía el campo "código de descuento" (F2.5),
+      // pero no existía NINGUNA pantalla para crear un código: el backend (`/api/promo-codes`)
+      // tenía CRUD completo sin UI. Nadie podía generar un descuento real.
+      { label: 'Códigos de descuento', path: '/panel/promociones/codigos', roles: ['hotel_admin'] },
     ],
   },
   {

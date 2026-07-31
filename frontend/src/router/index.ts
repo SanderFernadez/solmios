@@ -473,6 +473,14 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
+          // FIX 2026-07-31 — el widget público ya validaba códigos de descuento (F2.5) pero
+          // no había ninguna pantalla para crearlos: /api/promo-codes tenía CRUD completo sin UI.
+          path: 'promociones/codigos',
+          name: 'promo-codes',
+          component: () => import('@/pages/promo-codes/index.vue'),
+          meta: { requiresHotelAdmin: true },
+        },
+        {
           path: 'ia/recepcionista',
           name: 'ai-receptionist',
           component: () => import('@/pages/ai-receptionist/chat.vue'),
