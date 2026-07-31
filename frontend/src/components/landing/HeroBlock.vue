@@ -42,7 +42,7 @@
         <p v-if="subtitle" class="mt-5 text-base sm:text-lg text-white/85 leading-relaxed max-w-xl">
           {{ subtitle }}
         </p>
-        <div class="mt-8 flex flex-wrap items-center gap-3">
+        <div v-if="!searchBarEnabled" class="mt-8 flex flex-wrap items-center gap-3">
           <router-link
             :to="bookingLink"
             class="inline-flex items-center gap-2 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-sm px-7 py-3.5 rounded-xl shadow-lg cursor-pointer"
@@ -86,7 +86,7 @@
         <p v-if="subtitle" class="mt-5 text-base sm:text-lg text-white/85 leading-relaxed max-w-xl">
           {{ subtitle }}
         </p>
-        <div class="mt-8 flex flex-wrap items-center gap-3">
+        <div v-if="!searchBarEnabled" class="mt-8 flex flex-wrap items-center gap-3">
           <router-link
             :to="bookingLink"
             class="inline-flex items-center gap-2 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-sm px-7 py-3.5 rounded-xl shadow-lg cursor-pointer"
@@ -148,7 +148,7 @@
       <p v-if="subtitle" class="mt-6 text-base sm:text-lg text-white/85 leading-relaxed mx-auto max-w-2xl">
         {{ subtitle }}
       </p>
-      <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
+      <div v-if="!searchBarEnabled" class="mt-9 flex flex-wrap items-center justify-center gap-3">
         <router-link
           :to="bookingLink"
           class="inline-flex items-center gap-2 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-sm px-7 py-3.5 rounded-xl shadow-lg cursor-pointer"
