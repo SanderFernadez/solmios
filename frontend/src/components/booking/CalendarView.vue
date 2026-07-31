@@ -2,11 +2,18 @@
   <!--
     CalendarView.vue — Calendario estilo Airbnb para SearchStep (F2 2.17, solmi-direct-booking).
 
-    Selección INCLUSIVA de noches (respetando mem `planning-calc-inclusive-selection-static-refs`):
-      - Click 1 = inicio del rango (pendingStart).
-      - Hover/enter en otra celda = preview visual del rango tentativo.
-      - Click 2 (posterior al inicio) = fin del rango. Las N celdas seleccionadas = N noches.
-        Checkout = (última celda seleccionada) + 1 día. NO N-1 noches.
+    FIX 2026-07-31 (bug off-by-one reportado por QA/usuario) — Click 2 = FECHA DE CHECKOUT
+    directa, no "última noche + 1". La versión anterior trataba la segunda celda clickeada
+    como la última noche hospedada y sumaba 1 día para el checkout — así, clickear el día 6
+    esperando salir el 6 terminaba reservando (y cobrando) hasta el 7. Esto NO es cómo
+    funciona Airbnb/Booking real: ahí el segundo click ES el día de salida.
+
+    Selección (Click 1 = llegada, Click 2 = salida):
+      - Click 1 = checkIn (pendingStart).
+      - Hover/enter en otra celda = preview visual: noches resaltadas = [start, preview-1],
+        la celda hovereada se marca aparte como "checkout" (no se pinta como noche pagada).
+      - Click 2 (posterior al inicio) = checkOut = esa celda TAL CUAL (sin +1). Las noches
+        pagadas son [checkIn, checkOut-1] — un click en el 6 con inicio el 5 = 1 noche.
       - Click en celda anterior o igual al inicio → reinicia el rango (esa celda es el nuevo start).
 
     Anti-bug (mem): las noches se calculan con un `computed` a partir de store.checkIn/checkOut,
@@ -158,12 +165,6 @@ function weekdayMondayBased(iso: string): number {
   const dow = new Date(iso + 'T00:00:00').getDay() // 0=Dom, 1=Lun, ..., 6=Sab
   return (dow + 6) % 7
 }
-function isoPlusOneDay(iso: string): string {
-  const p = parseIso(iso)
-  if (!p) return iso
-  const d = new Date(p.y, p.m, p.d + 1)
-  return isoOf(d.getFullYear(), d.getMonth(), d.getDate())
-}
 function isoMinusOneDay(iso: string): string {
   const p = parseIso(iso)
   if (!p) return iso
@@ -270,22 +271,22 @@ function goNext(): void {
 // ─── Selección inclusiva (anti-bug: nada de ref fijo para noches) ──────────────
 
 /**
- * Rango visual para feedback. Origen:
- *   1. Si hay `pendingStart` activo: rango tentativo [start, preview]. Si no hay preview
- *      todavía, start=fin (single cell resaltada).
- *   2. Si hay selección confirmada en el store: rango inclusivo de las noches
- *      [checkIn, checkout-1]. Recordar: checkout = último día seleccionado + 1 → la última
- *      celda seleccionada es checkout-1.
+ * Rango visual para feedback. `end` = última NOCHE pagada (para el fill de "noches");
+ * `checkout` = día de salida real, marcado aparte (no se pinta como noche). Origen:
+ *   1. Si hay `pendingStart` activo y un preview posterior: noches tentativas
+ *      [start, preview-1], checkout tentativo = preview.
+ *   2. Si hay selección confirmada en el store: noches [checkIn, checkout-1], checkout
+ *      = store.checkOut tal cual (ya NO +1 — ver FIX arriba).
  */
-const rangePreview = computed<{ start: string; end: string } | null>(() => {
+const rangePreview = computed<{ start: string; end: string; checkout: string } | null>(() => {
   if (pendingStart.value) {
-    const end = pendingPreview.value && pendingPreview.value >= pendingStart.value
-      ? pendingPreview.value
-      : pendingStart.value
-    return { start: pendingStart.value, end }
+    if (pendingPreview.value && pendingPreview.value > pendingStart.value) {
+      return { start: pendingStart.value, end: isoMinusOneDay(pendingPreview.value), checkout: pendingPreview.value }
+    }
+    return { start: pendingStart.value, end: pendingStart.value, checkout: '' }
   }
   if (store.checkIn && store.checkOut && store.checkOut > store.checkIn) {
-    return { start: store.checkIn, end: isoMinusOneDay(store.checkOut) }
+    return { start: store.checkIn, end: isoMinusOneDay(store.checkOut), checkout: store.checkOut }
   }
   return null
 })
@@ -293,19 +294,21 @@ const rangePreview = computed<{ start: string; end: string } | null>(() => {
 function cellClass(cell: Cell): string {
   if (!cell.inMonth) return 'invisible pointer-events-none h-9'
   const r = rangePreview.value
-  const inRange = !!(r && cell.iso >= r.start && cell.iso <= r.end)
+  const inNights = !!(r && cell.iso >= r.start && cell.iso <= r.end)
   const isStart = !!(r && cell.iso === r.start)
-  const isEnd = !!(r && cell.iso === r.end)
+  const isCheckout = !!(r && r.checkout && cell.iso === r.checkout)
   const isPendingStart = cell.iso === pendingStart.value
   return [
     'h-9 w-9 rounded-full text-sm font-semibold transition select-none',
     cell.disabled
       ? 'text-text-muted/40 cursor-not-allowed'
       : 'text-navy hover:bg-cyan/10 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan/40',
-    (isStart || isEnd) ? 'bg-cyan text-white font-black hover:bg-cyan' : '',
-    (inRange && !isStart && !isEnd) ? 'bg-cyan/20 text-navy' : '',
+    isStart ? 'bg-cyan text-white font-black hover:bg-cyan' : '',
+    (inNights && !isStart) ? 'bg-cyan/20 text-navy' : '',
+    // Checkout: marcado como "fin" pero SIN el fill sólido de noche pagada (no es una noche).
+    isCheckout ? 'ring-2 ring-cyan font-black text-navy' : '',
     isPendingStart ? 'ring-2 ring-cyan ring-offset-1' : '',
-    (cell.today && !inRange && !isPendingStart) ? 'ring-1 ring-cyan/40 font-bold' : '',
+    (cell.today && !inNights && !isCheckout && !isPendingStart) ? 'ring-1 ring-cyan/40 font-bold' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -329,10 +332,11 @@ function onCellClick(cell: Cell): void {
     store.checkOut = ''
     return
   }
-  // Click posterior: confirma el rango. Celdas [start, cell] son las noches (inclusivo).
-  // Checkout = cell + 1 día (anti-bug historial: N celdas = N noches, NO N-1).
+  // Click posterior: confirma el rango. checkOut = la celda clickeada DIRECTAMENTE (FIX
+  // arriba — antes sumaba +1 día, tratando el click como "última noche" en vez de "fecha
+  // de salida"). Las noches pagadas quedan [checkIn, checkOut-1].
   store.checkIn = pendingStart.value
-  store.checkOut = isoPlusOneDay(cell.iso)
+  store.checkOut = cell.iso
   pendingStart.value = null
   pendingPreview.value = null
 }
