@@ -8,10 +8,10 @@ import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 const noCache = { get: async () => null, set: async () => {} } as unknown as CacheAdapter
 
 const ROOMS = [
-  { id: 'r1', hotelId: 'h1', type: 'double', capacity: 2, basePrice: 80, status: 'available' },
-  { id: 'r2', hotelId: 'h1', type: 'double', capacity: 2, basePrice: 90, status: 'available' },
-  { id: 'r3', hotelId: 'h1', type: 'suite', capacity: 4, basePrice: 150, status: 'available' },
-  { id: 'r4', hotelId: 'h1', type: 'double', capacity: 2, basePrice: 80, status: 'out_of_order' },
+  { id: 'r1', hotelId: 'h1', type: 'double', capacity: 2, surfaceArea: 22, basePrice: 80, status: 'available' },
+  { id: 'r2', hotelId: 'h1', type: 'double', capacity: 2, surfaceArea: 25, basePrice: 90, status: 'available' },
+  { id: 'r3', hotelId: 'h1', type: 'suite', capacity: 4, surfaceArea: 40, basePrice: 150, status: 'available' },
+  { id: 'r4', hotelId: 'h1', type: 'double', capacity: 2, surfaceArea: 22, basePrice: 80, status: 'out_of_order' },
 ]
 
 function setup(reservations: any[] = [], rooms = ROOMS) {
@@ -76,6 +76,14 @@ describe('Disponibilidad del motor de reservas', () => {
   it('publica el precio más barato de cada tipo', async () => {
     const r = await setup().check({ hotelId: 'h1', checkIn: '2026-08-10', checkOut: '2026-08-12', adults: 2 } as any)
     expect(r.roomTypes.find(t => t.roomType === 'double')!.price).toBe(80)
+  })
+
+  it('publica el surfaceArea máximo de cada tipo (m²)', async () => {
+    const r = await setup().check({ hotelId: 'h1', checkIn: '2026-08-10', checkOut: '2026-08-12', adults: 2 } as any)
+    // double: r1=22, r2=25, r4(out_of_order)=22 → máximo 25.
+    expect(r.roomTypes.find(t => t.roomType === 'double')!.surfaceArea).toBe(25)
+    // suite: única room, r3=40.
+    expect(r.roomTypes.find(t => t.roomType === 'suite')!.surfaceArea).toBe(40)
   })
 
   it('rechaza un rango inválido', async () => {

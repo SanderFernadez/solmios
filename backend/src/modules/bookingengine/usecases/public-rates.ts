@@ -149,6 +149,8 @@ export async function getPublicRates(
       name: rt.roomType,
       fromPrice,
       availableCount: rt.available,
+      capacity: rt.capacity,
+      surfaceArea: rt.surfaceArea,
       taxBreakdown,
     }
   })

@@ -55,7 +55,7 @@ describe('getPublicRates — F2 2.4', () => {
     const deps = {
       hotels: makeHotels(baseHotel()),
       availability: makeAvailability([
-        { roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] },
+        { roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, surfaceArea: 28, amenities: [] },
       ]),
       config: makeConfig({ taxes: [{ value: [{ activo: true, tasa: 18, nombre: 'ITBIS' }] }] } as any),
     }
@@ -78,6 +78,10 @@ describe('getPublicRates — F2 2.4', () => {
     // fromPrice = 100/noche × 2 noches = 200 (TOTAL, no por noche).
     expect(rt.fromPrice).toBe(200)
     expect(rt.availableCount).toBe(5)
+    // Specs de la habitación (capacidad + m²) — venían de availability.aggregate() pero se
+    // descartaban antes de llegar a la respuesta HTTP; ahora viajan hasta el widget público.
+    expect(rt.capacity).toBe(2)
+    expect(rt.surfaceArea).toBe(28)
     expect(rt.taxBreakdown).toEqual([{ name: 'ITBIS', rate: 18, amount: 36 }])
     expect(res.body.currency).toBe('USD')
     expect(res.body.taxes).toEqual([{ name: 'ITBIS', rate: 18 }])

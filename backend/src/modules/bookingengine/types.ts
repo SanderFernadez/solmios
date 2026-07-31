@@ -57,6 +57,8 @@ export interface RoomTypeAvailability {
   currency: string
   originalPrice?: number
   capacity: number
+  /** Metros cuadrados (máximo entre las rooms reales del type). 0 si no está cargado. */
+  surfaceArea: number
   amenities: string[]
 }
 

@@ -92,12 +92,18 @@ export class AvailabilityUseCase {
 
   /** Agrupa por tipo lo que queda libre, con su precio y capacidad. */
   private aggregate(rooms: any[], occupied: Set<string>, adults: number): RoomTypeAvailability[] {
-    const grouped: Record<string, { available: number; price: number; capacity: number; amenities: string[] }> = {}
+    const grouped: Record<string, { available: number; price: number; capacity: number; surfaceArea: number; amenities: string[] }> = {}
 
     for (const room of rooms) {
       const type = room.type || 'standard'
       if (!grouped[type]) {
-        grouped[type] = { available: 0, price: 0, capacity: room.capacity ?? adults, amenities: room.amenities ?? [] }
+        grouped[type] = {
+          available: 0,
+          price: 0,
+          capacity: room.capacity ?? adults,
+          surfaceArea: room.surfaceArea ?? 0,
+          amenities: room.amenities ?? [],
+        }
       }
       // Se publica el precio más bajo del tipo.
       const price = Number(room.basePrice ?? room.price ?? 0)
@@ -105,6 +111,7 @@ export class AvailabilityUseCase {
         grouped[type]!.price = price
       }
       if (room.capacity) grouped[type]!.capacity = Math.max(grouped[type]!.capacity, room.capacity)
+      if (room.surfaceArea) grouped[type]!.surfaceArea = Math.max(grouped[type]!.surfaceArea, room.surfaceArea)
 
       if (occupied.has(room.id)) continue
       if (UNSELLABLE_ROOM_STATUS.has(String(room.status ?? '').toLowerCase())) continue
@@ -121,6 +128,7 @@ export class AvailabilityUseCase {
         price: d.price,
         currency: 'USD',
         capacity: d.capacity,
+        surfaceArea: d.surfaceArea,
         amenities: d.amenities,
       }))
   }
