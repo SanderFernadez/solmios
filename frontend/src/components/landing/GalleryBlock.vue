@@ -90,21 +90,44 @@
       </button>
     </div>
 
-    <!-- Lightbox minimal (sin lib) — compartido entre las 3 variants -->
+    <!-- Lightbox — navegable (adelante/atrás + teclado), compartido entre las 3 variants.
+         Navega sobre `photos` COMPLETO (no el `.slice(0,8)` de la grilla): si hay más de 8
+         fotos, las que no entran en la grilla igual se pueden ver avanzando desde la última. -->
     <div v-if="lightboxIndex !== null" class="fixed inset-0 z-50 bg-navy/95 flex items-center justify-center p-4" @click="closeLightbox">
       <button type="button" class="absolute top-4 right-6 text-white/80 hover:text-white text-3xl font-light cursor-pointer" aria-label="Cerrar" @click.stop="closeLightbox">×</button>
+
+      <span v-if="photos.length > 1" class="absolute top-5 left-6 text-white/70 text-sm font-bold tabular-nums">
+        {{ lightboxIndex + 1 }} / {{ photos.length }}
+      </span>
+
+      <button
+        v-if="photos.length > 1"
+        type="button"
+        class="absolute left-2 sm:left-6 text-white/80 hover:text-white text-4xl font-light cursor-pointer w-12 h-12 grid place-items-center rounded-full hover:bg-white/10"
+        aria-label="Foto anterior"
+        @click.stop="prevPhoto"
+      >‹</button>
+
       <img
         :src="photos[lightboxIndex].url"
         :alt="photos[lightboxIndex].alt || hotel.name"
         class="max-h-[88vh] max-w-[92vw] object-contain rounded-lg"
         @click.stop
       />
+
+      <button
+        v-if="photos.length > 1"
+        type="button"
+        class="absolute right-2 sm:right-6 text-white/80 hover:text-white text-4xl font-light cursor-pointer w-12 h-12 grid place-items-center rounded-full hover:bg-white/10"
+        aria-label="Foto siguiente"
+        @click.stop="nextPhoto"
+      >›</button>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { LandingBlock, LandingTheme, LandingTemplateId, PublicHotelInfo, PublicHotelMedia, PublicMediaItem } from '@/types'
 
 const props = defineProps<{
@@ -132,4 +155,21 @@ function openLightbox(i: number) {
 function closeLightbox() {
   lightboxIndex.value = null
 }
+function nextPhoto() {
+  if (lightboxIndex.value === null || photos.value.length === 0) return
+  lightboxIndex.value = (lightboxIndex.value + 1) % photos.value.length
+}
+function prevPhoto() {
+  if (lightboxIndex.value === null || photos.value.length === 0) return
+  lightboxIndex.value = (lightboxIndex.value - 1 + photos.value.length) % photos.value.length
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (lightboxIndex.value === null) return
+  if (e.key === 'ArrowRight') nextPhoto()
+  else if (e.key === 'ArrowLeft') prevPhoto()
+  else if (e.key === 'Escape') closeLightbox()
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
