@@ -1,10 +1,9 @@
 <template>
   <!--
     RoomsBlock — Lista tipos de habitación con foto + "From $X" + CTA.
-    CONSUME F2 (endpoint de tarifas públicas, no construido todavía) — el orquestador hace el
-    fetch tolerante a 404 y pasa `rooms` (PublicLandingRoom[] | null). Si es null o vacío → el
-    bloque NO renderiza (no se inventar precios).
-    Mientras F2 no exista, el orquestador pasa `rooms=[]` y el bloque queda oculto por design.
+    Consume GET /api/public/hotels/:slug/rates (mapeado por el orquestador a PublicLandingRoom[]).
+    Si `rooms` es null o vacío → el bloque NO renderiza (no se inventan precios).
+    Config por CONTENIDO (showSpecs, featuredRoomId/featuredBadgeText) — sin variantes de layout.
   -->
   <section v-if="rooms && rooms.length > 0" class="max-w-6xl mx-auto px-6 py-16">
     <header class="mb-10 text-center">
@@ -15,22 +14,28 @@
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       <article
         v-for="room in rooms"
-        :key="room.roomId"
+        :key="room.id"
         class="bg-white rounded-2xl border border-border overflow-hidden shadow-card hover:shadow-card-hover transition-all flex flex-col"
       >
-        <div class="aspect-[4/3] bg-surface-dark overflow-hidden">
+        <div class="relative aspect-[4/3] bg-surface-dark overflow-hidden">
           <img
             v-if="room.photoUrl"
             :src="room.photoUrl"
-            :alt="room.roomName"
+            :alt="room.name"
             class="w-full h-full object-cover"
             loading="lazy"
           />
+          <span
+            v-if="isFeatured(room)"
+            class="absolute top-3 left-3 bg-cyan text-navy text-[10px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-md"
+          >
+            {{ featuredBadgeText }}
+          </span>
         </div>
         <div class="p-5 flex flex-col gap-3 flex-1">
-          <h3 class="font-black text-navy text-lg leading-tight">{{ room.roomName }}</h3>
-          <div v-if="room.description" class="text-sm text-text-secondary leading-relaxed line-clamp-2">
-            {{ room.description }}
+          <h3 class="font-black text-navy text-lg leading-tight">{{ room.name }}</h3>
+          <div v-if="specsLabel(room)" class="text-xs font-bold text-text-muted">
+            {{ specsLabel(room) }}
           </div>
           <div class="mt-auto pt-2 flex items-end justify-between">
             <div v-if="room.fromPrice !== null && room.fromPrice !== undefined">
@@ -74,6 +79,37 @@ const ctaText = computed(() => {
   const c = typeof cfg.value.ctaText === 'string' ? cfg.value.ctaText.trim() : ''
   return c || 'Reservar'
 })
+
+// showSpecs: default true (config admin puede apagarlo explícitamente con false).
+const showSpecs = computed(() => cfg.value.showSpecs !== false)
+
+// featuredRoomId es, en la práctica, un roomType string (no un UUID físico — ver
+// types/landing.ts:RoomsBlockConfig). Matchea contra room.id (= RoomTypeRate.id).
+const featuredRoomId = computed(() => {
+  const v = cfg.value.featuredRoomId
+  return typeof v === 'string' && v.length > 0 ? v : null
+})
+
+const featuredBadgeText = computed(() => {
+  const t = typeof cfg.value.featuredBadgeText === 'string' ? cfg.value.featuredBadgeText.trim() : ''
+  return t || 'Más reservada'
+})
+
+function isFeatured(room: PublicLandingRoom): boolean {
+  return featuredRoomId.value !== null && featuredRoomId.value === room.id
+}
+
+function specsLabel(room: PublicLandingRoom): string {
+  if (!showSpecs.value) return ''
+  const parts: string[] = []
+  if (typeof room.capacity === 'number' && room.capacity > 0) {
+    parts.push(`${room.capacity} adulto${room.capacity === 1 ? '' : 's'}`)
+  }
+  if (typeof room.surfaceArea === 'number' && room.surfaceArea > 0) {
+    parts.push(`${room.surfaceArea} m²`)
+  }
+  return parts.join(' · ')
+}
 
 const bookingLink = computed(() => `/book/${encodeURIComponent(props.hotel.slug)}`)
 

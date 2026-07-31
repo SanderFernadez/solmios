@@ -107,6 +107,11 @@ export interface RoomTypeRate {
   name: string
   fromPrice: number
   availableCount: number
+  /** Adultos que entran en la habitación (F1 hero-search-rooms-content). Passthrough de
+   *  `Rooms.capacity` — el backend lo calculaba pero no lo exponía hasta este endpoint. */
+  capacity: number
+  /** Metros cuadrados de la habitación. Passthrough de `Rooms.surfaceArea`. */
+  surfaceArea: number
   taxBreakdown: RoomTypeTaxItem[]
 }
 

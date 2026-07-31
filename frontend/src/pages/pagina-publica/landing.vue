@@ -257,6 +257,96 @@
             <p v-if="field.help" class="mt-1.5 text-[10px] text-text-muted leading-relaxed">{{ field.help }}</p>
           </div>
 
+          <!-- Checkbox simple (booleano) -->
+          <div v-else-if="field.kind === 'checkbox'">
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input
+                v-model="checkboxDraft[field.key]"
+                type="checkbox"
+                class="h-4 w-4 rounded border-border text-navy focus:ring-navy"
+              />
+              <span class="text-sm font-bold text-navy">{{ field.label }}</span>
+            </label>
+          </div>
+
+          <!-- Badge items (lista editable {icon, text} — trust-badges) -->
+          <div v-else-if="field.kind === 'badge-items'">
+            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
+              {{ field.label }}
+            </label>
+            <div class="space-y-2">
+              <div
+                v-for="(item, i) in badgeItemsDraft"
+                :key="i"
+                class="flex items-center gap-2"
+              >
+                <input
+                  v-model="item.icon"
+                  type="text"
+                  placeholder="icon (ej: rate, refund, secure)"
+                  class="w-1/3 rounded-lg border border-border bg-white px-3 py-2 text-sm text-navy focus:border-navy focus:outline-none"
+                />
+                <input
+                  v-model="item.text"
+                  type="text"
+                  placeholder="Texto del sello"
+                  class="flex-1 rounded-lg border border-border bg-white px-3 py-2 text-sm font-bold text-navy focus:border-navy focus:outline-none"
+                />
+                <button
+                  type="button"
+                  @click="badgeItemsDraft.splice(i, 1)"
+                  class="shrink-0 rounded-lg bg-danger/10 px-2.5 py-2 text-xs font-bold text-danger hover:bg-danger/20 cursor-pointer"
+                  aria-label="Eliminar sello"
+                >
+                  Quitar
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              @click="badgeItemsDraft.push({ icon: 'rate', text: '' })"
+              class="mt-2 rounded-full bg-navy/10 px-3.5 py-1.5 text-xs font-bold text-navy hover:bg-navy/20 cursor-pointer"
+            >
+              + Agregar sello
+            </button>
+          </div>
+
+          <!-- Room type picker (tipos reales del hotel, dedupeados) -->
+          <div v-else-if="field.kind === 'room-type-picker'">
+            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
+              {{ field.label }}
+            </label>
+            <select
+              v-model="textDraft[field.key]"
+              class="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm focus:border-navy focus:outline-none"
+            >
+              <option value="">Ninguna</option>
+              <option v-for="t in roomTypeOptionsDraft" :key="t" :value="t">{{ t }}</option>
+            </select>
+            <p class="mt-1 text-[10px] text-text-muted leading-relaxed">
+              Tipos de habitación del hotel (no una unidad física puntual).
+            </p>
+          </div>
+
+          <!-- Hero: buscador de disponibilidad (toggle + texto del botón) -->
+          <div v-else-if="field.kind === 'hero-search-toggle'">
+            <label class="mb-2 flex items-center gap-2.5 cursor-pointer">
+              <input
+                v-model="heroSearchDraft.enabled"
+                type="checkbox"
+                class="h-4 w-4 rounded border-border text-navy focus:ring-navy"
+              />
+              <span class="text-sm font-bold text-navy">{{ field.label }}</span>
+            </label>
+            <input
+              v-if="heroSearchDraft.enabled"
+              v-model.trim="heroSearchDraft.ctaText"
+              type="text"
+              placeholder="Buscar disponibilidad"
+              class="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm focus:border-navy focus:outline-none"
+            />
+          </div>
+
           <!-- Text / textarea / number -->
           <div v-else>
             <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
@@ -319,11 +409,14 @@ import MediaPicker from '@/components/landing/MediaPicker.vue'
 import { useToast } from '@/composables/useToast'
 import { AdminLandingService } from '@/services/AdminLanding.service'
 import { SettingsService } from '@/services/Settings.service'
+import { RoomService } from '@/services/Room.service'
+import { useAuthStore } from '@/stores/auth.store'
 import type {
   AdminLandingBlock,
   LandingBlockType,
   FaqItem,
   FooterLink,
+  TrustBadgeItem,
 } from '@/types/landing'
 
 /**
@@ -337,10 +430,12 @@ const selfSlug = ref('')
 const slug = computed(() => props.slug || selfSlug.value)
 
 const toast = useToast()
+const auth = useAuthStore()
 
 // ─── Metadatos por type (catálogo FIJO de 9, espeja backend/types.ts) ────────────────────
 const BLOCK_META: Record<LandingBlockType, { label: string; emoji: string; description: string }> = {
   hero:       { label: 'Portada (Hero)',     emoji: '🌅', description: 'Banda superior con título, subtítulo y botón de reserva sobre la imagen.' },
+  'trust-badges': { label: 'Sellos de confianza', emoji: '🛡️', description: 'Fila de garantías debajo del hero (mejor tarifa, cancelación, pago seguro, etc.).' },
   gallery:    { label: 'Galería',            emoji: '🖼️', description: 'Grilla de fotos del hotel. Las fotos se suben desde Media.' },
   amenities:  { label: 'Servicios',          emoji: '🏊', description: 'Íconos de los servicios del hotel (piscina, wifi, parking, …).' },
   location:   { label: 'Ubicación',          emoji: '📍', description: 'Mapa con la ubicación del hotel + descripción opcional.' },
@@ -355,7 +450,9 @@ const BLOCK_META: Record<LandingBlockType, { label: string; emoji: string; descr
 // El shape de `config` está fijo en el spec (hero: title/subtitle/ctaText/backgroundMediaId,
 // faq: title/items, …). Acá solo declaramos qué fields editar por type. El backend valida el
 // enum de types pero NO el shape del config (lo persiste tal cual) — el contract es el spec.
-type FieldKind = 'text' | 'textarea' | 'number' | 'faq-items' | 'footer-links' | 'media-picker'
+type FieldKind =
+  | 'text' | 'textarea' | 'number' | 'faq-items' | 'footer-links' | 'media-picker'
+  | 'checkbox' | 'badge-items' | 'room-type-picker' | 'hero-search-toggle'
 interface FieldDef {
   key: string
   label: string
@@ -371,6 +468,11 @@ const FIELDS_BY_TYPE: Record<LandingBlockType, FieldDef[]> = {
     { key: 'ctaText', label: 'Texto del botón', kind: 'text', placeholder: 'Reservar' },
     { key: 'backgroundMediaIds', label: 'Imágenes del fondo', kind: 'media-picker',
       help: 'Elegí una o varias imágenes hero. Con 2+ se arma un carrusel que rota solo.' },
+    { key: 'searchBar', label: 'Buscador de disponibilidad en el hero', kind: 'hero-search-toggle' },
+  ],
+  'trust-badges': [
+    { key: 'title', label: 'Título', kind: 'text', placeholder: '', optional: true },
+    { key: 'items', label: 'Sellos', kind: 'badge-items' },
   ],
   gallery:   [{ key: 'title', label: 'Título', kind: 'text', placeholder: 'Galería' }],
   amenities: [{ key: 'title', label: 'Título', kind: 'text', placeholder: 'Servicios' }],
@@ -387,6 +489,9 @@ const FIELDS_BY_TYPE: Record<LandingBlockType, FieldDef[]> = {
   rooms: [
     { key: 'title', label: 'Título', kind: 'text', placeholder: 'Habitaciones' },
     { key: 'ctaText', label: 'Texto del botón', kind: 'text', placeholder: 'Ver tarifas' },
+    { key: 'showSpecs', label: 'Mostrar specs (adultos/m²)', kind: 'checkbox' },
+    { key: 'featuredRoomId', label: 'Tipo de habitación destacado', kind: 'room-type-picker' },
+    { key: 'featuredBadgeText', label: 'Texto del badge', kind: 'text', placeholder: 'Más reservada', optional: true },
   ],
   faq: [
     { key: 'title', label: 'Título', kind: 'text', placeholder: 'Preguntas frecuentes' },
@@ -500,6 +605,10 @@ const textDraft = reactive<Record<string, string | number | null>>({})
 const faqDraft = ref<FaqItem[]>([])
 const linksDraft = ref<FooterLink[]>([])
 const mediaIdsDraft = ref<string[]>([])
+const checkboxDraft = reactive<Record<string, boolean>>({})
+const badgeItemsDraft = ref<TrustBadgeItem[]>([])
+const roomTypeOptionsDraft = ref<string[]>([])
+const heroSearchDraft = reactive<{ enabled: boolean; ctaText: string }>({ enabled: false, ctaText: 'Buscar disponibilidad' })
 
 function openEditor(block: AdminLandingBlock) {
   editing.value = block
@@ -509,6 +618,20 @@ function openEditor(block: AdminLandingBlock) {
   faqDraft.value = []
   linksDraft.value = []
   mediaIdsDraft.value = []
+  for (const k of Object.keys(checkboxDraft)) delete checkboxDraft[k]
+  badgeItemsDraft.value = []
+  roomTypeOptionsDraft.value = []
+  heroSearchDraft.enabled = false
+  heroSearchDraft.ctaText = 'Buscar disponibilidad'
+  // room-type-picker: fetch tipos reales del hotel (dedupe por .type) solo si el bloque es 'rooms'.
+  if (block.type === 'rooms') {
+    RoomService.list({ hotelId: auth.user?.hotelId, limit: 200 })
+      .then((res) => {
+        const types = Array.from(new Set(res.rooms.map((r) => r.type))).sort()
+        roomTypeOptionsDraft.value = types
+      })
+      .catch(() => { roomTypeOptionsDraft.value = [] })
+  }
   // Popular según fields del type
   for (const field of fieldsFor(block.type)) {
     const raw = (cfg as Record<string, unknown>)[field.key]
@@ -542,6 +665,26 @@ function openEditor(block: AdminLandingBlock) {
     } else if (field.kind === 'number') {
       const n = Number(raw)
       textDraft[field.key] = Number.isFinite(n) && n > 0 ? n : null
+    } else if (field.kind === 'checkbox') {
+      // Default true si el config no trae la key todavía (mismo criterio que rooms.showSpecs
+      // sembrado por el backend en defaults.ts).
+      checkboxDraft[field.key] = raw === false ? false : true
+    } else if (field.kind === 'badge-items') {
+      badgeItemsDraft.value = Array.isArray(raw)
+        ? raw.filter((it): it is TrustBadgeItem =>
+            typeof it === 'object' && it !== null &&
+            typeof (it as TrustBadgeItem).icon === 'string' &&
+            typeof (it as TrustBadgeItem).text === 'string')
+          .map((it) => ({ icon: (it as TrustBadgeItem).icon, text: (it as TrustBadgeItem).text }))
+        : []
+    } else if (field.kind === 'room-type-picker') {
+      textDraft[field.key] = typeof raw === 'string' && raw.length > 0 ? raw : ''
+    } else if (field.kind === 'hero-search-toggle') {
+      const sb = raw as { enabled?: unknown; ctaText?: unknown } | undefined
+      heroSearchDraft.enabled = sb?.enabled === true
+      heroSearchDraft.ctaText = typeof sb?.ctaText === 'string' && sb.ctaText.trim()
+        ? sb.ctaText.trim()
+        : 'Buscar disponibilidad'
     } else {
       textDraft[field.key] = typeof raw === 'string' ? raw : ''
     }
@@ -576,6 +719,22 @@ function applyEditor() {
     } else if (field.kind === 'number') {
       const n = Number(textDraft[field.key])
       cfg[field.key] = Number.isFinite(n) && n > 0 ? Math.floor(n) : null
+    } else if (field.kind === 'checkbox') {
+      cfg[field.key] = checkboxDraft[field.key] === true
+    } else if (field.kind === 'badge-items') {
+      const items = badgeItemsDraft.value
+        .map((it) => ({ icon: it.icon.trim(), text: it.text.trim() }))
+        .filter((it) => it.text)
+      cfg[field.key] = items
+    } else if (field.kind === 'room-type-picker') {
+      const v = typeof textDraft[field.key] === 'string' ? (textDraft[field.key] as string).trim() : ''
+      cfg[field.key] = v || null
+    } else if (field.kind === 'hero-search-toggle') {
+      // Objeto completo (no aplanar keys) — HeroBlock.vue lee cfg.searchBar?.enabled/ctaText.
+      cfg[field.key] = {
+        enabled: heroSearchDraft.enabled,
+        ctaText: heroSearchDraft.ctaText.trim() || 'Buscar disponibilidad',
+      }
     } else {
       const v = textDraft[field.key]
       cfg[field.key] = typeof v === 'string' ? v : (v ?? null)

@@ -21,6 +21,12 @@ vi.mock('@/services/PublicHotel.service', () => ({
     getReviews: vi.fn(),
   },
 }))
+// FIX (hero-search-rooms-content): hotel-landing.vue ahora hace un fetch real de tarifas
+// (BookingService.getRates) para poblar `rooms`. Sin mock, el fetch real cuelga bajo happy-dom
+// (nunca resuelve dentro de flushPromises) y el componente queda trabado en loading=true.
+vi.mock('@/services/Booking.service', () => ({
+  BookingService: { getRates: vi.fn().mockRejectedValue(new Error('no rates in test')) },
+}))
 // Stub del composable JSON-LD para no meter DOM <script> en el test unitario (su lógica se
 // cubre en useHotelJsonLd.test.ts).
 vi.mock('@/composables/useHotelJsonLd', () => ({

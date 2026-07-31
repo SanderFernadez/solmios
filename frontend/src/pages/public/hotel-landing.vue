@@ -14,7 +14,7 @@
       4. Inyecta JSON-LD (Hotel + AggregateRating + FAQPage) en <head>.
 
     Cada bloque tiene su propio guard interno; el orquestador además filtra los que no tienen
-    data para mostrar (reviews sin reseñas, faq sin items, rooms sin endpoint F2 todavía, etc.).
+    data para mostrar (reviews sin reseñas, faq sin items, rooms sin tarifas disponibles, etc.).
   -->
   <div v-if="loading" class="min-h-screen bg-surface flex items-center justify-center">
     <div class="text-center">
@@ -68,6 +68,7 @@ import { useRoute } from 'vue-router'
 
 import { PublicHotelService } from '@/services/PublicHotel.service'
 import { LandingService } from '@/services/Landing.service'
+import { BookingService } from '@/services/Booking.service'
 import { ApiError } from '@/services/http'
 import { useHotelJsonLd } from '@/composables/useHotelJsonLd'
 import type {
@@ -79,10 +80,12 @@ import type {
   PublicHotelMedia,
   PublicReviewsResponse,
   PublicLandingRoom,
+  RoomTypeRate,
 } from '@/types'
 import { PRESET_MAP } from '@/types/landing'
 
 import HeroBlock from '@/components/landing/HeroBlock.vue'
+import TrustBadgesBlock from '@/components/landing/TrustBadgesBlock.vue'
 import GalleryBlock from '@/components/landing/GalleryBlock.vue'
 import AmenitiesBlock from '@/components/landing/AmenitiesBlock.vue'
 import MapBlock from '@/components/landing/MapBlock.vue'
@@ -100,7 +103,7 @@ const hotel = ref<PublicHotelInfo | null>(null)
 const blocks = ref<LandingBlock[]>([])
 const media = ref<PublicHotelMedia | null>(null)
 const reviews = ref<PublicReviewsResponse | null>(null)
-const rooms = ref<PublicLandingRoom[] | null>(null) // F2 no construido → siempre null por ahora.
+const rooms = ref<PublicLandingRoom[] | null>(null) // Poblado por GET /rates (indicativo) en onMounted.
 
 // ─── Theme (Task B — preset + custom overrides) ───────────────────────────
 // El backend manda `theme: { templateId, colors?, fonts? }` (post-Task A). El orquestador
@@ -140,6 +143,46 @@ const themeCssVars = computed<Record<string, string>>(() => {
   }
   return vars
 })
+
+// ─── Rooms (F1 hero-search-rooms-content) ──────────────────────────────────
+// Bug UTC conocido del repo (ver CalendarView.vue:162 isoOf): `toISOString()` convierte a UTC
+// antes de cortar, rompe "mañana" en zonas UTC-negativas (Santo Domingo, UTC-4). Construimos la
+// fecha local a mano con getFullYear/getMonth/getDate, nunca toISOString ni parseo de string.
+function pad2(n: number): string {
+  return n.toString().padStart(2, '0')
+}
+function localIso(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+function indicativeDateRange(): { checkIn: string; checkOut: string } {
+  const now = new Date()
+  const checkInDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  const checkOutDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3)
+  return { checkIn: localIso(checkInDate), checkOut: localIso(checkOutDate) }
+}
+
+/** Prettify simple de un roomType string ('double' → 'Double'). Sin mapa de labels centralizado
+ *  (mismo criterio de estilo que AmenitiesBlock.vue:labelFor — capitaliza palabras kebab/snake). */
+function prettifyRoomType(type: string): string {
+  if (type.includes(' ')) return type
+  return type
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+function mapRoomTypeRate(rt: RoomTypeRate): PublicLandingRoom {
+  return {
+    id: rt.id,
+    name: prettifyRoomType(rt.name),
+    fromPrice: rt.fromPrice,
+    availableCount: rt.availableCount,
+    capacity: rt.capacity,
+    surfaceArea: rt.surfaceArea,
+    photoUrl: null,
+  }
+}
 
 // ─── Init ─────────────────────────────────────────────────────────────────
 onMounted(async () => {
@@ -192,9 +235,16 @@ onMounted(async () => {
       }
     }
 
-    // Rooms: F2 endpoint no construido todavía. Cuando exista, el fetch irá acá con
-    // allSettled y `rooms` se poblará. Mientras tanto, `rooms=null` → RoomsBlock oculto.
-    rooms.value = null
+    // Rooms (F1 hero-search-rooms-content): tarifas indicativas vía GET /rates (mañana + 2
+    // noches, 2 adultos — mismo default que useBooking.ts). Tolerante: un hotel con el booking
+    // engine desactivado devuelve 400/404 acá, igual que reviews/media — no rompe la página.
+    try {
+      const { checkIn, checkOut } = indicativeDateRange()
+      const ratesRes = await BookingService.getRates(slug, { checkIn, checkOut, guests: 2 })
+      rooms.value = (ratesRes.roomTypes ?? []).map(mapRoomTypeRate)
+    } catch {
+      rooms.value = null
+    }
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) {
       error.value = 'not-found'
@@ -209,6 +259,7 @@ onMounted(async () => {
 // ─── Render: elegir componente por tipo + filtrar bloques sin data ─────────
 const BLOCK_COMPONENTS: Record<LandingBlockType, unknown> = {
   hero: HeroBlock,
+  'trust-badges': TrustBadgesBlock,
   gallery: GalleryBlock,
   amenities: AmenitiesBlock,
   location: MapBlock,
@@ -231,9 +282,9 @@ function blockComponent(type: LandingBlockType) {
  *   - amenities sin hotel.amenities       → omite
  *   - location sin coords válidas (0,0)   → omite
  *   - reviews sin reviews/reseñas         → omite
- *   - rooms sin data F2 (rooms=null/[])   → omite (hasta que F2 exista)
+ *   - rooms sin tarifas (GET /rates falló o vacío) → omite
  *   - faq sin items                       → omite
- * Los demás (hero, cta, footer) siempre renderizan (tienen defaults).
+ * Los demás (hero, trust-badges, cta, footer) siempre renderizan (tienen defaults).
  */
 const renderedBlocks = computed<LandingBlock[]>(() => {
   const list = [...blocks.value].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -264,6 +315,7 @@ function shouldRender(b: LandingBlock): boolean {
       return Array.isArray(items) && items.length > 0
     }
     case 'hero':
+    case 'trust-badges':
     case 'cta':
     case 'footer':
       return true

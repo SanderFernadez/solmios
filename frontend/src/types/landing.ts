@@ -7,9 +7,11 @@
 // Convención misma que `ALLERGEN_TAGS`: el catálogo de tipos es en código, no en DB. Si el
 // backend suma un type nuevo, agregarlo acá Y en el componente orquestador.
 
-// ─── Catálogo FIJO de tipos de bloque (9 valores) ──────────────────────────
+// ─── Catálogo FIJO de tipos de bloque (10 valores — trust-badges sumado en
+// hero-search-rooms-content, espejo de backend `landing/types.ts`) ─────────
 export type LandingBlockType =
   | 'hero'
+  | 'trust-badges'
   | 'gallery'
   | 'amenities'
   | 'location'
@@ -23,6 +25,14 @@ export type LandingBlockType =
 // Todos los campos son OPTIONAL desde el punto de vista del frontend: si el admin no los
 // configuró todavía, el bloque cae a defaults razonables o se omite (decisiones en cada Block).
 
+/** Config del buscador inline opcional en el hero. Default backend: `{enabled:false,
+ *  ctaText:'Buscar disponibilidad'}` — hoteles ya seedeados NO tienen esta key en su config
+ *  persistido hasta que el admin la prende, leer siempre con optional chaining. */
+export interface HeroSearchBarConfig {
+  enabled: boolean
+  ctaText: string
+}
+
 export interface HeroBlockConfig {
   title?: string | null
   subtitle?: string | null
@@ -34,6 +44,18 @@ export interface HeroBlockConfig {
    *  en orden. Backward-compat: si está vacío cae a `backgroundMediaId` (single) o a
    *  `media.hero[]` (primera disponible). */
   backgroundMediaIds?: string[] | null
+  searchBar?: HeroSearchBarConfig | null
+}
+
+/** Item de un sello de confianza (icon = key del ICONS map en TrustBadgesBlock.vue). */
+export interface TrustBadgeItem {
+  icon: string
+  text: string
+}
+
+export interface TrustBadgesBlockConfig {
+  title?: string | null
+  items?: TrustBadgeItem[] | null
 }
 
 export interface GalleryBlockConfig {
@@ -58,6 +80,13 @@ export interface ReviewsBlockConfig {
 export interface RoomsBlockConfig {
   title?: string | null
   ctaText?: string | null
+  /** Muestra adultos + m² debajo del nombre. Default true. */
+  showSpecs?: boolean | null
+  /** En la práctica es un `roomType` string (matchea `RoomTypeRate.id`) — el PMS no tiene
+   *  entidad RoomType física, así que "habitación destacada" es un tipo, no un UUID físico.
+   *  El nombre de la key quedó de la primera pasada (backend ya commiteado, no se renombra). */
+  featuredRoomId?: string | null
+  featuredBadgeText?: string | null
 }
 
 export interface FaqItem {
@@ -89,6 +118,7 @@ export interface FooterBlockConfig {
 /** Unión discriminada por `type` — útil para `switch (block.type)` con narrow. */
 export type LandingBlockConfig =
   | ({ type: 'hero' } & HeroBlockConfig)
+  | ({ type: 'trust-badges' } & TrustBadgesBlockConfig)
   | ({ type: 'gallery' } & GalleryBlockConfig)
   | ({ type: 'amenities' } & AmenitiesBlockConfig)
   | ({ type: 'location' } & LocationBlockConfig)
@@ -108,16 +138,21 @@ export interface LandingBlock {
   sortOrder: number
 }
 
-// ─── RoomsBlock: contrato esperado del endpoint F2 (no construido todavía) ────────────────
-// El orquestador hace el fetch tolerante: si F2 devuelve 404, pasa `rooms=null` y el bloque
-// NO renderiza. Cuando F2 exista, su response debería mapear a este shape (o ampliarlo).
-// Mientras tanto, el tipo vive acá para que el componente compile sin spec definitivo.
+// ─── RoomsBlock: mapeo del orquestador desde GET /api/public/hotels/:slug/rates ───────────
+// El orquestador (hotel-landing.vue) pide tarifas indicativas (mañana + 2 noches, 2 adultos)
+// y mapea cada `RoomTypeRate` (types/booking.ts) a este shape. Fetch tolerante: si el hotel
+// tiene el booking engine desactivado (400/404), `rooms=null` y RoomsBlock no renderiza.
+// `id`/`name` son el mismo `roomType` string (no hay entidad RoomType propia en este PMS).
 export interface PublicLandingRoom {
-  roomId: string
-  roomName: string
-  description?: string | null
+  id: string
+  name: string
+  fromPrice: number
+  availableCount: number
+  capacity: number
+  surfaceArea: number
+  /** Siempre null por ahora — sin fotos por tipo de habitación (decisión tomada,
+   *  fuera de alcance de F1 hero-search-rooms-content). RoomsBlock ya maneja el placeholder. */
   photoUrl?: string | null
-  fromPrice?: number | null
 }
 
 // ─── Admin Landing (F1 1.9 — builder admin) ───────────────────────────────────────────────

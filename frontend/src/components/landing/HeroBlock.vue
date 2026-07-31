@@ -54,6 +54,12 @@
             <span class="text-success-light">✓</span> Cancelación gratis
           </div>
         </div>
+        <HeroSearchBar
+          v-if="searchBarEnabled"
+          :hotel-slug="hotel.slug"
+          :cta-text="searchBarCtaText"
+          class="mt-6 max-w-xl"
+        />
       </div>
     </div>
   </section>
@@ -92,6 +98,12 @@
             <span class="text-success-light">✓</span> Cancelación gratis
           </div>
         </div>
+        <HeroSearchBar
+          v-if="searchBarEnabled"
+          :hotel-slug="hotel.slug"
+          :cta-text="searchBarCtaText"
+          class="mt-6"
+        />
       </div>
     </div>
     <!-- Col imagen (object-cover full-height). Mobile: abajo, desktop: derecha.
@@ -148,6 +160,12 @@
           <span class="text-success-light">✓</span> Cancelación gratis
         </div>
       </div>
+      <HeroSearchBar
+        v-if="searchBarEnabled"
+        :hotel-slug="hotel.slug"
+        :cta-text="searchBarCtaText"
+        class="mt-8 mx-auto max-w-xl text-left"
+      />
     </div>
   </section>
 </template>
@@ -155,6 +173,7 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 import type { LandingBlock, LandingTheme, LandingTemplateId, PublicHotelInfo, PublicHotelMedia } from '@/types'
+import HeroSearchBar from './HeroSearchBar.vue'
 import HeroSlider from './HeroSlider.vue'
 
 const props = defineProps<{
@@ -183,6 +202,20 @@ const subtitle = computed(() => {
 const ctaText = computed(() => {
   const c = typeof cfg.value.ctaText === 'string' ? cfg.value.ctaText.trim() : ''
   return c || 'Reservar ahora'
+})
+
+// Buscador inline opcional (F1 hero-search-rooms-content). Hoteles ya seedeados NO tienen
+// `searchBar` en su config persistido hasta que el admin lo prende desde el editor — leer
+// SIEMPRE con optional chaining, nunca asumir que la key existe.
+const searchBarEnabled = computed(() => {
+  const sb = cfg.value.searchBar as { enabled?: unknown; ctaText?: unknown } | undefined
+  return sb?.enabled === true
+})
+
+const searchBarCtaText = computed(() => {
+  const sb = cfg.value.searchBar as { enabled?: unknown; ctaText?: unknown } | undefined
+  const c = typeof sb?.ctaText === 'string' ? sb.ctaText.trim() : ''
+  return c || 'Buscar disponibilidad'
 })
 
 /**
