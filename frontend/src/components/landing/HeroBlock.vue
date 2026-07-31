@@ -120,7 +120,7 @@
   <!-- ─── boutique (centrado minimalista) ───────────────────────────────── -->
   <section
     v-else
-    class="relative isolate overflow-hidden min-h-[78vh] flex items-center justify-center"
+    class="relative isolate overflow-hidden min-h-[78vh] flex flex-col items-center justify-center"
   >
     <div class="absolute inset-0 -z-10">
       <HeroSlider
