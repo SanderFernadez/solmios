@@ -47,6 +47,11 @@ export interface MediaCrudDeps {
 
 const MEDIA_TYPES: MediaType[] = ['gallery', 'hero', 'room']
 const STORAGE_DIR = 'hotel-media'
+/** Máximo de fotos por hotel+type. Antes no había ningún tope (feedback: "hay que poner un
+ *  máximo de imágenes") — 30 alcanza para cualquier galería/hero/room real sin sentirse
+ *  restrictivo, y evita que un hotel suba cientos de fotos sin control (costo de storage +
+ *  landing pesada). Mismo tope para los 3 types por simplicidad — ninguno lo necesita mayor. */
+const MAX_MEDIA_PER_TYPE = 30
 
 /** Hotel efectivo del JWT; rechaza si el usuario no tiene hotel asignado. */
 function hotelFor(user: CurrentUser): string {
@@ -105,6 +110,13 @@ export async function upload(
   await assertOwnershipOf(deps, hotelId, user)
   const type = assertType(dto.type)
   if (!dto.url?.trim()) throw new ValidationError('La url es obligatoria')
+
+  // Tope por type — fail-fast ANTES de tocar storage (no gastar una subida a S3 para
+  // terminar rechazándola).
+  const currentCount = (await deps.media.findMany({ hotelId, type })).length
+  if (currentCount >= MAX_MEDIA_PER_TYPE) {
+    throw new ValidationError(`Llegaste al máximo de ${MAX_MEDIA_PER_TYPE} fotos para esta categoría. Borrá alguna para subir una nueva.`)
+  }
 
   // type='room' exige roomId del mismo hotel (spec, scenario "Subir foto de habitación").
   if (type === 'room') {

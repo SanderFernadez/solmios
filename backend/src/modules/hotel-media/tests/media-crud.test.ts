@@ -162,6 +162,27 @@ describe('hotel_media — upload', () => {
     expect(m.url).toBe('/uploads/hotel-media/abc.jpg')   // persiste la URL del storage, NO el data: URL
   })
 
+  it('al llegar al máximo de 30 por hotel+type → ValidationError, no crea ni gasta storage', async () => {
+    const store: any[] = Array.from({ length: 30 }, (_, i) => ({
+      id: `g${i}`, hotelId: 'h1', type: 'gallery', url: 'u', sortOrder: i,
+    }))
+    let storageCalled = false
+    const storage = { upload: async () => { storageCalled = true; return { url: 'x', path: 'x', originalName: 'x', mimeType: 'image/png', size: 1 } } }
+    await expect(
+      svc({ media: backedMedia(store), storage }).upload('h1', { type: 'gallery', url: 'https://cdn/new.jpg' }, user),
+    ).rejects.toThrow('máximo de 30 fotos')
+    expect(storageCalled).toBe(false)
+    expect(store.length).toBe(30)
+  })
+
+  it('el tope es POR TYPE — 30 en gallery no bloquea subir a hero', async () => {
+    const store: any[] = Array.from({ length: 30 }, (_, i) => ({
+      id: `g${i}`, hotelId: 'h1', type: 'gallery', url: 'u', sortOrder: i,
+    }))
+    const created = await svc({ media: backedMedia(store) }).upload('h1', { type: 'hero', url: 'https://cdn/hero.jpg' }, user)
+    expect(created.type).toBe('hero')
+  })
+
   it('sin storage configurado + data-URL → ValidationError claro (no crash)', async () => {
     await expect(
       svc({ storage: undefined }).upload('h1', { type: 'hero', url: 'data:image/png;base64,xxx' }, user),

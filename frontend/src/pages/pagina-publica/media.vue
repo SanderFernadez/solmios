@@ -18,23 +18,28 @@
           Subí y organizá las fotos que se ven en tu landing pública y en el motor de reservas.
         </p>
       </div>
-      <label
-        class="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-cyan px-5 py-2.5 text-sm font-extrabold text-navy transition-all hover:shadow-lg"
-        :class="uploading ? 'opacity-60 pointer-events-none' : ''"
-      >
-        <span v-if="uploading" aria-hidden="true" class="h-3.5 w-3.5 rounded-full border-2 border-navy/30 border-t-navy animate-spin" />
-        <span v-else aria-hidden="true">↑</span>
-        {{ uploadLabel }}
-        <input
-          ref="fileInputRef"
-          type="file"
-          accept="image/*"
-          multiple
-          class="hidden"
-          :disabled="uploading"
-          @change="onFileChange"
-        />
-      </label>
+      <div class="text-right">
+        <label
+          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-cyan px-5 py-2.5 text-sm font-extrabold text-navy transition-all hover:shadow-lg"
+          :class="uploading || atMediaLimit ? 'opacity-60 pointer-events-none' : ''"
+        >
+          <span v-if="uploading" aria-hidden="true" class="h-3.5 w-3.5 rounded-full border-2 border-navy/30 border-t-navy animate-spin" />
+          <span v-else aria-hidden="true">↑</span>
+          {{ uploadLabel }}
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept="image/*"
+            multiple
+            class="hidden"
+            :disabled="uploading || atMediaLimit"
+            @change="onFileChange"
+          />
+        </label>
+        <p v-if="atMediaLimit" class="mt-1 text-[10px] font-bold text-text-muted">
+          Llegaste al máximo de {{ MAX_MEDIA_PER_TYPE }} fotos en {{ activeTabMeta.labelLower }}. Borrá alguna para subir otra.
+        </p>
+      </div>
     </div>
 
     <!-- Tabs por tipo -->
@@ -204,13 +209,17 @@
              arriba, más visual/descubrible que el botón de texto solo. -->
         <button
           type="button"
-          :disabled="uploading"
+          :disabled="uploading || atMediaLimit"
           @click="openFilePicker"
           class="group grid aspect-4/3 w-full cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border bg-surface transition-all hover:border-cyan hover:bg-cyan/5 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <div v-if="uploading" class="flex flex-col items-center gap-1.5">
             <span class="h-6 w-6 rounded-full border-2 border-navy/25 border-t-cyan animate-spin" />
             <span class="text-[11px] font-bold text-text-muted">{{ uploadLabel }}</span>
+          </div>
+          <div v-else-if="atMediaLimit" class="flex flex-col items-center gap-1 px-2 text-center">
+            <span class="text-2xl leading-none">🔒</span>
+            <span class="text-[11px] font-bold text-text-muted">Máximo de {{ MAX_MEDIA_PER_TYPE }} alcanzado</span>
           </div>
           <div v-else class="flex flex-col items-center gap-1">
             <span class="text-4xl font-light leading-none text-text-muted transition-colors group-hover:text-cyan">+</span>
@@ -288,6 +297,13 @@ const tabs: TabDef[] = [
 
 const activeTab = ref<TabId>('hero')
 const activeTabMeta = computed<TabDef>(() => tabs.find((t) => t.id === activeTab.value) ?? tabs[0])
+
+// Espejo del tope real (backend/src/modules/hotel-media/usecases/media-crud.ts) — acá es
+// SOLO para UX (avisar antes de intentar, deshabilitar el botón). El backend es la fuente
+// de verdad: si este número se desincroniza, el peor caso es un 400 con mensaje claro, no
+// un hueco de seguridad.
+const MAX_MEDIA_PER_TYPE = 30
+const atMediaLimit = computed(() => (counts.value[activeTab.value] ?? 0) >= MAX_MEDIA_PER_TYPE)
 
 // ─── Estado del listado ────────────────────────────────────────────────────
 const loading = ref(true)
