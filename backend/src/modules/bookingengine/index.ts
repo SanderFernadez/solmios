@@ -73,6 +73,9 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       const service = new BookingengineService(
         configRepo, roomsRepo, reservationsRepo, hotelsRepo,
         bookingRepo, eventsRepo, log, cache, registry, eventStore, trackingRepo,
+        // FIX 2026-07-31 — habilita syncUpsellFromPackage/removeSyncedUpsell para el
+        // connector paquetes-bookingengine (Ofertas → Upsells).
+        upsellRepo,
       )
       const controller = new BookingengineController(
         service, log, orm, auth, opts?.pushAvailability, hotelsRepo,

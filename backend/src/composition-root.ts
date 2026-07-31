@@ -357,6 +357,7 @@ import { huespedesAuditlogConnector } from './connectors/huespedes-auditlog'
 import { reservasAuditlogConnector } from './connectors/reservas-auditlog'
 import { gastosAuditlogConnector } from './connectors/gastos-auditlog'
 import { paquetesAuditlogConnector } from './connectors/paquetes-auditlog'
+import { paquetesBookingengineConnector } from './connectors/paquetes-bookingengine'
 import { canalesAuditlogConnector } from './connectors/canales-auditlog'
 import { gruposAuditlogConnector } from './connectors/grupos-auditlog'
 import { housekeepingAuditlogConnector } from './connectors/housekeeping-auditlog'
@@ -506,6 +507,9 @@ system.addConnector('huespedes-auditlog', huespedesAuditlogConnector)
 system.addConnector('reservas-auditlog', reservasAuditlogConnector)
 system.addConnector('gastos-auditlog', gastosAuditlogConnector)
 system.addConnector('paquetes-auditlog', paquetesAuditlogConnector)
+// FIX 2026-07-31 — "Ofertas" (paquetes, type='servicio') no alimentaba el step de Extras
+// del widget público (tabla Upsells, catálogo separado). Ver connectors/paquetes-bookingengine.ts.
+system.addConnector('paquetes-bookingengine', paquetesBookingengineConnector)
 // SC-05: borrados que rompen operación. Un canal borrado corta la distribución a las OTAs (el hotel
 // se sigue vendiendo con inventario viejo → overbooking) y un fichaje/turno borrado cambia la nómina.
 system.addConnector('canales-auditlog', canalesAuditlogConnector)

@@ -9,6 +9,7 @@ import type {
   PublicBookingDTO, CreatePublicBookingDTO,
   ConversionEventDTO, CreateConversionEventDTO,
   BookingAnalytics,
+  UpsellDTO,
 } from './types'
 import type { BookingengineSockets } from './sockets'
 import { ConfigUseCase } from './usecases/config'
@@ -16,6 +17,10 @@ import { AvailabilityUseCase } from './usecases/availability'
 import { BookingUseCase } from './usecases/booking'
 import { AnalyticsUseCase } from './usecases/analytics'
 import { StripeUseCase } from './usecases/stripe'
+import {
+  syncUpsellFromPackage as syncUpsellFromPackageUsecase,
+  removeSyncedUpsell as removeSyncedUpsellUsecase,
+} from './usecases/upsells-sync'
 import type { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 import type { PaymentEventStore } from '../../services/payment-gateway/payment-events'
 
@@ -49,6 +54,8 @@ export class BookingengineService {
      * romper tests viejos: si no se pasa, el funnel devuelve 0 en todos los steps.
      */
     trackingRepo?: RepositoryAdapter<any>,
+    /** Repo de `Upsells` para el connector paquetes-bookingengine — ver usecases/upsells-sync.ts. */
+    private readonly upsellRepoForSync?: RepositoryAdapter<UpsellDTO>,
   ) {
     if (!registry) throw new Error('bookingengine: PaymentGatewayRegistry es requerido (pasarela por hotel)')
     if (!reservationsRepo) throw new Error('bookingengine: reservationsRepo es requerido (F0 0.15 — Stripe opera sobre Reservations)')
@@ -74,6 +81,18 @@ export class BookingengineService {
       const prev = cur[key]
       cur[key] = prev ? async (...a: any[]) => { await prev(...a); await h(...a) } : h
     }
+  }
+
+  /** FIX 2026-07-31 — Ofertas → Upsells (ver usecases/upsells-sync.ts). Llamado por
+   *  connectors/paquetes-bookingengine.ts. No-op si upsellRepoForSync no está cableado. */
+  async syncUpsellFromPackage(pkg: { id: string; hotelId: string; name: string; description?: string | null; price: number; active?: number | boolean }): Promise<void> {
+    if (!this.upsellRepoForSync) return
+    await syncUpsellFromPackageUsecase({ upsells: this.upsellRepoForSync }, pkg)
+  }
+
+  async removeSyncedUpsell(packageId: string): Promise<void> {
+    if (!this.upsellRepoForSync) return
+    await removeSyncedUpsellUsecase({ upsells: this.upsellRepoForSync }, packageId)
   }
 
   // initStripe() eliminado: inicializaba UNA cuenta global (process.env) para todos los hoteles.
