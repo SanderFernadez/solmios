@@ -865,6 +865,10 @@ async function save() {
       checkOut: form.value.checkOut,
       channel: form.value.source,
       source: form.value.source,
+      // FIX 2026-07-31 — el payload nunca mandaba promoCode: el backend jamás se enteraba
+      // del código (validate/incrementUses en connectors/reservas-promocodes.ts) aunque el
+      // wizard ya mostrara el descuento en el resumen. Solo se manda si quedó validado.
+      promoCode: promoApplied.value ? form.value.promoCode.trim().toUpperCase() : undefined,
       totalAmount: total.value,
       status: form.value.status,
       notes: form.value.notes,
