@@ -21,25 +21,33 @@ export interface UseHotelMetaTagsInput {
 const DEFAULT_DESCRIPTION = 'SolmiOS — Hospitality OS. Sistema integral de gestión hotelera con planning, reservas, channel manager y pagos.'
 const MANAGED_IDS = ['meta-description', 'og-title', 'og-description', 'og-image', 'og-url', 'og-type', 'twitter-card', 'twitter-title', 'twitter-description', 'twitter-image', 'canonical-link']
 
+/**
+ * FIX (verificado en prod post-deploy) — `index.html` YA trae un `<meta name="description">`
+ * estático (genérico de la SPA) SIN id. Buscar solo por `getElementById` no lo encontraba nunca
+ * → creaba un SEGUNDO tag duplicado con mi id, y el browser seguía leyendo el original (el
+ * primero en el DOM) para title del compartir/SEO. Ahora busca PRIMERO por el selector real
+ * (`[name="x"]`/`[property="x"]`) — si existe (el estático de index.html), lo REUTILIZA y le
+ * asigna el id (idempotente en updates siguientes); si no existe, recién ahí crea uno nuevo.
+ */
 function setMeta(property: 'name' | 'property', key: string, id: string, content: string): void {
-  let tag = document.getElementById(id) as HTMLMetaElement | null
+  let tag = (document.getElementById(id) ?? document.querySelector(`meta[${property}="${key}"]`)) as HTMLMetaElement | null
   if (!tag) {
     tag = document.createElement('meta')
     tag.setAttribute(property, key)
-    tag.id = id
     document.head.appendChild(tag)
   }
+  tag.id = id
   tag.setAttribute('content', content)
 }
 
 function setLink(rel: string, id: string, href: string): void {
-  let tag = document.getElementById(id) as HTMLLinkElement | null
+  let tag = (document.getElementById(id) ?? document.querySelector(`link[rel="${rel}"]`)) as HTMLLinkElement | null
   if (!tag) {
     tag = document.createElement('link')
     tag.setAttribute('rel', rel)
-    tag.id = id
     document.head.appendChild(tag)
   }
+  tag.id = id
   tag.setAttribute('href', href)
 }
 
