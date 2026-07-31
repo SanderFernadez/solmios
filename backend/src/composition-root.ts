@@ -387,6 +387,7 @@ import { cajaChicaGastosConnector } from './connectors/caja-chica-gastos'
 import { payrollGastosConnector } from './connectors/payroll-gastos'
 import { reembolsosGastosConnector } from './connectors/reembolsos-gastos'
 import { reservasRescheduleChargeConnector } from './connectors/reservas-reschedule-charge'
+import { reservasPromocodesConnector } from './connectors/reservas-promocodes'
 import { attendanceDashboardConnector } from './connectors/attendance-dashboard'
 import { attendancePayrollConnector } from './connectors/attendance-payroll'
 import { bookingenginePaymentsConnector } from './connectors/bookingengine-payments'
@@ -480,6 +481,9 @@ system.addConnector('payroll-gastos', payrollGastosConnector)
 system.addConnector('reembolsos-gastos', reembolsosGastosConnector)
 // Mover/extender una reserva desde el planning cobra la diferencia: folio, efectivo (→caja) o tarjeta (Stripe).
 system.addConnector('reservas-reschedule-charge', reservasRescheduleChargeConnector)
+// FIX 2026-07-31 — el código promocional del wizard de reserva manual (staff) se guardaba
+// como texto sin validar/aplicar descuento. Ver connectors/reservas-promocodes.ts.
+system.addConnector('reservas-promocodes', reservasPromocodesConnector)
 // Cablea el prefill de nómina: payroll lee horas de attendance y salarios de empleados.
 system.addConnector('attendance-payroll', attendancePayrollConnector)
 // El dashboard de RRHH muestra el fichaje real de hoy (presentes/ausentes/tarde) — #198.

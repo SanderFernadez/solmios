@@ -52,6 +52,19 @@ export class PromoCodesController {
     return { status: 200, body: result }
   }
 
+  /**
+   * POST /api/promo-codes/preview — valida un código contra el hotel del usuario autenticado.
+   * FIX 2026-07-31: el wizard de reserva manual del staff necesita previsualizar el descuento
+   * sin requerir permiso `promo:view` (receptionist crea reservas pero no administra códigos).
+   * hotelId sale del token (nunca del body) — no hay IDOR posible.
+   */
+  async previewForUser(req: HttpRequest) {
+    const user = req.user as any
+    const data = validateSchema(ValidatePromoCodeSchema, req.body) as { code: string; subtotal: number }
+    const result = await this.service.validate(String(user.hotelId), data.code, data.subtotal)
+    return { status: 200, body: result }
+  }
+
   // ─── Público (sin auth, rate-limited en index.ts) ─────────────────────────
 
   /**

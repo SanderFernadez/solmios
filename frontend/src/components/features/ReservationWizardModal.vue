@@ -275,7 +275,10 @@
 
               <div>
                   <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Código promocional</label>
-                  <input v-model="form.promoCode" type="text" maxlength="30" placeholder="Opcional" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
+                  <input v-model="form.promoCode" type="text" maxlength="30" placeholder="Opcional" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" :class="promoApplied ? 'border-teal' : promoError ? 'border-coral' : ''" />
+                  <div v-if="promoChecking" class="text-[11px] text-text-muted mt-1">Validando código…</div>
+                  <div v-else-if="promoApplied" class="text-[11px] font-bold text-teal mt-1">Código aplicado — descuento ${{ promoDiscount }}</div>
+                  <div v-else-if="promoError" class="text-[11px] font-bold text-coral mt-1">{{ promoError }}</div>
                 </div>
 
               <!-- Resumen precio -->
@@ -283,6 +286,7 @@
                 <div class="text-[11px] font-bold text-text-muted uppercase mb-2">Habitación {{ selRoom.number }} — {{ selRoom.type }}</div>
                 <div class="flex justify-between text-sm"><span class="text-text-secondary">{{ nights }} noches × ${{ selRoom.basePrice }}</span><span class="font-bold text-navy">${{ selRoom.basePrice * nights }}</span></div>
                 <div class="flex justify-between text-sm"><span class="text-text-secondary">Impuestos ({{ taxRatePct }}%)</span><span class="font-bold text-navy">${{ taxes }}</span></div>
+                <div v-if="promoApplied" class="flex justify-between text-sm"><span class="text-text-secondary">Descuento ({{ form.promoCode.trim().toUpperCase() }})</span><span class="font-bold text-teal">-${{ promoDiscount }}</span></div>
                 <div v-if="form.regime !== 'room_only'" class="flex justify-between text-sm"><span class="text-text-secondary">Régimen</span><span class="font-bold text-teal">{{ regimeLabel }}</span></div>
               </div>
             </div>
@@ -363,6 +367,7 @@
                 <div v-if="selRoom && form.checkIn && form.checkOut" class="bg-surface rounded-2xl border border-border p-4 space-y-1.5 text-sm">
                   <div class="flex justify-between"><span class="text-text-secondary">{{ nights }} noches × ${{ selRoom.basePrice }}</span><span class="font-bold text-navy">${{ subtotal }}</span></div>
                   <div class="flex justify-between"><span class="text-text-secondary">Impuestos ({{ taxRatePct }}%)</span><span class="font-bold text-navy">${{ taxes }}</span></div>
+                  <div v-if="promoApplied" class="flex justify-between"><span class="text-text-secondary">Descuento ({{ form.promoCode.trim().toUpperCase() }})</span><span class="font-bold text-teal">-${{ promoDiscount }}</span></div>
                   <div class="border-t border-border pt-1.5 flex justify-between items-center">
                     <span class="font-black text-navy">Total Reserva</span>
                     <span class="font-black text-navy text-lg">${{ total }}</span>
@@ -435,6 +440,7 @@ import { BillingService } from '@/services/Billing.service'
 import { CompanionsService } from '@/services/Companions.service'
 import { PaymentsService } from '@/services/Payments.service'
 import { TTLockService } from '@/services/TTLock.service'
+import { PromoCodeService } from '@/services/PromoCode.service'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
 import { COUNTRIES, NATIONALITIES, LANGUAGES, DOC_TYPES, nationalityToCountryName, countryNameToNationality } from '@/data/locales'
@@ -559,7 +565,63 @@ const nights = computed(() => {
 const taxRatePct = ref(0)
 const subtotal = computed(() => selRoom.value ? selRoom.value.basePrice * nights.value : 0)
 const taxes = computed(() => Math.round(subtotal.value * (taxRatePct.value / 100)))
-const total = computed(() => subtotal.value + taxes.value)
+
+// FIX 2026-07-31 — el campo "Código promocional" no aplicaba ningún descuento (solo se
+// guardaba como texto). Preview vía POST /api/promo-codes/preview (sin permiso promo:view,
+// hotelId sale del token). El backend re-valida de forma autoritativa al crear la reserva
+// (connectors/reservas-promocodes.ts) — este preview es solo UX, nunca la fuente de verdad.
+const promoDiscount = ref(0)
+const promoChecking = ref(false)
+const promoError = ref('')
+const promoApplied = ref(false)
+let promoDebounceId: ReturnType<typeof setTimeout> | null = null
+
+function promoReasonLabel(reason?: string): string {
+  const m: Record<string, string> = {
+    not_found: 'Código no válido.',
+    inactive: 'Código inactivo.',
+    expired: 'Código vencido.',
+    max_uses_reached: 'Código agotado.',
+    min_amount_not_met: 'No alcanza el monto mínimo para este código.',
+  }
+  return m[reason || ''] || 'No se pudo aplicar el código.'
+}
+
+async function checkPromoCode() {
+  const code = form.value.promoCode.trim()
+  if (!code || !subtotal.value) {
+    promoDiscount.value = 0
+    promoApplied.value = false
+    promoError.value = ''
+    return
+  }
+  promoChecking.value = true
+  try {
+    const res = await PromoCodeService.preview(code, subtotal.value)
+    if (res.valid) {
+      promoDiscount.value = res.discount
+      promoApplied.value = true
+      promoError.value = ''
+    } else {
+      promoDiscount.value = 0
+      promoApplied.value = false
+      promoError.value = promoReasonLabel(res.reason)
+    }
+  } catch {
+    promoDiscount.value = 0
+    promoApplied.value = false
+    promoError.value = 'No se pudo validar el código'
+  } finally {
+    promoChecking.value = false
+  }
+}
+
+watch([() => form.value.promoCode, subtotal], () => {
+  if (promoDebounceId) clearTimeout(promoDebounceId)
+  promoDebounceId = setTimeout(checkPromoCode, 400)
+})
+
+const total = computed(() => Math.max(0, subtotal.value + taxes.value - promoDiscount.value))
 const pend = computed(() => Math.max(0, total.value - (form.value.deposit || 0)))
 
 // ── Validación del wizard ──
@@ -669,6 +731,9 @@ function resetForm() {
   guestSearch.value = ''
   guestResults.value = []
   guestSearchOpen.value = false
+  promoDiscount.value = 0
+  promoApplied.value = false
+  promoError.value = ''
 }
 
 // Buscador de huésped existente: evita duplicar huéspedes al crear reserva.

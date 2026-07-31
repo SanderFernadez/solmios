@@ -67,4 +67,19 @@ export class PromoCodesService {
   ): Promise<PromoValidationResult> {
     return promoValidate.validate({ promoCodes: this.promoCodes }, hotelId, code, subtotal)
   }
+
+  /**
+   * FIX 2026-07-31 — Incremento system-to-system para el connector `reservas-promocodes`
+   * (reservas creadas por el staff en el panel, no por el widget público). Mismo criterio
+   * que `createPublicBookingDirect`: solo se llama DESPUÉS de crear la reserva exitosamente.
+   * Sin `user`/ownership — el hotelId ya viene validado por el módulo `reservas` (que forzó
+   * `dto.hotelId === currentUser.hotelId` antes de siquiera llamar acá). No-op silencioso si
+   * el código no existe (raro: se borró entre validar y crear).
+   */
+  async incrementUsesByCode(hotelId: string, code: string): Promise<void> {
+    const normalized = String(code ?? '').trim().toUpperCase()
+    const found = await this.promoCodes.findOne({ hotelId, code: normalized })
+    if (!found) return
+    await this.promoCodes.update(found.id, { uses: (found.uses ?? 0) + 1 })
+  }
 }

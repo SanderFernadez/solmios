@@ -29,6 +29,13 @@ export interface PromoCode {
 export type CreatePromoCodeInput = Omit<PromoCode, 'id' | 'uses' | 'createdAt' | 'updatedAt'>
 export type UpdatePromoCodeInput = Partial<CreatePromoCodeInput> & { uses?: number }
 
+export interface PromoValidationResult {
+  valid: boolean
+  discount: number
+  reason?: string
+  code?: string
+}
+
 const BASE = '/promo-codes'
 
 function toList(res: unknown): PromoCode[] {
@@ -53,5 +60,10 @@ export const PromoCodeService = {
 
   remove(id: string): Promise<void> {
     return http.delete<void>(`${BASE}/${id}`)
+  },
+
+  /** Preview autenticado (staff, reserva manual) — hotelId sale del token. Sin permiso `promo:view`. */
+  preview(code: string, subtotal: number): Promise<PromoValidationResult> {
+    return http.post<PromoValidationResult>(`${BASE}/preview`, { code, subtotal })
   },
 }

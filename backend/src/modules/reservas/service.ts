@@ -9,7 +9,7 @@ import { checkinValidation, checkoutValidation, executeCheckin } from './usecase
 import { NullEmailSender, type EmailSender } from '../../services/email-sender'
 import { dispatchCreateEmail } from './usecases/reservation-notifications'
 import { setGuaranteePin as setGuaranteePinUsecase, getGuaranteeHasPin as getGuaranteeHasPinUsecase, unlockGuaranteeCard as unlockGuaranteeCardUsecase } from './usecases/guarantee'
-import { listReservations, getReservationById, createReservation, updateReservation, deleteReservation } from './usecases/crud'
+import { listReservations, getReservationById, createReservation, updateReservation, deleteReservation, type PromoCodePort } from './usecases/crud'
 import { getPreCheckinData as getPreCheckinDataUsecase, submitPreCheckin as submitPreCheckinUsecase } from './usecases/pre-checkin'
 import { getExtendedDetail as getExtendedDetailUsecase, getAuditTrail as getAuditTrailUsecase } from './usecases/detail'
 import { getBookingEngineDashboard as getBookingEngineDashboardUsecase } from './usecases/booking-engine'
@@ -36,6 +36,8 @@ export class ReservasService {
     dispatchLifecycleEmail?: (deps: any, data: any) => Promise<void>
     settleFolio?: (params: { reservationId: string; hotelId: string; guestId: string | null; roomId: string | null; settle?: { amount: number; method: string; reference?: string } | null }, user: any) => Promise<{ folioId: string; invoiceId: string | null; balance: number; amountPaid: number; invoiceNumber: string | null }>
     chargeReschedule?: RescheduleChargePort
+    /** FIX 2026-07-31 — connectors/reservas-promocodes.ts. Ver usecases/crud.ts:PromoCodePort. */
+    promoCodes?: PromoCodePort
   } = {}
   setOrchestrationDeps(deps: typeof ReservasService.prototype.orchestrationDeps): void {
     Object.assign(this.orchestrationDeps, deps)
@@ -80,7 +82,7 @@ export class ReservasService {
 
   async create(dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Creando reserva', { userId: currentUser.id, roomId: dto.roomId })
-    const item = await createReservation(this.repo, this.blockRepo, this.logger, this.cache, this.sockets, this.notifyDeps(), dto, currentUser, this.roomRepo, this.guestRepo, this.dateRestrictionRepo)
+    const item = await createReservation(this.repo, this.blockRepo, this.logger, this.cache, this.sockets, this.notifyDeps(), dto, currentUser, this.roomRepo, this.guestRepo, this.dateRestrictionRepo, this.orchestrationDeps.promoCodes)
     dispatchCreateEmail(this.notifyDeps(), dto, item)
     return item
   }

@@ -7,6 +7,7 @@
 //   POST   /api/promo-codes                              admin (auth + promo:create)
 //   PUT    /api/promo-codes/:id                          admin (auth + promo:edit)
 //   DELETE /api/promo-codes/:id                          admin (auth + promo:delete)
+//   POST   /api/promo-codes/preview                      auth (userType merchant, SIN promo:*)
 //   POST   /api/public/hotels/:slug/promo/validate       pública (sin auth, rate-limited 30/min/IP)
 //
 // El UNIQUE index `(hotelId, code)` se crea en `migrate-db.ts` (multi-motor) — el service
@@ -74,6 +75,11 @@ export function PromoCodesModule() {
       router.post('/api/promo-codes', adminGuard('create'), (req) => controller.store(req))
       router.put('/api/promo-codes/:id', adminGuard('edit'), (req) => controller.update(req))
       router.delete('/api/promo-codes/:id', adminGuard('delete'), (req) => controller.destroy(req))
+
+      // FIX 2026-07-31 — preview autenticado (staff crea reserva manual): solo userType merchant,
+      // SIN permiso `promo:*` (receptionist no administra códigos pero sí puede aplicar uno al
+      // cargar una reserva). hotelId sale del token, nunca del body.
+      router.post('/api/promo-codes/preview', [requireUserType('merchant')], (req: any) => controller.previewForUser(req))
 
       // ─── Ruta pública ─────────────────────────────────────────────────────
       // Sin auth, rate-limited por IP (spec: 30 req/min/IP, mismo criterio que

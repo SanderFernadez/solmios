@@ -5,6 +5,19 @@ import { safeEmit } from './safe-emit'
 import { reservasListCacheKey, invalidateReservasCaches } from './cache'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from '../types'
 
+/**
+ * Puerto hacia el módulo `promo-codes` — regla del framework: NUNCA importar de otro módulo
+ * directo. `connectors/reservas-promocodes.ts` inyecta la implementación real (valida +
+ * incrementa uses atómicamente). Sin cablear, el promoCode se persiste como texto sin validar
+ * (comportamiento viejo, compat).
+ */
+export interface PromoCodePort {
+  /** Valida el código para el hotel y subtotal dados. NO incrementa uses. */
+  validate(hotelId: string, code: string, subtotal: number): Promise<{ valid: boolean; discount: number; reason?: string; code?: string }>
+  /** Incrementa uses del código ya validado (post-creación exitosa de la reserva). */
+  incrementUses(hotelId: string, code: string): Promise<void>
+}
+
 const CACHE_TTL = 300
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
@@ -47,7 +60,7 @@ export async function getReservationById(repo: any, id: string, currentUser: { i
   return item
 }
 
-export async function createReservation(repo: any, blockRepo: any | undefined, logger: any, cache: any, sockets: any, notifyDeps: any, dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }, roomRepo?: any, guestRepo?: any, dateRestrictionRepo?: any): Promise<ReservasDTO> {
+export async function createReservation(repo: any, blockRepo: any | undefined, logger: any, cache: any, sockets: any, notifyDeps: any, dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }, roomRepo?: any, guestRepo?: any, dateRestrictionRepo?: any, promoCodes?: PromoCodePort): Promise<ReservasDTO> {
   if (currentUser.role !== 'super_admin' && dto.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado para crear en otro hotel')
   // El estado inicial no puede ser checked_in/checked_out/etc: esos se logran vía /checkin y
   // /checkout (que crean folio y ocupan el cuarto). Una reserva nace confirmada o pendiente.
@@ -83,7 +96,23 @@ export async function createReservation(repo: any, blockRepo: any | undefined, l
       if (dto.checkIn <= block.endDate && dto.checkOut >= block.startDate) throw new ConflictError(`Habitación bloqueada del ${block.startDate} al ${block.endDate}: ${block.reason || 'Sin motivo'}`)
     }
   }
+  // FIX 2026-07-31 (hallazgo real: el staff podía tipear un código promocional en el wizard
+  // manual y quedaba guardado como texto SIN aplicar ningún descuento — cero validación, cero
+  // efecto en totalAmount). El frontend ya restó el descuento de `dto.totalAmount` antes de
+  // mandarlo (mismo cálculo que muestra en pantalla); acá se re-valida que el código SIGA
+  // siendo legítimo justo antes de crear (por si quedó aplicado en un form abierto mucho
+  // tiempo y venció/se agotó mientras tanto) y se incrementa `uses` — sin esto, un código con
+  // `maxUses` nunca se agotaba vía el panel del staff, solo vía el widget público.
+  if (dto.promoCode && promoCodes) {
+    const result = await promoCodes.validate(dto.hotelId, dto.promoCode, dto.totalAmount)
+    if (!result.valid) {
+      throw new ConflictError(`Código promocional inválido (${result.reason}): ${dto.promoCode}`)
+    }
+  }
   const item = await repo.create(dto as any)
+  if (dto.promoCode && promoCodes) {
+    await promoCodes.incrementUses(dto.hotelId, dto.promoCode)
+  }
   await safeEmit(logger, 'onReservasCreated', sockets.onReservasCreated, item)
   await invalidateReservasCaches(cache, dto.hotelId)
   return item
