@@ -6,6 +6,7 @@ import type { RepositoryAdapter, Auth } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { HotelMediaService } from '../service'
 import type { HotelMediaDTO, CurrentUser } from '../types'
+import type { MediaTransactor } from '../usecases/media-crud'
 import * as crud from '../usecases/media-crud'
 
 const log = silentLogger()
@@ -58,6 +59,7 @@ interface Opts {
   storage?: any
   userHotel?: string
   auth?: Auth
+  transactor?: MediaTransactor
 }
 function svc(o: Opts = {}) {
   return new HotelMediaService(
@@ -67,7 +69,29 @@ function svc(o: Opts = {}) {
     log,
     o.auth ?? passAuth,
     o.storage,
+    o.transactor,
   )
+}
+
+/**
+ * Mock del `tx` que el `orm.transaction(fn)` REAL le pasa al callback (kernel/db/orm.ts):
+ * un ORM crudo, `update(modelName, id, data)` con 3 args, modelo PRIMERO — nunca expone
+ * `.for(model)`. Bug real (media-explicit-save-alt QA): el código viejo asumía que sin
+ * `.for` el `tx` ya era un `RepositoryAdapter` de 2 args y llamaba `tx.update(id, patch)`
+ * — el uuid caía en el parámetro `modelName` → "Modelo '&lt;uuid&gt;' no definido" en TODO
+ * reorder real (0 tests lo cubrían porque ningún test de este archivo pasaba `transactor`).
+ */
+function rawOrmTransactor(store: any[]): MediaTransactor {
+  return {
+    transaction: async (fn) => fn({
+      update: async (modelName: string, id: string, patch: any) => {
+        if (modelName !== 'HotelMedia') throw new Error(`Modelo '${modelName}' no definido`)
+        const row = store.find((r) => r.id === id)
+        if (row) Object.assign(row, patch)
+        return row ?? null
+      },
+    }),
+  }
 }
 
 // ─── listByHotel ───────────────────────────────────────────────────────────
@@ -259,6 +283,23 @@ describe('hotel_media — reorder', () => {
       { id: 'C', hotelId: 'h1', type: 'gallery', url: 'u', sortOrder: 2 },
     ]
     await svc({ media: backedMedia(store), auth: strictAuth }).reorder('h1', ['C', 'A', 'B'], user)
+    const byId = (id: string) => store.find((r) => r.id === id)
+    expect(byId('C')!.sortOrder).toBe(0)
+    expect(byId('A')!.sortOrder).toBe(1)
+    expect(byId('B')!.sortOrder).toBe(2)
+  })
+
+  it('con transactor cableado (shape real del ORM, update(modelName,id,data)) reescribe sortOrder — regresión del bug "Modelo uuid no definido"', async () => {
+    const store: any[] = [
+      { id: 'A', hotelId: 'h1', type: 'gallery', url: 'u', sortOrder: 0 },
+      { id: 'B', hotelId: 'h1', type: 'gallery', url: 'u', sortOrder: 1 },
+      { id: 'C', hotelId: 'h1', type: 'gallery', url: 'u', sortOrder: 2 },
+    ]
+    await svc({
+      media: backedMedia(store),
+      auth: strictAuth,
+      transactor: rawOrmTransactor(store),
+    }).reorder('h1', ['C', 'A', 'B'], user)
     const byId = (id: string) => store.find((r) => r.id === id)
     expect(byId('C')!.sortOrder).toBe(0)
     expect(byId('A')!.sortOrder).toBe(1)

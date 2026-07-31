@@ -227,12 +227,17 @@ export async function reorder(
   // Con transactor: atómico. Sin transactor: loop simple (compat retro).
   if (deps.transactor) {
     await deps.transactor.transaction(async (tx: any) => {
-      // El tx expone los mismos métodos que el repo (mock simple en tests, ORM real en prod).
-      // `tx.for('HotelMedia')` si es OrmTransactor del framework, o tx directo si es el orm.
-      const txMedia: RepositoryAdapter<HotelMediaDTO> =
-        typeof tx.for === 'function'
-          ? { update: async (id, patch) => { await tx.update('HotelMedia', id, patch as any); return null as any } }
-          : tx
+      // Bug encontrado por QA (media-explicit-save-alt) — el `tx` que entrega
+      // `orm.transaction(fn)` (kernel/db/orm.ts) es SIEMPRE el ORM crudo, cuyo `update` toma
+      // `(modelName, id, data)` — 3 args, modelo primero (mismo contrato que
+      // `landing/usecases/blocks-crud.ts:184-185` con `tx.deleteMany('LandingBlocks', ...)` /
+      // `tx.createMany('LandingBlocks', ...)`). NUNCA expone `.for(model)` en este framework —
+      // esa rama era código muerto que nunca corrió (0 tests con transactor cableado la
+      // ejercitaban), y el fallback `: tx` llamaba `tx.update(id, patch)` con 2 args: el UUID
+      // caía en el parámetro `modelName` → "Modelo '<uuid>' no definido" en TODO reorder real.
+      const txMedia: RepositoryAdapter<HotelMediaDTO> = {
+        update: async (id, patch) => { await tx.update('HotelMedia', id, patch as any); return null as any },
+      } as RepositoryAdapter<HotelMediaDTO>
       await runUpdates(txMedia)
     })
   } else {

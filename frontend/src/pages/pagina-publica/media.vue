@@ -106,7 +106,13 @@
           :key="item.id"
           class="group relative overflow-hidden rounded-xl border border-border bg-surface"
         >
-          <div class="aspect-4/3 w-full overflow-hidden">
+          <!-- Bug encontrado por QA (media-explicit-save-alt): el overlay de acciones era
+               `absolute inset-0` del CONTENEDOR COMPLETO (imagen + footer del nombre), así
+               que tapaba el input/botón "Guardar" de abajo con un `pointer-events` real
+               (no solo visualmente) cada vez que el mouse pasaba por la tarjeta — un click
+               en "Guardar" nunca llegaba a destino. Fix: el overlay ahora es `relative` al
+               wrapper `aspect-4/3` de la IMAGEN únicamente, no a la tarjeta entera. -->
+          <div class="relative aspect-4/3 w-full overflow-hidden">
             <img
               :src="item.url"
               :alt="item.alt ?? ''"
@@ -114,55 +120,79 @@
               loading="lazy"
               draggable="false"
             />
+
+            <!-- Overlay de acciones (hover) -->
+            <div
+              class="absolute inset-0 flex flex-col justify-between bg-navy/0 opacity-0 transition-all group-hover:bg-navy/40 group-hover:opacity-100"
+            >
+              <!-- Top bar: contador + estrella (marcar principal) + delete -->
+              <div class="flex items-start justify-between p-1.5">
+                <span class="rounded-full bg-navy/80 px-2 py-0.5 text-[10px] font-black text-white tabular-nums">
+                  #{{ idx + 1 }}
+                </span>
+                <div class="flex items-center gap-1.5">
+                  <!-- La #1 es la que la landing muestra grande (variant classic) / primera del
+                       carrusel. Antes solo se podía llegar ahí a fuerza de ▲: esto la manda al
+                       frente en un click. -->
+                  <button
+                    type="button"
+                    @click="setAsPrimary(item)"
+                    :disabled="idx === 0 || reordering"
+                    :aria-label="idx === 0 ? 'Ya es la foto principal' : 'Marcar como principal'"
+                    :title="idx === 0 ? 'Foto principal' : 'Marcar como principal'"
+                    class="grid h-7 w-7 place-items-center rounded-full shadow cursor-pointer text-sm disabled:cursor-not-allowed"
+                    :class="idx === 0 ? 'bg-gold text-white' : 'bg-white/90 text-navy hover:bg-white disabled:opacity-60'"
+                  >{{ idx === 0 ? '★' : '☆' }}</button>
+                  <button
+                    type="button"
+                    @click="confirmRemove(item)"
+                    :disabled="removingId === item.id"
+                    :aria-label="`Borrar ${activeTabMeta.labelLower}`"
+                    class="grid h-7 w-7 place-items-center rounded-full bg-danger text-white shadow hover:bg-rose cursor-pointer disabled:opacity-50"
+                  >✕</button>
+                </div>
+              </div>
+              <!-- Bottom bar: reorder -->
+              <div class="flex items-center justify-center gap-1.5 p-1.5">
+                <button
+                  type="button"
+                  @click="move(idx, -1)"
+                  :disabled="idx === 0 || reordering"
+                  aria-label="Mover antes"
+                  class="grid h-7 w-7 place-items-center rounded-md bg-white/90 text-navy hover:bg-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                >▲</button>
+                <button
+                  type="button"
+                  @click="move(idx, 1)"
+                  :disabled="idx === items.length - 1 || reordering"
+                  aria-label="Mover después"
+                  class="grid h-7 w-7 place-items-center rounded-md bg-white/90 text-navy hover:bg-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                >▼</button>
+              </div>
+            </div>
           </div>
 
-          <!-- Overlay de acciones (hover) -->
-          <div
-            class="absolute inset-0 flex flex-col justify-between bg-navy/0 opacity-0 transition-all group-hover:bg-navy/40 group-hover:opacity-100"
-          >
-            <!-- Top bar: contador + delete -->
-            <div class="flex items-start justify-between p-1.5">
-              <span class="rounded-full bg-navy/80 px-2 py-0.5 text-[10px] font-black text-white tabular-nums">
-                #{{ idx + 1 }}
-              </span>
-              <button
-                type="button"
-                @click="confirmRemove(item)"
-                :disabled="removingId === item.id"
-                :aria-label="`Borrar ${activeTabMeta.labelLower}`"
-                class="grid h-7 w-7 place-items-center rounded-full bg-danger text-white shadow hover:bg-rose cursor-pointer disabled:opacity-50"
-              >✕</button>
-            </div>
-            <!-- Bottom bar: reorder -->
-            <div class="flex items-center justify-center gap-1.5 p-1.5">
-              <button
-                type="button"
-                @click="move(idx, -1)"
-                :disabled="idx === 0 || reordering"
-                aria-label="Mover antes"
-                class="grid h-7 w-7 place-items-center rounded-md bg-white/90 text-navy hover:bg-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-              >▲</button>
-              <button
-                type="button"
-                @click="move(idx, 1)"
-                :disabled="idx === items.length - 1 || reordering"
-                aria-label="Mover después"
-                class="grid h-7 w-7 place-items-center rounded-md bg-white/90 text-navy hover:bg-white cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-              >▼</button>
-            </div>
-          </div>
-
-          <!-- Edit alt inline (siempre visible abajo) -->
-          <div class="border-t border-border bg-white p-1.5">
+          <!-- Edit alt inline (siempre visible abajo). Autosave al perder foco/Enter (se
+               mantiene por conveniencia) + botón "Guardar" EXPLÍCITO cuando hay cambios sin
+               guardar — antes el único modo de guardar era invisible (blur), sin ningún
+               indicio de si el cambio se aplicó o no. -->
+          <div class="flex items-center gap-1 border-t border-border bg-white p-1.5">
             <input
               v-model="altDrafts[item.id]"
               type="text"
               spellcheck="false"
               placeholder="Nombre (opcional): baño, sala..."
-              class="w-full bg-transparent border-0 px-1 py-1 text-[11px] text-navy placeholder-text-muted focus:outline-none focus:bg-surface rounded"
+              class="min-w-0 flex-1 bg-transparent border-0 px-1 py-1 text-[11px] text-navy placeholder-text-muted focus:outline-none focus:bg-surface rounded"
               @blur="commitAlt(item)"
-              @keydown.enter.prevent="($event.target as HTMLInputElement)?.blur()"
+              @keydown.enter.prevent="commitAlt(item)"
             />
+            <button
+              v-if="altDrafts[item.id] !== (item.alt ?? '')"
+              type="button"
+              :disabled="savingAlt[item.id]"
+              @mousedown.prevent="commitAlt(item)"
+              class="flex-shrink-0 rounded-md bg-teal px-2 py-1 text-[10px] font-black text-white hover:shadow cursor-pointer disabled:opacity-50"
+            >{{ savingAlt[item.id] ? '...' : 'Guardar' }}</button>
           </div>
         </div>
 
@@ -306,6 +336,9 @@ onMounted(() => {
 // Un draft por item para poder editar sin disparar un request por tecla.
 // Solo persiste on blur / Enter si cambió respecto del valor del item.
 const altDrafts = ref<Record<string, string>>({})
+// Por item: true mientras el PUT de ese nombre está en vuelo (deshabilita el botón "Guardar"
+// para no disparar dos requests del mismo campo si el usuario clickea dos veces).
+const savingAlt = ref<Record<string, boolean>>({})
 
 function syncAltDrafts() {
   const next: Record<string, string> = {}
@@ -314,18 +347,23 @@ function syncAltDrafts() {
 }
 
 async function commitAlt(item: HotelMediaItem) {
+  if (savingAlt.value[item.id]) return
   const draft = (altDrafts.value[item.id] ?? '').trim()
   if (draft === (item.alt ?? '').trim()) return
+  savingAlt.value[item.id] = true
   try {
     const updated = await HotelMediaService.update(item.id, { alt: draft || null })
     // Merge local sin refetch.
     const idx = items.value.findIndex((m) => m.id === item.id)
     if (idx >= 0) items.value[idx] = { ...items.value[idx], ...updated }
-    toast.success('Texto actualizado')
+    altDrafts.value[item.id] = updated.alt ?? ''
+    toast.success('Nombre guardado')
   } catch (e) {
-    actionError.value = (e as Error)?.message || 'No se pudo guardar el texto alternativo.'
+    actionError.value = (e as Error)?.message || 'No se pudo guardar el nombre de la imagen.'
     // Revertir draft al valor anterior.
     altDrafts.value[item.id] = item.alt ?? ''
+  } finally {
+    savingAlt.value[item.id] = false
   }
 }
 
@@ -348,6 +386,29 @@ async function move(idx: number, delta: number) {
     const revert = items.value.slice()
     ;[revert[idx], revert[target]] = [revert[target], revert[idx]]
     items.value = revert
+  } finally {
+    reordering.value = false
+  }
+}
+
+/** La foto #1 es la que la landing pública muestra grande (variant classic) / primera del
+ *  carrusel. Antes solo se llegaba ahí a fuerza de ▲ repetidas veces — esto la manda al
+ *  frente en un solo click. */
+async function setAsPrimary(item: HotelMediaItem) {
+  const idx = items.value.findIndex((m) => m.id === item.id)
+  if (idx <= 0 || reordering.value) return
+  const previous = items.value.slice()
+  const next = items.value.slice()
+  const [moved] = next.splice(idx, 1)
+  next.unshift(moved)
+  items.value = next
+  reordering.value = true
+  try {
+    await HotelMediaService.reorder(items.value.map((m) => m.id))
+    toast.success('Foto principal actualizada')
+  } catch (e) {
+    actionError.value = (e as Error)?.message || 'No se pudo marcar como principal. Recargá para ver el orden real.'
+    items.value = previous
   } finally {
     reordering.value = false
   }
