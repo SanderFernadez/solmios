@@ -260,9 +260,19 @@ export const useBookingStore = defineStore('booking-widget', () => {
     if (!checkIn.value || !checkOut.value) return false
     if (checkOut.value <= checkIn.value) return false
     // checkIn no en el pasado (permite hoy mismo — check-in del día).
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    return new Date(checkIn.value) >= today
+    //
+    // FIX 2026-07-31 (bug real encontrado por QA, timezones negativos ej. Santo Domingo
+    // UTC-4) — `new Date('2026-08-05')` parsea el string date-only como MEDIANOCHE UTC, no
+    // local. `today` se construía con `new Date()` + `setHours(0,0,0,0)`, que es medianoche
+    // LOCAL. En UTC-4, medianoche local del 5 = las 04:00 UTC del 5, mientras que el checkIn
+    // parseado da las 00:00 UTC del 5 — 00:00 UTC < 04:00 UTC, así que elegir HOY como
+    // check-in se evaluaba como "en el pasado" y el botón de reservar quedaba deshabilitado
+    // para cualquier huésped reservando el mismo día. Fix: comparar como strings 'YYYY-MM-DD'
+    // (mismo formato que ya produce el calendario), sin pasar por Date en ningún lado — evita
+    // el parseo UTC por completo.
+    const t = new Date()
+    const todayLocal = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+    return checkIn.value >= todayLocal
   })
 
   const roomsValid = computed(() => !!selectedRoom.value && selectedRoom.value.availableCount > 0)

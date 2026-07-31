@@ -130,7 +130,16 @@ interface Cell {
 /** Lunes-based: 0=Lunes, 6=Domingo (más natural para LATAM que Dom=0 de Date.getDay). */
 const weekdayShortKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
-const todayIso = new Date().toISOString().slice(0, 10)
+// FIX 2026-07-31 (bug real de timezone, encontrado por QA en useBooking.ts:searchValid,
+// mismo root cause acá) — `toISOString()` convierte el momento actual a UTC ANTES de cortar
+// la fecha: en timezones negativos (Santo Domingo UTC-4), durante la noche local la hora UTC
+// ya cruzó a mañana, así que `todayIso` daba la fecha de MAÑANA mientras localmente seguía
+// siendo hoy — el día de hoy quedaba deshabilitado en el calendario (`iso < todayIso`) para
+// cualquier huésped reservando de noche. Fix: componentes de fecha LOCALES (getFullYear/Month/
+// Date), sin pasar por UTC en ningún momento. `isoOf`/`pad` están definidos más abajo en este
+// mismo scope (function declarations, hoisted).
+const _now = new Date()
+const todayIso = isoOf(_now.getFullYear(), _now.getMonth(), _now.getDate())
 
 /** pendingStart = primera celda clickeada (esperando segundo click para definir fin del rango).
  *  pendingPreview = hover/enter actual para feedback visual mientras el usuario decide el fin. */
