@@ -1,13 +1,14 @@
 <template>
   <!--
     MediaPicker — selector visual de media para el builder de la landing (admin).
-    Lista las imágenes hero del hotel (GET /api/hotel-media?type=hero) como thumbnails en
-    grid, multi-select toggle (click agrega/quita del array ordenado), upload inline
-    (input file → POST /api/hotel-media con data-URL base64) y reorder del set seleccionado
-    (flechas arriba/abajo — el orden del array = orden del slider).
+    Lista las imágenes del hotel de un `type` dado (GET /api/hotel-media?type=hero|gallery)
+    como thumbnails en grid, multi-select toggle (click agrega/quita del array ordenado),
+    upload inline (input file → POST /api/hotel-media con data-URL base64) y reorder del set
+    seleccionado (flechas arriba/abajo — el orden del array = orden del slider/sección).
 
     Emite `update:modelValue` con el array de ids en orden. El padre (landing.vue) lo guarda
-    en `config.backgroundMediaIds`.
+    en `config.backgroundMediaIds` (hero, type='hero') o `config.mediaIds` (storytelling,
+    type='gallery' — FIX landing-storytelling-block: antes hardcodeado a type='hero' siempre).
 
     NO toca el backend directamente salvo vía HotelMediaService (regla "no fetch en componentes").
   -->
@@ -16,11 +17,10 @@
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div class="min-w-0">
         <p class="text-[11px] font-bold uppercase tracking-wide text-text-muted">
-          Imágenes del fondo (carrusel)
+          {{ heading }}
         </p>
         <p class="mt-0.5 text-[11px] text-text-muted leading-relaxed">
-          Tocá una imagen para agregarla o quitarla. El orden del set seleccionado abajo es el
-          orden del carrusel. Si elegís una sola, no hay carrusel (igual que antes).
+          {{ hint }}
         </p>
       </div>
       <label
@@ -93,14 +93,14 @@
         v-else
         class="rounded-xl border border-dashed border-border bg-surface p-4 text-center text-xs text-text-muted leading-relaxed"
       >
-        Todavía no hay imágenes para el hero del hotel. Subí la primera con el botón
+        Todavía no hay imágenes {{ emptyStateNoun }}. Subí la primera con el botón
         <strong>«Subir imagen»</strong>.
       </p>
 
-      <!-- Set seleccionado (orden del carrusel). -->
+      <!-- Set seleccionado (orden del carrusel/sección). -->
       <div v-if="selectedItems.length > 0" class="rounded-xl border border-border bg-surface p-3">
         <p class="mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-text-muted">
-          <span>Orden del carrusel · {{ selectedItems.length }}</span>
+          <span>{{ selectionLabel }} · {{ selectedItems.length }}</span>
           <button
             v-if="selectedItems.length > 0"
             type="button"
@@ -164,8 +164,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { HotelMediaService, type HotelMediaItem } from '@/services/HotelMedia.service'
 
-const props = defineProps<{ modelValue: string[] }>()
+const props = withDefaults(defineProps<{ modelValue: string[]; type?: 'hero' | 'gallery' }>(), {
+  type: 'hero',
+})
 const emit = defineEmits<{ 'update:modelValue': [ids: string[]] }>()
+
+// Copy por type — 'hero' usa lenguaje de carrusel (fondo del hero rota entre varias fotos),
+// 'gallery' (storytelling) usa lenguaje de "fotos de la sección" (no hay rotación automática).
+const heading = computed(() => props.type === 'hero' ? 'Imágenes del fondo (carrusel)' : 'Fotos de la sección')
+const hint = computed(() => props.type === 'hero'
+  ? 'Tocá una imagen para agregarla o quitarla. El orden del set seleccionado abajo es el orden del carrusel. Si elegís una sola, no hay carrusel (igual que antes).'
+  : 'Tocá una imagen para agregarla o quitarla. El orden del set seleccionado abajo es el orden en que se muestran.')
+const selectionLabel = computed(() => props.type === 'hero' ? 'Orden del carrusel' : 'Orden de las fotos')
+const emptyStateNoun = computed(() => props.type === 'hero' ? 'para el hero del hotel' : 'en la galería del hotel')
 
 // ─── Estado del listado ────────────────────────────────────────────────────
 const loading = ref(true)
@@ -176,7 +187,7 @@ async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const result = await HotelMediaService.list({ type: 'hero' })
+    const result = await HotelMediaService.list({ type: props.type })
     mediaItems.value = (result?.data ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder)
     // Limpiar ids seleccionados que ya no existen en el set (ej: se borró una imagen).
     pruneSelection()
@@ -250,7 +261,7 @@ async function onFileChange(e: Event) {
   try {
     const dataUrl = await readAsDataUrl(file)
     const created = await HotelMediaService.upload({
-      type: 'hero',
+      type: props.type,
       url: dataUrl,
       alt: file.name.replace(/\.[^.]+$/, '').slice(0, 80) || null,
       fileName: file.name,

@@ -17,20 +17,24 @@ Equivalente MisterPlan: "Constructor de Web Directa" (CMS por bloques del hotel)
 
 ## Requirements
 
-### Requirement: 10 tipos de bloque fijos (catálogo en código)
+### Requirement: 11 tipos de bloque fijos (catálogo en código)
 
-El sistema MUST soportar exactamente 10 tipos de bloque (no administrable, mismo patrón
-que `ALLERGEN_TAGS`): `hero`, `trust-badges`, `gallery`, `amenities`, `location`,
-`reviews`, `rooms`, `faq`, `cta`, `footer`. Cada hotel tiene hasta 10 filas en
+El sistema MUST soportar exactamente 11 tipos de bloque (no administrable, mismo patrón
+que `ALLERGEN_TAGS`): `hero`, `trust-badges`, `storytelling`, `gallery`, `amenities`,
+`location`, `reviews`, `rooms`, `faq`, `cta`, `footer`. Cada hotel tiene hasta 11 filas en
 `landing_blocks` (una por type), con `active` toggleable y `sortOrder` configurable.
+
+Agregar un type nuevo al catálogo NO reconcilia retroactivamente hoteles ya seedeados por
+sí solo: `listByHotel`/`listPublicBySlug` disparan `seedDefaults` (idempotente por-type)
+si `existing.length < BLOCK_TYPES.length` — cualquier faltante, no solo hotel en cero.
 
 #### Scenario: Bloques default para hotel nuevo
 
 - GIVEN hotel recién creado (sin filas en `landing_blocks`)
 - WHEN la primera llamada a `GET /api/public/hotels/:slug/landing`
-- THEN el seeder inserta 10 filas default (todas `active=1`, sortOrder estándar hero=0,
-  trust-badges=1, gallery=2, amenities=3, rooms=4, reviews=5, location=6, faq=7, cta=8,
-  footer=9) y las devuelve
+- THEN el seeder inserta 11 filas default (todas `active=1`, sortOrder estándar hero=0,
+  trust-badges=1, storytelling=2, gallery=3, amenities=4, rooms=5, reviews=6, location=7,
+  faq=8, cta=9, footer=10) y las devuelve
 
 #### Scenario: Toggle off oculta el bloque
 
@@ -43,12 +47,18 @@ que `ALLERGEN_TAGS`): `hero`, `trust-badges`, `gallery`, `amenities`, `location`
 Cada bloque guarda su configuración en `config` (JSON). El schema del config depende del
 `type`:
 - `hero`: `{title, subtitle, ctaText, backgroundMediaId, searchBar: {enabled, ctaText}}`
-  (`searchBar` opcional/default `enabled:false` — buscador inline en el hero que navega
-  a `/book/:slug` con query params; el frontend arma la navegación, el backend solo
-  persiste el flag).
+  (`searchBar` default `enabled:true` — es el elemento central del hero, buscador inline
+  que navega a `/book/:slug` con query params; el frontend arma la navegación, el backend
+  solo persiste el flag. `title`/`subtitle` default string vacío — el frontend cae al
+  nombre/descripción real del hotel, nunca copy genérico fijo).
 - `trust-badges`: `{title, items: [{icon, text}]}` (fila de sellos de confianza debajo
   del hero; `icon` es string libre, sin enum server-side — el frontend mapea un set fijo
   de keys a SVGs).
+- `storytelling`: `{title, description, linkText, mediaIds}` (sección de apoyo tipo "Vive
+  una experiencia única" — texto + fotos, entre trust-badges y gallery. `description`
+  default string vacío — sin inventar copy de marketing; el bloque NO renderiza si
+  `description` está vacío Y `mediaIds` no resuelve ninguna foto. `mediaIds` referencia
+  `hotel_media` type='gallery', mismo picker que `hero.backgroundMediaIds`).
 - `gallery`: `{title}` (las fotos se toman de `hotel_media` type='gallery').
 - `amenities`: `{title}` (los items se toman de `hotels.amenities`).
 - `location`: `{title, description}` (lat/lng del hotel, mapa Leaflet).
@@ -133,7 +143,7 @@ El bloque `location` MUST cargar Leaflet solo cuando el bloque es visible
 |---|---|---|---|
 | `id` | TEXT (uuid) | REQUIRED PK | |
 | `hotelId` | TEXT | REQUIRED | FK `hotels.id`, multi-tenant. Unique `(hotelId, type)` — 1 fila por tipo por hotel. |
-| `type` | string | REQUIRED | Enum catálogo fijo (10 valores). |
+| `type` | string | REQUIRED | Enum catálogo fijo (11 valores). |
 | `config` | json | nullable | Schema depende del `type` (validado server-side). |
 | `sortOrder` | integer | default 0 | Entero, orden dentro del hotel. |
 | `active` | boolean (integer 0/1) | default 1 | Toggle visible. |
@@ -146,7 +156,7 @@ Unique index `(hotelId, type)`. Anti-patrón ORM (D5): todas las columnas declar
 
 ### Admin (auth + permiso `landing:view|edit`)
 
-- `GET /api/landing` — lista los 10 bloques del hotel del usuario (seed si no existen).
+- `GET /api/landing` — lista los 11 bloques del hotel del usuario (seed si no existen).
 - `PUT /api/landing` — bulk upsert del array completo: body `[{id?, type, config, sortOrder, active}, ...]`. Atómico.
 - `PATCH /api/landing/:id/toggle` — body `{active: bool}`. Toggle rápido sin re-PUT todo.
 
@@ -159,7 +169,7 @@ Unique index `(hotelId, type)`. Anti-patrón ORM (D5): todas las columnas declar
 
 ### Builder admin (`frontend/src/pages/settings/landing.vue`)
 
-- Lista vertical de los 10 bloques con drag handle (reorder).
+- Lista vertical de los 11 bloques con drag handle (reorder).
 - Cada bloque: toggle "Visible en la landing" + botón "Editar config" (abre modal
   específico por `type`).
 - Editores por type:

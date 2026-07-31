@@ -7,11 +7,12 @@
 // Convención misma que `ALLERGEN_TAGS`: el catálogo de tipos es en código, no en DB. Si el
 // backend suma un type nuevo, agregarlo acá Y en el componente orquestador.
 
-// ─── Catálogo FIJO de tipos de bloque (10 valores — trust-badges sumado en
-// hero-search-rooms-content, espejo de backend `landing/types.ts`) ─────────
+// ─── Catálogo FIJO de tipos de bloque (11 valores — storytelling sumado en
+// landing-storytelling-block, espejo de backend `landing/types.ts`) ─────────
 export type LandingBlockType =
   | 'hero'
   | 'trust-badges'
+  | 'storytelling'
   | 'gallery'
   | 'amenities'
   | 'location'
@@ -56,6 +57,18 @@ export interface TrustBadgeItem {
 export interface TrustBadgesBlockConfig {
   title?: string | null
   items?: TrustBadgeItem[] | null
+}
+
+/** Config del bloque "Vive una experiencia única" — texto + fotos (landing-storytelling-block).
+ *  `description` vacío/no-set → el orquestador NO renderiza el bloque (sin inventar copy de
+ *  marketing) SALVO que haya fotos resueltas (ver hotel-landing.vue:shouldRender). */
+export interface StorytellingBlockConfig {
+  title?: string | null
+  description?: string | null
+  /** Texto del link "Ver habitaciones →" que scrollea a #rooms. Vacío → no se muestra el link. */
+  linkText?: string | null
+  /** Ids de `hotel_media` type='gallery' (mismo picker que hero.backgroundMediaIds, type='gallery'). */
+  mediaIds?: string[] | null
 }
 
 export interface GalleryBlockConfig {
@@ -119,6 +132,7 @@ export interface FooterBlockConfig {
 export type LandingBlockConfig =
   | ({ type: 'hero' } & HeroBlockConfig)
   | ({ type: 'trust-badges' } & TrustBadgesBlockConfig)
+  | ({ type: 'storytelling' } & StorytellingBlockConfig)
   | ({ type: 'gallery' } & GalleryBlockConfig)
   | ({ type: 'amenities' } & AmenitiesBlockConfig)
   | ({ type: 'location' } & LocationBlockConfig)

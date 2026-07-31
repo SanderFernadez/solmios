@@ -56,6 +56,8 @@
       :hotel-name="hotel.name"
       :hotel-slug="hotel.slug"
       :anchors="{
+        storytelling: renderedBlocks.some((b) => b.type === 'storytelling'),
+        gallery: renderedBlocks.some((b) => b.type === 'gallery'),
         rooms: renderedBlocks.some((b) => b.type === 'rooms'),
         location: renderedBlocks.some((b) => b.type === 'location'),
         reviews: renderedBlocks.some((b) => b.type === 'reviews'),
@@ -102,6 +104,7 @@ import { PRESET_MAP } from '@/types/landing'
 import LandingNavbar from '@/components/landing/LandingNavbar.vue'
 import HeroBlock from '@/components/landing/HeroBlock.vue'
 import TrustBadgesBlock from '@/components/landing/TrustBadgesBlock.vue'
+import StorytellingBlock from '@/components/landing/StorytellingBlock.vue'
 import GalleryBlock from '@/components/landing/GalleryBlock.vue'
 import AmenitiesBlock from '@/components/landing/AmenitiesBlock.vue'
 import MapBlock from '@/components/landing/MapBlock.vue'
@@ -276,6 +279,7 @@ onMounted(async () => {
 const BLOCK_COMPONENTS: Record<LandingBlockType, unknown> = {
   hero: HeroBlock,
   'trust-badges': TrustBadgesBlock,
+  storytelling: StorytellingBlock,
   gallery: GalleryBlock,
   amenities: AmenitiesBlock,
   location: MapBlock,
@@ -291,6 +295,8 @@ const BLOCK_COMPONENTS: Record<LandingBlockType, unknown> = {
  *  varios bloques del mismo type renderizados — no pasa hoy, 1 por type, pero es defensivo). */
 const ANCHOR_IDS: Partial<Record<LandingBlockType, string>> = {
   hero: 'hero',
+  storytelling: 'experiencias',
+  gallery: 'galeria',
   rooms: 'rooms',
   location: 'location',
   reviews: 'reviews',
@@ -304,6 +310,8 @@ function blockComponent(type: LandingBlockType) {
  * Filtra los bloques que el orquestador NO debe pintar porque falta data externa.
  * Cada BlockComponent tiene su propio guard, pero este filtro evita pedazos vacíos
  * (mejor SEO + layout limpio). Reglas:
+ *   - storytelling sin description NI mediaIds → omite (guard liviano acá; el componente
+ *     hace el guard fino con la resolución real contra media.gallery)
  *   - gallery sin media.gallery           → omite
  *   - amenities sin hotel.amenities       → omite
  *   - location sin coords válidas (0,0)   → omite
@@ -319,6 +327,12 @@ const renderedBlocks = computed<LandingBlock[]>(() => {
 
 function shouldRender(b: LandingBlock): boolean {
   switch (b.type) {
+    case 'storytelling': {
+      const cfg = (b.config ?? {}) as Record<string, unknown>
+      const hasDescription = typeof cfg.description === 'string' && cfg.description.trim().length > 0
+      const hasMedia = Array.isArray(cfg.mediaIds) && cfg.mediaIds.length > 0
+      return hasDescription || hasMedia
+    }
     case 'gallery':
       return (media.value?.gallery?.length ?? 0) > 0
     case 'amenities':

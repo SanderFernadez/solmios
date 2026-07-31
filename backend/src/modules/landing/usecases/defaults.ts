@@ -43,6 +43,18 @@ export function defaultConfigFor(type: LandingBlockType): Record<string, unknown
           { icon: 'direct', text: 'Reserva directa' },
         ],
       }
+    case 'storytelling':
+      return {
+        // Título genérico aceptable acá (no es el H1 de la página — es una sección de apoyo,
+        // mismo criterio que 'Habitaciones'/'Servicios' abajo). `description` vacío a propósito:
+        // sin inventar copy de marketing sobre un hotel que no lo escribió (mismo criterio que
+        // hero.title/subtitle — ver FIX arriba). El bloque no renderiza si description está
+        // vacío Y no hay fotos elegidas (ver hotel-landing.vue:shouldRender).
+        title: 'Vive una experiencia única',
+        description: '',
+        linkText: 'Ver habitaciones',
+        mediaIds: [],
+      }
     case 'gallery':
       return { title: 'Galería' }
     case 'amenities':

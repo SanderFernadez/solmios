@@ -253,7 +253,7 @@
             <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
               {{ field.label }}
             </label>
-            <MediaPicker v-model="mediaIdsDraft" />
+            <MediaPicker v-model="mediaIdsDraft" :type="field.mediaType ?? 'hero'" />
             <p v-if="field.help" class="mt-1.5 text-[10px] text-text-muted leading-relaxed">{{ field.help }}</p>
           </div>
 
@@ -436,6 +436,7 @@ const auth = useAuthStore()
 const BLOCK_META: Record<LandingBlockType, { label: string; emoji: string; description: string }> = {
   hero:       { label: 'Portada (Hero)',     emoji: '🌅', description: 'Banda superior con título, subtítulo y botón de reserva sobre la imagen.' },
   'trust-badges': { label: 'Sellos de confianza', emoji: '🛡️', description: 'Fila de garantías debajo del hero (mejor tarifa, cancelación, pago seguro, etc.).' },
+  storytelling: { label: 'Experiencia (storytelling)', emoji: '📖', description: 'Texto + fotos contando la propuesta del hotel ("Vive una experiencia única").' },
   gallery:    { label: 'Galería',            emoji: '🖼️', description: 'Grilla de fotos del hotel. Las fotos se suben desde Media.' },
   amenities:  { label: 'Servicios',          emoji: '🏊', description: 'Íconos de los servicios del hotel (piscina, wifi, parking, …).' },
   location:   { label: 'Ubicación',          emoji: '📍', description: 'Mapa con la ubicación del hotel + descripción opcional.' },
@@ -460,6 +461,8 @@ interface FieldDef {
   placeholder?: string
   help?: string
   optional?: boolean
+  /** Solo para kind:'media-picker' — qué bucket de hotel_media lista (default 'hero'). */
+  mediaType?: 'hero' | 'gallery'
 }
 const FIELDS_BY_TYPE: Record<LandingBlockType, FieldDef[]> = {
   hero: [
@@ -473,6 +476,16 @@ const FIELDS_BY_TYPE: Record<LandingBlockType, FieldDef[]> = {
   'trust-badges': [
     { key: 'title', label: 'Título', kind: 'text', placeholder: '', optional: true },
     { key: 'items', label: 'Sellos', kind: 'badge-items' },
+  ],
+  storytelling: [
+    { key: 'title', label: 'Título', kind: 'text', placeholder: 'Vive una experiencia única' },
+    { key: 'description', label: 'Descripción', kind: 'textarea',
+      placeholder: 'Contá qué hace único a tu hotel — la experiencia, no solo las habitaciones.',
+      help: 'Vacío = el bloque no se muestra (salvo que elijas fotos abajo).' },
+    { key: 'linkText', label: 'Texto del link', kind: 'text', placeholder: 'Ver habitaciones', optional: true,
+      help: 'Vacío = sin link. El link scrollea a la sección de habitaciones.' },
+    { key: 'mediaIds', label: 'Fotos de la sección', kind: 'media-picker', mediaType: 'gallery',
+      help: 'Hasta 3 fotos (de tu galería). La primera se muestra más grande.' },
   ],
   gallery:   [{ key: 'title', label: 'Título', kind: 'text', placeholder: 'Galería' }],
   amenities: [{ key: 'title', label: 'Título', kind: 'text', placeholder: 'Servicios' }],

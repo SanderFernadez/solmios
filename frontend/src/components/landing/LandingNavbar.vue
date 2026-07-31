@@ -36,14 +36,16 @@ import { computed } from 'vue'
 const props = defineProps<{
   hotelName: string
   hotelSlug: string
-  anchors: { rooms: boolean; location: boolean; reviews: boolean }
+  anchors: { storytelling: boolean; gallery: boolean; rooms: boolean; location: boolean; reviews: boolean }
 }>()
 
 const bookingLink = computed(() => `/book/${encodeURIComponent(props.hotelSlug)}`)
 
 const links = computed(() => {
   const l = [{ label: 'Inicio', href: '#hero' }]
+  if (props.anchors.storytelling) l.push({ label: 'Experiencias', href: '#experiencias' })
   if (props.anchors.rooms) l.push({ label: 'Habitaciones', href: '#rooms' })
+  if (props.anchors.gallery) l.push({ label: 'Galería', href: '#galeria' })
   if (props.anchors.location) l.push({ label: 'Ubicación', href: '#location' })
   if (props.anchors.reviews) l.push({ label: 'Opiniones', href: '#reviews' })
   return l

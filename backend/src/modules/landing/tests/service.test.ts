@@ -3,7 +3,7 @@
 // Cubre los 4 acceptance criteria de la task 1.3 + comportamiento del seeder (1.2):
 //  (a) upsert atómico: reemplaza config + orden en una sola transacción.
 //  (b) toggle: cambia `active`.
-//  (c) listByHotel: ordena por sortOrder Y dispara seeder lazy en hotel nuevo (10 defaults).
+//  (c) listByHotel: ordena por sortOrder Y dispara seeder lazy en hotel nuevo (11 defaults).
 //  (d) ownership: bloque de hotel ajeno → error antes de mutar.
 //
 // Sin dependencia de SQLite/Postgres: mockeamos los repos y el orm.transaction. El
@@ -73,7 +73,7 @@ describe('listByHotel', () => {
     expect(data.map((b) => b.type)).toEqual(['hero', 'rooms', 'footer'])
   })
 
-  it('dispara el seeder lazy en hotel nuevo y devuelve los 10 defaults', async () => {
+  it('dispara el seeder lazy en hotel nuevo y devuelve los 11 defaults', async () => {
     let calls = 0
     let seeded: LandingBlockDTO[] = []
     const baseBlocks = makeDeps().blocks!
@@ -82,7 +82,7 @@ describe('listByHotel', () => {
         ...baseBlocks,
         findMany: async () => {
           calls++
-          // Primera llamada: vacío (triggers seeder). Segunda: devuelve los 10 seeded.
+          // Primera llamada: vacío (triggers seeder). Segunda: devuelve los 11 seeded.
           return calls === 1 ? [] : seeded
         },
         create: async (data: any) => {
@@ -93,9 +93,9 @@ describe('listByHotel', () => {
       } as any,
     })
     const { data, total } = await listByHotel(deps, 'h-new', adminUser)
-    expect(total).toBe(10)
-    expect(data).toHaveLength(10)
-    // Los 10 types están presentes.
+    expect(total).toBe(11)
+    expect(data).toHaveLength(11)
+    // Los 11 types están presentes.
     for (const t of BLOCK_TYPES) {
       expect(data.some((b) => b.type === t)).toBe(true)
     }
@@ -111,10 +111,11 @@ describe('listByHotel', () => {
   })
 
   it('FIX 2026-07-31 — reconcilia types faltantes en hotel YA existente (no solo hotel en cero)', async () => {
-    // Hotel viejo con los 9 bloques pre-existentes (antes de que `trust-badges` se agregara al
-    // catálogo). Antes del fix, `existing.length===0` era la única condición de reseed → un
-    // hotel con 9/10 bloques nunca recibía el 10mo agregado al código. Ahora reconciliar dispara
-    // con CUALQUIER faltante.
+    // Hotel viejo con todos los bloques MENOS uno (simula cualquier catálogo que creció después
+    // de que el hotel ya tenía bloques persistidos — el caso real fue trust-badges/storytelling).
+    // Antes del fix, `existing.length===0` era la única condición de reseed → un hotel con N-1/N
+    // bloques nunca recibía el faltante agregado al código. Ahora reconciliar dispara con
+    // CUALQUIER faltante, no solo hotel en cero.
     const nine: LandingBlockDTO[] = BLOCK_TYPES
       .filter((t) => t !== 'trust-badges')
       .map((t, i) => ({ id: `b-${t}`, hotelId: 'h1', type: t, config: defaultConfigFor(t), sortOrder: i, active: true, createdAt: '', updatedAt: '' }))
@@ -133,7 +134,7 @@ describe('listByHotel', () => {
       } as any,
     })
     const { data, total } = await listByHotel(deps, 'h1', adminUser)
-    expect(total).toBe(10)
+    expect(total).toBe(BLOCK_TYPES.length)
     expect(data.some((b) => b.type === 'trust-badges')).toBe(true)
   })
 
@@ -157,7 +158,7 @@ describe('upsert', () => {
     const txMock = {
       deleteMany: async (model: string, filters: any) => {
         txCalls.push({ op: 'deleteMany', model, filters })
-        return 10 // simula que borró los 10 anteriores
+        return 11 // simula que borró los 11 anteriores
       },
       createMany: async (model: string, records: any[]) => {
         txCalls.push({ op: 'createMany', model, count: records.length })
@@ -264,7 +265,7 @@ describe('toggle', () => {
 
 // ─── seedDefaults (cobertura extra del seeder 1.2) ───────────────────────────
 describe('seedDefaults', () => {
-  it('inserta los 10 bloques con active=true y config default', async () => {
+  it('inserta los 11 bloques con active=true y config default', async () => {
     const inserted: any[] = []
     const deps = makeDeps({
       blocks: {
@@ -273,7 +274,7 @@ describe('seedDefaults', () => {
       } as any,
     })
     await seedDefaults(deps, 'h-new')
-    expect(inserted).toHaveLength(10)
+    expect(inserted).toHaveLength(BLOCK_TYPES.length)
     const types = inserted.map((b) => b.type)
     for (const t of BLOCK_TYPES) expect(types).toContain(t)
     for (const b of inserted) {
@@ -297,8 +298,8 @@ describe('seedDefaults', () => {
       } as any,
     })
     await seedDefaults(deps, 'h1')
-    // Inserta los 9 faltantes (todos menos hero).
-    expect(inserted).toHaveLength(9)
+    // Inserta los faltantes (todos menos hero).
+    expect(inserted).toHaveLength(BLOCK_TYPES.length - 1)
     expect(inserted.find((b) => b.type === 'hero')).toBeUndefined()
   })
 })
@@ -322,6 +323,13 @@ describe('defaultConfigFor — nuevos shapes', () => {
     expect(config.featuredBadgeText).toBe('Más reservada')
     expect(config.showSpecs).toBe(true)
   })
+
+  it('storytelling trae description/mediaIds vacíos por default (sin inventar copy)', () => {
+    const config = defaultConfigFor('storytelling')
+    expect(config.title).toBe('Vive una experiencia única')
+    expect(config.description).toBe('')
+    expect(config.mediaIds).toEqual([])
+  })
 })
 
 // ─── listPublicBySlug ────────────────────────────────────────────────────────
@@ -342,7 +350,7 @@ describe('listPublicBySlug', () => {
     ]
     const deps = makeDeps({
       hotels: { findOne: async () => hotel } as any,
-      // Fixture deliberadamente parcial (3/10 types) para testear el filtro active=false en
+      // Fixture deliberadamente parcial (3/11 types) para testear el filtro active=false en
       // aislamiento. FIX 2026-07-31: listPublicBySlug ahora re-siembra si faltan types (no solo
       // en cero bloques) — findOne/create deben existir para que seedDefaults no explote, pero
       // findMany queda fijo en los 3 items del fixture (no es la reconciliación lo que este test
