@@ -79,7 +79,7 @@ export function PromoCodesModule() {
       // FIX 2026-07-31 — preview autenticado (staff crea reserva manual): solo userType merchant,
       // SIN permiso `promo:*` (receptionist no administra códigos pero sí puede aplicar uno al
       // cargar una reserva). hotelId sale del token, nunca del body.
-      router.post('/api/promo-codes/preview', [requireUserType('merchant')], (req: any) => controller.previewForUser(req))
+      router.post('/api/promo-codes/preview', [auth.authenticate(), requireUserType('merchant')], (req: any) => controller.previewForUser(req))
 
       // ─── Ruta pública ─────────────────────────────────────────────────────
       // Sin auth, rate-limited por IP (spec: 30 req/min/IP, mismo criterio que
