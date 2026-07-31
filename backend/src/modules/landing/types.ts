@@ -2,9 +2,10 @@
 // El schema físico de la tabla vive en ./model.ts — son conceptos distintos (mem
 // anti-patrón ORM: TODO campo del DTO está declarado en model.ts case-sensitive).
 
-/** Catálogo FIJO de tipos de bloque (spec lines 20-26). 9 valores, no administrable. */
+/** Catálogo FIJO de tipos de bloque (spec lines 20-26). 10 valores, no administrable. */
 export type LandingBlockType =
   | 'hero'
+  | 'trust-badges'
   | 'gallery'
   | 'amenities'
   | 'location'
@@ -14,9 +15,9 @@ export type LandingBlockType =
   | 'cta'
   | 'footer'
 
-/** Lista canónica de los 9 types — fuente de verdad para seeder y validación. */
+/** Lista canónica de los 10 types — fuente de verdad para seeder y validación. */
 export const BLOCK_TYPES: LandingBlockType[] = [
-  'hero', 'gallery', 'amenities', 'rooms', 'reviews', 'location', 'faq', 'cta', 'footer',
+  'hero', 'trust-badges', 'gallery', 'amenities', 'rooms', 'reviews', 'location', 'faq', 'cta', 'footer',
 ]
 
 /**
@@ -26,14 +27,15 @@ export const BLOCK_TYPES: LandingBlockType[] = [
  */
 export const DEFAULT_SORT_ORDER: Record<LandingBlockType, number> = {
   hero: 0,
-  gallery: 1,
-  amenities: 2,
-  rooms: 3,
-  reviews: 4,
-  location: 5,
-  faq: 6,
-  cta: 7,
-  footer: 8,
+  'trust-badges': 1,
+  gallery: 2,
+  amenities: 3,
+  rooms: 4,
+  reviews: 5,
+  location: 6,
+  faq: 7,
+  cta: 8,
+  footer: 9,
 }
 
 /**

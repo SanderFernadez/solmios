@@ -3,7 +3,7 @@
 // Cubre los 4 acceptance criteria de la task 1.3 + comportamiento del seeder (1.2):
 //  (a) upsert atómico: reemplaza config + orden en una sola transacción.
 //  (b) toggle: cambia `active`.
-//  (c) listByHotel: ordena por sortOrder Y dispara seeder lazy en hotel nuevo (9 defaults).
+//  (c) listByHotel: ordena por sortOrder Y dispara seeder lazy en hotel nuevo (10 defaults).
 //  (d) ownership: bloque de hotel ajeno → error antes de mutar.
 //
 // Sin dependencia de SQLite/Postgres: mockeamos los repos y el orm.transaction. El
@@ -73,7 +73,7 @@ describe('listByHotel', () => {
     expect(data.map((b) => b.type)).toEqual(['hero', 'rooms', 'footer'])
   })
 
-  it('dispara el seeder lazy en hotel nuevo y devuelve los 9 defaults', async () => {
+  it('dispara el seeder lazy en hotel nuevo y devuelve los 10 defaults', async () => {
     let calls = 0
     let seeded: LandingBlockDTO[] = []
     const baseBlocks = makeDeps().blocks!
@@ -82,7 +82,7 @@ describe('listByHotel', () => {
         ...baseBlocks,
         findMany: async () => {
           calls++
-          // Primera llamada: vacío (triggers seeder). Segunda: devuelve los 9 seeded.
+          // Primera llamada: vacío (triggers seeder). Segunda: devuelve los 10 seeded.
           return calls === 1 ? [] : seeded
         },
         create: async (data: any) => {
@@ -93,9 +93,9 @@ describe('listByHotel', () => {
       } as any,
     })
     const { data, total } = await listByHotel(deps, 'h-new', adminUser)
-    expect(total).toBe(9)
-    expect(data).toHaveLength(9)
-    // Los 9 types están presentes.
+    expect(total).toBe(10)
+    expect(data).toHaveLength(10)
+    // Los 10 types están presentes.
     for (const t of BLOCK_TYPES) {
       expect(data.some((b) => b.type === t)).toBe(true)
     }
@@ -130,7 +130,7 @@ describe('upsert', () => {
     const txMock = {
       deleteMany: async (model: string, filters: any) => {
         txCalls.push({ op: 'deleteMany', model, filters })
-        return 9 // simula que borró los 9 anteriores
+        return 10 // simula que borró los 10 anteriores
       },
       createMany: async (model: string, records: any[]) => {
         txCalls.push({ op: 'createMany', model, count: records.length })
@@ -237,7 +237,7 @@ describe('toggle', () => {
 
 // ─── seedDefaults (cobertura extra del seeder 1.2) ───────────────────────────
 describe('seedDefaults', () => {
-  it('inserta los 9 bloques con active=true y config default', async () => {
+  it('inserta los 10 bloques con active=true y config default', async () => {
     const inserted: any[] = []
     const deps = makeDeps({
       blocks: {
@@ -246,7 +246,7 @@ describe('seedDefaults', () => {
       } as any,
     })
     await seedDefaults(deps, 'h-new')
-    expect(inserted).toHaveLength(9)
+    expect(inserted).toHaveLength(10)
     const types = inserted.map((b) => b.type)
     for (const t of BLOCK_TYPES) expect(types).toContain(t)
     for (const b of inserted) {
@@ -270,9 +270,30 @@ describe('seedDefaults', () => {
       } as any,
     })
     await seedDefaults(deps, 'h1')
-    // Inserta los 8 faltantes (todos menos hero).
-    expect(inserted).toHaveLength(8)
+    // Inserta los 9 faltantes (todos menos hero).
+    expect(inserted).toHaveLength(9)
     expect(inserted.find((b) => b.type === 'hero')).toBeUndefined()
+  })
+})
+
+// ─── defaultConfigFor — nuevos types/shapes (hero.searchBar, trust-badges, rooms badge) ──
+describe('defaultConfigFor — nuevos shapes', () => {
+  it('trust-badges trae los 5 items default', () => {
+    const config = defaultConfigFor('trust-badges')
+    expect(config.items).toHaveLength(5)
+    expect((config.items as any[]).every((i) => typeof i.icon === 'string' && typeof i.text === 'string')).toBe(true)
+  })
+
+  it('hero incluye searchBar deshabilitado por default', () => {
+    const config = defaultConfigFor('hero')
+    expect(config.searchBar).toEqual({ enabled: false, ctaText: 'Buscar disponibilidad' })
+  })
+
+  it('rooms incluye featuredRoomId null por default (el admin lo setea manualmente)', () => {
+    const config = defaultConfigFor('rooms')
+    expect(config.featuredRoomId).toBeNull()
+    expect(config.featuredBadgeText).toBe('Más reservada')
+    expect(config.showSpecs).toBe(true)
   })
 })
 

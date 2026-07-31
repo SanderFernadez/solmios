@@ -18,6 +18,23 @@ export function defaultConfigFor(type: LandingBlockType): Record<string, unknown
         subtitle: 'Reservá directo y aprovechá el mejor precio.',
         ctaText: 'Reservar',
         backgroundMediaId: null,
+        // FIX 2026-07-31 — buscador inline opcional en el hero.
+        // Default enabled:false: hoteles YA seedeados no tienen esta key en su config
+        // persistido (JSON libre) hasta que el admin lo prenda desde el editor — el
+        // frontend debe leerlo con optional chaining (config.searchBar?.enabled), nunca
+        // asumir que existe.
+        searchBar: { enabled: false, ctaText: 'Buscar disponibilidad' },
+      }
+    case 'trust-badges':
+      return {
+        title: '',
+        items: [
+          { icon: 'rate', text: 'Mejor tarifa garantizada' },
+          { icon: 'refund', text: 'Cancelación flexible' },
+          { icon: 'secure', text: 'Pago 100% seguro' },
+          { icon: 'no-fee', text: 'Sin comisiones' },
+          { icon: 'direct', text: 'Reserva directa' },
+        ],
       }
     case 'gallery':
       return { title: 'Galería' }
@@ -28,7 +45,13 @@ export function defaultConfigFor(type: LandingBlockType): Record<string, unknown
     case 'reviews':
       return { title: 'Opiniones de huéspedes', maxItems: 6 }
     case 'rooms':
-      return { title: 'Habitaciones', ctaText: 'Ver tarifas' }
+      return {
+        title: 'Habitaciones',
+        ctaText: 'Ver tarifas',
+        showSpecs: true,
+        featuredRoomId: null,
+        featuredBadgeText: 'Más reservada',
+      }
     case 'faq':
       return {
         title: 'Preguntas frecuentes',
