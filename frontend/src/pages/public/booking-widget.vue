@@ -33,10 +33,18 @@
     <header v-if="!embed" class="bg-white border-b border-slate-200 sticky top-0 z-10">
       <div class="max-w-md mx-auto px-4 py-3">
         <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0 flex-1">
-            <p v-if="hotelLoading" class="text-sm text-text-muted">{{ t('wrapper.loading') }}</p>
-            <h1 v-else-if="hotelName" class="font-black text-navy truncate">{{ hotelName }}</h1>
-            <h1 v-else class="font-black text-navy">{{ t('wrapper.titleFallback') }}</h1>
+          <div class="min-w-0 flex-1 flex items-center gap-2.5">
+            <img
+              v-if="hotelLogo"
+              :src="hotelLogo"
+              :alt="hotelName"
+              class="h-8 w-8 rounded-lg object-cover shrink-0 border border-slate-200"
+            />
+            <div class="min-w-0">
+              <p v-if="hotelLoading" class="text-sm text-text-muted">{{ t('wrapper.loading') }}</p>
+              <h1 v-else-if="hotelName" class="font-black text-navy truncate">{{ hotelName }}</h1>
+              <h1 v-else class="font-black text-navy">{{ t('wrapper.titleFallback') }}</h1>
+            </div>
           </div>
 
           <!-- Switchers de idioma + moneda (tasks 2.14 + 2.15). Compactos para mobile.
@@ -208,6 +216,7 @@ const { locale } = storeToRefs(i18n)
 const { t, locales, setLocale } = i18n
 
 const hotelName = ref('')
+const hotelLogo = ref<string | null>(null)
 const hotelLoading = ref(true)
 // F4 4.1 (D13) — hotelId (UUID) resuelto desde el slug al montar. Se pasa a track() para
 // que el backend persista el evento del funnel en tracking_events con target='internal'.
@@ -395,6 +404,7 @@ onMounted(async () => {
   try {
     const hotel = await PublicHotelService.getBySlug(s)
     hotelName.value = hotel.name
+    hotelLogo.value = hotel.logo
     hotelIdForTracking.value = hotel.id
     // F4 4.1 — Disparamos 'view' DESPUÉS de resolver el hotel para que el POST server-side
     // lleve el hotelId correcto (sin eso, el primer step del funnel no se persistiría).

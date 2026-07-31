@@ -311,9 +311,9 @@ describe('defaultConfigFor — nuevos shapes', () => {
     expect((config.items as any[]).every((i) => typeof i.icon === 'string' && typeof i.text === 'string')).toBe(true)
   })
 
-  it('hero incluye searchBar deshabilitado por default', () => {
+  it('hero incluye searchBar habilitado por default (FIX 2026-07-31 — feedback usuario)', () => {
     const config = defaultConfigFor('hero')
-    expect(config.searchBar).toEqual({ enabled: false, ctaText: 'Buscar disponibilidad' })
+    expect(config.searchBar).toEqual({ enabled: true, ctaText: 'Buscar disponibilidad' })
   })
 
   it('rooms incluye featuredRoomId null por default (el admin lo setea manualmente)', () => {

@@ -18,12 +18,12 @@ export function defaultConfigFor(type: LandingBlockType): Record<string, unknown
         subtitle: 'Reservá directo y aprovechá el mejor precio.',
         ctaText: 'Reservar',
         backgroundMediaId: null,
-        // FIX 2026-07-31 — buscador inline opcional en el hero.
-        // Default enabled:false: hoteles YA seedeados no tienen esta key en su config
-        // persistido (JSON libre) hasta que el admin lo prenda desde el editor — el
-        // frontend debe leerlo con optional chaining (config.searchBar?.enabled), nunca
-        // asumir que existe.
-        searchBar: { enabled: false, ctaText: 'Buscar disponibilidad' },
+        // FIX 2026-07-31 — buscador inline en el hero. Default enabled:true: es el elemento
+        // central del hero (feedback de usuario: apagado por default lo dejaba invisible sin
+        // motivo, contradice el propósito del feature). Hoteles YA seedeados antes de este
+        // flip no tienen la key en su config persistido — el frontend sigue leyendo con
+        // optional chaining (config.searchBar?.enabled), nunca asumir que existe.
+        searchBar: { enabled: true, ctaText: 'Buscar disponibilidad' },
       }
     case 'trust-badges':
       return {
