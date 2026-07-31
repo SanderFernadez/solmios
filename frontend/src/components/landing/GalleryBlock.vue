@@ -39,6 +39,11 @@
         <span v-if="i === 7 && photos.length > 8" class="absolute inset-0 bg-navy/60 flex items-center justify-center text-white font-extrabold text-lg">
           +{{ photos.length - 8 }}
         </span>
+        <!-- Nombre puesto en el admin (antes solo iba al alt invisible del <img>) -->
+        <span
+          v-if="p.alt"
+          class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy/85 to-transparent px-3 py-2 text-left text-xs font-bold text-white truncate"
+        >{{ p.alt }}</span>
       </button>
     </div>
 
@@ -63,6 +68,11 @@
         <span v-if="i === 7 && photos.length > 8" class="absolute inset-0 bg-navy/60 flex items-center justify-center text-white font-extrabold text-lg">
           +{{ photos.length - 8 }}
         </span>
+        <!-- Nombre puesto en el admin (antes solo iba al alt invisible del <img>) -->
+        <span
+          v-if="p.alt"
+          class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy/85 to-transparent px-3 py-2 text-left text-xs font-bold text-white truncate"
+        >{{ p.alt }}</span>
       </button>
     </div>
 
@@ -87,6 +97,11 @@
         <span v-if="i === 7 && photos.length > 8" class="absolute inset-0 bg-navy/60 flex items-center justify-center text-white font-extrabold text-lg">
           +{{ photos.length - 8 }}
         </span>
+        <!-- Nombre puesto en el admin (antes solo iba al alt invisible del <img>) -->
+        <span
+          v-if="p.alt"
+          class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy/85 to-transparent px-3 py-2 text-left text-xs font-bold text-white truncate"
+        >{{ p.alt }}</span>
       </button>
     </div>
 
@@ -122,6 +137,12 @@
         aria-label="Foto siguiente"
         @click.stop="nextPhoto"
       >›</button>
+
+      <span
+        v-if="photos[lightboxIndex].alt"
+        class="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-[85vw] truncate text-center text-sm font-bold text-white/90"
+        @click.stop
+      >{{ photos[lightboxIndex].alt }}</span>
     </div>
   </section>
 </template>

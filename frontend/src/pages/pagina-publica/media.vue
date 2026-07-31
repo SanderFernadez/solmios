@@ -24,11 +24,12 @@
       >
         <span v-if="uploading" aria-hidden="true" class="h-3.5 w-3.5 rounded-full border-2 border-navy/30 border-t-navy animate-spin" />
         <span v-else aria-hidden="true">↑</span>
-        {{ uploading ? 'Subiendo…' : 'Subir imagen' }}
+        {{ uploadLabel }}
         <input
           ref="fileInputRef"
           type="file"
           accept="image/*"
+          multiple
           class="hidden"
           :disabled="uploading"
           @change="onFileChange"
@@ -175,7 +176,7 @@
         >
           <div v-if="uploading" class="flex flex-col items-center gap-1.5">
             <span class="h-6 w-6 rounded-full border-2 border-navy/25 border-t-cyan animate-spin" />
-            <span class="text-[11px] font-bold text-text-muted">Subiendo…</span>
+            <span class="text-[11px] font-bold text-text-muted">{{ uploadLabel }}</span>
           </div>
           <div v-else class="flex flex-col items-center gap-1">
             <span class="text-4xl font-light leading-none text-text-muted transition-colors group-hover:text-cyan">+</span>
@@ -376,6 +377,16 @@ async function confirmRemove(item: HotelMediaItem) {
 // ─── Upload (input file → base64 → POST) ──────────────────────────────────
 const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+// Progreso del batch actual (null = no hay upload en curso). Subida SECUENCIAL (no paralela):
+// más lento con muchos archivos, pero evita pisar sortOrder si dos uploads terminan out-of-order,
+// y permite mostrar "Subiendo 2 de 5" real en vez de un spinner ciego.
+const uploadProgress = ref<{ current: number; total: number } | null>(null)
+
+const uploadLabel = computed(() => {
+  if (!uploading.value) return 'Subir imagen'
+  const p = uploadProgress.value
+  return p && p.total > 1 ? `Subiendo ${p.current} de ${p.total}…` : 'Subiendo…'
+})
 
 // El tile "+" de la grilla dispara el mismo <input type=file> oculto del botón de arriba
 // (un solo input, dos entradas visuales).
@@ -386,27 +397,42 @@ function openFilePicker() {
 
 async function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
+  const files = Array.from(input.files ?? [])
+  if (files.length === 0) return
   uploading.value = true
   actionError.value = ''
+  const failed: string[] = []
   try {
-    const dataUrl = await readAsDataUrl(file)
-    const created = await HotelMediaService.upload({
-      type: activeTab.value,
-      url: dataUrl,
-      alt: file.name.replace(/\.[^.]+$/, '').slice(0, 80) || null,
-      fileName: file.name,
-    })
-    items.value = [...items.value, created as HotelMediaItem]
-      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    altDrafts.value[created.id] = created.alt ?? ''
-    counts.value[activeTab.value] = (counts.value[activeTab.value] ?? 0) + 1
-    toast.success('Imagen subida')
-  } catch (err) {
-    actionError.value = (err as Error)?.message || 'No se pudo subir la imagen.'
+    for (let i = 0; i < files.length; i++) {
+      uploadProgress.value = { current: i + 1, total: files.length }
+      const file = files[i]
+      try {
+        const dataUrl = await readAsDataUrl(file)
+        const created = await HotelMediaService.upload({
+          type: activeTab.value,
+          url: dataUrl,
+          alt: file.name.replace(/\.[^.]+$/, '').slice(0, 80) || null,
+          fileName: file.name,
+        })
+        items.value = [...items.value, created as HotelMediaItem]
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+        altDrafts.value[created.id] = created.alt ?? ''
+        counts.value[activeTab.value] = (counts.value[activeTab.value] ?? 0) + 1
+      } catch (err) {
+        failed.push(`${file.name}: ${(err as Error)?.message || 'error desconocido'}`)
+      }
+    }
+    if (failed.length === 0) {
+      toast.success(files.length > 1 ? `${files.length} imágenes subidas` : 'Imagen subida')
+    } else if (failed.length < files.length) {
+      toast.success(`${files.length - failed.length} de ${files.length} imágenes subidas`)
+      actionError.value = `No se pudieron subir: ${failed.join(' · ')}`
+    } else {
+      actionError.value = `No se pudo subir ninguna imagen: ${failed.join(' · ')}`
+    }
   } finally {
     uploading.value = false
+    uploadProgress.value = null
     // Reset para permitir subir el MISMO archivo dos veces seguidas.
     if (fileInputRef.value) fileInputRef.value.value = ''
   }
