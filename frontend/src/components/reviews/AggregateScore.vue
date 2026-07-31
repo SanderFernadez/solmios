@@ -29,8 +29,8 @@
 
     <div :class="textColClass">
       <!-- Estrellas (solo si hay score). Score redondeado al entero más cercano. -->
-      <div v-if="aggregate.score !== null" :class="starsClass" aria-hidden="true">
-        <span class="text-gold-light">{{ '★'.repeat(roundedScore) }}</span><span class="text-border">{{ '★'.repeat(5 - roundedScore) }}</span>
+      <div v-if="aggregate.score !== null" :class="[starsClass, 'flex items-center gap-0.5 [&_svg]:w-3.5 [&_svg]:h-3.5']" aria-hidden="true">
+        <span class="text-gold-light flex" v-html="starRow(aggregate.score ?? 0)" />
       </div>
       <p :class="countLabelClass">
         {{ countLabel }}
@@ -42,6 +42,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PublicReviewAggregate } from '@/types'
+import { starRow } from '@/components/landing/landing-icons'
 
 type Variant = 'hero' | 'inline'
 
@@ -53,12 +54,6 @@ const props = withDefaults(defineProps<{
 }>(), {
   variant: 'hero',
   label: 'Reseñas verificadas',
-})
-
-const roundedScore = computed(() => {
-  const s = props.aggregate?.score
-  if (s === null || s === undefined || !Number.isFinite(s)) return 0
-  return Math.max(0, Math.min(5, Math.round(s)))
 })
 
 const wrapperClass = computed(() =>

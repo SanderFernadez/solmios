@@ -29,9 +29,7 @@
     <div class="max-w-6xl mx-auto w-full px-6 pb-16 pt-32 sm:pb-20">
       <div class="max-w-2xl">
         <div class="flex items-center gap-3 mb-4 text-white/90">
-          <span v-if="hotel.starRating" class="text-gold-light text-sm tracking-wide">
-            {{ '★'.repeat(starCount) }}
-          </span>
+          <span v-if="hotel.starRating" class="flex items-center gap-0.5 text-gold-light [&_svg]:w-3.5 [&_svg]:h-3.5" v-html="filledStarRow(starCount)" />
           <span class="text-[11px] uppercase tracking-[0.18em] font-bold text-white/70">
             {{ accommodationTypeLabel }}
           </span>
@@ -51,7 +49,7 @@
             <span aria-hidden="true">→</span>
           </router-link>
           <div v-if="hotel.freeCancellation" class="text-xs text-white/80 font-bold flex items-center gap-1.5">
-            <span class="text-success-light">✓</span> Cancelación gratis
+            <span class="w-3.5 h-3.5 text-success-light [&_svg]:w-3.5 [&_svg]:h-3.5" v-html="ICON_CHECK_CIRCLE" /> Cancelación gratis
           </div>
         </div>
       </div>
@@ -73,9 +71,7 @@
     <div class="bg-navy flex flex-col justify-center px-6 sm:px-12 lg:px-16 py-16 sm:py-20 order-1">
       <div class="max-w-xl">
         <div class="flex items-center gap-3 mb-4 text-white/90">
-          <span v-if="hotel.starRating" class="text-gold-light text-sm tracking-wide">
-            {{ '★'.repeat(starCount) }}
-          </span>
+          <span v-if="hotel.starRating" class="flex items-center gap-0.5 text-gold-light [&_svg]:w-3.5 [&_svg]:h-3.5" v-html="filledStarRow(starCount)" />
           <span class="text-[11px] uppercase tracking-[0.18em] font-bold text-white/70">
             {{ accommodationTypeLabel }}
           </span>
@@ -95,7 +91,7 @@
             <span aria-hidden="true">→</span>
           </router-link>
           <div v-if="hotel.freeCancellation" class="text-xs text-white/80 font-bold flex items-center gap-1.5">
-            <span class="text-success-light">✓</span> Cancelación gratis
+            <span class="w-3.5 h-3.5 text-success-light [&_svg]:w-3.5 [&_svg]:h-3.5" v-html="ICON_CHECK_CIRCLE" /> Cancelación gratis
           </div>
         </div>
       </div>
@@ -175,6 +171,7 @@ import { computed, inject } from 'vue'
 import type { LandingBlock, LandingTheme, LandingTemplateId, PublicHotelInfo, PublicHotelMedia } from '@/types'
 import HeroSearchBar from './HeroSearchBar.vue'
 import HeroSlider from './HeroSlider.vue'
+import { filledStarRow, ICON_CHECK_CIRCLE } from './landing-icons'
 
 const props = defineProps<{
   block: LandingBlock

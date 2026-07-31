@@ -87,6 +87,11 @@ export function useHotelJsonLd(input: UseHotelJsonLdInput): UseHotelJsonLdResult
       const stars = Number(h.starRating)
       if (Number.isFinite(stars)) node['starRating'] = { '@type': 'Rating', 'ratingValue': String(stars) }
     }
+    // FIX (auditoría SEO) — telephone/checkinTime/checkoutTime existían en PublicHotelInfo pero
+    // nunca se exponían en el structured data (campos que Google SÍ usa para el rich snippet).
+    if (h.phone) node['telephone'] = h.phone
+    if (h.checkIn) node['checkinTime'] = h.checkIn
+    if (h.checkOut) node['checkoutTime'] = h.checkOut
 
     // Imagen: primera hero media > logo (sin hero cae a logo si existe).
     const heroUrl = media.value?.hero?.[0]?.url ?? h.logo

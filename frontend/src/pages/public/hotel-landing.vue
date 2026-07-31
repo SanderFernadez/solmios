@@ -85,6 +85,7 @@ import { LandingService } from '@/services/Landing.service'
 import { BookingService } from '@/services/Booking.service'
 import { ApiError } from '@/services/http'
 import { useHotelJsonLd } from '@/composables/useHotelJsonLd'
+import { useHotelMetaTags } from '@/composables/useHotelMetaTags'
 import type {
   LandingBlock,
   LandingBlockType,
@@ -355,6 +356,11 @@ function shouldRender(b: LandingBlock): boolean {
 // comportamiento que el inline original (commit 555bf82): aggregateRating solo si count>0 y
 // score!=null, FAQPage solo con items válidos, makesOffer omitido hasta F2.
 useHotelJsonLd({ hotel, media, reviews, blocks, rooms })
+
+// FIX (auditoría UX/SEO) — la landing no tenía meta description dinámica ni ningún tag
+// og:*/twitter:* — compartir el link de un hotel mostraba branding genérico de la SPA en vez
+// del hotel. Ver composable para la limitación honesta (SPA sin SSR real).
+useHotelMetaTags({ hotel, media })
 
 // FIX 2026-07-31 (QA en prod) — la pestaña del navegador quedaba con el título genérico del
 // SPA ("SolmiOS — Hospitality OS") en TODAS las landings públicas en vez del nombre del hotel

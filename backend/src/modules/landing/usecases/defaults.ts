@@ -14,8 +14,15 @@ export function defaultConfigFor(type: LandingBlockType): Record<string, unknown
   switch (type) {
     case 'hero':
       return {
-        title: 'Tu próximo destino',
-        subtitle: 'Reservá directo y aprovechá el mejor precio.',
+        // FIX (auditoría UX/SEO) — antes sembraba un título/subtítulo fijo genérico ("Tu
+        // próximo destino") que SIEMPRE ganaba sobre el fallback al nombre real del hotel
+        // (HeroBlock.vue: `cfg.title || hotel.title || hotel.name` — el fallback nunca se
+        // activaba porque cfg.title nunca estaba vacío). El H1 de CADA hotel nuevo era idéntico
+        // y no-descriptivo — mal para SEO/diferenciación. String vacío → el frontend cae al
+        // nombre/descripción real del hotel out-of-the-box; el admin lo pisa si quiere un
+        // título de marketing distinto.
+        title: '',
+        subtitle: '',
         ctaText: 'Reservar',
         backgroundMediaId: null,
         // FIX 2026-07-31 — buscador inline en el hero. Default enabled:true: es el elemento

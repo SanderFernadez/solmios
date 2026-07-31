@@ -2,9 +2,9 @@
   <!--
     TrustBadgesBlock — fila de sellos de confianza debajo del hero (F1 hero-search-rooms-content).
     Config: {title?, items: [{icon, text}]}. El backend siembra 5 items por default (rate, refund,
-    secure, no-fee, direct) en `landing/usecases/defaults.ts`. Mismo patrón de icon-map por emoji
-    que AmenitiesBlock.vue, pero en una barra más angosta/compacta (línea de sellos, no grid de
-    amenidades): iconos chicos, sin card con borde pesado.
+    secure, no-fee, direct) en `landing/usecases/defaults.ts`. Iconos SVG (landing-icons.ts,
+    compartido con AmenitiesBlock.vue), sin emoji. Barra angosta/compacta (línea de sellos, no
+    grid de amenidades): iconos chicos, sin card con borde pesado.
   -->
   <section v-if="items.length > 0" class="border-y border-border bg-surface">
     <div class="max-w-6xl mx-auto px-6 py-5">
@@ -18,7 +18,7 @@
           :key="i"
           class="flex items-center gap-2"
         >
-          <span class="text-sm leading-none">{{ iconFor(item.icon) }}</span>
+          <span class="w-4 h-4 shrink-0 text-cyan [&_svg]:w-4 [&_svg]:h-4" v-html="trustIcon(item.icon)" />
           <span class="text-xs font-bold text-navy leading-tight">{{ item.text }}</span>
         </div>
       </div>
@@ -29,6 +29,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { LandingBlock, PublicHotelInfo, PublicHotelMedia, TrustBadgeItem } from '@/types'
+import { trustIcon } from './landing-icons'
 
 const props = defineProps<{
   block: LandingBlock
@@ -53,14 +54,4 @@ const items = computed<TrustBadgeItem[]>(() => {
     (it as TrustBadgeItem).text.trim().length > 0)
 })
 
-// Map de icon key → emoji. Las 5 keys sembradas por el backend (defaults.ts) + variedad extra
-// razonable para el admin. Lo que no matchea usa ✦ (mismo criterio que AmenitiesBlock.ICONS).
-const ICONS: Record<string, string> = {
-  rate: '🏆', refund: '🔄', secure: '🔒', 'no-fee': '💳', direct: '✅',
-  support: '🎧', 'best-price': '💰', instant: '⚡',
-}
-
-function iconFor(icon: string): string {
-  return ICONS[icon] ?? '✦'
-}
 </script>

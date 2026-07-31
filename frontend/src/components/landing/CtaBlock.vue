@@ -25,9 +25,15 @@
       </router-link>
 
       <div v-if="hotel.checkIn || hotel.checkOut" class="mt-7 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs text-white/70 font-bold">
-        <span v-if="hotel.checkIn">🕐 Check-in: {{ hotel.checkIn }}</span>
-        <span v-if="hotel.checkOut">🕐 Check-out: {{ hotel.checkOut }}</span>
-        <span v-if="hotel.freeCancellation" class="text-success-light">✓ Cancelación gratuita</span>
+        <span v-if="hotel.checkIn" class="inline-flex items-center gap-1.5">
+          <span class="w-3.5 h-3.5 [&_svg]:w-3.5 [&_svg]:h-3.5" v-html="ICON_CLOCK" /> Check-in: {{ hotel.checkIn }}
+        </span>
+        <span v-if="hotel.checkOut" class="inline-flex items-center gap-1.5">
+          <span class="w-3.5 h-3.5 [&_svg]:w-3.5 [&_svg]:h-3.5" v-html="ICON_CLOCK" /> Check-out: {{ hotel.checkOut }}
+        </span>
+        <span v-if="hotel.freeCancellation" class="inline-flex items-center gap-1.5 text-success-light">
+          <span class="w-3.5 h-3.5 [&_svg]:w-3.5 [&_svg]:h-3.5" v-html="ICON_CHECK_CIRCLE" /> Cancelación gratuita
+        </span>
       </div>
     </div>
   </section>
@@ -36,6 +42,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { LandingBlock, PublicHotelInfo, PublicHotelMedia } from '@/types'
+import { ICON_CLOCK, ICON_CHECK_CIRCLE } from './landing-icons'
 
 const props = defineProps<{
   block: LandingBlock

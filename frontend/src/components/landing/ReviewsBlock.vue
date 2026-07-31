@@ -38,7 +38,7 @@
           class="bg-white rounded-2xl border border-border p-5 shadow-card"
         >
           <div class="flex items-center justify-between mb-3">
-            <div class="text-gold-light text-sm">{{ '★'.repeat(Math.max(1, Math.min(5, Math.round(r.rating)))) }}</div>
+            <div class="flex items-center gap-0.5 text-gold-light [&_svg]:w-3.5 [&_svg]:h-3.5" v-html="starRow(r.rating)" />
             <div class="text-[10px] uppercase tracking-wide text-text-muted">{{ channelLabel(r.channel) }}</div>
           </div>
           <p v-if="r.title" class="font-extrabold text-navy text-sm mb-1.5">{{ r.title }}</p>
@@ -78,6 +78,7 @@ import type {
 } from '@/types'
 import MultiChannelBadges from '@/components/reviews/MultiChannelBadges.vue'
 import AggregateScore from '@/components/reviews/AggregateScore.vue'
+import { starRow } from './landing-icons'
 
 const props = defineProps<{
   block: LandingBlock
