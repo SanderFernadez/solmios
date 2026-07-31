@@ -5,92 +5,95 @@
     — el widget existente (booking-widget.vue) YA lee esos query params y los pasa a
     useBooking.ts init(), no hay nada más que cablear acá.
     Usado por las 3 variantes de HeroBlock.vue (classic/modern/boutique) con distinto wrapper.
-    REDISEÑO v2 (feedback usuario) — cada campo es su propia celda redondeada con hover/focus
-    propio (en vez de divide-x, que se rompía en el grid 2x2 de mobile); adultos/habitaciones
-    pasan de <input type=number> pelado a stepper −/+ (más premium, más usable que las flechas
-    nativas del browser); botón con flecha, sombra más marcada.
+
+    FIX v3 (feedback usuario — el botón/campos se salían del fondo blanco). Causa real: breakpoints
+    de VIEWPORT (`sm:`/`lg:flex`) no saben que este componente vive dentro de un contenedor
+    `max-w-3xl` — a un viewport ancho el breakpoint fuerza una fila que el ANCHO RENDERIZADO real
+    (mucho menor que el viewport) no puede sostener. Fix: TODOS los campos + el botón son hijos
+    directos de un único `flex flex-wrap` (sin ningún breakpoint) — cada uno con un `min-width`
+    propio. El browser decide cuántos entran por fila según el espacio REAL disponible, sea cual
+    sea; lo que no entra cae a la línea siguiente, siempre DENTRO del mismo fondo blanco. Nunca
+    se desborda, en ningún ancho. `overflow-hidden` como red de seguridad adicional.
   -->
   <form
     @submit.prevent="onSubmit"
-    class="bg-white rounded-2xl shadow-2xl p-2 flex flex-col sm:flex-row sm:items-stretch gap-2"
+    class="bg-white rounded-2xl shadow-2xl p-2 flex flex-wrap items-stretch gap-1 overflow-hidden"
   >
-    <div class="flex-1 grid grid-cols-2 sm:flex sm:items-stretch gap-1">
-      <label
-        class="group flex items-center gap-2.5 px-4 py-3 rounded-xl cursor-pointer flex-1 min-w-0 transition-colors hover:bg-surface focus-within:bg-surface"
-      >
-        <span class="text-navy/35 group-hover:text-navy/60 shrink-0 transition-colors" v-html="ICON_CALENDAR" />
-        <span class="flex flex-col min-w-0">
-          <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Llegada</span>
-          <input
-            v-model="checkIn"
-            type="date"
-            :min="todayIso"
-            required
-            class="text-xs font-extrabold text-navy bg-transparent border-0 p-0 focus:outline-none focus:ring-0 w-full cursor-pointer"
-          />
-        </span>
-      </label>
-      <label
-        class="group flex items-center gap-2.5 px-4 py-3 rounded-xl cursor-pointer flex-1 min-w-0 transition-colors hover:bg-surface focus-within:bg-surface"
-      >
-        <span class="text-navy/35 group-hover:text-navy/60 shrink-0 transition-colors" v-html="ICON_CALENDAR" />
-        <span class="flex flex-col min-w-0">
-          <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Salida</span>
-          <input
-            v-model="checkOut"
-            type="date"
-            :min="checkOut && checkIn && checkOut < checkIn ? checkIn : (checkIn || todayIso)"
-            required
-            class="text-xs font-extrabold text-navy bg-transparent border-0 p-0 focus:outline-none focus:ring-0 w-full cursor-pointer"
-          />
-        </span>
-      </label>
+    <label
+      class="group flex items-center gap-2.5 px-4 py-3 rounded-xl cursor-pointer flex-1 basis-[150px] min-w-[150px] transition-colors hover:bg-surface focus-within:bg-surface"
+    >
+      <span class="text-navy/35 group-hover:text-navy/60 shrink-0 transition-colors" v-html="ICON_CALENDAR" />
+      <span class="flex flex-col min-w-0">
+        <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Llegada</span>
+        <input
+          v-model="checkIn"
+          type="date"
+          :min="todayIso"
+          required
+          class="text-xs font-extrabold text-navy bg-transparent border-0 p-0 focus:outline-none focus:ring-0 w-full cursor-pointer"
+        />
+      </span>
+    </label>
+    <label
+      class="group flex items-center gap-2.5 px-4 py-3 rounded-xl cursor-pointer flex-1 basis-[150px] min-w-[150px] transition-colors hover:bg-surface focus-within:bg-surface"
+    >
+      <span class="text-navy/35 group-hover:text-navy/60 shrink-0 transition-colors" v-html="ICON_CALENDAR" />
+      <span class="flex flex-col min-w-0">
+        <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Salida</span>
+        <input
+          v-model="checkOut"
+          type="date"
+          :min="checkOut && checkIn && checkOut < checkIn ? checkIn : (checkIn || todayIso)"
+          required
+          class="text-xs font-extrabold text-navy bg-transparent border-0 p-0 focus:outline-none focus:ring-0 w-full cursor-pointer"
+        />
+      </span>
+    </label>
 
-      <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl flex-1 min-w-0">
-        <span class="text-navy/35 shrink-0" v-html="ICON_USER" />
-        <span class="flex flex-col min-w-0 flex-1">
-          <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Adultos</span>
-          <span class="flex items-center gap-2.5">
-            <button
-              type="button"
-              :disabled="adults <= 1"
-              @click="adults = Math.max(1, adults - 1)"
-              class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none disabled:opacity-30 hover:bg-surface-dark transition-colors cursor-pointer disabled:cursor-not-allowed"
-              aria-label="Menos adultos"
-            >−</button>
-            <span class="text-xs font-extrabold text-navy w-4 text-center">{{ adults }}</span>
-            <button
-              type="button"
-              @click="adults = adults + 1"
-              class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none hover:bg-surface-dark transition-colors cursor-pointer"
-              aria-label="Más adultos"
-            >+</button>
-          </span>
+    <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl flex-1 basis-[130px] min-w-[130px]">
+      <span class="text-navy/35 shrink-0" v-html="ICON_USER" />
+      <span class="flex flex-col min-w-0 flex-1">
+        <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Adultos</span>
+        <span class="flex items-center gap-2.5">
+          <button
+            type="button"
+            :disabled="adults <= 1"
+            @click="adults = Math.max(1, adults - 1)"
+            class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none disabled:opacity-30 hover:bg-surface-dark transition-colors cursor-pointer disabled:cursor-not-allowed"
+            aria-label="Menos adultos"
+          >−</button>
+          <span class="text-xs font-extrabold text-navy w-4 text-center">{{ adults }}</span>
+          <button
+            type="button"
+            @click="adults = adults + 1"
+            class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none hover:bg-surface-dark transition-colors cursor-pointer"
+            aria-label="Más adultos"
+          >+</button>
         </span>
-      </div>
+      </span>
+    </div>
 
-      <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl flex-1 min-w-0">
-        <span class="text-navy/35 shrink-0" v-html="ICON_BED" />
-        <span class="flex flex-col min-w-0 flex-1">
-          <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Habitaciones</span>
-          <span class="flex items-center gap-2.5">
-            <button
-              type="button"
-              :disabled="roomsCount <= 1"
-              @click="roomsCount = Math.max(1, roomsCount - 1)"
-              class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none disabled:opacity-30 hover:bg-surface-dark transition-colors cursor-pointer disabled:cursor-not-allowed"
-              aria-label="Menos habitaciones"
-            >−</button>
-            <span class="text-xs font-extrabold text-navy w-4 text-center">{{ roomsCount }}</span>
-            <button
-              type="button"
-              @click="roomsCount = roomsCount + 1"
-              class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none hover:bg-surface-dark transition-colors cursor-pointer"
-              aria-label="Más habitaciones"
-            >+</button>
-          </span>
+    <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl flex-1 basis-[130px] min-w-[130px]">
+      <span class="text-navy/35 shrink-0" v-html="ICON_BED" />
+      <span class="flex flex-col min-w-0 flex-1">
+        <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Habitaciones</span>
+        <span class="flex items-center gap-2.5">
+          <button
+            type="button"
+            :disabled="roomsCount <= 1"
+            @click="roomsCount = Math.max(1, roomsCount - 1)"
+            class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none disabled:opacity-30 hover:bg-surface-dark transition-colors cursor-pointer disabled:cursor-not-allowed"
+            aria-label="Menos habitaciones"
+          >−</button>
+          <span class="text-xs font-extrabold text-navy w-4 text-center">{{ roomsCount }}</span>
+          <button
+            type="button"
+            @click="roomsCount = roomsCount + 1"
+            class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none hover:bg-surface-dark transition-colors cursor-pointer"
+            aria-label="Más habitaciones"
+          >+</button>
         </span>
-      </div>
+      </span>
     </div>
 
     <button

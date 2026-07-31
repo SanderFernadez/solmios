@@ -59,7 +59,7 @@
         v-if="searchBarEnabled"
         :hotel-slug="hotel.slug"
         :cta-text="searchBarCtaText"
-        class="mt-8 max-w-3xl"
+        class="mt-8 max-w-4xl"
       />
     </div>
   </section>
@@ -160,13 +160,13 @@
           <span class="text-success-light">✓</span> Cancelación gratis
         </div>
       </div>
-      <HeroSearchBar
-        v-if="searchBarEnabled"
-        :hotel-slug="hotel.slug"
-        :cta-text="searchBarCtaText"
-        class="mt-8 mx-auto max-w-3xl text-left"
-      />
     </div>
+    <HeroSearchBar
+      v-if="searchBarEnabled"
+      :hotel-slug="hotel.slug"
+      :cta-text="searchBarCtaText"
+      class="mt-8 mx-auto max-w-4xl text-left px-6"
+    />
   </section>
 </template>
 
