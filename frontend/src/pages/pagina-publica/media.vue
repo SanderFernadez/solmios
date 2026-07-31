@@ -22,7 +22,8 @@
         class="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-cyan px-5 py-2.5 text-sm font-extrabold text-navy transition-all hover:shadow-lg"
         :class="uploading ? 'opacity-60 pointer-events-none' : ''"
       >
-        <span aria-hidden="true">↑</span>
+        <span v-if="uploading" aria-hidden="true" class="h-3.5 w-3.5 rounded-full border-2 border-navy/30 border-t-navy animate-spin" />
+        <span v-else aria-hidden="true">↑</span>
         {{ uploading ? 'Subiendo…' : 'Subir imagen' }}
         <input
           ref="fileInputRef"
@@ -156,13 +157,31 @@
               v-model="altDrafts[item.id]"
               type="text"
               spellcheck="false"
-              placeholder="Texto alternativo (alt)"
+              placeholder="Nombre (opcional): baño, sala..."
               class="w-full bg-transparent border-0 px-1 py-1 text-[11px] text-navy placeholder-text-muted focus:outline-none focus:bg-surface rounded"
               @blur="commitAlt(item)"
               @keydown.enter.prevent="($event.target as HTMLInputElement)?.blur()"
             />
           </div>
         </div>
+
+        <!-- Tile grande "+" al final de la grilla — segunda entrada al mismo input de
+             arriba, más visual/descubrible que el botón de texto solo. -->
+        <button
+          type="button"
+          :disabled="uploading"
+          @click="openFilePicker"
+          class="group grid aspect-4/3 w-full cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border bg-surface transition-all hover:border-cyan hover:bg-cyan/5 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <div v-if="uploading" class="flex flex-col items-center gap-1.5">
+            <span class="h-6 w-6 rounded-full border-2 border-navy/25 border-t-cyan animate-spin" />
+            <span class="text-[11px] font-bold text-text-muted">Subiendo…</span>
+          </div>
+          <div v-else class="flex flex-col items-center gap-1">
+            <span class="text-4xl font-light leading-none text-text-muted transition-colors group-hover:text-cyan">+</span>
+            <span class="text-[11px] font-bold text-text-muted transition-colors group-hover:text-navy">Agregar foto</span>
+          </div>
+        </button>
       </div>
     </SectionCard>
 
@@ -240,10 +259,21 @@ const loading = ref(true)
 const loadError = ref('')
 const items = ref<HotelMediaItem[]>([])
 
+// Conteo real por tab (antes: hardcodeado a 0 en los tabs no-activos — mostraba
+// "Portada 0" aunque hubiera fotos, porque nunca se cargaban). Se pobla al montar
+// (3 requests en paralelo, uno por type) y se mantiene en sync local en upload/delete
+// para no tener que refetchear los 3 tabs en cada acción.
+const counts = ref<Record<TabId, number>>({ hero: 0, gallery: 0, room: 0 })
+
 function countFor(tabId: TabId): number {
-  // Solo tenemos cargado el tab activo (un listado por type); mostramos "?" en los demás
-  // para no multiplicar requests. Al cambiar de tab se carga su cuenta real.
-  return activeTab.value === tabId ? items.value.length : 0
+  return counts.value[tabId] ?? 0
+}
+
+async function loadCounts() {
+  const results = await Promise.allSettled(tabs.map((t) => HotelMediaService.list({ type: t.id })))
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') counts.value[tabs[i].id] = (r.value?.data ?? []).length
+  })
 }
 
 async function load() {
@@ -254,6 +284,7 @@ async function load() {
     items.value = (result?.data ?? [])
       .slice()
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    counts.value[activeTab.value] = items.value.length
     // Inicializar drafts de alt con el valor actual.
     syncAltDrafts()
   } catch (e) {
@@ -265,7 +296,10 @@ async function load() {
 
 // Recarga al cambiar de tab.
 watch(activeTab, () => { load() })
-onMounted(load)
+onMounted(() => {
+  load()
+  loadCounts()
+})
 
 // ─── Alt inline ────────────────────────────────────────────────────────────
 // Un draft por item para poder editar sin disparar un request por tecla.
@@ -330,6 +364,7 @@ async function confirmRemove(item: HotelMediaItem) {
     await HotelMediaService.remove(item.id)
     items.value = items.value.filter((m) => m.id !== item.id)
     delete altDrafts.value[item.id]
+    counts.value[activeTab.value] = Math.max(0, counts.value[activeTab.value] - 1)
     toast.success('Imagen eliminada')
   } catch (e) {
     actionError.value = (e as Error)?.message || 'No se pudo eliminar la imagen.'
@@ -341,6 +376,13 @@ async function confirmRemove(item: HotelMediaItem) {
 // ─── Upload (input file → base64 → POST) ──────────────────────────────────
 const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// El tile "+" de la grilla dispara el mismo <input type=file> oculto del botón de arriba
+// (un solo input, dos entradas visuales).
+function openFilePicker() {
+  if (uploading.value) return
+  fileInputRef.value?.click()
+}
 
 async function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
@@ -359,6 +401,7 @@ async function onFileChange(e: Event) {
     items.value = [...items.value, created as HotelMediaItem]
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     altDrafts.value[created.id] = created.alt ?? ''
+    counts.value[activeTab.value] = (counts.value[activeTab.value] ?? 0) + 1
     toast.success('Imagen subida')
   } catch (err) {
     actionError.value = (err as Error)?.message || 'No se pudo subir la imagen.'
