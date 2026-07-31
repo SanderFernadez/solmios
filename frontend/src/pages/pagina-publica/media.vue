@@ -21,7 +21,7 @@
       <div class="text-right">
         <label
           class="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-cyan px-5 py-2.5 text-sm font-extrabold text-navy transition-all hover:shadow-lg"
-          :class="uploading || atMediaLimit ? 'opacity-60 pointer-events-none' : ''"
+          :class="uploading || atMediaLimit || !canUpload ? 'opacity-60 pointer-events-none' : ''"
         >
           <span v-if="uploading" aria-hidden="true" class="h-3.5 w-3.5 rounded-full border-2 border-navy/30 border-t-navy animate-spin" />
           <span v-else aria-hidden="true">↑</span>
@@ -32,12 +32,15 @@
             accept="image/*"
             multiple
             class="hidden"
-            :disabled="uploading || atMediaLimit"
+            :disabled="uploading || atMediaLimit || !canUpload"
             @change="onFileChange"
           />
         </label>
         <p v-if="atMediaLimit" class="mt-1 text-[10px] font-bold text-text-muted">
           Llegaste al máximo de {{ MAX_MEDIA_PER_TYPE }} fotos en {{ activeTabMeta.labelLower }}. Borrá alguna para subir otra.
+        </p>
+        <p v-else-if="!canUpload" class="mt-1 text-[10px] font-bold text-text-muted">
+          Elegí una habitación abajo antes de subir.
         </p>
       </div>
     </div>
@@ -69,6 +72,26 @@
       :subtitle="activeTabMeta.subtitle"
       body-class="p-4 sm:p-5"
     >
+      <!-- Selector de habitación (solo tab 'room') — el backend exige un roomId real por
+           foto (se agrupan por habitación física en la landing, no por tipo). Sin esto
+           NINGUNA subida en este tab podía funcionar (bug reportado por usuario). -->
+      <div v-if="activeTab === 'room'" class="mb-4">
+        <label class="mb-1 block text-[10px] font-bold uppercase text-text-muted">
+          Habitación de esta foto
+        </label>
+        <select
+          v-model="selectedRoomId"
+          class="w-full max-w-sm rounded-lg border border-border bg-white px-3 py-2 text-sm text-navy focus:border-cyan focus:outline-none sm:w-auto"
+        >
+          <option value="" disabled>Elegí una habitación…</option>
+          <option v-for="r in rooms" :key="r.id" :value="r.id">{{ r.number }} — {{ r.name || r.type }}</option>
+        </select>
+        <p v-if="roomsLoadError" class="mt-1 text-[10px] font-bold text-danger">{{ roomsLoadError }}</p>
+        <p v-else-if="rooms.length === 0" class="mt-1 text-[10px] text-text-muted">
+          Este hotel todavía no tiene habitaciones cargadas — creálas primero en Operaciones → Habitaciones.
+        </p>
+      </div>
+
       <!-- Loading skeleton -->
       <div v-if="loading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <div
@@ -177,6 +200,12 @@
             </div>
           </div>
 
+          <!-- Con varias habitaciones mezcladas en un mismo listado, sin esto no hay forma
+               de saber a cuál pertenece cada foto. -->
+          <div v-if="activeTab === 'room' && item.roomId" class="border-t border-border bg-surface px-1.5 py-1 text-[10px] font-bold text-text-secondary truncate">
+            🛏️ {{ roomLabelById[item.roomId] || 'Habitación eliminada' }}
+          </div>
+
           <!-- Edit alt inline (siempre visible abajo). Antes: `bg-transparent border-0` se
                veía IGUAL que texto plano — nada indicaba que era editable (feedback real de
                usuario: "las personas no van a entender eso"). Ahora: ícono de lápiz + fondo/
@@ -209,7 +238,7 @@
              arriba, más visual/descubrible que el botón de texto solo. -->
         <button
           type="button"
-          :disabled="uploading || atMediaLimit"
+          :disabled="uploading || atMediaLimit || !canUpload"
           @click="openFilePicker"
           class="group grid aspect-4/3 w-full cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border bg-surface transition-all hover:border-cyan hover:bg-cyan/5 disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -220,6 +249,10 @@
           <div v-else-if="atMediaLimit" class="flex flex-col items-center gap-1 px-2 text-center">
             <span class="text-2xl leading-none">🔒</span>
             <span class="text-[11px] font-bold text-text-muted">Máximo de {{ MAX_MEDIA_PER_TYPE }} alcanzado</span>
+          </div>
+          <div v-else-if="!canUpload" class="flex flex-col items-center gap-1 px-2 text-center">
+            <span class="text-2xl leading-none">🛏️</span>
+            <span class="text-[11px] font-bold text-text-muted">Elegí una habitación arriba</span>
           </div>
           <div v-else class="flex flex-col items-center gap-1">
             <span class="text-4xl font-light leading-none text-text-muted transition-colors group-hover:text-cyan">+</span>
@@ -247,11 +280,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { HotelMediaService, type HotelMediaItem, type HotelMediaType } from '@/services/HotelMedia.service'
+import { RoomService } from '@/services/Room.service'
+import type { Room } from '@/types'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth.store'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
 const toast = useToast()
+const auth = useAuthStore()
 
 // ─── Tabs ──────────────────────────────────────────────────────────────────
 type TabId = HotelMediaType
@@ -350,7 +387,36 @@ watch(activeTab, () => { load() })
 onMounted(() => {
   load()
   loadCounts()
+  loadRooms()
 })
+
+// ─── Habitaciones (tab 'room') ──────────────────────────────────────────────
+// Bug real reportado por usuario ("HABITACION ta dando error"): el backend exige `roomId`
+// para type=room (`ValidationError('roomId es obligatorio para type=room')`) pero el upload
+// nunca lo mandaba — CUALQUIER subida en este tab fallaba siempre. Fix: selector de qué
+// habitación física es la foto (se agrupan por roomId real en la landing pública, no por
+// tipo de habitación — `hotel-media/controller.ts:groupRoomPhotos`).
+const rooms = ref<Room[]>([])
+const roomsLoadError = ref('')
+const selectedRoomId = ref('')
+
+async function loadRooms() {
+  try {
+    const { rooms: list } = await RoomService.list({ hotelId: auth.user?.hotelId, limit: 200 })
+    rooms.value = list
+  } catch (e) {
+    roomsLoadError.value = (e as Error)?.message || 'No pudimos cargar las habitaciones.'
+  }
+}
+
+const roomLabelById = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const r of rooms.value) map[r.id] = r.name ? `${r.number} · ${r.name}` : r.number
+  return map
+})
+
+// El upload en 'room' necesita una habitación elegida — en otros tabs no aplica.
+const canUpload = computed(() => activeTab.value !== 'room' || !!selectedRoomId.value)
 
 // ─── Alt inline ────────────────────────────────────────────────────────────
 // Un draft por item para poder editar sin disparar un request por tecla.
@@ -480,6 +546,11 @@ async function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   const files = Array.from(input.files ?? [])
   if (files.length === 0) return
+  if (!canUpload.value) {
+    actionError.value = 'Elegí una habitación antes de subir la foto.'
+    if (fileInputRef.value) fileInputRef.value.value = ''
+    return
+  }
   uploading.value = true
   actionError.value = ''
   const failed: string[] = []
@@ -494,6 +565,7 @@ async function onFileChange(e: Event) {
           url: dataUrl,
           alt: file.name.replace(/\.[^.]+$/, '').slice(0, 80) || null,
           fileName: file.name,
+          roomId: activeTab.value === 'room' ? selectedRoomId.value : undefined,
         })
         items.value = [...items.value, created as HotelMediaItem]
           .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
