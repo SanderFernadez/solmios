@@ -110,6 +110,33 @@ describe('listByHotel', () => {
     }
   })
 
+  it('FIX 2026-07-31 — reconcilia types faltantes en hotel YA existente (no solo hotel en cero)', async () => {
+    // Hotel viejo con los 9 bloques pre-existentes (antes de que `trust-badges` se agregara al
+    // catálogo). Antes del fix, `existing.length===0` era la única condición de reseed → un
+    // hotel con 9/10 bloques nunca recibía el 10mo agregado al código. Ahora reconciliar dispara
+    // con CUALQUIER faltante.
+    const nine: LandingBlockDTO[] = BLOCK_TYPES
+      .filter((t) => t !== 'trust-badges')
+      .map((t, i) => ({ id: `b-${t}`, hotelId: 'h1', type: t, config: defaultConfigFor(t), sortOrder: i, active: true, createdAt: '', updatedAt: '' }))
+    let seededTrustBadges = false
+    const deps = makeDeps({
+      blocks: {
+        ...(makeDeps().blocks!),
+        findMany: async () => (seededTrustBadges ? [...nine, {
+          id: 'b-trust-badges', hotelId: 'h1', type: 'trust-badges', config: defaultConfigFor('trust-badges'), sortOrder: 1, active: true, createdAt: '', updatedAt: '',
+        }] : nine),
+        findOne: async ({ type }: any) => nine.find((b) => b.type === type) ?? null,
+        create: async (data: any) => {
+          if (data.type === 'trust-badges') seededTrustBadges = true
+          return { id: `auto-${data.type}`, ...data } as LandingBlockDTO
+        },
+      } as any,
+    })
+    const { data, total } = await listByHotel(deps, 'h1', adminUser)
+    expect(total).toBe(10)
+    expect(data.some((b) => b.type === 'trust-badges')).toBe(true)
+  })
+
   it('rechaza si el user es de otro hotel (ownership)', async () => {
     const deps = makeDeps({
       userRepo: { findOne: async () => ({ hotelId: 'h2' }) } as any,
@@ -315,7 +342,16 @@ describe('listPublicBySlug', () => {
     ]
     const deps = makeDeps({
       hotels: { findOne: async () => hotel } as any,
-      blocks: { findMany: async () => blocks } as any,
+      // Fixture deliberadamente parcial (3/10 types) para testear el filtro active=false en
+      // aislamiento. FIX 2026-07-31: listPublicBySlug ahora re-siembra si faltan types (no solo
+      // en cero bloques) — findOne/create deben existir para que seedDefaults no explote, pero
+      // findMany queda fijo en los 3 items del fixture (no es la reconciliación lo que este test
+      // cubre — esa la cubre `listByHotel > FIX 2026-07-31 — reconcilia types faltantes...`).
+      blocks: {
+        findMany: async () => blocks,
+        findOne: async ({ type }: any) => blocks.find((b) => b.type === type) ?? null,
+        create: async (data: any) => data,
+      } as any,
     })
     const { data } = await listPublicBySlug(deps, 'mi-hotel')
     expect(data.map((b) => b.type)).toEqual(['hero', 'faq']) // reviews quedó fuera

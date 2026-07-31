@@ -98,6 +98,12 @@ export async function seedDefaults(deps: BlocksCrudDeps, hotelId: string): Promi
 /**
  * Lista los bloques del hotel del admin, ordenados por `sortOrder` ASC. Dispara el
  * seeder lazy si el hotel no tiene filas (spec scenario "Bloques default para hotel nuevo").
+ *
+ * FIX 2026-07-31 (hero-search-rooms-content) — antes solo re-sembraba si `existing.length===0`,
+ * así que un hotel con los 9 bloques viejos NUNCA recibía el 10mo (`trust-badges`) agregado al
+ * catálogo: `seedDefaults` es idempotente por-type (skippea los que ya existen) pero nunca se
+ * llamaba porque el hotel "ya tenía bloques". Ahora dispara si falta CUALQUIER type del catálogo,
+ * no solo cuando está en cero — reconciliación, no solo alta inicial.
  */
 export async function listByHotel(
   deps: BlocksCrudDeps,
@@ -106,10 +112,11 @@ export async function listByHotel(
 ): Promise<{ data: LandingBlockDTO[]; total: number }> {
   await assertOwnershipOf(deps, hotelId, user)
   const existing = await deps.blocks.findMany({ hotelId })
-  if (existing.length === 0) {
+  const needsSeed = existing.length < BLOCK_TYPES.length
+  if (needsSeed) {
     await seedDefaults(deps, hotelId)
   }
-  const data = (existing.length > 0 ? existing : await deps.blocks.findMany({ hotelId }))
+  const data = (needsSeed ? await deps.blocks.findMany({ hotelId }) : existing)
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   return { data, total: data.length }
@@ -235,12 +242,13 @@ export async function listPublicBySlug(
   }
   const hotelId = hotel.id as string
 
-  // Seeder lazy (mismo criterio que listByHotel del admin).
+  // Seeder lazy (mismo criterio que listByHotel del admin — reconciliación, no solo alta inicial).
   const existing = await deps.blocks.findMany({ hotelId })
-  if (existing.length === 0) {
+  const needsSeed = existing.length < BLOCK_TYPES.length
+  if (needsSeed) {
     await seedDefaults(deps, hotelId)
   }
-  const all = existing.length > 0 ? existing : await deps.blocks.findMany({ hotelId })
+  const all = needsSeed ? await deps.blocks.findMany({ hotelId }) : existing
 
   // Allow-list: NO devolvemos `hotelId` ni `active` (siempre true acá). Mantener `id`
   // para que el frontend pueda trackear bloques al hacer reorder sin ida al admin.
