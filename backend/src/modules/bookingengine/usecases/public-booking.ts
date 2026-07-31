@@ -62,6 +62,10 @@ export interface PublicBookingExtraDeps {
   upsells?: RepositoryAdapter<any>
   /** Repo de `Configuration` para leer la tasa de impuesto del hotel (configuration('taxes')). */
   config?: RepositoryAdapter<any>
+  /** FIX 2026-07-31 — Repo de `BookingConfig` (booking_config). Defensa en profundidad: si
+   *  `/rates` bloquea por `enabled=false` un guest normal nunca llega acá, pero un caller
+   *  directo del POST sí podría — mismo gate acá. Opcional (compat callers/tests viejos). */
+  bookingConfig?: RepositoryAdapter<any>
 }
 
 /**
@@ -196,6 +200,16 @@ export async function createPublicBookingDirect(
     return { status: 400, body: { error: 'Campos requeridos: hotelId, guestName, guestEmail, checkIn, checkOut, y roomId o roomType' } }
   }
   if (checkIn >= checkOut) return { status: 400, body: { error: 'checkIn debe ser anterior a checkOut' } }
+
+  // FIX 2026-07-31 — defensa en profundidad del toggle "Activo/Inactivo": `/rates` ya bloquea
+  // antes de esto para un guest normal, pero un POST directo (integrador, replay) podía
+  // saltearlo. Mismo criterio: el hotel/tipo "no existe" en vez de revelar que está pausado.
+  if (extraDeps?.bookingConfig) {
+    const bookingConfig = await extraDeps.bookingConfig.findOne({ hotelId })
+    if (bookingConfig && bookingConfig.enabled === false) {
+      return { status: 404, body: { error: 'Hotel no encontrado' } }
+    }
+  }
 
   // ─── Resolución de la habitación (FIX 2026-07-30, ver cabecera del archivo) ────────
   // 1) `roomId` real (compat callers viejos): si resuelve a una fila de `Rooms`, se usa tal

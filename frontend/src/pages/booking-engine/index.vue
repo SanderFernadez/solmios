@@ -14,9 +14,20 @@
           <span v-if="!configLoaded" class="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500">
             ● Cargando…
           </span>
-          <span v-else class="text-xs font-bold px-3 py-1 rounded-full" :class="form.enabled ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">
+          <!-- FIX 2026-07-31 — QA encontró que esto era un badge de SOLO LECTURA: el toggle
+               "Activo/Inactivo" ahora sí apaga/prende el motor público (ver public-rates.ts),
+               pero no había forma de cambiarlo desde la UI. Ahora es clickeable — como el resto
+               del form, requiere "Guardar" para persistir (sin autosave sorpresa). -->
+          <button
+            v-else
+            type="button"
+            @click="form.enabled = !form.enabled"
+            :title="form.enabled ? 'Click para desactivar el motor de reservas' : 'Click para activar el motor de reservas'"
+            class="text-xs font-bold px-3 py-1 rounded-full cursor-pointer transition-colors"
+            :class="form.enabled ? 'bg-teal/10 text-teal hover:bg-teal/20' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+          >
             ● {{ form.enabled ? 'Activo' : 'Inactivo' }}
-          </span>
+          </button>
           <button @click="saveConfig" :disabled="saving || !configLoaded" class="px-4 py-2 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50">
             {{ saving ? 'Guardando...' : 'Guardar' }}
           </button>
@@ -216,6 +227,44 @@
               </div>
             </div>
 
+            <!-- FIX 2026-07-31 — antes minNights/maxNights/cancellationPolicy se guardaban
+                 (defaults 1/30/'') pero NO había ningún input para cambiarlos: el backend ya
+                 los hacía cumplir (ver public-rates.ts) pero el admin no tenía forma de
+                 configurarlos. -->
+            <div class="mt-6 pt-6 border-t border-border">
+              <label class="text-[10px] font-bold text-text-muted uppercase mb-3 block">Reglas de estadía</label>
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Mínimo de noches</label>
+                  <input
+                    v-model.number="form.minNights"
+                    type="number"
+                    min="1"
+                    class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan"
+                  />
+                </div>
+                <div>
+                  <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Máximo de noches</label>
+                  <input
+                    v-model.number="form.maxNights"
+                    type="number"
+                    min="1"
+                    class="w-full h-10 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan"
+                  />
+                </div>
+              </div>
+              <div class="mt-4">
+                <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Política de cancelación</label>
+                <textarea
+                  v-model="form.cancellationPolicy"
+                  rows="2"
+                  placeholder="Ej: Cancelación gratis hasta 48h antes del check-in."
+                  class="w-full px-4 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan resize-none"
+                />
+                <p class="mt-1 text-[10px] text-text-muted">Se muestra al huésped en el motor de reservas.</p>
+              </div>
+            </div>
+
             <div class="mt-6 pt-6 border-t border-border">
               <label class="text-[10px] font-bold text-text-muted uppercase mb-3 block">Opciones de Reserva</label>
               <div class="grid md:grid-cols-2 gap-3">
@@ -226,18 +275,22 @@
                     <div class="text-[10px] text-text-muted">Sin intervención manual</div>
                   </div>
                 </label>
-                <label class="flex items-center gap-3 p-3 bg-surface rounded-xl cursor-pointer">
-                  <input type="checkbox" v-model="form.googleAdsEnabled" class="w-4 h-4 text-cyan rounded" />
+                <!-- FIX 2026-07-31 — googleAdsEnabled/whatsappConfirmation se guardaban pero no
+                     existe ninguna integración real detrás (sin feed de Google Hotel Ads, sin
+                     WhatsApp Business API conectado — deuda documentada en CLAUDE.md). Prenderlos
+                     no hacía nada; mejor avisar "Próximamente" que mentirle al merchant. -->
+                <label class="flex items-center gap-3 p-3 bg-surface rounded-xl opacity-60 cursor-not-allowed" title="Todavía no hay integración real detrás de esta opción">
+                  <input type="checkbox" disabled class="w-4 h-4 rounded" />
                   <div>
                     <div class="text-sm font-bold text-navy">Google Hotel Ads</div>
-                    <div class="text-[10px] text-text-muted">Sincronizar tarifas</div>
+                    <div class="text-[10px] text-text-muted">Sincronizar tarifas — Próximamente</div>
                   </div>
                 </label>
-                <label class="flex items-center gap-3 p-3 bg-surface rounded-xl cursor-pointer">
-                  <input type="checkbox" v-model="form.whatsappConfirmation" class="w-4 h-4 text-cyan rounded" />
+                <label class="flex items-center gap-3 p-3 bg-surface rounded-xl opacity-60 cursor-not-allowed" title="Requiere conectar WhatsApp Business API">
+                  <input type="checkbox" disabled class="w-4 h-4 rounded" />
                   <div>
                     <div class="text-sm font-bold text-navy">Confirmación WhatsApp</div>
-                    <div class="text-[10px] text-text-muted">Envío automático</div>
+                    <div class="text-[10px] text-text-muted">Envío automático — Próximamente</div>
                   </div>
                 </label>
                 <label class="flex items-center gap-3 p-3 bg-surface rounded-xl cursor-pointer">

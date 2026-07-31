@@ -111,6 +111,13 @@
       </div>
     </div>
 
+    <!-- FIX 2026-07-31 — el admin la escribe en /panel/booking-engine; antes se guardaba y
+         nunca llegaba hasta acá. Texto libre del merchant, sin traducir (no i18n). -->
+    <p v-if="store.cancellationPolicy" class="text-xs text-text-muted leading-relaxed">
+      <span class="font-bold text-navy">{{ t('pay.cancellationPolicy') }}:</span>
+      {{ store.cancellationPolicy }}
+    </p>
+
     <p v-if="store.error" class="text-sm font-semibold text-red-600">{{ store.error }}</p>
 
     <button

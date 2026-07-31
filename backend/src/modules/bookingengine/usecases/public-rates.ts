@@ -36,6 +36,14 @@ export interface PublicRatesDeps {
   availability: { checkAvailability(q: AvailabilityQuery): Promise<AvailabilityResult> }
   /** Repo de `Configuration` (KV por hotel). Lee `taxes` (por hotel) y `currency_rates` (global). */
   config: RepositoryAdapter<any>
+  /**
+   * FIX 2026-07-31 — Repo de `BookingConfig` (tabla `booking_config`, la que edita el admin en
+   * `/panel/booking-engine`). Antes NINGÚN campo de esa pantalla (enabled/minNights/maxNights/
+   * cancellationPolicy) se leía acá — el toggle "Activo/Inactivo" y los límites de estadía eran
+   * pura decoración, guardaban en la DB pero no afectaban el motor público. Opcional: si no se
+   * cablea, degrada a "todo permitido" (compat con callers/tests viejos).
+   */
+  bookingConfig?: RepositoryAdapter<any>
 }
 
 export interface PublicRatesQuery {
@@ -76,11 +84,31 @@ export async function getPublicRates(
     return { status: 404, body: { error: 'Hotel not found' } }
   }
 
+  // FIX — toggle "Activo/Inactivo" del admin (`/panel/booking-engine`) ahora sí apaga el
+  // motor. Mismo 404 anti-enumeración que `onlineBookingStatus` (no revelar por qué está
+  // apagado). `enabled` default es `true` (config.ts get()) — un hotel que nunca tocó esta
+  // pantalla no se ve afectado.
+  const bookingConfig = deps.bookingConfig ? await deps.bookingConfig.findOne({ hotelId: hotel.id }) : null
+  if (bookingConfig && bookingConfig.enabled === false) {
+    return { status: 404, body: { error: 'Hotel not found' } }
+  }
+
   const sourceCurrency = String(hotel.currency || 'USD').toUpperCase()
   const nights = Math.max(1, Math.round(
     (new Date(query.checkOut).getTime() - new Date(query.checkIn).getTime()) / MS_PER_DAY,
   ))
   const adults = typeof query.guests === 'number' && query.guests > 0 ? query.guests : 2
+
+  // FIX — minNights/maxNights configurados por el admin, antes decorativos. 400 claro (no
+  // 404: el hotel SÍ existe y está activo, solo el rango de fechas no cumple la política).
+  const minNights = Number(bookingConfig?.minNights) || 1
+  const maxNights = Number(bookingConfig?.maxNights) || Infinity
+  if (nights < minNights) {
+    return { status: 400, body: { error: `Estadía mínima: ${minNights} noche${minNights === 1 ? '' : 's'}` } }
+  }
+  if (nights > maxNights) {
+    return { status: 400, body: { error: `Estadía máxima: ${maxNights} noches` } }
+  }
 
   // Disponibilidad via usecase existente (cacheado 60s).
   const availability = await deps.availability.checkAvailability({
@@ -139,6 +167,9 @@ export async function getPublicRates(
       // Eco de los params para que el frontend pueda validar lo que el backend computó.
       checkIn: query.checkIn,
       checkOut: query.checkOut,
+      // FIX — antes se guardaba en booking_config y nunca se exponía; el widget no tenía
+      // forma de mostrarla aunque el admin la hubiera escrito.
+      cancellationPolicy: bookingConfig?.cancellationPolicy || null,
     },
   }
 }

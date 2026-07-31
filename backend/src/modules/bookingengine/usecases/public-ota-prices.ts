@@ -51,6 +51,12 @@ export interface PublicOtaPricesDeps {
   config: RepositoryAdapter<any>
   /** Fetcher inyectable (tests). Default = HTTP real a StayAPI. */
   otaFetcher?: StayApiPricesFetcher
+  /**
+   * FIX 2026-07-31 — Repo de `BookingConfig`. Antes el toggle "Comparar con OTAs" del admin
+   * (`showComparison`) se guardaba pero esta comparación corría SIEMPRE, sin mirarlo — apagarlo
+   * no apagaba nada. Opcional: sin cablear, degrada a "comparación siempre activa" (compat).
+   */
+  bookingConfig?: RepositoryAdapter<any>
 }
 
 export interface PublicOtaPricesQuery {
@@ -160,6 +166,15 @@ export async function getPublicOtaPrices(
     return { status: 404, body: { error: 'Hotel not found' } }
   }
   const hotelCurrency = String(hotel.currency || 'USD').toUpperCase()
+
+  // FIX — respeta el toggle del admin. Corta ANTES de llamar a StayAPI (ahorra la request
+  // externa si el hotel decidió no comparar).
+  if (deps.bookingConfig) {
+    const bookingConfig = await deps.bookingConfig.findOne({ hotelId: hotel.id })
+    if (bookingConfig && bookingConfig.showComparison === false) {
+      return { status: 200, body: { showComparison: false, savings: null, currency: hotelCurrency } }
+    }
+  }
 
   const nights = Math.max(1, Math.round(
     (new Date(query.checkOut).getTime() - new Date(query.checkIn).getTime()) / MS_PER_DAY,

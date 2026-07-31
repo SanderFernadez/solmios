@@ -239,3 +239,47 @@ describe('computeDirectPrice + convertAmount (helpers)', () => {
     expect(__test__.PRICE_EPSILON).toBeGreaterThan(0)
   })
 })
+
+// ─── FIX 2026-07-31 — el toggle "Comparar con OTAs" del admin deja de ser decorativo ───
+describe('getPublicOtaPrices — bookingConfig.showComparison', () => {
+  it('showComparison=false en bookingConfig → apaga SIN llamar a StayAPI (ahorra la request externa)', async () => {
+    let fetcherCalled = false
+    const fetcher: StayApiPricesFetcher = async () => { fetcherCalled = true; return { data: { total: 300, currency: 'USD' } } }
+    const config = makeConfigRepo({
+      h1: [{ key: 'stayapi_api_key', value: 'k' }, { key: 'stayapi_hotel_ids', value: { booking: 'b1' } }],
+    })
+    const bookingConfig = { findOne: async () => ({ hotelId: 'h1', showComparison: false }) }
+    const res = await getPublicOtaPrices(
+      { hotels: makeHotelsRepo(HOTEL), availability: makeAvailability([{ roomType: 'std', price: 100, available: 5 }]), config, otaFetcher: fetcher, bookingConfig: bookingConfig as any },
+      'hotel-a', QUERY,
+    )
+    expect(res.status).toBe(200)
+    expect((res.body as any).showComparison).toBe(false)
+    expect(fetcherCalled).toBe(false)
+  })
+
+  it('showComparison=true en bookingConfig → compara normal', async () => {
+    const fetcher: StayApiPricesFetcher = async () => ({ data: { total: 360, currency: 'USD' } })
+    const config = makeConfigRepo({
+      h1: [{ key: 'stayapi_api_key', value: 'k' }, { key: 'stayapi_hotel_ids', value: { booking: 'b1' } }],
+    })
+    const bookingConfig = { findOne: async () => ({ hotelId: 'h1', showComparison: true }) }
+    const res = await getPublicOtaPrices(
+      { hotels: makeHotelsRepo(HOTEL), availability: makeAvailability([{ roomType: 'std', price: 100, available: 5 }]), config, otaFetcher: fetcher, bookingConfig: bookingConfig as any },
+      'hotel-a', QUERY,
+    )
+    expect((res.body as any).showComparison).toBe(true)
+  })
+
+  it('sin bookingConfig cableado (compat callers viejos) → compara normal', async () => {
+    const fetcher: StayApiPricesFetcher = async () => ({ data: { total: 360, currency: 'USD' } })
+    const config = makeConfigRepo({
+      h1: [{ key: 'stayapi_api_key', value: 'k' }, { key: 'stayapi_hotel_ids', value: { booking: 'b1' } }],
+    })
+    const res = await getPublicOtaPrices(
+      { hotels: makeHotelsRepo(HOTEL), availability: makeAvailability([{ roomType: 'std', price: 100, available: 5 }]), config, otaFetcher: fetcher },
+      'hotel-a', QUERY,
+    )
+    expect((res.body as any).showComparison).toBe(true)
+  })
+})

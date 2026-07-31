@@ -46,6 +46,10 @@ const baseHotel = (overrides: Partial<any> = {}): any => ({
   ...overrides,
 })
 
+/** Mock de `BookingConfig` — FIX 2026-07-31 (enabled/minNights/maxNights/cancellationPolicy
+ *  dejan de ser decorativos). `null` = sin fila (comportamiento default: sin restricciones). */
+const makeBookingConfig = (row: any | null) => ({ findOne: async () => row })
+
 describe('getPublicRates — F2 2.4', () => {
   it('happy path: roomTypes con fromPrice + availableCount + taxBreakdown', async () => {
     const deps = {
@@ -218,5 +222,99 @@ describe('getPublicRates — F2 2.4', () => {
     expect(res.body.taxes).toEqual([{ name: 'IVA', rate: 10 }])
     // 200 × 10% = 20.
     expect(res.body.roomTypes[0].taxBreakdown).toEqual([{ name: 'IVA', rate: 10, amount: 20 }])
+  })
+
+  // ─── FIX 2026-07-31 — booking_config deja de ser decorativo ────────────────────
+  describe('bookingConfig (enabled/minNights/maxNights/cancellationPolicy)', () => {
+    it('enabled=false → MISMO 404 anti-enumeración (toggle "Inactivo" del admin ahora sí apaga el motor)', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+        bookingConfig: makeBookingConfig({ hotelId: 'h1', enabled: false }),
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.status).toBe(404)
+      expect(res.body.error).toBe('Hotel not found')
+    })
+
+    it('sin fila de bookingConfig (nunca tocó la pantalla) → NO bloquea, comportamiento default', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+        bookingConfig: makeBookingConfig(null),
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.status).toBe(200)
+    })
+
+    it('sin bookingConfig cableado (compat callers viejos) → NO bloquea', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.status).toBe(200)
+    })
+
+    it('estadía por debajo de minNights → 400 con mensaje claro', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+        bookingConfig: makeBookingConfig({ hotelId: 'h1', enabled: true, minNights: 3 }),
+      }
+      // 2 noches pedidas, mínimo 3.
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.status).toBe(400)
+      expect(res.body.error).toContain('mínima: 3')
+    })
+
+    it('estadía por encima de maxNights → 400 con mensaje claro', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+        bookingConfig: makeBookingConfig({ hotelId: 'h1', enabled: true, maxNights: 5 }),
+      }
+      // 3 noches (10→13), máximo 5 — OK. Probamos con un rango de 7 noches.
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-17' })
+      expect(res.status).toBe(400)
+      expect(res.body.error).toContain('máxima: 5')
+    })
+
+    it('estadía dentro de [minNights, maxNights] → 200 normal', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+        bookingConfig: makeBookingConfig({ hotelId: 'h1', enabled: true, minNights: 2, maxNights: 10 }),
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-13' })
+      expect(res.status).toBe(200)
+    })
+
+    it('cancellationPolicy se expone en la respuesta (antes se guardaba y nunca se leía)', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+        bookingConfig: makeBookingConfig({ hotelId: 'h1', enabled: true, cancellationPolicy: 'Cancelación gratis hasta 48h antes' }),
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.body.cancellationPolicy).toBe('Cancelación gratis hasta 48h antes')
+    })
+
+    it('sin cancellationPolicy configurada → null (no revienta, no string vacío confuso)', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.body.cancellationPolicy).toBeNull()
+    })
   })
 })

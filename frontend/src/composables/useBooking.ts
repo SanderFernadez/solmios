@@ -203,6 +203,9 @@ export const useBookingStore = defineStore('booking-widget', () => {
   const chargeCurrency = computed(() => ratesResponse.value?.chargeCurrency ?? '')
 
   const nights = computed(() => ratesResponse.value?.nights ?? 0)
+  // FIX 2026-07-31 — antes el admin la escribía en /panel/booking-engine y nunca llegaba al
+  // widget (el backend tampoco la exponía). Ver public-rates.ts.
+  const cancellationPolicy = computed(() => ratesResponse.value?.cancellationPolicy ?? null)
 
   /** Subtotal room+upsells ANTES de promo e impuestos. Promo se aplica sobre este monto. */
   const subtotal = computed(() => {
@@ -647,6 +650,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
     displayCurrency,
     chargeCurrency,
     nights,
+    cancellationPolicy,
     subtotal,
     upsellsTotal,
     promoDiscount,

@@ -125,6 +125,9 @@ export interface PublicRatesResponse {
   chargeCurrency: string
   checkIn: string
   checkOut: string
+  /** FIX 2026-07-31 — texto libre que el admin configura en /panel/booking-engine (antes se
+   *  guardaba y nunca se exponía). null si el hotel no la configuró. */
+  cancellationPolicy: string | null
 }
 
 /** Query params del endpoint de rates. Todos opcionales salvo checkIn/checkOut. */

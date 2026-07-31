@@ -34,6 +34,12 @@ import { getPublicRates } from './usecases/public-rates'
 import { getPublicUpsells } from './usecases/public-upsells'
 // F3 3.15 — Handler público para /ota-prices (comparativo directo vs Booking/Airbnb).
 import { getPublicOtaPrices } from './usecases/public-ota-prices'
+// FIX 2026-07-31 (QA solmi-direct-booking) — getConfig/updateConfig/getAnalytics leían
+// `(req as any).hotelId`, campo que NUNCA existe en el request (auth.authenticate() del
+// framework deja el tenant en `req.user.hotelId`, no en la raíz). hotelId llegaba `undefined`
+// al usecase → `ConfigUseCase.get()` intentaba crear una fila `booking_config` sin hotelId →
+// 500 en cada carga de /panel/booking-engine. Mismo resolver que ya usan reservas/folios/etc.
+import { hotelOf } from '../../shared/utils/hotel-of'
 
 export class BookingengineController {
   constructor(
@@ -58,6 +64,11 @@ export class BookingengineController {
     // romper tests legacy del controller (que instancian con 4 params).
     private readonly configRepo?: RepositoryAdapter<any>,
     private readonly promoCodesRepo?: RepositoryAdapter<any>,
+    // FIX 2026-07-31 — Repo REAL de `BookingConfig` (tabla `booking_config`, lo que edita el
+    // admin en /panel/booking-engine: enabled/minNights/maxNights/showComparison/
+    // cancellationPolicy). Distinto de `configRepo` de arriba (que pese al nombre es la
+    // `Configuration` KV de taxes/currency — no tocado para no romper nada existente).
+    private readonly bookingConfigRepo?: RepositoryAdapter<any>,
   ) {}
 
   /** Deps para los usecases de upsells. Tirar si no están cableadas (claramente un bug de wiring). */
@@ -72,24 +83,24 @@ export class BookingengineController {
 
   async getConfig(req: HttpRequest) {
     this.logger.info('GET /booking-engine/config')
-    const hotelId = (req as any).hotelId
-    const config = await this.service.getConfig(hotelId)
+    const hotelId = await hotelOf(req, this.orm)
+    const config = await this.service.getConfig(hotelId as string)
     return { status: 200, body: config }
   }
 
   async updateConfig(req: HttpRequest) {
     this.logger.info('PUT /booking-engine/config')
-    const hotelId = (req as any).hotelId
+    const hotelId = await hotelOf(req, this.orm)
     const data = validateSchema(UpdateBookingConfigSchema, req.body) as UpdateBookingConfigDTO
-    const config = await this.service.updateConfig(hotelId, data)
+    const config = await this.service.updateConfig(hotelId as string, data)
     return { status: 200, body: config }
   }
 
   async getAnalytics(req: HttpRequest) {
     this.logger.info('GET /booking-engine/analytics')
-    const hotelId = (req as any).hotelId
+    const hotelId = await hotelOf(req, this.orm)
     const { from, to } = req.query as { from?: string; to?: string }
-    const analytics = await this.service.getAnalytics(hotelId, from, to)
+    const analytics = await this.service.getAnalytics(hotelId as string, from, to)
     return { status: 200, body: analytics }
   }
 
@@ -227,7 +238,7 @@ export class BookingengineController {
     // usecase funciona como F0 0.16 (persiste promoCode/upsells sin validarlos). El wiring
     // completo (index.ts) SIEMPRE cablea estos tres repos.
     const extraDeps = (this.configRepo && this.promoCodesRepo && this.upsellRepo)
-      ? { config: this.configRepo, promoCodes: this.promoCodesRepo, upsells: this.upsellRepo }
+      ? { config: this.configRepo, promoCodes: this.promoCodesRepo, upsells: this.upsellRepo, bookingConfig: this.bookingConfigRepo }
       : undefined
     return createPublicBookingDirect(
       this.orm, body,
@@ -250,7 +261,7 @@ export class BookingengineController {
     }
     const query = (req.query || {}) as { checkIn?: string; checkOut?: string; rooms?: string; guests?: string; currency?: string }
     return getPublicRates(
-      { hotels: this.hotelsRepo, availability: this.service, config: this.configRepo },
+      { hotels: this.hotelsRepo, availability: this.service, config: this.configRepo, bookingConfig: this.bookingConfigRepo },
       String(req.params?.slug || ''),
       {
         checkIn: String(query.checkIn || ''),
@@ -289,7 +300,7 @@ export class BookingengineController {
     }
     const query = (req.query || {}) as { checkIn?: string; checkOut?: string; guests?: string }
     return getPublicOtaPrices(
-      { hotels: this.hotelsRepo, availability: this.service, config: this.configRepo },
+      { hotels: this.hotelsRepo, availability: this.service, config: this.configRepo, bookingConfig: this.bookingConfigRepo },
       String(req.params?.slug || ''),
       {
         checkIn: String(query.checkIn || ''),
