@@ -38,6 +38,58 @@ describe('FeedbackService', () => {
         if (originalProjectId) process.env.GITLAB_PROJECT_ID = originalProjectId
       }
     })
+
+    // feedback-user-email (#632): el JWT (req.user) no lleva email → antes TODOS los issues salían
+    // "Usuario: desconocido". Ahora el service lo resuelve por id desde la tabla users. Mockeamos
+    // fetch para capturar el body del POST /issues y asertar el campo Usuario sin pegar a GitLab.
+    function mockGitLabFetch(captured: { body?: any }) {
+      const real = globalThis.fetch
+      const stub: any = async (url: string | URL | Request, init?: any) => {
+        const u = String(url)
+        if (u.endsWith('/issues')) {
+          captured.body = JSON.parse(init.body)
+          return { ok: true, json: async () => ({ web_url: 'https://gitlab/issue/1', iid: 1, title: 't' }) }
+        }
+        return { ok: false, text: async () => 'mock: not found' }
+      }
+      globalThis.fetch = stub
+      return () => { globalThis.fetch = real }
+    }
+
+    it('resuelve el email del autor por userId (no "desconocido") cuando el JWT no lleva email', async () => {
+      process.env.GITLAB_TOKEN = 'test-token'
+      process.env.GITLAB_PROJECT_ID = 'underworf1/solmios'
+      const userRepo = { ...makeRepo(), findById: async () => ({ id: 'u1', email: 'real@solmios.com' }) }
+      const svc = new FeedbackService(makeRepo() as any, log, undefined, userRepo as any)
+      const captured: { body?: any } = {}
+      const restore = mockGitLabFetch(captured)
+      try {
+        await svc.createGitLabIssue({ comment: 'Prueba', route: '/panel/dashboard' }, { id: 'u1' } as any)
+        expect(captured.body.description).toContain('real@solmios.com')
+        expect(captured.body.description).not.toContain('desconocido')
+      } finally {
+        restore()
+        delete process.env.GITLAB_TOKEN
+        delete process.env.GITLAB_PROJECT_ID
+      }
+    })
+
+    it('degrada a "desconocido" si no hay userRepo ni id (el feedback nunca se pierde)', async () => {
+      process.env.GITLAB_TOKEN = 'test-token'
+      process.env.GITLAB_PROJECT_ID = 'underworf1/solmios'
+      // Sin userRepo (4to param) — como un módulo sin users cableado.
+      const svc = new FeedbackService(makeRepo() as any, log)
+      const captured: { body?: any } = {}
+      const restore = mockGitLabFetch(captured)
+      try {
+        await svc.createGitLabIssue({ comment: 'Prueba', route: '/panel/dashboard' }, undefined as any)
+        expect(captured.body.description).toContain('desconocido')
+      } finally {
+        restore()
+        delete process.env.GITLAB_TOKEN
+        delete process.env.GITLAB_PROJECT_ID
+      }
+    })
   })
 
   describe('CRUD pins', () => {

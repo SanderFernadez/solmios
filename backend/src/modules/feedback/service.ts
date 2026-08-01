@@ -12,7 +12,31 @@ export class FeedbackService {
     private readonly pinsRepo: RepositoryAdapter<FeedbackPinDTO>,
     private readonly logger: Logger,
     private readonly auth?: Auth,
+    // feedback-user-email: resolver el email del autor del feedback. El JWT (req.user → CurrentUser)
+    // solo lleva id/hotelId/role; el email NO viaja en el token → sin esto, TODOS los issues de GitLab
+    // salen "Usuario: desconocido" y se pierde la trazabilidad de quién lo envió (bug #632). Mismo
+    // patrón que settlement.loadOrder (userRepo.findById). Opcional para no romper módulos sin users.
+    private readonly userRepo?: RepositoryAdapter<any>,
   ) {}
+
+  /**
+   * feedback-user-email: resuelve el email del autor del feedback. El JWT (req.user → CurrentUser)
+   * solo lleva id/hotelId/role; el email NO viaja en el token. Sin esto, `user?.email` es siempre
+   * undefined y el issue de GitLab sale "Usuario: desconocido" para todos (#632). Lo busca por id en
+   * la tabla users (mismo patrón que settlement.loadOrder). Degrada bien: sin userRepo o si falla la
+   * lectura, vuelve a undefined → el caller cae a 'desconocido', pero el feedback NUNCA se pierde.
+   */
+  private async resolveEmail(user: { id?: string; email?: string } | undefined): Promise<string | undefined> {
+    if (user?.email) return user.email
+    if (!user?.id || !this.userRepo) return undefined
+    try {
+      const u = await this.userRepo.findById(user.id)
+      return (u as any)?.email ?? undefined
+    } catch (e) {
+      this.logger.warn('No se pudo resolver el email del autor del feedback', { userId: user?.id, error: (e as Error).message })
+      return undefined
+    }
+  }
 
   // ── CRUD Feedback Pins ──────────────────────────────────────────────────
   async listPins(hotelId?: string, route?: string): Promise<{ data: FeedbackPinDTO[]; total: number }> {
@@ -30,8 +54,12 @@ export class FeedbackService {
   }
 
   async createPin(dto: CreateFeedbackPinDTO): Promise<FeedbackPinDTO> {
+    // feedback-user-email: el dto trae userEmail del controller, pero user.email es undefined (el JWT
+    // no lleva email). Resolverlo por userId para que el pin registre el autor real, no 'desconocido'.
+    const userEmail = dto.userEmail || await this.resolveEmail({ id: dto.userId, email: dto.userEmail })
     const pin = await this.pinsRepo.create({
       ...dto,
+      userEmail,
       priority: dto.priority || 'medium',
       category: dto.category || 'UI',
       status: 'open',
@@ -102,6 +130,10 @@ export class FeedbackService {
       }
     }
 
+    // feedback-user-email (#632): el JWT no lleva email → user?.email era siempre undefined y el issue
+    // salía "Usuario: desconocido" para todos. Resolverlo por id desde la tabla users; si no se puede,
+    // cae a 'desconocido' (el feedback nunca se pierde por esto).
+    const userEmail = await this.resolveEmail(user)
     const title = `[Feedback] ${comment.length > 72 ? comment.slice(0, 72) + '…' : comment}`
     const descriptionParts = [
       '## 📝 Detalles del Feedback', '',
@@ -111,7 +143,7 @@ export class FeedbackService {
       `| **Coordenadas** | (${x}, ${y}) |`,
       `| **Browser** | ${browser} |`,
       `| **Viewport** | ${viewportWidth}×${viewportHeight} |`,
-      `| **Usuario** | ${user?.email || 'desconocido'} |`,
+      `| **Usuario** | ${userEmail || 'desconocido'} |`,
       `| **Timestamp** | ${new Date().toISOString()} |`,
     ]
     if (imgMarkdown) {

@@ -28,8 +28,11 @@ export function FeedbackModule() {
       registerFeedbackModels(orm)
 
       const pinsRepo = new OrmRepository<FeedbackPinDTO>(orm, 'FeedbackPins')
+      // feedback-user-email (#632): resolver el email del autor del feedback desde users (el JWT no
+      // lleva email). Mismo patrón que restaurant/housekeeping/payments/roles.
+      const userRepo = new OrmRepository<any>(orm, 'Users')
       const log = logger.child('feedback')
-      const service = new FeedbackService(pinsRepo, log, auth)
+      const service = new FeedbackService(pinsRepo, log, auth, userRepo)
       const controller = new FeedbackController(service, log)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
