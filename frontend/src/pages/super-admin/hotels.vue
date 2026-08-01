@@ -13,7 +13,7 @@
         <button @click="viewMode = 'grid'" class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors cursor-pointer" :class="viewMode === 'grid' ? 'bg-navy text-white' : 'bg-white border border-border text-text-muted hover:border-navy/30'">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
         </button>
-        <button @click="openNewHotel" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">+ Nuevo Hotel</button>
+        <button @click="openNewHotel" class="bg-coral text-white font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">+ Nuevo Hotel</button>
       </div>
     </div>
 
@@ -94,7 +94,7 @@
     <SkeletonLoader v-if="loading" variant="table" :rows="6" />
 
     <!-- Vista Tabla -->
-    <div v-else-if="viewMode === 'table'" class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <SectionCard v-else-if="viewMode === 'table'" title="Hoteles" body-class="p-0">
       <table class="w-full tbl-head">
         <thead>
           <tr class="border-b border-border">
@@ -155,7 +155,7 @@
         <div class="text-sm font-bold text-text-muted">No se encontraron hoteles</div>
         <div class="text-[10px] text-text-muted">Intenta ajustar los filtros</div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Vista Grid -->
     <div v-else class="grid grid-cols-3 gap-4">
@@ -276,6 +276,7 @@
 import { ref, computed, onMounted } from 'vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import { HotelAdminService } from '@/services/Platform.service'
 import { PlansService } from '@/services/Plans.service'
