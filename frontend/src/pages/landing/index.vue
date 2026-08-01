@@ -243,7 +243,8 @@
             <p class="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">{{ step.desc }}</p>
           </div>
         </div>
-        <div class="text-center mt-14">
+        <p class="text-center text-slate-600 font-semibold mt-14 mb-2">En pocos minutos tendrás tu hotel listo para comenzar a operar con SolmiOS.</p>
+        <div class="text-center mt-2">
           <router-link
             to="/registro"
             class="group inline-flex items-center gap-2.5 bg-blue text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-blue-200"
