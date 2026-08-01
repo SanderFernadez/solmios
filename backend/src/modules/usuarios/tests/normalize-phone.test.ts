@@ -78,4 +78,28 @@ describe('toStoredPhone', () => {
     const once = toStoredPhone('+1 809 555 0001')
     expect(toStoredPhone(once.phone)).toEqual(once)
   })
+
+  // #582: delimitar — un teléfono fuera del rango E.164 (7-15 dígitos) no debe persistirse. El
+  // feedback reportó "77777777777777777777777777" (26 dígitos) aceptado en /panel/empleados, que
+  // "puede causar error en la db".
+  it('rechaza un teléfono con más de 15 dígitos (el caso del feedback: 26 dígitos)', () => {
+    expect(() => toStoredPhone('77777777777777777777777777')).toThrow(/Teléfono inválido/)
+    expect(() => toStoredPhone('+1 809 555 0001 999 888')).toThrow(/Teléfono inválido/)
+  })
+
+  it('rechaza un teléfono con menos de 7 dígitos', () => {
+    expect(() => toStoredPhone('12345')).toThrow(/Teléfono inválido/)
+    expect(() => toStoredPhone('+1 23')).toThrow(/Teléfono inválido/)
+  })
+
+  it('acepta los límites del rango E.164 (7 y 15) e internacionales', () => {
+    expect(toStoredPhone('1234567')).toEqual({ phone: '1234567' })                // 7 (mín)
+    expect(toStoredPhone('5215512345678')).toEqual({ phone: '5215512345678' })    // 13 (MX)
+    expect(toStoredPhone('346001234561234')).toEqual({ phone: '346001234561234' }) // 15 (máx)
+  })
+
+  it('sigue permitiendo vacío/undefined (campo opcional) sin lanzar', () => {
+    expect(toStoredPhone('')).toEqual({ phone: '' })
+    expect(toStoredPhone(undefined)).toEqual({})
+  })
 })
