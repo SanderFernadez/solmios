@@ -1,15 +1,16 @@
 <template>
   <!--
-    MapBlock — mapa Leaflet con marker en [hotel.latitude, hotel.longitude].
-    LAZY-LOAD obligatorio (spec landing-builder): Leaflet (JS + CSS) NO se carga hasta que el
-    bloque entra en viewport (IntersectionObserver). Recién ahí hago `await import('leaflet')`.
+    MapBlock — mapa embebido de Google Maps (sin API key, formato público de "compartir mapa"
+    con `output=embed`) centrado en [hotel.latitude, hotel.longitude].
 
     GUARD de coords: si hotel.latitude=0 y hotel.longitude=0 (o fuera de rango) → NO renderizo
     nada (spec acceptance: "hotel.latitude=0 → el bloque no se renderiza"). El orquestador
     también OMITE el bloque por v-if — doble guard acá.
 
-    Uso Leaflet vanilla sobre un `ref` (más simple que @vue-leaflet/vue-leaflet, sin extra deps
-    reactivas que no necesitamos para 1 marker estático).
+    FIX 2026-08-01 (pedido de usuario) — antes usaba Leaflet + tiles de OpenStreetMap con
+    lazy-load manual vía IntersectionObserver + dynamic import. Reemplazado por un <iframe>:
+    sin dependencia extra en el bundle, lazy-load nativo del browser (`loading="lazy"`) en vez
+    de un observer a mano.
   -->
   <section v-if="hasValidCoords" class="bg-surface border-y border-border">
     <div class="max-w-6xl mx-auto px-6 py-16">
@@ -29,23 +30,23 @@
           rel="noopener noreferrer"
           class="hidden sm:inline-flex items-center gap-2 text-xs font-bold text-cyan hover:text-cyan-light transition-colors whitespace-nowrap"
         >
-          Ver en OpenStreetMap ↗
+          Ver en Google Maps ↗
         </a>
       </header>
 
-      <!--
-        El contenedor del mapa. Lo monto siempre (con guard hasValidCoords), pero Leaflet
-        recién arranca cuando `visible=true` (IntersectionObserver dispara). Placeholder
-        visual hasta que cargue.
-      -->
       <div
-        ref="containerRef"
         class="relative w-full h-[360px] sm:h-[440px] rounded-2xl overflow-hidden border border-border bg-surface-dark shadow-card"
       >
-        <div v-if="!mapReady" class="absolute inset-0 flex items-center justify-center">
-          <div class="text-text-muted text-sm">Cargando mapa…</div>
-        </div>
-        <!-- Leaflet pinta acá adentro cuando arranca -->
+        <iframe
+          :src="mapSrc"
+          width="100%"
+          height="100%"
+          style="border: 0"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          allowfullscreen
+          :title="`Mapa — ${hotel.name}`"
+        />
       </div>
 
       <a
@@ -55,29 +56,15 @@
         rel="noopener noreferrer"
         class="sm:hidden mt-3 inline-flex items-center gap-2 text-xs font-bold text-cyan"
       >
-        Ver en OpenStreetMap ↗
+        Ver en Google Maps ↗
       </a>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { LandingBlock, PublicHotelInfo, PublicHotelMedia } from '@/types'
-
-// Import TIPO-only (se borra en runtime, no entra al bundle).
-import type * as Leaflet from 'leaflet'
-
-// FIX 2026-07-31 (QA en prod) — bug clásico de Leaflet + bundlers: los íconos default del
-// marker se referencian con una ruta relativa calculada en runtime desde la ubicación del
-// CSS de Leaflet, que Vite no reproduce → 404 (marker-icon.png resolvía a `/h/marker-icon.png`,
-// dentro de la ruta de la landing, no del root). Fix estándar: importar los PNG como assets de
-// Vite (URLs hasheadas correctas) y pisar `L.Icon.Default` con esas URLs. Son 3 imágenes chicas
-// (~5KB total) — importarlas estático no le pega al lazy-load real (Leaflet JS/CSS siguen
-// siendo dynamic import más abajo).
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 
 const props = defineProps<{
   block: LandingBlock
@@ -120,104 +107,16 @@ const hasValidCoords = computed(() => {
   )
 })
 
+// Embed público de Google Maps (sin API key): formato clásico "compartir mapa" con output=embed.
+const mapSrc = computed(() => {
+  if (!hasValidCoords.value) return ''
+  const { latitude, longitude } = props.hotel
+  return `https://www.google.com/maps?q=${latitude},${longitude}&z=15&output=embed`
+})
+
 const externalMapUrl = computed(() => {
   if (!hasValidCoords.value) return null
   const { latitude, longitude } = props.hotel
-  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`
-})
-
-// ── Lazy-load del mapa ─────────────────────────────────────────────────────
-const containerRef = ref<HTMLElement | null>(null)
-const mapReady = ref(false)
-let mapInstance: Leaflet.Map | null = null
-let observer: IntersectionObserver | null = null
-let leafletModule: typeof Leaflet | null = null
-
-async function bootstrapMap() {
-  if (mapInstance || !containerRef.value || !hasValidCoords.value) return
-
-  // Dynamic import: Leaflet (y su CSS) NO entran al bundle principal ni se descargan
-  // hasta este punto. Spec landing-builder "Lazy-load".
-  const L = await import('leaflet')
-  leafletModule = L
-  // CSS también viene del package (Vite lo inyecta como <style> en runtime, no como <link>).
-  await import('leaflet/dist/leaflet.css')
-
-  // FIX — pisa la detección de ruta rota del ícono default (ver import de arriba). `delete`
-  // del getter interno es el workaround documentado oficialmente por Leaflet para bundlers.
-  delete (L.Icon.Default.prototype as any)._getIconUrl
-  L.Icon.Default.mergeOptions({
-    iconUrl: markerIcon,
-    iconRetinaUrl: markerIcon2x,
-    shadowUrl: markerShadow,
-  })
-
-  if (!containerRef.value) return // el usuario pudo navegar fuera mientras cargaba
-
-  const { latitude, longitude } = props.hotel
-  mapInstance = L.map(containerRef.value, {
-    center: [latitude, longitude],
-    zoom: 15,
-    scrollWheelZoom: false, // UX: scroll dentro del mapa no captura la rueda del page.
-  })
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-  }).addTo(mapInstance)
-
-  const marker = L.marker([latitude, longitude]).addTo(mapInstance)
-  if (props.hotel.name) marker.bindPopup(props.hotel.name)
-
-  mapReady.value = true
-}
-
-function teardownMap() {
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
-  }
-  mapReady.value = false
-}
-
-onMounted(() => {
-  if (!containerRef.value) return
-  // IntersectionObserver para disparar el lazy-load cuando el bloque es visible.
-  if ('IntersectionObserver' in window) {
-    observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            void bootstrapMap()
-            observer?.disconnect()
-            observer = null
-            break
-          }
-        }
-      },
-      { rootMargin: '200px' }, // un poco antes para que arranque sin que el usuario vea el placeholder
-    )
-    observer.observe(containerRef.value)
-  } else {
-    // Fallback (browser viejo): lazy-load inmediato.
-    void bootstrapMap()
-  }
-})
-
-onBeforeUnmount(() => {
-  observer?.disconnect()
-  observer = null
-  teardownMap()
-})
-
-// Si las coords cambian (raro en runtime pero posible tras re-fetch) → reseteo el mapa.
-watch(() => [props.hotel.latitude, props.hotel.longitude], () => {
-  teardownMap()
-  if (leafletModule && containerRef.value) void bootstrapMap()
+  return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
 })
 </script>
-
-<style scoped>
-/* Leaflet necesita altura explícita en su container — dada acá via Tailwind (h-[360px]).
-   Estilos internos de Leaflet (zoom control, popup) vienen del CSS importado. */
-</style>
