@@ -93,6 +93,12 @@ export function restaurantePaymentsConnector(ctx: ConnectorContext): void {
     onPaymentCompleted: async (payment: any) => {
       const orderId = payment?.metadata?.orderId
       if (payment?.metadata?.source !== 'restaurant' || !orderId) return
+      // El callback SOLO confirma cobros CON TARJETA diferidos (Checkout Session → la orden quedó
+      // `processing_payment` esperando el webhook). cash/transfer son inmediatos: recordPayment los
+      // crea `completed` y payOrder() ya marca la orden `paid` por su cuenta — llamar settlePaidOrder
+      // acá chocaría con su guard de estado (la orden no está `processing_payment`) y rompería el
+      // cobro directo, dejando el payment colgando sin marcar la comanda (bug e2e 2026-08-01).
+      if (payment?.method !== 'card') return
       await restaurant.settlePaidOrder(orderId, payment.id, sys)
     },
     onPaymentExpired: async (payment: any) => {

@@ -71,15 +71,27 @@ describe('restaurantePaymentsConnector — chargeCardPayment (fix-refund-pos-car
 })
 
 describe('restaurantePaymentsConnector — socket inverso onPaymentCompleted/onPaymentExpired', () => {
-  it('onPaymentCompleted con source=restaurant llama settlePaidOrder(orderId, paymentId)', async () => {
+  it('onPaymentCompleted con source=restaurant y method=card llama settlePaidOrder(orderId, paymentId)', async () => {
     const { ctx, paymentsSockets, settlePaidOrderCalls } = makeCtx()
     restaurantePaymentsConnector(ctx)
 
-    await paymentsSockets.onPaymentCompleted({ id: 'pay1', metadata: { source: 'restaurant', orderId: 'o1' } })
+    await paymentsSockets.onPaymentCompleted({ id: 'pay1', method: 'card', metadata: { source: 'restaurant', orderId: 'o1' } })
 
     expect(settlePaidOrderCalls).toHaveLength(1)
     expect(settlePaidOrderCalls[0].orderId).toBe('o1')
     expect(settlePaidOrderCalls[0].paymentId).toBe('pay1')
+  })
+
+  it('onPaymentCompleted con method=cash/transfer NO llama settlePaidOrder (cobro directo: payOrder ya marca paid)', async () => {
+    const { ctx, paymentsSockets, settlePaidOrderCalls } = makeCtx()
+    restaurantePaymentsConnector(ctx)
+
+    await paymentsSockets.onPaymentCompleted({ id: 'pay_cash', method: 'cash', metadata: { source: 'restaurant', orderId: 'o1' } })
+    await paymentsSockets.onPaymentCompleted({ id: 'pay_xfer', method: 'transfer', metadata: { source: 'restaurant', orderId: 'o2' } })
+
+    // Regresión bug e2e 2026-08-01: el callback disparaba settlePaidOrder para cash, que chocaba con
+    // el guard de estado (!== processing_payment) y rompía el cobro directo (payment colgando, orden sin paid).
+    expect(settlePaidOrderCalls).toHaveLength(0)
   })
 
   it('onPaymentCompleted con OTRO source (folios/reservas) NO toca al restaurant', async () => {
