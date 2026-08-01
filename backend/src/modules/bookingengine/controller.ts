@@ -322,6 +322,15 @@ export class BookingengineController {
    * F1 1.11 — Sitemap dinámico (`GET /sitemap.xml`). Lista `/h/:slug` por cada hotel con
    * `onlineBookingStatus='active'`. Público (sin auth), cache-friendly. Devuelve XML crudo
    * con su Content-Type (mismo patrón que `facturas/print` y `capacitacion` para HTML/PDF).
+   *
+   * FIX 2026-08-01 (issue GitLab #563) — `kernel/http/server.ts` solo se salta el envelope
+   * JSON (`{success,data,meta,error}`) cuando `res.body` es un `Buffer` (`Buffer.isBuffer`);
+   * un string plano SIEMPRE se envuelve, sin importar el `content-type` declarado. Un crawler
+   * pidiendo `/sitemap.xml` recibía JSON con el XML escapado adentro de `data`, no XML crudo —
+   * un sitemap "válido" que en realidad nunca fue parseable por Google. Mismo bug afecta a
+   * `facturas/controller.ts:printInvoice` (retorna `body: html` sin Buffer) — no lo toco acá
+   * (fuera del alcance de #563), pero queda documentado para no repetir el error en el próximo
+   * endpoint "raw body" que se agregue.
    */
   async getSitemap(req: HttpRequest) {
     this.logger.info('GET /sitemap.xml')
@@ -331,7 +340,7 @@ export class BookingengineController {
     return {
       status: 200,
       headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': SITEMAP_CACHE_CONTROL },
-      body: xml,
+      body: Buffer.from(xml, 'utf-8'),
     }
   }
 
