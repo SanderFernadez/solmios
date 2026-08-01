@@ -168,6 +168,7 @@
                     :style="barStyle(room.id, day)"
                     @mousedown.stop="onResDown(gRes(room.id, day.dateStr)!, $event)"
                     @click.stop="openContext($event, gRes(room.id, day.dateStr)!, room)"
+                    @dblclick.stop="openResDirect(gRes(room.id, day.dateStr)!)"
                     @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
                     <ChannelIcon :channel="gRes(room.id, day.dateStr)!.chKey" :size="13" class="mr-1 shrink-0 ring-1 ring-white/40 rounded-[4px]" />
                     <span class="text-[9px] font-extrabold truncate text-white"><span v-if="gRes(room.id, day.dateStr)!.pax" class="text-white/75">{{ gRes(room.id, day.dateStr)!.pax }}P·</span>{{ gRes(room.id, day.dateStr)!.name }}</span>
@@ -1242,6 +1243,18 @@ function openContext(ev: MouseEvent, rb: any, room: any) {
     fromDate: ci, toDate: co, nights: Math.max(1, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / MS_PER_DAY)),
     res: orig, blk: null,
   }
+}
+
+/** Doble clic sobre una reserva: abre el detalle directo, sin pasar por el menú contextual
+ *  (feedback #630 — "deberían poder abrir la reserva con doble clic"). El navegador dispara
+ *  2× `click` (que abre el popup vía `openContext`) ANTES del `dblclick` — hay que cerrar ese
+ *  popup acá, si no queda tapando el modal de detalle que abre `viewResDetail`. */
+function openResDirect(rb: any) {
+  if (suppressClick) { suppressClick = false; return } // venía de un drag, no de un click
+  const orig = planReservas.value.find((b: any) => b.id === rb.id)
+  if (!orig) return
+  popup.value.show = false
+  viewResDetail(orig)
 }
 // ── Mover / extender reserva por drag de puntero, con preview en vivo (#204/#207) ──
 function addDaysStr(ds: string, n: number): string { const d = new Date(ds + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
