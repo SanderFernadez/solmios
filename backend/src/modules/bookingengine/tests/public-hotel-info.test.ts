@@ -199,6 +199,58 @@ describe('F0 0.4 — 404 genérico: slug inexistente Y onlineBookingStatus!=acti
   })
 })
 
+describe('googleMapsApiKey — resuelto vía configuration KV con fallback a platform (2026-08-01)', () => {
+  it('sin dep `config` (caller viejo) → null, no revienta', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const dto = await getPublicHotelInfo({ hotels }, 'hotel-paraiso', undefined)
+    expect(dto.googleMapsApiKey).toBeNull()
+  })
+
+  it('con dep `config` pero sin fila ni para el hotel ni para platform → null', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const config = backed<any>([])
+    const dto = await getPublicHotelInfo({ hotels, config }, 'hotel-paraiso', undefined)
+    expect(dto.googleMapsApiKey).toBeNull()
+  })
+
+  it('key propia del hotel (hotelId=h1) → se usa esa, no la de platform', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const config = backed<any>([
+      { hotelId: 'h1', key: 'google_maps', value: JSON.stringify({ apiKey: 'key-del-hotel' }) },
+      { hotelId: 'platform', key: 'google_maps', value: JSON.stringify({ apiKey: 'key-de-platform' }) },
+    ])
+    const dto = await getPublicHotelInfo({ hotels, config }, 'hotel-paraiso', undefined)
+    expect(dto.googleMapsApiKey).toBe('key-del-hotel')
+  })
+
+  it('sin key propia del hotel → cae a la de platform (mismo fallback que hoteles/usecases/config-kv.ts)', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const config = backed<any>([
+      { hotelId: 'platform', key: 'google_maps', value: JSON.stringify({ apiKey: 'key-de-platform' }) },
+    ])
+    const dto = await getPublicHotelInfo({ hotels, config }, 'hotel-paraiso', undefined)
+    expect(dto.googleMapsApiKey).toBe('key-de-platform')
+  })
+
+  it('value con apiKey vacío/espacios → null (no expone un string vacío como si fuera key válida)', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const config = backed<any>([
+      { hotelId: 'platform', key: 'google_maps', value: JSON.stringify({ apiKey: '   ' }) },
+    ])
+    const dto = await getPublicHotelInfo({ hotels, config }, 'hotel-paraiso', undefined)
+    expect(dto.googleMapsApiKey).toBeNull()
+  })
+
+  it('value corrupto (JSON inválido) → null, no revienta el endpoint público', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const config = backed<any>([
+      { hotelId: 'platform', key: 'google_maps', value: '{not json' },
+    ])
+    const dto = await getPublicHotelInfo({ hotels, config }, 'hotel-paraiso', undefined)
+    expect(dto.googleMapsApiKey).toBeNull()
+  })
+})
+
 describe('F0 0.5 — rate-limit en endpoints públicos (60/60s para getHotelPublicInfo)', () => {
   it('60 requests de la misma IP permiten, la 61ª bloquea con retryAfter > 0', () => {
     // Clave ÚNICA por test (UUID) — el rate-limit es un Map global en memoria; sin esto,

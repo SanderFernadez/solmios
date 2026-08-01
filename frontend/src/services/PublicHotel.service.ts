@@ -2,7 +2,7 @@
 // solmi-direct-booking / Pieza 6a).
 //
 // Tres endpoints públicos (sin auth, rate-limited por IP en el backend):
-//   - GET /api/public/hotel/:slug               → PublicHotelInfo (32 campos, allow-list estricta)
+//   - GET /api/public/hotel/:slug               → PublicHotelInfo (33 campos, allow-list estricta)
 //   - GET /api/public/hotels/:slug/media         → PublicHotelMedia (endpoint F0 0.8, futuro)
 //   - GET /api/public/hotels/:slug/reviews       → PublicReviewsResponse
 //
@@ -36,7 +36,7 @@ export const PublicHotelService = {
    *
    * El backend aplica i18n sobre `title`/`description` cuando llega `?lang=` (resuelve
    * `descriptionTranslations[lang]` o cae al español base de `descriptionJson`). El resto
-   * de los 32 campos son estables (no cambian por idioma).
+   * de los 33 campos son estables (no cambian por idioma).
    *
    * @param slug  slug estable del hotel (NO el id, NO el name computado).
    * @param lang  'es' (default backend) | 'en' | 'pt' — solo afecta title/description.

@@ -44,6 +44,7 @@ const HOTEL: PublicHotelInfo = {
   logo: null,
   amenities: ['pool', 'wifi'],
   onlineBookingStatus: 'active',
+  googleMapsApiKey: null,
 }
 
 const MEDIA: PublicHotelMedia = {

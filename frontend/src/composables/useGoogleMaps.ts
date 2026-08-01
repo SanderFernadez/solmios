@@ -7,13 +7,30 @@
 // Si no hay key configurada, `loadGoogleMaps()` devuelve null y la pantalla usa el iframe embed
 // (que no requiere key pero no permite mover el pin con el mouse). Es degradación, no error:
 // la plataforma tiene que seguir funcionando sin cuenta de Google.
+//
+// FIX 2026-08-01 — la landing PÚBLICA (`/h/:slug`, sin auth) también necesita esto para
+// `MapBlock.vue`, pero `ConfigService.get()` pega a una ruta admin autenticada
+// (`GET /api/configuracion/:key`, `guard('settings','view')`) que 401ea sin token. Esa pantalla
+// ya recibe la key resuelta server-side en `PublicHotelInfo.googleMapsApiKey` (endpoint público
+// `/api/public/hotel/:slug`), así que `loadGoogleMaps` ahora acepta un `apiKey` explícito para
+// no repetir el round-trip autenticado — si no se pasa, sigue el fetch de siempre (admin).
 
 import { ConfigService } from '@/services/Platform.service'
 
 const SCRIPT_ID = 'google-maps-sdk'
 
-/** Promesa compartida: el SDK se inyecta UNA sola vez aunque se entre y salga de la pestaña. */
-let loader: Promise<typeof google.maps | null> | null = null
+declare global {
+  interface Window {
+    /** Callback global que el SDK de Google Maps invoca cuando la key es inválida/restringida
+     *  (no cubierto por @types/google.maps). Ver uso en `loadGoogleMaps`. */
+    gm_authFailure?: () => void
+  }
+}
+
+/** Promesa compartida: el SDK se inyecta UNA sola vez aunque se entre y salga de la pestaña.
+ *  Cacheada por key para no reusar el loader de un caller con la key de otro (admin vs público
+ *  podrían resolver keys distintas si en el futuro cada hotel tiene la suya propia). */
+const loaders = new Map<string, Promise<typeof google.maps | null>>()
 
 async function fetchApiKey(): Promise<string> {
   try {
@@ -26,38 +43,59 @@ async function fetchApiKey(): Promise<string> {
 }
 
 /**
- * Devuelve `google.maps` listo para usar, o null si no hay key configurada / falló la carga.
- * El llamador decide el fallback; acá nunca se lanza.
+ * Devuelve `google.maps` listo para usar, o null si no hay key (ni pasada ni configurada) o
+ * falló la carga. El llamador decide el fallback; acá nunca se lanza.
+ *
+ * @param explicitKey Si se pasa (páginas públicas sin auth, ya la resolvió el backend), se usa
+ *   directo sin pegarle a `ConfigService.get`. Si se omite, cae al fetch autenticado de siempre
+ *   (admin — `settings/index.vue`).
  */
-export function loadGoogleMaps(): Promise<typeof google.maps | null> {
-  if (loader) return loader
-  loader = (async () => {
-    const key = await fetchApiKey()
+export function loadGoogleMaps(explicitKey?: string): Promise<typeof google.maps | null> {
+  const cacheKey = explicitKey ?? '__admin_fetch__'
+  const cached = loaders.get(cacheKey)
+  if (cached) return cached
+  const loader = (async () => {
+    const key = explicitKey?.trim() || await fetchApiKey()
     if (!key) return null
     if (typeof window !== 'undefined' && window.google?.maps) return window.google.maps
 
     return new Promise<typeof google.maps | null>((resolve) => {
+      let settled = false
+      const settle = (v: typeof google.maps | null) => {
+        if (settled) return
+        settled = true
+        resolve(v)
+      }
+
+      // FIX 2026-08-01 (verificado en local con key dummy) — `s.onerror` NUNCA dispara por key
+      // inválida: el script de Google carga OK (200) con cualquier key, la validación es
+      // ASÍNCRONA y el propio SDK la reporta vía el callback global `gm_authFailure` — el
+      // comentario viejo de acá abajo ("key inválida... termina en onerror") era incorrecto,
+      // nunca se había probado con una key rota. Sin esto, una key inválida/restringida a otro
+      // dominio resolvía igual `window.google.maps` (el objeto existe, solo los tiles fallan) y
+      // el caller mostraba un mapa roto en vez de caer al iframe.
+      window.gm_authFailure = () => settle(null)
+
       const existing = document.getElementById(SCRIPT_ID)
       if (existing) {
-        existing.addEventListener('load', () => resolve(window.google?.maps ?? null))
-        existing.addEventListener('error', () => resolve(null))
+        existing.addEventListener('load', () => settle(window.google?.maps ?? null))
+        existing.addEventListener('error', () => settle(null))
         return
       }
       const s = document.createElement('script')
       s.id = SCRIPT_ID
       s.async = true
       s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&language=es`
-      // Una key inválida o restringida a otro dominio termina acá: se resuelve null y la pantalla
-      // cae al iframe, en vez de quedarse con un contenedor gris sin explicación.
-      s.onerror = () => resolve(null)
-      s.onload = () => resolve(window.google?.maps ?? null)
+      s.onerror = () => settle(null) // fallo de red/carga del script en sí (dominio inalcanzable, etc.)
+      s.onload = () => settle(window.google?.maps ?? null)
       document.head.appendChild(s)
     })
   })()
+  loaders.set(cacheKey, loader)
   return loader
 }
 
 /** Para tests / cambio de key en caliente: obliga a releer la configuración. */
 export function resetGoogleMapsLoader(): void {
-  loader = null
+  loaders.clear()
 }

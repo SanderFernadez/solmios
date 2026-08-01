@@ -61,7 +61,7 @@ Cada bloque guarda su configuración en `config` (JSON). El schema del config de
   `hotel_media` type='gallery', mismo picker que `hero.backgroundMediaIds`).
 - `gallery`: `{title}` (las fotos se toman de `hotel_media` type='gallery').
 - `amenities`: `{title}` (los items se toman de `hotels.amenities`).
-- `location`: `{title, description}` (lat/lng del hotel, mapa Leaflet).
+- `location`: `{title, description}` (lat/lng del hotel, mapa embebido Google Maps).
 - `reviews`: `{title, maxItems}` (consume endpoint público de reviews).
 - `rooms`: `{title, ctaText, showSpecs, featuredRoomId, featuredBadgeText}`
   (consume endpoint F2 de tarifas "From $X"; `featuredRoomId` referencia `rooms.id` sin
@@ -120,16 +120,50 @@ La landing MUST servir HTML prerenderizado o SSR-ligero con:
 `GET /sitemap.xml` MUST listar `/h/:slug` por cada hotel con `onlineBookingStatus='active'`.
 Refresca on-demand (admin edita hotel → invalidate cache del sitemap).
 
-### Requirement: Mapa Leaflet lazy-load
+### Requirement: Mapa embebido con 2 tiers (SDK interactivo / iframe embed)
 
-El bloque `location` MUST cargar Leaflet solo cuando el bloque es visible
-(IntersectionObserver). Tile layer OSM gratis, sin API key.
+DEPRECATED 2026-07-31 (pedido explícito del usuario, "pon el iframe de google ahí en
+vez de ese"): el bloque `location` reemplazó Leaflet+OSM por Google Maps.
+`leaflet`/`@types/leaflet` se sacaron de `package.json` (sin otro uso en el repo).
 
-#### Scenario: Lazy-load
+ACTUALIZADO 2026-08-01: el bloque `location` (`MapBlock.vue`) MUST soportar 2 tiers,
+degradando sin error:
 
-- GIVEN usuario abre `/h/:slug` en mobile 4G
-- WHEN Network tab
-- THEN Leaflet (`leaflet.js` + CSS) NO carga hasta que el usuario scrollea al bloque location
+1. **CON key** (`PublicHotelInfo.googleMapsApiKey`, resuelta server-side en
+   `public-hotel-info.ts` desde `configuration(hotelId, key:'google_maps')` con fallback
+   a `platform` — NUNCA hardcodeada ni expuesta como secret: es una Maps JS key,
+   restringida por dominio del lado de Google): SDK real vía `useGoogleMaps.loadGoogleMaps(explicitKey)`,
+   mapa interactivo (zoom/pan/marker), mismo mecanismo que ya usa el admin en
+   `pages/settings/index.vue`.
+2. **SIN key, o si la key falla/está restringida a otro dominio** (`gm_authFailure`):
+   `<iframe>` embed público (`google.com/maps?q=lat,lng&output=embed`, sin key),
+   lazy-load nativo (`loading="lazy"`).
+
+El bloque MUST diferir el bootstrap del tier interactivo hasta que sea visible
+(`IntersectionObserver`, `rootMargin: 200px`); si el navegador no soporta
+`IntersectionObserver`, carga inmediata. El tier iframe usa lazy nativo, no necesita
+IntersectionObserver.
+
+#### Scenario: Lazy-load sin key configurada
+
+- GIVEN el hotel no tiene `google_maps` configurado (ni propio ni `platform`)
+- WHEN usuario abre `/h/:slug` en mobile 4G
+- THEN se renderiza el iframe de Google Maps, que NO empieza a cargar hasta que el
+  usuario scrollea al bloque location (comportamiento nativo de `loading="lazy"`)
+
+#### Scenario: Tier interactivo con key válida
+
+- GIVEN el hotel (o `platform`) tiene `google_maps` configurado con una key válida
+- WHEN el bloque `location` entra en viewport
+- THEN se carga el SDK de Google Maps y se reemplaza el iframe por un mapa interactivo
+  con marker en `[hotel.latitude, hotel.longitude]`
+
+#### Scenario: Degradación por key inválida/restringida
+
+- GIVEN el hotel tiene `google_maps` configurado pero la key es inválida o está
+  restringida a otro dominio
+- WHEN el SDK dispara `gm_authFailure`
+- THEN el bloque se queda con el iframe embed (sin key) en vez de mostrar un mapa roto
 
 ### Requirement: Rate-limit público
 
@@ -186,7 +220,9 @@ Unique index `(hotelId, type)`. Anti-patrón ORM (D5): todas las columnas declar
 
 - Layout `none` (sin header/footer del panel SaaS).
 - Renderiza bloques en orden, cada uno un componente Vue dedicado:
-  `HeroBlock.vue`, `GalleryBlock.vue`, `AmenitiesBlock.vue`, `MapBlock.vue` (lazy Leaflet),
-  `ReviewsBlock.vue`, `RoomsBlock.vue`, `FaqBlock.vue`, `CtaBlock.vue`, `FooterBlock.vue`.
+  `HeroBlock.vue`, `StorytellingBlock.vue`, `GalleryBlock.vue`, `AmenitiesBlock.vue`,
+  `MapBlock.vue` (Google Maps, SDK interactivo con key o iframe embed sin key),
+  `ReviewsBlock.vue`, `RoomsBlock.vue`,
+  `FaqBlock.vue`, `CtaBlock.vue`, `FooterBlock.vue`.
 - CTA del `HeroBlock` y `CtaBlock`: botón "Reservar" que redirige a `/book/:slug` (widget F2).
 - JSON-LD inyectado via composable `useHotelJsonLd` en `<head>`.

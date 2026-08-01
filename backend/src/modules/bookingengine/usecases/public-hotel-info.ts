@@ -15,6 +15,10 @@ import type { PublicHotelInfoDTO } from '../types'
 
 export interface PublicHotelInfoDeps {
   hotels: RepositoryAdapter<any>
+  /** Repo `Configuration` (KV) — resuelve `google_maps` con fallback a `hotelId:'platform'`.
+   *  Opcional para no romper callers/tests viejos: sin él, `googleMapsApiKey` queda `null`
+   *  (degrada al iframe embed, mismo criterio que el resto de las configs opcionales del módulo). */
+  config?: RepositoryAdapter<any>
 }
 
 // Anti-enumeración: MISMO mensaje para "no existe" y "no activo" (no filtrar hoteles inactivos).
@@ -33,6 +37,7 @@ export async function getPublicHotelInfo(
   if (hotel.onlineBookingStatus !== 'active') throw new NotFoundError(NOT_FOUND_MSG)
 
   const { title, description } = resolveI18n(hotel, lang)
+  const googleMapsApiKey = await resolveGoogleMapsKey(deps.config, hotel.id)
 
   // Allow-list ESTRICTA: copia campo por campo. NUNCA `...hotel` — arrastraría ownerName,
   // taxId, wifiPassword, etc. al JSON de respuesta (ver spec, "Anti-patrón allow-list").
@@ -68,6 +73,31 @@ export async function getPublicHotelInfo(
     logo: hotel.logo ?? null,
     amenities: hotel.amenities ?? null,
     onlineBookingStatus: hotel.onlineBookingStatus,
+    googleMapsApiKey,
+  }
+}
+
+/**
+ * Lee `configuration(hotelId, key:'google_maps')`, shape `{apiKey: string}`, con fallback a
+ * `configuration(hotelId:'platform', key:'google_maps')` — MISMO mecanismo que
+ * `hoteles/usecases/config-kv.ts:getConfig` (no reinventa la regla de fallback). Client-visible
+ * por diseño: una Maps JS API key se restringe por dominio del lado de Google, no es secreta.
+ */
+async function resolveGoogleMapsKey(
+  config: RepositoryAdapter<any> | undefined,
+  hotelId: string,
+): Promise<string | null> {
+  if (!config) return null
+  try {
+    const own = await config.findMany({ hotelId, key: 'google_maps' })
+    const platform = own.length > 0 ? own : await config.findMany({ hotelId: 'platform', key: 'google_maps' })
+    const raw = platform[0]?.value
+    if (!raw) return null
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const key = parsed?.apiKey
+    return typeof key === 'string' && key.trim() ? key.trim() : null
+  } catch {
+    return null
   }
 }
 

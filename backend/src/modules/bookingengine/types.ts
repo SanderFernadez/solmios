@@ -212,6 +212,11 @@ export interface PublicHotelInfoDTO {
   logo: string | null
   amenities: string[] | null
   onlineBookingStatus: string
+  /** Google Maps JS API key (config KV `google_maps`, fallback a `hotelId:'platform'`), o
+   *  `null` si no hay ninguna cargada. Client-visible por diseño (se restringe por dominio del
+   *  lado de Google) — el frontend la usa para mapa interactivo en `/h/:slug`, cae al iframe
+   *  embed sin key si es null. Ver `usecases/public-hotel-info.ts:resolveGoogleMapsKey`. */
+  googleMapsApiKey: string | null
 }
 
 // ─── Upsells (F2 2.3 — sub-dominio de bookingengine) ────────────

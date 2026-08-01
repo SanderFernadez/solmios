@@ -46,6 +46,10 @@ export interface PublicHotelInfo {
   logo: string | null
   amenities: string[] | null
   onlineBookingStatus: string
+  /** Google Maps JS API key (o `null` si no hay ninguna cargada) — `MapBlock.vue` la usa para
+   *  mapa interactivo, cae al iframe embed sin key. Client-visible por diseño (restringida por
+   *  dominio del lado de Google, no es secreta). */
+  googleMapsApiKey: string | null
 }
 
 // ─── Media (GET /api/public/hotels/:slug/media) ────────

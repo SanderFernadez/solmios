@@ -40,7 +40,7 @@ diferencial.
   (hero, galería, amenities, ubicación/mapa, reseñas, habitaciones "From $X", FAQ, CTA,
   footer con toggle + orden), componentes Vue por bloque, SEO (JSON-LD
   Hotel/LodgingBusiness + AggregateRating + FAQPage + Offer, meta dinámicos, OG,
-  sitemap por hotel), mapa Leaflet.
+  sitemap por hotel), mapa embebido (Google Maps — ver nota de deprecación de Leaflet abajo).
 - **F2 — Widget unificado superior**: SPA-first sub-2s mobile 4G, multi-step
   (search → rooms → upsells → guest checkout → pay → confirm), tarifas derivadas
   (RoomRates/Seasons), impuestos desglosados, políticas, promo codes funcionales,
@@ -86,7 +86,11 @@ este change — estos specs las documentan, no las reabren):
    backlink) + StayAPI (Booking/Airbnb/Expedia). €0–35/mes.** NO TrustYou/Revinate
    ($125+/mes, solo para cadenas grandes).
 4. **Wallet pass en Fase 3, no diferir** + integración con TTLock existente.
-5. **Mapa: Leaflet** (gratis, sin API key).
+5. ~~**Mapa: Leaflet** (gratis, sin API key)~~ — DEPRECATED 2026-07-31: reemplazado por
+   iframe de Google Maps. ACTUALIZADO 2026-08-01: si hay `google_maps` configurado
+   (config KV, mismo mecanismo que el admin), usa el SDK real (mapa interactivo);
+   sin key, o si falla/está restringida, degrada al iframe embed sin key. Ver
+   Requirement "Mapa embebido con 2 tiers" en spec.md, fuente de verdad actual.
 
 Fases incrementales (F0→F4) por dependencia + ROI. Reglas de compatibilidad:
 
@@ -160,8 +164,9 @@ Cada fase es independiente y reversible excepto F0 (unificación de flujos) y F2
   + fallback. F2 lo reusa para ES/EN/PT del widget.
 - **CacheAdapter**: ya existe. F3 cache versionado de reseñas externas lo reusa
   (mismo patrón que `facturas/usecases/cache.ts`).
-- **Leaflet (F1)**: nueva dependencia frontend (`leaflet` + `vue-leaflet` o uso directo).
-  Sin API key. ~40KB gzipped.
+- ~~**Leaflet (F1)**: nueva dependencia frontend...~~ SACADA del repo 2026-07-31 (reemplazada
+  por Google Maps: SDK interactivo si hay key configurada, iframe embed sin key si no —
+  sin dependencia nueva en ningún caso).
 - **Passkit (F3)**: nueva dependencia para Apple Wallet pass generation
   (`passkit-generator` o similar). Requiere certificado Apple Developer del hotel.
 - **GBP API / TripAdvisor Content API / StayAPI (F3)**: 3 integraciones externas con
@@ -184,7 +189,8 @@ Cada fase es independiente y reversible excepto F0 (unificación de flujos) y F2
 - [ ] F1: `/h/:slug` sirve landing configurable por bloques con toggle + orden.
 - [ ] F1: JSON-LD (Hotel/LodgingBusiness + AggregateRating + FAQPage + Offer) presente
       en el HTML de `/h/:slug`.
-- [ ] F1: mapa Leaflet renderiza con lat/lng del hotel.
+- [x] F1: mapa (iframe Google Maps, ex-Leaflet) renderiza con lat/lng del hotel — verificado
+      en prod 2026-07-31.
 - [ ] F2: widget SPA-first sub-2s en mobile 4G (Lighthouse audit).
 - [ ] F2: multi-step completo (search → rooms → upsells → guest checkout → pay →
       confirm) sin forzar cuenta de usuario.

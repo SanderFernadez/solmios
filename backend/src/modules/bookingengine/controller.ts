@@ -126,7 +126,7 @@ export class BookingengineController {
       // Allow-list estricta en el usecase: el DTO devuelto SOLO contiene campos públicos
       // (ver spec public-hotel-info). Nunca spread del hotel.
       const dto = await getPublicHotelInfo(
-        { hotels: this.hotelsRepo! },
+        { hotels: this.hotelsRepo!, config: this.configRepo },
         String(req.params?.slug || ''),
         lang,
       )
