@@ -9,8 +9,7 @@
 
     <!-- Tab: Plataforma -->
     <div v-if="activeTab === 'platform'" class="grid grid-cols-2 gap-6">
-      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Información de la Plataforma</h3>
+      <SectionCard title="Información de la Plataforma">
         <div class="space-y-4">
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Nombre de la Plataforma</label><input v-model="settings.platformName" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Email de Soporte</label><input v-model="settings.supportEmail" type="email" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
@@ -30,9 +29,8 @@
             </select>
           </div>
         </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Logo y Apariencia</h3>
+      </SectionCard>
+      <SectionCard title="Logo y Apariencia">
         <div class="space-y-4">
           <div class="flex items-center gap-4 p-4 bg-surface rounded-xl">
             <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-3xl font-black">S</div>
@@ -48,13 +46,12 @@
           </div>
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Dominio Personalizado</label><input v-model="settings.customDomain" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="app.solmios.com"></div>
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- Tab: Email -->
     <div v-if="activeTab === 'email'" class="grid grid-cols-2 gap-6">
-      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Configuración SMTP</h3>
+      <SectionCard title="Configuración SMTP">
         <div class="space-y-4">
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">SMTP Server</label><input v-model="settings.smtpServer" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Puerto</label><input v-model="settings.smtpPort" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
@@ -64,9 +61,8 @@
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Nombre Remitente</label><input v-model="settings.fromName" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
           <button @click="testEmail" class="w-full py-2.5 bg-surface text-navy rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Enviar Email de Prueba</button>
         </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Plantillas de Email</h3>
+      </SectionCard>
+      <SectionCard title="Plantillas de Email">
         <div class="space-y-3">
           <div v-for="template in emailTemplates" :key="template.name" class="flex items-center justify-between p-3 bg-surface rounded-xl cursor-pointer hover:bg-surface-dark transition-colors" @click="selectedTemplate = template">
             <div class="flex items-center gap-3"><span class="text-xl">{{ template.icon }}</span><div><div class="text-sm font-bold">{{ template.name }}</div><div class="text-[10px] text-text-muted">{{ template.description }}</div></div></div>
@@ -76,22 +72,20 @@
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- Tab: Seguridad -->
     <div v-if="activeTab === 'security'" class="grid grid-cols-2 gap-6">
-      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Autenticación</h3>
+      <SectionCard title="Autenticación">
         <div class="space-y-3">
           <div v-for="option in securityOptions" :key="option.name" class="flex items-center justify-between p-3 bg-surface rounded-xl">
             <div><div class="text-sm font-bold">{{ option.name }}</div><div class="text-[10px] text-text-muted">{{ option.description }}</div></div>
             <button @click="option.enabled = !option.enabled" class="w-12 h-6 rounded-full relative transition-colors cursor-pointer" :class="option.enabled ? 'bg-teal' : 'bg-gray-300'"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow" :class="option.enabled ? 'right-0.5' : 'left-0.5'"></div></button>
           </div>
         </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Políticas de Contraseña</h3>
+      </SectionCard>
+      <SectionCard title="Políticas de Contraseña">
         <div class="space-y-4">
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Longitud Mínima</label><input v-model.number="settings.minPasswordLength" type="number" min="6" max="32" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
           <div class="flex items-center justify-between p-3 bg-surface rounded-xl"><div class="text-sm font-bold">Requerir mayúsculas</div><button @click="settings.requireUppercase = !settings.requireUppercase" class="w-12 h-6 rounded-full relative transition-colors cursor-pointer" :class="settings.requireUppercase ? 'bg-teal' : 'bg-gray-300'"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow" :class="settings.requireUppercase ? 'right-0.5' : 'left-0.5'"></div></button></div>
@@ -99,7 +93,7 @@
           <div class="flex items-center justify-between p-3 bg-surface rounded-xl"><div class="text-sm font-bold">Requerir caracteres especiales</div><button @click="settings.requireSpecial = !settings.requireSpecial" class="w-12 h-6 rounded-full relative transition-colors cursor-pointer" :class="settings.requireSpecial ? 'bg-teal' : 'bg-gray-300'"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow" :class="settings.requireSpecial ? 'right-0.5' : 'left-0.5'"></div></button></div>
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Expiración de Contraseña (días)</label><input v-model.number="settings.passwordExpiry" type="number" min="0" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" placeholder="0 = nunca expira"></div>
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- Tab: Integraciones -->
@@ -108,22 +102,13 @@
 
       <!-- Google Maps: se configura una sola vez para toda la plataforma. Cada hotel la hereda
            por el fallback a hotelId:'platform' de getConfig. -->
-      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl">🗺️</span>
-            <div>
-              <h3 class="text-lg font-black text-navy">Google Maps</h3>
-              <div class="text-sm text-text-muted">
-                Habilita el mapa interactivo en la ubicación del hotel (clic y arrastre del pin)
-              </div>
-            </div>
-          </div>
+      <SectionCard title="🗺️ Google Maps" subtitle="Habilita el mapa interactivo en la ubicación del hotel (clic y arrastre del pin)">
+        <template #actions>
           <span class="text-[10px] font-bold px-3 py-1 rounded-full"
             :class="mapsKey ? 'bg-teal/10 text-teal' : 'bg-surface text-text-muted'">
             {{ mapsKey ? 'Configurado' : 'Sin configurar' }}
           </span>
-        </div>
+        </template>
         <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Maps JavaScript API Key</label>
         <input v-model="mapsKey" type="text" placeholder="AIza…"
           class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy">
@@ -134,17 +119,13 @@
           (HTTP referrers → <code>hotel.zx89.site/*</code>) en Google Cloud: al vivir en el navegador,
           una key sin restringir la puede usar cualquiera y el consumo te lo facturan a vos.
         </p>
-      </div>
+      </SectionCard>
 
       <div class="grid grid-cols-2 gap-6">
-      <div v-for="integration in integrations" :key="integration.name" class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl">{{ integration.icon }}</span>
-            <div><h3 class="text-lg font-black text-navy">{{ integration.name }}</h3><div class="text-sm text-text-muted">{{ integration.description }}</div></div>
-          </div>
+      <SectionCard v-for="integration in integrations" :key="integration.name" :title="`${integration.icon} ${integration.name}`" :subtitle="integration.description">
+        <template #actions>
           <button @click="integration.connected = !integration.connected" class="w-12 h-6 rounded-full relative transition-colors cursor-pointer" :class="integration.connected ? 'bg-teal' : 'bg-gray-300'"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow" :class="integration.connected ? 'right-0.5' : 'left-0.5'"></div></button>
-        </div>
+        </template>
         <div v-if="integration.connected" class="space-y-3">
           <div v-for="field in integration.fields" :key="field.name"><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">{{ field.name }}</label><input :value="field.value" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy" :type="field.type || 'text'"></div>
           <button class="w-full py-2.5 bg-surface text-navy rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Probar Conexión</button>
@@ -153,14 +134,13 @@
           <div class="text-sm text-text-muted">No conectado</div>
           <button @click="integration.connected = true" class="mt-2 px-4 py-1.5 bg-navy text-white rounded-lg text-[10px] font-bold hover:shadow-lg transition-colors cursor-pointer">Conectar</button>
         </div>
-      </div>
+      </SectionCard>
       </div>
     </div>
 
     <!-- Tab: Facturación -->
     <div v-if="activeTab === 'billing'" class="grid grid-cols-2 gap-6">
-      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Configuración de Facturación</h3>
+      <SectionCard title="Configuración de Facturación">
         <div class="space-y-4">
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Método de Cobro</label>
             <select v-model="settings.billingMethod" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
@@ -179,16 +159,15 @@
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Días de Gracia</label><input v-model.number="settings.graceDays" type="number" min="0" max="30" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Día de Cobro</label><input v-model.number="settings.billingDay" type="number" min="1" max="28" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
         </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-border card-shadow p-6">
-        <h3 class="text-lg font-black text-navy mb-4">Notas de Crédito y Descuentos</h3>
+      </SectionCard>
+      <SectionCard title="Notas de Crédito y Descuentos">
         <div class="space-y-4">
           <div class="flex items-center justify-between p-3 bg-surface rounded-xl"><div class="text-sm font-bold">Permitir notas de crédito</div><button @click="settings.allowCreditNotes = !settings.allowCreditNotes" class="w-12 h-6 rounded-full relative transition-colors cursor-pointer" :class="settings.allowCreditNotes ? 'bg-teal' : 'bg-gray-300'"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow" :class="settings.allowCreditNotes ? 'right-0.5' : 'left-0.5'"></div></button></div>
           <div class="flex items-center justify-between p-3 bg-surface rounded-xl"><div class="text-sm font-bold">Permitir descuentos por volumen</div><button @click="settings.allowVolumeDiscounts = !settings.allowVolumeDiscounts" class="w-12 h-6 rounded-full relative transition-colors cursor-pointer" :class="settings.allowVolumeDiscounts ? 'bg-teal' : 'bg-gray-300'"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow" :class="settings.allowVolumeDiscounts ? 'right-0.5' : 'left-0.5'"></div></button></div>
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Descuento por Pago Anual (%)</label><input v-model.number="settings.annualDiscount" type="number" min="0" max="50" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Impuesto (%)</label><input v-model.number="settings.taxRate" type="number" min="0" max="30" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
         </div>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>
@@ -198,6 +177,7 @@ import { ref, onMounted } from 'vue'
 import { ConfigService } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
 import ChannexPlatformConfig from '@/components/features/ChannexPlatformConfig.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 import { CurrencyCode } from '@/types/currency'
 
 const toast = useToast()

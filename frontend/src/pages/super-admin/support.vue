@@ -23,7 +23,7 @@
 
       <!-- Tabla -->
       <SkeletonLoader v-if="loading" variant="table" :rows="6" />
-      <div v-else class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+      <SectionCard v-else title="Tickets de soporte" :subtitle="`${filteredTickets.length} ticket(s)`" body-class="p-0">
         <table class="w-full tbl-head">
           <thead><tr class="border-b border-border">
             <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">ID</th>
@@ -50,32 +50,32 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- Vista Ticket: Chat -->
     <div v-else class="flex flex-col h-[calc(100vh-8rem)]">
-      <!-- Header del Ticket -->
-      <div class="bg-white rounded-t-2xl border border-border px-6 py-4 flex items-center justify-between">
+      <!-- Header del Ticket (mismo look navy que SectionCard: no encaja el componente por el layout de 3 piezas header/mensajes/input, se replica el estilo a mano) -->
+      <div class="bg-navy rounded-t-2xl px-4 sm:px-5 py-4 flex items-center justify-between flex-wrap gap-3">
         <div class="flex items-center gap-4">
-          <button @click="selectedTicket = null" class="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-text-muted hover:text-navy transition-colors cursor-pointer">←</button>
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-navy to-cyan flex items-center justify-center text-white text-sm font-bold">{{ selectedTicket.hotel[0] }}</div>
+          <button @click="selectedTicket = null" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-colors cursor-pointer">←</button>
+          <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-white text-sm font-bold">{{ selectedTicket.hotel[0] }}</div>
           <div>
             <div class="flex items-center gap-2">
-              <span class="text-sm font-mono text-text-muted">#{{ selectedTicket.id }}</span>
-              <span class="text-sm font-bold text-navy">{{ selectedTicket.subject }}</span>
+              <span class="text-sm font-mono text-white/60">#{{ selectedTicket.id }}</span>
+              <span class="text-sm font-black text-white">{{ selectedTicket.subject }}</span>
             </div>
-            <div class="text-[10px] text-text-muted">{{ selectedTicket.hotel }} — {{ selectedTicket.category }}</div>
+            <div class="text-[10px] text-white/60">{{ selectedTicket.hotel }} — {{ selectedTicket.category }}</div>
           </div>
         </div>
         <div class="flex items-center gap-3">
           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="priorityClass(selectedTicket.priority)">{{ selectedTicket.priority }}</span>
-          <select v-model="selectedTicket.status" class="h-8 px-3 bg-surface border border-border rounded-lg text-[10px] font-bold focus:outline-none focus:border-navy cursor-pointer">
-            <option value="Abierto">Abierto</option>
-            <option value="En Progreso">En Progreso</option>
-            <option value="Esperando Cliente">Esperando Cliente</option>
-            <option value="Resuelto">Resuelto</option>
-            <option value="Cerrado">Cerrado</option>
+          <select v-model="selectedTicket.status" class="h-8 px-3 rounded-lg border border-white/15 bg-white/10 text-[10px] font-bold text-white focus:outline-none focus:border-cyan cursor-pointer">
+            <option class="text-navy" value="Abierto">Abierto</option>
+            <option class="text-navy" value="En Progreso">En Progreso</option>
+            <option class="text-navy" value="Esperando Cliente">Esperando Cliente</option>
+            <option class="text-navy" value="Resuelto">Resuelto</option>
+            <option class="text-navy" value="Cerrado">Cerrado</option>
           </select>
         </div>
       </div>
@@ -151,6 +151,7 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { OperationsService } from '@/services/Operations.service'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 
 const toast = useToast()
 const loading = ref(true)

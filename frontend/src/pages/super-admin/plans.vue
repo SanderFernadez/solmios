@@ -9,34 +9,36 @@
     </div>
 
     <SkeletonLoader v-if="loading" variant="card" :rows="3" class="mb-8" />
-    <div v-else class="grid grid-cols-3 gap-6 mb-8">
-      <div v-for="plan in plans" :key="plan.id" class="bg-white rounded-2xl border border-border card-shadow p-6 relative">
-        <button @click="openEdit(plan)" class="absolute top-4 right-4 px-2 py-1 bg-surface rounded-lg text-[10px] font-bold hover:bg-surface-dark transition-colors cursor-pointer">Editar</button>
-        <button @click="deletePlan(plan)" class="absolute top-4 right-20 px-2 py-1 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-colors cursor-pointer">Eliminar</button>
-        <h3 class="text-lg font-black text-navy mb-2">{{ plan.name }}</h3>
-        <div class="text-3xl font-black text-teal mb-2">${{ plan.price }}<span class="text-sm text-text-muted">/mes</span></div>
-        <div class="text-sm text-text-secondary mb-4">{{ plan.description }}</div>
-        <div class="space-y-2 mb-6">
-          <div v-for="(feature, i) in (plan.features || [])" :key="i" class="flex items-center gap-2 text-sm">
-            <span class="text-teal">✓</span><span>{{ feature }}</span>
+    <SectionCard v-else title="Planes" :subtitle="`${plans.length} plan(es) configurado(s)`" class="mb-8">
+      <div class="grid grid-cols-3 gap-6">
+        <div v-for="plan in plans" :key="plan.id" class="bg-white rounded-2xl border border-border card-shadow p-6 relative">
+          <button @click="openEdit(plan)" class="absolute top-4 right-4 px-2 py-1 bg-surface rounded-lg text-[10px] font-bold hover:bg-surface-dark transition-colors cursor-pointer">Editar</button>
+          <button @click="deletePlan(plan)" class="absolute top-4 right-20 px-2 py-1 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-colors cursor-pointer">Eliminar</button>
+          <h3 class="text-lg font-black text-navy mb-2">{{ plan.name }}</h3>
+          <div class="text-3xl font-black text-teal mb-2">${{ plan.price }}<span class="text-sm text-text-muted">/mes</span></div>
+          <div class="text-sm text-text-secondary mb-4">{{ plan.description }}</div>
+          <div class="space-y-2 mb-6">
+            <div v-for="(feature, i) in (plan.features || [])" :key="i" class="flex items-center gap-2 text-sm">
+              <span class="text-teal">✓</span><span>{{ feature }}</span>
+            </div>
           </div>
-        </div>
-        <div class="flex items-center justify-between pt-4 border-t border-border">
-          <div class="text-center">
-            <div class="text-lg font-black text-navy">{{ plan.limits?.rooms || 0 }}</div>
-            <div class="text-[9px] text-text-muted">Hab.</div>
-          </div>
-          <div class="text-center">
-            <div class="text-lg font-black text-navy">{{ plan.limits?.users || 0 }}</div>
-            <div class="text-[9px] text-text-muted">Usuarios</div>
-          </div>
-          <div class="text-center">
-            <div class="text-lg font-black text-navy">{{ plan.limits?.properties || 0 }}</div>
-            <div class="text-[9px] text-text-muted">Propiedades</div>
+          <div class="flex items-center justify-between pt-4 border-t border-border">
+            <div class="text-center">
+              <div class="text-lg font-black text-navy">{{ plan.limits?.rooms || 0 }}</div>
+              <div class="text-[9px] text-text-muted">Hab.</div>
+            </div>
+            <div class="text-center">
+              <div class="text-lg font-black text-navy">{{ plan.limits?.users || 0 }}</div>
+              <div class="text-[9px] text-text-muted">Usuarios</div>
+            </div>
+            <div class="text-center">
+              <div class="text-lg font-black text-navy">{{ plan.limits?.properties || 0 }}</div>
+              <div class="text-[9px] text-text-muted">Propiedades</div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Modal -->
     <AppModal v-if="showModal" size="lg" :title="`${editing ? 'Editar' : 'Nuevo'} Plan`" @close="showModal=false">
@@ -123,6 +125,7 @@
 import { ref, onMounted, computed } from 'vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 import { PlansService } from '@/services/Plans.service'
 import { ModulesService, type ModuleMeta, type SubModuleMeta } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'

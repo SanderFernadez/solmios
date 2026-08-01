@@ -62,7 +62,7 @@
 
     <!-- Tabla -->
     <SkeletonLoader v-if="loading" variant="table" :rows="6" />
-    <div v-else class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <SectionCard v-else title="Usuarios" :subtitle="`${filteredUsers.length} usuario(s)`" body-class="p-0">
       <table class="w-full tbl-head">
         <thead>
           <tr class="border-b border-border">
@@ -115,7 +115,7 @@
         <div class="text-4xl mb-3">👤</div>
         <div class="text-sm font-bold text-text-muted">No se encontraron usuarios</div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Modal: Ver Usuario -->
     <AppModal v-if="showViewModal" size="md" title="Detalle del Cliente" @close="showViewModal = false">
@@ -210,6 +210,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 
 const router = useRouter()
 const auth = useAuthStore()

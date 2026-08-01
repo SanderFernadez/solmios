@@ -59,21 +59,18 @@
     </div>
 
     <!-- Dashboard de Estadísticas -->
-    <div v-if="activeView === 'stats'" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
-      <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h3 class="text-lg font-black text-navy">Rendimiento por Empleado</h3>
-        <div class="flex gap-2">
-          <button
-            v-for="r in statsRanges"
-            :key="r"
-            @click="changeStatsRange(r)"
-            class="px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer"
-            :class="statsRangeDays === r ? 'bg-navy text-white' : 'bg-surface text-text-secondary hover:bg-surface-dark'"
-          >
-            Últimos {{ r }} días
-          </button>
-        </div>
-      </div>
+    <SectionCard v-if="activeView === 'stats'" title="Estadísticas de limpieza" subtitle="Rendimiento por empleado">
+      <template #actions>
+        <button
+          v-for="r in statsRanges"
+          :key="r"
+          @click="changeStatsRange(r)"
+          class="px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer"
+          :class="statsRangeDays === r ? 'bg-cyan text-navy' : 'bg-white/10 text-white hover:bg-white/20'"
+        >
+          Últimos {{ r }} días
+        </button>
+      </template>
       <div v-if="store.stats.length === 0" class="text-center py-12 text-text-muted text-sm">
         No hay tareas completadas en el período seleccionado.
       </div>
@@ -95,7 +92,7 @@
           </tr>
         </tbody>
       </table>
-    </div>
+    </SectionCard>
 
     <!-- Board View (Kanban) -->
     <SkeletonLoader v-else-if="activeView === 'board' && store.loading" variant="list" :rows="6" />
@@ -168,31 +165,26 @@
     </div>
 
     <!-- List View -->
-    <div v-else class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) overflow-hidden">
-      <!-- Search & Controls -->
-      <div class="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <div class="relative">
-            <input v-model="listSearch" type="text" placeholder="Buscar habitación, tipo, empleado..." class="pl-9 pr-4 py-2 rounded-full border border-border text-sm w-64 focus:outline-none focus:border-navy" />
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_SEARCH"></span>
-          </div>
-          <select v-model="listPageSize" class="px-3 py-2 rounded-full border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
-            <option :value="10">10 por página</option>
-            <option :value="20">20 por página</option>
-            <option :value="50">50 por página</option>
-          </select>
+    <SectionCard v-else title="Tareas de limpieza" body-class="p-0">
+      <template #actions>
+        <div class="relative">
+          <input v-model="listSearch" type="text" placeholder="Buscar habitación, tipo, empleado..." class="pl-9 pr-4 py-2 rounded-full border border-border text-sm w-64 bg-white focus:outline-none focus:border-navy" />
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_SEARCH"></span>
         </div>
-        <div class="flex items-center gap-3">
-          <button @click="exportCsv" class="flex items-center gap-1.5 px-4 py-2 bg-surface rounded-full text-sm font-bold text-text-secondary hover:bg-surface-dark transition-colors cursor-pointer">
-            <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
-            Exportar CSV
-          </button>
-          <span class="text-xs text-text-muted">
-            <template v-if="listSearch">{{ paginatedTasks.length }} en esta página</template>
-            <template v-else>{{ store.pageTotal }} tarea(s)</template>
-          </span>
-        </div>
-      </div>
+        <select v-model="listPageSize" class="px-3 py-2 rounded-full border border-border text-sm bg-white focus:outline-none focus:border-navy cursor-pointer">
+          <option :value="10">10 por página</option>
+          <option :value="20">20 por página</option>
+          <option :value="50">50 por página</option>
+        </select>
+        <button @click="exportCsv" class="flex items-center gap-1.5 px-4 py-2 bg-white/10 rounded-full text-sm font-bold text-white hover:bg-white/20 transition-colors cursor-pointer">
+          <span class="w-4 h-4 shrink-0" v-html="ICON_DOWNLOAD"></span>
+          Exportar CSV
+        </button>
+        <span class="text-xs text-white/70">
+          <template v-if="listSearch">{{ paginatedTasks.length }} en esta página</template>
+          <template v-else>{{ store.pageTotal }} tarea(s)</template>
+        </span>
+      </template>
       <SkeletonLoader v-if="store.loading" variant="table" :rows="6" class="p-4" />
       <table v-else class="w-full">
         <thead>
@@ -271,7 +263,7 @@
           <button @click="listPage = totalListPages" :disabled="listPage >= totalListPages" class="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-xs font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:bg-surface">»</button>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Modal: Ver Tarea -->
     <AppModal v-if="showViewModal" size="lg" @close="showViewModal = false">
@@ -622,6 +614,7 @@ import { useNow } from '@/composables/useNow'
 import SearchSelect from '@/components/ui/SearchSelect.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 
 const store = useHousekeepingStore()
 const auth = useAuthStore()

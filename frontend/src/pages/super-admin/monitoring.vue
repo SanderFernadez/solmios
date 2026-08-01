@@ -94,8 +94,7 @@
     <!-- API Metrics + Errors -->
     <div class="grid lg:grid-cols-2 gap-6 mb-6">
       <!-- API Response Times -->
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <h3 class="font-extrabold text-navy mb-4">Tiempos de Respuesta API</h3>
+      <SectionCard title="Tiempos de Respuesta API">
         <div class="space-y-4">
           <div v-for="endpoint in apiEndpoints" :key="endpoint.name" class="space-y-1">
             <div class="flex items-center justify-between">
@@ -110,14 +109,13 @@
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- Recent Errors -->
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-extrabold text-navy">Errores Recientes</h3>
+      <SectionCard title="Errores Recientes">
+        <template #actions>
           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-coral/10 text-coral">3 activos</span>
-        </div>
+        </template>
         <div class="space-y-3">
           <div v-for="err in recentErrors" :key="err.id" class="bg-surface rounded-xl p-4 border-l-4" :class="err.severity === 'critical' ? 'border-l-coral' : 'border-l-gold'">
             <div class="flex items-center justify-between mb-1">
@@ -134,14 +132,13 @@
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- Resource Usage + Backups -->
     <div class="grid lg:grid-cols-3 gap-6">
       <!-- CPU/Memory -->
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <h3 class="font-extrabold text-navy mb-4">Servidor Principal</h3>
+      <SectionCard title="Servidor Principal">
         <div class="space-y-4">
           <div>
             <div class="flex justify-between text-xs mb-1">
@@ -177,11 +174,10 @@
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- Backups -->
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <h3 class="font-extrabold text-navy mb-4">Backups Automáticos</h3>
+      <SectionCard title="Backups Automáticos">
         <div class="space-y-3">
           <div v-for="backup in backups" :key="backup.id" class="bg-surface rounded-xl p-3">
             <div class="flex items-center justify-between mb-1">
@@ -195,11 +191,10 @@
           </div>
         </div>
         <button class="w-full mt-4 py-2 bg-navy text-white text-xs font-bold rounded-xl cursor-pointer">Forzar Backup Ahora</button>
-      </div>
+      </SectionCard>
 
       <!-- Connected Hotels -->
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <h3 class="font-extrabold text-navy mb-4">Hoteles Online</h3>
+      <SectionCard title="Hoteles Online">
         <div class="space-y-3">
           <div class="flex items-center gap-3 p-3 bg-surface rounded-xl" v-for="hotel in onlineHotels" :key="hotel.name">
             <div class="flex-1">
@@ -209,7 +204,7 @@
             <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-teal/10 text-teal">Online</span>
           </div>
         </div>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>
@@ -218,6 +213,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { PlatformService } from '@/services/Platform.service'
+import SectionCard from '@/components/ui/SectionCard.vue'
 
 const toast = useToast()
 const monData = ref<Awaited<ReturnType<typeof PlatformService.monitoring>> | null>(null)

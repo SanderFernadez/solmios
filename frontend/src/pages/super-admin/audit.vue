@@ -63,7 +63,7 @@
 
     <!-- Audit Table -->
     <SkeletonLoader v-if="loading" variant="table" :rows="6" />
-    <div v-else class="bg-white rounded-2xl border border-border overflow-hidden">
+    <SectionCard v-else title="Auditoría" :subtitle="`${filteredLogs.length} resultados`" body-class="p-0">
       <div class="overflow-x-auto">
         <table class="w-full tbl-head">
           <thead>
@@ -121,7 +121,7 @@
           <button class="w-8 h-8 rounded-lg border border-border text-xs font-bold hover:bg-surface transition-colors cursor-pointer">→</button>
         </div>
       </div>
-    </div>
+    </SectionCard>
   </div>
 </template>
 
@@ -130,6 +130,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { AuditLogService } from '@/services/AuditLog.service'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 
 const toast = useToast()
 const loading = ref(true)

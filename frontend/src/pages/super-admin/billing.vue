@@ -55,7 +55,7 @@
 
     <!-- Tabla -->
     <SkeletonLoader v-if="loading" variant="table" :rows="6" />
-    <div v-else class="bg-white rounded-2xl border border-border card-shadow overflow-hidden">
+    <SectionCard v-else title="Facturación" :subtitle="`${filteredInvoices.length} facturas`" body-class="p-0">
       <table class="w-full tbl-head">
         <thead>
           <tr class="border-b border-border">
@@ -108,7 +108,7 @@
         <div class="text-4xl mb-3">📄</div>
         <div class="text-sm font-bold text-text-muted">No se encontraron facturas</div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Modal: Detalle Factura -->
     <AppModal v-if="showDetailModal" size="lg" :title="`Factura #${selectedInvoice.id}`" body-class="p-6" @close="showDetailModal = false">
@@ -192,6 +192,7 @@ import { useToast } from '@/composables/useToast'
 import { PlatformService } from '@/services/Platform.service'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 
 const toast = useToast()
 const loading = ref(true)

@@ -63,8 +63,7 @@
 
     <!-- Audience Stats -->
     <div class="grid md:grid-cols-3 gap-6">
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <h3 class="font-extrabold text-navy mb-4">Alcance</h3>
+      <SectionCard title="Alcance">
         <div class="space-y-3">
           <div class="flex justify-between">
             <span class="text-xs text-text-muted">Hoteles totales</span>
@@ -83,9 +82,8 @@
             <span class="text-xs font-bold text-cyan">18%</span>
           </div>
         </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <h3 class="font-extrabold text-navy mb-4">Plantillas Guardadas</h3>
+      </SectionCard>
+      <SectionCard title="Plantillas Guardadas">
         <div class="space-y-2">
           <div v-for="tpl in templates" :key="tpl.name" class="p-2 bg-surface rounded-lg flex items-center gap-2 cursor-pointer hover:bg-surface-dark transition-colors">
             <span class="text-lg">{{ tpl.icon }}</span>
@@ -95,9 +93,8 @@
             </div>
           </div>
         </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-border p-6">
-        <h3 class="font-extrabold text-navy mb-4">Programación</h3>
+      </SectionCard>
+      <SectionCard title="Programación">
         <div class="space-y-3">
           <div v-for="sched in scheduled" :key="sched.id" class="bg-surface rounded-xl p-3">
             <div class="text-xs font-bold text-navy">{{ sched.title }}</div>
@@ -108,7 +105,7 @@
           </div>
           <div v-if="scheduled.length === 0" class="text-center text-sm text-text-muted py-4">No hay anuncios programados</div>
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- Create Modal -->
@@ -160,6 +157,7 @@ import { useToast } from '@/composables/useToast'
 import { PlatformService } from '@/services/Platform.service'
 import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 
 const toast = useToast()
 const loading = ref(true)

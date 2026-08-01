@@ -1,14 +1,10 @@
 <template>
-  <div class="bg-white rounded-2xl border-2 border-cyan/40 card-shadow p-6">
-    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-      <div>
-        <h3 class="text-lg font-black text-navy">Channel Manager (Channex)</h3>
-        <div class="text-sm text-text-muted">Cuenta única de la plataforma. Todos los hoteles sincronizan OTAs con estas credenciales.</div>
-      </div>
+  <SectionCard title="Channel Manager (Channex)" subtitle="Cuenta única de la plataforma. Todos los hoteles sincronizan OTAs con estas credenciales.">
+    <template #actions>
       <span class="text-[11px] font-black px-3 py-1 rounded-full inline-flex items-center gap-1.5" :class="badge.cls">
         <span class="w-2 h-2 rounded-full" :class="badge.dot"></span>{{ badge.label }}
       </span>
-    </div>
+    </template>
     <div class="grid md:grid-cols-2 gap-4">
       <div>
         <label class="block text-[10px] font-bold text-text-muted uppercase mb-2">API Key de Channex</label>
@@ -33,11 +29,12 @@
         {{ testResult.ok ? '✓' : '✕' }} {{ testResult.msg }}
       </span>
     </div>
-  </div>
+  </SectionCard>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 import { ChannexAdminService, type ChannexStatus } from '@/services/Platform.service'
 import { useToast } from '@/composables/useToast'
 

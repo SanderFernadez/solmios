@@ -10,18 +10,18 @@
 
     <ChannexPlatformConfig />
 
-    <div class="bg-surface/60 rounded-2xl border border-border p-6 text-sm text-text-secondary space-y-2">
-      <h3 class="font-black text-navy">Cómo conectar un hotel</h3>
+    <SectionCard title="Cómo conectar un hotel" bodyClass="p-4 sm:p-5 text-sm text-text-secondary space-y-2">
       <ol class="list-decimal list-inside space-y-1">
         <li>Cargá acá la <b>API key</b> de Channex y elegí el entorno (Staging para probar).</li>
         <li>Tocá <b>Probar conexión</b> — tiene que dar ✓.</li>
         <li>En el panel del hotel → <b>Canales</b> → <b>Sincronizar</b> (crea la <i>property</i> del hotel bajo esta cuenta).</li>
         <li>Al crear una reserva, la disponibilidad se empuja a Channex automáticamente.</li>
       </ol>
-    </div>
+    </SectionCard>
   </div>
 </template>
 
 <script setup lang="ts">
 import ChannexPlatformConfig from '@/components/features/ChannexPlatformConfig.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 </script>
