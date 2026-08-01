@@ -3,7 +3,7 @@ import { validateSchema } from 'arckode-framework'
 import type { AdminService } from './service'
 import {
   CreatePlanSchema, UpdatePlanSchema, CreateAmenityCatalogSchema, UpdateAmenityCatalogSchema, UpdateHotelAdminSchema,
-  ApplySpecialConditionsSchema, UpdateSpecialCategorySchema, UpdateSubscriptionSettingsSchema,
+  ApplySpecialConditionsSchema, UpdateSpecialCategorySchema, UpdateSubscriptionSettingsSchema, ModuleOverrideSchema,
 } from './validators/schema'
 
 export class AdminController {
@@ -203,6 +203,33 @@ export class AdminController {
       return { status: 200, body: await this.service.updateSubscriptionSettings(data) }
     } catch (e: any) {
       return { status: 400, body: { error: e.message } }
+    }
+  }
+
+  // ── Overrides de módulos por hotel (3ra capa de entitlement) ──────────────────────────
+
+  async listModuleOverrides(req: HttpRequest) {
+    return { status: 200, body: await this.service.listModuleOverrides(req.params.hotelId) }
+  }
+
+  async upsertModuleOverride(req: HttpRequest) {
+    try {
+      const data = validateSchema(ModuleOverrideSchema, req.body) as any
+      const override = await this.service.upsertModuleOverride(req.params.hotelId, data, req.user as any)
+      return { status: 201, body: override }
+    } catch (e: any) {
+      const msg = e.message || 'Error'
+      const status = msg.includes('no encontrad') ? 404 : 400
+      return { status, body: { error: msg } }
+    }
+  }
+
+  async deleteModuleOverride(req: HttpRequest) {
+    try {
+      await this.service.deleteModuleOverride(req.params.id, req.user as any)
+      return { status: 200, body: { success: true } }
+    } catch (e: any) {
+      return { status: 404, body: { error: e.message } }
     }
   }
 }

@@ -52,6 +52,37 @@ export const HotelAdminService = {
     _http.put<any>(`/admin/hoteles/${id}`, patch),
 }
 
+// Excepciones de módulos por hotel (bonos/trials/revocaciones). #568
+// enabled = fuerza ON aunque el plan no lo incluya (bono/trial). disabled = fuerza OFF.
+// endsAt null = permanente; con fecha = trial que vence.
+export interface ModuleOverrideDTO {
+  id: string
+  hotelId: string
+  moduleKey: string
+  status: 'enabled' | 'disabled'
+  reason: string
+  grantedByUserId?: string
+  startsAt?: string
+  endsAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export const HotelModuleOverridesService = {
+  list: (hotelId: string) =>
+    _http.get<ModuleOverrideDTO[]>(`/admin/hotels/${hotelId}/module-overrides`),
+  upsert: (hotelId: string, body: {
+    moduleKey: string
+    status: 'enabled' | 'disabled'
+    reason?: string
+    startsAt?: string
+    endsAt?: string
+  }) =>
+    _http.post<ModuleOverrideDTO>(`/admin/hotels/${hotelId}/module-overrides`, body),
+  remove: (hotelId: string, id: string) =>
+    _http.delete<void>(`/admin/hotels/${hotelId}/module-overrides/${id}`),
+}
+
 // Cuenta Channex a nivel PLATAFORMA (white-label). Solo super_admin. La API key nunca vuelve cruda.
 export interface ChannexStatus { environment: string; hasKey: boolean; keyMasked: string }
 export const ChannexAdminService = {

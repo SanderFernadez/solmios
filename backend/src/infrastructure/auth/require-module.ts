@@ -16,6 +16,7 @@ export function createModuleGuard(orm: ORM) {
   const configRepo = new OrmRepository<any>(orm, 'Configuration')
   const plansRepo = new OrmRepository<any>(orm, 'Plans')
   const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
+  const overridesRepo = new OrmRepository<any>(orm, 'HotelModuleOverrides')
 
   return (moduleKey: string): MiddlewareHandler => async (req, next) => {
     const user = req.user as any
@@ -25,7 +26,7 @@ export function createModuleGuard(orm: ORM) {
     if (!hotelId || hotelId === 'platform') return next()
 
     const hotel = ((await hotelsRepo.findMany({ id: hotelId })) as any[])?.[0]
-    const state = await getModuleStateForPlan(configRepo, plansRepo, hotel?.plan)
+    const state = await getModuleStateForPlan(configRepo, plansRepo, hotel?.plan, overridesRepo, hotelId)
     // Solo bloquea si está explícitamente apagado. Fail-open ante datos faltantes (no romper la operación).
     if (state[moduleKey] === false) {
       throw new ForbiddenError(`Módulo no disponible en tu plan: ${moduleKey}`)

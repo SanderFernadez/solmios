@@ -116,7 +116,7 @@ const CONFIG_KEY = 'modules'
 const PLATFORM = 'platform'
 
 /** Todas las claves configurables: módulos top-level + submódulos. */
-function allKeys(): string[] {
+export function allKeys(): string[] {
   const keys: string[] = []
   for (const m of MODULE_CATALOG) {
     keys.push(m.key)
@@ -141,17 +141,29 @@ export async function getModuleState(configRepo: RepositoryAdapter<any>): Promis
 }
 
 /**
- * Estado EFECTIVO para un hotel: global-ON ∩ (módulos y submódulos del plan). El plan.modules es una lista
- * plana de claves top-level Y submódulos punteados (`finance.night-audit`). super_admin / sin plan → solo global.
+ * Estado EFECTIVO para un hotel: global-ON ∩ (módulos y submódulos del plan) ∩ (override por hotel).
+ * El plan.modules es una lista plana de claves top-level Y submódulos punteados (`finance.night-audit`).
+ * super_admin / sin plan → solo global.
  * Retrocompat:
  *  - Plan sin módulos definidos (array vacío) → incluye TODO (los planes viejos no pierden nada).
  *  - Plan que lista un módulo top-level pero NINGÚN submódulo suyo → todos sus submódulos incluidos
  *    (los planes viejos guardaban solo claves top-level: no deben quedar sin submódulos).
  *  - Plan que lista al menos un `modulo.sub` → dentro de ese módulo, solo los submódulos listados.
  * El toggle global siempre manda: si un módulo/submódulo está apagado global, se cae para todos.
+ *
+ * 3ra capa — overrides por hotel (overridesRepo + hotelId opcionales, retrocompatible):
+ *  - status:'enabled'  → fuerza ON aunque el plan no lo incluya (trial / concesión manual del super_admin).
+ *  - status:'disabled' → fuerza OFF aunque el plan sí lo incluya (bloqueo comercial / deudor).
+ *  - Vigencia: startsAt futuro → no aplica aún; endsAt pasado → se ignora (trial vencido respeta el plan).
+ *  - Un override solo pisa claves que existen en el catálogo (state[moduleKey]); claves desconocidas se ignoran.
+ *  - Sin overridesRepo/hotelId (3 args) → comportamiento idéntico al previo (global ∩ plan).
  */
 export async function getModuleStateForPlan(
-  configRepo: RepositoryAdapter<any>, plansRepo: RepositoryAdapter<any>, planSlug?: string,
+  configRepo: RepositoryAdapter<any>,
+  plansRepo: RepositoryAdapter<any>,
+  planSlug?: string,
+  overridesRepo?: RepositoryAdapter<any>,
+  hotelId?: string,
 ): Promise<ModuleState> {
   const global = await getModuleState(configRepo)
   let planModules: string[] | null = null
@@ -171,6 +183,20 @@ export async function getModuleStateForPlan(
     for (const s of subs) {
       const inPlan = !subSelected || planModules!.includes(s.key)
       state[s.key] = moduleOn && global[s.key] !== false && inPlan
+    }
+  }
+
+  // 3ra capa: overrides por hotel. Aplica DESPUÉS de global ∩ plan → puede forzar ON u OFF.
+  // Solo se consideran overrides vigentes (startsAt ya empezado Y endsAt no expirado).
+  if (overridesRepo && hotelId) {
+    const now = new Date().toISOString()
+    const rows = ((await overridesRepo.findMany({ hotelId })) as any[]) ?? []
+    for (const o of rows) {
+      const started = !o.startsAt || o.startsAt <= now
+      const notExpired = !o.endsAt || o.endsAt > now
+      if (started && notExpired && o.moduleKey in state) {
+        state[o.moduleKey] = o.status === 'enabled'
+      }
     }
   }
   return state

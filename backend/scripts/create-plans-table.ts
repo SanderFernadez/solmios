@@ -26,7 +26,9 @@ async function migrate() {
         currency TEXT DEFAULT 'USD',
         description TEXT,
         features TEXT DEFAULT '[]',
+        modules TEXT DEFAULT '[]',
         limits TEXT DEFAULT '{}',
+        stripepriceid TEXT,
         isactive INTEGER DEFAULT 1,
         sortorder INTEGER DEFAULT 0,
         createdat TEXT,
@@ -35,19 +37,31 @@ async function migrate() {
     `)
     console.log('✅ Tabla plans creada')
 
-    // Seed default plans
+    // Seed default plans.
+    // `modules` es la lista plana de claves top-level Y submódulos punteados que el plan incluye.
+    // Array vacío = TODOS los módulos (retrocompat del cálculo en getModuleStateForPlan).
+    //
+    // essential/ultra cierran el fail-open: antes, un hotel sin plan.match en plans.modules
+    // recibía TODOS los módulos. Ahora essential define un set acotado y ultra (vacío) sigue
+    // dando todo por ser el plan tope.
+    //
+    // El mapeo de essential es una interpretación pragmática del PRD §5
+    // (Essential = M01 PMS + M02 Channel + M03 Reservas + M13 Pagos). Ajustable vía /admin/plans.
     const plans = [
-      ['plan-starter', 'Starter', 'starter', 49, 'USD', 'Para hoteles pequeños', JSON.stringify(['30 habitaciones', '2 usuarios']), JSON.stringify({rooms:30,users:2}), 1, 0],
-      ['plan-professional', 'Professional', 'professional', 99, 'USD', 'Para hoteles en crecimiento', JSON.stringify(['100 habitaciones', '6 usuarios']), JSON.stringify({rooms:100,users:6}), 1, 1],
-      ['plan-enterprise', 'Enterprise', 'enterprise', 199, 'USD', 'Para hoteles grandes', JSON.stringify(['Habitaciones ilimitadas', 'Usuarios ilimitados']), JSON.stringify({rooms:9999,users:9999}), 1, 2],
+      // id, name, slug, price, currency, desc, features, limits, modules, isactive, sortorder
+      ['plan-starter', 'Starter', 'starter', 49, 'USD', 'Para hoteles pequeños', JSON.stringify(['30 habitaciones', '2 usuarios']), JSON.stringify({rooms:30,users:2}), JSON.stringify([]), 1, 0],
+      ['plan-professional', 'Professional', 'professional', 99, 'USD', 'Para hoteles en crecimiento', JSON.stringify(['100 habitaciones', '6 usuarios']), JSON.stringify({rooms:100,users:6}), JSON.stringify([]), 1, 1],
+      ['plan-enterprise', 'Enterprise', 'enterprise', 199, 'USD', 'Para hoteles grandes', JSON.stringify(['Habitaciones ilimitadas', 'Usuarios ilimitados']), JSON.stringify({rooms:9999,users:9999}), JSON.stringify([]), 1, 2],
+      ['plan-essential', 'Essential', 'essential', 99, 'USD', 'PMS + Channel + Reservas + Pagos', JSON.stringify(['20 habitaciones', '2 usuarios']), JSON.stringify({rooms:20,users:2}), JSON.stringify(['planning','reservations','reservations.checkin','guests','finance','finance.billing','finance.payments','channel']), 1, 3],
+      ['plan-ultra', 'Ultra', 'ultra', 0, 'USD', 'Plan custom — todos los módulos', JSON.stringify(['Habitaciones ilimitadas', 'Usuarios ilimitados']), JSON.stringify({rooms:9999,users:9999}), JSON.stringify([]), 1, 4],
     ]
 
-    for (const [id, name, slug, price, currency, desc, features, limits, active, sort] of plans) {
+    for (const [id, name, slug, price, currency, desc, features, limits, modules, active, sort] of plans) {
       await client.query(
-        `INSERT INTO plans (id, name, slug, price, currency, description, features, limits, isactive, sortorder)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `INSERT INTO plans (id, name, slug, price, currency, description, features, limits, modules, isactive, sortorder)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          ON CONFLICT (id) DO NOTHING`,
-        [id, name, slug, price, currency, desc, features, limits, active, sort]
+        [id, name, slug, price, currency, desc, features, limits, modules, active, sort]
       )
     }
     console.log('✅ Plans seed completado')

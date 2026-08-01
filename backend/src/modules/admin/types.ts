@@ -1,6 +1,22 @@
 export interface PlanDTO { id: string; name: string; slug: string; price: number; currency: string; description: string; features: any[]; modules: string[]; limits: any; isActive: number; sortOrder: number; }
 export interface AmenityCatalogDTO { id: string; key: string; label: string; category: string; icon: string; isActive: number; sortOrder: number; }
 
+// Override por hotel de un módulo/submódulo (3ra capa de entitlement).
+// Los campos DEBEN coincidir con el orm.define('HotelModuleOverrides') en shared/models.ts
+// (anti-patrón descarte silencioso mem 1805: campo no declarado → se pierde al persistir).
+export interface ModuleOverrideDTO {
+  id: string
+  hotelId: string
+  moduleKey: string
+  status: 'enabled' | 'disabled'
+  reason: string
+  grantedByUserId?: string
+  startsAt?: string
+  endsAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 /**
  * DTOs locales de "Condiciones especiales" (PLAN-SUSCRIPCIONES.md). Redeclarados a propósito:
  * `admin/service.ts` NO puede importar de `subscriptions/` (regla del analyzer

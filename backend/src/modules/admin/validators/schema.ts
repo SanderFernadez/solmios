@@ -81,6 +81,16 @@ export const UpdateSubscriptionSettingsSchema: Record<string, ValidationRule> = 
   maxManualDiscountPct: { type: 'number' as const, min: 0, max: 100 },
 }
 
+// Override por hotel de módulo (upsert). moduleKey se valida contra el catálogo en el service.
+// status se valida contra 'enabled'|'disabled' en el service (validateSchema no tiene enum).
+export const ModuleOverrideSchema: Record<string, ValidationRule> = {
+  moduleKey: { type: 'string' as const, required: true, min: 2, max: 60 },
+  status: { type: 'string' as const, required: true, max: 10 },
+  reason: { type: 'string' as const, max: 300 },
+  startsAt: { type: 'string' as const, max: 30 },
+  endsAt: { type: 'string' as const, max: 30 },
+}
+
 export const AdminValidator = {
   createPlan: CreatePlanSchema,
   updatePlan: UpdatePlanSchema,

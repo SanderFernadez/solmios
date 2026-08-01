@@ -6,6 +6,7 @@ import { DashboardQueries } from './usecases/dashboard-queries'
 import { MODULE_CATALOG, getModuleState, setModuleState, getModuleStateForPlan } from './usecases/modules'
 import { SpecialConditionsUseCase } from './usecases/special-conditions'
 import { SubscriptionCategoriesUseCase } from './usecases/subscription-categories'
+import { ModuleOverridesUseCase } from './usecases/module-overrides'
 import { requireUserType } from '../../infrastructure/auth/require-user-type'
 
 export { AdminService }
@@ -18,7 +19,7 @@ export function AdminModule() {
     contract: {
       name: 'admin', version: '1.0.0',
       description: 'Platform-level management: hotels, users, plans, analytics',
-      actions: ['listHotels', 'updateHotel', 'listUsers', 'getAnalytics', 'listSubscriptions', 'listAuditLogs', 'listAnnouncements', 'getMonitoring', 'listPlans', 'createPlan', 'updatePlan', 'deletePlan', 'listAmenitiesCatalog', 'createAmenityCatalog', 'updateAmenityCatalog', 'deleteAmenityCatalog', 'getPublicUsers', 'getModules', 'setModules', 'getEnabledModules', 'searchSubscriptionByEmail', 'subscriptionDetail', 'applySpecialConditions', 'suspendSubscription', 'reactivateSubscription', 'listSubscriptionCategories', 'updateSubscriptionCategory', 'getSubscriptionSettings', 'updateSubscriptionSettings'],
+      actions: ['listHotels', 'updateHotel', 'listUsers', 'getAnalytics', 'listSubscriptions', 'listAuditLogs', 'listAnnouncements', 'getMonitoring', 'listPlans', 'createPlan', 'updatePlan', 'deletePlan', 'listAmenitiesCatalog', 'createAmenityCatalog', 'updateAmenityCatalog', 'deleteAmenityCatalog', 'getPublicUsers', 'getModules', 'setModules', 'getEnabledModules', 'searchSubscriptionByEmail', 'subscriptionDetail', 'applySpecialConditions', 'suspendSubscription', 'reactivateSubscription', 'listSubscriptionCategories', 'updateSubscriptionCategory', 'getSubscriptionSettings', 'updateSubscriptionSettings', 'listModuleOverrides', 'upsertModuleOverride', 'deleteModuleOverride'],
       events: [],
       tables: [],
       dependencies: [],
@@ -32,11 +33,13 @@ export function AdminModule() {
       const queries = new DashboardQueries(orm)
       const configRepo = new OrmRepository<any>(orm, 'Configuration')
       const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
+      const moduleOverridesRepo = new OrmRepository<any>(orm, 'HotelModuleOverrides')
       // `orm` crudo (no repos): el cupo de Fundador/Pionero necesita CAS (orm.updateMany), que
       // RepositoryAdapter/OrmRepository no exponen. Mismo criterio que DashboardQueries.
       const specialConditions = new SpecialConditionsUseCase(orm)
       const categories = new SubscriptionCategoriesUseCase(orm)
-      const service = new AdminService(plansRepo, amenitiesRepo, log, auth, queries, hotelsRepo, specialConditions, categories, configRepo)
+      const moduleOverrides = new ModuleOverridesUseCase(moduleOverridesRepo, auth, log)
+      const service = new AdminService(plansRepo, amenitiesRepo, log, auth, queries, hotelsRepo, specialConditions, categories, configRepo, moduleOverrides)
       const controller = new AdminController(service, log)
 
       const sa = [auth.authenticate('super_admin'), requireUserType('admin')]
@@ -53,7 +56,7 @@ export function AdminModule() {
           const hotel = ((await hotelsRepo.findMany({ id: hotelId })) as any[])?.[0]
           planSlug = hotel?.plan
         }
-        return { status: 200, body: { state: await getModuleStateForPlan(configRepo, plansRepo, planSlug) } }
+        return { status: 200, body: { state: await getModuleStateForPlan(configRepo, plansRepo, planSlug, moduleOverridesRepo, hotelId) } }
       })
 
       router.get('/api/admin/hoteles', sa, () => controller.listHotels())
@@ -85,7 +88,12 @@ export function AdminModule() {
       router.post('/api/admin/subscriptions/:hotelId/suspend', sa, (req: any) => controller.suspendSubscription(req))
       router.post('/api/admin/subscriptions/:hotelId/reactivate', sa, (req: any) => controller.reactivateSubscription(req))
 
-      log.info('Módulo admin listo (28 endpoints)')
+      // ── Overrides de módulos por hotel (3ra capa de entitlement) ──────────────────────
+      router.get('/api/admin/hotels/:hotelId/module-overrides', sa, (req: any) => controller.listModuleOverrides(req))
+      router.post('/api/admin/hotels/:hotelId/module-overrides', sa, (req: any) => controller.upsertModuleOverride(req))
+      router.delete('/api/admin/hotels/:hotelId/module-overrides/:id', sa, (req: any) => controller.deleteModuleOverride(req))
+
+      log.info('Módulo admin listo (31 endpoints)')
       return service
     },
   })

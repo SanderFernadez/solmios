@@ -41,6 +41,29 @@ export function registerSharedModels(orm: ORM): void {
     },
   })
 
+  // ─── HotelModuleOverrides (3ra capa de entitlement) ──
+  // Override por hotel de módulos/submódulos (clave del catálogo, top-level o 'modulo.sub').
+  // Estado efectivo = global ∩ plan.modules ∩ override-hotel.
+  // Semántica del override:
+  //  - status:'enabled'  → fuerza ON aunque el plan no lo incluya (trial / concesión manual).
+  //  - status:'disabled' → fuerza OFF aunque el plan sí lo incluya (bloqueo comercial).
+  //  - Vigencia: startsAt/endsAt ISO. null/null = permanente. endsAt expirado se ignora (trial vencido).
+  // UNIQUE(hotelId, moduleKey) se garantiza vía script (ensure-module-overrides-unique.ts):
+  // el ORM no crea unique compuesto (mismo patrón que configuration UNIQUE(hotelId,key)).
+  orm.define('HotelModuleOverrides', {
+    table: 'hotel_module_overrides', timestamps: true,
+    fields: {
+      id: { type: 'string', required: true },
+      hotelId: { type: 'string', required: true, indexed: true },
+      moduleKey: { type: 'string', required: true },   // clave del catálogo (top-level o 'modulo.sub')
+      status: { type: 'string', required: true },       // 'enabled' | 'disabled'
+      reason: { type: 'string', default: '' },
+      grantedByUserId: { type: 'string' },              // super_admin que otorgó
+      startsAt: { type: 'string' },                     // ISO; null = vigente desde ya
+      endsAt: { type: 'string' },                       // ISO; null = permanente (no expira)
+    },
+  })
+
   // ─── Amenities Catalog ───────────────────────────────
   orm.define('AmenitiesCatalog', {
     table: 'amenities_catalog', timestamps: true,

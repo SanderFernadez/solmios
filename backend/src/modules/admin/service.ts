@@ -1,5 +1,5 @@
 import type { RepositoryAdapter, Logger } from 'arckode-framework'
-import type { AdminAnalyticsDTO, MonitoringDTO, PlanDTO, AmenityCatalogDTO } from './types'
+import type { AdminAnalyticsDTO, MonitoringDTO, PlanDTO, AmenityCatalogDTO, ModuleOverrideDTO } from './types'
 import type { DashboardQueries } from './usecases/dashboard-queries'
 import {
   auditSafely, planDeleteEntry, amenityCatalogDeleteEntry, type AuditPort,
@@ -10,6 +10,7 @@ import {
   getSubscriptionSettings, setSubscriptionSettings,
   type SubscriptionSettings,
 } from './usecases/subscription-settings'
+import type { ModuleOverridesUseCase } from './usecases/module-overrides'
 
 /**
  * Planes y catálogo de amenities son recursos de la plataforma: no pertenecen a ningún hotel ni
@@ -40,6 +41,7 @@ export class AdminService {
     private readonly specialConditions?: SpecialConditionsUseCase,
     private readonly categories?: SubscriptionCategoriesUseCase,
     private readonly configRepo?: RepositoryAdapter<any>,
+    private readonly moduleOverrides?: ModuleOverridesUseCase,
   ) {}
 
   async listHotels(): Promise<{ data: any[]; total: number }> { return this.queries!.listHotels() }
@@ -186,4 +188,11 @@ export class AdminService {
   updateSubscriptionSettings(patch: Partial<SubscriptionSettings>): Promise<SubscriptionSettings> {
     return setSubscriptionSettings(this.configRepo!, patch)
   }
+
+  // ── Overrides de módulos por hotel (3ra capa) — delega a ModuleOverridesUseCase ──
+  async listModuleOverrides(hotelId: string): Promise<ModuleOverrideDTO[]> {
+    return this.moduleOverrides ? this.moduleOverrides.list(hotelId) : []
+  }
+  upsertModuleOverride(hotelId: string, body: any, user?: any): Promise<any> { return this.moduleOverrides!.upsert(hotelId, body, user) }
+  deleteModuleOverride(id: string, user?: any): Promise<void> { return this.moduleOverrides!.delete(id, user) }
 }

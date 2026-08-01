@@ -144,6 +144,7 @@
               <div class="flex gap-1 justify-end">
                 <button @click="openViewHotel(hotel)" class="px-2 py-1 bg-cyan/10 text-cyan rounded-lg text-[10px] font-bold hover:bg-cyan/20 transition-colors cursor-pointer">Ver</button>
                 <button @click="openEditHotel(hotel)" class="px-2 py-1 bg-navy/10 text-navy rounded-lg text-[10px] font-bold hover:bg-navy/20 transition-colors cursor-pointer">Editar</button>
+                <button @click="openModulesModal(hotel)" class="px-2 py-1 bg-teal/10 text-teal rounded-lg text-[10px] font-bold hover:bg-teal/20 transition-colors cursor-pointer">Módulos</button>
                 <button @click="openSuspendModal(hotel)" class="px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer" :class="hotel.status === 'Suspendido' ? 'bg-teal/10 text-teal hover:bg-teal/20' : 'bg-red/10 text-red hover:bg-red/20'">{{ hotel.status === 'Suspendido' ? 'Reactivar' : 'Suspender' }}</button>
               </div>
             </td>
@@ -182,6 +183,7 @@
         <div class="flex gap-2">
           <button @click="openViewHotel(hotel)" class="flex-1 py-2 bg-surface rounded-lg text-[10px] font-bold text-text-secondary hover:bg-surface-dark transition-colors cursor-pointer">Ver</button>
           <button @click="openEditHotel(hotel)" class="flex-1 py-2 bg-navy/10 rounded-lg text-[10px] font-bold text-navy hover:bg-navy/20 transition-colors cursor-pointer">Editar</button>
+          <button @click="openModulesModal(hotel)" class="flex-1 py-2 bg-teal/10 rounded-lg text-[10px] font-bold text-teal hover:bg-teal/20 transition-colors cursor-pointer">Módulos</button>
           <button @click="openSuspendModal(hotel)" class="py-2 px-3 rounded-lg text-[10px] font-bold transition-colors cursor-pointer" :class="hotel.status === 'Suspendido' ? 'bg-teal/10 text-teal hover:bg-teal/20' : 'bg-red/10 text-red hover:bg-red/20'">
             {{ hotel.status === 'Suspendido' ? '↑' : '↓' }}
           </button>
@@ -269,6 +271,109 @@
         </button>
       </template>
     </AppModal>
+
+    <!-- Modal: Módulos del hotel (excepciones/bonos) #568 -->
+    <AppModal v-if="showModulesModal" size="lg"
+      :title="`Módulos: ${modulesHotel.name}`"
+      subtitle="Bonos, trials y revocaciones que pisan el plan del hotel"
+      @close="closeModulesModal">
+      <SkeletonLoader v-if="modulesLoading" variant="card" :rows="5" />
+      <div v-else class="space-y-3">
+        <!-- Leyenda -->
+        <div class="flex items-center gap-3 flex-wrap text-[10px] font-bold bg-surface rounded-xl p-2.5">
+          <span class="flex items-center gap-1 text-teal"><span class="w-2 h-2 rounded-full bg-teal"></span>Plan</span>
+          <span class="flex items-center gap-1 text-warning"><span class="w-2 h-2 rounded-full bg-warning"></span>Bono</span>
+          <span class="flex items-center gap-1 text-danger"><span class="w-2 h-2 rounded-full bg-danger"></span>Revocado</span>
+          <span class="flex items-center gap-1 text-text-muted"><span class="w-2 h-2 rounded-full bg-text-muted"></span>No incl.</span>
+        </div>
+
+        <!-- Árbol de módulos -->
+        <div class="space-y-1.5">
+          <div v-for="m in moduleCatalog" :key="m.key">
+            <!-- Fila del módulo -->
+            <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border" :class="overrideFor(m.key) ? 'bg-warning/5 border-warning/20' : 'bg-surface border-border'">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-sm font-bold text-navy truncate">{{ m.label }}</span>
+                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0" :class="STATE_BADGE[effectiveState(m.key)]">{{ STATE_LABEL[effectiveState(m.key)] }}</span>
+              </div>
+              <div v-if="editingOverrideKey !== m.key" class="flex gap-1 shrink-0">
+                <template v-if="!overrideFor(m.key)">
+                  <button @click="startCreateOverride(m.key, 'enabled')" class="px-2 py-0.5 bg-warning/10 text-warning rounded-md text-[10px] font-bold hover:bg-warning/20 transition-colors cursor-pointer">Bono</button>
+                  <button @click="startCreateOverride(m.key, 'disabled')" class="px-2 py-0.5 bg-danger/10 text-danger rounded-md text-[10px] font-bold hover:bg-danger/20 transition-colors cursor-pointer">Revocar</button>
+                </template>
+                <template v-else>
+                  <button @click="startEditOverride(overrideFor(m.key)!)" class="px-2 py-0.5 bg-navy/10 text-navy rounded-md text-[10px] font-bold hover:bg-navy/20 transition-colors cursor-pointer">Editar</button>
+                  <button @click="removeOverride(overrideFor(m.key)!)" class="px-2 py-0.5 bg-surface border border-border text-text-secondary rounded-md text-[10px] font-bold hover:bg-surface-dark transition-colors cursor-pointer">Quitar</button>
+                </template>
+              </div>
+            </div>
+
+            <!-- Form inline del módulo -->
+            <div v-if="editingOverrideKey === m.key" class="mx-1 mb-1 p-3 bg-white border border-border rounded-xl space-y-2">
+              <div class="flex items-center gap-3 flex-wrap">
+                <select v-model="editOverrideStatus" class="px-2 py-1 bg-surface border border-border rounded-lg text-[11px] font-bold cursor-pointer">
+                  <option value="enabled">Bono/Extra (forzar ON)</option>
+                  <option value="disabled">Revocado (forzar OFF)</option>
+                </select>
+                <div class="flex items-center gap-1.5">
+                  <input v-model="editOverrideEndsAt" type="date" class="px-2 py-1 bg-surface border border-border rounded-lg text-[11px]" />
+                  <span class="text-[9px] text-text-muted">Vence (vacío = permanente)</span>
+                </div>
+              </div>
+              <input v-model="editOverrideReason" type="text" placeholder="Motivo del bono/revocación (opcional)..." class="w-full px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px]" />
+              <div class="flex gap-2">
+                <button @click="saveOverride(m.key)" :disabled="savingOverride" class="px-3 py-1.5 bg-navy text-white rounded-lg text-[11px] font-bold cursor-pointer disabled:opacity-50">{{ savingOverride ? 'Guardando...' : 'Guardar' }}</button>
+                <button @click="cancelEditOverride" class="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-bold text-text-secondary cursor-pointer">Cancelar</button>
+              </div>
+            </div>
+
+            <!-- Submódulos -->
+            <div v-if="m.submodules?.length" class="ml-3 mt-1 space-y-1">
+              <div v-for="s in m.submodules" :key="s.key">
+                <div class="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border" :class="overrideFor(s.key) ? 'bg-warning/5 border-warning/20' : 'bg-surface/50 border-border/50'">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-text-muted">└</span>
+                    <span class="text-[12px] font-semibold text-text-secondary truncate">{{ s.label }}</span>
+                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0" :class="STATE_BADGE[effectiveState(s.key)]">{{ STATE_LABEL[effectiveState(s.key)] }}</span>
+                  </div>
+                  <div v-if="editingOverrideKey !== s.key" class="flex gap-1 shrink-0">
+                    <template v-if="!overrideFor(s.key)">
+                      <button @click="startCreateOverride(s.key, 'enabled')" class="px-1.5 py-0.5 bg-warning/10 text-warning rounded-md text-[9px] font-bold hover:bg-warning/20 transition-colors cursor-pointer">Bono</button>
+                      <button @click="startCreateOverride(s.key, 'disabled')" class="px-1.5 py-0.5 bg-danger/10 text-danger rounded-md text-[9px] font-bold hover:bg-danger/20 transition-colors cursor-pointer">Revocar</button>
+                    </template>
+                    <template v-else>
+                      <button @click="startEditOverride(overrideFor(s.key)!)" class="px-1.5 py-0.5 bg-navy/10 text-navy rounded-md text-[9px] font-bold hover:bg-navy/20 transition-colors cursor-pointer">Editar</button>
+                      <button @click="removeOverride(overrideFor(s.key)!)" class="px-1.5 py-0.5 bg-surface border border-border text-text-secondary rounded-md text-[9px] font-bold hover:bg-surface-dark transition-colors cursor-pointer">Quitar</button>
+                    </template>
+                  </div>
+                </div>
+                <!-- Form inline del submódulo -->
+                <div v-if="editingOverrideKey === s.key" class="ml-5 mr-1 mb-1 p-2.5 bg-white border border-border rounded-xl space-y-2">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <select v-model="editOverrideStatus" class="px-2 py-1 bg-surface border border-border rounded-lg text-[11px] font-bold cursor-pointer">
+                      <option value="enabled">Bono/Extra (forzar ON)</option>
+                      <option value="disabled">Revocado (forzar OFF)</option>
+                    </select>
+                    <div class="flex items-center gap-1.5">
+                      <input v-model="editOverrideEndsAt" type="date" class="px-2 py-1 bg-surface border border-border rounded-lg text-[11px]" />
+                      <span class="text-[9px] text-text-muted">Vence</span>
+                    </div>
+                  </div>
+                  <input v-model="editOverrideReason" type="text" placeholder="Motivo (opcional)..." class="w-full px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px]" />
+                  <div class="flex gap-2">
+                    <button @click="saveOverride(s.key)" :disabled="savingOverride" class="px-3 py-1.5 bg-navy text-white rounded-lg text-[11px] font-bold cursor-pointer disabled:opacity-50">{{ savingOverride ? 'Guardando...' : 'Guardar' }}</button>
+                    <button @click="cancelEditOverride" class="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-bold text-text-secondary cursor-pointer">Cancelar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button @click="closeModulesModal" class="px-5 py-2.5 bg-surface text-text-secondary rounded-xl text-sm font-bold hover:bg-surface-dark transition-colors cursor-pointer">Cerrar</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -278,7 +383,7 @@ import AppModal from '@/components/ui/AppModal.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import { SuperAdminService } from '@/services/SuperAdmin.service'
-import { HotelAdminService } from '@/services/Platform.service'
+import { HotelAdminService, HotelModuleOverridesService, ModulesService, type ModuleMeta, type ModuleOverrideDTO } from '@/services/Platform.service'
 import { PlansService } from '@/services/Plans.service'
 import { useToast } from '@/composables/useToast'
 
@@ -458,6 +563,143 @@ const toggleSuspend = async () => {
     showSuspendModal.value = false
   } catch (e: any) {
     toast.error(e?.message || 'No se pudo cambiar el estado')
+  }
+}
+
+// ─── Módulos del hotel: excepciones/bonos (#568) ───
+// El super_admin puede forzar ON (bono/trial) o OFF (revocar) módulos individuales
+// que pisan lo que el plan del hotel incluye. El backend aplica la 3ra capa solo.
+const showModulesModal = ref(false)
+const modulesHotel = ref<any>({})
+const modulesLoading = ref(false)
+const moduleCatalog = ref<ModuleMeta[]>([])
+const moduleOverrides = ref<ModuleOverrideDTO[]>([])
+const editingOverrideKey = ref<string | null>(null)
+const editOverrideStatus = ref<'enabled' | 'disabled'>('enabled')
+const editOverrideReason = ref('')
+const editOverrideEndsAt = ref('')
+const savingOverride = ref(false)
+
+// Módulos incluidos en el plan del hotel (normalizados: parent sin submódulos listados = todos).
+const hotelPlanModules = computed<string[]>(() => {
+  const planSlug = String(modulesHotel.value.plan || '').toLowerCase()
+  const plan = plansList.value.find((p: any) => String(p.slug || '').toLowerCase() === planSlug)
+  if (!plan || !plan.modules) return []
+  const mods: string[] = plan.modules
+  if (mods.length === 0) return []  // array vacío = todos incluidos
+  // Normalizar: módulo top-level listado sin submódulos → todos sus submódulos incluidos
+  const set = new Set(mods)
+  for (const m of moduleCatalog.value) {
+    const subs = m.submodules ?? []
+    if (set.has(m.key) && subs.length && !subs.some(s => set.has(s.key))) {
+      subs.forEach(s => set.add(s.key))
+    }
+  }
+  return [...set]
+})
+
+function planIncludes(key: string): boolean {
+  const mods = hotelPlanModules.value
+  return mods.length === 0 || mods.includes(key)
+}
+
+function overrideFor(moduleKey: string): ModuleOverrideDTO | undefined {
+  return moduleOverrides.value.find(o => o.moduleKey === moduleKey)
+}
+
+// Estado efectivo: lo que el hotel ve para este módulo (plan ∩ override).
+function effectiveState(moduleKey: string): 'plan' | 'bono' | 'revocado' | 'off' {
+  const ov = overrideFor(moduleKey)
+  if (ov?.status === 'enabled') return 'bono'
+  if (ov?.status === 'disabled') return 'revocado'
+  return planIncludes(moduleKey) ? 'plan' : 'off'
+}
+
+const STATE_BADGE: Record<string, string> = {
+  plan: 'bg-teal/10 text-teal',
+  bono: 'bg-warning/10 text-warning',
+  revocado: 'bg-danger/10 text-danger',
+  off: 'bg-surface text-text-muted',
+}
+const STATE_LABEL: Record<string, string> = {
+  plan: 'Plan',
+  bono: 'Bono',
+  revocado: 'Revocado',
+  off: 'No incl.',
+}
+
+async function openModulesModal(hotel: any) {
+  modulesHotel.value = { ...hotel }
+  showModulesModal.value = true
+  modulesLoading.value = true
+  editingOverrideKey.value = null
+  try {
+    const [overrides, catalog] = await Promise.all([
+      HotelModuleOverridesService.list(String(hotel.id)),
+      ModulesService.adminGet(),
+    ])
+    moduleOverrides.value = overrides || []
+    moduleCatalog.value = catalog.catalog || []
+  } catch (e: any) {
+    toast.error(e?.message || 'No se pudieron cargar los módulos')
+  } finally {
+    modulesLoading.value = false
+  }
+}
+
+function closeModulesModal() {
+  showModulesModal.value = false
+  editingOverrideKey.value = null
+}
+
+function startCreateOverride(moduleKey: string, status: 'enabled' | 'disabled') {
+  editingOverrideKey.value = moduleKey
+  editOverrideStatus.value = status
+  editOverrideReason.value = ''
+  editOverrideEndsAt.value = ''
+}
+
+function startEditOverride(o: ModuleOverrideDTO) {
+  editingOverrideKey.value = o.moduleKey
+  editOverrideStatus.value = o.status
+  editOverrideReason.value = o.reason || ''
+  editOverrideEndsAt.value = o.endsAt ? String(o.endsAt).slice(0, 10) : ''
+}
+
+function cancelEditOverride() {
+  editingOverrideKey.value = null
+}
+
+async function saveOverride(moduleKey: string) {
+  savingOverride.value = true
+  try {
+    const body: { moduleKey: string; status: 'enabled' | 'disabled'; reason?: string; endsAt?: string } = {
+      moduleKey,
+      status: editOverrideStatus.value,
+    }
+    if (editOverrideReason.value.trim()) body.reason = editOverrideReason.value.trim()
+    if (editOverrideEndsAt.value) body.endsAt = new Date(editOverrideEndsAt.value + 'T23:59:59').toISOString()
+    const saved = await HotelModuleOverridesService.upsert(String(modulesHotel.value.id), body)
+    const idx = moduleOverrides.value.findIndex(o => o.moduleKey === moduleKey)
+    if (idx !== -1) moduleOverrides.value[idx] = saved
+    else moduleOverrides.value.push(saved)
+    editingOverrideKey.value = null
+    toast.success(editOverrideStatus.value === 'enabled' ? 'Bono otorgado' : 'Módulo revocado')
+  } catch (e: any) {
+    toast.error(e?.message || 'No se pudo guardar')
+  } finally {
+    savingOverride.value = false
+  }
+}
+
+async function removeOverride(o: ModuleOverrideDTO) {
+  try {
+    await HotelModuleOverridesService.remove(String(modulesHotel.value.id), o.id)
+    moduleOverrides.value = moduleOverrides.value.filter(x => x.id !== o.id)
+    editingOverrideKey.value = null
+    toast.success('Excepción removida')
+  } catch (e: any) {
+    toast.error(e?.message || 'No se pudo remover')
   }
 }
 </script>
