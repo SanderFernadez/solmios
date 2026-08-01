@@ -1,16 +1,5 @@
 <template>
-  <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
-        <div class="flex items-center justify-between p-6 pb-4 shrink-0">
-          <h3 class="text-lg font-black text-navy">{{ title }}</h3>
-          <button @click="$emit('close')" class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-surface hover:text-navy">
-            <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-          </button>
-        </div>
-
-        <div class="overflow-y-auto px-6 space-y-3">
+  <AppModal size="lg" :title="title" body-class="p-6 space-y-3" @close="$emit('close')">
           <div v-for="f in fields" :key="f.key" :class="f.full === false ? '' : 'w-full'">
             <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">
               {{ f.label }}<span v-if="f.required" class="text-coral"> *</span>
@@ -60,21 +49,19 @@
           </div>
 
           <p v-if="error" class="text-xs font-bold text-coral">{{ error }}</p>
-        </div>
 
-        <div class="flex gap-3 p-6 pt-4 shrink-0">
-          <button @click="$emit('close')" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">{{ readOnly ? 'Cerrar' : 'Cancelar' }}</button>
-          <button v-if="!readOnly" @click="submit" :disabled="loading" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
-            {{ loading ? 'Guardando…' : (submitLabel || 'Guardar') }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+    <template #footer>
+      <button @click="$emit('close')" class="flex-1 py-2.5 border-2 border-navy/30 rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition-colors">{{ readOnly ? 'Cerrar' : 'Cancelar' }}</button>
+      <button v-if="!readOnly" @click="submit" :disabled="loading" class="flex-1 py-2.5 bg-navy border-2 border-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50 hover:bg-navy-light transition-colors">
+        {{ loading ? 'Guardando…' : (submitLabel || 'Guardar') }}
+      </button>
+    </template>
+  </AppModal>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
+import AppModal from '@/components/ui/AppModal.vue'
 
 export interface FormField {
   key: string
@@ -105,8 +92,6 @@ const props = defineProps<{ title: string; fields: FormField[]; submitLabel?: st
 // onSubmit existentes en el repo) — 'checkbox-group' agrega string[] SOLO puertas adentro de este
 // componente; el payload final se castea al emitir (ver submit()) para no romper los ~12 callers.
 const emit = defineEmits<{ close: []; submit: [values: Record<string, string | number>] }>()
-
-const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
 
 const values = reactive<Record<string, string | number | string[]>>({})
 const fieldErrors = reactive<Record<string, string>>({})

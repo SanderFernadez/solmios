@@ -1,24 +1,17 @@
 <template>
-  <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[88vh] flex flex-col">
-        <!-- Header -->
-        <div class="flex items-start justify-between p-6 pb-4 shrink-0">
-          <div>
-            <h3 class="text-lg font-black text-navy">Liquidación — Período {{ run.period }}</h3>
-            <p class="text-xs text-text-muted mt-0.5">
-              {{ run.startDate }} → {{ run.endDate }} · Pago: {{ run.paymentDate }} ·
-              <span class="font-bold" :class="statusClass(run.status)">{{ statusLabel(run.status) }}</span>
-            </p>
-          </div>
-          <button @click="$emit('close')" class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-surface hover:text-navy">
-            <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-          </button>
-        </div>
+  <AppModal size="xl" :closable="true" body-class="p-0" @close="$emit('close')">
+    <template #header>
+      <div class="min-w-0">
+        <h3 class="text-base sm:text-lg font-black text-white truncate">Liquidación — Período {{ run.period }}</h3>
+        <p class="text-[11px] text-white/60 mt-0.5 truncate">
+          {{ run.startDate }} → {{ run.endDate }} · Pago: {{ run.paymentDate }} ·
+          <span class="font-bold" :class="statusClass(run.status)">{{ statusLabel(run.status) }}</span>
+        </p>
+      </div>
+    </template>
 
         <!-- KPIs del período -->
-        <div class="grid grid-cols-4 gap-3 px-6 pb-4 shrink-0">
+        <div class="grid grid-cols-4 gap-3 px-6 pt-4 pb-4 shrink-0">
           <div class="p-3 rounded-xl bg-navy/5"><div class="text-[10px] text-text-muted uppercase font-bold">Empleados</div><div class="text-lg font-black text-navy">{{ run.employeeCount }}</div></div>
           <div class="p-3 rounded-xl bg-teal/5"><div class="text-[10px] text-text-muted uppercase font-bold">Bruto</div><div class="text-lg font-black text-teal">{{ money(run.totalGross) }}</div></div>
           <div class="p-3 rounded-xl bg-coral/5"><div class="text-[10px] text-text-muted uppercase font-bold">Deducciones</div><div class="text-lg font-black text-coral">{{ money(run.totalDeductions) }}</div></div>
@@ -93,12 +86,10 @@
           </table>
         </div>
 
-        <div class="p-6 pt-3 shrink-0">
-          <button @click="$emit('close')" class="w-full py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cerrar</button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+    <template #footer>
+      <button @click="$emit('close')" class="flex-1 py-2.5 border-2 border-navy/30 rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition-colors">Cerrar</button>
+    </template>
+  </AppModal>
 
   <FormModal
     v-if="emailModal"
@@ -113,6 +104,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { PayrollService, type PayrollRun, type PayrollRunDetail } from '@/services/Payroll.service'
 import { EmpleadosService, type EmployeeProfile } from '@/services/Empleados.service'
 import { useToast } from '@/composables/useToast'
@@ -159,8 +151,6 @@ async function submitEmail(values: Record<string, string | number>) {
   finally { emailSaving.value = false }
 }
 
-const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
-
 const details = ref<PayrollRunDetail[]>([])
 const profiles = ref<EmployeeProfile[]>([])
 const loading = ref(true)
@@ -173,7 +163,9 @@ const expanded = ref<string | null>(null)
 const money = (n: number) => formatCurrency(Number(n) || 0, props.currency)
 const employeeName = (id: string) => { const p = profiles.value.find((x) => x.id === id || x.userId === id); return p?.userName || p?.position || id.slice(0, 8) }
 function statusLabel(s: string) { return ({ draft: 'Borrador', calculated: 'Calculado', approved: 'Aprobado', paid: 'Pagado', cancelled: 'Cancelado' } as Record<string, string>)[s] ?? s }
-function statusClass(s: string) { return ({ draft: 'text-text-muted', calculated: 'text-blue', approved: 'text-gold', paid: 'text-teal', cancelled: 'text-coral' } as Record<string, string>)[s] ?? 'text-navy' }
+// FIX (migración a AppModal) — este status vive ahora en el header navy oscuro (antes era blanco);
+// 'text-text-muted'/'text-navy' quedaban ilegibles sobre navy. Variantes claras equivalentes.
+function statusClass(s: string) { return ({ draft: 'text-white/70', calculated: 'text-blue', approved: 'text-gold-light', paid: 'text-teal-light', cancelled: 'text-coral-light' } as Record<string, string>)[s] ?? 'text-white' }
 function toggle(id: string) { expanded.value = expanded.value === id ? null : id }
 function parse(json: string): Array<{ name: string; amount: number }> {
   try { const a = JSON.parse(json || '[]'); return Array.isArray(a) ? a : [] } catch { return [] }

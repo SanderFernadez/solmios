@@ -1,20 +1,13 @@
 <template>
-  <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col">
-        <!-- Header -->
-        <div class="flex items-center justify-between p-6 pb-4 shrink-0">
-          <div>
-            <h3 class="flex items-center gap-2 text-lg font-black text-navy">
-              <span class="w-5 h-5 shrink-0" v-html="ICON_CALC"></span>Calcular Nómina — {{ run.period }}
-            </h3>
-            <p class="text-xs text-text-muted mt-0.5">Prellenado desde los fichajes. Revisá y corregí antes de calcular.</p>
-          </div>
-          <button @click="$emit('close')" class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-surface hover:text-navy">
-            <span class="w-4 h-4 shrink-0" v-html="ICON_X"></span>
-          </button>
-        </div>
+  <AppModal size="xl" body-class="p-0" @close="$emit('close')">
+    <template #header>
+      <div class="min-w-0">
+        <h3 class="flex items-center gap-2 text-base sm:text-lg font-black text-white truncate">
+          <span class="w-5 h-5 shrink-0" v-html="ICON_CALC"></span>Calcular Nómina — {{ run.period }}
+        </h3>
+        <p class="text-[11px] text-white/60 mt-0.5 truncate">Prellenado desde los fichajes. Revisá y corregí antes de calcular.</p>
+      </div>
+    </template>
 
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center py-16">
@@ -22,19 +15,19 @@
         </div>
 
         <!-- Error de carga -->
-        <div v-else-if="loadError" class="px-6 py-10 text-center">
+        <div v-else-if="loadError" class="px-6 pt-6 py-10 text-center">
           <p class="text-sm font-bold text-coral">{{ loadError }}</p>
           <button @click="load" class="mt-3 px-4 py-2 border border-border rounded-xl text-xs font-bold text-text-secondary cursor-pointer">Reintentar</button>
         </div>
 
         <!-- Sin empleados -->
-        <div v-else-if="!rows.length" class="px-6 py-10 text-center">
+        <div v-else-if="!rows.length" class="px-6 pt-6 py-10 text-center">
           <p class="text-sm text-text-muted">No hay empleados activos con legajo en este hotel. Cargá los legajos en Empleados antes de liquidar.</p>
         </div>
 
         <!-- Tabla editable -->
         <template v-else>
-          <div class="overflow-auto px-6">
+          <div class="overflow-auto px-6 pt-4">
             <table class="w-full text-sm">
               <thead class="sticky top-0 bg-white">
                 <tr class="border-b border-border text-left">
@@ -66,34 +59,32 @@
             </table>
           </div>
 
-          <!-- Footer -->
-          <div class="p-6 pt-4 shrink-0">
-            <p v-if="formError" class="text-xs font-bold text-coral mb-3">{{ formError }}</p>
-            <p v-if="run.status !== 'draft'" class="text-xs font-bold text-amber-600 mb-3">
+          <div v-if="formError || run.status !== 'draft'" class="px-6 pt-3">
+            <p v-if="formError" class="text-xs font-bold text-coral mb-1">{{ formError }}</p>
+            <p v-if="run.status !== 'draft'" class="text-xs font-bold text-amber-600">
               Esta liquidación ya no está en borrador ({{ run.status }}): no se puede recalcular.
             </p>
-            <div class="flex gap-3">
-              <button @click="$emit('close')" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-              <button @click="submit" :disabled="calculating || run.status !== 'draft'" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50">
-                {{ calculating ? 'Calculando...' : `Calcular ${rows.length} empleados` }}
-              </button>
-            </div>
           </div>
         </template>
-      </div>
-    </div>
-  </Teleport>
+
+    <template #footer>
+      <button @click="$emit('close')" class="flex-1 py-2.5 border-2 border-navy/30 rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition-colors">Cancelar</button>
+      <button v-if="rows.length" @click="submit" :disabled="calculating || run.status !== 'draft'" class="flex-1 py-2.5 bg-navy border-2 border-navy text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50 hover:bg-navy-light transition-colors">
+        {{ calculating ? 'Calculando...' : `Calcular ${rows.length} empleados` }}
+      </button>
+    </template>
+  </AppModal>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { PayrollService, type PayrollRun, type PayrollPrefillRow } from '@/services/Payroll.service'
 
 const props = defineProps<{ run: PayrollRun }>()
 const emit = defineEmits<{ close: []; calculated: [result: { employeeCount: number; totalNet: number }] }>()
 
 const ICON_CALC = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4.5" y="3" width="15" height="18" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 7.5h8M8 12h1.5m3.25 0h1.5m3.25 0h0M8 15.75h1.5m3.25 0h1.5m3.25 0h0M8 19.5h1.5m3.25 0h1.5m3.25 0h0"/></svg>'
-const ICON_X = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
 const ICON_WARN = '<svg viewBox="0 0 24 24" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>'
 
 const rows = ref<PayrollPrefillRow[]>([])
