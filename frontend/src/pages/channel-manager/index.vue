@@ -28,91 +28,66 @@
     </div>
 
     <!-- Connection Dialog -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="connectDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 class="text-lg font-black text-navy mb-4">Conectar {{ connectDialog.channelName }}</h2>
-            <div class="space-y-4">
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Código OTA</label>
-                <input :value="connectDialog.channelCode" readonly class="w-full px-4 py-2.5 bg-surface rounded-xl text-sm text-navy font-mono" />
-              </div>
-              <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Título del canal</label>
-                <input v-model="connectDialog.title" class="w-full px-4 py-2.5 border border-border rounded-xl text-sm text-navy focus:border-cyan focus:ring-1 focus:ring-cyan outline-none" />
-              </div>
-
-              <div v-if="connectError" class="text-xs font-bold text-coral">{{ connectError }}</div>
-              <div v-if="connectResult" class="text-xs font-bold text-teal">{{ connectResult }}</div>
-
-              <div class="flex items-center justify-end gap-4 pt-2">
-                <button @click="cancelConnect" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-                <button @click="confirmConnect" :disabled="connecting" class="rounded-full bg-cyan text-navy text-sm font-extrabold px-5 py-2.5 hover:shadow-lg transition-all cursor-pointer disabled:opacity-60">
-                  {{ connecting ? 'Conectando...' : 'Conectar' }}
-                </button>
-              </div>
-            </div>
-          </div>
+    <AppModal v-if="connectDialog" size="md" :title="`Conectar ${connectDialog.channelName}`" @close="cancelConnect">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Código OTA</label>
+          <input :value="connectDialog.channelCode" readonly class="w-full px-4 py-2.5 bg-surface rounded-xl text-sm text-navy font-mono" />
         </div>
-      </Transition>
-    </Teleport>
+        <div>
+          <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Título del canal</label>
+          <input v-model="connectDialog.title" class="w-full px-4 py-2.5 border border-border rounded-xl text-sm text-navy focus:border-cyan focus:ring-1 focus:ring-cyan outline-none" />
+        </div>
+
+        <div v-if="connectError" class="text-xs font-bold text-coral">{{ connectError }}</div>
+        <div v-if="connectResult" class="text-xs font-bold text-teal">{{ connectResult }}</div>
+      </div>
+      <template #footer>
+        <button @click="cancelConnect" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
+        <button @click="confirmConnect" :disabled="connecting" class="rounded-full bg-cyan text-navy text-sm font-extrabold px-5 py-2.5 hover:shadow-lg transition-all cursor-pointer disabled:opacity-60">
+          {{ connecting ? 'Conectando...' : 'Conectar' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Config Dialog -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="configDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-black text-navy">{{ configDialog.name }}</h2>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="configDialog.active ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ configDialog.active ? 'Activo' : 'Inactivo' }}</span>
-            </div>
-            <div class="space-y-3 pb-4 border-b border-border">
-              <div>
-                <span class="text-[10px] text-text-muted uppercase tracking-wide">ID de propiedad</span>
-                <p class="text-xs font-mono text-navy mt-0.5 truncate">{{ configDialog.id }}</p>
-              </div>
-              <div>
-                <span class="text-[10px] text-text-muted uppercase tracking-wide">Código OTA</span>
-                <p class="text-xs font-bold text-navy mt-0.5">{{ configDialog.otaCode }}</p>
-              </div>
-              <div class="flex gap-6">
-                <div>
-                  <span class="text-[10px] text-text-muted uppercase tracking-wide">Reservas</span>
-                  <p class="text-sm font-black text-navy mt-0.5">{{ configDialog.bookings }}</p>
-                </div>
-                <div>
-                  <span class="text-[10px] text-text-muted uppercase tracking-wide">Última Sync</span>
-                  <p class="text-xs text-teal mt-0.5">{{ configDialog.lastSync }}</p>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center justify-end pt-4">
-              <button @click="closeConfig" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cerrar</button>
-            </div>
+    <AppModal v-if="configDialog" size="sm" @close="closeConfig">
+      <template #header>
+        <div class="min-w-0 flex items-center gap-2">
+          <h3 class="text-base sm:text-lg font-black text-white truncate">{{ configDialog.name }}</h3>
+          <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full" :class="configDialog.active ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'">{{ configDialog.active ? 'Activo' : 'Inactivo' }}</span>
+        </div>
+      </template>
+      <div class="space-y-3 pb-4 border-b border-border">
+        <div>
+          <span class="text-[10px] text-text-muted uppercase tracking-wide">ID de propiedad</span>
+          <p class="text-xs font-mono text-navy mt-0.5 truncate">{{ configDialog.id }}</p>
+        </div>
+        <div>
+          <span class="text-[10px] text-text-muted uppercase tracking-wide">Código OTA</span>
+          <p class="text-xs font-bold text-navy mt-0.5">{{ configDialog.otaCode }}</p>
+        </div>
+        <div class="flex gap-6">
+          <div>
+            <span class="text-[10px] text-text-muted uppercase tracking-wide">Reservas</span>
+            <p class="text-sm font-black text-navy mt-0.5">{{ configDialog.bookings }}</p>
+          </div>
+          <div>
+            <span class="text-[10px] text-text-muted uppercase tracking-wide">Última Sync</span>
+            <p class="text-xs text-teal mt-0.5">{{ configDialog.lastSync }}</p>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+      </div>
+      <template #footer>
+        <button @click="closeConfig" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cerrar</button>
+      </template>
+    </AppModal>
 
     <!-- Conectar canales (iFrame) -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showIframe" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
-          <div class="modal-panel relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
-            <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 class="text-lg font-black text-navy">Conectar Canales</h2>
-              <button @click="showIframe = false; loadStatus()" class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer">Cerrar y Refrescar</button>
-            </div>
-            <iframe v-if="iframeUrl" :src="iframeUrl" class="flex-1 w-full" frameborder="0" />
-            <div v-else class="flex-1 flex items-center justify-center text-text-muted text-sm">Cargando...</div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+    <AppModal v-if="showIframe" size="xl" title="Conectar Canales" body-class="p-0 h-[75vh]" @close="showIframe = false; loadStatus()">
+      <iframe v-if="iframeUrl" :src="iframeUrl" class="w-full h-full block" frameborder="0" />
+      <div v-else class="w-full h-full flex items-center justify-center text-text-muted text-sm">Cargando...</div>
+    </AppModal>
 
     <!-- Connected Channels -->
     <SectionCard title="Canales Conectados" class="mb-8">
@@ -544,14 +519,3 @@ async function disconnectChannel(id: string) {
   }
 }
 </script>
-
-<style scoped>
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
-.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel {
-  opacity: 0; transform: scale(0.95) translateY(12px);
-}
-</style>
