@@ -69,6 +69,11 @@ export class BookingengineController {
     // cancellationPolicy). Distinto de `configRepo` de arriba (que pese al nombre es la
     // `Configuration` KV de taxes/currency — no tocado para no romper nada existente).
     private readonly bookingConfigRepo?: RepositoryAdapter<any>,
+    // FIX (foto real por tipo de habitación en /rates) — `roomsRepo`/`hotelMediaRepo` para
+    // resolver `photoUrl` por type. Mismo precedente que `hotelsRepo` de arriba: repo ORM
+    // compartido por nombre de modelo, no import cross-module de otro service/controller.
+    private readonly roomsRepo?: RepositoryAdapter<any>,
+    private readonly hotelMediaRepo?: RepositoryAdapter<any>,
   ) {}
 
   /** Deps para los usecases de upsells. Tirar si no están cableadas (claramente un bug de wiring). */
@@ -261,7 +266,10 @@ export class BookingengineController {
     }
     const query = (req.query || {}) as { checkIn?: string; checkOut?: string; rooms?: string; guests?: string; currency?: string }
     return getPublicRates(
-      { hotels: this.hotelsRepo, availability: this.service, config: this.configRepo, bookingConfig: this.bookingConfigRepo },
+      {
+        hotels: this.hotelsRepo, availability: this.service, config: this.configRepo,
+        bookingConfig: this.bookingConfigRepo, rooms: this.roomsRepo, hotelMedia: this.hotelMediaRepo,
+      },
       String(req.params?.slug || ''),
       {
         checkIn: String(query.checkIn || ''),

@@ -113,6 +113,10 @@ export interface RoomTypeRate {
   /** Metros cuadrados de la habitación. Passthrough de `Rooms.surfaceArea`. */
   surfaceArea: number
   taxBreakdown: RoomTypeTaxItem[]
+  /** Foto representativa del type — primera `hotel_media(type='room')` encontrada entre las
+   *  rooms físicas de ese type. `null` si ninguna room del type tiene foto asignada (no se
+   *  inventa un placeholder acá, el frontend decide qué mostrar en su lugar). */
+  photoUrl: string | null
 }
 
 /** Respuesta de `GET /api/public/hotels/:slug/rates`. */

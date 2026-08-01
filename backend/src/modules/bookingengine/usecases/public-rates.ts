@@ -44,6 +44,17 @@ export interface PublicRatesDeps {
    * cablea, degrada a "todo permitido" (compat con callers/tests viejos).
    */
   bookingConfig?: RepositoryAdapter<any>
+  /**
+   * Repo de `Rooms` (tabla física de habitaciones) — para resolver `photoUrl` por type.
+   * Mismo precedente que `BookingengineService` (roomsRepo directo, no connector: la
+   * disponibilidad/fotos salen de las habitaciones reales, no hay entidad RoomType propia).
+   * Opcional (compat callers/tests viejos, mismo criterio que `bookingConfig`): sin cablear,
+   * `photoUrl` degrada a `null` en todos los room types.
+   */
+  rooms?: RepositoryAdapter<any>
+  /** Repo de `HotelMedia` — fotos `type='room'` con `roomId` opcional hacia una room física.
+   *  Opcional, mismo criterio que `rooms` de arriba. */
+  hotelMedia?: RepositoryAdapter<any>
 }
 
 export interface PublicRatesQuery {
@@ -135,6 +146,8 @@ export async function getPublicRates(
     return round2(amountInUsd * rates[targetCurrency])
   }
 
+  const photoByType = await resolvePhotoByType(deps, hotel.id)
+
   const roomTypes = availability.roomTypes.map((rt) => {
     // `rt.price` es el precio por noche más bajo del type (availability.aggregate lo calcula).
     // × noches → total de la estadía para ese type (spec scenario "From $354 total").
@@ -152,6 +165,7 @@ export async function getPublicRates(
       capacity: rt.capacity,
       surfaceArea: rt.surfaceArea,
       taxBreakdown,
+      photoUrl: photoByType.get(rt.roomType) ?? null,
     }
   })
 
@@ -229,5 +243,47 @@ function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100
 }
 
+/**
+ * Resuelve una foto representativa por `room.type` string. No hay entidad RoomType propia
+ * (ver comment de arriba): agrupa las rooms físicas del hotel por `type`, y para cada type
+ * busca la primera `hotel_media(type='room')` entre esas rooms (ordenada por `sortOrder`
+ * asc si una room tiene más de una foto). Sin foto asignada a ninguna room del type → no
+ * está en el Map, el caller cae a `null` (no se inventa un placeholder acá).
+ */
+async function resolvePhotoByType(
+  deps: Pick<PublicRatesDeps, 'rooms' | 'hotelMedia'>,
+  hotelId: string,
+): Promise<Map<string, string>> {
+  if (!deps.rooms || !deps.hotelMedia) return new Map()
+  const [rooms, media] = await Promise.all([
+    deps.rooms.findMany({ hotelId }),
+    deps.hotelMedia.findMany({ hotelId, type: 'room' }),
+  ])
+
+  const roomIdToPhoto = new Map<string, string>()
+  const sortedMedia = [...(media as any[])].sort(
+    (a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0),
+  )
+  for (const m of sortedMedia) {
+    if (!m.roomId || roomIdToPhoto.has(m.roomId)) continue
+    roomIdToPhoto.set(m.roomId, m.url)
+  }
+
+  const typeToRoomIds = new Map<string, string[]>()
+  for (const r of rooms as any[]) {
+    if (!r.type) continue
+    const list = typeToRoomIds.get(r.type) ?? []
+    list.push(r.id)
+    typeToRoomIds.set(r.type, list)
+  }
+
+  const photoByType = new Map<string, string>()
+  for (const [type, roomIds] of typeToRoomIds) {
+    const photo = roomIds.map((id) => roomIdToPhoto.get(id)).find((url) => !!url)
+    if (photo) photoByType.set(type, photo)
+  }
+  return photoByType
+}
+
 // Exportamos los helpers para tests (sin exponerlos vía el index del módulo — solo acá).
-export const __test__ = { readTaxes, readCurrencyRates, round2 }
+export const __test__ = { readTaxes, readCurrencyRates, round2, resolvePhotoByType }

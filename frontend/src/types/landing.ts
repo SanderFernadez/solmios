@@ -164,8 +164,9 @@ export interface PublicLandingRoom {
   availableCount: number
   capacity: number
   surfaceArea: number
-  /** Siempre null por ahora — sin fotos por tipo de habitación (decisión tomada,
-   *  fuera de alcance de F1 hero-search-rooms-content). RoomsBlock ya maneja el placeholder. */
+  /** Foto representativa del type, resuelta server-side en `GET /rates` desde
+   *  `hotel_media(type='room')` de alguna room física de ese type. `null` si no hay
+   *  ninguna asignada — RoomsBlock ya maneja el placeholder para ese caso. */
   photoUrl?: string | null
 }
 

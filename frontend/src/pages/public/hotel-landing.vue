@@ -199,7 +199,7 @@ function mapRoomTypeRate(rt: RoomTypeRate): PublicLandingRoom {
     availableCount: rt.availableCount,
     capacity: rt.capacity,
     surfaceArea: rt.surfaceArea,
-    photoUrl: null,
+    photoUrl: rt.photoUrl ?? null,
   }
 }
 

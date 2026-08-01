@@ -321,4 +321,59 @@ describe('getPublicRates — F2 2.4', () => {
       expect(res.body.cancellationPolicy).toBeNull()
     })
   })
+
+  // ─── photoUrl por room type (foto real en /rates) ──────────────────────────────
+  describe('photoUrl', () => {
+    const makeRooms = (rows: any[]) => ({ findMany: async () => rows })
+    const makeHotelMedia = (rows: any[]) => ({ findMany: async () => rows })
+
+    it('room del type tiene foto → photoUrl la trae', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'suite', available: 2, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+        rooms: makeRooms([{ id: 'room-1', type: 'suite', hotelId: 'h1' }]),
+        hotelMedia: makeHotelMedia([{ roomId: 'room-1', type: 'room', url: 'https://example.com/suite.jpg', sortOrder: 0 }]),
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.body.roomTypes[0].photoUrl).toBe('https://example.com/suite.jpg')
+    })
+
+    it('ninguna room del type tiene foto → photoUrl null (no inventa placeholder)', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'suite', available: 2, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+        rooms: makeRooms([{ id: 'room-1', type: 'suite', hotelId: 'h1' }]),
+        hotelMedia: makeHotelMedia([]),
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.body.roomTypes[0].photoUrl).toBeNull()
+    })
+
+    it('deps rooms/hotelMedia no cableadas (compat callers viejos) → photoUrl null, no revienta', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'standard', available: 5, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.body.roomTypes[0].photoUrl).toBeNull()
+    })
+
+    it('2 rooms del mismo type, solo una con foto → usa esa', async () => {
+      const deps = {
+        hotels: makeHotels(baseHotel()),
+        availability: makeAvailability([{ roomType: 'double', available: 3, price: 100, currency: 'USD', capacity: 2, amenities: [] }]),
+        config: { findMany: async () => [] } as any,
+        rooms: makeRooms([
+          { id: 'room-1', type: 'double', hotelId: 'h1' },
+          { id: 'room-2', type: 'double', hotelId: 'h1' },
+        ]),
+        hotelMedia: makeHotelMedia([{ roomId: 'room-2', type: 'room', url: 'https://example.com/double.jpg', sortOrder: 0 }]),
+      }
+      const res = await getPublicRates(deps as any, 'caribe-paradise', { checkIn: '2026-08-10', checkOut: '2026-08-12' })
+      expect(res.body.roomTypes[0].photoUrl).toBe('https://example.com/double.jpg')
+    })
+  })
 })

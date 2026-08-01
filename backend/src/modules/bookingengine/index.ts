@@ -69,6 +69,10 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       // /rates y /booking procesan todo vacío (degradación graceful, no rompe el flujo).
       const configurationRepo = new OrmRepository<any>(orm, 'Configuration')
       const promoCodesRepo = new OrmRepository<any>(orm, 'PromoCodes')
+      // FIX (foto real por tipo de habitación en /rates) — `roomsRepo` ya existe arriba (lo usa
+      // el service para disponibilidad); `hotelMediaRepo` nuevo, mismo criterio: acceso directo
+      // por nombre de modelo ORM, no import cross-module.
+      const hotelMediaRepo = new OrmRepository<any>(orm, 'HotelMedia')
 
       const service = new BookingengineService(
         configRepo, roomsRepo, reservationsRepo, hotelsRepo,
@@ -85,6 +89,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         // enabled/minNights/maxNights/showComparison/cancellationPolicy dejen de ser
         // decorativos en /rates, /ota-prices y /booking.
         configRepo,
+        roomsRepo, hotelMediaRepo,
       )
 
       // Admin routes (protegidas con auth)
