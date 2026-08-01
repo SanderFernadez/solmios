@@ -21,8 +21,10 @@
             <slot />
           </div>
 
-          <!-- Footer (acciones) -->
-          <div v-if="$slots.footer" class="shrink-0 flex items-center justify-end gap-3 border-t-2 border-navy bg-surface px-5 py-4">
+          <!-- Footer (acciones). flex-wrap: footers con contenido extra a la izquierda (ej.
+               total + botones en ReservationModal) se recortaban en mobile angosto (390px)
+               en vez de bajar de línea. -->
+          <div v-if="$slots.footer" class="shrink-0 flex items-center justify-end flex-wrap gap-3 border-t-2 border-navy bg-surface px-5 py-4">
             <slot name="footer" />
           </div>
         </div>
@@ -38,7 +40,7 @@ const props = withDefaults(defineProps<{
   open?: boolean
   title?: string
   subtitle?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   closable?: boolean
   closeOnBackdrop?: boolean
   /** Padding del cuerpo. Pasar 'p-0' cuando el contenido es una tabla full-bleed. */
@@ -47,7 +49,8 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ close: [] }>()
 
-const SIZES: Record<string, string> = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-5xl' }
+// '2xl' agregado para ReservationModal.vue (two-panel, necesita más ancho que xl/max-w-5xl).
+const SIZES: Record<string, string> = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-5xl', '2xl': 'max-w-6xl' }
 const sizeClass = computed(() => SIZES[props.size] || SIZES.md)
 
 // Pila de modales abiertos (módulo, compartida entre instancias): con modales apilados (uno abre otro

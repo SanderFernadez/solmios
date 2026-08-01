@@ -14,6 +14,8 @@ import { AddonsService } from '@/services/Addons.service'
 import { ConfigService } from '@/services/Platform.service'
 import { HotelService, type HotelData } from '@/services/Hotel.service'
 import ChannelIcon from '@/components/ui/ChannelIcon.vue'
+import AppModal from '@/components/ui/AppModal.vue'
+import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { useToast } from '@/composables/useToast'
 import { nationalityToFlag, languageToFlag } from '@/composables/useCountryFlag'
 import type { ReservationDetail, ReservationDetailAddon, CurrencyConfig, GuaranteeCardData, AuditLogEntry } from '@/types'
@@ -360,58 +362,44 @@ function editar() { if (d.value) emit('edit', d.value) }
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="modal-fade">
-    <div v-if="!loading && d" class="fixed inset-0 z-50 flex items-center justify-center p-4" :class="'print-' + printMode">
-      <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm rm-no-print"></div>
-
-      <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
-
-        <!-- ═══ HEADER ═══ -->
-        <div class="p-5 shrink-0 bg-gradient-to-r from-navy to-navy/90 shadow-[0_6px_16px_-8px_rgba(13,43,78,0.45)] rm-no-print">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3 flex-wrap">
-              <div>
-                <div class="text-[10px] uppercase font-bold text-white/50">Reserva</div>
-                <h3 class="text-lg font-black text-white leading-tight">{{ locator }}</h3>
-              </div>
-              <span class="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
-                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                {{ stLabel(d.status) }}
-              </span>
-              <span class="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
-                <ChannelIcon :channel="d.source || d.channel || 'direct'" :size="14" class="ring-1 ring-white/40 rounded-[4px]" />
-                {{ srcLabel(d.source || d.channel) }}
-              </span>
-            </div>
-            <div class="flex items-center gap-2">
-              <button v-if="d.status === 'pending'" @click="setStatus('confirmed')" :disabled="saving" class="flex items-center gap-1.5 px-3 py-1.5 bg-teal text-white rounded-lg text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-                Confirmar
-              </button>
-              <button v-if="d.status !== 'cancelled' && d.status !== 'checked_out'" @click="showCancel = true" :disabled="saving" class="flex items-center gap-1.5 px-3 py-1.5 bg-coral/90 text-white rounded-lg text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                Anular
-              </button>
-              <button @click="printAs('invoice')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-white/20" title="Imprimir factura de la reserva">
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.83a42.5 42.5 0 0110.56 0M6.34 18l-.34 3.72a1.12 1.12 0 001.12 1.23h9.4a1.12 1.12 0 001.12-1.23L17.66 18M17.66 18h1.09c1.06 0 1.98-.72 2-1.78a72 72 0 000-3.45c-.02-1.06-.94-1.77-2-1.77H5.25c-1.06 0-1.98.71-2 1.77a72 72 0 000 3.45c.02 1.06.94 1.78 2 1.78h1.09M17.66 18H6.34M17.66 18v-4.5a2.25 2.25 0 00-2.25-2.25h-6.5a2.25 2.25 0 00-2.25 2.25V18"/></svg>
-                Factura
-              </button>
-              <button @click="editar" class="flex items-center gap-1.5 px-3 py-1.5 bg-cyan text-navy rounded-lg text-xs font-black cursor-pointer hover:opacity-90">
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.932zM19.5 21H4.5a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5h9"/></svg>
-                Editar
-              </button>
-              <button @click="emit('close')" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-            </div>
-          </div>
+  <AppModal :open="!loading && !!d" size="2xl" body-class="p-0" @close="emit('close')">
+    <template #header>
+      <div class="flex items-center gap-3 flex-wrap">
+        <div>
+          <div class="text-[10px] uppercase font-bold text-white/50">Reserva</div>
+          <h3 class="text-lg font-black text-white leading-tight">{{ locator }}</h3>
         </div>
+        <span class="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          {{ stLabel(d?.status) }}
+        </span>
+        <span class="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
+          <ChannelIcon :channel="d?.source || d?.channel || 'direct'" :size="14" class="ring-1 ring-white/40 rounded-[4px]" />
+          {{ srcLabel(d?.source || d?.channel) }}
+        </span>
+        <button v-if="d?.status === 'pending'" @click="setStatus('confirmed')" :disabled="saving" class="flex items-center gap-1.5 px-3 py-1.5 bg-teal text-white rounded-lg text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          Confirmar
+        </button>
+        <button v-if="d?.status !== 'cancelled' && d?.status !== 'checked_out'" @click="showCancel = true" :disabled="saving" class="flex items-center gap-1.5 px-3 py-1.5 bg-coral/90 text-white rounded-lg text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          Anular
+        </button>
+        <button @click="printAs('invoice')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-white/20" title="Imprimir factura de la reserva">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.83a42.5 42.5 0 0110.56 0M6.34 18l-.34 3.72a1.12 1.12 0 001.12 1.23h9.4a1.12 1.12 0 001.12-1.23L17.66 18M17.66 18h1.09c1.06 0 1.98-.72 2-1.78a72 72 0 000-3.45c-.02-1.06-.94-1.77-2-1.77H5.25c-1.06 0-1.98.71-2 1.77a72 72 0 000 3.45c.02 1.06.94 1.78 2 1.78h1.09M17.66 18H6.34M17.66 18v-4.5a2.25 2.25 0 00-2.25-2.25h-6.5a2.25 2.25 0 00-2.25 2.25V18"/></svg>
+          Factura
+        </button>
+        <button @click="editar" class="flex items-center gap-1.5 px-3 py-1.5 bg-cyan text-navy rounded-lg text-xs font-black cursor-pointer hover:opacity-90">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.932zM19.5 21H4.5a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5h9"/></svg>
+          Editar
+        </button>
+      </div>
+    </template>
 
-        <!-- ═══ BODY: masonry de una sola vista (sin pasos, sin columnas fijas) — las tarjetas
-             fluyen para no dejar huecos cuando una condicional no aplica (área de impresión) ═══ -->
-        <div class="flex-1 overflow-y-auto rm-print-area">
-          <div class="rm-cards p-5 columns-1 lg:columns-2 lg:gap-5">
+    <!-- ═══ BODY: masonry de una sola vista (sin pasos, sin columnas fijas) — las tarjetas
+         fluyen para no dejar huecos cuando una condicional no aplica (área de impresión) ═══ -->
+    <div v-if="d" :class="'print-' + printMode">
+      <div class="rm-cards rm-print-area p-5 columns-1 lg:columns-2 lg:gap-5">
 
             <!-- Datos de la Reserva -->
             <details open class="rm-card bg-white border border-border/70 border-l-[3px] border-l-navy/60 rounded-2xl overflow-hidden shadow-card">
@@ -717,45 +705,10 @@ function editar() { if (d.value) emit('edit', d.value) }
                 <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" :checked="conditions.terms" @change="toggleCondition('terms')" class="w-4 h-4 accent-navy" /> Normas de Uso y Seguridad</label>
               </div>
             </details>
-          </div>
-        </div>
+      </div>
 
-        <!-- ═══ FOOTER ═══ -->
-        <div class="p-4 shadow-[0_-6px_16px_-10px_rgba(13,43,78,0.15)] bg-surface/60 shrink-0 flex items-center justify-between rm-no-print">
-          <div class="flex items-center gap-2 text-sm">
-            <span class="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center text-navy shrink-0"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg></span>
-            <span>
-              <span class="text-text-muted">Total: </span>
-              <span class="font-black text-navy text-lg">{{ money(grandTotal) }}</span>
-              <span v-if="secondaryTotal !== null" class="text-purple font-bold ml-2">≈ {{ moneySecondary(secondaryTotal) }}</span>
-            </span>
-          </div>
-          <div class="flex gap-3">
-            <button @click="emit('close')" class="px-5 py-2.5 border border-border/60 rounded-full text-sm font-bold text-text-secondary cursor-pointer hover:bg-white transition">Cerrar</button>
-            <button @click="editar" class="flex items-center gap-1.5 px-6 py-2.5 bg-teal text-white rounded-full text-sm font-black cursor-pointer hover:opacity-90 transition">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.932zM19.5 21H4.5a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5h9"/></svg>
-              Editar Reserva
-            </button>
-          </div>
-        </div>
-
-        <!-- Confirm Anular (inline) -->
-        <div v-if="showCancel" class="absolute inset-0 bg-navy/40 backdrop-blur-sm flex items-center justify-center p-4 z-10 rm-no-print">
-          <div class="bg-white rounded-[20px] shadow-2xl w-full max-w-sm p-6 text-center">
-            <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-coral/10 text-coral">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
-            </span>
-            <h3 class="text-lg font-black text-navy mb-2">¿Anular reserva?</h3>
-            <p class="text-sm text-text-secondary">La reserva <strong>{{ locator }}</strong> pasará a estado cancelada. Se puede revertir editando.</p>
-            <div class="flex gap-3 mt-6">
-              <button @click="showCancel = false" class="flex-1 py-2.5 border border-border/60 rounded-full text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-              <button @click="setStatus('cancelled')" :disabled="saving" class="flex-1 py-2.5 rounded-full text-sm font-bold text-white bg-coral cursor-pointer disabled:opacity-50">Anular</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ═══ BONOS (ocultos en pantalla, visibles solo al imprimir) ═══ -->
-        <div v-if="d" class="rm-voucher rm-voucher-lodging">
+      <!-- ═══ BONOS (ocultos en pantalla, visibles solo al imprimir) ═══ -->
+      <div v-if="d" class="rm-voucher rm-voucher-lodging">
           <h2 style="text-align:center;font-size:20px;font-weight:900;margin-bottom:4px">BONO DEL ALOJAMIENTO</h2>
           <p style="text-align:center;font-size:12px;color:#666;margin-bottom:16px">Comprobante interno</p>
           <table style="width:100%;font-size:13px;border-collapse:collapse">
@@ -900,11 +853,40 @@ function editar() { if (d.value) emit('edit', d.value) }
             <p style="font-size:10px;color:#bbb;margin:4px 0 0">Documento informativo · No válido como factura fiscal</p>
           </div>
         </div>
-      </div>
     </div>
-    </Transition>
 
-    <!-- Loading -->
+    <template #footer>
+      <div class="flex items-center gap-2 text-sm mr-auto">
+        <span class="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center text-navy shrink-0"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg></span>
+        <span>
+          <span class="text-text-muted">Total: </span>
+          <span class="font-black text-navy text-lg">{{ money(grandTotal) }}</span>
+          <span v-if="secondaryTotal !== null" class="text-purple font-bold ml-2">≈ {{ moneySecondary(secondaryTotal) }}</span>
+        </span>
+      </div>
+      <button @click="emit('close')" class="px-5 py-2.5 border border-border/60 rounded-full text-sm font-bold text-text-secondary cursor-pointer hover:bg-white transition">Cerrar</button>
+      <button @click="editar" class="flex items-center gap-1.5 px-6 py-2.5 bg-teal text-white rounded-full text-sm font-black cursor-pointer hover:opacity-90 transition">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.932zM19.5 21H4.5a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5h9"/></svg>
+        Editar Reserva
+      </button>
+    </template>
+  </AppModal>
+
+  <!-- Confirm Anular: apilado sobre ReservationModal (AppModal resuelve el stack de Escape/scroll-lock entre instancias). -->
+  <ConfirmModal
+    v-if="showCancel"
+    title="¿Anular reserva?"
+    :message="`La reserva ${locator} pasará a estado cancelada. Se puede revertir editando.`"
+    confirm-label="Anular"
+    cancel-label="Cancelar"
+    danger
+    :loading="saving"
+    @confirm="setStatus('cancelled')"
+    @close="showCancel = false"
+  />
+
+  <!-- Loading -->
+  <Teleport to="body">
     <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 backdrop-blur-sm">
       <div class="bg-white rounded-2xl px-8 py-6 flex items-center gap-3">
         <div class="w-5 h-5 border-2 border-navy border-t-transparent rounded-full animate-spin"></div>
