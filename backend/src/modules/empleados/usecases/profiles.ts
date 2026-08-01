@@ -46,7 +46,7 @@ export class ProfileUseCase {
 
   async create(dto: CreateEmployeeProfileDTO): Promise<EmployeeProfileDTO> {
     const existing = await this.repo.findOne({ userId: dto.userId, hotelId: dto.hotelId })
-    if (existing) throw new ValidationError('Employee profile already exists for this user')
+    if (existing) throw new ValidationError('Ya existe un expediente de empleado para este usuario')
     return this.repo.create({
       ...dto,
       active: 1,
@@ -57,7 +57,7 @@ export class ProfileUseCase {
 
   async getById(id: string, user?: SimpleUser): Promise<EmployeeProfileDTO> {
     const profile = await this.repo.findById(id)
-    if (!profile) throw new NotFoundError('Employee profile not found')
+    if (!profile) throw new NotFoundError('Expediente de empleado no encontrado')
     if (this.auth && user) this.auth.assertOwnership(profile.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return stripSensitive(profile, user?.role)
   }

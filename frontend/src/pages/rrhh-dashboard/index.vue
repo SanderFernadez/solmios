@@ -60,8 +60,8 @@
           </div>
         </SectionCard>
 
-        <!-- Resumen de asistencia de hoy (#198) -->
-        <SectionCard v-if="data.attendance" title="Asistencia de hoy" subtitle="Fichaje en vivo">
+        <!-- Resumen de asistencia de hoy (#198, #611, #612) -->
+        <SectionCard v-if="data.attendance" title="Resumen de asistencia" subtitle="Asistencia de hoy · fichaje en vivo">
           <div class="grid grid-cols-3 gap-3">
             <div class="rounded-xl bg-teal/5 p-3">
               <div class="flex items-center gap-2">
@@ -70,6 +70,13 @@
               </div>
               <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.attendance.present }}</div>
             </div>
+            <div class="rounded-xl bg-gold/5 p-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-gold shrink-0"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Tardanzas</span>
+              </div>
+              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.attendance.late }}</div>
+            </div>
             <div class="rounded-xl bg-coral/5 p-3">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-coral shrink-0"></span>
@@ -77,12 +84,19 @@
               </div>
               <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.attendance.absent }}</div>
             </div>
-            <div class="rounded-xl bg-gold/5 p-3">
+            <div class="rounded-xl bg-purple/5 p-3">
               <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-gold shrink-0"></span>
-                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Tarde</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-purple shrink-0"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Licencias</span>
               </div>
-              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ data.attendance.late }}</div>
+              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ licensesToday }}</div>
+            </div>
+            <div class="rounded-xl bg-cyan/5 p-3">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan shrink-0"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Vacaciones</span>
+              </div>
+              <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ vacationsToday }}</div>
             </div>
           </div>
         </SectionCard>
@@ -234,6 +248,11 @@ function occPct(n: number): string {
   const total = data.value?.occupancy.total || 1
   return `${(n / total) * 100}%`
 }
+
+// #611/#612: desglose de "de licencia hoy" por tipo. `type === 'vacation'` es vacaciones;
+// cualquier otro tipo (permission/sick_leave/maternity/other) cuenta como licencia.
+const vacationsToday = computed(() => data.value?.onLeaveToday.filter((l) => l.type === 'vacation').length ?? 0)
+const licensesToday = computed(() => data.value?.onLeaveToday.filter((l) => l.type !== 'vacation').length ?? 0)
 
 const LEAVE_LABELS: Record<string, string> = {
   vacation: 'Vacaciones', permission: 'Permiso', sick_leave: 'Licencia médica', maternity: 'Maternidad', other: 'Otro',

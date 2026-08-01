@@ -13,7 +13,9 @@ export const CreateProfileSchema: Record<string, ValidationRule> = {
   userId: { type: 'string' as const, required: true },
   hotelId: { type: 'string' as const, required: true },
   position: { type: 'string' as const, max: 100 },
-  salary: { type: 'number' as const, min: 0 },
+  // Mismo tope que CreateContractSchema (#173/#176/#588): el front ya lo limita, el backend
+  // lo respalda para no confiar solo en la validación del cliente.
+  salary: { type: 'number' as const, min: 0, max: 99_999_999 },
   hireDate: { type: 'string' as const },
   birthDate: { type: 'string' as const },
   departmentId: { type: 'string' as const },
@@ -128,7 +130,7 @@ export const UpdateDepartmentSchema: Record<string, ValidationRule> = {
 
 export const UpdateProfileSchema: Record<string, ValidationRule> = {
   position: { type: 'string' as const, max: 100 },
-  salary: { type: 'number' as const, min: 0 },
+  salary: { type: 'number' as const, min: 0, max: 99_999_999 },
   hireDate: { type: 'string' as const },
   birthDate: { type: 'string' as const },
   departmentId: { type: 'string' as const },

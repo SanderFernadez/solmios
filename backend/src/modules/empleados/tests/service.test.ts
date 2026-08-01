@@ -49,7 +49,7 @@ describe('EmpleadosService', () => {
   describe('getDepartment', () => {
     it('lanza NotFound si no existe', async () => {
       const service = new EmpleadosService(makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
-      await expect(service.getDepartment('no-existe')).rejects.toThrow('Department not found')
+      await expect(service.getDepartment('no-existe')).rejects.toThrow('Departamento no encontrado')
     })
   })
 
@@ -71,7 +71,7 @@ describe('EmpleadosService', () => {
 
     it('rechaza salario negativo', async () => {
       const service = new EmpleadosService(makeRepo(), makeProfileRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo(), log, silentCache)
-      await expect(service.createContract({ hotelId: 'h1', employeeId: 'e1', type: 'indefinido', startDate: '2026-01-01', salary: -100 })).rejects.toThrow('Salary must be positive')
+      await expect(service.createContract({ hotelId: 'h1', employeeId: 'e1', type: 'indefinido', startDate: '2026-01-01', salary: -100 })).rejects.toThrow('El salario debe ser positivo')
     })
   })
 

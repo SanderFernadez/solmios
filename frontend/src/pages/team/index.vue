@@ -26,6 +26,38 @@
         unit="Reservas, check-in y check-out" />
     </div>
 
+    <!-- Estado de ocupación del personal (#614) -->
+    <SectionCard title="Estado de ocupación del personal" :subtitle="`${members.length} colaboradores en total`" class="mb-6">
+      <div class="h-3 rounded-full bg-surface overflow-hidden flex mb-4">
+        <div class="h-full bg-teal" :style="{ width: occPct(occupancy.available) }" title="Disponibles"></div>
+        <div class="h-full bg-cyan" :style="{ width: occPct(occupancy.vacation) }" title="Vacaciones"></div>
+        <div class="h-full bg-gold" :style="{ width: occPct(occupancy.leave) }" title="Licencia"></div>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="rounded-xl bg-teal/5 p-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-teal shrink-0"></span>
+            <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Disponible</span>
+          </div>
+          <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ occupancy.available }}</div>
+        </div>
+        <div class="rounded-xl bg-cyan/5 p-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan shrink-0"></span>
+            <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Vacaciones</span>
+          </div>
+          <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ occupancy.vacation }}</div>
+        </div>
+        <div class="rounded-xl bg-gold/5 p-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-gold shrink-0"></span>
+            <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted truncate">Licencia</span>
+          </div>
+          <div class="mt-1.5 text-lg font-black leading-none tabular-nums text-navy">{{ occupancy.leave }}</div>
+        </div>
+      </div>
+    </SectionCard>
+
     <!-- Aviso de seguridad -->
     <div class="flex items-start gap-2.5 rounded-2xl border border-cyan/20 bg-cyan/5 p-3.5 mb-6">
       <span class="h-4 w-4 shrink-0 mt-0.5 text-cyan" v-html="ICON_LOCK"></span>
@@ -224,6 +256,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { TeamService, roleMeta, ROLE_META, ICON_USER } from '@/services/Team.service'
 import type { TeamMember, Role } from '@/services/Team.service'
+import { EmpleadosService } from '@/services/Empleados.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import SectionCard from '@/components/ui/SectionCard.vue'
@@ -310,6 +343,50 @@ const availableRoles = computed(() => {
   }
   return fromBackend
 })
+
+// ── Estado de ocupación del personal (#614): Disponible / Vacaciones / Licencia ──
+// Los `members` acá son cuentas de usuario (users), no perfiles de RRHH. El estado se resuelve
+// cruzando employee-profiles (userId → employeeId) con las ausencias APROBADAS que cubren hoy
+// (leave-calendar). Un miembro sin perfil de RRHH o sin ausencia activa se cuenta "Disponible".
+const employeeStatusByUserId = ref<Map<string, 'vacation' | 'leave'>>(new Map())
+
+const occupancy = computed(() => {
+  let available = 0, vacation = 0, leave = 0
+  for (const m of members.value) {
+    const status = employeeStatusByUserId.value.get(m.id)
+    if (status === 'vacation') vacation++
+    else if (status === 'leave') leave++
+    else available++
+  }
+  return { total: members.value.length, available, vacation, leave }
+})
+
+function occPct(n: number): string {
+  const total = members.value.length || 1
+  return `${(n / total) * 100}%`
+}
+
+async function loadOccupancy() {
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const [profilesRes, leaves] = await Promise.all([
+      EmpleadosService.listProfiles(),
+      EmpleadosService.getLeaveCalendar(today, today),
+    ])
+    const userIdByEmployeeId = new Map(profilesRes.data.map((p) => [p.id, p.userId]))
+    const map = new Map<string, 'vacation' | 'leave'>()
+    for (const l of leaves) {
+      if (l.status !== 'approved') continue
+      const userId = userIdByEmployeeId.get(l.employeeId)
+      if (!userId) continue
+      map.set(userId, l.type === 'vacation' ? 'vacation' : 'leave')
+    }
+    employeeStatusByUserId.value = map
+  } catch {
+    // No bloquea la vista: sin datos de RRHH, todos quedan "Disponible" por default.
+    employeeStatusByUserId.value = new Map()
+  }
+}
 
 async function load() {
   loading.value = true
@@ -423,5 +500,5 @@ function formatDate(d?: string): string {
   return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-onMounted(load)
+onMounted(() => { load(); loadOccupancy() })
 </script>

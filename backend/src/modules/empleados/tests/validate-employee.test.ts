@@ -2,7 +2,7 @@
 //
 // Regresión: la función buscaba sólo `findOne({ userId: employeeId })`, pero los formularios
 // (contrato/documento/ausencia/evaluación) mandan el id del employee_profile. Resultado: un empleado
-// válido daba SIEMPRE "Employee does not belong to this hotel" (400) → no se podía crear un contrato.
+// válido daba SIEMPRE "El empleado no pertenece a este hotel" (400) → no se podía crear un contrato.
 
 import { describe, it, expect } from 'bun:test'
 import { validateEmployeeBelongsToHotel } from '../usecases/validate-employee'
@@ -27,10 +27,10 @@ describe('validateEmployeeBelongsToHotel', () => {
   })
 
   it('rechaza un empleado de otro hotel', async () => {
-    await expect(validateEmployeeBelongsToHotel(repo([PROFILE]), 'prof-1', 'otro-hotel')).rejects.toThrow(/does not belong/)
+    await expect(validateEmployeeBelongsToHotel(repo([PROFILE]), 'prof-1', 'otro-hotel')).rejects.toThrow(/no pertenece/)
   })
 
   it('rechaza un id inexistente', async () => {
-    await expect(validateEmployeeBelongsToHotel(repo([PROFILE]), 'no-existe', 'h1')).rejects.toThrow(/does not belong/)
+    await expect(validateEmployeeBelongsToHotel(repo([PROFILE]), 'no-existe', 'h1')).rejects.toThrow(/no pertenece/)
   })
 })

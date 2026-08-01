@@ -36,7 +36,7 @@ export class DocumentUseCase {
 
   async getById(id: string, user?: SimpleUser): Promise<DocumentDTO> {
     const doc = await this.repo.findById(id)
-    if (!doc) throw new NotFoundError('Document not found')
+    if (!doc) throw new NotFoundError('Documento no encontrado')
     if (this.auth && user) this.auth.assertOwnership(doc.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return doc
   }

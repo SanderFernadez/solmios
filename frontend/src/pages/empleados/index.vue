@@ -475,7 +475,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert, type LeaveType, type JobPosition, type ContractType } from '@/services/Empleados.service'
+import { EmpleadosService, type EmployeeProfile, type Contract, type EmployeeDocument, type LeaveRequest, type PerformanceReview, type Department, type DocumentExpiryAlert, type LeaveType, type ContractType } from '@/services/Empleados.service'
 import { TeamService } from '@/services/Team.service'
 import { RolesService, type Role } from '@/services/Roles.service'
 import { useAuthStore } from '@/stores/auth.store'
@@ -539,7 +539,6 @@ const documents = ref<EmployeeDocument[]>([])
 const leaveRequests = ref<LeaveRequest[]>([])
 const showInactive = ref(false)
 const leaveTypes = ref<LeaveType[]>([])
-const jobPositions = ref<JobPosition[]>([])
 const contractTypes = ref<ContractType[]>([])
 const reviews = ref<PerformanceReview[]>([])
 const departments = ref<Department[]>([])
@@ -661,7 +660,6 @@ async function loadData() {
     try { departments.value = await EmpleadosService.listDepartments() } catch { /* optional */ }
     try { customRoles.value = await RolesService.list() } catch { /* optional */ }
     try { leaveTypes.value = await EmpleadosService.listLeaveTypes() } catch { /* optional */ }
-    try { jobPositions.value = await EmpleadosService.listJobPositions() } catch { /* optional */ }
     try { contractTypes.value = await EmpleadosService.listContractTypes() } catch { /* optional */ }
   } catch { toast.error('Error al cargar datos') }
   finally { loading.value = false }
@@ -734,7 +732,8 @@ function openProfile(emp: EmployeeProfile) {
       // #170: el nombre vive en la cuenta (users), no en el legajo — editable acá y se guarda ahí.
       { key: 'name', label: 'Nombre', maxLength: 80, default: emp.userName || '' },
       { key: 'departmentId', label: 'Departamento', type: 'select', default: emp.departmentId || '', options: departmentOptions() },
-      { key: 'jobPositionId', label: 'Puesto', type: 'select', default: emp.jobPositionId || '', options: jobPositionOptions() },
+      // #169/#584/#587: "Puesto" (jobPositionId) es el mismo lugar que ya cubre el Rol — se
+      // sacó de Alta; sacarlo también de Editar para no reabrir la duplicación por otra puerta.
       { key: 'salary', label: 'Salario', type: 'number', min: 0, max: MAX_SALARY, default: emp.salary || 0 },
       { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: (emp.hireDate || '').slice(0, 10) },
       { key: 'birthDate', label: 'Fecha de nacimiento', type: 'date', default: (emp.birthDate || '').slice(0, 10) },
@@ -757,7 +756,6 @@ function openProfile(emp: EmployeeProfile) {
 
 const MAX_SALARY = 99_999_999   // tope sensato de salario → evita overflow en la DB (#173/#176)
 
-const jobPositionOptions = () => jobPositions.value.map((j) => ({ value: j.id, label: j.name }))
 const MARITAL_OPTIONS = [
   { value: 'single', label: 'Soltero/a' }, { value: 'married', label: 'Casado/a' },
   { value: 'divorced', label: 'Divorciado/a' }, { value: 'widowed', label: 'Viudo/a' },
@@ -808,7 +806,7 @@ function rejectLeave(l: LeaveRequest) {
   // Modal con motivo OBLIGATORIO (#190/#191): no se rechaza sin justificar.
   formModal.value = {
     title: 'Rechazar solicitud', submitLabel: 'Rechazar',
-    fields: [{ key: 'reason', label: 'Motivo del rechazo', type: 'textarea', required: true, placeholder: 'Explicá por qué se rechaza…' }],
+    fields: [{ key: 'reason', label: 'Motivo del rechazo', type: 'textarea', required: true, minLength: 3, maxLength: 500, placeholder: 'Explicá por qué se rechaza…' }],
     onSubmit: (v) => EmpleadosService.rejectLeaveRequest(l.id, String(v.reason ?? '')),
   }
 }
@@ -913,7 +911,7 @@ function openNewLeave() {
       { key: 'type', label: 'Tipo', type: 'select', required: true, default: 'vacation', options: leaveTypeOptions() },
       { key: 'startDate', label: 'Desde', type: 'date', required: true },
       { key: 'endDate', label: 'Hasta', type: 'date', required: true },
-      { key: 'reason', label: 'Motivo', type: 'textarea' },
+      { key: 'reason', label: 'Motivo', type: 'textarea', maxLength: 500 },
     ],
     onSubmit: (v) => {
       const leaveTypeId = leaveTypes.value.find((t) => t.code === v.type)?.id

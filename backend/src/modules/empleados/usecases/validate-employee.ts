@@ -16,5 +16,5 @@ export async function validateEmployeeBelongsToHotel(
   if (byId) return
   const byUser = await profileRepo.findOne({ userId: employeeId, hotelId })
   if (byUser) return
-  throw new ValidationError('Employee does not belong to this hotel')
+  throw new ValidationError('El empleado no pertenece a este hotel')
 }

@@ -39,7 +39,7 @@ export class LeaveRequestUseCase {
 
   async getById(id: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
     const request = await this.repo.findById(id)
-    if (!request) throw new NotFoundError('Leave request not found')
+    if (!request) throw new NotFoundError('Solicitud de ausencia no encontrada')
     if (this.auth && user) this.auth.assertOwnership(request.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return request
   }
@@ -54,7 +54,7 @@ export class LeaveRequestUseCase {
 
   async approve(id: string, approvedBy: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
     const request = await this.getById(id, user)
-    if (request.status !== 'pending') throw new ValidationError('Request already processed')
+    if (request.status !== 'pending') throw new ValidationError('La solicitud ya fue procesada')
     return this.repo.update(id, {
       status: 'approved',
       approvedBy,
@@ -64,7 +64,7 @@ export class LeaveRequestUseCase {
 
   async reject(id: string, approvedBy: string, reason?: string, user?: SimpleUser): Promise<LeaveRequestDTO> {
     const request = await this.getById(id, user)
-    if (request.status !== 'pending') throw new ValidationError('Request already processed')
+    if (request.status !== 'pending') throw new ValidationError('La solicitud ya fue procesada')
     const notesParts: string[] = []
     if (request.notes) notesParts.push(request.notes)
     if (reason) notesParts.push(`Rejection: ${reason}`)

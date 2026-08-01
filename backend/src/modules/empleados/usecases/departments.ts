@@ -21,13 +21,13 @@ export class DepartmentUseCase {
   }
 
   async create(dto: CreateDepartmentDTO): Promise<DepartmentDTO> {
-    if (!dto.name || dto.name.length < 2) throw new ValidationError('Department name required (min 2 chars)')
+    if (!dto.name || dto.name.length < 2) throw new ValidationError('El nombre del departamento es obligatorio (mínimo 2 caracteres)')
     return this.repo.create({ ...dto, active: 1 } as any)
   }
 
   async getById(id: string, user?: SimpleUser): Promise<DepartmentDTO> {
     const dept = await this.repo.findById(id)
-    if (!dept) throw new NotFoundError('Department not found')
+    if (!dept) throw new NotFoundError('Departamento no encontrado')
     if (this.auth && user) this.auth.assertOwnership(dept.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return dept
   }

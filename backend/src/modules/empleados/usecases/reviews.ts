@@ -25,7 +25,7 @@ export class ReviewUseCase {
 
   async getById(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> {
     const review = await this.repo.findById(id)
-    if (!review) throw new NotFoundError('Performance review not found')
+    if (!review) throw new NotFoundError('Evaluación de desempeño no encontrada')
     if (this.auth && user) this.auth.assertOwnership(review.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return review
   }
@@ -48,7 +48,7 @@ export class ReviewUseCase {
 
   async complete(id: string, user?: SimpleUser): Promise<PerformanceReviewDTO> {
     const review = await this.getById(id, user)
-    if (review.status === 'completed') throw new ValidationError('Review already completed')
+    if (review.status === 'completed') throw new ValidationError('La evaluación ya está completada')
     return this.repo.update(id, { status: 'completed' } as any) as Promise<PerformanceReviewDTO>
   }
 }

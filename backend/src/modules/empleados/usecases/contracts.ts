@@ -25,7 +25,7 @@ export class ContractUseCase {
   ) {}
 
   async create(dto: CreateContractDTO): Promise<ContractDTO> {
-    if (dto.salary <= 0) throw new ValidationError('Salary must be positive')
+    if (dto.salary <= 0) throw new ValidationError('El salario debe ser positivo')
     // #177: la fecha de inicio no puede ser a futuro (un contrato se registra al arrancar, no antes),
     // y el fin nunca puede ser anterior al inicio.
     const today = new Date().toISOString().slice(0, 10)
@@ -41,7 +41,7 @@ export class ContractUseCase {
 
   async getById(id: string, user?: SimpleUser): Promise<ContractDTO> {
     const contract = await this.repo.findById(id)
-    if (!contract) throw new NotFoundError('Contract not found')
+    if (!contract) throw new NotFoundError('Contrato no encontrado')
     if (this.auth && user) this.auth.assertOwnership(contract.hotelId, user.hotelId ?? '', user.role, 'super_admin')
     return stripSalary(contract, user?.role)
   }
@@ -56,7 +56,7 @@ export class ContractUseCase {
 
   async terminate(id: string, user?: SimpleUser): Promise<ContractDTO> {
     const contract = await this.getById(id, user)
-    if (contract.status === 'terminated') throw new ValidationError('Contract already terminated')
+    if (contract.status === 'terminated') throw new ValidationError('El contrato ya está terminado')
     const updated = await this.repo.update(id, { status: 'terminated' } as any)
     return stripSalary(updated, user?.role)
   }
