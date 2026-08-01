@@ -1,49 +1,43 @@
 <template>
-  <Teleport to="body">
-    <Transition name="modal-fade">
-      <div v-if="roomId" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm" @click="$emit('close')"></div>
-        <div class="modal-panel relative bg-white rounded-[20px] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[88vh]">
-          <!-- Header -->
-          <div class="shrink-0 p-5 pb-3 flex items-start justify-between gap-3">
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 rounded-xl bg-navy/5 flex items-center justify-center shrink-0 text-navy">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-                  <rect x="5" y="10" width="14" height="11" rx="2"/><path stroke-linecap="round" d="M8 10V7a4 4 0 0 1 8 0v3"/>
-                  <circle cx="9" cy="14.5" r="0.7" fill="currentColor"/><circle cx="12" cy="14.5" r="0.7" fill="currentColor"/><circle cx="15" cy="14.5" r="0.7" fill="currentColor"/>
-                  <circle cx="9" cy="17.5" r="0.7" fill="currentColor"/><circle cx="12" cy="17.5" r="0.7" fill="currentColor"/><circle cx="15" cy="17.5" r="0.7" fill="currentColor"/>
-                </svg>
-              </div>
-              <div class="min-w-0">
-                <h3 class="text-lg font-black text-navy leading-tight">Cerradura · Hab {{ roomNumber }}</h3>
-                <p class="text-xs text-text-muted truncate">{{ lock ? (lock.name || 'Cerradura TTLock') : 'Acceso de la habitación' }}</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <span v-if="lock" class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ lock.status === 'online' ? '● online' : 'offline' }}</span>
-              <span v-if="lock" class="text-[10px] font-bold" :class="(lock.batteryLevel||0) > 50 ? 'text-teal' : (lock.batteryLevel||0) > 20 ? 'text-gold' : 'text-coral'">🔋 {{ lock.batteryLevel || 0 }}%</span>
-              <button @click="$emit('close')" class="text-text-muted hover:text-navy transition-colors cursor-pointer text-lg leading-none">✕</button>
-            </div>
-          </div>
+  <AppModal :open="!!roomId" size="lg" body-class="p-0" @close="$emit('close')">
+    <template #header>
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 text-white">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <rect x="5" y="10" width="14" height="11" rx="2"/><path stroke-linecap="round" d="M8 10V7a4 4 0 0 1 8 0v3"/>
+            <circle cx="9" cy="14.5" r="0.7" fill="currentColor"/><circle cx="12" cy="14.5" r="0.7" fill="currentColor"/><circle cx="15" cy="14.5" r="0.7" fill="currentColor"/>
+            <circle cx="9" cy="17.5" r="0.7" fill="currentColor"/><circle cx="12" cy="17.5" r="0.7" fill="currentColor"/><circle cx="15" cy="17.5" r="0.7" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <h3 class="text-base sm:text-lg font-black text-white truncate">Cerradura · Hab {{ roomNumber }}</h3>
+          <p class="text-[11px] text-white/60 mt-0.5 truncate">{{ lock ? (lock.name || 'Cerradura TTLock') : 'Acceso de la habitación' }}</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 ml-auto">
+          <span v-if="lock" class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/20 text-teal-light' : 'bg-white/10 text-white/60'">{{ lock.status === 'online' ? '● online' : 'offline' }}</span>
+          <span v-if="lock" class="text-[10px] font-bold text-white/80">🔋 {{ lock.batteryLevel || 0 }}%</span>
+        </div>
+      </div>
+    </template>
 
-          <!-- Tabs -->
-          <div v-if="lock" class="shrink-0 px-5 flex gap-1 border-b border-border overflow-x-auto">
-            <button v-for="t in tabs" :key="t.key" @click="selectTab(t.key)"
-              class="px-3 py-2 text-xs font-bold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1"
-              :class="tab === t.key ? 'border-navy text-navy' : 'border-transparent text-text-muted hover:text-navy'">
-              {{ t.label }}
-              <span v-if="t.key === 'errors' && errorCount > 0" class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-coral/10 text-coral">{{ errorCount }}</span>
-            </button>
-          </div>
+    <!-- Tabs -->
+    <div v-if="lock" class="shrink-0 px-5 pt-4 flex gap-1 border-b border-border overflow-x-auto">
+      <button v-for="t in tabs" :key="t.key" @click="selectTab(t.key)"
+        class="px-3 py-2 text-xs font-bold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1"
+        :class="tab === t.key ? 'border-navy text-navy' : 'border-transparent text-text-muted hover:text-navy'">
+        {{ t.label }}
+        <span v-if="t.key === 'errors' && errorCount > 0" class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-coral/10 text-coral">{{ errorCount }}</span>
+      </button>
+    </div>
 
-          <!-- Body -->
-          <div class="overflow-y-auto flex-1 p-5">
-            <div v-if="loading" class="flex items-center justify-center gap-2 text-xs text-text-muted py-8">
-              <span class="inline-block w-3 h-3 border-2 border-text-muted border-t-transparent rounded-full animate-spin"></span>
-              Cargando…
-            </div>
+    <!-- Body -->
+    <div class="p-5">
+      <div v-if="loading" class="flex items-center justify-center gap-2 text-xs text-text-muted py-8">
+        <span class="inline-block w-3 h-3 border-2 border-text-muted border-t-transparent rounded-full animate-spin"></span>
+        Cargando…
+      </div>
 
-            <template v-else>
+      <template v-else>
               <!-- Sin cerradura asignada: asignar una desde acá mismo -->
               <div v-if="!lock" class="py-6">
                 <div class="text-center mb-4">
@@ -190,15 +184,13 @@
                 </template>
               </div>
             </template>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+    </div>
+  </AppModal>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import AppModal from '@/components/ui/AppModal.vue'
 import { TTLockService, type LockDevice, type LockCode, type LockActiveCode, type LockRecord, type LockGatewayLink } from '@/services/TTLock.service'
 import { useToast } from '@/composables/useToast'
 
@@ -471,10 +463,3 @@ watch(() => props.roomId, (id) => {
   if (id) { tab.value = 'device'; fijoCode.value = ''; fijoName.value = ''; assignLockId.value = ''; showReassign.value = false; load() }
 })
 </script>
-
-<style scoped>
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s ease; }
-.modal-fade-enter-active .modal-panel, .modal-fade-leave-active .modal-panel { transition: transform 0.2s ease, opacity 0.2s ease; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
-.modal-fade-enter-from .modal-panel, .modal-fade-leave-to .modal-panel { opacity: 0; transform: translateY(8px) scale(0.98); }
-</style>

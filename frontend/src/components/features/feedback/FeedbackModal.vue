@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import type { FeedbackPriority, FeedbackCategory } from '@/types'
 import { useFeedbackStore } from '@/stores/feedback.store'
+import AppModal from '@/components/ui/AppModal.vue'
 
 const store = useFeedbackStore()
 
@@ -29,43 +30,25 @@ function handleClose() {
   store.closeModal()
   reset()
 }
-
-function handleBackdropClick(e: MouseEvent) {
-  if ((e.target as HTMLElement).dataset?.backdrop) {
-    handleClose()
-  }
-}
 </script>
 
 <template>
-  <Teleport to="body">
-    <transition name="fb-modal">
-      <div
-        v-if="store.isModalOpen"
-        class="fixed inset-0 z-[99999] flex items-center justify-center"
-      >
-        <div
-          class="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          data-backdrop="true"
-          @click="handleBackdropClick"
-        />
+  <AppModal :open="store.isModalOpen" size="md" @close="handleClose">
+    <template #header>
+      <div class="flex items-center justify-between gap-3 w-full min-w-0">
+        <div class="min-w-0">
+          <h3 class="text-base sm:text-lg font-black text-white truncate">Nuevo Feedback</h3>
+          <p class="text-[11px] text-white/60 mt-0.5 truncate">
+            {{ store.pendingCoordinates ? `Pin en (${Math.round(store.pendingCoordinates.x)}, ${Math.round(store.pendingCoordinates.y)})` : '' }}
+          </p>
+        </div>
+        <div class="w-8 h-8 rounded-full bg-coral text-white flex items-center justify-center text-sm font-black shadow-sm shrink-0">
+          {{ store.routePins.length + 1 }}
+        </div>
+      </div>
+    </template>
 
-        <div class="relative bg-white dark:bg-navy-light rounded-2xl shadow-2xl border border-border dark:border-white/10 w-full max-w-md mx-4 overflow-hidden">
-          <div class="px-6 py-4 border-b border-border dark:border-white/10">
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-extrabold text-navy dark:text-white">Nuevo Feedback</h3>
-                <p class="text-[11px] text-text-muted dark:text-gray-400 mt-0.5">
-                  {{ store.pendingCoordinates ? `Pin en (${Math.round(store.pendingCoordinates.x)}, ${Math.round(store.pendingCoordinates.y)})` : '' }}
-                </p>
-              </div>
-              <div class="w-8 h-8 rounded-full bg-coral text-white flex items-center justify-center text-sm font-black shadow-sm">
-                {{ store.routePins.length + 1 }}
-              </div>
-            </div>
-          </div>
-
-          <div class="p-6 space-y-4">
+    <div class="space-y-4">
             <div v-if="store.lastIssueUrl" class="bg-success/10 border border-success/20 rounded-xl p-3">
               <div class="flex items-center gap-2">
                 <span class="text-success text-lg">✓</span>
@@ -140,62 +123,41 @@ function handleBackdropClick(e: MouseEvent) {
                 </div>
               </div>
             </div>
-          </div>
+    </div>
 
-          <div class="px-6 py-4 border-t border-border dark:border-white/10 flex items-center justify-end gap-3">
-            <button
-              v-if="!store.lastIssueUrl"
-              class="btn-ghost dark:text-gray-400 dark:border-white/10 dark:hover:text-white"
-              @click="handleClose"
-            >
-              Cancelar
-            </button>
-            <button
-              v-if="!store.lastIssueUrl"
-              class="btn-primary flex items-center gap-2"
-              :disabled="!comment.trim() || store.loading"
-              :class="{ 'opacity-50 cursor-not-allowed': !comment.trim() || store.loading }"
-              @click="handleSave"
-            >
-              <svg v-if="store.loading" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <span v-else>Guardar &amp; crear Issue</span>
-            </button>
-            <button
-              v-else
-              class="btn-primary"
-              @click="handleClose"
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
-  </Teleport>
+    <template #footer>
+      <button
+        v-if="!store.lastIssueUrl"
+        class="btn-ghost dark:text-gray-400 dark:border-white/10 dark:hover:text-white"
+        @click="handleClose"
+      >
+        Cancelar
+      </button>
+      <button
+        v-if="!store.lastIssueUrl"
+        class="btn-primary flex items-center gap-2"
+        :disabled="!comment.trim() || store.loading"
+        :class="{ 'opacity-50 cursor-not-allowed': !comment.trim() || store.loading }"
+        @click="handleSave"
+      >
+        <svg v-if="store.loading" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        <span v-else>Guardar &amp; crear Issue</span>
+      </button>
+      <button
+        v-else
+        class="btn-primary"
+        @click="handleClose"
+      >
+        Cerrar
+      </button>
+    </template>
+  </AppModal>
 </template>
 
 <style scoped>
-.fb-modal-enter-active,
-.fb-modal-leave-active {
-  transition: all 0.2s ease;
-}
-.fb-modal-enter-active > div:last-child,
-.fb-modal-leave-active > div:last-child {
-  transition: all 0.2s ease;
-}
-.fb-modal-enter-from,
-.fb-modal-leave-to {
-  opacity: 0;
-}
-.fb-modal-enter-from > div:last-child,
-.fb-modal-leave-to > div:last-child {
-  opacity: 0;
-  transform: scale(0.95) translateY(8px);
-}
-
 .input {
   width: 100%;
   height: 40px;
