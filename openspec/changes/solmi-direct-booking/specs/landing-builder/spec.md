@@ -169,6 +169,27 @@ IntersectionObserver.
 
 `rateLimit('public-landing:${ip}', {maxAttempts: 30, windowMs: 60_000})`.
 
+### Requirement: Branding SOLMI OS visible en landing pública
+
+Issue GitLab #563 ("Ventas y Web | Ruta única para SEO"): la ruta común `/h/:slug`
+(ya existente, un solo dominio para todos los hoteles) MUST mostrar una marca de
+SOLMI OS visible, para que la inversión en SEO/publicidad de la plataforma se acumule
+en un único dominio y beneficie a todos los hoteles. NO es configurable por el admin
+del hotel (branding de plataforma, no del hotel) — vive en `FooterBlock.vue`, reusa
+`favicon.svg`, y enlaza a `/` (la landing de marketing del SaaS, `pages/landing/index.vue`).
+
+Los demás puntos del issue (ruta común, identificación por slug, botón de reservas,
+separación de info por hotel, sitemap dinámico beneficiando a todos) ya estaban
+resueltos por F1 antes de este requirement — ver fix de `/sitemap.xml` 2026-08-01
+(devolvía JSON envuelto en vez de XML crudo, y nginx no lo proxeaba al backend).
+
+#### Scenario: Marca visible en toda landing
+
+- GIVEN cualquier hotel activo en `/h/:slug`
+- WHEN se renderiza `FooterBlock`
+- THEN aparece "Powered by SolmiOS" con el ícono de la plataforma, sin importar el
+  `copyright` configurado por el hotel
+
 ## Database
 
 - **NEW TABLE** `landing_blocks`

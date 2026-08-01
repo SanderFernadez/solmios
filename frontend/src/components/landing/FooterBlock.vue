@@ -73,12 +73,21 @@
 
       <div class="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row gap-3 items-center justify-between">
         <p class="text-xs text-white/60">© {{ copyrightText }}</p>
-        <router-link
-          :to="bookingLink"
-          class="text-xs font-bold text-cyan hover:text-cyan-light transition-colors"
-        >
-          Reservar →
-        </router-link>
+        <div class="flex items-center gap-5">
+          <router-link
+            to="/"
+            class="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+          >
+            <img src="/favicon.svg" alt="" class="w-3.5 h-3.5" />
+            Powered by SolmiOS
+          </router-link>
+          <router-link
+            :to="bookingLink"
+            class="text-xs font-bold text-cyan hover:text-cyan-light transition-colors"
+          >
+            Reservar →
+          </router-link>
+        </div>
       </div>
     </div>
   </footer>

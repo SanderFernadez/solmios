@@ -4,3 +4,5 @@ Disallow: /panel/
 Disallow: /admin/
 Disallow: /login
 Disallow: /register
+
+Sitemap: https://hotel.zx89.site/sitemap.xml
