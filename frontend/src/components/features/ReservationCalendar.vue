@@ -250,42 +250,34 @@
     </Teleport>
 
     <!-- Block dialog -->
-    <Teleport to="body">
-      <div v-if="blockDlg.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-md p-6">
-          <h3 class="text-lg font-black text-navy mb-4 flex items-center gap-2"><Icon name="ban" :size="18" class="text-coral" /> Bloquear</h3>
-          <div class="space-y-4">
-            <div class="bg-surface rounded-xl p-3 text-sm font-bold text-navy">{{ blockDlg.room }} · {{ blockDlg.from }} → {{ blockDlg.to }}</div>
-            <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Motivo</label>
-              <select v-model="blockDlg.reason" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer mb-2">
-                <option value="">Personalizado...</option><option value="Mantenimiento">Mantenimiento</option><option value="Reforma">Reforma</option><option value="Inventario">Inventario</option><option value="Reservado">Reservado</option>
-              </select>
-              <input v-if="blockDlg.reason === '' || blockDlg.reason === 'Personalizado...'" v-model="blockDlg.customReason" type="text" placeholder="Escribe el motivo..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" />
-            </div>
-          </div>
-          <div class="flex gap-3 mt-6">
-            <button @click="blockDlg.show = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="saveBlock" class="flex-1 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer">Bloquear</button>
-          </div>
+    <AppModal :open="blockDlg.show" title="Bloquear" size="sm" @close="blockDlg.show = false">
+      <div class="space-y-4">
+        <div class="bg-surface rounded-xl p-3 text-sm font-bold text-navy">{{ blockDlg.room }} · {{ blockDlg.from }} → {{ blockDlg.to }}</div>
+        <div><label class="block text-[11px] font-bold text-navy uppercase mb-2">Motivo</label>
+          <select v-model="blockDlg.reason" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm cursor-pointer mb-2">
+            <option value="">Personalizado...</option><option value="Mantenimiento">Mantenimiento</option><option value="Reforma">Reforma</option><option value="Inventario">Inventario</option><option value="Reservado">Reservado</option>
+          </select>
+          <input v-if="blockDlg.reason === '' || blockDlg.reason === 'Personalizado...'" v-model="blockDlg.customReason" type="text" placeholder="Escribe el motivo..." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm" />
         </div>
       </div>
-    </Teleport>
+      <template #footer>
+        <button @click="blockDlg.show = false" class="flex-1 py-2.5 border-2 border-navy/30 rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition-colors">Cancelar</button>
+        <button @click="saveBlock" class="flex-1 py-2.5 bg-navy border-2 border-navy rounded-xl text-sm font-bold text-white cursor-pointer hover:bg-navy-light transition-colors">Bloquear</button>
+      </template>
+    </AppModal>
 
     <!-- Unblock confirm -->
-    <Teleport to="body">
-      <div v-if="unblock.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
-          <div class="mb-3 flex justify-center text-coral"><Icon name="ban" :size="30" /></div>
-          <h3 class="text-lg font-black text-navy mb-2">¿Desbloquear?</h3>
-          <p class="text-sm text-text-secondary">{{ unblock.room }} — {{ unblock.reason }}</p>
-          <p class="text-xs text-text-muted">{{ unblock.from }} → {{ unblock.to }}</p>
-          <div class="flex gap-3 mt-6">
-            <button @click="unblock.show = false" class="flex-1 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer">Cancelar</button>
-            <button @click="doUnblock" class="flex-1 py-2.5 bg-coral text-white rounded-xl text-sm font-bold cursor-pointer">Desbloquear</button>
-          </div>
-        </div>
+    <AppModal :open="unblock.show" title="¿Desbloquear?" size="sm" @close="unblock.show = false">
+      <div class="text-center">
+        <div class="mb-3 flex justify-center text-coral"><Icon name="ban" :size="30" /></div>
+        <p class="text-sm text-text-secondary">{{ unblock.room }} — {{ unblock.reason }}</p>
+        <p class="text-xs text-text-muted">{{ unblock.from }} → {{ unblock.to }}</p>
       </div>
-    </Teleport>
+      <template #footer>
+        <button @click="unblock.show = false" class="flex-1 py-2.5 border-2 border-navy/30 rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition-colors">Cancelar</button>
+        <button @click="doUnblock" class="flex-1 py-2.5 bg-coral border-2 border-coral rounded-xl text-sm font-bold text-white cursor-pointer hover:bg-coral/80 transition-colors">Desbloquear</button>
+      </template>
+    </AppModal>
 
     <!-- Quote / Cotización Modal -->
     <AppModal :open="quote.show" title="Cotización" size="lg" body-class="p-6" @close="quote.show = false">
@@ -420,113 +412,92 @@
     </AppModal>
 
     <!-- Modal: mover / extender reserva + cobro de diferencia (#204/#207) -->
-    <Teleport to="body">
-      <div v-if="reschedule.show" class="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4" @click.self="closeReschedule">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-          <div class="px-5 py-4 border-b border-border flex items-center justify-between">
-            <h3 class="font-black text-navy text-base">Mover / Extender reserva</h3>
-            <button @click="closeReschedule" class="text-text-muted hover:text-coral font-bold text-lg cursor-pointer"><Icon name="x" :size="16" /></button>
+    <AppModal :open="reschedule.show" title="Mover / Extender reserva" size="md" body-class="p-0" @close="closeReschedule">
+      <!-- Modo "Extender" desde el menú: elegir la nueva fecha de salida -->
+      <div v-if="reschedule.editable && reschedule.target" class="px-5 pt-4">
+        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Nueva fecha de salida</label>
+        <input type="date" :value="reschedule.target.checkOut" :min="reschedule.target.checkIn"
+          @change="onExtendDateChange(($event.target as HTMLInputElement).value)"
+          class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
+      </div>
+
+      <div v-if="reschedule.loading" class="px-5 py-10 text-center text-sm text-text-muted">Calculando cambio…</div>
+
+      <div v-else-if="reschedule.quote" class="px-5 py-4 space-y-4">
+        <!-- Resumen del cambio -->
+        <div class="text-sm text-navy font-bold">{{ reschedule.res?.name || 'Reserva' }}</div>
+        <div class="flex items-center gap-2 text-xs bg-surface rounded-xl px-3 py-2.5">
+          <div class="flex-1">
+            <div class="text-[10px] text-text-muted uppercase font-bold">Antes</div>
+            <div class="font-bold text-navy">Hab. {{ roomNumberOf(String(reschedule.res?.roomId)) }}</div>
+            <div class="text-text-muted">{{ String(reschedule.res?.checkIn).slice(0,10) }} → {{ String(reschedule.res?.checkOut).slice(0,10) }} · {{ reschedule.quote.oldNights }}n</div>
           </div>
-
-          <!-- Modo "Extender" desde el menú: elegir la nueva fecha de salida -->
-          <div v-if="reschedule.editable && reschedule.target" class="px-5 pt-4">
-            <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Nueva fecha de salida</label>
-            <input type="date" :value="reschedule.target.checkOut" :min="reschedule.target.checkIn"
-              @change="onExtendDateChange(($event.target as HTMLInputElement).value)"
-              class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
-          </div>
-
-          <div v-if="reschedule.loading" class="px-5 py-10 text-center text-sm text-text-muted">Calculando cambio…</div>
-
-          <div v-else-if="reschedule.quote" class="px-5 py-4 space-y-4">
-            <!-- Resumen del cambio -->
-            <div class="text-sm text-navy font-bold">{{ reschedule.res?.name || 'Reserva' }}</div>
-            <div class="flex items-center gap-2 text-xs bg-surface rounded-xl px-3 py-2.5">
-              <div class="flex-1">
-                <div class="text-[10px] text-text-muted uppercase font-bold">Antes</div>
-                <div class="font-bold text-navy">Hab. {{ roomNumberOf(String(reschedule.res?.roomId)) }}</div>
-                <div class="text-text-muted">{{ String(reschedule.res?.checkIn).slice(0,10) }} → {{ String(reschedule.res?.checkOut).slice(0,10) }} · {{ reschedule.quote.oldNights }}n</div>
-              </div>
-              <span class="text-teal text-lg">→</span>
-              <div class="flex-1 text-right">
-                <div class="text-[10px] text-text-muted uppercase font-bold">Después</div>
-                <div class="font-bold text-navy">Hab. {{ roomNumberOf(reschedule.quote.roomId) }}</div>
-                <div class="text-text-muted">{{ reschedule.quote.checkIn }} → {{ reschedule.quote.checkOut }} · {{ reschedule.quote.newNights }}n</div>
-              </div>
-            </div>
-
-            <!-- No disponible -->
-            <div v-if="!reschedule.quote.available" class="bg-coral/10 border border-coral/30 rounded-xl px-3 py-2.5 text-xs text-coral font-bold">
-              <span class="inline-flex items-center gap-1"><Icon name="ban" :size="13" /> {{ reschedule.quote.reason || 'La habitación no está disponible en esas fechas.' }}</span>
-            </div>
-
-            <template v-else>
-              <!-- Precio -->
-              <div class="space-y-1 text-sm">
-                <div class="flex justify-between text-text-muted"><span>Total anterior</span><span>{{ reschedule.quote.currency }} {{ reschedule.quote.previousTotal }}</span></div>
-                <div class="flex justify-between font-black" :class="reschedule.quote.difference > 0 ? 'text-coral' : reschedule.quote.difference < 0 ? 'text-teal' : 'text-text-muted'">
-                  <span>{{ reschedule.quote.newNights - reschedule.quote.oldNights > 0 ? '+' : '' }}{{ reschedule.quote.newNights - reschedule.quote.oldNights }} noche(s) × {{ reschedule.quote.basePrice }}</span>
-                  <span>{{ reschedule.quote.difference > 0 ? '+' : '' }}{{ reschedule.quote.currency }} {{ reschedule.quote.difference }}</span>
-                </div>
-                <div class="flex justify-between text-navy font-bold pt-1 border-t border-border/50"><span>Nuevo total</span><span>{{ reschedule.quote.currency }} {{ reschedule.quote.quotedNewPrice }}</span></div>
-              </div>
-
-              <!-- Cobro (solo si hay diferencia a favor del hotel) -->
-              <div v-if="reschedule.quote.difference > 0" class="space-y-3 pt-1 border-t border-border">
-                <div>
-                  <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Cómo se cobra</label>
-                  <div class="grid grid-cols-3 gap-2">
-                    <button v-for="m in [{k:'folio',l:'Folio'},{k:'cash',l:'Efectivo'},{k:'card',l:'Tarjeta'}]" :key="m.k"
-                      @click="reschedule.method = m.k as any"
-                      class="px-2 py-2 rounded-xl text-xs font-bold border cursor-pointer transition"
-                      :class="reschedule.method === m.k ? 'bg-navy text-white border-navy' : 'bg-white text-navy border-border hover:border-navy/40'">
-                      {{ m.l }}
-                    </button>
-                  </div>
-                  <p v-if="reschedule.method === 'folio'" class="text-[10px] text-text-muted mt-1">Se agrega a la cuenta abierta; se salda en el checkout.</p>
-                  <p v-else-if="reschedule.method === 'cash'" class="text-[10px] text-text-muted mt-1">Se registra un pago en efectivo (entra a caja).</p>
-                  <p v-else class="text-[10px] text-text-muted mt-1">Genera un link de pago Stripe (el huésped paga con su tarjeta).</p>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Monto a cobrar</label>
-                    <input v-model="reschedule.amount" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
-                  </div>
-                  <div>
-                    <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Motivo (opcional)</label>
-                    <input v-model="reschedule.reason" type="text" maxlength="300" placeholder="ej. descuento" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
-                  </div>
-                </div>
-              </div>
-              <div v-else class="text-xs text-text-muted italic">Sin diferencia a cobrar.</div>
-            </template>
-          </div>
-
-          <div class="px-5 py-3 border-t border-border flex justify-end gap-2">
-            <button @click="closeReschedule" class="px-4 py-2 rounded-xl text-sm font-bold text-navy hover:bg-surface cursor-pointer">Cancelar</button>
-            <button @click="confirmReschedule" :disabled="reschedule.loading || reschedule.submitting || !reschedule.quote?.available"
-              class="px-5 py-2 rounded-xl text-sm font-black text-white bg-teal hover:brightness-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-              {{ reschedule.submitting ? 'Aplicando…' : 'Confirmar' }}
-            </button>
+          <span class="text-teal text-lg">→</span>
+          <div class="flex-1 text-right">
+            <div class="text-[10px] text-text-muted uppercase font-bold">Después</div>
+            <div class="font-bold text-navy">Hab. {{ roomNumberOf(reschedule.quote.roomId) }}</div>
+            <div class="text-text-muted">{{ reschedule.quote.checkIn }} → {{ reschedule.quote.checkOut }} · {{ reschedule.quote.newNights }}n</div>
           </div>
         </div>
+
+        <!-- No disponible -->
+        <div v-if="!reschedule.quote.available" class="bg-coral/10 border border-coral/30 rounded-xl px-3 py-2.5 text-xs text-coral font-bold">
+          <span class="inline-flex items-center gap-1"><Icon name="ban" :size="13" /> {{ reschedule.quote.reason || 'La habitación no está disponible en esas fechas.' }}</span>
+        </div>
+
+        <template v-else>
+          <!-- Precio -->
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between text-text-muted"><span>Total anterior</span><span>{{ reschedule.quote.currency }} {{ reschedule.quote.previousTotal }}</span></div>
+            <div class="flex justify-between font-black" :class="reschedule.quote.difference > 0 ? 'text-coral' : reschedule.quote.difference < 0 ? 'text-teal' : 'text-text-muted'">
+              <span>{{ reschedule.quote.newNights - reschedule.quote.oldNights > 0 ? '+' : '' }}{{ reschedule.quote.newNights - reschedule.quote.oldNights }} noche(s) × {{ reschedule.quote.basePrice }}</span>
+              <span>{{ reschedule.quote.difference > 0 ? '+' : '' }}{{ reschedule.quote.currency }} {{ reschedule.quote.difference }}</span>
+            </div>
+            <div class="flex justify-between text-navy font-bold pt-1 border-t border-border/50"><span>Nuevo total</span><span>{{ reschedule.quote.currency }} {{ reschedule.quote.quotedNewPrice }}</span></div>
+          </div>
+
+          <!-- Cobro (solo si hay diferencia a favor del hotel) -->
+          <div v-if="reschedule.quote.difference > 0" class="space-y-3 pt-1 border-t border-border">
+            <div>
+              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Cómo se cobra</label>
+              <div class="grid grid-cols-3 gap-2">
+                <button v-for="m in [{k:'folio',l:'Folio'},{k:'cash',l:'Efectivo'},{k:'card',l:'Tarjeta'}]" :key="m.k"
+                  @click="reschedule.method = m.k as any"
+                  class="px-2 py-2 rounded-xl text-xs font-bold border cursor-pointer transition"
+                  :class="reschedule.method === m.k ? 'bg-navy text-white border-navy' : 'bg-white text-navy border-border hover:border-navy/40'">
+                  {{ m.l }}
+                </button>
+              </div>
+              <p v-if="reschedule.method === 'folio'" class="text-[10px] text-text-muted mt-1">Se agrega a la cuenta abierta; se salda en el checkout.</p>
+              <p v-else-if="reschedule.method === 'cash'" class="text-[10px] text-text-muted mt-1">Se registra un pago en efectivo (entra a caja).</p>
+              <p v-else class="text-[10px] text-text-muted mt-1">Genera un link de pago Stripe (el huésped paga con su tarjeta).</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Monto a cobrar</label>
+                <input v-model="reschedule.amount" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Motivo (opcional)</label>
+                <input v-model="reschedule.reason" type="text" maxlength="300" placeholder="ej. descuento" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-xs text-text-muted italic">Sin diferencia a cobrar.</div>
+        </template>
       </div>
-    </Teleport>
+
+      <template #footer>
+        <button @click="closeReschedule" class="px-4 py-2 rounded-xl text-sm font-bold text-navy hover:bg-surface cursor-pointer">Cancelar</button>
+        <button @click="confirmReschedule" :disabled="reschedule.loading || reschedule.submitting || !reschedule.quote?.available"
+          class="px-5 py-2 rounded-xl text-sm font-black text-white bg-teal hover:brightness-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+          {{ reschedule.submitting ? 'Aplicando…' : 'Confirmar' }}
+        </button>
+      </template>
+    </AppModal>
 
     <!-- Modal de operaciones rápidas del planning -->
-    <Teleport to="body">
-      <div v-if="quickAction" class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" @click.self="quickAction = null">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[82vh] flex flex-col">
-          <div class="flex items-center justify-between p-4 border-b border-border shrink-0">
-            <h3 class="text-sm font-black text-navy">
-              <span v-if="quickAction === 'arrivals'" class="inline-flex items-center gap-2"><Icon name="in-out" :size="16" /> Llegadas y Salidas de hoy</span>
-              <span v-else-if="quickAction === 'search'" class="inline-flex items-center gap-2"><Icon name="search" :size="16" /> Buscar reserva</span>
-              <span v-else-if="quickAction === 'locks'" class="inline-flex items-center gap-2"><Icon name="lock" :size="16" /> Cerraduras</span>
-              <span v-else-if="quickAction === 'sync'" class="inline-flex items-center gap-2"><Icon name="sync" :size="16" /> Sincronizar canales</span>
-            </h3>
-            <button @click="quickAction = null" class="text-text-muted hover:text-coral font-bold cursor-pointer"><Icon name="x" :size="16" /></button>
-          </div>
-          <div class="p-4 overflow-y-auto flex-1 space-y-3">
+    <AppModal :open="!!quickAction" :title="quickActionTitle" size="lg" body-class="p-4 space-y-3" @close="quickAction = null">
             <!-- Llegadas / Salidas -->
             <template v-if="quickAction === 'arrivals'">
               <!-- Sin movimientos: estado vacio claro -->
@@ -641,13 +612,10 @@
               <button @click="doSync" :disabled="syncing" class="w-full py-2.5 rounded-xl bg-navy text-white text-sm font-black hover:bg-navy/90 disabled:opacity-50 cursor-pointer inline-flex items-center justify-center gap-2"><Icon v-if="!syncing" name="sync" :size="15" /> {{ syncing ? 'Sincronizando…' : 'Sincronizar ahora' }}</button>
               <div v-if="syncMsg" class="text-xs font-bold text-center" :class="syncMsg.includes('No se pudo') ? 'text-coral' : 'text-teal'">{{ syncMsg }}</div>
             </template>
-          </div>
-          <div class="p-3 border-t border-border shrink-0 flex justify-end">
-            <button @click="goAdvanced(quickAdvancedPath)" class="px-4 py-2 rounded-xl bg-surface text-navy text-xs font-black hover:bg-navy hover:text-white transition-colors cursor-pointer">{{ quickAction === 'locks' ? 'Configuración TTLock →' : 'Avanzado → página completa' }}</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+      <template #footer>
+        <button @click="goAdvanced(quickAdvancedPath)" class="w-full px-4 py-2 rounded-xl bg-surface text-navy text-xs font-black hover:bg-navy hover:text-white transition-colors cursor-pointer">{{ quickAction === 'locks' ? 'Configuración TTLock →' : 'Avanzado → página completa' }}</button>
+      </template>
+    </AppModal>
 
     <!-- Editor de colores de canales (#138) -->
     <Teleport to="body">
@@ -703,49 +671,41 @@
     />
 
     <!-- Diálogo: Asignación de temporadas (estilo MrPlan) -->
-    <Teleport to="body">
-      <div v-if="seasonDlg.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="seasonDlg.show = false">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-3.5 bg-navy text-white">
-            <h3 class="text-sm font-black">Asignación de temporadas</h3>
-            <button @click="seasonDlg.show = false" class="text-white/80 hover:text-white cursor-pointer text-xl leading-none">×</button>
-          </div>
-          <div class="p-5 space-y-4">
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase">Rango de fechas</label>
-              <div class="flex items-center gap-2 mt-1">
-                <input type="date" v-model="seasonDlg.from" class="flex-1 px-3 py-2 rounded-lg border border-border text-sm text-navy" />
-                <span class="text-text-muted">→</span>
-                <input type="date" v-model="seasonDlg.to" class="flex-1 px-3 py-2 rounded-lg border border-border text-sm text-navy" />
-              </div>
-            </div>
-            <div>
-              <label class="text-[10px] font-bold text-text-muted uppercase">Días de la semana</label>
-              <div class="grid grid-cols-2 gap-2 mt-1.5">
-                <button v-for="wd in WEEKDAYS_UI" :key="wd.idx" type="button" @click="seasonDlg.weekdays[wd.idx] = !seasonDlg.weekdays[wd.idx]"
-                  class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer"
-                  :class="seasonDlg.weekdays[wd.idx] ? 'bg-teal/15 border-teal text-teal' : 'bg-surface border-border text-text-muted'">
-                  <span class="w-2.5 h-2.5 rounded-full" :class="seasonDlg.weekdays[wd.idx] ? 'bg-teal' : 'bg-gray-300'"></span>
-                  {{ wd.label }}
-                </button>
-              </div>
-            </div>
-            <div class="space-y-2 pt-1">
-              <button v-for="s in seasonsCatalog" :key="s.name" type="button" @click="applySeason(s.name)"
-                class="w-full py-2.5 rounded-lg text-sm font-black text-white shadow-sm hover:opacity-90 cursor-pointer"
-                :style="{ background: s.color }">
-                {{ s.label }}
-              </button>
-              <p v-if="!seasonsCatalog.length" class="text-center text-xs text-text-muted py-2">Configurá temporadas en Ajustes › Tarifas primero.</p>
-              <button type="button" @click="applySeason('')" class="w-full py-2 rounded-lg text-xs font-bold text-coral border border-coral/40 hover:bg-coral/5 cursor-pointer">Quitar temporada del rango</button>
-            </div>
-          </div>
-          <div class="px-5 py-3 bg-surface/60 text-right">
-            <button @click="seasonDlg.show = false" class="text-sm font-bold text-text-muted hover:text-navy cursor-pointer">Cancelar</button>
+    <AppModal :open="seasonDlg.show" title="Asignación de temporadas" size="md" @close="seasonDlg.show = false">
+      <div class="space-y-4">
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase">Rango de fechas</label>
+          <div class="flex items-center gap-2 mt-1">
+            <input type="date" v-model="seasonDlg.from" class="flex-1 px-3 py-2 rounded-lg border border-border text-sm text-navy" />
+            <span class="text-text-muted">→</span>
+            <input type="date" v-model="seasonDlg.to" class="flex-1 px-3 py-2 rounded-lg border border-border text-sm text-navy" />
           </div>
         </div>
+        <div>
+          <label class="text-[10px] font-bold text-text-muted uppercase">Días de la semana</label>
+          <div class="grid grid-cols-2 gap-2 mt-1.5">
+            <button v-for="wd in WEEKDAYS_UI" :key="wd.idx" type="button" @click="seasonDlg.weekdays[wd.idx] = !seasonDlg.weekdays[wd.idx]"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer"
+              :class="seasonDlg.weekdays[wd.idx] ? 'bg-teal/15 border-teal text-teal' : 'bg-surface border-border text-text-muted'">
+              <span class="w-2.5 h-2.5 rounded-full" :class="seasonDlg.weekdays[wd.idx] ? 'bg-teal' : 'bg-gray-300'"></span>
+              {{ wd.label }}
+            </button>
+          </div>
+        </div>
+        <div class="space-y-2 pt-1">
+          <button v-for="s in seasonsCatalog" :key="s.name" type="button" @click="applySeason(s.name)"
+            class="w-full py-2.5 rounded-lg text-sm font-black text-white shadow-sm hover:opacity-90 cursor-pointer"
+            :style="{ background: s.color }">
+            {{ s.label }}
+          </button>
+          <p v-if="!seasonsCatalog.length" class="text-center text-xs text-text-muted py-2">Configurá temporadas en Ajustes › Tarifas primero.</p>
+          <button type="button" @click="applySeason('')" class="w-full py-2 rounded-lg text-xs font-bold text-coral border border-coral/40 hover:bg-coral/5 cursor-pointer">Quitar temporada del rango</button>
+        </div>
       </div>
-    </Teleport>
+      <template #footer>
+        <button @click="seasonDlg.show = false" class="text-sm font-bold text-text-muted hover:text-navy cursor-pointer">Cancelar</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -937,6 +897,13 @@ const QUICK_TOOLBAR = [
 ] as const
 type QuickKey = typeof QUICK_TOOLBAR[number]['key']
 const quickAction = ref<QuickKey | null>(null)
+const QUICK_ACTION_TITLES: Record<QuickKey, string> = {
+  arrivals: 'Llegadas y Salidas de hoy',
+  search: 'Buscar reserva',
+  locks: 'Cerraduras',
+  sync: 'Sincronizar canales',
+}
+const quickActionTitle = computed(() => quickAction.value ? QUICK_ACTION_TITLES[quickAction.value] : '')
 const quickSearch = ref('')
 const syncing = ref(false)
 const syncMsg = ref('')
