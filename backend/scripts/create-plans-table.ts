@@ -52,7 +52,7 @@ async function migrate() {
       ['plan-starter', 'Starter', 'starter', 49, 'USD', 'Para hoteles pequeños', JSON.stringify(['30 habitaciones', '2 usuarios']), JSON.stringify({rooms:30,users:2}), JSON.stringify([]), 1, 0],
       ['plan-professional', 'Professional', 'professional', 99, 'USD', 'Para hoteles en crecimiento', JSON.stringify(['100 habitaciones', '6 usuarios']), JSON.stringify({rooms:100,users:6}), JSON.stringify([]), 1, 1],
       ['plan-enterprise', 'Enterprise', 'enterprise', 199, 'USD', 'Para hoteles grandes', JSON.stringify(['Habitaciones ilimitadas', 'Usuarios ilimitados']), JSON.stringify({rooms:9999,users:9999}), JSON.stringify([]), 1, 2],
-      ['plan-essential', 'Essential', 'essential', 99, 'USD', 'PMS + Channel + Reservas + Pagos', JSON.stringify(['20 habitaciones', '2 usuarios']), JSON.stringify({rooms:20,users:2}), JSON.stringify(['planning','reservations','reservations.checkin','guests','finance','finance.billing','finance.payments','channel']), 1, 3],
+      ['plan-essential', 'Essential', 'essential', 99, 'USD', 'PMS + Channel + Reservas + Pagos', JSON.stringify(['20 habitaciones', '2 usuarios']), JSON.stringify({rooms:20,users:2}), JSON.stringify(['planning','reservations','reservations.checkin','guests','finance','finance.billing','finance.payments','channel','operations','operations.maintenance']), 1, 3],
       ['plan-ultra', 'Ultra', 'ultra', 0, 'USD', 'Plan custom — todos los módulos', JSON.stringify(['Habitaciones ilimitadas', 'Usuarios ilimitados']), JSON.stringify({rooms:9999,users:9999}), JSON.stringify([]), 1, 4],
     ]
 
