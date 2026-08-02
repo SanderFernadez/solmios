@@ -97,6 +97,20 @@ describe('SpecialConditionsUseCase.apply — categoría', () => {
     await expect(uc.apply('h1', { type: 'category', category: 'founder_one' }, {})).rejects.toThrow('no puede volver a calificar')
   })
 
+  it('founderChurnBlocksReturn=false: permite recuperar una categoría perdida (config Grupo B, no hardcode)', async () => {
+    const sub = { id: 'sub1', hotelId: 'h1', planId: 'p2', status: 'active' }
+    const history = [{ id: 'fh1', hotelId: 'h1', category: 'founder_one', lostAt: '2026-01-01', reason: 'delinquent' }]
+    const settings = { id: 'cfg', hotelId: 'platform', key: 'subscription_settings', value: { founderChurnBlocksReturn: false } }
+    const orm = makeOrm({
+      Subscriptions: [sub], Plans: [PLAN_PRO], SpecialCategoryConfig: [{ ...FOUNDER_ONE }],
+      FounderHistory: history, Configuration: [settings],
+    })
+    const uc = new SpecialConditionsUseCase(orm)
+
+    const result = await uc.apply('h1', { type: 'category', category: 'founder_one' }, {})
+    expect(result.specialCategory).toBe('founder_one')
+  })
+
   it('CAS: si otro admin ya tomó el último cupo entre el read y el write, rechaza (no decrementa dos veces)', async () => {
     const sub = { id: 'sub1', hotelId: 'h1', planId: 'p2', status: 'active' }
     const orm = makeOrm({ Subscriptions: [sub], Plans: [PLAN_PRO], SpecialCategoryConfig: [{ ...FOUNDER_ONE }], FounderHistory: [] })

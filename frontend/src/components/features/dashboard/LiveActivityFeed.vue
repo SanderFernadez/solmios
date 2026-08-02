@@ -20,6 +20,7 @@
             <div class="truncate text-xs font-bold text-navy">{{ item.title }}</div>
             <div class="truncate text-[10px] text-text-secondary">{{ item.subtitle }}</div>
           </div>
+          <ChannelIcon v-if="item.channel" :channel="item.channel" :size="16" class="shrink-0 ring-1 ring-black/5 rounded-[4px]" />
           <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold" :style="{ background: `${item.color}1A`, color: item.color }">
             {{ item.badge }}
           </span>
@@ -43,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+import ChannelIcon from '@/components/ui/ChannelIcon.vue'
+
 export interface FeedItem {
   id: string
   time: string
@@ -51,6 +54,8 @@ export interface FeedItem {
   badge: string
   color: string
   icon: string
+  /** Canal/vía de origen de la reserva (booking, airbnb, direct, ...) — muestra el logo si viene presente. */
+  channel?: string
 }
 
 defineProps<{ items: FeedItem[] }>()

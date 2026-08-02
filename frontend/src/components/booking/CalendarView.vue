@@ -25,8 +25,14 @@
     reacciona: el botón "Ver disponibilidad" se habilita, el PayStep muestra el total correcto,
     la urgencia D11 recalcula, etc. Sin wiring extra.
 
-    Mobile-first: 1 mes visible en mobile con nav entre meses, 2 meses lado a lado en sm+.
-    Sin librería externa (no vue-calendly/date-fns) — menos bundle, mejor Lighthouse.
+    FIX 2026-08-02 (feedback #629 — "no toda una pantalla entera" + "que se vea la fecha
+    de hoy en grande", widget embebido `/book/:slug?embed=1`): antes mostraba 2 meses lado
+    a lado desde el breakpoint `sm` (640px) — en el widget embebido eso ocupa el ancho
+    completo del iframe/host incluso en desktop, y sigue siendo alto. Ahora es SIEMPRE 1 mes
+    visible con nav ‹ › (como ya hacía en mobile antes de `sm`), pensado para "la mayoría ve
+    desde el celular": menos scroll, cabe en un iframe chico. La celda de HOY se resalta más
+    grande/marcada (ring grueso + texto más grande) en vez del ring fino de antes, para
+    identificarla de un vistazo sin tener que buscarla.
   -->
   <div class="space-y-3">
     <!-- Header: navegación entre meses + leyenda de noches seleccionadas. -->
@@ -40,14 +46,8 @@
       >
         <span aria-hidden="true">‹</span>
       </button>
-      <div class="flex gap-4 sm:gap-8">
-        <div
-          v-for="m in visibleMonths"
-          :key="`${m.year}-${m.month}`"
-          class="text-center text-sm font-black text-navy"
-        >
-          {{ i18n.t(monthKey(m.month)) }} {{ m.year }}
-        </div>
+      <div class="text-center text-sm font-black text-navy">
+        {{ i18n.t(monthKey(visibleMonth.month)) }} {{ visibleMonth.year }}
       </div>
       <button
         type="button"
@@ -59,30 +59,28 @@
       </button>
     </div>
 
-    <!-- Grid de los meses visibles. -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div v-for="m in visibleMonths" :key="`${m.year}-${m.month}`">
-        <!-- Encabezado de weekdays (Lunes-Domingo, Monday-based). -->
-        <div class="grid grid-cols-7 mb-1 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted">
-          <div v-for="w in weekdayShortKeys" :key="w">{{ i18n.t(weekdayKey(w)) }}</div>
-        </div>
-        <!-- Celdas del mes. Blank cells al inicio para alinear el día 1 con su weekday. -->
-        <div class="grid grid-cols-7 gap-0.5">
-          <button
-            v-for="cell in cellsOfMonth(m)"
-            :key="cell.iso || `blank-${cell.day}-${m.month}`"
-            type="button"
-            :disabled="cell.disabled || !cell.inMonth"
-            :aria-label="cell.inMonth ? cell.iso : ''"
-            :class="cellClass(cell)"
-            @click="onCellClick(cell)"
-            @mouseenter="onCellEnter(cell)"
-            @focus="onCellEnter(cell)"
-            @touchstart.passive="onCellEnter(cell)"
-          >
-            <span v-if="cell.inMonth">{{ cell.day }}</span>
-          </button>
-        </div>
+    <!-- Grid de 1 solo mes — compacto, mobile-first (#629). -->
+    <div>
+      <!-- Encabezado de weekdays (Lunes-Domingo, Monday-based). -->
+      <div class="grid grid-cols-7 mb-1 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted">
+        <div v-for="w in weekdayShortKeys" :key="w">{{ i18n.t(weekdayKey(w)) }}</div>
+      </div>
+      <!-- Celdas del mes. Blank cells al inicio para alinear el día 1 con su weekday. -->
+      <div class="grid grid-cols-7 gap-0.5">
+        <button
+          v-for="cell in cellsOfMonth(visibleMonth)"
+          :key="cell.iso || `blank-${cell.day}-${visibleMonth.month}`"
+          type="button"
+          :disabled="cell.disabled || !cell.inMonth"
+          :aria-label="cell.inMonth ? cell.iso : ''"
+          :class="cellClass(cell)"
+          @click="onCellClick(cell)"
+          @mouseenter="onCellEnter(cell)"
+          @focus="onCellEnter(cell)"
+          @touchstart.passive="onCellEnter(cell)"
+        >
+          <span v-if="cell.inMonth">{{ cell.day }}</span>
+        </button>
       </div>
     </div>
 
@@ -244,15 +242,9 @@ function weekdayKey(w: typeof weekdayShortKeys[number]): BookingMessageKey {
 
 // ─── Navegación entre meses ────────────────────────────────────────────────────
 
-const visibleMonths = computed(() => {
-  const a = viewStart.value
-  const nextMonth = (a.month + 1) % 12
-  const nextYear = nextMonth === 0 ? a.year + 1 : a.year
-  return [
-    { year: a.year, month: a.month },
-    { year: nextYear, month: nextMonth },
-  ]
-})
+// Un solo mes visible (#629 — compacto, mobile-first). Antes eran 2 meses lado a lado
+// desde `sm`; en el widget embebido eso ocupaba el ancho completo del host.
+const visibleMonth = computed(() => ({ year: viewStart.value.year, month: viewStart.value.month }))
 
 const canGoPrev = computed(() => {
   // No permitir navegar antes del mes actual.
@@ -307,8 +299,12 @@ function cellClass(cell: Cell): string {
   const isStart = !!(r && cell.iso === r.start)
   const isCheckout = !!(r && r.checkout && cell.iso === r.checkout)
   const isPendingStart = cell.iso === pendingStart.value
+  // HOY (#629 — "que se vea la fecha de hoy en grande"): celda más grande que el resto
+  // (h-10 w-10 vs h-9 w-9) + ring grueso + texto más grande, para que se identifique de
+  // un vistazo. Solo aplica cuando no está ya marcada por la selección (start/checkout/pending).
+  const isBareToday = cell.today && !inNights && !isStart && !isCheckout && !isPendingStart
   return [
-    'h-9 w-9 rounded-full text-sm font-semibold transition select-none',
+    isBareToday ? 'h-10 w-10 rounded-full text-base font-black transition select-none' : 'h-9 w-9 rounded-full text-sm font-semibold transition select-none',
     cell.disabled
       ? 'text-text-muted/40 cursor-not-allowed'
       : 'text-navy hover:bg-cyan/10 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan/40',
@@ -317,7 +313,7 @@ function cellClass(cell: Cell): string {
     // Checkout: marcado como "fin" pero SIN el fill sólido de noche pagada (no es una noche).
     isCheckout ? 'ring-2 ring-cyan font-black text-navy' : '',
     isPendingStart ? 'ring-2 ring-cyan ring-offset-1' : '',
-    (cell.today && !inNights && !isCheckout && !isPendingStart) ? 'ring-1 ring-cyan/40 font-bold' : '',
+    isBareToday ? 'ring-2 ring-cyan text-cyan' : '',
   ]
     .filter(Boolean)
     .join(' ')

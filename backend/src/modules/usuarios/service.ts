@@ -175,7 +175,7 @@ export class UsuariosService {
   async refreshToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
     return refreshSession(this.repo, this.auth as any, refreshToken, () => {
       throw new AuthError('Sesión expirada, iniciá sesión de nuevo')
-    })
+    }, (user) => assertHotelCanOperate(user, this.checkSubscription))
   }
 
   async forgotPassword(email: string): Promise<void> {

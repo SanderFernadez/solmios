@@ -865,9 +865,12 @@ function openNewContract() {
       { key: 'type', label: 'Tipo', type: 'select', required: true, default: contractTypes.value[0]?.code ?? 'full_time', options: contractTypeOptions() },
       { key: 'startDate', label: 'Fecha inicio', type: 'date', required: true },
       { key: 'endDate', label: 'Fecha fin (opcional)', type: 'date' },
-      { key: 'salary', label: 'Salario', type: 'number', required: true, min: 0 },
+      // Mismo tope que el resto de campos de salario (#173/#176/#581): backend CreateContractSchema
+      // limita a 99_999_999, el front lo espeja para no depender solo del 400 del servidor.
+      { key: 'salary', label: 'Salario', type: 'number', required: true, min: 0, max: MAX_SALARY },
       { key: 'currency', label: 'Moneda', type: 'select', default: 'DOP', options: CURRENCIES },
-      { key: 'position', label: 'Puesto' },
+      // #581: faltaba maxLength (backend CreateContractSchema.position tope 100).
+      { key: 'position', label: 'Puesto', maxLength: 100 },
     ],
     onSubmit: (v) => EmpleadosService.createContract(v),
   }
@@ -924,14 +927,15 @@ function reviewFields(r?: PerformanceReview): FormField[] {
   return [
     { key: 'employeeId', label: 'Empleado', type: 'select', required: true, options: employeeOptions(), default: r?.employeeId },
     { key: 'reviewDate', label: 'Fecha', type: 'date', required: true, default: r?.reviewDate ?? new Date().toISOString().slice(0, 10) },
-    { key: 'period', label: 'Período', placeholder: '2026-Q3', default: r?.period },
+    // #581: faltaba maxLength en todos los campos de texto de la evaluación (backend CreateReviewSchema/UpdateReviewSchema).
+    { key: 'period', label: 'Período', placeholder: '2026-Q3', maxLength: 20, default: r?.period },
     // Puntaje 1-10 con tope validado en el modal y en el backend (#192).
     { key: 'score', label: 'Puntaje del evaluador (1-10)', type: 'number', min: 1, max: 10, default: r?.score ?? undefined },
-    { key: 'strengths', label: 'Fortalezas', type: 'textarea', default: r?.strengths },
-    { key: 'improvements', label: 'A mejorar', type: 'textarea', default: r?.improvements },
-    { key: 'goals', label: 'Objetivos del próximo período', type: 'textarea', default: r?.goals },
+    { key: 'strengths', label: 'Fortalezas', type: 'textarea', maxLength: 2000, default: r?.strengths },
+    { key: 'improvements', label: 'A mejorar', type: 'textarea', maxLength: 2000, default: r?.improvements },
+    { key: 'goals', label: 'Objetivos del próximo período', type: 'textarea', maxLength: 2000, default: r?.goals },
     { key: 'selfScore', label: 'Auto-evaluación del empleado (1-10)', type: 'number', min: 1, max: 10, default: r?.selfScore ?? undefined },
-    { key: 'selfComments', label: 'Comentarios del empleado', type: 'textarea', default: r?.selfComments },
+    { key: 'selfComments', label: 'Comentarios del empleado', type: 'textarea', maxLength: 2000, default: r?.selfComments },
   ]
 }
 

@@ -24,6 +24,54 @@ export interface HandleStripeEventDeps {
   /** Envío de los correos de PLATAFORMA (payment_succeeded/payment_failed/subscription_canceled).
    *  Opcional y best-effort: un fallo acá NUNCA puede tumbar el webhook — el dinero ya se cobró. */
   sendPlatformEmail?: (event: string, to: string, hotelId: string, vars: Record<string, string>) => Promise<{ sent: boolean }>
+  /**
+   * ORM crudo, mismo motivo que admin/usecases/special-conditions.ts: liberar el cupo de
+   * Fundador/Pionero en `customer.subscription.deleted` necesita el CAS de `orm.updateMany`
+   * (compare-and-swap por `occupiedCount`), no expuesto por RepositoryAdapter. Opcional y
+   * best-effort — si no viene, la cancelación igual marca `status:'canceled'`, solo no libera
+   * el cupo ni deja rastro en `founder_history` (mejor que tumbar el webhook de Stripe).
+   */
+  orm?: any
+}
+
+// Solo Fundador Uno/Dos dejan rastro anti-recuperación al perderse (PLAN-SUSCRIPCIONES.md §5/§9).
+// Pionero libera cupo igual, pero sin founder_history (no tiene esa restricción).
+const FOUNDER_KEYS = new Set(['founder_one', 'founder_two'])
+
+/** Mismo CAS que subscription-suspension-cron.ts:releaseSlot — no leer-luego-escribir. */
+async function releaseCategorySlot(orm: any, categoryKey: string): Promise<void> {
+  const row = (await orm.findMany('SpecialCategoryConfig', { key: categoryKey }))[0]
+  if (!row || row.occupiedCount <= 0) return
+  await orm.updateMany(
+    'SpecialCategoryConfig',
+    { key: categoryKey, occupiedCount: row.occupiedCount },
+    { occupiedCount: row.occupiedCount - 1, status: row.status === 'full' ? 'open' : row.status },
+  )
+}
+
+/**
+ * Cierra la categoría especial de un hotel que canceló su suscripción por completo (§4: "cancela
+ * suscripción o queda suspended → none + founder_history{reason} + libera 1 cupo"). El caso
+ * "queda suspended por mora" ya lo cubre subscription-suspension-cron.ts — esta es la otra mitad
+ * del diagrama, la cancelación explícita (customer.subscription.deleted), que antes no tocaba
+ * `specialCategory` ni liberaba el cupo: un Fundador que cancelaba se quedaba "ocupando" su cupo
+ * para siempre y sin founder_history, permitiendo re-calificar más tarde sin haber perdido nada.
+ */
+async function releaseSpecialCategoryOnCancel(
+  orm: any, hotelId: string, subscriptionId: string, category: string, now: Date,
+): Promise<void> {
+  if (FOUNDER_KEYS.has(category)) {
+    await orm.create('FounderHistory', {
+      hotelId, category, lostAt: now.toISOString(), reason: 'canceled',
+    })
+  }
+  await releaseCategorySlot(orm, category)
+  const activeDiscounts = (await orm.findMany('SubscriptionDiscounts', {
+    subscriptionId, type: 'category_bonus', status: 'active',
+  })) as any[]
+  for (const d of activeDiscounts) {
+    await orm.update('SubscriptionDiscounts', d.id, { status: 'revoked', endsAt: d.endsAt ?? now.toISOString() })
+  }
 }
 
 /** Link a la pantalla de suscripción del panel, mismo patrón que create-checkout-session.ts. */
@@ -104,6 +152,12 @@ export async function handleStripeEvent(deps: HandleStripeEventDeps, event: Stri
         : session.subscription?.id
       if (stripeSubscriptionId) {
         patch.stripeSubscriptionId = stripeSubscriptionId
+        // Checkout Session mode:'subscription' = el hotel autorizó el cobro automático con
+        // tarjeta (es lo único que create-checkout-session.ts ofrece hoy, no hay un flujo de
+        // "pago manual" separado). Sin esto `isRecurring` quedaba en `false` para siempre
+        // (default del modelo) y subscription-suspension-cron.ts mandaba SIEMPRE el mensaje de
+        // "pagá vos" (#540) en vez de "se cobrará solo" (#539) aunque la tarjeta estuviera cargada.
+        patch.isRecurring = true
         try {
           const stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId)
           const periodEnd = currentPeriodEndOf(stripeSub)
@@ -177,8 +231,25 @@ export async function handleStripeEvent(deps: HandleStripeEventDeps, event: Stri
         logger.warn(`customer.subscription.deleted: no hay Subscription local para ${stripeSub.id}`)
         break
       }
-      await subscriptionsRepo.update(sub.id, { status: 'canceled', canceledAt: new Date().toISOString() })
+      const now = new Date()
+      const patch: Record<string, any> = { status: 'canceled', canceledAt: now.toISOString() }
+      if (sub.specialCategory) {
+        patch.specialCategory = null
+        patch.specialCategoryGrantedAt = null
+      }
+      await subscriptionsRepo.update(sub.id, patch)
       logger.info('Suscripción cancelada', { stripeSubscriptionId: stripeSub.id })
+
+      // Best-effort: si no hay `orm` cableado, la cancelación igual quedó registrada arriba —
+      // solo no se libera el cupo ni se deja rastro anti-recuperación (ver comment del dep).
+      if (sub.specialCategory && deps.orm) {
+        try {
+          await releaseSpecialCategoryOnCancel(deps.orm, sub.hotelId, sub.id, sub.specialCategory, now)
+        } catch (e: any) {
+          logger.warn('No se pudo liberar la categoría especial al cancelar', { hotelId: sub.hotelId, error: e.message })
+        }
+      }
+
       await notifyPlatformEmail(deps, 'subscription_canceled', sub.hotelId, { link: subscriptionLink() })
       break
     }

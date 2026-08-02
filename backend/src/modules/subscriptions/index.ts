@@ -46,6 +46,8 @@ export function SubscriptionsModule() {
         new OrmRepository<any>(orm, 'Canales'),
         // Historial de condiciones especiales — statusOf() lo usa para mostrar el descuento activo.
         new OrmRepository<any>(orm, 'SubscriptionDiscounts'),
+        // orm crudo — solo lo usa handle-stripe-event.ts para el CAS de cupos al cancelar.
+        orm,
       )
       const controller = new SubscriptionsController(service, log)
 

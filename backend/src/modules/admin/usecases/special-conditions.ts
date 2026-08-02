@@ -20,6 +20,7 @@ export interface ApplySpecialConditionsInput {
 const SETTINGS_KEY = 'subscription_settings'
 const PLATFORM = 'platform'
 const DEFAULT_MAX_MANUAL_DISCOUNT_PCT = 100
+const DEFAULT_FOUNDER_CHURN_BLOCKS_RETURN = true
 
 export class SpecialConditionsUseCase {
   constructor(private readonly orm: any) {}
@@ -128,9 +129,15 @@ export class SpecialConditionsUseCase {
 
     // Anti-recuperación (§9): un hotel que ya tuvo y perdió esta categoría no puede volver,
     // aunque haya cupo. Solo aplica a las categorías con historial (Fundador Uno/Dos).
-    const history = await this.orm.findMany('FounderHistory', { hotelId, category })
-    if (history.length > 0) {
-      throw new ValidationError(`Este hotel ya tuvo "${category}" y lo perdió — no puede volver a calificar`)
+    // Gateado por `founderChurnBlocksReturn` (Grupo B, default true) — antes se rechazaba
+    // SIEMPRE aunque el admin apagara el toggle en /admin/subscriptions/founders-pioneers,
+    // que es justo el "cero hardcode" que prohíbe PLAN-SUSCRIPCIONES.md §0.
+    const settings = await this.readSettings()
+    if (settings.founderChurnBlocksReturn) {
+      const history = await this.orm.findMany('FounderHistory', { hotelId, category })
+      if (history.length > 0) {
+        throw new ValidationError(`Este hotel ya tuvo "${category}" y lo perdió — no puede volver a calificar`)
+      }
     }
 
     if (sub.specialCategory && sub.specialCategory !== category) {
@@ -183,10 +190,13 @@ export class SpecialConditionsUseCase {
       { occupiedCount: row.occupiedCount - 1, status: row.status === 'full' ? 'open' : row.status })
   }
 
-  private async readSettings(): Promise<{ maxManualDiscountPct: number }> {
+  private async readSettings(): Promise<{ maxManualDiscountPct: number; founderChurnBlocksReturn: boolean }> {
     const row = (await this.orm.findMany('Configuration', { hotelId: PLATFORM, key: SETTINGS_KEY }))[0]
-    if (!row) return { maxManualDiscountPct: DEFAULT_MAX_MANUAL_DISCOUNT_PCT }
+    if (!row) return { maxManualDiscountPct: DEFAULT_MAX_MANUAL_DISCOUNT_PCT, founderChurnBlocksReturn: DEFAULT_FOUNDER_CHURN_BLOCKS_RETURN }
     const v = typeof row.value === 'string' ? JSON.parse(row.value) : (row.value ?? {})
-    return { maxManualDiscountPct: v.maxManualDiscountPct ?? DEFAULT_MAX_MANUAL_DISCOUNT_PCT }
+    return {
+      maxManualDiscountPct: v.maxManualDiscountPct ?? DEFAULT_MAX_MANUAL_DISCOUNT_PCT,
+      founderChurnBlocksReturn: v.founderChurnBlocksReturn ?? DEFAULT_FOUNDER_CHURN_BLOCKS_RETURN,
+    }
   }
 }

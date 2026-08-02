@@ -46,9 +46,16 @@
           <input type="range" min="0" max="100" v-model.number="discountPct" class="w-full accent-cyan" />
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Duración (meses)</label>
-          <input type="number" v-model.number="durationMonths" min="1" max="60"
-            class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm" placeholder="Vacío = permanente" />
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-[10px] font-bold text-text-muted uppercase">Duración</label>
+            <span class="text-sm font-black text-navy">{{ durationLabel }}</span>
+          </div>
+          <!-- Escala 1-13 (#514): 1-12 = meses, 13 = "De por vida". Nunca 100% permanente por
+               defecto — el slider arranca en 1 mes, "de por vida" es una elección explícita. -->
+          <input type="range" min="1" max="13" v-model.number="durationScale" class="w-full accent-cyan" />
+          <div class="flex justify-between text-[9px] text-text-muted mt-1">
+            <span>1 mes</span><span>12 meses</span><span>De por vida</span>
+          </div>
         </div>
         <div>
           <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Motivo</label>
@@ -99,7 +106,13 @@ const tab = ref<'category' | 'percentage' | 'free_month'>('category')
 
 const selectedCategory = ref<SpecialCategoryKey | ''>('')
 const discountPct = ref(10)
-const durationMonths = ref<number | null>(null)
+// Escala 1-13 del slider de duración (#514, reglas de negocio): 1-12 representan meses, 13 es
+// "De por vida" (permanente — mismo `endsAt: null` que ya interpreta el backend cuando
+// `durationMonths` no viene). Arranca en 1 mes, nunca en "de por vida" por defecto.
+const DURATION_LIFETIME_SCALE = 13
+const durationScale = ref(1)
+const durationMonths = computed<number | null>(() => (durationScale.value >= DURATION_LIFETIME_SCALE ? null : durationScale.value))
+const durationLabel = computed(() => (durationMonths.value == null ? 'De por vida' : `${durationMonths.value} ${durationMonths.value === 1 ? 'mes' : 'meses'}`))
 const reason = ref('')
 
 const CATEGORY_LABELS: Record<string, string> = { founder_one: 'Fundador Uno', founder_two: 'Fundador Dos', pioneer: 'Pionero' }

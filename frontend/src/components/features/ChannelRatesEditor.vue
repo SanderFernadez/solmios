@@ -73,7 +73,7 @@
                 <div class="p-2.5 flex flex-col gap-1.5 flex-1">
                   <div class="flex items-center gap-1">
                     <span class="text-xs font-black text-navy">+</span>
-                    <input type="number" step="0.01" inputmode="decimal" v-model.number="cell.percentage"
+                    <input type="number" step="1" inputmode="decimal" v-model.number="cell.percentage"
                       class="w-full min-w-0 px-2 py-1.5 rounded-lg border-2 border-navy/30 text-sm font-black text-navy text-right focus:border-navy outline-none" />
                     <span class="text-xs text-text-muted">%</span>
                   </div>

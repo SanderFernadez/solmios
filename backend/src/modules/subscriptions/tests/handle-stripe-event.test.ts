@@ -39,6 +39,34 @@ function makeHotelsRepo(rows: any[] = [{ id: 'h1', name: 'Hotel Sol', email: 'du
   } as unknown as RepositoryAdapter<any>
 }
 
+/** ORM fake en memoria, mismo criterio que admin/tests/special-conditions.test.ts — usado
+ *  solo por los tests de liberación de cupo en customer.subscription.deleted. */
+function makeOrm(tables: Record<string, any[]>) {
+  const store: Record<string, any[]> = { ...tables }
+  const matches = (row: any, filters: Record<string, unknown>) =>
+    Object.entries(filters).every(([k, v]) => row[k] === v)
+  return {
+    store,
+    findMany: async (table: string, filters: Record<string, unknown> = {}) =>
+      (store[table] ?? []).filter((r) => matches(r, filters)),
+    update: async (table: string, id: string, patch: any) => {
+      const row = (store[table] ?? []).find((r) => r.id === id)
+      if (row) Object.assign(row, patch)
+      return row ?? null
+    },
+    updateMany: async (table: string, filters: Record<string, unknown>, changes: any) => {
+      const rows = (store[table] ?? []).filter((r) => matches(r, filters))
+      for (const row of rows) Object.assign(row, changes)
+      return rows.length
+    },
+    create: async (table: string, data: any) => {
+      const row = { id: data.id ?? `${table}-${(store[table]?.length ?? 0) + 1}`, ...data }
+      store[table] = [...(store[table] ?? []), row]
+      return row
+    },
+  }
+}
+
 // La API version 2025-08-27 mueve `current_period_end` de la Subscription al SubscriptionItem
 // (ver handle-stripe-event.ts:currentPeriodEndOf) — el mock respeta esa forma real.
 function fakeStripe(currentPeriodEnd = CURRENT_PERIOD_END_UNIX) {
@@ -72,6 +100,9 @@ describe('handleStripeEvent — suscripción SaaS del hotel', () => {
     expect(updates[0]!.patch.stripeSubscriptionId).toBe('sub_stripe_1')
     expect(updates[0]!.patch.stripeCustomerId).toBe('cus_123')
     expect(updates[0]!.patch.currentPeriodEnd).toBe(CURRENT_PERIOD_END_ISO)
+    // Checkout mode:'subscription' = tarjeta autorizada para auto-cobro (§536/538/539/540:
+    // sin esto el cron nunca podía distinguir "pago recurrente" de "pago manual").
+    expect(updates[0]!.patch.isRecurring).toBe(true)
   })
 
   it('checkout.session.completed: ignora sesiones que no son de suscripción (mode payment, otro flujo)', async () => {
@@ -118,6 +149,50 @@ describe('handleStripeEvent — suscripción SaaS del hotel', () => {
     expect(updates).toHaveLength(1)
     expect(updates[0]!.patch.status).toBe('canceled')
     expect(typeof updates[0]!.patch.canceledAt).toBe('string')
+  })
+
+  it('customer.subscription.deleted: un Fundador que cancela pierde la categoría, libera el cupo y queda en founder_history (§4/§9/#535)', async () => {
+    const { repo, updates } = makeRepo([{
+      id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1', specialCategory: 'founder_one',
+    }])
+    const orm = makeOrm({
+      SpecialCategoryConfig: [{ id: 'cfg1', key: 'founder_one', totalSlots: 10, occupiedCount: 4, status: 'open' }],
+      SubscriptionDiscounts: [{ id: 'd1', subscriptionId: 'sub1', type: 'category_bonus', discountPct: 40, status: 'active', endsAt: null }],
+      FounderHistory: [],
+    })
+    const event = { type: 'customer.subscription.deleted', data: { object: { id: 'sub_stripe_1' } } } as any
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe(), orm }, event)
+
+    expect(updates[0]!.patch).toMatchObject({ status: 'canceled', specialCategory: null, specialCategoryGrantedAt: null })
+    expect(orm.store.SpecialCategoryConfig[0]!.occupiedCount).toBe(3)
+    expect(orm.store.FounderHistory).toHaveLength(1)
+    expect(orm.store.FounderHistory[0]).toMatchObject({ hotelId: 'h1', category: 'founder_one', reason: 'canceled' })
+    expect(orm.store.SubscriptionDiscounts[0]!.status).toBe('revoked')
+  })
+
+  it('customer.subscription.deleted: un Pionero que cancela libera el cupo pero NO deja founder_history (Pionero no tiene anti-recuperación)', async () => {
+    const { repo } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1', specialCategory: 'pioneer' }])
+    const orm = makeOrm({
+      SpecialCategoryConfig: [{ id: 'cfg3', key: 'pioneer', totalSlots: 75, occupiedCount: 6, status: 'open' }],
+      SubscriptionDiscounts: [], FounderHistory: [],
+    })
+    const event = { type: 'customer.subscription.deleted', data: { object: { id: 'sub_stripe_1' } } } as any
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe(), orm }, event)
+
+    expect(orm.store.SpecialCategoryConfig[0]!.occupiedCount).toBe(5)
+    expect(orm.store.FounderHistory).toHaveLength(0)
+  })
+
+  it('customer.subscription.deleted sin categoría especial: no toca SpecialCategoryConfig ni founder_history', async () => {
+    const { repo } = makeRepo([{ id: 'sub1', hotelId: 'h1', status: 'active', stripeSubscriptionId: 'sub_stripe_1' }])
+    const orm = makeOrm({ SpecialCategoryConfig: [], FounderHistory: [] })
+    const event = { type: 'customer.subscription.deleted', data: { object: { id: 'sub_stripe_1' } } } as any
+
+    await handleStripeEvent({ subscriptionsRepo: repo, hotelsRepo: makeHotelsRepo(), logger: silentLogger(), stripe: fakeStripe(), orm }, event)
+
+    expect(orm.store.FounderHistory).toHaveLength(0)
   })
 
   it('evento no manejado: no explota ni toca el repo (200 OK igual, patrón estándar de webhooks)', async () => {

@@ -8,6 +8,12 @@
 // (campo que ya existía y no se consultaba). El refresh solo procede si el jti del token presentado
 // coincide con el guardado, y rota el jti en cada uso. El logout pone `token = null` → cualquier
 // refresh deja de funcionar de inmediato. Es single-session: un login nuevo invalida el refresh viejo.
+//
+// También es el ÚNICO chequeo periódico de suscripción de una sesión YA logueada (PLAN-SUSCRIPCIONES.md
+// §5/#542): `assertHotelCanOperate` solo corría en el login (usuarios/service.ts). Un hotel que se
+// suspendía DESPUÉS de loguearse seguía operando con el access token vigente hasta que expirara, y
+// encima lo renovaba indefinidamente por acá sin que nadie lo volviera a preguntar — la suspensión
+// nunca cortaba una sesión activa, solo bloqueaba el próximo login desde cero.
 
 /** Lee un claim del payload de un JWT SIN verificar la firma. Solo para tokens ya verificados o
  *  recién generados por nosotros (leer jti/id), nunca para autorizar. */
@@ -33,18 +39,25 @@ interface AuthLike { refresh(rt: string): { accessToken: string; refreshToken: s
  * Renueva la sesión validando la revocación: el refresh solo procede si su jti coincide con el
  * guardado en el usuario. Tras un logout (token=null) o un login más nuevo (otro jti), un refresh
  * viejo ya no renueva. Rota el jti en cada uso. Lanza `onInvalid()` si no valida.
+ *
+ * `assertCanOperate` es opcional (mismo criterio que `assertHotelCanOperate` en login: sin
+ * `checkSubscription` cableado, no bloquea nada) — re-corre el mismo gate de suscripción acá para
+ * cortar sesiones ya activas de un hotel que se suspendió después de loguearse, no solo el próximo
+ * login. Va DESPUÉS de validar el jti: un token ya revocado no necesita ni consultar la suscripción.
  */
 export async function refreshSession(
   repo: RepoLike,
   auth: AuthLike,
   refreshToken: string,
   onInvalid: () => never,
+  assertCanOperate?: (user: { hotelId?: string; role?: string }) => Promise<void>,
 ): Promise<{ token: string; refreshToken: string }> {
   const decoded = decodeJwtPayload(refreshToken)
   const userId = decoded.id as string | undefined
   const presentedJti = typeof decoded.jti === 'string' ? decoded.jti : undefined
   const user = userId ? await repo.findById(userId) : null
   if (!user || !presentedJti || user.token !== presentedJti) onInvalid()
+  if (assertCanOperate) await assertCanOperate(user)
   const result = auth.refresh(refreshToken)
   await repo.update(userId!, { token: jtiOf(result.refreshToken) ?? null })
   return { token: result.accessToken, refreshToken: result.refreshToken }

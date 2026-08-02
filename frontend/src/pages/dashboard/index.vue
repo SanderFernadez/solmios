@@ -265,6 +265,9 @@ function hhmm(iso?: string) {
 const activityItems = computed<FeedItem[]>(() => {
   const fromNotifs: FeedItem[] = notifications.value.map(n => {
     const meta = ACTIVITY_META[n.type] ?? ACTIVITY_META.system
+    const metaChannel = n.metadata && typeof n.metadata === 'object'
+      ? ((n.metadata as Record<string, unknown>).source ?? (n.metadata as Record<string, unknown>).channel)
+      : undefined
     return {
       id: `n-${n.id}`,
       time: hhmm(n.createdAt ?? n.date),
@@ -273,6 +276,7 @@ const activityItems = computed<FeedItem[]>(() => {
       badge: meta.badge,
       color: meta.color,
       icon: meta.icon,
+      channel: n.type === 'reservation' && typeof metaChannel === 'string' ? metaChannel : undefined,
       _ts: new Date(n.createdAt ?? n.date ?? 0).getTime(),
     } as FeedItem & { _ts: number }
   })
@@ -290,6 +294,7 @@ const activityItems = computed<FeedItem[]>(() => {
       badge: 'Reserva',
       color: '#3B82F6',
       icon: '📅',
+      channel: r.source,
       _ts: new Date(r.createdAt).getTime(),
     }))
 
@@ -300,24 +305,26 @@ const activityItems = computed<FeedItem[]>(() => {
 })
 
 // ── Distribución por canal ───────────────────────────────────────────────
-const CHANNEL_META: Array<{ match: string[]; label: string; color: string }> = [
-  { match: ['booking'], label: 'Booking.com', color: '#2563EB' },
-  { match: ['direct', 'phone', 'whatsapp'], label: 'Directo', color: '#22C55E' },
-  { match: ['airbnb'], label: 'Airbnb', color: '#EF4444' },
-  { match: ['expedia'], label: 'Expedia', color: '#F59E0B' },
-  { match: ['agoda'], label: 'Agoda', color: '#8B5CF6' },
-  { match: ['google'], label: 'Google', color: '#06B6D4' },
+// `icon` es la key que entiende <ChannelIcon> (frontend/src/components/ui/ChannelIcon.vue)
+// para mostrar el logo de marca real del canal en el dashboard general (feedback #615).
+const CHANNEL_META: Array<{ match: string[]; label: string; color: string; icon: string }> = [
+  { match: ['booking'], label: 'Booking.com', color: '#2563EB', icon: 'booking' },
+  { match: ['direct', 'phone', 'whatsapp'], label: 'Directo', color: '#22C55E', icon: 'direct' },
+  { match: ['airbnb'], label: 'Airbnb', color: '#EF4444', icon: 'airbnb' },
+  { match: ['expedia'], label: 'Expedia', color: '#F59E0B', icon: 'expedia' },
+  { match: ['agoda'], label: 'Agoda', color: '#8B5CF6', icon: 'agoda' },
+  { match: ['google'], label: 'Google', color: '#06B6D4', icon: 'google' },
 ]
 
 const channelDistribution = computed<ChannelSlice[]>(() => {
   const active = reservationStore.reservations.filter(r => r.status !== 'cancelled')
   if (!active.length) return []
-  const counts = new Map<string, { label: string; color: string; count: number }>()
+  const counts = new Map<string, { label: string; color: string; icon: string; count: number }>()
   for (const r of active) {
-    const meta = CHANNEL_META.find(m => m.match.includes(r.source)) ?? { label: 'Otros', color: '#64748B' }
+    const meta = CHANNEL_META.find(m => m.match.includes(r.source)) ?? { label: 'Otros', color: '#64748B', icon: 'direct' }
     const prev = counts.get(meta.label)
     if (prev) prev.count++
-    else counts.set(meta.label, { label: meta.label, color: meta.color, count: 1 })
+    else counts.set(meta.label, { label: meta.label, color: meta.color, icon: meta.icon, count: 1 })
   }
   return [...counts.values()]
     .sort((a, b) => b.count - a.count)

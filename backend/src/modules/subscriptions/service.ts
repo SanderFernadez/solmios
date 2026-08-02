@@ -30,6 +30,10 @@ export class SubscriptionsService {
     channelsRepo?: RepositoryAdapter<any>,
     /** `subscription_discounts` — historial de condiciones especiales (admin). Opcional: sin cablear, `statusOf` no muestra descuento activo pero no rompe. */
     private readonly discountsRepo?: RepositoryAdapter<any>,
+    /** ORM crudo — solo para el CAS de `SpecialCategoryConfig.occupiedCount` al liberar un cupo
+     *  de Fundador/Pionero en `customer.subscription.deleted` (handle-stripe-event.ts). Mismo
+     *  motivo que admin/usecases/special-conditions.ts: RepositoryAdapter no expone updateMany. */
+    private readonly orm?: any,
   ) {
     this.signupUc = new SignupUseCase({
       hotelsRepo, usersRepo, rolesRepo, subscriptionsRepo, hashPassword,
@@ -159,7 +163,10 @@ export class SubscriptionsService {
   /** Webhook de la cuenta de PLATAFORMA (checkout/renovación/cancelación de la suscripción SaaS). */
   handlePlatformWebhook(rawBody: string | Buffer, signature: string) {
     return processSubscriptionWebhook(
-      { subscriptionsRepo: this.subscriptionsRepo, hotelsRepo: this.hotelsRepo, logger: this.logger, sendPlatformEmail: this.sendPlatformEmail },
+      {
+        subscriptionsRepo: this.subscriptionsRepo, hotelsRepo: this.hotelsRepo, logger: this.logger,
+        sendPlatformEmail: this.sendPlatformEmail, orm: this.orm,
+      },
       rawBody, signature,
     )
   }
