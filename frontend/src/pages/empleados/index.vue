@@ -571,6 +571,23 @@ const roleOptions = () => {
   ]
 }
 
+/**
+ * #585: roleOptions() a propósito NO incluye hotel_admin/super_admin (un hotel_admin no puede
+ * reasignar esos roles — mismo canAssignRole del backend). Pero si el rol ACTUAL del empleado
+ * es uno de esos (ej. editando a otro admin del hotel), el <select> queda sin ninguna opción
+ * seleccionada — se ve vacío/roto y el admin podría "cambiarlo" sin querer a otra cosa. Esto
+ * garantiza que el valor actual siempre esté representado; si igual se intenta reasignar a algo
+ * fuera de lo permitido, el backend lo rechaza (canAssignRole ya lo cubre, no hace falta
+ * duplicar la jerarquía acá).
+ */
+const roleOptionsFor = (currentRole?: string) => {
+  const opts = roleOptions()
+  if (currentRole && !opts.some((o) => o.value === currentRole)) {
+    opts.unshift({ value: currentRole, label: ROLE_LABELS[currentRole] ?? currentRole })
+  }
+  return opts
+}
+
 // #172: mostrar el ROL (no el cargo) en el listado. hotel_admin/super_admin incluidos.
 const ROLE_LABELS: Record<string, string> = {
   hotel_admin: 'Admin Hotel', super_admin: 'Super Admin', receptionist: 'Recepcionista',
@@ -731,6 +748,9 @@ function openProfile(emp: EmployeeProfile) {
     fields: [
       // #170: el nombre vive en la cuenta (users), no en el legajo — editable acá y se guarda ahí.
       { key: 'name', label: 'Nombre', maxLength: 80, default: emp.userName || '' },
+      // #585: el rol también vive en la cuenta (users), igual que el nombre — antes solo se
+      // podía elegir al crear, no había forma de cambiarlo después sin editar la DB a mano.
+      { key: 'role', label: 'Rol', type: 'select', required: true, default: emp.userRole || 'receptionist', options: roleOptionsFor(emp.userRole) },
       { key: 'departmentId', label: 'Departamento', type: 'select', default: emp.departmentId || '', options: departmentOptions() },
       // #169/#584/#587: "Puesto" (jobPositionId) es el mismo lugar que ya cubre el Rol — se
       // sacó de Alta; sacarlo también de Editar para no reabrir la duplicación por otra puerta.
@@ -743,12 +763,17 @@ function openProfile(emp: EmployeeProfile) {
       { key: 'education', label: 'Educación', maxLength: 100, default: emp.education || '' },
     ],
     onSubmit: async (v) => {
-      // El nombre va a la cuenta (Team/Users); el resto al legajo. Solo actualiza el nombre si cambió.
+      // Nombre y rol van a la cuenta (Team/Users); el resto al legajo. Solo pega al backend
+      // lo que de verdad cambió (evita un PATCH vacío o pisar el rol con el mismo valor).
       const name = String(v.name ?? '').trim()
-      if (emp.userId && name && name !== (emp.userName || '')) {
-        await TeamService.update(emp.userId, { name })
+      const role = String(v.role ?? '')
+      const accountPatch: { name?: string; role?: string } = {}
+      if (emp.userId && name && name !== (emp.userName || '')) accountPatch.name = name
+      if (emp.userId && role && role !== (emp.userRole || '')) accountPatch.role = role
+      if (emp.userId && Object.keys(accountPatch).length) {
+        await TeamService.update(emp.userId, accountPatch)
       }
-      const { name: _drop, ...profileData } = v as Record<string, unknown>
+      const { name: _drop, role: _dropRole, ...profileData } = v as Record<string, unknown>
       await EmpleadosService.updateProfile(emp.id, profileData)
     },
   }
