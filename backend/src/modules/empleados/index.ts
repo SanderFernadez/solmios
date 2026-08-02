@@ -102,7 +102,8 @@ export function EmpleadosModule(opts: { storage?: StorageService } = {}) {
 
       const log = logger.child('empleados')
       const userRepo = new OrmRepository<any>(orm, 'Users')
-      const leaveConfig = new LeaveConfigUseCase(leaveTypeRepo, allocationRepo, holidayRepo, leaveRepo, log)
+      const configRepo = new OrmRepository<any>(orm, 'Configuration')
+      const leaveConfig = new LeaveConfigUseCase(leaveTypeRepo, allocationRepo, holidayRepo, leaveRepo, log, configRepo)
       const appraisalConfig = new AppraisalConfigUseCase(templateRepo, log)
       const hrCatalog = new HrCatalogUseCase(jobRepo, contractTypeRepo, locationRepo, log)
       const evalConfig = new EvalConfigUseCase(evalConfigRepo, log)

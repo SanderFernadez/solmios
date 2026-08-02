@@ -22,7 +22,7 @@ export function ReservasModule() {
       name: 'reservas',
       version: '2.1.0',
       description: 'Reservations with ownership, availability, validation, checkin/checkout, pre-checkin, guarantee',
-      actions: ['list', 'getById', 'create', 'update', 'delete', 'checkin', 'checkout', 'getExtendedDetail', 'getAuditTrail', 'getPreCheckinData', 'submitPreCheckin', 'getBookingEngineDashboard'],
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'checkin', 'checkout', 'getExtendedDetail', 'getAuditTrail', 'getPreCheckinData', 'submitPreCheckin', 'getBookingEngineDashboard', 'sendLockCodeEmail'],
       events: ['onReservasCreated', 'onReservasUpdated', 'onReservasDeleted'],
       tables: ['reservations'],
       dependencies: [],
@@ -78,6 +78,9 @@ export function ReservasModule() {
       router.post('/api/reservas/:id/checkin', guard('reservations', 'checkin'), (req) => controller.checkin(req))
       router.post('/api/reservas/:id/checkout', guard('reservations', 'checkout'), (req) => controller.checkout(req))
 
+      // ── Enviar código de cerradura por email (botón del planning) ──
+      router.post('/api/reservas/:id/send-lock-code-email', guard('reservations', 'edit'), (req) => controller.sendLockCodeEmail(req))
+
       // ── Pre-checkin (público) ──
       router.get('/api/public/pre-checkin/:hash', (req) => controller.getPreCheckinData(req))
       router.post('/api/public/pre-checkin/:hash', (req) => controller.submitPreCheckin(req))
@@ -100,7 +103,7 @@ export function ReservasModule() {
       // ── Booking engine dashboard ──
       router.get('/api/booking-engine', guard('reservations', 'view'), (req) => controller.getBookingEngineDashboard(req))
 
-      log.info('Módulo reservas v2.1 listo (22 endpoints)')
+      log.info('Módulo reservas v2.1 listo (23 endpoints)')
       return service
     },
   })

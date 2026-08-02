@@ -341,6 +341,34 @@ export interface DashboardStats {
   revpar: number
 }
 
+// === DASHBOARD: Pendientes de hoy (GET /api/checkin) ===
+// Espeja backend CheckinItemDTO/CheckinListDTO (dashboard/types.ts:48-66).
+// `depositStatus` y `deposit` NO están en el DTO pero llegan en el response porque
+// getCheckinList hace spread `...r` de la reserva cruda (depositStatus es model field
+// real: 'unpaid'|'partial'|'paid'). Se usan para el badge de pago del panel.
+export interface CheckinListItem {
+  id: string
+  guestId: string
+  roomId: string
+  checkIn: string
+  checkOut: string
+  status: string
+  totalAmount?: number
+  guestName?: string
+  guestEmail?: string
+  roomNumber?: string
+  depositStatus?: string
+  deposit?: number
+  pendingAmount?: number
+}
+
+export interface CheckinListData {
+  checkins: CheckinListItem[]
+  checkouts: CheckinListItem[]
+  pendingCheckins: number
+  todayCheckouts: number
+}
+
  // === USER ===
 export type UserRole = 'super_admin' | 'hotel_admin' | 'receptionist' | 'housekeeper' | 'maintenance' | 'supervisor' | 'waiter' | 'kitchen'
 

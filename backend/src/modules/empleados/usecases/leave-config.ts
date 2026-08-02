@@ -25,15 +25,26 @@ const DEFAULT_TYPES: Omit<CreateLeaveTypeDTO, 'hotelId'>[] = [
   { code: 'other', name: 'Otro', color: '#64748b', paid: false, maxDaysPerYear: 0 },
 ]
 
-/** Cuenta días de un rango [start,end] inclusive, descontando festivos (fecha exacta o recurrente MM-DD). */
-export function countLeaveDays(start: string, end: string, exactHolidays: Set<string>, recurringHolidays: Set<string>): number {
+/**
+ * Cuenta días de un rango [start,end] inclusive, descontando:
+ * 1. Festivos (fecha exacta YYYY-MM-DD o recurrente MM-DD).
+ * 2. Días NO laborables, si `workingDays` está definido (feedback #602).
+ *
+ * `workingDays` usa el convenio de `Date.getUTCDay()`: 0=Domingo..6=Sábado (mismo que
+ * `pricing/usecases/season-assignments.ts`). `undefined`/vacío = no filtra (un hotel
+ * opera todos los días por defecto — preserva el comportamiento anterior).
+ */
+export function countLeaveDays(start: string, end: string, exactHolidays: Set<string>, recurringHolidays: Set<string>, workingDays?: number[]): number {
   const s = new Date(start + 'T00:00:00Z')
   const e = new Date(end + 'T00:00:00Z')
   if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e.getTime() < s.getTime()) return 0
+  const working = workingDays?.length ? new Set(workingDays) : null
   let count = 0
   for (let t = s.getTime(); t <= e.getTime(); t += MS_PER_DAY) {
-    const iso = new Date(t).toISOString().slice(0, 10)
+    const d = new Date(t)
+    const iso = d.toISOString().slice(0, 10)
     if (exactHolidays.has(iso) || recurringHolidays.has(iso.slice(5))) continue
+    if (working && !working.has(d.getUTCDay())) continue
     count++
   }
   return count
@@ -46,7 +57,28 @@ export class LeaveConfigUseCase {
     private readonly holidayRepo: RepositoryAdapter<PublicHolidayDTO>,
     private readonly leaveRepo: RepositoryAdapter<LeaveRequestDTO>,
     private readonly logger: Logger,
+    private readonly configRepo?: RepositoryAdapter<any>,
   ) {}
+
+  /**
+   * Días laborables del hotel (feedback #602). Lee de `configuration('leave_working_days')`,
+   * un JSON array de weekdays [0..6] (0=Dom..6=Sáb, convenio `getUTCDay()`).
+   * Sin config / vacío / inválido → `undefined` (no filtra = cuenta todos, comportamiento por defecto).
+   */
+  async getWorkingDays(hotelId: string): Promise<number[] | undefined> {
+    if (!this.configRepo) return undefined
+    try {
+      const row = await this.configRepo.findOne({ hotelId, key: 'leave_working_days' } as any)
+      const raw = (row as any)?.value
+      if (!raw) return undefined
+      const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+      if (!Array.isArray(arr)) return undefined
+      const valid = arr.filter((d: unknown) => typeof d === 'number' && Number.isInteger(d) && d >= 0 && d <= 6)
+      return valid.length ? valid : undefined
+    } catch {
+      return undefined
+    }
+  }
 
   // ── Tipos de ausencia ───────────────────────────────────
   async listTypes(hotelId: string): Promise<LeaveTypeDTO[]> {

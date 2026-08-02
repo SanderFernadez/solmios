@@ -654,6 +654,28 @@
           </button>
         </div>
       </div>
+
+      <!-- Políticas para factura (cancelación y reembolso) -->
+      <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 class="font-extrabold text-navy">Políticas para factura</h3>
+            <p class="text-[11px] text-text-muted mt-1 leading-relaxed">
+              Texto que aparecerá al pie de cada factura emitida como “Políticas de cancelación y reembolso”.
+              Déjalo vacío para no mostrar la sección.
+            </p>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <textarea v-model="invoicePolicyText" rows="4"
+            placeholder="Ej. Cancelación gratuita hasta 48 h antes de la entrada. Después de ese plazo, la primera noche no es reembolsable..."
+            class="w-full px-3 py-2 rounded-xl border border-border text-sm resize-y"></textarea>
+          <button @click="saveInvoicePolicy" :disabled="invoicePolicySaving"
+            class="w-full px-4 py-2 bg-navy text-white rounded-full text-sm font-bold hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+            {{ invoicePolicySaving ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- EMERGENCIAS -->
@@ -709,6 +731,32 @@
           + Agregar contacto
         </button>
       </div>
+    </div>
+
+    <!-- RRHH — Días laborables (feedback #602) -->
+    <div v-if="(activeTab as string) === 'hr'" class="space-y-6">
+      <SectionCard title="Días laborables"
+        subtitle="Define qué días de la semana cuenta el sistema al calcular ausencias y vacaciones. Por defecto todos los días (un hotel opera fines de semana).">
+        <template #actions>
+          <button @click="saveWorkingDays" :disabled="workingDaysSaving"
+            class="rounded-full bg-cyan px-4 py-2 text-xs font-bold text-navy transition-all hover:shadow-lg cursor-pointer disabled:opacity-50">
+            {{ workingDaysSaving ? 'Guardando…' : 'Guardar días laborables' }}
+          </button>
+        </template>
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <label v-for="day in WEEKDAYS" :key="day.value"
+            class="flex flex-col items-center gap-2 rounded-xl bg-surface p-3 cursor-pointer transition-all"
+            :class="workingDaysDraft.includes(day.value) ? 'ring-2 ring-cyan bg-cyan/5' : 'opacity-60 hover:opacity-100'">
+            <input type="checkbox" :value="day.value" v-model="workingDaysDraft"
+              class="h-5 w-5 rounded text-cyan cursor-pointer" />
+            <span class="text-xs font-bold text-navy">{{ day.label }}</span>
+          </label>
+        </div>
+        <p class="mt-3 text-[11px] text-text-muted leading-relaxed">
+          Los días desmarcados se descuentan automáticamente al crear una solicitud de ausencia.
+          Los días festivos configurados en Time Off siempre se descuentan, independientemente de esta selección.
+        </p>
+      </SectionCard>
     </div>
 
     </div>
@@ -945,6 +993,70 @@ async function saveFiscalConfig() {
   }
 }
 
+// Políticas de cancelación y reembolso para factura (configuration['invoice_policy_text']).
+// Texto libre que se imprime al pie de cada factura A4 emitida. Vacío = no se imprime el bloque.
+const invoicePolicyText = ref('')
+const invoicePolicySaving = ref(false)
+async function loadInvoicePolicy() {
+  try {
+    const v = await ConfigService.get('invoice_policy_text') as string | null
+    invoicePolicyText.value = (typeof v === 'string' && v.trim()) ? v : ''
+  } catch { /* default: vacío */ }
+}
+async function saveInvoicePolicy() {
+  invoicePolicySaving.value = true
+  try {
+    await ConfigService.set('invoice_policy_text', invoicePolicyText.value.trim())
+    await nextTick()
+    markClean()
+    toast.success('Políticas de factura guardadas')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo guardar')
+  } finally {
+    invoicePolicySaving.value = false
+  }
+}
+
+// Días laborables del hotel (feedback #602). Define qué días de la semana se cuentan al
+// calcular ausencias/vacaciones. Default: todos marcados (un hotel opera fines de semana).
+// Se persisten como array [0..6] en configuration('leave_working_days'), convenio getUTCDay: 0=Dom..6=Sáb.
+const WEEKDAYS = [
+  { value: 0, label: 'Domingo' },
+  { value: 1, label: 'Lunes' },
+  { value: 2, label: 'Martes' },
+  { value: 3, label: 'Miércoles' },
+  { value: 4, label: 'Jueves' },
+  { value: 5, label: 'Viernes' },
+  { value: 6, label: 'Sábado' },
+]
+const workingDaysDraft = ref<number[]>([0, 1, 2, 3, 4, 5, 6])
+const workingDaysSaving = ref(false)
+async function loadWorkingDays() {
+  try {
+    const c = await ConfigService.get('leave_working_days') as number[] | null
+    if (Array.isArray(c) && c.length) {
+      workingDaysDraft.value = c.filter((d) => typeof d === 'number' && d >= 0 && d <= 6)
+    }
+  } catch { /* default: todos los días */ }
+}
+async function saveWorkingDays() {
+  if (workingDaysDraft.value.length === 0) {
+    toast.error('Debe seleccionar al menos un día laborable')
+    return
+  }
+  workingDaysSaving.value = true
+  try {
+    await ConfigService.set('leave_working_days', [...workingDaysDraft.value].sort())
+    await nextTick()
+    markClean()
+    toast.success('Días laborables guardados')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo guardar')
+  } finally {
+    workingDaysSaving.value = false
+  }
+}
+
 const activeTab = ref('hotel' as string)
 // Deep-link ?tab=... (el botón de Emergencia del header entra directo a su pestaña)
 const route = useRoute()
@@ -970,6 +1082,7 @@ const tabGroups: SettingsTabGroup[] = [
       { value: 'description', label: 'Descripción' },
       { value: 'conditions', label: 'Condiciones' },
       { value: 'emergency', label: 'Emergencias' },
+      { value: 'hr', label: 'RRHH' },
     ],
   },
   {
@@ -1250,6 +1363,8 @@ onMounted(async () => {
     await loadGuaranteePin()
     await loadAutomation()
     await loadFiscalConfig()
+    await loadInvoicePolicy()
+    await loadWorkingDays()
   } catch (e) {
     toast.error('Error al cargar datos')
   } finally {

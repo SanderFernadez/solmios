@@ -56,6 +56,94 @@
       />
     </div>
 
+    <!-- 2.5. Pendientes de hoy — llegadas y salidas concretas (feedback #619) -->
+    <SectionCard title="Pendientes de hoy" subtitle="Llegadas y salidas programadas para hoy">
+      <template #actions>
+        <span v-if="!checkinLoading && !checkinError && checkinData" class="text-xs font-bold text-white/70">
+          {{ checkinData.pendingCheckins }} llegadas · {{ checkinData.todayCheckouts }} salidas
+        </span>
+      </template>
+
+      <!-- Error de carga — EmptyState cubre vacío Y error (mem: empty-state-vs-load-error) -->
+      <EmptyState
+        v-if="checkinError"
+        icon="⚠️"
+        title="No se pudieron cargar los pendientes"
+        message="Reintentá en unos minutos."
+      />
+      <div v-else-if="checkinLoading" class="py-10 text-center text-sm text-text-muted">
+        Cargando pendientes…
+      </div>
+      <EmptyState
+        v-else-if="!checkinData?.checkins.length && !checkinData?.checkouts.length"
+        icon="📭"
+        title="Día tranquilo"
+        message="No hay check-ins ni check-outs programados para hoy."
+      />
+      <div v-else class="grid gap-5 md:grid-cols-2">
+        <!-- Check-ins de hoy -->
+        <div>
+          <h3 class="mb-2 text-xs font-black uppercase tracking-wide text-text-muted">Check-ins</h3>
+          <ul class="space-y-1.5">
+            <li
+              v-for="item in checkinData?.checkins"
+              :key="item.id"
+              class="flex items-center gap-3 rounded-xl border border-border bg-surface/60 px-3 py-2"
+            >
+              <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/10 text-xs font-bold text-navy">
+                {{ initialsOf(item.guestName) }}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-sm font-bold text-navy">{{ item.guestName || 'Huésped' }}</div>
+                <div class="text-[11px] text-text-muted">Hab. {{ item.roomNumber || '—' }}</div>
+              </div>
+              <span
+                v-if="depositBadge(item)"
+                class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold"
+                :style="badgeStyle(depositBadge(item)!)"
+              >
+                {{ depositBadge(item)!.label }}
+              </span>
+            </li>
+          </ul>
+          <p v-if="!checkinData?.checkins.length" class="py-4 text-center text-xs text-text-muted">
+            Sin check-ins para hoy
+          </p>
+        </div>
+
+        <!-- Check-outs de hoy -->
+        <div>
+          <h3 class="mb-2 text-xs font-black uppercase tracking-wide text-text-muted">Check-outs</h3>
+          <ul class="space-y-1.5">
+            <li
+              v-for="item in checkinData?.checkouts"
+              :key="item.id"
+              class="flex items-center gap-3 rounded-xl border border-border bg-surface/60 px-3 py-2"
+            >
+              <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/10 text-xs font-bold text-navy">
+                {{ initialsOf(item.guestName) }}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-sm font-bold text-navy">{{ item.guestName || 'Huésped' }}</div>
+                <div class="text-[11px] text-text-muted">Hab. {{ item.roomNumber || '—' }}</div>
+              </div>
+              <span
+                v-if="depositBadge(item)"
+                class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold"
+                :style="badgeStyle(depositBadge(item)!)"
+              >
+                {{ depositBadge(item)!.label }}
+              </span>
+            </li>
+          </ul>
+          <p v-if="!checkinData?.checkouts.length" class="py-4 text-center text-xs text-text-muted">
+            Sin check-outs para hoy
+          </p>
+        </div>
+      </div>
+      <!-- TODO #619 v2: agregar tareas de housekeeping de hoy -->
+    </SectionCard>
+
     <!-- 3. Calendario + actividad/canales/estados -->
     <div class="grid min-w-0 gap-4 xl:grid-cols-[1.3fr_1fr_1fr_1.25fr]">
       <div class="min-w-0 xl:col-span-3">
@@ -181,6 +269,10 @@ import HotelStatusPanel, { type ServiceStatus } from '@/components/features/dash
 import AiInsightsPanel, { type AiInsight } from '@/components/features/dashboard/AiInsightsPanel.vue'
 import RevenueChart, { type DailyPoint } from '@/components/features/dashboard/RevenueChart.vue'
 import FloorHeatMap from '@/components/features/dashboard/FloorHeatMap.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import { DashboardService } from '@/services/Dashboard.service'
+import type { CheckinListData, CheckinListItem } from '@/types'
 
 const router = useRouter()
 const toast = useToast()
@@ -208,6 +300,32 @@ const notifications = ref<AppNotification[]>([])
 const weather = ref<WeatherInfo | null>(null)
 const revenueDaily = ref<DailyPoint[]>([])
 const revenueLoading = ref(true)
+
+// ── Pendientes de hoy (GET /api/checkin — feedback #619) ──────────────────
+const checkinData = ref<CheckinListData | null>(null)
+const checkinLoading = ref(true)
+const checkinError = ref(false)
+
+const DEPOSIT_BADGE: Record<string, { label: string; color: string }> = {
+  paid: { label: 'Pagado', color: '#16A34A' },
+  partial: { label: 'Parcial', color: '#D97706' },
+  unpaid: { label: 'Pendiente', color: '#DC2626' },
+}
+
+function initialsOf(name?: string): string {
+  if (!name) return '?'
+  return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('') || '?'
+}
+
+function depositBadge(item: CheckinListItem): { label: string; color: string } | null {
+  const key = item.depositStatus
+  if (!key) return null
+  return DEPOSIT_BADGE[key] ?? null
+}
+
+function badgeStyle(badge: { color: string }): Record<string, string> {
+  return { background: `${badge.color}1A`, color: badge.color }
+}
 
 const hotelName = computed(() => hotelData.value?.name || auth.currentHotel || 'Mi Hotel')
 const hotelStars = computed(() => hotelData.value?.starRating ?? null)
@@ -460,11 +578,26 @@ async function fetchWeather() {
 }
 
 // ── Fetch / refresco ─────────────────────────────────────────────────────
+async function fetchCheckinList() {
+  checkinLoading.value = true
+  checkinError.value = false
+  try {
+    checkinData.value = await DashboardService.getCheckinList(hotelId.value)
+  } catch {
+    checkinData.value = null
+    checkinError.value = true
+  } finally {
+    checkinLoading.value = false
+  }
+}
+
 async function fetchLiveData() {
   try {
     await dashboard.fetchStats(hotelId.value)
     apiOnline.value = !dashboard.error
   } catch { apiOnline.value = false }
+
+  fetchCheckinList()
 
   NotificationsService.list({ hotelId: hotelId.value })
     .then(r => { notifications.value = (r.data ?? []).slice(0, 20) })

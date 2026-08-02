@@ -23,12 +23,14 @@ export class LeaveRequestUseCase {
     if (dto.endDate < dto.startDate) throw new ValidationError('endDate no puede ser anterior a startDate')
     await validateEmployeeBelongsToHotel(this.profileRepo, dto.employeeId, dto.hotelId)
 
-    // Días AUTO desde el rango, descontando festivos (#188). El `days` del cliente se ignora — el
-    // servidor es la fuente de verdad, así no hay desajuste entre lo que el usuario tipeó y lo real.
+    // Días AUTO desde el rango, descontando festivos (#188) y días no laborables (#602). El `days`
+    // del cliente se ignora — el servidor es la fuente de verdad, así no hay desajuste entre lo
+    // que el usuario tipeó y lo real.
     let days: number
     if (this.config) {
       const { exact, recurring } = await this.config.holidaySets(dto.hotelId)
-      days = countLeaveDays(dto.startDate, dto.endDate, exact, recurring)
+      const workingDays = await this.config.getWorkingDays(dto.hotelId)
+      days = countLeaveDays(dto.startDate, dto.endDate, exact, recurring, workingDays)
     } else {
       days = Math.ceil((new Date(dto.endDate).getTime() - new Date(dto.startDate).getTime()) / MS_PER_DAY) + 1
     }

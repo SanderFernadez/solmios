@@ -448,7 +448,7 @@ import type { Guest } from '@/types'
 
 const props = defineProps<{
   editId?: string | null
-  prefill?: { roomId?: string; checkIn?: string; checkOut?: string } | null
+  prefill?: { roomId?: string; checkIn?: string; checkOut?: string; guestId?: string; source?: string; adults?: number; children?: number } | null
   rooms: any[]
 }>()
 const emit = defineEmits<{
@@ -1028,6 +1028,22 @@ watch(() => props.editId, async (id) => {
     if (props.prefill.roomId) form.value.roomId = props.prefill.roomId
     if (props.prefill.checkIn) form.value.checkIn = props.prefill.checkIn
     if (props.prefill.checkOut) form.value.checkOut = props.prefill.checkOut
+    // Duplicar reserva (#631): traer además los datos de la reserva origen — canal, ocupación
+    // y el huésped. Cargamos el guest completo por id para REUTILIZARLO (selectGuest marca
+    // selectedGuestId + llena el form con sus datos reales): así el guardado hace update del
+    // guest con sus propios datos, no lo pisa con campos vacíos.
+    if (props.prefill.adults != null) form.value.adults = props.prefill.adults
+    if (props.prefill.children != null) form.value.children = props.prefill.children
+    if (props.prefill.source) form.value.source = props.prefill.source
+    if (props.prefill.guestId) {
+      try {
+        const { GuestService } = await import('@/services/Guest.service')
+        const g = await GuestService.get(props.prefill.guestId)
+        if (g) selectGuest(g)
+      } catch (e) {
+        console.warn('[ReservationWizardModal/prefill] no se pudo cargar el huésped a duplicar', e)
+      }
+    }
   }
   // Recién ahora se activa el sync país↔nacionalidad: lo anterior fue carga
   // programática (reset o datos de la reserva), no una elección del usuario.

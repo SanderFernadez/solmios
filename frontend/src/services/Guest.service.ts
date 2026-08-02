@@ -105,6 +105,11 @@ export const GuestService = {
     return { guests: data.data.map(mapGuest), total: data.total }
   },
 
+  async get(id: string): Promise<Guest> {
+    const data = await http.get<RawGuest>(`/huespedes/${id}`)
+    return mapGuest(data)
+  },
+
   async create(guest: Partial<RawGuest>): Promise<RawGuest> {
     return http.post('/huespedes', guest)
   },

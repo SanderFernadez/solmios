@@ -76,7 +76,8 @@ export class FacturasController {
       const hotel = await this.hotelRepo.findById(invoice.hotelId)
       if (hotel?.name) hotelName = hotel.name
     }
-    const html = renderInvoiceHtml({ invoice, hotelName })
+    const policyText = invoice.hotelId ? await this.service.getInvoicePolicyText(invoice.hotelId) : undefined
+    const html = renderInvoiceHtml({ invoice, hotelName, policyText })
     return { status: 200, body: html, headers: { 'content-type': 'text/html; charset=utf-8' } }
   }
 
@@ -94,7 +95,8 @@ export class FacturasController {
       const hotel = await this.hotelRepo.findById(invoice.hotelId)
       if (hotel?.name) hotelName = hotel.name
     }
-    const html = renderInvoiceHtml({ invoice, hotelName })
+    const policyText = invoice.hotelId ? await this.service.getInvoicePolicyText(invoice.hotelId) : undefined
+    const html = renderInvoiceHtml({ invoice, hotelName, policyText })
     const pdfBuffer = await htmlToPdf(html)
     return {
       status: 200,

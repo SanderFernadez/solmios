@@ -1,11 +1,10 @@
-// reservas/service.ts — Facade publica del modulo. Casos de uso, sin HTTP ni imports de otros módulos.
-// Depende de RepositoryAdapter<ReservasDTO> (no del ORM directo) — swapeable en composition-root.ts.
-// Si supera 200 líneas -> extraer casos de uso a ./usecases/{caso}.ts.
-
+// reservas/service.ts — Facade pública del módulo. Casos de uso, sin HTTP ni imports de otros módulos.
+// Depende de RepositoryAdapter<ReservasDTO> (no del ORM directo); >200 líneas → extraer a ./usecases/.
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 import type { ReservasSockets } from './sockets'
 import { checkinValidation, checkoutValidation, executeCheckin } from './usecases/checkin'
+import { sendLockCodeEmail as sendLockCodeEmailUsecase } from './usecases/lock-code-email'
 import { NullEmailSender, type EmailSender } from '../../services/email-sender'
 import { dispatchCreateEmail } from './usecases/reservation-notifications'
 import { setGuaranteePin as setGuaranteePinUsecase, getGuaranteeHasPin as getGuaranteeHasPinUsecase, unlockGuaranteeCard as unlockGuaranteeCardUsecase } from './usecases/guarantee'
@@ -191,8 +190,10 @@ export class ReservasService {
   async unlockGuaranteeCard(reservationId: string, user: any, body: any): Promise<any> {
     return unlockGuaranteeCardUsecase(this.queries, this.repo, this.userRepo, reservationId, user, body, this.auth)
   }
-
   async getBookingEngineDashboard(user: any): Promise<any> {
     return getBookingEngineDashboardUsecase(this.queries, user)
+  }
+  async sendLockCodeEmail(id: string, user: any, deps: { orm: any }): Promise<{ sentTo: string }> {
+    return sendLockCodeEmailUsecase({ orm: deps.orm, reservationRepo: this.repo, guestRepo: this.guestRepo, emailSender: this.emailSender, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, messageLogRepo: this.messageLogRepo, logger: this.logger }, id, user)
   }
 }

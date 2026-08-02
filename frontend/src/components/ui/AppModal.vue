@@ -40,7 +40,7 @@ const props = withDefaults(defineProps<{
   open?: boolean
   title?: string
   subtitle?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
   closable?: boolean
   closeOnBackdrop?: boolean
   /** Padding del cuerpo. Pasar 'p-0' cuando el contenido es una tabla full-bleed. */
@@ -50,7 +50,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ close: [] }>()
 
 // '2xl' agregado para ReservationModal.vue (two-panel, necesita más ancho que xl/max-w-5xl).
-const SIZES: Record<string, string> = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-5xl', '2xl': 'max-w-6xl' }
+// '3xl' (max-w-7xl) agregado para el modal de reserva del planning con códigos de cerradura (#622).
+const SIZES: Record<string, string> = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-5xl', '2xl': 'max-w-6xl', '3xl': 'max-w-7xl' }
 const sizeClass = computed(() => SIZES[props.size] || SIZES.md)
 
 // Pila de modales abiertos (módulo, compartida entre instancias): con modales apilados (uno abre otro

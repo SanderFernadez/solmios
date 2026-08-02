@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { DashboardStats } from '@/types'
+import type { DashboardStats, CheckinListData } from '@/types'
 
 interface RawDashboard {
   ocupacion: number
@@ -47,5 +47,11 @@ export const DashboardService = {
     const query = hotelId ? `?hotelId=${hotelId}` : ''
     const data = await http.get<RawDashboard>(`/dashboard${query}`)
     return mapDashboard(data)
+  },
+
+  /** Pendientes de hoy: check-ins y check-outs (GET /api/checkin, dashboard module). */
+  async getCheckinList(hotelId?: string): Promise<CheckinListData> {
+    const query = hotelId ? `?hotelId=${hotelId}` : ''
+    return http.get<CheckinListData>(`/checkin${query}`)
   },
 }

@@ -56,6 +56,7 @@ const guaranteePin = ref('')
 const guaranteeCard = ref<GuaranteeCardData | null>(null)
 const guaranteeError = ref('')
 const unlocking = ref(false)
+const sendingLockCode = ref(false)
 
 async function unlockGuarantee() {
   if (!d.value) return
@@ -293,6 +294,19 @@ async function saveOtherCharges() {
   }
 }
 
+async function sendLockCodeEmail() {
+  if (!d.value) return
+  sendingLockCode.value = true
+  try {
+    const res = await ReservationService.sendLockCodeEmail(d.value.id)
+    toast.success(`Código enviado a ${res.sentTo}`)
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo enviar el email')
+  } finally {
+    sendingLockCode.value = false
+  }
+}
+
 async function requirePayment() {
   if (!d.value) return
   if (pending.value <= 0) { toast.info('Sin monto pendiente'); return }
@@ -362,7 +376,7 @@ function editar() { if (d.value) emit('edit', d.value) }
 </script>
 
 <template>
-  <AppModal :open="!loading && !!d" size="2xl" body-class="p-0" @close="emit('close')">
+  <AppModal :open="!loading && !!d" size="3xl" body-class="p-0" @close="emit('close')">
     <template #header>
       <div class="flex items-center gap-3 flex-wrap">
         <div>
@@ -611,6 +625,11 @@ function editar() { if (d.value) emit('edit', d.value) }
                   </div>
                   <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lc.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ lc.status }}</span>
                 </div>
+                <button @click="sendLockCodeEmail" :disabled="sendingLockCode" class="flex w-full items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-teal text-white text-sm font-bold hover:bg-teal/90 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                  <svg v-if="!sendingLockCode" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                  <svg v-else class="h-4 w-4 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  {{ sendingLockCode ? 'Enviando…' : 'Enviar código por email' }}
+                </button>
               </div>
             </details>
             <p v-if="!d.checkinCode && !(d.lockCodes && d.lockCodes.length)" class="rm-card text-xs text-text-muted italic px-1">Sin check-in digital ni cerradura asignados</p>

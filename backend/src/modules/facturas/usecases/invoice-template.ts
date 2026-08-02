@@ -12,6 +12,7 @@ export interface InvoiceTemplateData {
   hotelEmail?: string
   hotelLogo?: string
   hotelTaxId?: string
+  policyText?: string
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -30,6 +31,7 @@ export function renderInvoiceHtml(data: InvoiceTemplateData): string {
     hotelEmail = '',
     hotelLogo = '',
     hotelTaxId = '',
+    policyText = '',
   } = data
 
   // Construir items desde los datos disponibles
@@ -257,6 +259,12 @@ ${inv.notes ? `
 <div class="notes">
   <div class="notes-title">Notas / Observaciones</div>
   <div class="notes-text">${escapeHtml(inv.notes)}</div>
+</div>` : ''}
+
+${policyText && policyText.trim() ? `
+<div class="notes">
+  <div class="notes-title">Políticas de cancelación y reembolso</div>
+  <div class="notes-text">${escapeHtml(policyText.trim())}</div>
 </div>` : ''}
 
 <!-- Footer -->

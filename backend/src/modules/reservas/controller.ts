@@ -243,4 +243,17 @@ export class ReservasController {
       return { status: 500, body: { error: e.message } }
     }
   }
+
+  // ── SEND LOCK CODE EMAIL (botón "Enviar código por email" del planning) ──
+  async sendLockCodeEmail(req: HttpRequest) {
+    try {
+      const result = await this.service.sendLockCodeEmail(req.params.id, req.user as any, { orm: this.orm })
+      return { status: 200, body: { success: true, sentTo: result.sentTo } }
+    } catch (e: any) {
+      if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
+      if (e.name === 'ValidationError') return { status: 400, body: { error: e.message } }
+      if (e.name === 'AuthError' || e.name === 'ForbiddenError') return { status: 403, body: { error: e.message } }
+      return { status: 500, body: { error: e.message } }
+    }
+  }
 }

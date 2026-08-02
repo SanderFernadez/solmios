@@ -175,6 +175,12 @@ export const ReservationService = {
   async remove(id: string): Promise<void> {
     await http.delete(`/reservas/${id}`)
   },
+
+  /** Envía el código de cerradura al email del huésped (botón del modal de reserva). */
+  async sendLockCodeEmail(id: string): Promise<{ sentTo: string }> {
+    const data = await http.post<{ success: boolean; sentTo: string }>(`/reservas/${id}/send-lock-code-email`, {})
+    return { sentTo: data.sentTo }
+  },
 }
 
 // ── Reschedule (planning: mover/extender) ──

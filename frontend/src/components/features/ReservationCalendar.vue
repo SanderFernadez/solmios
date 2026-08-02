@@ -77,6 +77,24 @@
       </template>
     </div>
 
+    <!-- Banner: modo duplicar (#631) — visible mientras el usuario elige destino -->
+    <div v-if="duplicateSource" class="px-6 pb-3">
+      <div class="flex items-center justify-between gap-3 rounded-xl border-2 border-cyan/50 bg-cyan/10 px-4 py-2.5 shadow-sm">
+        <div class="flex items-center gap-2.5">
+          <span class="grid h-7 w-7 place-items-center rounded-lg bg-cyan/20 text-cyan">
+            <Icon name="document" :size="16" />
+          </span>
+          <div>
+            <p class="text-xs font-black text-navy">Modo duplicar</p>
+            <p class="text-[11px] text-text-secondary">Seleccioná la habitación y los días para la nueva reserva (o presioná Esc para cancelar)</p>
+          </div>
+        </div>
+        <button @click="cancelDuplicateMode" class="px-3 py-1.5 rounded-lg bg-white border border-border text-xs font-bold text-text-secondary hover:bg-surface cursor-pointer whitespace-nowrap">
+          Cancelar
+        </button>
+      </div>
+    </div>
+
     <!-- Grid -->
     <div class="px-6 pb-6" :class="dragCursorClass" @mouseup="onMouseUp" @mousemove="onMouseMove" @mouseleave="onMouseUp">
       <div class="bg-white rounded-2xl border border-border overflow-hidden">
@@ -711,7 +729,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
 import { ReservationService, type RescheduleQuote, type RescheduleCommitInput } from '@/services/Reservation.service'
 import { HotelService } from '@/services/Hotel.service'
@@ -828,7 +846,15 @@ const detailId = ref<string | null>(null)
 // sin navegar a otra página). `wizardEditId` null = crear; seteado = editar esa reserva.
 const wizardOpen = ref(false)
 const wizardEditId = ref<string | null>(null)
-const wizardPrefill = ref<{ roomId?: string; checkIn?: string; checkOut?: string }>({})
+const wizardPrefill = ref<{ roomId?: string; checkIn?: string; checkOut?: string; guestId?: string; source?: string; adults?: number; children?: number }>({})
+
+// Modo duplicar (#631): el usuario eligió duplicar una reserva desde su popup, pero todavía no
+// eligió destino. Guardamos los datos a copiar (huésped, canal, ocupación) y entramos en un
+// "modo" donde el siguiente drag en celdas vacías abre directo el wizard con la habitación y
+// fechas NUEVAS + estos datos — así el costo se recalcula con el destino real. La habitación y
+// fechas NO se guardan acá: vienen del drag. Se cancela con el botón del banner o Escape.
+const duplicateSource = ref<{ guestId?: string; source?: string; adults?: number; children?: number } | null>(null)
+function cancelDuplicateMode() { duplicateSource.value = null }
 const quote = ref<{ show: boolean; id: string; today: string; hotel: string; hotelAddress: string; hotelPhone: string; hotelEmail: string; rooms: { type: string; qty: number; price: number }[]; checkIn: string; checkOut: string; nights: number; guest: string; email: string; phone: string; adults: number; kids: number; taxName: string; taxRate: number; notes: string }>({ show: false, id: '', today: '', hotel: '', hotelAddress: '', hotelPhone: '', hotelEmail: '', rooms: [{ type: 'Standard', qty: 1, price: 100 }], checkIn: '', checkOut: '', nights: 0, guest: '', email: '', phone: '', adults: 1, kids: 0, taxName: 'ITBIS', taxRate: 18, notes: '' })
 // Noches de la cotización: se calculan de check-in/check-out (ahora editables en el modal).
 // Antes era un valor fijo tomado del rango inicial y NO reaccionaba al cambiar las fechas,
@@ -1187,6 +1213,10 @@ function onMouseUp(ev: MouseEvent) {
   dragRoom.value = null; dragStart.value = ''; dragEnd.value = ''
 
   if (room && (dragStarted || from !== to)) {
+    // Modo duplicar (#631): el drag en celdas vacías elige el destino (habitación+fechas).
+    // Abre el wizard directo con los datos copiados de la reserva origen; NO muestra el
+    // popup Nueva/Cotizar/Bloquear.
+    if (duplicateSource.value) { lastSel.value = { room, from, to }; openDuplicateWizard(room, from, to); return }
     // Keep selection visible
     lastSel.value = { room, from, to }
     // El rango de celdas es INCLUSIVO en ambos extremos: de `from` a `to` hay (to-from)+1
@@ -1194,12 +1224,14 @@ function onMouseUp(ev: MouseEvent) {
     const nights = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / MS_PER_DAY) + 1)
     popup.value = { show: true, x: Math.min(ev.clientX, window.innerWidth - 210), y: Math.min(ev.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: to, nights, res: null, blk: null }
   } else if (room && !dragStarted) {
+    if (duplicateSource.value) { lastSel.value = { room, from, to }; openDuplicateWizard(room, from, to); return }
     lastSel.value = { room, from, to }
     popup.value = { show: true, x: Math.min(ev.clientX, window.innerWidth - 210), y: Math.min(ev.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: from, nights: 1, res: null, blk: null }
   }
 }
 
 function showPopup(e: MouseEvent, room: any, day: DI, res: any, blk: any) {
+  cancelDuplicateMode() // clic en reserva/bloque existente: abandona el modo duplicar
   lastSel.value = null
   const from = day.dateStr; const to = day.dateStr
   popup.value = { show: true, x: Math.min(e.clientX, window.innerWidth - 210), y: Math.min(e.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: to, nights: 1, res, blk }
@@ -1231,6 +1263,7 @@ async function onWizardSaved() {
 /** Context menu (right-click) sobre una reserva existente */
 function openContext(ev: MouseEvent, rb: any, room: any) {
   if (suppressClick) { suppressClick = false; return } // venía de un drag, no de un click
+  cancelDuplicateMode() // right-click en reserva existente: abandona el modo duplicar
   const orig = planReservas.value.find((b: any) => b.id === rb.id)
   if (!orig) return
   const ci = String(orig.checkIn || '').slice(0, 10)
@@ -1264,6 +1297,7 @@ let suppressClick = false
 // mousedown en el cuerpo del bloque → arrastrar para mover (empieza a moverse al cambiar de celda).
 function onResDown(rb: any, e: MouseEvent) {
   e.stopPropagation()
+  cancelDuplicateMode() // empieza a arrastrar una reserva existente: abandona el modo duplicar
   const orig = planReservas.value.find((x: any) => x.id === rb.id)
   if (!orig) return
   const ci = String(orig.checkIn || '').slice(0, 10), co = String(orig.checkOut || '').slice(0, 10)
@@ -1509,28 +1543,39 @@ function popupExtend() {
   openReschedule(r, { roomId: String(r.roomId), checkIn: ci, checkOut: addDaysStr(co, 1) }, true)
 }
 
-// Duplicar: crea una copia de la reserva justo después (mismas noches, misma habitación).
-async function popupDuplicate() {
+// Duplicar (#631): antes abría el wizard con la MISMA habitación y fechas pegadas al checkOut
+// original — el usuario no podía elegir destino ni ver el costo recalculado. Ahora entra en
+// "modo duplicar": guarda huésped/canal/ocupación de la reserva origen y espera a que el
+// usuario sombree días en una habitación nueva (drag en celdas vacías). Ese drag abre el wizard
+// con la habitación+fechas del destino + los datos copiados → el costo se recalcula solo.
+function popupDuplicate() {
   const r = popup.value.res; if (!r) return
-  lastSel.value = null; popup.value.show = false
-  const ci = String(r.checkIn).slice(0, 10), co = String(r.checkOut).slice(0, 10)
-  const nights = nightsBetween(ci, co)
-  const newCheckIn = co // arranca donde terminaba la original (sin solape)
-  const newCheckOut = addDaysStr(newCheckIn, nights)
-  try {
-    await ReservationService.create({
-      hotelId: r.hotelId || hid.value || '', roomId: String(r.roomId),
-      checkIn: newCheckIn, checkOut: newCheckOut, totalAmount: Number(r.totalAmount) || 0,
-      guestId: r.guestId || undefined, channel: r.channel || 'direct',
-      adults: r.adults ?? 2, children: r.children ?? 0,
-    } as any)
-    toast.success(`Reserva duplicada (${newCheckIn} → ${newCheckOut})`)
-    const d = await OperationsService.planning(hid.value)
-    planRooms.value = d.rooms ?? planRooms.value; planReservas.value = d.reservas ?? planReservas.value
-    emit('changed')
-  } catch (e: any) {
-    toast.error(e?.message?.includes('disponible') || e?.message?.includes('409') ? 'No hay disponibilidad para duplicar en esas fechas' : (e?.message || 'No se pudo duplicar'))
+  popup.value.show = false
+  duplicateSource.value = {
+    guestId: r.guestId || undefined,
+    source: r.channel || 'direct',
+    adults: r.adults ?? 2,
+    children: r.children ?? 0,
   }
+  toast.info('Modo duplicar: seleccioná la habitación y los días para la nueva reserva')
+}
+
+// Drag en celdas vacías mientras estamos en modo duplicar: abre el wizard directo con el
+// destino del drag + los datos copiados de la reserva origen. Sale del modo (one-shot).
+function openDuplicateWizard(room: any, from: string, to: string) {
+  const src = duplicateSource.value
+  duplicateSource.value = null
+  if (!src) return
+  const cout = addDaysStr(to, 1) // checkout exclusivo: última celda = última noche
+  wizardEditId.value = null
+  wizardPrefill.value = {
+    roomId: String(room.id),
+    checkIn: from, checkOut: cout,
+    guestId: src.guestId,
+    source: src.source,
+    adults: src.adults, children: src.children,
+  }
+  wizardOpen.value = true
 }
 
 // Block / Unblock
@@ -1645,6 +1690,14 @@ async function applySeason(seasonName: string) {
 watch(() => visibleDays.value.length ? `${visibleDays.value[0].dateStr}|${visibleDays.value[visibleDays.value.length - 1].dateStr}` : '', () => { loadDateRestrictions(); loadSeasonAssignments() })
 
 // Load
+// Escape sale del modo duplicar (#631). Listener global: se registra al montar y se limpia al
+// desmontar. Solo actúa si el modo está activo — no interfiere con modales/popups abiertos.
+function onKeydownDuplicate(e: KeyboardEvent) {
+  if (e.key === 'Escape' && duplicateSource.value) duplicateSource.value = null
+}
+onMounted(() => { window.addEventListener('keydown', onKeydownDuplicate) })
+onBeforeUnmount(() => { window.removeEventListener('keydown', onKeydownDuplicate) })
+
 onMounted(async () => {
   try { const d = await OperationsService.planning(hid.value); planRooms.value = d.rooms ?? []; planReservas.value = d.reservas ?? [] } catch {}
   loadLocks()
@@ -1661,9 +1714,9 @@ onMounted(async () => {
   } catch {}
   try { const c = await ConfigService.get('channel_colors', hid.value); if (c && typeof c === 'object' && !Array.isArray(c)) channelColors.value = c } catch {}
 })
-function prevWeek() { weekOffset.value--; lastSel.value = null; popup.value.show = false }
-function nextWeek() { weekOffset.value++; lastSel.value = null; popup.value.show = false }
-function goToday() { weekOffset.value = 0; lastSel.value = null; popup.value.show = false }
+function prevWeek() { weekOffset.value--; lastSel.value = null; popup.value.show = false; cancelDuplicateMode() }
+function nextWeek() { weekOffset.value++; lastSel.value = null; popup.value.show = false; cancelDuplicateMode() }
+function goToday() { weekOffset.value = 0; lastSel.value = null; popup.value.show = false; cancelDuplicateMode() }
 </script>
 
 <style>

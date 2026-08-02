@@ -16,6 +16,7 @@ import { listInvoices } from './usecases/list-invoices'
 import { auditSafely, type AuditPort } from './usecases/audit'
 import { assertDeletable, isElectronicInvoicingEnabled } from './usecases/deletable'
 import { payInvoice } from './usecases/pay-invoice'
+import { getInvoicePolicyText } from './usecases/policy-text'
 import type { PaymentPort } from './usecases/payment-port'
 import type { CreditNoteResult } from './usecases/credit-note'
 import { generateTaxReport, type TaxReport } from './usecases/tax-report'
@@ -177,6 +178,7 @@ export class FacturasService {
   async getTaxRate(user: CurrentUser): Promise<{ rate: number }> {
     return getTaxRateForUser(this.configRepo, user, this.hotelsForTaxRepo)
   }
+  async getInvoicePolicyText(hotelId: string) { return getInvoicePolicyText(this.configRepo, hotelId) }
 
   async emailInvoice(id: string, to: string, user: CurrentUser): Promise<EmailInvoiceResult> {
     if (!this.emailPort) throw new NotFoundError('Servicio de email no configurado')
