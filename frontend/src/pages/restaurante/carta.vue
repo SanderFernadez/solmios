@@ -736,7 +736,7 @@ async function saveTranslations() {
             <span class="w-3.5 h-3.5" v-html="ICON_PLUS" /> Nueva
           </button>
         </template>
-        <EmptyState v-if="!stations.length" title="Sin estaciones" message="Creá al menos una (ej: Cocina) para rutear la carta." />
+        <EmptyState v-if="!stations.length" title="Sin estaciones" message="Creá al menos una (ej: Cocina, Bar) para rutear la carta." />
         <div v-else class="divide-y divide-border">
           <div v-for="s in stations" :key="s.id" class="flex items-center justify-between py-2.5">
             <div class="flex items-center gap-2">

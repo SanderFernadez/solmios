@@ -291,7 +291,7 @@ const nonavItems = [
     label: 'Restaurante', icon: ICONS.utensils, roles: ['hotel_admin', 'receptionist', 'waiter', 'kitchen'],
     children: [
       { label: 'Salón', path: '/panel/restaurante/salon', roles: ['hotel_admin', 'receptionist', 'waiter'] },
-      { label: 'Cocina (KDS)', path: '/panel/restaurante/cocina', roles: ['hotel_admin', 'receptionist', 'kitchen'] },
+      { label: 'Cocina y Bar (KDS)', path: '/panel/restaurante/cocina', roles: ['hotel_admin', 'receptionist', 'kitchen'] },
       { label: 'Caja', path: '/panel/restaurante/caja', roles: ['hotel_admin', 'receptionist', 'waiter'] },
       { label: 'Carta', path: '/panel/restaurante/carta', roles: ['hotel_admin'] },
     ]

@@ -90,7 +90,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   <div class="space-y-4">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 class="text-xl sm:text-2xl font-black text-navy">Cocina — KDS</h1>
+        <h1 class="text-xl sm:text-2xl font-black text-navy">Cocina y Bar — KDS</h1>
         <p class="text-sm text-text-muted mt-0.5">Comandas activas, orden de llegada. Se actualiza sola.</p>
       </div>
       <button @click="refresh(true)" class="px-3 py-1.5 rounded-lg border-2 border-navy/30 text-navy text-xs font-bold hover:bg-surface">Actualizar</button>
@@ -102,6 +102,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <button v-for="s in stations" :key="s.id" @click="selectStation(s.id)" :class="['px-3 py-1.5 rounded-full text-xs font-bold', station === s.id ? 'bg-navy text-white' : 'bg-surface text-text-muted']">{{ s.name }}</button>
       <button @click="selectStation('__none__')" :class="['px-3 py-1.5 rounded-full text-xs font-bold', station === '__none__' ? 'bg-navy text-white' : 'bg-surface text-text-muted']">Sin estación</button>
     </div>
+    <!-- Esta pantalla es genérica: cada estación (Cocina, Bar, etc.) es una pestaña de arriba.
+         Si falta "Bar" es porque nadie la creó todavía, no porque el sistema no la soporte. -->
+    <p v-if="editPerm" class="text-xs text-text-muted -mt-2">
+      ¿No ves la estación que buscás (ej. Bar)? Creála en <router-link to="/panel/restaurante/carta" class="font-bold text-navy hover:underline">Carta → Estaciones</router-link>.
+    </p>
 
     <div v-if="loading" class="py-20 text-center text-text-muted">Cargando…</div>
     <EmptyState v-else-if="!tickets.length" title="Nada en cola" message="Cuando entren comandas a esta estación, aparecen acá." />
