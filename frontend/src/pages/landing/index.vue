@@ -343,7 +343,16 @@
             </div>
             <p class="text-sm text-slate-600 leading-relaxed mb-6">"{{ t.quote }}"</p>
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white" :style="`background:${t.avatarBg}`">{{ t.initials }}</div>
+              <!-- Feedback #580: reforzar credibilidad con foto real del cliente cuando exista
+                   (avatarUrl). Sin foto real cargada → fallback a las iniciales de siempre
+                   (contenido pendiente, no bug de código: el soporte ya está acá). -->
+              <img
+                v-if="t.avatarUrl"
+                :src="t.avatarUrl"
+                :alt="t.name"
+                class="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-100"
+              />
+              <div v-else class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white shrink-0" :style="`background:${t.avatarBg}`">{{ t.initials }}</div>
               <div>
                 <div class="text-sm font-bold text-navy">{{ t.name }} <span class="font-medium text-slate-400">· {{ t.role }}</span></div>
                 <div class="text-[10px] text-slate-400">{{ t.hotel }} · {{ t.location }}</div>
@@ -564,7 +573,22 @@ const plans = [
   },
 ]
 
-const testimonials = [
+// Feedback #580 (Arisleidy): reforzar credibilidad con foto real + cargo + hotel que
+// identifica al cliente. `role` (cargo) y `hotel` ya existían; se agrega `avatarUrl`
+// (opcional) — sin foto real cargada el template cae a las iniciales (avatarBg/initials).
+interface LandingTestimonial {
+  quote: string
+  name: string
+  role: string
+  hotel: string
+  location: string
+  rating: number
+  initials: string
+  avatarBg: string
+  avatarUrl?: string
+}
+
+const testimonials: LandingTestimonial[] = [
   { quote: 'Pasamos de usar 4 herramientas diferentes a solo SolmiOS. El Channel Manager nos ahorró 3 horas diarias de trabajo manual.', name: 'Juan García', role: 'Gerente General', hotel: 'Hotel Boutique Las Palmas', location: 'Punta Cana, RD', rating: 5, initials: 'JG', avatarBg: '#1D6FA4' },
   { quote: 'La facturación electrónica para DGII era un dolor de cabeza. Ahora se genera automáticamente. El soporte es excepcional.', name: 'Roberto Suárez', role: 'Director de Operaciones', hotel: 'Gran Hotel Colonial', location: 'Santo Domingo, RD', rating: 5, initials: 'RS', avatarBg: '#117A65' },
   { quote: 'Como recepcionista, todo es muy intuitivo. El check-in toma 30 segundos. Los huéspedes quedan impresionados.', name: 'María López', role: 'Jefa de Recepción', hotel: 'Aparta-Hotel Vista Mar', location: 'Cartagena, CO', rating: 5, initials: 'ML', avatarBg: '#6C3483' },
