@@ -4,7 +4,7 @@ import type {
   CanalesDTO, CreateCanalesDTO, UpdateCanalesDTO, CanalesQuery, CanalesPaginated,
   ChannelsResultDTO, RoomTypeSummary, SyncResultDTO,
   TestConnectionResultDTO, MappingDetailDTO, GroupDTO, OTAChannelCreateDTO, OTAChannelResultDTO,
-  OTAChannelMeta, BookingRevisionDTO, BookingIngestionResult, CurrentUser, PushRatesResultDTO,
+  OTAChannelMeta, BookingRevisionDTO, CurrentUser, PushRatesResultDTO,
 } from './types'
 import type { CanalesSockets } from './sockets'
 import { ChannexUseCase } from './usecases/channex'
@@ -12,6 +12,8 @@ import { pushAvailabilityForRoomType, pushAvailabilityForRoom, type Availability
 import { CanalesCrudUseCase } from './usecases/crud'
 import { ChannelApiUseCase } from './usecases/channel-api'
 import { BookingsUseCase } from './usecases/bookings'
+import { BookingSyncUseCase } from './usecases/booking-sync'
+import type { BookingSyncResult } from './usecases/booking-sync'
 import { ConfigUseCase } from './usecases/config'
 import type { CanalesQueries } from './usecases/canales-queries'
 import { auditSafely, channelDeleteEntry, type AuditPort } from './usecases/audit'
@@ -26,6 +28,7 @@ export class CanalesService {
   private readonly crud: CanalesCrudUseCase
   private readonly channelApi: ChannelApiUseCase
   private readonly bookings: BookingsUseCase
+  private readonly bookingSync: BookingSyncUseCase
   private readonly config: ConfigUseCase
 
   constructor(
@@ -41,7 +44,13 @@ export class CanalesService {
     this.channex = new ChannexUseCase(logger, () => this.config.getPlatformChannex())  // white-label: cuenta de plataforma
     this.crud = new CanalesCrudUseCase(repo, userRepo, auth)
     this.channelApi = new ChannelApiUseCase(this.channex)
-    this.bookings = new BookingsUseCase(this.channex, queries)
+    this.bookings = new BookingsUseCase(this.channex)
+    // Sync GLOBAL de bookings (cron #564): feed por cuenta de plataforma → deriva por propertyId.
+    // El orm se obtiene de queries (escape hatch) para no inyectar ORM directo en el service.
+    this.bookingSync = new BookingSyncUseCase({
+      channex: this.channex, queries: this.queries, orm: this.queries.getOrm(),
+      logger: this.logger, syncLogRepo: this.syncLogRepo,
+    })
   }
 
   /** Conecta el audit log. Lo inyecta el connector `canales-auditlog`. */
@@ -130,19 +139,9 @@ export class CanalesService {
   async getBookings(hotelId: string): Promise<BookingRevisionDTO[]> {
     return this.bookings.getBookings(await this.getConfig(hotelId))
   }
-  async ingestBookings(hotelId: string): Promise<BookingIngestionResult> {
-    const cfg = await this.getConfig(hotelId)
-    const result = await this.bookings.ingestBookings(hotelId, cfg)
-
-    if (this.syncLogRepo) try {
-      await this.syncLogRepo.create({
-        id: crypto.randomUUID(), hotelId, channel: 'channex', action: 'ingest_bookings',
-        status: result.success ? 'success' : 'error',
-        details: { ingested: result.ingested, acknowledged: result.acknowledged, errors: result.errors },
-        createdAt: new Date().toISOString(),
-      })
-    } catch {}
-    return result
+  /** Ingesta GLOBAL del feed de bookings OTA (deriva por propertyId). Cron #564 + botón manual. */
+  async syncAllBookingRevisions(): Promise<BookingSyncResult> {
+    return this.bookingSync.run()
   }
 
   // ─── iFrame ────────────────────────────────────────────────────────

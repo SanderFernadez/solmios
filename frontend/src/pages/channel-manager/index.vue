@@ -10,7 +10,7 @@
               <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-60"></span>
               <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]"></span>
             </span>
-            Sincronizando cada 15 min
+            Sincronización automática activa
           </span>
         </div>
         <p class="text-xs text-text-muted mt-0.5">Canales conectados · Disponibilidad en tiempo real</p>

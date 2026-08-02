@@ -23,6 +23,7 @@ import { createTrialReminderCron } from './shared/usecases/trial-reminder-cron'
 import { createSubscriptionSuspensionCron } from './shared/usecases/subscription-suspension-cron'
 import { createReferralCreditsCron } from './shared/usecases/referral-credits-cron'
 import { createCurrencyRatesCron, CURRENCY_RATES_TICK_MS } from './shared/usecases/currency-rates-cron'
+import { createBookingSyncCron, DEFAULT_BOOKING_SYNC_TICK_MS } from './shared/usecases/booking-sync-cron'
 import { HousekeepingSettingsUseCase } from './modules/housekeeping/usecases/settings'
 import { reservasPaymentRequestsConnector } from './connectors/reservas-payment-requests'
 
@@ -672,6 +673,18 @@ setInterval(() => {
   nightAuditCron().catch((e) => logger.warn('night-audit cron failed', { error: (e as Error).message }))
 }, NIGHT_AUDIT_TICK_MS)
 logger.info('Night-audit cron listo', { tickMs: NIGHT_AUDIT_TICK_MS })
+
+// Booking-sync cron (issue #564): ingesta el feed GLOBAL de bookings OTA de Channex y deriva
+// cada revisión a su hotel por propertyId. Intervalo configurable por BOOKING_SYNC_INTERVAL_MS.
+const BOOKING_SYNC_TICK_MS = Number(process.env.BOOKING_SYNC_INTERVAL_MS) || DEFAULT_BOOKING_SYNC_TICK_MS
+const bookingSyncCron = createBookingSyncCron(orm, (name) => system.resolveModule(name), logger)
+setTimeout(() => {
+  bookingSyncCron().catch((e) => logger.warn('booking-sync initial run failed', { error: (e as Error).message }))
+}, 10_000)
+setInterval(() => {
+  bookingSyncCron().catch((e) => logger.warn('booking-sync cron failed', { error: (e as Error).message }))
+}, BOOKING_SYNC_TICK_MS)
+logger.info('Booking-sync cron listo', { tickMs: BOOKING_SYNC_TICK_MS })
 
 // Crones del ciclo SaaS (PLAN-SUSCRIPCIONES.md). Mismo molde que night-audit: factory, corrida
 // inicial a los 10s (anti-restart), setInterval con catch que no tira. Los tres son idempotentes

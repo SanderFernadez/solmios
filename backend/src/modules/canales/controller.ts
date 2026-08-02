@@ -93,13 +93,18 @@ export class CanalesController {
     return { status: 200, body: { data, total: data.length } }
   }
 
-  // POST /api/channels/bookings/ingest — ingesta bookings → reservas + ack.
+  // POST /api/channels/bookings/ingest — botón manual: dispara el sync GLOBAL de bookings.
+  // El feed es por cuenta de plataforma (no por hotel); el usecase deriva por propertyId.
+  // Mantiene el shape { message } que espera el frontend (BookingSyncResult no lo trae).
   async ingestBookings(req: HttpRequest) {
-    const data = validateSchema(IngestBookingsSchema, req.body) as any
+    validateSchema(IngestBookingsSchema, req.body)  // valida body; el hotelId ya no filtra (feed global)
     const hotelId = resolveTenant(req) as string
-    this.logger.info('POST /api/channels/bookings/ingest', { hotelId })
-    const result = await this.service.ingestBookings(hotelId)
-    return { status: result.success ? 200 : 422, body: result }
+    this.logger.info('POST /api/channels/bookings/ingest (global sync)', { hotelId })
+    const r = await this.service.syncAllBookingRevisions()
+    const message = r.feedSize === 0
+      ? 'No hay bookings pendientes'
+      : `${r.ingested} reservas creadas, ${r.skipped} actualizadas, ${r.acknowledged} confirmadas a la OTA`
+    return { status: r.success ? 200 : 422, body: { ...r, message } }
   }
 
   // GET /api/channels/iframe-token — token para embed de Channex.
