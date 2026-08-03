@@ -53,7 +53,7 @@
     </div>
 
     <!-- Stats cards — tarjetas hero del dashboard (gradiente + glow + ícono grande) -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
       <KpiHeroCard v-for="stat in stats" :key="stat.label"
         :label="stat.label" :value="stat.value" :icon="stat.icon" :accent="stat.accent" />
     </div>
@@ -98,7 +98,7 @@
 
     <!-- Board View (Kanban) -->
     <SkeletonLoader v-else-if="activeView === 'board' && store.loading" variant="list" :rows="6" />
-    <div v-else-if="activeView === 'board'" class="grid grid-cols-4 gap-4">
+    <div v-else-if="activeView === 'board'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       <div v-for="column in kanbanColumns" :key="column.id"
         class="bg-surface rounded-xl p-4 min-h-[300px] transition-all"
         :class="dragOverColumn === column.id ? 'ring-2 ring-navy bg-navy/5' : ''"

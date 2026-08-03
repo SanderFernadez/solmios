@@ -21,10 +21,10 @@
           </span>
           <h2 class="text-sm font-black uppercase tracking-wider text-navy">Calendario de Reservas</h2>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-2 bg-white rounded-xl border border-border px-2">
             <button @click="prevWeek" class="p-1.5 rounded-lg hover:bg-surface cursor-pointer">◀</button>
-            <span class="text-sm font-bold text-navy min-w-[200px] text-center">{{ weekLabel }}</span>
+            <span class="text-sm font-bold text-navy min-w-[110px] sm:min-w-[200px] text-center">{{ weekLabel }}</span>
             <button @click="nextWeek" class="p-1.5 rounded-lg hover:bg-surface cursor-pointer">▶</button>
           </div>
           <button @click="goToday" class="px-3 py-1.5 bg-navy text-white text-xs font-bold rounded-lg cursor-pointer">Hoy</button>

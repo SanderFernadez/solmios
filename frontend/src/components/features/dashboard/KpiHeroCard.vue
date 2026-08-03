@@ -55,7 +55,7 @@
     </svg>
 
     <!-- Sub-stats -->
-    <div v-if="subStats?.length" class="relative mt-2 flex gap-5">
+    <div v-if="subStats?.length" class="relative mt-2 flex flex-wrap gap-x-4 gap-y-1.5 sm:gap-x-5">
       <div v-for="s in subStats" :key="s.label">
         <div class="text-base font-black leading-none tabular-nums" :class="s.tone ?? 'text-navy'">{{ s.value }}</div>
         <div class="mt-0.5 text-[9px] font-semibold text-text-secondary">{{ s.label }}</div>

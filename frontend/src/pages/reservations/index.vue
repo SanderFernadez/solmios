@@ -1,10 +1,10 @@
 <template>
   <div class="space-y-5">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-xl font-black text-navy">Reservas</h1>
-        <div class="mt-0.5 flex items-center gap-2.5">
+        <div class="mt-0.5 flex flex-wrap items-center gap-2.5">
           <p class="text-sm text-text-muted">Gestión de reservaciones del hotel</p>
           <span class="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#16A34A]">
             <span class="relative flex h-1.5 w-1.5">
